@@ -25,3 +25,13 @@ jobs:
           components: rustfmt
       - uses: Swatinem/rust-cache@v1
       - run: cargo fmt --all -- --check
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v1
+      - run: cargo clippy --all-targets --all-features -- -D warnings
