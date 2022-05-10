@@ -1,0 +1,64 @@
+@startuml
+
+|Peer Node|
+
+start
+
+
+
+
+|StarkNet Network Interface|
+:New block header<
+
+|State Sync|
+:New Block (block header);
+if (valid and height as expected?) then (yes)
+  fork
+    |StarkNet Network Interface|
+    :Get block body;
+    |Peer Node|
+    :Get block body;
+    |State Sync|
+    :Validate transactions;
+    :Process block;
+  fork again
+    :Propagate new header to some peers;
+
+  end fork
+else (no)
+  :discard block;
+endif
+
+end
+
+
+
+
+|L1 StarkNet Contract|
+floating note
+  A potential edge case is where a new valid block
+  is accepted on L1, but it wasn't seen yet on L2.
+
+  We add it to the recognized state, but don't need
+  to verify or propagate it. The assumption is that
+  the block will propagate on L2 properly.
+end note
+
+start
+
+|State Sync|
+:New Verified Block<
+:Process block;
+if (is archive mode?) then (yes)
+  |StarkNet Network Interface|
+    :Get block body;
+    |Peer Node|
+    :Get block body;
+    |State Sync|
+    :Process block;
+else (no)
+endif
+
+end
+
+@enduml
