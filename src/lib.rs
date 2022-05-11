@@ -1,3 +1,8 @@
+pub mod gateway;
+pub mod starknet;
+pub mod storage;
+pub mod sync;
+
 #[cfg(test)]
 mod tests {
     #[test]
