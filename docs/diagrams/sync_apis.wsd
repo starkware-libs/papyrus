@@ -13,6 +13,7 @@ start
 |State Sync|
 :New Block (block header);
 if (valid and height as expected?) then (yes)
+
   fork
     |StarkNet Network Interface|
     :Get block body;
@@ -22,16 +23,23 @@ if (valid and height as expected?) then (yes)
     :Validate transactions;
     :Process block;
   fork again
-    :Propagate new header to some peers;
 
+    :Propagate new header to some peers;
+    -[#blue]->
+    (P)
+    detach
+    |StarkNet Network Interface|
+    (P)
+    -[#blue]->
+    :Send header to selected peers;
+  |State Sync|
   end fork
 else (no)
+  |State Sync|
   :discard block;
 endif
 
 end
-
-
 
 
 |L1 StarkNet Contract|
