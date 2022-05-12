@@ -1,5 +1,7 @@
 mod sources;
 
+use log::info;
+
 use crate::storage::StorageHandle;
 
 // Orchestrates specific network interfaces (e.g. central, p2p, l1) and writes to Storage.
@@ -13,6 +15,7 @@ impl StateSync {
         StateSync { storage }
     }
     pub fn run(&mut self) {
+        info!("State sync started.");
         todo!("Not implemented yet.");
     }
 }
