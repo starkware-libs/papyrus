@@ -1,3 +1,6 @@
+use super::algebra::PedersenHash;
+
 pub struct BlockHeader {}
 pub struct BlockBody {}
-pub struct BlockHash([u64; 4]);
+pub struct BlockHash(PedersenHash);
+pub struct BlockTimestamp(u64);
