@@ -1,0 +1,22 @@
+@startuml
+hide empty description
+
+[*] -> VH : Got new header
+state "Validating Header" as VH
+VH  --> V: header ok
+
+state "Checking Consistency" as V
+
+state Consistent
+V --> Consistent: header and body are consistent
+
+Consistent --> AL2: consensus verified
+state "Accepted on L2" as AL2
+
+AL2 --> Consistent: L2 re-org
+
+AL2 --> AL1: L1 state update verified
+state "Accepted on L1" as AL1
+
+AL1 --> Consistent: L1 re-org
+@enduml
