@@ -1,0 +1,39 @@
+@startuml
+
+|State Sync|
+
+start
+
+:identify tips (L1, L2_latest, L2_earliest);
+
+while (sync done?) is (not done)
+    |StarkNet Network Interface|
+
+
+    :start retrieving from(hash(L2_earliest));
+    note right
+        returns an iterator (stream)
+        of <header, source id> tuples
+    end note
+
+    |State Sync|
+    while (header available in stream?) is (header available)
+        :new block header (header, source id);
+
+        if (is invalid header?) then (yes)
+            |StarkNet Network Interface|
+            :Invalid header(header,source id);
+            :stop processing stream;
+        else (no)
+            |Network State|
+            :new header(header);
+
+        endif
+    endwhile (done or stopped)
+
+endwhile (done)
+
+|State Sync|
+end
+
+@enduml
