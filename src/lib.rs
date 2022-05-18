@@ -1,3 +1,4 @@
+pub mod central;
 pub mod gateway;
 pub mod starknet;
 pub mod storage;
