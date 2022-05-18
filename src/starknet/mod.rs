@@ -1,3 +1,3 @@
 mod block;
 
-pub use block::{BlockBody, BlockHash, BlockHeader};
+pub use block::{BlockBody, BlockHash, BlockHeader, BlockNumber};
