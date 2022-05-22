@@ -11,8 +11,8 @@ pub struct Storage {
 
 impl Storage
 {
-    fn set_latest_block_number(&mut self, n : BlockNumber) {
-        self.latest_block_num = n;
+    fn set_latest_block_number(&mut self, n : &BlockNumber) {
+        self.latest_block_num = BlockNumber { 0: n.0 };
     }
 }
 
@@ -42,8 +42,8 @@ impl StorageHandle {
 
     pub fn storage(&self) -> Storage { return self.storage; }
 
-    pub fn set_latest_block_number(&self, n : BlockNumber) {
-        self.storage().set_latest_block_number(n);
+    pub fn set_latest_block_number(&mut self, n : BlockNumber) {
+        self.storage.set_latest_block_number(&n);
 
     }
 
