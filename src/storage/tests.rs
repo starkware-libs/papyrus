@@ -14,8 +14,13 @@ mod tests
             Err(_e) => panic!("Could not create storage"),
             Ok(sh) => {
                 let expected = BlockNumber{0 : 5};
-                sh.set_latest_block_number(expected);
-                assert_eq!(expected.0,5);
+                let mut mut_sh = sh;
+                mut_sh.set_latest_block_number(expected);
+
+                let res = mut_sh.get_latest_block_number();
+                assert_eq!(res.0,5);
+
+
             }
         }
 
