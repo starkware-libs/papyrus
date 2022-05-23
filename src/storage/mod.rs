@@ -10,8 +10,8 @@ use crate::starknet::BlockNumber;
 #[error("General storage error")]
 pub struct StorageError {}
 
-impl From<PoisonError<MutexGuard<'_, ConcreteDataStore>>> for StorageError {
-    fn from(_: PoisonError<MutexGuard<ConcreteDataStore>>) -> Self {
+impl From<PoisonError<MutexGuard<'_, DataStoreImpl>>> for StorageError {
+    fn from(_: PoisonError<MutexGuard<DataStoreImpl>>) -> Self {
         StorageError {}
     }
 }
@@ -49,7 +49,7 @@ pub trait DataStore {
  * The concrete data store implementation.
  * This should be the single implementation, shared by different threads.
  */
-struct ConcreteDataStore {
+struct DataStoreImpl {
     latest_block_num: BlockNumber,
 }
 
@@ -57,11 +57,11 @@ struct ConcreteDataStore {
  * A handle to a #ConcreteDataStore
  */
 pub struct DataStoreHandle {
-    inner: Arc<Mutex<ConcreteDataStore>>,
+    inner: Arc<Mutex<DataStoreImpl>>,
 }
 
 pub struct SNStorageReader {
-    store: Arc<Mutex<ConcreteDataStore>>,
+    store: Arc<Mutex<DataStoreImpl>>,
 }
 
 impl StarknetStorageReader for SNStorageReader {
@@ -71,7 +71,7 @@ impl StarknetStorageReader for SNStorageReader {
 }
 
 pub struct SNStorageWriter {
-    store: Arc<Mutex<ConcreteDataStore>>,
+    store: Arc<Mutex<DataStoreImpl>>,
 }
 
 impl StarknetStorageWriter for SNStorageWriter {
