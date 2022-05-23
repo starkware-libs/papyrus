@@ -1,32 +1,81 @@
+use crate::starknet::BlockNumber;
+use crate::storage::DataStore;
+use crate::storage::StarknetStorageReader;
+use crate::storage::StarknetStorageWriter;
+use crate::storage::StorageError;
+use std::sync::Arc;
+use std::sync::Mutex;
 
+struct MockDataStore {
+    latest_block_num: BlockNumber,
+}
 
-#[cfg(test)]
-mod tests
-{
+struct DataStoreHandle {
+    inner: Arc<Mutex<MockDataStore>>,
+}
 
-    use crate::storage::create_storage;
-    use crate::starknet::BlockNumber;
+fn create_mock_store() -> DataStoreHandle {
+    return DataStoreHandle {
+        inner: Arc::new(Mutex::new(MockDataStore {
+            latest_block_num: BlockNumber(0),
+        })),
+    };
+}
 
-    #[test]
-    fn test_add_block_number() {
+struct MockWriter {
+    mock_store: Arc<Mutex<MockDataStore>>,
+}
 
-        match create_storage() {
-            Err(_e) => panic!("Could not create storage"),
-            Ok(sh) => {
-                let expected = BlockNumber{0 : 5};
-                let mut mut_sh = sh;
-                mut_sh.set_latest_block_number(expected);
+struct MockReader {
+    mock_store: Arc<Mutex<MockDataStore>>,
+}
 
-                let res = mut_sh.get_latest_block_number();
-                assert_eq!(res.0,5);
+impl StarknetStorageReader for MockReader {
+    fn get_latest_block_number(&self) -> BlockNumber {
+        return self.mock_store.lock().unwrap().latest_block_num; //should be try_lock?
+    }
+}
 
+impl StarknetStorageWriter for MockWriter {
+    fn set_latest_block_number(&mut self, n: BlockNumber) {
+        self.mock_store.lock().unwrap().latest_block_num = n;
+    }
+}
 
-            }
-        }
+impl DataStore for DataStoreHandle {
+    type R = MockReader;
+    type W = MockWriter;
 
-
-
+    fn get_state_read_access(&self) -> Result<MockReader, StorageError> {
+        return Ok(MockReader {
+            mock_store: self.inner.clone(),
+        });
     }
 
+    fn get_state_write_access(&self) -> Result<MockWriter, StorageError> {
+        return Ok(MockWriter {
+            mock_store: self.inner.clone(),
+        });
+    }
+}
 
+#[test]
+fn test_add_block_number() {
+    let data_store_handle = create_mock_store();
+    let expected = BlockNumber(5);
+
+    match data_store_handle.get_state_write_access() {
+        Err(_e) => panic!("Could not get write access"),
+        Ok(mut sw) => {
+            sw.set_latest_block_number(expected);
+
+            match data_store_handle.get_state_read_access() {
+                Err(_e) => panic!("Could not get read access"),
+                Ok(sr) => {
+                    let res = sr.get_latest_block_number();
+                    assert_eq!(res, BlockNumber(5));
+                }
+            }
+        }
+    }
 }
