@@ -5,16 +5,16 @@ use log::info;
 use crate::storage::StorageHandle;
 
 // Orchestrates specific network interfaces (e.g. central, p2p, l1) and writes to Storage.
-pub struct StateSync {
+pub struct StateSync<S: StorageHandle> {
     #[allow(dead_code)]
-    storage: StorageHandle,
+    storage: S,
 }
 
-impl StateSync {
-    pub fn new(storage: StorageHandle) -> StateSync {
+impl<S: StorageHandle> StateSync<S> {
+    pub fn new(storage: S) -> Self {
         StateSync { storage }
     }
-    pub fn run(&mut self) {
+    pub async fn run(&mut self) {
         info!("State sync started.");
         todo!("Not implemented yet.");
     }
