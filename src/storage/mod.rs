@@ -10,14 +10,27 @@ use crate::starknet::BlockNumber;
 #[error("General storage error")]
 pub struct StorageError {}
 
+/**
+ * An interface to an object that reads from the starknet storage.
+ */
 pub trait StarknetStorageReader: Sync + Send {
     fn get_latest_block_number(&self) -> BlockNumber;
 }
 
+/**
+ * An interface to an object writing to a the starknet storage.
+ */
 pub trait StarknetStorageWriter: Sync + Send {
     fn set_latest_block_number(&mut self, n: BlockNumber);
 }
 
+/**
+ * An interface to an object the provides access (read and write) to the Starknet storage.
+ * Specific implementations should specialized this with specific reader/writer implementations.
+ *
+ * See #StarknetStorageReader, #StarknetStorageWriter
+ *
+ */
 pub trait DataStore {
     type R: StarknetStorageReader;
     type W: StarknetStorageWriter;
@@ -27,12 +40,17 @@ pub trait DataStore {
     fn get_state_write_access(&self) -> Result<Self::W, StorageError>;
 }
 
-// Storage object holding all the data. Owned by a single main thread. Responsible for doing all the
-// non thread safe operations.
+/**
+ * The concrete data store implementation.
+ * This should be the single implementation, shared by different threads.
+ */
 struct ConcreteDataStore {
     latest_block_num: BlockNumber,
 }
 
+/**
+ * A handle to a #ConcreteDataStore
+ */
 pub struct DataStoreHandle {
     inner: Arc<Mutex<ConcreteDataStore>>,
 }
