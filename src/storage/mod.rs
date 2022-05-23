@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests;
 
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use thiserror::Error;
 
 use crate::starknet::BlockNumber;
@@ -10,18 +10,23 @@ use crate::starknet::BlockNumber;
 #[error("General storage error")]
 pub struct StorageError {}
 
+impl From<PoisonError<MutexGuard<'_, ConcreteDataStore>>> for StorageError {
+    fn from(_: PoisonError<MutexGuard<ConcreteDataStore>>) -> Self {
+        StorageError {}
+    }
+}
 /**
  * An interface to an object that reads from the starknet storage.
  */
 pub trait StarknetStorageReader: Sync + Send {
-    fn get_latest_block_number(&self) -> BlockNumber;
+    fn get_latest_block_number(&self) -> Result<BlockNumber, StorageError>;
 }
 
 /**
  * An interface to an object writing to a the starknet storage.
  */
 pub trait StarknetStorageWriter: Sync + Send {
-    fn set_latest_block_number(&mut self, n: BlockNumber);
+    fn set_latest_block_number(&mut self, n: BlockNumber) -> Result<(), StorageError>;
 }
 
 /**
@@ -60,8 +65,8 @@ pub struct SNStorageReader {
 }
 
 impl StarknetStorageReader for SNStorageReader {
-    fn get_latest_block_number(&self) -> BlockNumber {
-        return self.store.lock().unwrap().latest_block_num;
+    fn get_latest_block_number(&self) -> Result<BlockNumber, StorageError> {
+        Ok(self.store.lock()?.latest_block_num)
     }
 }
 
@@ -70,8 +75,9 @@ pub struct SNStorageWriter {
 }
 
 impl StarknetStorageWriter for SNStorageWriter {
-    fn set_latest_block_number(&mut self, n: BlockNumber) {
-        self.store.lock().unwrap().latest_block_num = n;
+    fn set_latest_block_number(&mut self, n: BlockNumber) -> Result<(), StorageError> {
+        self.store.lock()?.latest_block_num = n;
+        Ok(())
     }
 }
 
