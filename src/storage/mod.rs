@@ -2,9 +2,12 @@
 mod tests;
 
 use std::sync::{Arc, Mutex};
+use thiserror::Error;
 
 use crate::starknet::BlockNumber;
 
+#[derive(Error, Debug)]
+#[error("General storage error")]
 pub struct StorageError {}
 
 pub trait StarknetStorageReader: Sync + Send {

@@ -63,18 +63,10 @@ fn test_add_block_number() {
     let data_store_handle = create_mock_store();
     let expected = BlockNumber(5);
 
-    match data_store_handle.get_state_write_access() {
-        Err(_e) => panic!("Could not get write access"),
-        Ok(mut sw) => {
-            sw.set_latest_block_number(expected);
+    let mut writer = data_store_handle.get_state_write_access().unwrap();
+    writer.set_latest_block_number(expected);
 
-            match data_store_handle.get_state_read_access() {
-                Err(_e) => panic!("Could not get read access"),
-                Ok(sr) => {
-                    let res = sr.get_latest_block_number();
-                    assert_eq!(res, BlockNumber(5));
-                }
-            }
-        }
-    }
+    let reader = data_store_handle.get_state_read_access().unwrap();
+    let res = reader.get_latest_block_number();
+    assert_eq!(res, BlockNumber(5));
 }
