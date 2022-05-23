@@ -36,7 +36,7 @@ struct MockReader {
 
 impl StarknetStorageReader for MockReader {
     fn get_latest_block_number(&self) -> Result<BlockNumber, StorageError> {
-        Ok(self.mock_store.lock()?.latest_block_num) //should be try_lock?
+        Ok(self.mock_store.lock()?.latest_block_num)
     }
 }
 
