@@ -59,14 +59,14 @@ impl DataStore for DataStoreHandle {
     type W = SNStorageWriter;
 
     fn get_state_read_access(&self) -> Result<SNStorageReader, StorageError> {
-        return Ok(SNStorageReader {
+        Ok(SNStorageReader {
             store: self.inner.clone(),
-        });
+        })
     }
 
     fn get_state_write_access(&self) -> Result<SNStorageWriter, StorageError> {
-        return Ok(SNStorageWriter {
+        Ok(SNStorageWriter {
             store: self.inner.clone(),
-        });
+        })
     }
 }

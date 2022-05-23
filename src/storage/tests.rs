@@ -15,11 +15,11 @@ struct DataStoreHandle {
 }
 
 fn create_mock_store() -> DataStoreHandle {
-    return DataStoreHandle {
+    DataStoreHandle {
         inner: Arc::new(Mutex::new(MockDataStore {
             latest_block_num: BlockNumber(0),
         })),
-    };
+    }
 }
 
 struct MockWriter {
@@ -32,7 +32,7 @@ struct MockReader {
 
 impl StarknetStorageReader for MockReader {
     fn get_latest_block_number(&self) -> BlockNumber {
-        return self.mock_store.lock().unwrap().latest_block_num; //should be try_lock?
+        self.mock_store.lock().unwrap().latest_block_num //should be try_lock?
     }
 }
 
@@ -47,15 +47,15 @@ impl DataStore for DataStoreHandle {
     type W = MockWriter;
 
     fn get_state_read_access(&self) -> Result<MockReader, StorageError> {
-        return Ok(MockReader {
+        Ok(MockReader {
             mock_store: self.inner.clone(),
-        });
+        })
     }
 
     fn get_state_write_access(&self) -> Result<MockWriter, StorageError> {
-        return Ok(MockWriter {
+        Ok(MockWriter {
             mock_store: self.inner.clone(),
-        });
+        })
     }
 }
 
