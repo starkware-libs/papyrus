@@ -1,10 +1,15 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use crate::{
     starknet::BlockNumber,
     storage::{DataStore, StarknetStorageReader, StarknetStorageWriter, StorageError},
 };
 
+impl From<PoisonError<MutexGuard<'_, MockDataStore>>> for StorageError {
+    fn from(_: PoisonError<MutexGuard<MockDataStore>>) -> Self {
+        StorageError {}
+    }
+}
 struct MockDataStore {
     latest_block_num: BlockNumber,
 }
@@ -30,14 +35,15 @@ struct MockReader {
 }
 
 impl StarknetStorageReader for MockReader {
-    fn get_latest_block_number(&self) -> BlockNumber {
-        self.mock_store.lock().unwrap().latest_block_num //should be try_lock?
+    fn get_latest_block_number(&self) -> Result<BlockNumber, StorageError> {
+        Ok(self.mock_store.lock()?.latest_block_num) //should be try_lock?
     }
 }
 
 impl StarknetStorageWriter for MockWriter {
-    fn set_latest_block_number(&mut self, n: BlockNumber) {
-        self.mock_store.lock().unwrap().latest_block_num = n;
+    fn set_latest_block_number(&mut self, n: BlockNumber) -> Result<(), StorageError> {
+        self.mock_store.lock()?.latest_block_num = n;
+        Ok(())
     }
 }
 
@@ -60,13 +66,16 @@ impl DataStore for DataStoreHandle {
 
 #[test]
 fn test_add_block_number() {
+    //we use unwrap throughout this functio since it's
+    //a test function using an internal mock implementation.
+
     let data_store_handle = create_mock_store();
     let expected = BlockNumber(5);
 
     let mut writer = data_store_handle.get_state_write_access().unwrap();
-    writer.set_latest_block_number(expected);
+    writer.set_latest_block_number(expected).unwrap();
 
     let reader = data_store_handle.get_state_read_access().unwrap();
     let res = reader.get_latest_block_number();
-    assert_eq!(res, BlockNumber(5));
+    assert_eq!(res.unwrap(), BlockNumber(5));
 }
