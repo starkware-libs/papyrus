@@ -1,10 +1,7 @@
+use std::sync::{Arc, Mutex};
+
 use crate::starknet::BlockNumber;
-use crate::storage::DataStore;
-use crate::storage::StarknetStorageReader;
-use crate::storage::StarknetStorageWriter;
-use crate::storage::StorageError;
-use std::sync::Arc;
-use std::sync::Mutex;
+use crate::storage::{DataStore, StarknetStorageReader, StarknetStorageWriter, StorageError};
 
 struct MockDataStore {
     latest_block_num: BlockNumber,
