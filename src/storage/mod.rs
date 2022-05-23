@@ -1,9 +1,9 @@
-use crate::starknet::BlockNumber;
-use std::sync::Arc;
-use std::sync::Mutex;
-
 #[cfg(test)]
 mod tests;
+
+use std::sync::{Arc, Mutex};
+
+use crate::starknet::BlockNumber;
 
 pub struct StorageError {}
 
