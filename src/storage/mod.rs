@@ -10,8 +10,8 @@ use crate::starknet::BlockNumber;
 #[error("General storage error")]
 pub struct StorageError {}
 
-impl From<PoisonError<MutexGuard<'_, DataStoreImpl>>> for StorageError {
-    fn from(_: PoisonError<MutexGuard<DataStoreImpl>>) -> Self {
+impl From<PoisonError<MutexGuard<'_, TheDataStore>>> for StorageError {
+    fn from(_: PoisonError<MutexGuard<TheDataStore>>) -> Self {
         StorageError {}
     }
 }
@@ -29,39 +29,8 @@ pub trait StarknetStorageWriter: Sync + Send {
     fn set_latest_block_number(&mut self, n: BlockNumber) -> Result<(), StorageError>;
 }
 
-/**
- * An interface to an object the provides access (read and write) to the Starknet storage.
- * Specific implementations should specialized this with specific reader/writer implementations.
- *
- * See #StarknetStorageReader, #StarknetStorageWriter
- *
- */
-pub trait DataStore {
-    type R: StarknetStorageReader;
-    type W: StarknetStorageWriter;
-
-    fn get_state_read_access(&self) -> Result<Self::R, StorageError>;
-
-    fn get_state_write_access(&self) -> Result<Self::W, StorageError>;
-}
-
-/**
- * The concrete data store implementation.
- * This should be the single implementation, shared by different threads.
- */
-struct DataStoreImpl {
-    latest_block_num: BlockNumber,
-}
-
-/**
- * A handle to a #ConcreteDataStore
- */
-pub struct DataStoreHandle {
-    inner: Arc<Mutex<DataStoreImpl>>,
-}
-
 pub struct SNStorageReader {
-    store: Arc<Mutex<DataStoreImpl>>,
+    store: Arc<Mutex<TheDataStore>>,
 }
 
 impl StarknetStorageReader for SNStorageReader {
@@ -71,7 +40,7 @@ impl StarknetStorageReader for SNStorageReader {
 }
 
 pub struct SNStorageWriter {
-    store: Arc<Mutex<DataStoreImpl>>,
+    store: Arc<Mutex<TheDataStore>>,
 }
 
 impl StarknetStorageWriter for SNStorageWriter {
@@ -81,10 +50,40 @@ impl StarknetStorageWriter for SNStorageWriter {
     }
 }
 
-impl DataStore for DataStoreHandle {
-    type R = SNStorageReader;
-    type W = SNStorageWriter;
+/**
+ * An interface to an object the provides access (read and write) to the Starknet storage.
+ * Specific implementations should specialized this with specific reader/writer implementations.
+ *
+ * See #StarknetStorageReader, #StarknetStorageWriter
+ *
+ */
+trait DataStore {
+    type R: StarknetStorageReader;
+    type W: StarknetStorageWriter;
 
+    fn get_access(&self) -> Result<(Self::R, Self::W), StorageError>;
+
+    // fn get_state_read_access(&self) -> Result<Self::R, StorageError>;
+
+    // fn get_state_write_access(&self) -> Result<Self::W, StorageError>;
+}
+
+/**
+ * The concrete data store implementation.
+ * This should be the single implementation, shared by different threads.
+ */
+struct TheDataStore {
+    latest_block_num: BlockNumber,
+}
+
+/**
+ * A handle to a #ConcreteDataStore
+ */
+pub struct DataStoreHandle {
+    inner: Arc<Mutex<TheDataStore>>,
+}
+
+impl DataStoreHandle {
     fn get_state_read_access(&self) -> Result<SNStorageReader, StorageError> {
         Ok(SNStorageReader {
             store: self.inner.clone(),
@@ -95,5 +94,17 @@ impl DataStore for DataStoreHandle {
         Ok(SNStorageWriter {
             store: self.inner.clone(),
         })
+    }
+}
+
+impl DataStore for DataStoreHandle {
+    type R = SNStorageReader;
+    type W = SNStorageWriter;
+
+    fn get_access(&self) -> Result<(SNStorageReader, SNStorageWriter), StorageError> {
+        Ok((
+            self.get_state_read_access()?,
+            self.get_state_write_access()?,
+        ))
     }
 }
