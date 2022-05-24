@@ -47,10 +47,7 @@ impl StarknetStorageWriter for MockWriter {
     }
 }
 
-impl DataStore for DataStoreHandle {
-    type R = MockReader;
-    type W = MockWriter;
-
+impl DataStoreHandle {
     fn get_state_read_access(&self) -> Result<MockReader, StorageError> {
         Ok(MockReader {
             mock_store: self.inner.clone(),
@@ -64,18 +61,31 @@ impl DataStore for DataStoreHandle {
     }
 }
 
+impl DataStore for DataStoreHandle {
+    type R = MockReader;
+    type W = MockWriter;
+
+    fn get_access(&self) -> Result<(MockReader, MockWriter), StorageError> {
+        Ok((
+            self.get_state_read_access()?,
+            self.get_state_write_access()?,
+        ))
+    }
+}
+
 #[test]
 fn test_add_block_number() {
     //we use unwrap throughout this functio since it's
     //a test function using an internal mock implementation.
 
     let data_store_handle = create_mock_store();
+    let (reader, mut writer) = data_store_handle.get_access().unwrap();
     let expected = BlockNumber(5);
 
-    let mut writer = data_store_handle.get_state_write_access().unwrap();
+    // let mut writer = data_store_handle.get_state_write_access().unwrap();
     writer.set_latest_block_number(expected).unwrap();
 
-    let reader = data_store_handle.get_state_read_access().unwrap();
+    // let reader = data_store_handle.get_state_read_access().unwrap();
     let res = reader.get_latest_block_number();
     assert_eq!(res.unwrap(), BlockNumber(5));
 }
