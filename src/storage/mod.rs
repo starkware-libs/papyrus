@@ -59,11 +59,12 @@ impl StarknetStorageWriter for SNStorageWriter {
  * See #StarknetStorageReader, #StarknetStorageWriter
  *
  */
-trait DataStore {
-    type R: StarknetStorageReader;
-    type W: StarknetStorageWriter;
-
-    fn get_access(&self) -> Result<(Self::R, Self::W), StorageError>;
+trait DataStore<R, W>
+where
+    R: StarknetStorageReader,
+    W: StarknetStorageWriter,
+{
+    fn get_access(&self) -> Result<(R, W), StorageError>;
 }
 
 /**
@@ -95,14 +96,26 @@ impl DataStoreHandle {
     }
 }
 
-impl DataStore for DataStoreHandle {
-    type R = SNStorageReader;
-    type W = SNStorageWriter;
-
+impl DataStore<SNStorageReader, SNStorageWriter> for DataStoreHandle {
     fn get_access(&self) -> Result<(SNStorageReader, SNStorageWriter), StorageError> {
         Ok((
             self.get_state_read_access()?,
             self.get_state_write_access()?,
         ))
     }
+}
+
+/**
+ * This is the function that's supposed to be called by the function that initializes
+ * the store and wires it to relevant other modules.
+ */
+pub fn create_store_access() -> Result<DataStoreHandle, StorageError> {
+    //TODO: find a way to limit calls to this function
+    let ds = TheDataStore {
+        latest_block_num: BlockNumber(0),
+    };
+    let dsh = DataStoreHandle {
+        inner: Arc::new(Mutex::new(ds)),
+    };
+    Ok(dsh)
 }
