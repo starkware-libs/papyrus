@@ -1,12 +1,10 @@
-// use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
-
 use crate::{
     starknet::BlockNumber,
     storage::{create_store_access, DataStore, StarknetStorageReader, StarknetStorageWriter},
 };
 
-#[test]
-fn test_add_block_number() {
+#[tokio::test]
+async fn test_add_block_number() {
     //we use unwrap throughout this function since it's
     //a test function using an internal mock implementation.
 
@@ -14,8 +12,8 @@ fn test_add_block_number() {
     let (reader, mut writer) = data_store_handle.get_access().unwrap();
     let expected = BlockNumber(5);
 
-    writer.set_latest_block_number(expected).unwrap();
+    writer.set_latest_block_number(expected).await.unwrap();
 
-    let res = reader.get_latest_block_number();
+    let res = reader.get_latest_block_number().await;
     assert_eq!(res.unwrap(), expected);
 }

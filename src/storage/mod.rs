@@ -1,8 +1,10 @@
 #[cfg(test)]
 mod tests;
 
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use async_trait::async_trait;
+use std::sync::Arc;
 use thiserror::Error;
+use tokio::sync::Mutex;
 
 use crate::starknet::BlockNumber;
 
@@ -12,32 +14,30 @@ pub enum StorageError {
     AccessSyncError {},
 }
 
-impl From<PoisonError<MutexGuard<'_, TheDataStore>>> for StorageError {
-    fn from(_: PoisonError<MutexGuard<TheDataStore>>) -> Self {
-        StorageError::AccessSyncError {}
-    }
-}
 /**
  * An interface to an object that reads from the starknet storage.
  */
+#[async_trait]
 pub trait StarknetStorageReader: Sync + Send {
-    fn get_latest_block_number(&self) -> Result<BlockNumber, StorageError>;
+    async fn get_latest_block_number(&self) -> Result<BlockNumber, StorageError>;
 }
 
 /**
  * An interface to an object writing to a the starknet storage.
  */
+#[async_trait]
 pub trait StarknetStorageWriter: Sync + Send {
-    fn set_latest_block_number(&mut self, n: BlockNumber) -> Result<(), StorageError>;
+    async fn set_latest_block_number(&mut self, n: BlockNumber) -> Result<(), StorageError>;
 }
 
 pub struct SNStorageReader {
     store: Arc<Mutex<TheDataStore>>,
 }
 
+#[async_trait]
 impl StarknetStorageReader for SNStorageReader {
-    fn get_latest_block_number(&self) -> Result<BlockNumber, StorageError> {
-        Ok(self.store.lock()?.latest_block_num)
+    async fn get_latest_block_number(&self) -> Result<BlockNumber, StorageError> {
+        Ok(self.store.lock().await.latest_block_num)
     }
 }
 
@@ -45,9 +45,10 @@ pub struct SNStorageWriter {
     store: Arc<Mutex<TheDataStore>>,
 }
 
+#[async_trait]
 impl StarknetStorageWriter for SNStorageWriter {
-    fn set_latest_block_number(&mut self, n: BlockNumber) -> Result<(), StorageError> {
-        self.store.lock()?.latest_block_num = n;
+    async fn set_latest_block_number(&mut self, n: BlockNumber) -> Result<(), StorageError> {
+        self.store.lock().await.latest_block_num = n;
         Ok(())
     }
 }
