@@ -7,7 +7,7 @@ use crate::{
 
 #[test]
 fn test_add_block_number() {
-    //we use unwrap throughout this functio since it's
+    //we use unwrap throughout this function since it's
     //a test function using an internal mock implementation.
 
     let data_store_handle = create_store_access().unwrap();
@@ -17,5 +17,5 @@ fn test_add_block_number() {
     writer.set_latest_block_number(expected).unwrap();
 
     let res = reader.get_latest_block_number();
-    assert_eq!(res.unwrap(), BlockNumber(5));
+    assert_eq!(res.unwrap(), expected);
 }
