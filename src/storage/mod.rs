@@ -75,7 +75,7 @@ struct TheDataStore {
 }
 
 /**
- * A handle to a #ConcreteDataStore
+ * A handle to a #TheDataStore
  */
 pub struct DataStoreHandle {
     inner: Arc<Mutex<TheDataStore>>,
