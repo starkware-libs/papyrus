@@ -7,7 +7,7 @@ use crate::{
 
 impl From<PoisonError<MutexGuard<'_, MockDataStore>>> for StorageError {
     fn from(_: PoisonError<MutexGuard<MockDataStore>>) -> Self {
-        StorageError {}
+        StorageError::AccessSyncError {}
     }
 }
 struct MockDataStore {

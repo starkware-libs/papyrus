@@ -7,12 +7,14 @@ use thiserror::Error;
 use crate::starknet::BlockNumber;
 
 #[derive(Error, Debug)]
-#[error("General storage error")]
-pub struct StorageError {}
+pub enum StorageError {
+    #[error("Synchronization error")]
+    AccessSyncError {},
+}
 
 impl From<PoisonError<MutexGuard<'_, TheDataStore>>> for StorageError {
     fn from(_: PoisonError<MutexGuard<TheDataStore>>) -> Self {
-        StorageError {}
+        StorageError::AccessSyncError {}
     }
 }
 /**
@@ -62,10 +64,6 @@ trait DataStore {
     type W: StarknetStorageWriter;
 
     fn get_access(&self) -> Result<(Self::R, Self::W), StorageError>;
-
-    // fn get_state_read_access(&self) -> Result<Self::R, StorageError>;
-
-    // fn get_state_write_access(&self) -> Result<Self::W, StorageError>;
 }
 
 /**
