@@ -23,7 +23,7 @@ pub fn create_store_access() -> Result<(SNStorageReader, SNStorageWriter), Stora
     let m = Arc::new(Mutex::new(ds));
 
     let r = SNStorageReader { store: m.clone() };
-
+    #[allow(clippy::redundant_clone)]
     let w = SNStorageWriter { store: m.clone() };
 
     Ok((r, w))

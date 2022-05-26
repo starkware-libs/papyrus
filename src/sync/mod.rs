@@ -10,6 +10,7 @@ pub struct StateSync {
 // storage: DataStoreHandle,
 }
 
+#[allow(clippy::new_without_default)]
 impl StateSync {
     pub fn new() -> StateSync {
         StateSync {}

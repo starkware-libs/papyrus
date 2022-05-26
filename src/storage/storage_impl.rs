@@ -23,6 +23,12 @@ impl TheDataStore {
     }
 }
 
+impl Default for TheDataStore {
+    fn default() -> Self {
+        TheDataStore::new()
+    }
+}
+
 pub struct SNStorageReader {
     pub store: Arc<Mutex<TheDataStore>>,
 }
