@@ -1,6 +1,5 @@
 #[cfg(test)]
-#[path = "tests.rs"]
-mod tests;
+mod central_test;
 
 use crate::starknet::BlockNumber;
 
@@ -39,4 +38,3 @@ impl CentralClient {
         Ok(BlockNumber(block_number.parse()?))
     }
 }
-
