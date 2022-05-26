@@ -8,8 +8,9 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use self::api::StorageError;
-pub use self::api::{StarknetStorageReader, StarknetStorageWriter};
 use self::storage_impl::{SNStorageReader, SNStorageWriter, TheDataStore};
+
+pub use self::api::{StarknetStorageReader, StarknetStorageWriter};
 
 /**
  * This is the function that's supposed to be called by the function that initializes
@@ -23,8 +24,7 @@ pub fn create_store_access() -> Result<(SNStorageReader, SNStorageWriter), Stora
     let m = Arc::new(Mutex::new(ds));
 
     let r = SNStorageReader { store: m.clone() };
-    #[allow(clippy::redundant_clone)]
-    let w = SNStorageWriter { store: m.clone() };
+    let w = SNStorageWriter { store: m };
 
     Ok((r, w))
 }
