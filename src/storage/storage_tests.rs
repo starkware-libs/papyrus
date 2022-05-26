@@ -1,6 +1,6 @@
 use crate::{
     starknet::BlockNumber,
-    storage::{create_store_access, StarknetStorageReader, StarknetStorageWriter},
+    storage::{create_store_access, StorageReader, StorageWriter},
 };
 
 #[tokio::test]

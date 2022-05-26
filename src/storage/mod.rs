@@ -10,7 +10,7 @@ use tokio::sync::Mutex;
 use self::api::StorageError;
 use self::storage_impl::{SNStorageReader, SNStorageWriter, TheDataStore};
 
-pub use self::api::{StarknetStorageReader, StarknetStorageWriter};
+pub use self::api::{StorageReader, StorageWriter};
 
 /**
  * This is the function that's supposed to be called by the function that initializes

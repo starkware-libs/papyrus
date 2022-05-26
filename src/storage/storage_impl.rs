@@ -3,7 +3,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use tokio::sync::Mutex;
 
-use super::api::{StarknetStorageReader, StarknetStorageWriter, StorageError};
+use super::api::{StorageError, StorageReader, StorageWriter};
 
 use crate::starknet::BlockNumber;
 
@@ -34,7 +34,7 @@ pub struct SNStorageReader {
 }
 
 #[async_trait]
-impl StarknetStorageReader for SNStorageReader {
+impl StorageReader for SNStorageReader {
     async fn get_latest_block_number(&self) -> Result<BlockNumber, StorageError> {
         Ok(self.store.lock().await.latest_block_num)
     }
@@ -45,7 +45,7 @@ pub struct SNStorageWriter {
 }
 
 #[async_trait]
-impl StarknetStorageWriter for SNStorageWriter {
+impl StorageWriter for SNStorageWriter {
     async fn set_latest_block_number(&mut self, n: BlockNumber) -> Result<(), StorageError> {
         self.store.lock().await.latest_block_num = n;
         Ok(())
