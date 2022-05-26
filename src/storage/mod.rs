@@ -1,6 +1,6 @@
 mod api;
 #[cfg(test)]
-mod tests;
+mod storage_tests;
 
 use std::sync::Arc;
 
