@@ -7,9 +7,8 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use tokio::sync::Mutex;
 
+use self::api::{DataStore, StarknetStorageReader, StarknetStorageWriter, StorageError};
 use crate::starknet::BlockNumber;
-use crate::storage::api::StorageError;
-use crate::storage::api::{DataStore, StarknetStorageReader, StarknetStorageWriter};
 
 pub struct SNStorageReader {
     store: Arc<Mutex<TheDataStore>>,
