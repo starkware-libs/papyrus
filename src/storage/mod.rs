@@ -7,7 +7,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use tokio::sync::Mutex;
 
-use self::api::{DataStore, StarknetStorageReader, StarknetStorageWriter, StorageError};
+use self::api::{StarknetStorageReader, StarknetStorageWriter, StorageError};
 use crate::starknet::BlockNumber;
 
 pub struct SNStorageReader {
@@ -42,46 +42,21 @@ struct TheDataStore {
 }
 
 /**
- * A handle to a #TheDataStore
- */
-pub struct DataStoreHandle {
-    inner: Arc<Mutex<TheDataStore>>,
-}
-
-impl DataStoreHandle {
-    fn get_state_read_access(&self) -> Result<SNStorageReader, StorageError> {
-        Ok(SNStorageReader {
-            store: self.inner.clone(),
-        })
-    }
-
-    fn get_state_write_access(&self) -> Result<SNStorageWriter, StorageError> {
-        Ok(SNStorageWriter {
-            store: self.inner.clone(),
-        })
-    }
-}
-
-impl DataStore<SNStorageReader, SNStorageWriter> for DataStoreHandle {
-    fn get_access(&self) -> Result<(SNStorageReader, SNStorageWriter), StorageError> {
-        Ok((
-            self.get_state_read_access()?,
-            self.get_state_write_access()?,
-        ))
-    }
-}
-
-/**
  * This is the function that's supposed to be called by the function that initializes
  * the store and wires it to relevant other modules.
  */
-pub fn create_store_access() -> Result<DataStoreHandle, StorageError> {
+pub fn create_store_access() -> Result<(SNStorageReader, SNStorageWriter), StorageError> {
     //TODO: find a way to limit calls to this function
+
     let ds = TheDataStore {
         latest_block_num: BlockNumber(0),
     };
-    let dsh = DataStoreHandle {
-        inner: Arc::new(Mutex::new(ds)),
-    };
-    Ok(dsh)
+
+    let m = Arc::new(Mutex::new(ds));
+
+    let r = SNStorageReader { store: m.clone() };
+
+    let w = SNStorageWriter { store: m.clone() };
+
+    Ok((r, w))
 }
