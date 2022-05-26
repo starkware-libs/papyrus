@@ -2,8 +2,6 @@ mod sources;
 
 use log::info;
 
-// use crate::storage::DataStoreHandle;
-
 // Orchestrates specific network interfaces (e.g. central, p2p, l1) and writes to Storage.
 pub struct StateSync {}
 
