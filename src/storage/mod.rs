@@ -2,9 +2,9 @@ mod api;
 #[cfg(test)]
 mod tests;
 
-use async_trait::async_trait;
 use std::sync::Arc;
 
+use async_trait::async_trait;
 use tokio::sync::Mutex;
 
 use crate::starknet::BlockNumber;
