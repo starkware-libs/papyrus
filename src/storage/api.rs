@@ -24,18 +24,3 @@ pub trait StorageReader: Sync + Send {
 pub trait StorageWriter: Sync + Send {
     async fn set_latest_block_number(&mut self, n: BlockNumber) -> Result<(), StorageError>;
 }
-
-/**
- * An interface to an object the provides access (read and write) to the Starknet storage.
- * Specific implementations should specialized this with specific reader/writer implementations.
- *
- * See #StorageReader, #StorageWriter
- *
- */
-pub trait DataStore<R, W>
-where
-    R: StorageReader,
-    W: StorageWriter,
-{
-    fn get_access(&self) -> Result<(R, W), StorageError>;
-}

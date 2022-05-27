@@ -17,8 +17,6 @@ pub use self::api::{StorageReader, StorageWriter};
  * the store and wires it to relevant other modules.
  */
 pub fn create_store_access() -> Result<(SNStorageReader, SNStorageWriter), StorageError> {
-    //TODO: find a way to limit calls to this function
-
     let ds = TheDataStore::new();
 
     let m = Arc::new(Mutex::new(ds));

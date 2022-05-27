@@ -15,6 +15,14 @@ pub struct TheDataStore {
     pub latest_block_num: BlockNumber,
 }
 
+pub struct SNStorageReader {
+    pub store: Arc<Mutex<TheDataStore>>,
+}
+
+pub struct SNStorageWriter {
+    pub store: Arc<Mutex<TheDataStore>>,
+}
+
 impl TheDataStore {
     pub fn new() -> TheDataStore {
         TheDataStore {
@@ -29,19 +37,11 @@ impl Default for TheDataStore {
     }
 }
 
-pub struct SNStorageReader {
-    pub store: Arc<Mutex<TheDataStore>>,
-}
-
 #[async_trait]
 impl StorageReader for SNStorageReader {
     async fn get_latest_block_number(&self) -> Result<BlockNumber, StorageError> {
         Ok(self.store.lock().await.latest_block_num)
     }
-}
-
-pub struct SNStorageWriter {
-    pub store: Arc<Mutex<TheDataStore>>,
 }
 
 #[async_trait]
