@@ -1,10 +1,10 @@
 #[cfg(test)]
-mod central_test;
+mod starknet_client_test;
 
 use crate::starknet::BlockNumber;
 
-pub struct CentralClient {
-    central_url: url::Url,
+pub struct StarknetClient {
+    url: url::Url,
     internal_client: reqwest::Client,
 }
 #[derive(thiserror::Error, Debug)]
@@ -18,16 +18,16 @@ pub enum ClientError {
 }
 
 #[allow(dead_code)]
-impl CentralClient {
-    pub fn new(central_url_str: &str) -> Result<CentralClient, ClientError> {
-        Ok(CentralClient {
-            central_url: url::Url::parse(central_url_str)?,
+impl StarknetClient {
+    pub fn new(url_str: &str) -> Result<StarknetClient, ClientError> {
+        Ok(StarknetClient {
+            url: url::Url::parse(url_str)?,
             internal_client: reqwest::Client::builder().build()?,
         })
     }
 
     async fn request(&self, path: &str) -> Result<String, ClientError> {
-        let joined = self.central_url.join(path)?;
+        let joined = self.url.join(path)?;
         let res = self.internal_client.get(joined).send().await?;
         let body = res.text().await?;
         Ok(body)
