@@ -8,32 +8,47 @@ use super::api::{StorageError, StorageReader, StorageWriter};
 use crate::starknet::BlockNumber;
 
 /**
+ * This is the function that's supposed to be called by the function that initializes
+ * the store and wires it to relevant other modules.
+ */
+pub fn create_store_access() -> Result<(SNStorageReader, SNStorageWriter), StorageError> {
+    let ds = NodeDataStore::new();
+
+    let m = Arc::new(Mutex::new(ds));
+
+    let r = SNStorageReader { store: m.clone() };
+    let w = SNStorageWriter { store: m };
+
+    Ok((r, w))
+}
+
+/**
  * The concrete data store implementation.
  * This should be the single implementation, shared by different threads.
  */
-pub struct TheDataStore {
+pub struct NodeDataStore {
     pub latest_block_num: BlockNumber,
 }
 
 pub struct SNStorageReader {
-    pub store: Arc<Mutex<TheDataStore>>,
+    pub store: Arc<Mutex<NodeDataStore>>,
 }
 
 pub struct SNStorageWriter {
-    pub store: Arc<Mutex<TheDataStore>>,
+    pub store: Arc<Mutex<NodeDataStore>>,
 }
 
-impl TheDataStore {
-    pub fn new() -> TheDataStore {
-        TheDataStore {
+impl NodeDataStore {
+    pub fn new() -> NodeDataStore {
+        NodeDataStore {
             latest_block_num: BlockNumber(0),
         }
     }
 }
 
-impl Default for TheDataStore {
+impl Default for NodeDataStore {
     fn default() -> Self {
-        TheDataStore::new()
+        NodeDataStore::new()
     }
 }
 
