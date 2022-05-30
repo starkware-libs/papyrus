@@ -1,6 +1,6 @@
 use papyrus_lib::{
     gateway::run_server,
-    storage::create_store_access,
+    storage::components::StorageComponents,
     sync::{CentralSource, StateSync},
 };
 
@@ -8,13 +8,16 @@ use papyrus_lib::{
 async fn main() -> anyhow::Result<()> {
     env_logger::init();
 
-    let (_reader, writer) = create_store_access()?;
+    let mut path = std::env::current_exe()?;
+    path.pop();
+    path.push("data");
+    let storage_components = StorageComponents::new(path.as_path())?;
 
     // Network interface.
     let central_source = CentralSource::new()?;
 
     // Sync.
-    let mut sync = StateSync::new(central_source, writer);
+    let mut sync = StateSync::new(central_source, storage_components.block_storage_writer);
     let sync_thread = tokio::spawn(async move { sync.run().await });
 
     // Pass reader to storage.

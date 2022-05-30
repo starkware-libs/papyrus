@@ -35,7 +35,6 @@ pub type Result<V> = result::Result<V, DbError>;
 /// Opens an MDBX environment and returns a reader and a writer to it.
 /// The writer is wrapped in a mutex to make sure there is only one write transaction at any given
 /// moment.
-#[allow(dead_code)]
 pub fn open_env(path: &Path) -> Result<(DbReader, DbWriter)> {
     let env = Arc::new(Environment::new().set_max_dbs(MAX_DBS).open(path)?);
     Ok((DbReader { env: env.clone() }, DbWriter { env }))
@@ -62,7 +61,6 @@ pub struct TableHandle<'txn> {
     database: libmdbx::Database<'txn>,
 }
 
-#[allow(dead_code)]
 impl DbReader {
     pub fn begin_ro_txn(&self) -> Result<DbReadTransaction<'_>> {
         Ok(DbReadTransaction {
@@ -70,7 +68,6 @@ impl DbReader {
         })
     }
 }
-#[allow(dead_code)]
 impl DbWriter {
     pub fn begin_rw_txn(&mut self) -> Result<DbWriteTransaction<'_>> {
         Ok(DbWriteTransaction {
@@ -85,7 +82,6 @@ impl DbWriter {
     }
 }
 
-#[allow(dead_code)]
 impl<'a, K: libmdbx::TransactionKind> DbTransaction<'a, K> {
     pub fn open_table<'txn>(&'txn self, table_id: &TableIdentifier) -> Result<TableHandle<'txn>> {
         let database = self.txn.open_db(Some(table_id.name))?;
@@ -105,7 +101,6 @@ impl<'a, K: libmdbx::TransactionKind> DbTransaction<'a, K> {
         }
     }
 }
-#[allow(dead_code)]
 impl<'a> DbWriteTransaction<'a> {
     pub fn upsert<'txn, ValueType: Serialize>(
         &'txn self,
@@ -118,6 +113,7 @@ impl<'a> DbWriteTransaction<'a> {
             .put(&table.database, key, &data, WriteFlags::UPSERT)?;
         Ok(())
     }
+    #[allow(dead_code)]
     pub fn insert<'txn, ValueType: Serialize>(
         &'txn self,
         table: &TableHandle<'txn>,
