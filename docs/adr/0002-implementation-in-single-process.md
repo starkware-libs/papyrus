@@ -21,8 +21,9 @@ two interacting components process the relevant data in different speeds.
 2. A component needs to be implemented in a different technology than the rest of the node (e.g. a
 python component in a rust-based binary).
 
-At the same time, we balance this with the motivation to keep the node simple to deploy and operate.
-Also, developing everything as one process makes development (build, refactoring, etc) easier.
+At the same time, we balance this with the motivation to keep the node simple to develop, deploy and
+operate. Also, developing everything as one process makes development (build, refactoring, etc)
+easier.
 
 ## Decision
 
