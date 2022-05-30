@@ -1,8 +1,7 @@
-mod api;
-mod storage_impl;
+mod components;
+mod create;
+mod db;
 #[cfg(test)]
 mod storage_test;
 
-pub use self::storage_impl::create_store_access;
-
-pub use self::api::{StorageReader, StorageWriter};
+pub use self::create::create_storage_components;
