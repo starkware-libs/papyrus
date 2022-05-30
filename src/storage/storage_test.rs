@@ -1,18 +1,22 @@
-use crate::{
-    starknet::BlockNumber,
-    storage::{create_store_access, StorageReader, StorageWriter},
-};
+use tempfile::tempdir;
+
+use crate::starknet::BlockNumber;
+
+use super::components::StorageComponents;
 
 #[tokio::test]
 async fn test_add_block_number() {
-    //we use unwrap throughout this function since it's
-    //a test function using an internal mock implementation.
-
-    let (reader, mut writer) = create_store_access().unwrap();
+    let dir = tempdir().unwrap();
+    let mut storage_components = StorageComponents::new(dir.path());
     let expected = BlockNumber(5);
 
-    writer.set_latest_block_number(expected).await.unwrap();
+    storage_components
+        .block_storage_writer
+        .set_block_number_marker(expected)
+        .unwrap();
 
-    let res = reader.get_latest_block_number().await;
+    let res = storage_components
+        .block_storage_reader
+        .get_block_number_marker();
     assert_eq!(res.unwrap(), expected);
 }
