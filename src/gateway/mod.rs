@@ -1,49 +1,50 @@
 mod api;
+#[cfg(test)]
+mod gateway_test;
 
 use std::net::SocketAddr;
 
 use jsonrpsee::{
     core::{async_trait, Error},
-    ws_server::{WsServerBuilder, WsServerHandle},
+    http_server::{HttpServerBuilder, HttpServerHandle},
 };
+use log::{error, info};
 
-use crate::starknet::BlockNumber;
+use crate::{starknet::BlockNumber, storage::StorageReader};
 
 use self::api::JsonRpcServer;
 
 /// Rpc server.
-struct JsonRpcServerImpl;
+struct Gateway {
+    storage_reader: Box<dyn StorageReader>,
+}
 
 #[async_trait]
-impl JsonRpcServer for JsonRpcServerImpl {
+impl JsonRpcServer for Gateway {
     async fn block_number(&self) -> Result<BlockNumber, Error> {
-        Ok(BlockNumber(0))
+        let res = self.storage_reader.get_latest_block_number().await;
+        match res {
+            Ok(block_number) => {
+                info!("Read block number: {:?}.", block_number);
+                Ok(block_number)
+            }
+            err => {
+                error!("Storage error: {:?}", err);
+                Err(Error::Custom(format!("Storage error: {:?}", err)))
+            }
+        }
     }
 }
 
 #[allow(dead_code)]
-async fn run_server() -> anyhow::Result<(SocketAddr, WsServerHandle)> {
-    let server = WsServerBuilder::default().build("127.0.0.1:0").await?;
+pub async fn run_server(
+    storage_reader: Box<dyn StorageReader>,
+) -> anyhow::Result<(SocketAddr, HttpServerHandle)> {
+    let server = HttpServerBuilder::default().build("127.0.0.1:0").await?;
     let addr = server.local_addr()?;
-    let handle = server.start(JsonRpcServerImpl.into_rpc())?;
+    let handle = server.start(Gateway { storage_reader }.into_rpc())?;
     Ok((addr, handle))
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{
-        gateway::{api::JsonRpcServer, JsonRpcServerImpl},
-        starknet::BlockNumber,
-    };
-    use jsonrpsee::types::EmptyParams;
 
-    #[tokio::test]
-    async fn get_block_number() {
-        let module = JsonRpcServerImpl.into_rpc();
-        let result: BlockNumber = module
-            .call("starknet_blockNumber", EmptyParams::new())
-            .await
-            .unwrap();
-        assert_eq!(result, BlockNumber(0));
-    }
-}
+//pub async fn run_client()
