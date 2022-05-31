@@ -6,7 +6,7 @@ use std::net::SocketAddr;
 
 use jsonrpsee::{
     core::{async_trait, Error},
-    http_server::{HttpServerBuilder, HttpServerHandle},
+    ws_server::{WsServerBuilder, WsServerHandle},
 };
 use log::{error, info};
 
@@ -15,12 +15,12 @@ use crate::{starknet::BlockNumber, storage::StorageReader};
 use self::api::JsonRpcServer;
 
 /// Rpc server.
-struct Gateway {
+struct JsonRpcServerImpl {
     storage_reader: Box<dyn StorageReader>,
 }
 
 #[async_trait]
-impl JsonRpcServer for Gateway {
+impl JsonRpcServer for JsonRpcServerImpl {
     async fn block_number(&self) -> Result<BlockNumber, Error> {
         let res = self.storage_reader.get_latest_block_number().await;
         match res {
@@ -39,12 +39,9 @@ impl JsonRpcServer for Gateway {
 #[allow(dead_code)]
 pub async fn run_server(
     storage_reader: Box<dyn StorageReader>,
-) -> anyhow::Result<(SocketAddr, HttpServerHandle)> {
-    let server = HttpServerBuilder::default().build("127.0.0.1:0").await?;
+) -> anyhow::Result<(SocketAddr, WsServerHandle)> {
+    let server = WsServerBuilder::default().build("127.0.0.1:0").await?;
     let addr = server.local_addr()?;
-    let handle = server.start(Gateway { storage_reader }.into_rpc())?;
+    let handle = server.start(JsonRpcServerImpl { storage_reader }.into_rpc())?;
     Ok((addr, handle))
 }
-
-
-//pub async fn run_client()
