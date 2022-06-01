@@ -1,0 +1,158 @@
+@startuml
+
+note as Legend
+ <b>Notes:</b>
+ - key attributes are <u>underlined</u>
+ - attributes in italic are foreign <i>keys/pointers</i>
+ - other metadata appears in <color:grey>grey</color>
+ - dotted lines represent logical connection
+
+ - "hash" type is essentially a byte array (BLOB?)
+end note
+
+object BlockHeader {
+    <u>block_hash</u> : hash
+    number : Int
+    storage_root : hash
+    header : BLOB
+    <i>parent</i> : hash
+    time
+    status
+}
+
+note right of BlockHeader
+    status:
+      ACCEPTED_ON_L2,
+      ACCEPTED_ON_L1
+      ...
+end note
+
+object BlockHeaderIndex {
+    <u>block_num</u>: Int
+    header : BlockHeader
+}
+
+note right of BlockHeaderIndex
+    Mapping:
+     block number -> block headers
+end note
+
+BlockHeaderIndex::header -- BlockHeader: >
+
+object Transaction {
+    ' the identifier of the transaction
+    <u>hash</u> : hash
+    version : Int
+    signature : BLOB
+    nonce : Int
+    type
+    contract_address : hash
+    call_data : BLOB
+    entry_point_selector : hash
+    caller_address : hash
+    chain_id : Int
+    max_fee : Int
+    <color:grey>nullable</color> containing_block : hash
+}
+
+
+
+object __Pointers {
+    latest_body
+    earliest_body
+    latest_state_diff
+}
+
+note right of __Pointers
+  Global pointers to
+   help with sync process
+end note
+
+object BlockTxnIndex {
+    <u>block_num</u> : Int
+    <u>txn_hash</u> : FELT
+    txn : Transaction
+}
+
+note left of BlockTxnIndex
+    Mapping:
+      (block number, txn hash) -> transaction object
+end note
+BlockTxnIndex::txn -- Transaction : >
+
+object TxnBlockIndex {
+    <u>txn_hash</u> : FELT
+    block_num : Int
+}
+note right of TxnBlockIndex
+  Mapping:
+    txn_hash -> block number
+end note
+
+__Pointers::latest_body -- BlockTxnIndex::block_num: >
+__Pointers::earliest_body -- BlockTxnIndex::block_num: >
+
+object LastState {
+    <u>contract_address</u> : FELT
+    <u>key</u> : FELT
+    value : FELT
+}
+note right of LastState
+    The last known state of the chain
+end note
+
+
+object BlockStateDiff {
+    <u>contract_address</u> : FELT
+    <u>key</u> : FELT
+    prev_value : FELT
+}
+
+__Pointers::latest_state_diff -- BlockStateDiff : >
+
+object StateDiffIndex {
+    <u>block_num</u>
+    state_diff : BlockStateDiff
+}
+
+StateDiffIndex::state_diff -- BlockStateDiff : >
+
+'--------------------------------------------------------------
+' Extra object that we'll probably need to maintain
+
+object Contract {
+    <u>address</u> : hash
+    'the block where the contract was created
+    <i>block</i> : hash
+    'the contract's storage root
+    <i>storage_root</i> : hash
+    ' the contract definition
+    <i>def</i> : hash
+    version
+}
+
+note left of Transaction
+    type:
+     DEPLOY/DECLARE
+     INVOKE
+     L1 HANDLER
+end note
+
+object TransactionReceipt {
+
+    <i>transaction</i> : hash
+    status
+    <color:grey>nullable</color> transaction_failure_reason
+    transaction_index : Int
+
+}
+
+object Event {
+    <u>keys</u> : List of FELT
+
+    ' Emitting transaction (from which we can get the contract address)
+    <i>emitting_transaction</i> : hash
+
+    data : List of FELT
+}
+@enduml
