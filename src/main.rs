@@ -8,7 +8,7 @@ use papyrus_lib::{
 async fn main() -> anyhow::Result<()> {
     env_logger::init();
 
-    let (_reader, writer) = create_store_access()?;
+    let (reader, writer) = create_store_access()?;
 
     // Network interface.
     let central_source = CentralSource::new()?;
@@ -18,7 +18,7 @@ async fn main() -> anyhow::Result<()> {
     let sync_thread = tokio::spawn(async move { sync.run().await });
 
     // Pass reader to storage.
-    let (run_server_res, sync_thread_res) = tokio::join!(run_server(), sync_thread);
+    let (run_server_res, sync_thread_res) = tokio::join!(run_server(reader), sync_thread);
     run_server_res?;
     sync_thread_res??;
 
