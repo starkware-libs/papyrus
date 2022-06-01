@@ -5,16 +5,24 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+name = "papyrus_lib"
+path = "src/lib.rs"
+
 [dependencies]
 anyhow = "1.0.44"
 async-trait = "0.1.53"
+async-stream = { version = "0.3.3" }
+env_logger = "0.9.0"
+futures-util = "0.3.21"
 jsonrpsee = { version = "0.13.1", features = ["full"] }
 log = "0.4"
 mockito = "0.31.0"
 reqwest = { version = "0.11", features = ["json", "blocking"] }
 serde = { version = "1.0.130", features = ["derive"] }
 thiserror = "1.0.31"
-tokio = {version = "1.18.2", features = ["full","sync"] }
+tokio = { version = "1.18.2", features = ["full","sync"] }
+tokio-stream = { version = "0.1.8" }
 tracing = "0.1.31"
 tracing-subscriber = { version = "0.3.9", features = ["env-filter"] }
 url = "2.2.2"
