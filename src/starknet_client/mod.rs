@@ -17,7 +17,6 @@ pub enum ClientError {
     BadResponse(#[from] core::num::ParseIntError),
 }
 
-#[allow(dead_code)]
 impl StarknetClient {
     pub fn new(url_str: &str) -> Result<StarknetClient, ClientError> {
         Ok(StarknetClient {
