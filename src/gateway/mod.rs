@@ -21,8 +21,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
     }
 }
 
-#[allow(dead_code)]
-async fn run_server() -> anyhow::Result<(SocketAddr, WsServerHandle)> {
+pub async fn run_server() -> anyhow::Result<(SocketAddr, WsServerHandle)> {
     let server = WsServerBuilder::default().build("127.0.0.1:0").await?;
     let addr = server.local_addr()?;
     let handle = server.start(JsonRpcServerImpl.into_rpc())?;
