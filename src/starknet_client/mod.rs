@@ -48,13 +48,6 @@ impl StarknetClient {
         })
     }
 
-    async fn request(&self, path: &str) -> Result<String, ClientError> {
-        let joined = self.url.join(path)?;
-        let res = self.internal_client.get(joined).send().await?;
-        let body = res.text().await?;
-        Ok(body)
-    }
-
     pub async fn block_number(&self) -> Result<BlockNumber, ClientError> {
         let block_number = self.request("feeder_gateway/get_last_batch_id").await?;
         Ok(BlockNumber(block_number.parse()?))
@@ -74,5 +67,12 @@ impl StarknetClient {
             sequencer: block.sequencer_address,
             timestamp: block.timestamp,
         })
+    }
+
+    async fn request(&self, path: &str) -> Result<String, ClientError> {
+        let joined = self.url.join(path)?;
+        let res = self.internal_client.get(joined).send().await?;
+        let body = res.text().await?;
+        Ok(body)
     }
 }

@@ -24,6 +24,7 @@ pub struct TransactionsCommitment(ListCommitment);
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct EventsCommitment(ListCommitment);
 
+/// Block / transaction status.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum Status {
     #[serde(rename(deserialize = "NOT_RECEIVED"))]
