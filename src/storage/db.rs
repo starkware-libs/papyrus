@@ -4,7 +4,7 @@ mod db_test;
 
 use std::{borrow::Cow, path::Path, result, sync::Arc};
 
-use libmdbx::{DatabaseFlags, WriteFlags, WriteMap};
+use libmdbx::{DatabaseFlags, Geometry, WriteFlags, WriteMap};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
@@ -18,6 +18,9 @@ use serde::Serialize;
 
 // Maximum number of Sub-Databases.
 const MAX_DBS: usize = 10;
+const MIN_SIZE: usize = 1 << 20; // Minimum db size 1MB;
+const MAX_SIZE: usize = 1 << 40; // Maximum db size 1PB;
+const GROWTH_STEP: isize = 1 << 26; // Growth step 64MB;
 
 // Note that NO_TLS mode is used by default.
 type EnvironmentKind = WriteMap;
@@ -36,7 +39,16 @@ pub type Result<V> = result::Result<V, DbError>;
 /// The writer is wrapped in a mutex to make sure there is only one write transaction at any given
 /// moment.
 pub fn open_env(path: &Path) -> Result<(DbReader, DbWriter)> {
-    let env = Arc::new(Environment::new().set_max_dbs(MAX_DBS).open(path)?);
+    let env = Arc::new(
+        Environment::new()
+            .set_geometry(Geometry {
+                size: Some(MIN_SIZE..MAX_SIZE),
+                growth_step: Some(GROWTH_STEP),
+                ..Default::default()
+            })
+            .set_max_dbs(MAX_DBS)
+            .open(path)?,
+    );
     Ok((DbReader { env: env.clone() }, DbWriter { env }))
 }
 
