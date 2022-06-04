@@ -1,4 +1,5 @@
 mod api;
+mod db;
 mod storage_impl;
 #[cfg(test)]
 mod storage_test;
