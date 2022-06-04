@@ -17,7 +17,11 @@ async fn main() -> anyhow::Result<()> {
     let central_source = CentralSource::new()?;
 
     // Sync.
-    let mut sync = StateSync::new(central_source, storage_components.block_storage_writer);
+    let mut sync = StateSync::new(
+        central_source,
+        storage_components.block_storage_reader,
+        storage_components.block_storage_writer,
+    );
     let sync_thread = tokio::spawn(async move { sync.run().await });
 
     // Pass reader to storage.
