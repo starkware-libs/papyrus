@@ -4,7 +4,7 @@ use async_stream::stream;
 use log::info;
 use tokio_stream::Stream;
 
-use crate::starknet::BlockNumber;
+use crate::starknet::{BlockHeader, BlockNumber};
 use crate::starknet_client::{ClientError, StarknetClient};
 
 pub struct CentralSource {
@@ -29,14 +29,14 @@ impl CentralSource {
     pub fn stream_new_blocks(
         &mut self,
         initial_block_number: BlockNumber,
-    ) -> impl Stream<Item = BlockNumber> + '_ {
-        let mut current_block_number = initial_block_number.0;
+    ) -> impl Stream<Item = (BlockNumber, BlockHeader)> + '_ {
+        let mut current_block_number = initial_block_number;
         stream! {
             while let Ok(BlockNumber(latest_block_number)) = self.get_block_number().await {
-                while current_block_number <= latest_block_number {
-                    info!("Received new block number: {}.", current_block_number);
-                    yield BlockNumber(current_block_number);
-                    current_block_number += 1;
+                while current_block_number.0 <= latest_block_number {
+                    info!("Received new block number: {}.", current_block_number.0);
+                    yield (current_block_number, BlockHeader::default());
+                    current_block_number = current_block_number.next();
                 }
                 tokio::time::sleep(SLEEP_DURATION).await
             }

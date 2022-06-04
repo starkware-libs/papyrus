@@ -2,29 +2,50 @@ use serde::{Deserialize, Serialize};
 
 use super::hash::StarkHash;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct ContractAddress(StarkHash);
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct BlockHash(StarkHash);
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct GlobalRoot(StarkHash);
 #[derive(
-    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct ContractAddress(pub StarkHash);
+#[derive(
+    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct BlockHash(pub StarkHash);
+#[derive(
+    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct GlobalRoot(pub StarkHash);
+#[derive(
+    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct BlockNumber(pub u64);
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct BlockTimestamp(u64);
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+impl BlockNumber {
+    pub fn next(&self) -> BlockNumber {
+        BlockNumber(self.0 + 1)
+    }
+}
+#[derive(
+    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct BlockTimestamp(pub u64);
+#[derive(
+    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
 pub struct ListCommitment {
     pub length: u64,
     pub commitment: StarkHash,
 }
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct TransactionsCommitment(ListCommitment);
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct EventsCommitment(ListCommitment);
+#[derive(
+    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct TransactionsCommitment(pub ListCommitment);
+#[derive(
+    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct EventsCommitment(pub ListCommitment);
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(
+    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
 pub struct BlockHeader {
     pub parent_hash: BlockHash,
     pub number: BlockNumber,

@@ -4,7 +4,7 @@ mod db_test;
 
 use std::{borrow::Cow, path::Path, result, sync::Arc};
 
-use libmdbx::{DatabaseFlags, WriteFlags, WriteMap};
+use libmdbx::{DatabaseFlags, Geometry, WriteFlags, WriteMap};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
@@ -36,7 +36,16 @@ pub type Result<V> = result::Result<V, DbError>;
 /// The writer is wrapped in a mutex to make sure there is only one write transaction at any given
 /// moment.
 pub fn open_env(path: &Path) -> Result<(DbReader, DbWriter)> {
-    let env = Arc::new(Environment::new().set_max_dbs(MAX_DBS).open(path)?);
+    let env = Arc::new(
+        Environment::new()
+            .set_geometry(Geometry {
+                size: Some((1 << 20)..(1 << 40)),
+                growth_step: Some(1 << 20),
+                ..Default::default()
+            })
+            .set_max_dbs(MAX_DBS)
+            .open(path)?,
+    );
     Ok((DbReader { env: env.clone() }, DbWriter { env }))
 }
 
