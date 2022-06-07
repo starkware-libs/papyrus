@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
-
 #[derive(
-    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+    Debug, Copy, Clone, PartialEq, Eq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct StarkHash([u64; 4]);
+pub struct StarkHash(pub [u8; 32]);
