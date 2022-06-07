@@ -1,4 +1,6 @@
 mod block;
+#[cfg(test)]
+pub mod storage_test_utils;
 
 use std::path::Path;
 
