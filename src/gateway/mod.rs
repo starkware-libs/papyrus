@@ -10,10 +10,7 @@ use jsonrpsee::{
     ws_server::{types::error::CallError, WsServerBuilder, WsServerHandle},
 };
 
-use crate::{
-    starknet::BlockNumber,
-    storage::{SNStorageReader, StorageReader},
-};
+use crate::{starknet::BlockNumber, storage::components::BlockStorageReader};
 
 use self::api::JsonRpcServer;
 
@@ -22,7 +19,7 @@ const SERVER_IP: &str = "127.0.0.1:0";
 
 /// Rpc server.
 struct JsonRpcServerImpl {
-    storage_reader: SNStorageReader,
+    storage_reader: BlockStorageReader,
 }
 
 fn internal_server_error(err: impl Display) -> Error {
@@ -36,17 +33,17 @@ fn internal_server_error(err: impl Display) -> Error {
 #[async_trait]
 impl JsonRpcServer for JsonRpcServerImpl {
     async fn block_number(&self) -> Result<BlockNumber, Error> {
-        Ok(self
+        let block_number_marker = self
             .storage_reader
-            .get_latest_block_number()
-            .await
-            .map_err(internal_server_error)?)
+            .get_block_number_marker()
+            .map_err(internal_server_error)?;
+
+        Ok(BlockNumber(block_number_marker.0.saturating_sub(1)))
     }
 }
 
-#[allow(dead_code)]
 pub async fn run_server(
-    storage_reader: SNStorageReader,
+    storage_reader: BlockStorageReader,
 ) -> anyhow::Result<(SocketAddr, WsServerHandle)> {
     let server = WsServerBuilder::default().build(SERVER_IP).await?;
     let addr = server.local_addr()?;
