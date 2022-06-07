@@ -1,5 +1,6 @@
-use super::*;
 use mockito::mock;
+
+use crate::{starknet::BlockNumber, starknet_client::StarknetClient};
 
 #[tokio::test]
 async fn get_block_number() {
@@ -8,7 +9,7 @@ async fn get_block_number() {
         .with_status(200)
         .with_body("195812")
         .create();
-    let block_number = starknet_client.block_number().await.unwrap();
+    let block_number: BlockNumber = starknet_client.block_number().await.unwrap();
     mock.assert();
     assert_eq!(block_number, BlockNumber(195812));
 }
