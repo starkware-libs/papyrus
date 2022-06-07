@@ -1,5 +1,9 @@
 #[cfg(test)]
+mod object_test;
+#[cfg(test)]
 mod starknet_client_test;
+
+mod objects;
 
 use crate::starknet::BlockNumber;
 
