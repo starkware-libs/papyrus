@@ -1,5 +1,7 @@
-use super::*;
 use mockito::mock;
+
+use crate::starknet::BlockNumber;
+use crate::starknet_client::StarknetClient;
 
 #[tokio::test]
 async fn get_block_number() {
