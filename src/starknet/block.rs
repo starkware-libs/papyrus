@@ -30,6 +30,10 @@ pub struct BlockTimestamp(pub u64);
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
+pub struct GasPrice(pub u128);
+#[derive(
+    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
 pub struct ListCommitment {
     pub length: u64,
     pub commitment: StarkHash,
@@ -47,13 +51,14 @@ pub struct EventsCommitment(pub ListCommitment);
     Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct BlockHeader {
+    pub block_hash: BlockHash,
     pub parent_hash: BlockHash,
     pub number: BlockNumber,
-    pub root: GlobalRoot,
+    pub gas_price: GasPrice,
+    pub state_root: GlobalRoot,
     pub sequencer: ContractAddress,
     pub timestamp: BlockTimestamp,
-    pub transactions_commitment: TransactionsCommitment,
-    pub events_commitment: EventsCommitment,
+    // TODO(dan): add missing commitments.
 }
 
 pub struct BlockBody {}
