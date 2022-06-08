@@ -17,9 +17,10 @@ use serde::Serialize;
 */
 
 // Maximum number of Sub-Databases.
+// TODO(spapini): Get these from configuration, and have a separate test configuration.
 const MAX_DBS: usize = 10;
 const MIN_SIZE: usize = 1 << 20; // Minimum db size 1MB;
-const MAX_SIZE: usize = 1 << 45; // Maximum db size 32TB;
+const MAX_SIZE: usize = 1 << 40; // Maximum db size 1TB;
 const GROWTH_STEP: isize = 1 << 26; // Growth step 64MB;
 
 // Note that NO_TLS mode is used by default.
