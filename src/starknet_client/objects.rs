@@ -2,10 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::starknet;
 
-use super::serde_utils::HexAsBytes;
-
-type PrefixedHexAsBytes<const N: usize> = HexAsBytes<N, true>;
-type NonPrefixedHexAsBytes<const N: usize> = HexAsBytes<N, false>;
+use super::serde_utils::{NonPrefixedHexAsBytes, PrefixedHexAsBytes};
 
 #[derive(
     Debug, Copy, Clone, PartialEq, Eq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord,
