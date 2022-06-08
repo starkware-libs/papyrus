@@ -5,16 +5,17 @@ mod gateway_test;
 use std::fmt::Display;
 use std::net::SocketAddr;
 
-use jsonrpsee::{
-    core::{async_trait, Error},
-    types::error::{ErrorCode::InternalError, ErrorObject, INTERNAL_ERROR_MSG},
-    ws_server::{types::error::CallError, WsServerBuilder, WsServerHandle},
-};
+use jsonrpsee::core::{async_trait, Error};
+use jsonrpsee::types::error::ErrorCode::InternalError;
+use jsonrpsee::types::error::{ErrorObject, INTERNAL_ERROR_MSG};
+use jsonrpsee::ws_server::types::error::CallError;
+use jsonrpsee::ws_server::{WsServerBuilder, WsServerHandle};
 use log::error;
 
-use crate::{starknet::BlockNumber, storage::components::BlockStorageReader};
+use crate::starknet::BlockNumber;
+use crate::storage::components::BlockStorageReader;
 
-use self::api::JsonRpcServer;
+use self::api::{JsonRpcError, JsonRpcServer};
 
 // TODO(anatg): Take from config.
 const SERVER_IP: &str = "127.0.0.1:0";
@@ -22,6 +23,16 @@ const SERVER_IP: &str = "127.0.0.1:0";
 /// Rpc server.
 struct JsonRpcServerImpl {
     storage_reader: BlockStorageReader,
+}
+
+impl From<JsonRpcError> for Error {
+    fn from(err: JsonRpcError) -> Self {
+        Error::Call(CallError::Custom(ErrorObject::owned(
+            err as i32,
+            err.to_string(),
+            None::<()>,
+        )))
+    }
 }
 
 fn internal_server_error(err: impl Display) -> Error {
@@ -36,11 +47,11 @@ fn internal_server_error(err: impl Display) -> Error {
 #[async_trait]
 impl JsonRpcServer for JsonRpcServerImpl {
     async fn block_number(&self) -> Result<BlockNumber, Error> {
-        Ok(self
-            .storage_reader
+        self.storage_reader
             .get_header_marker()
             .map_err(internal_server_error)?
-            .prev())
+            .prev()
+            .ok_or_else(|| JsonRpcError::NoBlocks.into())
     }
 }
 

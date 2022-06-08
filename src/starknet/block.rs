@@ -22,6 +22,13 @@ impl BlockNumber {
     pub fn next(&self) -> BlockNumber {
         BlockNumber(self.0 + 1)
     }
+
+    pub fn prev(&self) -> Option<BlockNumber> {
+        match self.0 {
+            0 => None,
+            i => Some(BlockNumber(i - 1)),
+        }
+    }
 }
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
@@ -62,9 +69,3 @@ pub struct BlockHeader {
 }
 
 pub struct BlockBody {}
-
-impl BlockNumber {
-    pub fn prev(&self) -> BlockNumber {
-        BlockNumber(self.0.saturating_sub(1))
-    }
-}
