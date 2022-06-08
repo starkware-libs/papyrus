@@ -62,3 +62,9 @@ pub struct BlockHeader {
 }
 
 pub struct BlockBody {}
+
+impl BlockNumber {
+    pub fn prev(&self) -> BlockNumber {
+        BlockNumber(self.0.saturating_sub(1))
+    }
+}

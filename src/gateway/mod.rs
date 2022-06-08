@@ -2,13 +2,15 @@ mod api;
 #[cfg(test)]
 mod gateway_test;
 
-use std::{fmt::Display, net::SocketAddr};
+use std::fmt::Display;
+use std::net::SocketAddr;
 
 use jsonrpsee::{
     core::{async_trait, Error},
     types::error::{ErrorCode::InternalError, ErrorObject, INTERNAL_ERROR_MSG},
     ws_server::{types::error::CallError, WsServerBuilder, WsServerHandle},
 };
+use log::error;
 
 use crate::{starknet::BlockNumber, storage::components::BlockStorageReader};
 
@@ -23,9 +25,10 @@ struct JsonRpcServerImpl {
 }
 
 fn internal_server_error(err: impl Display) -> Error {
+    error!("{}: {}", INTERNAL_ERROR_MSG, err);
     Error::Call(CallError::Custom(ErrorObject::owned(
         InternalError.code(),
-        format!("{}: {}", INTERNAL_ERROR_MSG, err),
+        INTERNAL_ERROR_MSG,
         None::<()>,
     )))
 }
@@ -33,12 +36,11 @@ fn internal_server_error(err: impl Display) -> Error {
 #[async_trait]
 impl JsonRpcServer for JsonRpcServerImpl {
     async fn block_number(&self) -> Result<BlockNumber, Error> {
-        let block_number_marker = self
+        Ok(self
             .storage_reader
             .get_block_number_marker()
-            .map_err(internal_server_error)?;
-
-        Ok(BlockNumber(block_number_marker.0.saturating_sub(1)))
+            .map_err(internal_server_error)?
+            .prev())
     }
 }
 
