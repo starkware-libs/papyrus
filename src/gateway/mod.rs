@@ -38,7 +38,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
     async fn block_number(&self) -> Result<BlockNumber, Error> {
         Ok(self
             .storage_reader
-            .get_block_number_marker()
+            .get_header_marker()
             .map_err(internal_server_error)?
             .prev())
     }
