@@ -42,10 +42,12 @@ impl StateSync {
     pub async fn run(&mut self) -> anyhow::Result<(), StateSyncError> {
         info!("State sync started.");
         let initial_block_number = self.reader.get_header_marker()?;
-        let stream = self.central_source.stream_new_blocks(initial_block_number);
+        let stream = self
+            .central_source
+            .stream_new_blocks(initial_block_number, None);
         pin_mut!(stream);
-        while let Some((number, header)) = stream.next().await {
-            info!("Received new block number: {:?}.", number);
+        while let Some(Ok((number, header))) = stream.next().await {
+            info!("Received new header: {}.", number.0);
             self.writer.append_header(number, &header)?;
         }
 

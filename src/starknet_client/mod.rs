@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod object_test;
-mod objects;
+pub mod objects;
 mod serde_utils;
 #[cfg(test)]
 mod starknet_client_test;
@@ -38,7 +38,7 @@ impl StarknetClient {
         Ok(BlockNumber(block_number.parse()?))
     }
 
-    pub async fn block_header(&self, block_number: u32) -> Result<BlockHeader, ClientError> {
+    pub async fn block_header(&self, block_number: u64) -> Result<BlockHeader, ClientError> {
         let mut query: String = "feeder_gateway/get_block?blockNumber=".to_owned();
         query.push_str(&block_number.to_string());
         let _raw_block: String = self.request(&query).await?;
