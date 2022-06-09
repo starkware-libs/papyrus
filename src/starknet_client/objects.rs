@@ -2,16 +2,23 @@ use serde::{Deserialize, Serialize};
 
 use crate::starknet;
 
-use super::serde_utils::{NonPrefixedHexAsBytes, PrefixedHexAsBytes};
+use super::serde_utils::{HexAsBytes, NonPrefixedHexAsBytes, PrefixedHexAsBytes};
 
 #[derive(
     Debug, Copy, Clone, PartialEq, Eq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
+// TODO(dan): try to unite.
 #[serde(from = "PrefixedHexAsBytes<32_usize>")]
+#[serde(into = "PrefixedHexAsBytes<32_usize>")]
 pub struct StarkHash(pub [u8; 32]);
 impl From<PrefixedHexAsBytes<32_usize>> for StarkHash {
-    fn from(v: PrefixedHexAsBytes<32_usize>) -> Self {
-        StarkHash(v.0)
+    fn from(val: PrefixedHexAsBytes<32_usize>) -> Self {
+        StarkHash(val.0)
+    }
+}
+impl From<StarkHash> for PrefixedHexAsBytes<32_usize> {
+    fn from(val: StarkHash) -> Self {
+        HexAsBytes(val.0)
     }
 }
 impl From<StarkHash> for starknet::StarkHash {
@@ -19,28 +26,40 @@ impl From<StarkHash> for starknet::StarkHash {
         starknet::StarkHash(val.0)
     }
 }
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(
+    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
 pub struct BlockHash(pub StarkHash);
 impl From<BlockHash> for starknet::BlockHash {
     fn from(val: BlockHash) -> Self {
         starknet::BlockHash(val.0.into())
     }
 }
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(
+    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
 pub struct ContractAddress(pub StarkHash);
 impl From<ContractAddress> for starknet::ContractAddress {
     fn from(val: ContractAddress) -> Self {
         starknet::ContractAddress(val.0.into())
     }
 }
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(
+    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
 #[serde(from = "NonPrefixedHexAsBytes<32_usize>")]
+#[serde(into = "NonPrefixedHexAsBytes<32_usize>")]
 pub struct GlobalRoot(pub StarkHash);
 // We don't use the regular StarkHash deserialization since the Starknet sequencer returns the
 // global root hash as a hex string without a "0x" prefix.
 impl From<NonPrefixedHexAsBytes<32_usize>> for GlobalRoot {
     fn from(val: NonPrefixedHexAsBytes<32_usize>) -> Self {
         GlobalRoot(StarkHash(val.0))
+    }
+}
+impl From<GlobalRoot> for NonPrefixedHexAsBytes<32_usize> {
+    fn from(val: GlobalRoot) -> Self {
+        HexAsBytes(val.0 .0)
     }
 }
 impl From<GlobalRoot> for starknet::GlobalRoot {
@@ -57,12 +76,20 @@ impl From<BlockNumber> for starknet::BlockNumber {
         starknet::BlockNumber(val.0)
     }
 }
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(
+    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
 #[serde(from = "PrefixedHexAsBytes<16_usize>")]
+#[serde(into = "PrefixedHexAsBytes<16_usize>")]
 pub struct GasPrice(pub u128);
 impl From<PrefixedHexAsBytes<16_usize>> for GasPrice {
-    fn from(v: PrefixedHexAsBytes<16_usize>) -> Self {
-        GasPrice(u128::from_be_bytes(v.0))
+    fn from(val: PrefixedHexAsBytes<16_usize>) -> Self {
+        GasPrice(u128::from_be_bytes(val.0))
+    }
+}
+impl From<GasPrice> for PrefixedHexAsBytes<16_usize> {
+    fn from(val: GasPrice) -> Self {
+        HexAsBytes(val.0.to_be_bytes())
     }
 }
 impl From<GasPrice> for starknet::GasPrice {
@@ -70,7 +97,9 @@ impl From<GasPrice> for starknet::GasPrice {
         starknet::GasPrice(val.0)
     }
 }
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(
+    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
 pub struct BlockTimestamp(pub u64);
 impl From<BlockTimestamp> for starknet::BlockTimestamp {
     fn from(val: BlockTimestamp) -> Self {
@@ -78,7 +107,7 @@ impl From<BlockTimestamp> for starknet::BlockTimestamp {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone)]
 pub struct Block {
     pub block_hash: BlockHash,
     pub block_number: BlockNumber,
@@ -95,14 +124,19 @@ pub struct Block {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum BlockStatus {
-    #[serde(rename(deserialize = "ABORTED"))]
+    #[serde(rename(deserialize = "ABORTED", serialize = "ABORTED"))]
     Aborted,
-    #[serde(rename(deserialize = "ACCEPTED_ON_L1"))]
+    #[serde(rename(deserialize = "ACCEPTED_ON_L1", serialize = "ACCEPTED_ON_L1"))]
     AcceptedOnL1,
-    #[serde(rename(deserialize = "ACCEPTED_ON_L2"))]
+    #[serde(rename(deserialize = "ACCEPTED_ON_L2", serialize = "ACCEPTED_ON_L2"))]
     AcceptedOnL2,
-    #[serde(rename(deserialize = "PENDING"))]
+    #[serde(rename(deserialize = "PENDING", serialize = "PENDING"))]
     Pending,
-    #[serde(rename(deserialize = "REVERTED"))]
+    #[serde(rename(deserialize = "REVERTED", serialize = "REVERTED"))]
     Reverted,
+}
+impl Default for BlockStatus {
+    fn default() -> Self {
+        BlockStatus::AcceptedOnL2
+    }
 }
