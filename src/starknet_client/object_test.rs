@@ -1,4 +1,30 @@
-use crate::starknet_client::serde_utils::{bytes_from_hex_str, DeserializationError};
+use crate::starknet_client::serde_utils::{
+    bytes_from_hex_str, hex_str_from_bytes, DeserializationError,
+};
+
+#[test]
+fn test_hex_str_from_bytes() {
+    // even length.
+    assert_eq!(hex_str_from_bytes::<1, true>([106]), "0x6a");
+
+    // odd length.
+    assert_eq!(hex_str_from_bytes::<1, true>([6]), "0x6");
+
+    // Remove padding.
+    assert_eq!(hex_str_from_bytes::<2, true>([0, 6]), "0x6");
+
+    // Non-prefixed.
+    assert_eq!(hex_str_from_bytes::<2, false>([13, 162]), "da2");
+}
+
+#[test]
+fn test_hex_str_from_bytes_zero() {
+    // Prefixed.
+    assert_eq!(hex_str_from_bytes::<3, true>([0, 0, 0]), "0x0");
+
+    // Non-prefixed.
+    assert_eq!(hex_str_from_bytes::<2, false>([0, 0]), "0");
+}
 
 #[test]
 fn test_bytes_from_hex_str() {
