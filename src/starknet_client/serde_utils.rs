@@ -91,12 +91,12 @@ pub fn bytes_from_hex_str<const N: usize, const PREFIXED: bool>(
 }
 
 pub fn hex_str_from_bytes<const N: usize, const PREFIXED: bool>(bytes: [u8; N]) -> String {
-    let str = hex::encode(bytes);
-    let mut str = str.trim_start_matches('0');
-    str = if str.is_empty() { "0" } else { str };
+    let hex_str = hex::encode(bytes);
+    let mut hex_str = hex_str.trim_start_matches('0');
+    hex_str = if hex_str.is_empty() { "0" } else { hex_str };
     if PREFIXED {
-        "0x".to_owned() + str
+        "0x".to_owned() + hex_str
     } else {
-        str.to_owned()
+        hex_str.to_owned()
     }
 }
