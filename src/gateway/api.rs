@@ -3,6 +3,12 @@ use jsonrpsee::proc_macros::rpc;
 
 use crate::starknet::BlockNumber;
 
+#[derive(thiserror::Error, Clone, Copy, Debug)]
+pub enum JsonRpcError {
+    #[error("There are no blocks.")]
+    NoBlocks,
+}
+
 #[rpc(server, client, namespace = "starknet")]
 pub trait JsonRpc {
     /// Gets the most recent accepted block number.

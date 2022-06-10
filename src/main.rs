@@ -19,13 +19,16 @@ async fn main() -> anyhow::Result<()> {
     // Sync.
     let mut sync = StateSync::new(
         central_source,
-        storage_components.block_storage_reader,
+        storage_components.block_storage_reader.clone(),
         storage_components.block_storage_writer,
     );
     let sync_thread = tokio::spawn(async move { sync.run().await });
 
     // Pass reader to storage.
-    let (run_server_res, sync_thread_res) = tokio::join!(run_server(), sync_thread);
+    let (run_server_res, sync_thread_res) = tokio::join!(
+        run_server(storage_components.block_storage_reader.clone()),
+        sync_thread
+    );
     run_server_res?;
     sync_thread_res??;
 
