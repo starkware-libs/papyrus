@@ -6,7 +6,7 @@ use papyrus_lib::{
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // TODO(spapini): Take from config.
+    // TODO(dan): Take from config.
     const STARKNET_URL: &str = "https://alpha4.starknet.io/";
     env_logger::init();
 
