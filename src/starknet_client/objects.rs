@@ -113,6 +113,7 @@ pub struct Block {
     pub block_number: BlockNumber,
     pub gas_price: GasPrice,
     pub parent_block_hash: BlockHash,
+    #[serde(default)]
     pub sequencer_address: ContractAddress,
     pub state_root: GlobalRoot,
     pub status: BlockStatus,
