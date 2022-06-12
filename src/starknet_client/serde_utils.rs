@@ -1,5 +1,5 @@
 use serde::de::Visitor;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub struct HexAsBytes<const N: usize, const PREFIXED: bool>(pub [u8; N]);
@@ -32,6 +32,16 @@ impl<'de, const N: usize, const PREFIXED: bool> Deserialize<'de> for HexAsBytes<
         }
 
         deserializer.deserialize_str(HexStringVisitor)
+    }
+}
+
+impl<const N: usize, const PREFIXED: bool> Serialize for HexAsBytes<N, PREFIXED> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let hex_str = hex_str_from_bytes::<N, PREFIXED>(self.0);
+        serializer.serialize_str(&hex_str)
     }
 }
 
@@ -78,4 +88,15 @@ pub fn bytes_from_hex_str<const N: usize, const PREFIXED: bool>(
     Ok(hex::decode(&padded_str)?
         .try_into()
         .expect("Unexpected length of deserialized hex bytes."))
+}
+
+pub fn hex_str_from_bytes<const N: usize, const PREFIXED: bool>(bytes: [u8; N]) -> String {
+    let hex_str = hex::encode(bytes);
+    let mut hex_str = hex_str.trim_start_matches('0');
+    hex_str = if hex_str.is_empty() { "0" } else { hex_str };
+    if PREFIXED {
+        "0x".to_owned() + hex_str
+    } else {
+        hex_str.to_owned()
+    }
 }
