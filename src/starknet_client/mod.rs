@@ -1,6 +1,6 @@
+pub mod objects;
 #[cfg(test)]
-mod object_test;
-mod objects;
+mod serde_util_test;
 mod serde_utils;
 #[cfg(test)]
 mod starknet_client_test;
