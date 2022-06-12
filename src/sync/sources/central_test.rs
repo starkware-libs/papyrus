@@ -1,17 +1,23 @@
+use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
+
 use futures_util::pin_mut;
 use mockito::{mock, Matcher};
+use reqwest::StatusCode;
 use tokio_stream::StreamExt;
 
 use crate::starknet::BlockNumber;
-use crate::starknet_client::Block;
-use crate::sync::CentralSource;
+use crate::starknet_client::{Block, ClientError};
 
-use super::CentralSourceConfig;
+use super::*;
 
 #[tokio::test]
 async fn stream_block_headers() {
     let config = CentralSourceConfig {
         url: mockito::server_url(),
+        retry_base_millis: 10,
+        retry_max_delay_millis: 1000,
+        max_retries: 4,
     };
     let mut central_source = CentralSource::new(config).unwrap();
 
@@ -43,4 +49,47 @@ async fn stream_block_headers() {
     }
     mock_last.assert();
     mock_headers.assert();
+}
+
+#[tokio::test]
+async fn test_retry() {
+    let config = CentralSourceConfig {
+        url: mockito::server_url(),
+        retry_base_millis: 10,
+        retry_max_delay_millis: 1000,
+        max_retries: 4,
+    };
+    let central_source = CentralSource::new(config).unwrap();
+
+    // Fails on all retries.
+    let time = SystemTime::now();
+    let err = central_source
+        .retry::<u128, _>(|| async {
+            Err(ClientError::BadResponse {
+                status: StatusCode::TOO_MANY_REQUESTS,
+            })
+        })
+        .await
+        .unwrap_err();
+    assert_matches!(err, ClientError::BadResponse { status } if status == StatusCode::TOO_MANY_REQUESTS);
+    assert!((2110..2200).contains(&time.elapsed().unwrap().as_millis()));
+
+    // Succeeds on the second attempt.
+    let count = Arc::new(Mutex::new(0));
+    let time = SystemTime::now();
+    let res = central_source
+        .retry(|| async {
+            let mut guard = count.lock().unwrap();
+            if *guard < 2 {
+                *guard += 1;
+                Err(ClientError::BadResponse {
+                    status: StatusCode::TOO_MANY_REQUESTS,
+                })
+            } else {
+                Ok(time.elapsed().unwrap().as_millis())
+            }
+        })
+        .await
+        .unwrap();
+    assert!((110..200).contains(&res));
 }
