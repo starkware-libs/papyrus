@@ -32,6 +32,7 @@ tokio-stream = { version = "0.1.8" }
 tracing = "0.1.31"
 tracing-subscriber = { version = "0.3.9", features = ["env-filter"] }
 url = "2.2.2"
+web3 = { version = "0.18.0" }
 
 [dev-dependencies]
 tempfile = "3"
