@@ -7,7 +7,7 @@ mod starknet_client_test;
 
 use crate::starknet::{BlockHeader, BlockNumber};
 
-use self::objects::Block;
+use self::objects::block::Block;
 
 pub struct StarknetClient {
     url: url::Url,
