@@ -26,7 +26,7 @@ pub enum ClientError {
 }
 
 impl StarknetClient {
-    pub fn new(url_str: &str) -> anyhow::Result<StarknetClient, ClientError> {
+    pub fn new(url_str: &str) -> Result<StarknetClient, ClientError> {
         Ok(StarknetClient {
             url: url::Url::parse(url_str)?,
             internal_client: reqwest::Client::builder().build()?,
