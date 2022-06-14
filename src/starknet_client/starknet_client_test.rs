@@ -88,7 +88,7 @@ async fn test_block_not_found_error_code() {
         err,
         ClientError::StarknetError(StarknetError {
             code: StarknetErrorCode::BlockNotFound,
-            ..
-        })
+            message: msg
+        }) if msg == "Block number 2347239846 was not found."
     );
 }
