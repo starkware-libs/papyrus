@@ -1,4 +1,3 @@
-use jsonrpsee::core::Error;
 use jsonrpsee::types::EmptyParams;
 use jsonrpsee::ws_client::WsClientBuilder;
 
@@ -20,8 +19,7 @@ async fn test_block_number() {
         .call::<_, BlockNumber>("starknet_blockNumber", EmptyParams::new())
         .await
         .unwrap_err();
-    let _expected = Error::from(api::JsonRpcError::NoBlocks);
-    assert_matches!(err, _expected);
+    assert_eq!(JsonRpcError::NoBlocks, err);
 
     // Add a block and check again.
     storage_writer
@@ -43,6 +41,5 @@ async fn test_run_server() {
         .await
         .unwrap();
     let err = client.block_number().await.unwrap_err();
-    let _expected = Error::from(api::JsonRpcError::NoBlocks);
-    assert_matches!(err, _expected);
+    assert_eq!(JsonRpcError::NoBlocks, err);
 }
