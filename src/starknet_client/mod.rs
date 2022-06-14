@@ -1,4 +1,4 @@
-pub mod objects;
+mod objects;
 #[cfg(test)]
 mod serde_util_test;
 mod serde_utils;
@@ -7,7 +7,7 @@ mod starknet_client_test;
 
 use std::fmt::{self, Display, Formatter};
 
-use log::{error, info};
+use log::{debug, error, info};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -17,8 +17,8 @@ use crate::starknet::{BlockHeader, BlockNumber};
 use self::objects::block::Block;
 
 pub struct StarknetClient {
-    url: url::Url,
-    internal_client: reqwest::Client,
+    url: Url,
+    internal_client: Client,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, Serialize)]
@@ -35,7 +35,17 @@ pub struct StarknetError {
 }
 
 #[derive(thiserror::Error, Debug)]
+pub enum ClientCreationError {
+    #[error(transparent)]
+    BadUrl(#[from] url::ParseError),
+    #[error(transparent)]
+    BuildError(#[from] reqwest::Error),
+}
+
+#[derive(thiserror::Error, Debug)]
 pub enum ClientError {
+    #[error("Response status code: {:?}", status)]
+    BadResponse { status: reqwest::StatusCode },
     #[error(transparent)]
     RequestError(#[from] reqwest::Error),
     #[error(transparent)]
@@ -50,14 +60,10 @@ impl Display for StarknetError {
     }
 }
 
-fn internal_client_error(err: impl Display) -> ClientError {
-    panic!("Internal client error: {}.", err);
-}
-
 impl StarknetClient {
-    pub fn new(url_str: &str) -> Result<StarknetClient, ClientError> {
+    pub fn new(url_str: &str) -> Result<StarknetClient, ClientCreationError> {
         Ok(StarknetClient {
-            url: Url::parse(url_str).map_err(internal_client_error)?,
+            url: Url::parse(url_str)?,
             internal_client: Client::builder().build()?,
         })
     }
@@ -83,31 +89,30 @@ impl StarknetClient {
     }
 
     async fn request(&self, path: &str) -> Result<String, ClientError> {
-        let joined = self.url.join(path).map_err(internal_client_error)?;
+        // TODO(anatg): Move this to the constructor and set the query parameters here.
+        let joined = self.url.join(path).unwrap();
         let response = self.internal_client.get(joined).send().await?;
         match response.status() {
             StatusCode::OK => {
                 let body = response.text().await?;
-                info!("Starknet client got response: {}.", body);
+                debug!("Starknet server responded with: {}.", body);
                 Ok(body)
             }
             StatusCode::INTERNAL_SERVER_ERROR => {
                 let body = response.text().await?;
                 let starknet_error: StarknetError = serde_json::from_str(&body)?;
-                error!("Internal server error: {}.", starknet_error);
+                info!(
+                    "Starknet server responded with an internal server error: {}.",
+                    starknet_error
+                );
                 Err(ClientError::StarknetError(starknet_error))
             }
-            status if status.is_client_error() => {
-                Err(internal_client_error(format!("{:?}", response)))
+            _ => {
+                error!("Bad response: {:?}.", response);
+                Err(ClientError::BadResponse {
+                    status: response.status(),
+                })
             }
-            status if status.is_server_error() => {
-                // This should not panic.
-                let err = response.error_for_status().unwrap_err();
-                error!("Server error: {}.", err);
-                Err(ClientError::RequestError(err))
-            }
-            // TODO(anatg): Handle more errors, including reruns.
-            _ => panic!("Unknown error: {:?}.", response),
         }
     }
 }
