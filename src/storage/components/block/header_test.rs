@@ -1,8 +1,9 @@
 use tempfile::tempdir;
 
 use crate::starknet::{BlockHeader, BlockNumber};
+use crate::storage::components::{open_block_storage, HeaderStorageReader, HeaderStorageWriter};
 
-use super::{open_block_storage, BlockStorageError, BlockStorageReader, BlockStorageWriter};
+use super::{BlockStorageError, BlockStorageReader, BlockStorageWriter};
 
 fn get_test_storage() -> (BlockStorageReader, BlockStorageWriter) {
     let dir = tempdir().unwrap();

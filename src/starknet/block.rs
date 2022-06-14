@@ -9,6 +9,10 @@ pub struct ContractAddress(pub StarkHash);
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
+pub struct ClassHash(pub StarkHash);
+#[derive(
+    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
 pub struct BlockHash(pub StarkHash);
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
