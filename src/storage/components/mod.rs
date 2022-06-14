@@ -5,7 +5,10 @@ pub mod storage_test_utils;
 use std::path::Path;
 
 pub use self::block::open_block_storage;
-pub use self::block::{BlockStorageError, BlockStorageReader, BlockStorageWriter};
+pub use self::block::{
+    BlockStorageError, BlockStorageReader, BlockStorageWriter, HeaderStorageReader,
+    HeaderStorageWriter,
+};
 
 pub struct StorageComponents {
     pub block_storage_reader: BlockStorageReader,
