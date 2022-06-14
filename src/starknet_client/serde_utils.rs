@@ -95,8 +95,8 @@ pub fn hex_str_from_bytes<const N: usize, const PREFIXED: bool>(bytes: [u8; N]) 
     let mut hex_str = hex_str.trim_start_matches('0');
     hex_str = if hex_str.is_empty() { "0" } else { hex_str };
     if PREFIXED {
-        "0x".to_owned() + hex_str
+        format!("0x{}", hex_str)
     } else {
-        hex_str.to_owned()
+        hex_str.to_string()
     }
 }
