@@ -1,13 +1,12 @@
 use mockito::mock;
 
-use crate::{
-    starknet::{
-        BlockHash, BlockHeader, BlockNumber, BlockTimestamp, ContractAddress, GasPrice, GlobalRoot,
-        StarkHash,
-    },
-    starknet_client::serde_utils::bytes_from_hex_str,
-    starknet_client::StarknetClient,
+use crate::starknet::{
+    BlockHash, BlockHeader, BlockNumber, BlockTimestamp, ContractAddress, GasPrice, GlobalRoot,
+    StarkHash,
 };
+
+use super::serde_utils::bytes_from_hex_str;
+use super::*;
 
 #[tokio::test]
 async fn get_block_number() {
@@ -73,4 +72,23 @@ async fn get_block_header() {
         )),
     };
     assert_eq!(block_header, expected_block_header);
+}
+
+#[tokio::test]
+async fn test_block_not_found_error_code() {
+    let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
+    let body = r#"{"code": "StarknetErrorCode.BLOCK_NOT_FOUND", "message": "Block number 2347239846 was not found."}"#;
+    let mock = mock("GET", "/feeder_gateway/get_block?blockNumber=2347239846")
+        .with_status(500)
+        .with_body(body)
+        .create();
+    let err = starknet_client.block_header(2347239846).await.unwrap_err();
+    mock.assert();
+    assert_matches!(
+        err,
+        ClientError::StarknetError(StarknetError {
+            code: StarknetErrorCode::BlockNotFound,
+            message: msg
+        }) if msg == "Block number 2347239846 was not found."
+    );
 }

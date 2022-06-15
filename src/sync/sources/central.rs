@@ -5,7 +5,7 @@ use log::info;
 use tokio_stream::Stream;
 
 use crate::starknet::{BlockHeader, BlockNumber};
-use crate::starknet_client::{ClientError, StarknetClient};
+use crate::starknet_client::{ClientCreationError, ClientError, StarknetClient};
 
 pub struct CentralSource {
     starknet_client: StarknetClient,
@@ -16,7 +16,7 @@ const STARKNET_URL: &str = "https://alpha4.starknet.io/";
 const SLEEP_DURATION: Duration = Duration::from_millis(10000);
 
 impl CentralSource {
-    pub fn new() -> Result<CentralSource, ClientError> {
+    pub fn new() -> Result<CentralSource, ClientCreationError> {
         let starknet_client = StarknetClient::new(STARKNET_URL)?;
         Ok(CentralSource { starknet_client })
     }
