@@ -14,7 +14,7 @@ use url::Url;
 
 use crate::starknet::{BlockHeader, BlockNumber};
 
-use self::objects::block::{Block, BlockStateUpdate};
+pub use self::objects::block::{Block, BlockStateUpdate};
 
 pub struct StarknetClient {
     urls: StarknetUrls,
@@ -133,6 +133,7 @@ impl StarknetClient {
             StatusCode::INTERNAL_SERVER_ERROR => {
                 let body = response.text().await?;
                 let starknet_error: StarknetError = serde_json::from_str(&body)?;
+                // TODO(dan): consider logging as error instead.
                 info!(
                     "Starknet server responded with an internal server error: {}.",
                     starknet_error
@@ -140,6 +141,7 @@ impl StarknetClient {
                 Err(ClientError::StarknetError(starknet_error))
             }
             _ => {
+                // TODO(dan): consider logging as info instead.
                 error!("Bad response: {:?}.", response);
                 Err(ClientError::BadResponse {
                     status: response.status(),
