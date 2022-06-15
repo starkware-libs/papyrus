@@ -17,7 +17,7 @@ impl<'de, const N: usize, const PREFIXED: bool> Deserialize<'de> for HexAsBytes<
         impl<'de, const N: usize, const PREFIXED: bool> Visitor<'de> for HexStringVisitor<N, PREFIXED> {
             type Value = HexAsBytes<N, PREFIXED>;
 
-            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 formatter.write_str("a hex string, possibly prefixed by '0x'")
             }
 
