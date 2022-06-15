@@ -14,7 +14,7 @@ use url::Url;
 
 use crate::starknet::{BlockHeader, BlockNumber};
 
-use self::objects::block::Block;
+use self::objects::block::{Block, BlockStateUpdate};
 
 pub struct StarknetClient {
     urls: StarknetUrls,
@@ -24,6 +24,7 @@ pub struct StarknetClient {
 struct StarknetUrls {
     get_last_batch_id: Url,
     get_block: Url,
+    get_state_update: Url,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, Serialize)]
@@ -65,6 +66,7 @@ impl StarknetUrls {
         Ok(StarknetUrls {
             get_last_batch_id: base_url.join("feeder_gateway/get_last_batch_id")?,
             get_block: base_url.join("feeder_gateway/get_block")?,
+            get_state_update: base_url.join("feeder_gateway/get_state_update")?,
         })
     }
 }
@@ -108,6 +110,18 @@ impl StarknetClient {
         })
     }
 
+    pub async fn state_update(
+        &self,
+        block_number: BlockNumber,
+    ) -> Result<BlockStateUpdate, ClientError> {
+        let mut url = self.urls.get_state_update.clone();
+        url.query_pairs_mut()
+            .append_pair("blockNumber", &block_number.0.to_string());
+        let raw_state_update = self.request(url).await?;
+        // TODO(dan): return the SN representation instead.
+        let state_update: BlockStateUpdate = serde_json::from_str(&raw_state_update)?;
+        Ok(state_update)
+    }
     async fn request(&self, url: Url) -> Result<String, ClientError> {
         let response = self.internal_client.get(url).send().await?;
         match response.status() {
