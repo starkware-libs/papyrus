@@ -40,7 +40,7 @@ async fn get_block_header() {
         .with_status(200)
         .with_body(body)
         .create();
-    let block_header: BlockHeader = starknet_client.block_header(20).await.unwrap();
+    let block_header: BlockHeader = starknet_client.block_header(BlockNumber(20)).await.unwrap();
     mock.assert();
     let expected_block_header = BlockHeader {
         block_hash: BlockHash(StarkHash(
@@ -82,7 +82,10 @@ async fn test_block_not_found_error_code() {
         .with_status(500)
         .with_body(body)
         .create();
-    let err = starknet_client.block_header(2347239846).await.unwrap_err();
+    let err = starknet_client
+        .block_header(BlockNumber(2347239846))
+        .await
+        .unwrap_err();
     mock.assert();
     assert_matches!(
         err,
