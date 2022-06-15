@@ -1,4 +1,4 @@
-mod objects;
+pub mod objects;
 #[cfg(test)]
 mod serde_util_test;
 mod serde_utils;
@@ -104,14 +104,14 @@ impl StarknetClient {
             StatusCode::INTERNAL_SERVER_ERROR => {
                 let body = response.text().await?;
                 let starknet_error: StarknetError = serde_json::from_str(&body)?;
-                info!(
+                error!(
                     "Starknet server responded with an internal server error: {}.",
                     starknet_error
                 );
                 Err(ClientError::StarknetError(starknet_error))
             }
             _ => {
-                error!("Bad response: {:?}.", response);
+                info!("Bad response: {:?}.", response);
                 Err(ClientError::BadResponse {
                     status: response.status(),
                 })
