@@ -1,4 +1,6 @@
 pub mod block;
+#[cfg(test)]
+pub mod starknet_client_objects_test_utils;
 pub mod transactions;
 
 use serde::{Deserialize, Serialize};
