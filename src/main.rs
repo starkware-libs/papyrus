@@ -6,6 +6,8 @@ use papyrus_lib::{
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // TODO(dan): Take from config.
+    const STARKNET_URL: &str = "https://alpha4.starknet.io/";
     env_logger::init();
 
     let mut path = std::env::current_exe()?;
@@ -14,7 +16,7 @@ async fn main() -> anyhow::Result<()> {
     let storage_components = StorageComponents::new(path.as_path())?;
 
     // Network interface.
-    let central_source = CentralSource::new()?;
+    let central_source = CentralSource::new(STARKNET_URL)?;
 
     // Sync.
     let mut sync = StateSync::new(
