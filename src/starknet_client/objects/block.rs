@@ -1,9 +1,11 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::starknet;
 
 use super::super::serde_utils::{HexAsBytes, NonPrefixedHexAsBytes, PrefixedHexAsBytes};
-use super::transactions::{Transaction, TransactionReceipt};
+use super::transactions::{ClassHash, Transaction, TransactionReceipt};
 use super::StarkHash;
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone)]
@@ -22,6 +24,14 @@ pub struct Block {
     pub timestamp: BlockTimestamp,
     pub transactions: Vec<Transaction>,
     pub transaction_receipts: Vec<TransactionReceipt>,
+}
+
+#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
+pub struct BlockStateUpdate {
+    pub block_hash: BlockHash,
+    pub new_root: GlobalRoot,
+    pub old_root: GlobalRoot,
+    pub state_diff: StateDiff,
 }
 
 #[derive(
@@ -83,6 +93,12 @@ impl From<ContractAddress> for starknet::ContractAddress {
     }
 }
 
+#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
+pub struct DeployedContract {
+    pub address: ContractAddress,
+    pub class_hash: ClassHash,
+}
+
 #[derive(
     Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
@@ -132,3 +148,28 @@ impl From<GlobalRoot> for starknet::GlobalRoot {
         starknet::GlobalRoot(val.0.into())
     }
 }
+
+#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
+pub struct StateDiff {
+    pub storage_diffs: HashMap<ContractAddress, Vec<StorageEntry>>,
+    pub deployed_contracts: Vec<DeployedContract>,
+    // TODO(dan): define corresponding struct and handle properly.
+    #[serde(default)]
+    pub declared_contracts: Vec<serde_json::Value>,
+}
+
+#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
+pub struct StorageEntry {
+    pub key: StorageKey,
+    pub value: StorageValue,
+}
+
+#[derive(
+    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct StorageKey(pub StarkHash);
+
+#[derive(
+    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct StorageValue(pub StarkHash);

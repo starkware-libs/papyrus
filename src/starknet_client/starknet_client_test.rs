@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use mockito::mock;
 
 use crate::starknet::{
@@ -8,6 +10,13 @@ use crate::starknet::{
 use super::serde_utils::bytes_from_hex_str;
 use super::*;
 
+// TODO(dan): use SN structs once avilable & sort.
+use super::objects::block::{BlockHash as OtherBlockHash, StateDiff, StorageKey, StorageValue};
+use super::objects::block::{BlockStateUpdate, ContractAddress as OtherContractAddress};
+use super::objects::block::{GlobalRoot as OtherGlobalRoot, StorageEntry};
+use super::objects::StarkHash as OtherStarkHash;
+use crate::starknet_client::objects::block::DeployedContract;
+use crate::starknet_client::objects::transactions::ClassHash;
 #[tokio::test]
 async fn get_block_number() {
     let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
@@ -18,6 +27,120 @@ async fn get_block_number() {
     let block_number = starknet_client.block_number().await.unwrap();
     mock.assert();
     assert_eq!(block_number, BlockNumber(195812));
+}
+#[tokio::test]
+async fn test_state_update() {
+    let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
+    let body = r#"
+    {
+        "block_hash": "0x3f65ef25e87a83d92f32f5e4869a33580f9db47ec980c1ff27bdb5151914de5",
+        "new_root": "02ade8eea6eb6523d22a408a1f035bd351a9a5dce28926ca92d7abb490c0e74a",
+        "old_root": "0465b219d93bcb2776aa3abb009423be3e2d04dba6453d7e027830740cd699a4",
+        "state_diff":
+        {
+            "storage_diffs":
+            {
+                "0x13386f165f065115c1da38d755be261023c32f0134a03a8e66b6bb1e0016014":
+                [
+                    {
+                        "key": "0x3b3a699bb6ef37ff4b9c4e14319c7d8e9c9bdd10ff402d1ebde18c62ae58381",
+                        "value": "0x61454dd6e5c83621e41b74c"
+                    },
+                    {
+                        "key": "0x1557182e4359a1f0c6301278e8f5b35a776ab58d39892581e357578fb287836",
+                        "value": "0x79dd8085e3e5a96ea43e7d"
+                    }
+                ]
+            },
+            "deployed_contracts":
+            [
+                {
+                    "address": "0x3e10411edafd29dfe6d427d03e35cb261b7a5efeee61bf73909ada048c029b9",
+                    "class_hash": "071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64"
+                }
+            ]
+        }
+    }"#;
+    let mock = mock("GET", "/feeder_gateway/get_state_update?blockNumber=123456")
+        .with_status(200)
+        .with_body(body)
+        .create();
+    let state_update = starknet_client
+        .state_update(BlockNumber(123456))
+        .await
+        .unwrap();
+    mock.assert();
+    let expected_state_update = BlockStateUpdate {
+        block_hash: OtherBlockHash(OtherStarkHash(
+            bytes_from_hex_str::<32, true>(
+                "0x3f65ef25e87a83d92f32f5e4869a33580f9db47ec980c1ff27bdb5151914de5",
+            )
+            .unwrap(),
+        )),
+        new_root: OtherGlobalRoot(OtherStarkHash(
+            bytes_from_hex_str::<32, false>(
+                "02ade8eea6eb6523d22a408a1f035bd351a9a5dce28926ca92d7abb490c0e74a",
+            )
+            .unwrap(),
+        )),
+        old_root: OtherGlobalRoot(OtherStarkHash(
+            bytes_from_hex_str::<32, false>(
+                "0465b219d93bcb2776aa3abb009423be3e2d04dba6453d7e027830740cd699a4",
+            )
+            .unwrap(),
+        )),
+        state_diff: StateDiff {
+            storage_diffs: HashMap::from([(
+                OtherContractAddress(OtherStarkHash(
+                    bytes_from_hex_str::<32, true>(
+                        "0x13386f165f065115c1da38d755be261023c32f0134a03a8e66b6bb1e0016014",
+                    )
+                    .unwrap(),
+                )),
+                vec![
+                    StorageEntry {
+                        key: StorageKey(OtherStarkHash(
+                            bytes_from_hex_str::<32, true>(
+                                "0x3b3a699bb6ef37ff4b9c4e14319c7d8e9c9bdd10ff402d1ebde18c62ae58381",
+                            )
+                            .unwrap(),
+                        )),
+                        value: StorageValue(OtherStarkHash(
+                            bytes_from_hex_str::<32, true>("0x61454dd6e5c83621e41b74c").unwrap(),
+                        )),
+                    },
+                    StorageEntry {
+                        key: StorageKey(OtherStarkHash(
+                            bytes_from_hex_str::<32, true>(
+                                "0x1557182e4359a1f0c6301278e8f5b35a776ab58d39892581e357578fb287836",
+                            )
+                            .unwrap(),
+                        )),
+                        value: StorageValue(OtherStarkHash(
+                            bytes_from_hex_str::<32, true>("0x79dd8085e3e5a96ea43e7d").unwrap(),
+                        )),
+                    },
+                ],
+            )]),
+            deployed_contracts: vec![DeployedContract {
+                address: OtherContractAddress(OtherStarkHash(
+                    bytes_from_hex_str::<32, true>(
+                        "0x3e10411edafd29dfe6d427d03e35cb261b7a5efeee61bf73909ada048c029b9",
+                    )
+                    .unwrap(),
+                )),
+                class_hash: ClassHash(OtherStarkHash(
+                    bytes_from_hex_str::<32, false>(
+                        "071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64",
+                    )
+                    .unwrap(),
+                )),
+            }],
+            declared_contracts: vec![],
+        },
+    };
+    assert_eq!(state_update, expected_state_update);
+    // }
 }
 
 #[tokio::test]

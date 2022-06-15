@@ -14,7 +14,7 @@ use url::Url;
 
 use crate::starknet::{BlockHeader, BlockNumber};
 
-use self::objects::block::Block;
+use self::objects::block::{Block, BlockStateUpdate};
 
 pub struct StarknetClient {
     url: Url,
@@ -89,6 +89,20 @@ impl StarknetClient {
             sequencer: block.sequencer_address.into(),
             timestamp: block.timestamp.into(),
         })
+    }
+
+    pub async fn state_update(
+        &self,
+        block_number: BlockNumber,
+    ) -> Result<BlockStateUpdate, ClientError> {
+        let query = format!(
+            "feeder_gateway/get_state_update?blockNumber={}",
+            block_number.0
+        );
+        let _raw_state_update: String = self.request(&query).await?;
+        // TODO(dan): return the SN representation instead.
+        let state_update: BlockStateUpdate = serde_json::from_str(&_raw_state_update)?;
+        Ok(state_update)
     }
 
     async fn request(&self, path: &str) -> Result<String, ClientError> {

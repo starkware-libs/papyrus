@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use web3::types::H160;
 
-use super::super::serde_utils::PrefixedHexAsBytes;
+use super::super::serde_utils::{HexAsBytes, NonPrefixedHexAsBytes, PrefixedHexAsBytes};
 use super::{ContractAddress, StarkHash};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -64,7 +64,23 @@ pub struct CallData(pub Vec<StarkHash>);
 #[derive(
     Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
+#[serde(
+    from = "NonPrefixedHexAsBytes<32_usize>",
+    into = "NonPrefixedHexAsBytes<32_usize>"
+)]
 pub struct ClassHash(pub StarkHash);
+// We don't use the regular StarkHash serde since the Starknet sequencer returns a class hash as a
+// hex string without a "0x" prefix.
+impl From<NonPrefixedHexAsBytes<32_usize>> for ClassHash {
+    fn from(val: NonPrefixedHexAsBytes<32_usize>) -> Self {
+        ClassHash(StarkHash(val.0))
+    }
+}
+impl From<ClassHash> for NonPrefixedHexAsBytes<32_usize> {
+    fn from(val: ClassHash) -> Self {
+        HexAsBytes(val.0 .0)
+    }
+}
 
 #[derive(
     Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
