@@ -38,9 +38,12 @@ impl StarknetClient {
         Ok(BlockNumber(block_number.parse()?))
     }
 
-    pub async fn block_header(&self, block_number: u32) -> Result<BlockHeader, ClientError> {
+    pub async fn block_header(
+        &self,
+        block_number: BlockNumber,
+    ) -> Result<BlockHeader, ClientError> {
         let mut query: String = "feeder_gateway/get_block?blockNumber=".to_owned();
-        query.push_str(&block_number.to_string());
+        query.push_str(&block_number.0.to_string());
         let _raw_block: String = self.request(&query).await?;
         let block: Block = serde_json::from_str(&_raw_block)?;
         Ok(BlockHeader {

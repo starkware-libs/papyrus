@@ -41,7 +41,7 @@ async fn get_block_header() {
         .with_status(200)
         .with_body(body)
         .create();
-    let block_header: BlockHeader = starknet_client.block_header(20).await.unwrap();
+    let block_header: BlockHeader = starknet_client.block_header(BlockNumber(20)).await.unwrap();
     mock.assert();
     let expected_block_header = BlockHeader {
         block_hash: BlockHash(StarkHash(
