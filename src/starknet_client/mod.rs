@@ -15,6 +15,8 @@ use url::Url;
 use crate::starknet::{BlockHeader, BlockNumber};
 
 use self::objects::block::Block;
+// TODO(dan): use SN Transaction once avilable.
+use self::objects::transactions::Transaction;
 
 pub struct StarknetClient {
     url: Url,
@@ -73,22 +75,25 @@ impl StarknetClient {
         Ok(BlockNumber(serde_json::from_str(&block_number)?))
     }
 
-    pub async fn block_header(
+    pub async fn block_data(
         &self,
         block_number: BlockNumber,
-    ) -> Result<BlockHeader, ClientError> {
+    ) -> Result<(BlockHeader, Vec<Transaction>), ClientError> {
         let query = format!("feeder_gateway/get_block?blockNumber={}", block_number.0);
         let raw_block = self.request(&query).await?;
         let block: Block = serde_json::from_str(&raw_block)?;
-        Ok(BlockHeader {
-            block_hash: block.block_hash.into(),
-            parent_hash: block.parent_block_hash.into(),
-            number: block.block_number.into(),
-            gas_price: block.gas_price.into(),
-            state_root: block.state_root.into(),
-            sequencer: block.sequencer_address.into(),
-            timestamp: block.timestamp.into(),
-        })
+        Ok((
+            BlockHeader {
+                block_hash: block.block_hash.into(),
+                parent_hash: block.parent_block_hash.into(),
+                number: block.block_number.into(),
+                gas_price: block.gas_price.into(),
+                state_root: block.state_root.into(),
+                sequencer: block.sequencer_address.into(),
+                timestamp: block.timestamp.into(),
+            },
+            block.transactions,
+        ))
     }
 
     async fn request(&self, path: &str) -> Result<String, ClientError> {
