@@ -93,8 +93,8 @@ impl StarknetClient {
         block_number: BlockNumber,
     ) -> Result<BlockHeader, ClientError> {
         let mut url = self.urls.get_block.clone();
-        let query = format!("blockNumber={}", block_number.0);
-        url.set_query(Some(&query));
+        url.query_pairs_mut()
+            .append_pair("blockNumber", &block_number.0.to_string());
         let raw_block = self.request(url).await?;
         let block: Block = serde_json::from_str(&raw_block)?;
         Ok(BlockHeader {
