@@ -35,16 +35,6 @@ impl From<JsonRpcError> for Error {
     }
 }
 
-impl PartialEq<Error> for JsonRpcError {
-    fn eq(&self, other: &Error) -> bool {
-        if let Error::Call(CallError::Custom(other_inner)) = other {
-            let self_err = ErrorObject::owned(*self as i32, self.to_string(), None::<()>);
-            return &self_err == other_inner;
-        }
-        false
-    }
-}
-
 fn internal_server_error(err: impl Display) -> Error {
     error!("{}: {}", INTERNAL_ERROR_MSG, err);
     Error::Call(CallError::Custom(ErrorObject::owned(
