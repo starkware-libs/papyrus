@@ -7,6 +7,8 @@ use crate::starknet::BlockNumber;
 pub enum JsonRpcError {
     #[error("There are no blocks.")]
     NoBlocks,
+    #[error("Invalid block number")]
+    InvalidBlockNumber = 26,
 }
 
 #[rpc(server, client, namespace = "starknet")]
