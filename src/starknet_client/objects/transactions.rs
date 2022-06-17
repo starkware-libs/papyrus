@@ -132,6 +132,7 @@ pub struct L1ToL2Message {
     pub to_address: ContractAddress,
     pub selector: EntryPointSelector,
     pub payload: L1ToL2Payload,
+    #[serde(default)]
     pub nonce: L1ToL2Nonce,
 }
 
