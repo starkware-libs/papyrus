@@ -17,8 +17,13 @@ use crate::starknet::{BlockHeader, BlockNumber};
 use self::objects::block::Block;
 
 pub struct StarknetClient {
-    url: Url,
+    urls: StarknetUrls,
     internal_client: Client,
+}
+#[derive(Clone, Debug)]
+struct StarknetUrls {
+    get_last_batch_id: Url,
+    get_block: Url,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, Serialize)]
@@ -54,6 +59,16 @@ pub enum ClientError {
     StarknetError(#[from] StarknetError),
 }
 
+impl StarknetUrls {
+    fn new(url_str: &str) -> Result<Self, ClientCreationError> {
+        let base_url = Url::parse(url_str)?;
+        Ok(StarknetUrls {
+            get_last_batch_id: base_url.join("feeder_gateway/get_last_batch_id")?,
+            get_block: base_url.join("feeder_gateway/get_block")?,
+        })
+    }
+}
+
 impl Display for StarknetError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self)
@@ -63,13 +78,13 @@ impl Display for StarknetError {
 impl StarknetClient {
     pub fn new(url_str: &str) -> Result<StarknetClient, ClientCreationError> {
         Ok(StarknetClient {
-            url: Url::parse(url_str)?,
+            urls: StarknetUrls::new(url_str)?,
             internal_client: Client::builder().build()?,
         })
     }
 
     pub async fn block_number(&self) -> Result<BlockNumber, ClientError> {
-        let block_number = self.request("feeder_gateway/get_last_batch_id").await?;
+        let block_number = self.request(self.urls.get_last_batch_id.clone()).await?;
         Ok(BlockNumber(serde_json::from_str(&block_number)?))
     }
 
@@ -77,8 +92,10 @@ impl StarknetClient {
         &self,
         block_number: BlockNumber,
     ) -> Result<BlockHeader, ClientError> {
-        let query = format!("feeder_gateway/get_block?blockNumber={}", block_number.0);
-        let raw_block = self.request(&query).await?;
+        let mut url = self.urls.get_block.clone();
+        url.query_pairs_mut()
+            .append_pair("blockNumber", &block_number.0.to_string());
+        let raw_block = self.request(url).await?;
         let block: Block = serde_json::from_str(&raw_block)?;
         Ok(BlockHeader {
             block_hash: block.block_hash.into(),
@@ -91,10 +108,8 @@ impl StarknetClient {
         })
     }
 
-    async fn request(&self, path: &str) -> Result<String, ClientError> {
-        // TODO(anatg): Move this to the constructor and set the query parameters here.
-        let joined = self.url.join(path).unwrap();
-        let response = self.internal_client.get(joined).send().await?;
+    async fn request(&self, url: Url) -> Result<String, ClientError> {
+        let response = self.internal_client.get(url).send().await?;
         match response.status() {
             StatusCode::OK => {
                 let body = response.text().await?;
