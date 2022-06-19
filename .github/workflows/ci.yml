@@ -34,4 +34,6 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v1
-      - run: cargo clippy --all-targets --all-features -- -D warnings
+      - run: >
+          cargo clippy --all-targets --all-features -- -D warnings -D future-incompatible
+          -D nonstandard-style -D rust-2018-idioms -D unused
