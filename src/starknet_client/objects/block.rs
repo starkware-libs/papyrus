@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::starknet;
 
 use super::super::serde_utils::{HexAsBytes, NonPrefixedHexAsBytes, PrefixedHexAsBytes};
-use super::transactions::{ClassHash, Transaction, TransactionReceipt};
+use super::transaction::{ClassHash, Transaction, TransactionReceipt};
 use super::StarkHash;
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone)]

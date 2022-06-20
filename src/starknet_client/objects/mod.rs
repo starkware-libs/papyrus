@@ -1,5 +1,5 @@
 pub mod block;
-pub mod transactions;
+pub mod transaction;
 
 use serde::{Deserialize, Serialize};
 
