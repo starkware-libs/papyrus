@@ -3,7 +3,7 @@ use jsonrpsee::types::EmptyParams;
 use jsonrpsee::ws_client::WsClientBuilder;
 
 use crate::starknet::BlockHeader;
-use crate::storage::components::storage_test_utils;
+use crate::storage::components::{storage_test_utils, HeaderStorageWriter};
 
 use super::api::*;
 use super::*;

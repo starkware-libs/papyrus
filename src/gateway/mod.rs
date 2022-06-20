@@ -13,7 +13,7 @@ use jsonrpsee::ws_server::{WsServerBuilder, WsServerHandle};
 use log::error;
 
 use crate::starknet::BlockNumber;
-use crate::storage::components::BlockStorageReader;
+use crate::storage::components::{BlockStorageReader, HeaderStorageReader};
 
 use self::api::{JsonRpcError, JsonRpcServer};
 

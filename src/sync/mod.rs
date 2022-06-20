@@ -4,9 +4,10 @@ use futures_util::pin_mut;
 use log::info;
 use tokio_stream::StreamExt;
 
-use crate::{
-    starknet_client::ClientError,
-    storage::components::{BlockStorageError, BlockStorageReader, BlockStorageWriter},
+use crate::starknet_client::ClientError;
+use crate::storage::components::{
+    BlockStorageError, BlockStorageReader, BlockStorageWriter, HeaderStorageReader,
+    HeaderStorageWriter,
 };
 
 pub use self::sources::CentralSource;

@@ -139,6 +139,15 @@ impl<'a> DbWriteTransaction<'a> {
             .put(&table.database, key, &data, WriteFlags::NO_OVERWRITE)?;
         Ok(())
     }
+    #[allow(dead_code)]
+    pub fn delete<'txn, ValueType: Serialize>(
+        &'txn self,
+        table: &TableHandle<'txn>,
+        key: &[u8],
+    ) -> Result<()> {
+        self.txn.del(&table.database, key, None)?;
+        Ok(())
+    }
     pub fn commit(self) -> Result<()> {
         self.txn.commit()?;
         Ok(())
