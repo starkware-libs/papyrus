@@ -6,11 +6,25 @@ use libmdbx::RW;
 
 use super::{BlockStorageError, BlockStorageReader, BlockStorageResult, BlockStorageWriter};
 
-use crate::starknet::{BlockNumber, StateDiffForward};
-use crate::storage::db::{DbTransaction, TableHandle};
+use crate::starknet::{
+    BlockNumber, IndexedDeployedContract, StateDiffForward, StorageDiff, StorageEntry,
+};
+use crate::storage::db::{DbError, DbTransaction, TableHandle};
 
 // Constants.
 const STATE_MARKER_KEY: &[u8] = b"state";
+
+// Structure of state data:
+// * contracts_table: (contract_address) -> (block_num, class_hash).
+//   Each entry specified at which block was this contract deployed and with what class_hash.
+//   Note that each contract may only be deployed once, so we don't need to support multiple
+//   entries per contract address.
+// * storage_table: (contract_address, key, block_num) -> (value).
+//   Specifies that at `block_num`, the `key` at `contract_address` was changed to `value`.
+//   This structure let's us do quick lookup, since the database supports "Get the closet element
+//   from  the left". Thus, to lookup the value at a specific block_number, we can search
+//   (contract_address, key, block_num), and retrieve the closest from left, which should be
+//   The latest update to the value before that block_num.
 
 pub trait StateStorageReader {
     fn get_state_marker(&self) -> BlockStorageResult<BlockNumber>;
@@ -58,16 +72,20 @@ impl StateStorageWriter for BlockStorageWriter {
     ) -> BlockStorageResult<()> {
         let txn = self.db_writer.begin_rw_txn()?;
         let markers_table = txn.open_table(&self.tables.markers)?;
+        let contracts_table = txn.open_table(&self.tables.contracts)?;
+        let storage_table = txn.open_table(&self.tables.contract_storage)?;
         let state_diffs_table = txn.open_table(&self.tables.state_diffs)?;
 
         update_marker(&txn, &markers_table, block_number)?;
-
         // Write state diff.
         txn.insert(
             &state_diffs_table,
             &bincode::serialize(&block_number).unwrap(),
             &state_diff,
         )?;
+        // Write state.
+        write_deployed_contracts(state_diff, &txn, block_number, &contracts_table)?;
+        write_storage_diffs(state_diff, &txn, block_number, &storage_table)?;
 
         // Finalize.
         txn.commit()?;
@@ -93,5 +111,47 @@ fn update_marker(
 
     // Advance marker.
     txn.upsert(markers_table, STATE_MARKER_KEY, &block_number.next())?;
+    Ok(())
+}
+
+fn write_deployed_contracts(
+    state_diff: &StateDiffForward,
+    txn: &DbTransaction<'_, RW>,
+    block_number: BlockNumber,
+    contracts_table: &TableHandle<'_>,
+) -> BlockStorageResult<()> {
+    for deployed_contract in &state_diff.deployed_contracts {
+        let key = bincode::serialize(&deployed_contract.address).unwrap();
+        let class_hash = deployed_contract.class_hash;
+        let value = IndexedDeployedContract {
+            block_number,
+            class_hash,
+        };
+        let res = txn.insert(contracts_table, &key, &value);
+        match res {
+            Ok(()) => continue,
+            Err(DbError::InnerDbError(libmdbx::Error::KeyExist)) => {
+                return Err(BlockStorageError::ContractAlreadyExists {
+                    address: deployed_contract.address,
+                });
+            }
+            Err(err) => return Err(err.into()),
+        }
+    }
+    Ok(())
+}
+
+fn write_storage_diffs(
+    state_diff: &StateDiffForward,
+    txn: &DbTransaction<'_, RW>,
+    block_number: BlockNumber,
+    storage_table: &TableHandle<'_>,
+) -> BlockStorageResult<()> {
+    for StorageDiff { address, diff } in &state_diff.storage_diffs {
+        for StorageEntry { key, value } in diff {
+            let db_key = bincode::serialize(&(address, key, block_number)).unwrap();
+            txn.upsert(storage_table, &db_key, value)?;
+        }
+    }
     Ok(())
 }

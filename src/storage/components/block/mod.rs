@@ -3,7 +3,7 @@ mod state;
 #[cfg(test)]
 mod test_utils;
 
-use crate::starknet::{BlockHash, BlockNumber};
+use crate::starknet::{BlockHash, BlockNumber, ContractAddress};
 use crate::storage::db::DbConfig;
 use std::sync::Arc;
 
@@ -27,6 +27,8 @@ pub enum BlockStorageError {
         block_hash: BlockHash,
         block_number: BlockNumber,
     },
+    #[error("State diff redployed to an existing contract address {address:?}.")]
+    ContractAlreadyExists { address: ContractAddress },
 }
 pub type BlockStorageResult<V> = std::result::Result<V, BlockStorageError>;
 
@@ -35,6 +37,8 @@ pub struct Tables {
     headers: TableIdentifier,
     block_hash_to_number: TableIdentifier,
     state_diffs: TableIdentifier,
+    contracts: TableIdentifier,
+    contract_storage: TableIdentifier,
 }
 #[derive(Clone)]
 pub struct BlockStorageReader {
@@ -55,6 +59,8 @@ pub fn open_block_storage(
         headers: db_writer.create_table("headers")?,
         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
         state_diffs: db_writer.create_table("state_diffs")?,
+        contracts: db_writer.create_table("contracts")?,
+        contract_storage: db_writer.create_table("contract_storage")?,
     });
     let reader = BlockStorageReader {
         db_reader,
