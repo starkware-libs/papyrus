@@ -2,13 +2,20 @@
 #[path = "hash_test.rs"]
 mod hash_test;
 
+use std::fmt::Debug;
+
 use serde::{Deserialize, Serialize};
 
 use super::serde_utils::{bytes_from_hex_str, DeserializationError};
-#[derive(
-    Debug, Copy, Clone, PartialEq, Eq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
+#[derive(Copy, Clone, PartialEq, Eq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StarkHash(pub [u8; 32]);
+
+impl Debug for StarkHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = format!("0x{}", hex::encode(&self.0));
+        f.debug_tuple("StarkHash").field(&s).finish()
+    }
+}
 
 impl StarkHash {
     pub fn from_hex(hex_str: &str) -> Result<StarkHash, DeserializationError> {

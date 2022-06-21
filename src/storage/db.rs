@@ -71,8 +71,8 @@ pub type DbWriteTransaction<'a> = DbTransaction<'a, libmdbx::RW>;
 pub struct TableIdentifier {
     name: &'static str,
 }
-pub struct TableHandle<'txn> {
-    database: libmdbx::Database<'txn>,
+pub struct TableHandle<'env> {
+    database: libmdbx::Database<'env>,
 }
 
 impl DbReader {
@@ -97,17 +97,17 @@ impl DbWriter {
 }
 
 impl<'a, K: libmdbx::TransactionKind> DbTransaction<'a, K> {
-    pub fn open_table<'txn>(&'txn self, table_id: &TableIdentifier) -> Result<TableHandle<'txn>> {
+    pub fn open_table<'env>(&'env self, table_id: &TableIdentifier) -> Result<TableHandle<'env>> {
         let database = self.txn.open_db(Some(table_id.name))?;
         Ok(TableHandle { database })
     }
-    pub fn get<'txn, ValueType: DeserializeOwned>(
-        &'txn self,
-        table: &TableHandle<'txn>,
+    pub fn get<'env, ValueType: DeserializeOwned>(
+        &'env self,
+        table: &TableHandle<'env>,
         key: &[u8],
     ) -> Result<Option<ValueType>> {
-        // TODO: Support zero-copy. This might require a return type of Cow<'txn, ValueType>.
-        if let Some(bytes) = self.txn.get::<Cow<'txn, [u8]>>(&table.database, key)? {
+        // TODO: Support zero-copy. This might require a return type of Cow<'env, ValueType>.
+        if let Some(bytes) = self.txn.get::<Cow<'env, [u8]>>(&table.database, key)? {
             let value = bincode::deserialize::<ValueType>(bytes.as_ref())?;
             Ok(Some(value))
         } else {
@@ -116,9 +116,9 @@ impl<'a, K: libmdbx::TransactionKind> DbTransaction<'a, K> {
     }
 }
 impl<'a> DbWriteTransaction<'a> {
-    pub fn upsert<'txn, ValueType: Serialize>(
-        &'txn self,
-        table: &TableHandle<'txn>,
+    pub fn upsert<'env, ValueType: Serialize>(
+        &'env self,
+        table: &TableHandle<'env>,
         key: &[u8],
         value: &ValueType,
     ) -> Result<()> {
@@ -128,9 +128,9 @@ impl<'a> DbWriteTransaction<'a> {
         Ok(())
     }
     #[allow(dead_code)]
-    pub fn insert<'txn, ValueType: Serialize>(
-        &'txn self,
-        table: &TableHandle<'txn>,
+    pub fn insert<'env, ValueType: Serialize>(
+        &'env self,
+        table: &TableHandle<'env>,
         key: &[u8],
         value: &ValueType,
     ) -> Result<()> {
@@ -140,9 +140,9 @@ impl<'a> DbWriteTransaction<'a> {
         Ok(())
     }
     #[allow(dead_code)]
-    pub fn delete<'txn, ValueType: Serialize>(
-        &'txn self,
-        table: &TableHandle<'txn>,
+    pub fn delete<'env, ValueType: Serialize>(
+        &'env self,
+        table: &TableHandle<'env>,
         key: &[u8],
     ) -> Result<()> {
         self.txn.del(&table.database, key, None)?;
