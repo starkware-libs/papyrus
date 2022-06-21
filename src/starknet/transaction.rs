@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 use web3::types::H160;
 
-use super::hash::{StarkFelt, StarkHash};
-use super::ContractAddress;
+use super::{ContractAddress, StarkFelt, StarkHash};
 
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
