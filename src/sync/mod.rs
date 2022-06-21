@@ -12,7 +12,7 @@ use crate::storage::components::{
     HeaderStorageWriter,
 };
 
-pub use self::sources::CentralSource;
+pub use self::sources::{CentralSource, CentralSourceConfig};
 
 // TODO(dan): Take from config.
 const SLEEP_DURATION: Duration = Duration::from_millis(10000);

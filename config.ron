@@ -1,0 +1,8 @@
+Config(
+    storage: StorageConfig(
+        path: "./data",
+    ),
+    central: CentralSourceConfig(
+        url: "https://alpha4.starknet.io/",
+    ),
+)

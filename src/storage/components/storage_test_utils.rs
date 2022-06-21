@@ -1,9 +1,12 @@
 use tempfile::tempdir;
 
-use super::StorageComponents;
+use super::{StorageComponents, StorageConfig};
 
 #[allow(dead_code)]
 pub fn get_test_storage() -> StorageComponents {
     let dir = tempdir().unwrap();
-    StorageComponents::new(dir.path()).expect("Failed to open test storage.")
+    let config = StorageConfig {
+        path: dir.path().to_str().unwrap().to_string(),
+    };
+    StorageComponents::new(config).expect("Failed to open test storage.")
 }

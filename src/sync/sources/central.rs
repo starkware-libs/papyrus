@@ -3,18 +3,23 @@ use std::time::Duration;
 use async_stream::stream;
 use log::{debug, error, info};
 use reqwest::StatusCode;
+use serde::{Deserialize, Serialize};
 use tokio_stream::Stream;
 
 use crate::starknet::{BlockHeader, BlockNumber};
 use crate::starknet_client::{ClientCreationError, ClientError, StarknetClient};
 
+#[derive(Serialize, Deserialize)]
+pub struct CentralSourceConfig {
+    pub url: String,
+}
 pub struct CentralSource {
     starknet_client: StarknetClient,
 }
 
 impl CentralSource {
-    pub fn new(url: &str) -> Result<CentralSource, ClientCreationError> {
-        let starknet_client = StarknetClient::new(url)?;
+    pub fn new(config: CentralSourceConfig) -> Result<CentralSource, ClientCreationError> {
+        let starknet_client = StarknetClient::new(&config.url)?;
         Ok(CentralSource { starknet_client })
     }
 
