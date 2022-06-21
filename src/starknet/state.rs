@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{ContractAddress, StarkFelt, StarkHash};
+use super::{BlockNumber, ContractAddress, StarkFelt, StarkHash};
 
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
@@ -18,6 +18,12 @@ pub struct StateDiffForward {
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeployedContract {
     pub address: ContractAddress,
+    pub class_hash: ClassHash,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct IndexedDeployedContract {
+    pub block_number: BlockNumber,
     pub class_hash: ClassHash,
 }
 
