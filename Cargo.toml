@@ -24,6 +24,7 @@ lifetimed-bytes = { version = "0.1.0" }
 log = { version = "0.4" }
 mockito = { version = "0.31.0" }
 reqwest = { version = "0.11", features = ["json", "blocking"] }
+ron = { version ="0.7" }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" }
 thiserror = { version = "1.0.31" }

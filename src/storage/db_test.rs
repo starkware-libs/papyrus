@@ -1,10 +1,17 @@
 use tempfile::tempdir;
 
-use super::{open_env, DbReader, DbWriter};
+use super::{open_env, DbConfig, DbReader, DbWriter};
 
-fn get_test_env() -> (DbReader, DbWriter) {
+pub fn get_test_config() -> DbConfig {
     let dir = tempdir().unwrap();
-    open_env(dir.path()).expect("Failed to open environment.")
+    DbConfig {
+        path: dir.path().to_str().unwrap().to_string(),
+        max_size: 1 << 35, // 32GB.
+    }
+}
+fn get_test_env() -> (DbReader, DbWriter) {
+    let config = get_test_config();
+    open_env(config).expect("Failed to open environment.")
 }
 
 #[test]

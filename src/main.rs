@@ -1,22 +1,29 @@
-use papyrus_lib::{
-    gateway::run_server,
-    storage::components::StorageComponents,
-    sync::{CentralSource, StateSync},
-};
+use std::fs;
+
+use papyrus_lib::gateway::run_server;
+use papyrus_lib::storage::components::{StorageComponents, StorageConfig};
+use papyrus_lib::sync::{CentralSource, CentralSourceConfig, StateSync};
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize, Serialize)]
+struct Config {
+    storage: StorageConfig,
+    central: CentralSourceConfig,
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // TODO(dan): Take from config.
-    const STARKNET_URL: &str = "https://alpha4.starknet.io/";
     env_logger::init();
 
-    let mut path = std::env::current_exe()?;
-    path.pop();
-    path.push("data");
-    let storage_components = StorageComponents::new(path.as_path())?;
+    let config_path = "config.ron";
+    let config_contents =
+        fs::read_to_string(config_path).expect("Something went wrong reading the file");
+    let config: Config = ron::from_str(&config_contents)?;
+
+    let storage_components = StorageComponents::new(config.storage)?;
 
     // Network interface.
-    let central_source = CentralSource::new(STARKNET_URL)?;
+    let central_source = CentralSource::new(config.central)?;
 
     // Sync.
     let mut sync = StateSync::new(
