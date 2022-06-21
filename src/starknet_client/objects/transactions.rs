@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use web3::types::H160;
 
-use super::super::serde_utils::{HexAsBytes, NonPrefixedHexAsBytes, PrefixedHexAsBytes};
+use crate::starknet::serde_utils::{HexAsBytes, NonPrefixedHexAsBytes, PrefixedHexAsBytes};
+
 use super::{ContractAddress, StarkHash};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

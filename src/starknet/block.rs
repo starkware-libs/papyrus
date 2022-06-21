@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::hash::StarkHash;
 
+// TODO(spapini): Verify the invariant that it is in range.
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]

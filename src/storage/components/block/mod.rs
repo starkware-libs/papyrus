@@ -1,4 +1,6 @@
 mod header;
+#[cfg(test)]
+mod test_utils;
 
 use crate::starknet::BlockNumber;
 use std::path::Path;

@@ -1,3 +1,7 @@
+#[cfg(test)]
+#[path = "serde_utils_test.rs"]
+mod serde_utils_test;
+
 use serde::de::Visitor;
 use serde::{Deserialize, Serialize};
 
