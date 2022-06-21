@@ -1,9 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::starknet::hash::StarkFelt;
-use crate::starknet::ContractAddress;
-
-use super::StarkHash;
+use super::{ContractAddress, StarkFelt, StarkHash};
 
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,

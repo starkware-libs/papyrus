@@ -38,6 +38,51 @@ async fn test_block_number() {
 }
 
 #[tokio::test]
+async fn test_get_block_by_number() {
+    let storage_components = storage_test_utils::get_test_storage();
+    let storage_reader = storage_components.block_storage_reader;
+    let mut storage_writer = storage_components.block_storage_writer;
+    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+    storage_writer
+        .append_header(BlockNumber(0), &BlockHeader::default())
+        .unwrap();
+    let block = module
+        .call::<_, Block>(
+            "starknet_getBlockByNumber",
+            [BlockNumberOrTag::Number(BlockNumber(0))],
+        )
+        .await
+        .unwrap();
+    let block_header = &BlockHeader::default();
+    let expected_block = Block {
+        block_hash: block_header.block_hash,
+        parent_hash: block_header.parent_hash,
+        block_number: BlockNumber(0),
+        status: BlockStatus::AcceptedOnL2,
+        sequencer: block_header.sequencer,
+        new_root: block_header.state_root,
+        old_root: block_header.state_root,
+        accepted_time: block_header.timestamp,
+        transactions: Transactions::Hashes(vec![]),
+    };
+    assert_eq!(block, expected_block);
+
+    // Ask for an invalid block.
+    let err = module
+        .call::<_, Block>(
+            "starknet_getBlockByNumber",
+            [BlockNumberOrTag::Number(BlockNumber(1))],
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidBlockNumber as i32,
+        JsonRpcError::InvalidBlockNumber.to_string(),
+        None::<()>,
+    ));
+}
+
+#[tokio::test]
 async fn test_run_server() {
     let storage_reader = storage_test_utils::get_test_storage().block_storage_reader;
     let (addr, _handle) = run_server(storage_reader).await.unwrap();

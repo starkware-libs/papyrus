@@ -1,6 +1,7 @@
 mod api;
 #[cfg(test)]
 mod gateway_test;
+mod objects;
 
 use std::fmt::Display;
 use std::net::SocketAddr;
@@ -15,7 +16,8 @@ use log::error;
 use crate::starknet::BlockNumber;
 use crate::storage::components::{BlockStorageReader, HeaderStorageReader};
 
-use self::api::{JsonRpcError, JsonRpcServer};
+use self::api::{BlockNumberOrTag, BlockResponseScope, JsonRpcError, JsonRpcServer, Tag};
+use self::objects::{Block, BlockStatus, Transactions};
 
 // TODO(anatg): Take from config.
 const SERVER_IP: &str = "127.0.0.1:0";
@@ -52,6 +54,43 @@ impl JsonRpcServer for JsonRpcServerImpl {
             .map_err(internal_server_error)?
             .prev()
             .ok_or_else(|| JsonRpcError::NoBlocks.into())
+    }
+
+    async fn get_block_by_number(
+        &self,
+        block_number: BlockNumberOrTag,
+        _requested_scope: Option<BlockResponseScope>,
+    ) -> Result<Block, Error> {
+        let block_number = match block_number {
+            BlockNumberOrTag::Tag(Tag::Latest) => self.block_number().await?,
+            BlockNumberOrTag::Tag(Tag::Pending) => {
+                // TODO(anatg): Support pending block.
+                todo!("Pending tag is not supported yet.")
+            }
+            BlockNumberOrTag::Number(number) => number,
+        };
+
+        // TODO(anatg): Get the entire block.
+        let block_header = self
+            .storage_reader
+            .get_block_header(block_number)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockNumber))?;
+
+        Ok(Block {
+            block_hash: block_header.block_hash,
+            parent_hash: block_header.parent_hash,
+            block_number,
+            // TODO(anatg): Get the status.
+            status: BlockStatus::AcceptedOnL2,
+            sequencer: block_header.sequencer,
+            new_root: block_header.state_root,
+            // TODO(anatg): Get the old root.
+            old_root: block_header.state_root,
+            accepted_time: block_header.timestamp,
+            // TODO(anatg): Get the transaction according to the requested scope.
+            transactions: Transactions::Hashes(vec![]),
+        })
     }
 }
 
