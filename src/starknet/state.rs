@@ -33,8 +33,8 @@ pub struct DeployedContract {
 // TODO(spapini): Enforce the invariant.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StorageDiff {
-    address: ContractAddress,
-    diff: Vec<StorageEntry>,
+    pub address: ContractAddress,
+    pub diff: Vec<StorageEntry>,
 }
 
 // TODO: Invariant: this is in range.
