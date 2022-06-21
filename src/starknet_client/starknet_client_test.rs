@@ -2,12 +2,12 @@ use std::collections::HashMap;
 
 use mockito::mock;
 
+use crate::starknet::serde_utils::bytes_from_hex_str;
 use crate::starknet::{
     BlockHash, BlockHeader, BlockNumber, BlockTimestamp, ContractAddress, GasPrice, GlobalRoot,
     StarkHash,
 };
 
-use super::serde_utils::bytes_from_hex_str;
 use super::*;
 
 // TODO(dan): use SN structs once avilable & sort.

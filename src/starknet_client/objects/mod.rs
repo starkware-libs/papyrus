@@ -4,8 +4,7 @@ pub mod transactions;
 use serde::{Deserialize, Serialize};
 
 use crate::starknet;
-
-use super::serde_utils::{HexAsBytes, PrefixedHexAsBytes};
+use crate::starknet::serde_utils::{HexAsBytes, PrefixedHexAsBytes};
 
 #[derive(
     Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,

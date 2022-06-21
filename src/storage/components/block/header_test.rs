@@ -1,14 +1,8 @@
-use tempfile::tempdir;
-
 use crate::starknet::{BlockHeader, BlockNumber};
-use crate::storage::components::{open_block_storage, HeaderStorageReader, HeaderStorageWriter};
+use crate::storage::components::block::test_utils::get_test_storage;
+use crate::storage::components::{HeaderStorageReader, HeaderStorageWriter};
 
-use super::{BlockStorageError, BlockStorageReader, BlockStorageWriter};
-
-fn get_test_storage() -> (BlockStorageReader, BlockStorageWriter) {
-    let dir = tempdir().unwrap();
-    open_block_storage(dir.path()).expect("Failed to open storage.")
-}
+use super::BlockStorageError;
 
 #[tokio::test]
 async fn test_append_header() {
