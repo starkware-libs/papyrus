@@ -1,6 +1,4 @@
-use crate::starknet_client::serde_utils::{
-    bytes_from_hex_str, hex_str_from_bytes, DeserializationError,
-};
+use super::{bytes_from_hex_str, hex_str_from_bytes, DeserializationError};
 
 #[test]
 fn test_hex_str_from_bytes() {
