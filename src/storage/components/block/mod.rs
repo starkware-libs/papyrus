@@ -3,7 +3,7 @@ mod header;
 mod test_utils;
 
 use crate::starknet::BlockNumber;
-use std::path::Path;
+use crate::storage::db::DbConfig;
 use std::sync::Arc;
 
 use crate::storage::db::open_env;
@@ -41,9 +41,9 @@ pub struct BlockStorageWriter {
 }
 
 pub fn open_block_storage(
-    path: &Path,
+    db_config: DbConfig,
 ) -> BlockStorageResult<(BlockStorageReader, BlockStorageWriter)> {
-    let (db_reader, mut db_writer) = open_env(path)?;
+    let (db_reader, mut db_writer) = open_env(db_config)?;
     let tables = Arc::new(Tables {
         markers: db_writer.create_table("markers")?,
         headers: db_writer.create_table("headers")?,

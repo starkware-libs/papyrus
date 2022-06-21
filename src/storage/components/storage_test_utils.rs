@@ -1,9 +1,11 @@
-use tempfile::tempdir;
+use crate::storage::db::db_test::get_test_config;
 
-use super::StorageComponents;
+use super::{StorageComponents, StorageConfig};
 
 #[allow(dead_code)]
 pub fn get_test_storage() -> StorageComponents {
-    let dir = tempdir().unwrap();
-    StorageComponents::new(dir.path()).expect("Failed to open test storage.")
+    let config = StorageConfig {
+        db_config: get_test_config(),
+    };
+    StorageComponents::new(config).expect("Failed to open test storage.")
 }

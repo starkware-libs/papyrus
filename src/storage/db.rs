@@ -1,12 +1,12 @@
 #[cfg(test)]
 #[path = "db_test.rs"]
-mod db_test;
+pub mod db_test;
 
 use std::{borrow::Cow, path::Path, result, sync::Arc};
 
 use libmdbx::{DatabaseFlags, Geometry, WriteFlags, WriteMap};
 use serde::de::DeserializeOwned;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /*
   Low database layer for interaction with libmdbx. The API is supposedly generic enough to easily
@@ -20,12 +20,17 @@ use serde::Serialize;
 // TODO(spapini): Get these from configuration, and have a separate test configuration.
 const MAX_DBS: usize = 10;
 const MIN_SIZE: usize = 1 << 20; // Minimum db size 1MB;
-const MAX_SIZE: usize = 1 << 40; // Maximum db size 1TB;
 const GROWTH_STEP: isize = 1 << 26; // Growth step 64MB;
 
 // Note that NO_TLS mode is used by default.
 type EnvironmentKind = WriteMap;
 type Environment = libmdbx::Environment<EnvironmentKind>;
+
+#[derive(Serialize, Deserialize)]
+pub struct DbConfig {
+    pub path: String,
+    pub max_size: usize,
+}
 
 #[derive(thiserror::Error, Debug)]
 pub enum DbError {
@@ -40,16 +45,16 @@ pub type Result<V> = result::Result<V, DbError>;
 /// There is a single non clonable writer instance, to make sure there is only one write transaction
 ///  at any given moment.
 #[allow(dead_code)]
-pub fn open_env(path: &Path) -> Result<(DbReader, DbWriter)> {
+pub fn open_env(config: DbConfig) -> Result<(DbReader, DbWriter)> {
     let env = Arc::new(
         Environment::new()
             .set_geometry(Geometry {
-                size: Some(MIN_SIZE..MAX_SIZE),
+                size: Some(MIN_SIZE..config.max_size),
                 growth_step: Some(GROWTH_STEP),
                 ..Default::default()
             })
             .set_max_dbs(MAX_DBS)
-            .open(path)?,
+            .open(Path::new(&config.path))?,
     );
     Ok((DbReader { env: env.clone() }, DbWriter { env }))
 }
