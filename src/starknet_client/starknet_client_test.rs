@@ -16,7 +16,7 @@ use super::objects::block::{BlockStateUpdate, ContractAddress as OtherContractAd
 use super::objects::block::{GlobalRoot as OtherGlobalRoot, StorageEntry};
 use super::objects::StarkHash as OtherStarkHash;
 use crate::starknet_client::objects::block::DeployedContract;
-use crate::starknet_client::objects::transactions::ClassHash;
+use crate::starknet_client::objects::transaction::ClassHash;
 #[tokio::test]
 async fn get_block_number() {
     let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
