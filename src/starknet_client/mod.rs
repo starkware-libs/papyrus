@@ -97,13 +97,13 @@ impl StarknetClient {
         let raw_block = self.request(url).await?;
         let block: Block = serde_json::from_str(&raw_block)?;
         Ok(BlockHeader {
-            block_hash: block.block_hash.into(),
-            parent_hash: block.parent_block_hash.into(),
-            number: block.block_number.into(),
-            gas_price: block.gas_price.into(),
-            state_root: block.state_root.into(),
-            sequencer: block.sequencer_address.into(),
-            timestamp: block.timestamp.into(),
+            block_hash: block.block_hash,
+            parent_hash: block.parent_block_hash,
+            number: block.block_number,
+            gas_price: block.gas_price,
+            state_root: block.state_root,
+            sequencer: block.sequencer_address,
+            timestamp: block.timestamp,
         })
     }
 
