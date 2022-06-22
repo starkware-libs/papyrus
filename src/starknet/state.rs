@@ -44,6 +44,7 @@ pub struct StorageKey(pub StarkFelt);
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StorageEntry {
+    #[serde(rename(deserialize = "key", serialize = "key"))]
     pub addr: StorageKey,
     pub value: StarkFelt,
 }
