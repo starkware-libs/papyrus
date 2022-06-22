@@ -3,10 +3,11 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::starknet::{
-    BlockHash, BlockNumber, BlockTimestamp, ContractAddress, GasPrice, GlobalRoot, StarkHash,
+    BlockHash, BlockNumber, BlockTimestamp, ContractAddress, DeployedContract, GasPrice,
+    GlobalRoot, StorageEntry,
 };
 
-use super::transaction::{ClassHash, Transaction, TransactionReceipt};
+use super::transaction::{Transaction, TransactionReceipt};
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone)]
 pub struct Block {
@@ -54,12 +55,6 @@ impl Default for BlockStatus {
 }
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
-pub struct DeployedContract {
-    pub address: ContractAddress,
-    pub class_hash: ClassHash,
-}
-
-#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
 pub struct StateDiff {
     pub storage_diffs: HashMap<ContractAddress, Vec<StorageEntry>>,
     pub deployed_contracts: Vec<DeployedContract>,
@@ -67,19 +62,3 @@ pub struct StateDiff {
     #[serde(default)]
     pub declared_contracts: Vec<serde_json::Value>,
 }
-
-#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
-pub struct StorageEntry {
-    pub key: StorageKey,
-    pub value: StorageValue,
-}
-
-#[derive(
-    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct StorageKey(pub StarkHash);
-
-#[derive(
-    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct StorageValue(pub StarkHash);

@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
-use web3::types::H160;
 
-use crate::starknet::{serde_utils::PrefixedHexAsBytes, ContractAddress, StarkHash};
+use crate::starknet::{
+    CallData, ClassHash, ContractAddress, EntryPointSelector, EthAddress, Event, Fee,
+    L1ToL2Payload, L2ToL1Payload, Nonce, StarkHash, TransactionHash,
+};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(untagged)]
@@ -15,8 +17,8 @@ pub enum Transaction {
 pub struct DeclareTransaction {
     pub class_hash: ClassHash,
     pub sender_address: ContractAddress,
-    pub nonce: TransactionNonce,
-    pub max_fee: MaxFee,
+    pub nonce: Nonce,
+    pub max_fee: Fee,
     pub version: TransactionVersion,
     pub transaction_hash: TransactionHash,
     pub signature: TransactionSignature,
@@ -39,7 +41,7 @@ pub struct InvokeTransaction {
     pub contract_address: ContractAddress,
     pub entry_point_selector: EntryPointSelector,
     pub entry_point_type: EntryPointType,
-    pub max_fee: MaxFee,
+    pub max_fee: Fee,
     pub signature: TransactionSignature,
     pub transaction_hash: TransactionHash,
     pub r#type: TransactionType,
@@ -54,26 +56,13 @@ pub struct TransactionReceipt {
     pub events: Vec<Event>,
     // TODO(dan): define corresponding struct and handle properly.
     pub execution_resources: serde_json::Value,
-    pub actual_fee: MaxFee,
+    pub actual_fee: Fee,
 }
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct CallData(pub Vec<StarkHash>);
-
-#[derive(
-    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct ClassHash(pub StarkHash);
 
 #[derive(
     Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct ContractAddressSalt(pub StarkHash);
-
-#[derive(
-    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct EntryPointSelector(pub StarkHash);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum EntryPointType {
@@ -90,40 +79,8 @@ impl Default for EntryPointType {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Serialize, Clone)]
-pub struct Event {
-    pub from_address: ContractAddress,
-    pub keys: EventKey,
-    pub data: EventData,
-}
-
-#[derive(
-    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct EthAddress(pub H160);
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct EventData(pub Vec<StarkHash>);
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct EventKey(pub Vec<StarkHash>);
-
-#[derive(
-    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-#[serde(from = "PrefixedHexAsBytes<16_usize>")]
-pub struct MaxFee(pub u128);
-impl From<PrefixedHexAsBytes<16_usize>> for MaxFee {
-    fn from(val: PrefixedHexAsBytes<16_usize>) -> Self {
-        MaxFee(u128::from_be_bytes(val.0))
-    }
-}
-
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct L1ToL2Nonce(pub StarkHash);
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct L1ToL2Payload(pub Vec<StarkHash>);
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone)]
 pub struct L1ToL2Message {
@@ -139,23 +96,13 @@ pub struct L1ToL2Message {
 pub struct L2ToL1Message {
     pub from_address: ContractAddress,
     pub to_address: EthAddress,
-    pub payload: L1ToL2Payload,
+    pub payload: L2ToL1Payload,
 }
 
 #[derive(
     Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct TransactionHash(pub StarkHash);
-
-#[derive(
-    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
 pub struct TransactionIndexInBlock(pub u32);
-
-#[derive(
-    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct TransactionNonce(pub StarkHash);
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct TransactionSignature(pub Vec<StarkHash>);
