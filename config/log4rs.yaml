@@ -1,0 +1,44 @@
+refresh_rate: 30 seconds
+
+appenders:
+  stdout:
+    kind: console
+    encoder:
+      pattern: "{d(%Y-%m-%d %H:%M:%S%.3f)} {l} {t} - {m}{n}"
+  sn_client:
+    kind: file
+    path: "logs/sn_client.log"
+    encoder:
+      pattern: "{d(%Y-%m-%d %H:%M:%S%.3f)} {l} - {m}{n}"
+  gateway:
+    kind: file
+    path: "logs/gateway.log"
+    encoder:
+      pattern: "{d(%Y-%m-%d %H:%M:%S%.3f)} {l} - {m}{n}"
+  sync:
+    kind: file
+    path: "logs/sync.log"
+    encoder:
+      pattern: "{d(%Y-%m-%d %H:%M:%S%.3f)} {l} {t} - {m}{n}"
+
+root:
+  level: info
+  appenders:
+    - stdout
+
+loggers:
+  papyrus_lib::starknet_client:
+    level: debug
+    appenders:
+      - sn_client
+    additive: false
+  papyrus_lib::gateway:
+    level: debug
+    appenders:
+      - gateway
+    additive: false
+  papyrus_lib::sync:
+    level: debug
+    appenders:
+      - sync
+    additive: false
