@@ -11,7 +11,7 @@ use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::{ErrorObject, INTERNAL_ERROR_MSG};
 use jsonrpsee::ws_server::types::error::CallError;
 use jsonrpsee::ws_server::{WsServerBuilder, WsServerHandle};
-use log::error;
+use log::{error, info};
 
 use crate::starknet::BlockNumber;
 use crate::storage::components::{BlockStorageReader, HeaderStorageReader};
@@ -97,8 +97,10 @@ impl JsonRpcServer for JsonRpcServerImpl {
 pub async fn run_server(
     storage_reader: BlockStorageReader,
 ) -> anyhow::Result<(SocketAddr, WsServerHandle)> {
+    info!("Starting gateway.");
     let server = WsServerBuilder::default().build(SERVER_IP).await?;
     let addr = server.local_addr()?;
     let handle = server.start(JsonRpcServerImpl { storage_reader }.into_rpc())?;
+    info!("Gateway is running - {}.", addr);
     Ok((addr, handle))
 }
