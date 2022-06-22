@@ -11,10 +11,8 @@ use crate::starknet::{
 use super::*;
 
 // TODO(dan): use SN structs once avilable & sort.
-use super::objects::block::{BlockHash as OtherBlockHash, StateDiff, StorageKey, StorageValue};
-use super::objects::block::{BlockStateUpdate, ContractAddress as OtherContractAddress};
-use super::objects::block::{GlobalRoot as OtherGlobalRoot, StorageEntry};
-use super::objects::StarkHash as OtherStarkHash;
+use super::objects::block::{BlockStateUpdate, StateDiff, StorageEntry, StorageKey, StorageValue};
+
 use crate::starknet_client::objects::block::DeployedContract;
 use crate::starknet_client::objects::transaction::ClassHash;
 #[tokio::test]
@@ -71,19 +69,19 @@ async fn test_state_update() {
         .unwrap();
     mock.assert();
     let expected_state_update = BlockStateUpdate {
-        block_hash: OtherBlockHash(OtherStarkHash(
+        block_hash: BlockHash(StarkHash(
             bytes_from_hex_str::<32, true>(
                 "0x3f65ef25e87a83d92f32f5e4869a33580f9db47ec980c1ff27bdb5151914de5",
             )
             .unwrap(),
         )),
-        new_root: OtherGlobalRoot(OtherStarkHash(
+        new_root: GlobalRoot(StarkHash(
             bytes_from_hex_str::<32, false>(
                 "02ade8eea6eb6523d22a408a1f035bd351a9a5dce28926ca92d7abb490c0e74a",
             )
             .unwrap(),
         )),
-        old_root: OtherGlobalRoot(OtherStarkHash(
+        old_root: GlobalRoot(StarkHash(
             bytes_from_hex_str::<32, false>(
                 "0465b219d93bcb2776aa3abb009423be3e2d04dba6453d7e027830740cd699a4",
             )
@@ -91,7 +89,7 @@ async fn test_state_update() {
         )),
         state_diff: StateDiff {
             storage_diffs: HashMap::from([(
-                OtherContractAddress(OtherStarkHash(
+                ContractAddress(StarkHash(
                     bytes_from_hex_str::<32, true>(
                         "0x13386f165f065115c1da38d755be261023c32f0134a03a8e66b6bb1e0016014",
                     )
@@ -99,37 +97,37 @@ async fn test_state_update() {
                 )),
                 vec![
                     StorageEntry {
-                        key: StorageKey(OtherStarkHash(
+                        key: StorageKey(StarkHash(
                             bytes_from_hex_str::<32, true>(
                                 "0x3b3a699bb6ef37ff4b9c4e14319c7d8e9c9bdd10ff402d1ebde18c62ae58381",
                             )
                             .unwrap(),
                         )),
-                        value: StorageValue(OtherStarkHash(
+                        value: StorageValue(StarkHash(
                             bytes_from_hex_str::<32, true>("0x61454dd6e5c83621e41b74c").unwrap(),
                         )),
                     },
                     StorageEntry {
-                        key: StorageKey(OtherStarkHash(
+                        key: StorageKey(StarkHash(
                             bytes_from_hex_str::<32, true>(
                                 "0x1557182e4359a1f0c6301278e8f5b35a776ab58d39892581e357578fb287836",
                             )
                             .unwrap(),
                         )),
-                        value: StorageValue(OtherStarkHash(
+                        value: StorageValue(StarkHash(
                             bytes_from_hex_str::<32, true>("0x79dd8085e3e5a96ea43e7d").unwrap(),
                         )),
                     },
                 ],
             )]),
             deployed_contracts: vec![DeployedContract {
-                address: OtherContractAddress(OtherStarkHash(
+                address: ContractAddress(StarkHash(
                     bytes_from_hex_str::<32, true>(
                         "0x3e10411edafd29dfe6d427d03e35cb261b7a5efeee61bf73909ada048c029b9",
                     )
                     .unwrap(),
                 )),
-                class_hash: ClassHash(OtherStarkHash(
+                class_hash: ClassHash(StarkHash(
                     bytes_from_hex_str::<32, false>(
                         "071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64",
                     )
