@@ -20,6 +20,7 @@ pub struct CentralSource {
 impl CentralSource {
     pub fn new(config: CentralSourceConfig) -> Result<CentralSource, ClientCreationError> {
         let starknet_client = StarknetClient::new(&config.url)?;
+        info!("Central source is configured with {}.", config.url);
         Ok(CentralSource { starknet_client })
     }
 
