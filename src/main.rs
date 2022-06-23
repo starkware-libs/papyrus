@@ -1,5 +1,7 @@
 use std::fs;
 
+use log::info;
+
 use papyrus_lib::gateway::run_server;
 use papyrus_lib::storage::components::{StorageComponents, StorageConfig};
 use papyrus_lib::sync::{CentralSource, CentralSourceConfig, StateSync};
@@ -13,9 +15,10 @@ struct Config {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    env_logger::init();
+    log4rs::init_file("config/log4rs.yaml", Default::default()).unwrap();
+    info!("Booting up.");
 
-    let config_path = "config.ron";
+    let config_path = "config/config.ron";
     let config_contents =
         fs::read_to_string(config_path).expect("Something went wrong reading the file");
     let config: Config = ron::from_str(&config_contents)?;
