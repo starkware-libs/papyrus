@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::serde_utils::{HexAsBytes, NonPrefixedHexAsBytes, PrefixedHexAsBytes};
-use super::{ContractAddress, StarkHash};
+use super::{ContractAddress, StarkHash, Transaction, TransactionReceipt};
 
 // TODO(spapini): Verify the invariant that it is in range.
 #[derive(
@@ -83,6 +83,23 @@ pub struct TransactionsCommitment(pub ListCommitment);
 )]
 pub struct EventsCommitment(pub ListCommitment);
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub enum BlockStatus {
+    #[serde(rename = "PENDING")]
+    Pending,
+    #[serde(rename = "ACCEPTED_ON_L2")]
+    AcceptedOnL2,
+    #[serde(rename = "ACCEPTED_ON_L1")]
+    AcceptedOnL1,
+    #[serde(rename = "REJECTED")]
+    Rejected,
+}
+impl Default for BlockStatus {
+    fn default() -> Self {
+        BlockStatus::AcceptedOnL2
+    }
+}
+
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
@@ -97,4 +114,8 @@ pub struct BlockHeader {
     // TODO(dan): add missing commitments.
 }
 
-pub struct BlockBody {}
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct BlockBody {
+    pub transactions: Vec<Transaction>,
+    pub transaction_receipts: Vec<TransactionReceipt>,
+}
