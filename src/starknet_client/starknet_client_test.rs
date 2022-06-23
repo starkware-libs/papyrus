@@ -4,17 +4,14 @@ use mockito::mock;
 
 use crate::starknet::serde_utils::bytes_from_hex_str;
 use crate::starknet::{
-    BlockHash, BlockHeader, BlockNumber, BlockTimestamp, ContractAddress, GasPrice, GlobalRoot,
-    StarkHash,
+    BlockHash, BlockHeader, BlockNumber, BlockTimestamp, ClassHash, ContractAddress,
+    DeployedContract, GasPrice, GlobalRoot, StarkHash, StorageEntry, StorageKey,
 };
 
 use super::*;
 
 // TODO(dan): use SN structs once avilable & sort.
-use super::objects::block::{BlockStateUpdate, StateDiff, StorageEntry, StorageKey, StorageValue};
-
-use crate::starknet_client::objects::block::DeployedContract;
-use crate::starknet_client::objects::transaction::ClassHash;
+use super::objects::block::{BlockStateUpdate, StateDiff};
 #[tokio::test]
 async fn get_block_number() {
     let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
@@ -103,9 +100,9 @@ async fn test_state_update() {
                             )
                             .unwrap(),
                         )),
-                        value: StorageValue(StarkHash(
+                        value: StarkHash(
                             bytes_from_hex_str::<32, true>("0x61454dd6e5c83621e41b74c").unwrap(),
-                        )),
+                        ),
                     },
                     StorageEntry {
                         key: StorageKey(StarkHash(
@@ -114,9 +111,9 @@ async fn test_state_update() {
                             )
                             .unwrap(),
                         )),
-                        value: StorageValue(StarkHash(
+                        value: StarkHash(
                             bytes_from_hex_str::<32, true>("0x79dd8085e3e5a96ea43e7d").unwrap(),
-                        )),
+                        ),
                     },
                 ],
             )]),
