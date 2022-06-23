@@ -2,7 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::starknet::{
     CallData, ClassHash, ContractAddress, EntryPointSelector, EthAddress, Event, Fee,
-    L1ToL2Payload, L2ToL1Payload, Nonce, StarkHash, TransactionHash,
+    L1ToL2Payload, L2ToL1Payload, Nonce, StarkHash, TransactionHash, TransactionSignature,
+    TransactionVersion,
 };
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -104,9 +105,6 @@ pub struct L2ToL1Message {
 )]
 pub struct TransactionIndexInBlock(pub u32);
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct TransactionSignature(pub Vec<StarkHash>);
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum TransactionType {
     #[serde(rename(deserialize = "DECLARE", serialize = "DECLARE"))]
@@ -126,8 +124,3 @@ impl Default for TransactionType {
         TransactionType::InvokeFunction
     }
 }
-
-#[derive(
-    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct TransactionVersion(pub StarkHash);

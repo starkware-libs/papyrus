@@ -1,11 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{ContractAddress, StarkFelt, StarkHash};
-
-#[derive(
-    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct ClassHash(pub StarkHash);
+use super::{ClassHash, ContractAddress, StarkFelt};
 
 // Invariant: Addresses are strictly increasing.
 // TODO(spapini): Enforce the invariant.
