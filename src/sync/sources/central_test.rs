@@ -11,15 +11,19 @@ use crate::starknet_client::{Block, ClientError};
 
 use super::*;
 
-#[tokio::test]
-async fn stream_block_headers() {
+fn create_test_central_source() -> CentralSource {
     let config = CentralSourceConfig {
         url: mockito::server_url(),
         retry_base_millis: 10,
         retry_max_delay_millis: 1000,
         max_retries: 4,
     };
-    let mut central_source = CentralSource::new(config).unwrap();
+    CentralSource::new(config).unwrap()
+}
+
+#[tokio::test]
+async fn stream_block_headers() {
+    let mut central_source = create_test_central_source();
 
     // Prepare mock calls.
     let mock_last = mock("GET", "/feeder_gateway/get_last_batch_id")
@@ -53,13 +57,7 @@ async fn stream_block_headers() {
 
 #[tokio::test]
 async fn test_retry() {
-    let config = CentralSourceConfig {
-        url: mockito::server_url(),
-        retry_base_millis: 10,
-        retry_max_delay_millis: 1000,
-        max_retries: 4,
-    };
-    let central_source = CentralSource::new(config).unwrap();
+    let central_source = create_test_central_source();
 
     // Fails on all retries.
     let time = SystemTime::now();
@@ -71,8 +69,8 @@ async fn test_retry() {
         })
         .await
         .unwrap_err();
-    assert_matches!(err, ClientError::BadResponse { status } if status == StatusCode::TOO_MANY_REQUESTS);
     assert!((2110..2200).contains(&time.elapsed().unwrap().as_millis()));
+    assert_matches!(err, ClientError::BadResponse { status } if status == StatusCode::TOO_MANY_REQUESTS);
 
     // Succeeds on the second attempt.
     let count = Arc::new(Mutex::new(0));
