@@ -1,4 +1,4 @@
-use crate::starknet::{BlockHeader, BlockNumber};
+use crate::starknet::{BlockHash, BlockHeader, BlockNumber};
 use crate::storage::components::block::test_utils::get_test_storage;
 use crate::storage::components::{HeaderStorageReader, HeaderStorageWriter};
 
@@ -19,6 +19,14 @@ async fn test_append_header() {
         }
     );
 
+    // Check block hash.
+    assert_eq!(
+        reader
+            .get_block_number_by_hash(&BlockHash::default())
+            .unwrap(),
+        None
+    );
+
     // Append with the right block number.
     writer
         .append_header(BlockNumber(0), &BlockHeader::default())
@@ -29,4 +37,12 @@ async fn test_append_header() {
     assert_eq!(marker, BlockNumber(1));
     let header = reader.get_block_header(BlockNumber(0)).unwrap();
     assert_eq!(header, Some(BlockHeader::default()));
+
+    // Check block hash.
+    assert_eq!(
+        reader
+            .get_block_number_by_hash(&BlockHash::default())
+            .unwrap(),
+        Some(BlockNumber(0))
+    );
 }
