@@ -14,7 +14,16 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v1
       - run: |
-          cargo test -- --include-ignored
+          cargo test
+
+  integration-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v1
+      - run: |
+          cargo run --bin starknet_client
 
   rustfmt:
     runs-on: ubuntu-latest

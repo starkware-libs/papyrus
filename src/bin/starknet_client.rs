@@ -2,9 +2,8 @@ use papyrus_lib::config::load_config;
 use papyrus_lib::starknet::BlockNumber;
 use papyrus_lib::starknet_client::StarknetClient;
 
-#[tokio::test]
-#[ignore]
-async fn basic_methods() {
+#[tokio::main]
+async fn main() {
     let config = load_config("config/config.ron").unwrap();
     let starknet_client = StarknetClient::new(&config.central.url).unwrap();
     let _latest_block_number = starknet_client.block_number().await.unwrap();
