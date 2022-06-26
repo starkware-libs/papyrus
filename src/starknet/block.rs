@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::serde_utils::{HexAsBytes, NonPrefixedHexAsBytes, PrefixedHexAsBytes};
-use super::{ContractAddress, StarkHash, Transaction, TransactionReceipt};
+use super::{ContractAddress, StarkHash};
 
 // TODO(spapini): Verify the invariant that it is in range.
 #[derive(
@@ -112,10 +112,4 @@ pub struct BlockHeader {
     pub sequencer: ContractAddress,
     pub timestamp: BlockTimestamp,
     // TODO(dan): add missing commitments.
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct BlockBody {
-    pub transactions: Vec<Transaction>,
-    pub transaction_receipts: Vec<TransactionReceipt>,
 }
