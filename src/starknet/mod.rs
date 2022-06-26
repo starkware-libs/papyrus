@@ -12,8 +12,8 @@ pub use self::block::{
 pub use self::core::{ClassHash, ContractAddress, Nonce};
 pub use self::hash::{StarkFelt, StarkHash};
 pub use self::state::{
-    DeployedContract, IndexedDeployedContract, StateDiffForward, StorageDiff, StorageEntry,
-    StorageKey,
+    DeployedContract, IndexedDeployedContract, StateDiffForward, StateNumber, StorageDiff,
+    StorageEntry, StorageKey,
 };
 pub use self::transaction::{
     CallData, EntryPointSelector, EthAddress, Event, Fee, L1ToL2Payload, L2ToL1Payload,
