@@ -41,7 +41,7 @@ pub struct EntryPointSelector(pub StarkHash);
 #[derive(
     Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct EntryPointOffset(pub StarkFelt);
+pub struct EntryPointOffset(pub u128);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct EntryPoint {
@@ -69,15 +69,16 @@ pub struct L2ToL1Payload(pub Vec<StarkFelt>);
 #[derive(
     Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct TransactionVersion(pub StarkHash);
+pub struct TransactionVersion(pub u64);
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct TransactionSignature(pub Vec<StarkHash>);
+pub struct TransactionSignature(pub Vec<StarkFelt>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ContractClass {
     pub class_hash: ClassHash,
     pub program: ProgramCode,
+    /// The selector of each entry point is a unique identifier in the program.
     pub constructor_entry_points: Vec<EntryPoint>,
     pub external_entry_points: Vec<EntryPoint>,
     pub l1_handler_entry_points: Vec<EntryPoint>,
