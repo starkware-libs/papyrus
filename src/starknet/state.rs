@@ -15,14 +15,6 @@ pub struct StateDiffForward {
     pub storage_diffs: Vec<StorageDiff>,
 }
 
-// Invariant: Addresses are strictly increasing. In particular, no address appears twice.
-// TODO(spapini): Enforce the invariant.
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct StateDiffBackward {
-    pub deployed_contracts: Vec<ContractAddress>,
-    pub storage_diffs: Vec<StorageDiff>,
-}
-
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeployedContract {
     pub address: ContractAddress,
@@ -33,8 +25,8 @@ pub struct DeployedContract {
 // TODO(spapini): Enforce the invariant.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StorageDiff {
-    address: ContractAddress,
-    diff: Vec<StorageEntry>,
+    pub address: ContractAddress,
+    pub diff: Vec<StorageEntry>,
 }
 
 // TODO: Invariant: this is in range.

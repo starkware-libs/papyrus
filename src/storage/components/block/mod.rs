@@ -1,4 +1,5 @@
 mod header;
+mod state;
 #[cfg(test)]
 mod test_utils;
 
@@ -29,6 +30,7 @@ pub type BlockStorageResult<V> = std::result::Result<V, BlockStorageError>;
 pub struct Tables {
     markers: TableIdentifier,
     headers: TableIdentifier,
+    state_diffs: TableIdentifier,
 }
 #[derive(Clone)]
 pub struct BlockStorageReader {
@@ -47,6 +49,7 @@ pub fn open_block_storage(
     let tables = Arc::new(Tables {
         markers: db_writer.create_table("markers")?,
         headers: db_writer.create_table("headers")?,
+        state_diffs: db_writer.create_table("state_diffs")?,
     });
     let reader = BlockStorageReader {
         db_reader,

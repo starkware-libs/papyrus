@@ -2,14 +2,14 @@
 #[path = "hash_test.rs"]
 mod hash_test;
 
+use std::fmt::Debug;
+
 use serde::{Deserialize, Serialize};
 
 use super::serde_utils::{
     bytes_from_hex_str, DeserializationError, HexAsBytes, PrefixedHexAsBytes,
 };
-#[derive(
-    Debug, Copy, Clone, PartialEq, Eq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
+#[derive(Copy, Clone, PartialEq, Eq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(
     from = "PrefixedHexAsBytes<32_usize>",
     into = "PrefixedHexAsBytes<32_usize>"
@@ -23,6 +23,13 @@ impl From<PrefixedHexAsBytes<32_usize>> for StarkHash {
 impl From<StarkHash> for PrefixedHexAsBytes<32_usize> {
     fn from(val: StarkHash) -> Self {
         HexAsBytes(val.0)
+    }
+}
+
+impl Debug for StarkHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = format!("0x{}", hex::encode(&self.0));
+        f.debug_tuple("StarkHash").field(&s).finish()
     }
 }
 
