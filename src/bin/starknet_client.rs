@@ -11,6 +11,7 @@ async fn main() {
         .block_header(BlockNumber(123456))
         .await
         .unwrap();
+    assert!(false);
     // TODO(dan): Add state_update once Starknet sequencer returns the class_hash in
     // get_state_update deployed_contracts prefixed.
 }
