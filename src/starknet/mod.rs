@@ -6,17 +6,15 @@ mod state;
 mod transaction;
 
 pub use self::block::{
-    BlockBody, BlockHash, BlockHeader, BlockNumber, BlockTimestamp, EventsCommitment, GasPrice,
-    GlobalRoot, TransactionsCommitment,
+    BlockHash, BlockHeader, BlockNumber, BlockTimestamp, EventsCommitment, GasPrice, GlobalRoot,
+    TransactionsCommitment,
 };
-pub use self::core::ContractAddress;
+pub use self::core::{ClassHash, ContractAddress, Nonce};
 pub use self::hash::{StarkFelt, StarkHash};
-pub use self::state::{
-    ClassHash, DeployedContract, StateDiffForward, StorageDiff, StorageEntry, StorageKey,
-};
+pub use self::state::{DeployedContract, StateDiffForward, StorageDiff, StorageEntry, StorageKey};
 pub use self::transaction::{
-    CallData, EntryPointSelector, EthAddress, Event, Fee, L1ToL2Payload, L2ToL1Payload, Nonce,
-    TransactionHash,
+    CallData, EntryPointSelector, EthAddress, Event, Fee, L1ToL2Payload, L2ToL1Payload,
+    Transaction, TransactionHash, TransactionReceipt, TransactionSignature, TransactionVersion,
 };
 
 #[allow(unused_imports)]
