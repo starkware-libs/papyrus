@@ -9,7 +9,7 @@ use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::starknet::{BlockHeader, BlockNumber};
+use crate::starknet::BlockNumber;
 
 pub use self::objects::block::{Block, BlockStateUpdate};
 
@@ -87,24 +87,13 @@ impl StarknetClient {
         Ok(BlockNumber(serde_json::from_str(&block_number)?))
     }
 
-    pub async fn block_header(
-        &self,
-        block_number: BlockNumber,
-    ) -> Result<BlockHeader, ClientError> {
+    pub async fn block(&self, block_number: BlockNumber) -> Result<Block, ClientError> {
         let mut url = self.urls.get_block.clone();
         url.query_pairs_mut()
             .append_pair("blockNumber", &block_number.0.to_string());
         let raw_block = self.request(url).await?;
         let block: Block = serde_json::from_str(&raw_block)?;
-        Ok(BlockHeader {
-            block_hash: block.block_hash,
-            parent_hash: block.parent_block_hash,
-            number: block.block_number,
-            gas_price: block.gas_price,
-            state_root: block.state_root,
-            sequencer: block.sequencer_address,
-            timestamp: block.timestamp,
-        })
+        Ok(block)
     }
 
     pub async fn state_update(
@@ -119,6 +108,7 @@ impl StarknetClient {
         let state_update: BlockStateUpdate = serde_json::from_str(&raw_state_update)?;
         Ok(state_update)
     }
+
     async fn request(&self, url: Url) -> Result<String, ClientError> {
         let response = self.internal_client.get(url).send().await?;
         match response.status() {

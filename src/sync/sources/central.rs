@@ -37,11 +37,20 @@ impl CentralSource {
         let mut current_block_number = initial_block_number;
         stream! {
             while current_block_number <= up_to_block_number {
-                let res = self.starknet_client.block_header(current_block_number).await;
+                let res = self.starknet_client.block(current_block_number).await;
                 match res {
-                    Ok(block_header) => {
-                        info!("Received new header: {}.", block_header.number.0);
-                        yield (current_block_number, block_header);
+                    Ok(block) => {
+                        info!("Received new block: {}.", block.block_number.0);
+                        let header = BlockHeader {
+                            block_hash: block.block_hash,
+                            parent_hash: block.parent_block_hash,
+                            number: block.block_number,
+                            gas_price: block.gas_price,
+                            state_root: block.state_root,
+                            sequencer: block.sequencer_address,
+                            timestamp: block.timestamp,
+                        };
+                        yield (current_block_number, header);
                         current_block_number = current_block_number.next();
                     },
                     Err(err) => {
