@@ -6,13 +6,14 @@ use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use tokio_stream::Stream;
 
-use crate::starknet::{BlockHeader, BlockNumber};
+use crate::starknet::{BlockHeader, BlockNumber, DeployedContract, StateDiffForward, StorageDiff};
 use crate::starknet_client::{ClientCreationError, ClientError, StarknetClient};
 
 #[derive(Serialize, Deserialize)]
 pub struct CentralSourceConfig {
     pub url: String,
 }
+#[derive(Clone)]
 pub struct CentralSource {
     starknet_client: StarknetClient,
 }
@@ -26,6 +27,38 @@ impl CentralSource {
 
     pub async fn get_block_number(&mut self) -> Result<BlockNumber, ClientError> {
         self.starknet_client.block_number().await
+    }
+
+    pub async fn get_state_update(
+        &self,
+        block_number: BlockNumber,
+    ) -> Result<StateDiffForward, ClientError> {
+        let res = self.starknet_client.state_update(block_number).await;
+        match res {
+            Ok(state_update) => {
+                let deployed_contracts = state_update
+                    .state_diff
+                    .deployed_contracts
+                    .iter()
+                    .map(|x| DeployedContract::from(*x))
+                    .collect();
+                let storage_diffs =
+                    Vec::from_iter(state_update.state_diff.storage_diffs.iter().map(
+                        |(&address, diff)| {
+                            let diff = diff.clone();
+                            StorageDiff { address, diff }
+                        },
+                    ));
+                Ok(StateDiffForward {
+                    deployed_contracts,
+                    storage_diffs,
+                })
+            }
+            Err(err) => {
+                error!("{:?}", err);
+                Err(err)
+            }
+        }
     }
 
     // TODO(dan): return all block data.

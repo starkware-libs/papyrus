@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 use serde::{Deserialize, Serialize};
 
 use super::serde_utils::{HexAsBytes, NonPrefixedHexAsBytes, PrefixedHexAsBytes};
@@ -44,6 +46,14 @@ impl BlockNumber {
         }
     }
 }
+impl Add<u64> for BlockNumber {
+    type Output = Self;
+
+    fn add(self, other: u64) -> Self {
+        BlockNumber(self.0 + other)
+    }
+}
+
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]

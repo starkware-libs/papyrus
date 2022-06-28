@@ -3,11 +3,14 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::starknet::{
-    BlockHash, BlockNumber, BlockTimestamp, ContractAddress, DeployedContract, GasPrice,
-    GlobalRoot, StorageEntry,
+    BlockHash, BlockNumber, BlockTimestamp, ContractAddress,
+    DeployedContract as OtherDeployedContract, GasPrice, GlobalRoot, StorageEntry,
 };
 
-use super::transaction::{Transaction, TransactionReceipt};
+use super::{
+    transaction::{Transaction, TransactionReceipt},
+    ClassHash,
+};
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
 pub struct Block {
@@ -61,4 +64,20 @@ pub struct StateDiff {
     // TODO(dan): define corresponding struct and handle properly.
     #[serde(default)]
     pub declared_contracts: Vec<serde_json::Value>,
+}
+
+#[derive(
+    Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord, Copy,
+)]
+pub struct DeployedContract {
+    pub address: ContractAddress,
+    pub class_hash: ClassHash,
+}
+impl From<DeployedContract> for OtherDeployedContract {
+    fn from(val: DeployedContract) -> Self {
+        OtherDeployedContract {
+            address: val.address,
+            class_hash: val.class_hash.into(),
+        }
+    }
 }

@@ -4,15 +4,17 @@ use mockito::mock;
 
 use crate::starknet::serde_utils::bytes_from_hex_str;
 use crate::starknet::{
-    BlockHash, BlockNumber, BlockTimestamp, ClassHash, ContractAddress, DeployedContract, GasPrice,
-    GlobalRoot, StarkHash, StorageEntry, StorageKey,
+    BlockHash, BlockNumber, BlockTimestamp, ContractAddress, GasPrice, GlobalRoot, StarkHash,
+    StorageEntry, StorageKey,
 };
 use crate::starknet_client::objects::block::BlockStatus;
 
 use super::*;
 
 // TODO(dan): use SN structs once avilable & sort.
+use super::objects::block::DeployedContract as OtherDeployedContract;
 use super::objects::block::{BlockStateUpdate, StateDiff};
+use super::objects::ClassHash as OtherClassHash;
 #[tokio::test]
 async fn get_block_number() {
     let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
@@ -52,7 +54,7 @@ async fn test_state_update() {
             [
                 {
                     "address": "0x3e10411edafd29dfe6d427d03e35cb261b7a5efeee61bf73909ada048c029b9",
-                    "class_hash": "0x071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64"
+                    "class_hash": "071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64"
                 }
             ]
         }
@@ -118,14 +120,14 @@ async fn test_state_update() {
                     },
                 ],
             )]),
-            deployed_contracts: vec![DeployedContract {
+            deployed_contracts: vec![OtherDeployedContract {
                 address: ContractAddress(StarkHash(
                     bytes_from_hex_str::<32, true>(
                         "0x3e10411edafd29dfe6d427d03e35cb261b7a5efeee61bf73909ada048c029b9",
                     )
                     .unwrap(),
                 )),
-                class_hash: ClassHash(StarkHash(
+                class_hash: OtherClassHash(StarkHash(
                     bytes_from_hex_str::<32, false>(
                         "071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64",
                     )

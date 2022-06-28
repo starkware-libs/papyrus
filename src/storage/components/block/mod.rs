@@ -10,6 +10,7 @@ use std::sync::Arc;
 use crate::storage::db::{open_env, DbError, DbReader, DbWriter, TableIdentifier};
 
 pub use self::header::{HeaderStorageReader, HeaderStorageWriter};
+pub use self::state::{StateStorageReader, StateStorageWriter};
 
 #[derive(thiserror::Error, Debug)]
 pub enum BlockStorageError {
