@@ -4,9 +4,9 @@ use mockito::mock;
 
 use crate::starknet::serde_utils::bytes_from_hex_str;
 use crate::starknet::{
-    BlockHash, BlockNumber, BlockTimestamp, CallData, ClassHash, ContractAddress, DeployedContract,
-    EntryPointSelector, Fee, GasPrice, GlobalRoot, StarkHash, StorageEntry, StorageKey,
-    TransactionHash, TransactionSignature,
+    shash, BlockHash, BlockNumber, BlockTimestamp, CallData, ClassHash, ContractAddress,
+    DeployedContract, EntryPointSelector, Fee, GasPrice, GlobalRoot, StarkHash, StorageEntry,
+    StorageKey, TransactionHash, TransactionSignature,
 };
 
 // TODO(dan): use SN structs once available & sort.
@@ -70,11 +70,8 @@ async fn test_state_update() {
         .unwrap();
     mock.assert();
     let expected_state_update = BlockStateUpdate {
-        block_hash: BlockHash(StarkHash(
-            bytes_from_hex_str::<32, true>(
-                "0x3f65ef25e87a83d92f32f5e4869a33580f9db47ec980c1ff27bdb5151914de5",
-            )
-            .unwrap(),
+        block_hash: BlockHash(shash!(
+            "0x3f65ef25e87a83d92f32f5e4869a33580f9db47ec980c1ff27bdb5151914de5"
         )),
         new_root: GlobalRoot(StarkHash(
             bytes_from_hex_str::<32, false>(
@@ -90,43 +87,27 @@ async fn test_state_update() {
         )),
         state_diff: StateDiff {
             storage_diffs: HashMap::from([(
-                ContractAddress(StarkHash(
-                    bytes_from_hex_str::<32, true>(
-                        "0x13386f165f065115c1da38d755be261023c32f0134a03a8e66b6bb1e0016014",
-                    )
-                    .unwrap(),
+                ContractAddress(shash!(
+                    "0x13386f165f065115c1da38d755be261023c32f0134a03a8e66b6bb1e0016014"
                 )),
                 vec![
                     StorageEntry {
-                        key: StorageKey(StarkHash(
-                            bytes_from_hex_str::<32, true>(
-                                "0x3b3a699bb6ef37ff4b9c4e14319c7d8e9c9bdd10ff402d1ebde18c62ae58381",
-                            )
-                            .unwrap(),
+                        key: StorageKey(shash!(
+                            "0x3b3a699bb6ef37ff4b9c4e14319c7d8e9c9bdd10ff402d1ebde18c62ae58381"
                         )),
-                        value: StarkHash(
-                            bytes_from_hex_str::<32, true>("0x61454dd6e5c83621e41b74c").unwrap(),
-                        ),
+                        value: shash!("0x61454dd6e5c83621e41b74c"),
                     },
                     StorageEntry {
-                        key: StorageKey(StarkHash(
-                            bytes_from_hex_str::<32, true>(
-                                "0x1557182e4359a1f0c6301278e8f5b35a776ab58d39892581e357578fb287836",
-                            )
-                            .unwrap(),
+                        key: StorageKey(shash!(
+                            "0x1557182e4359a1f0c6301278e8f5b35a776ab58d39892581e357578fb287836"
                         )),
-                        value: StarkHash(
-                            bytes_from_hex_str::<32, true>("0x79dd8085e3e5a96ea43e7d").unwrap(),
-                        ),
+                        value: shash!("0x79dd8085e3e5a96ea43e7d"),
                     },
                 ],
             )]),
             deployed_contracts: vec![DeployedContract {
-                address: ContractAddress(StarkHash(
-                    bytes_from_hex_str::<32, true>(
-                        "0x3e10411edafd29dfe6d427d03e35cb261b7a5efeee61bf73909ada048c029b9",
-                    )
-                    .unwrap(),
+                address: ContractAddress(shash!(
+                    "0x3e10411edafd29dfe6d427d03e35cb261b7a5efeee61bf73909ada048c029b9"
                 )),
                 class_hash: ClassHash(StarkHash(
                     bytes_from_hex_str::<32, false>(
@@ -182,25 +163,16 @@ async fn get_block() {
     let block = starknet_client.block(BlockNumber(20)).await.unwrap();
     mock.assert();
     let expected_block = Block {
-        block_hash: BlockHash(StarkHash(
-            bytes_from_hex_str::<32, true>(
-                "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483",
-            )
-            .unwrap(),
+        block_hash: BlockHash(shash!(
+            "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"
         )),
-        parent_block_hash: BlockHash(StarkHash(
-            bytes_from_hex_str::<32, true>(
-                "0x7d74dfc2bd87ac89447a56c51abc9b6d9aca1de21cc25fd9922f3a3779ec72d",
-            )
-            .unwrap(),
+        parent_block_hash: BlockHash(shash!(
+            "0x7d74dfc2bd87ac89447a56c51abc9b6d9aca1de21cc25fd9922f3a3779ec72d"
         )),
         gas_price: GasPrice(0x174876e800),
         block_number: BlockNumber(20),
-        sequencer_address: ContractAddress(StarkHash(
-            bytes_from_hex_str::<32, true>(
-                "0x37b2cd6baaa515f520383bee7b7094f892f4c770695fc329a8973e841a971ae",
-            )
-            .unwrap(),
+        sequencer_address: ContractAddress(shash!(
+            "0x37b2cd6baaa515f520383bee7b7094f892f4c770695fc329a8973e841a971ae"
         )),
         status: BlockStatus::AcceptedOnL1,
         timestamp: BlockTimestamp(1636991716),
