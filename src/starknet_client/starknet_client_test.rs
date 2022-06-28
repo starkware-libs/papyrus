@@ -4,15 +4,18 @@ use mockito::mock;
 
 use crate::starknet::serde_utils::bytes_from_hex_str;
 use crate::starknet::{
-    BlockHash, BlockNumber, BlockTimestamp, ClassHash, ContractAddress, DeployedContract, GasPrice,
-    GlobalRoot, StarkHash, StorageEntry, StorageKey,
+    BlockHash, BlockNumber, BlockTimestamp, CallData, ClassHash, ContractAddress, DeployedContract,
+    EntryPointSelector, Fee, GasPrice, GlobalRoot, StarkHash, StorageEntry, StorageKey,
+    TransactionHash, TransactionSignature,
 };
-use crate::starknet_client::objects::block::BlockStatus;
 
-use super::*;
+// TODO(dan): use SN structs once available & sort.
+use super::objects::block::{BlockStateUpdate, BlockStatus, StateDiff};
+use super::objects::transaction::{
+    EntryPointType, InvokeTransaction, Transaction, TransactionType,
+};
+use super::{Block, ClientError, StarknetClient, StarknetError, StarknetErrorCode};
 
-// TODO(dan): use SN structs once avilable & sort.
-use super::objects::block::{BlockStateUpdate, StateDiff};
 #[tokio::test]
 async fn get_block_number() {
     let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
@@ -153,7 +156,24 @@ async fn get_block() {
             "status": "ACCEPTED_ON_L1",
             "gas_price": "0x174876e800",
             "transaction_receipts": [],
-            "transactions": []
+            "transactions": [
+                {
+                    "contract_address": "0x639897809c39093765f34d76776b8d081904ab30184f694f20224723ef07863",
+                    "entry_point_selector": "0x15d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad",
+                    "entry_point_type": "EXTERNAL",
+                    "calldata": [
+                        "0x3",
+                        "0x4bc8ac16658025bff4a3bd0760e84fcf075417a4c55c6fae716efdd8f1ed26c"
+                    ],
+                    "signature": [
+                        "0xbe0d6cdf1333a316ab03b7f057ee0c66716d3d983fa02ad4c46389cbe3bb75",
+                        "0x396ec012117a44f204e3b501217502c9b261ef5d3da341757026df844a99d4a"
+                    ],
+                    "transaction_hash": "0xb7bcb42e0cfb09e38a2c21061f72d36271cc8cf13647938d4e41066c051ea8",
+                    "max_fee": "0x6e0917047fd8",
+                    "type": "INVOKE_FUNCTION"
+                }
+            ]
         }"#;
     let mock = mock("GET", "/feeder_gateway/get_block?blockNumber=20")
         .with_status(200)
@@ -190,7 +210,52 @@ async fn get_block() {
             )
             .unwrap(),
         )),
-        transactions: vec![],
+        transactions: vec![Transaction::Invoke(InvokeTransaction {
+            calldata: CallData(vec![
+                (StarkHash(bytes_from_hex_str::<32, true>("0x3").unwrap())),
+                (StarkHash(
+                    bytes_from_hex_str::<32, true>(
+                        "0x4bc8ac16658025bff4a3bd0760e84fcf075417a4c55c6fae716efdd8f1ed26c",
+                    )
+                    .unwrap(),
+                )),
+            ]),
+            contract_address: ContractAddress(StarkHash(
+                bytes_from_hex_str::<32, true>(
+                    "0x639897809c39093765f34d76776b8d081904ab30184f694f20224723ef07863",
+                )
+                .unwrap(),
+            )),
+            entry_point_selector: EntryPointSelector(StarkHash(
+                bytes_from_hex_str::<32, true>(
+                    "0x15d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad",
+                )
+                .unwrap(),
+            )),
+            entry_point_type: EntryPointType::External,
+            max_fee: Fee(0x6e0917047fd8),
+            signature: TransactionSignature(vec![
+                (StarkHash(
+                    bytes_from_hex_str::<32, true>(
+                        "0xbe0d6cdf1333a316ab03b7f057ee0c66716d3d983fa02ad4c46389cbe3bb75",
+                    )
+                    .unwrap(),
+                )),
+                (StarkHash(
+                    bytes_from_hex_str::<32, true>(
+                        "0x396ec012117a44f204e3b501217502c9b261ef5d3da341757026df844a99d4a",
+                    )
+                    .unwrap(),
+                )),
+            ]),
+            transaction_hash: TransactionHash(StarkHash(
+                bytes_from_hex_str::<32, true>(
+                    "0xb7bcb42e0cfb09e38a2c21061f72d36271cc8cf13647938d4e41066c051ea8",
+                )
+                .unwrap(),
+            )),
+            r#type: TransactionType::InvokeFunction,
+        })],
         transaction_receipts: vec![],
     };
     assert_eq!(block, expected_block);
