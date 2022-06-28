@@ -9,7 +9,7 @@ use crate::starknet::{
 
 use super::transaction::{Transaction, TransactionReceipt};
 
-#[derive(Debug, Default, Deserialize, Serialize, Clone)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
 pub struct Block {
     // TODO(dan): Currently should be Option<BlockHash> (due to pending blocks).
     // Figure out if we want this in the internal representation as well.

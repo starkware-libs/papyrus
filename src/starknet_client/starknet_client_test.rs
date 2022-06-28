@@ -4,9 +4,10 @@ use mockito::mock;
 
 use crate::starknet::serde_utils::bytes_from_hex_str;
 use crate::starknet::{
-    BlockHash, BlockHeader, BlockNumber, BlockTimestamp, ClassHash, ContractAddress,
-    DeployedContract, GasPrice, GlobalRoot, StarkHash, StorageEntry, StorageKey,
+    BlockHash, BlockNumber, BlockTimestamp, ClassHash, ContractAddress, DeployedContract, GasPrice,
+    GlobalRoot, StarkHash, StorageEntry, StorageKey,
 };
+use crate::starknet_client::objects::block::BlockStatus;
 
 use super::*;
 
@@ -139,7 +140,7 @@ async fn test_state_update() {
 }
 
 #[tokio::test]
-async fn get_block_header() {
+async fn get_block() {
     let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
     let body = r#"
         {
@@ -158,29 +159,30 @@ async fn get_block_header() {
         .with_status(200)
         .with_body(body)
         .create();
-    let block_header: BlockHeader = starknet_client.block_header(BlockNumber(20)).await.unwrap();
+    let block = starknet_client.block(BlockNumber(20)).await.unwrap();
     mock.assert();
-    let expected_block_header = BlockHeader {
+    let expected_block = Block {
         block_hash: BlockHash(StarkHash(
             bytes_from_hex_str::<32, true>(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483",
             )
             .unwrap(),
         )),
-        parent_hash: BlockHash(StarkHash(
+        parent_block_hash: BlockHash(StarkHash(
             bytes_from_hex_str::<32, true>(
                 "0x7d74dfc2bd87ac89447a56c51abc9b6d9aca1de21cc25fd9922f3a3779ec72d",
             )
             .unwrap(),
         )),
         gas_price: GasPrice(0x174876e800),
-        number: BlockNumber(20),
-        sequencer: ContractAddress(StarkHash(
+        block_number: BlockNumber(20),
+        sequencer_address: ContractAddress(StarkHash(
             bytes_from_hex_str::<32, true>(
                 "0x37b2cd6baaa515f520383bee7b7094f892f4c770695fc329a8973e841a971ae",
             )
             .unwrap(),
         )),
+        status: BlockStatus::AcceptedOnL1,
         timestamp: BlockTimestamp(1636991716),
         state_root: GlobalRoot(StarkHash(
             bytes_from_hex_str::<32, false>(
@@ -188,8 +190,10 @@ async fn get_block_header() {
             )
             .unwrap(),
         )),
+        transactions: vec![],
+        transaction_receipts: vec![],
     };
-    assert_eq!(block_header, expected_block_header);
+    assert_eq!(block, expected_block);
 }
 
 #[tokio::test]
@@ -201,7 +205,7 @@ async fn test_block_not_found_error_code() {
         .with_body(body)
         .create();
     let err = starknet_client
-        .block_header(BlockNumber(2347239846))
+        .block(BlockNumber(2347239846))
         .await
         .unwrap_err();
     mock.assert();

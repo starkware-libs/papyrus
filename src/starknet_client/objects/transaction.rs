@@ -6,7 +6,7 @@ use crate::starknet::{
     TransactionVersion,
 };
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 #[serde(untagged)]
 pub enum Transaction {
     Declare(DeclareTransaction),
@@ -14,7 +14,7 @@ pub enum Transaction {
     Invoke(InvokeTransaction),
 }
 
-#[derive(Debug, Default, Deserialize, Serialize, Clone)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
 pub struct DeclareTransaction {
     pub class_hash: ClassHash,
     pub sender_address: ContractAddress,
@@ -26,7 +26,7 @@ pub struct DeclareTransaction {
     pub r#type: TransactionType,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize, Clone)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
 pub struct DeployTransaction {
     pub contract_address: ContractAddress,
     pub contract_address_salt: ContractAddressSalt,
@@ -36,7 +36,7 @@ pub struct DeployTransaction {
     pub r#type: TransactionType,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize, Clone)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
 pub struct InvokeTransaction {
     pub calldata: CallData,
     pub contract_address: ContractAddress,
@@ -48,7 +48,7 @@ pub struct InvokeTransaction {
     pub r#type: TransactionType,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize, Clone)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
 pub struct TransactionReceipt {
     pub transaction_index: TransactionIndexInBlock,
     pub transaction_hash: TransactionHash,
@@ -83,7 +83,7 @@ impl Default for EntryPointType {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct L1ToL2Nonce(pub StarkHash);
 
-#[derive(Debug, Default, Deserialize, Serialize, Clone)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
 pub struct L1ToL2Message {
     pub from_address: EthAddress,
     pub to_address: ContractAddress,
@@ -93,7 +93,7 @@ pub struct L1ToL2Message {
     pub nonce: L1ToL2Nonce,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize, Clone)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
 pub struct L2ToL1Message {
     pub from_address: ContractAddress,
     pub to_address: EthAddress,
