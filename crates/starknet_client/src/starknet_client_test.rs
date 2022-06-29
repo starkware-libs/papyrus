@@ -19,7 +19,7 @@ use super::objects::transaction::{
     DeclareTransaction, EntryPointType, InvokeTransaction, Transaction, TransactionType,
 };
 use super::objects::NonPrefixedClassHash;
-use super::{Block, StarknetClient};
+use super::{get_retry_test_config, Block, StarknetClient};
 use crate::objects::transaction::{
     BuiltinInstanceCounter, ExecutionResources, L1ToL2Message, L1ToL2Nonce,
     TransactionIndexInBlock, TransactionReceipt,
@@ -86,7 +86,8 @@ fn block_body() -> &'static str {
 
 #[tokio::test]
 async fn get_block_number() {
-    let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
+    let starknet_client =
+        StarknetClient::new(&mockito::server_url(), get_retry_test_config()).unwrap();
 
     // There are blocks in Starknet.
     let mock_block =
@@ -126,7 +127,8 @@ async fn declare_tx_serde() {
 
 #[tokio::test]
 async fn test_state_update() {
-    let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
+    let starknet_client =
+        StarknetClient::new(&mockito::server_url(), get_retry_test_config()).unwrap();
     let body = r#"
     {
         "block_hash": "0x3f65ef25e87a83d92f32f5e4869a33580f9db47ec980c1ff27bdb5151914de5",
@@ -219,7 +221,8 @@ async fn test_state_update() {
 
 #[tokio::test]
 async fn get_block() {
-    let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
+    let starknet_client =
+        StarknetClient::new(&mockito::server_url(), get_retry_test_config()).unwrap();
     let mock = mock("GET", "/feeder_gateway/get_block?blockNumber=20")
         .with_status(200)
         .with_body(block_body())
@@ -305,7 +308,8 @@ async fn get_block() {
 
 #[tokio::test]
 async fn test_block_not_found_error_code() {
-    let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
+    let starknet_client =
+        StarknetClient::new(&mockito::server_url(), get_retry_test_config()).unwrap();
     let body = r#"{"code": "StarknetErrorCode.BLOCK_NOT_FOUND", "message": "Block number 2347239846 was not found."}"#;
     let mock = mock("GET", "/feeder_gateway/get_block?blockNumber=2347239846")
         .with_status(500)
