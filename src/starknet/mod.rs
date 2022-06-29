@@ -1,6 +1,7 @@
 mod block;
 mod core;
 mod hash;
+pub mod retry_utils;
 pub mod serde_utils;
 mod state;
 mod transaction;
