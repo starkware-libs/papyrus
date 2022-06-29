@@ -1,4 +1,6 @@
 mod objects;
+#[path = "retry.rs"]
+mod retry;
 #[cfg(test)]
 mod starknet_client_test;
 #[cfg(test)]
@@ -13,10 +15,12 @@ use starknet_api::{BlockNumber, ClassHash, ContractClass};
 use url::Url;
 
 pub use self::objects::block::{client_to_starknet_api_storage_diff, Block, BlockStateUpdate};
+pub use self::retry::{get_retry_test_config, Retry, RetryConfig};
 
 pub struct StarknetClient {
     urls: StarknetUrls,
     internal_client: Client,
+    retry_config: RetryConfig,
 }
 #[derive(Clone, Debug)]
 struct StarknetUrls {
@@ -56,6 +60,8 @@ pub enum ClientError {
     SerdeError(#[from] serde_json::Error),
     #[error(transparent)]
     StarknetError(#[from] StarknetError),
+    #[error("Retry failed. Response status code: {:?}", status)]
+    RetryFailed { status: reqwest::StatusCode },
 }
 
 const GET_BLOCK_URL: &str = "feeder_gateway/get_block";
@@ -80,15 +86,19 @@ impl Display for StarknetError {
 }
 
 impl StarknetClient {
-    pub fn new(url_str: &str) -> Result<StarknetClient, ClientCreationError> {
+    pub fn new(
+        url_str: &str,
+        retry_config: RetryConfig,
+    ) -> Result<StarknetClient, ClientCreationError> {
         Ok(StarknetClient {
             urls: StarknetUrls::new(url_str)?,
             internal_client: Client::builder().build()?,
+            retry_config,
         })
     }
 
     pub async fn block_number(&self) -> Result<Option<BlockNumber>, ClientError> {
-        let response = self.request(self.urls.get_block.clone()).await;
+        let response = self.request_with_retry(self.urls.get_block.clone()).await;
         match response {
             Ok(raw_block) => {
                 let block: Block = serde_json::from_str(&raw_block)?;
@@ -112,7 +122,7 @@ impl StarknetClient {
     pub async fn block(&self, block_number: BlockNumber) -> Result<Option<Block>, ClientError> {
         let mut url = self.urls.get_block.clone();
         url.query_pairs_mut().append_pair("blockNumber", &block_number.0.to_string());
-        let response = self.request(url).await;
+        let response = self.request_with_retry(url).await;
         match response {
             Ok(raw_block) => {
                 let block: Block = serde_json::from_str(&raw_block)?;
@@ -153,9 +163,34 @@ impl StarknetClient {
     ) -> Result<BlockStateUpdate, ClientError> {
         let mut url = self.urls.get_state_update.clone();
         url.query_pairs_mut().append_pair("blockNumber", &block_number.0.to_string());
-        let raw_state_update = self.request(url).await?;
+        let raw_state_update = self.request_with_retry(url).await?;
         let state_update: BlockStateUpdate = serde_json::from_str(&raw_state_update)?;
         Ok(state_update)
+    }
+
+    fn should_retry(err: &ClientError) -> bool {
+        matches!(err, ClientError::BadResponse { status: StatusCode::REQUEST_TIMEOUT })
+            || matches!(err, ClientError::BadResponse { status: StatusCode::TOO_MANY_REQUESTS })
+            || matches!(err, ClientError::BadResponse { status: StatusCode::SERVICE_UNAVAILABLE })
+            || matches!(err, ClientError::BadResponse { status: StatusCode::GATEWAY_TIMEOUT })
+    }
+
+    async fn request_with_retry(&self, url: Url) -> Result<String, ClientError> {
+        Retry::new(&self.retry_config)
+            .start_with_condition(|| self.request(url.clone()), Self::should_retry)
+            .await
+            .map_err(|err| {
+                if Self::should_retry(&err) {
+                    if let ClientError::BadResponse { status } = err {
+                        ClientError::RetryFailed { status }
+                    } else {
+                        // Not suppose to get here.
+                        err
+                    }
+                } else {
+                    err
+                }
+            })
     }
 
     async fn request(&self, url: Url) -> Result<String, ClientError> {
