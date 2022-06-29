@@ -1,6 +1,11 @@
 Config(
     central: CentralSourceConfig(
         url: "https://alpha4.starknet.io/",
+        retry_config: RetryConfig(
+            retry_base_millis: 30,
+            retry_max_delay_millis: 30000,
+            max_retries: 10,
+        ),
     ),
     gateway: GatewayConfig(
         server_ip: "localhost:8080",
