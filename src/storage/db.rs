@@ -119,6 +119,25 @@ impl<'a, K: libmdbx::TransactionKind> DbTransaction<'a, K> {
             Ok(None)
         }
     }
+    pub fn get_lower_item<'env, ValueType: DeserializeOwned>(
+        &'env self,
+        table: &TableHandle<'env>,
+        key: &[u8],
+    ) -> Result<Option<(Cow<'env, [u8]>, ValueType)>> {
+        type DbKeyType<'env> = Cow<'env, [u8]>;
+        type DbValueType<'env> = Cow<'env, [u8]>;
+        let mut cursor = self.txn.cursor(&table.database)?;
+        cursor.set_range::<DbKeyType<'_>, DbValueType<'_>>(key)?;
+        // Note: prev() also works when we reached end of database.
+        let prev_cursor_res = cursor.prev::<DbKeyType<'_>, DbValueType<'_>>()?;
+        match prev_cursor_res {
+            None => Ok(None),
+            Some((key_bytes, value_bytes)) => {
+                let value = bincode::deserialize::<ValueType>(value_bytes.as_ref())?;
+                Ok(Some((key_bytes, value)))
+            }
+        }
+    }
 }
 impl<'a> DbWriteTransaction<'a> {
     pub fn upsert<'env, ValueType: Serialize>(

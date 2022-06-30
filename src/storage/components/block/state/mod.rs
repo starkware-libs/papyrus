@@ -1,8 +1,11 @@
+mod reader;
 #[cfg(test)]
 #[path = "state_test.rs"]
 mod state_test;
 
 use libmdbx::RW;
+
+use self::reader::StateReaderTxn;
 
 use super::{BlockStorageError, BlockStorageReader, BlockStorageResult, BlockStorageWriter};
 
@@ -32,6 +35,7 @@ pub trait StateStorageReader {
         &self,
         block_number: BlockNumber,
     ) -> BlockStorageResult<Option<StateDiffForward>>;
+    fn get_state_reader_txn(&self) -> BlockStorageResult<StateReaderTxn<'_>>;
 }
 pub trait StateStorageWriter {
     fn append_state_diff(
@@ -61,6 +65,10 @@ impl StateStorageReader for BlockStorageReader {
             &bincode::serialize(&block_number).unwrap(),
         )?;
         Ok(state_diff)
+    }
+    fn get_state_reader_txn(&self) -> BlockStorageResult<StateReaderTxn<'_>> {
+        let txn = self.db_reader.begin_ro_txn()?;
+        Ok(StateReaderTxn { reader: self, txn })
     }
 }
 
