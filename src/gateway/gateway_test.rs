@@ -87,12 +87,16 @@ async fn test_get_block_by_hash() {
     let storage_reader = storage_components.block_storage_reader;
     let mut storage_writer = storage_components.block_storage_writer;
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
-    let mut body = BlockHeader::default();
     let block_hash = BlockHash(shash!(
         "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"
     ));
-    body.block_hash = block_hash;
-    storage_writer.append_header(BlockNumber(0), &body).unwrap();
+    let header = BlockHeader {
+        block_hash,
+        ..BlockHeader::default()
+    };
+    storage_writer
+        .append_header(header.number, &header)
+        .unwrap();
     let block = module
         .call::<_, Block>(
             "starknet_getBlockByHash",
