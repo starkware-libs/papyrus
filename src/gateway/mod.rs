@@ -16,8 +16,10 @@ use log::{error, info};
 use crate::starknet::BlockNumber;
 use crate::storage::components::{BlockStorageReader, HeaderStorageReader};
 
-use self::api::{BlockNumberOrTag, BlockResponseScope, JsonRpcError, JsonRpcServer, Tag};
-use self::objects::{Block, BlockStatus, Transactions};
+use self::api::{
+    BlockHashOrTag, BlockNumberOrTag, BlockResponseScope, JsonRpcError, JsonRpcServer, Tag,
+};
+use self::objects::{Block, Transactions};
 
 // TODO(anatg): Take from config.
 const SERVER_IP: &str = "127.0.0.1:0";
@@ -81,16 +83,33 @@ impl JsonRpcServer for JsonRpcServerImpl {
             block_hash: block_header.block_hash,
             parent_hash: block_header.parent_hash,
             block_number,
-            // TODO(anatg): Get the status.
-            status: BlockStatus::AcceptedOnL2,
+            status: block_header.status.into(),
             sequencer: block_header.sequencer,
             new_root: block_header.state_root,
-            // TODO(anatg): Get the old root.
-            old_root: block_header.state_root,
             accepted_time: block_header.timestamp,
             // TODO(anatg): Get the transaction according to the requested scope.
             transactions: Transactions::Hashes(vec![]),
         })
+    }
+
+    async fn get_block_by_hash(
+        &self,
+        block_hash: BlockHashOrTag,
+        requested_scope: Option<BlockResponseScope>,
+    ) -> Result<Block, Error> {
+        let block_number = match block_hash {
+            BlockHashOrTag::Tag(Tag::Latest) => BlockNumberOrTag::Tag(Tag::Latest),
+            BlockHashOrTag::Tag(Tag::Pending) => BlockNumberOrTag::Tag(Tag::Pending),
+            BlockHashOrTag::Hash(hash) => BlockNumberOrTag::Number(
+                self.storage_reader
+                    .get_block_number_by_hash(&hash)
+                    .map_err(internal_server_error)?
+                    .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockHash))?,
+            ),
+        };
+
+        self.get_block_by_number(block_number, requested_scope)
+            .await
     }
 }
 
