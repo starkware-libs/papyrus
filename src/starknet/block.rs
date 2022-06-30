@@ -111,5 +111,6 @@ pub struct BlockHeader {
     pub state_root: GlobalRoot,
     pub sequencer: ContractAddress,
     pub timestamp: BlockTimestamp,
+    pub status: BlockStatus,
     // TODO(dan): add missing commitments.
 }

@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::starknet::{BlockHash, BlockNumber, BlockTimestamp, ContractAddress, GlobalRoot};
+use crate::starknet::{
+    BlockHash, BlockNumber, BlockTimestamp, ContractAddress, GlobalRoot, NodeBlockStatus,
+};
 
 use super::transaction::Transactions;
 
@@ -18,6 +20,17 @@ pub enum BlockStatus {
     Rejected,
 }
 
+impl From<NodeBlockStatus> for BlockStatus {
+    fn from(status: NodeBlockStatus) -> Self {
+        match status {
+            NodeBlockStatus::Pending => BlockStatus::Pending,
+            NodeBlockStatus::AcceptedOnL2 => BlockStatus::AcceptedOnL2,
+            NodeBlockStatus::AcceptedOnL1 => BlockStatus::AcceptedOnL1,
+            NodeBlockStatus::Rejected => BlockStatus::Rejected,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct Block {
     pub block_hash: BlockHash,
@@ -26,7 +39,6 @@ pub struct Block {
     pub status: BlockStatus,
     pub sequencer: ContractAddress,
     pub new_root: GlobalRoot,
-    pub old_root: GlobalRoot,
     pub accepted_time: BlockTimestamp,
     pub transactions: Transactions,
 }

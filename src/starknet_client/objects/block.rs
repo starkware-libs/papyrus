@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::starknet::{
     BlockHash, BlockNumber, BlockTimestamp, ContractAddress, DeployedContract, GasPrice,
-    GlobalRoot, StorageEntry,
+    GlobalRoot, NodeBlockStatus, StorageEntry,
 };
 
 use super::transaction::{Transaction, TransactionReceipt};
@@ -51,6 +51,18 @@ pub enum BlockStatus {
 impl Default for BlockStatus {
     fn default() -> Self {
         BlockStatus::AcceptedOnL2
+    }
+}
+
+impl From<BlockStatus> for NodeBlockStatus {
+    fn from(status: BlockStatus) -> Self {
+        match status {
+            BlockStatus::Aborted => NodeBlockStatus::Rejected,
+            BlockStatus::AcceptedOnL1 => NodeBlockStatus::AcceptedOnL1,
+            BlockStatus::AcceptedOnL2 => NodeBlockStatus::AcceptedOnL2,
+            BlockStatus::Pending => NodeBlockStatus::Pending,
+            BlockStatus::Reverted => NodeBlockStatus::Rejected,
+        }
     }
 }
 

@@ -2,7 +2,7 @@ use jsonrpsee::core::Error;
 use jsonrpsee::types::EmptyParams;
 use jsonrpsee::ws_client::WsClientBuilder;
 
-use crate::starknet::BlockHeader;
+use crate::starknet::{shash, BlockHash, BlockHeader, StarkHash};
 use crate::storage::components::{storage_test_utils, HeaderStorageWriter};
 
 use super::api::*;
@@ -58,10 +58,9 @@ async fn test_get_block_by_number() {
         block_hash: block_header.block_hash,
         parent_hash: block_header.parent_hash,
         block_number: BlockNumber(0),
-        status: BlockStatus::AcceptedOnL2,
+        status: block_header.status.into(),
         sequencer: block_header.sequencer,
         new_root: block_header.state_root,
-        old_root: block_header.state_root,
         accepted_time: block_header.timestamp,
         transactions: Transactions::Hashes(vec![]),
     };
@@ -78,6 +77,55 @@ async fn test_get_block_by_number() {
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
         JsonRpcError::InvalidBlockNumber as i32,
         JsonRpcError::InvalidBlockNumber.to_string(),
+        None::<()>,
+    ));
+}
+
+#[tokio::test]
+async fn test_get_block_by_hash() {
+    let storage_components = storage_test_utils::get_test_storage();
+    let storage_reader = storage_components.block_storage_reader;
+    let mut storage_writer = storage_components.block_storage_writer;
+    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+    let mut body = BlockHeader::default();
+    let block_hash = BlockHash(shash!(
+        "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"
+    ));
+    body.block_hash = block_hash;
+    storage_writer.append_header(BlockNumber(0), &body).unwrap();
+    let block = module
+        .call::<_, Block>(
+            "starknet_getBlockByHash",
+            [BlockHashOrTag::Hash(block_hash)],
+        )
+        .await
+        .unwrap();
+    let block_header = &BlockHeader::default();
+    let expected_block = Block {
+        block_hash,
+        parent_hash: block_header.parent_hash,
+        block_number: block_header.number,
+        status: block_header.status.into(),
+        sequencer: block_header.sequencer,
+        new_root: block_header.state_root,
+        accepted_time: block_header.timestamp,
+        transactions: Transactions::Hashes(vec![]),
+    };
+    assert_eq!(block, expected_block);
+
+    // Ask for an invalid block.
+    let err = module
+        .call::<_, Block>(
+            "starknet_getBlockByHash",
+            [BlockHashOrTag::Hash(BlockHash(shash!(
+                "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
+            )))],
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidBlockHash as i32,
+        JsonRpcError::InvalidBlockHash.to_string(),
         None::<()>,
     ));
 }
