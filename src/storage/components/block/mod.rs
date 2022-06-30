@@ -1,3 +1,4 @@
+mod body;
 mod header;
 mod state;
 #[cfg(test)]
@@ -36,6 +37,7 @@ pub struct Tables {
     markers: TableIdentifier,
     headers: TableIdentifier,
     block_hash_to_number: TableIdentifier,
+    transactions: TableIdentifier,
     state_diffs: TableIdentifier,
     contracts: TableIdentifier,
     contract_storage: TableIdentifier,
@@ -58,6 +60,7 @@ pub fn open_block_storage(
         markers: db_writer.create_table("markers")?,
         headers: db_writer.create_table("headers")?,
         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
+        transactions: db_writer.create_table("transactions")?,
         state_diffs: db_writer.create_table("state_diffs")?,
         contracts: db_writer.create_table("contracts")?,
         contract_storage: db_writer.create_table("contract_storage")?,
