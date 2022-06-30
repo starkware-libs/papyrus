@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::serde_utils::{HexAsBytes, NonPrefixedHexAsBytes, PrefixedHexAsBytes};
-use super::{ContractAddress, StarkHash};
+use super::{ContractAddress, StarkHash, Transaction};
 
 // TODO(spapini): Verify the invariant that it is in range.
 #[derive(
@@ -67,20 +67,14 @@ impl From<GasPrice> for PrefixedHexAsBytes<16_usize> {
     }
 }
 
-#[derive(
-    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ListCommitment {
     pub length: u64,
     pub commitment: StarkHash,
 }
-#[derive(
-    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct TransactionsCommitment(pub ListCommitment);
-#[derive(
-    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct EventsCommitment(pub ListCommitment);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -100,9 +94,7 @@ impl Default for BlockStatus {
     }
 }
 
-#[derive(
-    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockHeader {
     pub block_hash: BlockHash,
     pub parent_hash: BlockHash,
@@ -112,4 +104,9 @@ pub struct BlockHeader {
     pub sequencer: ContractAddress,
     pub timestamp: BlockTimestamp,
     // TODO(dan): add missing commitments.
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct BlockBody {
+    pub transactions: Vec<Transaction>,
 }

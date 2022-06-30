@@ -9,14 +9,28 @@ use super::{ClassHash, ContractAddress, StarkFelt, StarkHash};
 )]
 pub struct TransactionHash(pub StarkHash);
 
+// Index of a transaction inside a block.
+#[derive(
+    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct TransactionIndex(pub u64);
+
 #[derive(
     Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-#[serde(from = "PrefixedHexAsBytes<16_usize>")]
+#[serde(
+    from = "PrefixedHexAsBytes<16_usize>",
+    into = "PrefixedHexAsBytes<16_usize>"
+)]
 pub struct Fee(pub u128);
 impl From<PrefixedHexAsBytes<16_usize>> for Fee {
     fn from(val: PrefixedHexAsBytes<16_usize>) -> Self {
-        Fee(u128::from_be_bytes(val.0))
+        Self(u128::from_be_bytes(val.0))
+    }
+}
+impl From<Fee> for PrefixedHexAsBytes<16_usize> {
+    fn from(fee: Fee) -> Self {
+        Self(fee.0.to_be_bytes())
     }
 }
 
@@ -179,6 +193,15 @@ pub enum Transaction {
     Declare(DeclareTransaction),
     Deploy(DeployTransaction),
     Invoke(InvokeTransaction),
+}
+impl Transaction {
+    pub fn transaction_hash(&self) -> TransactionHash {
+        match self {
+            Transaction::Declare(tx) => tx.transaction_hash,
+            Transaction::Deploy(tx) => tx.transaction_hash,
+            Transaction::Invoke(tx) => tx.transaction_hash,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
