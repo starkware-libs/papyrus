@@ -12,7 +12,7 @@ appenders:
       pattern: "{d(%Y-%m-%d %H:%M:%S%.3f)} {l} {t}- {m}{n}"
 
 root:
-  level: debug
+  level: info
   appenders:
     - stdout
     - aggregated_log_file

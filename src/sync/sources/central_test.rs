@@ -13,7 +13,7 @@ async fn stream_block_headers() {
     let config = CentralSourceConfig {
         url: mockito::server_url(),
     };
-    let mut central_source = CentralSource::new(config).unwrap();
+    let central_source = CentralSource::new(config).unwrap();
 
     // Prepare mock calls.
     let mock_last = mock("GET", "/feeder_gateway/get_last_batch_id")

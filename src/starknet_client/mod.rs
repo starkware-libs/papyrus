@@ -13,6 +13,7 @@ use crate::starknet::BlockNumber;
 
 pub use self::objects::block::{Block, BlockStateUpdate};
 
+#[derive(Clone)]
 pub struct StarknetClient {
     urls: StarknetUrls,
     internal_client: Client,

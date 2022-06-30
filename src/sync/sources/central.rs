@@ -6,13 +6,14 @@ use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use tokio_stream::Stream;
 
-use crate::starknet::{BlockHeader, BlockNumber};
+use crate::starknet::{BlockHeader, BlockNumber, DeployedContract, StateDiffForward, StorageDiff};
 use crate::starknet_client::{ClientCreationError, ClientError, StarknetClient};
 
 #[derive(Serialize, Deserialize)]
 pub struct CentralSourceConfig {
     pub url: String,
 }
+#[derive(Clone)]
 pub struct CentralSource {
     starknet_client: StarknetClient,
 }
@@ -24,13 +25,67 @@ impl CentralSource {
         Ok(CentralSource { starknet_client })
     }
 
-    pub async fn get_block_number(&mut self) -> Result<BlockNumber, ClientError> {
+    pub async fn get_block_number(&self) -> Result<BlockNumber, ClientError> {
         self.starknet_client.block_number().await
     }
 
     // TODO(dan): return all block data.
+    pub fn stream_state_updates(
+        &self,
+        initial_block_number: BlockNumber,
+        up_to_block_number: BlockNumber,
+    ) -> impl Stream<Item = (BlockNumber, StateDiffForward)> + '_ {
+        let mut current_block_number = initial_block_number;
+        stream! {
+            while current_block_number < up_to_block_number {
+                let res = self.starknet_client.state_update(current_block_number).await;
+                match res {
+                    Ok(state_update) => {
+                        info!("Received new state update: {:?}.", state_update.block_hash);
+                        let deployed_contracts = state_update
+                    .state_diff
+                    .deployed_contracts
+                    .iter()
+                    .map(|x| DeployedContract::from(*x))
+                    .collect();
+                let storage_diffs =
+                    Vec::from_iter(state_update.state_diff.storage_diffs.iter().map(
+                        |(&address, diff)| {
+                            let diff = diff.clone();
+                            StorageDiff { address, diff }
+                        },
+                    ));
+                    let sd = StateDiffForward {
+                        deployed_contracts,
+                        storage_diffs,
+                    };
+                        yield (current_block_number, sd);
+                        current_block_number = current_block_number.next();
+                    },
+                    Err(err) => {
+                        debug!("Received error for state diff {}: {:?}.", current_block_number.0, err);
+                        // TODO(dan): proper error handling.
+                        match err{
+                            ClientError::BadResponse { status } => {
+                                if status == StatusCode::TOO_MANY_REQUESTS {
+                                    // TODO(dan): replace with a retry mechanism.
+                                    debug!("Waiting for 5 sec.");
+                                    tokio::time::sleep( Duration::from_millis(5000)).await;
+                                } else {error!("{:?}",err); todo!()}
+                            },
+                            ClientError::RequestError(err) => {error!("{:?}",err); todo!()},
+                            ClientError::SerdeError(err) => {error!("{:?}",err); todo!()},
+                            ClientError::StarknetError(err) => {error!("{:?}",err); todo!()},
+
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     pub fn stream_new_blocks(
-        &mut self,
+        &self,
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
     ) -> impl Stream<Item = (BlockNumber, BlockHeader)> + '_ {
