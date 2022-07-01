@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::starknet::{
     BlockHash, BlockNumber, BlockTimestamp, ContractAddress, DeployedContract, GasPrice,
-    GlobalRoot, NodeBlockStatus, StorageEntry,
+    GlobalRoot, NodeBlockStatus, StateDiffForward as NodeStateDiff, StorageDiff, StorageEntry,
 };
 
 use super::{
@@ -76,6 +76,29 @@ pub struct StateDiff {
     // TODO(dan): define corresponding struct and handle properly.
     #[serde(default)]
     pub declared_contracts: Vec<serde_json::Value>,
+}
+
+// TODO(dan): Simplify once clash_hash is always prefixed.
+impl From<StateDiff> for NodeStateDiff {
+    fn from(state_diff: StateDiff) -> Self {
+        let deployed_contracts = state_diff
+            .deployed_contracts
+            .iter()
+            .map(|x| DeployedContract::from(*x))
+            .collect();
+        let storage_diffs = state_diff
+            .storage_diffs
+            .iter()
+            .map(|(&address, diff)| {
+                let diff = diff.clone();
+                StorageDiff { address, diff }
+            })
+            .collect();
+        NodeStateDiff {
+            deployed_contracts,
+            storage_diffs,
+        }
+    }
 }
 
 // TODO(dan): Once clash_hash is always prefixed, revert and use Core DeployedContract.
