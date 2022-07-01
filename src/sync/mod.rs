@@ -2,14 +2,16 @@ mod sources;
 
 use std::time::Duration;
 
-use futures_util::pin_mut;
-use log::{debug, error, info};
-use tokio_stream::StreamExt;
+use async_stream::stream;
+use futures_util::{pin_mut, select};
+use futures_util::{Stream, StreamExt};
+use log::{error, info};
 
+use crate::starknet::{BlockHeader, BlockNumber, StateDiffForward};
 use crate::starknet_client::ClientError;
 use crate::storage::components::{
     BlockStorageError, BlockStorageReader, BlockStorageWriter, HeaderStorageReader,
-    HeaderStorageWriter,
+    HeaderStorageWriter, StateStorageReader, StateStorageWriter,
 };
 
 pub use self::sources::{CentralSource, CentralSourceConfig};
@@ -30,6 +32,19 @@ pub enum StateSyncError {
     StorageError(#[from] BlockStorageError),
     #[error(transparent)]
     CentralSourceError(#[from] ClientError),
+    #[error("Sync error: {message:?}.")]
+    SyncError { message: String },
+}
+pub enum SyncEvent {
+    // TODO(dan): store all block data.
+    HeaderAvailable {
+        block_number: BlockNumber,
+        header: BlockHeader,
+    },
+    StateDiffAvailable {
+        block_number: BlockNumber,
+        state_diff: StateDiffForward,
+    },
 }
 
 #[allow(clippy::new_without_default)]
@@ -45,24 +60,106 @@ impl StateSync {
             writer,
         }
     }
+
     pub async fn run(&mut self) -> anyhow::Result<(), StateSyncError> {
         info!("State sync started.");
         loop {
-            let initial_block_number = self.reader.get_header_marker()?;
-            let last_block_number = self.central_source.get_block_number().await?;
-            info!(
-                "Syncing headers {} - {}.",
-                initial_block_number.0, last_block_number.0
-            );
-            let stream = self
-                .central_source
-                .stream_new_blocks(initial_block_number, last_block_number);
-            pin_mut!(stream);
-            while let Some((number, header)) = stream.next().await {
-                debug!("Received new header: {}.", number.0);
-                self.writer.append_header(number, &header)?;
+            let header_stream = stream_new_blocks(self.reader.clone(), &self.central_source).fuse();
+            let state_diff_stream =
+                stream_new_state_diffs(self.reader.clone(), &self.central_source).fuse();
+            pin_mut!(header_stream, state_diff_stream);
+
+            loop {
+                let sync_event: Option<SyncEvent> = select! {
+                  res = header_stream.next() => res,
+                  res = state_diff_stream.next() => res,
+                  complete => break,
+                };
+                match sync_event {
+                    Some(SyncEvent::HeaderAvailable {
+                        block_number,
+                        header,
+                    }) => self.writer.append_header(block_number, &header)?,
+                    Some(SyncEvent::StateDiffAvailable {
+                        block_number,
+                        state_diff,
+                    }) => self.writer.append_state_diff(block_number, &state_diff)?,
+                    None => {
+                        return Err(StateSyncError::SyncError {
+                            message: "Got an empty event.".to_string(),
+                        })
+                    }
+                }
             }
-            tokio::time::sleep(SLEEP_DURATION).await
+        }
+    }
+}
+
+fn stream_new_blocks(
+    reader: BlockStorageReader,
+    central_source: &CentralSource,
+) -> impl Stream<Item = SyncEvent> + '_ {
+    stream! {
+        loop {
+            let header_marker = reader
+                .get_header_marker()
+                .expect("Cannot read from block storage.");
+            let last_block_number = central_source
+                .get_block_number()
+                .await
+                .expect("Cannot read from block storage.").next();
+            info!(
+                "Downloading headers [{} - {}).",
+                header_marker.0, last_block_number.0
+            );
+            if header_marker == last_block_number {
+                tokio::time::sleep(SLEEP_DURATION).await;
+                continue;
+            }
+            let header_stream = central_source
+                .stream_new_blocks(header_marker, last_block_number)
+                .fuse();
+            pin_mut!(header_stream);
+            while let Some((block_number, header)) = header_stream.next().await {
+                yield SyncEvent::HeaderAvailable {
+                    block_number,
+                    header,
+                };
+            }
+        }
+    }
+}
+
+fn stream_new_state_diffs(
+    reader: BlockStorageReader,
+    central_source: &CentralSource,
+) -> impl Stream<Item = SyncEvent> + '_ {
+    stream! {
+        loop {
+            let state_marker = reader
+                .get_state_marker()
+                .expect("Cannot read from block storage.");
+            let last_block_number = reader
+                .get_header_marker()
+                .expect("Cannot read from block storage.");
+            info!(
+                "Downloading state diffs [{} - {}).",
+                state_marker.0, last_block_number.0
+            );
+            if state_marker == last_block_number {
+                tokio::time::sleep(SLEEP_DURATION).await;
+                continue;
+            }
+            let header_stream = central_source
+                .stream_state_updates(state_marker, last_block_number)
+                .fuse();
+            pin_mut!(header_stream);
+            while let Some(Ok((block_number, state_diff))) = header_stream.next().await {
+                yield SyncEvent::StateDiffAvailable {
+                    block_number,
+                    state_diff,
+                };
+            }
         }
     }
 }
