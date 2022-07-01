@@ -4,9 +4,9 @@ use mockito::mock;
 
 use crate::starknet::serde_utils::bytes_from_hex_str;
 use crate::starknet::{
-    shash, BlockHash, BlockNumber, BlockTimestamp, CallData, ClassHash, ContractAddress,
-    DeployedContract, EntryPointSelector, Fee, GasPrice, GlobalRoot, StarkHash, StorageEntry,
-    StorageKey, TransactionHash, TransactionSignature,
+    shash, BlockHash, BlockNumber, BlockTimestamp, CallData, ContractAddress, EntryPointSelector,
+    Fee, GasPrice, GlobalRoot, StarkHash, StorageEntry, StorageKey, TransactionHash,
+    TransactionSignature,
 };
 
 // TODO(dan): use SN structs once available & sort.
@@ -16,6 +16,9 @@ use super::objects::transaction::{
 };
 use super::{Block, ClientError, StarknetClient, StarknetError, StarknetErrorCode};
 
+// TODO(dan): Once clash_hash is always prefixed, revert and use Core ClassHash & DeployedContract.
+use super::objects::block::NonPrefixedDeployedContract;
+use super::objects::NonPrefixedClassHash;
 #[tokio::test]
 async fn get_block_number() {
     let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
@@ -55,7 +58,7 @@ async fn test_state_update() {
             [
                 {
                     "address": "0x3e10411edafd29dfe6d427d03e35cb261b7a5efeee61bf73909ada048c029b9",
-                    "class_hash": "0x071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64"
+                    "class_hash": "071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64"
                 }
             ]
         }
@@ -105,11 +108,11 @@ async fn test_state_update() {
                     },
                 ],
             )]),
-            deployed_contracts: vec![DeployedContract {
+            deployed_contracts: vec![NonPrefixedDeployedContract {
                 address: ContractAddress(shash!(
                     "0x3e10411edafd29dfe6d427d03e35cb261b7a5efeee61bf73909ada048c029b9"
                 )),
-                class_hash: ClassHash(StarkHash(
+                class_hash: NonPrefixedClassHash(StarkHash(
                     bytes_from_hex_str::<32, false>(
                         "071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64",
                     )

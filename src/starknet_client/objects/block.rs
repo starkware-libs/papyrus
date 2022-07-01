@@ -7,7 +7,10 @@ use crate::starknet::{
     GlobalRoot, StorageEntry,
 };
 
-use super::transaction::{Transaction, TransactionReceipt};
+use super::{
+    transaction::{Transaction, TransactionReceipt},
+    NonPrefixedClassHash,
+};
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
 pub struct Block {
@@ -57,8 +60,25 @@ impl Default for BlockStatus {
 #[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
 pub struct StateDiff {
     pub storage_diffs: HashMap<ContractAddress, Vec<StorageEntry>>,
-    pub deployed_contracts: Vec<DeployedContract>,
+    pub deployed_contracts: Vec<NonPrefixedDeployedContract>,
     // TODO(dan): define corresponding struct and handle properly.
     #[serde(default)]
     pub declared_contracts: Vec<serde_json::Value>,
+}
+
+// TODO(dan): Once clash_hash is always prefixed, revert and use Core DeployedContract.
+#[derive(
+    Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord, Copy,
+)]
+pub struct NonPrefixedDeployedContract {
+    pub address: ContractAddress,
+    pub class_hash: NonPrefixedClassHash,
+}
+impl From<NonPrefixedDeployedContract> for DeployedContract {
+    fn from(val: NonPrefixedDeployedContract) -> Self {
+        DeployedContract {
+            address: val.address,
+            class_hash: val.class_hash.into(),
+        }
+    }
 }
