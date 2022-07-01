@@ -6,7 +6,7 @@ use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use tokio_stream::Stream;
 
-use crate::starknet::{BlockHeader, BlockNumber};
+use crate::starknet::{BlockHeader, BlockNumber, StateDiffForward};
 use crate::starknet_client::{ClientCreationError, ClientError, StarknetClient};
 
 #[derive(Serialize, Deserialize)]
@@ -15,6 +15,12 @@ pub struct CentralSourceConfig {
 }
 pub struct CentralSource {
     starknet_client: StarknetClient,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum CentralError {
+    #[error(transparent)]
+    ClientError(#[from] ClientError),
 }
 
 impl CentralSource {
@@ -28,6 +34,33 @@ impl CentralSource {
         self.starknet_client.block_number().await
     }
 
+    pub fn stream_state_updates(
+        &self,
+        initial_block_number: BlockNumber,
+        up_to_block_number: BlockNumber,
+    ) -> impl Stream<Item = Result<(BlockNumber, StateDiffForward), CentralError>> + '_ {
+        let mut current_block_number = initial_block_number;
+        stream! {
+            while current_block_number < up_to_block_number {
+                let res = self.starknet_client.state_update(current_block_number).await;
+                match res {
+                    Ok(state_update) => {
+                        debug!("Received new state update: {:?}.", current_block_number.0);
+                        yield Ok((current_block_number, state_update.state_diff.into()));
+                        current_block_number = current_block_number.next();
+                    },
+                    Err(err) => {
+                        debug!("Received error for state diff {}: {:?}.", current_block_number.0, err);
+                        // TODO(dan): proper error handling.
+                        match err{
+                            _ => yield (Err(CentralError::ClientError(err))),
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // TODO(dan): return all block data.
     pub fn stream_new_blocks(
         &self,
@@ -36,7 +69,7 @@ impl CentralSource {
     ) -> impl Stream<Item = (BlockNumber, BlockHeader)> + '_ {
         let mut current_block_number = initial_block_number;
         stream! {
-            while current_block_number <= up_to_block_number {
+            while current_block_number < up_to_block_number {
                 let res = self.starknet_client.block(current_block_number).await;
                 match res {
                     Ok(block) => {
