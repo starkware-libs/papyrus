@@ -17,8 +17,8 @@ use super::objects::transaction::{
 use super::{Block, ClientError, StarknetClient, StarknetError, StarknetErrorCode};
 
 // TODO(dan): Once clash_hash is always prefixed, revert and use Core ClassHash & DeployedContract.
-use super::objects::block::NonPrefixedDeployedContract;
-use super::objects::NonPrefixedClassHash;
+use super::objects::block::TmpDeployedContract;
+use super::objects::TmpClassHash;
 #[tokio::test]
 async fn get_block_number() {
     let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
@@ -108,11 +108,11 @@ async fn test_state_update() {
                     },
                 ],
             )]),
-            deployed_contracts: vec![NonPrefixedDeployedContract {
+            deployed_contracts: vec![TmpDeployedContract {
                 address: ContractAddress(shash!(
                     "0x3e10411edafd29dfe6d427d03e35cb261b7a5efeee61bf73909ada048c029b9"
                 )),
-                class_hash: NonPrefixedClassHash(StarkHash(
+                class_hash: TmpClassHash(StarkHash(
                     bytes_from_hex_str::<32, false>(
                         "071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64",
                     )

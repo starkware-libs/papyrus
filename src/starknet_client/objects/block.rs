@@ -9,7 +9,7 @@ use crate::starknet::{
 
 use super::{
     transaction::{Transaction, TransactionReceipt},
-    NonPrefixedClassHash,
+    TmpClassHash,
 };
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
@@ -60,7 +60,7 @@ impl Default for BlockStatus {
 #[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
 pub struct StateDiff {
     pub storage_diffs: HashMap<ContractAddress, Vec<StorageEntry>>,
-    pub deployed_contracts: Vec<NonPrefixedDeployedContract>,
+    pub deployed_contracts: Vec<TmpDeployedContract>,
     // TODO(dan): define corresponding struct and handle properly.
     #[serde(default)]
     pub declared_contracts: Vec<serde_json::Value>,
@@ -70,12 +70,12 @@ pub struct StateDiff {
 #[derive(
     Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord, Copy,
 )]
-pub struct NonPrefixedDeployedContract {
+pub struct TmpDeployedContract {
     pub address: ContractAddress,
-    pub class_hash: NonPrefixedClassHash,
+    pub class_hash: TmpClassHash,
 }
-impl From<NonPrefixedDeployedContract> for DeployedContract {
-    fn from(val: NonPrefixedDeployedContract) -> Self {
+impl From<TmpDeployedContract> for DeployedContract {
+    fn from(val: TmpDeployedContract) -> Self {
         DeployedContract {
             address: val.address,
             class_hash: val.class_hash.into(),

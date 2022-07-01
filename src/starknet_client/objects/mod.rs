@@ -16,19 +16,19 @@ pub mod transaction;
     from = "NonPrefixedHexAsBytes<32_usize>",
     into = "NonPrefixedHexAsBytes<32_usize>"
 )]
-pub struct NonPrefixedClassHash(pub StarkHash);
-impl From<NonPrefixedHexAsBytes<32_usize>> for NonPrefixedClassHash {
+pub struct TmpClassHash(pub StarkHash);
+impl From<NonPrefixedHexAsBytes<32_usize>> for TmpClassHash {
     fn from(val: NonPrefixedHexAsBytes<32_usize>) -> Self {
-        NonPrefixedClassHash(StarkHash(val.0))
+        TmpClassHash(StarkHash(val.0))
     }
 }
-impl From<NonPrefixedClassHash> for NonPrefixedHexAsBytes<32_usize> {
-    fn from(val: NonPrefixedClassHash) -> Self {
+impl From<TmpClassHash> for NonPrefixedHexAsBytes<32_usize> {
+    fn from(val: TmpClassHash) -> Self {
         HexAsBytes(val.0 .0)
     }
 }
-impl From<NonPrefixedClassHash> for ClassHash {
-    fn from(val: NonPrefixedClassHash) -> Self {
+impl From<TmpClassHash> for ClassHash {
+    fn from(val: TmpClassHash) -> Self {
         ClassHash(val.0)
     }
 }
