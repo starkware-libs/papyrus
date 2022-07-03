@@ -65,9 +65,9 @@ impl JsonRpcServerImpl {
         }
     }
 
-    async fn get_block_number(&self, block_number: BlockNumberOrTag) -> Result<BlockNumber, Error> {
+    fn get_block_number(&self, block_number: BlockNumberOrTag) -> Result<BlockNumber, Error> {
         Ok(match block_number {
-            BlockNumberOrTag::Tag(Tag::Latest) => self.block_number().await?,
+            BlockNumberOrTag::Tag(Tag::Latest) => self.block_number()?,
             BlockNumberOrTag::Tag(Tag::Pending) => {
                 // TODO(anatg): Support pending block.
                 todo!("Pending tag is not supported yet.")
@@ -75,11 +75,15 @@ impl JsonRpcServerImpl {
             BlockNumberOrTag::Number(number) => number,
         })
     }
+
+    fn get_block_number_from_hash(&self, block_hash: BlockHashOrTag) -> Result<BlockNumber, Error> {
+        self.get_block_number(self.get_block_number_or_tag(block_hash)?)
+    }
 }
 
 #[async_trait]
 impl JsonRpcServer for JsonRpcServerImpl {
-    async fn block_number(&self) -> Result<BlockNumber, Error> {
+    fn block_number(&self) -> Result<BlockNumber, Error> {
         self.storage_reader
             .get_header_marker()
             .map_err(internal_server_error)?
@@ -87,12 +91,12 @@ impl JsonRpcServer for JsonRpcServerImpl {
             .ok_or_else(|| JsonRpcError::NoBlocks.into())
     }
 
-    async fn get_block_by_number(
+    fn get_block_by_number(
         &self,
         block_number: BlockNumberOrTag,
         _requested_scope: Option<BlockResponseScope>,
     ) -> Result<Block, Error> {
-        let block_number = self.get_block_number(block_number).await?;
+        let block_number = self.get_block_number(block_number)?;
 
         // TODO(anatg): Get the entire block.
         let block_header = self
@@ -114,33 +118,30 @@ impl JsonRpcServer for JsonRpcServerImpl {
         })
     }
 
-    async fn get_block_by_hash(
+    fn get_block_by_hash(
         &self,
         block_hash: BlockHashOrTag,
         requested_scope: Option<BlockResponseScope>,
     ) -> Result<Block, Error> {
         let block_number = self.get_block_number_or_tag(block_hash)?;
         self.get_block_by_number(block_number, requested_scope)
-            .await
     }
 
-    async fn get_storage_at(
+    fn get_storage_at(
         &self,
         contract_address: ContractAddress,
         key: StorageKey,
         block_hash: BlockHashOrTag,
     ) -> Result<StarkFelt, Error> {
+        // Check that the block is valid and get the state number.
+        let block_number = self.get_block_number_from_hash(block_hash)?;
+        let state = StateNumber::right_after_block(block_number);
+
         let statetxn = self
             .storage_reader
             .get_state_reader_txn()
             .map_err(internal_server_error)?;
         let state_reader = statetxn.get_state_reader().map_err(internal_server_error)?;
-
-        // Check that the block is valid and get the state number.
-        let block_number = self
-            .get_block_number(self.get_block_number_or_tag(block_hash)?)
-            .await?;
-        let state = StateNumber::right_before_block(block_number.next());
 
         // Check that the contract exists.
         state_reader

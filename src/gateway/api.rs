@@ -60,11 +60,11 @@ pub enum JsonRpcError {
 pub trait JsonRpc {
     /// Gets the most recent accepted block number.
     #[method(name = "blockNumber")]
-    async fn block_number(&self) -> Result<BlockNumber, Error>;
+    fn block_number(&self) -> Result<BlockNumber, Error>;
 
     /// Gets block information given the block number (its height).
     #[method(name = "getBlockByNumber")]
-    async fn get_block_by_number(
+    fn get_block_by_number(
         &self,
         block_number: BlockNumberOrTag,
         requested_scope: Option<BlockResponseScope>,
@@ -72,15 +72,15 @@ pub trait JsonRpc {
 
     /// Gets block information given the block id.
     #[method(name = "getBlockByHash")]
-    async fn get_block_by_hash(
+    fn get_block_by_hash(
         &self,
         block_hash: BlockHashOrTag,
         requested_scope: Option<BlockResponseScope>,
     ) -> Result<Block, Error>;
 
-    /// Gets the value of the storage at the given address and key.
+    /// Gets the value of the storage at the given address, key, and block.
     #[method(name = "getStorageAt")]
-    async fn get_storage_at(
+    fn get_storage_at(
         &self,
         contract_address: ContractAddress,
         key: StorageKey,
