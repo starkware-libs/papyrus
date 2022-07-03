@@ -140,7 +140,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let block_number = self
             .get_block_number(self.get_block_number_or_tag(block_hash)?)
             .await?;
-        let state = StateNumber::right_before_block(block_number.next());
+        let state = StateNumber::right_after_block(block_number);
 
         // Check that the contract exists.
         state_reader
