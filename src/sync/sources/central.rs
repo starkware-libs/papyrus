@@ -49,6 +49,7 @@ impl CentralSource {
                             state_root: block.state_root,
                             sequencer: block.sequencer_address,
                             timestamp: block.timestamp,
+                            status: block.status.into(),
                         };
                         yield (current_block_number, header);
                         current_block_number = current_block_number.next();

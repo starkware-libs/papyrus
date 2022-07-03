@@ -2,7 +2,7 @@ use jsonrpsee::core::Error;
 use jsonrpsee::proc_macros::rpc;
 use serde::{Deserialize, Serialize};
 
-use crate::starknet::BlockNumber;
+use crate::starknet::{BlockHash, BlockNumber};
 
 use super::objects::Block;
 
@@ -38,12 +38,20 @@ pub enum BlockNumberOrTag {
     Tag(Tag),
 }
 
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub enum BlockHashOrTag {
+    Hash(BlockHash),
+    Tag(Tag),
+}
+
 #[derive(thiserror::Error, Clone, Copy, Debug)]
 pub enum JsonRpcError {
     #[error("There are no blocks.")]
     NoBlocks,
-    #[error("Invalid block number")]
+    #[error("Invalid block number.")]
     InvalidBlockNumber = 26,
+    #[error("Invalid block hash.")]
+    InvalidBlockHash = 24,
 }
 
 #[rpc(server, client, namespace = "starknet")]
@@ -52,11 +60,19 @@ pub trait JsonRpc {
     #[method(name = "blockNumber")]
     async fn block_number(&self) -> Result<BlockNumber, Error>;
 
-    /// Gets a block given its number.
+    /// Gets block information given the block number (its height).
     #[method(name = "getBlockByNumber")]
     async fn get_block_by_number(
         &self,
         block_number: BlockNumberOrTag,
+        requested_scope: Option<BlockResponseScope>,
+    ) -> Result<Block, Error>;
+
+    /// Gets block information given the block id.
+    #[method(name = "getBlockByHash")]
+    async fn get_block_by_hash(
+        &self,
+        block_hash: BlockHashOrTag,
         requested_scope: Option<BlockResponseScope>,
     ) -> Result<Block, Error>;
 }
