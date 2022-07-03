@@ -2,7 +2,7 @@ use jsonrpsee::core::Error;
 use jsonrpsee::proc_macros::rpc;
 use serde::{Deserialize, Serialize};
 
-use crate::starknet::{BlockHash, BlockNumber};
+use crate::starknet::{BlockHash, BlockNumber, ContractAddress, StarkFelt, StorageKey};
 
 use super::objects::Block;
 
@@ -48,10 +48,12 @@ pub enum BlockHashOrTag {
 pub enum JsonRpcError {
     #[error("There are no blocks.")]
     NoBlocks,
-    #[error("Invalid block number.")]
-    InvalidBlockNumber = 26,
+    #[error("Contract not found.")]
+    ContractNotFound = 20,
     #[error("Invalid block hash.")]
     InvalidBlockHash = 24,
+    #[error("Invalid block number.")]
+    InvalidBlockNumber = 26,
 }
 
 #[rpc(server, client, namespace = "starknet")]
@@ -75,4 +77,13 @@ pub trait JsonRpc {
         block_hash: BlockHashOrTag,
         requested_scope: Option<BlockResponseScope>,
     ) -> Result<Block, Error>;
+
+    /// Gets the value of the storage at the given address and key.
+    #[method(name = "getStorageAt")]
+    async fn get_storage_at(
+        &self,
+        contract_address: ContractAddress,
+        key: StorageKey,
+        block_hash: BlockHashOrTag,
+    ) -> Result<StarkFelt, Error>;
 }
