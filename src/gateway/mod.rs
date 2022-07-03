@@ -130,17 +130,17 @@ impl JsonRpcServer for JsonRpcServerImpl {
         key: StorageKey,
         block_hash: BlockHashOrTag,
     ) -> Result<StarkFelt, Error> {
+        // Check that the block is valid and get the state number.
+        let block_number = self
+            .get_block_number(self.get_block_number_or_tag(block_hash)?)
+            .await?;
+        let state = StateNumber::right_after_block(block_number);
+
         let statetxn = self
             .storage_reader
             .get_state_reader_txn()
             .map_err(internal_server_error)?;
         let state_reader = statetxn.get_state_reader().map_err(internal_server_error)?;
-
-        // Check that the block is valid and get the state number.
-        let block_number = self
-            .get_block_number(self.get_block_number_or_tag(block_hash)?)
-            .await?;
-        let state = StateNumber::right_before_block(block_number.next());
 
         // Check that the contract exists.
         state_reader

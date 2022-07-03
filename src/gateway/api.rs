@@ -78,7 +78,7 @@ pub trait JsonRpc {
         requested_scope: Option<BlockResponseScope>,
     ) -> Result<Block, Error>;
 
-    /// Gets the value of the storage at the given address and key.
+    /// Gets the value of the storage at the given address, key, and block.
     #[method(name = "getStorageAt")]
     async fn get_storage_at(
         &self,
