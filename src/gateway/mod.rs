@@ -13,8 +13,8 @@ use jsonrpsee::ws_server::types::error::CallError;
 use jsonrpsee::ws_server::{WsServerBuilder, WsServerHandle};
 use log::{error, info};
 
-use crate::starknet::BlockNumber;
-use crate::storage::components::{BlockStorageReader, HeaderStorageReader};
+use crate::starknet::{BlockNumber, ContractAddress, StarkFelt, StateNumber, StorageKey};
+use crate::storage::components::{BlockStorageReader, HeaderStorageReader, StateStorageReader};
 
 use self::api::{
     BlockHashOrTag, BlockNumberOrTag, BlockResponseScope, JsonRpcError, JsonRpcServer, Tag,
@@ -48,6 +48,35 @@ fn internal_server_error(err: impl Display) -> Error {
     )))
 }
 
+impl JsonRpcServerImpl {
+    fn get_block_number_or_tag(
+        &self,
+        block_hash: BlockHashOrTag,
+    ) -> Result<BlockNumberOrTag, Error> {
+        match block_hash {
+            BlockHashOrTag::Tag(Tag::Latest) => Ok(BlockNumberOrTag::Tag(Tag::Latest)),
+            BlockHashOrTag::Tag(Tag::Pending) => Ok(BlockNumberOrTag::Tag(Tag::Pending)),
+            BlockHashOrTag::Hash(hash) => Ok(BlockNumberOrTag::Number(
+                self.storage_reader
+                    .get_block_number_by_hash(&hash)
+                    .map_err(internal_server_error)?
+                    .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockHash))?,
+            )),
+        }
+    }
+
+    async fn get_block_number(&self, block_number: BlockNumberOrTag) -> Result<BlockNumber, Error> {
+        Ok(match block_number {
+            BlockNumberOrTag::Tag(Tag::Latest) => self.block_number().await?,
+            BlockNumberOrTag::Tag(Tag::Pending) => {
+                // TODO(anatg): Support pending block.
+                todo!("Pending tag is not supported yet.")
+            }
+            BlockNumberOrTag::Number(number) => number,
+        })
+    }
+}
+
 #[async_trait]
 impl JsonRpcServer for JsonRpcServerImpl {
     async fn block_number(&self) -> Result<BlockNumber, Error> {
@@ -63,14 +92,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         block_number: BlockNumberOrTag,
         _requested_scope: Option<BlockResponseScope>,
     ) -> Result<Block, Error> {
-        let block_number = match block_number {
-            BlockNumberOrTag::Tag(Tag::Latest) => self.block_number().await?,
-            BlockNumberOrTag::Tag(Tag::Pending) => {
-                // TODO(anatg): Support pending block.
-                todo!("Pending tag is not supported yet.")
-            }
-            BlockNumberOrTag::Number(number) => number,
-        };
+        let block_number = self.get_block_number(block_number).await?;
 
         // TODO(anatg): Get the entire block.
         let block_header = self
@@ -97,19 +119,38 @@ impl JsonRpcServer for JsonRpcServerImpl {
         block_hash: BlockHashOrTag,
         requested_scope: Option<BlockResponseScope>,
     ) -> Result<Block, Error> {
-        let block_number = match block_hash {
-            BlockHashOrTag::Tag(Tag::Latest) => BlockNumberOrTag::Tag(Tag::Latest),
-            BlockHashOrTag::Tag(Tag::Pending) => BlockNumberOrTag::Tag(Tag::Pending),
-            BlockHashOrTag::Hash(hash) => BlockNumberOrTag::Number(
-                self.storage_reader
-                    .get_block_number_by_hash(&hash)
-                    .map_err(internal_server_error)?
-                    .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockHash))?,
-            ),
-        };
-
+        let block_number = self.get_block_number_or_tag(block_hash)?;
         self.get_block_by_number(block_number, requested_scope)
             .await
+    }
+
+    async fn get_storage_at(
+        &self,
+        contract_address: ContractAddress,
+        key: StorageKey,
+        block_hash: BlockHashOrTag,
+    ) -> Result<StarkFelt, Error> {
+        let statetxn = self
+            .storage_reader
+            .get_state_reader_txn()
+            .map_err(internal_server_error)?;
+        let state_reader = statetxn.get_state_reader().map_err(internal_server_error)?;
+
+        // Check that the block is valid and get the state number.
+        let block_number = self
+            .get_block_number(self.get_block_number_or_tag(block_hash)?)
+            .await?;
+        let state = StateNumber::right_before_block(block_number.next());
+
+        // Check that the contract exists.
+        state_reader
+            .get_class_hash_at(state, &contract_address)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))?;
+
+        state_reader
+            .get_storage_at(state, &contract_address, &key)
+            .map_err(internal_server_error)
     }
 }
 

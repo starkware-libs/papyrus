@@ -2,8 +2,11 @@ use jsonrpsee::core::Error;
 use jsonrpsee::types::EmptyParams;
 use jsonrpsee::ws_client::WsClientBuilder;
 
-use crate::starknet::{shash, BlockHash, BlockHeader, StarkHash};
-use crate::storage::components::{storage_test_utils, HeaderStorageWriter};
+use crate::starknet::{
+    shash, BlockHash, BlockHeader, ClassHash, DeployedContract, StarkHash, StateDiffForward,
+    StorageDiff, StorageEntry,
+};
+use crate::storage::components::{storage_test_utils, HeaderStorageWriter, StateStorageWriter};
 
 use super::api::*;
 use super::*;
@@ -144,6 +147,93 @@ async fn test_get_block_by_hash() {
             [BlockHashOrTag::Hash(BlockHash(shash!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             )))],
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidBlockHash as i32,
+        JsonRpcError::InvalidBlockHash.to_string(),
+        None::<()>,
+    ));
+}
+
+#[tokio::test]
+async fn test_get_storage_at() {
+    let storage_components = storage_test_utils::get_test_storage();
+    let storage_reader = storage_components.block_storage_reader;
+    let mut storage_writer = storage_components.block_storage_writer;
+    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+
+    let block_hash = BlockHash(shash!(
+        "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"
+    ));
+    let header = BlockHeader {
+        number: BlockNumber(0),
+        block_hash,
+        ..BlockHeader::default()
+    };
+    storage_writer
+        .append_header(header.number, &header)
+        .unwrap();
+    let address = ContractAddress(shash!("0x11"));
+    let class_hash = ClassHash(shash!("0x4"));
+    let key = StorageKey(shash!("0x1001"));
+    let value = shash!("0x200");
+    let diff = StateDiffForward {
+        deployed_contracts: vec![DeployedContract {
+            address,
+            class_hash,
+        }],
+        storage_diffs: vec![StorageDiff {
+            address,
+            diff: vec![StorageEntry {
+                key: key.clone(),
+                value,
+            }],
+        }],
+    };
+    storage_writer
+        .append_state_diff(BlockNumber(0), &diff)
+        .unwrap();
+
+    let res = module
+        .call::<_, StarkFelt>(
+            "starknet_getStorageAt",
+            (address, key.clone(), BlockHashOrTag::Hash(block_hash)),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res, value);
+
+    // Ask for an invalid contract.
+    let err = module
+        .call::<_, StarkFelt>(
+            "starknet_getStorageAt",
+            (
+                ContractAddress(shash!("0x12")),
+                key.clone(),
+                BlockHashOrTag::Hash(block_hash),
+            ),
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::ContractNotFound as i32,
+        JsonRpcError::ContractNotFound.to_string(),
+        None::<()>,
+    ));
+
+    // Ask for an invalid block.
+    let err = module
+        .call::<_, StarkFelt>(
+            "starknet_getStorageAt",
+            (
+                address,
+                key.clone(),
+                BlockHashOrTag::Hash(BlockHash(shash!(
+                    "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
+                ))),
+            ),
         )
         .await
         .unwrap_err();
