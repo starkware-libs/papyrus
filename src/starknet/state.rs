@@ -15,6 +15,10 @@ impl StateNumber {
     pub fn right_before_block(block_number: BlockNumber) -> StateNumber {
         StateNumber(block_number.0)
     }
+    // The state at the end of the block.
+    pub fn right_after_block(block_number: BlockNumber) -> StateNumber {
+        StateNumber(block_number.next().0)
+    }
     pub fn is_before(&self, block_number: BlockNumber) -> bool {
         self.0 <= block_number.0
     }
