@@ -24,13 +24,13 @@ impl CentralSource {
         Ok(CentralSource { starknet_client })
     }
 
-    pub async fn get_block_number(&mut self) -> Result<BlockNumber, ClientError> {
+    pub async fn get_block_number(&self) -> Result<BlockNumber, ClientError> {
         self.starknet_client.block_number().await
     }
 
     // TODO(dan): return all block data.
     pub fn stream_new_blocks(
-        &mut self,
+        &self,
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
     ) -> impl Stream<Item = (BlockNumber, BlockHeader)> + '_ {
