@@ -37,7 +37,7 @@ async fn stream_block_headers() {
     let mut initial_block_num = BlockNumber(5);
     let stream = central_source.stream_new_blocks(initial_block_num, last_block_number);
     pin_mut!(stream);
-    while let Some((block_number, _header)) = stream.next().await {
+    while let Some((block_number, _header, _body)) = stream.next().await {
         assert_eq!(initial_block_num, block_number);
         initial_block_num = initial_block_num.next();
     }

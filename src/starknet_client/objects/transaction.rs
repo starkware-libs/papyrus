@@ -1,11 +1,13 @@
 use serde::{Deserialize, Serialize};
 
 use crate::starknet::{
-    CallData, ClassHash, ContractAddress, EntryPointSelector, EthAddress, Event, Fee,
-    L1ToL2Payload, L2ToL1Payload, Nonce, StarkHash, TransactionHash, TransactionSignature,
-    TransactionVersion,
+    CallData, ClassHash, ContractAddress, DeclareTransaction as NodeDeclareTransaction,
+    DeployTransaction as NodeDeployTransaction, EntryPointSelector, EthAddress, Event, Fee,
+    InvokeTransaction as NodeInvokeTransaction, L1ToL2Payload, L2ToL1Payload, Nonce, StarkHash,
+    Transaction as NodeTransaction, TransactionHash, TransactionSignature, TransactionVersion,
 };
 
+// TODO(dan): consider extracting common fields out (version, hash, type).
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 #[serde(untagged)]
 pub enum Transaction {
@@ -14,16 +16,40 @@ pub enum Transaction {
     Invoke(InvokeTransaction),
 }
 
+impl From<Transaction> for NodeTransaction {
+    fn from(tx: Transaction) -> Self {
+        match tx {
+            Transaction::Declare(declare_tx) => NodeTransaction::Declare(declare_tx.into()),
+            Transaction::Deploy(deploy_tx) => NodeTransaction::Deploy(deploy_tx.into()),
+            Transaction::Invoke(invoke_tx) => NodeTransaction::Invoke(invoke_tx.into()),
+        }
+    }
+}
+
 #[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
 pub struct DeclareTransaction {
     pub class_hash: ClassHash,
     pub sender_address: ContractAddress,
     pub nonce: Nonce,
     pub max_fee: Fee,
+    #[serde(default)]
     pub version: TransactionVersion,
     pub transaction_hash: TransactionHash,
     pub signature: TransactionSignature,
     pub r#type: TransactionType,
+}
+
+impl From<DeclareTransaction> for NodeDeclareTransaction {
+    fn from(declare_tx: DeclareTransaction) -> Self {
+        NodeDeclareTransaction {
+            transaction_hash: declare_tx.transaction_hash,
+            max_fee: declare_tx.max_fee,
+            version: declare_tx.version,
+            signature: declare_tx.signature,
+            class_hash: declare_tx.class_hash,
+            sender_address: declare_tx.sender_address,
+        }
+    }
 }
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
@@ -33,7 +59,21 @@ pub struct DeployTransaction {
     pub class_hash: ClassHash,
     pub constructor_calldata: CallData,
     pub transaction_hash: TransactionHash,
+    #[serde(default)]
+    pub version: TransactionVersion,
     pub r#type: TransactionType,
+}
+
+impl From<DeployTransaction> for NodeDeployTransaction {
+    fn from(deploy_tx: DeployTransaction) -> Self {
+        NodeDeployTransaction {
+            transaction_hash: deploy_tx.transaction_hash,
+            max_fee: Fee::default(),
+            version: deploy_tx.version,
+            contract_address: deploy_tx.contract_address,
+            constructor_calldata: deploy_tx.constructor_calldata,
+        }
+    }
 }
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
@@ -45,7 +85,23 @@ pub struct InvokeTransaction {
     pub max_fee: Fee,
     pub signature: TransactionSignature,
     pub transaction_hash: TransactionHash,
+    #[serde(default)]
+    pub version: TransactionVersion,
     pub r#type: TransactionType,
+}
+
+impl From<InvokeTransaction> for NodeInvokeTransaction {
+    fn from(invoke_tx: InvokeTransaction) -> Self {
+        NodeInvokeTransaction {
+            transaction_hash: invoke_tx.transaction_hash,
+            max_fee: invoke_tx.max_fee,
+            version: invoke_tx.version,
+            signature: invoke_tx.signature,
+            contract_address: invoke_tx.contract_address,
+            entry_point_selector: invoke_tx.entry_point_selector,
+            call_data: invoke_tx.calldata,
+        }
+    }
 }
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]

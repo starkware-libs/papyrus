@@ -7,11 +7,11 @@ use futures_util::{pin_mut, select};
 use futures_util::{Stream, StreamExt};
 use log::{error, info};
 
-use crate::starknet::{BlockHeader, BlockNumber, StateDiffForward};
+use crate::starknet::{BlockBody, BlockHeader, BlockNumber, StateDiffForward};
 use crate::starknet_client::ClientError;
 use crate::storage::components::{
-    BlockStorageError, BlockStorageReader, BlockStorageWriter, HeaderStorageReader,
-    HeaderStorageWriter, StateStorageReader, StateStorageWriter,
+    BlockStorageError, BlockStorageReader, BlockStorageWriter, BodyStorageWriter,
+    HeaderStorageReader, HeaderStorageWriter, StateStorageReader, StateStorageWriter,
 };
 
 pub use self::sources::{CentralSource, CentralSourceConfig};
@@ -36,10 +36,10 @@ pub enum StateSyncError {
     SyncError { message: String },
 }
 pub enum SyncEvent {
-    // TODO(dan): store all block data.
-    HeaderAvailable {
+    BlockAvailable {
         block_number: BlockNumber,
         header: BlockHeader,
+        body: BlockBody,
     },
     StateDiffAvailable {
         block_number: BlockNumber,
@@ -76,10 +76,14 @@ impl StateSync {
                   complete => break,
                 };
                 match sync_event {
-                    Some(SyncEvent::HeaderAvailable {
+                    Some(SyncEvent::BlockAvailable {
                         block_number,
                         header,
-                    }) => self.writer.append_header(block_number, &header)?,
+                        body,
+                    }) => {
+                        self.writer.append_header(block_number, &header)?;
+                        self.writer.append_body(block_number, &body)?;
+                    }
                     Some(SyncEvent::StateDiffAvailable {
                         block_number,
                         state_diff,
@@ -120,10 +124,11 @@ fn stream_new_blocks(
                 .stream_new_blocks(header_marker, last_block_number)
                 .fuse();
             pin_mut!(header_stream);
-            while let Some((block_number, header)) = header_stream.next().await {
-                yield SyncEvent::HeaderAvailable {
+            while let Some((block_number, header, body)) = header_stream.next().await {
+                yield SyncEvent::BlockAvailable {
                     block_number,
                     header,
+                    body,
                 };
             }
         }

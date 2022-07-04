@@ -230,6 +230,7 @@ async fn get_block() {
                 .unwrap(),
             )),
             r#type: TransactionType::InvokeFunction,
+            ..Default::default()
         })],
         transaction_receipts: vec![],
     };
