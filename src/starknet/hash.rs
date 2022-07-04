@@ -38,6 +38,12 @@ impl StarkHash {
         let bytes = bytes_from_hex_str::<32, true>(hex_str)?;
         Ok(StarkHash(bytes))
     }
+    pub fn from_u8(val: u8) -> StarkHash {
+        StarkHash([
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, val,
+        ])
+    }
 }
 
 pub type StarkFelt = StarkHash;

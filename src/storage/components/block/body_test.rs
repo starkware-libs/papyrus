@@ -1,5 +1,5 @@
 use crate::starknet::{
-    shash, BlockBody, BlockNumber, CallData, ContractAddress, DeployTransaction, Fee, StarkHash,
+    BlockBody, BlockNumber, CallData, ContractAddress, DeployTransaction, Fee, StarkHash,
     Transaction, TransactionHash, TransactionIndex, TransactionSignature, TransactionVersion,
 };
 use crate::storage::components::block::body::BodyStorageReader;
@@ -11,34 +11,30 @@ use super::{BlockStorageError, BodyStorageWriter};
 async fn test_append_body() {
     let (reader, mut writer) = get_test_storage();
 
-    let tx0 = Transaction::Deploy(DeployTransaction {
-        transaction_hash: TransactionHash(shash!("0x100")),
-        max_fee: Fee(100),
-        version: TransactionVersion(1),
-        signature: TransactionSignature(vec![shash!("0x200")]),
-        contract_address: ContractAddress(shash!("0x300")),
-        constructor_calldata: CallData(vec![shash!("0x400")]),
-    });
+    let txs: Vec<Transaction> = (0..10)
+        .map(|i| {
+            Transaction::Deploy(DeployTransaction {
+                transaction_hash: TransactionHash(StarkHash::from_u8(i as u8)),
+                max_fee: Fee(100),
+                version: TransactionVersion(1),
+                signature: TransactionSignature(vec![StarkHash::from_u8(i as u8)]),
+                contract_address: ContractAddress(StarkHash::from_u8(i as u8)),
+                constructor_calldata: CallData(vec![StarkHash::from_u8(i as u8)]),
+            })
+        })
+        .collect();
 
-    let tx1 = Transaction::Deploy(DeployTransaction {
-        transaction_hash: TransactionHash(shash!("0x101")),
-        max_fee: Fee(100),
-        version: TransactionVersion(1),
-        signature: TransactionSignature(vec![shash!("0x200")]),
-        contract_address: ContractAddress(shash!("0x301")),
-        constructor_calldata: CallData(vec![shash!("0x401")]),
-    });
     let body0 = BlockBody {
-        transactions: vec![tx0.clone()],
+        transactions: vec![txs[0].clone()],
     };
     let body1 = BlockBody {
         transactions: vec![],
     };
     let body2 = BlockBody {
-        transactions: vec![tx1.clone(), tx0.clone()],
+        transactions: vec![txs[1].clone(), txs[2].clone()],
     };
     let body3 = BlockBody {
-        transactions: vec![tx1.clone()],
+        transactions: vec![txs[3].clone(), txs[0].clone()],
     };
     writer.append_body(BlockNumber(0), &body0).unwrap();
     writer.append_body(BlockNumber(1), &body1).unwrap();
@@ -53,10 +49,18 @@ async fn test_append_body() {
     );
 
     writer.append_body(BlockNumber(2), &body2).unwrap();
-    writer.append_body(BlockNumber(3), &body3).unwrap();
+
+    assert_matches!(
+        writer.append_body(BlockNumber(3), &body3).unwrap_err(),
+        BlockStorageError::TransactionHashAlreadyExists {
+            tx_hash,
+            block_number: BlockNumber(3),
+            tx_index: TransactionIndex(1)
+        } if tx_hash == txs[0].transaction_hash()
+    );
 
     // Check marker.
-    assert_eq!(reader.get_body_marker().unwrap(), BlockNumber(4));
+    assert_eq!(reader.get_body_marker().unwrap(), BlockNumber(3));
 
     // Check transactions.
     assert_eq!(
@@ -64,7 +68,7 @@ async fn test_append_body() {
             .get_transaction(BlockNumber(0), TransactionIndex(0))
             .unwrap()
             .as_ref(),
-        Some(&tx0)
+        Some(&txs[0])
     );
     assert_eq!(
         reader
@@ -83,19 +87,40 @@ async fn test_append_body() {
             .get_transaction(BlockNumber(2), TransactionIndex(0))
             .unwrap()
             .as_ref(),
-        Some(&tx1)
+        Some(&txs[1])
     );
     assert_eq!(
         reader
             .get_transaction(BlockNumber(2), TransactionIndex(1))
             .unwrap()
             .as_ref(),
-        Some(&tx0)
+        Some(&txs[2])
     );
     assert_eq!(
         reader
             .get_transaction(BlockNumber(2), TransactionIndex(2))
             .unwrap(),
         None,
+    );
+
+    // Check transaction hash.
+    // Check block hash.
+    assert_eq!(
+        reader
+            .get_transaction_idx_by_hash(&txs[0].transaction_hash())
+            .unwrap(),
+        Some((BlockNumber(0), TransactionIndex(0)))
+    );
+    assert_eq!(
+        reader
+            .get_transaction_idx_by_hash(&txs[1].transaction_hash())
+            .unwrap(),
+        Some((BlockNumber(2), TransactionIndex(0)))
+    );
+    assert_eq!(
+        reader
+            .get_transaction_idx_by_hash(&txs[2].transaction_hash())
+            .unwrap(),
+        Some((BlockNumber(2), TransactionIndex(1)))
     );
 }
