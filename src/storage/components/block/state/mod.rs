@@ -5,17 +5,22 @@ mod state_test;
 
 use libmdbx::RW;
 
-use self::reader::StateReaderTxn;
-
-use super::{BlockStorageError, BlockStorageReader, BlockStorageResult, BlockStorageWriter};
-
 use crate::starknet::{
-    BlockNumber, IndexedDeployedContract, StateDiffForward, StorageDiff, StorageEntry,
+    BlockNumber, ContractAddress, IndexedDeployedContract, StarkFelt, StateDiffForward,
+    StorageDiff, StorageEntry, StorageKey,
 };
 use crate::storage::db::{DbError, DbTransaction, TableHandle};
 
-// Constants.
-const STATE_MARKER_KEY: &[u8] = b"state";
+use super::{
+    BlockStorageError, BlockStorageReader, BlockStorageResult, BlockStorageWriter, MarkerKind,
+    MarkersTable,
+};
+
+use self::reader::StateReaderTxn;
+
+pub type ContractsTable<'env> = TableHandle<'env, ContractAddress, IndexedDeployedContract>;
+pub type ContractStorageTable<'env> =
+    TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), StarkFelt>;
 
 // Structure of state data:
 // * contracts_table: (contract_address) -> (block_num, class_hash).
@@ -50,8 +55,8 @@ impl StateStorageReader for BlockStorageReader {
     fn get_state_marker(&self) -> BlockStorageResult<BlockNumber> {
         let txn = self.db_reader.begin_ro_txn()?;
         let markers_table = txn.open_table(&self.tables.markers)?;
-        Ok(txn
-            .get::<BlockNumber>(&markers_table, STATE_MARKER_KEY)?
+        Ok(markers_table
+            .get(&txn, &MarkerKind::State)?
             .unwrap_or_default())
     }
     fn get_state_diff(
@@ -60,10 +65,7 @@ impl StateStorageReader for BlockStorageReader {
     ) -> BlockStorageResult<Option<StateDiffForward>> {
         let txn = self.db_reader.begin_ro_txn()?;
         let state_diffs_table = txn.open_table(&self.tables.state_diffs)?;
-        let state_diff = txn.get::<StateDiffForward>(
-            &state_diffs_table,
-            &bincode::serialize(&block_number).unwrap(),
-        )?;
+        let state_diff = state_diffs_table.get(&txn, &block_number)?;
         Ok(state_diff)
     }
     fn get_state_reader_txn(&self) -> BlockStorageResult<StateReaderTxn<'_>> {
@@ -86,11 +88,7 @@ impl StateStorageWriter for BlockStorageWriter {
 
         update_marker(&txn, &markers_table, block_number)?;
         // Write state diff.
-        txn.insert(
-            &state_diffs_table,
-            &bincode::serialize(&block_number).unwrap(),
-            &state_diff,
-        )?;
+        state_diffs_table.insert(&txn, &block_number, state_diff)?;
         // Write state.
         write_deployed_contracts(state_diff, &txn, block_number, &contracts_table)?;
         write_storage_diffs(state_diff, &txn, block_number, &storage_table)?;
@@ -101,14 +99,14 @@ impl StateStorageWriter for BlockStorageWriter {
     }
 }
 
-fn update_marker(
-    txn: &DbTransaction<'_, RW>,
-    markers_table: &TableHandle<'_>,
+fn update_marker<'env>(
+    txn: &DbTransaction<'env, RW>,
+    markers_table: &'env MarkersTable<'env>,
     block_number: BlockNumber,
 ) -> BlockStorageResult<()> {
     // Make sure marker is consistent.
-    let state_marker = txn
-        .get::<BlockNumber>(markers_table, STATE_MARKER_KEY)?
+    let state_marker = markers_table
+        .get(txn, &MarkerKind::State)?
         .unwrap_or_default();
     if state_marker != block_number {
         return Err(BlockStorageError::MarkerMismatch {
@@ -118,24 +116,23 @@ fn update_marker(
     };
 
     // Advance marker.
-    txn.upsert(markers_table, STATE_MARKER_KEY, &block_number.next())?;
+    markers_table.upsert(txn, &MarkerKind::State, &block_number.next())?;
     Ok(())
 }
 
-fn write_deployed_contracts(
+fn write_deployed_contracts<'env>(
     state_diff: &StateDiffForward,
-    txn: &DbTransaction<'_, RW>,
+    txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
-    contracts_table: &TableHandle<'_>,
+    contracts_table: &'env ContractsTable<'env>,
 ) -> BlockStorageResult<()> {
     for deployed_contract in &state_diff.deployed_contracts {
-        let key = bincode::serialize(&deployed_contract.address).unwrap();
         let class_hash = deployed_contract.class_hash;
         let value = IndexedDeployedContract {
             block_number,
             class_hash,
         };
-        let res = txn.insert(contracts_table, &key, &value);
+        let res = contracts_table.insert(txn, &deployed_contract.address, &value);
         match res {
             Ok(()) => continue,
             Err(DbError::InnerDbError(libmdbx::Error::KeyExist)) => {
@@ -149,16 +146,15 @@ fn write_deployed_contracts(
     Ok(())
 }
 
-fn write_storage_diffs(
+fn write_storage_diffs<'env>(
     state_diff: &StateDiffForward,
-    txn: &DbTransaction<'_, RW>,
+    txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
-    storage_table: &TableHandle<'_>,
+    storage_table: &'env ContractStorageTable<'env>,
 ) -> BlockStorageResult<()> {
     for StorageDiff { address, diff } in &state_diff.storage_diffs {
         for StorageEntry { key, value } in diff {
-            let db_key = bincode::serialize(&(address, key, block_number)).unwrap();
-            txn.upsert(storage_table, &db_key, value)?;
+            storage_table.upsert(txn, &(*address, key.clone(), block_number), value)?;
         }
     }
     Ok(())

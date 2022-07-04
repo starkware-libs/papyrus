@@ -9,10 +9,12 @@ use crate::{
     storage::db::{DbTransaction, TableHandle},
 };
 
-use super::{BlockStorageError, BlockStorageReader, BlockStorageResult, BlockStorageWriter};
+use super::{
+    BlockStorageError, BlockStorageReader, BlockStorageResult, BlockStorageWriter, MarkerKind,
+    MarkersTable,
+};
 
-// Constants.
-const BODY_MARKER_KEY: &[u8] = b"body";
+pub type TransactionsTable<'env> = TableHandle<'env, (BlockNumber, TransactionIndex), Transaction>;
 
 pub trait BodyStorageReader {
     // The block number marker is the first block number that doesn't exist yet.
@@ -36,8 +38,8 @@ impl BodyStorageReader for BlockStorageReader {
     fn get_body_marker(&self) -> BlockStorageResult<BlockNumber> {
         let txn = self.db_reader.begin_ro_txn()?;
         let markers_table = txn.open_table(&self.tables.markers)?;
-        Ok(txn
-            .get::<BlockNumber>(&markers_table, BODY_MARKER_KEY)?
+        Ok(markers_table
+            .get(&txn, &MarkerKind::Body)?
             .unwrap_or_default())
     }
     fn get_transaction(
@@ -47,10 +49,7 @@ impl BodyStorageReader for BlockStorageReader {
     ) -> BlockStorageResult<Option<Transaction>> {
         let txn = self.db_reader.begin_ro_txn()?;
         let transactions_table = txn.open_table(&self.tables.transactions)?;
-        let transaction = txn.get::<Transaction>(
-            &transactions_table,
-            &bincode::serialize(&(block_number, tx_index)).unwrap(),
-        )?;
+        let transaction = transactions_table.get(&txn, &(block_number, tx_index))?;
         Ok(transaction)
     }
 }
@@ -72,30 +71,26 @@ impl BodyStorageWriter for BlockStorageWriter {
     }
 }
 
-fn write_transactions(
+fn write_transactions<'env>(
     block_body: &BlockBody,
-    txn: &DbTransaction<'_, RW>,
-    transactions_table: &TableHandle<'_>,
+    txn: &DbTransaction<'env, RW>,
+    transactions_table: &'env TransactionsTable<'env>,
     block_number: BlockNumber,
 ) -> BlockStorageResult<()> {
     for (index, tx) in block_body.transactions.iter().enumerate() {
-        txn.insert(
-            transactions_table,
-            &bincode::serialize(&(block_number, TransactionIndex(index as u64))).unwrap(),
-            tx,
-        )?;
+        transactions_table.insert(txn, &(block_number, TransactionIndex(index as u64)), tx)?;
     }
     Ok(())
 }
 
-fn update_marker(
-    txn: &DbTransaction<'_, RW>,
-    markers_table: &TableHandle<'_>,
+fn update_marker<'env>(
+    txn: &DbTransaction<'env, RW>,
+    markers_table: &'env MarkersTable<'env>,
     block_number: BlockNumber,
 ) -> BlockStorageResult<()> {
     // Make sure marker is consistent.
-    let body_marker = txn
-        .get::<BlockNumber>(markers_table, BODY_MARKER_KEY)?
+    let body_marker = markers_table
+        .get(txn, &MarkerKind::Body)?
         .unwrap_or_default();
     if body_marker != block_number {
         return Err(BlockStorageError::MarkerMismatch {
@@ -105,6 +100,6 @@ fn update_marker(
     };
 
     // Advance marker.
-    txn.upsert(markers_table, BODY_MARKER_KEY, &block_number.next())?;
+    markers_table.upsert(txn, &MarkerKind::Body, &block_number.next())?;
     Ok(())
 }
