@@ -23,7 +23,7 @@ fn test_open_env() {
 fn test_txns() {
     // Create an environment and a table.
     let (reader, mut writer) = get_test_env();
-    let table_id = writer.create_table("table").unwrap();
+    let table_id = writer.create_table::<[u8; 3], [u8; 5]>("table").unwrap();
 
     // Snapshot state by creating a read txn.
     let txn0 = reader.begin_ro_txn().unwrap();
@@ -31,7 +31,7 @@ fn test_txns() {
 
     // Insert a value.
     let wtxn = writer.begin_rw_txn().unwrap();
-    wtxn.insert(&table, b"key", &b"data0".to_vec()).unwrap();
+    table.insert(&wtxn, b"key", b"data0").unwrap();
     wtxn.commit().unwrap();
 
     // Snapshot state by creating a read txn.
@@ -39,20 +39,14 @@ fn test_txns() {
 
     // Update the value.
     let wtxn = writer.begin_rw_txn().unwrap();
-    wtxn.upsert(&table, b"key", &b"data1".to_vec()).unwrap();
+    table.upsert(&wtxn, b"key", b"data1").unwrap();
     wtxn.commit().unwrap();
 
     // Snapshot state by creating a read txn.
     let txn2 = reader.begin_ro_txn().unwrap();
 
     // Validate data in snapshots.
-    assert_eq!(txn0.get::<Vec<u8>>(&table, b"key").unwrap(), None);
-    assert_eq!(
-        txn1.get::<Vec<u8>>(&table, b"key").unwrap(),
-        Some(b"data0".to_vec())
-    );
-    assert_eq!(
-        txn2.get::<Vec<u8>>(&table, b"key").unwrap(),
-        Some(b"data1".to_vec())
-    );
+    assert_eq!(table.get(&txn0, b"key").unwrap(), None);
+    assert_eq!(table.get(&txn1, b"key").unwrap(), Some(*b"data0"));
+    assert_eq!(table.get(&txn2, b"key").unwrap(), Some(*b"data1"));
 }

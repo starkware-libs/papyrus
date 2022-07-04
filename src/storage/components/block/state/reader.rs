@@ -1,21 +1,18 @@
+use crate::starknet::{
+    BlockNumber, ClassHash, ContractAddress, StarkFelt, StateNumber, StorageKey,
+};
 use libmdbx::RO;
 
-use crate::{
-    starknet::{
-        BlockNumber, ClassHash, ContractAddress, IndexedDeployedContract, StarkFelt, StateNumber,
-        StorageKey,
-    },
-    storage::{
-        components::{block::BlockStorageResult, BlockStorageReader},
-        db::{DbTransaction, TableHandle},
-    },
-};
+use crate::storage::components::{block::BlockStorageResult, BlockStorageReader};
+use crate::storage::db::DbTransaction;
+
+use super::{ContractStorageTable, ContractsTable};
 
 // Represents a single coherent state at a single point in time,
 pub struct StateReader<'env, 'txn> {
     txn: &'txn DbTransaction<'env, RO>,
-    contracts_table: TableHandle<'txn>,
-    storage_table: TableHandle<'txn>,
+    contracts_table: ContractsTable<'env>,
+    storage_table: ContractStorageTable<'env>,
 }
 #[allow(dead_code)]
 impl<'env, 'txn> StateReader<'env, 'txn> {
@@ -24,10 +21,7 @@ impl<'env, 'txn> StateReader<'env, 'txn> {
         state_number: StateNumber,
         address: &ContractAddress,
     ) -> BlockStorageResult<Option<ClassHash>> {
-        let key = bincode::serialize(address).unwrap();
-        let value = self
-            .txn
-            .get::<IndexedDeployedContract>(&self.contracts_table, &key)?;
+        let value = self.contracts_table.get(self.txn, address)?;
         if let Some(value) = value {
             if state_number.is_after(value.block_number) {
                 return Ok(Some(value.class_hash));
@@ -44,11 +38,9 @@ impl<'env, 'txn> StateReader<'env, 'txn> {
         // The updates to the storage key are indexed by the block_number at which they occured.
         let first_irrelevant_block: BlockNumber = state_number.block_after();
         // The relevant update is the last update strictly before `first_irrelevant_block`.
-        let db_key = bincode::serialize(&(address, key, first_irrelevant_block)).unwrap();
+        let db_key = (*address, key.clone(), first_irrelevant_block);
         // Find the previous db item.
-        let res = self
-            .txn
-            .get_lower_item::<StarkFelt>(&self.storage_table, &db_key)?;
+        let res = self.storage_table.get_lower_item(self.txn, &db_key)?;
         match res {
             None => Ok(StarkFelt::default()),
             Some((got_db_key, value)) => {

@@ -4,11 +4,15 @@ mod state;
 #[cfg(test)]
 mod test_utils;
 
-use crate::starknet::{BlockHash, BlockNumber, ContractAddress};
-use crate::storage::db::DbConfig;
-use std::sync::Arc;
+use serde::{Deserialize, Serialize};
 
+use crate::starknet::{
+    BlockHash, BlockHeader, BlockNumber, ContractAddress, IndexedDeployedContract, StarkFelt,
+    StateDiffForward, StorageKey, Transaction, TransactionIndex,
+};
 use crate::storage::db::{open_env, DbError, DbReader, DbWriter, TableIdentifier};
+use crate::storage::db::{DbConfig, TableHandle};
+use std::sync::Arc;
 
 pub use self::header::{HeaderStorageReader, HeaderStorageWriter};
 
@@ -33,14 +37,21 @@ pub enum BlockStorageError {
 }
 pub type BlockStorageResult<V> = std::result::Result<V, BlockStorageError>;
 
+#[derive(Copy, Clone, Serialize, Deserialize)]
+pub enum MarkerKind {
+    Header,
+    Body,
+    State,
+}
+pub type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
 pub struct Tables {
-    markers: TableIdentifier,
-    headers: TableIdentifier,
-    block_hash_to_number: TableIdentifier,
-    transactions: TableIdentifier,
-    state_diffs: TableIdentifier,
-    contracts: TableIdentifier,
-    contract_storage: TableIdentifier,
+    markers: TableIdentifier<MarkerKind, BlockNumber>,
+    headers: TableIdentifier<BlockNumber, BlockHeader>,
+    block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
+    transactions: TableIdentifier<(BlockNumber, TransactionIndex), Transaction>,
+    state_diffs: TableIdentifier<BlockNumber, StateDiffForward>,
+    contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
+    contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
 }
 #[derive(Clone)]
 pub struct BlockStorageReader {
