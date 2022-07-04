@@ -6,7 +6,7 @@ use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use tokio_stream::Stream;
 
-use crate::starknet::{BlockHeader, BlockNumber};
+use crate::starknet::{BlockBody, BlockHeader, BlockNumber};
 use crate::starknet_client::{ClientCreationError, ClientError, StarknetClient};
 
 #[derive(Serialize, Deserialize)]
@@ -33,7 +33,7 @@ impl CentralSource {
         &self,
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
-    ) -> impl Stream<Item = (BlockNumber, BlockHeader)> + '_ {
+    ) -> impl Stream<Item = (BlockNumber, BlockHeader, BlockBody)> + '_ {
         let mut current_block_number = initial_block_number;
         stream! {
             while current_block_number <= up_to_block_number {
@@ -51,7 +51,8 @@ impl CentralSource {
                             timestamp: block.timestamp,
                             status: block.status.into(),
                         };
-                        yield (current_block_number, header);
+                        let body = BlockBody{transactions: block.transactions.into_iter().map(|x| x.into()).collect()};
+                        yield (current_block_number, header, body);
                         current_block_number = current_block_number.next();
                     },
                     Err(err) => {

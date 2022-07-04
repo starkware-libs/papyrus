@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use crate::storage::db::{open_env, DbError, DbReader, DbWriter, TableIdentifier};
 
+pub use self::body::BodyStorageWriter;
 pub use self::header::{HeaderStorageReader, HeaderStorageWriter};
 
 #[derive(thiserror::Error, Debug)]

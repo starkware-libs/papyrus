@@ -8,8 +8,8 @@ use tokio_stream::StreamExt;
 
 use crate::starknet_client::ClientError;
 use crate::storage::components::{
-    BlockStorageError, BlockStorageReader, BlockStorageWriter, HeaderStorageReader,
-    HeaderStorageWriter,
+    BlockStorageError, BlockStorageReader, BlockStorageWriter, BodyStorageWriter,
+    HeaderStorageReader, HeaderStorageWriter,
 };
 
 pub use self::sources::{CentralSource, CentralSourceConfig};
@@ -58,9 +58,10 @@ impl StateSync {
                 .central_source
                 .stream_new_blocks(initial_block_number, last_block_number);
             pin_mut!(stream);
-            while let Some((number, header)) = stream.next().await {
-                debug!("Received new header: {}.", number.0);
+            while let Some((number, header, body)) = stream.next().await {
+                debug!("Received new block: {}.", number.0);
                 self.writer.append_header(number, &header)?;
+                self.writer.append_body(number, &body)?;
             }
             tokio::time::sleep(SLEEP_DURATION).await
         }
