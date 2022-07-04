@@ -56,7 +56,7 @@ async fn test_append_body() {
     // Check marker.
     assert_eq!(reader.get_body_marker().unwrap(), BlockNumber(4));
 
-    // Check transactions.
+    // Check single transactions.
     assert_eq!(
         reader
             .get_transaction(BlockNumber(0), TransactionIndex(0))
@@ -96,4 +96,23 @@ async fn test_append_body() {
             .unwrap(),
         None,
     );
+
+    // Check block transactions.
+    assert_eq!(
+        reader.get_block_transactions(BlockNumber(0)).unwrap(),
+        Some(vec![tx0.clone()])
+    );
+    assert_eq!(
+        reader.get_block_transactions(BlockNumber(1)).unwrap(),
+        Some(vec![])
+    );
+    assert_eq!(
+        reader.get_block_transactions(BlockNumber(2)).unwrap(),
+        Some(vec![tx1.clone(), tx0])
+    );
+    assert_eq!(
+        reader.get_block_transactions(BlockNumber(3)).unwrap(),
+        Some(vec![tx1])
+    );
+    assert_eq!(reader.get_block_transactions(BlockNumber(4)).unwrap(), None);
 }
