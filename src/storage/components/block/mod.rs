@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::starknet::{
     BlockHash, BlockHeader, BlockNumber, ContractAddress, IndexedDeployedContract, StarkFelt,
-    StateDiffForward, StorageKey, Transaction, TransactionIndex,
+    StateDiffForward, StorageKey, Transaction, TransactionHash, TransactionOffsetInBlock,
 };
 use crate::storage::db::{open_env, DbError, DbReader, DbWriter, TableIdentifier};
 use crate::storage::db::{DbConfig, TableHandle};
@@ -33,6 +33,14 @@ pub enum BlockStorageError {
         block_hash: BlockHash,
         block_number: BlockNumber,
     },
+    #[error(
+        "Transaction hash {tx_hash:?} already exists, when adding transaction {tx_offset_in_block:?} at block number {block_number:?}."
+    )]
+    TransactionHashAlreadyExists {
+        tx_hash: TransactionHash,
+        block_number: BlockNumber,
+        tx_offset_in_block: TransactionOffsetInBlock,
+    },
     #[error("State diff redployed to an existing contract address {address:?}.")]
     ContractAlreadyExists { address: ContractAddress },
 }
@@ -49,7 +57,9 @@ pub struct Tables {
     markers: TableIdentifier<MarkerKind, BlockNumber>,
     headers: TableIdentifier<BlockNumber, BlockHeader>,
     block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
-    transactions: TableIdentifier<(BlockNumber, TransactionIndex), Transaction>,
+    transactions: TableIdentifier<(BlockNumber, TransactionOffsetInBlock), Transaction>,
+    transaction_hash_to_idx:
+        TableIdentifier<TransactionHash, (BlockNumber, TransactionOffsetInBlock)>,
     state_diffs: TableIdentifier<BlockNumber, StateDiffForward>,
     contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
     contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
@@ -73,6 +83,7 @@ pub fn open_block_storage(
         headers: db_writer.create_table("headers")?,
         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
         transactions: db_writer.create_table("transactions")?,
+        transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
         state_diffs: db_writer.create_table("state_diffs")?,
         contracts: db_writer.create_table("contracts")?,
         contract_storage: db_writer.create_table("contract_storage")?,
