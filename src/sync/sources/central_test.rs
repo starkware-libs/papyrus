@@ -18,7 +18,7 @@ async fn stream_block_headers() {
     // Prepare mock calls.
     let mock_last = mock("GET", "/feeder_gateway/get_last_batch_id")
         .with_status(200)
-        .with_body("8")
+        .with_body("9")
         .create();
     let mock_headers = mock("GET", "/feeder_gateway/get_block")
         // TODO(dan): consider using a regex.
