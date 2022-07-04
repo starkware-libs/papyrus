@@ -13,7 +13,7 @@ pub struct TransactionHash(pub StarkHash);
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct TransactionIndex(pub u64);
+pub struct TransactionOffsetInBlock(pub u64);
 
 #[derive(
     Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
