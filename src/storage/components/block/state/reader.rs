@@ -40,13 +40,12 @@ impl<'env, 'txn> StateReader<'env, 'txn> {
         // The relevant update is the last update strictly before `first_irrelevant_block`.
         let db_key = (*address, key.clone(), first_irrelevant_block);
         // Find the previous db item.
-        let res = self.storage_table.get_lower_item(self.txn, &db_key)?;
+        let mut cursor = self.storage_table.cursor(self.txn)?;
+        cursor.lower_bound(&db_key)?;
+        let res = cursor.prev()?;
         match res {
             None => Ok(StarkFelt::default()),
-            Some((got_db_key, value)) => {
-                let (got_address, got_key, _got_block_number) =
-                    bincode::deserialize::<(ContractAddress, StorageKey, BlockNumber)>(&got_db_key)
-                        .unwrap();
+            Some(((got_address, got_key, _got_block_number), value)) => {
                 if got_address != *address || got_key != *key {
                     // The previous item belongs to different key, which means there is no
                     // previous state diff for this item.
