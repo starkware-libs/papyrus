@@ -1,6 +1,6 @@
 use crate::starknet::{
     shash, BlockBody, BlockNumber, CallData, ContractAddress, DeployTransaction, Fee, StarkHash,
-    Transaction, TransactionHash, TransactionIndex, TransactionSignature, TransactionVersion,
+    Transaction, TransactionHash, TransactionIndex, TransactionVersion,
 };
 use crate::storage::components::block::body::BodyStorageReader;
 use crate::storage::components::block::test_utils::get_test_storage;
@@ -15,7 +15,6 @@ async fn test_append_body() {
         transaction_hash: TransactionHash(shash!("0x100")),
         max_fee: Fee(100),
         version: TransactionVersion(1),
-        signature: TransactionSignature(vec![shash!("0x200")]),
         contract_address: ContractAddress(shash!("0x300")),
         constructor_calldata: CallData(vec![shash!("0x400")]),
     });
@@ -24,7 +23,6 @@ async fn test_append_body() {
         transaction_hash: TransactionHash(shash!("0x101")),
         max_fee: Fee(100),
         version: TransactionVersion(1),
-        signature: TransactionSignature(vec![shash!("0x200")]),
         contract_address: ContractAddress(shash!("0x301")),
         constructor_calldata: CallData(vec![shash!("0x401")]),
     });

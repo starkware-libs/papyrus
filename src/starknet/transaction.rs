@@ -124,7 +124,6 @@ pub struct DeployTransaction {
     pub transaction_hash: TransactionHash,
     pub max_fee: Fee,
     pub version: TransactionVersion,
-    pub signature: TransactionSignature,
     pub contract_address: ContractAddress,
     pub constructor_calldata: CallData,
 }

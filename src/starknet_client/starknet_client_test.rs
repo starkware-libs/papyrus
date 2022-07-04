@@ -6,7 +6,7 @@ use crate::starknet::serde_utils::bytes_from_hex_str;
 use crate::starknet::{
     shash, BlockHash, BlockNumber, BlockTimestamp, CallData, ContractAddress, EntryPointSelector,
     Fee, GasPrice, GlobalRoot, StarkHash, StorageEntry, StorageKey, TransactionHash,
-    TransactionSignature,
+    TransactionSignature, TransactionVersion,
 };
 
 // TODO(dan): use SN structs once available & sort.
@@ -230,6 +230,7 @@ async fn get_block() {
                 .unwrap(),
             )),
             r#type: TransactionType::InvokeFunction,
+            version: TransactionVersion::default(),
         })],
         transaction_receipts: vec![],
     };
