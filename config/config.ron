@@ -8,4 +8,10 @@ Config(
     central: CentralSourceConfig(
         url: "https://alpha4.starknet.io/",
     ),
+    sync: SyncConfig(
+        block_propagation_sleep_duration: (
+            secs:10,
+            nanos: 0,
+        ),
+    ),
 )
