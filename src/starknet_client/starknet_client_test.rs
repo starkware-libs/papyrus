@@ -1,12 +1,18 @@
 use std::collections::HashMap;
+use std::str::FromStr;
 
 use mockito::mock;
+use web3::types::H160;
 
 use crate::starknet::serde_utils::bytes_from_hex_str;
 use crate::starknet::{
     shash, BlockHash, BlockNumber, BlockTimestamp, CallData, ContractAddress, EntryPointSelector,
-    Fee, GasPrice, GlobalRoot, StarkHash, StorageEntry, StorageKey, TransactionHash,
-    TransactionSignature, TransactionVersion,
+    EthAddress, Fee, GasPrice, GlobalRoot, L1ToL2Payload, StarkHash, StorageEntry, StorageKey,
+    TransactionHash, TransactionSignature, TransactionVersion,
+};
+use crate::starknet_client::objects::transaction::{
+    BuiltinInstanceCounter, ExecutionResources, L1ToL2Message, L1ToL2Nonce,
+    TransactionIndexInBlock, TransactionReceipt,
 };
 
 // TODO(dan): use SN structs once available & sort.
@@ -139,7 +145,34 @@ async fn get_block() {
             "sequencer_address": "0x37b2cd6baaa515f520383bee7b7094f892f4c770695fc329a8973e841a971ae",
             "status": "ACCEPTED_ON_L1",
             "gas_price": "0x174876e800",
-            "transaction_receipts": [],
+            "transaction_receipts": [
+                {
+                    "transaction_index": 33,
+                    "transaction_hash": "0x01f93a441530c63350276f2c720405e8f52c8f2d695e8a4ad0f2eb0488476add",
+                    "l1_to_l2_consumed_message": {
+                        "from_address": "0x2Db8c2615db39a5eD8750B87aC8F217485BE11EC",
+                        "to_address": "0x55a46448decca3b138edf0104b7a47d41365b8293bdfd59b03b806c102b12b7",
+                        "selector": "0xc73f681176fc7b3f9693986fd7b14581e8d540519e27400e88b8713932be01",
+                        "payload": [
+                            "0xbc614e",
+                            "0x258"
+                        ]
+                    },
+                    "l2_to_l1_messages": [],
+                    "events": [],
+                    "execution_resources":
+                    {
+                        "n_steps": 5418,
+                        "builtin_instance_counter":
+                        {
+                            "bitwise_builtin": 1,
+                            "ec_op_builtin": 2
+                        },
+                        "n_memory_holes": 213
+                    },
+                    "actual_fee": "0x0"
+                }
+            ],
             "transactions": [
                 {
                     "contract_address": "0x639897809c39093765f34d76776b8d081904ab30184f694f20224723ef07863",
@@ -208,7 +241,36 @@ async fn get_block() {
             r#type: TransactionType::InvokeFunction,
             version: TransactionVersion::default(),
         })],
-        transaction_receipts: vec![],
+        transaction_receipts: vec![TransactionReceipt {
+            transaction_index: TransactionIndexInBlock(33),
+            transaction_hash: TransactionHash(shash!(
+                "0x01f93a441530c63350276f2c720405e8f52c8f2d695e8a4ad0f2eb0488476add"
+            )),
+            l1_to_l2_consumed_message: L1ToL2Message {
+                from_address: EthAddress(
+                    H160::from_str("0x2Db8c2615db39a5eD8750B87aC8F217485BE11EC").unwrap(),
+                ),
+                to_address: ContractAddress(shash!(
+                    "0x55a46448decca3b138edf0104b7a47d41365b8293bdfd59b03b806c102b12b7"
+                )),
+                selector: EntryPointSelector(shash!(
+                    "0xc73f681176fc7b3f9693986fd7b14581e8d540519e27400e88b8713932be01"
+                )),
+                payload: L1ToL2Payload(vec![shash!("0xbc614e"), shash!("0x258")]),
+                nonce: L1ToL2Nonce::default(),
+            },
+            l2_to_l1_messages: vec![],
+            events: vec![],
+            execution_resources: ExecutionResources {
+                n_steps: 5418,
+                builtin_instance_counter: BuiltinInstanceCounter::NonEmpty(HashMap::from([
+                    ("bitwise_builtin".to_string(), 1),
+                    ("ec_op_builtin".to_string(), 2),
+                ])),
+                n_memory_holes: 213,
+            },
+            actual_fee: Fee(0),
+        }],
     };
     assert_eq!(block, expected_block);
 }
