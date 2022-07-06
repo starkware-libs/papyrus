@@ -187,47 +187,23 @@ async fn get_block() {
         )),
         transactions: vec![Transaction::Invoke(InvokeTransaction {
             calldata: CallData(vec![
-                (StarkHash(bytes_from_hex_str::<32, true>("0x3").unwrap())),
-                (StarkHash(
-                    bytes_from_hex_str::<32, true>(
-                        "0x4bc8ac16658025bff4a3bd0760e84fcf075417a4c55c6fae716efdd8f1ed26c",
-                    )
-                    .unwrap(),
-                )),
+                (shash!("0x3")),
+                (shash!("0x4bc8ac16658025bff4a3bd0760e84fcf075417a4c55c6fae716efdd8f1ed26c")),
             ]),
-            contract_address: ContractAddress(StarkHash(
-                bytes_from_hex_str::<32, true>(
-                    "0x639897809c39093765f34d76776b8d081904ab30184f694f20224723ef07863",
-                )
-                .unwrap(),
+            contract_address: ContractAddress(shash!(
+                "0x639897809c39093765f34d76776b8d081904ab30184f694f20224723ef07863"
             )),
-            entry_point_selector: EntryPointSelector(StarkHash(
-                bytes_from_hex_str::<32, true>(
-                    "0x15d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad",
-                )
-                .unwrap(),
+            entry_point_selector: EntryPointSelector(shash!(
+                "0x15d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad"
             )),
             entry_point_type: EntryPointType::External,
             max_fee: Fee(0x6e0917047fd8),
             signature: TransactionSignature(vec![
-                (StarkHash(
-                    bytes_from_hex_str::<32, true>(
-                        "0xbe0d6cdf1333a316ab03b7f057ee0c66716d3d983fa02ad4c46389cbe3bb75",
-                    )
-                    .unwrap(),
-                )),
-                (StarkHash(
-                    bytes_from_hex_str::<32, true>(
-                        "0x396ec012117a44f204e3b501217502c9b261ef5d3da341757026df844a99d4a",
-                    )
-                    .unwrap(),
-                )),
+                (shash!("0xbe0d6cdf1333a316ab03b7f057ee0c66716d3d983fa02ad4c46389cbe3bb75")),
+                (shash!("0x396ec012117a44f204e3b501217502c9b261ef5d3da341757026df844a99d4a")),
             ]),
-            transaction_hash: TransactionHash(StarkHash(
-                bytes_from_hex_str::<32, true>(
-                    "0xb7bcb42e0cfb09e38a2c21061f72d36271cc8cf13647938d4e41066c051ea8",
-                )
-                .unwrap(),
+            transaction_hash: TransactionHash(shash!(
+                "0xb7bcb42e0cfb09e38a2c21061f72d36271cc8cf13647938d4e41066c051ea8"
             )),
             r#type: TransactionType::InvokeFunction,
             version: TransactionVersion::default(),
