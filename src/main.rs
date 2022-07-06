@@ -19,6 +19,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Sync.
     let mut sync = StateSync::new(
+        config.sync,
         central_source,
         storage_components.block_storage_reader.clone(),
         storage_components.block_storage_writer,

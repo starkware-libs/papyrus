@@ -6,6 +6,7 @@ use async_stream::stream;
 use futures_util::{pin_mut, select};
 use futures_util::{Stream, StreamExt};
 use log::{error, info};
+use serde::{Deserialize, Serialize};
 
 use crate::starknet::{BlockBody, BlockHeader, BlockNumber, StateDiffForward};
 use crate::starknet_client::ClientError;
@@ -16,11 +17,14 @@ use crate::storage::components::{
 
 pub use self::sources::{CentralSource, CentralSourceConfig};
 
-// TODO(dan): Take from config.
-const SLEEP_DURATION: Duration = Duration::from_millis(10000);
+#[derive(Serialize, Deserialize)]
+pub struct SyncConfig {
+    pub block_propagation_sleep_duration: Duration,
+}
 
 // Orchestrates specific network interfaces (e.g. central, p2p, l1) and writes to Storage.
 pub struct StateSync {
+    config: SyncConfig,
     central_source: CentralSource,
     reader: BlockStorageReader,
     writer: BlockStorageWriter,
@@ -50,11 +54,13 @@ pub enum SyncEvent {
 #[allow(clippy::new_without_default)]
 impl StateSync {
     pub fn new(
+        config: SyncConfig,
         central_source: CentralSource,
         reader: BlockStorageReader,
         writer: BlockStorageWriter,
     ) -> StateSync {
         StateSync {
+            config,
             central_source,
             reader,
             writer,
@@ -64,9 +70,18 @@ impl StateSync {
     pub async fn run(&mut self) -> anyhow::Result<(), StateSyncError> {
         info!("State sync started.");
         loop {
-            let header_stream = stream_new_blocks(self.reader.clone(), &self.central_source).fuse();
-            let state_diff_stream =
-                stream_new_state_diffs(self.reader.clone(), &self.central_source).fuse();
+            let header_stream = stream_new_blocks(
+                self.reader.clone(),
+                &self.central_source,
+                self.config.block_propagation_sleep_duration,
+            )
+            .fuse();
+            let state_diff_stream = stream_new_state_diffs(
+                self.reader.clone(),
+                &self.central_source,
+                self.config.block_propagation_sleep_duration,
+            )
+            .fuse();
             pin_mut!(header_stream, state_diff_stream);
 
             loop {
@@ -102,6 +117,7 @@ impl StateSync {
 fn stream_new_blocks(
     reader: BlockStorageReader,
     central_source: &CentralSource,
+    block_propation_sleep_duration: Duration,
 ) -> impl Stream<Item = SyncEvent> + '_ {
     stream! {
         loop {
@@ -117,7 +133,7 @@ fn stream_new_blocks(
                 header_marker.0, last_block_number.0
             );
             if header_marker == last_block_number {
-                tokio::time::sleep(SLEEP_DURATION).await;
+                tokio::time::sleep(block_propation_sleep_duration).await;
                 continue;
             }
             let header_stream = central_source
@@ -138,6 +154,7 @@ fn stream_new_blocks(
 fn stream_new_state_diffs(
     reader: BlockStorageReader,
     central_source: &CentralSource,
+    block_propation_sleep_duration: Duration,
 ) -> impl Stream<Item = SyncEvent> + '_ {
     stream! {
         loop {
@@ -152,7 +169,7 @@ fn stream_new_state_diffs(
                 state_marker.0, last_block_number.0
             );
             if state_marker == last_block_number {
-                tokio::time::sleep(SLEEP_DURATION).await;
+                tokio::time::sleep(block_propation_sleep_duration).await;
                 continue;
             }
             let header_stream = central_source
