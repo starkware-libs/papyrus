@@ -17,7 +17,6 @@ impl<'de, const N: usize, const PREFIXED: bool> Deserialize<'de> for HexAsBytes<
         D: serde::Deserializer<'de>,
     {
         struct HexStringVisitor<const N: usize, const PREFIXED: bool>;
-
         impl<'de, const N: usize, const PREFIXED: bool> Visitor<'de> for HexStringVisitor<N, PREFIXED> {
             type Value = HexAsBytes<N, PREFIXED>;
 
@@ -35,7 +34,27 @@ impl<'de, const N: usize, const PREFIXED: bool> Deserialize<'de> for HexAsBytes<
             }
         }
 
-        deserializer.deserialize_str(HexStringVisitor)
+        struct ByteArrayVisitor<const N: usize, const PREFIXED: bool>;
+        impl<'de, const N: usize, const PREFIXED: bool> Visitor<'de> for ByteArrayVisitor<N, PREFIXED> {
+            type Value = HexAsBytes<N, PREFIXED>;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                formatter.write_str("a byte array")
+            }
+
+            fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                Ok(HexAsBytes(v.try_into().expect("Incorrect length.")))
+            }
+        }
+
+        if deserializer.is_human_readable() {
+            deserializer.deserialize_str(HexStringVisitor)
+        } else {
+            deserializer.deserialize_bytes(ByteArrayVisitor)
+        }
     }
 }
 
@@ -44,8 +63,12 @@ impl<const N: usize, const PREFIXED: bool> Serialize for HexAsBytes<N, PREFIXED>
     where
         S: serde::Serializer,
     {
-        let hex_str = hex_str_from_bytes::<N, PREFIXED>(self.0);
-        serializer.serialize_str(&hex_str)
+        if serializer.is_human_readable() {
+            let hex_str = hex_str_from_bytes::<N, PREFIXED>(self.0);
+            serializer.serialize_str(&hex_str)
+        } else {
+            self.0.serialize(serializer)
+        }
     }
 }
 
