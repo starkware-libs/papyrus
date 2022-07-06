@@ -104,7 +104,6 @@ impl StarknetClient {
         url.query_pairs_mut()
             .append_pair("blockNumber", &block_number.0.to_string());
         let raw_state_update = self.request(url).await?;
-        // TODO(dan): return the SN representation instead.
         let state_update: BlockStateUpdate = serde_json::from_str(&raw_state_update)?;
         Ok(state_update)
     }
