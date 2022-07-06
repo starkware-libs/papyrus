@@ -6,9 +6,9 @@ use web3::types::H160;
 
 use crate::starknet::serde_utils::bytes_from_hex_str;
 use crate::starknet::{
-    shash, BlockHash, BlockNumber, BlockTimestamp, CallData, ContractAddress, EntryPointSelector,
-    EthAddress, Fee, GasPrice, GlobalRoot, L1ToL2Payload, StarkHash, StorageEntry, StorageKey,
-    TransactionHash, TransactionSignature, TransactionVersion,
+    shash, BlockHash, BlockNumber, BlockTimestamp, CallData, ClassHash, ContractAddress,
+    EntryPointSelector, EthAddress, Fee, GasPrice, GlobalRoot, L1ToL2Payload, Nonce, StarkHash,
+    StorageEntry, StorageKey, TransactionHash, TransactionSignature, TransactionVersion,
 };
 use crate::starknet_client::objects::transaction::{
     BuiltinInstanceCounter, ExecutionResources, L1ToL2Message, L1ToL2Nonce,
@@ -18,7 +18,7 @@ use crate::starknet_client::objects::transaction::{
 // TODO(dan): use SN structs once available & sort.
 use super::objects::block::{BlockStateUpdate, BlockStatus, StateDiff};
 use super::objects::transaction::{
-    EntryPointType, InvokeTransaction, Transaction, TransactionType,
+    DeclareTransaction, EntryPointType, InvokeTransaction, Transaction, TransactionType,
 };
 use super::{Block, ClientError, StarknetClient, StarknetError, StarknetErrorCode};
 
@@ -36,6 +36,27 @@ async fn get_block_number() {
     mock.assert();
     assert_eq!(block_number, BlockNumber(195812));
 }
+
+#[tokio::test]
+async fn declare_tx_serde() {
+    let declare_tx = DeclareTransaction {
+        class_hash: ClassHash(shash!(
+            "0x7319e2f01b0947afd86c0bb0e95029551b32f6dc192c47b2e8b08415eebbc25"
+        )),
+        sender_address: ContractAddress(shash!("0x1")),
+        nonce: Nonce(shash!("0x0")),
+        max_fee: Fee(0),
+        version: TransactionVersion(shash!("0x1")),
+        transaction_hash: TransactionHash(shash!(
+            "0x2f2ef64daffdc72bf33b34ad024891691b8eb1d0ab70cc7f8fb71f6fd5e1f22"
+        )),
+        signature: TransactionSignature(vec![]),
+        r#type: TransactionType::Declare,
+    };
+    let raw_declare_tx = serde_json::to_string(&declare_tx).unwrap();
+    assert_eq!(declare_tx, serde_json::from_str(&raw_declare_tx).unwrap());
+}
+
 #[tokio::test]
 async fn test_state_update() {
     let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
