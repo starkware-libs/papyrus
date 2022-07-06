@@ -14,4 +14,7 @@ Config(
             nanos: 0,
         ),
     ),
+    gateway: GatewayConfig(
+        server_ip: "localhost:8080",
+    ),
 )
