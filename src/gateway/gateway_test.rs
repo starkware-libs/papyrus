@@ -1,6 +1,6 @@
 use jsonrpsee::core::Error;
+use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::types::EmptyParams;
-use jsonrpsee::ws_client::WsClientBuilder;
 
 use crate::starknet::{
     shash, BlockHash, BlockHeader, ClassHash, DeployedContract, StarkHash, StateDiffForward,
@@ -247,10 +247,16 @@ async fn test_get_storage_at() {
 #[tokio::test]
 async fn test_run_server() {
     let storage_reader = storage_test_utils::get_test_storage().block_storage_reader;
-    let (addr, _handle) = run_server(storage_reader).await.unwrap();
-    let client = WsClientBuilder::default()
-        .build(format!("ws://{:?}", addr))
-        .await
+    let (addr, _handle) = run_server(
+        storage_reader,
+        GatewayConfig {
+            server_ip: String::from("localhost:8080"),
+        },
+    )
+    .await
+    .unwrap();
+    let client = HttpClientBuilder::default()
+        .build(format!("http://{:?}", addr))
         .unwrap();
     let err = client.block_number().await.unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(

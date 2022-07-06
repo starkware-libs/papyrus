@@ -28,7 +28,10 @@ async fn main() -> anyhow::Result<()> {
 
     // Pass reader to storage.
     let (run_server_res, sync_thread_res) = tokio::join!(
-        run_server(storage_components.block_storage_reader.clone()),
+        run_server(
+            storage_components.block_storage_reader.clone(),
+            config.gateway,
+        ),
         sync_thread
     );
     run_server_res?;
