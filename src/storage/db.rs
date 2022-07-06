@@ -5,7 +5,7 @@ pub mod db_test;
 use std::marker::PhantomData;
 use std::{borrow::Cow, path::Path, result, sync::Arc};
 
-use libmdbx::{DatabaseFlags, Geometry, WriteFlags, WriteMap, RW};
+use libmdbx::{Cursor, DatabaseFlags, Geometry, WriteFlags, WriteMap, RW};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
@@ -27,6 +27,11 @@ const GROWTH_STEP: isize = 1 << 26; // Growth step 64MB;
 type EnvironmentKind = WriteMap;
 type Environment = libmdbx::Environment<EnvironmentKind>;
 
+pub trait ValueType: Serialize + DeserializeOwned {}
+impl<T: Serialize + DeserializeOwned> ValueType for T {}
+type DbKeyType<'env> = Cow<'env, [u8]>;
+type DbValueType<'env> = Cow<'env, [u8]>;
+
 #[derive(Serialize, Deserialize)]
 pub struct DbConfig {
     pub path: String,
@@ -45,7 +50,6 @@ pub type Result<V> = result::Result<V, DbError>;
 /// Opens an MDBX environment and returns a reader and a writer to it.
 /// There is a single non clonable writer instance, to make sure there is only one write transaction
 ///  at any given moment.
-#[allow(dead_code)]
 pub fn open_env(config: DbConfig) -> Result<(DbReader, DbWriter)> {
     let env = Arc::new(
         Environment::new()
@@ -74,17 +78,28 @@ pub struct DbTransaction<'env, Mode: libmdbx::TransactionKind> {
 pub type DbReadTransaction<'env> = DbTransaction<'env, libmdbx::RO>;
 pub type DbWriteTransaction<'env> = DbTransaction<'env, libmdbx::RW>;
 
-pub struct TableIdentifier<K: Serialize, V: Serialize + DeserializeOwned> {
+pub struct TableIdentifier<K: ValueType, V: ValueType> {
     name: &'static str,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
 }
-pub struct TableHandle<'env, K: Serialize, V: Serialize + DeserializeOwned> {
+pub struct TableHandle<'env, K: ValueType, V: ValueType> {
     database: libmdbx::Database<'env>,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
 }
-impl<'env, K: Serialize, V: Serialize + DeserializeOwned> TableHandle<'env, K, V> {
+impl<'env, 'txn, K: ValueType, V: ValueType> TableHandle<'env, K, V> {
+    pub fn cursor<Mode: libmdbx::TransactionKind>(
+        &'env self,
+        txn: &'txn DbTransaction<'env, Mode>,
+    ) -> Result<DbCursor<'txn, Mode, K, V>> {
+        let cursor = txn.txn.cursor(&self.database)?;
+        Ok(DbCursor {
+            cursor,
+            _key_type: PhantomData {},
+            _value_type: PhantomData {},
+        })
+    }
     pub fn get<Mode: libmdbx::TransactionKind>(
         &'env self,
         txn: &'env DbTransaction<'env, Mode>,
@@ -99,26 +114,6 @@ impl<'env, K: Serialize, V: Serialize + DeserializeOwned> TableHandle<'env, K, V
             Ok(None)
         }
     }
-    pub fn get_lower_item<Mode: libmdbx::TransactionKind>(
-        &'env self,
-        txn: &'env DbTransaction<'env, Mode>,
-        key: &K,
-    ) -> Result<Option<(Cow<'env, [u8]>, V)>> {
-        type DbKeyType<'env> = Cow<'env, [u8]>;
-        type DbValueType<'env> = Cow<'env, [u8]>;
-        let mut cursor = txn.txn.cursor(&self.database)?;
-        let bin_key = bincode::serialize(key).unwrap();
-        cursor.set_range::<DbKeyType<'_>, DbValueType<'_>>(&bin_key)?;
-        // Note: prev() also works when we reached end of database.
-        let prev_cursor_res = cursor.prev::<DbKeyType<'_>, DbValueType<'_>>()?;
-        match prev_cursor_res {
-            None => Ok(None),
-            Some((key_bytes, value_bytes)) => {
-                let value = bincode::deserialize::<V>(value_bytes.as_ref())?;
-                Ok(Some((key_bytes, value)))
-            }
-        }
-    }
 
     pub fn upsert(&'env self, txn: &DbTransaction<'env, RW>, key: &K, value: &V) -> Result<()> {
         let data = bincode::serialize::<V>(value).unwrap();
@@ -127,7 +122,6 @@ impl<'env, K: Serialize, V: Serialize + DeserializeOwned> TableHandle<'env, K, V
             .put(&self.database, &bin_key, &data, WriteFlags::UPSERT)?;
         Ok(())
     }
-    #[allow(dead_code)]
     pub fn insert(&'env self, txn: &DbTransaction<'env, RW>, key: &K, value: &V) -> Result<()> {
         let data = bincode::serialize::<V>(value).unwrap();
         let bin_key = bincode::serialize(key).unwrap();
@@ -156,7 +150,7 @@ impl DbWriter {
             txn: self.env.begin_rw_txn()?,
         })
     }
-    pub fn create_table<K: Serialize, V: Serialize + DeserializeOwned>(
+    pub fn create_table<K: ValueType, V: ValueType>(
         &mut self,
         name: &'static str,
     ) -> Result<TableIdentifier<K, V>> {
@@ -172,7 +166,7 @@ impl DbWriter {
 }
 
 impl<'a, Mode: libmdbx::TransactionKind> DbTransaction<'a, Mode> {
-    pub fn open_table<'env, K: Serialize, V: Serialize + DeserializeOwned>(
+    pub fn open_table<'env, K: ValueType, V: ValueType>(
         &'env self,
         table_id: &TableIdentifier<K, V>,
     ) -> Result<TableHandle<'env, K, V>> {
@@ -188,5 +182,51 @@ impl<'a> DbWriteTransaction<'a> {
     pub fn commit(self) -> Result<()> {
         self.txn.commit()?;
         Ok(())
+    }
+}
+
+pub struct DbCursor<'txn, Mode: libmdbx::TransactionKind, K: ValueType, V: ValueType> {
+    cursor: Cursor<'txn, Mode>,
+    _key_type: PhantomData<K>,
+    _value_type: PhantomData<V>,
+}
+
+impl<'txn, Mode: libmdbx::TransactionKind, K: ValueType, V: ValueType> DbCursor<'txn, Mode, K, V> {
+    pub fn prev(&mut self) -> Result<Option<(K, V)>> {
+        let prev_cursor_res = self.cursor.prev::<DbKeyType<'_>, DbValueType<'_>>()?;
+        match prev_cursor_res {
+            None => Ok(None),
+            Some((key_bytes, value_bytes)) => {
+                let key = bincode::deserialize::<K>(key_bytes.as_ref())?;
+                let value = bincode::deserialize::<V>(value_bytes.as_ref())?;
+                Ok(Some((key, value)))
+            }
+        }
+    }
+    #[allow(dead_code)]
+    pub fn next(&mut self) -> Result<Option<(K, V)>> {
+        let prev_cursor_res = self.cursor.next::<DbKeyType<'_>, DbValueType<'_>>()?;
+        match prev_cursor_res {
+            None => Ok(None),
+            Some((key_bytes, value_bytes)) => {
+                let key = bincode::deserialize::<K>(key_bytes.as_ref())?;
+                let value = bincode::deserialize::<V>(value_bytes.as_ref())?;
+                Ok(Some((key, value)))
+            }
+        }
+    }
+    pub fn lower_bound(&mut self, key: &K) -> Result<Option<(K, V)>> {
+        let key_bytes = bincode::serialize(key).unwrap();
+        let prev_cursor_res = self
+            .cursor
+            .set_range::<DbKeyType<'_>, DbValueType<'_>>(&key_bytes)?;
+        match prev_cursor_res {
+            None => Ok(None),
+            Some((key_bytes, value_bytes)) => {
+                let key = bincode::deserialize::<K>(key_bytes.as_ref())?;
+                let value = bincode::deserialize::<V>(value_bytes.as_ref())?;
+                Ok(Some((key, value)))
+            }
+        }
     }
 }
