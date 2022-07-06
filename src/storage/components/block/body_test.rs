@@ -14,7 +14,7 @@ async fn test_append_body() {
     let tx0 = Transaction::Deploy(DeployTransaction {
         transaction_hash: TransactionHash(shash!("0x100")),
         max_fee: Fee(100),
-        version: TransactionVersion(1),
+        version: TransactionVersion(shash!("0x1")),
         contract_address: ContractAddress(shash!("0x300")),
         constructor_calldata: CallData(vec![shash!("0x400")]),
     });
@@ -22,7 +22,7 @@ async fn test_append_body() {
     let tx1 = Transaction::Deploy(DeployTransaction {
         transaction_hash: TransactionHash(shash!("0x101")),
         max_fee: Fee(100),
-        version: TransactionVersion(1),
+        version: TransactionVersion(shash!("0x1")),
         contract_address: ContractAddress(shash!("0x301")),
         constructor_calldata: CallData(vec![shash!("0x401")]),
     });
