@@ -7,11 +7,12 @@ use std::fmt::Display;
 use std::net::SocketAddr;
 
 use jsonrpsee::core::{async_trait, Error};
+use jsonrpsee::http_server::types::error::CallError;
+use jsonrpsee::http_server::{HttpServerBuilder, HttpServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::{ErrorObject, INTERNAL_ERROR_MSG};
-use jsonrpsee::ws_server::types::error::CallError;
-use jsonrpsee::ws_server::{WsServerBuilder, WsServerHandle};
 use log::{error, info};
+use serde::{Deserialize, Serialize};
 
 use crate::starknet::BlockNumber;
 use crate::storage::components::{BlockStorageReader, HeaderStorageReader};
@@ -21,8 +22,10 @@ use self::api::{
 };
 use self::objects::{Block, Transactions};
 
-// TODO(anatg): Take from config.
-const SERVER_IP: &str = "127.0.0.1:0";
+#[derive(Serialize, Deserialize)]
+pub struct GatewayConfig {
+    pub server_ip: String,
+}
 
 /// Rpc server.
 struct JsonRpcServerImpl {
@@ -115,9 +118,12 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
 pub async fn run_server(
     storage_reader: BlockStorageReader,
-) -> anyhow::Result<(SocketAddr, WsServerHandle)> {
+    gateway_config: GatewayConfig,
+) -> anyhow::Result<(SocketAddr, HttpServerHandle)> {
     info!("Starting gateway.");
-    let server = WsServerBuilder::default().build(SERVER_IP).await?;
+    let server = HttpServerBuilder::default()
+        .build(&gateway_config.server_ip)
+        .await?;
     let addr = server.local_addr()?;
     let handle = server.start(JsonRpcServerImpl { storage_reader }.into_rpc())?;
     info!("Gateway is running - {}.", addr);

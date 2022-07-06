@@ -8,4 +8,7 @@ Config(
     central: CentralSourceConfig(
         url: "https://alpha4.starknet.io/",
     ),
+    gateway: GatewayConfig(
+        server_ip: "localhost:8080",
+    ),
 )

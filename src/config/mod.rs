@@ -5,12 +5,15 @@ use std::fs;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{storage::components::StorageConfig, sync::CentralSourceConfig};
+use crate::gateway::GatewayConfig;
+use crate::storage::components::StorageConfig;
+use crate::sync::CentralSourceConfig;
 
 #[derive(Deserialize, Serialize)]
 pub struct Config {
     pub storage: StorageConfig,
     pub central: CentralSourceConfig,
+    pub gateway: GatewayConfig,
 }
 
 pub fn load_config(path: &'static str) -> anyhow::Result<Config> {

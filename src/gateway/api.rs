@@ -33,12 +33,14 @@ pub enum Tag {
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(untagged)]
 pub enum BlockNumberOrTag {
     Number(BlockNumber),
     Tag(Tag),
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(untagged)]
 pub enum BlockHashOrTag {
     Hash(BlockHash),
     Tag(Tag),
