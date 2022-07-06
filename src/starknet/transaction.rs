@@ -83,7 +83,7 @@ pub struct L2ToL1Payload(pub Vec<StarkFelt>);
 #[derive(
     Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct TransactionVersion(pub u64);
+pub struct TransactionVersion(pub StarkFelt);
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct TransactionSignature(pub Vec<StarkFelt>);
