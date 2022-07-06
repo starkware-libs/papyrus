@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::starknet::{
@@ -108,13 +110,36 @@ impl From<InvokeTransaction> for NodeInvokeTransaction {
 pub struct TransactionReceipt {
     pub transaction_index: TransactionIndexInBlock,
     pub transaction_hash: TransactionHash,
-    pub l1_to_l2_consumed_message: Option<L1ToL2Message>,
+    #[serde(default)]
+    pub l1_to_l2_consumed_message: L1ToL2Message,
     pub l2_to_l1_messages: Vec<L2ToL1Message>,
     pub events: Vec<Event>,
-    // TODO(dan): define corresponding struct and handle properly.
-    pub execution_resources: serde_json::Value,
+    pub execution_resources: ExecutionResources,
     pub actual_fee: Fee,
 }
+
+#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
+pub struct ExecutionResources {
+    pub n_steps: u64,
+    pub builtin_instance_counter: BuiltinInstanceCounter,
+    pub n_memory_holes: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[serde(untagged)]
+pub enum BuiltinInstanceCounter {
+    NonEmpty(HashMap<String, u64>),
+    Empty(EmptyBuiltinInstanceCounter),
+}
+
+impl Default for BuiltinInstanceCounter {
+    fn default() -> Self {
+        BuiltinInstanceCounter::Empty(EmptyBuiltinInstanceCounter {})
+    }
+}
+
+#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
+pub struct EmptyBuiltinInstanceCounter {}
 
 #[derive(
     Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
