@@ -2,8 +2,8 @@
 #[path = "serde_utils_test.rs"]
 mod serde_utils_test;
 
-use serde::de::Visitor;
-use serde::{Deserialize, Serialize};
+use serde::de::{Deserialize, Visitor};
+use serde::ser::{Serialize, SerializeTuple};
 
 #[derive(Debug)]
 pub struct HexAsBytes<const N: usize, const PREFIXED: bool>(pub [u8; N]);
@@ -16,26 +16,36 @@ impl<'de, const N: usize, const PREFIXED: bool> Deserialize<'de> for HexAsBytes<
     where
         D: serde::Deserializer<'de>,
     {
-        struct HexStringVisitor<const N: usize, const PREFIXED: bool>;
-
-        impl<'de, const N: usize, const PREFIXED: bool> Visitor<'de> for HexStringVisitor<N, PREFIXED> {
+        struct ByteArrayVisitor<const N: usize, const PREFIXED: bool>;
+        impl<'de, const N: usize, const PREFIXED: bool> Visitor<'de> for ByteArrayVisitor<N, PREFIXED> {
             type Value = HexAsBytes<N, PREFIXED>;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                formatter.write_str("a hex string, possibly prefixed by '0x'")
+                formatter.write_str("a byte array")
             }
 
-            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
             where
-                E: serde::de::Error,
+                A: serde::de::SeqAccess<'de>,
             {
-                bytes_from_hex_str::<N, PREFIXED>(v)
-                    .map_err(serde::de::Error::custom)
-                    .map(HexAsBytes)
+                let mut res = [0u8; N];
+                let mut i = 0;
+                while let Some(value) = seq.next_element()? {
+                    res[i] = value;
+                    i += 1;
+                }
+                Ok(HexAsBytes(res))
             }
         }
 
-        deserializer.deserialize_str(HexStringVisitor)
+        if deserializer.is_human_readable() {
+            let s = String::deserialize(deserializer)?;
+            bytes_from_hex_str::<N, PREFIXED>(s.as_str())
+                .map_err(serde::de::Error::custom)
+                .map(HexAsBytes)
+        } else {
+            deserializer.deserialize_tuple(N, ByteArrayVisitor)
+        }
     }
 }
 
@@ -44,8 +54,16 @@ impl<const N: usize, const PREFIXED: bool> Serialize for HexAsBytes<N, PREFIXED>
     where
         S: serde::Serializer,
     {
-        let hex_str = hex_str_from_bytes::<N, PREFIXED>(self.0);
-        serializer.serialize_str(&hex_str)
+        if serializer.is_human_readable() {
+            let hex_str = hex_str_from_bytes::<N, PREFIXED>(self.0);
+            serializer.serialize_str(&hex_str)
+        } else {
+            let mut seq = serializer.serialize_tuple(N)?;
+            for element in &self.0[..] {
+                seq.serialize_element(element)?;
+            }
+            seq.end()
+        }
     }
 }
 
