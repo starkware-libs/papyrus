@@ -25,16 +25,76 @@ use super::{Block, ClientError, StarknetClient, StarknetError, StarknetErrorCode
 // TODO(dan): Once clash_hash is always prefixed, revert and use Core ClassHash & DeployedContract.
 use super::objects::block::NonPrefixedDeployedContract;
 use super::objects::NonPrefixedClassHash;
+
+fn block_body() -> &'static str {
+    r#"{
+            "block_hash": "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483",
+            "parent_block_hash": "0x7d74dfc2bd87ac89447a56c51abc9b6d9aca1de21cc25fd9922f3a3779ec72d",
+            "block_number": 20,
+            "state_root": "07e809a2dfbe95a40ad8e5a12683e8d64c194e67a1b440027bfce23683e9fb48",
+            "timestamp": 1636991716,
+            "sequencer_address": "0x37b2cd6baaa515f520383bee7b7094f892f4c770695fc329a8973e841a971ae",
+            "status": "ACCEPTED_ON_L1",
+            "gas_price": "0x174876e800",
+            "transaction_receipts": [
+                {
+                    "transaction_index": 33,
+                    "transaction_hash": "0x01f93a441530c63350276f2c720405e8f52c8f2d695e8a4ad0f2eb0488476add",
+                    "l1_to_l2_consumed_message": {
+                        "from_address": "0x2Db8c2615db39a5eD8750B87aC8F217485BE11EC",
+                        "to_address": "0x55a46448decca3b138edf0104b7a47d41365b8293bdfd59b03b806c102b12b7",
+                        "selector": "0xc73f681176fc7b3f9693986fd7b14581e8d540519e27400e88b8713932be01",
+                        "payload": [
+                            "0xbc614e",
+                            "0x258"
+                        ]
+                    },
+                    "l2_to_l1_messages": [],
+                    "events": [],
+                    "execution_resources":
+                    {
+                        "n_steps": 5418,
+                        "builtin_instance_counter":
+                        {
+                            "bitwise_builtin": 1,
+                            "ec_op_builtin": 2
+                        },
+                        "n_memory_holes": 213
+                    },
+                    "actual_fee": "0x0"
+                }
+            ],
+            "transactions": [
+                {
+                    "contract_address": "0x639897809c39093765f34d76776b8d081904ab30184f694f20224723ef07863",
+                    "entry_point_selector": "0x15d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad",
+                    "entry_point_type": "EXTERNAL",
+                    "calldata": [
+                        "0x3",
+                        "0x4bc8ac16658025bff4a3bd0760e84fcf075417a4c55c6fae716efdd8f1ed26c"
+                    ],
+                    "signature": [
+                        "0xbe0d6cdf1333a316ab03b7f057ee0c66716d3d983fa02ad4c46389cbe3bb75",
+                        "0x396ec012117a44f204e3b501217502c9b261ef5d3da341757026df844a99d4a"
+                    ],
+                    "transaction_hash": "0xb7bcb42e0cfb09e38a2c21061f72d36271cc8cf13647938d4e41066c051ea8",
+                    "max_fee": "0x6e0917047fd8",
+                    "type": "INVOKE_FUNCTION"
+                }
+            ]
+        }"#
+}
+
 #[tokio::test]
 async fn get_block_number() {
     let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
-    let mock = mock("GET", "/feeder_gateway/get_last_batch_id")
+    let mock = mock("GET", "/feeder_gateway/get_block")
         .with_status(200)
-        .with_body("195812")
+        .with_body(block_body())
         .create();
     let block_number = starknet_client.block_number().await.unwrap();
     mock.assert();
-    assert_eq!(block_number, BlockNumber(195812));
+    assert_eq!(block_number, BlockNumber(20));
 }
 
 #[tokio::test]
@@ -156,66 +216,9 @@ async fn test_state_update() {
 #[tokio::test]
 async fn get_block() {
     let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
-    let body = r#"
-        {
-            "block_hash": "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483",
-            "parent_block_hash": "0x7d74dfc2bd87ac89447a56c51abc9b6d9aca1de21cc25fd9922f3a3779ec72d",
-            "block_number": 20,
-            "state_root": "07e809a2dfbe95a40ad8e5a12683e8d64c194e67a1b440027bfce23683e9fb48",
-            "timestamp": 1636991716,
-            "sequencer_address": "0x37b2cd6baaa515f520383bee7b7094f892f4c770695fc329a8973e841a971ae",
-            "status": "ACCEPTED_ON_L1",
-            "gas_price": "0x174876e800",
-            "transaction_receipts": [
-                {
-                    "transaction_index": 33,
-                    "transaction_hash": "0x01f93a441530c63350276f2c720405e8f52c8f2d695e8a4ad0f2eb0488476add",
-                    "l1_to_l2_consumed_message": {
-                        "from_address": "0x2Db8c2615db39a5eD8750B87aC8F217485BE11EC",
-                        "to_address": "0x55a46448decca3b138edf0104b7a47d41365b8293bdfd59b03b806c102b12b7",
-                        "selector": "0xc73f681176fc7b3f9693986fd7b14581e8d540519e27400e88b8713932be01",
-                        "payload": [
-                            "0xbc614e",
-                            "0x258"
-                        ]
-                    },
-                    "l2_to_l1_messages": [],
-                    "events": [],
-                    "execution_resources":
-                    {
-                        "n_steps": 5418,
-                        "builtin_instance_counter":
-                        {
-                            "bitwise_builtin": 1,
-                            "ec_op_builtin": 2
-                        },
-                        "n_memory_holes": 213
-                    },
-                    "actual_fee": "0x0"
-                }
-            ],
-            "transactions": [
-                {
-                    "contract_address": "0x639897809c39093765f34d76776b8d081904ab30184f694f20224723ef07863",
-                    "entry_point_selector": "0x15d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad",
-                    "entry_point_type": "EXTERNAL",
-                    "calldata": [
-                        "0x3",
-                        "0x4bc8ac16658025bff4a3bd0760e84fcf075417a4c55c6fae716efdd8f1ed26c"
-                    ],
-                    "signature": [
-                        "0xbe0d6cdf1333a316ab03b7f057ee0c66716d3d983fa02ad4c46389cbe3bb75",
-                        "0x396ec012117a44f204e3b501217502c9b261ef5d3da341757026df844a99d4a"
-                    ],
-                    "transaction_hash": "0xb7bcb42e0cfb09e38a2c21061f72d36271cc8cf13647938d4e41066c051ea8",
-                    "max_fee": "0x6e0917047fd8",
-                    "type": "INVOKE_FUNCTION"
-                }
-            ]
-        }"#;
     let mock = mock("GET", "/feeder_gateway/get_block?blockNumber=20")
         .with_status(200)
-        .with_body(body)
+        .with_body(block_body())
         .create();
     let block = starknet_client.block(BlockNumber(20)).await.unwrap();
     mock.assert();

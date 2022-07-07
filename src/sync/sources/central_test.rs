@@ -16,9 +16,13 @@ async fn stream_block_headers() {
     let central_source = CentralSource::new(config).unwrap();
 
     // Prepare mock calls.
-    let mock_last = mock("GET", "/feeder_gateway/get_last_batch_id")
+    let latest_block = Block {
+        block_number: BlockNumber(9),
+        ..Default::default()
+    };
+    let mock_last = mock("GET", "/feeder_gateway/get_block")
         .with_status(200)
-        .with_body("9")
+        .with_body(serde_json::to_string(&latest_block).unwrap())
         .create();
     let mock_headers = mock("GET", "/feeder_gateway/get_block")
         // TODO(dan): consider using a regex.

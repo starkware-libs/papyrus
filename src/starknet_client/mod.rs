@@ -19,7 +19,6 @@ pub struct StarknetClient {
 }
 #[derive(Clone, Debug)]
 struct StarknetUrls {
-    get_last_batch_id: Url,
     get_block: Url,
     get_state_update: Url,
 }
@@ -61,7 +60,6 @@ impl StarknetUrls {
     fn new(url_str: &str) -> Result<Self, ClientCreationError> {
         let base_url = Url::parse(url_str)?;
         Ok(StarknetUrls {
-            get_last_batch_id: base_url.join("feeder_gateway/get_last_batch_id")?,
             get_block: base_url.join("feeder_gateway/get_block")?,
             get_state_update: base_url.join("feeder_gateway/get_state_update")?,
         })
@@ -83,8 +81,9 @@ impl StarknetClient {
     }
 
     pub async fn block_number(&self) -> Result<BlockNumber, ClientError> {
-        let block_number = self.request(self.urls.get_last_batch_id.clone()).await?;
-        Ok(BlockNumber(serde_json::from_str(&block_number)?))
+        let raw_block = self.request(self.urls.get_block.clone()).await?;
+        let block: Block = serde_json::from_str(&raw_block)?;
+        Ok(block.block_number)
     }
 
     pub async fn block(&self, block_number: BlockNumber) -> Result<Block, ClientError> {
