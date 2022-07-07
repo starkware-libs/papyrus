@@ -125,9 +125,9 @@ fn stream_new_blocks(
                 .get_header_marker()
                 .expect("Cannot read from block storage.");
             let last_block_number = central_source
-                .get_block_number()
+                .get_next_block_number()
                 .await
-                .expect("Cannot read from block storage.").next();
+                .expect("Cannot read from block storage.");
             info!(
                 "Downloading headers [{} - {}).",
                 header_marker.0, last_block_number.0
@@ -140,7 +140,7 @@ fn stream_new_blocks(
                 .stream_new_blocks(header_marker, last_block_number)
                 .fuse();
             pin_mut!(header_stream);
-            while let Some((block_number, header, body)) = header_stream.next().await {
+            while let Some(Ok((block_number, header, body))) = header_stream.next().await {
                 yield SyncEvent::BlockAvailable {
                     block_number,
                     header,

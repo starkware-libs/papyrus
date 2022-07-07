@@ -16,9 +16,13 @@ async fn stream_block_headers() {
     let central_source = CentralSource::new(config).unwrap();
 
     // Prepare mock calls.
-    let mock_last = mock("GET", "/feeder_gateway/get_last_batch_id")
+    let latest_block = Block {
+        block_number: BlockNumber(9),
+        ..Default::default()
+    };
+    let mock_last = mock("GET", "/feeder_gateway/get_block")
         .with_status(200)
-        .with_body("9")
+        .with_body(serde_json::to_string(&latest_block).unwrap())
         .create();
     let mock_headers = mock("GET", "/feeder_gateway/get_block")
         // TODO(dan): consider using a regex.
@@ -33,11 +37,11 @@ async fn stream_block_headers() {
         .expect(4)
         .create();
 
-    let last_block_number = central_source.get_block_number().await.unwrap();
+    let last_block_number = central_source.get_next_block_number().await.unwrap().prev();
     let mut initial_block_num = BlockNumber(5);
-    let stream = central_source.stream_new_blocks(initial_block_num, last_block_number);
+    let stream = central_source.stream_new_blocks(initial_block_num, last_block_number.unwrap());
     pin_mut!(stream);
-    while let Some((block_number, _header, _body)) = stream.next().await {
+    while let Some(Ok((block_number, _header, _body))) = stream.next().await {
         assert_eq!(initial_block_num, block_number);
         initial_block_num = initial_block_num.next();
     }

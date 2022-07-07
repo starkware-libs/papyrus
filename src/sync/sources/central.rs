@@ -1,8 +1,5 @@
-use std::time::Duration;
-
 use async_stream::stream;
 use log::{debug, error, info};
-use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use tokio_stream::Stream;
 
@@ -30,8 +27,13 @@ impl CentralSource {
         Ok(CentralSource { starknet_client })
     }
 
-    pub async fn get_block_number(&self) -> Result<BlockNumber, ClientError> {
-        self.starknet_client.block_number().await
+    pub async fn get_next_block_number(&self) -> Result<BlockNumber, ClientError> {
+        self.starknet_client
+            .block_number()
+            .await?
+            .map_or(Ok(BlockNumber::default()), |block_number| {
+                Ok(block_number.next())
+            })
     }
 
     pub fn stream_state_updates(
@@ -66,13 +68,13 @@ impl CentralSource {
         &self,
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
-    ) -> impl Stream<Item = (BlockNumber, BlockHeader, BlockBody)> + '_ {
+    ) -> impl Stream<Item = Result<(BlockNumber, BlockHeader, BlockBody), CentralError>> + '_ {
         let mut current_block_number = initial_block_number;
         stream! {
             while current_block_number < up_to_block_number {
                 let res = self.starknet_client.block(current_block_number).await;
                 match res {
-                    Ok(block) => {
+                    Ok(Some(block)) => {
                         info!("Received new block: {}.", block.block_number.0);
                         let header = BlockHeader {
                             block_hash: block.block_hash,
@@ -85,25 +87,13 @@ impl CentralSource {
                             status: block.status.into(),
                         };
                         let body = BlockBody{transactions: block.transactions.into_iter().map(|x| x.into()).collect()};
-                        yield (current_block_number, header, body);
+                        yield Ok((current_block_number, header, body));
                         current_block_number = current_block_number.next();
                     },
+                    Ok(None) => todo!(),
                     Err(err) => {
                         debug!("Received error for block {}: {:?}.", current_block_number.0, err);
-                        // TODO(dan): proper error handling.
-                        match err{
-                            ClientError::BadResponse { status } => {
-                                if status == StatusCode::TOO_MANY_REQUESTS {
-                                    // TODO(dan): replace with a retry mechanism.
-                                    debug!("Waiting for 5 sec.");
-                                    tokio::time::sleep( Duration::from_millis(5000)).await;
-                                } else {error!("{:?}",err); todo!()}
-                            },
-                            ClientError::RequestError(err) => {error!("{:?}",err); todo!()},
-                            ClientError::SerdeError(err) => {error!("{:?}",err); todo!()},
-                            ClientError::StarknetError(err) => {error!("{:?}",err); todo!()},
-
-                        }
+                        yield (Err(CentralError::ClientError(err)))
                     }
                 }
             }
