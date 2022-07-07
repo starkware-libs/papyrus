@@ -19,12 +19,11 @@ pub struct StarknetClient {
 }
 #[derive(Clone, Debug)]
 struct StarknetUrls {
-    get_last_batch_id: Url,
     get_block: Url,
     get_state_update: Url,
 }
 
-#[derive(Copy, Clone, Debug, Deserialize, Serialize)]
+#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub enum StarknetErrorCode {
     #[serde(rename = "StarknetErrorCode.BLOCK_NOT_FOUND")]
     BlockNotFound,
@@ -61,7 +60,6 @@ impl StarknetUrls {
     fn new(url_str: &str) -> Result<Self, ClientCreationError> {
         let base_url = Url::parse(url_str)?;
         Ok(StarknetUrls {
-            get_last_batch_id: base_url.join("feeder_gateway/get_last_batch_id")?,
             get_block: base_url.join("feeder_gateway/get_block")?,
             get_state_update: base_url.join("feeder_gateway/get_state_update")?,
         })
@@ -82,9 +80,27 @@ impl StarknetClient {
         })
     }
 
-    pub async fn block_number(&self) -> Result<BlockNumber, ClientError> {
-        let block_number = self.request(self.urls.get_last_batch_id.clone()).await?;
-        Ok(BlockNumber(serde_json::from_str(&block_number)?))
+    pub async fn block_number(&self) -> Result<Option<BlockNumber>, ClientError> {
+        let response = self.request(self.urls.get_block.clone()).await;
+        match response {
+            Ok(raw_block) => {
+                let block: Block = serde_json::from_str(&raw_block)?;
+                Ok(Some(block.block_number))
+            }
+            Err(err) => match err {
+                ClientError::StarknetError(sn_err) => {
+                    let StarknetError { code, message } = sn_err;
+                    if code == StarknetErrorCode::BlockNotFound
+                        && message == "Block number 0 was not found."
+                    {
+                        Ok(None)
+                    } else {
+                        Err(ClientError::StarknetError(StarknetError { code, message }))
+                    }
+                }
+                _ => Err(err),
+            },
+        }
     }
 
     pub async fn block(&self, block_number: BlockNumber) -> Result<Block, ClientError> {

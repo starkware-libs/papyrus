@@ -127,7 +127,8 @@ fn stream_new_blocks(
             let last_block_number = central_source
                 .get_block_number()
                 .await
-                .expect("Cannot read from block storage.").next();
+                .expect("Cannot read from block storage.")
+                .map_or(BlockNumber::default(), |b| b.next());
             info!(
                 "Downloading headers [{} - {}).",
                 header_marker.0, last_block_number.0

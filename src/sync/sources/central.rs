@@ -30,7 +30,7 @@ impl CentralSource {
         Ok(CentralSource { starknet_client })
     }
 
-    pub async fn get_block_number(&self) -> Result<BlockNumber, ClientError> {
+    pub async fn get_block_number(&self) -> Result<Option<BlockNumber>, ClientError> {
         self.starknet_client.block_number().await
     }
 
