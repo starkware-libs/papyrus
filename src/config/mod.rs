@@ -11,10 +11,10 @@ use crate::sync::{CentralSourceConfig, SyncConfig};
 
 #[derive(Deserialize, Serialize)]
 pub struct Config {
-    pub storage: StorageConfig,
     pub central: CentralSourceConfig,
-    pub sync: SyncConfig,
     pub gateway: GatewayConfig,
+    pub storage: StorageConfig,
+    pub sync: SyncConfig,
 }
 
 pub fn load_config(path: &'static str) -> anyhow::Result<Config> {

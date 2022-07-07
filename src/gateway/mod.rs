@@ -159,12 +159,12 @@ impl JsonRpcServer for JsonRpcServerImpl {
 }
 
 pub async fn run_server(
+    config: GatewayConfig,
     storage_reader: BlockStorageReader,
-    gateway_config: GatewayConfig,
 ) -> anyhow::Result<(SocketAddr, HttpServerHandle)> {
     info!("Starting gateway.");
     let server = HttpServerBuilder::default()
-        .build(&gateway_config.server_ip)
+        .build(&config.server_ip)
         .await?;
     let addr = server.local_addr()?;
     let handle = server.start(JsonRpcServerImpl { storage_reader }.into_rpc())?;
