@@ -248,10 +248,10 @@ async fn test_get_storage_at() {
 async fn test_run_server() {
     let storage_reader = storage_test_utils::get_test_storage().block_storage_reader;
     let (addr, _handle) = run_server(
-        storage_reader,
         GatewayConfig {
-            server_ip: String::from("localhost:8080"),
+            server_ip: String::from("127.0.0.1:0"),
         },
+        storage_reader,
     )
     .await
     .unwrap();
