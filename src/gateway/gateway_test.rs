@@ -3,10 +3,12 @@ use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::types::EmptyParams;
 
 use crate::starknet::{
-    shash, BlockHash, BlockHeader, ClassHash, DeployedContract, StarkHash, StateDiffForward,
-    StorageDiff, StorageEntry,
+    shash, BlockBody, BlockHeader, CallData, ClassHash, DeployTransaction, DeployedContract, Fee,
+    StarkHash, StateDiffForward, StorageDiff, StorageEntry, TransactionVersion,
 };
-use crate::storage::components::{storage_test_utils, HeaderStorageWriter, StateStorageWriter};
+use crate::storage::components::{
+    storage_test_utils, BodyStorageWriter, HeaderStorageWriter, StateStorageWriter,
+};
 
 use super::api::*;
 use super::*;
@@ -240,6 +242,184 @@ async fn test_get_storage_at() {
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
         JsonRpcError::InvalidBlockHash as i32,
         JsonRpcError::InvalidBlockHash.to_string(),
+        None::<()>,
+    ));
+}
+
+#[tokio::test]
+async fn test_get_transaction_by_hash() {
+    let storage_components = storage_test_utils::get_test_storage();
+    let storage_reader = storage_components.block_storage_reader;
+    let mut storage_writer = storage_components.block_storage_writer;
+    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+
+    let transaction_hash = TransactionHash(StarkHash::from_u64(0));
+    let transaction = Transaction::Deploy(DeployTransaction {
+        transaction_hash,
+        max_fee: Fee(100),
+        version: TransactionVersion(shash!("0x1")),
+        contract_address: ContractAddress(shash!("0x2")),
+        constructor_calldata: CallData(vec![shash!("0x3")]),
+    });
+    let body = BlockBody {
+        transactions: vec![transaction.clone()],
+    };
+    storage_writer.append_body(BlockNumber(0), &body).unwrap();
+
+    let res = module
+        .call::<_, Transaction>("starknet_getTransactionByHash", [transaction_hash])
+        .await
+        .unwrap();
+    assert_eq!(res, transaction.clone());
+
+    // Ask for an invalid transaction.
+    let err = module
+        .call::<_, Transaction>(
+            "starknet_getTransactionByHash",
+            [TransactionHash(StarkHash::from_u64(1))],
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidTransactionHash as i32,
+        JsonRpcError::InvalidTransactionHash.to_string(),
+        None::<()>,
+    ));
+}
+
+#[tokio::test]
+async fn test_get_transaction_by_block_hash_and_index() {
+    let storage_components = storage_test_utils::get_test_storage();
+    let storage_reader = storage_components.block_storage_reader;
+    let mut storage_writer = storage_components.block_storage_writer;
+    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+
+    let transaction_hash = TransactionHash(StarkHash::from_u64(0));
+    let transaction = Transaction::Deploy(DeployTransaction {
+        transaction_hash,
+        max_fee: Fee(100),
+        version: TransactionVersion(shash!("0x1")),
+        contract_address: ContractAddress(shash!("0x2")),
+        constructor_calldata: CallData(vec![shash!("0x3")]),
+    });
+    let block_hash = BlockHash(shash!(
+        "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"
+    ));
+    let header = BlockHeader {
+        block_hash,
+        ..BlockHeader::default()
+    };
+    storage_writer
+        .append_header(header.number, &header)
+        .unwrap();
+    let body = BlockBody {
+        transactions: vec![transaction.clone()],
+    };
+    storage_writer.append_body(header.number, &body).unwrap();
+
+    let res = module
+        .call::<_, Transaction>(
+            "starknet_getTransactionByBlockHashAndIndex",
+            (BlockHashOrTag::Hash(block_hash), 0),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res, transaction.clone());
+
+    // Ask for an invalid block.
+    let err = module
+        .call::<_, Transaction>(
+            "starknet_getTransactionByBlockHashAndIndex",
+            (
+                BlockHashOrTag::Hash(BlockHash(shash!(
+                    "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
+                ))),
+                0,
+            ),
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidBlockHash as i32,
+        JsonRpcError::InvalidBlockHash.to_string(),
+        None::<()>,
+    ));
+
+    // Ask for an invalid transaction.
+    let err = module
+        .call::<_, Transaction>(
+            "starknet_getTransactionByBlockHashAndIndex",
+            (BlockHashOrTag::Hash(block_hash), 1),
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidTransactionIndex as i32,
+        JsonRpcError::InvalidTransactionIndex.to_string(),
+        None::<()>,
+    ));
+}
+
+#[tokio::test]
+async fn test_get_transaction_by_block_number_and_index() {
+    let storage_components = storage_test_utils::get_test_storage();
+    let storage_reader = storage_components.block_storage_reader;
+    let mut storage_writer = storage_components.block_storage_writer;
+    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+
+    let transaction_hash = TransactionHash(StarkHash::from_u64(0));
+    let transaction = Transaction::Deploy(DeployTransaction {
+        transaction_hash,
+        max_fee: Fee(100),
+        version: TransactionVersion(shash!("0x1")),
+        contract_address: ContractAddress(shash!("0x2")),
+        constructor_calldata: CallData(vec![shash!("0x3")]),
+    });
+    let block_number = BlockNumber(0);
+    let header = BlockHeader {
+        number: block_number,
+        ..BlockHeader::default()
+    };
+    storage_writer.append_header(block_number, &header).unwrap();
+    let body = BlockBody {
+        transactions: vec![transaction.clone()],
+    };
+    storage_writer.append_body(block_number, &body).unwrap();
+
+    let res = module
+        .call::<_, Transaction>(
+            "starknet_getTransactionByBlockNumberAndIndex",
+            (BlockNumberOrTag::Number(block_number), 0),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res, transaction.clone());
+
+    // Ask for an invalid block.
+    let err = module
+        .call::<_, Transaction>(
+            "starknet_getTransactionByBlockNumberAndIndex",
+            (BlockNumberOrTag::Number(BlockNumber(1)), 0),
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidBlockNumber as i32,
+        JsonRpcError::InvalidBlockNumber.to_string(),
+        None::<()>,
+    ));
+
+    // Ask for an invalid transaction.
+    let err = module
+        .call::<_, Transaction>(
+            "starknet_getTransactionByBlockNumberAndIndex",
+            (BlockNumberOrTag::Number(block_number), 1),
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidTransactionIndex as i32,
+        JsonRpcError::InvalidTransactionIndex.to_string(),
         None::<()>,
     ));
 }
