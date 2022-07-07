@@ -30,8 +30,13 @@ impl CentralSource {
         Ok(CentralSource { starknet_client })
     }
 
-    pub async fn get_block_number(&self) -> Result<BlockNumber, ClientError> {
-        self.starknet_client.block_number().await
+    pub async fn get_next_block_number(&self) -> Result<BlockNumber, ClientError> {
+        self.starknet_client
+            .block_number()
+            .await?
+            .map_or(Ok(BlockNumber::default()), |block_number| {
+                Ok(block_number.next())
+            })
     }
 
     pub fn stream_state_updates(
