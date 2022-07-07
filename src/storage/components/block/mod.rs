@@ -14,7 +14,7 @@ use crate::storage::db::{open_env, DbError, DbReader, DbWriter, TableIdentifier}
 use crate::storage::db::{DbConfig, TableHandle};
 use std::sync::Arc;
 
-pub use self::body::BodyStorageWriter;
+pub use self::body::{BodyStorageReader, BodyStorageWriter};
 pub use self::header::{HeaderStorageReader, HeaderStorageWriter};
 pub use self::state::{StateStorageReader, StateStorageWriter};
 

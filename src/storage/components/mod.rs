@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 
 pub use self::block::{
     open_block_storage, BlockStorageError, BlockStorageReader, BlockStorageWriter,
-    BodyStorageWriter, HeaderStorageReader, HeaderStorageWriter, StateStorageReader,
-    StateStorageWriter,
+    BodyStorageReader, BodyStorageWriter, HeaderStorageReader, HeaderStorageWriter,
+    StateStorageReader, StateStorageWriter,
 };
 
 use super::db::DbConfig;

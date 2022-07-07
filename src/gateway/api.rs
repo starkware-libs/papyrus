@@ -2,9 +2,12 @@ use jsonrpsee::core::Error;
 use jsonrpsee::proc_macros::rpc;
 use serde::{Deserialize, Serialize};
 
-use crate::starknet::{BlockHash, BlockNumber, ContractAddress, StarkFelt, StorageKey};
+pub use crate::starknet::{
+    BlockHash, BlockNumber, ContractAddress, StarkFelt, StorageKey, Transaction, TransactionHash,
+    TransactionOffsetInBlock,
+};
 
-use super::objects::Block;
+pub use super::objects::Block;
 
 #[derive(Debug, Copy, Clone, Deserialize, PartialEq, Serialize)]
 pub enum BlockResponseScope {
@@ -52,8 +55,12 @@ pub enum JsonRpcError {
     ContractNotFound = 20,
     #[error("Invalid block hash.")]
     InvalidBlockHash = 24,
+    #[error("Invalid transaction hash.")]
+    InvalidTransactionHash = 25,
     #[error("Invalid block number.")]
     InvalidBlockNumber = 26,
+    #[error("Invalid transaction index in a block.")]
+    InvalidTransactionIndex = 27,
 }
 
 #[rpc(server, client, namespace = "starknet")]
@@ -86,4 +93,27 @@ pub trait JsonRpc {
         key: StorageKey,
         block_hash: BlockHashOrTag,
     ) -> Result<StarkFelt, Error>;
+
+    /// Gets the details of a submitted transaction.
+    #[method(name = "getTransactionByHash")]
+    fn get_transaction_by_hash(
+        &self,
+        transaction_hash: TransactionHash,
+    ) -> Result<Transaction, Error>;
+
+    /// Gets the details of a transaction by a given block hash and index.
+    #[method(name = "getTransactionByBlockHashAndIndex")]
+    fn get_transaction_by_block_hash_and_index(
+        &self,
+        block_hash: BlockHashOrTag,
+        index: TransactionOffsetInBlock,
+    ) -> Result<Transaction, Error>;
+
+    /// Gets the details of a transaction by a given block number and index.
+    #[method(name = "getTransactionByBlockNumberAndIndex")]
+    fn get_transaction_by_block_number_and_index(
+        &self,
+        block_number: BlockNumberOrTag,
+        index: TransactionOffsetInBlock,
+    ) -> Result<Transaction, Error>;
 }
