@@ -5,15 +5,15 @@ use std::fs;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    storage::components::StorageConfig,
-    sync::{CentralSourceConfig, SyncConfig},
-};
+use crate::gateway::GatewayConfig;
+use crate::storage::components::StorageConfig;
+use crate::sync::{CentralSourceConfig, SyncConfig};
 
 #[derive(Deserialize, Serialize)]
 pub struct Config {
-    pub storage: StorageConfig,
     pub central: CentralSourceConfig,
+    pub gateway: GatewayConfig,
+    pub storage: StorageConfig,
     pub sync: SyncConfig,
 }
 
