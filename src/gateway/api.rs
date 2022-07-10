@@ -2,7 +2,8 @@ use jsonrpsee::core::Error;
 use jsonrpsee::proc_macros::rpc;
 use serde::{Deserialize, Serialize};
 
-pub use crate::starknet::{BlockHash, BlockNumber, ContractAddress, StarkFelt, StorageKey, Transaction, TransactionHash,
+pub use crate::starknet::{
+    BlockHash, BlockNumber, ContractAddress, StarkFelt, StorageKey, Transaction, TransactionHash,
     TransactionOffsetInBlock,
 };
 
@@ -19,16 +20,9 @@ pub enum Tag {
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(untagged)]
-pub enum BlockNumberOrTag {
-    Number(BlockNumber),
-    Tag(Tag),
-}
-
-#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(untagged)]
-pub enum BlockHashOrTag {
+pub enum BlockId {
     Hash(BlockHash),
+    Number(BlockNumber),
     Tag(Tag),
 }
 
@@ -38,12 +32,10 @@ pub enum JsonRpcError {
     NoBlocks,
     #[error("Contract not found.")]
     ContractNotFound = 20,
-    #[error("Invalid block hash.")]
-    InvalidBlockHash = 24,
+    #[error("Invalid block ID.")]
+    InvalidBlockId = 24,
     #[error("Invalid transaction hash.")]
     InvalidTransactionHash = 25,
-    #[error("Invalid block number.")]
-    InvalidBlockNumber = 26,
     #[error("Invalid transaction index in a block.")]
     InvalidTransactionIndex = 27,
 }
@@ -54,33 +46,13 @@ pub trait JsonRpc {
     #[method(name = "blockNumber")]
     fn block_number(&self) -> Result<BlockNumber, Error>;
 
-    /// Gets block information with transaction hashes given the block number (its height).
-    #[method(name = "getBlockWithTxHashesByNumber")]
-    fn get_block_by_number_w_transaction_hashes(
-        &self,
-        block_number: BlockNumberOrTag,
-    ) -> Result<Block, Error>;
+    /// Gets block information with transaction hashes given a block identifier.
+    #[method(name = "getBlockWithTxHashes")]
+    fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> Result<Block, Error>;
 
-    /// Gets block information with full transactions given the block number (its height).
-    #[method(name = "getBlockWithTxsByNumber")]
-    fn get_block_by_number_w_full_transactions(
-        &self,
-        block_number: BlockNumberOrTag,
-    ) -> Result<Block, Error>;
-
-    /// Gets block information with transaction hashes given the block id.
-    #[method(name = "getBlockWithTxHashesByHash")]
-    fn get_block_by_hash_w_transaction_hashes(
-        &self,
-        block_hash: BlockHashOrTag,
-    ) -> Result<Block, Error>;
-
-    /// Gets block information with full transactions given the block id.
-    #[method(name = "getBlockWithTxsByHash")]
-    fn get_block_by_hash_w_full_transactions(
-        &self,
-        block_hash: BlockHashOrTag,
-    ) -> Result<Block, Error>;
+    /// Gets block information with full transactions given a block identifier.
+    #[method(name = "getBlockWithTxs")]
+    fn get_block_w_full_transactions(&self, block_id: BlockId) -> Result<Block, Error>;
 
     /// Gets the value of the storage at the given address, key, and block.
     #[method(name = "getStorageAt")]
@@ -88,7 +60,7 @@ pub trait JsonRpc {
         &self,
         contract_address: ContractAddress,
         key: StorageKey,
-        block_hash: BlockHashOrTag,
+        block_id: BlockId,
     ) -> Result<StarkFelt, Error>;
 
     /// Gets the details of a submitted transaction.
@@ -98,19 +70,11 @@ pub trait JsonRpc {
         transaction_hash: TransactionHash,
     ) -> Result<Transaction, Error>;
 
-    /// Gets the details of a transaction by a given block hash and index.
-    #[method(name = "getTransactionByBlockHashAndIndex")]
-    fn get_transaction_by_block_hash_and_index(
+    /// Gets the details of a transaction by a given block id and index.
+    #[method(name = "getTransactionByBlockIdAndIndex")]
+    fn get_transaction_by_block_id_and_index(
         &self,
-        block_hash: BlockHashOrTag,
-        index: TransactionOffsetInBlock,
-    ) -> Result<Transaction, Error>;
-
-    /// Gets the details of a transaction by a given block number and index.
-    #[method(name = "getTransactionByBlockNumberAndIndex")]
-    fn get_transaction_by_block_number_and_index(
-        &self,
-        block_number: BlockNumberOrTag,
+        block_id: BlockId,
         index: TransactionOffsetInBlock,
     ) -> Result<Transaction, Error>;
 }
