@@ -100,7 +100,6 @@ fn get_block_number_from_hash<Mode: TransactionKind>(
 fn get_block_by_number<Mode: TransactionKind>(
     txn: &BlockStorageTxn<'_, Mode>,
     block_number: BlockNumber,
-    _requested_scope: Option<BlockResponseScope>,
 ) -> Result<Block, Error> {
     // TODO(anatg): Get the entire block.
     let block_header = txn
@@ -131,31 +130,99 @@ impl JsonRpcServer for JsonRpcServerImpl {
         get_latest_block_number(&txn)
     }
 
-    fn get_block_by_number(
+    fn get_block_by_number_w_transaction_hashes(
         &self,
         block_number: BlockNumberOrTag,
-        _requested_scope: Option<BlockResponseScope>,
+    ) -> Result<Block, Error> {
+        let txn = self
+            .storage_reader
+            .begin_ro_txn()
+            .map_err(internal_server_error)?;
+
+        let block_number = get_block_number(&txn, block_number)?;
+
+        let block_header = txn
+            .get_block_header(block_number)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockNumber))?;
+
+        let transactions = txn
+            .get_block_transactions(block_number)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockNumber))?;
+        let transaction_hashes: Vec<TransactionHash> = transactions
+            .iter()
+            .map(|transaction| transaction.transaction_hash())
+            .collect();
+
+        Ok(Block {
+            block_hash: block_header.block_hash,
+            parent_hash: block_header.parent_hash,
+            block_number,
+            status: block_header.status.into(),
+            sequencer: block_header.sequencer,
+            new_root: block_header.state_root,
+            accepted_time: block_header.timestamp,
+            transactions: Transactions::Hashes(transaction_hashes),
+        })
+    }
+
+    fn get_block_by_hash_w_transaction_hashes(
+        &self,
+        block_hash: BlockHashOrTag,
+    ) -> Result<Block, Error> {
+        let txn = self
+            .storage_reader
+            .begin_ro_txn()
+            .map_err(internal_server_error)?;
+        
+        let block_number = get_block_number_or_tag(&txn, block_hash)?;
+        self.get_block_by_number_w_transaction_hashes(block_number)
+    }
+
+    fn get_block_by_number_w_full_transactions(
+        &self,
+        block_number: BlockNumberOrTag,
     ) -> Result<Block, Error> {
         let txn = self
             .storage_reader
             .begin_ro_txn()
             .map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_number)?;
-        get_block_by_number(&txn, block_number, _requested_scope)
+
+        let block_header = txn
+            .get_block_header(block_number)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockNumber))?;
+
+        let transactions = txn
+            .get_block_transactions(block_number)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockNumber))?;
+
+        Ok(Block {
+            block_hash: block_header.block_hash,
+            parent_hash: block_header.parent_hash,
+            block_number,
+            status: block_header.status.into(),
+            sequencer: block_header.sequencer,
+            new_root: block_header.state_root,
+            accepted_time: block_header.timestamp,
+            transactions: Transactions::Full(transactions),
+        })
     }
 
-    fn get_block_by_hash(
+    fn get_block_by_hash_w_full_transactions(
         &self,
         block_hash: BlockHashOrTag,
-        requested_scope: Option<BlockResponseScope>,
     ) -> Result<Block, Error> {
         let txn = self
             .storage_reader
             .begin_ro_txn()
             .map_err(internal_server_error)?;
-        let block_number = get_block_number(&txn, get_block_number_or_tag(&txn, block_hash)?)?;
-
-        get_block_by_number(&txn, block_number, requested_scope)
+        
+        let block_number = get_block_number_or_tag(&txn, block_hash)?;
+        self.get_block_by_number_w_full_transactions(block_number)
     }
 
     fn get_storage_at(

@@ -2,28 +2,11 @@ use jsonrpsee::core::Error;
 use jsonrpsee::proc_macros::rpc;
 use serde::{Deserialize, Serialize};
 
-pub use crate::starknet::{
-    BlockHash, BlockNumber, ContractAddress, StarkFelt, StorageKey, Transaction, TransactionHash,
+pub use crate::starknet::{BlockHash, BlockNumber, ContractAddress, StarkFelt, StorageKey, Transaction, TransactionHash,
     TransactionOffsetInBlock,
 };
 
 pub use super::objects::Block;
-
-#[derive(Debug, Copy, Clone, Deserialize, PartialEq, Serialize)]
-pub enum BlockResponseScope {
-    #[serde(rename = "TXN_HASH")]
-    TransactionHashes,
-    #[serde(rename = "FULL_TXNS")]
-    FullTransactions,
-    #[serde(rename = "FULL_TXN_AND_RECEIPTS")]
-    FullTransactionsAndReceipts,
-}
-
-impl Default for BlockResponseScope {
-    fn default() -> Self {
-        BlockResponseScope::TransactionHashes
-    }
-}
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub enum Tag {
@@ -71,20 +54,32 @@ pub trait JsonRpc {
     #[method(name = "blockNumber")]
     fn block_number(&self) -> Result<BlockNumber, Error>;
 
-    /// Gets block information given the block number (its height).
-    #[method(name = "getBlockByNumber")]
-    fn get_block_by_number(
+    /// Gets block information with transaction hashes given the block number (its height).
+    #[method(name = "getBlockWithTxHashesByNumber")]
+    fn get_block_by_number_w_transaction_hashes(
         &self,
         block_number: BlockNumberOrTag,
-        requested_scope: Option<BlockResponseScope>,
     ) -> Result<Block, Error>;
 
-    /// Gets block information given the block id.
-    #[method(name = "getBlockByHash")]
-    fn get_block_by_hash(
+    /// Gets block information with full transactions given the block number (its height).
+    #[method(name = "getBlockWithTxsByNumber")]
+    fn get_block_by_number_w_full_transactions(
+        &self,
+        block_number: BlockNumberOrTag,
+    ) -> Result<Block, Error>;
+
+    /// Gets block information with transaction hashes given the block id.
+    #[method(name = "getBlockWithTxHashesByHash")]
+    fn get_block_by_hash_w_transaction_hashes(
         &self,
         block_hash: BlockHashOrTag,
-        requested_scope: Option<BlockResponseScope>,
+    ) -> Result<Block, Error>;
+
+    /// Gets block information with full transactions given the block id.
+    #[method(name = "getBlockWithTxsByHash")]
+    fn get_block_by_hash_w_full_transactions(
+        &self,
+        block_hash: BlockHashOrTag,
     ) -> Result<Block, Error>;
 
     /// Gets the value of the storage at the given address, key, and block.
