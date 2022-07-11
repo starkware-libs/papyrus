@@ -1,4 +1,4 @@
-use super::{bytes_from_hex_str, hex_str_from_bytes, DeserializationError};
+use super::{bytes_from_hex_str, hex_str_from_bytes, DeserializationError, HexAsBytes};
 
 #[test]
 fn test_hex_str_from_bytes() {
@@ -84,5 +84,23 @@ fn test_bytes_from_hex_str_errors() {
             c: 'x',
             index: 1
         }))
+    );
+}
+
+#[test]
+fn test_hex_as_bytes_serde_prefixed() {
+    let hex_as_bytes = HexAsBytes::<3, true>([1, 2, 3]);
+    assert_eq!(
+        hex_as_bytes,
+        serde_json::from_str(&serde_json::to_string(&hex_as_bytes).unwrap()).unwrap()
+    );
+}
+
+#[test]
+fn test_hex_as_bytes_serde_not_prefixed() {
+    let hex_as_bytes = HexAsBytes::<3, false>([1, 2, 3]);
+    assert_eq!(
+        hex_as_bytes,
+        serde_json::from_str(&serde_json::to_string(&hex_as_bytes).unwrap()).unwrap()
     );
 }
