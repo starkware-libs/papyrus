@@ -10,7 +10,9 @@ use crate::starknet::{
     BlockHash, BlockHeader, BlockNumber, ContractAddress, IndexedDeployedContract, StarkFelt,
     StateDiffForward, StorageKey, Transaction, TransactionHash, TransactionOffsetInBlock,
 };
-use crate::storage::db::{open_env, DbError, DbReader, DbWriter, TableIdentifier};
+use crate::storage::db::{
+    open_env, DbError, DbReader, DbTransaction, DbWriter, TableIdentifier, TransactionKind, RO, RW,
+};
 use crate::storage::db::{DbConfig, TableHandle};
 use std::sync::Arc;
 
@@ -73,6 +75,31 @@ pub struct BlockStorageReader {
 pub struct BlockStorageWriter {
     db_writer: DbWriter,
     tables: Arc<Tables>,
+}
+pub struct BlockStorageTxn<'env, Mode: TransactionKind> {
+    txn: DbTransaction<'env, Mode>,
+    tables: Arc<Tables>,
+}
+impl BlockStorageReader {
+    pub fn begin_ro_txn(&self) -> BlockStorageResult<BlockStorageTxn<'_, RO>> {
+        Ok(BlockStorageTxn {
+            txn: self.db_reader.begin_ro_txn()?,
+            tables: self.tables.clone(),
+        })
+    }
+}
+impl BlockStorageWriter {
+    pub fn begin_rw_txn(&mut self) -> BlockStorageResult<BlockStorageTxn<'_, RW>> {
+        Ok(BlockStorageTxn {
+            txn: self.db_writer.begin_rw_txn()?,
+            tables: self.tables.clone(),
+        })
+    }
+}
+impl<'env> BlockStorageTxn<'env, RW> {
+    pub fn commit(self) -> BlockStorageResult<()> {
+        Ok(self.txn.commit()?)
+    }
 }
 
 pub fn open_block_storage(

@@ -15,7 +15,10 @@ use log::{error, info};
 use serde::{Deserialize, Serialize};
 
 use crate::starknet::{BlockNumber, ContractAddress, StarkFelt, StateNumber, StorageKey};
-use crate::storage::components::{BlockStorageReader, HeaderStorageReader, StateStorageReader};
+use crate::storage::components::{
+    BlockStorageReader, BlockStorageTxn, HeaderStorageReader, StateStorageReader,
+};
+use crate::storage::db::TransactionKind;
 
 use self::api::{
     BlockHashOrTag, BlockNumberOrTag, BlockResponseScope, JsonRpcError, JsonRpcServer, Tag,
@@ -51,47 +54,83 @@ fn internal_server_error(err: impl Display) -> Error {
     )))
 }
 
-impl JsonRpcServerImpl {
-    fn get_block_number_or_tag(
-        &self,
-        block_hash: BlockHashOrTag,
-    ) -> Result<BlockNumberOrTag, Error> {
-        match block_hash {
-            BlockHashOrTag::Tag(Tag::Latest) => Ok(BlockNumberOrTag::Tag(Tag::Latest)),
-            BlockHashOrTag::Tag(Tag::Pending) => Ok(BlockNumberOrTag::Tag(Tag::Pending)),
-            BlockHashOrTag::Hash(hash) => Ok(BlockNumberOrTag::Number(
-                self.storage_reader
-                    .get_block_number_by_hash(&hash)
-                    .map_err(internal_server_error)?
-                    .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockHash))?,
-            )),
+fn get_block_number_or_tag<Mode: TransactionKind>(
+    txn: &BlockStorageTxn<'_, Mode>,
+    block_hash: BlockHashOrTag,
+) -> Result<BlockNumberOrTag, Error> {
+    match block_hash {
+        BlockHashOrTag::Tag(Tag::Latest) => Ok(BlockNumberOrTag::Tag(Tag::Latest)),
+        BlockHashOrTag::Tag(Tag::Pending) => Ok(BlockNumberOrTag::Tag(Tag::Pending)),
+        BlockHashOrTag::Hash(hash) => Ok(BlockNumberOrTag::Number(
+            txn.get_block_number_by_hash(&hash)
+                .map_err(internal_server_error)?
+                .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockHash))?,
+        )),
+    }
+}
+
+fn get_block_number<Mode: TransactionKind>(
+    txn: &BlockStorageTxn<'_, Mode>,
+    block_number: BlockNumberOrTag,
+) -> Result<BlockNumber, Error> {
+    Ok(match block_number {
+        BlockNumberOrTag::Tag(Tag::Latest) => get_latest_block_number(txn)?,
+        BlockNumberOrTag::Tag(Tag::Pending) => {
+            // TODO(anatg): Support pending block.
+            todo!("Pending tag is not supported yet.")
         }
-    }
+        BlockNumberOrTag::Number(number) => number,
+    })
+}
 
-    fn get_block_number(&self, block_number: BlockNumberOrTag) -> Result<BlockNumber, Error> {
-        Ok(match block_number {
-            BlockNumberOrTag::Tag(Tag::Latest) => self.block_number()?,
-            BlockNumberOrTag::Tag(Tag::Pending) => {
-                // TODO(anatg): Support pending block.
-                todo!("Pending tag is not supported yet.")
-            }
-            BlockNumberOrTag::Number(number) => number,
-        })
-    }
+fn get_latest_block_number<Mode: TransactionKind>(
+    txn: &BlockStorageTxn<'_, Mode>,
+) -> Result<BlockNumber, Error> {
+    txn.get_header_marker()
+        .map_err(internal_server_error)?
+        .prev()
+        .ok_or_else(|| JsonRpcError::NoBlocks.into())
+}
 
-    fn get_block_number_from_hash(&self, block_hash: BlockHashOrTag) -> Result<BlockNumber, Error> {
-        self.get_block_number(self.get_block_number_or_tag(block_hash)?)
-    }
+fn get_block_number_from_hash<Mode: TransactionKind>(
+    txn: &BlockStorageTxn<'_, Mode>,
+    block_hash: BlockHashOrTag,
+) -> Result<BlockNumber, Error> {
+    get_block_number(txn, get_block_number_or_tag(txn, block_hash)?)
+}
+
+fn get_block_by_number<Mode: TransactionKind>(
+    txn: &BlockStorageTxn<'_, Mode>,
+    block_number: BlockNumber,
+    _requested_scope: Option<BlockResponseScope>,
+) -> Result<Block, Error> {
+    // TODO(anatg): Get the entire block.
+    let block_header = txn
+        .get_block_header(block_number)
+        .map_err(internal_server_error)?
+        .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockNumber))?;
+
+    Ok(Block {
+        block_hash: block_header.block_hash,
+        parent_hash: block_header.parent_hash,
+        block_number,
+        status: block_header.status.into(),
+        sequencer: block_header.sequencer,
+        new_root: block_header.state_root,
+        accepted_time: block_header.timestamp,
+        // TODO(anatg): Get the transaction according to the requested scope.
+        transactions: Transactions::Hashes(vec![]),
+    })
 }
 
 #[async_trait]
 impl JsonRpcServer for JsonRpcServerImpl {
     fn block_number(&self) -> Result<BlockNumber, Error> {
-        self.storage_reader
-            .get_header_marker()
-            .map_err(internal_server_error)?
-            .prev()
-            .ok_or_else(|| JsonRpcError::NoBlocks.into())
+        let txn = self
+            .storage_reader
+            .begin_ro_txn()
+            .map_err(internal_server_error)?;
+        get_latest_block_number(&txn)
     }
 
     fn get_block_by_number(
@@ -99,26 +138,12 @@ impl JsonRpcServer for JsonRpcServerImpl {
         block_number: BlockNumberOrTag,
         _requested_scope: Option<BlockResponseScope>,
     ) -> Result<Block, Error> {
-        let block_number = self.get_block_number(block_number)?;
-
-        // TODO(anatg): Get the entire block.
-        let block_header = self
+        let txn = self
             .storage_reader
-            .get_block_header(block_number)
-            .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockNumber))?;
-
-        Ok(Block {
-            block_hash: block_header.block_hash,
-            parent_hash: block_header.parent_hash,
-            block_number,
-            status: block_header.status.into(),
-            sequencer: block_header.sequencer,
-            new_root: block_header.state_root,
-            accepted_time: block_header.timestamp,
-            // TODO(anatg): Get the transaction according to the requested scope.
-            transactions: Transactions::Hashes(vec![]),
-        })
+            .begin_ro_txn()
+            .map_err(internal_server_error)?;
+        let block_number = get_block_number(&txn, block_number)?;
+        get_block_by_number(&txn, block_number, _requested_scope)
     }
 
     fn get_block_by_hash(
@@ -126,8 +151,13 @@ impl JsonRpcServer for JsonRpcServerImpl {
         block_hash: BlockHashOrTag,
         requested_scope: Option<BlockResponseScope>,
     ) -> Result<Block, Error> {
-        let block_number = self.get_block_number_or_tag(block_hash)?;
-        self.get_block_by_number(block_number, requested_scope)
+        let txn = self
+            .storage_reader
+            .begin_ro_txn()
+            .map_err(internal_server_error)?;
+        let block_number = get_block_number(&txn, get_block_number_or_tag(&txn, block_hash)?)?;
+
+        get_block_by_number(&txn, block_number, requested_scope)
     }
 
     fn get_storage_at(
@@ -136,24 +166,21 @@ impl JsonRpcServer for JsonRpcServerImpl {
         key: StorageKey,
         block_hash: BlockHashOrTag,
     ) -> Result<StarkFelt, Error> {
+        let txn = self
+            .storage_reader
+            .begin_ro_txn()
+            .map_err(internal_server_error)?;
+
         // Check that the block is valid and get the state number.
-        let block_number = self.get_block_number_from_hash(block_hash)?;
+        let block_number = get_block_number_from_hash(&txn, block_hash)?;
         let state = StateNumber::right_after_block(block_number);
 
-        let statetxn = self
-            .storage_reader
-            .get_state_reader_txn()
-            .map_err(internal_server_error)?;
-        let state_reader = statetxn.get_state_reader().map_err(internal_server_error)?;
-
         // Check that the contract exists.
-        state_reader
-            .get_class_hash_at(state, &contract_address)
+        txn.get_class_hash_at(state, &contract_address)
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))?;
 
-        state_reader
-            .get_storage_at(state, &contract_address, &key)
+        txn.get_storage_at(state, &contract_address, &key)
             .map_err(internal_server_error)
     }
 }

@@ -12,7 +12,7 @@ use super::api::*;
 use super::*;
 
 #[tokio::test]
-async fn test_block_number() {
+async fn test_block_number() -> Result<(), anyhow::Error> {
     let storage_components = storage_test_utils::get_test_storage();
     let storage_reader = storage_components.block_storage_reader;
     let mut storage_writer = storage_components.block_storage_writer;
@@ -31,31 +31,32 @@ async fn test_block_number() {
 
     // Add a block and check again.
     storage_writer
-        .append_header(BlockNumber(0), &BlockHeader::default())
-        .unwrap();
+        .begin_rw_txn()?
+        .append_header(BlockNumber(0), &BlockHeader::default())?
+        .commit()?;
     let block_number = module
         .call::<_, BlockNumber>("starknet_blockNumber", EmptyParams::new())
-        .await
-        .unwrap();
+        .await?;
     assert_eq!(block_number, BlockNumber(0));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_get_block_by_number() {
+async fn test_get_block_by_number() -> Result<(), anyhow::Error> {
     let storage_components = storage_test_utils::get_test_storage();
     let storage_reader = storage_components.block_storage_reader;
     let mut storage_writer = storage_components.block_storage_writer;
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
     storage_writer
-        .append_header(BlockNumber(0), &BlockHeader::default())
-        .unwrap();
+        .begin_rw_txn()?
+        .append_header(BlockNumber(0), &BlockHeader::default())?
+        .commit()?;
     let block = module
         .call::<_, Block>(
             "starknet_getBlockByNumber",
             [BlockNumberOrTag::Number(BlockNumber(0))],
         )
-        .await
-        .unwrap();
+        .await?;
     let block_header = &BlockHeader::default();
     let expected_block = Block {
         block_hash: block_header.block_hash,
@@ -75,8 +76,7 @@ async fn test_get_block_by_number() {
             "starknet_getBlockByNumber",
             [BlockNumberOrTag::Tag(Tag::Latest)],
         )
-        .await
-        .unwrap();
+        .await?;
     assert_eq!(block, expected_block);
 
     // Ask for an invalid block.
@@ -92,10 +92,11 @@ async fn test_get_block_by_number() {
         JsonRpcError::InvalidBlockNumber.to_string(),
         None::<()>,
     ));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_get_block_by_hash() {
+async fn test_get_block_by_hash() -> Result<(), anyhow::Error> {
     let storage_components = storage_test_utils::get_test_storage();
     let storage_reader = storage_components.block_storage_reader;
     let mut storage_writer = storage_components.block_storage_writer;
@@ -108,15 +109,15 @@ async fn test_get_block_by_hash() {
         ..BlockHeader::default()
     };
     storage_writer
-        .append_header(header.number, &header)
-        .unwrap();
+        .begin_rw_txn()?
+        .append_header(header.number, &header)?
+        .commit()?;
     let block = module
         .call::<_, Block>(
             "starknet_getBlockByHash",
             [BlockHashOrTag::Hash(block_hash)],
         )
-        .await
-        .unwrap();
+        .await?;
     let block_header = &BlockHeader::default();
     let expected_block = Block {
         block_hash,
@@ -136,8 +137,7 @@ async fn test_get_block_by_hash() {
             "starknet_getBlockByHash",
             [BlockHashOrTag::Tag(Tag::Latest)],
         )
-        .await
-        .unwrap();
+        .await?;
     assert_eq!(block, expected_block);
 
     // Ask for an invalid block.
@@ -155,10 +155,11 @@ async fn test_get_block_by_hash() {
         JsonRpcError::InvalidBlockHash.to_string(),
         None::<()>,
     ));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_get_storage_at() {
+async fn test_get_storage_at() -> Result<(), anyhow::Error> {
     let storage_components = storage_test_utils::get_test_storage();
     let storage_reader = storage_components.block_storage_reader;
     let mut storage_writer = storage_components.block_storage_writer;
@@ -172,9 +173,6 @@ async fn test_get_storage_at() {
         block_hash,
         ..BlockHeader::default()
     };
-    storage_writer
-        .append_header(header.number, &header)
-        .unwrap();
     let address = ContractAddress(shash!("0x11"));
     let class_hash = ClassHash(shash!("0x4"));
     let key = StorageKey(shash!("0x1001"));
@@ -193,16 +191,17 @@ async fn test_get_storage_at() {
         }],
     };
     storage_writer
-        .append_state_diff(BlockNumber(0), &diff)
-        .unwrap();
+        .begin_rw_txn()?
+        .append_header(header.number, &header)?
+        .append_state_diff(BlockNumber(0), &diff)?
+        .commit()?;
 
     let res = module
         .call::<_, StarkFelt>(
             "starknet_getStorageAt",
             (address, key.clone(), BlockHashOrTag::Hash(block_hash)),
         )
-        .await
-        .unwrap();
+        .await?;
     assert_eq!(res, value);
 
     // Ask for an invalid contract.
@@ -242,10 +241,11 @@ async fn test_get_storage_at() {
         JsonRpcError::InvalidBlockHash.to_string(),
         None::<()>,
     ));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_run_server() {
+async fn test_run_server() -> Result<(), anyhow::Error> {
     let storage_reader = storage_test_utils::get_test_storage().block_storage_reader;
     let (addr, _handle) = run_server(
         GatewayConfig {
@@ -253,15 +253,13 @@ async fn test_run_server() {
         },
         storage_reader,
     )
-    .await
-    .unwrap();
-    let client = HttpClientBuilder::default()
-        .build(format!("http://{:?}", addr))
-        .unwrap();
+    .await?;
+    let client = HttpClientBuilder::default().build(format!("http://{:?}", addr))?;
     let err = client.block_number().await.unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
         JsonRpcError::NoBlocks as i32,
         JsonRpcError::NoBlocks.to_string(),
         None::<()>,
     ));
+    Ok(())
 }

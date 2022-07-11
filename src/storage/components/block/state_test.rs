@@ -6,7 +6,7 @@ use crate::storage::components::block::test_utils::get_test_storage;
 
 use super::{StateStorageReader, StateStorageWriter};
 #[test]
-fn test_append_diff() {
+fn test_append_diff() -> Result<(), anyhow::Error> {
     let c0 = ContractAddress(shash!("0x11"));
     let c1 = ContractAddress(shash!("0x2"));
     let c2 = ContractAddress(shash!("0x3"));
@@ -74,85 +74,49 @@ fn test_append_diff() {
         ],
     };
 
-    let (reader, mut writer) = get_test_storage();
-    assert_eq!(reader.get_state_diff(BlockNumber(0)).unwrap(), None);
-    assert_eq!(reader.get_state_diff(BlockNumber(1)).unwrap(), None);
-    writer.append_state_diff(BlockNumber(0), &diff0).unwrap();
-    assert_eq!(
-        reader.get_state_diff(BlockNumber(0)).unwrap().unwrap(),
-        diff0
-    );
-    assert_eq!(reader.get_state_diff(BlockNumber(1)).unwrap(), None);
-    writer.append_state_diff(BlockNumber(1), &diff1).unwrap();
-    assert_eq!(
-        reader.get_state_diff(BlockNumber(0)).unwrap().unwrap(),
-        diff0
-    );
-    assert_eq!(
-        reader.get_state_diff(BlockNumber(1)).unwrap().unwrap(),
-        diff1
-    );
-
-    let statetxn = reader.get_state_reader_txn().unwrap();
-    let state = statetxn.get_state_reader().unwrap();
+    let (_, mut writer) = get_test_storage();
+    let mut txn = writer.begin_rw_txn()?;
+    assert_eq!(txn.get_state_diff(BlockNumber(0))?, None);
+    assert_eq!(txn.get_state_diff(BlockNumber(1))?, None);
+    txn = txn.append_state_diff(BlockNumber(0), &diff0)?;
+    assert_eq!(txn.get_state_diff(BlockNumber(0))?.unwrap(), diff0);
+    assert_eq!(txn.get_state_diff(BlockNumber(1))?, None);
+    txn = txn.append_state_diff(BlockNumber(1), &diff1)?;
+    assert_eq!(txn.get_state_diff(BlockNumber(0))?.unwrap(), diff0);
+    assert_eq!(txn.get_state_diff(BlockNumber(1))?.unwrap(), diff1);
 
     // Contract0.
     let state0 = StateNumber::right_before_block(BlockNumber(0));
     let state1 = StateNumber::right_before_block(BlockNumber(1));
     let state2 = StateNumber::right_before_block(BlockNumber(2));
-    assert_eq!(state.get_class_hash_at(state0, &c0).unwrap(), None);
-    assert_eq!(state.get_class_hash_at(state1, &c0).unwrap(), Some(cl0));
-    assert_eq!(state.get_class_hash_at(state2, &c0).unwrap(), Some(cl0));
+    assert_eq!(txn.get_class_hash_at(state0, &c0)?, None);
+    assert_eq!(txn.get_class_hash_at(state1, &c0)?, Some(cl0));
+    assert_eq!(txn.get_class_hash_at(state2, &c0)?, Some(cl0));
 
     // Contract1.
-    assert_eq!(state.get_class_hash_at(state0, &c1).unwrap(), None);
-    assert_eq!(state.get_class_hash_at(state1, &c1).unwrap(), Some(cl1));
-    assert_eq!(state.get_class_hash_at(state2, &c1).unwrap(), Some(cl1));
+    assert_eq!(txn.get_class_hash_at(state0, &c1)?, None);
+    assert_eq!(txn.get_class_hash_at(state1, &c1)?, Some(cl1));
+    assert_eq!(txn.get_class_hash_at(state2, &c1)?, Some(cl1));
 
     // Contract2.
-    assert_eq!(state.get_class_hash_at(state0, &c2).unwrap(), None);
-    assert_eq!(state.get_class_hash_at(state1, &c2).unwrap(), None);
-    assert_eq!(state.get_class_hash_at(state2, &c2).unwrap(), Some(cl0));
+    assert_eq!(txn.get_class_hash_at(state0, &c2)?, None);
+    assert_eq!(txn.get_class_hash_at(state1, &c2)?, None);
+    assert_eq!(txn.get_class_hash_at(state2, &c2)?, Some(cl0));
 
     // Storage at key0.
-    assert_eq!(
-        state.get_storage_at(state0, &c0, &key0).unwrap(),
-        shash!("0x0")
-    );
-    assert_eq!(
-        state.get_storage_at(state1, &c0, &key0).unwrap(),
-        shash!("0x200")
-    );
-    assert_eq!(
-        state.get_storage_at(state2, &c0, &key0).unwrap(),
-        shash!("0x300")
-    );
+    assert_eq!(txn.get_storage_at(state0, &c0, &key0)?, shash!("0x0"));
+    assert_eq!(txn.get_storage_at(state1, &c0, &key0)?, shash!("0x200"));
+    assert_eq!(txn.get_storage_at(state2, &c0, &key0)?, shash!("0x300"));
 
     // Storage at key1.
-    assert_eq!(
-        state.get_storage_at(state0, &c0, &key1).unwrap(),
-        shash!("0x0")
-    );
-    assert_eq!(
-        state.get_storage_at(state1, &c0, &key1).unwrap(),
-        shash!("0x201")
-    );
-    assert_eq!(
-        state.get_storage_at(state2, &c0, &key1).unwrap(),
-        shash!("0x0")
-    );
+    assert_eq!(txn.get_storage_at(state0, &c0, &key1)?, shash!("0x0"));
+    assert_eq!(txn.get_storage_at(state1, &c0, &key1)?, shash!("0x201"));
+    assert_eq!(txn.get_storage_at(state2, &c0, &key1)?, shash!("0x0"));
 
     // Storage at key2.
-    assert_eq!(
-        state.get_storage_at(state0, &c1, &key0).unwrap(),
-        shash!("0x0")
-    );
-    assert_eq!(
-        state.get_storage_at(state1, &c1, &key0).unwrap(),
-        shash!("0x0")
-    );
-    assert_eq!(
-        state.get_storage_at(state2, &c1, &key0).unwrap(),
-        shash!("0x0")
-    );
+    assert_eq!(txn.get_storage_at(state0, &c1, &key0)?, shash!("0x0"));
+    assert_eq!(txn.get_storage_at(state1, &c1, &key0)?, shash!("0x0"));
+    assert_eq!(txn.get_storage_at(state2, &c1, &key0)?, shash!("0x0"));
+
+    Ok(())
 }
