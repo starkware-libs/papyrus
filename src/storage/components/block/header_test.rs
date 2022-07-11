@@ -5,44 +5,50 @@ use crate::storage::components::{HeaderStorageReader, HeaderStorageWriter};
 use super::BlockStorageError;
 
 #[tokio::test]
-async fn test_append_header() {
+async fn test_append_header() -> Result<(), anyhow::Error> {
     let (reader, mut writer) = get_test_storage();
 
     // Check for MarkerMismatch error  when trying to append the wrong block number.
-    assert_matches!(
-        writer
-            .append_header(BlockNumber(5), &BlockHeader::default())
-            .unwrap_err(),
-        BlockStorageError::MarkerMismatch {
-            expected: BlockNumber(0),
-            found: BlockNumber(5)
-        }
-    );
-
+    if let Err(err) = writer
+        .begin_rw_txn()?
+        .append_header(BlockNumber(5), &BlockHeader::default())
+    {
+        assert_matches!(
+            err,
+            BlockStorageError::MarkerMismatch {
+                expected: BlockNumber(0),
+                found: BlockNumber(5)
+            }
+        );
+    } else {
+        panic!("Unexpected Ok.");
+    }
     // Check block hash.
     assert_eq!(
         reader
-            .get_block_number_by_hash(&BlockHash::default())
-            .unwrap(),
+            .begin_ro_txn()?
+            .get_block_number_by_hash(&BlockHash::default())?,
         None
     );
 
     // Append with the right block number.
     writer
-        .append_header(BlockNumber(0), &BlockHeader::default())
-        .unwrap();
+        .begin_rw_txn()?
+        .append_header(BlockNumber(0), &BlockHeader::default())?
+        .commit()?;
 
     // Check block and marker.
-    let marker = reader.get_header_marker().unwrap();
+    let txn = reader.begin_ro_txn()?;
+    let marker = txn.get_header_marker()?;
     assert_eq!(marker, BlockNumber(1));
-    let header = reader.get_block_header(BlockNumber(0)).unwrap();
+    let header = txn.get_block_header(BlockNumber(0))?;
     assert_eq!(header, Some(BlockHeader::default()));
 
     // Check block hash.
     assert_eq!(
-        reader
-            .get_block_number_by_hash(&BlockHash::default())
-            .unwrap(),
+        txn.get_block_number_by_hash(&BlockHash::default())?,
         Some(BlockNumber(0))
     );
+
+    Ok(())
 }

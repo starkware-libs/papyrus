@@ -96,13 +96,21 @@ impl StateSync {
                         header,
                         body,
                     }) => {
-                        self.writer.append_header(block_number, &header)?;
-                        self.writer.append_body(block_number, &body)?;
+                        self.writer
+                            .begin_rw_txn()?
+                            .append_header(block_number, &header)?
+                            .append_body(block_number, &body)?
+                            .commit()?;
                     }
                     Some(SyncEvent::StateDiffAvailable {
                         block_number,
                         state_diff,
-                    }) => self.writer.append_state_diff(block_number, &state_diff)?,
+                    }) => {
+                        self.writer
+                            .begin_rw_txn()?
+                            .append_state_diff(block_number, &state_diff)?
+                            .commit()?;
+                    }
                     None => {
                         return Err(StateSyncError::SyncError {
                             message: "Got an empty event.".to_string(),
@@ -121,7 +129,7 @@ fn stream_new_blocks(
 ) -> impl Stream<Item = SyncEvent> + '_ {
     stream! {
         loop {
-            let header_marker = reader
+            let header_marker = reader.begin_ro_txn().expect("Cannot read from block storage.")
                 .get_header_marker()
                 .expect("Cannot read from block storage.");
             let last_block_number = central_source
@@ -158,12 +166,14 @@ fn stream_new_state_diffs(
 ) -> impl Stream<Item = SyncEvent> + '_ {
     stream! {
         loop {
-            let state_marker = reader
+            let txn = reader.begin_ro_txn().expect("Cannot read from block storage.");
+            let state_marker = txn
                 .get_state_marker()
                 .expect("Cannot read from block storage.");
-            let last_block_number = reader
+            let last_block_number = txn
                 .get_header_marker()
                 .expect("Cannot read from block storage.");
+            drop(txn);
             info!(
                 "Downloading state diffs [{} - {}).",
                 state_marker.0, last_block_number.0
