@@ -5,7 +5,7 @@ pub mod db_test;
 use std::marker::PhantomData;
 use std::{borrow::Cow, path::Path, result, sync::Arc};
 
-use libmdbx::{Cursor, DatabaseFlags, Geometry, WriteFlags, WriteMap, RW};
+use libmdbx::{Cursor, DatabaseFlags, Geometry, WriteFlags, WriteMap};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
@@ -72,11 +72,24 @@ pub struct DbWriter {
     env: Arc<Environment>,
 }
 
-pub struct DbTransaction<'env, Mode: libmdbx::TransactionKind> {
-    txn: libmdbx::Transaction<'env, Mode, EnvironmentKind>,
+// Transaction wrappers.
+pub trait TransactionKind {
+    type Internal: libmdbx::TransactionKind;
 }
-pub type DbReadTransaction<'env> = DbTransaction<'env, libmdbx::RO>;
-pub type DbWriteTransaction<'env> = DbTransaction<'env, libmdbx::RW>;
+pub struct RO {}
+pub struct RW {}
+
+impl TransactionKind for RO {
+    type Internal = libmdbx::RO;
+}
+impl TransactionKind for RW {
+    type Internal = libmdbx::RW;
+}
+pub struct DbTransaction<'env, Mode: TransactionKind> {
+    txn: libmdbx::Transaction<'env, Mode::Internal, EnvironmentKind>,
+}
+pub type DbReadTransaction<'env> = DbTransaction<'env, RO>;
+pub type DbWriteTransaction<'env> = DbTransaction<'env, RW>;
 
 pub struct TableIdentifier<K: ValueType, V: ValueType> {
     name: &'static str,
@@ -89,7 +102,7 @@ pub struct TableHandle<'env, K: ValueType, V: ValueType> {
     _value_type: PhantomData<V>,
 }
 impl<'env, 'txn, K: ValueType, V: ValueType> TableHandle<'env, K, V> {
-    pub fn cursor<Mode: libmdbx::TransactionKind>(
+    pub fn cursor<Mode: TransactionKind>(
         &'env self,
         txn: &'txn DbTransaction<'env, Mode>,
     ) -> Result<DbCursor<'txn, Mode, K, V>> {
@@ -100,7 +113,7 @@ impl<'env, 'txn, K: ValueType, V: ValueType> TableHandle<'env, K, V> {
             _value_type: PhantomData {},
         })
     }
-    pub fn get<Mode: libmdbx::TransactionKind>(
+    pub fn get<Mode: TransactionKind>(
         &'env self,
         txn: &'env DbTransaction<'env, Mode>,
         key: &K,
@@ -165,7 +178,7 @@ impl DbWriter {
     }
 }
 
-impl<'a, Mode: libmdbx::TransactionKind> DbTransaction<'a, Mode> {
+impl<'a, Mode: TransactionKind> DbTransaction<'a, Mode> {
     pub fn open_table<'env, K: ValueType, V: ValueType>(
         &'env self,
         table_id: &TableIdentifier<K, V>,
@@ -185,13 +198,13 @@ impl<'a> DbWriteTransaction<'a> {
     }
 }
 
-pub struct DbCursor<'txn, Mode: libmdbx::TransactionKind, K: ValueType, V: ValueType> {
-    cursor: Cursor<'txn, Mode>,
+pub struct DbCursor<'txn, Mode: TransactionKind, K: ValueType, V: ValueType> {
+    cursor: Cursor<'txn, Mode::Internal>,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
 }
 
-impl<'txn, Mode: libmdbx::TransactionKind, K: ValueType, V: ValueType> DbCursor<'txn, Mode, K, V> {
+impl<'txn, Mode: TransactionKind, K: ValueType, V: ValueType> DbCursor<'txn, Mode, K, V> {
     pub fn prev(&mut self) -> Result<Option<(K, V)>> {
         let prev_cursor_res = self.cursor.prev::<DbKeyType<'_>, DbValueType<'_>>()?;
         match prev_cursor_res {
@@ -203,7 +216,7 @@ impl<'txn, Mode: libmdbx::TransactionKind, K: ValueType, V: ValueType> DbCursor<
             }
         }
     }
-    #[allow(dead_code)]
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Result<Option<(K, V)>> {
         let prev_cursor_res = self.cursor.next::<DbKeyType<'_>, DbValueType<'_>>()?;
         match prev_cursor_res {

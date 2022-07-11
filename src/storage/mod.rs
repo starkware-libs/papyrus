@@ -1,2 +1,2 @@
 pub mod components;
-mod db;
+pub mod db;
