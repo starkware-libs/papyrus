@@ -8,3 +8,4 @@ pub mod starknet;
 pub mod starknet_client;
 pub mod storage;
 pub mod sync;
+pub mod test_utils;

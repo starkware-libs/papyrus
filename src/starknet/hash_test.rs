@@ -1,4 +1,5 @@
 use crate::starknet::StarkHash;
+use crate::test_utils::serde_utils::run_serde_test;
 
 use super::shash;
 
@@ -15,9 +16,5 @@ fn test_hash_macro() {
 
 #[test]
 fn test_hash_serde() {
-    let hash = shash!("0x123");
-    assert_eq!(
-        hash,
-        serde_json::from_str(&serde_json::to_string(&hash).unwrap()).unwrap()
-    );
+    run_serde_test(&shash!("0x123"));
 }
