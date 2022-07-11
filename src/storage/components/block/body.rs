@@ -2,11 +2,9 @@
 #[path = "body_test.rs"]
 mod body_test;
 
-use libmdbx::RW;
-
 use crate::{
     starknet::{BlockBody, BlockNumber, Transaction, TransactionHash, TransactionOffsetInBlock},
-    storage::db::{DbError, DbTransaction, TableHandle},
+    storage::db::{DbError, DbTransaction, TableHandle, RW},
 };
 
 use super::{
