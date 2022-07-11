@@ -1,10 +1,8 @@
 use crate::starknet::{
     BlockNumber, ClassHash, ContractAddress, StarkFelt, StateNumber, StorageKey,
 };
-use libmdbx::RO;
-
 use crate::storage::components::{block::BlockStorageResult, BlockStorageReader};
-use crate::storage::db::DbTransaction;
+use crate::storage::db::{DbTransaction, RO};
 
 use super::{ContractStorageTable, ContractsTable};
 

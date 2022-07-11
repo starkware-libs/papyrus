@@ -3,13 +3,11 @@ mod reader;
 #[path = "state_test.rs"]
 mod state_test;
 
-use libmdbx::RW;
-
 use crate::starknet::{
     BlockNumber, ContractAddress, IndexedDeployedContract, StarkFelt, StateDiffForward,
     StorageDiff, StorageEntry, StorageKey,
 };
-use crate::storage::db::{DbError, DbTransaction, TableHandle};
+use crate::storage::db::{DbError, DbTransaction, TableHandle, RW};
 
 use super::{
     BlockStorageError, BlockStorageReader, BlockStorageResult, BlockStorageWriter, MarkerKind,

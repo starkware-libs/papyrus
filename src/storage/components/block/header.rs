@@ -2,10 +2,8 @@
 #[path = "header_test.rs"]
 mod header_test;
 
-use libmdbx::RW;
-
 use crate::starknet::{BlockHash, BlockHeader, BlockNumber};
-use crate::storage::db::{DbError, DbTransaction, TableHandle};
+use crate::storage::db::{DbError, DbTransaction, TableHandle, RW};
 
 use super::{
     BlockStorageError, BlockStorageReader, BlockStorageResult, BlockStorageWriter, MarkerKind,
