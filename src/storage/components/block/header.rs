@@ -3,12 +3,9 @@
 mod header_test;
 
 use crate::starknet::{BlockHash, BlockHeader, BlockNumber};
-use crate::storage::db::{DbError, DbTransaction, TableHandle, RW};
+use crate::storage::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 
-use super::{
-    BlockStorageError, BlockStorageReader, BlockStorageResult, BlockStorageWriter, MarkerKind,
-    MarkersTable,
-};
+use super::{BlockStorageError, BlockStorageResult, BlockStorageTxn, MarkerKind, MarkersTable};
 
 pub type BlockHashToNumberTable<'env> = TableHandle<'env, BlockHash, BlockNumber>;
 
@@ -24,66 +21,64 @@ pub trait HeaderStorageReader {
         block_hash: &BlockHash,
     ) -> BlockStorageResult<Option<BlockNumber>>;
 }
-pub trait HeaderStorageWriter {
+pub trait HeaderStorageWriter
+where
+    Self: Sized,
+{
+    // To enforce that no commit happen after a failure, we consume and return Self on success.
     fn append_header(
-        &mut self,
+        self,
         block_number: BlockNumber,
         block_header: &BlockHeader,
-    ) -> BlockStorageResult<()>;
+    ) -> BlockStorageResult<Self>;
 }
-impl HeaderStorageReader for BlockStorageReader {
+impl<'env, Mode: TransactionKind> HeaderStorageReader for BlockStorageTxn<'env, Mode> {
     fn get_header_marker(&self) -> BlockStorageResult<BlockNumber> {
-        let txn = self.db_reader.begin_ro_txn()?;
-        let markers_table = txn.open_table(&self.tables.markers)?;
+        let markers_table = self.txn.open_table(&self.tables.markers)?;
         Ok(markers_table
-            .get(&txn, &MarkerKind::Header)?
+            .get(&self.txn, &MarkerKind::Header)?
             .unwrap_or_default())
     }
     fn get_block_header(
         &self,
         block_number: BlockNumber,
     ) -> BlockStorageResult<Option<BlockHeader>> {
-        let txn = self.db_reader.begin_ro_txn()?;
-        let headers_table = txn.open_table(&self.tables.headers)?;
-        let block_header = headers_table.get(&txn, &block_number)?;
+        let headers_table = self.txn.open_table(&self.tables.headers)?;
+        let block_header = headers_table.get(&self.txn, &block_number)?;
         Ok(block_header)
     }
     fn get_block_number_by_hash(
         &self,
         block_hash: &BlockHash,
     ) -> BlockStorageResult<Option<BlockNumber>> {
-        let txn = self.db_reader.begin_ro_txn()?;
-        let block_hash_to_number_table = txn.open_table(&self.tables.block_hash_to_number)?;
-        let block_number = block_hash_to_number_table.get(&txn, block_hash)?;
+        let block_hash_to_number_table = self.txn.open_table(&self.tables.block_hash_to_number)?;
+        let block_number = block_hash_to_number_table.get(&self.txn, block_hash)?;
         Ok(block_number)
     }
 }
-impl HeaderStorageWriter for BlockStorageWriter {
+impl<'env> HeaderStorageWriter for BlockStorageTxn<'env, RW> {
     fn append_header(
-        &mut self,
+        self,
         block_number: BlockNumber,
         block_header: &BlockHeader,
-    ) -> BlockStorageResult<()> {
-        let txn = self.db_writer.begin_rw_txn()?;
-        let markers_table = txn.open_table(&self.tables.markers)?;
-        let headers_table = txn.open_table(&self.tables.headers)?;
-        let block_hash_to_number_table = txn.open_table(&self.tables.block_hash_to_number)?;
+    ) -> BlockStorageResult<Self> {
+        let markers_table = self.txn.open_table(&self.tables.markers)?;
+        let headers_table = self.txn.open_table(&self.tables.headers)?;
+        let block_hash_to_number_table = self.txn.open_table(&self.tables.block_hash_to_number)?;
 
-        update_marker(&txn, &markers_table, block_number)?;
+        update_marker(&self.txn, &markers_table, block_number)?;
 
         // Write header.
-        headers_table.insert(&txn, &block_number, block_header)?;
+        headers_table.insert(&self.txn, &block_number, block_header)?;
 
         // Write mapping.
         update_hash_mapping(
-            &txn,
+            &self.txn,
             &block_hash_to_number_table,
             block_header,
             block_number,
         )?;
-
-        txn.commit()?;
-        Ok(())
+        Ok(self)
     }
 }
 

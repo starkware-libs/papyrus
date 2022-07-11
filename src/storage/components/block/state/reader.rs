@@ -1,19 +1,29 @@
 use crate::starknet::{
     BlockNumber, ClassHash, ContractAddress, StarkFelt, StateNumber, StorageKey,
 };
-use crate::storage::components::{block::BlockStorageResult, BlockStorageReader};
-use crate::storage::db::{DbTransaction, RO};
+use crate::storage::components::block::BlockStorageResult;
+use crate::storage::components::BlockStorageTxn;
+use crate::storage::db::{DbTransaction, TransactionKind};
 
 use super::{ContractStorageTable, ContractsTable};
 
 // Represents a single coherent state at a single point in time,
-pub struct StateReader<'env, 'txn> {
-    txn: &'txn DbTransaction<'env, RO>,
+pub struct StateReader<'env, Mode: TransactionKind> {
+    txn: &'env DbTransaction<'env, Mode>,
     contracts_table: ContractsTable<'env>,
     storage_table: ContractStorageTable<'env>,
 }
 #[allow(dead_code)]
-impl<'env, 'txn> StateReader<'env, 'txn> {
+impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
+    pub fn new(txn: &'env BlockStorageTxn<'env, Mode>) -> BlockStorageResult<Self> {
+        let contracts_table = txn.txn.open_table(&txn.tables.contracts)?;
+        let storage_table = txn.txn.open_table(&txn.tables.contract_storage)?;
+        Ok(StateReader {
+            txn: &txn.txn,
+            contracts_table,
+            storage_table,
+        })
+    }
     pub fn get_class_hash_at(
         &self,
         state_number: StateNumber,
@@ -53,29 +63,5 @@ impl<'env, 'txn> StateReader<'env, 'txn> {
                 Ok(value)
             }
         }
-    }
-}
-
-// A helper object to get a StateReader.
-// StateReader holds the open tables, which reference the txn. They can't be in the same struct -
-// that would be a self reference.
-// Instead, one should hold the txn, and then open the tables in an inner lifetime.
-pub struct StateReaderTxn<'env> {
-    pub reader: &'env BlockStorageReader,
-    pub txn: DbTransaction<'env, RO>,
-}
-#[allow(dead_code)]
-impl<'env> StateReaderTxn<'env> {
-    pub fn get_state_reader(&self) -> BlockStorageResult<StateReader<'_, '_>> {
-        let txn = &self.txn;
-
-        let contracts_table = txn.open_table(&self.reader.tables.contracts)?;
-        let storage_table = txn.open_table(&self.reader.tables.contract_storage)?;
-
-        Ok(StateReader {
-            txn,
-            contracts_table,
-            storage_table,
-        })
     }
 }

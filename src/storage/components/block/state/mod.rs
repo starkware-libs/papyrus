@@ -7,14 +7,11 @@ use crate::starknet::{
     BlockNumber, ContractAddress, IndexedDeployedContract, StarkFelt, StateDiffForward,
     StorageDiff, StorageEntry, StorageKey,
 };
-use crate::storage::db::{DbError, DbTransaction, TableHandle, RW};
+use crate::storage::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 
-use super::{
-    BlockStorageError, BlockStorageReader, BlockStorageResult, BlockStorageWriter, MarkerKind,
-    MarkersTable,
-};
+use self::reader::StateReader;
 
-use self::reader::StateReaderTxn;
+use super::{BlockStorageError, BlockStorageResult, BlockStorageTxn, MarkerKind, MarkersTable};
 
 pub type ContractsTable<'env> = TableHandle<'env, ContractAddress, IndexedDeployedContract>;
 pub type ContractStorageTable<'env> =
@@ -32,68 +29,66 @@ pub type ContractStorageTable<'env> =
 //   (contract_address, key, block_num), and retrieve the closest from left, which should be
 //   the latest update to the value before that block_num.
 
-pub trait StateStorageReader {
+pub trait StateStorageReader<Mode: TransactionKind> {
     fn get_state_marker(&self) -> BlockStorageResult<BlockNumber>;
     fn get_state_diff(
         &self,
         block_number: BlockNumber,
     ) -> BlockStorageResult<Option<StateDiffForward>>;
-    fn get_state_reader_txn(&self) -> BlockStorageResult<StateReaderTxn<'_>>;
-}
-pub trait StateStorageWriter {
-    fn append_state_diff(
-        &mut self,
-        block_number: BlockNumber,
-        state_diff: &StateDiffForward,
-    ) -> BlockStorageResult<()>;
+    fn get_state_reader(&self) -> BlockStorageResult<StateReader<'_, Mode>>;
 }
 
-impl StateStorageReader for BlockStorageReader {
+pub trait StateStorageWriter
+where
+    Self: Sized,
+{
+    // To enforce that no commit happen after a failure, we consume and return Self on success.
+    fn append_state_diff(
+        self,
+        block_number: BlockNumber,
+        state_diff: &StateDiffForward,
+    ) -> BlockStorageResult<Self>;
+}
+
+impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for BlockStorageTxn<'env, Mode> {
     // The block number marker is the first block number that doesn't exist yet.
     fn get_state_marker(&self) -> BlockStorageResult<BlockNumber> {
-        let txn = self.db_reader.begin_ro_txn()?;
-        let markers_table = txn.open_table(&self.tables.markers)?;
+        let markers_table = self.txn.open_table(&self.tables.markers)?;
         Ok(markers_table
-            .get(&txn, &MarkerKind::State)?
+            .get(&self.txn, &MarkerKind::State)?
             .unwrap_or_default())
     }
     fn get_state_diff(
         &self,
         block_number: BlockNumber,
     ) -> BlockStorageResult<Option<StateDiffForward>> {
-        let txn = self.db_reader.begin_ro_txn()?;
-        let state_diffs_table = txn.open_table(&self.tables.state_diffs)?;
-        let state_diff = state_diffs_table.get(&txn, &block_number)?;
+        let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
+        let state_diff = state_diffs_table.get(&self.txn, &block_number)?;
         Ok(state_diff)
     }
-    fn get_state_reader_txn(&self) -> BlockStorageResult<StateReaderTxn<'_>> {
-        let txn = self.db_reader.begin_ro_txn()?;
-        Ok(StateReaderTxn { reader: self, txn })
+    fn get_state_reader(&self) -> BlockStorageResult<StateReader<'_, Mode>> {
+        StateReader::new(self)
     }
 }
 
-impl StateStorageWriter for BlockStorageWriter {
+impl<'env> StateStorageWriter for BlockStorageTxn<'env, RW> {
     fn append_state_diff(
-        &mut self,
+        self,
         block_number: BlockNumber,
         state_diff: &StateDiffForward,
-    ) -> BlockStorageResult<()> {
-        let txn = self.db_writer.begin_rw_txn()?;
-        let markers_table = txn.open_table(&self.tables.markers)?;
-        let contracts_table = txn.open_table(&self.tables.contracts)?;
-        let storage_table = txn.open_table(&self.tables.contract_storage)?;
-        let state_diffs_table = txn.open_table(&self.tables.state_diffs)?;
+    ) -> BlockStorageResult<Self> {
+        let markers_table = self.txn.open_table(&self.tables.markers)?;
+        let contracts_table = self.txn.open_table(&self.tables.contracts)?;
+        let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
+        let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
 
-        update_marker(&txn, &markers_table, block_number)?;
+        update_marker(&self.txn, &markers_table, block_number)?;
         // Write state diff.
-        state_diffs_table.insert(&txn, &block_number, state_diff)?;
+        state_diffs_table.insert(&self.txn, &block_number, state_diff)?;
         // Write state.
-        write_deployed_contracts(state_diff, &txn, block_number, &contracts_table)?;
-        write_storage_diffs(state_diff, &txn, block_number, &storage_table)?;
-
-        // Finalize.
-        txn.commit()?;
-        Ok(())
+        write_deployed_contracts(state_diff, &self.txn, block_number, &contracts_table)?;
+        write_storage_diffs(state_diff, &self.txn, block_number, &storage_table)?;
+        Ok(self)
     }
 }
 

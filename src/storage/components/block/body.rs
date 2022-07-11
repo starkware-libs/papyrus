@@ -4,13 +4,10 @@ mod body_test;
 
 use crate::{
     starknet::{BlockBody, BlockNumber, Transaction, TransactionHash, TransactionOffsetInBlock},
-    storage::db::{DbError, DbTransaction, TableHandle, RW},
+    storage::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW},
 };
 
-use super::{
-    BlockStorageError, BlockStorageReader, BlockStorageResult, BlockStorageWriter, MarkerKind,
-    MarkersTable,
-};
+use super::{BlockStorageError, BlockStorageResult, BlockStorageTxn, MarkerKind, MarkersTable};
 
 pub type TransactionsTable<'env> =
     TableHandle<'env, (BlockNumber, TransactionOffsetInBlock), Transaction>;
@@ -35,19 +32,22 @@ pub trait BodyStorageReader {
         block_number: BlockNumber,
     ) -> BlockStorageResult<Option<Vec<Transaction>>>;
 }
-pub trait BodyStorageWriter {
+pub trait BodyStorageWriter
+where
+    Self: Sized,
+{
+    // To enforce that no commit happen after a failure, we consume and return Self on success.
     fn append_body(
-        &mut self,
+        self,
         block_number: BlockNumber,
         block_body: &BlockBody,
-    ) -> BlockStorageResult<()>;
+    ) -> BlockStorageResult<Self>;
 }
-impl BodyStorageReader for BlockStorageReader {
+impl<'env, Mode: TransactionKind> BodyStorageReader for BlockStorageTxn<'env, Mode> {
     fn get_body_marker(&self) -> BlockStorageResult<BlockNumber> {
-        let txn = self.db_reader.begin_ro_txn()?;
-        let markers_table = txn.open_table(&self.tables.markers)?;
+        let markers_table = self.txn.open_table(&self.tables.markers)?;
         Ok(markers_table
-            .get(&txn, &MarkerKind::Body)?
+            .get(&self.txn, &MarkerKind::Body)?
             .unwrap_or_default())
     }
     fn get_transaction(
@@ -55,18 +55,17 @@ impl BodyStorageReader for BlockStorageReader {
         block_number: BlockNumber,
         tx_offset_in_block: TransactionOffsetInBlock,
     ) -> BlockStorageResult<Option<Transaction>> {
-        let txn = self.db_reader.begin_ro_txn()?;
-        let transactions_table = txn.open_table(&self.tables.transactions)?;
-        let transaction = transactions_table.get(&txn, &(block_number, tx_offset_in_block))?;
+        let transactions_table = self.txn.open_table(&self.tables.transactions)?;
+        let transaction = transactions_table.get(&self.txn, &(block_number, tx_offset_in_block))?;
         Ok(transaction)
     }
     fn get_transaction_idx_by_hash(
         &self,
         tx_hash: &TransactionHash,
     ) -> BlockStorageResult<Option<(BlockNumber, TransactionOffsetInBlock)>> {
-        let txn = self.db_reader.begin_ro_txn()?;
-        let transaction_hash_to_idx_table = txn.open_table(&self.tables.transaction_hash_to_idx)?;
-        let idx = transaction_hash_to_idx_table.get(&txn, tx_hash)?;
+        let transaction_hash_to_idx_table =
+            self.txn.open_table(&self.tables.transaction_hash_to_idx)?;
+        let idx = transaction_hash_to_idx_table.get(&self.txn, tx_hash)?;
         Ok(idx)
     }
     fn get_block_transactions(
@@ -76,9 +75,8 @@ impl BodyStorageReader for BlockStorageReader {
         if self.get_body_marker()? <= block_number {
             return Ok(None);
         }
-        let txn = self.db_reader.begin_ro_txn()?;
-        let transactions_table = txn.open_table(&self.tables.transactions)?;
-        let mut cursor = transactions_table.cursor(&txn)?;
+        let transactions_table = self.txn.open_table(&self.tables.transactions)?;
+        let mut cursor = transactions_table.cursor(&self.txn)?;
         let mut current = cursor.lower_bound(&(block_number, TransactionOffsetInBlock(0)))?;
         let mut res: Vec<Transaction> = Vec::new();
         while let Some(((current_block_number, _), tx)) = current {
@@ -91,28 +89,27 @@ impl BodyStorageReader for BlockStorageReader {
         Ok(Some(res))
     }
 }
-impl BodyStorageWriter for BlockStorageWriter {
+impl<'env> BodyStorageWriter for BlockStorageTxn<'env, RW> {
     fn append_body(
-        &mut self,
+        self,
         block_number: BlockNumber,
         block_body: &BlockBody,
-    ) -> BlockStorageResult<()> {
-        let txn = self.db_writer.begin_rw_txn()?;
-        let markers_table = txn.open_table(&self.tables.markers)?;
-        let transactions_table = txn.open_table(&self.tables.transactions)?;
-        let transaction_hash_to_idx_table = txn.open_table(&self.tables.transaction_hash_to_idx)?;
+    ) -> BlockStorageResult<Self> {
+        let markers_table = self.txn.open_table(&self.tables.markers)?;
+        let transactions_table = self.txn.open_table(&self.tables.transactions)?;
+        let transaction_hash_to_idx_table =
+            self.txn.open_table(&self.tables.transaction_hash_to_idx)?;
 
-        update_marker(&txn, &markers_table, block_number)?;
+        update_marker(&self.txn, &markers_table, block_number)?;
         write_transactions(
             block_body,
-            &txn,
+            &self.txn,
             &transactions_table,
             &transaction_hash_to_idx_table,
             block_number,
         )?;
 
-        txn.commit()?;
-        Ok(())
+        Ok(self)
     }
 }
 

@@ -216,7 +216,7 @@ impl<'txn, Mode: TransactionKind, K: ValueType, V: ValueType> DbCursor<'txn, Mod
             }
         }
     }
-    #[allow(dead_code)]
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Result<Option<(K, V)>> {
         let prev_cursor_res = self.cursor.next::<DbKeyType<'_>, DbValueType<'_>>()?;
         match prev_cursor_res {
