@@ -5,7 +5,7 @@ pub mod storage_test_utils;
 use serde::{Deserialize, Serialize};
 
 pub use self::block::{
-    open_block_storage, BlockStorageError, BlockStorageReader, BlockStorageWriter,
+    open_block_storage, BlockStorageError, BlockStorageReader, BlockStorageTxn, BlockStorageWriter,
     BodyStorageWriter, HeaderStorageReader, HeaderStorageWriter, StateStorageReader,
     StateStorageWriter,
 };
