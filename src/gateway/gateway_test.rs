@@ -247,7 +247,7 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
-async fn test_get_transaction_by_hash() {
+async fn test_get_transaction_by_hash() -> Result<(), anyhow::Error> {
     let storage_components = storage_test_utils::get_test_storage();
     let storage_reader = storage_components.block_storage_reader;
     let mut storage_writer = storage_components.block_storage_writer;
@@ -264,7 +264,10 @@ async fn test_get_transaction_by_hash() {
     let body = BlockBody {
         transactions: vec![transaction.clone()],
     };
-    storage_writer.append_body(BlockNumber(0), &body).unwrap();
+    storage_writer
+        .begin_rw_txn()?
+        .append_body(BlockNumber(0), &body)?
+        .commit()?;
 
     let res = module
         .call::<_, Transaction>("starknet_getTransactionByHash", [transaction_hash])
@@ -285,10 +288,11 @@ async fn test_get_transaction_by_hash() {
         JsonRpcError::InvalidTransactionHash.to_string(),
         None::<()>,
     ));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_get_transaction_by_block_hash_and_index() {
+async fn test_get_transaction_by_block_hash_and_index() -> Result<(), anyhow::Error> {
     let storage_components = storage_test_utils::get_test_storage();
     let storage_reader = storage_components.block_storage_reader;
     let mut storage_writer = storage_components.block_storage_writer;
@@ -309,13 +313,14 @@ async fn test_get_transaction_by_block_hash_and_index() {
         block_hash,
         ..BlockHeader::default()
     };
-    storage_writer
-        .append_header(header.number, &header)
-        .unwrap();
     let body = BlockBody {
         transactions: vec![transaction.clone()],
     };
-    storage_writer.append_body(header.number, &body).unwrap();
+    storage_writer
+        .begin_rw_txn()?
+        .append_header(header.number, &header)?
+        .append_body(header.number, &body)?
+        .commit()?;
 
     let res = module
         .call::<_, Transaction>(
@@ -358,10 +363,11 @@ async fn test_get_transaction_by_block_hash_and_index() {
         JsonRpcError::InvalidTransactionIndex.to_string(),
         None::<()>,
     ));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_get_transaction_by_block_number_and_index() {
+async fn test_get_transaction_by_block_number_and_index() -> Result<(), anyhow::Error> {
     let storage_components = storage_test_utils::get_test_storage();
     let storage_reader = storage_components.block_storage_reader;
     let mut storage_writer = storage_components.block_storage_writer;
@@ -380,11 +386,14 @@ async fn test_get_transaction_by_block_number_and_index() {
         number: block_number,
         ..BlockHeader::default()
     };
-    storage_writer.append_header(block_number, &header).unwrap();
     let body = BlockBody {
         transactions: vec![transaction.clone()],
     };
-    storage_writer.append_body(block_number, &body).unwrap();
+    storage_writer
+        .begin_rw_txn()?
+        .append_header(block_number, &header)?
+        .append_body(block_number, &body)?
+        .commit()?;
 
     let res = module
         .call::<_, Transaction>(
@@ -422,10 +431,11 @@ async fn test_get_transaction_by_block_number_and_index() {
         JsonRpcError::InvalidTransactionIndex.to_string(),
         None::<()>,
     ));
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_run_server() {
+async fn test_run_server() -> Result<(), anyhow::Error> {
     let storage_reader = storage_test_utils::get_test_storage().block_storage_reader;
     let (addr, _handle) = run_server(
         GatewayConfig {
