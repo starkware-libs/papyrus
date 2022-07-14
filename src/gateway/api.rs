@@ -3,8 +3,8 @@ use jsonrpsee::proc_macros::rpc;
 use serde::{Deserialize, Serialize};
 
 pub use crate::starknet::{
-    BlockHash, BlockNumber, ContractAddress, StarkFelt, StorageKey, Transaction, TransactionHash,
-    TransactionOffsetInBlock,
+    BlockHash, BlockNumber, ClassHash, ContractAddress, StarkFelt, StorageKey, Transaction,
+    TransactionHash, TransactionOffsetInBlock,
 };
 
 pub use super::objects::Block;
@@ -118,4 +118,12 @@ pub trait JsonRpc {
         block_number: BlockNumberOrTag,
         index: TransactionOffsetInBlock,
     ) -> Result<Transaction, Error>;
+
+    /// Gets the contract class hash in the given block for the contract deployed at the given address.
+    #[method(name = "getClassHashAt")]
+    fn get_class_hash_at(
+        &self,
+        block_number: BlockNumberOrTag,
+        contract_address: ContractAddress,
+    ) -> Result<ClassHash, Error>;
 }

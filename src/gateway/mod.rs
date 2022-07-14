@@ -244,6 +244,33 @@ impl JsonRpcServer for JsonRpcServerImpl {
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::InvalidTransactionIndex))
     }
+
+    fn get_class_hash_at(
+        &self,
+        block_number: BlockNumberOrTag,
+        contract_address: ContractAddress,
+    ) -> Result<ClassHash, Error> {
+        let txn = self
+            .storage_reader
+            .begin_ro_txn()
+            .map_err(internal_server_error)?;
+
+        let block_number = get_block_number(&txn, block_number)?;
+
+        // Check that the block exists.
+        let last_block_number = get_latest_block_number(&txn)?;
+        if block_number.0 > last_block_number.0 {
+            return Err(Error::from(JsonRpcError::InvalidBlockNumber));
+        }
+
+        let state = StateNumber::right_after_block(block_number);
+        let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
+
+        state_reader
+            .get_class_hash_at(state, &contract_address)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))
+    }
 }
 
 pub async fn run_server(
