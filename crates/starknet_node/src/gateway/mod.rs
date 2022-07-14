@@ -228,6 +228,23 @@ impl JsonRpcServer for JsonRpcServerImpl {
             },
         })
     }
+
+    fn get_class_hash_at(
+        &self,
+        block_id: BlockId,
+        contract_address: ContractAddress,
+    ) -> Result<ClassHash, Error> {
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+
+        let block_number = get_block_number(&txn, block_id)?;
+        let state = StateNumber::right_after_block(block_number);
+        let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
+
+        state_reader
+            .get_class_hash_at(state, &contract_address)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))
+    }
 }
 
 pub async fn run_server(

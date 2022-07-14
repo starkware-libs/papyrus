@@ -2,8 +2,8 @@ use jsonrpsee::core::Error;
 use jsonrpsee::proc_macros::rpc;
 use serde::{Deserialize, Serialize};
 pub use starknet_api::{
-    BlockHash, BlockNumber, ContractAddress, StarkFelt, StorageKey, Transaction, TransactionHash,
-    TransactionOffsetInBlock,
+    BlockHash, BlockNumber, ClassHash, ContractAddress, StarkFelt, StorageKey, Transaction,
+    TransactionHash, TransactionOffsetInBlock,
 };
 
 pub use super::objects::{Block, StateUpdate};
@@ -84,4 +84,13 @@ pub trait JsonRpc {
     /// Gets the information about the result of executing the requested block.
     #[method(name = "getStateUpdate")]
     fn get_state_update(&self, block_id: BlockId) -> Result<StateUpdate, Error>;
+
+    /// Gets the contract class hash in the given block for the contract deployed at the given
+    /// address.
+    #[method(name = "getClassHashAt")]
+    fn get_class_hash_at(
+        &self,
+        block_id: BlockId,
+        contract_address: ContractAddress,
+    ) -> Result<ClassHash, Error>;
 }
