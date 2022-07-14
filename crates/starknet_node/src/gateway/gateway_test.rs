@@ -191,7 +191,7 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(header.number, &header)?
-        .append_state_diff(BlockNumber(0), &diff)?
+        .append_state_diff(header.number, &diff)?
         .commit()?;
 
     // Get storage by block hash.
@@ -260,6 +260,89 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
         None::<()>,
     ));
 
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
+    let storage_components = storage_test_utils::get_test_storage();
+    let storage_reader = storage_components.block_storage_reader;
+    let mut storage_writer = storage_components.block_storage_writer;
+    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+
+    let block_hash =
+        BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
+    let header = BlockHeader { number: BlockNumber(0), block_hash, ..BlockHeader::default() };
+    let address = ContractAddress(shash!("0x11"));
+    let class_hash = ClassHash(shash!("0x4"));
+    let diff = StateDiffForward {
+        deployed_contracts: vec![DeployedContract { address, class_hash }],
+        storage_diffs: vec![],
+    };
+    storage_writer
+        .begin_rw_txn()?
+        .append_header(header.number, &header)?
+        .append_state_diff(header.number, &diff)?
+        .commit()?;
+
+    // Get class hash by block hash.
+    let res = module
+        .call::<_, StarkFelt>(
+            "starknet_getClassHashAt",
+            (BlockId::Hash(header.block_hash), address),
+        )
+        .await?;
+    assert_eq!(res, class_hash.0);
+
+    // Get class hash by block number.
+    let res = module
+        .call::<_, StarkFelt>("starknet_getClassHashAt", (BlockId::Number(header.number), address))
+        .await?;
+    assert_eq!(res, class_hash.0);
+
+    // Ask for an invalid contract.
+    let err = module
+        .call::<_, StarkFelt>(
+            "starknet_getClassHashAt",
+            (BlockId::Number(header.number), ContractAddress(shash!("0x12"))),
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::ContractNotFound as i32,
+        JsonRpcError::ContractNotFound.to_string(),
+        None::<()>,
+    ));
+
+    // Ask for an invalid block hash.
+    let err = module
+        .call::<_, StarkFelt>(
+            "starknet_getClassHashAt",
+            (
+                BlockId::Hash(BlockHash(shash!(
+                    "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
+                ))),
+                address,
+            ),
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidBlockId as i32,
+        JsonRpcError::InvalidBlockId.to_string(),
+        None::<()>,
+    ));
+
+    // Ask for an invalid block number.
+    let err = module
+        .call::<_, StarkFelt>("starknet_getClassHashAt", (BlockId::Number(BlockNumber(1)), address))
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidBlockId as i32,
+        JsonRpcError::InvalidBlockId.to_string(),
+        None::<()>,
+    ));
     Ok(())
 }
 
