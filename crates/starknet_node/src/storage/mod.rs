@@ -32,25 +32,19 @@ pub struct StorageConfig {
 }
 
 pub struct StorageComponents {
-    pub block_storage_reader: BlockStorageReader,
-    pub block_storage_writer: BlockStorageWriter,
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum StorageError {
-    #[error(transparent)]
-    BlockStorageError(#[from] BlockStorageError),
+    pub storage_reader: StorageReader,
+    pub storage_writer: StorageWriter,
 }
 
 impl StorageComponents {
     pub fn new(config: StorageConfig) -> Result<Self, StorageError> {
-        let (block_storage_reader, block_storage_writer) = open_block_storage(config.db_config)?;
-        Ok(Self { block_storage_reader, block_storage_writer })
+        let (storage_reader, storage_writer) = open_storage(config.db_config)?;
+        Ok(Self { storage_reader, storage_writer })
     }
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum BlockStorageError {
+pub enum StorageError {
     #[error(transparent)]
     InnerError(#[from] DbError),
     #[error("Marker mismatch (expected {expected:?}, found {found:?}).")]
@@ -71,7 +65,7 @@ pub enum BlockStorageError {
     #[error("State diff redployed to an existing contract address {address:?}.")]
     ContractAlreadyExists { address: ContractAddress },
 }
-pub type BlockStorageResult<V> = std::result::Result<V, BlockStorageError>;
+pub type StorageResult<V> = std::result::Result<V, StorageError>;
 
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum MarkerKind {
@@ -92,37 +86,35 @@ pub struct Tables {
     contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
 }
 #[derive(Clone)]
-pub struct BlockStorageReader {
+pub struct StorageReader {
     db_reader: DbReader,
     tables: Arc<Tables>,
 }
-pub struct BlockStorageWriter {
+pub struct StorageWriter {
     db_writer: DbWriter,
     tables: Arc<Tables>,
 }
-pub struct BlockStorageTxn<'env, Mode: TransactionKind> {
+pub struct StorageTxn<'env, Mode: TransactionKind> {
     txn: DbTransaction<'env, Mode>,
     tables: Arc<Tables>,
 }
-impl BlockStorageReader {
-    pub fn begin_ro_txn(&self) -> BlockStorageResult<BlockStorageTxn<'_, RO>> {
-        Ok(BlockStorageTxn { txn: self.db_reader.begin_ro_txn()?, tables: self.tables.clone() })
+impl StorageReader {
+    pub fn begin_ro_txn(&self) -> StorageResult<StorageTxn<'_, RO>> {
+        Ok(StorageTxn { txn: self.db_reader.begin_ro_txn()?, tables: self.tables.clone() })
     }
 }
-impl BlockStorageWriter {
-    pub fn begin_rw_txn(&mut self) -> BlockStorageResult<BlockStorageTxn<'_, RW>> {
-        Ok(BlockStorageTxn { txn: self.db_writer.begin_rw_txn()?, tables: self.tables.clone() })
+impl StorageWriter {
+    pub fn begin_rw_txn(&mut self) -> StorageResult<StorageTxn<'_, RW>> {
+        Ok(StorageTxn { txn: self.db_writer.begin_rw_txn()?, tables: self.tables.clone() })
     }
 }
-impl<'env> BlockStorageTxn<'env, RW> {
-    pub fn commit(self) -> BlockStorageResult<()> {
+impl<'env> StorageTxn<'env, RW> {
+    pub fn commit(self) -> StorageResult<()> {
         Ok(self.txn.commit()?)
     }
 }
 
-pub fn open_block_storage(
-    db_config: DbConfig,
-) -> BlockStorageResult<(BlockStorageReader, BlockStorageWriter)> {
+pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, StorageWriter)> {
     let (db_reader, mut db_writer) = open_env(db_config)?;
     let tables = Arc::new(Tables {
         markers: db_writer.create_table("markers")?,
@@ -134,7 +126,7 @@ pub fn open_block_storage(
         contracts: db_writer.create_table("contracts")?,
         contract_storage: db_writer.create_table("contract_storage")?,
     });
-    let reader = BlockStorageReader { db_reader, tables: tables.clone() };
-    let writer = BlockStorageWriter { db_writer, tables };
+    let reader = StorageReader { db_reader, tables: tables.clone() };
+    let writer = StorageWriter { db_writer, tables };
     Ok((reader, writer))
 }

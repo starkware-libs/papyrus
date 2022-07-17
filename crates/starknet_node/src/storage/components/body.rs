@@ -6,8 +6,8 @@ use starknet_api::{
     BlockBody, BlockNumber, Transaction, TransactionHash, TransactionOffsetInBlock,
 };
 
-use super::{BlockStorageError, BlockStorageResult, BlockStorageTxn, MarkerKind, MarkersTable};
-use crate::storage::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
+use super::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
+use super::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
 pub type TransactionsTable<'env> =
     TableHandle<'env, (BlockNumber, TransactionOffsetInBlock), Transaction>;
@@ -16,35 +16,31 @@ pub type TransactionHashToIdxTable<'env> =
 
 pub trait BodyStorageReader {
     // The block number marker is the first block number that doesn't exist yet.
-    fn get_body_marker(&self) -> BlockStorageResult<BlockNumber>;
+    fn get_body_marker(&self) -> StorageResult<BlockNumber>;
     // TODO(spapini): get_transaction_by_hash.
     fn get_transaction(
         &self,
         block_number: BlockNumber,
         tx_offset_in_block: TransactionOffsetInBlock,
-    ) -> BlockStorageResult<Option<Transaction>>;
+    ) -> StorageResult<Option<Transaction>>;
     fn get_transaction_idx_by_hash(
         &self,
         tx_hash: &TransactionHash,
-    ) -> BlockStorageResult<Option<(BlockNumber, TransactionOffsetInBlock)>>;
+    ) -> StorageResult<Option<(BlockNumber, TransactionOffsetInBlock)>>;
     fn get_block_transactions(
         &self,
         block_number: BlockNumber,
-    ) -> BlockStorageResult<Option<Vec<Transaction>>>;
+    ) -> StorageResult<Option<Vec<Transaction>>>;
 }
 pub trait BodyStorageWriter
 where
     Self: Sized,
 {
     // To enforce that no commit happen after a failure, we consume and return Self on success.
-    fn append_body(
-        self,
-        block_number: BlockNumber,
-        block_body: &BlockBody,
-    ) -> BlockStorageResult<Self>;
+    fn append_body(self, block_number: BlockNumber, block_body: &BlockBody) -> StorageResult<Self>;
 }
-impl<'env, Mode: TransactionKind> BodyStorageReader for BlockStorageTxn<'env, Mode> {
-    fn get_body_marker(&self) -> BlockStorageResult<BlockNumber> {
+impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
+    fn get_body_marker(&self) -> StorageResult<BlockNumber> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         Ok(markers_table.get(&self.txn, &MarkerKind::Body)?.unwrap_or_default())
     }
@@ -52,7 +48,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for BlockStorageTxn<'env, Mo
         &self,
         block_number: BlockNumber,
         tx_offset_in_block: TransactionOffsetInBlock,
-    ) -> BlockStorageResult<Option<Transaction>> {
+    ) -> StorageResult<Option<Transaction>> {
         let transactions_table = self.txn.open_table(&self.tables.transactions)?;
         let transaction = transactions_table.get(&self.txn, &(block_number, tx_offset_in_block))?;
         Ok(transaction)
@@ -60,7 +56,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for BlockStorageTxn<'env, Mo
     fn get_transaction_idx_by_hash(
         &self,
         tx_hash: &TransactionHash,
-    ) -> BlockStorageResult<Option<(BlockNumber, TransactionOffsetInBlock)>> {
+    ) -> StorageResult<Option<(BlockNumber, TransactionOffsetInBlock)>> {
         let transaction_hash_to_idx_table =
             self.txn.open_table(&self.tables.transaction_hash_to_idx)?;
         let idx = transaction_hash_to_idx_table.get(&self.txn, tx_hash)?;
@@ -69,7 +65,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for BlockStorageTxn<'env, Mo
     fn get_block_transactions(
         &self,
         block_number: BlockNumber,
-    ) -> BlockStorageResult<Option<Vec<Transaction>>> {
+    ) -> StorageResult<Option<Vec<Transaction>>> {
         if self.get_body_marker()? <= block_number {
             return Ok(None);
         }
@@ -87,12 +83,8 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for BlockStorageTxn<'env, Mo
         Ok(Some(res))
     }
 }
-impl<'env> BodyStorageWriter for BlockStorageTxn<'env, RW> {
-    fn append_body(
-        self,
-        block_number: BlockNumber,
-        block_body: &BlockBody,
-    ) -> BlockStorageResult<Self> {
+impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
+    fn append_body(self, block_number: BlockNumber, block_body: &BlockBody) -> StorageResult<Self> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let transactions_table = self.txn.open_table(&self.tables.transactions)?;
         let transaction_hash_to_idx_table =
@@ -117,7 +109,7 @@ fn write_transactions<'env>(
     transactions_table: &'env TransactionsTable<'env>,
     transaction_hash_to_idx_table: &'env TransactionHashToIdxTable<'env>,
     block_number: BlockNumber,
-) -> BlockStorageResult<()> {
+) -> StorageResult<()> {
     for (index, tx) in block_body.transactions.iter().enumerate() {
         let tx_offset_in_block = TransactionOffsetInBlock(index as u64);
         transactions_table.insert(txn, &(block_number, tx_offset_in_block), tx)?;
@@ -138,7 +130,7 @@ fn update_tx_hash_mapping<'env>(
     tx: &Transaction,
     block_number: BlockNumber,
     tx_offset_in_block: TransactionOffsetInBlock,
-) -> Result<(), BlockStorageError> {
+) -> Result<(), StorageError> {
     let tx_hash = tx.transaction_hash();
     let res = transaction_hash_to_idx_table.insert(
         txn,
@@ -147,11 +139,7 @@ fn update_tx_hash_mapping<'env>(
     );
     res.map_err(|err| match err {
         DbError::InnerDbError(libmdbx::Error::KeyExist) => {
-            BlockStorageError::TransactionHashAlreadyExists {
-                tx_hash,
-                block_number,
-                tx_offset_in_block,
-            }
+            StorageError::TransactionHashAlreadyExists { tx_hash, block_number, tx_offset_in_block }
         }
         err => err.into(),
     })?;
@@ -162,14 +150,11 @@ fn update_marker<'env>(
     txn: &DbTransaction<'env, RW>,
     markers_table: &'env MarkersTable<'env>,
     block_number: BlockNumber,
-) -> BlockStorageResult<()> {
+) -> StorageResult<()> {
     // Make sure marker is consistent.
     let body_marker = markers_table.get(txn, &MarkerKind::Body)?.unwrap_or_default();
     if body_marker != block_number {
-        return Err(BlockStorageError::MarkerMismatch {
-            expected: body_marker,
-            found: block_number,
-        });
+        return Err(StorageError::MarkerMismatch { expected: body_marker, found: block_number });
     };
 
     // Advance marker.
