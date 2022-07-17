@@ -4,9 +4,8 @@ use starknet_api::{
     Transaction, TransactionHash, TransactionOffsetInBlock, TransactionVersion,
 };
 
-use super::{BlockStorageError, BodyStorageWriter};
-use crate::storage::components::block::body::BodyStorageReader;
-use crate::storage::components::block::test_utils::get_test_storage;
+use super::*;
+use crate::storage::test_utils::get_test_storage;
 
 #[tokio::test]
 async fn test_append_body() -> Result<(), anyhow::Error> {

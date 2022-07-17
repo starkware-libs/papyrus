@@ -6,7 +6,7 @@ use std::fs;
 use serde::{Deserialize, Serialize};
 
 use crate::gateway::GatewayConfig;
-use crate::storage::components::StorageConfig;
+use crate::storage::StorageConfig;
 use crate::sync::{CentralSourceConfig, SyncConfig};
 
 #[derive(Deserialize, Serialize)]
