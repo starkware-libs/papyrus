@@ -1,7 +1,7 @@
 use log::info;
 use starknet_node::config::load_config;
 use starknet_node::gateway::run_server;
-use starknet_node::storage::components::StorageComponents;
+use starknet_node::storage::StorageComponents;
 use starknet_node::sync::{CentralSource, StateSync};
 
 #[tokio::main]
