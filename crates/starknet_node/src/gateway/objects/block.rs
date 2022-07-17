@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockHash, BlockNumber, BlockTimestamp, ContractAddress, GlobalRoot, NodeBlockStatus,
+    BlockHash, BlockHeader as StarknetBlockHeader, BlockNumber, BlockTimestamp, ContractAddress,
+    GlobalRoot, NodeBlockStatus,
 };
 
 use super::transaction::Transactions;
@@ -31,7 +32,7 @@ impl From<NodeBlockStatus> for BlockStatus {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct Block {
+pub struct BlockHeader {
     pub block_hash: BlockHash,
     pub parent_hash: BlockHash,
     pub block_number: BlockNumber,
@@ -39,5 +40,24 @@ pub struct Block {
     pub sequencer: ContractAddress,
     pub new_root: GlobalRoot,
     pub accepted_time: BlockTimestamp,
+}
+
+impl From<StarknetBlockHeader> for BlockHeader {
+    fn from(header: StarknetBlockHeader) -> Self {
+        BlockHeader {
+            block_hash: header.block_hash,
+            parent_hash: header.parent_hash,
+            block_number: header.number,
+            status: header.status.into(),
+            sequencer: header.sequencer,
+            new_root: header.state_root,
+            accepted_time: header.timestamp,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct Block {
+    pub header: BlockHeader,
     pub transactions: Transactions,
 }

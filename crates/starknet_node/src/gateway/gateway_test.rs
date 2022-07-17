@@ -43,40 +43,41 @@ async fn test_block_number() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
-async fn test_get_block_by_number() -> Result<(), anyhow::Error> {
+async fn test_get_block_by_number_w_transaction_hashes() -> Result<(), anyhow::Error> {
     let storage_components = storage_test_utils::get_test_storage();
     let storage_reader = storage_components.block_storage_reader;
     let mut storage_writer = storage_components.block_storage_writer;
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
-    storage_writer
-        .begin_rw_txn()?
-        .append_header(BlockNumber(0), &BlockHeader::default())?
-        .commit()?;
+
+    let header = BlockHeader { number: BlockNumber(0), ..BlockHeader::default() };
+    storage_writer.begin_rw_txn()?.append_header(header.number, &header)?.commit()?;
+
+    let expected_block =
+        Block { header: header.into(), transactions: Transactions::Hashes(vec![]) };
+
     let block = module
-        .call::<_, Block>("starknet_getBlockByNumber", [BlockNumberOrTag::Number(BlockNumber(0))])
+        .call::<_, Block>(
+            "starknet_getBlockWithTxHashesByNumber",
+            [BlockNumberOrTag::Number(BlockNumber(0))],
+        )
         .await?;
-    let block_header = &BlockHeader::default();
-    let expected_block = Block {
-        block_hash: block_header.block_hash,
-        parent_hash: block_header.parent_hash,
-        block_number: BlockNumber(0),
-        status: block_header.status.into(),
-        sequencer: block_header.sequencer,
-        new_root: block_header.state_root,
-        accepted_time: block_header.timestamp,
-        transactions: Transactions::Hashes(vec![]),
-    };
     assert_eq!(block, expected_block);
 
     // Ask for the latest block.
     let block = module
-        .call::<_, Block>("starknet_getBlockByNumber", [BlockNumberOrTag::Tag(Tag::Latest)])
+        .call::<_, Block>(
+            "starknet_getBlockWithTxHashesByNumber",
+            [BlockNumberOrTag::Tag(Tag::Latest)],
+        )
         .await?;
     assert_eq!(block, expected_block);
 
     // Ask for an invalid block.
     let err = module
-        .call::<_, Block>("starknet_getBlockByNumber", [BlockNumberOrTag::Number(BlockNumber(1))])
+        .call::<_, Block>(
+            "starknet_getBlockWithTxHashesByNumber",
+            [BlockNumberOrTag::Number(BlockNumber(1))],
+        )
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
@@ -88,41 +89,122 @@ async fn test_get_block_by_number() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
-async fn test_get_block_by_hash() -> Result<(), anyhow::Error> {
+async fn test_get_block_by_number_w_full_transactions() -> Result<(), anyhow::Error> {
     let storage_components = storage_test_utils::get_test_storage();
     let storage_reader = storage_components.block_storage_reader;
     let mut storage_writer = storage_components.block_storage_writer;
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
-    let block_hash =
-        BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
-    let header = BlockHeader { block_hash, ..BlockHeader::default() };
+
+    let header = BlockHeader { number: BlockNumber(0), ..BlockHeader::default() };
     storage_writer.begin_rw_txn()?.append_header(header.number, &header)?.commit()?;
+
+    let expected_block = Block { header: header.into(), transactions: Transactions::Full(vec![]) };
+
     let block = module
-        .call::<_, Block>("starknet_getBlockByHash", [BlockHashOrTag::Hash(block_hash)])
+        .call::<_, Block>(
+            "starknet_getBlockWithTxsByNumber",
+            [BlockNumberOrTag::Number(BlockNumber(0))],
+        )
         .await?;
-    let block_header = &BlockHeader::default();
-    let expected_block = Block {
-        block_hash,
-        parent_hash: block_header.parent_hash,
-        block_number: block_header.number,
-        status: block_header.status.into(),
-        sequencer: block_header.sequencer,
-        new_root: block_header.state_root,
-        accepted_time: block_header.timestamp,
-        transactions: Transactions::Hashes(vec![]),
-    };
     assert_eq!(block, expected_block);
 
     // Ask for the latest block.
     let block = module
-        .call::<_, Block>("starknet_getBlockByHash", [BlockHashOrTag::Tag(Tag::Latest)])
+        .call::<_, Block>("starknet_getBlockWithTxsByNumber", [BlockNumberOrTag::Tag(Tag::Latest)])
         .await?;
     assert_eq!(block, expected_block);
 
     // Ask for an invalid block.
     let err = module
         .call::<_, Block>(
-            "starknet_getBlockByHash",
+            "starknet_getBlockWithTxsByNumber",
+            [BlockNumberOrTag::Number(BlockNumber(1))],
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidBlockNumber as i32,
+        JsonRpcError::InvalidBlockNumber.to_string(),
+        None::<()>,
+    ));
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_get_block_by_hash_w_transaction_hashes() -> Result<(), anyhow::Error> {
+    let storage_components = storage_test_utils::get_test_storage();
+    let storage_reader = storage_components.block_storage_reader;
+    let mut storage_writer = storage_components.block_storage_writer;
+    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+
+    let block_hash =
+        BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
+    let header = BlockHeader { block_hash, ..BlockHeader::default() };
+    storage_writer.begin_rw_txn()?.append_header(header.number, &header)?.commit()?;
+
+    let expected_block =
+        Block { header: header.into(), transactions: Transactions::Hashes(vec![]) };
+
+    let block = module
+        .call::<_, Block>("starknet_getBlockWithTxHashesByHash", [BlockHashOrTag::Hash(block_hash)])
+        .await
+        .unwrap();
+    assert_eq!(block, expected_block);
+
+    // Ask for the latest block.
+    let block = module
+        .call::<_, Block>("starknet_getBlockWithTxHashesByHash", [BlockHashOrTag::Tag(Tag::Latest)])
+        .await
+        .unwrap();
+    assert_eq!(block, expected_block);
+
+    // Ask for an invalid block.
+    let err = module
+        .call::<_, Block>(
+            "starknet_getBlockWithTxHashesByHash",
+            [BlockHashOrTag::Hash(BlockHash(shash!(
+                "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
+            )))],
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidBlockHash as i32,
+        JsonRpcError::InvalidBlockHash.to_string(),
+        None::<()>,
+    ));
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_get_block_by_hash_w_full_transactions() -> Result<(), anyhow::Error> {
+    let storage_components = storage_test_utils::get_test_storage();
+    let storage_reader = storage_components.block_storage_reader;
+    let mut storage_writer = storage_components.block_storage_writer;
+    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+
+    let block_hash =
+        BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
+    let header = BlockHeader { block_hash, ..BlockHeader::default() };
+    storage_writer.begin_rw_txn()?.append_header(header.number, &header)?.commit()?;
+
+    let expected_block = Block { header: header.into(), transactions: Transactions::Full(vec![]) };
+
+    let block = module
+        .call::<_, Block>("starknet_getBlockWithTxsByHash", [BlockHashOrTag::Hash(block_hash)])
+        .await?;
+    assert_eq!(block, expected_block);
+
+    // Ask for the latest block.
+    let block = module
+        .call::<_, Block>("starknet_getBlockWithTxsByHash", [BlockHashOrTag::Tag(Tag::Latest)])
+        .await?;
+    assert_eq!(block, expected_block);
+
+    // Ask for an invalid block.
+    let err = module
+        .call::<_, Block>(
+            "starknet_getBlockWithTxsByHash",
             [BlockHashOrTag::Hash(BlockHash(shash!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             )))],

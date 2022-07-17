@@ -14,14 +14,12 @@ use jsonrpsee::types::error::{ErrorObject, INTERNAL_ERROR_MSG};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockNumber, ContractAddress, StarkFelt, StateNumber, StorageKey, Transaction, TransactionHash,
-    TransactionOffsetInBlock,
+    BlockBody, BlockNumber, ContractAddress, StarkFelt, StateNumber, StorageKey, Transaction,
+    TransactionHash, TransactionOffsetInBlock,
 };
 
-use self::api::{
-    BlockHashOrTag, BlockNumberOrTag, BlockResponseScope, JsonRpcError, JsonRpcServer, Tag,
-};
-use self::objects::{Block, Transactions};
+use self::api::*;
+use self::objects::{BlockHeader, Transactions};
 use crate::storage::components::{
     BlockStorageReader, BlockStorageTxn, BodyStorageReader, HeaderStorageReader, StateStorageReader,
 };
@@ -100,25 +98,14 @@ fn get_block_number_from_hash<Mode: TransactionKind>(
 fn get_block_by_number<Mode: TransactionKind>(
     txn: &BlockStorageTxn<'_, Mode>,
     block_number: BlockNumber,
-    _requested_scope: Option<BlockResponseScope>,
-) -> Result<Block, Error> {
+) -> Result<(BlockHeader, BlockBody), Error> {
     // TODO(anatg): Get the entire block.
-    let block_header = txn
+    let header = txn
         .get_block_header(block_number)
         .map_err(internal_server_error)?
         .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockNumber))?;
 
-    Ok(Block {
-        block_hash: block_header.block_hash,
-        parent_hash: block_header.parent_hash,
-        block_number,
-        status: block_header.status.into(),
-        sequencer: block_header.sequencer,
-        new_root: block_header.state_root,
-        accepted_time: block_header.timestamp,
-        // TODO(anatg): Get the transaction according to the requested scope.
-        transactions: Transactions::Hashes(vec![]),
-    })
+    Ok((BlockHeader::from(header), BlockBody { transactions: vec![] }))
 }
 
 #[async_trait]
@@ -128,25 +115,52 @@ impl JsonRpcServer for JsonRpcServerImpl {
         get_latest_block_number(&txn)
     }
 
-    fn get_block_by_number(
+    fn get_block_by_number_w_transaction_hashes(
         &self,
         block_number: BlockNumberOrTag,
-        _requested_scope: Option<BlockResponseScope>,
     ) -> Result<Block, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_number)?;
-        get_block_by_number(&txn, block_number, _requested_scope)
+        let (header, body) = get_block_by_number(&txn, block_number)?;
+        let transaction_hashes: Vec<TransactionHash> =
+            body.transactions.iter().map(|transaction| transaction.transaction_hash()).collect();
+
+        Ok(Block { header, transactions: Transactions::Hashes(transaction_hashes) })
     }
 
-    fn get_block_by_hash(
+    fn get_block_by_hash_w_transaction_hashes(
         &self,
         block_hash: BlockHashOrTag,
-        requested_scope: Option<BlockResponseScope>,
     ) -> Result<Block, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, get_block_number_or_tag(&txn, block_hash)?)?;
+        let (header, body) = get_block_by_number(&txn, block_number)?;
+        let transaction_hashes: Vec<TransactionHash> =
+            body.transactions.iter().map(|transaction| transaction.transaction_hash()).collect();
 
-        get_block_by_number(&txn, block_number, requested_scope)
+        Ok(Block { header, transactions: Transactions::Hashes(transaction_hashes) })
+    }
+
+    fn get_block_by_number_w_full_transactions(
+        &self,
+        block_number: BlockNumberOrTag,
+    ) -> Result<Block, Error> {
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let block_number = get_block_number(&txn, block_number)?;
+        let (header, body) = get_block_by_number(&txn, block_number)?;
+
+        Ok(Block { header, transactions: Transactions::Full(body.transactions) })
+    }
+
+    fn get_block_by_hash_w_full_transactions(
+        &self,
+        block_hash: BlockHashOrTag,
+    ) -> Result<Block, Error> {
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let block_number = get_block_number(&txn, get_block_number_or_tag(&txn, block_hash)?)?;
+        let (header, body) = get_block_by_number(&txn, block_number)?;
+
+        Ok(Block { header, transactions: Transactions::Full(body.transactions) })
     }
 
     fn get_storage_at(
