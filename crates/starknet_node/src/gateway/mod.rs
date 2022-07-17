@@ -50,49 +50,37 @@ fn internal_server_error(err: impl Display) -> Error {
     )))
 }
 
-fn get_block_number_or_tag<Mode: TransactionKind>(
-    txn: &BlockStorageTxn<'_, Mode>,
-    block_hash: BlockHashOrTag,
-) -> Result<BlockNumberOrTag, Error> {
-    match block_hash {
-        BlockHashOrTag::Tag(Tag::Latest) => Ok(BlockNumberOrTag::Tag(Tag::Latest)),
-        BlockHashOrTag::Tag(Tag::Pending) => Ok(BlockNumberOrTag::Tag(Tag::Pending)),
-        BlockHashOrTag::Hash(hash) => Ok(BlockNumberOrTag::Number(
-            txn.get_block_number_by_hash(&hash)
-                .map_err(internal_server_error)?
-                .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockHash))?,
-        )),
-    }
-}
-
 fn get_block_number<Mode: TransactionKind>(
     txn: &BlockStorageTxn<'_, Mode>,
-    block_number: BlockNumberOrTag,
+    block_id: BlockId,
 ) -> Result<BlockNumber, Error> {
-    Ok(match block_number {
-        BlockNumberOrTag::Tag(Tag::Latest) => get_latest_block_number(txn)?,
-        BlockNumberOrTag::Tag(Tag::Pending) => {
+    Ok(match block_id {
+        BlockId::Hash(hash) => txn
+            .get_block_number_by_hash(&hash)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?,
+        BlockId::Number(number) => {
+            // Check that the block exists.
+            let last_block_number = get_latest_block_number(txn)?
+                .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
+            if number.0 > last_block_number.0 {
+                return Err(Error::from(JsonRpcError::InvalidBlockId));
+            }
+            number
+        }
+        BlockId::Tag(Tag::Latest) => get_latest_block_number(txn)?
+            .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?,
+        BlockId::Tag(Tag::Pending) => {
             // TODO(anatg): Support pending block.
             todo!("Pending tag is not supported yet.")
         }
-        BlockNumberOrTag::Number(number) => number,
     })
 }
 
 fn get_latest_block_number<Mode: TransactionKind>(
     txn: &BlockStorageTxn<'_, Mode>,
-) -> Result<BlockNumber, Error> {
-    txn.get_header_marker()
-        .map_err(internal_server_error)?
-        .prev()
-        .ok_or_else(|| JsonRpcError::NoBlocks.into())
-}
-
-fn get_block_number_from_hash<Mode: TransactionKind>(
-    txn: &BlockStorageTxn<'_, Mode>,
-    block_hash: BlockHashOrTag,
-) -> Result<BlockNumber, Error> {
-    get_block_number(txn, get_block_number_or_tag(txn, block_hash)?)
+) -> Result<Option<BlockNumber>, Error> {
+    Ok(txn.get_header_marker().map_err(internal_server_error)?.prev())
 }
 
 fn get_block_by_number<Mode: TransactionKind>(
@@ -103,7 +91,7 @@ fn get_block_by_number<Mode: TransactionKind>(
     let header = txn
         .get_block_header(block_number)
         .map_err(internal_server_error)?
-        .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockNumber))?;
+        .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
 
     Ok((BlockHeader::from(header), BlockBody { transactions: vec![] }))
 }
@@ -112,15 +100,12 @@ fn get_block_by_number<Mode: TransactionKind>(
 impl JsonRpcServer for JsonRpcServerImpl {
     fn block_number(&self) -> Result<BlockNumber, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        get_latest_block_number(&txn)
+        get_latest_block_number(&txn)?.ok_or_else(|| Error::from(JsonRpcError::NoBlocks))
     }
 
-    fn get_block_by_number_w_transaction_hashes(
-        &self,
-        block_number: BlockNumberOrTag,
-    ) -> Result<Block, Error> {
+    fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> Result<Block, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        let block_number = get_block_number(&txn, block_number)?;
+        let block_number = get_block_number(&txn, block_id)?;
         let (header, body) = get_block_by_number(&txn, block_number)?;
         let transaction_hashes: Vec<TransactionHash> =
             body.transactions.iter().map(|transaction| transaction.transaction_hash()).collect();
@@ -128,36 +113,9 @@ impl JsonRpcServer for JsonRpcServerImpl {
         Ok(Block { header, transactions: Transactions::Hashes(transaction_hashes) })
     }
 
-    fn get_block_by_hash_w_transaction_hashes(
-        &self,
-        block_hash: BlockHashOrTag,
-    ) -> Result<Block, Error> {
+    fn get_block_w_full_transactions(&self, block_id: BlockId) -> Result<Block, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        let block_number = get_block_number(&txn, get_block_number_or_tag(&txn, block_hash)?)?;
-        let (header, body) = get_block_by_number(&txn, block_number)?;
-        let transaction_hashes: Vec<TransactionHash> =
-            body.transactions.iter().map(|transaction| transaction.transaction_hash()).collect();
-
-        Ok(Block { header, transactions: Transactions::Hashes(transaction_hashes) })
-    }
-
-    fn get_block_by_number_w_full_transactions(
-        &self,
-        block_number: BlockNumberOrTag,
-    ) -> Result<Block, Error> {
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        let block_number = get_block_number(&txn, block_number)?;
-        let (header, body) = get_block_by_number(&txn, block_number)?;
-
-        Ok(Block { header, transactions: Transactions::Full(body.transactions) })
-    }
-
-    fn get_block_by_hash_w_full_transactions(
-        &self,
-        block_hash: BlockHashOrTag,
-    ) -> Result<Block, Error> {
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        let block_number = get_block_number(&txn, get_block_number_or_tag(&txn, block_hash)?)?;
+        let block_number = get_block_number(&txn, block_id)?;
         let (header, body) = get_block_by_number(&txn, block_number)?;
 
         Ok(Block { header, transactions: Transactions::Full(body.transactions) })
@@ -167,12 +125,12 @@ impl JsonRpcServer for JsonRpcServerImpl {
         &self,
         contract_address: ContractAddress,
         key: StorageKey,
-        block_hash: BlockHashOrTag,
+        block_id: BlockId,
     ) -> Result<StarkFelt, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         // Check that the block is valid and get the state number.
-        let block_number = get_block_number_from_hash(&txn, block_hash)?;
+        let block_number = get_block_number(&txn, block_id)?;
         let state = StateNumber::right_after_block(block_number);
 
         let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
@@ -202,34 +160,14 @@ impl JsonRpcServer for JsonRpcServerImpl {
             .ok_or_else(|| Error::from(JsonRpcError::InvalidTransactionHash))
     }
 
-    fn get_transaction_by_block_hash_and_index(
+    fn get_transaction_by_block_id_and_index(
         &self,
-        block_hash: BlockHashOrTag,
+        block_id: BlockId,
         index: TransactionOffsetInBlock,
     ) -> Result<Transaction, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
-        let block_number = get_block_number_from_hash(&txn, block_hash)?;
-
-        txn.get_transaction(block_number, index)
-            .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::InvalidTransactionIndex))
-    }
-
-    fn get_transaction_by_block_number_and_index(
-        &self,
-        block_number: BlockNumberOrTag,
-        index: TransactionOffsetInBlock,
-    ) -> Result<Transaction, Error> {
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-
-        let block_number = get_block_number(&txn, block_number)?;
-
-        // Check that the block exists.
-        let last_block_number = get_latest_block_number(&txn)?;
-        if block_number.0 > last_block_number.0 {
-            return Err(Error::from(JsonRpcError::InvalidBlockNumber));
-        }
+        let block_number = get_block_number(&txn, block_id)?;
 
         txn.get_transaction(block_number, index)
             .map_err(internal_server_error)?
