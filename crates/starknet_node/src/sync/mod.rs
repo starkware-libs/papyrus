@@ -11,8 +11,8 @@ use starknet_client::ClientError;
 
 pub use self::sources::{CentralSource, CentralSourceConfig};
 use crate::storage::{
-    BlockStorageError, BlockStorageReader, BlockStorageWriter, BodyStorageWriter,
-    HeaderStorageReader, HeaderStorageWriter, StateStorageReader, StateStorageWriter,
+    BodyStorageWriter, HeaderStorageReader, HeaderStorageWriter, StateStorageReader,
+    StateStorageWriter, StorageError, StorageReader, StorageWriter,
 };
 
 #[derive(Serialize, Deserialize)]
@@ -24,14 +24,14 @@ pub struct SyncConfig {
 pub struct StateSync {
     config: SyncConfig,
     central_source: CentralSource,
-    reader: BlockStorageReader,
-    writer: BlockStorageWriter,
+    reader: StorageReader,
+    writer: StorageWriter,
 }
 
 #[derive(thiserror::Error, Debug)]
 pub enum StateSyncError {
     #[error(transparent)]
-    StorageError(#[from] BlockStorageError),
+    StorageError(#[from] StorageError),
     #[error(transparent)]
     CentralSourceError(#[from] ClientError),
     #[error("Sync error: {message:?}.")]
@@ -47,8 +47,8 @@ impl StateSync {
     pub fn new(
         config: SyncConfig,
         central_source: CentralSource,
-        reader: BlockStorageReader,
-        writer: BlockStorageWriter,
+        reader: StorageReader,
+        writer: StorageWriter,
     ) -> StateSync {
         StateSync { config, central_source, reader, writer }
     }
@@ -102,7 +102,7 @@ impl StateSync {
 }
 
 fn stream_new_blocks(
-    reader: BlockStorageReader,
+    reader: StorageReader,
     central_source: &CentralSource,
     block_propation_sleep_duration: Duration,
 ) -> impl Stream<Item = SyncEvent> + '_ {
@@ -139,7 +139,7 @@ fn stream_new_blocks(
 }
 
 fn stream_new_state_diffs(
-    reader: BlockStorageReader,
+    reader: StorageReader,
     central_source: &CentralSource,
     block_propation_sleep_duration: Duration,
 ) -> impl Stream<Item = SyncEvent> + '_ {

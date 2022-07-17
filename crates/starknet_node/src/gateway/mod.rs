@@ -21,8 +21,8 @@ use starknet_api::{
 use self::api::*;
 use self::objects::{BlockHeader, Transactions};
 use crate::storage::{
-    BlockStorageReader, BlockStorageTxn, BodyStorageReader, HeaderStorageReader,
-    StateStorageReader, TransactionKind,
+    BodyStorageReader, HeaderStorageReader, StateStorageReader, StorageReader, StorageTxn,
+    TransactionKind,
 };
 
 #[derive(Serialize, Deserialize)]
@@ -32,7 +32,7 @@ pub struct GatewayConfig {
 
 /// Rpc server.
 struct JsonRpcServerImpl {
-    storage_reader: BlockStorageReader,
+    storage_reader: StorageReader,
 }
 
 impl From<JsonRpcError> for Error {
@@ -51,7 +51,7 @@ fn internal_server_error(err: impl Display) -> Error {
 }
 
 fn get_block_number_or_tag<Mode: TransactionKind>(
-    txn: &BlockStorageTxn<'_, Mode>,
+    txn: &StorageTxn<'_, Mode>,
     block_hash: BlockHashOrTag,
 ) -> Result<BlockNumberOrTag, Error> {
     match block_hash {
@@ -66,7 +66,7 @@ fn get_block_number_or_tag<Mode: TransactionKind>(
 }
 
 fn get_block_number<Mode: TransactionKind>(
-    txn: &BlockStorageTxn<'_, Mode>,
+    txn: &StorageTxn<'_, Mode>,
     block_number: BlockNumberOrTag,
 ) -> Result<BlockNumber, Error> {
     Ok(match block_number {
@@ -80,7 +80,7 @@ fn get_block_number<Mode: TransactionKind>(
 }
 
 fn get_latest_block_number<Mode: TransactionKind>(
-    txn: &BlockStorageTxn<'_, Mode>,
+    txn: &StorageTxn<'_, Mode>,
 ) -> Result<BlockNumber, Error> {
     txn.get_header_marker()
         .map_err(internal_server_error)?
@@ -89,14 +89,14 @@ fn get_latest_block_number<Mode: TransactionKind>(
 }
 
 fn get_block_number_from_hash<Mode: TransactionKind>(
-    txn: &BlockStorageTxn<'_, Mode>,
+    txn: &StorageTxn<'_, Mode>,
     block_hash: BlockHashOrTag,
 ) -> Result<BlockNumber, Error> {
     get_block_number(txn, get_block_number_or_tag(txn, block_hash)?)
 }
 
 fn get_block_by_number<Mode: TransactionKind>(
-    txn: &BlockStorageTxn<'_, Mode>,
+    txn: &StorageTxn<'_, Mode>,
     block_number: BlockNumber,
 ) -> Result<(BlockHeader, BlockBody), Error> {
     // TODO(anatg): Get the entire block.
@@ -239,7 +239,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
 pub async fn run_server(
     config: GatewayConfig,
-    storage_reader: BlockStorageReader,
+    storage_reader: StorageReader,
 ) -> anyhow::Result<(SocketAddr, HttpServerHandle)> {
     info!("Starting gateway.");
     let server = HttpServerBuilder::default().build(&config.server_ip).await?;

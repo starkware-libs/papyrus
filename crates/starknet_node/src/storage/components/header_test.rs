@@ -12,7 +12,7 @@ async fn test_append_header() -> Result<(), anyhow::Error> {
     {
         assert_matches!(
             err,
-            BlockStorageError::MarkerMismatch { expected: BlockNumber(0), found: BlockNumber(5) }
+            StorageError::MarkerMismatch { expected: BlockNumber(0), found: BlockNumber(5) }
         );
     } else {
         panic!("Unexpected Ok.");

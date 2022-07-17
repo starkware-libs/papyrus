@@ -1,7 +1,7 @@
-use super::{open_block_storage, BlockStorageReader, BlockStorageWriter};
+use super::{open_storage, StorageReader, StorageWriter};
 use crate::storage::db::db_test::get_test_config;
 
-pub fn get_test_storage() -> (BlockStorageReader, BlockStorageWriter) {
+pub fn get_test_storage() -> (StorageReader, StorageWriter) {
     let config = get_test_config();
-    open_block_storage(config).expect("Failed to open storage.")
+    open_storage(config).expect("Failed to open storage.")
 }
