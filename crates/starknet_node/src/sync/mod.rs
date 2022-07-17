@@ -10,7 +10,7 @@ use starknet_api::{BlockBody, BlockHeader, BlockNumber, StateDiffForward};
 use starknet_client::ClientError;
 
 pub use self::sources::{CentralSource, CentralSourceConfig};
-use crate::storage::components::{
+use crate::storage::{
     BlockStorageError, BlockStorageReader, BlockStorageWriter, BodyStorageWriter,
     HeaderStorageReader, HeaderStorageWriter, StateStorageReader, StateStorageWriter,
 };

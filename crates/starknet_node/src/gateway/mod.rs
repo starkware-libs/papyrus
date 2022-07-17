@@ -20,10 +20,10 @@ use starknet_api::{
 
 use self::api::*;
 use self::objects::{BlockHeader, Transactions};
-use crate::storage::components::{
-    BlockStorageReader, BlockStorageTxn, BodyStorageReader, HeaderStorageReader, StateStorageReader,
+use crate::storage::{
+    BlockStorageReader, BlockStorageTxn, BodyStorageReader, HeaderStorageReader,
+    StateStorageReader, TransactionKind,
 };
-use crate::storage::db::TransactionKind;
 
 #[derive(Serialize, Deserialize)]
 pub struct GatewayConfig {

@@ -9,15 +9,11 @@ use starknet_api::{
 
 use super::api::*;
 use super::*;
-use crate::storage::components::{
-    storage_test_utils, BodyStorageWriter, HeaderStorageWriter, StateStorageWriter,
-};
+use crate::storage::{test_utils, BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 
 #[tokio::test]
 async fn test_block_number() -> Result<(), anyhow::Error> {
-    let storage_components = storage_test_utils::get_test_storage();
-    let storage_reader = storage_components.block_storage_reader;
-    let mut storage_writer = storage_components.block_storage_writer;
+    let (storage_reader, mut storage_writer) = test_utils::get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
     // No blocks yet.
@@ -44,9 +40,7 @@ async fn test_block_number() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn test_get_block_by_number_w_transaction_hashes() -> Result<(), anyhow::Error> {
-    let storage_components = storage_test_utils::get_test_storage();
-    let storage_reader = storage_components.block_storage_reader;
-    let mut storage_writer = storage_components.block_storage_writer;
+    let (storage_reader, mut storage_writer) = test_utils::get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
     let header = BlockHeader { number: BlockNumber(0), ..BlockHeader::default() };
@@ -90,9 +84,7 @@ async fn test_get_block_by_number_w_transaction_hashes() -> Result<(), anyhow::E
 
 #[tokio::test]
 async fn test_get_block_by_number_w_full_transactions() -> Result<(), anyhow::Error> {
-    let storage_components = storage_test_utils::get_test_storage();
-    let storage_reader = storage_components.block_storage_reader;
-    let mut storage_writer = storage_components.block_storage_writer;
+    let (storage_reader, mut storage_writer) = test_utils::get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
     let header = BlockHeader { number: BlockNumber(0), ..BlockHeader::default() };
@@ -132,9 +124,7 @@ async fn test_get_block_by_number_w_full_transactions() -> Result<(), anyhow::Er
 
 #[tokio::test]
 async fn test_get_block_by_hash_w_transaction_hashes() -> Result<(), anyhow::Error> {
-    let storage_components = storage_test_utils::get_test_storage();
-    let storage_reader = storage_components.block_storage_reader;
-    let mut storage_writer = storage_components.block_storage_writer;
+    let (storage_reader, mut storage_writer) = test_utils::get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
     let block_hash =
@@ -178,9 +168,7 @@ async fn test_get_block_by_hash_w_transaction_hashes() -> Result<(), anyhow::Err
 
 #[tokio::test]
 async fn test_get_block_by_hash_w_full_transactions() -> Result<(), anyhow::Error> {
-    let storage_components = storage_test_utils::get_test_storage();
-    let storage_reader = storage_components.block_storage_reader;
-    let mut storage_writer = storage_components.block_storage_writer;
+    let (storage_reader, mut storage_writer) = test_utils::get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
     let block_hash =
@@ -221,9 +209,7 @@ async fn test_get_block_by_hash_w_full_transactions() -> Result<(), anyhow::Erro
 
 #[tokio::test]
 async fn test_get_storage_at() -> Result<(), anyhow::Error> {
-    let storage_components = storage_test_utils::get_test_storage();
-    let storage_reader = storage_components.block_storage_reader;
-    let mut storage_writer = storage_components.block_storage_writer;
+    let (storage_reader, mut storage_writer) = test_utils::get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
     let block_hash =
@@ -292,9 +278,7 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn test_get_transaction_by_hash() -> Result<(), anyhow::Error> {
-    let storage_components = storage_test_utils::get_test_storage();
-    let storage_reader = storage_components.block_storage_reader;
-    let mut storage_writer = storage_components.block_storage_writer;
+    let (storage_reader, mut storage_writer) = test_utils::get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
     let transaction_hash = TransactionHash(StarkHash::from_u64(0));
@@ -332,9 +316,7 @@ async fn test_get_transaction_by_hash() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn test_get_transaction_by_block_hash_and_index() -> Result<(), anyhow::Error> {
-    let storage_components = storage_test_utils::get_test_storage();
-    let storage_reader = storage_components.block_storage_reader;
-    let mut storage_writer = storage_components.block_storage_writer;
+    let (storage_reader, mut storage_writer) = test_utils::get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
     let transaction_hash = TransactionHash(StarkHash::from_u64(0));
@@ -401,9 +383,7 @@ async fn test_get_transaction_by_block_hash_and_index() -> Result<(), anyhow::Er
 
 #[tokio::test]
 async fn test_get_transaction_by_block_number_and_index() -> Result<(), anyhow::Error> {
-    let storage_components = storage_test_utils::get_test_storage();
-    let storage_reader = storage_components.block_storage_reader;
-    let mut storage_writer = storage_components.block_storage_writer;
+    let (storage_reader, mut storage_writer) = test_utils::get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
     let transaction_hash = TransactionHash(StarkHash::from_u64(0));
@@ -464,7 +444,7 @@ async fn test_get_transaction_by_block_number_and_index() -> Result<(), anyhow::
 
 #[tokio::test]
 async fn test_run_server() -> Result<(), anyhow::Error> {
-    let storage_reader = storage_test_utils::get_test_storage().block_storage_reader;
+    let (storage_reader, _) = test_utils::get_test_storage();
     let (addr, _handle) =
         run_server(GatewayConfig { server_ip: String::from("127.0.0.1:0") }, storage_reader)
             .await?;
