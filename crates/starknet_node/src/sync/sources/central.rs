@@ -76,7 +76,7 @@ impl CentralSource {
                         let header = BlockHeader {
                             block_hash: block.block_hash,
                             parent_hash: block.parent_block_hash,
-                            number: block.block_number,
+                            block_number: block.block_number,
                             gas_price: block.gas_price,
                             state_root: block.state_root,
                             sequencer: block.sequencer_address,

@@ -17,7 +17,7 @@ use crate::storage::components::{
 fn get_test_block(transaction_count: usize) -> (BlockHeader, BlockBody) {
     let block_hash =
         BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
-    let header = BlockHeader { block_hash, number: BlockNumber(0), ..BlockHeader::default() };
+    let header = BlockHeader { block_hash, block_number: BlockNumber(0), ..BlockHeader::default() };
     let transaction_hash = TransactionHash(StarkHash::from_u64(0));
     let transaction = Transaction::Deploy(DeployTransaction {
         transaction_hash,
@@ -69,8 +69,8 @@ async fn test_get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
     let (header, body) = get_test_block(1);
     storage_writer
         .begin_rw_txn()?
-        .append_header(header.number, &header)?
-        .append_body(header.number, &body)?
+        .append_header(header.block_number, &header)?
+        .append_body(header.block_number, &body)?
         .commit()?;
 
     let expected_transaction = body.transactions.get(0).unwrap();
@@ -143,8 +143,8 @@ async fn test_get_block_w_full_transactions() -> Result<(), anyhow::Error> {
     let (header, body) = get_test_block(1);
     storage_writer
         .begin_rw_txn()?
-        .append_header(header.number, &header)?
-        .append_body(header.number, &body)?
+        .append_header(header.block_number, &header)?
+        .append_body(header.block_number, &body)?
         .commit()?;
 
     let expected_transaction = body.transactions.get(0).unwrap();
@@ -215,7 +215,7 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
     let block_number = BlockNumber(0);
     let block_hash =
         BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
-    let header = BlockHeader { number: block_number, block_hash, ..BlockHeader::default() };
+    let header = BlockHeader { block_number, block_hash, ..BlockHeader::default() };
     let address = ContractAddress(shash!("0x11"));
     let class_hash = ClassHash(shash!("0x4"));
     let key = StorageKey(shash!("0x1001"));
@@ -229,7 +229,7 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
     };
     storage_writer
         .begin_rw_txn()?
-        .append_header(header.number, &header)?
+        .append_header(header.block_number, &header)?
         .append_state_diff(BlockNumber(0), &diff)?
         .commit()?;
 
@@ -348,8 +348,8 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
     let (header, body) = get_test_block(1);
     storage_writer
         .begin_rw_txn()?
-        .append_header(header.number, &header)?
-        .append_body(header.number, &body)?
+        .append_header(header.block_number, &header)?
+        .append_body(header.block_number, &body)?
         .commit()?;
 
     let expected_transaction = body.transactions.get(0).unwrap();
@@ -368,7 +368,7 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
     let res = module
         .call::<_, Transaction>(
             "starknet_getTransactionByBlockIdAndIndex",
-            (BlockId::Number(header.number), 0),
+            (BlockId::Number(header.block_number), 0),
         )
         .await
         .unwrap();
