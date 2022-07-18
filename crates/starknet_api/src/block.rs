@@ -92,7 +92,7 @@ impl Default for BlockStatus {
 pub struct BlockHeader {
     pub block_hash: BlockHash,
     pub parent_hash: BlockHash,
-    pub number: BlockNumber,
+    pub block_number: BlockNumber,
     pub gas_price: GasPrice,
     pub state_root: GlobalRoot,
     pub sequencer: ContractAddress,

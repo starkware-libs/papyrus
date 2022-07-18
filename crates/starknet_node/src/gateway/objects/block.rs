@@ -47,7 +47,7 @@ impl From<StarknetBlockHeader> for BlockHeader {
         BlockHeader {
             block_hash: header.block_hash,
             parent_hash: header.parent_hash,
-            block_number: header.number,
+            block_number: header.block_number,
             status: header.status.into(),
             sequencer: header.sequencer,
             new_root: header.state_root,
