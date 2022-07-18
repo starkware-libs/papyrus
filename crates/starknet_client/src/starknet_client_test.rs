@@ -8,7 +8,6 @@ use starknet_api::{
     EntryPointSelector, EthAddress, Fee, GasPrice, GlobalRoot, L1ToL2Payload, Nonce, StarkHash,
     StorageEntry, StorageKey, TransactionHash, TransactionSignature, TransactionVersion,
 };
-use url::Url;
 use web3::types::H160;
 
 // TODO(dan): Once clash_hash is always prefixed, revert and use Core ClassHash &
@@ -31,12 +30,12 @@ fn test_new_urls() {
     let url_base_str = "https://url";
     let starknet_client = StarknetClient::new(url_base_str).unwrap();
     assert_eq!(
-        starknet_client.urls.get_block,
-        Url::parse(&(url_base_str.to_string() + "/feeder_gateway/get_block")).unwrap()
+        starknet_client.urls.get_block.as_str(),
+        url_base_str.to_string() + "/feeder_gateway/get_block"
     );
     assert_eq!(
-        starknet_client.urls.get_state_update,
-        Url::parse(&(url_base_str.to_string() + "/feeder_gateway/get_state_update")).unwrap()
+        starknet_client.urls.get_state_update.as_str(),
+        url_base_str.to_string() + "/feeder_gateway/get_state_update"
     );
 }
 
