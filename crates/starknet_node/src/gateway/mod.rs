@@ -55,18 +55,18 @@ fn get_block_number<Mode: TransactionKind>(
     block_id: BlockId,
 ) -> Result<BlockNumber, Error> {
     Ok(match block_id {
-        BlockId::Hash(hash) => txn
-            .get_block_number_by_hash(&hash)
+        BlockId::Hash(block_hash) => txn
+            .get_block_number_by_hash(&block_hash)
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?,
-        BlockId::Number(number) => {
+        BlockId::Number(block_number) => {
             // Check that the block exists.
             let last_block_number = get_latest_block_number(txn)?
                 .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
-            if number.0 > last_block_number.0 {
+            if block_number.0 > last_block_number.0 {
                 return Err(Error::from(JsonRpcError::InvalidBlockId));
             }
-            number
+            block_number
         }
         BlockId::Tag(Tag::Latest) => get_latest_block_number(txn)?
             .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?,
