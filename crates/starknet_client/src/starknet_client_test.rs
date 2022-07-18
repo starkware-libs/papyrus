@@ -19,11 +19,25 @@ use super::objects::transaction::{
     DeclareTransaction, EntryPointType, InvokeTransaction, Transaction, TransactionType,
 };
 use super::objects::NonPrefixedClassHash;
-use super::{Block, StarknetClient};
+use super::{Block, StarknetClient, GET_BLOCK_URL, GET_STATE_UPDATE_URL};
 use crate::objects::transaction::{
     BuiltinInstanceCounter, ExecutionResources, L1ToL2Message, L1ToL2Nonce,
     TransactionIndexInBlock, TransactionReceipt,
 };
+
+#[test]
+fn test_new_urls() {
+    let url_base_str = "https://url";
+    let starknet_client = StarknetClient::new(url_base_str).unwrap();
+    assert_eq!(
+        starknet_client.urls.get_block.as_str(),
+        url_base_str.to_string() + "/" + GET_BLOCK_URL
+    );
+    assert_eq!(
+        starknet_client.urls.get_state_update.as_str(),
+        url_base_str.to_string() + "/" + GET_STATE_UPDATE_URL
+    );
+}
 
 fn block_body() -> &'static str {
     r#"{

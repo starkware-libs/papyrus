@@ -55,12 +55,15 @@ pub enum ClientError {
     StarknetError(#[from] StarknetError),
 }
 
+const GET_BLOCK_URL: &str = "feeder_gateway/get_block";
+const GET_STATE_UPDATE_URL: &str = "feeder_gateway/get_state_update";
+
 impl StarknetUrls {
     fn new(url_str: &str) -> Result<Self, ClientCreationError> {
         let base_url = Url::parse(url_str)?;
         Ok(StarknetUrls {
-            get_block: base_url.join("feeder_gateway/get_block")?,
-            get_state_update: base_url.join("feeder_gateway/get_state_update")?,
+            get_block: base_url.join(GET_BLOCK_URL)?,
+            get_state_update: base_url.join(GET_STATE_UPDATE_URL)?,
         })
     }
 }
