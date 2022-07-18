@@ -87,13 +87,17 @@ fn get_block_by_number<Mode: TransactionKind>(
     txn: &BlockStorageTxn<'_, Mode>,
     block_number: BlockNumber,
 ) -> Result<(BlockHeader, BlockBody), Error> {
-    // TODO(anatg): Get the entire block.
     let header = txn
         .get_block_header(block_number)
         .map_err(internal_server_error)?
         .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
 
-    Ok((BlockHeader::from(header), BlockBody { transactions: vec![] }))
+    let transactions = txn
+        .get_block_transactions(block_number)
+        .map_err(internal_server_error)?
+        .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
+
+    Ok((BlockHeader::from(header), BlockBody { transactions }))
 }
 
 #[async_trait]

@@ -53,10 +53,23 @@ async fn test_get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
     let block_hash =
         BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
     let header = BlockHeader { block_hash, number: block_number, ..BlockHeader::default() };
-    storage_writer.begin_rw_txn()?.append_header(header.number, &header)?.commit()?;
+    let transaction_hash = TransactionHash(StarkHash::from_u64(0));
+    let transaction = Transaction::Deploy(DeployTransaction {
+        transaction_hash,
+        max_fee: Fee(100),
+        version: TransactionVersion(shash!("0x1")),
+        contract_address: ContractAddress(shash!("0x2")),
+        constructor_calldata: CallData(vec![shash!("0x3")]),
+    });
+    let body = BlockBody { transactions: vec![transaction.clone()] };
+    storage_writer
+        .begin_rw_txn()?
+        .append_header(header.number, &header)?
+        .append_body(header.number, &body)?
+        .commit()?;
 
     let expected_block =
-        Block { header: header.into(), transactions: Transactions::Hashes(vec![]) };
+        Block { header: header.into(), transactions: Transactions::Hashes(vec![transaction_hash]) };
 
     // Get block by hash.
     let block = module
@@ -117,9 +130,25 @@ async fn test_get_block_w_full_transactions() -> Result<(), anyhow::Error> {
     let block_hash =
         BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
     let header = BlockHeader { block_hash, number: block_number, ..BlockHeader::default() };
-    storage_writer.begin_rw_txn()?.append_header(header.number, &header)?.commit()?;
+    let transaction_hash = TransactionHash(StarkHash::from_u64(0));
+    let transaction = Transaction::Deploy(DeployTransaction {
+        transaction_hash,
+        max_fee: Fee(100),
+        version: TransactionVersion(shash!("0x1")),
+        contract_address: ContractAddress(shash!("0x2")),
+        constructor_calldata: CallData(vec![shash!("0x3")]),
+    });
+    let body = BlockBody { transactions: vec![transaction.clone()] };
+    storage_writer
+        .begin_rw_txn()?
+        .append_header(header.number, &header)?
+        .append_body(header.number, &body)?
+        .commit()?;
 
-    let expected_block = Block { header: header.into(), transactions: Transactions::Full(vec![]) };
+    let expected_block = Block {
+        header: header.into(),
+        transactions: Transactions::Full(vec![transaction.clone()]),
+    };
 
     // Get block by hash.
     let block =
