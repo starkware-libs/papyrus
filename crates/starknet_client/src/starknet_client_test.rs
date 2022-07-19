@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
+use assert_matches::assert_matches;
 use mockito::mock;
 use starknet_api::serde_utils::bytes_from_hex_str;
 use starknet_api::{
@@ -19,7 +20,7 @@ use super::objects::transaction::{
     DeclareTransaction, EntryPointType, InvokeTransaction, Transaction, TransactionType,
 };
 use super::objects::NonPrefixedClassHash;
-use super::{Block, StarknetClient, GET_BLOCK_URL, GET_STATE_UPDATE_URL};
+use super::{Block, ClientError, StarknetClient, GET_BLOCK_URL, GET_STATE_UPDATE_URL};
 use crate::objects::transaction::{
     BuiltinInstanceCounter, ExecutionResources, L1ToL2Message, L1ToL2Nonce,
     TransactionIndexInBlock, TransactionReceipt,
@@ -315,6 +316,20 @@ async fn get_block() {
         }],
     };
     assert_eq!(block, expected_block);
+}
+
+#[tokio::test]
+async fn block_unserializable() {
+    let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
+    let body =
+        r#"{"block_hash": "0x3f65ef25e87a83d92f32f5e4869a33580f9db47ec980c1ff27bdb5151914de5"}"#;
+    let mock = mock("GET", "/feeder_gateway/get_block?blockNumber=20")
+        .with_status(200)
+        .with_body(body)
+        .create();
+    let error = starknet_client.block(BlockNumber(20)).await.unwrap_err();
+    mock.assert();
+    assert_matches!(error, ClientError::SerdeError(_));
 }
 
 #[tokio::test]
