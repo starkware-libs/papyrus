@@ -14,12 +14,12 @@ use jsonrpsee::types::error::{ErrorObject, INTERNAL_ERROR_MSG};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockBody, BlockNumber, ContractAddress, StarkFelt, StateNumber, StorageKey, Transaction,
-    TransactionHash, TransactionOffsetInBlock,
+    BlockBody, BlockNumber, ContractAddress, GlobalRoot, StarkFelt, StarkHash, StateNumber,
+    StorageKey, Transaction, TransactionHash, TransactionOffsetInBlock,
 };
 
 use self::api::*;
-use self::objects::{BlockHeader, Transactions};
+use self::objects::{from_starknet_storage_diffs, BlockHeader, StateDiff, Transactions};
 use crate::storage::components::{
     BlockStorageReader, BlockStorageTxn, BodyStorageReader, HeaderStorageReader, StateStorageReader,
 };
@@ -136,7 +136,6 @@ impl JsonRpcServer for JsonRpcServerImpl {
         // Check that the block is valid and get the state number.
         let block_number = get_block_number(&txn, block_id)?;
         let state = StateNumber::right_after_block(block_number);
-
         let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
 
         // Check that the contract exists.
@@ -187,6 +186,46 @@ impl JsonRpcServer for JsonRpcServerImpl {
             .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
 
         Ok(transactions.len())
+    }
+    
+    fn get_state_update(&self, block_id: BlockId) -> Result<StateUpdate, Error> {
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+
+        // Get the block header for the block hash and state root.
+        let block_number = get_block_number(&txn, block_id)?;
+        let header = txn
+            .get_block_header(block_number)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
+
+        // Get the old root.
+        let parent_block_number = get_block_number(&txn, BlockId::Hash(header.parent_hash));
+        let mut old_root = GlobalRoot(StarkHash::from_hex("0x0").map_err(internal_server_error)?);
+        if parent_block_number.is_ok() {
+            let parent_header = txn
+                .get_block_header(parent_block_number.unwrap())
+                .map_err(internal_server_error)?
+                .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
+            old_root = parent_header.state_root;
+        }
+
+        // Get the block state diff.
+        let db_state_diff = txn
+            .get_state_diff(block_number)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
+
+        Ok(StateUpdate {
+            block_hash: header.block_hash,
+            new_root: header.state_root,
+            old_root,
+            state_diff: StateDiff {
+                storage_diffs: from_starknet_storage_diffs(db_state_diff.storage_diffs),
+                declared_contracts: vec![],
+                deployed_contracts: db_state_diff.deployed_contracts,
+                nonces: vec![],
+            },
+        })
     }
 }
 
