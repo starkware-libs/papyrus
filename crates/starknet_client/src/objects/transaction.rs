@@ -191,8 +191,6 @@ pub enum TransactionType {
     Declare,
     #[serde(rename(deserialize = "DEPLOY", serialize = "DEPLOY"))]
     Deploy,
-    #[serde(rename(deserialize = "INITIALIZE_BLOCK_INFO", serialize = "INITIALIZE_BLOCK_INFO"))]
-    InitializeBlockInfo,
     #[serde(rename(deserialize = "INVOKE_FUNCTION", serialize = "INVOKE_FUNCTION"))]
     InvokeFunction,
 }
