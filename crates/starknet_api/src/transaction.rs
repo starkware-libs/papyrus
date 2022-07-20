@@ -85,7 +85,7 @@ pub struct TransactionVersion(pub StarkFelt);
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct TransactionSignature(pub Vec<StarkFelt>);
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ContractClass {
     pub class_hash: ClassHash,
     pub program: ProgramCode,
