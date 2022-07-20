@@ -50,6 +50,11 @@ pub struct IndexedDeployedContract {
     pub class_hash: ClassHash,
 }
 
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct DeclaredContract {
+    pub class_hash: ClassHash,
+}
+
 // Invariant: Addresses are strictly increasing. In particular, no address appears twice.
 // TODO(spapini): Enforce the invariant.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]

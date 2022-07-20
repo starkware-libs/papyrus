@@ -14,10 +14,10 @@ pub use self::block::{
     EventsCommitment, GasPrice, GlobalRoot, TransactionsCommitment,
 };
 pub use self::core::{ClassHash, ContractAddress, Nonce};
-pub use self::hash::{StarkFelt, StarkHash};
+pub use self::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 pub use self::state::{
-    DeployedContract, IndexedDeployedContract, StateDiffForward, StateNumber, StorageDiff,
-    StorageEntry, StorageKey,
+    DeclaredContract, DeployedContract, IndexedDeployedContract, StateDiffForward, StateNumber,
+    StorageDiff, StorageEntry, StorageKey,
 };
 pub use self::transaction::{
     CallData, DeclareTransaction, DeployTransaction, EntryPointSelector, EthAddress, Event, Fee,

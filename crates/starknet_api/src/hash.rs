@@ -10,6 +10,8 @@ use super::serde_utils::{
     bytes_from_hex_str, DeserializationError, HexAsBytes, PrefixedHexAsBytes,
 };
 
+pub const GENESIS_HASH: &str = "0x0";
+
 // TODO: Move to a different crate.
 #[derive(Copy, Clone, PartialEq, Eq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(from = "PrefixedHexAsBytes<32_usize>", into = "PrefixedHexAsBytes<32_usize>")]

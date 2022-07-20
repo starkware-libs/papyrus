@@ -34,6 +34,54 @@ fn get_test_block(transaction_count: usize) -> (BlockHeader, BlockBody) {
     (header, body)
 }
 
+fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiffForward) {
+    let parent_hash =
+        BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
+    let state_root = GlobalRoot(shash!("0x12"));
+    let parent_header = BlockHeader {
+        block_number: BlockNumber(0),
+        block_hash: parent_hash,
+        state_root,
+        ..BlockHeader::default()
+    };
+
+    let block_hash =
+        BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5493"));
+    let header = BlockHeader {
+        block_number: BlockNumber(1),
+        block_hash,
+        parent_hash,
+        ..BlockHeader::default()
+    };
+
+    let address = ContractAddress(shash!("0x11"));
+    let class_hash = ClassHash(shash!("0x4"));
+    let address_2 = ContractAddress(shash!("0x21"));
+    let class_hash_2 = ClassHash(shash!("0x5"));
+    let key = StorageKey(shash!("0x1001"));
+    let value = shash!("0x200");
+    let key_2 = StorageKey(shash!("0x1002"));
+    let value_2 = shash!("0x201");
+    let diff = StateDiffForward {
+        deployed_contracts: vec![
+            DeployedContract { address, class_hash },
+            DeployedContract { address: address_2, class_hash: class_hash_2 },
+        ],
+        storage_diffs: vec![
+            StorageDiff {
+                address,
+                diff: vec![
+                    StorageEntry { key: key.clone(), value },
+                    StorageEntry { key: key_2, value: value_2 },
+                ],
+            },
+            StorageDiff { address: address_2, diff: vec![StorageEntry { key, value }] },
+        ],
+    };
+
+    (parent_header, header, diff)
+}
+
 #[tokio::test]
 async fn test_block_number() -> Result<(), anyhow::Error> {
     let storage_components = storage_test_utils::get_test_storage();
@@ -216,50 +264,40 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
     let mut storage_writer = storage_components.block_storage_writer;
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
-    let block_number = BlockNumber(0);
-    let block_hash =
-        BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
-    let header = BlockHeader { block_number, block_hash, ..BlockHeader::default() };
-    let address = ContractAddress(shash!("0x11"));
-    let class_hash = ClassHash(shash!("0x4"));
-    let key = StorageKey(shash!("0x1001"));
-    let value = shash!("0x200");
-    let diff = StateDiffForward {
-        deployed_contracts: vec![DeployedContract { address, class_hash }],
-        storage_diffs: vec![StorageDiff {
-            address,
-            diff: vec![StorageEntry { key: key.clone(), value }],
-        }],
-    };
+    let (header, _, diff) = get_test_state_diff();
     storage_writer
         .begin_rw_txn()?
         .append_header(header.block_number, &header)?
-        .append_state_diff(BlockNumber(0), &diff)?
+        .append_state_diff(header.block_number, &diff)?
         .commit()?;
+
+    let address = diff.storage_diffs.get(0).unwrap().address;
+    let key = diff.storage_diffs.get(0).unwrap().diff.get(0).unwrap().key.clone();
+    let expected_value = diff.storage_diffs.get(0).unwrap().diff.get(0).unwrap().value;
 
     // Get storage by block hash.
     let res = module
         .call::<_, StarkFelt>(
             "starknet_getStorageAt",
-            (address, key.clone(), BlockId::Hash(block_hash)),
+            (address, key.clone(), BlockId::Hash(header.block_hash)),
         )
         .await?;
-    assert_eq!(res, value);
+    assert_eq!(res, expected_value);
 
     // Get storage by block number.
     let res = module
         .call::<_, StarkFelt>(
             "starknet_getStorageAt",
-            (address, key.clone(), BlockId::Number(block_number)),
+            (address, key.clone(), BlockId::Number(header.block_number)),
         )
         .await?;
-    assert_eq!(res, value);
+    assert_eq!(res, expected_value);
 
     // Ask for an invalid contract.
     let err = module
         .call::<_, StarkFelt>(
             "starknet_getStorageAt",
-            (ContractAddress(shash!("0x12")), key.clone(), BlockId::Hash(block_hash)),
+            (ContractAddress(shash!("0x12")), key.clone(), BlockId::Hash(header.block_hash)),
         )
         .await
         .unwrap_err();
@@ -489,6 +527,77 @@ async fn test_get_block_transaction_count() -> Result<(), anyhow::Error> {
         JsonRpcError::InvalidBlockId.to_string(),
         None::<()>,
     ));
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_get_state_update() -> Result<(), anyhow::Error> {
+    let storage_components = storage_test_utils::get_test_storage();
+    let storage_reader = storage_components.block_storage_reader;
+    let mut storage_writer = storage_components.block_storage_writer;
+    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+
+    let (parent_header, header, diff) = get_test_state_diff();
+    storage_writer
+        .begin_rw_txn()?
+        .append_header(parent_header.block_number, &parent_header)?
+        .append_state_diff(parent_header.block_number, &StateDiffForward::default())?
+        .append_header(header.block_number, &header)?
+        .append_state_diff(header.block_number, &diff)?
+        .commit()?;
+
+    let expected_update = StateUpdate {
+        block_hash: header.block_hash,
+        new_root: header.state_root,
+        old_root: parent_header.state_root,
+        state_diff: StateDiff {
+            storage_diffs: from_starknet_storage_diffs(diff.storage_diffs),
+            declared_contracts: vec![],
+            deployed_contracts: diff.deployed_contracts,
+            nonces: vec![],
+        },
+    };
+    assert_eq!(expected_update.state_diff.storage_diffs.len(), 3);
+
+    // Get state update by block hash.
+    let res = module
+        .call::<_, StateUpdate>("starknet_getStateUpdate", [BlockId::Hash(header.block_hash)])
+        .await?;
+    assert_eq!(res, expected_update);
+
+    // Get state update by block number.
+    let res = module
+        .call::<_, StateUpdate>("starknet_getStateUpdate", [BlockId::Number(header.block_number)])
+        .await?;
+    assert_eq!(res, expected_update);
+
+    // Ask for an invalid block hash.
+    let err = module
+        .call::<_, StateUpdate>(
+            "starknet_getStateUpdate",
+            [BlockId::Hash(BlockHash(shash!(
+                "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
+            )))],
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidBlockId as i32,
+        JsonRpcError::InvalidBlockId.to_string(),
+        None::<()>,
+    ));
+
+    // Ask for an invalid block number.
+    let err = module
+        .call::<_, StateUpdate>("starknet_getStateUpdate", [BlockId::Number(BlockNumber(2))])
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidBlockId as i32,
+        JsonRpcError::InvalidBlockId.to_string(),
+        None::<()>,
+    ));
+
     Ok(())
 }
 
