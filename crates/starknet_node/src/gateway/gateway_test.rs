@@ -602,6 +602,41 @@ async fn test_get_state_update() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
+async fn test_get_transaction_receipt() -> Result<(), anyhow::Error> {
+    let storage_components = storage_test_utils::get_test_storage();
+    let storage_reader = storage_components.block_storage_reader;
+    let mut storage_writer = storage_components.block_storage_writer;
+    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+
+    let (_, body) = get_test_block(1);
+    storage_writer.begin_rw_txn()?.append_body(BlockNumber(0), &body)?.commit()?;
+    // TODO(anatg): Write a transaction receipt to the storage.
+
+    let transaction_hash = body.transactions.get(0).unwrap().transaction_hash();
+    let expected_receipt = TransactionReceipt::Declare(DeclareTransactionReceipt::default());
+    let res = module
+        .call::<_, TransactionReceipt>("starknet_getTransactionReceipt", [transaction_hash])
+        .await
+        .unwrap();
+    assert_eq!(res, expected_receipt.clone());
+
+    // Ask for an invalid transaction.
+    let err = module
+        .call::<_, Transaction>(
+            "starknet_getTransactionReceipt",
+            [TransactionHash(StarkHash::from_u64(1))],
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidTransactionHash as i32,
+        JsonRpcError::InvalidTransactionHash.to_string(),
+        None::<()>,
+    ));
+    Ok(())
+}
+
+#[tokio::test]
 async fn test_run_server() -> Result<(), anyhow::Error> {
     let storage_reader = storage_test_utils::get_test_storage().block_storage_reader;
     let (addr, _handle) =

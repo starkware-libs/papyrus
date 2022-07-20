@@ -14,8 +14,9 @@ use jsonrpsee::types::error::{ErrorObject, INTERNAL_ERROR_MSG};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockBody, BlockNumber, ContractAddress, GlobalRoot, StarkFelt, StarkHash, StateNumber,
-    StorageKey, Transaction, TransactionHash, TransactionOffsetInBlock, GENESIS_HASH,
+    BlockBody, BlockNumber, ContractAddress, DeclareTransactionReceipt, GlobalRoot, StarkFelt,
+    StarkHash, StateNumber, StorageKey, Transaction, TransactionHash, TransactionOffsetInBlock,
+    GENESIS_HASH,
 };
 
 use self::api::*;
@@ -227,6 +228,21 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 nonces: vec![],
             },
         })
+    }
+
+    fn get_transaction_receipt(
+        &self,
+        transaction_hash: TransactionHash,
+    ) -> Result<TransactionReceipt, Error> {
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+
+        let (_block_number, _tx_offset_in_block) = txn
+            .get_transaction_idx_by_hash(&transaction_hash)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| Error::from(JsonRpcError::InvalidTransactionHash))?;
+
+        // TODO(anatg): Get the transaction receipt from the storage.
+        Ok(TransactionReceipt::Declare(DeclareTransactionReceipt::default()))
     }
 }
 

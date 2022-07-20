@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use web3::types::H160;
 
 use super::serde_utils::PrefixedHexAsBytes;
-use super::{ClassHash, ContractAddress, StarkFelt, StarkHash};
+use super::{BlockHash, BlockNumber, ClassHash, ContractAddress, StarkFelt, StarkHash};
 
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
@@ -163,6 +163,8 @@ pub struct InvokeTransactionReceipt {
     pub actual_fee: Fee,
     pub status: TransactionStatus,
     pub status_data: StatusData,
+    pub block_hash: BlockHash,
+    pub block_number: BlockNumber,
     pub messages_sent: Vec<MessageToL1>,
     pub l1_origin_message: Option<MessageToL2>,
     pub events: Vec<Event>,
@@ -170,18 +172,22 @@ pub struct InvokeTransactionReceipt {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeclareTransactionReceipt {
-    transaction_hash: TransactionHash,
-    actual_fee: Fee,
-    status: TransactionStatus,
-    status_data: StatusData,
+    pub transaction_hash: TransactionHash,
+    pub actual_fee: Fee,
+    pub status: TransactionStatus,
+    pub status_data: StatusData,
+    pub block_hash: BlockHash,
+    pub block_number: BlockNumber,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeployTransactionReceipt {
-    transaction_hash: TransactionHash,
-    actual_fee: Fee,
-    status: TransactionStatus,
-    status_data: StatusData,
+    pub transaction_hash: TransactionHash,
+    pub actual_fee: Fee,
+    pub status: TransactionStatus,
+    pub status_data: StatusData,
+    pub block_hash: BlockHash,
+    pub block_number: BlockNumber,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
