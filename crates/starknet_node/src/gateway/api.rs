@@ -2,8 +2,8 @@ use jsonrpsee::core::Error;
 use jsonrpsee::proc_macros::rpc;
 use serde::{Deserialize, Serialize};
 pub use starknet_api::{
-    BlockHash, BlockNumber, ContractAddress, StarkFelt, StorageKey, Transaction, TransactionHash,
-    TransactionOffsetInBlock,
+    BlockHash, BlockNumber, ClassHash, ContractAddress, ContractClass, StarkFelt, StorageKey,
+    Transaction, TransactionHash, TransactionOffsetInBlock,
 };
 
 pub use super::objects::{Block, StateUpdate};
@@ -37,6 +37,8 @@ pub enum JsonRpcError {
     InvalidTransactionHash = 25,
     #[error("Invalid transaction index in a block.")]
     InvalidTransactionIndex = 27,
+    #[error("The supplied contract class hash is invalid or unknown.")]
+    InvalidContractClassHash = 28,
 }
 
 #[rpc(server, client, namespace = "starknet")]
@@ -84,4 +86,16 @@ pub trait JsonRpc {
     /// Gets the information about the result of executing the requested block.
     #[method(name = "getStateUpdate")]
     fn get_state_update(&self, block_id: BlockId) -> Result<StateUpdate, Error>;
+
+    /// Gets the contract class definition associated with the given hash.
+    #[method(name = "getClass")]
+    fn get_class(&self, class_hash: ClassHash) -> Result<ContractClass, Error>;
+
+    /// Gets the contract class definition in the given block at the given address.
+    #[method(name = "getClassAt")]
+    fn get_class_at(
+        &self,
+        block_id: BlockId,
+        contract_address: ContractAddress,
+    ) -> Result<ContractClass, Error>;
 }
