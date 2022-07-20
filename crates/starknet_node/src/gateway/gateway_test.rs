@@ -18,15 +18,19 @@ fn get_test_block(transaction_count: usize) -> (BlockHeader, BlockBody) {
     let block_hash =
         BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
     let header = BlockHeader { block_hash, block_number: BlockNumber(0), ..BlockHeader::default() };
-    let transaction_hash = TransactionHash(StarkHash::from_u64(0));
-    let transaction = Transaction::Deploy(DeployTransaction {
-        transaction_hash,
-        max_fee: Fee(100),
-        version: TransactionVersion(shash!("0x1")),
-        contract_address: ContractAddress(shash!("0x2")),
-        constructor_calldata: CallData(vec![shash!("0x3")]),
-    });
-    let body = BlockBody { transactions: vec![transaction; transaction_count] };
+    let mut transactions = vec![];
+    for i in 0..transaction_count {
+        let transaction_hash = TransactionHash(StarkHash::from_u64(i as u64));
+        let transaction = Transaction::Deploy(DeployTransaction {
+            transaction_hash,
+            max_fee: Fee(100),
+            version: TransactionVersion(shash!("0x1")),
+            contract_address: ContractAddress(shash!("0x2")),
+            constructor_calldata: CallData(vec![shash!("0x3")]),
+        });
+        transactions.push(transaction);
+    }
+    let body = BlockBody { transactions };
     (header, body)
 }
 
@@ -418,6 +422,71 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
         JsonRpcError::InvalidTransactionIndex as i32,
         JsonRpcError::InvalidTransactionIndex.to_string(),
+        None::<()>,
+    ));
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_get_block_transaction_count() -> Result<(), anyhow::Error> {
+    let storage_components = storage_test_utils::get_test_storage();
+    let storage_reader = storage_components.block_storage_reader;
+    let mut storage_writer = storage_components.block_storage_writer;
+    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+
+    let transaction_count = 5;
+    let (header, body) = get_test_block(transaction_count);
+    storage_writer
+        .begin_rw_txn()?
+        .append_header(header.block_number, &header)?
+        .append_body(header.block_number, &body)?
+        .commit()?;
+
+    // Get block by hash.
+    let res = module
+        .call::<_, usize>("starknet_getBlockTransactionCount", [BlockId::Hash(header.block_hash)])
+        .await?;
+    assert_eq!(res, transaction_count);
+
+    // Get block by number.
+    let res = module
+        .call::<_, usize>(
+            "starknet_getBlockTransactionCount",
+            [BlockId::Number(header.block_number)],
+        )
+        .await?;
+    assert_eq!(res, transaction_count);
+
+    // Ask for the latest block.
+    let res = module
+        .call::<_, usize>("starknet_getBlockTransactionCount", [BlockId::Tag(Tag::Latest)])
+        .await?;
+    assert_eq!(res, transaction_count);
+
+    // Ask for an invalid block hash.
+    let err = module
+        .call::<_, usize>(
+            "starknet_getBlockTransactionCount",
+            [BlockId::Hash(BlockHash(shash!(
+                "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
+            )))],
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidBlockId as i32,
+        JsonRpcError::InvalidBlockId.to_string(),
+        None::<()>,
+    ));
+
+    // Ask for an invalid block number.
+    let err = module
+        .call::<_, usize>("starknet_getBlockTransactionCount", [BlockId::Number(BlockNumber(1))])
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidBlockId as i32,
+        JsonRpcError::InvalidBlockId.to_string(),
         None::<()>,
     ));
     Ok(())

@@ -76,4 +76,8 @@ pub trait JsonRpc {
         block_id: BlockId,
         index: TransactionOffsetInBlock,
     ) -> Result<Transaction, Error>;
+
+    /// Gets the number of transactions in a block given a block id.
+    #[method(name = "getBlockTransactionCount")]
+    fn get_block_transaction_count(&self, block_id: BlockId) -> Result<usize, Error>;
 }

@@ -170,12 +170,23 @@ impl JsonRpcServer for JsonRpcServerImpl {
         index: TransactionOffsetInBlock,
     ) -> Result<Transaction, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-
         let block_number = get_block_number(&txn, block_id)?;
 
         txn.get_transaction(block_number, index)
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::InvalidTransactionIndex))
+    }
+
+    fn get_block_transaction_count(&self, block_id: BlockId) -> Result<usize, Error> {
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let block_number = get_block_number(&txn, block_id)?;
+
+        let transactions = txn
+            .get_block_transactions(block_number)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
+
+        Ok(transactions.len())
     }
 }
 
