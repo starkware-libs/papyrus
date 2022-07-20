@@ -7,7 +7,6 @@ use starknet_api::{
 };
 
 use super::transaction::{Transaction, TransactionReceipt};
-use super::NonPrefixedClassHash;
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
 pub struct Block {
@@ -69,17 +68,14 @@ impl From<BlockStatus> for NodeBlockStatus {
 #[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
 pub struct StateDiff {
     pub storage_diffs: HashMap<ContractAddress, Vec<StorageEntry>>,
-    pub deployed_contracts: Vec<NonPrefixedDeployedContract>,
+    pub deployed_contracts: Vec<DeployedContract>,
     // TODO(dan): define corresponding struct and handle properly.
     #[serde(default)]
     pub declared_contracts: Vec<serde_json::Value>,
 }
 
-// TODO(dan): Simplify once clash_hash is always prefixed.
 impl From<StateDiff> for NodeStateDiff {
     fn from(state_diff: StateDiff) -> Self {
-        let deployed_contracts =
-            state_diff.deployed_contracts.iter().map(|x| DeployedContract::from(*x)).collect();
         let storage_diffs = state_diff
             .storage_diffs
             .iter()
@@ -88,20 +84,6 @@ impl From<StateDiff> for NodeStateDiff {
                 StorageDiff { address, diff }
             })
             .collect();
-        NodeStateDiff { deployed_contracts, storage_diffs }
-    }
-}
-
-// TODO(dan): Once clash_hash is always prefixed, revert and use Core DeployedContract.
-#[derive(
-    Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord, Copy,
-)]
-pub struct NonPrefixedDeployedContract {
-    pub address: ContractAddress,
-    pub class_hash: NonPrefixedClassHash,
-}
-impl From<NonPrefixedDeployedContract> for DeployedContract {
-    fn from(val: NonPrefixedDeployedContract) -> Self {
-        DeployedContract { address: val.address, class_hash: val.class_hash.into() }
+        NodeStateDiff { deployed_contracts: state_diff.deployed_contracts, storage_diffs }
     }
 }
