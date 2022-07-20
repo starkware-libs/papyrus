@@ -14,7 +14,7 @@ pub use self::block::{
     EventsCommitment, GasPrice, GlobalRoot, TransactionsCommitment,
 };
 pub use self::core::{ClassHash, ContractAddress, Nonce};
-pub use self::hash::{StarkFelt, StarkHash};
+pub use self::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 pub use self::state::{
     DeclaredContract, DeployedContract, IndexedDeployedContract, StateDiffForward, StateNumber,
     StorageDiff, StorageEntry, StorageKey,

@@ -15,7 +15,7 @@ use log::{error, info};
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockBody, BlockNumber, ContractAddress, GlobalRoot, StarkFelt, StarkHash, StateNumber,
-    StorageKey, Transaction, TransactionHash, TransactionOffsetInBlock,
+    StorageKey, Transaction, TransactionHash, TransactionOffsetInBlock, GENESIS_HASH,
 };
 
 use self::api::*;
@@ -187,7 +187,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
         Ok(transactions.len())
     }
-    
+
     fn get_state_update(&self, block_id: BlockId) -> Result<StateUpdate, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
@@ -200,7 +200,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
         // Get the old root.
         let parent_block_number = get_block_number(&txn, BlockId::Hash(header.parent_hash));
-        let mut old_root = GlobalRoot(StarkHash::from_hex("0x0").map_err(internal_server_error)?);
+        let mut old_root =
+            GlobalRoot(StarkHash::from_hex(GENESIS_HASH).map_err(internal_server_error)?);
         if parent_block_number.is_ok() {
             let parent_header = txn
                 .get_block_header(parent_block_number.unwrap())

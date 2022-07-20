@@ -80,7 +80,7 @@ pub trait JsonRpc {
     /// Gets the number of transactions in a block given a block id.
     #[method(name = "getBlockTransactionCount")]
     fn get_block_transaction_count(&self, block_id: BlockId) -> Result<usize, Error>;
-    
+
     /// Gets the information about the result of executing the requested block.
     #[method(name = "getStateUpdate")]
     fn get_state_update(&self, block_id: BlockId) -> Result<StateUpdate, Error>;
