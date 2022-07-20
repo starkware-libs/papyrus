@@ -25,11 +25,6 @@ pub enum BlockId {
     Tag(Tag),
 }
 
-#[derive(
-    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct TransactionCount(pub usize);
-
 #[derive(thiserror::Error, Clone, Copy, Debug)]
 pub enum JsonRpcError {
     #[error("There are no blocks.")]
@@ -84,5 +79,5 @@ pub trait JsonRpc {
 
     /// Gets the number of transactions in a block given a block id.
     #[method(name = "getBlockTransactionCount")]
-    fn get_block_transaction_count(&self, block_id: BlockId) -> Result<TransactionCount, Error>;
+    fn get_block_transaction_count(&self, block_id: BlockId) -> Result<usize, Error>;
 }

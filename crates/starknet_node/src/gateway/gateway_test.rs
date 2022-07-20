@@ -434,8 +434,8 @@ async fn test_get_block_transaction_count() -> Result<(), anyhow::Error> {
     let mut storage_writer = storage_components.block_storage_writer;
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
-    let transaction_count = TransactionCount(5);
-    let (header, body) = get_test_block(transaction_count.0);
+    let transaction_count = 5;
+    let (header, body) = get_test_block(transaction_count);
     storage_writer
         .begin_rw_txn()?
         .append_header(header.block_number, &header)?
@@ -444,16 +444,13 @@ async fn test_get_block_transaction_count() -> Result<(), anyhow::Error> {
 
     // Get block by hash.
     let res = module
-        .call::<_, TransactionCount>(
-            "starknet_getBlockTransactionCount",
-            [BlockId::Hash(header.block_hash)],
-        )
+        .call::<_, usize>("starknet_getBlockTransactionCount", [BlockId::Hash(header.block_hash)])
         .await?;
     assert_eq!(res, transaction_count);
 
     // Get block by number.
     let res = module
-        .call::<_, TransactionCount>(
+        .call::<_, usize>(
             "starknet_getBlockTransactionCount",
             [BlockId::Number(header.block_number)],
         )
@@ -462,16 +459,13 @@ async fn test_get_block_transaction_count() -> Result<(), anyhow::Error> {
 
     // Ask for the latest block.
     let res = module
-        .call::<_, TransactionCount>(
-            "starknet_getBlockTransactionCount",
-            [BlockId::Tag(Tag::Latest)],
-        )
+        .call::<_, usize>("starknet_getBlockTransactionCount", [BlockId::Tag(Tag::Latest)])
         .await?;
     assert_eq!(res, transaction_count);
 
     // Ask for an invalid block hash.
     let err = module
-        .call::<_, TransactionCount>(
+        .call::<_, usize>(
             "starknet_getBlockTransactionCount",
             [BlockId::Hash(BlockHash(shash!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
@@ -487,10 +481,7 @@ async fn test_get_block_transaction_count() -> Result<(), anyhow::Error> {
 
     // Ask for an invalid block number.
     let err = module
-        .call::<_, TransactionCount>(
-            "starknet_getBlockTransactionCount",
-            [BlockId::Number(BlockNumber(1))],
-        )
+        .call::<_, usize>("starknet_getBlockTransactionCount", [BlockId::Number(BlockNumber(1))])
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
