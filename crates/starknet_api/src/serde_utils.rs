@@ -5,7 +5,7 @@ mod serde_utils_test;
 use serde::de::{Deserialize, Visitor};
 use serde::ser::{Serialize, SerializeTuple};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct HexAsBytes<const N: usize, const PREFIXED: bool>(pub [u8; N]);
 
 pub type PrefixedHexAsBytes<const N: usize> = HexAsBytes<N, true>;
