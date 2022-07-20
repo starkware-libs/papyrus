@@ -4,6 +4,7 @@ mod starknet_client_test;
 
 use std::fmt::{self, Display, Formatter};
 
+use field_names::FieldNames;
 use log::{debug, error, info};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -16,7 +17,7 @@ pub struct StarknetClient {
     urls: StarknetUrls,
     internal_client: Client,
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, FieldNames)]
 struct StarknetUrls {
     get_block: Url,
     get_state_update: Url,
