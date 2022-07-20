@@ -5,20 +5,17 @@ use mockito::mock;
 use starknet_api::serde_utils::bytes_from_hex_str;
 use starknet_api::{
     shash, BlockHash, BlockNumber, BlockTimestamp, CallData, ClassHash, ContractAddress,
-    EntryPointSelector, EthAddress, Fee, GasPrice, GlobalRoot, L1ToL2Payload, Nonce, StarkHash,
-    StorageEntry, StorageKey, TransactionHash, TransactionSignature, TransactionVersion,
+    DeployedContract, EntryPointSelector, EthAddress, Fee, GasPrice, GlobalRoot, L1ToL2Payload,
+    Nonce, StarkHash, StorageEntry, StorageKey, TransactionHash, TransactionSignature,
+    TransactionVersion,
 };
 use web3::types::H160;
 
-// TODO(dan): Once clash_hash is always prefixed, revert and use Core ClassHash &
-// DeployedContract.
-use super::objects::block::NonPrefixedDeployedContract;
 // TODO(dan): use SN structs once available & sort.
 use super::objects::block::{BlockStateUpdate, BlockStatus, StateDiff};
 use super::objects::transaction::{
     DeclareTransaction, EntryPointType, InvokeTransaction, Transaction, TransactionType,
 };
-use super::objects::NonPrefixedClassHash;
 use super::{Block, StarknetClient, GET_BLOCK_URL, GET_STATE_UPDATE_URL};
 use crate::objects::transaction::{
     BuiltinInstanceCounter, ExecutionResources, L1ToL2Message, L1ToL2Nonce,
@@ -166,7 +163,7 @@ async fn test_state_update() {
             [
                 {
                     "address": "0x3e10411edafd29dfe6d427d03e35cb261b7a5efeee61bf73909ada048c029b9",
-                    "class_hash": "071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64"
+                    "class_hash": "0x071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64"
                 }
             ]
         }
@@ -213,15 +210,12 @@ async fn test_state_update() {
                     },
                 ],
             )]),
-            deployed_contracts: vec![NonPrefixedDeployedContract {
+            deployed_contracts: vec![DeployedContract {
                 address: ContractAddress(shash!(
                     "0x3e10411edafd29dfe6d427d03e35cb261b7a5efeee61bf73909ada048c029b9"
                 )),
-                class_hash: NonPrefixedClassHash(StarkHash(
-                    bytes_from_hex_str::<32, false>(
-                        "071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64",
-                    )
-                    .unwrap(),
+                class_hash: ClassHash(shash!(
+                    "0x071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64"
                 )),
             }],
             declared_contracts: vec![],
