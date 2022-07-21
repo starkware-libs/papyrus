@@ -3,7 +3,7 @@ use jsonrpsee::proc_macros::rpc;
 use serde::{Deserialize, Serialize};
 pub use starknet_api::{
     BlockHash, BlockNumber, ContractAddress, StarkFelt, StorageKey, Transaction, TransactionHash,
-    TransactionOffsetInBlock,
+    TransactionOffsetInBlock, TransactionReceipt,
 };
 
 pub use super::objects::{Block, StateUpdate};
@@ -84,4 +84,11 @@ pub trait JsonRpc {
     /// Gets the information about the result of executing the requested block.
     #[method(name = "getStateUpdate")]
     fn get_state_update(&self, block_id: BlockId) -> Result<StateUpdate, Error>;
+
+    /// Gets the transaction receipt by the transaction hash.
+    #[method(name = "getTransactionReceipt")]
+    fn get_transaction_receipt(
+        &self,
+        transaction_hash: TransactionHash,
+    ) -> Result<TransactionReceipt, Error>;
 }
