@@ -1,6 +1,8 @@
 mod objects;
 #[cfg(test)]
 mod starknet_client_test;
+#[cfg(test)]
+mod test_utils;
 
 use std::fmt::{self, Display, Formatter};
 
