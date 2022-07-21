@@ -4,4 +4,4 @@ mod transaction;
 
 pub use self::block::{Block, BlockHeader, BlockStatus};
 pub use self::state::{from_starknet_storage_diffs, StateDiff, StateUpdate};
-pub use self::transaction::Transactions;
+pub use self::transaction::{Transactions, TypedTransaction};
