@@ -22,5 +22,10 @@ async fn main() {
         );
         state_marker = state_marker.next();
     }
-    assert!(state_marker == last_block_number);
+    assert!(
+        state_marker == last_block_number,
+        "state_marker= {}, last_block_number = {}",
+        state_marker.0,
+        last_block_number.0
+    );
 }

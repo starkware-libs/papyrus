@@ -2,19 +2,20 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use mockito::mock;
+use pretty_assertions::assert_eq;
 use starknet_api::serde_utils::bytes_from_hex_str;
 use starknet_api::{
     shash, BlockHash, BlockNumber, BlockTimestamp, CallData, ClassHash, ContractAddress,
-    DeployedContract, EntryPointSelector, EthAddress, Fee, GasPrice, GlobalRoot, L1ToL2Payload,
-    Nonce, StarkHash, StorageEntry, StorageKey, TransactionHash, TransactionSignature,
-    TransactionVersion,
+    ContractClass, DeployedContract, EntryPoint, EntryPointOffset, EntryPointSelector,
+    EntryPointType, EthAddress, Fee, GasPrice, GlobalRoot, L1ToL2Payload, Nonce, Program,
+    StarkHash, StorageEntry, StorageKey, TransactionHash, TransactionSignature, TransactionVersion,
 };
 use web3::types::H160;
 
 // TODO(dan): use SN structs once available & sort.
 use super::objects::block::{BlockStateUpdate, BlockStatus, StateDiff};
 use super::objects::transaction::{
-    DeclareTransaction, EntryPointType, InvokeTransaction, Transaction, TransactionType,
+    DeclareTransaction, InvokeTransaction, Transaction, TransactionType,
 };
 use super::{Block, StarknetClient, GET_BLOCK_URL, GET_STATE_UPDATE_URL};
 use crate::objects::transaction::{
@@ -36,63 +37,96 @@ fn test_new_urls() {
     );
 }
 
+fn contract_class_body() -> &'static str {
+    r#"{
+        "abi": [{
+            "inputs": [{"name": "implementation", "type": "felt"}],
+            "name": "constructor",
+            "outputs": [],
+            "type": "constructor"
+        }],
+        "entry_points_by_type": {
+            "CONSTRUCTOR": [{
+                "offset": "0x62",
+                "selector": "0x28ffe4ff0f226a9107253e17a904099aa4f63a02a5621de0576e5aa71bc5194"
+            }],
+            "EXTERNAL": [{
+                "offset": "0x86",
+                "selector": "0x0"
+            }],
+            "L1_HANDLER": []
+        },
+        "program": {
+            "builtins": [],
+            "data": ["0x20780017fff7ffd", "0x4", "0x400780017fff7ffd"],
+            "prime": "0x800000000000011000000000000000000000000000000000000000000000001",
+            "main_scope": "__main__",
+            "identifiers": {},
+            "attributes": [],
+            "debug_info": null,
+            "reference_manager": {},
+            "hints": {}
+        }
+    }"#
+}
+
 fn block_body() -> &'static str {
     r#"{
-            "block_hash": "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483",
-            "parent_block_hash": "0x7d74dfc2bd87ac89447a56c51abc9b6d9aca1de21cc25fd9922f3a3779ec72d",
-            "block_number": 20,
-            "state_root": "07e809a2dfbe95a40ad8e5a12683e8d64c194e67a1b440027bfce23683e9fb48",
-            "timestamp": 1636991716,
-            "sequencer_address": "0x37b2cd6baaa515f520383bee7b7094f892f4c770695fc329a8973e841a971ae",
-            "status": "ACCEPTED_ON_L1",
-            "gas_price": "0x174876e800",
-            "transaction_receipts": [
+        "block_hash": "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483",
+        "parent_block_hash": "0x7d74dfc2bd87ac89447a56c51abc9b6d9aca1de21cc25fd9922f3a3779ec72d",
+        "block_number": 20,
+        "state_root": "07e809a2dfbe95a40ad8e5a12683e8d64c194e67a1b440027bfce23683e9fb48",
+        "timestamp": 1636991716,
+        "sequencer_address": "0x37b2cd6baaa515f520383bee7b7094f892f4c770695fc329a8973e841a971ae",
+        "status": "ACCEPTED_ON_L1",
+        "gas_price": "0x174876e800",
+        "transaction_receipts": [
+            {
+                "transaction_index": 33,
+                "transaction_hash": "0x01f93a441530c63350276f2c720405e8f52c8f2d695e8a4ad0f2eb0488476add",
+                "l1_to_l2_consumed_message": {
+                    "from_address": "0x2Db8c2615db39a5eD8750B87aC8F217485BE11EC",
+                    "to_address": "0x55a46448decca3b138edf0104b7a47d41365b8293bdfd59b03b806c102b12b7",
+                    "selector": "0xc73f681176fc7b3f9693986fd7b14581e8d540519e27400e88b8713932be01",
+                    "payload": [
+                        "0xbc614e",
+                        "0x258"
+                    ]
+                },
+                "l2_to_l1_messages": [],
+                "events": [],
+                "execution_resources":
                 {
-                    "transaction_index": 33,
-                    "transaction_hash": "0x01f93a441530c63350276f2c720405e8f52c8f2d695e8a4ad0f2eb0488476add",
-                    "l1_to_l2_consumed_message": {
-                        "from_address": "0x2Db8c2615db39a5eD8750B87aC8F217485BE11EC",
-                        "to_address": "0x55a46448decca3b138edf0104b7a47d41365b8293bdfd59b03b806c102b12b7",
-                        "selector": "0xc73f681176fc7b3f9693986fd7b14581e8d540519e27400e88b8713932be01",
-                        "payload": [
-                            "0xbc614e",
-                            "0x258"
-                        ]
-                    },
-                    "l2_to_l1_messages": [],
-                    "events": [],
-                    "execution_resources":
+                    "n_steps": 5418,
+                    "builtin_instance_counter":
                     {
-                        "n_steps": 5418,
-                        "builtin_instance_counter":
-                        {
-                            "bitwise_builtin": 1,
-                            "ec_op_builtin": 2
-                        },
-                        "n_memory_holes": 213
+                        "bitwise_builtin": 1,
+                        "ec_op_builtin": 2
                     },
-                    "actual_fee": "0x0"
-                }
-            ],
-            "transactions": [
-                {
-                    "contract_address": "0x639897809c39093765f34d76776b8d081904ab30184f694f20224723ef07863",
-                    "entry_point_selector": "0x15d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad",
-                    "entry_point_type": "EXTERNAL",
-                    "calldata": [
-                        "0x3",
-                        "0x4bc8ac16658025bff4a3bd0760e84fcf075417a4c55c6fae716efdd8f1ed26c"
-                    ],
-                    "signature": [
-                        "0xbe0d6cdf1333a316ab03b7f057ee0c66716d3d983fa02ad4c46389cbe3bb75",
-                        "0x396ec012117a44f204e3b501217502c9b261ef5d3da341757026df844a99d4a"
-                    ],
-                    "transaction_hash": "0xb7bcb42e0cfb09e38a2c21061f72d36271cc8cf13647938d4e41066c051ea8",
-                    "max_fee": "0x6e0917047fd8",
-                    "type": "INVOKE_FUNCTION"
-                }
-            ]
-        }"#
+                    "n_memory_holes": 213
+                },
+                "actual_fee": "0x0"
+            }
+        ],
+        "transactions": [
+            {
+                "contract_address": "0x639897809c39093765f34d76776b8d081904ab30184f694f20224723ef07863",
+                "entry_point_selector": "0x15d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad",
+                "entry_point_type": "EXTERNAL",
+                "calldata": [
+                    "0x3",
+                    "0x4bc8ac16658025bff4a3bd0760e84fcf075417a4c55c6fae716efdd8f1ed26c"
+                ],
+                "signature": [
+                    "0xbe0d6cdf1333a316ab03b7f057ee0c66716d3d983fa02ad4c46389cbe3bb75",
+                    "0x396ec012117a44f204e3b501217502c9b261ef5d3da341757026df844a99d4a"
+                ],
+                "transaction_hash": "0xb7bcb42e0cfb09e38a2c21061f72d36271cc8cf13647938d4e41066c051ea8",
+                "max_fee": "0x6e0917047fd8",
+                "type": "INVOKE_FUNCTION"
+            }
+        ]
+    }"#
 }
 
 #[tokio::test]
@@ -223,6 +257,105 @@ async fn test_state_update() {
     };
     assert_eq!(state_update, expected_state_update);
     // }
+}
+
+#[tokio::test]
+async fn contract_class() {
+    let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
+    let expected_contract_class = ContractClass {
+        abi: serde_json::to_value(vec![HashMap::from([
+            (
+                "inputs".to_string(),
+                serde_json::to_value(vec![HashMap::from([
+                    ("name".to_string(), serde_json::Value::String("implementation".to_string())),
+                    ("type".to_string(), serde_json::Value::String("felt".to_string())),
+                ])])
+                .unwrap(),
+            ),
+            ("name".to_string(), serde_json::Value::String("constructor".to_string())),
+            ("type".to_string(), serde_json::Value::String("constructor".to_string())),
+            ("outputs".to_string(), serde_json::Value::Array(Vec::new())),
+        ])])
+        .unwrap(),
+        program: Program {
+            attributes: serde_json::Value::Array(Vec::new()),
+            builtins: serde_json::Value::Array(Vec::new()),
+            data: serde_json::Value::Array(vec![
+                serde_json::Value::String("0x20780017fff7ffd".to_string()),
+                serde_json::Value::String("0x4".to_string()),
+                serde_json::Value::String("0x400780017fff7ffd".to_string()),
+            ]),
+            debug_info: serde_json::Value::Null,
+            hints: serde_json::Value::Object(serde_json::Map::new()),
+            identifiers: serde_json::Value::Object(serde_json::Map::new()),
+            main_scope: serde_json::Value::String("__main__".to_string()),
+            prime: serde_json::Value::String(
+                "0x800000000000011000000000000000000000000000000000000000000000001".to_string(),
+            ),
+            reference_manager: serde_json::Value::Object(serde_json::Map::new()),
+        },
+        entry_points_by_type: HashMap::from([
+            (EntryPointType::L1Handler, vec![]),
+            (
+                EntryPointType::Constructor,
+                vec![EntryPoint {
+                    selector: EntryPointSelector(shash!(
+                        "0x028ffe4ff0f226a9107253e17a904099aa4f63a02a5621de0576e5aa71bc5194"
+                    )),
+                    offset: EntryPointOffset(shash!(
+                        "0x0000000000000000000000000000000000000000000000000000000000000062"
+                    )),
+                }],
+            ),
+            (
+                EntryPointType::External,
+                vec![EntryPoint {
+                    selector: EntryPointSelector(shash!(
+                        "0x0000000000000000000000000000000000000000000000000000000000000000"
+                    )),
+                    offset: EntryPointOffset(shash!(
+                        "0x0000000000000000000000000000000000000000000000000000000000000086"
+                    )),
+                }],
+            ),
+        ]),
+    };
+
+    // By contract address.
+    let mock_by_address = mock(
+        "GET",
+        "/feeder_gateway/get_full_contract?\
+         contractAddress=0x3e10411edafd29dfe6d427d03e35cb261b7a5efeee61bf73909ada048c029b9",
+    )
+    .with_status(200)
+    .with_body(contract_class_body())
+    .create();
+    let contract_class = starknet_client
+        .class_by_address(ContractAddress(shash!(
+            "0x3e10411edafd29dfe6d427d03e35cb261b7a5efeee61bf73909ada048c029b9"
+        )))
+        .await
+        .unwrap();
+    mock_by_address.assert();
+    assert_eq!(contract_class, expected_contract_class);
+
+    // By class hash.
+    let mock_by_hash = mock(
+        "GET",
+        "/feeder_gateway/get_class_by_hash?\
+         classHash=0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17",
+    )
+    .with_status(200)
+    .with_body(contract_class_body())
+    .create();
+    let contract_class = starknet_client
+        .class_by_hash(ClassHash(shash!(
+            "0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17"
+        )))
+        .await
+        .unwrap();
+    mock_by_hash.assert();
+    assert_eq!(contract_class, expected_contract_class);
 }
 
 #[tokio::test]

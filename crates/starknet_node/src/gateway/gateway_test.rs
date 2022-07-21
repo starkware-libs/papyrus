@@ -2,9 +2,9 @@ use jsonrpsee::core::Error;
 use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::types::EmptyParams;
 use starknet_api::{
-    shash, BlockBody, BlockHash, BlockHeader, CallData, ClassHash, DeployTransaction,
-    DeployedContract, Fee, StarkHash, StateDiffForward, StorageDiff, StorageEntry,
-    TransactionVersion,
+    shash, BlockBody, BlockHash, BlockHeader, CallData, ClassHash, ContractClass, DeclaredContract,
+    DeployTransaction, DeployedContract, Fee, StarkHash, StateDiffForward, StorageDiff,
+    StorageEntry, TransactionVersion,
 };
 
 use super::api::*;
@@ -56,8 +56,10 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiffForward) {
 
     let address = ContractAddress(shash!("0x11"));
     let class_hash = ClassHash(shash!("0x4"));
+    let class = ContractClass::default();
     let address_2 = ContractAddress(shash!("0x21"));
     let class_hash_2 = ClassHash(shash!("0x5"));
+    let class_2 = ContractClass::default();
     let key = StorageKey(shash!("0x1001"));
     let value = shash!("0x200");
     let key_2 = StorageKey(shash!("0x1002"));
@@ -67,6 +69,7 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiffForward) {
             DeployedContract { address, class_hash },
             DeployedContract { address: address_2, class_hash: class_hash_2 },
         ],
+        declared_contracts: vec![DeclaredContract { class_hash }],
         storage_diffs: vec![
             StorageDiff {
                 address,
@@ -77,6 +80,7 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiffForward) {
             },
             StorageDiff { address: address_2, diff: vec![StorageEntry { key, value }] },
         ],
+        contract_classes: vec![(class_hash, class), (class_hash_2, class_2)],
     };
 
     (parent_header, header, diff)

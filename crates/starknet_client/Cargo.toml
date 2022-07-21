@@ -15,3 +15,6 @@ thiserror = { version = "1.0.31" }
 tokio = { version = "1.18.2", features = ["full","sync"] }
 url = { version = "2.2.2" }
 web3 = { version = "0.18.0" }
+
+
+pretty_assertions = { version = "1.2.1" }

@@ -4,8 +4,8 @@ mod reader;
 mod state_test;
 
 use starknet_api::{
-    BlockNumber, ContractAddress, IndexedDeployedContract, StarkFelt, StateDiffForward,
-    StorageDiff, StorageEntry, StorageKey,
+    BlockNumber, ClassHash, ContractAddress, ContractClass, IndexedDeployedContract, StarkFelt,
+    StateDiffForward, StorageDiff, StorageEntry, StorageKey,
 };
 
 use self::reader::StateReader;
@@ -65,6 +65,7 @@ impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for BlockStorageTxn<'
     fn get_state_reader(&self) -> BlockStorageResult<StateReader<'_, Mode>> {
         StateReader::new(self)
     }
+    // TODO(dan): add get contract class.
 }
 
 impl<'env> StateStorageWriter for BlockStorageTxn<'env, RW> {
@@ -75,6 +76,7 @@ impl<'env> StateStorageWriter for BlockStorageTxn<'env, RW> {
     ) -> BlockStorageResult<Self> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let contracts_table = self.txn.open_table(&self.tables.contracts)?;
+        let contract_classes_table = self.txn.open_table(&self.tables.contract_classes)?;
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
         let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
 
@@ -84,6 +86,8 @@ impl<'env> StateStorageWriter for BlockStorageTxn<'env, RW> {
         // Write state.
         write_deployed_contracts(state_diff, &self.txn, block_number, &contracts_table)?;
         write_storage_diffs(state_diff, &self.txn, block_number, &storage_table)?;
+        // Write contract classes.
+        write_contract_classes(state_diff, &self.txn, &contract_classes_table)?;
         Ok(self)
     }
 }
@@ -139,6 +143,24 @@ fn write_storage_diffs<'env>(
     for StorageDiff { address, diff } in &state_diff.storage_diffs {
         for StorageEntry { key, value } in diff {
             storage_table.upsert(txn, &(*address, key.clone(), block_number), value)?;
+        }
+    }
+    Ok(())
+}
+
+fn write_contract_classes<'env>(
+    state_diff: &StateDiffForward,
+    txn: &DbTransaction<'env, RW>,
+    contract_classes_table: &'env TableHandle<'env, ClassHash, ContractClass>,
+) -> BlockStorageResult<()> {
+    for contract_class in &state_diff.contract_classes {
+        let res = contract_classes_table.insert(txn, &contract_class.0, &contract_class.1);
+        match res {
+            Ok(()) => continue,
+            // TODO(dan): once we only add class definitions through declare, this should return a
+            // corresponding error.
+            Err(DbError::InnerDbError(libmdbx::Error::KeyExist)) => continue,
+            Err(err) => return Err(err.into()),
         }
     }
     Ok(())

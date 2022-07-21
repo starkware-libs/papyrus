@@ -8,8 +8,9 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockHash, BlockHeader, BlockNumber, ContractAddress, IndexedDeployedContract, StarkFelt,
-    StateDiffForward, StorageKey, Transaction, TransactionHash, TransactionOffsetInBlock,
+    BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, ContractClass,
+    IndexedDeployedContract, StarkFelt, StateDiffForward, StorageKey, Transaction, TransactionHash,
+    TransactionOffsetInBlock,
 };
 
 pub use self::body::{BodyStorageReader, BodyStorageWriter};
@@ -60,6 +61,7 @@ pub struct Tables {
         TableIdentifier<TransactionHash, (BlockNumber, TransactionOffsetInBlock)>,
     state_diffs: TableIdentifier<BlockNumber, StateDiffForward>,
     contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
+    contract_classes: TableIdentifier<ClassHash, ContractClass>,
     contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
 }
 #[derive(Clone)]
@@ -103,6 +105,7 @@ pub fn open_block_storage(
         transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
         state_diffs: db_writer.create_table("state_diffs")?,
         contracts: db_writer.create_table("contracts")?,
+        contract_classes: db_writer.create_table("contract_classes")?,
         contract_storage: db_writer.create_table("contract_storage")?,
     });
     let reader = BlockStorageReader { db_reader, tables: tables.clone() };

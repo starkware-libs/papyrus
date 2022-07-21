@@ -1,6 +1,7 @@
 use starknet_api::{
-    shash, BlockNumber, ClassHash, ContractAddress, DeployedContract, StarkHash, StateDiffForward,
-    StateNumber, StorageDiff, StorageEntry, StorageKey,
+    shash, BlockNumber, ClassHash, ContractAddress, ContractClass, DeclaredContract,
+    DeployedContract, StarkHash, StateDiffForward, StateNumber, StorageDiff, StorageEntry,
+    StorageKey,
 };
 
 use super::{StateStorageReader, StateStorageWriter};
@@ -12,9 +13,13 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     let c2 = ContractAddress(shash!("0x3"));
     let cl0 = ClassHash(shash!("0x4"));
     let cl1 = ClassHash(shash!("0x5"));
+    // TODO(dan): test retrieval from storage.
+    let c_cls0 = ContractClass::default();
+    let c_cls1 = ContractClass::default();
     let key0 = StorageKey(shash!("0x1001"));
     let key1 = StorageKey(shash!("0x101"));
     let diff0 = StateDiffForward {
+        declared_contracts: vec![DeclaredContract { class_hash: cl0 }],
         deployed_contracts: vec![
             DeployedContract { address: c0, class_hash: cl0 },
             DeployedContract { address: c1, class_hash: cl1 },
@@ -29,8 +34,10 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
             },
             StorageDiff { address: c1, diff: vec![] },
         ],
+        contract_classes: vec![(cl0, c_cls0.clone()), (cl1, c_cls1)],
     };
     let diff1 = StateDiffForward {
+        declared_contracts: vec![],
         deployed_contracts: vec![DeployedContract { address: c2, class_hash: cl0 }],
         storage_diffs: vec![
             StorageDiff {
@@ -45,6 +52,7 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
                 diff: vec![StorageEntry { key: key0.clone(), value: shash!("0x0") }],
             },
         ],
+        contract_classes: vec![(cl0, c_cls0)],
     };
 
     let (_, mut writer) = get_test_storage();
