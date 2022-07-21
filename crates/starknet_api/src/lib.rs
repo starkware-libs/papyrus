@@ -16,8 +16,8 @@ pub use self::state::{
     StorageDiff, StorageEntry, StorageKey,
 };
 pub use self::transaction::{
-    CallData, ContractClass, DeclareTransaction, DeclareTransactionReceipt, DeployTransaction,
-    EntryPointSelector, EthAddress, Event, Fee, InvokeTransaction, L1ToL2Payload, L2ToL1Payload,
-    Transaction, TransactionHash, TransactionOffsetInBlock, TransactionReceipt,
-    TransactionSignature, TransactionStatus as NodeTransactionStatus, TransactionVersion,
+    CallData, ContractAddressSalt, ContractClass, DeclareTransaction, DeclareTransactionReceipt,
+    DeployTransaction, EntryPointSelector, EthAddress, Event, Fee, InvokeTransaction,
+    L1ToL2Payload, L2ToL1Payload, Transaction, TransactionHash, TransactionOffsetInBlock,
+    TransactionReceipt, TransactionSignature, TransactionVersion,
 };

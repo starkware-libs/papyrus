@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use web3::types::H160;
 
 use super::serde_utils::PrefixedHexAsBytes;
-use super::{BlockHash, BlockNumber, ClassHash, ContractAddress, StarkFelt, StarkHash};
+use super::{BlockHash, BlockNumber, ClassHash, ContractAddress, Nonce, StarkFelt, StarkHash};
 
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
@@ -95,33 +95,41 @@ pub struct ContractClass {
     pub l1_handler_entry_points: Vec<EntryPoint>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeclareTransaction {
     pub transaction_hash: TransactionHash,
     pub max_fee: Fee,
     pub version: TransactionVersion,
     pub signature: TransactionSignature,
+    pub nonce: Nonce,
     pub class_hash: ClassHash,
     pub sender_address: ContractAddress,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct InvokeTransaction {
     pub transaction_hash: TransactionHash,
     pub max_fee: Fee,
     pub version: TransactionVersion,
     pub signature: TransactionSignature,
+    pub nonce: Nonce,
     pub contract_address: ContractAddress,
     pub entry_point_selector: EntryPointSelector,
     pub call_data: CallData,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(
+    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct ContractAddressSalt(pub StarkHash);
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeployTransaction {
     pub transaction_hash: TransactionHash,
-    pub max_fee: Fee,
     pub version: TransactionVersion,
+    pub class_hash: ClassHash,
     pub contract_address: ContractAddress,
+    pub contract_address_salt: ContractAddressSalt,
     pub constructor_calldata: CallData,
 }
 

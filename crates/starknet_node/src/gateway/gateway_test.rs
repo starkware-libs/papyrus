@@ -3,8 +3,8 @@ use jsonrpsee::core::Error;
 use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::types::EmptyParams;
 use starknet_api::{
-    shash, BlockBody, BlockHash, BlockHeader, CallData, ClassHash, DeployTransaction,
-    DeployedContract, Fee, StarkHash, StateDiffForward, StorageDiff, StorageEntry,
+    shash, BlockBody, BlockHash, BlockHeader, CallData, ClassHash, ContractAddressSalt,
+    DeployTransaction, DeployedContract, StarkHash, StateDiffForward, StorageDiff, StorageEntry,
     TransactionVersion,
 };
 
@@ -16,18 +16,22 @@ use crate::storage::components::{
 
 // TODO(anatg): Move out of the gateway so that storage and sync can use it too.
 fn get_test_block(transaction_count: usize) -> (BlockHeader, BlockBody) {
-    let block_hash =
-        BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
-    let header = BlockHeader { block_hash, block_number: BlockNumber(0), ..BlockHeader::default() };
+    let header = BlockHeader {
+        block_hash: BlockHash(shash!(
+            "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"
+        )),
+        block_number: BlockNumber(0),
+        ..BlockHeader::default()
+    };
     let mut transactions = vec![];
     for i in 0..transaction_count {
-        let transaction_hash = TransactionHash(StarkHash::from_u64(i as u64));
         let transaction = Transaction::Deploy(DeployTransaction {
-            transaction_hash,
-            max_fee: Fee(100),
+            transaction_hash: TransactionHash(StarkHash::from_u64(i as u64)),
             version: TransactionVersion(shash!("0x1")),
             contract_address: ContractAddress(shash!("0x2")),
             constructor_calldata: CallData(vec![shash!("0x3")]),
+            class_hash: ClassHash(StarkHash::from_u64(i as u64)),
+            contract_address_salt: ContractAddressSalt(shash!("0x4")),
         });
         transactions.push(transaction);
     }
@@ -206,7 +210,7 @@ async fn test_get_block_w_full_transactions() -> Result<(), anyhow::Error> {
     let expected_transaction = body.transactions.get(0).unwrap();
     let expected_block = Block {
         header: header.into(),
-        transactions: Transactions::Full(vec![expected_transaction.clone()]),
+        transactions: Transactions::Full(vec![expected_transaction.clone().into()]),
     };
 
     // Get block by hash.
