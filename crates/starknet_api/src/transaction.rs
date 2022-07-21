@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use web3::types::H160;
 
@@ -52,7 +54,7 @@ pub struct EntryPointSelector(pub StarkHash);
 #[derive(
     Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct EntryPointOffset(pub u128);
+pub struct EntryPointOffset(pub StarkFelt);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct EntryPoint {
@@ -60,8 +62,19 @@ pub struct EntryPoint {
     pub offset: EntryPointOffset,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct ProgramCode(pub String);
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
+pub struct Program {
+    #[serde(default)]
+    pub attributes: serde_json::Value,
+    pub builtins: serde_json::Value,
+    pub data: serde_json::Value,
+    pub debug_info: serde_json::Value,
+    pub hints: serde_json::Value,
+    pub identifiers: serde_json::Value,
+    pub main_scope: serde_json::Value,
+    pub prime: serde_json::Value,
+    pub reference_manager: serde_json::Value,
+}
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct CallData(pub Vec<StarkFelt>);
@@ -86,13 +99,28 @@ pub struct TransactionVersion(pub StarkFelt);
 pub struct TransactionSignature(pub Vec<StarkFelt>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(deny_unknown_fields)]
+pub enum EntryPointType {
+    #[serde(rename = "CONSTRUCTOR")]
+    Constructor,
+    #[serde(rename = "EXTERNAL")]
+    External,
+    #[serde(rename = "L1_HANDLER")]
+    L1Handler,
+}
+
+impl Default for EntryPointType {
+    fn default() -> Self {
+        EntryPointType::L1Handler
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ContractClass {
-    pub class_hash: ClassHash,
-    pub program: ProgramCode,
+    pub abi: serde_json::Value,
+    pub program: Program,
     /// The selector of each entry point is a unique identifier in the program.
-    pub constructor_entry_points: Vec<EntryPoint>,
-    pub external_entry_points: Vec<EntryPoint>,
-    pub l1_handler_entry_points: Vec<EntryPoint>,
+    pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]

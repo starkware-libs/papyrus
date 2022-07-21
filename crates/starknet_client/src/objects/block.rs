@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockHash, BlockNumber, BlockTimestamp, ContractAddress, DeployedContract, GasPrice,
-    GlobalRoot, NodeBlockStatus, StateDiffForward as NodeStateDiff, StorageDiff, StorageEntry,
+    BlockHash, BlockNumber, BlockTimestamp, ContractAddress, DeclaredContract, DeployedContract,
+    GasPrice, GlobalRoot, NodeBlockStatus, StorageDiff, StorageEntry,
 };
 
 use super::transaction::{Transaction, TransactionReceipt};
@@ -69,21 +69,18 @@ impl From<BlockStatus> for NodeBlockStatus {
 pub struct StateDiff {
     pub storage_diffs: HashMap<ContractAddress, Vec<StorageEntry>>,
     pub deployed_contracts: Vec<DeployedContract>,
-    // TODO(dan): define corresponding struct and handle properly.
     #[serde(default)]
-    pub declared_contracts: Vec<serde_json::Value>,
+    pub declared_contracts: Vec<DeclaredContract>,
 }
 
-impl From<StateDiff> for NodeStateDiff {
-    fn from(state_diff: StateDiff) -> Self {
-        let storage_diffs = state_diff
-            .storage_diffs
-            .iter()
-            .map(|(&address, diff)| {
-                let diff = diff.clone();
-                StorageDiff { address, diff }
-            })
-            .collect();
-        NodeStateDiff { deployed_contracts: state_diff.deployed_contracts, storage_diffs }
-    }
+pub fn client_to_starknet_api_storage_diff(
+    storage_diffs: HashMap<ContractAddress, Vec<StorageEntry>>,
+) -> Vec<StorageDiff> {
+    storage_diffs
+        .iter()
+        .map(|(&address, diff)| {
+            let diff = diff.clone();
+            StorageDiff { address, diff }
+        })
+        .collect()
 }

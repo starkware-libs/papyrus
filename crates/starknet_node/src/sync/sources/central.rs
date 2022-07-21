@@ -1,8 +1,12 @@
+use std::collections::HashMap;
+
 use async_stream::stream;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use starknet_api::{BlockBody, BlockHeader, BlockNumber, StateDiffForward};
-use starknet_client::{ClientCreationError, ClientError, StarknetClient};
+use starknet_client::{
+    client_to_starknet_api_storage_diff, ClientCreationError, ClientError, StarknetClient,
+};
 use tokio_stream::Stream;
 
 #[derive(Serialize, Deserialize)]
@@ -45,7 +49,22 @@ impl CentralSource {
                 match res {
                     Ok(state_update) => {
                         debug!("Received new state update: {:?}.", current_block_number.0);
-                        yield Ok((current_block_number, state_update.state_diff.into()));
+                        // TODO(dan): should probably compress.
+                        let mut map = HashMap::new();
+                        for contract in &state_update.state_diff.declared_contracts{
+                            map.insert(contract.class_hash ,self.starknet_client.class_by_hash(contract.class_hash).await?);
+                        }
+                        // TODO(dan): this is inefficient. Consider adding an up_to block config.
+                        for contract in &state_update.state_diff.deployed_contracts{
+                            map.insert(contract.class_hash, self.starknet_client.class_by_address(contract.address).await?);
+                        }
+                        let state_diff_forward = StateDiffForward {
+                            deployed_contracts: state_update.state_diff.deployed_contracts,
+                            declared_contracts: state_update.state_diff.declared_contracts,
+                            storage_diffs: client_to_starknet_api_storage_diff(state_update.state_diff.storage_diffs),
+                            contract_classes: Vec::from_iter(map.into_iter()),
+                        };
+                        yield Ok((current_block_number, state_diff_forward));
                         current_block_number = current_block_number.next();
                     },
                     Err(err) => {
@@ -60,7 +79,6 @@ impl CentralSource {
         }
     }
 
-    // TODO(dan): return all block data.
     pub fn stream_new_blocks(
         &self,
         initial_block_number: BlockNumber,

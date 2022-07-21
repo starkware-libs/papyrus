@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{BlockNumber, ClassHash, ContractAddress, StarkFelt};
+use super::{BlockNumber, ClassHash, ContractAddress, ContractClass, StarkFelt};
 
 // Rerpesents the sequential numbering of the states between blocks.
 // Example:
@@ -32,10 +32,12 @@ impl StateNumber {
 
 // Invariant: Addresses are strictly increasing.
 // TODO(spapini): Enforce the invariant.
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct StateDiffForward {
     pub deployed_contracts: Vec<DeployedContract>,
+    pub declared_contracts: Vec<DeclaredContract>,
     pub storage_diffs: Vec<StorageDiff>,
+    pub contract_classes: Vec<(ClassHash, ContractClass)>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
