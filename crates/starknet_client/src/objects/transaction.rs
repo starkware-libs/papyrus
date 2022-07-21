@@ -2,11 +2,11 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    CallData, ClassHash, ContractAddress, DeclareTransaction as NodeDeclareTransaction,
-    DeployTransaction as NodeDeployTransaction, EntryPointSelector, EntryPointType, EthAddress,
-    Event, Fee, InvokeTransaction as NodeInvokeTransaction, L1ToL2Payload, L2ToL1Payload, Nonce,
-    StarkHash, Transaction as NodeTransaction, TransactionHash, TransactionSignature,
-    TransactionVersion,
+    CallData, ClassHash, ContractAddress, ContractAddressSalt,
+    DeclareTransaction as NodeDeclareTransaction, DeployTransaction as NodeDeployTransaction,
+    EntryPointSelector, EntryPointType, EthAddress, Event, Fee,
+    InvokeTransaction as NodeInvokeTransaction, L1ToL2Payload, L2ToL1Payload, Nonce, StarkHash,
+    Transaction as NodeTransaction, TransactionHash, TransactionSignature, TransactionVersion,
 };
 
 // TODO(dan): consider extracting common fields out (version, hash, type).
@@ -50,6 +50,7 @@ impl From<DeclareTransaction> for NodeDeclareTransaction {
             signature: declare_tx.signature,
             class_hash: declare_tx.class_hash,
             sender_address: declare_tx.sender_address,
+            nonce: declare_tx.nonce,
         }
     }
 }
@@ -70,10 +71,11 @@ impl From<DeployTransaction> for NodeDeployTransaction {
     fn from(deploy_tx: DeployTransaction) -> Self {
         NodeDeployTransaction {
             transaction_hash: deploy_tx.transaction_hash,
-            max_fee: Fee::default(),
             version: deploy_tx.version,
             contract_address: deploy_tx.contract_address,
             constructor_calldata: deploy_tx.constructor_calldata,
+            class_hash: deploy_tx.class_hash,
+            contract_address_salt: deploy_tx.contract_address_salt,
         }
     }
 }
@@ -99,6 +101,7 @@ impl From<InvokeTransaction> for NodeInvokeTransaction {
             max_fee: invoke_tx.max_fee,
             version: invoke_tx.version,
             signature: invoke_tx.signature,
+            nonce: Nonce::default(),
             contract_address: invoke_tx.contract_address,
             entry_point_selector: invoke_tx.entry_point_selector,
             call_data: invoke_tx.calldata,
@@ -140,11 +143,6 @@ impl Default for BuiltinInstanceCounter {
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
 pub struct EmptyBuiltinInstanceCounter {}
-
-#[derive(
-    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct ContractAddressSalt(pub StarkHash);
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct L1ToL2Nonce(pub StarkHash);

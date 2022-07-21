@@ -1,7 +1,8 @@
 use assert_matches::assert_matches;
 use starknet_api::{
-    shash, BlockBody, BlockNumber, CallData, ContractAddress, DeployTransaction, Fee, StarkHash,
-    Transaction, TransactionHash, TransactionOffsetInBlock, TransactionVersion,
+    shash, BlockBody, BlockNumber, CallData, ClassHash, ContractAddress, ContractAddressSalt,
+    DeployTransaction, StarkHash, Transaction, TransactionHash, TransactionOffsetInBlock,
+    TransactionVersion,
 };
 
 use super::{BodyStorageReader, BodyStorageWriter, StorageError};
@@ -15,10 +16,11 @@ async fn test_append_body() -> Result<(), anyhow::Error> {
         .map(|i| {
             Transaction::Deploy(DeployTransaction {
                 transaction_hash: TransactionHash(StarkHash::from_u64(i as u64)),
-                max_fee: Fee(100),
                 version: TransactionVersion(shash!("0x1")),
                 contract_address: ContractAddress(StarkHash::from_u64(i as u64)),
                 constructor_calldata: CallData(vec![StarkHash::from_u64(i as u64)]),
+                class_hash: ClassHash(StarkHash::from_u64(i as u64)),
+                contract_address_salt: ContractAddressSalt(shash!("0x2")),
             })
         })
         .collect();

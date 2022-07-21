@@ -22,6 +22,7 @@ use starknet_api::{
 use self::api::{BlockHashOrNumber, BlockId, JsonRpcError, JsonRpcServer, Tag};
 use self::objects::{
     from_starknet_storage_diffs, Block, BlockHeader, StateDiff, StateUpdate, Transactions,
+    TypedTransaction,
 };
 use crate::storage::{
     BodyStorageReader, HeaderStorageReader, StateStorageReader, StorageReader, StorageTxn,
@@ -125,7 +126,12 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let block_number = get_block_number(&txn, block_id)?;
         let (header, body) = get_block_by_number(&txn, block_number)?;
 
-        Ok(Block { header, transactions: Transactions::Full(body.transactions) })
+        Ok(Block {
+            header,
+            transactions: Transactions::Full(
+                body.transactions.iter().map(|t| TypedTransaction::from(t.clone())).collect(),
+            ),
+        })
     }
 
     fn get_storage_at(
