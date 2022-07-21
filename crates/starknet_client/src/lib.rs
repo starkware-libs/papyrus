@@ -6,10 +6,10 @@ mod test_utils;
 
 use std::fmt::{self, Display, Formatter};
 
-use log::{debug, error, info};
+use log::{error, info};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
-use starknet_api::BlockNumber;
+use starknet_api::{BlockNumber, ClassHash, ContractClass};
 use url::Url;
 
 pub use self::objects::block::{Block, BlockStateUpdate};
@@ -21,6 +21,7 @@ pub struct StarknetClient {
 #[derive(Clone, Debug)]
 struct StarknetUrls {
     get_block: Url,
+    get_contract_by_hash: Url,
     get_state_update: Url,
 }
 
@@ -58,6 +59,7 @@ pub enum ClientError {
 }
 
 const GET_BLOCK_URL: &str = "feeder_gateway/get_block";
+const GET_CONTRACT_BY_HASH_URL: &str = "feeder_gateway/get_class_by_hash";
 const GET_STATE_UPDATE_URL: &str = "feeder_gateway/get_state_update";
 
 impl StarknetUrls {
@@ -65,6 +67,7 @@ impl StarknetUrls {
         let base_url = Url::parse(url_str)?;
         Ok(StarknetUrls {
             get_block: base_url.join(GET_BLOCK_URL)?,
+            get_contract_by_hash: base_url.join(GET_CONTRACT_BY_HASH_URL)?,
             get_state_update: base_url.join(GET_STATE_UPDATE_URL)?,
         })
     }
@@ -129,6 +132,21 @@ impl StarknetClient {
         }
     }
 
+    pub async fn class_by_hash(&self, class_hash: ClassHash) -> Result<ContractClass, ClientError> {
+        let mut url = self.urls.get_contract_by_hash.clone();
+        let class_hash = serde_json::to_string(&class_hash)?;
+        url.query_pairs_mut()
+            .append_pair("classHash", &class_hash.as_str()[1..class_hash.len() - 1]);
+        let response = self.request(url).await;
+        match response {
+            Ok(raw_contract_class) => Ok(serde_json::from_str(&raw_contract_class)?),
+            Err(err) => {
+                error!("{}", err);
+                Err(err)
+            }
+        }
+    }
+
     pub async fn state_update(
         &self,
         block_number: BlockNumber,
@@ -145,7 +163,6 @@ impl StarknetClient {
         match response.status() {
             StatusCode::OK => {
                 let body = response.text().await?;
-                debug!("Starknet server responded with: {}.", body);
                 Ok(body)
             }
             StatusCode::INTERNAL_SERVER_ERROR => {
