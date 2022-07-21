@@ -123,6 +123,18 @@ pub struct ContractClass {
     pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
 }
 
+impl From<Vec<u8>> for ContractClass {
+    fn from(val: Vec<u8>) -> Self {
+        serde_json::from_slice::<ContractClass>(&val).expect("Contract class from bytes")
+    }
+}
+
+impl From<ContractClass> for Vec<u8> {
+    fn from(contract_class: ContractClass) -> Self {
+        serde_json::to_vec(&contract_class).expect("Bytes from contract class")
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeclareTransaction {
     pub transaction_hash: TransactionHash,

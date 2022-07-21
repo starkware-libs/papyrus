@@ -337,8 +337,7 @@ async fn contract_class() {
         .await
         .unwrap();
     mock_by_address.assert();
-    assert_eq!(contract_class, expected_contract_class);
-
+    assert_eq!(ContractClass::from(contract_class), expected_contract_class);
     // By class hash.
     let mock_by_hash = mock(
         "GET",
@@ -355,7 +354,7 @@ async fn contract_class() {
         .await
         .unwrap();
     mock_by_hash.assert();
-    assert_eq!(contract_class, expected_contract_class);
+    assert_eq!(ContractClass::from(contract_class), expected_contract_class);
 }
 
 #[tokio::test]

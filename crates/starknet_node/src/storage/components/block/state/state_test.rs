@@ -34,7 +34,7 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
             },
             StorageDiff { address: c1, diff: vec![] },
         ],
-        contract_classes: vec![(cl0, c_cls0.clone()), (cl1, c_cls1)],
+        contract_classes: vec![(cl0, c_cls0.clone().into()), (cl1, c_cls1.into())],
     };
     let diff1 = StateDiffForward {
         declared_contracts: vec![],
@@ -52,7 +52,7 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
                 diff: vec![StorageEntry { key: key0.clone(), value: shash!("0x0") }],
             },
         ],
-        contract_classes: vec![(cl0, c_cls0)],
+        contract_classes: vec![(cl0, c_cls0.into())],
     };
 
     let (_, mut writer) = get_test_storage();

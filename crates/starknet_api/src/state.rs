@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{BlockNumber, ClassHash, ContractAddress, ContractClass, StarkFelt};
+use super::{BlockNumber, ClassHash, ContractAddress, StarkFelt};
 
 // Rerpesents the sequential numbering of the states between blocks.
 // Example:
@@ -37,7 +37,8 @@ pub struct StateDiffForward {
     pub deployed_contracts: Vec<DeployedContract>,
     pub declared_contracts: Vec<DeclaredContract>,
     pub storage_diffs: Vec<StorageDiff>,
-    pub contract_classes: Vec<(ClassHash, ContractClass)>,
+    pub contract_classes: Vec<(ClassHash, Vec<u8>)>,
+    // pub contract_classes: Vec<(ClassHash, ContractClass)>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]

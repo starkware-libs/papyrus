@@ -80,7 +80,7 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiffForward) {
             },
             StorageDiff { address: address_2, diff: vec![StorageEntry { key, value }] },
         ],
-        contract_classes: vec![(class_hash, class), (class_hash_2, class_2)],
+        contract_classes: vec![(class_hash, class.into()), (class_hash_2, class_2.into())],
     };
 
     (parent_header, header, diff)

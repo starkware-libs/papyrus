@@ -4,8 +4,8 @@ mod reader;
 mod state_test;
 
 use starknet_api::{
-    BlockNumber, ClassHash, ContractAddress, ContractClass, IndexedDeployedContract, StarkFelt,
-    StateDiffForward, StorageDiff, StorageEntry, StorageKey,
+    BlockNumber, ClassHash, ContractAddress, IndexedDeployedContract, StarkFelt, StateDiffForward,
+    StorageDiff, StorageEntry, StorageKey,
 };
 
 use self::reader::StateReader;
@@ -151,7 +151,7 @@ fn write_storage_diffs<'env>(
 fn write_contract_classes<'env>(
     state_diff: &StateDiffForward,
     txn: &DbTransaction<'env, RW>,
-    contract_classes_table: &'env TableHandle<'env, ClassHash, ContractClass>,
+    contract_classes_table: &'env TableHandle<'env, ClassHash, Vec<u8>>,
 ) -> BlockStorageResult<()> {
     for contract_class in &state_diff.contract_classes {
         let res = contract_classes_table.insert(txn, &contract_class.0, &contract_class.1);

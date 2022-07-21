@@ -135,7 +135,7 @@ impl StarknetClient {
         }
     }
 
-    pub async fn class_by_hash(&self, class_hash: ClassHash) -> Result<ContractClass, ClientError> {
+    pub async fn class_by_hash(&self, class_hash: ClassHash) -> Result<Vec<u8>, ClientError> {
         let mut url = self.urls.get_contract_by_hash.clone();
         let class_hash = serde_json::to_string(&class_hash)?;
         url.query_pairs_mut()
@@ -144,7 +144,7 @@ impl StarknetClient {
         match response {
             Ok(raw_contract_class) => {
                 let contract_class: ContractClass = serde_json::from_str(&raw_contract_class)?;
-                Ok(contract_class)
+                Ok(serde_json::to_vec(&contract_class)?)
             }
             Err(err) => {
                 error!("{}", err);
@@ -156,7 +156,7 @@ impl StarknetClient {
     pub async fn class_by_address(
         &self,
         contract_address: ContractAddress,
-    ) -> Result<ContractClass, ClientError> {
+    ) -> Result<Vec<u8>, ClientError> {
         let mut url = self.urls.get_contract_by_address.clone();
         let address = serde_json::to_string(&contract_address)?;
         url.query_pairs_mut()
@@ -165,7 +165,7 @@ impl StarknetClient {
         match response {
             Ok(raw_contract_class) => {
                 let contract_class: ContractClass = serde_json::from_str(&raw_contract_class)?;
-                Ok(contract_class)
+                Ok(serde_json::to_vec(&contract_class)?)
             }
             Err(err) => {
                 error!("{}", err);
