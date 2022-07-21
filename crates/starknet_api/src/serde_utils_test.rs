@@ -1,3 +1,5 @@
+use assert_matches::assert_matches;
+
 use super::{bytes_from_hex_str, hex_str_from_bytes, DeserializationError, HexAsBytes};
 
 #[test]

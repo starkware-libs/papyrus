@@ -1,3 +1,4 @@
+use assert_matches::assert_matches;
 use starknet_api::{
     shash, BlockBody, BlockNumber, CallData, ContractAddress, DeployTransaction, Fee, StarkHash,
     Transaction, TransactionHash, TransactionOffsetInBlock, TransactionVersion,

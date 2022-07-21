@@ -1,7 +1,3 @@
-#[cfg(test)]
-#[macro_use]
-extern crate assert_matches;
-
 mod block;
 mod core;
 mod hash;

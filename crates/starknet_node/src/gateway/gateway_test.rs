@@ -1,3 +1,4 @@
+use assert_matches::assert_matches;
 use jsonrpsee::core::Error;
 use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::types::EmptyParams;
