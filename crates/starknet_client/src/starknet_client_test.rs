@@ -3,8 +3,9 @@ use std::collections::HashMap;
 use mockito::mock;
 use starknet_api::serde_utils::bytes_from_hex_str;
 use starknet_api::{
-    shash, BlockHash, BlockNumber, ClassHash, ContractAddress, DeployedContract, Fee, GlobalRoot,
-    Nonce, StarkHash, StorageEntry, StorageKey, TransactionHash, TransactionSignature,
+    shash, BlockHash, BlockNumber, ClassHash, ContractAddress, ContractClass, DeployedContract,
+    EntryPoint, EntryPointOffset, EntryPointSelector, EntryPointType, Fee, GlobalRoot, Nonce,
+    Program, StarkHash, StorageEntry, StorageKey, TransactionHash, TransactionSignature,
     TransactionVersion,
 };
 
@@ -28,6 +29,38 @@ fn test_new_urls() {
     );
 }
 
+fn contract_class_body() -> &'static str {
+    r#"{
+        "abi": [{
+            "inputs": [{"name": "implementation", "type": "felt"}],
+            "name": "constructor",
+            "outputs": [],
+            "type": "constructor"
+        }],
+        "entry_points_by_type": {
+            "CONSTRUCTOR": [{
+                "offset": "0x62",
+                "selector": "0x28ffe4ff0f226a9107253e17a904099aa4f63a02a5621de0576e5aa71bc5194"
+            }],
+            "EXTERNAL": [{
+                "offset": "0x86",
+                "selector": "0x0"
+            }],
+            "L1_HANDLER": []
+        },
+        "program": {
+            "builtins": [],
+            "data": ["0x20780017fff7ffd", "0x4", "0x400780017fff7ffd"],
+            "prime": "0x800000000000011000000000000000000000000000000000000000000000001",
+            "main_scope": "__main__",
+            "identifiers": {},
+            "attributes": [],
+            "debug_info": null,
+            "reference_manager": {},
+            "hints": {}
+        }
+    }"#
+}
 #[tokio::test]
 async fn get_block_number() {
     let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
@@ -157,6 +190,85 @@ async fn test_state_update() {
         },
     };
     assert_eq!(state_update, expected_state_update);
+}
+
+#[tokio::test]
+async fn contract_class() {
+    let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
+    let expected_contract_class = ContractClass {
+        abi: serde_json::to_value(vec![HashMap::from([
+            (
+                "inputs".to_string(),
+                serde_json::to_value(vec![HashMap::from([
+                    ("name".to_string(), serde_json::Value::String("implementation".to_string())),
+                    ("type".to_string(), serde_json::Value::String("felt".to_string())),
+                ])])
+                .unwrap(),
+            ),
+            ("name".to_string(), serde_json::Value::String("constructor".to_string())),
+            ("type".to_string(), serde_json::Value::String("constructor".to_string())),
+            ("outputs".to_string(), serde_json::Value::Array(Vec::new())),
+        ])])
+        .unwrap(),
+        program: Program {
+            attributes: serde_json::Value::Array(Vec::new()),
+            builtins: serde_json::Value::Array(Vec::new()),
+            data: serde_json::Value::Array(vec![
+                serde_json::Value::String("0x20780017fff7ffd".to_string()),
+                serde_json::Value::String("0x4".to_string()),
+                serde_json::Value::String("0x400780017fff7ffd".to_string()),
+            ]),
+            debug_info: serde_json::Value::Null,
+            hints: serde_json::Value::Object(serde_json::Map::new()),
+            identifiers: serde_json::Value::Object(serde_json::Map::new()),
+            main_scope: serde_json::Value::String("__main__".to_string()),
+            prime: serde_json::Value::String(
+                "0x800000000000011000000000000000000000000000000000000000000000001".to_string(),
+            ),
+            reference_manager: serde_json::Value::Object(serde_json::Map::new()),
+        },
+        entry_points_by_type: HashMap::from([
+            (EntryPointType::L1Handler, vec![]),
+            (
+                EntryPointType::Constructor,
+                vec![EntryPoint {
+                    selector: EntryPointSelector(shash!(
+                        "0x028ffe4ff0f226a9107253e17a904099aa4f63a02a5621de0576e5aa71bc5194"
+                    )),
+                    offset: EntryPointOffset(shash!(
+                        "0x0000000000000000000000000000000000000000000000000000000000000062"
+                    )),
+                }],
+            ),
+            (
+                EntryPointType::External,
+                vec![EntryPoint {
+                    selector: EntryPointSelector(shash!(
+                        "0x0000000000000000000000000000000000000000000000000000000000000000"
+                    )),
+                    offset: EntryPointOffset(shash!(
+                        "0x0000000000000000000000000000000000000000000000000000000000000086"
+                    )),
+                }],
+            ),
+        ]),
+    };
+    let mock_by_hash = mock(
+        "GET",
+        "/feeder_gateway/get_class_by_hash?\
+         classHash=0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17",
+    )
+    .with_status(200)
+    .with_body(contract_class_body())
+    .create();
+    let contract_class = starknet_client
+        .class_by_hash(ClassHash(shash!(
+            "0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17"
+        )))
+        .await
+        .unwrap();
+    mock_by_hash.assert();
+    assert_eq!(ContractClass::from(contract_class), expected_contract_class);
 }
 
 #[tokio::test]
