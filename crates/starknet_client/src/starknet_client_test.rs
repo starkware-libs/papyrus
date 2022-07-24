@@ -1,15 +1,11 @@
-use std::collections::HashMap;
-
 use mockito::mock;
-use starknet_api::serde_utils::bytes_from_hex_str;
 use starknet_api::{
-    shash, BlockHash, BlockNumber, ClassHash, ContractAddress, DeployedContract, Fee, GlobalRoot,
-    Nonce, StarkHash, StorageEntry, StorageKey, TransactionHash, TransactionSignature,
-    TransactionVersion,
+    shash, BlockNumber, ClassHash, ContractAddress, Fee, Nonce, StarkHash, TransactionHash,
+    TransactionSignature, TransactionVersion,
 };
 
 // TODO(dan): use SN structs once available & sort.
-use super::objects::block::{BlockStateUpdate, StateDiff};
+use super::objects::block::BlockStateUpdate;
 use super::objects::transaction::{DeclareTransaction, TransactionType};
 use super::test_utils::read_resource::read_resource_file;
 use super::{Block, StarknetClient, GET_BLOCK_URL, GET_STATE_UPDATE_URL};
@@ -73,89 +69,14 @@ async fn declare_tx_serde() {
 #[tokio::test]
 async fn test_state_update() {
     let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
-    let body = r#"
-    {
-        "block_hash": "0x3f65ef25e87a83d92f32f5e4869a33580f9db47ec980c1ff27bdb5151914de5",
-        "new_root": "02ade8eea6eb6523d22a408a1f035bd351a9a5dce28926ca92d7abb490c0e74a",
-        "old_root": "0465b219d93bcb2776aa3abb009423be3e2d04dba6453d7e027830740cd699a4",
-        "state_diff":
-        {
-            "storage_diffs":
-            {
-                "0x13386f165f065115c1da38d755be261023c32f0134a03a8e66b6bb1e0016014":
-                [
-                    {
-                        "key": "0x3b3a699bb6ef37ff4b9c4e14319c7d8e9c9bdd10ff402d1ebde18c62ae58381",
-                        "value": "0x61454dd6e5c83621e41b74c"
-                    },
-                    {
-                        "key": "0x1557182e4359a1f0c6301278e8f5b35a776ab58d39892581e357578fb287836",
-                        "value": "0x79dd8085e3e5a96ea43e7d"
-                    }
-                ]
-            },
-            "deployed_contracts":
-            [
-                {
-                    "address": "0x3e10411edafd29dfe6d427d03e35cb261b7a5efeee61bf73909ada048c029b9",
-                    "class_hash": "0x071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64"
-                }
-            ]
-        }
-    }"#;
+    let raw_state_update = read_resource_file("block_state_update.json");
     let mock = mock("GET", "/feeder_gateway/get_state_update?blockNumber=123456")
         .with_status(200)
-        .with_body(body)
+        .with_body(&raw_state_update)
         .create();
     let state_update = starknet_client.state_update(BlockNumber(123456)).await.unwrap();
     mock.assert();
-    let expected_state_update = BlockStateUpdate {
-        block_hash: BlockHash(shash!(
-            "0x3f65ef25e87a83d92f32f5e4869a33580f9db47ec980c1ff27bdb5151914de5"
-        )),
-        new_root: GlobalRoot(StarkHash(
-            bytes_from_hex_str::<32, false>(
-                "02ade8eea6eb6523d22a408a1f035bd351a9a5dce28926ca92d7abb490c0e74a",
-            )
-            .unwrap(),
-        )),
-        old_root: GlobalRoot(StarkHash(
-            bytes_from_hex_str::<32, false>(
-                "0465b219d93bcb2776aa3abb009423be3e2d04dba6453d7e027830740cd699a4",
-            )
-            .unwrap(),
-        )),
-        state_diff: StateDiff {
-            storage_diffs: HashMap::from([(
-                ContractAddress(shash!(
-                    "0x13386f165f065115c1da38d755be261023c32f0134a03a8e66b6bb1e0016014"
-                )),
-                vec![
-                    StorageEntry {
-                        key: StorageKey(shash!(
-                            "0x3b3a699bb6ef37ff4b9c4e14319c7d8e9c9bdd10ff402d1ebde18c62ae58381"
-                        )),
-                        value: shash!("0x61454dd6e5c83621e41b74c"),
-                    },
-                    StorageEntry {
-                        key: StorageKey(shash!(
-                            "0x1557182e4359a1f0c6301278e8f5b35a776ab58d39892581e357578fb287836"
-                        )),
-                        value: shash!("0x79dd8085e3e5a96ea43e7d"),
-                    },
-                ],
-            )]),
-            deployed_contracts: vec![DeployedContract {
-                address: ContractAddress(shash!(
-                    "0x3e10411edafd29dfe6d427d03e35cb261b7a5efeee61bf73909ada048c029b9"
-                )),
-                class_hash: ClassHash(shash!(
-                    "0x071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64"
-                )),
-            }],
-            declared_contracts: vec![],
-        },
-    };
+    let expected_state_update: BlockStateUpdate = serde_json::from_str(&raw_state_update).unwrap();
     assert_eq!(state_update, expected_state_update);
 }
 
