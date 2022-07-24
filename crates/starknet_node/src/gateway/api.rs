@@ -19,9 +19,17 @@ pub enum Tag {
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub enum BlockId {
+pub enum BlockHashOrNumber {
+    #[serde(rename = "block_hash")]
     Hash(BlockHash),
+    #[serde(rename = "block_number")]
     Number(BlockNumber),
+}
+
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(untagged)]
+pub enum BlockId {
+    HashOrNumber(BlockHashOrNumber),
     Tag(Tag),
 }
 

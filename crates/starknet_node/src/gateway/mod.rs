@@ -56,11 +56,11 @@ fn get_block_number<Mode: TransactionKind>(
     block_id: BlockId,
 ) -> Result<BlockNumber, Error> {
     Ok(match block_id {
-        BlockId::Hash(block_hash) => txn
+        BlockId::HashOrNumber(BlockHashOrNumber::Hash(block_hash)) => txn
             .get_block_number_by_hash(&block_hash)
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?,
-        BlockId::Number(block_number) => {
+        BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number)) => {
             // Check that the block exists.
             let last_block_number = get_latest_block_number(txn)?
                 .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
@@ -200,7 +200,10 @@ impl JsonRpcServer for JsonRpcServerImpl {
             .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
 
         // Get the old root.
-        let parent_block_number = get_block_number(&txn, BlockId::Hash(header.parent_hash));
+        let parent_block_number = get_block_number(
+            &txn,
+            BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.parent_hash)),
+        );
         let mut old_root =
             GlobalRoot(StarkHash::from_hex(GENESIS_HASH).map_err(internal_server_error)?);
         if parent_block_number.is_ok() {
