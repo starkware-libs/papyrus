@@ -113,4 +113,13 @@ pub trait JsonRpc {
         block_id: BlockId,
         contract_address: ContractAddress,
     ) -> Result<ContractClass, Error>;
+
+    /// Gets the contract class hash in the given block for the contract deployed at the given
+    /// address.
+    #[method(name = "getClassHashAt")]
+    fn get_class_hash_at(
+        &self,
+        block_id: BlockId,
+        contract_address: ContractAddress,
+    ) -> Result<ClassHash, Error>;
 }
