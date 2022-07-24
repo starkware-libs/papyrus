@@ -5,7 +5,7 @@ use jsonrpsee::types::EmptyParams;
 use starknet_api::{
     shash, BlockBody, BlockHash, BlockHeader, CallData, ClassHash, ContractAddressSalt,
     DeployTransaction, DeployedContract, StarkHash, StateDiffForward, StorageDiff, StorageEntry,
-    TransactionVersion,
+    Transaction, TransactionVersion,
 };
 
 use super::api::*;
@@ -470,17 +470,17 @@ async fn test_get_transaction_by_hash() -> Result<(), anyhow::Error> {
 
     let expected_transaction = body.transactions.get(0).unwrap();
     let res = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionWithType>(
             "starknet_getTransactionByHash",
             [expected_transaction.transaction_hash()],
         )
         .await
         .unwrap();
-    assert_eq!(res, expected_transaction.clone());
+    assert_eq!(res, TransactionWithType::from(expected_transaction.clone()));
 
     // Ask for an invalid transaction.
     let err = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionWithType>(
             "starknet_getTransactionByHash",
             [TransactionHash(StarkHash::from_u64(1))],
         )
@@ -512,27 +512,27 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
 
     // Get transaction by block hash.
     let res = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), 0),
         )
         .await
         .unwrap();
-    assert_eq!(res, expected_transaction.clone());
+    assert_eq!(res, TransactionWithType::from(expected_transaction.clone()));
 
     // Get transaction by block number.
     let res = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), 0),
         )
         .await
         .unwrap();
-    assert_eq!(res, expected_transaction.clone());
+    assert_eq!(res, TransactionWithType::from(expected_transaction.clone()));
 
     // Ask for an invalid block hash.
     let err = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
@@ -551,7 +551,7 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
 
     // Ask for an invalid block number.
     let err = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), 0),
         )
@@ -565,7 +565,7 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
 
     // Ask for an invalid transaction index.
     let err = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), 1),
         )
@@ -751,7 +751,7 @@ async fn test_get_transaction_receipt() -> Result<(), anyhow::Error> {
 
     // Ask for an invalid transaction.
     let err = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionReceipt>(
             "starknet_getTransactionReceipt",
             [TransactionHash(StarkHash::from_u64(1))],
         )

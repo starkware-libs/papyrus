@@ -3,10 +3,10 @@ use jsonrpsee::proc_macros::rpc;
 use serde::{Deserialize, Serialize};
 pub use starknet_api::{
     BlockHash, BlockNumber, ClassHash, ContractAddress, ContractClass, StarkFelt, StorageKey,
-    Transaction, TransactionHash, TransactionOffsetInBlock, TransactionReceipt,
+    TransactionHash, TransactionOffsetInBlock, TransactionReceipt,
 };
 
-pub use super::objects::{Block, StateUpdate};
+pub use super::objects::{Block, StateUpdate, TransactionWithType};
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub enum Tag {
@@ -77,7 +77,7 @@ pub trait JsonRpc {
     fn get_transaction_by_hash(
         &self,
         transaction_hash: TransactionHash,
-    ) -> Result<Transaction, Error>;
+    ) -> Result<TransactionWithType, Error>;
 
     /// Gets the details of a transaction by a given block id and index.
     #[method(name = "getTransactionByBlockIdAndIndex")]
@@ -85,7 +85,7 @@ pub trait JsonRpc {
         &self,
         block_id: BlockId,
         index: TransactionOffsetInBlock,
-    ) -> Result<Transaction, Error>;
+    ) -> Result<TransactionWithType, Error>;
 
     /// Gets the number of transactions in a block given a block id.
     #[method(name = "getBlockTransactionCount")]
