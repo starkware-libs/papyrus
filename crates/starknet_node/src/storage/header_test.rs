@@ -1,7 +1,7 @@
 use assert_matches::assert_matches;
 use starknet_api::{BlockHash, BlockHeader, BlockNumber};
 
-use super::*;
+use super::{HeaderStorageReader, HeaderStorageWriter, StorageError};
 use crate::storage::test_utils::get_test_storage;
 
 #[tokio::test]

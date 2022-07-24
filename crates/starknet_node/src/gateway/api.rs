@@ -1,12 +1,12 @@
 use jsonrpsee::core::Error;
 use jsonrpsee::proc_macros::rpc;
 use serde::{Deserialize, Serialize};
-pub use starknet_api::{
+use starknet_api::{
     BlockHash, BlockNumber, ClassHash, ContractAddress, ContractClass, StarkFelt, StorageKey,
     Transaction, TransactionHash, TransactionOffsetInBlock, TransactionReceipt,
 };
 
-pub use super::objects::{Block, StateUpdate};
+use super::objects::{Block, StateUpdate};
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub enum Tag {

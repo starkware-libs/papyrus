@@ -14,13 +14,15 @@ use jsonrpsee::types::error::{ErrorObject, INTERNAL_ERROR_MSG};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockBody, BlockNumber, ContractAddress, DeclareTransactionReceipt, GlobalRoot, StarkFelt,
-    StarkHash, StateNumber, StorageKey, Transaction, TransactionHash, TransactionOffsetInBlock,
-    GENESIS_HASH,
+    BlockBody, BlockNumber, ClassHash, ContractAddress, ContractClass, DeclareTransactionReceipt,
+    GlobalRoot, StarkFelt, StarkHash, StateNumber, StorageKey, Transaction, TransactionHash,
+    TransactionOffsetInBlock, TransactionReceipt, GENESIS_HASH,
 };
 
-use self::api::*;
-use self::objects::{from_starknet_storage_diffs, BlockHeader, StateDiff, Transactions};
+use self::api::{BlockHashOrNumber, BlockId, JsonRpcError, JsonRpcServer, Tag};
+use self::objects::{
+    from_starknet_storage_diffs, Block, BlockHeader, StateDiff, StateUpdate, Transactions,
+};
 use crate::storage::{
     BodyStorageReader, HeaderStorageReader, StateStorageReader, StorageReader, StorageTxn,
     TransactionKind,

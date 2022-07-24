@@ -3,7 +3,7 @@ use starknet_api::{
     StateNumber, StorageDiff, StorageEntry, StorageKey,
 };
 
-use super::*;
+use super::{StateStorageReader, StateStorageWriter};
 use crate::storage::test_utils::get_test_storage;
 
 #[test]

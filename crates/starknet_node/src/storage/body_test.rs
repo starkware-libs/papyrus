@@ -4,7 +4,7 @@ use starknet_api::{
     Transaction, TransactionHash, TransactionOffsetInBlock, TransactionVersion,
 };
 
-use super::*;
+use super::{BodyStorageReader, BodyStorageWriter, StorageError};
 use crate::storage::test_utils::get_test_storage;
 
 #[tokio::test]

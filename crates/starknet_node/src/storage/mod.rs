@@ -1,9 +1,6 @@
-#[path = "components/body.rs"]
 mod body;
 mod db;
-#[path = "components/header.rs"]
 mod header;
-#[path = "components/state.rs"]
 mod state;
 #[cfg(test)]
 #[path = "test_utils.rs"]
@@ -29,18 +26,6 @@ pub use self::state::{StateStorageReader, StateStorageWriter};
 #[derive(Serialize, Deserialize)]
 pub struct StorageConfig {
     pub db_config: DbConfig,
-}
-
-pub struct StorageComponents {
-    pub storage_reader: StorageReader,
-    pub storage_writer: StorageWriter,
-}
-
-impl StorageComponents {
-    pub fn new(config: StorageConfig) -> Result<Self, StorageError> {
-        let (storage_reader, storage_writer) = open_storage(config.db_config)?;
-        Ok(Self { storage_reader, storage_writer })
-    }
 }
 
 #[derive(thiserror::Error, Debug)]

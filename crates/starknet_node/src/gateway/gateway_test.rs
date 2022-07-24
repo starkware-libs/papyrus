@@ -1,15 +1,19 @@
 use assert_matches::assert_matches;
 use jsonrpsee::core::Error;
 use jsonrpsee::http_client::HttpClientBuilder;
+use jsonrpsee::http_server::types::error::CallError;
+use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
 use starknet_api::{
-    shash, BlockBody, BlockHash, BlockHeader, CallData, ClassHash, DeployTransaction,
-    DeployedContract, Fee, StarkHash, StateDiffForward, StorageDiff, StorageEntry,
-    TransactionVersion,
+    shash, BlockBody, BlockHash, BlockHeader, BlockNumber, CallData, ClassHash, ContractAddress,
+    ContractClass, DeclareTransactionReceipt, DeployTransaction, DeployedContract, Fee, GlobalRoot,
+    StarkFelt, StarkHash, StateDiffForward, StorageDiff, StorageEntry, StorageKey, Transaction,
+    TransactionHash, TransactionReceipt, TransactionVersion,
 };
 
-use super::api::*;
-use super::*;
+use super::api::{BlockHashOrNumber, BlockId, JsonRpcClient, JsonRpcError, JsonRpcServer, Tag};
+use super::objects::{from_starknet_storage_diffs, Block, StateDiff, StateUpdate, Transactions};
+use super::{run_server, GatewayConfig, JsonRpcServerImpl};
 use crate::storage::{test_utils, BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 
 // TODO(anatg): Move out of the gateway so that storage and sync can use it too.
@@ -359,9 +363,7 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
-    let storage_components = storage_test_utils::get_test_storage();
-    let storage_reader = storage_components.block_storage_reader;
-    let mut storage_writer = storage_components.block_storage_writer;
+    let (storage_reader, mut storage_writer) = test_utils::get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
     let (header, _, diff) = get_test_state_diff();
