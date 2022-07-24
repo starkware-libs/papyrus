@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-assert_matches = { version = "1.5.0" }
 log = { version = "0.4" }
 mockito = { version = "0.31.0" }
 reqwest = { version = "0.11", features = ["json", "blocking"] }
@@ -18,3 +17,4 @@ web3 = { version = "0.18.0" }
 
 [dev-dependencies]
 assert = { version = "0.0.4" }
+assert_matches = { version = "1.5.0" }

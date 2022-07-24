@@ -1,3 +1,4 @@
+use assert_matches::assert_matches;
 use starknet_api::{BlockHash, BlockHeader, BlockNumber};
 
 use super::BlockStorageError;
