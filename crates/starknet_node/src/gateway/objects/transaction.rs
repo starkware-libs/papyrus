@@ -4,7 +4,7 @@ use starknet_api::{Transaction, TransactionHash};
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum Transactions {
     Hashes(Vec<TransactionHash>),
-    Full(Vec<TypedTransaction>),
+    Full(Vec<TransactionWithType>),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -23,23 +23,23 @@ impl Default for TransactionType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct TypedTransaction {
+pub struct TransactionWithType {
     pub r#type: TransactionType,
     #[serde(flatten)]
     pub transaction: Transaction,
 }
 
-impl From<Transaction> for TypedTransaction {
+impl From<Transaction> for TransactionWithType {
     fn from(transaction: Transaction) -> Self {
         match transaction {
             Transaction::Declare(_) => {
-                TypedTransaction { r#type: TransactionType::Declare, transaction }
+                TransactionWithType { r#type: TransactionType::Declare, transaction }
             }
             Transaction::Deploy(_) => {
-                TypedTransaction { r#type: TransactionType::Deploy, transaction }
+                TransactionWithType { r#type: TransactionType::Deploy, transaction }
             }
             Transaction::Invoke(_) => {
-                TypedTransaction { r#type: TransactionType::Invoke, transaction }
+                TransactionWithType { r#type: TransactionType::Invoke, transaction }
             }
         }
     }
