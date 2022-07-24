@@ -49,11 +49,21 @@ pub enum JsonRpcError {
     InvalidContractClassHash = 28,
 }
 
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct BlockHashAndNumber {
+    pub block_hash: BlockHash,
+    pub block_number: BlockNumber,
+}
+
 #[rpc(server, client, namespace = "starknet")]
 pub trait JsonRpc {
     /// Gets the most recent accepted block number.
     #[method(name = "blockNumber")]
     fn block_number(&self) -> Result<BlockNumber, Error>;
+
+    /// Gets the most recent accepted block hash and number.
+    #[method(name = "blockHashAndNumber")]
+    fn block_hash_and_number(&self) -> Result<BlockHashAndNumber, Error>;
 
     /// Gets block information with transaction hashes given a block identifier.
     #[method(name = "getBlockWithTxHashes")]

@@ -113,6 +113,37 @@ async fn test_block_number() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
+async fn test_block_hash_and_number() -> Result<(), anyhow::Error> {
+    let storage_components = storage_test_utils::get_test_storage();
+    let storage_reader = storage_components.block_storage_reader;
+    let mut storage_writer = storage_components.block_storage_writer;
+    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+
+    // No blocks yet.
+    let err = module
+        .call::<_, BlockHashAndNumber>("starknet_blockHashAndNumber", EmptyParams::new())
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::NoBlocks as i32,
+        JsonRpcError::NoBlocks.to_string(),
+        None::<()>,
+    ));
+
+    // Add a block and check again.
+    let (header, _) = get_test_block(1);
+    storage_writer.begin_rw_txn()?.append_header(header.block_number, &header)?.commit()?;
+    let block_hash_and_number = module
+        .call::<_, BlockHashAndNumber>("starknet_blockHashAndNumber", EmptyParams::new())
+        .await?;
+    assert_eq!(
+        block_hash_and_number,
+        BlockHashAndNumber { block_hash: header.block_hash, block_number: header.block_number }
+    );
+    Ok(())
+}
+
+#[tokio::test]
 async fn test_get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
     let storage_components = storage_test_utils::get_test_storage();
     let storage_reader = storage_components.block_storage_reader;
