@@ -19,7 +19,7 @@ use starknet_api::{
     TransactionOffsetInBlock, TransactionReceipt, GENESIS_HASH,
 };
 
-use self::api::{BlockHashOrNumber, BlockId, JsonRpcError, JsonRpcServer, Tag};
+use self::api::{BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcError, JsonRpcServer, Tag};
 use self::objects::{
     from_starknet_storage_diffs, Block, BlockHeader, StateDiff, StateUpdate, TransactionWithType,
     Transactions,
@@ -87,21 +87,30 @@ fn get_latest_block_number<Mode: TransactionKind>(
     Ok(txn.get_header_marker().map_err(internal_server_error)?.prev())
 }
 
-fn get_block_by_number<Mode: TransactionKind>(
+fn get_block_header_by_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
     block_number: BlockNumber,
-) -> Result<(BlockHeader, BlockBody), Error> {
+) -> Result<BlockHeader, Error> {
     let header = txn
         .get_block_header(block_number)
         .map_err(internal_server_error)?
         .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
+
+    Ok(BlockHeader::from(header))
+}
+
+fn get_block_by_number<Mode: TransactionKind>(
+    txn: &StorageTxn<'_, Mode>,
+    block_number: BlockNumber,
+) -> Result<(BlockHeader, BlockBody), Error> {
+    let header = get_block_header_by_number(txn, block_number)?;
 
     let transactions = txn
         .get_block_transactions(block_number)
         .map_err(internal_server_error)?
         .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
 
-    Ok((BlockHeader::from(header), BlockBody { transactions }))
+    Ok((header, BlockBody { transactions }))
 }
 
 #[async_trait]
@@ -109,6 +118,15 @@ impl JsonRpcServer for JsonRpcServerImpl {
     fn block_number(&self) -> Result<BlockNumber, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         get_latest_block_number(&txn)?.ok_or_else(|| Error::from(JsonRpcError::NoBlocks))
+    }
+
+    fn block_hash_and_number(&self) -> Result<BlockHashAndNumber, Error> {
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let block_number =
+            get_latest_block_number(&txn)?.ok_or_else(|| Error::from(JsonRpcError::NoBlocks))?;
+        let header = get_block_header_by_number(&txn, block_number)?;
+
+        Ok(BlockHashAndNumber { block_hash: header.block_hash, block_number })
     }
 
     fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> Result<Block, Error> {
