@@ -3,9 +3,10 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     CallData, ClassHash, ContractAddress, DeclareTransaction as NodeDeclareTransaction,
-    DeployTransaction as NodeDeployTransaction, EntryPointSelector, EthAddress, Event, Fee,
-    InvokeTransaction as NodeInvokeTransaction, L1ToL2Payload, L2ToL1Payload, Nonce, StarkHash,
-    Transaction as NodeTransaction, TransactionHash, TransactionSignature, TransactionVersion,
+    DeployTransaction as NodeDeployTransaction, EntryPointSelector, EntryPointType, EthAddress,
+    Event, Fee, InvokeTransaction as NodeInvokeTransaction, L1ToL2Payload, L2ToL1Payload, Nonce,
+    StarkHash, Transaction as NodeTransaction, TransactionHash, TransactionSignature,
+    TransactionVersion,
 };
 
 // TODO(dan): consider extracting common fields out (version, hash, type).
@@ -144,21 +145,6 @@ pub struct EmptyBuiltinInstanceCounter {}
     Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct ContractAddressSalt(pub StarkHash);
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub enum EntryPointType {
-    #[serde(rename(deserialize = "EXTERNAL", serialize = "EXTERNAL"))]
-    External,
-    #[serde(rename(deserialize = "L1_HANDLER", serialize = "L1_HANDLER"))]
-    L1Handler,
-    #[serde(rename(deserialize = "CONSTRUCTOR", serialize = "CONSTRUCTOR"))]
-    Constructor,
-}
-impl Default for EntryPointType {
-    fn default() -> Self {
-        EntryPointType::External
-    }
-}
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct L1ToL2Nonce(pub StarkHash);

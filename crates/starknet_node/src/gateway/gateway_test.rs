@@ -772,10 +772,8 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
     // TODO(anatg): Write a contract class to the storage.
 
     let expected_contract_class = ContractClass::default();
-    let res = module
-        .call::<_, ContractClass>("starknet_getClass", [expected_contract_class.class_hash])
-        .await
-        .unwrap();
+    let res =
+        module.call::<_, ContractClass>("starknet_getClass", [ClassHash::default()]).await.unwrap();
     assert_eq!(res, expected_contract_class.clone());
 
     // TODO(anatg): Ask for an invalid contract class.
