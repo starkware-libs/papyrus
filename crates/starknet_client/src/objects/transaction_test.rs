@@ -12,9 +12,9 @@ fn load_deploy_transaction_succeeds() {
 
 #[test]
 fn load_invoke_transaction_succeeds() {
-    assert_ok!(serde_json::from_str::<InvokeTransaction>(&read_resource_file(
-        "invoke_transaction.json"
-    )));
+    for file_name in ["invoke_transaction.json", "invoke_transaction_l1_handler.json"] {
+        assert_ok!(serde_json::from_str::<InvokeTransaction>(&read_resource_file(file_name)));
+    }
 }
 
 #[test]
