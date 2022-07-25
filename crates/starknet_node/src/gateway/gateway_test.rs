@@ -6,30 +6,36 @@ use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
 use starknet_api::{
     shash, BlockBody, BlockHash, BlockHeader, BlockNumber, CallData, ClassHash, ContractAddress,
-    ContractClass, DeclareTransactionReceipt, DeployTransaction, DeployedContract, Fee, GlobalRoot,
-    StarkFelt, StarkHash, StateDiffForward, StorageDiff, StorageEntry, StorageKey, Transaction,
-    TransactionHash, TransactionReceipt, TransactionVersion,
+    ContractAddressSalt, ContractClass, DeclareTransactionReceipt, DeployTransaction,
+    DeployedContract, GlobalRoot, StarkFelt, StarkHash, StateDiffForward, StorageDiff,
+    StorageEntry, StorageKey, Transaction, TransactionHash, TransactionReceipt, TransactionVersion,
 };
 
 use super::api::{BlockHashOrNumber, BlockId, JsonRpcClient, JsonRpcError, JsonRpcServer, Tag};
-use super::objects::{from_starknet_storage_diffs, Block, StateDiff, StateUpdate, Transactions};
+use super::objects::{
+    from_starknet_storage_diffs, Block, StateDiff, StateUpdate, TransactionWithType, Transactions,
+};
 use super::{run_server, GatewayConfig, JsonRpcServerImpl};
 use crate::storage::{test_utils, BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 
 // TODO(anatg): Move out of the gateway so that storage and sync can use it too.
 fn get_test_block(transaction_count: usize) -> (BlockHeader, BlockBody) {
-    let block_hash =
-        BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
-    let header = BlockHeader { block_hash, block_number: BlockNumber(0), ..BlockHeader::default() };
+    let header = BlockHeader {
+        block_hash: BlockHash(shash!(
+            "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"
+        )),
+        block_number: BlockNumber(0),
+        ..BlockHeader::default()
+    };
     let mut transactions = vec![];
     for i in 0..transaction_count {
-        let transaction_hash = TransactionHash(StarkHash::from_u64(i as u64));
         let transaction = Transaction::Deploy(DeployTransaction {
-            transaction_hash,
-            max_fee: Fee(100),
+            transaction_hash: TransactionHash(StarkHash::from_u64(i as u64)),
             version: TransactionVersion(shash!("0x1")),
             contract_address: ContractAddress(shash!("0x2")),
             constructor_calldata: CallData(vec![shash!("0x3")]),
+            class_hash: ClassHash(StarkHash::from_u64(i as u64)),
+            contract_address_salt: ContractAddressSalt(shash!("0x4")),
         });
         transactions.push(transaction);
     }
@@ -202,7 +208,7 @@ async fn test_get_block_w_full_transactions() -> Result<(), anyhow::Error> {
     let expected_transaction = body.transactions.get(0).unwrap();
     let expected_block = Block {
         header: header.into(),
-        transactions: Transactions::Full(vec![expected_transaction.clone()]),
+        transactions: Transactions::Full(vec![expected_transaction.clone().into()]),
     };
 
     // Get block by hash.
@@ -456,17 +462,17 @@ async fn test_get_transaction_by_hash() -> Result<(), anyhow::Error> {
 
     let expected_transaction = body.transactions.get(0).unwrap();
     let res = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionWithType>(
             "starknet_getTransactionByHash",
             [expected_transaction.transaction_hash()],
         )
         .await
         .unwrap();
-    assert_eq!(res, expected_transaction.clone());
+    assert_eq!(res, TransactionWithType::from(expected_transaction.clone()));
 
     // Ask for an invalid transaction.
     let err = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionWithType>(
             "starknet_getTransactionByHash",
             [TransactionHash(StarkHash::from_u64(1))],
         )
@@ -496,27 +502,27 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
 
     // Get transaction by block hash.
     let res = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), 0),
         )
         .await
         .unwrap();
-    assert_eq!(res, expected_transaction.clone());
+    assert_eq!(res, TransactionWithType::from(expected_transaction.clone()));
 
     // Get transaction by block number.
     let res = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), 0),
         )
         .await
         .unwrap();
-    assert_eq!(res, expected_transaction.clone());
+    assert_eq!(res, TransactionWithType::from(expected_transaction.clone()));
 
     // Ask for an invalid block hash.
     let err = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
@@ -535,7 +541,7 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
 
     // Ask for an invalid block number.
     let err = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), 0),
         )
@@ -549,7 +555,7 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
 
     // Ask for an invalid transaction index.
     let err = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), 1),
         )
@@ -729,7 +735,7 @@ async fn test_get_transaction_receipt() -> Result<(), anyhow::Error> {
 
     // Ask for an invalid transaction.
     let err = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionReceipt>(
             "starknet_getTransactionReceipt",
             [TransactionHash(StarkHash::from_u64(1))],
         )

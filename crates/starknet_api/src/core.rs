@@ -12,7 +12,10 @@ pub struct ContractAddress(pub StarkHash);
 )]
 pub struct ClassHash(pub StarkHash);
 
-#[derive(
-    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct Nonce(pub StarkFelt);
+impl Default for Nonce {
+    fn default() -> Self {
+        Nonce(StarkFelt::from_u64(0))
+    }
+}

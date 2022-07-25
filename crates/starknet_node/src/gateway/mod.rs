@@ -15,13 +15,14 @@ use log::{error, info};
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockBody, BlockNumber, ClassHash, ContractAddress, ContractClass, DeclareTransactionReceipt,
-    GlobalRoot, StarkFelt, StarkHash, StateNumber, StorageKey, Transaction, TransactionHash,
+    GlobalRoot, StarkFelt, StarkHash, StateNumber, StorageKey, TransactionHash,
     TransactionOffsetInBlock, TransactionReceipt, GENESIS_HASH,
 };
 
 use self::api::{BlockHashOrNumber, BlockId, JsonRpcError, JsonRpcServer, Tag};
 use self::objects::{
-    from_starknet_storage_diffs, Block, BlockHeader, StateDiff, StateUpdate, Transactions,
+    from_starknet_storage_diffs, Block, BlockHeader, StateDiff, StateUpdate, TransactionWithType,
+    Transactions,
 };
 use crate::storage::{
     BodyStorageReader, HeaderStorageReader, StateStorageReader, StorageReader, StorageTxn,
@@ -125,7 +126,12 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let block_number = get_block_number(&txn, block_id)?;
         let (header, body) = get_block_by_number(&txn, block_number)?;
 
-        Ok(Block { header, transactions: Transactions::Full(body.transactions) })
+        Ok(Block {
+            header,
+            transactions: Transactions::Full(
+                body.transactions.into_iter().map(TransactionWithType::from).collect(),
+            ),
+        })
     }
 
     fn get_storage_at(
@@ -153,7 +159,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
     fn get_transaction_by_hash(
         &self,
         transaction_hash: TransactionHash,
-    ) -> Result<Transaction, Error> {
+    ) -> Result<TransactionWithType, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let (block_number, tx_offset_in_block) = txn
@@ -161,22 +167,28 @@ impl JsonRpcServer for JsonRpcServerImpl {
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::InvalidTransactionHash))?;
 
-        txn.get_transaction(block_number, tx_offset_in_block)
+        let transaction = txn
+            .get_transaction(block_number, tx_offset_in_block)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::InvalidTransactionHash))
+            .ok_or_else(|| Error::from(JsonRpcError::InvalidTransactionHash))?;
+
+        Ok(TransactionWithType::from(transaction))
     }
 
     fn get_transaction_by_block_id_and_index(
         &self,
         block_id: BlockId,
         index: TransactionOffsetInBlock,
-    ) -> Result<Transaction, Error> {
+    ) -> Result<TransactionWithType, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
 
-        txn.get_transaction(block_number, index)
+        let transaction = txn
+            .get_transaction(block_number, index)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::InvalidTransactionIndex))
+            .ok_or_else(|| Error::from(JsonRpcError::InvalidTransactionIndex))?;
+
+        Ok(TransactionWithType::from(transaction))
     }
 
     fn get_block_transaction_count(&self, block_id: BlockId) -> Result<usize, Error> {
