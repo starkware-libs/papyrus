@@ -14,7 +14,10 @@ use starknet_api::{
 use super::objects::block::{BlockStateUpdate, StateDiff};
 use super::objects::transaction::{DeclareTransaction, TransactionType};
 use super::test_utils::read_resource::read_resource_file;
-use super::{Block, ClientError, StarknetClient, GET_BLOCK_URL, GET_STATE_UPDATE_URL};
+use super::{
+    Block, ClientError, StarknetClient, BLOCK_NUMBER_QUERY, CLASS_HASH_QUERY, GET_BLOCK_URL,
+    GET_STATE_UPDATE_URL,
+};
 
 #[test]
 fn test_new_urls() {
@@ -137,10 +140,11 @@ async fn test_state_update() {
             ]
         }
     }"#;
-    let mock = mock("GET", "/feeder_gateway/get_state_update?blockNumber=123456")
-        .with_status(200)
-        .with_body(body)
-        .create();
+    let mock =
+        mock("GET", &format!("/feeder_gateway/get_state_update?{}=123456", BLOCK_NUMBER_QUERY)[..])
+            .with_status(200)
+            .with_body(body)
+            .create();
     let state_update = starknet_client.state_update(BlockNumber(123456)).await.unwrap();
     mock.assert();
     let expected_state_update = BlockStateUpdate {
@@ -254,14 +258,15 @@ async fn contract_class() {
             ),
         ]),
     };
-    let mock_by_hash = mock(
-        "GET",
-        "/feeder_gateway/get_class_by_hash?\
-         classHash=0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17",
-    )
-    .with_status(200)
-    .with_body(contract_class_body())
-    .create();
+    let mock_by_hash =
+        mock(
+            "GET",
+            &format!("/feeder_gateway/get_class_by_hash?\
+         {CLASS_HASH_QUERY}=0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17")[..],
+        )
+        .with_status(200)
+        .with_body(contract_class_body())
+        .create();
     let contract_class = starknet_client
         .class_by_hash(ClassHash(shash!(
             "0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17"
@@ -276,7 +281,7 @@ async fn contract_class() {
 async fn get_block() {
     let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
     let raw_block = read_resource_file("block.json");
-    let mock = mock("GET", "/feeder_gateway/get_block?blockNumber=20")
+    let mock = mock("GET", &format!("/feeder_gateway/get_block?{}=20", BLOCK_NUMBER_QUERY)[..])
         .with_status(200)
         .with_body(&raw_block)
         .create();
