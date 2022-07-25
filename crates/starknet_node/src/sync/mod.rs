@@ -123,11 +123,11 @@ fn stream_new_blocks(
                 tokio::time::sleep(block_propation_sleep_duration).await;
                 continue;
             }
-            let header_stream = central_source
+            let block_stream = central_source
                 .stream_new_blocks(header_marker, last_block_number)
                 .fuse();
-            pin_mut!(header_stream);
-            while let Some(Ok((block_number, header, body))) = header_stream.next().await {
+            pin_mut!(block_stream);
+            while let Some(Ok((block_number, header, body))) = block_stream.next().await {
                 yield SyncEvent::BlockAvailable {
                     block_number,
                     header,
@@ -161,11 +161,11 @@ fn stream_new_state_diffs(
                 tokio::time::sleep(block_propation_sleep_duration).await;
                 continue;
             }
-            let header_stream = central_source
+            let state_diff_stream = central_source
                 .stream_state_updates(state_marker, last_block_number)
                 .fuse();
-            pin_mut!(header_stream);
-            while let Some(Ok((block_number, state_diff))) = header_stream.next().await {
+            pin_mut!(state_diff_stream);
+            while let Some(Ok((block_number, state_diff))) = state_diff_stream.next().await {
                 yield SyncEvent::StateDiffAvailable {
                     block_number,
                     state_diff,
