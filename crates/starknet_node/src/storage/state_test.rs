@@ -4,7 +4,8 @@ use starknet_api::{
 };
 
 use super::{StateStorageReader, StateStorageWriter};
-use crate::storage::components::block::test_utils::get_test_storage;
+use crate::storage::test_utils::get_test_storage;
+
 #[test]
 fn test_append_diff() -> Result<(), anyhow::Error> {
     let c0 = ContractAddress(shash!("0x11"));

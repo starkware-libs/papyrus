@@ -14,17 +14,19 @@ use jsonrpsee::types::error::{ErrorObject, INTERNAL_ERROR_MSG};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockBody, BlockNumber, ContractAddress, DeclareTransactionReceipt, GlobalRoot, StarkFelt,
-    StarkHash, StateNumber, StorageKey, Transaction, TransactionHash, TransactionOffsetInBlock,
-    GENESIS_HASH,
+    BlockBody, BlockNumber, ClassHash, ContractAddress, ContractClass, DeclareTransactionReceipt,
+    GlobalRoot, StarkFelt, StarkHash, StateNumber, StorageKey, Transaction, TransactionHash,
+    TransactionOffsetInBlock, TransactionReceipt, GENESIS_HASH,
 };
 
-use self::api::*;
-use self::objects::{from_starknet_storage_diffs, BlockHeader, StateDiff, Transactions};
-use crate::storage::components::{
-    BlockStorageReader, BlockStorageTxn, BodyStorageReader, HeaderStorageReader, StateStorageReader,
+use self::api::{BlockHashOrNumber, BlockId, JsonRpcError, JsonRpcServer, Tag};
+use self::objects::{
+    from_starknet_storage_diffs, Block, BlockHeader, StateDiff, StateUpdate, Transactions,
 };
-use crate::storage::db::TransactionKind;
+use crate::storage::{
+    BodyStorageReader, HeaderStorageReader, StateStorageReader, StorageReader, StorageTxn,
+    TransactionKind,
+};
 
 #[derive(Serialize, Deserialize)]
 pub struct GatewayConfig {
@@ -33,7 +35,7 @@ pub struct GatewayConfig {
 
 /// Rpc server.
 struct JsonRpcServerImpl {
-    storage_reader: BlockStorageReader,
+    storage_reader: StorageReader,
 }
 
 impl From<JsonRpcError> for Error {
@@ -52,7 +54,7 @@ fn internal_server_error(err: impl Display) -> Error {
 }
 
 fn get_block_number<Mode: TransactionKind>(
-    txn: &BlockStorageTxn<'_, Mode>,
+    txn: &StorageTxn<'_, Mode>,
     block_id: BlockId,
 ) -> Result<BlockNumber, Error> {
     Ok(match block_id {
@@ -79,13 +81,13 @@ fn get_block_number<Mode: TransactionKind>(
 }
 
 fn get_latest_block_number<Mode: TransactionKind>(
-    txn: &BlockStorageTxn<'_, Mode>,
+    txn: &StorageTxn<'_, Mode>,
 ) -> Result<Option<BlockNumber>, Error> {
     Ok(txn.get_header_marker().map_err(internal_server_error)?.prev())
 }
 
 fn get_block_by_number<Mode: TransactionKind>(
-    txn: &BlockStorageTxn<'_, Mode>,
+    txn: &StorageTxn<'_, Mode>,
     block_number: BlockNumber,
 ) -> Result<(BlockHeader, BlockBody), Error> {
     let header = txn
@@ -293,7 +295,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
 pub async fn run_server(
     config: GatewayConfig,
-    storage_reader: BlockStorageReader,
+    storage_reader: StorageReader,
 ) -> anyhow::Result<(SocketAddr, HttpServerHandle)> {
     info!("Starting gateway.");
     let server = HttpServerBuilder::default().build(&config.server_ip).await?;

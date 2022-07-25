@@ -4,9 +4,8 @@ use starknet_api::{
     Transaction, TransactionHash, TransactionOffsetInBlock, TransactionVersion,
 };
 
-use super::{BlockStorageError, BodyStorageWriter};
-use crate::storage::components::block::body::BodyStorageReader;
-use crate::storage::components::block::test_utils::get_test_storage;
+use super::{BodyStorageReader, BodyStorageWriter, StorageError};
+use crate::storage::test_utils::get_test_storage;
 
 #[tokio::test]
 async fn test_append_body() -> Result<(), anyhow::Error> {
@@ -38,7 +37,7 @@ async fn test_append_body() -> Result<(), anyhow::Error> {
     if let Err(err) = writer.begin_rw_txn()?.append_body(BlockNumber(5), &body2) {
         assert_matches!(
             err,
-            BlockStorageError::MarkerMismatch { expected: BlockNumber(2), found: BlockNumber(5) }
+            StorageError::MarkerMismatch { expected: BlockNumber(2), found: BlockNumber(5) }
         );
     } else {
         panic!("Unexpected Ok.");
@@ -49,7 +48,7 @@ async fn test_append_body() -> Result<(), anyhow::Error> {
     if let Err(err) = writer.begin_rw_txn()?.append_body(BlockNumber(3), &body3) {
         assert_matches!(
             err,
-            BlockStorageError::TransactionHashAlreadyExists {
+            StorageError::TransactionHashAlreadyExists {
                 tx_hash,
                 block_number: BlockNumber(3),
                 tx_offset_in_block: TransactionOffsetInBlock(1)

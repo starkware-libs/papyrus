@@ -1,9 +1,8 @@
 use assert_matches::assert_matches;
 use starknet_api::{BlockHash, BlockHeader, BlockNumber};
 
-use super::BlockStorageError;
-use crate::storage::components::block::test_utils::get_test_storage;
-use crate::storage::components::{HeaderStorageReader, HeaderStorageWriter};
+use super::{HeaderStorageReader, HeaderStorageWriter, StorageError};
+use crate::storage::test_utils::get_test_storage;
 
 #[tokio::test]
 async fn test_append_header() -> Result<(), anyhow::Error> {
@@ -14,7 +13,7 @@ async fn test_append_header() -> Result<(), anyhow::Error> {
     {
         assert_matches!(
             err,
-            BlockStorageError::MarkerMismatch { expected: BlockNumber(0), found: BlockNumber(5) }
+            StorageError::MarkerMismatch { expected: BlockNumber(0), found: BlockNumber(5) }
         );
     } else {
         panic!("Unexpected Ok.");
