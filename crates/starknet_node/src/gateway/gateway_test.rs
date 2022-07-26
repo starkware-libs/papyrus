@@ -88,6 +88,9 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiffForward) {
             },
             StorageDiff { address: address_2, diff: vec![StorageEntry { key, value }] },
         ],
+        // TODO(dan): test declared_contracts & nonce_changes throughout the file.
+        declared_contracts: vec![],
+        nonce_changes: vec![],
     };
 
     (parent_header, header, diff)
@@ -306,7 +309,7 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, &diff)?
+        .append_state_diff(header.block_number, &diff, vec![])?
         .commit()?;
 
     let address = diff.storage_diffs.get(0).unwrap().address;
@@ -407,7 +410,7 @@ async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, &diff)?
+        .append_state_diff(header.block_number, &diff, vec![])?
         .commit()?;
 
     let address = diff.deployed_contracts.get(0).unwrap().address;
@@ -678,9 +681,9 @@ async fn test_get_state_update() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(parent_header.block_number, &parent_header)?
-        .append_state_diff(parent_header.block_number, &StateDiffForward::default())?
+        .append_state_diff(parent_header.block_number, &StateDiffForward::default(), vec![])?
         .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, &diff)?
+        .append_state_diff(header.block_number, &diff, vec![])?
         .commit()?;
 
     let expected_update = StateUpdate {
@@ -808,7 +811,7 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, &diff)?
+        .append_state_diff(header.block_number, &diff, vec![])?
         .commit()?;
 
     let address = diff.deployed_contracts.get(0).unwrap().address;
