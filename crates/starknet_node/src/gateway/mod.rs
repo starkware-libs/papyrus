@@ -258,7 +258,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
             old_root,
             state_diff: GateWayStateDiff {
                 storage_diffs: from_starknet_storage_diffs(db_state_diff.storage_diffs),
-                declared_contracts: vec![],
+                declared_classes: vec![],
                 deployed_contracts: db_state_diff.deployed_contracts,
                 nonces: vec![],
             },
