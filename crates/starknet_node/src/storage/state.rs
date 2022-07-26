@@ -2,9 +2,10 @@
 #[path = "state_test.rs"]
 mod state_test;
 
+use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockNumber, ClassHash, ContractAddress, ContractClass, DeclaredContract,
-    IndexedDeclaredContract, IndexedDeployedContract, StarkFelt, StateDiff, StateNumber,
+    BlockNumber, ClassHash, ContractAddress, ContractClass, DeclaredContract, DeployedContract,
+    IndexedDeclaredContract, IndexedDeployedContract, Nonce, StarkFelt, StateDiff, StateNumber,
     StorageDiff, StorageEntry, StorageKey,
 };
 
@@ -31,7 +32,7 @@ pub type ContractStorageTable<'env> =
 
 pub trait StateStorageReader<Mode: TransactionKind> {
     fn get_state_marker(&self) -> StorageResult<BlockNumber>;
-    fn get_state_diff(&self, block_number: BlockNumber) -> StorageResult<Option<StateDiff>>;
+    fn get_state_diff(&self, block_number: BlockNumber) -> StorageResult<Option<ThinStatediff>>;
     fn get_state_reader(&self) -> StorageResult<StateReader<'_, Mode>>;
 }
 
@@ -43,9 +44,36 @@ where
     fn append_state_diff(
         self,
         block_number: BlockNumber,
-        state_diff: &StateDiff,
-        declared_classes: Vec<DeclaredContract>,
+        state_diff: StateDiff,
     ) -> StorageResult<Self>;
+}
+
+// Invariant: Addresses are strictly increasing.
+// TODO(spapini): Enforce the invariant.
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct ThinStatediff {
+    pub deployed_contracts: Vec<DeployedContract>,
+    pub storage_diffs: Vec<StorageDiff>,
+    pub declared_classes: Vec<ClassHash>,
+    pub nonces: Vec<(ContractAddress, Nonce)>,
+}
+
+impl ThinStatediff {
+    fn full_diff_to_partial_and_classes(full_diff: StateDiff) -> (Self, Vec<DeclaredContract>) {
+        let thin_state_diff = ThinStatediff {
+            deployed_contracts: full_diff.deployed_contracts,
+            storage_diffs: full_diff.storage_diffs,
+            declared_classes: Vec::from_iter(full_diff.declared_classes.iter().map(|(ch, _)| *ch)),
+            nonces: full_diff.nonces,
+        };
+        let declared_classes = Vec::from_iter(
+            full_diff
+                .declared_classes
+                .into_iter()
+                .map(|(ch, co)| DeclaredContract { class_hash: ch, contract_class: co }),
+        );
+        (thin_state_diff, declared_classes)
+    }
 }
 
 impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for StorageTxn<'env, Mode> {
@@ -54,7 +82,7 @@ impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for StorageTxn<'env, 
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         Ok(markers_table.get(&self.txn, &MarkerKind::State)?.unwrap_or_default())
     }
-    fn get_state_diff(&self, block_number: BlockNumber) -> StorageResult<Option<StateDiff>> {
+    fn get_state_diff(&self, block_number: BlockNumber) -> StorageResult<Option<ThinStatediff>> {
         let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
         let state_diff = state_diffs_table.get(&self.txn, &block_number)?;
         Ok(state_diff)
@@ -68,8 +96,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
     fn append_state_diff(
         self,
         block_number: BlockNumber,
-        state_diff: &StateDiff,
-        declared_classes: Vec<DeclaredContract>,
+        state_diff: StateDiff,
     ) -> StorageResult<Self> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
@@ -77,14 +104,21 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
         let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
 
+        let (thin_state_diff, declared_classes) =
+            ThinStatediff::full_diff_to_partial_and_classes(state_diff);
+
         update_marker(&self.txn, &markers_table, block_number)?;
         // Write state diff.
-        // TODO(dan): still not sure we want to persist declared_contracts here.
-        state_diffs_table.insert(&self.txn, &block_number, state_diff)?;
+        state_diffs_table.insert(&self.txn, &block_number, &thin_state_diff)?;
         // Write state.
         write_declared_classes(declared_classes, &self.txn, block_number, &declared_classes_table)?;
-        write_deployed_contracts(state_diff, &self.txn, block_number, &deployed_contracts_table)?;
-        write_storage_diffs(state_diff, &self.txn, block_number, &storage_table)?;
+        write_deployed_contracts(
+            &thin_state_diff,
+            &self.txn,
+            block_number,
+            &deployed_contracts_table,
+        )?;
+        write_storage_diffs(&thin_state_diff, &self.txn, block_number, &storage_table)?;
         Ok(self)
     }
 }
@@ -135,7 +169,7 @@ fn write_declared_classes<'env>(
 }
 
 fn write_deployed_contracts<'env>(
-    state_diff: &StateDiff,
+    state_diff: &ThinStatediff,
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     deployed_contracts_table: &'env DeployedContractsTable<'env>,
@@ -158,7 +192,7 @@ fn write_deployed_contracts<'env>(
 }
 
 fn write_storage_diffs<'env>(
-    state_diff: &StateDiff,
+    state_diff: &ThinStatediff,
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     storage_table: &'env ContractStorageTable<'env>,

@@ -70,7 +70,7 @@ pub struct StateDiff {
     pub storage_diffs: HashMap<ContractAddress, Vec<StorageEntry>>,
     pub deployed_contracts: Vec<DeployedContract>,
     #[serde(default)]
-    pub declared_contracts: Vec<ClassHash>,
+    pub declared_classes: Vec<ClassHash>,
 }
 
 pub fn client_to_starknet_api_storage_diff(
