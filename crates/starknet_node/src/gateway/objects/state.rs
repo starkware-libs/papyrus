@@ -32,7 +32,7 @@ pub struct ContractNonce {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct StateDiff {
+pub struct GateWayStateDiff {
     pub storage_diffs: Vec<StorageDiff>,
     pub declared_contracts: Vec<ClassHash>,
     pub deployed_contracts: Vec<DeployedContract>,
@@ -44,5 +44,5 @@ pub struct StateUpdate {
     pub block_hash: BlockHash,
     pub new_root: GlobalRoot,
     pub old_root: GlobalRoot,
-    pub state_diff: StateDiff,
+    pub state_diff: GateWayStateDiff,
 }

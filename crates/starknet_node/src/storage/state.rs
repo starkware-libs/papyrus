@@ -4,7 +4,7 @@ mod state_test;
 
 use starknet_api::{
     BlockNumber, ClassHash, ContractAddress, ContractClass, DeclaredContract,
-    IndexedDeclaredContract, IndexedDeployedContract, StarkFelt, StateDiffForward, StateNumber,
+    IndexedDeclaredContract, IndexedDeployedContract, StarkFelt, StateDiff, StateNumber,
     StorageDiff, StorageEntry, StorageKey,
 };
 
@@ -12,7 +12,7 @@ use super::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use super::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
 pub type DeclaredClassesTable<'env> = TableHandle<'env, ClassHash, IndexedDeclaredContract>;
-pub type DeplyedContractsTable<'env> = TableHandle<'env, ContractAddress, IndexedDeployedContract>;
+pub type DeployedContractsTable<'env> = TableHandle<'env, ContractAddress, IndexedDeployedContract>;
 pub type ContractStorageTable<'env> =
     TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), StarkFelt>;
 
@@ -31,7 +31,7 @@ pub type ContractStorageTable<'env> =
 
 pub trait StateStorageReader<Mode: TransactionKind> {
     fn get_state_marker(&self) -> StorageResult<BlockNumber>;
-    fn get_state_diff(&self, block_number: BlockNumber) -> StorageResult<Option<StateDiffForward>>;
+    fn get_state_diff(&self, block_number: BlockNumber) -> StorageResult<Option<StateDiff>>;
     fn get_state_reader(&self) -> StorageResult<StateReader<'_, Mode>>;
 }
 
@@ -43,7 +43,7 @@ where
     fn append_state_diff(
         self,
         block_number: BlockNumber,
-        state_diff: &StateDiffForward,
+        state_diff: &StateDiff,
         declared_classes: Vec<DeclaredContract>,
     ) -> StorageResult<Self>;
 }
@@ -54,7 +54,7 @@ impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for StorageTxn<'env, 
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         Ok(markers_table.get(&self.txn, &MarkerKind::State)?.unwrap_or_default())
     }
-    fn get_state_diff(&self, block_number: BlockNumber) -> StorageResult<Option<StateDiffForward>> {
+    fn get_state_diff(&self, block_number: BlockNumber) -> StorageResult<Option<StateDiff>> {
         let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
         let state_diff = state_diffs_table.get(&self.txn, &block_number)?;
         Ok(state_diff)
@@ -68,7 +68,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
     fn append_state_diff(
         self,
         block_number: BlockNumber,
-        state_diff: &StateDiffForward,
+        state_diff: &StateDiff,
         declared_classes: Vec<DeclaredContract>,
     ) -> StorageResult<Self> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
@@ -135,10 +135,10 @@ fn write_declared_classes<'env>(
 }
 
 fn write_deployed_contracts<'env>(
-    state_diff: &StateDiffForward,
+    state_diff: &StateDiff,
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
-    deployed_contracts_table: &'env DeplyedContractsTable<'env>,
+    deployed_contracts_table: &'env DeployedContractsTable<'env>,
 ) -> StorageResult<()> {
     for deployed_contract in &state_diff.deployed_contracts {
         let class_hash = deployed_contract.class_hash;
@@ -158,7 +158,7 @@ fn write_deployed_contracts<'env>(
 }
 
 fn write_storage_diffs<'env>(
-    state_diff: &StateDiffForward,
+    state_diff: &StateDiff,
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     storage_table: &'env ContractStorageTable<'env>,
@@ -175,7 +175,7 @@ fn write_storage_diffs<'env>(
 pub struct StateReader<'env, Mode: TransactionKind> {
     txn: &'env DbTransaction<'env, Mode>,
     declared_classes_table: DeclaredClassesTable<'env>,
-    deployed_contracts_table: DeplyedContractsTable<'env>,
+    deployed_contracts_table: DeployedContractsTable<'env>,
     storage_table: ContractStorageTable<'env>,
 }
 #[allow(dead_code)]

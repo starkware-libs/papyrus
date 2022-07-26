@@ -3,9 +3,7 @@ use std::collections::HashMap;
 use async_stream::stream;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
-use starknet_api::{
-    BlockBody, BlockHeader, BlockNumber, ClassHash, ContractClass, StateDiffForward,
-};
+use starknet_api::{BlockBody, BlockHeader, BlockNumber, ClassHash, ContractClass, StateDiff};
 use starknet_client::{
     client_to_starknet_api_storage_diff, ClientCreationError, ClientError, StarknetClient,
 };
@@ -44,10 +42,7 @@ impl CentralSource {
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
     ) -> impl Stream<
-        Item = Result<
-            (BlockNumber, StateDiffForward, Vec<(ClassHash, ContractClass)>),
-            CentralError,
-        >,
+        Item = Result<(BlockNumber, StateDiff, Vec<(ClassHash, ContractClass)>), CentralError>,
     > + '_ {
         let mut current_block_number = initial_block_number;
         stream! {
@@ -68,12 +63,12 @@ impl CentralSource {
                             class_hashes.push(contract.class_hash);
                             map.insert(contract.class_hash, self.starknet_client.class_by_hash(contract.class_hash).await?);
                         }
-                        let state_diff_forward = StateDiffForward {
+                        let state_diff_forward = StateDiff {
                             deployed_contracts: state_update.state_diff.deployed_contracts,
                             storage_diffs: client_to_starknet_api_storage_diff(state_update.state_diff.storage_diffs),
                             declared_contracts: class_hashes,
                             // TODO(dan): fix once nonces are available.
-                            nonce_changes: vec![],
+                            nonces: vec![],
                         };
                         yield Ok((current_block_number, state_diff_forward, Vec::from_iter(map.into_iter())));
                         current_block_number = current_block_number.next();

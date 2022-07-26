@@ -13,7 +13,7 @@ pub use self::core::{ClassHash, ContractAddress, Nonce};
 pub use self::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 pub use self::state::{
     DeclaredContract, DeployedContract, IndexedDeclaredContract, IndexedDeployedContract,
-    StateDiffForward, StateNumber, StorageDiff, StorageEntry, StorageKey,
+    StateDiff, StateNumber, StorageDiff, StorageEntry, StorageKey,
 };
 pub use self::transaction::{
     CallData, ContractAddressSalt, ContractClass, DeclareTransaction, DeclareTransactionReceipt,
