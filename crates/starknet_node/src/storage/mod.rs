@@ -11,7 +11,7 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, IndexedDeclaredContract,
-    IndexedDeployedContract, StarkFelt, StateDiff, StorageKey, Transaction, TransactionHash,
+    IndexedDeployedContract, StarkFelt, StorageKey, Transaction, TransactionHash,
     TransactionOffsetInBlock,
 };
 
@@ -22,7 +22,7 @@ use self::db::{
     RO, RW,
 };
 pub use self::header::{HeaderStorageReader, HeaderStorageWriter};
-pub use self::state::{StateStorageReader, StateStorageWriter};
+pub use self::state::{StateStorageReader, StateStorageWriter, ThinStateDiff};
 
 #[derive(Serialize, Deserialize)]
 pub struct StorageConfig {
@@ -71,7 +71,7 @@ pub struct Tables {
     transactions: TableIdentifier<(BlockNumber, TransactionOffsetInBlock), Transaction>,
     transaction_hash_to_idx:
         TableIdentifier<TransactionHash, (BlockNumber, TransactionOffsetInBlock)>,
-    state_diffs: TableIdentifier<BlockNumber, StateDiff>,
+    state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
     declared_classes: TableIdentifier<ClassHash, IndexedDeclaredContract>,
     deployed_contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
     contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,

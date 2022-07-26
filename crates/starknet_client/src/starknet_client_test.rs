@@ -187,7 +187,7 @@ async fn test_state_update() {
                     "0x071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64"
                 )),
             }],
-            declared_contracts: vec![],
+            declared_classes: vec![],
         },
     };
     assert_eq!(state_update, expected_state_update);
