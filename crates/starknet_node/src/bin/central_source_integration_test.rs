@@ -13,7 +13,8 @@ async fn main() {
     let central_source = CentralSource::new(config.central).expect("Create new client");
     let header_stream = central_source.stream_state_updates(state_marker, last_block_number).fuse();
     pin_mut!(header_stream);
-    while let Some(Ok((block_number, _state_difff))) = header_stream.next().await {
+    while let Some(Ok((block_number, _state_difff, _declared_classes))) = header_stream.next().await
+    {
         assert!(
             state_marker == block_number,
             "Expected block number ({}) does not match the result ({}).",

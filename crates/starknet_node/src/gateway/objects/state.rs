@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockHash, ContractAddress, DeclaredContract, DeployedContract, GlobalRoot, Nonce, StarkFelt,
+    BlockHash, ClassHash, ContractAddress, DeployedContract, GlobalRoot, Nonce, StarkFelt,
     StorageDiff as StarknetStorageDiff, StorageKey,
 };
 
@@ -34,7 +34,7 @@ pub struct ContractNonce {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StateDiff {
     pub storage_diffs: Vec<StorageDiff>,
-    pub declared_contracts: Vec<DeclaredContract>,
+    pub declared_contracts: Vec<ClassHash>,
     pub deployed_contracts: Vec<DeployedContract>,
     pub nonces: Vec<ContractNonce>,
 }
