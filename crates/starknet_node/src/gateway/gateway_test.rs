@@ -89,8 +89,8 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff) {
             },
             StorageDiff { address: address_2, diff: vec![StorageEntry { key, value }] },
         ],
-        // TODO(dan): test declared_contracts & nonce_changes throughout the file.
-        declared_contracts: vec![],
+        // TODO(dan): test declared_classes & nonce_changes throughout the file.
+        declared_classes: vec![],
         nonces: vec![],
     };
 
@@ -310,7 +310,7 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, &diff, vec![])?
+        .append_state_diff(header.block_number, diff.clone())?
         .commit()?;
 
     let address = diff.storage_diffs.get(0).unwrap().address;
@@ -411,7 +411,7 @@ async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, &diff, vec![])?
+        .append_state_diff(header.block_number, diff.clone())?
         .commit()?;
 
     let address = diff.deployed_contracts.get(0).unwrap().address;
@@ -682,9 +682,9 @@ async fn test_get_state_update() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(parent_header.block_number, &parent_header)?
-        .append_state_diff(parent_header.block_number, &StateDiff::default(), vec![])?
+        .append_state_diff(parent_header.block_number, StateDiff::default())?
         .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, &diff, vec![])?
+        .append_state_diff(header.block_number, diff.clone())?
         .commit()?;
 
     let expected_update = StateUpdate {
@@ -693,7 +693,7 @@ async fn test_get_state_update() -> Result<(), anyhow::Error> {
         old_root: parent_header.state_root,
         state_diff: GateWayStateDiff {
             storage_diffs: from_starknet_storage_diffs(diff.storage_diffs),
-            declared_contracts: vec![],
+            declared_classes: vec![],
             deployed_contracts: diff.deployed_contracts,
             nonces: vec![],
         },
@@ -812,7 +812,7 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, &diff, vec![])?
+        .append_state_diff(header.block_number, diff.clone())?
         .commit()?;
 
     let address = diff.deployed_contracts.get(0).unwrap().address;
