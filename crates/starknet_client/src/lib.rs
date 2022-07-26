@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use starknet_api::{BlockNumber, ClassHash, ContractClass};
 use url::Url;
 
-pub use self::objects::block::{Block, BlockStateUpdate};
+pub use self::objects::block::{client_to_starknet_api_storage_diff, Block, BlockStateUpdate};
 
 pub struct StarknetClient {
     urls: StarknetUrls,
