@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use async_stream::stream;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
-use starknet_api::{BlockBody, BlockHeader, BlockNumber, ClassHash, ContractClass, StateDiff};
+use starknet_api::{BlockBody, BlockHeader, BlockNumber, StateDiff};
 use starknet_client::{
     client_to_starknet_api_storage_diff, ClientCreationError, ClientError, StarknetClient,
 };
@@ -41,9 +41,7 @@ impl CentralSource {
         &self,
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
-    ) -> impl Stream<
-        Item = Result<(BlockNumber, StateDiff, Vec<(ClassHash, ContractClass)>), CentralError>,
-    > + '_ {
+    ) -> impl Stream<Item = Result<(BlockNumber, StateDiff), CentralError>> + '_ {
         let mut current_block_number = initial_block_number;
         stream! {
             while current_block_number < up_to_block_number {
@@ -53,24 +51,21 @@ impl CentralSource {
                         debug!("Received new state update: {:?}.", current_block_number.0);
                         // TODO(dan): should probably compress.
                         let mut map = HashMap::new();
-                        let mut class_hashes = Vec::new();
-                        for &class_hash in &state_update.state_diff.declared_contracts{
-                            class_hashes.push(class_hash);
+                        for &class_hash in &state_update.state_diff.declared_classes{
                             map.insert(class_hash ,self.starknet_client.class_by_hash(class_hash).await?);
                         }
                         // TODO(dan): this is inefficient, consider adding an up_to block config.
                         for contract in &state_update.state_diff.deployed_contracts{
-                            class_hashes.push(contract.class_hash);
                             map.insert(contract.class_hash, self.starknet_client.class_by_hash(contract.class_hash).await?);
                         }
                         let state_diff_forward = StateDiff {
                             deployed_contracts: state_update.state_diff.deployed_contracts,
                             storage_diffs: client_to_starknet_api_storage_diff(state_update.state_diff.storage_diffs),
-                            declared_contracts: class_hashes,
+                            declared_classes: Vec::from_iter(map.into_iter()),
                             // TODO(dan): fix once nonces are available.
                             nonces: vec![],
                         };
-                        yield Ok((current_block_number, state_diff_forward, Vec::from_iter(map.into_iter())));
+                        yield Ok((current_block_number, state_diff_forward));
                         current_block_number = current_block_number.next();
                     },
                     Err(err) => {

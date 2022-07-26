@@ -6,9 +6,7 @@ use async_stream::stream;
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
-use starknet_api::{
-    BlockBody, BlockHeader, BlockNumber, ClassHash, ContractClass, DeclaredContract, StateDiff,
-};
+use starknet_api::{BlockBody, BlockHeader, BlockNumber, StateDiff};
 use starknet_client::ClientError;
 
 pub use self::sources::{CentralSource, CentralSourceConfig};
@@ -40,16 +38,8 @@ pub enum StateSyncError {
     SyncError { message: String },
 }
 pub enum SyncEvent {
-    BlockAvailable {
-        block_number: BlockNumber,
-        header: BlockHeader,
-        body: BlockBody,
-    },
-    StateDiffAvailable {
-        block_number: BlockNumber,
-        state_diff: StateDiff,
-        declared_classes: Vec<(ClassHash, ContractClass)>,
-    },
+    BlockAvailable { block_number: BlockNumber, header: BlockHeader, body: BlockBody },
+    StateDiffAvailable { block_number: BlockNumber, state_diff: StateDiff },
 }
 
 #[allow(clippy::new_without_default)]
@@ -94,18 +84,10 @@ impl StateSync {
                             .append_body(block_number, &body)?
                             .commit()?;
                     }
-                    Some(SyncEvent::StateDiffAvailable {
-                        block_number,
-                        state_diff,
-                        declared_classes,
-                    }) => {
-                        let declared_classes =
-                            Vec::from_iter(declared_classes.into_iter().map(|(ch, co)| {
-                                DeclaredContract { class_hash: ch, contract_class: co }
-                            }));
+                    Some(SyncEvent::StateDiffAvailable { block_number, state_diff }) => {
                         self.writer
                             .begin_rw_txn()?
-                            .append_state_diff(block_number, &state_diff, declared_classes)?
+                            .append_state_diff(block_number, state_diff)?
                             .commit()?;
                     }
                     None => {
@@ -184,11 +166,10 @@ fn stream_new_state_diffs(
                 .fuse();
             pin_mut!(state_diff_stream);
             // TODO(dan): reconsider let Some(Ok as it hides errors.
-            while let Some(Ok((block_number, state_diff, declared_classes))) = state_diff_stream.next().await {
+            while let Some(Ok((block_number, state_diff))) = state_diff_stream.next().await {
                 yield SyncEvent::StateDiffAvailable {
                     block_number,
                     state_diff,
-                    declared_classes,
                 };
             }
         }
