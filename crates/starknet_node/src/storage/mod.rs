@@ -11,7 +11,7 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, IndexedDeclaredContract,
-    IndexedDeployedContract, StarkFelt, StateDiffForward, StorageKey, Transaction, TransactionHash,
+    IndexedDeployedContract, StarkFelt, StateDiff, StorageKey, Transaction, TransactionHash,
     TransactionOffsetInBlock,
 };
 
@@ -71,7 +71,7 @@ pub struct Tables {
     transactions: TableIdentifier<(BlockNumber, TransactionOffsetInBlock), Transaction>,
     transaction_hash_to_idx:
         TableIdentifier<TransactionHash, (BlockNumber, TransactionOffsetInBlock)>,
-    state_diffs: TableIdentifier<BlockNumber, StateDiffForward>,
+    state_diffs: TableIdentifier<BlockNumber, StateDiff>,
     declared_classes: TableIdentifier<ClassHash, IndexedDeclaredContract>,
     deployed_contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
     contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,

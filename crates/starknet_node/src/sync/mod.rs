@@ -7,8 +7,7 @@ use futures_util::{pin_mut, select, Stream, StreamExt};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockBody, BlockHeader, BlockNumber, ClassHash, ContractClass, DeclaredContract,
-    StateDiffForward,
+    BlockBody, BlockHeader, BlockNumber, ClassHash, ContractClass, DeclaredContract, StateDiff,
 };
 use starknet_client::ClientError;
 
@@ -48,7 +47,7 @@ pub enum SyncEvent {
     },
     StateDiffAvailable {
         block_number: BlockNumber,
-        state_diff: StateDiffForward,
+        state_diff: StateDiff,
         declared_classes: Vec<(ClassHash, ContractClass)>,
     },
 }
