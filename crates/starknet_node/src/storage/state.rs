@@ -16,6 +16,7 @@ pub type DeclaredClassesTable<'env> = TableHandle<'env, ClassHash, IndexedDeclar
 pub type DeployedContractsTable<'env> = TableHandle<'env, ContractAddress, IndexedDeployedContract>;
 pub type ContractStorageTable<'env> =
     TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), StarkFelt>;
+pub type NoncesTable<'env> = TableHandle<'env, (ContractAddress, StateNumber), Nonce>;
 
 // Structure of state data:
 // * declared_classes: (class_hash) -> (block_num, contract_class). Each entry specifies at which
@@ -97,6 +98,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         state_diff: StateDiff,
     ) -> StorageResult<Self> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
+        let nonces_table = self.txn.open_table(&self.tables.nonces)?;
         let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
         let declared_classes_table = self.txn.open_table(&self.tables.declared_classes)?;
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
@@ -116,6 +118,12 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             &deployed_contracts_table,
         )?;
         write_storage_diffs(&thin_state_diff, &self.txn, block_number, &storage_table)?;
+        write_nonces(
+            &thin_state_diff,
+            &self.txn,
+            StateNumber::right_after_block(block_number),
+            &nonces_table,
+        )?;
         Ok(self)
     }
 }
@@ -189,6 +197,29 @@ fn write_deployed_contracts<'env>(
     Ok(())
 }
 
+fn write_nonces<'env>(
+    state_diff: &ThinStateDiff,
+    txn: &DbTransaction<'env, RW>,
+    state_number: StateNumber,
+    contracts_table: &'env NoncesTable<'env>,
+) -> StorageResult<()> {
+    for (contract_address, nonce) in &state_diff.nonces {
+        let res = contracts_table.insert(txn, &(*contract_address, state_number), nonce);
+        match res {
+            Ok(()) => continue,
+            Err(DbError::InnerDbError(libmdbx::Error::KeyExist)) => {
+                return Err(StorageError::NonceReWrite {
+                    contract_address: *contract_address,
+                    nonce: *nonce,
+                    block_number: state_number.block_after(),
+                });
+            }
+            Err(err) => return Err(err.into()),
+        }
+    }
+    Ok(())
+}
+
 fn write_storage_diffs<'env>(
     state_diff: &ThinStateDiff,
     txn: &DbTransaction<'env, RW>,
@@ -208,6 +239,7 @@ pub struct StateReader<'env, Mode: TransactionKind> {
     txn: &'env DbTransaction<'env, Mode>,
     declared_classes_table: DeclaredClassesTable<'env>,
     deployed_contracts_table: DeployedContractsTable<'env>,
+    nonces_table: NoncesTable<'env>,
     storage_table: ContractStorageTable<'env>,
 }
 #[allow(dead_code)]
@@ -215,11 +247,13 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
     pub fn new(txn: &'env StorageTxn<'env, Mode>) -> StorageResult<Self> {
         let declared_classes_table = txn.txn.open_table(&txn.tables.declared_classes)?;
         let deployed_contracts_table = txn.txn.open_table(&txn.tables.deployed_contracts)?;
+        let nonces_table = txn.txn.open_table(&txn.tables.nonces)?;
         let storage_table = txn.txn.open_table(&txn.tables.contract_storage)?;
         Ok(StateReader {
             txn: &txn.txn,
             declared_classes_table,
             deployed_contracts_table,
+            nonces_table,
             storage_table,
         })
     }
@@ -233,6 +267,18 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
             if state_number.is_after(value.block_number) {
                 return Ok(Some(value.class_hash));
             }
+        }
+        Ok(None)
+    }
+
+    pub fn get_nonce_at(
+        &self,
+        state_number: StateNumber,
+        address: &ContractAddress,
+    ) -> StorageResult<Option<Nonce>> {
+        let value = self.nonces_table.get(self.txn, &(*address, state_number))?;
+        if let Some(nonce) = value {
+            return Ok(Some(nonce));
         }
         Ok(None)
     }

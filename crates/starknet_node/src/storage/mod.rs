@@ -11,8 +11,8 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, IndexedDeclaredContract,
-    IndexedDeployedContract, StarkFelt, StorageKey, Transaction, TransactionHash,
-    TransactionOffsetInBlock,
+    IndexedDeployedContract, Nonce, StarkFelt, StateNumber, StorageKey, Transaction,
+    TransactionHash, TransactionOffsetInBlock,
 };
 
 pub use self::body::{BodyStorageReader, BodyStorageWriter};
@@ -54,6 +54,11 @@ pub enum StorageError {
         "State diff redeclared a different class to an existing contract hash {class_hash:?}."
     )]
     ClassAlreadyExists { class_hash: ClassHash },
+    #[error(
+        "State diff redefined a nonce {nonce:?} for contract {contract_address:?} before block \
+         {block_number:?}."
+    )]
+    NonceReWrite { nonce: Nonce, block_number: BlockNumber, contract_address: ContractAddress },
 }
 pub type StorageResult<V> = std::result::Result<V, StorageError>;
 
@@ -66,6 +71,7 @@ pub enum MarkerKind {
 pub type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
 pub struct Tables {
     markers: TableIdentifier<MarkerKind, BlockNumber>,
+    nonces: TableIdentifier<(ContractAddress, StateNumber), Nonce>,
     headers: TableIdentifier<BlockNumber, BlockHeader>,
     block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
     transactions: TableIdentifier<(BlockNumber, TransactionOffsetInBlock), Transaction>,
@@ -109,6 +115,7 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
     let (db_reader, mut db_writer) = open_env(db_config)?;
     let tables = Arc::new(Tables {
         markers: db_writer.create_table("markers")?,
+        nonces: db_writer.create_table("nonces")?,
         headers: db_writer.create_table("headers")?,
         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
         transactions: db_writer.create_table("transactions")?,
