@@ -16,6 +16,7 @@ pub type DeclaredClassesTable<'env> = TableHandle<'env, ClassHash, IndexedDeclar
 pub type DeployedContractsTable<'env> = TableHandle<'env, ContractAddress, IndexedDeployedContract>;
 pub type ContractStorageTable<'env> =
     TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), StarkFelt>;
+pub type NoncesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumber), Nonce>;
 
 // Structure of state data:
 // * declared_classes: (class_hash) -> (block_num, contract_class). Each entry specifies at which
@@ -97,6 +98,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         state_diff: StateDiff,
     ) -> StorageResult<Self> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
+        let nonces_table = self.txn.open_table(&self.tables.nonces)?;
         let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
         let declared_classes_table = self.txn.open_table(&self.tables.declared_classes)?;
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
@@ -116,6 +118,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             &deployed_contracts_table,
         )?;
         write_storage_diffs(&thin_state_diff, &self.txn, block_number, &storage_table)?;
+        write_nonces(&thin_state_diff, &self.txn, block_number, &nonces_table)?;
         Ok(self)
     }
 }
@@ -189,6 +192,29 @@ fn write_deployed_contracts<'env>(
     Ok(())
 }
 
+fn write_nonces<'env>(
+    state_diff: &ThinStateDiff,
+    txn: &DbTransaction<'env, RW>,
+    block_number: BlockNumber,
+    contracts_table: &'env NoncesTable<'env>,
+) -> StorageResult<()> {
+    for (contract_address, nonce) in &state_diff.nonces {
+        let res = contracts_table.insert(txn, &(*contract_address, block_number), nonce);
+        match res {
+            Ok(()) => continue,
+            Err(DbError::InnerDbError(libmdbx::Error::KeyExist)) => {
+                return Err(StorageError::NonceReWrite {
+                    contract_address: *contract_address,
+                    nonce: *nonce,
+                    block_number,
+                });
+            }
+            Err(err) => return Err(err.into()),
+        }
+    }
+    Ok(())
+}
+
 fn write_storage_diffs<'env>(
     state_diff: &ThinStateDiff,
     txn: &DbTransaction<'env, RW>,
@@ -208,6 +234,7 @@ pub struct StateReader<'env, Mode: TransactionKind> {
     txn: &'env DbTransaction<'env, Mode>,
     declared_classes_table: DeclaredClassesTable<'env>,
     deployed_contracts_table: DeployedContractsTable<'env>,
+    nonces_table: NoncesTable<'env>,
     storage_table: ContractStorageTable<'env>,
 }
 #[allow(dead_code)]
@@ -215,11 +242,13 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
     pub fn new(txn: &'env StorageTxn<'env, Mode>) -> StorageResult<Self> {
         let declared_classes_table = txn.txn.open_table(&txn.tables.declared_classes)?;
         let deployed_contracts_table = txn.txn.open_table(&txn.tables.deployed_contracts)?;
+        let nonces_table = txn.txn.open_table(&txn.tables.nonces)?;
         let storage_table = txn.txn.open_table(&txn.tables.contract_storage)?;
         Ok(StateReader {
             txn: &txn.txn,
             declared_classes_table,
             deployed_contracts_table,
+            nonces_table,
             storage_table,
         })
     }
@@ -237,13 +266,40 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         Ok(None)
     }
 
+    pub fn get_nonce_at(
+        &self,
+        state_number: StateNumber,
+        address: &ContractAddress,
+    ) -> StorageResult<Nonce> {
+        // State diff updates are indexed by the block_number at which they occurred.
+        let first_irrelevant_block: BlockNumber = state_number.block_after();
+        // The relevant update is the last update strictly before `first_irrelevant_block`.
+        let db_key = (*address, first_irrelevant_block);
+        // Find the previous db item.
+        let mut cursor = self.nonces_table.cursor(self.txn)?;
+        cursor.lower_bound(&db_key)?;
+        let res = cursor.prev()?;
+        match res {
+            None => Ok(Nonce::default()),
+            Some(((got_address, _got_block_number), value)) => {
+                if got_address != *address {
+                    // The previous item belongs to different address, which means there is no
+                    // previous state diff for this item.
+                    return Ok(Nonce::default());
+                };
+                // The previous db item indeed belongs to this address and key.
+                Ok(value)
+            }
+        }
+    }
+
     pub fn get_storage_at(
         &self,
         state_number: StateNumber,
         address: &ContractAddress,
         key: &StorageKey,
     ) -> StorageResult<StarkFelt> {
-        // The updates to the storage key are indexed by the block_number at which they occured.
+        // The updates to the storage key are indexed by the block_number at which they occurred.
         let first_irrelevant_block: BlockNumber = state_number.block_after();
         // The relevant update is the last update strictly before `first_irrelevant_block`.
         let db_key = (*address, key.clone(), first_irrelevant_block);
