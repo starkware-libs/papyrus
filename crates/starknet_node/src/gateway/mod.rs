@@ -15,7 +15,7 @@ use log::{error, info};
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockBody, BlockNumber, ClassHash, ContractAddress, ContractClass, DeclareTransactionReceipt,
-    GlobalRoot, StarkFelt, StarkHash, StateNumber, StorageKey, TransactionHash,
+    GlobalRoot, Nonce, StarkFelt, StarkHash, StateNumber, StorageKey, TransactionHash,
     TransactionOffsetInBlock, TransactionReceipt, GENESIS_HASH,
 };
 
@@ -320,6 +320,21 @@ impl JsonRpcServer for JsonRpcServerImpl {
             .get_class_hash_at(state, &contract_address)
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))
+    }
+
+    fn get_nonce(
+        &self,
+        block_id: BlockId,
+        _contract_address: ContractAddress,
+    ) -> Result<Nonce, Error> {
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+
+        let block_number = get_block_number(&txn, block_id)?;
+        let _state = StateNumber::right_after_block(block_number);
+        let _state_reader = txn.get_state_reader().map_err(internal_server_error)?;
+
+        // TODO(anatg): Get the nonce from the state_reader.
+        Ok(Nonce::default())
     }
 }
 
