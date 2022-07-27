@@ -10,8 +10,9 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockHash, BlockHeader, BlockNumber, ContractAddress, IndexedDeployedContract, StarkFelt,
-    StateDiffForward, StorageKey, Transaction, TransactionHash, TransactionOffsetInBlock,
+    BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, IndexedDeclaredContract,
+    IndexedDeployedContract, StarkFelt, StorageKey, Transaction, TransactionHash,
+    TransactionOffsetInBlock,
 };
 
 pub use self::body::{BodyStorageReader, BodyStorageWriter};
@@ -21,7 +22,7 @@ use self::db::{
     RO, RW,
 };
 pub use self::header::{HeaderStorageReader, HeaderStorageWriter};
-pub use self::state::{StateStorageReader, StateStorageWriter};
+pub use self::state::{StateStorageReader, StateStorageWriter, ThinStateDiff};
 
 #[derive(Serialize, Deserialize)]
 pub struct StorageConfig {
@@ -49,6 +50,10 @@ pub enum StorageError {
     },
     #[error("State diff redployed to an existing contract address {address:?}.")]
     ContractAlreadyExists { address: ContractAddress },
+    #[error(
+        "State diff redeclared a different class to an existing contract hash {class_hash:?}."
+    )]
+    ClassAlreadyExists { class_hash: ClassHash },
 }
 pub type StorageResult<V> = std::result::Result<V, StorageError>;
 
@@ -66,8 +71,9 @@ pub struct Tables {
     transactions: TableIdentifier<(BlockNumber, TransactionOffsetInBlock), Transaction>,
     transaction_hash_to_idx:
         TableIdentifier<TransactionHash, (BlockNumber, TransactionOffsetInBlock)>,
-    state_diffs: TableIdentifier<BlockNumber, StateDiffForward>,
-    contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
+    state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
+    declared_classes: TableIdentifier<ClassHash, IndexedDeclaredContract>,
+    deployed_contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
     contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
 }
 #[derive(Clone)]
@@ -108,7 +114,8 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         transactions: db_writer.create_table("transactions")?,
         transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
         state_diffs: db_writer.create_table("state_diffs")?,
-        contracts: db_writer.create_table("contracts")?,
+        deployed_contracts: db_writer.create_table("contracts")?,
+        declared_classes: db_writer.create_table("contract_classes")?,
         contract_storage: db_writer.create_table("contract_storage")?,
     });
     let reader = StorageReader { db_reader, tables: tables.clone() };

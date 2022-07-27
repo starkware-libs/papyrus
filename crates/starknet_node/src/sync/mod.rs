@@ -6,7 +6,7 @@ use async_stream::stream;
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
-use starknet_api::{BlockBody, BlockHeader, BlockNumber, StateDiffForward};
+use starknet_api::{BlockBody, BlockHeader, BlockNumber, StateDiff};
 use starknet_client::ClientError;
 
 pub use self::sources::{CentralSource, CentralSourceConfig};
@@ -39,7 +39,7 @@ pub enum StateSyncError {
 }
 pub enum SyncEvent {
     BlockAvailable { block_number: BlockNumber, header: BlockHeader, body: BlockBody },
-    StateDiffAvailable { block_number: BlockNumber, state_diff: StateDiffForward },
+    StateDiffAvailable { block_number: BlockNumber, state_diff: StateDiff },
 }
 
 #[allow(clippy::new_without_default)]
@@ -87,7 +87,7 @@ impl StateSync {
                     Some(SyncEvent::StateDiffAvailable { block_number, state_diff }) => {
                         self.writer
                             .begin_rw_txn()?
-                            .append_state_diff(block_number, &state_diff)?
+                            .append_state_diff(block_number, state_diff)?
                             .commit()?;
                     }
                     None => {
@@ -165,6 +165,7 @@ fn stream_new_state_diffs(
                 .stream_state_updates(state_marker, last_block_number)
                 .fuse();
             pin_mut!(state_diff_stream);
+            // TODO(dan): reconsider let Some(Ok as it hides errors.
             while let Some(Ok((block_number, state_diff))) = state_diff_stream.next().await {
                 yield SyncEvent::StateDiffAvailable {
                     block_number,

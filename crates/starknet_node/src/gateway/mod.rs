@@ -21,8 +21,8 @@ use starknet_api::{
 
 use self::api::{BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcError, JsonRpcServer, Tag};
 use self::objects::{
-    from_starknet_storage_diffs, Block, BlockHeader, StateDiff, StateUpdate, TransactionWithType,
-    Transactions,
+    from_starknet_storage_diffs, Block, BlockHeader, GateWayStateDiff, StateUpdate,
+    TransactionWithType, Transactions,
 };
 use crate::storage::{
     BodyStorageReader, HeaderStorageReader, StateStorageReader, StorageReader, StorageTxn,
@@ -256,9 +256,9 @@ impl JsonRpcServer for JsonRpcServerImpl {
             block_hash: header.block_hash,
             new_root: header.state_root,
             old_root,
-            state_diff: StateDiff {
+            state_diff: GateWayStateDiff {
                 storage_diffs: from_starknet_storage_diffs(db_state_diff.storage_diffs),
-                declared_contracts: vec![],
+                declared_classes: vec![],
                 deployed_contracts: db_state_diff.deployed_contracts,
                 nonces: vec![],
             },

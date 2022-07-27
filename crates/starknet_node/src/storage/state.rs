@@ -2,22 +2,27 @@
 #[path = "state_test.rs"]
 mod state_test;
 
+use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockNumber, ClassHash, ContractAddress, IndexedDeployedContract, StarkFelt, StateDiffForward,
-    StateNumber, StorageDiff, StorageEntry, StorageKey,
+    BlockNumber, ClassHash, ContractAddress, ContractClass, DeclaredContract, DeployedContract,
+    IndexedDeclaredContract, IndexedDeployedContract, Nonce, StarkFelt, StateDiff, StateNumber,
+    StorageDiff, StorageEntry, StorageKey,
 };
 
 use super::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use super::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
-pub type ContractsTable<'env> = TableHandle<'env, ContractAddress, IndexedDeployedContract>;
+pub type DeclaredClassesTable<'env> = TableHandle<'env, ClassHash, IndexedDeclaredContract>;
+pub type DeployedContractsTable<'env> = TableHandle<'env, ContractAddress, IndexedDeployedContract>;
 pub type ContractStorageTable<'env> =
     TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), StarkFelt>;
 
 // Structure of state data:
-// * contracts_table: (contract_address) -> (block_num, class_hash). Each entry specifies at which
-//   block was this contract deployed and with what class hash. Note that each contract may only be
-//   deployed once, so we don't need to support multiple entries per contract address.
+// * declared_classes: (class_hash) -> (block_num, contract_class). Each entry specifies at which
+//   block was this class declared and with what class definition.
+// * deployed_contracts_table: (contract_address) -> (block_num, class_hash). Each entry specifies
+//   at which block was this contract deployed and with what class hash. Note that each contract may
+//   only be deployed once, so we don't need to support multiple entries per contract address.
 // * storage_table: (contract_address, key, block_num) -> (value). Specifies that at `block_num`,
 //   the `key` at `contract_address` was changed to `value`. This structure let's us do quick
 //   lookup, since the database supports "Get the closet element from  the left". Thus, to lookup
@@ -27,7 +32,7 @@ pub type ContractStorageTable<'env> =
 
 pub trait StateStorageReader<Mode: TransactionKind> {
     fn get_state_marker(&self) -> StorageResult<BlockNumber>;
-    fn get_state_diff(&self, block_number: BlockNumber) -> StorageResult<Option<StateDiffForward>>;
+    fn get_state_diff(&self, block_number: BlockNumber) -> StorageResult<Option<ThinStateDiff>>;
     fn get_state_reader(&self) -> StorageResult<StateReader<'_, Mode>>;
 }
 
@@ -39,8 +44,34 @@ where
     fn append_state_diff(
         self,
         block_number: BlockNumber,
-        state_diff: &StateDiffForward,
+        state_diff: StateDiff,
     ) -> StorageResult<Self>;
+}
+
+// Invariant: Addresses are strictly increasing.
+// TODO(spapini): Enforce the invariant.
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct ThinStateDiff {
+    pub deployed_contracts: Vec<DeployedContract>,
+    pub storage_diffs: Vec<StorageDiff>,
+    pub declared_classes: Vec<ClassHash>,
+    pub nonces: Vec<(ContractAddress, Nonce)>,
+}
+
+fn split_diff_for_storage(state_diff: StateDiff) -> (ThinStateDiff, Vec<DeclaredContract>) {
+    let thin_state_diff = ThinStateDiff {
+        deployed_contracts: state_diff.deployed_contracts,
+        storage_diffs: state_diff.storage_diffs,
+        declared_classes: Vec::from_iter(state_diff.declared_classes.iter().map(|(ch, _)| *ch)),
+        nonces: state_diff.nonces,
+    };
+    let declared_classes = Vec::from_iter(
+        state_diff
+            .declared_classes
+            .into_iter()
+            .map(|(ch, co)| DeclaredContract { class_hash: ch, contract_class: co }),
+    );
+    (thin_state_diff, declared_classes)
 }
 
 impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for StorageTxn<'env, Mode> {
@@ -49,7 +80,7 @@ impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for StorageTxn<'env, 
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         Ok(markers_table.get(&self.txn, &MarkerKind::State)?.unwrap_or_default())
     }
-    fn get_state_diff(&self, block_number: BlockNumber) -> StorageResult<Option<StateDiffForward>> {
+    fn get_state_diff(&self, block_number: BlockNumber) -> StorageResult<Option<ThinStateDiff>> {
         let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
         let state_diff = state_diffs_table.get(&self.txn, &block_number)?;
         Ok(state_diff)
@@ -63,19 +94,28 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
     fn append_state_diff(
         self,
         block_number: BlockNumber,
-        state_diff: &StateDiffForward,
+        state_diff: StateDiff,
     ) -> StorageResult<Self> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
-        let contracts_table = self.txn.open_table(&self.tables.contracts)?;
+        let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
+        let declared_classes_table = self.txn.open_table(&self.tables.declared_classes)?;
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
         let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
 
+        let (thin_state_diff, declared_classes) = split_diff_for_storage(state_diff);
+
         update_marker(&self.txn, &markers_table, block_number)?;
         // Write state diff.
-        state_diffs_table.insert(&self.txn, &block_number, state_diff)?;
+        state_diffs_table.insert(&self.txn, &block_number, &thin_state_diff)?;
         // Write state.
-        write_deployed_contracts(state_diff, &self.txn, block_number, &contracts_table)?;
-        write_storage_diffs(state_diff, &self.txn, block_number, &storage_table)?;
+        write_declared_classes(declared_classes, &self.txn, block_number, &declared_classes_table)?;
+        write_deployed_contracts(
+            &thin_state_diff,
+            &self.txn,
+            block_number,
+            &deployed_contracts_table,
+        )?;
+        write_storage_diffs(&thin_state_diff, &self.txn, block_number, &storage_table)?;
         Ok(self)
     }
 }
@@ -96,16 +136,46 @@ fn update_marker<'env>(
     Ok(())
 }
 
-fn write_deployed_contracts<'env>(
-    state_diff: &StateDiffForward,
+fn write_declared_classes<'env>(
+    declared_classes: Vec<DeclaredContract>,
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
-    contracts_table: &'env ContractsTable<'env>,
+    declared_classes_table: &'env DeclaredClassesTable<'env>,
+) -> StorageResult<()> {
+    for declared_class in declared_classes {
+        // TODO(dan): remove this check after regenesis, in favor of insert().
+        if let Some(value) = declared_classes_table.get(txn, &declared_class.class_hash)? {
+            if ContractClass::from_byte_vec(&value.contract_class) != declared_class.contract_class
+            {
+                return Err(StorageError::ClassAlreadyExists {
+                    class_hash: declared_class.class_hash,
+                });
+            }
+            continue;
+        }
+        let value = IndexedDeclaredContract {
+            block_number,
+            contract_class: declared_class.contract_class.to_byte_vec(),
+        };
+        let res = declared_classes_table.insert(txn, &declared_class.class_hash, &value);
+        match res {
+            Ok(()) => continue,
+            Err(err) => return Err(err.into()),
+        }
+    }
+    Ok(())
+}
+
+fn write_deployed_contracts<'env>(
+    state_diff: &ThinStateDiff,
+    txn: &DbTransaction<'env, RW>,
+    block_number: BlockNumber,
+    deployed_contracts_table: &'env DeployedContractsTable<'env>,
 ) -> StorageResult<()> {
     for deployed_contract in &state_diff.deployed_contracts {
         let class_hash = deployed_contract.class_hash;
         let value = IndexedDeployedContract { block_number, class_hash };
-        let res = contracts_table.insert(txn, &deployed_contract.address, &value);
+        let res = deployed_contracts_table.insert(txn, &deployed_contract.address, &value);
         match res {
             Ok(()) => continue,
             Err(DbError::InnerDbError(libmdbx::Error::KeyExist)) => {
@@ -120,7 +190,7 @@ fn write_deployed_contracts<'env>(
 }
 
 fn write_storage_diffs<'env>(
-    state_diff: &StateDiffForward,
+    state_diff: &ThinStateDiff,
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     storage_table: &'env ContractStorageTable<'env>,
@@ -136,22 +206,29 @@ fn write_storage_diffs<'env>(
 // Represents a single coherent state at a single point in time,
 pub struct StateReader<'env, Mode: TransactionKind> {
     txn: &'env DbTransaction<'env, Mode>,
-    contracts_table: ContractsTable<'env>,
+    declared_classes_table: DeclaredClassesTable<'env>,
+    deployed_contracts_table: DeployedContractsTable<'env>,
     storage_table: ContractStorageTable<'env>,
 }
 #[allow(dead_code)]
 impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
     pub fn new(txn: &'env StorageTxn<'env, Mode>) -> StorageResult<Self> {
-        let contracts_table = txn.txn.open_table(&txn.tables.contracts)?;
+        let declared_classes_table = txn.txn.open_table(&txn.tables.declared_classes)?;
+        let deployed_contracts_table = txn.txn.open_table(&txn.tables.deployed_contracts)?;
         let storage_table = txn.txn.open_table(&txn.tables.contract_storage)?;
-        Ok(StateReader { txn: &txn.txn, contracts_table, storage_table })
+        Ok(StateReader {
+            txn: &txn.txn,
+            declared_classes_table,
+            deployed_contracts_table,
+            storage_table,
+        })
     }
     pub fn get_class_hash_at(
         &self,
         state_number: StateNumber,
         address: &ContractAddress,
     ) -> StorageResult<Option<ClassHash>> {
-        let value = self.contracts_table.get(self.txn, address)?;
+        let value = self.deployed_contracts_table.get(self.txn, address)?;
         if let Some(value) = value {
             if state_number.is_after(value.block_number) {
                 return Ok(Some(value.class_hash));
@@ -159,6 +236,7 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         }
         Ok(None)
     }
+
     pub fn get_storage_at(
         &self,
         state_number: StateNumber,
@@ -185,5 +263,19 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
                 Ok(value)
             }
         }
+    }
+
+    pub fn get_class_definition_at(
+        &self,
+        state_number: StateNumber,
+        class_hash: &ClassHash,
+    ) -> StorageResult<Option<ContractClass>> {
+        let value = self.declared_classes_table.get(self.txn, class_hash)?;
+        if let Some(value) = value {
+            if state_number.is_after(value.block_number) {
+                return Ok(Some(ContractClass::from_byte_vec(&value.contract_class)));
+            }
+        }
+        Ok(None)
     }
 }

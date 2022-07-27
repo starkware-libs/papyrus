@@ -1,9 +1,11 @@
+use assert_matches::assert_matches;
 use starknet_api::{
-    shash, BlockNumber, ClassHash, ContractAddress, DeployedContract, StarkHash, StateDiffForward,
-    StateNumber, StorageDiff, StorageEntry, StorageKey,
+    shash, BlockNumber, ClassHash, ContractAddress, ContractClass, DeployedContract, StarkHash,
+    StateDiff, StateNumber, StorageDiff, StorageEntry, StorageKey,
 };
 
-use super::{StateStorageReader, StateStorageWriter};
+use super::{StateStorageReader, StateStorageWriter, StorageError};
+use crate::storage::state::split_diff_for_storage;
 use crate::storage::test_utils::get_test_storage;
 
 #[test]
@@ -13,9 +15,11 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     let c2 = ContractAddress(shash!("0x3"));
     let cl0 = ClassHash(shash!("0x4"));
     let cl1 = ClassHash(shash!("0x5"));
+    let c_cls0 = ContractClass::default();
+    let c_cls1 = ContractClass::default();
     let key0 = StorageKey(shash!("0x1001"));
     let key1 = StorageKey(shash!("0x101"));
-    let diff0 = StateDiffForward {
+    let diff0 = StateDiff {
         deployed_contracts: vec![
             DeployedContract { address: c0, class_hash: cl0 },
             DeployedContract { address: c1, class_hash: cl1 },
@@ -30,8 +34,10 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
             },
             StorageDiff { address: c1, diff: vec![] },
         ],
+        declared_classes: vec![(cl0, c_cls0.clone()), (cl1, c_cls1)],
+        nonces: vec![],
     };
-    let diff1 = StateDiffForward {
+    let mut diff1 = StateDiff {
         deployed_contracts: vec![DeployedContract { address: c2, class_hash: cl0 }],
         storage_diffs: vec![
             StorageDiff {
@@ -46,25 +52,55 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
                 diff: vec![StorageEntry { key: key0.clone(), value: shash!("0x0") }],
             },
         ],
+        declared_classes: vec![(cl0, c_cls0.clone())],
+        nonces: vec![],
     };
 
     let (_, mut writer) = get_test_storage();
     let mut txn = writer.begin_rw_txn()?;
     assert_eq!(txn.get_state_diff(BlockNumber(0))?, None);
     assert_eq!(txn.get_state_diff(BlockNumber(1))?, None);
-    txn = txn.append_state_diff(BlockNumber(0), &diff0)?;
-    assert_eq!(txn.get_state_diff(BlockNumber(0))?.unwrap(), diff0);
+    txn = txn.append_state_diff(BlockNumber(0), diff0.clone())?;
+    let (thin_state_diff_0, _declared_classes_0) = split_diff_for_storage(diff0);
+    assert_eq!(txn.get_state_diff(BlockNumber(0))?.unwrap(), thin_state_diff_0);
     assert_eq!(txn.get_state_diff(BlockNumber(1))?, None);
-    txn = txn.append_state_diff(BlockNumber(1), &diff1)?;
-    assert_eq!(txn.get_state_diff(BlockNumber(0))?.unwrap(), diff0);
-    assert_eq!(txn.get_state_diff(BlockNumber(1))?.unwrap(), diff1);
+    txn = txn.append_state_diff(BlockNumber(1), diff1.clone())?;
+    let (this_state_diff_1, _declared_classes_1) = split_diff_for_storage(diff1.clone());
+    txn.commit()?;
+
+    // Check for ClassAlreadyExists error when trying to declare a different class to an existing
+    // class hash.
+    let txn = writer.begin_rw_txn()?;
+    let mut class = diff1.declared_classes[0].1.clone();
+    class.abi = serde_json::Value::String("junk".to_string());
+    diff1.declared_classes[0].1 = class;
+    if let Err(err) = txn.append_state_diff(BlockNumber(2), diff1) {
+        assert_matches!(err, StorageError::ClassAlreadyExists { class_hash: _ });
+    } else {
+        panic!("Unexpected Ok.");
+    }
+    let txn = writer.begin_rw_txn()?;
+    assert_eq!(txn.get_state_diff(BlockNumber(0))?.unwrap(), thin_state_diff_0);
+    assert_eq!(txn.get_state_diff(BlockNumber(1))?.unwrap(), this_state_diff_1);
 
     let statetxn = txn.get_state_reader()?;
 
-    // Contract0.
+    // State numbers.
     let state0 = StateNumber::right_before_block(BlockNumber(0));
     let state1 = StateNumber::right_before_block(BlockNumber(1));
     let state2 = StateNumber::right_before_block(BlockNumber(2));
+
+    // Class0.
+    assert_eq!(statetxn.get_class_definition_at(state0, &cl0)?, None);
+    assert_eq!(statetxn.get_class_definition_at(state1, &cl0)?, Some(c_cls0.clone()));
+    assert_eq!(statetxn.get_class_definition_at(state2, &cl0)?, Some(c_cls0.clone()));
+
+    // Class1.
+    assert_eq!(statetxn.get_class_definition_at(state0, &cl1)?, None);
+    assert_eq!(statetxn.get_class_definition_at(state1, &cl1)?, Some(c_cls0.clone()));
+    assert_eq!(statetxn.get_class_definition_at(state2, &cl1)?, Some(c_cls0));
+
+    // Contract0.
     assert_eq!(statetxn.get_class_hash_at(state0, &c0)?, None);
     assert_eq!(statetxn.get_class_hash_at(state1, &c0)?, Some(cl0));
     assert_eq!(statetxn.get_class_hash_at(state2, &c0)?, Some(cl0));

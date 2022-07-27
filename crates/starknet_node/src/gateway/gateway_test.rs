@@ -7,15 +7,16 @@ use jsonrpsee::types::EmptyParams;
 use starknet_api::{
     shash, BlockBody, BlockHash, BlockHeader, BlockNumber, CallData, ClassHash, ContractAddress,
     ContractAddressSalt, ContractClass, DeclareTransactionReceipt, DeployTransaction,
-    DeployedContract, GlobalRoot, StarkFelt, StarkHash, StateDiffForward, StorageDiff,
-    StorageEntry, StorageKey, Transaction, TransactionHash, TransactionReceipt, TransactionVersion,
+    DeployedContract, GlobalRoot, StarkFelt, StarkHash, StateDiff, StorageDiff, StorageEntry,
+    StorageKey, Transaction, TransactionHash, TransactionReceipt, TransactionVersion,
 };
 
 use super::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcClient, JsonRpcError, JsonRpcServer, Tag,
 };
 use super::objects::{
-    from_starknet_storage_diffs, Block, StateDiff, StateUpdate, TransactionWithType, Transactions,
+    from_starknet_storage_diffs, Block, GateWayStateDiff, StateUpdate, TransactionWithType,
+    Transactions,
 };
 use super::{run_server, GatewayConfig, JsonRpcServerImpl};
 use crate::storage::{test_utils, BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
@@ -45,7 +46,7 @@ fn get_test_block(transaction_count: usize) -> (BlockHeader, BlockBody) {
     (header, body)
 }
 
-fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiffForward) {
+fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff) {
     let parent_hash =
         BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
     let state_root = GlobalRoot(shash!("0x12"));
@@ -73,7 +74,7 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiffForward) {
     let value = shash!("0x200");
     let key_2 = StorageKey(shash!("0x1002"));
     let value_2 = shash!("0x201");
-    let diff = StateDiffForward {
+    let diff = StateDiff {
         deployed_contracts: vec![
             DeployedContract { address, class_hash },
             DeployedContract { address: address_2, class_hash: class_hash_2 },
@@ -88,6 +89,9 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiffForward) {
             },
             StorageDiff { address: address_2, diff: vec![StorageEntry { key, value }] },
         ],
+        // TODO(dan): test declared_classes & nonce_changes throughout the file.
+        declared_classes: vec![],
+        nonces: vec![],
     };
 
     (parent_header, header, diff)
@@ -306,7 +310,7 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, &diff)?
+        .append_state_diff(header.block_number, diff.clone())?
         .commit()?;
 
     let address = diff.storage_diffs.get(0).unwrap().address;
@@ -407,7 +411,7 @@ async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, &diff)?
+        .append_state_diff(header.block_number, diff.clone())?
         .commit()?;
 
     let address = diff.deployed_contracts.get(0).unwrap().address;
@@ -678,18 +682,18 @@ async fn test_get_state_update() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(parent_header.block_number, &parent_header)?
-        .append_state_diff(parent_header.block_number, &StateDiffForward::default())?
+        .append_state_diff(parent_header.block_number, StateDiff::default())?
         .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, &diff)?
+        .append_state_diff(header.block_number, diff.clone())?
         .commit()?;
 
     let expected_update = StateUpdate {
         block_hash: header.block_hash,
         new_root: header.state_root,
         old_root: parent_header.state_root,
-        state_diff: StateDiff {
+        state_diff: GateWayStateDiff {
             storage_diffs: from_starknet_storage_diffs(diff.storage_diffs),
-            declared_contracts: vec![],
+            declared_classes: vec![],
             deployed_contracts: diff.deployed_contracts,
             nonces: vec![],
         },
@@ -808,7 +812,7 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, &diff)?
+        .append_state_diff(header.block_number, diff.clone())?
         .commit()?;
 
     let address = diff.deployed_contracts.get(0).unwrap().address;
