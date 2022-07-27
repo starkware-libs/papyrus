@@ -55,7 +55,7 @@ fn contract_class_body() -> &'static str {
             "prime": "0x800000000000011000000000000000000000000000000000000000000000001",
             "main_scope": "__main__",
             "identifiers": {},
-            "attributes": [],
+            "attributes": [244116128358498188146337218061232635775543270890529169229936851982759783745],
             "debug_info": null,
             "reference_manager": {},
             "hints": {}
@@ -212,7 +212,12 @@ async fn contract_class() {
         ])])
         .unwrap(),
         program: Program {
-            attributes: serde_json::Value::Array(Vec::new()),
+            attributes: serde_json::Value::Array(vec![serde_json::Value::Number(
+                serde_json::Number::from_string_unchecked(
+                    "244116128358498188146337218061232635775543270890529169229936851982759783745"
+                        .to_string(),
+                ),
+            )]),
             builtins: serde_json::Value::Array(Vec::new()),
             data: serde_json::Value::Array(vec![
                 serde_json::Value::String("0x20780017fff7ffd".to_string()),
