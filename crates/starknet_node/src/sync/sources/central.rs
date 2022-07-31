@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use async_stream::stream;
+use futures_util::StreamExt;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use starknet_api::{BlockBody, BlockHeader, BlockNumber, StateDiff};
@@ -8,6 +9,9 @@ use starknet_client::{
     client_to_starknet_api_storage_diff, ClientCreationError, ClientError, StarknetClient,
 };
 use tokio_stream::Stream;
+
+// TODO(dan): move to config.
+const CONCURRENT_REQUESTS: usize = 750;
 
 #[derive(Serialize, Deserialize)]
 pub struct CentralSourceConfig {
@@ -93,28 +97,38 @@ impl CentralSource {
         let mut current_block_number = initial_block_number;
         stream! {
             while current_block_number < up_to_block_number {
-                let res = self.starknet_client.block(current_block_number).await;
-                match res {
-                    Ok(Some(block)) => {
-                        info!("Received new block: {}.", block.block_number.0);
-                        let header = BlockHeader {
-                            block_hash: block.block_hash,
-                            parent_hash: block.parent_block_hash,
-                            block_number: block.block_number,
-                            gas_price: block.gas_price,
-                            state_root: block.state_root,
-                            sequencer: block.sequencer_address,
-                            timestamp: block.timestamp,
-                            status: block.status.into(),
-                        };
-                        let body = BlockBody{transactions: block.transactions.into_iter().map(|x| x.into()).collect()};
-                        yield Ok((current_block_number, header, body));
-                        current_block_number = current_block_number.next();
-                    },
-                    Ok(None) => todo!(),
-                    Err(err) => {
-                        debug!("Received error for block {}: {:?}.", current_block_number.0, err);
-                        yield (Err(CentralError::ClientError(err)))
+                let mut res = futures_util::stream::iter(current_block_number.0..up_to_block_number.0)
+                    .map(|bn| async move { self.starknet_client.block(BlockNumber(bn)).await })
+                    .buffered(CONCURRENT_REQUESTS);
+                while let Some(maybe_block) = res.next().await {
+                    match maybe_block {
+                        Ok(Some(block)) => {
+                            info!("Received new block: {}.", block.block_number.0);
+                            let header = BlockHeader {
+                                block_hash: block.block_hash,
+                                parent_hash: block.parent_block_hash,
+                                block_number: block.block_number,
+                                gas_price: block.gas_price,
+                                state_root: block.state_root,
+                                sequencer: block.sequencer_address,
+                                timestamp: block.timestamp,
+                                status: block.status.into(),
+                            };
+                            let body = BlockBody {
+                                transactions: block
+                                    .transactions
+                                    .into_iter()
+                                    .map(|x| x.into())
+                                    .collect(),
+                            };
+                            yield Ok((current_block_number, header, body));
+                            current_block_number = current_block_number.next();
+                        }
+                        Ok(None) => todo!(),
+                        Err(err) => {
+                            debug!("Received error for block {}: {:?}.", current_block_number.0, err);
+                            yield (Err(CentralError::ClientError(err)))
+                        }
                     }
                 }
             }
