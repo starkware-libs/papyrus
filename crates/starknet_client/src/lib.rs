@@ -15,7 +15,7 @@ use url::Url;
 
 pub use self::objects::block::{client_to_starknet_api_storage_diff, Block, BlockStateUpdate};
 
-type ClientResult<T> = Result<T, ClientError>;
+pub type ClientResult<T> = Result<T, ClientError>;
 
 #[async_trait]
 pub trait StarknetClientTrait {
