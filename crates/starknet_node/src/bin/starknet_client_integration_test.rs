@@ -1,6 +1,6 @@
 use starknet_api::serde_utils::bytes_from_hex_str;
 use starknet_api::{BlockNumber, ClassHash, StarkHash};
-use starknet_client::StarknetClient;
+use starknet_client::{StarknetClient, StarknetClientTrait};
 use starknet_node::config::load_config;
 
 #[tokio::main]

@@ -13,8 +13,8 @@ use super::objects::block::BlockStateUpdate;
 use super::objects::transaction::{DeclareTransaction, TransactionType};
 use super::test_utils::read_resource::read_resource_file;
 use super::{
-    Block, ClientError, StarknetClient, BLOCK_NUMBER_QUERY, CLASS_HASH_QUERY, GET_BLOCK_URL,
-    GET_STATE_UPDATE_URL,
+    Block, ClientError, StarknetClient, StarknetClientTrait, BLOCK_NUMBER_QUERY, CLASS_HASH_QUERY,
+    GET_BLOCK_URL, GET_STATE_UPDATE_URL,
 };
 
 #[test]

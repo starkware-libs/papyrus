@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use starknet_api::{BlockBody, BlockHeader, BlockNumber, StateDiff};
 use starknet_client::{
     client_to_starknet_api_storage_diff, ClientCreationError, ClientError, StarknetClient,
+    StarknetClientTrait,
 };
 use tokio_stream::Stream;
 
