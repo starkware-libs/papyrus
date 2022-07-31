@@ -61,6 +61,8 @@ pub enum ClientError {
 const GET_BLOCK_URL: &str = "feeder_gateway/get_block";
 const GET_CONTRACT_BY_HASH_URL: &str = "feeder_gateway/get_class_by_hash";
 const GET_STATE_UPDATE_URL: &str = "feeder_gateway/get_state_update";
+const BLOCK_NUMBER_QUERY: &str = "blockNumber";
+const CLASS_HASH_QUERY: &str = "classHash";
 
 impl StarknetUrls {
     fn new(url_str: &str) -> Result<Self, ClientCreationError> {
@@ -111,7 +113,7 @@ impl StarknetClient {
 
     pub async fn block(&self, block_number: BlockNumber) -> Result<Option<Block>, ClientError> {
         let mut url = self.urls.get_block.clone();
-        url.query_pairs_mut().append_pair("blockNumber", &block_number.0.to_string());
+        url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.0.to_string());
         let response = self.request(url).await;
         match response {
             Ok(raw_block) => {
@@ -136,7 +138,7 @@ impl StarknetClient {
         let mut url = self.urls.get_contract_by_hash.clone();
         let class_hash = serde_json::to_string(&class_hash)?;
         url.query_pairs_mut()
-            .append_pair("classHash", &class_hash.as_str()[1..class_hash.len() - 1]);
+            .append_pair(CLASS_HASH_QUERY, &class_hash.as_str()[1..class_hash.len() - 1]);
         let response = self.request(url).await;
         match response {
             Ok(raw_contract_class) => Ok(serde_json::from_str(&raw_contract_class)?),
@@ -152,7 +154,7 @@ impl StarknetClient {
         block_number: BlockNumber,
     ) -> Result<BlockStateUpdate, ClientError> {
         let mut url = self.urls.get_state_update.clone();
-        url.query_pairs_mut().append_pair("blockNumber", &block_number.0.to_string());
+        url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.0.to_string());
         let raw_state_update = self.request(url).await?;
         let state_update: BlockStateUpdate = serde_json::from_str(&raw_state_update)?;
         Ok(state_update)
