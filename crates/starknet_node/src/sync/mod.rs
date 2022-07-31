@@ -7,7 +7,7 @@ use futures_util::{pin_mut, select, Stream, StreamExt};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use starknet_api::{BlockBody, BlockHeader, BlockNumber, StateDiff};
-use starknet_client::ClientError;
+use starknet_client::{ClientError, StarknetClient};
 
 pub use self::sources::{CentralSource, CentralSourceConfig};
 use crate::storage::{
@@ -23,7 +23,7 @@ pub struct SyncConfig {
 // Orchestrates specific network interfaces (e.g. central, p2p, l1) and writes to Storage.
 pub struct StateSync {
     config: SyncConfig,
-    central_source: CentralSource,
+    central_source: CentralSource<StarknetClient>,
     reader: StorageReader,
     writer: StorageWriter,
 }
@@ -46,7 +46,7 @@ pub enum SyncEvent {
 impl StateSync {
     pub fn new(
         config: SyncConfig,
-        central_source: CentralSource,
+        central_source: CentralSource<StarknetClient>,
         reader: StorageReader,
         writer: StorageWriter,
     ) -> StateSync {
@@ -103,7 +103,7 @@ impl StateSync {
 
 fn stream_new_blocks(
     reader: StorageReader,
-    central_source: &CentralSource,
+    central_source: &CentralSource<StarknetClient>,
     block_propation_sleep_duration: Duration,
 ) -> impl Stream<Item = SyncEvent> + '_ {
     stream! {
@@ -140,7 +140,7 @@ fn stream_new_blocks(
 
 fn stream_new_state_diffs(
     reader: StorageReader,
-    central_source: &CentralSource,
+    central_source: &CentralSource<StarknetClient>,
     block_propation_sleep_duration: Duration,
 ) -> impl Stream<Item = SyncEvent> + '_ {
     stream! {
