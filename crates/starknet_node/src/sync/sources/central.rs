@@ -1,13 +1,13 @@
-use std::collections::HashMap;
+use std::collections::HashSet;
 
 use async_stream::stream;
 use futures_util::StreamExt;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
-use starknet_api::{BlockBody, BlockHeader, BlockNumber, StateDiff};
+use starknet_api::{BlockBody, BlockHeader, BlockNumber, ClassHash, ContractClass, StateDiff};
 use starknet_client::{
-    client_to_starknet_api_storage_diff, ClientCreationError, ClientError, StarknetClient,
-    StarknetClientTrait,
+    client_to_starknet_api_storage_diff, ClientCreationError, ClientError, ClientResult,
+    StarknetClient, StarknetClientTrait,
 };
 use tokio_stream::Stream;
 
@@ -35,7 +35,7 @@ impl CentralSource {
         Ok(CentralSource { starknet_client })
     }
 
-    pub async fn get_block_marker(&self) -> Result<BlockNumber, ClientError> {
+    pub async fn get_block_marker(&self) -> ClientResult<BlockNumber> {
         self.starknet_client
             .block_number()
             .await?
@@ -50,38 +50,39 @@ impl CentralSource {
         let mut current_block_number = initial_block_number;
         stream! {
             while current_block_number < up_to_block_number {
-                let res = self.starknet_client.state_update(current_block_number).await;
-                match res {
-                    Ok(state_update) => {
-                        debug!("Received new state update: {:?}.", current_block_number.0);
-                        // TODO(dan): should probably compress.
-                        let mut class_definitions = HashMap::new();
-                        for &class_hash in &state_update.state_diff.declared_classes{
-                            if class_definitions.get(&class_hash).is_none(){
-                                class_definitions.insert(class_hash ,self.starknet_client.class_by_hash(class_hash).await?);
+                let mut state_update_stream =
+                    futures_util::stream::iter(current_block_number.0..up_to_block_number.0)
+                        .map(|block_number| async move {
+                            self.starknet_client.state_update(BlockNumber(block_number)).await
+                        })
+                        .buffered(CONCURRENT_REQUESTS);
+                while let Some(maybe_state_update) = state_update_stream.next().await {
+                    match maybe_state_update {
+                        Err(err) => {
+                            debug!("Received error for state diff {}: {:?}.", current_block_number.0, err);
+                            // TODO(dan): proper error handling.
+                            match err{
+                                _ => yield (Err(CentralError::ClientError(err))),
                             }
                         }
-                        // TODO(dan): this is inefficient, consider adding an up_to block config.
-                        for contract in &state_update.state_diff.deployed_contracts{
-                            if class_definitions.get(&contract.class_hash).is_none(){
-                                class_definitions.insert(contract.class_hash, self.starknet_client.class_by_hash(contract.class_hash).await?);
+                        Ok(state_update) => {
+                            let class_hashes = state_update.state_diff.class_hashes();
+                            let classes = self.fetch_contract_classes(class_hashes).await;
+                            if classes.is_err(){
+                                yield (Err(CentralError::ClientError(classes.err().unwrap())));
+                                break;
                             }
-                        }
-                        let state_diff_forward = StateDiff {
-                            deployed_contracts: state_update.state_diff.deployed_contracts,
-                            storage_diffs: client_to_starknet_api_storage_diff(state_update.state_diff.storage_diffs),
-                            declared_classes: Vec::from_iter(class_definitions.into_iter()),
-                            // TODO(dan): fix once nonces are available.
-                            nonces: vec![],
-                        };
-                        yield Ok((current_block_number, state_diff_forward));
-                        current_block_number = current_block_number.next();
-                    },
-                    Err(err) => {
-                        debug!("Received error for state diff {}: {:?}.", current_block_number.0, err);
-                        // TODO(dan): proper error handling.
-                        match err{
-                            _ => yield (Err(CentralError::ClientError(err))),
+                            debug!("Received new state update: {:?}.", current_block_number.0);
+                            let state_diff_forward = StateDiff {
+                                deployed_contracts: state_update.state_diff.deployed_contracts,
+                                storage_diffs: client_to_starknet_api_storage_diff(
+                                    state_update.state_diff.storage_diffs),
+                                declared_classes: classes.unwrap(),
+                                // TODO(dan): fix once nonces are available.
+                                nonces: vec![],
+                            };
+                            yield Ok((current_block_number, state_diff_forward));
+                            current_block_number = current_block_number.next();
                         }
                     }
                 }
@@ -134,5 +135,22 @@ impl CentralSource {
                 }
             }
         }
+    }
+
+    async fn fetch_contract_classes(
+        &self,
+        class_hashes: HashSet<ClassHash>,
+    ) -> ClientResult<Vec<(ClassHash, ContractClass)>> {
+        let classes_stream = futures_util::stream::iter(class_hashes)
+            .map(|class_hash| async move {
+                (class_hash, self.starknet_client.class_by_hash(class_hash).await)
+            })
+            .buffer_unordered(CONCURRENT_REQUESTS);
+        let maybe_classes: Vec<_> = classes_stream.collect().await;
+        let mut classes = Vec::new();
+        for (class_hash, maybe_class) in maybe_classes {
+            classes.push((class_hash, maybe_class?));
+        }
+        Ok(classes)
     }
 }
