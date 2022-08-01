@@ -5,15 +5,15 @@ use std::time::Duration;
 use async_stream::stream;
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use log::{error, info};
+use papyrus_storage::{
+    BodyStorageWriter, HeaderStorageReader, HeaderStorageWriter, StateStorageReader,
+    StateStorageWriter, StorageError, StorageReader, StorageWriter,
+};
 use serde::{Deserialize, Serialize};
 use starknet_api::{BlockBody, BlockHeader, BlockNumber, StateDiff};
 use starknet_client::ClientError;
 
 pub use self::sources::{CentralSource, CentralSourceConfig};
-use crate::storage::{
-    BodyStorageWriter, HeaderStorageReader, HeaderStorageWriter, StateStorageReader,
-    StateStorageWriter, StorageError, StorageReader, StorageWriter,
-};
 
 #[derive(Serialize, Deserialize)]
 pub struct SyncConfig {
