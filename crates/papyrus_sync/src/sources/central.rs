@@ -123,7 +123,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                             yield Ok((current_block_number, header, body));
                             current_block_number = current_block_number.next();
                         }
-                        Ok(None) => todo!(),
+                        Ok(None) => return,
                         Err(err) => {
                             debug!(
                                 "Received error for block {}: {:?}.",
