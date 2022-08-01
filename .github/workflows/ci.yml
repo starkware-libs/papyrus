@@ -25,8 +25,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v1
       - run: >
-          cargo run -p starknet_node --bin starknet_client_integration_test;
-          cargo run -p starknet_node --bin central_source_integration_test
+          cargo run -p papyrus_node --bin starknet_client_integration_test;
+          cargo run -p papyrus_node --bin central_source_integration_test
 
   rustfmt:
     runs-on: ubuntu-latest
@@ -38,6 +38,19 @@ jobs:
           toolchain: nightly-2022-07-27
       - uses: Swatinem/rust-cache@v1
       - run: cargo +nightly-2022-07-27 fmt --all -- --check
+
+  udeps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions-rs/cargo@v1
+        name: "Udeps Installation"
+        with:
+          command: install
+          args: cargo-udeps --locked
+      - uses: actions-rs/cargo@v1
+        name: "Unused Dependency Check"
+        with:
+          command: udeps
 
   clippy:
     runs-on: ubuntu-latest
