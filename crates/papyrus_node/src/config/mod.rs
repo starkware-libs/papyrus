@@ -3,11 +3,10 @@ mod config_test;
 
 use std::fs;
 
+use papyrus_gateway::GatewayConfig;
+use papyrus_storage::StorageConfig;
+use papyrus_sync::{CentralSourceConfig, SyncConfig};
 use serde::{Deserialize, Serialize};
-
-use crate::gateway::GatewayConfig;
-use crate::storage::StorageConfig;
-use crate::sync::{CentralSourceConfig, SyncConfig};
 
 #[derive(Deserialize, Serialize)]
 pub struct Config {
