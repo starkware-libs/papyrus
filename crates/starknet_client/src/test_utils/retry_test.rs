@@ -43,7 +43,7 @@ impl Worker {
 
 #[tokio::test]
 async fn test_fail_on_all_attempts() {
-    let config = get_retry_test_config();
+    let config = get_test_config();
     let worker = Worker::new(10);
     Retry::new(&config).start(|| worker.work()).await.unwrap_err();
     debug!("Worker last delay: {:?}", &worker.get_last_delay());
@@ -53,7 +53,7 @@ async fn test_fail_on_all_attempts() {
 
 #[tokio::test]
 async fn test_success_on_third_attempt() {
-    let config = get_retry_test_config();
+    let config = get_test_config();
     let worker = Worker::new(3);
     Retry::new(&config).start(|| worker.work()).await.unwrap();
     debug!("Worker last delay: {:?}", &worker.get_last_delay());
