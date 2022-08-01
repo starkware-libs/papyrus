@@ -2,7 +2,7 @@ use assert_matches::assert_matches;
 use starknet_api::{BlockHash, BlockHeader, BlockNumber};
 
 use super::{HeaderStorageReader, HeaderStorageWriter, StorageError};
-use crate::storage::test_utils::get_test_storage;
+use crate::test_utils::get_test_storage;
 
 #[tokio::test]
 async fn test_append_header() -> Result<(), anyhow::Error> {
