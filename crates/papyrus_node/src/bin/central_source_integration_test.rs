@@ -1,7 +1,7 @@
 use futures_util::pin_mut;
+use papyrus_node::config::load_config;
+use papyrus_sync::CentralSource;
 use starknet_api::BlockNumber;
-use starknet_node::config::load_config;
-use starknet_node::sync::CentralSource;
 use tokio_stream::StreamExt;
 
 #[tokio::main]

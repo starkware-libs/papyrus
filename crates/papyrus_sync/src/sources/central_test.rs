@@ -5,7 +5,7 @@ use starknet_client::Block;
 use tokio_stream::StreamExt;
 
 use super::CentralSourceConfig;
-use crate::sync::CentralSource;
+use crate::CentralSource;
 
 #[tokio::test]
 async fn stream_block_headers() {
