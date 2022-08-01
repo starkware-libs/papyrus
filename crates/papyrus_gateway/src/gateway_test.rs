@@ -4,6 +4,7 @@ use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
+use papyrus_storage::{test_utils, BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 use starknet_api::{
     shash, BlockBody, BlockHash, BlockHeader, BlockNumber, CallData, ClassHash, ContractAddress,
     ContractAddressSalt, ContractClass, DeclareTransactionReceipt, DeployTransaction,
@@ -19,7 +20,6 @@ use super::objects::{
     Transactions,
 };
 use super::{run_server, GatewayConfig, JsonRpcServerImpl};
-use crate::storage::{test_utils, BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 
 // TODO(anatg): Move out of the gateway so that storage and sync can use it too.
 fn get_test_block(transaction_count: usize) -> (BlockHeader, BlockBody) {

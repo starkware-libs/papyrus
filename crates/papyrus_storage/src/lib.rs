@@ -2,7 +2,6 @@ mod body;
 mod db;
 mod header;
 mod state;
-#[cfg(test)]
 #[path = "test_utils.rs"]
 pub mod test_utils;
 

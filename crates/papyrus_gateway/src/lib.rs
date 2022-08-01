@@ -12,6 +12,10 @@ use jsonrpsee::http_server::{HttpServerBuilder, HttpServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::{ErrorObject, INTERNAL_ERROR_MSG};
 use log::{error, info};
+use papyrus_storage::{
+    BodyStorageReader, HeaderStorageReader, StateStorageReader, StorageReader, StorageTxn,
+    TransactionKind,
+};
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockBody, BlockNumber, ClassHash, ContractAddress, ContractClass, DeclareTransactionReceipt,
@@ -23,10 +27,6 @@ use self::api::{BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcError, Js
 use self::objects::{
     from_starknet_storage_diffs, Block, BlockHeader, GateWayStateDiff, StateUpdate,
     TransactionWithType, Transactions,
-};
-use crate::storage::{
-    BodyStorageReader, HeaderStorageReader, StateStorageReader, StorageReader, StorageTxn,
-    TransactionKind,
 };
 
 #[derive(Serialize, Deserialize)]
