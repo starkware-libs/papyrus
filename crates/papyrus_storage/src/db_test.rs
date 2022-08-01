@@ -1,14 +1,6 @@
-use tempfile::tempdir;
+use super::{open_env, DbReader, DbWriter};
+use crate::test_utils::get_test_config;
 
-use super::{open_env, DbConfig, DbReader, DbWriter};
-
-pub fn get_test_config() -> DbConfig {
-    let dir = tempdir().unwrap();
-    DbConfig {
-        path: dir.path().to_str().unwrap().to_string(),
-        max_size: 1 << 35, // 32GB.
-    }
-}
 fn get_test_env() -> (DbReader, DbWriter) {
     let config = get_test_config();
     open_env(config).expect("Failed to open environment.")
