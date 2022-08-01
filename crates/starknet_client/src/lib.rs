@@ -6,6 +6,7 @@ mod test_utils;
 
 use std::fmt::{self, Display, Formatter};
 
+use async_trait::async_trait;
 use log::{error, info};
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -14,10 +15,21 @@ use url::Url;
 
 pub use self::objects::block::{client_to_starknet_api_storage_diff, Block, BlockStateUpdate};
 
+type ClientResult<T> = Result<T, ClientError>;
+
+#[async_trait]
+pub trait StarknetClientTrait {
+    async fn block_number(&self) -> ClientResult<Option<BlockNumber>>;
+    async fn block(&self, block_number: BlockNumber) -> ClientResult<Option<Block>>;
+    async fn class_by_hash(&self, class_hash: ClassHash) -> ClientResult<ContractClass>;
+    async fn state_update(&self, block_number: BlockNumber) -> ClientResult<BlockStateUpdate>;
+}
+
 pub struct StarknetClient {
     urls: StarknetUrls,
     internal_client: Client,
 }
+
 #[derive(Clone, Debug)]
 struct StarknetUrls {
     get_block: Url,
@@ -89,78 +101,7 @@ impl StarknetClient {
         })
     }
 
-    pub async fn block_number(&self) -> Result<Option<BlockNumber>, ClientError> {
-        let response = self.request(self.urls.get_block.clone()).await;
-        match response {
-            Ok(raw_block) => {
-                let block: Block = serde_json::from_str(&raw_block)?;
-                Ok(Some(block.block_number))
-            }
-            Err(err) => match err {
-                ClientError::StarknetError(sn_err) => {
-                    let StarknetError { code, message } = sn_err;
-                    // If there are no blocks in Starknet, return None.
-                    if code == StarknetErrorCode::BlockNotFound {
-                        Ok(None)
-                    } else {
-                        Err(ClientError::StarknetError(StarknetError { code, message }))
-                    }
-                }
-                _ => Err(err),
-            },
-        }
-    }
-
-    pub async fn block(&self, block_number: BlockNumber) -> Result<Option<Block>, ClientError> {
-        let mut url = self.urls.get_block.clone();
-        url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.0.to_string());
-        let response = self.request(url).await;
-        match response {
-            Ok(raw_block) => {
-                let block: Block = serde_json::from_str(&raw_block)?;
-                Ok(Some(block))
-            }
-            Err(err) => match err {
-                ClientError::StarknetError(sn_err) => {
-                    let StarknetError { code, message } = sn_err;
-                    if code == StarknetErrorCode::BlockNotFound {
-                        Ok(None)
-                    } else {
-                        Err(ClientError::StarknetError(StarknetError { code, message }))
-                    }
-                }
-                _ => Err(err),
-            },
-        }
-    }
-
-    pub async fn class_by_hash(&self, class_hash: ClassHash) -> Result<ContractClass, ClientError> {
-        let mut url = self.urls.get_contract_by_hash.clone();
-        let class_hash = serde_json::to_string(&class_hash)?;
-        url.query_pairs_mut()
-            .append_pair(CLASS_HASH_QUERY, &class_hash.as_str()[1..class_hash.len() - 1]);
-        let response = self.request(url).await;
-        match response {
-            Ok(raw_contract_class) => Ok(serde_json::from_str(&raw_contract_class)?),
-            Err(err) => {
-                error!("{}", err);
-                Err(err)
-            }
-        }
-    }
-
-    pub async fn state_update(
-        &self,
-        block_number: BlockNumber,
-    ) -> Result<BlockStateUpdate, ClientError> {
-        let mut url = self.urls.get_state_update.clone();
-        url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.0.to_string());
-        let raw_state_update = self.request(url).await?;
-        let state_update: BlockStateUpdate = serde_json::from_str(&raw_state_update)?;
-        Ok(state_update)
-    }
-
-    async fn request(&self, url: Url) -> Result<String, ClientError> {
+    async fn request(&self, url: Url) -> ClientResult<String> {
         let response = self.internal_client.get(url).send().await?;
         match response.status() {
             StatusCode::OK => {
@@ -183,5 +124,76 @@ impl StarknetClient {
                 Err(ClientError::BadResponse { status: response.status() })
             }
         }
+    }
+}
+
+#[async_trait]
+impl StarknetClientTrait for StarknetClient {
+    async fn block_number(&self) -> ClientResult<Option<BlockNumber>> {
+        let response = self.request(self.urls.get_block.clone()).await;
+        match response {
+            Ok(raw_block) => {
+                let block: Block = serde_json::from_str(&raw_block)?;
+                Ok(Some(block.block_number))
+            }
+            Err(err) => match err {
+                ClientError::StarknetError(sn_err) => {
+                    let StarknetError { code, message } = sn_err;
+                    // If there are no blocks in Starknet, return None.
+                    if code == StarknetErrorCode::BlockNotFound {
+                        Ok(None)
+                    } else {
+                        Err(ClientError::StarknetError(StarknetError { code, message }))
+                    }
+                }
+                _ => Err(err),
+            },
+        }
+    }
+
+    async fn block(&self, block_number: BlockNumber) -> ClientResult<Option<Block>> {
+        let mut url = self.urls.get_block.clone();
+        url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.0.to_string());
+        let response = self.request(url).await;
+        match response {
+            Ok(raw_block) => {
+                let block: Block = serde_json::from_str(&raw_block)?;
+                Ok(Some(block))
+            }
+            Err(err) => match err {
+                ClientError::StarknetError(sn_err) => {
+                    let StarknetError { code, message } = sn_err;
+                    if code == StarknetErrorCode::BlockNotFound {
+                        Ok(None)
+                    } else {
+                        Err(ClientError::StarknetError(StarknetError { code, message }))
+                    }
+                }
+                _ => Err(err),
+            },
+        }
+    }
+
+    async fn class_by_hash(&self, class_hash: ClassHash) -> ClientResult<ContractClass> {
+        let mut url = self.urls.get_contract_by_hash.clone();
+        let class_hash = serde_json::to_string(&class_hash)?;
+        url.query_pairs_mut()
+            .append_pair(CLASS_HASH_QUERY, &class_hash.as_str()[1..class_hash.len() - 1]);
+        let response = self.request(url).await;
+        match response {
+            Ok(raw_contract_class) => Ok(serde_json::from_str(&raw_contract_class)?),
+            Err(err) => {
+                error!("{}", err);
+                Err(err)
+            }
+        }
+    }
+
+    async fn state_update(&self, block_number: BlockNumber) -> ClientResult<BlockStateUpdate> {
+        let mut url = self.urls.get_state_update.clone();
+        url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.0.to_string());
+        let raw_state_update = self.request(url).await?;
+        let state_update: BlockStateUpdate = serde_json::from_str(&raw_state_update)?;
+        Ok(state_update)
     }
 }
