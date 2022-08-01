@@ -119,7 +119,7 @@ impl<T: StarknetClientTrait> GenericCentralSource<T> {
                             yield Ok((current_block_number, header, body));
                             current_block_number = current_block_number.next();
                         }
-                        Ok(None) => todo!(),
+                        Ok(None) => return,
                         Err(err) => {
                             debug!("Received error for block {}: {:?}.", current_block_number.0, err);
                             yield (Err(CentralError::ClientError(err)))

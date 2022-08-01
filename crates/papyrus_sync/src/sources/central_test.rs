@@ -64,4 +64,36 @@ async fn stream_block_headers() {
         assert_eq!(expected_block_num, block_number);
         expected_block_num = expected_block_num.next();
     }
+    assert_eq!(expected_block_num, BlockNumber(END_BLOCK_NUMBER));
+}
+
+#[tokio::test]
+async fn stream_block_headers_some_are_missing() {
+    const START_BLOCK_NUMBER: u64 = 5;
+    const END_BLOCK_NUMBER: u64 = 13;
+    const MISSING_BLOCK_NUMBER: u64 = 9;
+    let mut mock = MockStarknetClient::new();
+
+    // We need to perform all the mocks before moving the mock into central_source.
+    for i in START_BLOCK_NUMBER..MISSING_BLOCK_NUMBER {
+        mock.expect_block()
+            .with(predicate::eq(BlockNumber(i)))
+            .times(1)
+            .returning(|_x| Ok(Some(Block::default())));
+    }
+    mock.expect_block()
+        .with(predicate::eq(BlockNumber(MISSING_BLOCK_NUMBER)))
+        .times(1)
+        .returning(|_x| Ok(None));
+    let central_source = GenericCentralSource { starknet_client: mock };
+
+    let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
+    let stream =
+        central_source.stream_new_blocks(expected_block_num, BlockNumber(END_BLOCK_NUMBER));
+    pin_mut!(stream);
+    while let Some(Ok((block_number, _header, _body))) = stream.next().await {
+        assert_eq!(expected_block_num, block_number);
+        expected_block_num = expected_block_num.next();
+    }
+    assert_eq!(expected_block_num, BlockNumber(MISSING_BLOCK_NUMBER));
 }
