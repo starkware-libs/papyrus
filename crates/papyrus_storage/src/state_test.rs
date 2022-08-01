@@ -5,8 +5,8 @@ use starknet_api::{
 };
 
 use super::{StateStorageReader, StateStorageWriter, StorageError};
-use crate::storage::state::split_diff_for_storage;
-use crate::storage::test_utils::get_test_storage;
+use crate::state::split_diff_for_storage;
+use crate::test_utils::get_test_storage;
 
 #[test]
 fn test_append_diff() -> Result<(), anyhow::Error> {
