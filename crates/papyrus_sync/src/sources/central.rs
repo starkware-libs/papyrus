@@ -19,7 +19,7 @@ pub struct CentralSourceConfig {
     pub url: String,
 }
 pub struct GenericCentralSource<T: StarknetClientTrait> {
-    starknet_client: T,
+    pub starknet_client: T,
 }
 
 #[derive(thiserror::Error, Debug)]
