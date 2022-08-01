@@ -1,8 +1,8 @@
 use log::info;
-use starknet_node::config::load_config;
-use starknet_node::gateway::run_server;
-use starknet_node::storage::open_storage;
-use starknet_node::sync::{CentralSource, StateSync};
+use papyrus_gateway::run_server;
+use papyrus_node::config::load_config;
+use papyrus_storage::open_storage;
+use papyrus_sync::{CentralSource, StateSync};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

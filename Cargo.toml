@@ -1,7 +1,10 @@
 [workspace]
 
 members = [
+    "crates/papyrus_gateway",
+    "crates/papyrus_node",
+    "crates/papyrus_storage",
+    "crates/papyrus_sync",
     "crates/starknet_api",
     "crates/starknet_client",
-    "crates/starknet_node",
 ]
