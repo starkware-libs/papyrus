@@ -1,7 +1,7 @@
 use futures_util::pin_mut;
 use mockito::{mock, Matcher};
 use starknet_api::BlockNumber;
-use starknet_client::{Block, StarknetClient};
+use starknet_client::Block;
 use tokio_stream::StreamExt;
 
 use super::CentralSourceConfig;
@@ -10,7 +10,7 @@ use crate::sync::CentralSource;
 #[tokio::test]
 async fn stream_block_headers() {
     let config = CentralSourceConfig { url: mockito::server_url() };
-    let central_source = CentralSource::<StarknetClient>::new(config).unwrap();
+    let central_source = CentralSource::new(config).unwrap();
 
     // Prepare mock calls.
     let latest_block = Block { block_number: BlockNumber(9), ..Default::default() };
