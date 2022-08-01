@@ -2,7 +2,8 @@ mod body;
 mod db;
 mod header;
 mod state;
-#[cfg(test)]
+
+#[cfg(any(feature = "testing", test))]
 #[path = "test_utils.rs"]
 pub mod test_utils;
 
