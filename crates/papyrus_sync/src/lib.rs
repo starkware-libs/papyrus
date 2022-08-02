@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use starknet_api::{BlockBody, BlockHeader, BlockNumber, StateDiff};
 use starknet_client::ClientError;
 
-pub use self::sources::{CentralSource, CentralSourceConfig};
+pub use self::sources::{CentralError, CentralSource, CentralSourceConfig};
 
 #[derive(Serialize, Deserialize)]
 pub struct SyncConfig {
