@@ -127,7 +127,8 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                                 "Received error for block {}: {:?}.",
                                 current_block_number.0, err
                             );
-                            yield (Err(CentralError::ClientError(Arc::new(err))))
+                            yield (Err(CentralError::ClientError(Arc::new(err))));
+                            return;
                         }
                     }
                 }
