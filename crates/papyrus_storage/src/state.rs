@@ -212,6 +212,23 @@ fn write_nonces<'env>(
             Err(err) => return Err(err.into()),
         }
     }
+
+    // Make sure that every deployed contract address has a nonce.
+    for deployed_contract in &state_diff.deployed_contracts {
+        let db_key = (deployed_contract.address, block_number.next());
+        let mut cursor = contracts_table.cursor(txn)?;
+        cursor.lower_bound(&db_key)?;
+        let res = cursor.prev()?;
+
+        if res.map_or(true, |((address, _), _)| address != deployed_contract.address) {
+            contracts_table.insert(
+                txn,
+                &(deployed_contract.address, block_number),
+                &Nonce::default(),
+            )?;
+        }
+    }
+
     Ok(())
 }
 
@@ -270,7 +287,7 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         &self,
         state_number: StateNumber,
         address: &ContractAddress,
-    ) -> StorageResult<Nonce> {
+    ) -> StorageResult<Option<Nonce>> {
         // State diff updates are indexed by the block_number at which they occurred.
         let first_irrelevant_block: BlockNumber = state_number.block_after();
         // The relevant update is the last update strictly before `first_irrelevant_block`.
@@ -280,15 +297,15 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         cursor.lower_bound(&db_key)?;
         let res = cursor.prev()?;
         match res {
-            None => Ok(Nonce::default()),
+            None => Ok(None),
             Some(((got_address, _got_block_number), value)) => {
                 if got_address != *address {
                     // The previous item belongs to different address, which means there is no
                     // previous state diff for this item.
-                    return Ok(Nonce::default());
+                    return Ok(None);
                 };
                 // The previous db item indeed belongs to this address and key.
-                Ok(value)
+                Ok(Some(value))
             }
         }
     }
