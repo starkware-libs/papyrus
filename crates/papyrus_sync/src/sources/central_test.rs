@@ -1,11 +1,14 @@
+use assert_matches::assert_matches;
 use async_trait::async_trait;
 use futures_util::pin_mut;
 use mockall::{mock, predicate};
+use reqwest::StatusCode;
 use starknet_api::{BlockNumber, ClassHash, ContractClass};
 use starknet_client::{Block, BlockStateUpdate, ClientError, StarknetClientTrait};
 use tokio_stream::StreamExt;
 
 use crate::sources::central::GenericCentralSource;
+use crate::CentralError;
 
 // Using mock! and not automock because StarknetClient is defined in another crate. For more
 // details, See mockall's documentation: https://docs.rs/mockall/latest/mockall/
@@ -64,4 +67,43 @@ async fn stream_block_headers() {
         assert_eq!(expected_block_num, block_number);
         expected_block_num = expected_block_num.next();
     }
+}
+
+#[tokio::test]
+async fn stream_block_headers_error() {
+    const START: u64 = 5;
+    const END: u64 = 10;
+    const ERROR_INDEX: u64 = 7;
+    let mut mock = MockStarknetClient::new();
+    let status = StatusCode::NOT_FOUND;
+
+    // We need to perform all the mocks before moving the mock into central_source.
+    for i in START..END {
+        mock.expect_block().with(predicate::eq(BlockNumber(i))).times(1).returning(move |_x| {
+            if i == ERROR_INDEX {
+                Err(ClientError::BadResponse { status })
+            } else {
+                Ok(Some(Block::default()))
+            }
+        });
+    }
+    let central_source = GenericCentralSource { starknet_client: mock };
+
+    let mut expected_block_num = BlockNumber(START);
+    let stream = central_source.stream_new_blocks(expected_block_num, BlockNumber(END));
+    pin_mut!(stream);
+    while let Some(x) = stream.next().await {
+        if expected_block_num == BlockNumber(ERROR_INDEX) {
+            assert_matches!(
+                x,
+                Err(CentralError::ClientError(ClientError::BadResponse{status}))
+                if status == StatusCode::NOT_FOUND
+            );
+        } else {
+            let block_number = x.unwrap().0;
+            assert_eq!(expected_block_num, block_number);
+        }
+        expected_block_num = expected_block_num.next();
+    }
+    assert_eq!(expected_block_num, BlockNumber(END));
 }
