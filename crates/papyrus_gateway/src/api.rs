@@ -2,8 +2,8 @@ use jsonrpsee::core::Error;
 use jsonrpsee::proc_macros::rpc;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockHash, BlockNumber, ClassHash, ContractAddress, ContractClass, StarkFelt, StorageKey,
-    TransactionHash, TransactionOffsetInBlock, TransactionReceipt,
+    BlockHash, BlockNumber, ClassHash, ContractAddress, ContractClass, Nonce, StarkFelt,
+    StorageKey, TransactionHash, TransactionOffsetInBlock, TransactionReceipt,
 };
 
 use super::objects::{Block, StateUpdate, TransactionWithType};
@@ -132,4 +132,12 @@ pub trait JsonRpc {
         block_id: BlockId,
         contract_address: ContractAddress,
     ) -> Result<ClassHash, Error>;
+
+    /// Get the nonce associated with the given address in the given block.
+    #[method(name = "getNonce")]
+    fn get_nonce(
+        &self,
+        block_id: BlockId,
+        contract_address: ContractAddress,
+    ) -> Result<Nonce, Error>;
 }

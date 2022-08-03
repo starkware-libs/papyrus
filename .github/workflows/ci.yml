@@ -4,6 +4,11 @@ on:
   push:
     branches: [ main ]
   pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - auto_merge_enabled
     branches: [ main ]
 
 jobs:
@@ -23,18 +28,45 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v1
       - run: >
-          cargo run -p starknet_node --bin starknet_client_integration_test;
-          cargo run -p starknet_node --bin central_source_integration_test
+          cargo run -p papyrus_node --bin starknet_client_integration_test;
+          cargo run -p papyrus_node --bin central_source_integration_test
 
   rustfmt:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@master
         with:
           components: rustfmt
+          toolchain: nightly-2022-07-27
       - uses: Swatinem/rust-cache@v1
-      - run: cargo +nightly fmt --all -- --check
+      - run: cargo +nightly-2022-07-27 fmt --all -- --check
+
+  udeps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        name: "Rust Toolchain Setup"
+        with:
+          profile: minimal
+          toolchain: nightly-2022-07-27
+          override: true
+      - uses: actions/cache@v2
+        name: "Cache Setup"
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - run:
+          wget https://github.com/est31/cargo-udeps/releases/download/v0.1.30/cargo-udeps-v0.1.30-x86_64-unknown-linux-gnu.tar.gz;
+          tar -xzf cargo-udeps-v0.1.30-x86_64-unknown-linux-gnu.tar.gz;
+          cargo-udeps-v0.1.30-x86_64-unknown-linux-gnu/cargo-udeps udeps
+        env:
+          RUSTUP_TOOLCHAIN: nightly-2022-07-27
 
   clippy:
     runs-on: ubuntu-latest

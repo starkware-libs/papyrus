@@ -6,7 +6,7 @@ use starknet_api::{
 };
 
 use super::{BodyStorageReader, BodyStorageWriter, StorageError};
-use crate::storage::test_utils::get_test_storage;
+use crate::test_utils::get_test_storage;
 
 #[tokio::test]
 async fn test_append_body() -> Result<(), anyhow::Error> {

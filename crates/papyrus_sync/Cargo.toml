@@ -1,5 +1,5 @@
 [package]
-name = "starknet_node"
+name = "papyrus_sync"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,17 +8,14 @@ anyhow = { version = "1.0.44" }
 async-stream = { version = "0.3.3" }
 bincode = { version = "1.3.3" }
 futures-util = { version = "0.3.21" }
-jsonrpsee = { version = "0.13.1", features = ["full"] }
 libmdbx = { version = "0.1.5", features = ["lifetimed-bytes"] }
 log = { version = "0.4" }
-log4rs = { version =  "1.1.1" }
-mockito = { version = "0.31.0" }
 reqwest = { version = "0.11", features = ["json", "blocking"] }
-ron = { version ="0.7" }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" }
 starknet_api = { path = "../starknet_api" }
 starknet_client = { path = "../starknet_client" }
+papyrus_storage = { path = "../papyrus_storage" }
 thiserror = { version = "1.0.31" }
 tokio = { version = "1.18.2", features = ["full","sync"] }
 tokio-stream = { version = "0.1.8" }
@@ -26,4 +23,6 @@ url = { version = "2.2.2" }
 
 [dev-dependencies]
 assert_matches = { version = "1.5.0" }
+async-trait = { version = "0.1.56" }
+mockall = { version = "0.11.2" }
 tempfile = { version = "3.3.0" }

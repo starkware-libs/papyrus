@@ -14,8 +14,8 @@ use super::objects::block::BlockStateUpdate;
 use super::objects::transaction::{DeclareTransaction, TransactionType};
 use super::test_utils::read_resource::read_resource_file;
 use super::{
-    Block, ClientError, StarknetClient, BLOCK_NUMBER_QUERY, CLASS_HASH_QUERY, GET_BLOCK_URL,
-    GET_STATE_UPDATE_URL,
+    Block, ClientError, StarknetClient, StarknetClientTrait, BLOCK_NUMBER_QUERY, CLASS_HASH_QUERY,
+    GET_BLOCK_URL, GET_STATE_UPDATE_URL,
 };
 
 #[test]
@@ -75,7 +75,7 @@ async fn get_block_number() {
         .create();
     let block_number = starknet_client.block_number().await.unwrap();
     mock_block.assert();
-    assert_eq!(block_number.unwrap(), BlockNumber(20));
+    assert_eq!(block_number.unwrap(), BlockNumber(273466));
 
     // There are no blocks in Starknet.
     let body = r#"{"code": "StarknetErrorCode.BLOCK_NOT_FOUND", "message": "Block number -1 was not found."}"#;

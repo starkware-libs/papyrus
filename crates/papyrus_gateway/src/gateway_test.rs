@@ -4,11 +4,12 @@ use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
+use papyrus_storage::{test_utils, BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 use starknet_api::{
     shash, BlockBody, BlockHash, BlockHeader, BlockNumber, CallData, ClassHash, ContractAddress,
     ContractAddressSalt, ContractClass, DeclareTransactionReceipt, DeployTransaction,
-    DeployedContract, GlobalRoot, StarkFelt, StarkHash, StateDiff, StorageDiff, StorageEntry,
-    StorageKey, Transaction, TransactionHash, TransactionReceipt, TransactionVersion,
+    DeployedContract, GlobalRoot, Nonce, StarkFelt, StarkHash, StateDiff, StorageDiff,
+    StorageEntry, StorageKey, Transaction, TransactionHash, TransactionReceipt, TransactionVersion,
 };
 
 use super::api::{
@@ -19,7 +20,6 @@ use super::objects::{
     Transactions,
 };
 use super::{run_server, GatewayConfig, JsonRpcServerImpl};
-use crate::storage::{test_utils, BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 
 // TODO(anatg): Move out of the gateway so that storage and sync can use it too.
 fn get_test_block(transaction_count: usize) -> (BlockHeader, BlockBody) {
@@ -475,6 +475,77 @@ async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, ClassHash>(
             "starknet_getClassHashAt",
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), address),
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidBlockId as i32,
+        JsonRpcError::InvalidBlockId.to_string(),
+        None::<()>,
+    ));
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_get_nonce() -> Result<(), anyhow::Error> {
+    let (storage_reader, mut storage_writer) = test_utils::get_test_storage();
+    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+
+    // TODO(anatg): Write the nonces to the storage once it's supported.
+    let (header, _, diff) = get_test_state_diff();
+    storage_writer
+        .begin_rw_txn()?
+        .append_header(header.block_number, &header)?
+        .append_state_diff(header.block_number, diff.clone())?
+        .commit()?;
+
+    let address = diff.deployed_contracts.get(0).unwrap().address;
+    let expected_nonce = Nonce::default();
+
+    // Get class hash by block hash.
+    let res = module
+        .call::<_, Nonce>(
+            "starknet_getNonce",
+            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), address),
+        )
+        .await?;
+    assert_eq!(res, expected_nonce);
+
+    // Get class hash by block number.
+    let res = module
+        .call::<_, Nonce>(
+            "starknet_getNonce",
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), address),
+        )
+        .await?;
+    assert_eq!(res, expected_nonce);
+
+    // TODO(anatg): Ask for an invalid contract.
+
+    // Ask for an invalid block hash.
+    let err = module
+        .call::<_, Nonce>(
+            "starknet_getNonce",
+            (
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
+                    "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
+                )))),
+                address,
+            ),
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidBlockId as i32,
+        JsonRpcError::InvalidBlockId.to_string(),
+        None::<()>,
+    ));
+
+    // Ask for an invalid block number.
+    let err = module
+        .call::<_, Nonce>(
+            "starknet_getNonce",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), address),
         )
         .await
