@@ -8,7 +8,7 @@ use tokio_stream::StreamExt;
 use crate::sources::central::GenericCentralSource;
 
 // Using mock! and not automock because StarknetClient is defined in another crate. For more
-// details, See mockall's documentation.
+// details, See mockall's documentation: https://docs.rs/mockall/latest/mockall/
 mock! {
     pub StarknetClient {}
 
@@ -43,21 +43,22 @@ async fn last_block_number() {
 
 #[tokio::test]
 async fn stream_block_headers() {
-    const START: u64 = 5;
-    const END: u64 = 9;
+    const START_BLOCK_NUMBER: u64 = 5;
+    const END_BLOCK_NUMBER: u64 = 9;
     let mut mock = MockStarknetClient::new();
 
     // We need to perform all the mocks before moving the mock into central_source.
-    for i in START..END {
+    for i in START_BLOCK_NUMBER..END_BLOCK_NUMBER {
         mock.expect_block()
             .with(predicate::eq(BlockNumber(i)))
             .times(1)
-            .returning(|_x| Ok(Some(Block::default())));
+            .returning(|_block_number| Ok(Some(Block::default())));
     }
     let central_source = GenericCentralSource { starknet_client: mock };
 
-    let mut expected_block_num = BlockNumber(START);
-    let stream = central_source.stream_new_blocks(expected_block_num, BlockNumber(END));
+    let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
+    let stream =
+        central_source.stream_new_blocks(expected_block_num, BlockNumber(END_BLOCK_NUMBER));
     pin_mut!(stream);
     while let Some(Ok((block_number, _header, _body))) = stream.next().await {
         assert_eq!(expected_block_num, block_number);
