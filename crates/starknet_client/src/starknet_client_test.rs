@@ -74,7 +74,7 @@ async fn get_block_number() {
         .create();
     let block_number = starknet_client.block_number().await.unwrap();
     mock_block.assert();
-    assert_eq!(block_number.unwrap(), BlockNumber(20));
+    assert_eq!(block_number.unwrap(), BlockNumber(273466));
 
     // There are no blocks in Starknet.
     let body = r#"{"code": "StarknetErrorCode.BLOCK_NOT_FOUND", "message": "Block number -1 was not found."}"#;
