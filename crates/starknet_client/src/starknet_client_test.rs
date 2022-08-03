@@ -56,7 +56,7 @@ fn contract_class_body() -> &'static str {
             "prime": "0x800000000000011000000000000000000000000000000000000000000000001",
             "main_scope": "__main__",
             "identifiers": {},
-            "attributes": [244116128358498188146337218061232635775543270890529169229936851982759783745],
+            "attributes": [1234],
             "debug_info": null,
             "reference_manager": {},
             "hints": {}
@@ -121,6 +121,15 @@ async fn test_state_update() {
 }
 
 #[tokio::test]
+async fn test_serialization_precision() {
+    let input =
+        "{\"value\":244116128358498188146337218061232635775543270890529169229936851982759783745}";
+    let serialized = serde_json::from_str::<serde_json::Value>(input).unwrap();
+    let deserialized = serde_json::to_string(&serialized).unwrap();
+    assert_eq!(input, deserialized);
+}
+
+#[tokio::test]
 async fn contract_class() {
     let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
     let expected_contract_class = ContractClass {
@@ -139,12 +148,7 @@ async fn contract_class() {
         ])])
         .unwrap(),
         program: Program {
-            attributes: serde_json::Value::Array(vec![serde_json::Value::Number(
-                serde_json::Number::from_string_unchecked(
-                    "244116128358498188146337218061232635775543270890529169229936851982759783745"
-                        .to_string(),
-                ),
-            )]),
+            attributes: serde_json::Value::Array(vec![serde_json::json!(1234)]),
             builtins: serde_json::Value::Array(Vec::new()),
             data: serde_json::Value::Array(vec![
                 serde_json::Value::String("0x20780017fff7ffd".to_string()),
