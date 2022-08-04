@@ -1,4 +1,5 @@
 mod objects;
+pub mod retry;
 #[cfg(test)]
 mod starknet_client_test;
 #[cfg(test)]
