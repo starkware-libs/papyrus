@@ -15,9 +15,9 @@ tokio = { version = "1.18.2", features = ["full","sync"] }
 tokio-retry = { version = "0.3" }
 url = { version = "2.2.2" }
 web3 = { version = "0.18.0" }
-mockall = { version = "0.11.2" }
 
 [dev-dependencies]
 assert = { version = "0.0.4" }
 assert_matches = { version = "1.5.0" }
+mockall = { version = "0.11.2" }
 mockito = { version = "0.31.0" }
