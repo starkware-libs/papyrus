@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::{self, Display, Formatter};
 
 use async_stream::stream;
 use futures_util::StreamExt;
@@ -22,10 +23,23 @@ pub struct GenericCentralSource<T: StarknetClientTrait> {
     pub starknet_client: T,
 }
 
+#[derive(thiserror::Error, Debug, Deserialize, Serialize)]
+pub struct BlockDoesntExist {
+    pub block_number: BlockNumber,
+}
+
+impl Display for BlockDoesntExist {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum CentralError {
     #[error(transparent)]
     ClientError(#[from] ClientError),
+    #[error(transparent)]
+    BlockDoesntExist(#[from] BlockDoesntExist),
 }
 
 impl<T: StarknetClientTrait> GenericCentralSource<T> {
@@ -92,7 +106,8 @@ impl<T: StarknetClientTrait> GenericCentralSource<T> {
         let mut current_block_number = initial_block_number;
         stream! {
             while current_block_number < up_to_block_number {
-                let mut res = futures_util::stream::iter(current_block_number.0..up_to_block_number.0)
+                let mut res =
+                    futures_util::stream::iter(current_block_number.0..up_to_block_number.0)
                     .map(|bn| async move { self.starknet_client.block(BlockNumber(bn)).await })
                     .buffered(CONCURRENT_REQUESTS);
                 while let Some(maybe_block) = res.next().await {
@@ -119,9 +134,15 @@ impl<T: StarknetClientTrait> GenericCentralSource<T> {
                             yield Ok((current_block_number, header, body));
                             current_block_number = current_block_number.next();
                         }
-                        Ok(None) => return,
+                        Ok(None) => {
+                            yield (Err(CentralError::BlockDoesntExist(
+                                BlockDoesntExist{block_number: current_block_number}
+                            )));
+                            return;
+                        }
                         Err(err) => {
-                            debug!("Received error for block {}: {:?}.", current_block_number.0, err);
+                            debug!(
+                                "Received error for block {}: {:?}.", current_block_number.0, err);
                             yield (Err(CentralError::ClientError(err)))
                         }
                     }
