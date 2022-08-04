@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use async_stream::stream;
 use futures_util::StreamExt;
@@ -6,10 +7,12 @@ use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use starknet_api::{BlockBody, BlockHeader, BlockNumber, ClassHash, ContractClass, StateDiff};
 use starknet_client::{
-    client_to_starknet_api_storage_diff, ClientCreationError, ClientError, ClientResult,
-    StarknetClient, StarknetClientTrait,
+    client_to_starknet_api_storage_diff, BlockStateUpdate, ClientCreationError, ClientError,
+    ClientResult, StarknetClient, StarknetClientTrait,
 };
 use tokio_stream::Stream;
+
+use super::stream_utils::MyStreamExt;
 
 // TODO(dan): move to config.
 const CONCURRENT_REQUESTS: usize = 750;
@@ -18,8 +21,8 @@ const CONCURRENT_REQUESTS: usize = 750;
 pub struct CentralSourceConfig {
     pub url: String,
 }
-pub struct GenericCentralSource<T: StarknetClientTrait> {
-    pub starknet_client: T,
+pub struct GenericCentralSource<TStarknetClient: StarknetClientTrait + Send + Sync> {
+    pub starknet_client: Arc<TStarknetClient>,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -28,7 +31,7 @@ pub enum CentralError {
     ClientError(#[from] ClientError),
 }
 
-impl<T: StarknetClientTrait> GenericCentralSource<T> {
+impl<TStarknetClient: StarknetClientTrait + Send + Sync> GenericCentralSource<TStarknetClient> {
     pub async fn get_block_marker(&self) -> Result<BlockNumber, ClientError> {
         self.starknet_client
             .block_number()
@@ -148,6 +151,42 @@ impl<T: StarknetClientTrait> GenericCentralSource<T> {
         }
         Ok(classes)
     }
+
+    async fn my_stream(
+        &self,
+        input: impl Stream<Item = BlockNumber> + Send + Sync + 'static,
+    ) -> impl Stream<Item = (BlockStateUpdate, Vec<(ClassHash, ContractClass)>)> {
+        // ) -> Result<impl Stream<Item = (BlockStateUpdate, Vec<usize>)>, ClientError> {
+        // ) -> impl Stream<Item = (ClientResult<BlockStateUpdate>, Vec<usize>)> {
+        let starknet_client = self.starknet_client.clone();
+        let (ns0, mut ns1) = input
+            .map(move |block_number| {
+                let starknet_client:Arc<TStarknetClient>= starknet_client.clone();
+                async move {
+                starknet_client.state_update(BlockNumber(1)).await;
+                BlockStateUpdate::default()
+            }
+        })
+            .buffered(CONCURRENT_REQUESTS)
+            // .map(|a| a.unwrap())
+            .fanout(CONCURRENT_REQUESTS);
+        let mut flat_classes = ns0
+            .map(|state_update| state_update.state_diff.class_hashes())
+            .flat_map(|class_hashes| futures::stream::iter(class_hashes))
+            .map(|class_hash| async move {
+                (class_hash, starknet_client.class_by_hash(class_hash).await)
+            })
+            .buffered(CONCURRENT_REQUESTS)
+            .map(|(class_hash, class)| (class_hash, class.unwrap()));
+        let s = stream! {
+            while let Some(state_update) = ns1.next().await{
+                let len = state_update.state_diff.class_hashes().len();
+                let res = flat_classes.take_n(len).await.unwrap();
+                yield (state_update, res);
+            }
+        };
+        s
+    }
 }
 
 pub type CentralSource = GenericCentralSource<StarknetClient>;
@@ -156,6 +195,6 @@ impl CentralSource {
     pub fn new(config: CentralSourceConfig) -> Result<CentralSource, ClientCreationError> {
         let starknet_client = StarknetClient::new(&config.url)?;
         info!("Central source is configured with {}.", config.url);
-        Ok(CentralSource { starknet_client })
+        Ok(CentralSource { starknet_client: Arc::new(starknet_client) })
     }
 }
