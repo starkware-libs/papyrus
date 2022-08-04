@@ -116,6 +116,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             &self.txn,
             block_number,
             &deployed_contracts_table,
+            &nonces_table,
         )?;
         write_storage_diffs(&thin_state_diff, &self.txn, block_number, &storage_table)?;
         write_nonces(&thin_state_diff, &self.txn, block_number, &nonces_table)?;
@@ -174,13 +175,28 @@ fn write_deployed_contracts<'env>(
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     deployed_contracts_table: &'env DeployedContractsTable<'env>,
+    nonces_table: &'env NoncesTable<'env>,
 ) -> StorageResult<()> {
     for deployed_contract in &state_diff.deployed_contracts {
         let class_hash = deployed_contract.class_hash;
         let value = IndexedDeployedContract { block_number, class_hash };
         let res = deployed_contracts_table.insert(txn, &deployed_contract.address, &value);
         match res {
-            Ok(()) => continue,
+            Ok(()) => {
+                if !state_diff
+                    .nonces
+                    .iter()
+                    .any(|(address, _nonce)| *address == deployed_contract.address)
+                {
+                    write_nonce(
+                        &deployed_contract.address,
+                        &Nonce::default(),
+                        txn,
+                        block_number,
+                        nonces_table,
+                    )?;
+                }
+            }
             Err(DbError::InnerDbError(libmdbx::Error::KeyExist)) => {
                 return Err(StorageError::ContractAlreadyExists {
                     address: deployed_contract.address,
@@ -192,6 +208,25 @@ fn write_deployed_contracts<'env>(
     Ok(())
 }
 
+fn write_nonce<'env>(
+    contract_address: &ContractAddress,
+    nonce: &Nonce,
+    txn: &DbTransaction<'env, RW>,
+    block_number: BlockNumber,
+    nonces_table: &'env NoncesTable<'env>,
+) -> StorageResult<()> {
+    let res = nonces_table.insert(txn, &(*contract_address, block_number), nonce);
+    match res {
+        Ok(()) => Ok(()),
+        Err(DbError::InnerDbError(libmdbx::Error::KeyExist)) => Err(StorageError::NonceReWrite {
+            contract_address: *contract_address,
+            nonce: *nonce,
+            block_number,
+        }),
+        Err(err) => Err(err.into()),
+    }
+}
+
 fn write_nonces<'env>(
     state_diff: &ThinStateDiff,
     txn: &DbTransaction<'env, RW>,
@@ -199,36 +234,8 @@ fn write_nonces<'env>(
     contracts_table: &'env NoncesTable<'env>,
 ) -> StorageResult<()> {
     for (contract_address, nonce) in &state_diff.nonces {
-        let res = contracts_table.insert(txn, &(*contract_address, block_number), nonce);
-        match res {
-            Ok(()) => continue,
-            Err(DbError::InnerDbError(libmdbx::Error::KeyExist)) => {
-                return Err(StorageError::NonceReWrite {
-                    contract_address: *contract_address,
-                    nonce: *nonce,
-                    block_number,
-                });
-            }
-            Err(err) => return Err(err.into()),
-        }
+        write_nonce(contract_address, nonce, txn, block_number, contracts_table)?;
     }
-
-    // Make sure that every deployed contract address has a nonce.
-    for deployed_contract in &state_diff.deployed_contracts {
-        let db_key = (deployed_contract.address, block_number.next());
-        let mut cursor = contracts_table.cursor(txn)?;
-        cursor.lower_bound(&db_key)?;
-        let res = cursor.prev()?;
-
-        if res.map_or(true, |((address, _), _)| address != deployed_contract.address) {
-            contracts_table.insert(
-                txn,
-                &(deployed_contract.address, block_number),
-                &Nonce::default(),
-            )?;
-        }
-    }
-
     Ok(())
 }
 

@@ -14,10 +14,8 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     let c1 = ContractAddress(shash!("0x2"));
     let c2 = ContractAddress(shash!("0x3"));
     let c3 = ContractAddress(shash!("0x4"));
-    let c4 = ContractAddress(shash!("0x5"));
     let cl0 = ClassHash(shash!("0x4"));
     let cl1 = ClassHash(shash!("0x5"));
-    let cl2 = ClassHash(shash!("0x6"));
     let c_cls0 = ContractClass::default();
     let c_cls1 = ContractClass::default();
     let key0 = StorageKey(shash!("0x1001"));
@@ -38,17 +36,10 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
             StorageDiff { address: c1, diff: vec![] },
         ],
         declared_classes: vec![(cl0, c_cls0.clone()), (cl1, c_cls1)],
-        nonces: vec![
-            (c0, Nonce(StarkHash::from_u64(1))),
-            (c3, Nonce(StarkHash::from_u64(1))),
-            (c4, Nonce(StarkHash::from_u64(1))),
-        ],
+        nonces: vec![(c0, Nonce(StarkHash::from_u64(1)))],
     };
     let mut diff1 = StateDiff {
-        deployed_contracts: vec![
-            DeployedContract { address: c2, class_hash: cl0 },
-            DeployedContract { address: c4, class_hash: cl2 },
-        ],
+        deployed_contracts: vec![DeployedContract { address: c2, class_hash: cl0 }],
         storage_diffs: vec![
             StorageDiff {
                 address: c0,
@@ -143,16 +134,8 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     assert_eq!(statetxn.get_class_hash_at(state1, &c3)?, None);
     assert_eq!(statetxn.get_class_hash_at(state2, &c3)?, None);
     assert_eq!(statetxn.get_nonce_at(state0, &c3)?, None);
-    assert_eq!(statetxn.get_nonce_at(state1, &c3)?, Some(Nonce(StarkHash::from_u64(1))));
-    assert_eq!(statetxn.get_nonce_at(state2, &c3)?, Some(Nonce(StarkHash::from_u64(1))));
-
-    // Contract4.
-    assert_eq!(statetxn.get_class_hash_at(state0, &c4)?, None);
-    assert_eq!(statetxn.get_class_hash_at(state1, &c4)?, None);
-    assert_eq!(statetxn.get_class_hash_at(state2, &c4)?, Some(cl2));
-    assert_eq!(statetxn.get_nonce_at(state0, &c4)?, None);
-    assert_eq!(statetxn.get_nonce_at(state1, &c4)?, Some(Nonce(StarkHash::from_u64(1))));
-    assert_eq!(statetxn.get_nonce_at(state2, &c4)?, Some(Nonce(StarkHash::from_u64(1))));
+    assert_eq!(statetxn.get_nonce_at(state1, &c3)?, None);
+    assert_eq!(statetxn.get_nonce_at(state2, &c3)?, None);
 
     // Storage at key0.
     assert_eq!(statetxn.get_storage_at(state0, &c0, &key0)?, shash!("0x0"));
