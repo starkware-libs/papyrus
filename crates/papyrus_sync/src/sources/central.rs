@@ -6,8 +6,8 @@ use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use starknet_api::{BlockBody, BlockHeader, BlockNumber, StateDiff};
 use starknet_client::{
-    client_to_starknet_api_storage_diff, ClientCreationError, ClientError, StarknetClient,
-    StarknetClientTrait,
+    client_to_starknet_api_storage_diff, ClientCreationError, ClientError, RetryConfig,
+    StarknetClient, StarknetClientTrait,
 };
 use tokio_stream::Stream;
 
@@ -17,6 +17,7 @@ const CONCURRENT_REQUESTS: usize = 750;
 #[derive(Serialize, Deserialize)]
 pub struct CentralSourceConfig {
     pub url: String,
+    pub retry_config: RetryConfig,
 }
 pub struct GenericCentralSource<T: StarknetClientTrait> {
     pub starknet_client: T,
@@ -135,7 +136,7 @@ pub type CentralSource = GenericCentralSource<StarknetClient>;
 
 impl CentralSource {
     pub fn new(config: CentralSourceConfig) -> Result<CentralSource, ClientCreationError> {
-        let starknet_client = StarknetClient::new(&config.url)?;
+        let starknet_client = StarknetClient::new(&config.url, config.retry_config)?;
         info!("Central source is configured with {}.", config.url);
         Ok(CentralSource { starknet_client })
     }
