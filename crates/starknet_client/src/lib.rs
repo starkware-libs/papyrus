@@ -8,11 +8,11 @@ pub mod retry;
 mod starknet_client_test;
 #[cfg(test)]
 mod test_utils;
-
 use std::fmt::{self, Display, Formatter};
 
 use async_trait::async_trait;
-use log::error;
+use log::{error, info};
+use mockall::automock;
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use starknet_api::{BlockNumber, ClassHash, ContractClass};
@@ -28,6 +28,7 @@ pub use self::retry::RetryConfig;
 pub type ClientResult<T> = Result<T, ClientError>;
 
 /// Methods for querying starknet.
+#[automock]
 #[async_trait]
 pub trait StarknetClientTrait {
     /// Returns the last block number in the system, returning [`None`] in case there are no blocks
