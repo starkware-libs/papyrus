@@ -3,11 +3,11 @@ mod objects;
 mod starknet_client_test;
 #[cfg(test)]
 mod test_utils;
-
 use std::fmt::{self, Display, Formatter};
 
 use async_trait::async_trait;
 use log::{error, info};
+use mockall::automock;
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use starknet_api::{BlockNumber, ClassHash, ContractClass};
@@ -17,6 +17,7 @@ pub use self::objects::block::{client_to_starknet_api_storage_diff, Block, Block
 
 type ClientResult<T> = Result<T, ClientError>;
 
+#[automock]
 #[async_trait]
 pub trait StarknetClientTrait {
     async fn block_number(&self) -> ClientResult<Option<BlockNumber>>;

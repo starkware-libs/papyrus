@@ -1,35 +1,14 @@
-use async_trait::async_trait;
 use futures_util::pin_mut;
-use mockall::{mock, predicate};
-use starknet_api::{BlockNumber, ClassHash, ContractClass};
-use starknet_client::{Block, BlockStateUpdate, ClientError, StarknetClientTrait};
+use mockall::predicate;
+use starknet_api::BlockNumber;
+use starknet_client::{Block, MockStarknetClientTrait};
 use tokio_stream::StreamExt;
 
 use crate::sources::central::GenericCentralSource;
 
-// Using mock! and not automock because StarknetClient is defined in another crate. For more
-// details, See mockall's documentation: https://docs.rs/mockall/latest/mockall/
-mock! {
-    pub StarknetClient {}
-
-    #[async_trait]
-    impl StarknetClientTrait for StarknetClient {
-        async fn block_number(&self) -> Result<Option<BlockNumber>, ClientError>;
-
-        async fn block(&self, block_number: BlockNumber) -> Result<Option<Block>, ClientError>;
-
-        async fn class_by_hash(&self, class_hash: ClassHash) -> Result<ContractClass, ClientError>;
-
-        async fn state_update(
-            &self,
-            block_number: BlockNumber,
-        ) -> Result<BlockStateUpdate, ClientError>;
-    }
-}
-
 #[tokio::test]
 async fn last_block_number() {
-    let mut mock = MockStarknetClient::new();
+    let mut mock = MockStarknetClientTrait::new();
 
     // We need to perform all the mocks before moving the mock into central_source.
     const EXPECTED_LAST_BLOCK_NUMBER: BlockNumber = BlockNumber(9);
@@ -45,7 +24,7 @@ async fn last_block_number() {
 async fn stream_block_headers() {
     const START_BLOCK_NUMBER: u64 = 5;
     const END_BLOCK_NUMBER: u64 = 9;
-    let mut mock = MockStarknetClient::new();
+    let mut mock = MockStarknetClientTrait::new();
 
     // We need to perform all the mocks before moving the mock into central_source.
     for i in START_BLOCK_NUMBER..END_BLOCK_NUMBER {
