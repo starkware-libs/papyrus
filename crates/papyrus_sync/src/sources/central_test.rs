@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use futures_util::pin_mut;
 use mockall::{mock, predicate};
@@ -35,7 +37,7 @@ async fn last_block_number() {
     const EXPECTED_LAST_BLOCK_NUMBER: BlockNumber = BlockNumber(9);
     mock.expect_block_number().times(1).returning(|| Ok(Some(EXPECTED_LAST_BLOCK_NUMBER)));
 
-    let central_source = GenericCentralSource { starknet_client: mock };
+    let central_source = GenericCentralSource { starknet_client: Arc::new(mock) };
 
     let last_block_number = central_source.get_block_marker().await.unwrap().prev().unwrap();
     assert_eq!(last_block_number, EXPECTED_LAST_BLOCK_NUMBER);
@@ -54,7 +56,7 @@ async fn stream_block_headers() {
             .times(1)
             .returning(|_block_number| Ok(Some(Block::default())));
     }
-    let central_source = GenericCentralSource { starknet_client: mock };
+    let central_source = GenericCentralSource { starknet_client: Arc::new(mock) };
 
     let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
     let stream =
