@@ -61,7 +61,7 @@ pub enum ClientCreationError {
     BuildError(#[from] reqwest::Error),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ConnectionErrorCode {
     Redirect,
     Timeout,
@@ -119,7 +119,7 @@ impl StarknetClient {
         })
     }
 
-    fn is_connection_error(err: &ClientError) -> Option<ConnectionErrorCode> {
+    fn get_connection_error(err: &ClientError) -> Option<ConnectionErrorCode> {
         match err {
             ClientError::BadResponse { status } => match *status {
                 StatusCode::TEMPORARY_REDIRECT => Some(ConnectionErrorCode::Redirect),
@@ -148,7 +148,7 @@ impl StarknetClient {
     }
 
     fn should_retry(err: &ClientError) -> bool {
-        Self::is_connection_error(err).is_some()
+        Self::get_connection_error(err).is_some()
     }
 
     async fn request_with_retry(&self, url: Url) -> Result<String, ClientError> {
@@ -156,7 +156,7 @@ impl StarknetClient {
             .start_with_condition(|| self.request(url.clone()), Self::should_retry)
             .await
             .map_err(|err| {
-                Self::is_connection_error(&err)
+                Self::get_connection_error(&err)
                     .map(|code| ClientError::ConnectionError { code })
                     .unwrap_or(err)
             })
