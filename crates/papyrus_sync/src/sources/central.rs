@@ -1,25 +1,28 @@
-use std::collections::HashMap;
+use std::sync::Arc;
 
 use async_stream::stream;
+use futures::{pin_mut, FutureExt};
 use futures_util::StreamExt;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
-use starknet_api::{BlockBody, BlockHeader, BlockNumber, StateDiff};
+use starknet_api::{BlockBody, BlockHeader, BlockNumber, ClassHash, ContractClass, StateDiff};
 use starknet_client::{
-    client_to_starknet_api_storage_diff, ClientCreationError, ClientError, StarknetClient,
-    StarknetClientTrait,
+    client_to_starknet_api_storage_diff, BlockStateUpdate, ClientCreationError, ClientError,
+    StarknetClient, StarknetClientTrait,
 };
 use tokio_stream::Stream;
 
+use super::stream_utils::MyStreamExt;
+
 // TODO(dan): move to config.
-const CONCURRENT_REQUESTS: usize = 750;
+const CONCURRENT_REQUESTS: usize = 200;
 
 #[derive(Serialize, Deserialize)]
 pub struct CentralSourceConfig {
     pub url: String,
 }
-pub struct GenericCentralSource<T: StarknetClientTrait> {
-    pub starknet_client: T,
+pub struct GenericCentralSource<TStarknetClient: StarknetClientTrait + Send + Sync> {
+    pub starknet_client: Arc<TStarknetClient>,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -28,7 +31,9 @@ pub enum CentralError {
     ClientError(#[from] ClientError),
 }
 
-impl<T: StarknetClientTrait> GenericCentralSource<T> {
+impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
+    GenericCentralSource<TStarknetClient>
+{
     pub async fn get_block_marker(&self) -> Result<BlockNumber, ClientError> {
         self.starknet_client
             .block_number()
@@ -44,40 +49,25 @@ impl<T: StarknetClientTrait> GenericCentralSource<T> {
         let mut current_block_number = initial_block_number;
         stream! {
             while current_block_number < up_to_block_number {
-                let res = self.starknet_client.state_update(current_block_number).await;
-                match res {
-                    Ok(state_update) => {
-                        debug!("Received new state update: {:?}.", current_block_number.0);
-                        // TODO(dan): should probably compress.
-                        let mut class_definitions = HashMap::new();
-                        for &class_hash in &state_update.state_diff.declared_classes{
-                            if class_definitions.get(&class_hash).is_none(){
-                                class_definitions.insert(class_hash ,self.starknet_client.class_by_hash(class_hash).await?);
-                            }
-                        }
-                        // TODO(dan): this is inefficient, consider adding an up_to block config.
-                        for contract in &state_update.state_diff.deployed_contracts{
-                            if class_definitions.get(&contract.class_hash).is_none(){
-                                class_definitions.insert(contract.class_hash, self.starknet_client.class_by_hash(contract.class_hash).await?);
-                            }
-                        }
-                        let state_diff_forward = StateDiff {
-                            deployed_contracts: state_update.state_diff.deployed_contracts,
-                            storage_diffs: client_to_starknet_api_storage_diff(state_update.state_diff.storage_diffs),
-                            declared_classes: Vec::from_iter(class_definitions.into_iter()),
-                            // TODO(dan): fix once nonces are available.
-                            nonces: vec![],
-                        };
-                        yield Ok((current_block_number, state_diff_forward));
-                        current_block_number = current_block_number.next();
-                    },
-                    Err(err) => {
-                        debug!("Received error for state diff {}: {:?}.", current_block_number.0, err);
-                        // TODO(dan): proper error handling.
-                        match err{
-                            _ => yield (Err(CentralError::ClientError(err))),
-                        }
-                    }
+                let state_update_stream = self
+                    .state_update_stream(
+                        futures_util::stream::iter(current_block_number.0..up_to_block_number.0)
+                            .map(|block_number| BlockNumber(block_number)),
+                    )
+                    .fuse()
+                    .await;
+                pin_mut!(state_update_stream);
+                while let Some((state_update, classes)) = state_update_stream.next().await{
+                    let state_diff_forward = StateDiff {
+                        deployed_contracts: state_update.state_diff.deployed_contracts,
+                        storage_diffs: client_to_starknet_api_storage_diff(
+                            state_update.state_diff.storage_diffs),
+                        declared_classes: classes,
+                        // TODO(dan): fix once nonces are available.
+                        nonces: vec![],
+                    };
+                    yield Ok((current_block_number, state_diff_forward));
+                    current_block_number = current_block_number.next();
                 }
             }
         }
@@ -129,6 +119,41 @@ impl<T: StarknetClientTrait> GenericCentralSource<T> {
             }
         }
     }
+
+    async fn state_update_stream(
+        &self,
+        input: impl Stream<Item = BlockNumber> + Send + Sync + 'static,
+    ) -> impl Stream<Item = (BlockStateUpdate, Vec<(ClassHash, ContractClass)>)> {
+        let starknet_client = self.starknet_client.clone();
+        let (receiver_0, mut receiver_1) = input
+            .map(move |block_number| {
+                let starknet_client = starknet_client.clone();
+                async move { starknet_client.state_update(block_number).await }
+            })
+            .buffered(CONCURRENT_REQUESTS)
+            // TODO(dan): fix this.
+            .map(|a| a.unwrap())
+            .fanout(CONCURRENT_REQUESTS);
+        let starknet_client = self.starknet_client.clone();
+        let mut flat_classes = receiver_0
+            .map(|state_update| state_update.state_diff.class_hashes())
+            .flat_map(futures::stream::iter)
+            .map(move |class_hash| {
+                let starknet_client = starknet_client.clone();
+                async move { (class_hash, starknet_client.class_by_hash(class_hash).await) }
+            })
+            .buffered(CONCURRENT_REQUESTS)
+            .map(|(class_hash, class)| (class_hash, class.unwrap()));
+        let res_stream = stream! {
+            while let Some(state_update) = receiver_1.next().await{
+                let len = state_update.state_diff.class_hashes().len();
+                // TODO(dan): fix this.
+                let classes = flat_classes.take_n(len).await.unwrap();
+                yield (state_update, classes);
+            }
+        };
+        res_stream
+    }
 }
 
 pub type CentralSource = GenericCentralSource<StarknetClient>;
@@ -137,6 +162,6 @@ impl CentralSource {
     pub fn new(config: CentralSourceConfig) -> Result<CentralSource, ClientCreationError> {
         let starknet_client = StarknetClient::new(&config.url)?;
         info!("Central source is configured with {}.", config.url);
-        Ok(CentralSource { starknet_client })
+        Ok(CentralSource { starknet_client: Arc::new(starknet_client) })
     }
 }
