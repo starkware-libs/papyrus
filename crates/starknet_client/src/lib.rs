@@ -61,8 +61,8 @@ pub enum ClientCreationError {
     BuildError(#[from] reqwest::Error),
 }
 
-#[derive(Debug)]
-pub enum ConnectionErrorCode {
+#[derive(Debug, PartialEq, Eq)]
+pub enum RetryErrorCode {
     Redirect,
     Timeout,
     TooManyRequests,
@@ -81,7 +81,7 @@ pub enum ClientError {
     #[error(transparent)]
     StarknetError(#[from] StarknetError),
     #[error("Connection error code: {:?}.", code)]
-    ConnectionError { code: ConnectionErrorCode },
+    RetryError { code: RetryErrorCode },
 }
 
 const GET_BLOCK_URL: &str = "feeder_gateway/get_block";
@@ -119,25 +119,25 @@ impl StarknetClient {
         })
     }
 
-    fn is_connection_error(err: &ClientError) -> Option<ConnectionErrorCode> {
+    fn get_retry_error(err: &ClientError) -> Option<RetryErrorCode> {
         match err {
             ClientError::BadResponse { status } => match *status {
-                StatusCode::TEMPORARY_REDIRECT => Some(ConnectionErrorCode::Redirect),
+                StatusCode::TEMPORARY_REDIRECT => Some(RetryErrorCode::Redirect),
                 StatusCode::REQUEST_TIMEOUT | StatusCode::GATEWAY_TIMEOUT => {
-                    Some(ConnectionErrorCode::Timeout)
+                    Some(RetryErrorCode::Timeout)
                 }
-                StatusCode::TOO_MANY_REQUESTS => Some(ConnectionErrorCode::TooManyRequests),
-                StatusCode::SERVICE_UNAVAILABLE => Some(ConnectionErrorCode::ServiceUnavailable),
+                StatusCode::TOO_MANY_REQUESTS => Some(RetryErrorCode::TooManyRequests),
+                StatusCode::SERVICE_UNAVAILABLE => Some(RetryErrorCode::ServiceUnavailable),
                 _ => None,
             },
 
             ClientError::RequestError(internal_err) => {
                 if internal_err.is_timeout() {
-                    Some(ConnectionErrorCode::Timeout)
+                    Some(RetryErrorCode::Timeout)
                 } else if internal_err.is_connect() {
-                    Some(ConnectionErrorCode::Disconnect)
+                    Some(RetryErrorCode::Disconnect)
                 } else if internal_err.is_redirect() {
-                    Some(ConnectionErrorCode::Redirect)
+                    Some(RetryErrorCode::Redirect)
                 } else {
                     None
                 }
@@ -148,7 +148,7 @@ impl StarknetClient {
     }
 
     fn should_retry(err: &ClientError) -> bool {
-        Self::is_connection_error(err).is_some()
+        Self::get_retry_error(err).is_some()
     }
 
     async fn request_with_retry(&self, url: Url) -> Result<String, ClientError> {
@@ -156,8 +156,8 @@ impl StarknetClient {
             .start_with_condition(|| self.request(url.clone()), Self::should_retry)
             .await
             .map_err(|err| {
-                Self::is_connection_error(&err)
-                    .map(|code| ClientError::ConnectionError { code })
+                Self::get_retry_error(&err)
+                    .map(|code| ClientError::RetryError { code })
                     .unwrap_or(err)
             })
     }

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use assert_matches::assert_matches;
 use mockito::mock;
+use reqwest::StatusCode;
 use starknet_api::{
     shash, BlockNumber, ClassHash, ContractAddress, ContractClass, EntryPoint, EntryPointOffset,
     EntryPointSelector, EntryPointType, Fee, Nonce, Program, StarkHash, TransactionHash,
@@ -14,8 +15,8 @@ use super::objects::transaction::{DeclareTransaction, TransactionType};
 use super::test_utils::read_resource::read_resource_file;
 use super::test_utils::retry::get_test_config;
 use super::{
-    Block, ClientError, ConnectionErrorCode, StarknetClient, StarknetClientTrait,
-    BLOCK_NUMBER_QUERY, CLASS_HASH_QUERY, GET_BLOCK_URL, GET_STATE_UPDATE_URL,
+    Block, ClientError, RetryErrorCode, StarknetClient, StarknetClientTrait, BLOCK_NUMBER_QUERY,
+    CLASS_HASH_QUERY, GET_BLOCK_URL, GET_STATE_UPDATE_URL,
 };
 
 #[test]
@@ -251,37 +252,21 @@ async fn test_block_not_found_error_code() {
 }
 
 #[tokio::test]
-async fn connection_error_codes() {
+async fn retry_error_codes() {
     let starknet_client = StarknetClient::new(&mockito::server_url(), get_test_config()).unwrap();
-
-    let mock = mock("GET", "/feeder_gateway/get_block").with_status(307).expect(5).create();
-    let error = starknet_client.block_number().await.unwrap_err();
-    assert_matches!(error, ClientError::ConnectionError { code: ConnectionErrorCode::Redirect });
-    mock.assert();
-
-    let mock = mock.with_status(408).expect(5).create();
-    let error = starknet_client.block_number().await.unwrap_err();
-    assert_matches!(error, ClientError::ConnectionError { code: ConnectionErrorCode::Timeout });
-    mock.assert();
-
-    let mock = mock.with_status(429).expect(5).create();
-    let error = starknet_client.block_number().await.unwrap_err();
-    assert_matches!(
-        error,
-        ClientError::ConnectionError { code: ConnectionErrorCode::TooManyRequests }
-    );
-    mock.assert();
-
-    let mock = mock.with_status(503).expect(5).create();
-    let error = starknet_client.block_number().await.unwrap_err();
-    assert_matches!(
-        error,
-        ClientError::ConnectionError { code: ConnectionErrorCode::ServiceUnavailable }
-    );
-    mock.assert();
-
-    let mock = mock.with_status(504).expect(5).create();
-    let error = starknet_client.block_number().await.unwrap_err();
-    assert_matches!(error, ClientError::ConnectionError { code: ConnectionErrorCode::Timeout });
-    mock.assert();
+    for (status_code, error_code) in [
+        (StatusCode::TEMPORARY_REDIRECT, RetryErrorCode::Redirect),
+        (StatusCode::REQUEST_TIMEOUT, RetryErrorCode::Timeout),
+        (StatusCode::TOO_MANY_REQUESTS, RetryErrorCode::TooManyRequests),
+        (StatusCode::SERVICE_UNAVAILABLE, RetryErrorCode::ServiceUnavailable),
+        (StatusCode::GATEWAY_TIMEOUT, RetryErrorCode::Timeout),
+    ] {
+        let mock = mock("GET", "/feeder_gateway/get_block")
+            .with_status(status_code.as_u16().into())
+            .expect(5)
+            .create();
+        let error = starknet_client.block_number().await.unwrap_err();
+        assert_matches!(error, ClientError::RetryError { code } if code == error_code);
+        mock.assert();
+    }
 }
