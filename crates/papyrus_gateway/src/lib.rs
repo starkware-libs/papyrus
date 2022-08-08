@@ -287,6 +287,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let state_number = StateNumber::right_after_block(block_number);
         let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
 
+        // TODO(anatg): Change the program in the class definition to the rpc api expected format.
         state_reader
             .get_class_definition_at(state_number, &class_hash)
             .map_err(internal_server_error)?
@@ -309,6 +310,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))?;
 
+        // TODO(anatg): Change the program in the class definition to the rpc api expected format.
         state_reader
             .get_class_definition_at(state_number, &class_hash)
             .map_err(internal_server_error)?
