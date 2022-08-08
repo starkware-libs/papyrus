@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 use starknet_api::{
@@ -71,6 +71,15 @@ pub struct StateDiff {
     pub deployed_contracts: Vec<DeployedContract>,
     #[serde(default)]
     pub declared_classes: Vec<ClassHash>,
+}
+impl StateDiff {
+    pub fn class_hashes(&self) -> HashSet<ClassHash> {
+        let mut class_hashes = HashSet::from_iter(self.declared_classes.iter().cloned());
+        for contract in &self.deployed_contracts {
+            class_hashes.insert(contract.class_hash);
+        }
+        class_hashes
+    }
 }
 
 pub fn client_to_starknet_api_storage_diff(
