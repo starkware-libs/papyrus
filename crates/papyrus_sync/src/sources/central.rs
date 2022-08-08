@@ -37,9 +37,9 @@ impl Display for BlockDoesntExist {
 #[derive(thiserror::Error, Debug)]
 pub enum CentralError {
     #[error(transparent)]
-    ClientError(#[from] ClientError),
-    #[error(transparent)]
     BlockDoesntExist(#[from] BlockDoesntExist),
+    #[error(transparent)]
+    ClientError(#[from] ClientError),
 }
 
 impl<T: StarknetClientTrait> GenericCentralSource<T> {
