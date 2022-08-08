@@ -33,38 +33,6 @@ fn test_new_urls() {
     );
 }
 
-fn contract_class_body() -> &'static str {
-    r#"{
-        "abi": [{
-            "inputs": [{"name": "implementation", "type": "felt"}],
-            "name": "constructor",
-            "outputs": [],
-            "type": "constructor"
-        }],
-        "entry_points_by_type": {
-            "CONSTRUCTOR": [{
-                "offset": "0x62",
-                "selector": "0x28ffe4ff0f226a9107253e17a904099aa4f63a02a5621de0576e5aa71bc5194"
-            }],
-            "EXTERNAL": [{
-                "offset": "0x86",
-                "selector": "0x0"
-            }],
-            "L1_HANDLER": []
-        },
-        "program": {
-            "builtins": [],
-            "data": ["0x20780017fff7ffd", "0x4", "0x400780017fff7ffd"],
-            "prime": "0x800000000000011000000000000000000000000000000000000000000000001",
-            "main_scope": "__main__",
-            "identifiers": {},
-            "attributes": [1234],
-            "debug_info": null,
-            "reference_manager": {},
-            "hints": {}
-        }
-    }"#
-}
 #[tokio::test]
 async fn get_block_number() {
     let starknet_client = StarknetClient::new(&mockito::server_url(), get_test_config()).unwrap();
@@ -199,7 +167,7 @@ async fn contract_class() {
          {CLASS_HASH_QUERY}=0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17")[..],
         )
         .with_status(200)
-        .with_body(contract_class_body())
+        .with_body(read_resource_file("contract_class.json"))
         .create();
     let contract_class = starknet_client
         .class_by_hash(ClassHash(shash!(
