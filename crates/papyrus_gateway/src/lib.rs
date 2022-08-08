@@ -280,9 +280,17 @@ impl JsonRpcServer for JsonRpcServerImpl {
         Ok(TransactionReceipt::Declare(DeclareTransactionReceipt::default()))
     }
 
-    fn get_class(&self, _class_hash: ClassHash) -> Result<ContractClass, Error> {
-        // TODO(anatg): Read contract class from storage.
-        Ok(ContractClass::default())
+    fn get_class(&self, block_id: BlockId, class_hash: ClassHash) -> Result<ContractClass, Error> {
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+
+        let block_number = get_block_number(&txn, block_id)?;
+        let state_number = StateNumber::right_after_block(block_number);
+        let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
+
+        state_reader
+            .get_class_definition_at(state_number, &class_hash)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| Error::from(JsonRpcError::InvalidContractClassHash))
     }
 
     fn get_class_at(
@@ -293,16 +301,18 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let block_number = get_block_number(&txn, block_id)?;
-        let state = StateNumber::right_after_block(block_number);
+        let state_number = StateNumber::right_after_block(block_number);
         let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
 
-        let _class_hash = state_reader
-            .get_class_hash_at(state, &contract_address)
+        let class_hash = state_reader
+            .get_class_hash_at(state_number, &contract_address)
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))?;
 
-        // TODO(anatg): Read contract class from storage.
-        Ok(ContractClass::default())
+        state_reader
+            .get_class_definition_at(state_number, &class_hash)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))
     }
 
     fn get_class_hash_at(

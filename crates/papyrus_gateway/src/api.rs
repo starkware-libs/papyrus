@@ -114,7 +114,7 @@ pub trait JsonRpc {
 
     /// Gets the contract class definition associated with the given hash.
     #[method(name = "getClass")]
-    fn get_class(&self, class_hash: ClassHash) -> Result<ContractClass, Error>;
+    fn get_class(&self, block_id: BlockId, class_hash: ClassHash) -> Result<ContractClass, Error>;
 
     /// Gets the contract class definition in the given block at the given address.
     #[method(name = "getClassAt")]
