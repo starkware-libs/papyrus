@@ -266,7 +266,7 @@ async fn retry_error_codes() {
             .expect(5)
             .create();
         let error = starknet_client.block_number().await.unwrap_err();
-        assert_matches!(error, ClientError::RetryError { code } if code == error_code);
+        assert_matches!(error, ClientError::RetryError { code, message: _ } if code == error_code);
         mock.assert();
     }
 }
