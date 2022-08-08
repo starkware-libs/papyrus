@@ -99,6 +99,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
     }
 
     // TODO(dan): return all block data.
+    // TODO(shahak): rename.
     pub fn stream_new_blocks(
         &self,
         initial_block_number: BlockNumber,
