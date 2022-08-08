@@ -66,32 +66,39 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff) {
         ..BlockHeader::default()
     };
 
-    let address = ContractAddress(shash!("0x11"));
-    let class_hash = ClassHash(shash!("0x4"));
-    let address_2 = ContractAddress(shash!("0x21"));
-    let class_hash_2 = ClassHash(shash!("0x5"));
-    let key = StorageKey(shash!("0x1001"));
-    let value = shash!("0x200");
-    let key_2 = StorageKey(shash!("0x1002"));
-    let value_2 = shash!("0x201");
+    let address0 = ContractAddress(shash!("0x11"));
+    let hash0 = ClassHash(shash!("0x4"));
+    let address1 = ContractAddress(shash!("0x21"));
+    let hash1 = ClassHash(shash!("0x5"));
+    let class0 = ContractClass::default();
+    let class1 = ContractClass::default();
+    let key0 = StorageKey(shash!("0x1001"));
+    let value0 = shash!("0x200");
+    let key1 = StorageKey(shash!("0x1002"));
+    let value1 = shash!("0x201");
     let diff = StateDiff {
         deployed_contracts: vec![
-            DeployedContract { address, class_hash },
-            DeployedContract { address: address_2, class_hash: class_hash_2 },
+            DeployedContract { address: address0, class_hash: hash0 },
+            DeployedContract { address: address1, class_hash: hash1 },
         ],
         storage_diffs: vec![
             StorageDiff {
-                address,
+                address: address0,
                 diff: vec![
-                    StorageEntry { key: key.clone(), value },
-                    StorageEntry { key: key_2, value: value_2 },
+                    StorageEntry { key: key0.clone(), value: value0 },
+                    StorageEntry { key: key1, value: value1 },
                 ],
             },
-            StorageDiff { address: address_2, diff: vec![StorageEntry { key, value }] },
+            StorageDiff {
+                address: address1,
+                diff: vec![StorageEntry { key: key0, value: value0 }],
+            },
         ],
-        // TODO(dan): test declared_classes & nonce_changes throughout the file.
-        declared_classes: vec![],
-        nonces: vec![],
+        declared_classes: vec![(hash0, class0), (hash1, class1)],
+        nonces: vec![
+            (address0, Nonce(StarkHash::from_u64(1))),
+            (address1, Nonce(StarkHash::from_u64(1))),
+        ],
     };
 
     (parent_header, header, diff)
@@ -858,17 +865,105 @@ async fn test_get_transaction_receipt() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn test_get_class() -> Result<(), anyhow::Error> {
-    let (storage_reader, _) = test_utils::get_test_storage();
+    let (storage_reader, mut storage_writer) = test_utils::get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
-    // TODO(anatg): Write a contract class to the storage.
+    let (parent_header, header, diff) = get_test_state_diff();
+    storage_writer
+        .begin_rw_txn()?
+        .append_header(parent_header.block_number, &parent_header)?
+        .append_state_diff(parent_header.block_number, StateDiff::default())?
+        .append_header(header.block_number, &header)?
+        .append_state_diff(header.block_number, diff.clone())?
+        .commit()?;
 
-    let expected_contract_class = ContractClass::default();
-    let res =
-        module.call::<_, ContractClass>("starknet_getClass", [ClassHash::default()]).await.unwrap();
-    assert_eq!(res, expected_contract_class.clone());
+    let class_hash = diff.declared_classes.get(0).unwrap().0;
+    let expected_contract_class = diff.declared_classes.get(0).unwrap().1.clone();
 
-    // TODO(anatg): Ask for an invalid contract class.
+    // Get class by block hash.
+    let res = module
+        .call::<_, ContractClass>(
+            "starknet_getClass",
+            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), class_hash),
+        )
+        .await?;
+    assert_eq!(res, expected_contract_class);
+
+    // Get class by block number.
+    let res = module
+        .call::<_, ContractClass>(
+            "starknet_getClass",
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), class_hash),
+        )
+        .await?;
+    assert_eq!(res, expected_contract_class);
+
+    // Ask for an invalid class hash.
+    let err = module
+        .call::<_, ContractClass>(
+            "starknet_getClass",
+            (
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
+                ClassHash(shash!("0x6")),
+            ),
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidContractClassHash as i32,
+        JsonRpcError::InvalidContractClassHash.to_string(),
+        None::<()>,
+    ));
+
+    // Ask for an invalid class hash in the given block.
+    let err = module
+        .call::<_, ContractClass>(
+            "starknet_getClass",
+            (
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_header.block_number)),
+                class_hash,
+            ),
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidContractClassHash as i32,
+        JsonRpcError::InvalidContractClassHash.to_string(),
+        None::<()>,
+    ));
+
+    // Ask for an invalid block hash.
+    let err = module
+        .call::<_, ContractClass>(
+            "starknet_getClass",
+            (
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
+                    "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
+                )))),
+                class_hash,
+            ),
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidBlockId as i32,
+        JsonRpcError::InvalidBlockId.to_string(),
+        None::<()>,
+    ));
+
+    // Ask for an invalid block number.
+    let err = module
+        .call::<_, ContractClass>(
+            "starknet_getClass",
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))), class_hash),
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidBlockId as i32,
+        JsonRpcError::InvalidBlockId.to_string(),
+        None::<()>,
+    ));
 
     Ok(())
 }
@@ -878,18 +973,19 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = test_utils::get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
-    // TODO(anatg): Write a contract class to the storage.
-    let (header, _, diff) = get_test_state_diff();
+    let (parent_header, header, diff) = get_test_state_diff();
     storage_writer
         .begin_rw_txn()?
+        .append_header(parent_header.block_number, &parent_header)?
+        .append_state_diff(parent_header.block_number, StateDiff::default())?
         .append_header(header.block_number, &header)?
         .append_state_diff(header.block_number, diff.clone())?
         .commit()?;
 
     let address = diff.deployed_contracts.get(0).unwrap().address;
-    let expected_contract_class = ContractClass::default();
+    let expected_contract_class = diff.declared_classes.get(0).unwrap().1.clone();
 
-    // Get class hash by block hash.
+    // Get class by block hash.
     let res = module
         .call::<_, ContractClass>(
             "starknet_getClassAt",
@@ -898,7 +994,7 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
         .await?;
     assert_eq!(res, expected_contract_class);
 
-    // Get class hash by block number.
+    // Get class by block number.
     let res = module
         .call::<_, ContractClass>(
             "starknet_getClassAt",
@@ -915,6 +1011,20 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
                 ContractAddress(shash!("0x12")),
             ),
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::ContractNotFound as i32,
+        JsonRpcError::ContractNotFound.to_string(),
+        None::<()>,
+    ));
+
+    // Ask for an invalid contract in the given block.
+    let err = module
+        .call::<_, ContractClass>(
+            "starknet_getClassAt",
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_header.block_number)), address),
         )
         .await
         .unwrap_err();
@@ -947,7 +1057,7 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, ContractClass>(
             "starknet_getClassAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))), address),
         )
         .await
         .unwrap_err();
