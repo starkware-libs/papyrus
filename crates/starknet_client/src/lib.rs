@@ -15,6 +15,7 @@ use starknet_api::{BlockNumber, ClassHash, ContractClass};
 use url::Url;
 
 pub use self::objects::block::{client_to_starknet_api_storage_diff, Block, BlockStateUpdate};
+pub use self::retry::{Retry, RetryConfig};
 
 type ClientResult<T> = Result<T, ClientError>;
 
@@ -29,6 +30,7 @@ pub trait StarknetClientTrait {
 pub struct StarknetClient {
     urls: StarknetUrls,
     internal_client: Client,
+    retry_config: RetryConfig,
 }
 
 #[derive(Clone, Debug)]
@@ -59,6 +61,15 @@ pub enum ClientCreationError {
     BuildError(#[from] reqwest::Error),
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum RetryErrorCode {
+    Redirect,
+    Timeout,
+    TooManyRequests,
+    ServiceUnavailable,
+    Disconnect,
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum ClientError {
     #[error("Response status code: {:?}", status)]
@@ -69,6 +80,8 @@ pub enum ClientError {
     SerdeError(#[from] serde_json::Error),
     #[error(transparent)]
     StarknetError(#[from] StarknetError),
+    #[error("Connection error code: {:?}.", code)]
+    RetryError { code: RetryErrorCode },
 }
 
 const GET_BLOCK_URL: &str = "feeder_gateway/get_block";
@@ -95,11 +108,58 @@ impl Display for StarknetError {
 }
 
 impl StarknetClient {
-    pub fn new(url_str: &str) -> Result<StarknetClient, ClientCreationError> {
+    pub fn new(
+        url_str: &str,
+        retry_config: RetryConfig,
+    ) -> Result<StarknetClient, ClientCreationError> {
         Ok(StarknetClient {
             urls: StarknetUrls::new(url_str)?,
             internal_client: Client::builder().build()?,
+            retry_config,
         })
+    }
+
+    fn get_retry_error(err: &ClientError) -> Option<RetryErrorCode> {
+        match err {
+            ClientError::BadResponse { status } => match *status {
+                StatusCode::TEMPORARY_REDIRECT => Some(RetryErrorCode::Redirect),
+                StatusCode::REQUEST_TIMEOUT | StatusCode::GATEWAY_TIMEOUT => {
+                    Some(RetryErrorCode::Timeout)
+                }
+                StatusCode::TOO_MANY_REQUESTS => Some(RetryErrorCode::TooManyRequests),
+                StatusCode::SERVICE_UNAVAILABLE => Some(RetryErrorCode::ServiceUnavailable),
+                _ => None,
+            },
+
+            ClientError::RequestError(internal_err) => {
+                if internal_err.is_timeout() {
+                    Some(RetryErrorCode::Timeout)
+                } else if internal_err.is_connect() {
+                    Some(RetryErrorCode::Disconnect)
+                } else if internal_err.is_redirect() {
+                    Some(RetryErrorCode::Redirect)
+                } else {
+                    None
+                }
+            }
+
+            _ => None,
+        }
+    }
+
+    fn should_retry(err: &ClientError) -> bool {
+        Self::get_retry_error(err).is_some()
+    }
+
+    async fn request_with_retry(&self, url: Url) -> Result<String, ClientError> {
+        Retry::new(&self.retry_config)
+            .start_with_condition(|| self.request(url.clone()), Self::should_retry)
+            .await
+            .map_err(|err| {
+                Self::get_retry_error(&err)
+                    .map(|code| ClientError::RetryError { code })
+                    .unwrap_or(err)
+            })
     }
 
     async fn request(&self, url: Url) -> ClientResult<String> {
@@ -131,7 +191,7 @@ impl StarknetClient {
 #[async_trait]
 impl StarknetClientTrait for StarknetClient {
     async fn block_number(&self) -> ClientResult<Option<BlockNumber>> {
-        let response = self.request(self.urls.get_block.clone()).await;
+        let response = self.request_with_retry(self.urls.get_block.clone()).await;
         match response {
             Ok(raw_block) => {
                 let block: Block = serde_json::from_str(&raw_block)?;
@@ -155,7 +215,7 @@ impl StarknetClientTrait for StarknetClient {
     async fn block(&self, block_number: BlockNumber) -> ClientResult<Option<Block>> {
         let mut url = self.urls.get_block.clone();
         url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.0.to_string());
-        let response = self.request(url).await;
+        let response = self.request_with_retry(url).await;
         match response {
             Ok(raw_block) => {
                 let block: Block = serde_json::from_str(&raw_block)?;
@@ -180,7 +240,7 @@ impl StarknetClientTrait for StarknetClient {
         let class_hash = serde_json::to_string(&class_hash)?;
         url.query_pairs_mut()
             .append_pair(CLASS_HASH_QUERY, &class_hash.as_str()[1..class_hash.len() - 1]);
-        let response = self.request(url).await;
+        let response = self.request_with_retry(url).await;
         match response {
             Ok(raw_contract_class) => Ok(serde_json::from_str(&raw_contract_class)?),
             Err(err) => {
@@ -193,7 +253,7 @@ impl StarknetClientTrait for StarknetClient {
     async fn state_update(&self, block_number: BlockNumber) -> ClientResult<BlockStateUpdate> {
         let mut url = self.urls.get_state_update.clone();
         url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.0.to_string());
-        let raw_state_update = self.request(url).await?;
+        let raw_state_update = self.request_with_retry(url).await?;
         let state_update: BlockStateUpdate = serde_json::from_str(&raw_state_update)?;
         Ok(state_update)
     }

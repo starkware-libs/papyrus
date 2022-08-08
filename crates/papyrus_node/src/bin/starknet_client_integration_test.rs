@@ -6,7 +6,8 @@ use starknet_client::{StarknetClient, StarknetClientTrait};
 #[tokio::main]
 async fn main() {
     let config = load_config("config/config.ron").expect("Load config");
-    let starknet_client = StarknetClient::new(&config.central.url).expect("Create new client");
+    let starknet_client = StarknetClient::new(&config.central.url, config.central.retry_config)
+        .expect("Create new client");
     let _latest_block_number = starknet_client.block_number().await.expect("Get block number");
     let _block_123456 = starknet_client.block(BlockNumber(123456)).await.expect("Get block");
     let _state_diff =

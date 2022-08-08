@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use assert_matches::assert_matches;
 use mockito::mock;
+use reqwest::StatusCode;
 use starknet_api::{
     shash, BlockNumber, ClassHash, ContractAddress, ContractClass, EntryPoint, EntryPointOffset,
     EntryPointSelector, EntryPointType, Fee, Nonce, Program, StarkHash, TransactionHash,
@@ -12,15 +13,16 @@ use starknet_api::{
 use super::objects::block::BlockStateUpdate;
 use super::objects::transaction::{DeclareTransaction, TransactionType};
 use super::test_utils::read_resource::read_resource_file;
+use super::test_utils::retry::get_test_config;
 use super::{
-    Block, ClientError, StarknetClient, StarknetClientTrait, BLOCK_NUMBER_QUERY, CLASS_HASH_QUERY,
-    GET_BLOCK_URL, GET_STATE_UPDATE_URL,
+    Block, ClientError, RetryErrorCode, StarknetClient, StarknetClientTrait, BLOCK_NUMBER_QUERY,
+    CLASS_HASH_QUERY, GET_BLOCK_URL, GET_STATE_UPDATE_URL,
 };
 
 #[test]
 fn test_new_urls() {
     let url_base_str = "https://url";
-    let starknet_client = StarknetClient::new(url_base_str).unwrap();
+    let starknet_client = StarknetClient::new(url_base_str, get_test_config()).unwrap();
     assert_eq!(
         starknet_client.urls.get_block.as_str(),
         url_base_str.to_string() + "/" + GET_BLOCK_URL
@@ -65,7 +67,7 @@ fn contract_class_body() -> &'static str {
 }
 #[tokio::test]
 async fn get_block_number() {
-    let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
+    let starknet_client = StarknetClient::new(&mockito::server_url(), get_test_config()).unwrap();
 
     // There are blocks in Starknet.
     let mock_block = mock("GET", "/feeder_gateway/get_block")
@@ -107,7 +109,7 @@ async fn declare_tx_serde() {
 
 #[tokio::test]
 async fn test_state_update() {
-    let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
+    let starknet_client = StarknetClient::new(&mockito::server_url(), get_test_config()).unwrap();
     let raw_state_update = read_resource_file("block_state_update.json");
     let mock =
         mock("GET", &format!("/feeder_gateway/get_state_update?{}=123456", BLOCK_NUMBER_QUERY)[..])
@@ -131,7 +133,7 @@ async fn test_serialization_precision() {
 
 #[tokio::test]
 async fn contract_class() {
-    let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
+    let starknet_client = StarknetClient::new(&mockito::server_url(), get_test_config()).unwrap();
     let expected_contract_class = ContractClass {
         abi: serde_json::to_value(vec![HashMap::from([
             (
@@ -211,7 +213,7 @@ async fn contract_class() {
 
 #[tokio::test]
 async fn get_block() {
-    let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
+    let starknet_client = StarknetClient::new(&mockito::server_url(), get_test_config()).unwrap();
     let raw_block = read_resource_file("block.json");
     let mock = mock("GET", &format!("/feeder_gateway/get_block?{}=20", BLOCK_NUMBER_QUERY)[..])
         .with_status(200)
@@ -225,7 +227,7 @@ async fn get_block() {
 
 #[tokio::test]
 async fn block_unserializable() {
-    let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
+    let starknet_client = StarknetClient::new(&mockito::server_url(), get_test_config()).unwrap();
     let body =
         r#"{"block_hash": "0x3f65ef25e87a83d92f32f5e4869a33580f9db47ec980c1ff27bdb5151914de5"}"#;
     let mock = mock("GET", "/feeder_gateway/get_block?blockNumber=20")
@@ -239,7 +241,7 @@ async fn block_unserializable() {
 
 #[tokio::test]
 async fn test_block_not_found_error_code() {
-    let starknet_client = StarknetClient::new(&mockito::server_url()).unwrap();
+    let starknet_client = StarknetClient::new(&mockito::server_url(), get_test_config()).unwrap();
     let body = r#"{"code": "StarknetErrorCode.BLOCK_NOT_FOUND", "message": "Block number 2347239846 was not found."}"#;
     let mock = mock("GET", "/feeder_gateway/get_block?blockNumber=2347239846")
         .with_status(500)
@@ -247,4 +249,24 @@ async fn test_block_not_found_error_code() {
         .create();
     assert!(starknet_client.block(BlockNumber(2347239846)).await.unwrap().is_none());
     mock.assert();
+}
+
+#[tokio::test]
+async fn retry_error_codes() {
+    let starknet_client = StarknetClient::new(&mockito::server_url(), get_test_config()).unwrap();
+    for (status_code, error_code) in [
+        (StatusCode::TEMPORARY_REDIRECT, RetryErrorCode::Redirect),
+        (StatusCode::REQUEST_TIMEOUT, RetryErrorCode::Timeout),
+        (StatusCode::TOO_MANY_REQUESTS, RetryErrorCode::TooManyRequests),
+        (StatusCode::SERVICE_UNAVAILABLE, RetryErrorCode::ServiceUnavailable),
+        (StatusCode::GATEWAY_TIMEOUT, RetryErrorCode::Timeout),
+    ] {
+        let mock = mock("GET", "/feeder_gateway/get_block")
+            .with_status(status_code.as_u16().into())
+            .expect(5)
+            .create();
+        let error = starknet_client.block_number().await.unwrap_err();
+        assert_matches!(error, ClientError::RetryError { code } if code == error_code);
+        mock.assert();
+    }
 }
