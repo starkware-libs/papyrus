@@ -1,4 +1,6 @@
 mod sources;
+#[cfg(test)]
+mod test_utils;
 
 use std::time::Duration;
 
