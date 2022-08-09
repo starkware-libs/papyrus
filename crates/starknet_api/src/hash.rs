@@ -10,9 +10,11 @@ use super::serde_utils::{
     bytes_from_hex_str, DeserializationError, HexAsBytes, PrefixedHexAsBytes,
 };
 
+/// A String slice representation of the genesis state hash.
 pub const GENESIS_HASH: &str = "0x0";
 
 // TODO: Move to a different crate.
+/// A hash in StarkNet.
 #[derive(Copy, Clone, PartialEq, Eq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(from = "PrefixedHexAsBytes<32_usize>", into = "PrefixedHexAsBytes<32_usize>")]
 pub struct StarkHash(pub [u8; 32]);
@@ -35,10 +37,12 @@ impl Debug for StarkHash {
 }
 
 impl StarkHash {
+    /// Returns a [`StarkHash`] corresponding to `hex_str`.
     pub fn from_hex(hex_str: &str) -> Result<StarkHash, DeserializationError> {
         let bytes = bytes_from_hex_str::<32, true>(hex_str)?;
         Ok(StarkHash(bytes))
     }
+    /// Returns a [`StarkHash`] corresponding to `val`.
     pub fn from_u64(val: u64) -> StarkHash {
         let mut bytes = [0u8; 32];
         bytes[24..32].copy_from_slice(&val.to_be_bytes());
@@ -46,8 +50,12 @@ impl StarkHash {
     }
 }
 
+/// An alias for [`StarkHash`].
+///
+/// The StarkNet elliptic curve field element.
 pub type StarkFelt = StarkHash;
 
+/// A utility macro to create a [`StarkHash`] from a hex string representation.
 #[macro_export]
 macro_rules! shash {
     ($s:expr) => {
