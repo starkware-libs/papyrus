@@ -188,16 +188,18 @@ impl StarknetClient {
             }
         }
     }
-}
 
-#[async_trait]
-impl StarknetClientTrait for StarknetClient {
-    async fn block_number(&self) -> ClientResult<Option<BlockNumber>> {
-        let response = self.request_with_retry(self.urls.get_block.clone()).await;
+    async fn block_data_request<T>(
+        &self,
+        url: Url,
+        // Function that parses block and returns the desired data.
+        block_parser_func: fn(Block) -> T,
+    ) -> ClientResult<Option<T>> {
+        let response = self.request_with_retry(url).await;
         match response {
             Ok(raw_block) => {
                 let block: Block = serde_json::from_str(&raw_block)?;
-                Ok(Some(block.block_number))
+                Ok(Some(block_parser_func(block)))
             }
             Err(err) => match err {
                 ClientError::StarknetError(sn_err) => {
@@ -213,28 +215,19 @@ impl StarknetClientTrait for StarknetClient {
             },
         }
     }
+}
+
+#[async_trait]
+impl StarknetClientTrait for StarknetClient {
+    async fn block_number(&self) -> ClientResult<Option<BlockNumber>> {
+        let get_block_url = self.urls.get_block.clone();
+        self.block_data_request(get_block_url, |block| block.block_number).await
+    }
 
     async fn block(&self, block_number: BlockNumber) -> ClientResult<Option<Block>> {
         let mut url = self.urls.get_block.clone();
         url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.0.to_string());
-        let response = self.request_with_retry(url).await;
-        match response {
-            Ok(raw_block) => {
-                let block: Block = serde_json::from_str(&raw_block)?;
-                Ok(Some(block))
-            }
-            Err(err) => match err {
-                ClientError::StarknetError(sn_err) => {
-                    let StarknetError { code, message } = sn_err;
-                    if code == StarknetErrorCode::BlockNotFound {
-                        Ok(None)
-                    } else {
-                        Err(ClientError::StarknetError(StarknetError { code, message }))
-                    }
-                }
-                _ => Err(err),
-            },
-        }
+        self.block_data_request(url, |block| block).await
     }
 
     async fn class_by_hash(&self, class_hash: ClassHash) -> ClientResult<ContractClass> {
