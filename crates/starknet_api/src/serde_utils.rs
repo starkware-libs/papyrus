@@ -1,3 +1,4 @@
+//! Utilities for serialising/deserialising hexadecimal values.
 #[cfg(test)]
 #[path = "serde_utils_test.rs"]
 mod serde_utils_test;
@@ -5,6 +6,10 @@ mod serde_utils_test;
 use serde::de::{Deserialize, Visitor};
 use serde::ser::{Serialize, SerializeTuple};
 
+/// A hexadecimal value as a byte array used for serialisation/deserialisation.
+///
+/// The `PREFIXED` generic type symbolize whether a string representation of the hex value should be
+/// prefixed by `0x` or not.
 #[derive(Debug, PartialEq, Eq)]
 pub struct HexAsBytes<const N: usize, const PREFIXED: bool>(pub [u8; N]);
 
