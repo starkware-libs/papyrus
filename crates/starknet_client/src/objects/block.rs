@@ -8,6 +8,7 @@ use starknet_api::{
 
 use super::transaction::{Transaction, TransactionReceipt};
 
+/// Represents a block as returned by the starknet gateway.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
 pub struct Block {
     // TODO(dan): Currently should be Option<BlockHash> (due to pending blocks).
@@ -26,6 +27,7 @@ pub struct Block {
     pub transaction_receipts: Vec<TransactionReceipt>,
 }
 
+/// Represents a state update derived from a single block as returned by the starknet gateway.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
 pub struct BlockStateUpdate {
     pub block_hash: BlockHash,
@@ -82,6 +84,8 @@ impl StateDiff {
     }
 }
 
+/// Converts the client representation of [`BlockStateUpdate`] storage diffs to a [`starknet_api`]
+/// [`StorageDiff`].
 pub fn client_to_starknet_api_storage_diff(
     storage_diffs: HashMap<ContractAddress, Vec<StorageEntry>>,
 ) -> Vec<StorageDiff> {
