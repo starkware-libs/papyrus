@@ -31,6 +31,8 @@ pub struct GenericCentralSource<TStarknetClient: StarknetClientTrait + Send + Sy
 pub enum CentralError {
     #[error(transparent)]
     ClientError(#[from] Arc<ClientError>),
+    #[error("Could not find a state update.")]
+    StateUpdateNotFound,
 }
 
 impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
@@ -152,7 +154,8 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
         let mut flat_classes = state_updates0
             // In case state_updates1 contains a ClientError, we yield it and break - without
             // evaluating flat_classes.
-            .filter_map(|s| future::ready(s.ok()))
+            .filter_map(|state_update| future::ready(state_update.ok()))
+            .filter_map(future::ready)
             .map(|state_update| state_update.state_diff.class_hashes())
             .flat_map(futures::stream::iter)
             .map(move |class_hash| {
@@ -164,7 +167,11 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
         let res_stream = stream! {
             while let Some(maybe_state_update) = state_updates1.next().await {
                 let state_update = match maybe_state_update {
-                    Ok(state_update) => state_update,
+                    Ok(Some(state_update)) => state_update,
+                    Ok(None) => {
+                        yield (Err(CentralError::StateUpdateNotFound));
+                        break;
+                    }
                     Err(err) => {
                         match err {
                             _ => yield (Err(CentralError::ClientError(err))),
@@ -180,7 +187,12 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                     .into_iter()
                     .map(|(class_hash, class)| {
                         if class.is_ok() {
-                            Ok((class_hash, class.ok().unwrap()))
+                            let maybe_class = class.ok().unwrap();
+                            if maybe_class.is_some(){
+                                Ok((class_hash, maybe_class.unwrap()))
+                            } else {
+                                Err(CentralError::StateUpdateNotFound)
+                            }
                         } else {
                             Err(CentralError::ClientError(class.err().unwrap()))
                         }
