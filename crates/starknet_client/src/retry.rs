@@ -11,14 +11,19 @@ use serde::{Deserialize, Serialize};
 use tokio_retry::strategy::ExponentialBackoff;
 use tokio_retry::{Action, Condition, RetryIf};
 
+/// A configuration for the retry mechanism.
 #[derive(Serialize, Deserialize)]
 pub struct RetryConfig {
+    /// The initial waiting time in milliseconds.
     pub retry_base_millis: u64,
+    /// The maximum waiting time in milliseconds.
     pub retry_max_delay_millis: u64,
+    /// The maximum number of retries.
     pub max_retries: usize,
 }
 
-/// A utility for retrying actions with a configurable backoff and error filter.
+/// A utility for retrying actions with a configurable backoff and error filter. Uses an
+/// [`ExponentialBackoff`] strategy.
 pub struct Retry {
     strategy: Take<ExponentialBackoff>,
 }
