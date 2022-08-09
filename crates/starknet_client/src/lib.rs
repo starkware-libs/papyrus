@@ -8,7 +8,7 @@ mod test_utils;
 use std::fmt::{self, Display, Formatter};
 
 use async_trait::async_trait;
-use log::{error, info};
+use log::error;
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use starknet_api::{BlockNumber, ClassHash, ContractClass};
@@ -72,16 +72,16 @@ pub enum RetryErrorCode {
 
 #[derive(thiserror::Error, Debug)]
 pub enum ClientError {
-    #[error("Response status code: {:?}", status)]
-    BadResponse { status: reqwest::StatusCode },
+    #[error("Bad status error code: {:?} message: {:?}.", code, message)]
+    BadStatusError { code: StatusCode, message: String },
     #[error(transparent)]
     RequestError(#[from] reqwest::Error),
+    #[error("Retry error code: {:?}, message: {:?}.", code, message)]
+    RetryError { code: RetryErrorCode, message: String },
     #[error(transparent)]
     SerdeError(#[from] serde_json::Error),
     #[error(transparent)]
     StarknetError(#[from] StarknetError),
-    #[error("Connection error code: {:?}.", code)]
-    RetryError { code: RetryErrorCode },
 }
 
 const GET_BLOCK_URL: &str = "feeder_gateway/get_block";
@@ -121,7 +121,7 @@ impl StarknetClient {
 
     fn get_retry_error(err: &ClientError) -> Option<RetryErrorCode> {
         match err {
-            ClientError::BadResponse { status } => match *status {
+            ClientError::BadStatusError { code, message: _ } => match *code {
                 StatusCode::TEMPORARY_REDIRECT => Some(RetryErrorCode::Redirect),
                 StatusCode::REQUEST_TIMEOUT | StatusCode::GATEWAY_TIMEOUT => {
                     Some(RetryErrorCode::Timeout)
@@ -157,23 +157,25 @@ impl StarknetClient {
             .await
             .map_err(|err| {
                 Self::get_retry_error(&err)
-                    .map(|code| ClientError::RetryError { code })
+                    .map(|code| ClientError::RetryError { code, message: err.to_string() })
                     .unwrap_or(err)
             })
     }
 
     async fn request(&self, url: Url) -> ClientResult<String> {
-        let response = self.internal_client.get(url).send().await?;
-        match response.status() {
-            StatusCode::OK => {
-                let body = response.text().await?;
-                Ok(body)
+        let res = self.internal_client.get(url).send().await;
+        let (code, message) = match res {
+            Ok(response) => (response.status(), response.text().await?),
+            Err(err) => {
+                let msg = err.to_string();
+                (err.status().ok_or(err)?, msg)
             }
+        };
+        match code {
+            StatusCode::OK => Ok(message),
             StatusCode::INTERNAL_SERVER_ERROR => {
-                let body = response.text().await?;
-                let starknet_error: StarknetError = serde_json::from_str(&body)?;
-                // TODO(dan): consider logging as error instead.
-                info!(
+                let starknet_error: StarknetError = serde_json::from_str(&message)?;
+                error!(
                     "Starknet server responded with an internal server error: {}.",
                     starknet_error
                 );
@@ -181,8 +183,8 @@ impl StarknetClient {
             }
             _ => {
                 // TODO(dan): consider logging as info instead.
-                error!("Bad response: {:?}.", response);
-                Err(ClientError::BadResponse { status: response.status() })
+                error!("Bad status error code: {:?}, message: {:?}.", code, message);
+                Err(ClientError::BadStatusError { code, message })
             }
         }
     }
