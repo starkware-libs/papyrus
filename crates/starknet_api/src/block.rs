@@ -4,10 +4,13 @@ use super::serde_utils::{HexAsBytes, NonPrefixedHexAsBytes, PrefixedHexAsBytes};
 use super::{ContractAddress, StarkHash, Transaction};
 
 // TODO(spapini): Verify the invariant that it is in range.
+/// The hash of a StarkNet block.
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct BlockHash(pub StarkHash);
+
+/// The root of the global state at a StarkNet block.
 #[derive(
     Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
@@ -25,6 +28,8 @@ impl From<GlobalRoot> for NonPrefixedHexAsBytes<32_usize> {
         HexAsBytes(val.0.0)
     }
 }
+
+/// The block number of a StarkNet block.
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
@@ -41,10 +46,14 @@ impl BlockNumber {
         }
     }
 }
+
+/// The timestamp of a StarkNet block.
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct BlockTimestamp(pub u64);
+
+/// The gas price at a StarkNet block.
 #[derive(
     Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
@@ -61,24 +70,19 @@ impl From<GasPrice> for PrefixedHexAsBytes<16_usize> {
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct ListCommitment {
-    pub length: u64,
-    pub commitment: StarkHash,
-}
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct TransactionsCommitment(pub ListCommitment);
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct EventsCommitment(pub ListCommitment);
-
+/// The status a StarkNet block.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum BlockStatus {
+    /// A pending block; i.e., a block that is yet to be closed.
     #[serde(rename = "PENDING")]
     Pending,
+    /// A block that was created on L2.
     #[serde(rename = "ACCEPTED_ON_L2")]
     AcceptedOnL2,
+    /// A block that was accepted on L1.
     #[serde(rename = "ACCEPTED_ON_L1")]
     AcceptedOnL1,
+    /// A block rejected on L1.
     #[serde(rename = "REJECTED")]
     Rejected,
 }
@@ -88,6 +92,7 @@ impl Default for BlockStatus {
     }
 }
 
+/// The header of a StarkNet block.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockHeader {
     pub block_hash: BlockHash,
@@ -101,6 +106,7 @@ pub struct BlockHeader {
     // TODO(dan): add missing commitments.
 }
 
+/// The transactions in a StarkNet block.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockBody {
     pub transactions: Vec<Transaction>,

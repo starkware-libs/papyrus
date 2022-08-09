@@ -229,7 +229,7 @@ fn write_storage_diffs<'env>(
     Ok(())
 }
 
-// Represents a single coherent state at a single point in time,
+// A single coherent state at a single point in time,
 pub struct StateReader<'env, Mode: TransactionKind> {
     txn: &'env DbTransaction<'env, Mode>,
     declared_classes_table: DeclaredClassesTable<'env>,
