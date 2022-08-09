@@ -183,14 +183,26 @@ async fn contract_class() {
 async fn get_block() {
     let starknet_client = StarknetClient::new(&mockito::server_url(), get_test_config()).unwrap();
     let raw_block = read_resource_file("block.json");
-    let mock = mock("GET", &format!("/feeder_gateway/get_block?{}=20", BLOCK_NUMBER_QUERY)[..])
-        .with_status(200)
-        .with_body(&raw_block)
-        .create();
+    let mock_block =
+        mock("GET", &format!("/feeder_gateway/get_block?{}=20", BLOCK_NUMBER_QUERY)[..])
+            .with_status(200)
+            .with_body(&raw_block)
+            .create();
     let block = starknet_client.block(BlockNumber(20)).await.unwrap().unwrap();
-    mock.assert();
+    mock_block.assert();
     let expected_block: Block = serde_json::from_str(&raw_block).unwrap();
     assert_eq!(block, expected_block);
+
+    // Non-existing block.
+    let body = r#"{"code": "StarknetErrorCode.BLOCK_NOT_FOUND", "message": "Block 9999999999 was not found."}"#;
+    let mock_no_block =
+        mock("GET", &format!("/feeder_gateway/get_block?{}=9999999999", BLOCK_NUMBER_QUERY)[..])
+            .with_status(500)
+            .with_body(body)
+            .create();
+    let block = starknet_client.block(BlockNumber(9999999999)).await.unwrap();
+    mock_no_block.assert();
+    assert!(block.is_none());
 }
 
 #[tokio::test]
@@ -205,18 +217,6 @@ async fn block_unserializable() {
     let error = starknet_client.block(BlockNumber(20)).await.unwrap_err();
     mock.assert();
     assert_matches!(error, ClientError::SerdeError(_));
-}
-
-#[tokio::test]
-async fn test_block_not_found_error_code() {
-    let starknet_client = StarknetClient::new(&mockito::server_url(), get_test_config()).unwrap();
-    let body = r#"{"code": "StarknetErrorCode.BLOCK_NOT_FOUND", "message": "Block number 2347239846 was not found."}"#;
-    let mock = mock("GET", "/feeder_gateway/get_block?blockNumber=2347239846")
-        .with_status(500)
-        .with_body(body)
-        .create();
-    assert!(starknet_client.block(BlockNumber(2347239846)).await.unwrap().is_none());
-    mock.assert();
 }
 
 #[tokio::test]
