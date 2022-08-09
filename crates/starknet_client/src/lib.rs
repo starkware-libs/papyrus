@@ -1,3 +1,7 @@
+//! Client implementation for [`starknet`] gateway.
+//!
+//! [`starknet`]: https://starknet.io/
+
 mod objects;
 pub mod retry;
 #[cfg(test)]
@@ -15,18 +19,28 @@ use starknet_api::{BlockNumber, ClassHash, ContractClass};
 use url::Url;
 
 pub use self::objects::block::{client_to_starknet_api_storage_diff, Block, BlockStateUpdate};
-pub use self::retry::{Retry, RetryConfig};
+use self::retry::Retry;
+pub use self::retry::RetryConfig;
 
+/// A [`Result`] in which the error is a [`ClientError`].
 pub type ClientResult<T> = Result<T, ClientError>;
 
+/// Methods for querying starknet.
 #[async_trait]
 pub trait StarknetClientTrait {
+    /// Returns the last block number in the system, returning [`None`] in case there are no blocks
+    /// in the system.
     async fn block_number(&self) -> ClientResult<Option<BlockNumber>>;
+    /// Returns a [`Block`] corresponding to `block_number`, returning [`None`] in case no such
+    /// block exists in the system.
     async fn block(&self, block_number: BlockNumber) -> ClientResult<Option<Block>>;
+    /// Returns a [`ContractClass`] corresponding to `class_hash`.
     async fn class_by_hash(&self, class_hash: ClassHash) -> ClientResult<ContractClass>;
+    /// Returns a [`BlockStateUpdate`] corresponding to `block_number`.
     async fn state_update(&self, block_number: BlockNumber) -> ClientResult<BlockStateUpdate>;
 }
 
+/// A starknet client.
 pub struct StarknetClient {
     urls: StarknetUrls,
     internal_client: Client,
@@ -40,6 +54,7 @@ struct StarknetUrls {
     get_state_update: Url,
 }
 
+/// Error codes returned by the starknet gateway.
 #[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub enum StarknetErrorCode {
     #[serde(rename = "StarknetErrorCode.BLOCK_NOT_FOUND")]
@@ -47,12 +62,14 @@ pub enum StarknetErrorCode {
     // TODO(anatg): Add more error codes as they become relevant.
 }
 
+/// A client error wrapping error codes returned by the starknet gateway.
 #[derive(thiserror::Error, Debug, Deserialize, Serialize)]
 pub struct StarknetError {
     pub code: StarknetErrorCode,
     pub message: String,
 }
 
+/// Errors that might be encountered while creating the client.
 #[derive(thiserror::Error, Debug)]
 pub enum ClientCreationError {
     #[error(transparent)]
@@ -61,6 +78,7 @@ pub enum ClientCreationError {
     BuildError(#[from] reqwest::Error),
 }
 
+/// Errors that might be solved by retrying mechanism.
 #[derive(Debug, PartialEq, Eq)]
 pub enum RetryErrorCode {
     Redirect,
@@ -70,16 +88,22 @@ pub enum RetryErrorCode {
     Disconnect,
 }
 
+/// Errors that may be returned by the client.
 #[derive(thiserror::Error, Debug)]
 pub enum ClientError {
+    /// A client error representing bad status http responses.
     #[error("Bad status error code: {:?} message: {:?}.", code, message)]
     BadStatusError { code: StatusCode, message: String },
+    /// A client error representing http request errors.
     #[error(transparent)]
     RequestError(#[from] reqwest::Error),
+    /// A client error representing errors that might be solved by retrying mechanism.
     #[error("Retry error code: {:?}, message: {:?}.", code, message)]
     RetryError { code: RetryErrorCode, message: String },
+    /// A client error representing deserialisation errors.
     #[error(transparent)]
     SerdeError(#[from] serde_json::Error),
+    /// A client error representing errors returned by the starknet client.
     #[error(transparent)]
     StarknetError(#[from] StarknetError),
 }
@@ -108,6 +132,7 @@ impl Display for StarknetError {
 }
 
 impl StarknetClient {
+    /// Creates a new client for a starknet gateway at `url_str` with retry_config [`RetryConfig`].
     pub fn new(
         url_str: &str,
         retry_config: RetryConfig,
