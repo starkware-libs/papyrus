@@ -20,12 +20,15 @@ mock! {
 
         async fn block(&self, block_number: BlockNumber) -> Result<Option<Block>, ClientError>;
 
-        async fn class_by_hash(&self, class_hash: ClassHash) -> Result<ContractClass, ClientError>;
+        async fn class_by_hash(
+            &self,
+            class_hash: ClassHash
+        ) -> Result<Option<ContractClass>, ClientError>;
 
         async fn state_update(
             &self,
             block_number: BlockNumber,
-        ) -> Result<BlockStateUpdate, ClientError>;
+        ) -> Result<Option<BlockStateUpdate>, ClientError>;
     }
 }
 

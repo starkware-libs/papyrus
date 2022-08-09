@@ -87,7 +87,7 @@ async fn test_state_update() {
     let state_update = starknet_client.state_update(BlockNumber(123456)).await.unwrap();
     mock.assert();
     let expected_state_update: BlockStateUpdate = serde_json::from_str(&raw_state_update).unwrap();
-    assert_eq!(state_update, expected_state_update);
+    assert_eq!(state_update.unwrap(), expected_state_update);
 }
 
 #[tokio::test]
@@ -176,7 +176,7 @@ async fn contract_class() {
         .await
         .unwrap();
     mock_by_hash.assert();
-    assert_eq!(contract_class, expected_contract_class);
+    assert_eq!(contract_class.unwrap(), expected_contract_class);
 }
 
 #[tokio::test]
