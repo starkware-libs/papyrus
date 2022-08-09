@@ -35,9 +35,12 @@ pub trait StarknetClientTrait {
     /// block exists in the system.
     async fn block(&self, block_number: BlockNumber) -> ClientResult<Option<Block>>;
     /// Returns a [`ContractClass`] corresponding to `class_hash`.
-    async fn class_by_hash(&self, class_hash: ClassHash) -> ClientResult<ContractClass>;
+    async fn class_by_hash(&self, class_hash: ClassHash) -> ClientResult<Option<ContractClass>>;
     /// Returns a [`BlockStateUpdate`] corresponding to `block_number`.
-    async fn state_update(&self, block_number: BlockNumber) -> ClientResult<BlockStateUpdate>;
+    async fn state_update(
+        &self,
+        block_number: BlockNumber,
+    ) -> ClientResult<Option<BlockStateUpdate>>;
 }
 
 /// A starknet client.
@@ -248,7 +251,7 @@ impl StarknetClientTrait for StarknetClient {
         self.request_block(Some(block_number)).await
     }
 
-    async fn class_by_hash(&self, class_hash: ClassHash) -> ClientResult<ContractClass> {
+    async fn class_by_hash(&self, class_hash: ClassHash) -> ClientResult<Option<ContractClass>> {
         let mut url = self.urls.get_contract_by_hash.clone();
         let class_hash = serde_json::to_string(&class_hash)?;
         url.query_pairs_mut()
@@ -257,17 +260,36 @@ impl StarknetClientTrait for StarknetClient {
         match response {
             Ok(raw_contract_class) => Ok(serde_json::from_str(&raw_contract_class)?),
             Err(err) => {
+                // TODO(dan): return None once we have StarknetErrorCode for hash not found.
                 error!("{}", err);
                 Err(err)
             }
         }
     }
 
-    async fn state_update(&self, block_number: BlockNumber) -> ClientResult<BlockStateUpdate> {
+    async fn state_update(
+        &self,
+        block_number: BlockNumber,
+    ) -> ClientResult<Option<BlockStateUpdate>> {
         let mut url = self.urls.get_state_update.clone();
         url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.0.to_string());
-        let raw_state_update = self.request_with_retry(url).await?;
-        let state_update: BlockStateUpdate = serde_json::from_str(&raw_state_update)?;
-        Ok(state_update)
+        let response = self.request_with_retry(url).await;
+        match response {
+            Ok(raw_state_update) => {
+                let state_update: BlockStateUpdate = serde_json::from_str(&raw_state_update)?;
+                Ok(Some(state_update))
+            }
+            Err(err) => match err {
+                ClientError::StarknetError(sn_err) => {
+                    let StarknetError { code, message } = sn_err;
+                    if code == StarknetErrorCode::BlockNotFound {
+                        Ok(None)
+                    } else {
+                        Err(ClientError::StarknetError(StarknetError { code, message }))
+                    }
+                }
+                _ => Err(err),
+            },
+        }
     }
 }
