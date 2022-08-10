@@ -116,6 +116,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             &self.txn,
             block_number,
             &deployed_contracts_table,
+            &nonces_table,
         )?;
         write_storage_diffs(&thin_state_diff, &self.txn, block_number, &storage_table)?;
         write_nonces(&thin_state_diff, &self.txn, block_number, &nonces_table)?;
@@ -174,20 +175,34 @@ fn write_deployed_contracts<'env>(
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     deployed_contracts_table: &'env DeployedContractsTable<'env>,
+    nonces_table: &'env NoncesTable<'env>,
 ) -> StorageResult<()> {
     for deployed_contract in &state_diff.deployed_contracts {
         let class_hash = deployed_contract.class_hash;
         let value = IndexedDeployedContract { block_number, class_hash };
-        let res = deployed_contracts_table.insert(txn, &deployed_contract.address, &value);
-        match res {
-            Ok(()) => continue,
-            Err(DbError::InnerDbError(libmdbx::Error::KeyExist)) => {
-                return Err(StorageError::ContractAlreadyExists {
-                    address: deployed_contract.address,
-                });
-            }
-            Err(err) => return Err(err.into()),
-        }
+        deployed_contracts_table.insert(txn, &deployed_contract.address, &value).map_err(
+            |err| {
+                if matches!(err, DbError::InnerDbError(libmdbx::Error::KeyExist)) {
+                    StorageError::ContractAlreadyExists { address: deployed_contract.address }
+                } else {
+                    StorageError::from(err)
+                }
+            },
+        )?;
+
+        nonces_table
+            .insert(txn, &(deployed_contract.address, block_number), &Nonce::default())
+            .map_err(|err| {
+                if matches!(err, DbError::InnerDbError(libmdbx::Error::KeyExist)) {
+                    StorageError::NonceReWrite {
+                        contract_address: deployed_contract.address,
+                        nonce: Nonce::default(),
+                        block_number,
+                    }
+                } else {
+                    StorageError::from(err)
+                }
+            })?;
     }
     Ok(())
 }
@@ -199,18 +214,7 @@ fn write_nonces<'env>(
     contracts_table: &'env NoncesTable<'env>,
 ) -> StorageResult<()> {
     for (contract_address, nonce) in &state_diff.nonces {
-        let res = contracts_table.insert(txn, &(*contract_address, block_number), nonce);
-        match res {
-            Ok(()) => continue,
-            Err(DbError::InnerDbError(libmdbx::Error::KeyExist)) => {
-                return Err(StorageError::NonceReWrite {
-                    contract_address: *contract_address,
-                    nonce: *nonce,
-                    block_number,
-                });
-            }
-            Err(err) => return Err(err.into()),
-        }
+        contracts_table.upsert(txn, &(*contract_address, block_number), nonce)?;
     }
     Ok(())
 }
@@ -270,7 +274,7 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         &self,
         state_number: StateNumber,
         address: &ContractAddress,
-    ) -> StorageResult<Nonce> {
+    ) -> StorageResult<Option<Nonce>> {
         // State diff updates are indexed by the block_number at which they occurred.
         let first_irrelevant_block: BlockNumber = state_number.block_after();
         // The relevant update is the last update strictly before `first_irrelevant_block`.
@@ -280,15 +284,15 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         cursor.lower_bound(&db_key)?;
         let res = cursor.prev()?;
         match res {
-            None => Ok(Nonce::default()),
+            None => Ok(None),
             Some(((got_address, _got_block_number), value)) => {
                 if got_address != *address {
                     // The previous item belongs to different address, which means there is no
                     // previous state diff for this item.
-                    return Ok(Nonce::default());
+                    return Ok(None);
                 };
                 // The previous db item indeed belongs to this address and key.
-                Ok(value)
+                Ok(Some(value))
             }
         }
     }
