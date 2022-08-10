@@ -81,7 +81,7 @@ pub type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
 
 macro_rules! struct_field_names {
     (pub struct $name:ident { $($fname:ident : $ftype:ty),* }) => {
-        struct $name {
+        pub struct $name {
             $($fname : $ftype),*
         }
 
@@ -102,13 +102,18 @@ struct_field_names! {
         block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
         transactions: TableIdentifier<(BlockNumber, TransactionOffsetInBlock), Transaction>,
         transaction_hash_to_idx:
-            TableIdentifier<TransactionHash, (BlockNumber, TransactionOffsetInBlock)>,
+        TableIdentifier<TransactionHash, (BlockNumber, TransactionOffsetInBlock)>,
         state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
         declared_classes: TableIdentifier<ClassHash, IndexedDeclaredContract>,
         deployed_contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
         contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>
     }
 }
+
+pub fn table_names() -> &'static [&'static str] {
+    Tables::field_names()
+}
+
 #[derive(Clone)]
 pub struct StorageReader {
     db_reader: DbReader,
