@@ -7,8 +7,10 @@ mod state;
 #[path = "test_utils.rs"]
 pub mod test_utils;
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
+use db::DbStat;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, IndexedDeclaredContract,
@@ -24,6 +26,19 @@ use self::db::{
 };
 pub use self::header::{HeaderStorageReader, HeaderStorageWriter};
 pub use self::state::{StateStorageReader, StateStorageWriter, ThinStateDiff};
+
+pub const TABLE_NAMES: [&str; 10] = [
+    "markers",
+    "nonces",
+    "headers",
+    "block_hash_to_number",
+    "transactions",
+    "transaction_hash_to_idx",
+    "state_diffs",
+    "deployed_contracts",
+    "declared_classes",
+    "contract_storage",
+];
 
 #[derive(Serialize, Deserialize)]
 pub struct StorageConfig {
@@ -63,6 +78,12 @@ pub enum StorageError {
 }
 pub type StorageResult<V> = std::result::Result<V, StorageError>;
 
+/// A mapping from a table name in the database to its statistics.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DbStats {
+    pub stats: HashMap<String, DbStat>,
+}
+
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum MarkerKind {
     Header,
@@ -99,6 +120,13 @@ pub struct StorageTxn<'env, Mode: TransactionKind> {
 impl StorageReader {
     pub fn begin_ro_txn(&self) -> StorageResult<StorageTxn<'_, RO>> {
         Ok(StorageTxn { txn: self.db_reader.begin_ro_txn()?, tables: self.tables.clone() })
+    }
+    pub fn db_stats(&self) -> StorageResult<DbStats> {
+        let mut stats = HashMap::new();
+        for name in TABLE_NAMES {
+            stats.insert(name.to_string(), self.db_reader.get_stats(name)?);
+        }
+        Ok(DbStats { stats })
     }
 }
 impl StorageWriter {
