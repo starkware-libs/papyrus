@@ -81,12 +81,12 @@ pub type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
 
 macro_rules! struct_field_names {
     (pub struct $name:ident { $($fname:ident : $ftype:ty),* }) => {
-        struct $name {
+        pub struct $name {
             $($fname : $ftype),*
         }
 
         impl $name {
-            fn field_names() -> &'static [&'static str] {
+            pub fn field_names() -> &'static [&'static str] {
                 static NAMES: &'static [&'static str] = &[$(stringify!($fname)),*];
                 NAMES
             }

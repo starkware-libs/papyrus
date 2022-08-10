@@ -4,6 +4,7 @@ mod config_test;
 use std::fs;
 
 use papyrus_gateway::GatewayConfig;
+use papyrus_monitoring_gateway::MonitoringGatewayConfig;
 use papyrus_storage::StorageConfig;
 use papyrus_sync::{CentralSourceConfig, SyncConfig};
 use serde::{Deserialize, Serialize};
@@ -12,6 +13,7 @@ use serde::{Deserialize, Serialize};
 pub struct Config {
     pub central: CentralSourceConfig,
     pub gateway: GatewayConfig,
+    pub monitoring_gateway: MonitoringGatewayConfig,
     pub storage: StorageConfig,
     pub sync: SyncConfig,
 }
