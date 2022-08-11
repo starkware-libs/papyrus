@@ -39,6 +39,18 @@ pub struct DbConfig {
     pub max_size: usize,
 }
 
+/// A single table statistics.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DbTableStats {
+    pub database: String,
+    pub branch_pages: usize,
+    pub depth: u32,
+    pub entries: usize,
+    pub leaf_pages: usize,
+    pub overflow_pages: usize,
+    pub page_size: u32,
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum DbError {
     #[error(transparent)]
@@ -148,6 +160,21 @@ impl<'env, 'txn, K: ValueType, V: ValueType> TableHandle<'env, K, V> {
 impl DbReader {
     pub fn begin_ro_txn(&self) -> Result<DbReadTransaction<'_>> {
         Ok(DbReadTransaction { txn: self.env.begin_ro_txn()? })
+    }
+    /// Returns statistics about a specific table in the database.
+    pub fn get_table_stats(&self, name: &str) -> Result<DbTableStats> {
+        let db_txn = self.begin_ro_txn()?;
+        let database = db_txn.txn.open_db(Some(name))?;
+        let stat = db_txn.txn.db_stat(&database)?;
+        Ok(DbTableStats {
+            database: format!("{:?}", database),
+            branch_pages: stat.branch_pages(),
+            depth: stat.depth(),
+            entries: stat.entries(),
+            leaf_pages: stat.leaf_pages(),
+            overflow_pages: stat.overflow_pages(),
+            page_size: stat.page_size(),
+        })
     }
 }
 impl DbWriter {
