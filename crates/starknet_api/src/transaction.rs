@@ -236,40 +236,55 @@ pub struct MessageToL1 {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StatusData(pub Vec<StarkFelt>);
 
-/// An invoke transaction receipt in StarkNet.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct InvokeTransactionReceipt {
+/// A transaction receipt in StarkNet.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct TransactionReceipt {
     pub transaction_hash: TransactionHash,
-    pub actual_fee: Fee,
-    pub status: TransactionStatus,
-    pub status_data: StatusData,
     pub block_hash: BlockHash,
     pub block_number: BlockNumber,
+    pub output: TransactionOutput,
+}
+
+/// A transaction output in StarkNet.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub enum TransactionOutput {
+    /// A declare transaction output.
+    Declare(DeclareTransactionOutput),
+    /// A deploy transaction output.
+    Deploy(DeployTransactionOutput),
+    /// An invoke transaction output.
+    Invoke(InvokeTransactionOutput),
+}
+
+/// An invoke transaction output in StarkNet.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct InvokeTransactionOutput {
+    pub actual_fee: Fee,
     pub messages_sent: Vec<MessageToL1>,
     pub l1_origin_message: Option<MessageToL2>,
     pub events: Vec<Event>,
 }
 
-/// A declare transaction receipt in StarkNet.
+/// A declare transaction output in StarkNet.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct DeclareTransactionReceipt {
-    pub transaction_hash: TransactionHash,
+pub struct DeclareTransactionOutput {
     pub actual_fee: Fee,
-    pub status: TransactionStatus,
-    pub status_data: StatusData,
-    pub block_hash: BlockHash,
-    pub block_number: BlockNumber,
 }
 
-/// A deploy transaction receipt in StarkNet.
+/// A deploy transaction output in StarkNet.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct DeployTransactionReceipt {
-    pub transaction_hash: TransactionHash,
+pub struct DeployTransactionOutput {
     pub actual_fee: Fee,
-    pub status: TransactionStatus,
-    pub status_data: StatusData,
-    pub block_hash: BlockHash,
-    pub block_number: BlockNumber,
+}
+
+impl TransactionOutput {
+    pub fn actual_fee(&self) -> Fee {
+        match self {
+            TransactionOutput::Declare(output) => output.actual_fee,
+            TransactionOutput::Deploy(output) => output.actual_fee,
+            TransactionOutput::Invoke(output) => output.actual_fee,
+        }
+    }
 }
 
 /// A transaction in StarkNet.
@@ -290,15 +305,4 @@ impl Transaction {
             Transaction::Invoke(tx) => tx.transaction_hash,
         }
     }
-}
-
-/// A transaction receipt in StarkNet.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub enum TransactionReceipt {
-    /// A declare transaction receipt.
-    Declare(DeclareTransactionReceipt),
-    /// A deploy transaction receipt.
-    Deploy(DeployTransactionReceipt),
-    /// An invoke transaction receipt.
-    Invoke(InvokeTransactionReceipt),
 }
