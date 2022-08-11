@@ -3,9 +3,13 @@ name = "starknet_client"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+testing = ["mockall"]
+
 [dependencies]
 async-trait = { version = "0.1.56" }
 log = { version = "0.4" }
+mockall = { version = "0.11.2" , optional = true }
 reqwest = { version = "0.11", features = ["json", "blocking"] }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" , features = ["arbitrary_precision"]}
