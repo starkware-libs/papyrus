@@ -11,10 +11,10 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, IndexedDeclaredContract,
-    IndexedDeployedContract, Nonce, StarkFelt, StorageKey, Transaction, TransactionHash,
-    TransactionOffsetInBlock,
+    BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, Nonce, StarkFelt, StorageKey,
+    Transaction, TransactionHash, TransactionOffsetInBlock,
 };
+use state::{IndexedDeclaredContract, IndexedDeployedContract};
 
 pub use self::body::{BodyStorageReader, BodyStorageWriter};
 pub use self::db::TransactionKind;

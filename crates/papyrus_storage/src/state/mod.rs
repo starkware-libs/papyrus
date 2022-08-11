@@ -1,14 +1,14 @@
+mod data;
 #[cfg(test)]
 #[path = "state_test.rs"]
 mod state_test;
 
-use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockNumber, ClassHash, ContractAddress, ContractClass, DeclaredContract, DeployedContract,
-    IndexedDeclaredContract, IndexedDeployedContract, Nonce, StarkFelt, StateDiff, StateNumber,
-    StorageDiff, StorageEntry, StorageKey,
+    BlockNumber, ClassHash, ContractAddress, ContractClass, DeclaredContract, Nonce, StarkFelt,
+    StateDiff, StateNumber, StorageDiff, StorageEntry, StorageKey,
 };
 
+pub use self::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
 use super::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use super::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
@@ -47,16 +47,6 @@ where
         block_number: BlockNumber,
         state_diff: StateDiff,
     ) -> StorageResult<Self>;
-}
-
-// Invariant: Addresses are strictly increasing.
-// TODO(spapini): Enforce the invariant.
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct ThinStateDiff {
-    pub deployed_contracts: Vec<DeployedContract>,
-    pub storage_diffs: Vec<StorageDiff>,
-    pub declared_classes: Vec<ClassHash>,
-    pub nonces: Vec<(ContractAddress, Nonce)>,
 }
 
 fn split_diff_for_storage(state_diff: StateDiff) -> (ThinStateDiff, Vec<DeclaredContract>) {
