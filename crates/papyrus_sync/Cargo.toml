@@ -26,3 +26,4 @@ assert_matches = { version = "1.5.0" }
 async-trait = { version = "0.1.56" }
 mockall = { version = "0.11.2" }
 tempfile = { version = "3.3.0" }
+starknet_client = { path = "../starknet_client", features = ["testing"] }
