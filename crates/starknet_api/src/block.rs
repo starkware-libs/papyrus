@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::serde_utils::{HexAsBytes, NonPrefixedHexAsBytes, PrefixedHexAsBytes};
 use super::{ContractAddress, StarkHash, Transaction};
+use crate::TransactionOutput;
 
 // TODO(spapini): Verify the invariant that it is in range.
 /// The hash of a StarkNet block.
@@ -110,4 +111,5 @@ pub struct BlockHeader {
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockBody {
     pub transactions: Vec<Transaction>,
+    pub transaction_outputs: Vec<TransactionOutput>,
 }

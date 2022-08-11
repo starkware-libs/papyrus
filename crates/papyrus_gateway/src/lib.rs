@@ -99,6 +99,7 @@ fn get_block_header_by_number<Mode: TransactionKind>(
     Ok(BlockHeader::from(header))
 }
 
+// TODO(spapini): Move this logic into storage (e.g. get_block_body()).
 fn get_block_by_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
     block_number: BlockNumber,
@@ -110,7 +111,8 @@ fn get_block_by_number<Mode: TransactionKind>(
         .map_err(internal_server_error)?
         .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
 
-    Ok((header, BlockBody { transactions }))
+    // TODO(spapini): Fill the correct tx outputs.
+    Ok((header, BlockBody { transactions, transaction_outputs: vec![] }))
 }
 
 #[async_trait]
