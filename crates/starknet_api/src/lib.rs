@@ -20,9 +20,9 @@ pub use self::state::{
     StorageKey,
 };
 pub use self::transaction::{
-    CallData, ContractAddressSalt, ContractClass, DeclareTransaction, DeclareTransactionReceipt,
+    CallData, ContractAddressSalt, ContractClass, DeclareTransaction, DeclareTransactionOutput,
     DeployTransaction, EntryPoint, EntryPointOffset, EntryPointSelector, EntryPointType,
     EthAddress, Event, Fee, InvokeTransaction, L1ToL2Payload, L2ToL1Payload, MessageToL1,
     MessageToL2, Program, Transaction, TransactionHash, TransactionOffsetInBlock,
-    TransactionReceipt, TransactionSignature, TransactionVersion,
+    TransactionOutput, TransactionReceipt, TransactionSignature, TransactionVersion,
 };

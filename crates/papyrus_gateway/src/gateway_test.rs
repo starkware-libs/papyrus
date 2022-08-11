@@ -7,9 +7,10 @@ use jsonrpsee::types::EmptyParams;
 use papyrus_storage::{test_utils, BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 use starknet_api::{
     shash, BlockBody, BlockHash, BlockHeader, BlockNumber, CallData, ClassHash, ContractAddress,
-    ContractAddressSalt, ContractClass, DeclareTransactionReceipt, DeployTransaction,
+    ContractAddressSalt, ContractClass, DeclareTransactionOutput, DeployTransaction,
     DeployedContract, GlobalRoot, Nonce, StarkFelt, StarkHash, StateDiff, StorageDiff,
-    StorageEntry, StorageKey, Transaction, TransactionHash, TransactionReceipt, TransactionVersion,
+    StorageEntry, StorageKey, Transaction, TransactionHash, TransactionOutput, TransactionReceipt,
+    TransactionVersion,
 };
 
 use super::api::{
@@ -835,11 +836,17 @@ async fn test_get_transaction_receipt() -> Result<(), anyhow::Error> {
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
     let (_, body) = get_test_block(1);
-    storage_writer.begin_rw_txn()?.append_body(BlockNumber(0), &body)?.commit()?;
+    let block_number = BlockNumber(0);
+    storage_writer.begin_rw_txn()?.append_body(block_number, &body)?.commit()?;
     // TODO(anatg): Write a transaction receipt to the storage.
 
     let transaction_hash = body.transactions.get(0).unwrap().transaction_hash();
-    let expected_receipt = TransactionReceipt::Declare(DeclareTransactionReceipt::default());
+    let expected_receipt = TransactionReceipt {
+        transaction_hash,
+        block_hash: BlockHash::default(),
+        block_number,
+        output: TransactionOutput::Declare(DeclareTransactionOutput::default()),
+    };
     let res = module
         .call::<_, TransactionReceipt>("starknet_getTransactionReceipt", [transaction_hash])
         .await
