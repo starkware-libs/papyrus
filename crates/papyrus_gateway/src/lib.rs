@@ -18,9 +18,9 @@ use papyrus_storage::{
 };
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockBody, BlockNumber, ClassHash, ContractAddress, ContractClass, DeclareTransactionReceipt,
-    GlobalRoot, Nonce, StarkFelt, StarkHash, StateNumber, StorageKey, TransactionHash,
-    TransactionOffsetInBlock, TransactionReceipt, GENESIS_HASH,
+    BlockBody, BlockHash, BlockNumber, ClassHash, ContractAddress, ContractClass,
+    DeclareTransactionOutput, GlobalRoot, Nonce, StarkFelt, StarkHash, StateNumber, StorageKey,
+    TransactionHash, TransactionOffsetInBlock, TransactionOutput, TransactionReceipt, GENESIS_HASH,
 };
 
 use self::api::{BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcError, JsonRpcServer, Tag};
@@ -271,13 +271,18 @@ impl JsonRpcServer for JsonRpcServerImpl {
     ) -> Result<TransactionReceipt, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
-        let (_block_number, _tx_offset_in_block) = txn
+        let (block_number, _tx_offset_in_block) = txn
             .get_transaction_idx_by_hash(&transaction_hash)
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::InvalidTransactionHash))?;
 
-        // TODO(anatg): Get the transaction receipt from the storage.
-        Ok(TransactionReceipt::Declare(DeclareTransactionReceipt::default()))
+        // TODO(anatg): Get the transaction receipt from the storage.\
+        Ok(TransactionReceipt {
+            transaction_hash,
+            block_hash: BlockHash::default(),
+            block_number,
+            output: TransactionOutput::Declare(DeclareTransactionOutput::default()),
+        })
     }
 
     fn get_class(&self, block_id: BlockId, class_hash: ClassHash) -> Result<ContractClass, Error> {
