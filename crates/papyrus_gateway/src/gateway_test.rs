@@ -4,13 +4,12 @@ use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
+use papyrus_storage::test_utils::get_test_block;
 use papyrus_storage::{test_utils, BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 use starknet_api::{
-    shash, BlockBody, BlockHash, BlockHeader, BlockNumber, CallData, ClassHash, ContractAddress,
-    ContractAddressSalt, ContractClass, DeclareTransactionOutput, DeployTransaction,
-    DeployedContract, GlobalRoot, Nonce, StarkFelt, StarkHash, StateDiff, StorageDiff,
-    StorageEntry, StorageKey, Transaction, TransactionHash, TransactionOutput, TransactionReceipt,
-    TransactionVersion,
+    shash, BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, ContractClass,
+    DeclareTransactionOutput, DeployedContract, GlobalRoot, Nonce, StarkFelt, StarkHash, StateDiff,
+    StorageDiff, StorageEntry, StorageKey, TransactionHash, TransactionOutput, TransactionReceipt,
 };
 
 use super::api::{
@@ -21,31 +20,6 @@ use super::objects::{
     Transactions,
 };
 use super::{run_server, GatewayConfig, JsonRpcServerImpl};
-
-// TODO(anatg): Move out of the gateway so that storage and sync can use it too.
-fn get_test_block(transaction_count: usize) -> (BlockHeader, BlockBody) {
-    let header = BlockHeader {
-        block_hash: BlockHash(shash!(
-            "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"
-        )),
-        block_number: BlockNumber(0),
-        ..BlockHeader::default()
-    };
-    let mut transactions = vec![];
-    for i in 0..transaction_count {
-        let transaction = Transaction::Deploy(DeployTransaction {
-            transaction_hash: TransactionHash(StarkHash::from_u64(i as u64)),
-            version: TransactionVersion(shash!("0x1")),
-            contract_address: ContractAddress(shash!("0x2")),
-            constructor_calldata: CallData(vec![shash!("0x3")]),
-            class_hash: ClassHash(StarkHash::from_u64(i as u64)),
-            contract_address_salt: ContractAddressSalt(shash!("0x4")),
-        });
-        transactions.push(transaction);
-    }
-    let body = BlockBody { transactions };
-    (header, body)
-}
 
 fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff) {
     let parent_hash =

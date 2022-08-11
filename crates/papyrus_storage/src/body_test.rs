@@ -1,8 +1,8 @@
 use assert_matches::assert_matches;
 use starknet_api::{
     shash, BlockBody, BlockNumber, CallData, ClassHash, ContractAddress, ContractAddressSalt,
-    DeployTransaction, StarkHash, Transaction, TransactionHash, TransactionOffsetInBlock,
-    TransactionVersion,
+    DeployTransaction, DeployTransactionOutput, Fee, StarkHash, Transaction, TransactionHash,
+    TransactionOffsetInBlock, TransactionOutput, TransactionVersion,
 };
 
 use super::{BodyStorageReader, BodyStorageWriter, StorageError};
@@ -24,11 +24,23 @@ async fn test_append_body() -> Result<(), anyhow::Error> {
             })
         })
         .collect();
+    let tx_outputs: Vec<TransactionOutput> = (0..10)
+        .map(|_i| TransactionOutput::Deploy(DeployTransactionOutput { actual_fee: Fee::default() }))
+        .collect();
 
-    let body0 = BlockBody { transactions: vec![txs[0].clone()] };
-    let body1 = BlockBody { transactions: vec![] };
-    let body2 = BlockBody { transactions: vec![txs[1].clone(), txs[2].clone()] };
-    let body3 = BlockBody { transactions: vec![txs[3].clone(), txs[0].clone()] };
+    let body0 = BlockBody {
+        transactions: vec![txs[0].clone()],
+        transaction_outputs: vec![tx_outputs[0].clone()],
+    };
+    let body1 = BlockBody { transactions: vec![], transaction_outputs: vec![] };
+    let body2 = BlockBody {
+        transactions: vec![txs[1].clone(), txs[2].clone()],
+        transaction_outputs: vec![tx_outputs[1].clone(), tx_outputs[2].clone()],
+    };
+    let body3 = BlockBody {
+        transactions: vec![txs[3].clone(), txs[0].clone()],
+        transaction_outputs: vec![tx_outputs[3].clone(), tx_outputs[0].clone()],
+    };
     writer
         .begin_rw_txn()?
         .append_body(BlockNumber(0), &body0)?

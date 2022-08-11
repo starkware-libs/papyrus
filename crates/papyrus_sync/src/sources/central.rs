@@ -111,12 +111,14 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                                 timestamp: block.timestamp,
                                 status: block.status.into(),
                             };
+                            // TODO(spapini): Fill the correct tx outputs.
                             let body = BlockBody {
                                 transactions: block
                                     .transactions
                                     .into_iter()
                                     .map(|x| x.into())
                                     .collect(),
+                                    transaction_outputs: vec![]
                             };
                             yield Ok((current_block_number, header, body));
                             current_block_number = current_block_number.next();
