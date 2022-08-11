@@ -122,8 +122,8 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         transactions: db_writer.create_table("transactions")?,
         transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
         state_diffs: db_writer.create_table("state_diffs")?,
-        deployed_contracts: db_writer.create_table("contracts")?,
-        declared_classes: db_writer.create_table("contract_classes")?,
+        deployed_contracts: db_writer.create_table("deployed_contracts")?,
+        declared_classes: db_writer.create_table("declared_classes")?,
         contract_storage: db_writer.create_table("contract_storage")?,
     });
     let reader = StorageReader { db_reader, tables: tables.clone() };
