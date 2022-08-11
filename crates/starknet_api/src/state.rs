@@ -48,25 +48,11 @@ pub struct DeployedContract {
     pub class_hash: ClassHash,
 }
 
-// TODO(dan): move to storage.
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct IndexedDeployedContract {
-    pub block_number: BlockNumber,
-    pub class_hash: ClassHash,
-}
-
 /// A declared contract in StarkNet.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct DeclaredContract {
     pub class_hash: ClassHash,
     pub contract_class: ContractClass,
-}
-
-// TODO(dan): move to storage.
-#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
-pub struct IndexedDeclaredContract {
-    pub block_number: BlockNumber,
-    pub contract_class: Vec<u8>,
 }
 
 // Invariant: Addresses are strictly increasing. In particular, no address appears twice.
