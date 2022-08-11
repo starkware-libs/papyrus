@@ -42,3 +42,32 @@ fn test_txns() {
     assert_eq!(table.get(&txn1, b"key").unwrap(), Some(*b"data0"));
     assert_eq!(table.get(&txn2, b"key").unwrap(), Some(*b"data1"));
 }
+#[test]
+
+fn test_stats() {
+    // Create an environment and a table.
+    let (reader, mut writer) = get_test_env();
+    let table_id = writer.create_table::<[u8; 3], [u8; 5]>("table").unwrap();
+
+    // Empty table stats.
+    let empty_stat = reader.get_stats("table").unwrap();
+    assert_eq!(empty_stat.branch_pages, 0);
+    assert_eq!(empty_stat.depth, 0);
+    assert_eq!(empty_stat.entries, 0);
+    assert_eq!(empty_stat.overflow_pages, 0);
+    assert_eq!(empty_stat.leaf_pages, 0);
+
+    // Insert a value.
+    let wtxn = writer.begin_rw_txn().unwrap();
+    let table = wtxn.open_table(&table_id).unwrap();
+    table.insert(&wtxn, b"key", b"data0").unwrap();
+    wtxn.commit().unwrap();
+
+    // Non-empty table stats.
+    let empty_stat = reader.get_stats("table").unwrap();
+    assert_eq!(empty_stat.branch_pages, 0);
+    assert_eq!(empty_stat.depth, 1);
+    assert_eq!(empty_stat.entries, 1);
+    assert_eq!(empty_stat.overflow_pages, 0);
+    assert_eq!(empty_stat.leaf_pages, 1);
+}

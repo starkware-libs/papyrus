@@ -7,8 +7,10 @@ mod state;
 #[path = "test_utils.rs"]
 pub mod test_utils;
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
+use db::DbStat;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, IndexedDeclaredContract,
@@ -63,6 +65,12 @@ pub enum StorageError {
 }
 pub type StorageResult<V> = std::result::Result<V, StorageError>;
 
+/// A mapping from a table name in the database to its statistics.
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DbStats {
+    pub stats: HashMap<String, DbStat>,
+}
+
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum MarkerKind {
     Header,
@@ -70,6 +78,23 @@ pub enum MarkerKind {
     State,
 }
 pub type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
+
+macro_rules! struct_field_names {
+    (pub struct $name:ident { $($fname:ident : $ftype:ty),* }) => {
+        struct $name {
+            $($fname : $ftype),*
+        }
+
+        impl $name {
+            fn field_names() -> &'static [&'static str] {
+                static NAMES: &'static [&'static str] = &[$(stringify!($fname)),*];
+                NAMES
+            }
+        }
+    }
+}
+
+struct_field_names! {
 pub struct Tables {
     markers: TableIdentifier<MarkerKind, BlockNumber>,
     nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
@@ -81,7 +106,8 @@ pub struct Tables {
     state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
     declared_classes: TableIdentifier<ClassHash, IndexedDeclaredContract>,
     deployed_contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
-    contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
+    contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>
+}
 }
 #[derive(Clone)]
 pub struct StorageReader {
@@ -99,6 +125,13 @@ pub struct StorageTxn<'env, Mode: TransactionKind> {
 impl StorageReader {
     pub fn begin_ro_txn(&self) -> StorageResult<StorageTxn<'_, RO>> {
         Ok(StorageTxn { txn: self.db_reader.begin_ro_txn()?, tables: self.tables.clone() })
+    }
+    pub fn db_stats(&self) -> StorageResult<DbStats> {
+        let mut stats = HashMap::new();
+        for name in Tables::field_names() {
+            stats.insert(name.to_string(), self.db_reader.get_stats(name)?);
+        }
+        Ok(DbStats { stats })
     }
 }
 impl StorageWriter {
