@@ -76,12 +76,12 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff) {
     let value0 = shash!("0x200");
     let key1 = StorageKey(shash!("0x1002"));
     let value1 = shash!("0x201");
-    let diff = StateDiff {
-        deployed_contracts: vec![
+    let diff = StateDiff::new(
+        vec![
             DeployedContract { address: address0, class_hash: hash0 },
             DeployedContract { address: address1, class_hash: hash1 },
         ],
-        storage_diffs: vec![
+        vec![
             StorageDiff {
                 address: address0,
                 diff: vec![
@@ -94,12 +94,12 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff) {
                 diff: vec![StorageEntry { key: key0, value: value0 }],
             },
         ],
-        declared_classes: vec![(hash0, class0), (hash1, class1)],
-        nonces: vec![
+        vec![(hash0, class0), (hash1, class1)],
+        vec![
             (address0, Nonce(StarkHash::from_u64(1))),
             (address1, Nonce(StarkHash::from_u64(1))),
-        ],
-    };
+        ]
+        );
 
     (parent_header, header, diff)
 }
@@ -320,9 +320,11 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
         .append_state_diff(header.block_number, diff.clone())?
         .commit()?;
 
-    let address = diff.storage_diffs.get(0).unwrap().address;
-    let key = diff.storage_diffs.get(0).unwrap().diff.get(0).unwrap().key.clone();
-    let expected_value = diff.storage_diffs.get(0).unwrap().diff.get(0).unwrap().value;
+    let (_, storage_diffs, _, _) = diff.destruct();
+
+    let address = storage_diffs.get(0).unwrap().address;
+    let key = storage_diffs.get(0).unwrap().diff.get(0).unwrap().key.clone();
+    let expected_value = storage_diffs.get(0).unwrap().diff.get(0).unwrap().value;
 
     // Get storage by block hash.
     let res = module
@@ -421,8 +423,10 @@ async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
         .append_state_diff(header.block_number, diff.clone())?
         .commit()?;
 
-    let address = diff.deployed_contracts.get(0).unwrap().address;
-    let expected_class_hash = diff.deployed_contracts.get(0).unwrap().class_hash;
+    let (deployed_contracts, _, _, _) = diff.destruct();
+
+    let address = deployed_contracts.get(0).unwrap().address;
+    let expected_class_hash = deployed_contracts.get(0).unwrap().class_hash;
 
     // Get class hash by block hash.
     let res = module
@@ -507,7 +511,8 @@ async fn test_get_nonce() -> Result<(), anyhow::Error> {
         .append_state_diff(header.block_number, diff.clone())?
         .commit()?;
 
-    let address = diff.deployed_contracts.get(0).unwrap().address;
+    let (deployed_contracts, _, _, _) = diff.destruct();
+    let address = deployed_contracts.get(0).unwrap().address;
     let expected_nonce = Nonce::default();
 
     // Get class hash by block hash.
@@ -765,14 +770,16 @@ async fn test_get_state_update() -> Result<(), anyhow::Error> {
         .append_state_diff(header.block_number, diff.clone())?
         .commit()?;
 
+    let (deployed_contracts, storage_diffs, _, _) = diff.destruct();
+
     let expected_update = StateUpdate {
         block_hash: header.block_hash,
         new_root: header.state_root,
         old_root: parent_header.state_root,
         state_diff: GateWayStateDiff {
-            storage_diffs: from_starknet_storage_diffs(diff.storage_diffs),
+            storage_diffs: from_starknet_storage_diffs(storage_diffs),
             declared_classes: vec![],
-            deployed_contracts: diff.deployed_contracts,
+            deployed_contracts: deployed_contracts,
             nonces: vec![],
         },
     };
@@ -877,8 +884,10 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
         .append_state_diff(header.block_number, diff.clone())?
         .commit()?;
 
-    let class_hash = diff.declared_classes.get(0).unwrap().0;
-    let expected_contract_class = diff.declared_classes.get(0).unwrap().1.clone();
+    let (_, _, declared_classes, _) = diff.destruct();
+
+    let class_hash = declared_classes.get(0).unwrap().0;
+    let expected_contract_class = declared_classes.get(0).unwrap().1.clone();
 
     // Get class by block hash.
     let res = module
@@ -982,8 +991,9 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
         .append_state_diff(header.block_number, diff.clone())?
         .commit()?;
 
-    let address = diff.deployed_contracts.get(0).unwrap().address;
-    let expected_contract_class = diff.declared_classes.get(0).unwrap().1.clone();
+    let (deployed_contracts, _, declared_classes, _) = diff.destruct();
+    let address = deployed_contracts.get(0).unwrap().address;
+    let expected_contract_class = declared_classes.get(0).unwrap().1.clone();
 
     // Get class by block hash.
     let res = module

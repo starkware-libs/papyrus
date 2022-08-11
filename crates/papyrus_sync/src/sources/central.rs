@@ -69,14 +69,13 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                           return;
                         }
                     };
-                    let state_diff_forward = StateDiff {
-                        deployed_contracts: state_update.state_diff.deployed_contracts,
-                        storage_diffs: client_to_starknet_api_storage_diff(
-                            state_update.state_diff.storage_diffs),
-                        declared_classes: classes,
+                    let state_diff_forward = StateDiff::new(
+                        state_update.state_diff.deployed_contracts,
+                        client_to_starknet_api_storage_diff(state_update.state_diff.storage_diffs),
+                        classes,
                         // TODO(dan): fix once nonces are available.
-                        nonces: vec![],
-                    };
+                        vec![],
+                    );
                     yield Ok((current_block_number, state_diff_forward));
                     current_block_number = current_block_number.next();
                 }
