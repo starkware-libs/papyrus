@@ -61,8 +61,13 @@ struct StarknetUrls {
 #[derive(Copy, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum StarknetErrorCode {
     #[serde(rename = "StarknetErrorCode.BLOCK_NOT_FOUND")]
-    BlockNotFound,
-    // TODO(anatg): Add more error codes as they become relevant.
+    BlockNotFound = 0,
+    #[serde(rename = "StarknetErrorCode.OUT_OF_RANGE_CLASS_HASH")]
+    OutOfRangeClassHash = 26,
+    #[serde(rename = "StarkErrorCode.MALFORMED_REQUEST")]
+    MalformedRequest = 32,
+    #[serde(rename = "StarknetErrorCode.UNDECLARED_CLASS")]
+    UndeclaredClass = 44,
 }
 
 /// A client error wrapping error codes returned by the starknet gateway.
@@ -95,8 +100,8 @@ pub enum RetryErrorCode {
 #[derive(thiserror::Error, Debug)]
 pub enum ClientError {
     /// A client error representing bad status http responses.
-    #[error("Bad status error code: {:?} message: {:?}.", code, message)]
-    BadStatusError { code: StatusCode, message: String },
+    #[error("Bad response status code: {:?} message: {:?}.", code, message)]
+    BadResponseStatus { code: StatusCode, message: String },
     /// A client error representing http request errors.
     #[error(transparent)]
     RequestError(#[from] reqwest::Error),
@@ -147,9 +152,9 @@ impl StarknetClient {
         })
     }
 
-    fn get_retry_error(err: &ClientError) -> Option<RetryErrorCode> {
+    fn get_retry_error_code(err: &ClientError) -> Option<RetryErrorCode> {
         match err {
-            ClientError::BadStatusError { code, message: _ } => match *code {
+            ClientError::BadResponseStatus { code, message: _ } => match *code {
                 StatusCode::TEMPORARY_REDIRECT => Some(RetryErrorCode::Redirect),
                 StatusCode::REQUEST_TIMEOUT | StatusCode::GATEWAY_TIMEOUT => {
                     Some(RetryErrorCode::Timeout)
@@ -176,7 +181,7 @@ impl StarknetClient {
     }
 
     fn should_retry(err: &ClientError) -> bool {
-        Self::get_retry_error(err).is_some()
+        Self::get_retry_error_code(err).is_some()
     }
 
     async fn request_with_retry(&self, url: Url) -> Result<String, ClientError> {
@@ -184,7 +189,7 @@ impl StarknetClient {
             .start_with_condition(|| self.request(url.clone()), Self::should_retry)
             .await
             .map_err(|err| {
-                Self::get_retry_error(&err)
+                Self::get_retry_error_code(&err)
                     .map(|code| ClientError::RetryError { code, message: err.to_string() })
                     .unwrap_or(err)
             })
@@ -211,8 +216,8 @@ impl StarknetClient {
             }
             _ => {
                 // TODO(dan): consider logging as info instead.
-                error!("Bad status error code: {:?}, message: {:?}.", code, message);
-                Err(ClientError::BadStatusError { code, message })
+                error!("Bad response status code: {:?}, message: {:?}.", code, message);
+                Err(ClientError::BadResponseStatus { code, message })
             }
         }
     }
@@ -258,12 +263,12 @@ impl StarknetClientTrait for StarknetClient {
             .append_pair(CLASS_HASH_QUERY, &class_hash.as_str()[1..class_hash.len() - 1]);
         let response = self.request_with_retry(url).await;
         match response {
-            Ok(raw_contract_class) => Ok(serde_json::from_str(&raw_contract_class)?),
-            Err(err) => {
-                // TODO(dan): return None once we have StarknetErrorCode for hash not found.
-                error!("{}", err);
-                Err(err)
-            }
+            Ok(raw_contract_class) => Ok(Some(serde_json::from_str(&raw_contract_class)?)),
+            Err(ClientError::StarknetError(StarknetError {
+                code: StarknetErrorCode::UndeclaredClass,
+                message: _,
+            })) => Ok(None),
+            Err(err) => Err(err),
         }
     }
 
