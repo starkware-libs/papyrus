@@ -1,3 +1,4 @@
+use std::fmt::{self, Display, Formatter};
 use std::sync::Arc;
 
 use async_stream::stream;
@@ -27,12 +28,25 @@ pub struct GenericCentralSource<TStarknetClient: StarknetClientTrait + Send + Sy
     pub starknet_client: Arc<TStarknetClient>,
 }
 
+#[derive(thiserror::Error, Debug, Deserialize, Serialize)]
+pub struct BlockNotFound {
+    pub block_number: BlockNumber,
+}
+
+impl Display for BlockNotFound {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum CentralError {
     #[error(transparent)]
     ClientError(#[from] Arc<ClientError>),
     #[error("Could not find a state update.")]
     StateUpdateNotFound,
+    #[error(transparent)]
+    BlockNotFound(#[from] BlockNotFound),
 }
 
 impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
@@ -85,6 +99,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
     }
 
     // TODO(dan): return all block data.
+    // TODO(shahak): rename.
     pub fn stream_new_blocks(
         &self,
         initial_block_number: BlockNumber,
@@ -123,7 +138,13 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                             yield Ok((current_block_number, header, body));
                             current_block_number = current_block_number.next();
                         }
-                        Ok(None) => todo!(),
+                        Ok(None) => {
+                            debug!("Block number {} doesn't exist.", current_block_number.0);
+                            yield (Err(CentralError::BlockNotFound(
+                                BlockNotFound{block_number: current_block_number}
+                            )));
+                            return;
+                        }
                         Err(err) => {
                             debug!(
                                 "Received error for block {}: {:?}.",
