@@ -9,7 +9,7 @@ use starknet_api::{
 use super::transaction::{Transaction, TransactionReceipt};
 
 /// A block as returned by the starknet gateway.
-#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct Block {
     // TODO(dan): Currently should be Option<BlockHash> (due to pending blocks).
     // Figure out if we want this in the internal representation as well.
@@ -28,7 +28,7 @@ pub struct Block {
 }
 
 /// A state update derived from a single block as returned by the starknet gateway.
-#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct BlockStateUpdate {
     pub block_hash: BlockHash,
     pub new_root: GlobalRoot,
@@ -36,7 +36,7 @@ pub struct BlockStateUpdate {
     pub state_diff: StateDiff,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum BlockStatus {
     #[serde(rename(deserialize = "ABORTED", serialize = "ABORTED"))]
     Aborted,
@@ -67,7 +67,7 @@ impl From<BlockStatus> for NodeBlockStatus {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct StateDiff {
     pub storage_diffs: HashMap<ContractAddress, Vec<StorageEntry>>,
     pub deployed_contracts: Vec<DeployedContract>,

@@ -6,7 +6,7 @@ use starknet_api::{
 
 use super::transaction::Transactions;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum BlockStatus {
     #[serde(rename = "PENDING")]
     Pending,
@@ -31,7 +31,7 @@ impl From<NodeBlockStatus> for BlockStatus {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockHeader {
     pub block_hash: BlockHash,
     pub parent_hash: BlockHash,
@@ -56,7 +56,7 @@ impl From<StarknetBlockHeader> for BlockHeader {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct Block {
     pub header: BlockHeader,
     pub transactions: Transactions,

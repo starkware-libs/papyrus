@@ -15,7 +15,7 @@ pub const GENESIS_HASH: &str = "0x0";
 
 // TODO: Move to a different crate.
 /// A hash in StarkNet.
-#[derive(Copy, Clone, PartialEq, Eq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Copy, Clone, Eq, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(from = "PrefixedHexAsBytes<32_usize>", into = "PrefixedHexAsBytes<32_usize>")]
 pub struct StarkHash(pub [u8; 32]);
 impl From<PrefixedHexAsBytes<32_usize>> for StarkHash {

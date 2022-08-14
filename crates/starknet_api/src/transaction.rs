@@ -8,19 +8,19 @@ use super::{BlockHash, BlockNumber, ClassHash, ContractAddress, Nonce, StarkFelt
 
 /// The hash of a transaction in a StarkNet.
 #[derive(
-    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct TransactionHash(pub StarkHash);
 
 /// The index of a transaction in a StarkNet [`BlockBody`](super::BlockBody).
 #[derive(
-    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct TransactionOffsetInBlock(pub u64);
 
 /// A fee in StarkNet.
 #[derive(
-    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 #[serde(from = "PrefixedHexAsBytes<16_usize>", into = "PrefixedHexAsBytes<16_usize>")]
 pub struct Fee(pub u128);
@@ -36,15 +36,15 @@ impl From<Fee> for PrefixedHexAsBytes<16_usize> {
 }
 
 /// An event data in StarkNet.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct EventData(pub Vec<StarkFelt>);
 
 /// An event key in StarkNet.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct EventKey(pub StarkFelt);
 
 /// An event in StarkNet.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct Event {
     pub from_address: ContractAddress,
     pub keys: Vec<EventKey>,
@@ -53,25 +53,25 @@ pub struct Event {
 
 /// The selector of an entry point in StarkNet.
 #[derive(
-    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct EntryPointSelector(pub StarkHash);
 
 /// The offset of an entry point in StarkNet.
 #[derive(
-    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct EntryPointOffset(pub StarkFelt);
 
 /// An entry point of a contract in StarkNet.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct EntryPoint {
     pub selector: EntryPointSelector,
     pub offset: EntryPointOffset,
 }
 
 /// A program corresponding to a contract class in StarkNet.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct Program {
     #[serde(default)]
     pub attributes: serde_json::Value,
@@ -86,35 +86,35 @@ pub struct Program {
 }
 
 /// The calldata of a transaction in StarkNet.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct CallData(pub Vec<StarkFelt>);
 
 /// An Ethereum address in StarkNet.
 #[derive(
-    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct EthAddress(pub H160);
 
 /// The payload of [`MessageToL2`].
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct L1ToL2Payload(pub Vec<StarkFelt>);
 
 /// The payload of [`MessageToL1`].
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct L2ToL1Payload(pub Vec<StarkFelt>);
 
 /// A transaction version in StarkNet.
 #[derive(
-    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct TransactionVersion(pub StarkFelt);
 
 /// A transaction signature in StarkNet.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct TransactionSignature(pub Vec<StarkFelt>);
 
 /// An entry point type of a contract in StarkNet.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(deny_unknown_fields)]
 pub enum EntryPointType {
     /// A constructor entry point.
@@ -135,7 +135,7 @@ impl Default for EntryPointType {
 }
 
 /// A contract class in StarkNet.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ContractClass {
     pub abi: serde_json::Value,
     pub program: Program,
@@ -156,7 +156,7 @@ impl ContractClass {
 }
 
 /// A declare transaction in StarkNet.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeclareTransaction {
     pub transaction_hash: TransactionHash,
     pub max_fee: Fee,
@@ -168,7 +168,7 @@ pub struct DeclareTransaction {
 }
 
 /// An invoke transaction in StarkNet.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct InvokeTransaction {
     pub transaction_hash: TransactionHash,
     pub max_fee: Fee,
@@ -182,12 +182,12 @@ pub struct InvokeTransaction {
 
 /// A contract address salt in StarkNet.
 #[derive(
-    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct ContractAddressSalt(pub StarkHash);
 
 /// A deploy transaction in StarkNet.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeployTransaction {
     pub transaction_hash: TransactionHash,
     pub version: TransactionVersion,
@@ -198,7 +198,7 @@ pub struct DeployTransaction {
 }
 
 /// A transaction status in StarkNet.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum TransactionStatus {
     /// The transaction passed the validation and entered the pending block.
     #[serde(rename = "PENDING")]
@@ -220,24 +220,24 @@ impl Default for TransactionStatus {
 }
 
 /// An L1 to L2 message in StarkNet.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct MessageToL2 {
     pub from_address: EthAddress,
     pub payload: L1ToL2Payload,
 }
 
 /// An L2 to L1 message in StarkNet.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct MessageToL1 {
     pub to_address: EthAddress,
     pub payload: L2ToL1Payload,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StatusData(pub Vec<StarkFelt>);
 
 /// A transaction receipt in StarkNet.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct TransactionReceipt {
     pub transaction_hash: TransactionHash,
     pub block_hash: BlockHash,
@@ -246,7 +246,7 @@ pub struct TransactionReceipt {
 }
 
 /// A transaction output in StarkNet.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum TransactionOutput {
     /// A declare transaction output.
     Declare(DeclareTransactionOutput),
@@ -257,7 +257,7 @@ pub enum TransactionOutput {
 }
 
 /// An invoke transaction output in StarkNet.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct InvokeTransactionOutput {
     pub actual_fee: Fee,
     pub messages_sent: Vec<MessageToL1>,
@@ -266,13 +266,13 @@ pub struct InvokeTransactionOutput {
 }
 
 /// A declare transaction output in StarkNet.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeclareTransactionOutput {
     pub actual_fee: Fee,
 }
 
 /// A deploy transaction output in StarkNet.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeployTransactionOutput {
     pub actual_fee: Fee,
 }
@@ -288,7 +288,7 @@ impl TransactionOutput {
 }
 
 /// A transaction in StarkNet.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum Transaction {
     /// A declare transaction.
     Declare(DeclareTransaction),
