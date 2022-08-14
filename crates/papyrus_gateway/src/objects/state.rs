@@ -4,7 +4,7 @@ use starknet_api::{
     StorageDiff as StarknetStorageDiff, StorageKey,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StorageDiff {
     pub address: ContractAddress,
     pub key: StorageKey,
@@ -25,13 +25,13 @@ pub fn from_starknet_storage_diffs(storage_diffs: Vec<StarknetStorageDiff>) -> V
     res
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ContractNonce {
     pub contract_address: ContractAddress,
     pub nonce: Nonce,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct GateWayStateDiff {
     pub storage_diffs: Vec<StorageDiff>,
     pub declared_classes: Vec<ClassHash>,
@@ -39,7 +39,7 @@ pub struct GateWayStateDiff {
     pub nonces: Vec<ContractNonce>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StateUpdate {
     pub block_hash: BlockHash,
     pub new_root: GlobalRoot,

@@ -58,7 +58,7 @@ struct StarknetUrls {
 }
 
 /// Error codes returned by the starknet gateway.
-#[derive(Copy, Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Copy, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum StarknetErrorCode {
     #[serde(rename = "StarknetErrorCode.BLOCK_NOT_FOUND")]
     BlockNotFound,
@@ -82,7 +82,7 @@ pub enum ClientCreationError {
 }
 
 /// Errors that might be solved by retrying mechanism.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum RetryErrorCode {
     Redirect,
     Timeout,

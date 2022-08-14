@@ -8,7 +8,7 @@ use starknet_api::{
 };
 
 // TODO(dan): consider extracting common fields out (version, hash, type).
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(untagged)]
 pub enum Transaction {
     Declare(DeclareTransaction),
@@ -28,7 +28,7 @@ impl From<Transaction> for starknet_api::Transaction {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct DeclareTransaction {
     pub class_hash: ClassHash,
     pub sender_address: ContractAddress,
@@ -55,7 +55,7 @@ impl From<DeclareTransaction> for starknet_api::DeclareTransaction {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct DeployTransaction {
     pub contract_address: ContractAddress,
     pub contract_address_salt: ContractAddressSalt,
@@ -80,7 +80,7 @@ impl From<DeployTransaction> for starknet_api::DeployTransaction {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct InvokeTransaction {
     pub calldata: CallData,
     pub contract_address: ContractAddress,
@@ -110,7 +110,7 @@ impl From<InvokeTransaction> for starknet_api::InvokeTransaction {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct TransactionReceipt {
     pub transaction_index: TransactionIndexInBlock,
     pub transaction_hash: TransactionHash,
@@ -122,14 +122,14 @@ pub struct TransactionReceipt {
     pub actual_fee: Fee,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct ExecutionResources {
     pub n_steps: u64,
     pub builtin_instance_counter: BuiltinInstanceCounter,
     pub n_memory_holes: u64,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(untagged)]
 pub enum BuiltinInstanceCounter {
     NonEmpty(HashMap<String, u64>),
@@ -142,13 +142,13 @@ impl Default for BuiltinInstanceCounter {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct EmptyBuiltinInstanceCounter {}
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct L1ToL2Nonce(pub StarkHash);
 
-#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct L1ToL2Message {
     pub from_address: EthAddress,
     pub to_address: ContractAddress,
@@ -158,7 +158,7 @@ pub struct L1ToL2Message {
     pub nonce: L1ToL2Nonce,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct L2ToL1Message {
     pub from_address: ContractAddress,
     pub to_address: EthAddress,
@@ -166,11 +166,11 @@ pub struct L2ToL1Message {
 }
 
 #[derive(
-    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct TransactionIndexInBlock(pub u32);
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum TransactionType {
     #[serde(rename(deserialize = "DECLARE", serialize = "DECLARE"))]
     Declare,

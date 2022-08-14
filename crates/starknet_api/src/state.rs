@@ -7,7 +7,7 @@ use super::{BlockNumber, ClassHash, ContractAddress, ContractClass, Nonce, Stark
 // States: S0       S1       S2
 // Blocks      B0->     B1->
 #[derive(
-    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct StateNumber(u64);
 impl StateNumber {
@@ -33,7 +33,7 @@ impl StateNumber {
 // Invariant: Addresses are strictly increasing.
 // TODO(spapini): Enforce the invariant.
 /// The differences between two states in StarkNet.
-#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct StateDiff {
     pub deployed_contracts: Vec<DeployedContract>,
     pub storage_diffs: Vec<StorageDiff>,
@@ -42,14 +42,14 @@ pub struct StateDiff {
 }
 
 /// A deployed contract in StarkNet.
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeployedContract {
     pub address: ContractAddress,
     pub class_hash: ClassHash,
 }
 
 /// A declared contract in StarkNet.
-#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct DeclaredContract {
     pub class_hash: ClassHash,
     pub contract_class: ContractClass,
@@ -58,7 +58,7 @@ pub struct DeclaredContract {
 // Invariant: Addresses are strictly increasing. In particular, no address appears twice.
 // TODO(spapini): Enforce the invariant.
 /// Storage differences in StarkNet.
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StorageDiff {
     pub address: ContractAddress,
     pub diff: Vec<StorageEntry>,
@@ -67,11 +67,11 @@ pub struct StorageDiff {
 // TODO: Invariant: this is in range.
 // TODO(spapini): Enforce the invariant.
 /// A storage key in a StarkNet contract.
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StorageKey(pub StarkFelt);
 
 /// A storage entry in a StarkNet contract.
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StorageEntry {
     pub key: StorageKey,
     pub value: StarkFelt,

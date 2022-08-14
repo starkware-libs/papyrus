@@ -6,13 +6,13 @@ use super::{ContractAddress, StarkHash, Transaction};
 // TODO(spapini): Verify the invariant that it is in range.
 /// The hash of a StarkNet block.
 #[derive(
-    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct BlockHash(pub StarkHash);
 
 /// The root of the global state at a StarkNet block.
 #[derive(
-    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 #[serde(from = "NonPrefixedHexAsBytes<32_usize>", into = "NonPrefixedHexAsBytes<32_usize>")]
 pub struct GlobalRoot(pub StarkHash);
@@ -31,7 +31,7 @@ impl From<GlobalRoot> for NonPrefixedHexAsBytes<32_usize> {
 
 /// The block number of a StarkNet block.
 #[derive(
-    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct BlockNumber(pub u64);
 impl BlockNumber {
@@ -49,13 +49,13 @@ impl BlockNumber {
 
 /// The timestamp of a StarkNet block.
 #[derive(
-    Debug, Default, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct BlockTimestamp(pub u64);
 
 /// The gas price at a StarkNet block.
 #[derive(
-    Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 #[serde(from = "PrefixedHexAsBytes<16_usize>", into = "PrefixedHexAsBytes<16_usize>")]
 pub struct GasPrice(pub u128);
@@ -71,7 +71,7 @@ impl From<GasPrice> for PrefixedHexAsBytes<16_usize> {
 }
 
 /// The status a StarkNet block.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum BlockStatus {
     /// A pending block; i.e., a block that is yet to be closed.
     #[serde(rename = "PENDING")]
@@ -93,7 +93,7 @@ impl Default for BlockStatus {
 }
 
 /// The header of a StarkNet block.
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockHeader {
     pub block_hash: BlockHash,
     pub parent_hash: BlockHash,
@@ -107,7 +107,7 @@ pub struct BlockHeader {
 }
 
 /// The transactions in a StarkNet block.
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockBody {
     pub transactions: Vec<Transaction>,
 }

@@ -8,7 +8,7 @@ use starknet_api::{
 
 use super::objects::{Block, StateUpdate, TransactionWithType};
 
-#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum Tag {
     /// The most recent fully constructed block
     #[serde(rename = "latest")]
@@ -18,7 +18,7 @@ pub enum Tag {
     Pending,
 }
 
-#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum BlockHashOrNumber {
     #[serde(rename = "block_hash")]
     Hash(BlockHash),
@@ -26,7 +26,7 @@ pub enum BlockHashOrNumber {
     Number(BlockNumber),
 }
 
-#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum BlockId {
     HashOrNumber(BlockHashOrNumber),
@@ -49,7 +49,7 @@ pub enum JsonRpcError {
     InvalidContractClassHash = 28,
 }
 
-#[derive(Copy, Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct BlockHashAndNumber {
     pub block_hash: BlockHash,
     pub block_number: BlockNumber,
