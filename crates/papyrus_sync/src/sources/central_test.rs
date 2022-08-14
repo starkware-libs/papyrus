@@ -9,10 +9,7 @@ use starknet_api::{BlockNumber, ClassHash, ContractClass};
 use starknet_client::{Block, BlockStateUpdate, ClientError, StarknetClientTrait};
 use tokio_stream::StreamExt;
 
-use crate::sources::central::{
-    BlockNotFound, CentralError, GenericCentralSource, GenericCentralSource,
-};
-use crate::CentralError;
+use crate::sources::central::{BlockNotFound, CentralError, GenericCentralSource};
 
 // Using mock! and not automock because StarknetClient is defined in another crate. For more
 // details, See mockall's documentation: https://docs.rs/mockall/latest/mockall/
@@ -148,19 +145,15 @@ async fn stream_block_headers_error() {
     pin_mut!(stream);
     while let Some(block_tuple) = stream.next().await {
         if expected_block_num == BlockNumber(ERROR_BLOCK_NUMBER) {
-            match block_tuple {
-                Err(CentralError::ClientError(err_ptr)) => match &*err_ptr {
-                    ClientError::BadStatusError { code, message } => {
-                        assert_eq!(code, &CODE);
-                        assert_eq!(message, MESSAGE);
-                    }
-                    _ => panic!("Error matching the error: {:?} to the expected error.", &*err_ptr),
-                },
-                _ => panic!(
-                    "Error matching the return value: {:?} to the expected error.",
-                    &block_tuple
-                ),
-            }
+            assert_matches!(
+                block_tuple,
+                Err(CentralError::ClientError(err_ptr))
+                if match &*err_ptr {
+                    ClientError::BadStatusError { code, message } =>
+                        code == &CODE && message == MESSAGE,
+                    _ => false,
+                }
+            );
         } else {
             let block_number = block_tuple.unwrap().0;
             assert_eq!(expected_block_num, block_number);
