@@ -4,6 +4,7 @@ use assert_matches::assert_matches;
 use async_trait::async_trait;
 use futures_util::pin_mut;
 use mockall::{mock, predicate};
+use reqwest::StatusCode;
 use starknet_api::{BlockNumber, ClassHash, ContractClass};
 use starknet_client::{Block, BlockStateUpdate, ClientError, StarknetClientTrait};
 use tokio_stream::StreamExt;
@@ -113,4 +114,51 @@ async fn stream_block_headers_some_are_missing() {
         expected_block_num = expected_block_num.next();
     }
     assert_eq!(expected_block_num, BlockNumber(MISSING_BLOCK_NUMBER + 1));
+}
+
+#[tokio::test]
+async fn stream_block_headers_error() {
+    const START_BLOCK_NUMBER: u64 = 5;
+    const END_BLOCK_NUMBER: u64 = 13;
+    const ERROR_BLOCK_NUMBER: u64 = 9;
+    let mut mock = MockStarknetClient::new();
+    const CODE: StatusCode = StatusCode::NOT_FOUND;
+    const MESSAGE: &str = "msg";
+
+    // We need to perform all the mocks before moving the mock into central_source.
+    for i in START_BLOCK_NUMBER..ERROR_BLOCK_NUMBER {
+        mock.expect_block()
+            .with(predicate::eq(BlockNumber(i)))
+            .times(1)
+            .returning(|_x| Ok(Some(Block::default())));
+    }
+    mock.expect_block().with(predicate::eq(BlockNumber(ERROR_BLOCK_NUMBER))).times(1).returning(
+        |_block_number| {
+            Err(ClientError::BadResponseStatus { code: CODE, message: String::from(MESSAGE) })
+        },
+    );
+    let central_source = GenericCentralSource { starknet_client: Arc::new(mock) };
+
+    let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
+    let stream =
+        central_source.stream_new_blocks(expected_block_num, BlockNumber(END_BLOCK_NUMBER));
+    pin_mut!(stream);
+    while let Some(block_tuple) = stream.next().await {
+        if expected_block_num == BlockNumber(ERROR_BLOCK_NUMBER) {
+            assert_matches!(
+                block_tuple,
+                Err(CentralError::ClientError(err_ptr))
+                if match &*err_ptr {
+                    ClientError::BadResponseStatus { code, message } =>
+                        code == &CODE && message == MESSAGE,
+                    _ => false,
+                }
+            );
+        } else {
+            let block_number = block_tuple.unwrap().0;
+            assert_eq!(expected_block_num, block_number);
+        }
+        expected_block_num = expected_block_num.next();
+    }
+    assert_eq!(expected_block_num, BlockNumber(ERROR_BLOCK_NUMBER + 1));
 }
