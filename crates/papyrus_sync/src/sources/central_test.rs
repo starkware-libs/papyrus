@@ -245,41 +245,46 @@ async fn stream_state_updates() {
 
     let central_source = GenericCentralSource { starknet_client: Arc::new(mock) };
     let initial_block_num = BlockNumber(START_BLOCK_NUMBER);
+
     let stream =
         central_source.stream_state_updates(initial_block_num, BlockNumber(END_BLOCK_NUMBER));
     pin_mut!(stream);
-    match stream.next().await {
-        Some(Ok((current_block_num, state_diff))) => {
-            assert_eq!(initial_block_num, current_block_num);
-            assert_eq!(
-                vec![
-                    DeployedContract { address: contract_address1, class_hash: class_hash2 },
-                    DeployedContract { address: contract_address2, class_hash: class_hash3 },
-                ],
-                state_diff.deployed_contracts
-            );
-            assert_eq!(
-                vec![StorageDiff { address: contract_address1, diff: vec![storage_entry] }],
-                state_diff.storage_diffs
-            );
-            assert_eq_unordered!(
-                &vec![
-                    (class_hash3, contract_class3),
-                    (class_hash2, contract_class2),
-                    (class_hash1, contract_class1),
-                ],
-                &state_diff.declared_classes,
-            );
-            assert!(state_diff.nonces.is_empty());
-        }
-        _ => panic!("Match of streamed state_update failed!"),
-    }
-    match stream.next().await {
-        Some(Ok((current_block_num, state_diff))) => {
-            assert_eq!(initial_block_num.next(), current_block_num);
-            assert_eq!(state_diff, StateDiff::default());
-        }
-        _ => panic!("Match of streamed state_update failed!"),
-    }
+
+    let (current_block_num, state_diff) = if let Some(Ok(state_diff_tuple)) = stream.next().await {
+        state_diff_tuple
+    } else {
+        panic!("Match of streamed state_update failed!");
+    };
+    assert_eq!(initial_block_num, current_block_num);
+    assert_eq!(
+        vec![
+            DeployedContract { address: contract_address1, class_hash: class_hash2 },
+            DeployedContract { address: contract_address2, class_hash: class_hash3 },
+        ],
+        state_diff.deployed_contracts
+    );
+    assert_eq!(
+        vec![StorageDiff { address: contract_address1, diff: vec![storage_entry] }],
+        state_diff.storage_diffs
+    );
+    // TODO(yair): Sort the contract classes and change this to assert_eq.
+    assert_eq_unordered!(
+        &vec![
+            (class_hash3, contract_class3),
+            (class_hash2, contract_class2),
+            (class_hash1, contract_class1),
+        ],
+        &state_diff.declared_classes,
+    );
+    assert!(state_diff.nonces.is_empty());
+
+    let (current_block_num, state_diff) = if let Some(Ok(state_diff_tuple)) = stream.next().await {
+        state_diff_tuple
+    } else {
+        panic!("Match of streamed state_update failed!");
+    };
+    assert_eq!(initial_block_num.next(), current_block_num);
+    assert_eq!(state_diff, StateDiff::default());
+
     assert!(stream.next().await.is_none());
 }
