@@ -25,7 +25,7 @@ async fn test_append_body() -> Result<(), anyhow::Error> {
         })
         .collect();
     let tx_outputs: Vec<TransactionOutput> = (0..10)
-        .map(|_i| TransactionOutput::Deploy(DeployTransactionOutput { actual_fee: Fee::default() }))
+        .map(|i| TransactionOutput::Deploy(DeployTransactionOutput { actual_fee: Fee(i as u128) }))
         .collect();
 
     let body0 = BlockBody {
@@ -76,22 +76,25 @@ async fn test_append_body() -> Result<(), anyhow::Error> {
     // Check marker.
     assert_eq!(txn.get_body_marker()?, BlockNumber(3));
 
-    // Check single transactions.
-    assert_eq!(
-        txn.get_transaction(BlockNumber(0), TransactionOffsetInBlock(0))?.as_ref(),
-        Some(&txs[0])
-    );
-    assert_eq!(txn.get_transaction(BlockNumber(0), TransactionOffsetInBlock(1))?, None);
-    assert_eq!(txn.get_transaction(BlockNumber(1), TransactionOffsetInBlock(0))?, None);
-    assert_eq!(
-        txn.get_transaction(BlockNumber(2), TransactionOffsetInBlock(0))?.as_ref(),
-        Some(&txs[1])
-    );
-    assert_eq!(
-        txn.get_transaction(BlockNumber(2), TransactionOffsetInBlock(1))?.as_ref(),
-        Some(&txs[2])
-    );
-    assert_eq!(txn.get_transaction(BlockNumber(2), TransactionOffsetInBlock(2))?, None,);
+    // Check single transactions and outputs.
+    let tx_cases = vec![
+        (BlockNumber(0), TransactionOffsetInBlock(0), Some(0)),
+        (BlockNumber(0), TransactionOffsetInBlock(1), None),
+        (BlockNumber(1), TransactionOffsetInBlock(0), None),
+        (BlockNumber(2), TransactionOffsetInBlock(0), Some(1)),
+        (BlockNumber(2), TransactionOffsetInBlock(1), Some(2)),
+        (BlockNumber(2), TransactionOffsetInBlock(2), None),
+    ];
+
+    for (block_number, tx_offset, original_index) in tx_cases {
+        let expected_tx = original_index.map(|i| &txs[i]);
+        assert_eq!(txn.get_transaction(block_number, tx_offset)?.as_ref(), expected_tx);
+        let expected_tx_output = original_index.map(|i| &tx_outputs[i]);
+        assert_eq!(
+            txn.get_transaction_output(block_number, tx_offset)?.as_ref(),
+            expected_tx_output
+        );
+    }
 
     // Check transaction hash.
     assert_eq!(
@@ -115,5 +118,17 @@ async fn test_append_body() -> Result<(), anyhow::Error> {
         Some(vec![txs[1].clone(), txs[2].clone()])
     );
     assert_eq!(txn.get_block_transactions(BlockNumber(3))?, None);
+
+    // Check block transaction outputs.
+    assert_eq!(
+        txn.get_block_transaction_outputs(BlockNumber(0))?,
+        Some(vec![tx_outputs[0].clone()])
+    );
+    assert_eq!(txn.get_block_transaction_outputs(BlockNumber(1))?, Some(vec![]));
+    assert_eq!(
+        txn.get_block_transaction_outputs(BlockNumber(2))?,
+        Some(vec![tx_outputs[1].clone(), tx_outputs[2].clone()])
+    );
+    assert_eq!(txn.get_block_transaction_outputs(BlockNumber(3))?, None);
     Ok(())
 }

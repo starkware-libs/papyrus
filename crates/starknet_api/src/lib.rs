@@ -22,7 +22,8 @@ pub use self::state::{
 pub use self::transaction::{
     CallData, ContractAddressSalt, ContractClass, DeclareTransaction, DeclareTransactionOutput,
     DeployTransaction, DeployTransactionOutput, EntryPoint, EntryPointOffset, EntryPointSelector,
-    EntryPointType, EthAddress, Event, Fee, InvokeTransaction, L1ToL2Payload, L2ToL1Payload,
-    MessageToL1, MessageToL2, Program, Transaction, TransactionHash, TransactionOffsetInBlock,
-    TransactionOutput, TransactionReceipt, TransactionSignature, TransactionVersion,
+    EntryPointType, EthAddress, Event, Fee, InvokeTransaction, InvokeTransactionOutput,
+    L1ToL2Payload, L2ToL1Payload, MessageToL1, MessageToL2, Program, Transaction, TransactionHash,
+    TransactionOffsetInBlock, TransactionOutput, TransactionReceipt, TransactionSignature,
+    TransactionVersion,
 };

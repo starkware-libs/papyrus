@@ -14,7 +14,7 @@ use db::DbTableStats;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, Nonce, StarkFelt, StorageKey,
-    Transaction, TransactionHash, TransactionOffsetInBlock,
+    Transaction, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
 };
 use state::{IndexedDeclaredContract, IndexedDeployedContract};
 
@@ -101,6 +101,7 @@ struct_field_names! {
         headers: TableIdentifier<BlockNumber, BlockHeader>,
         block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
         transactions: TableIdentifier<(BlockNumber, TransactionOffsetInBlock), Transaction>,
+        transaction_outputs: TableIdentifier<(BlockNumber, TransactionOffsetInBlock), TransactionOutput>,
         transaction_hash_to_idx:
             TableIdentifier<TransactionHash, (BlockNumber, TransactionOffsetInBlock)>,
         state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
@@ -153,6 +154,7 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         headers: db_writer.create_table("headers")?,
         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
         transactions: db_writer.create_table("transactions")?,
+        transaction_outputs: db_writer.create_table("transaction_outputs")?,
         transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
         state_diffs: db_writer.create_table("state_diffs")?,
         deployed_contracts: db_writer.create_table("deployed_contracts")?,
