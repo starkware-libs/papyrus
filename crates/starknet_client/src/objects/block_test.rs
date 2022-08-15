@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use assert::assert_ok;
 use starknet_api::serde_utils::bytes_from_hex_str;
@@ -34,7 +34,7 @@ fn load_block_state_update_succeeds() {
             .unwrap(),
         )),
         state_diff: StateDiff {
-            storage_diffs: HashMap::from([(
+            storage_diffs: BTreeMap::from([(
                 ContractAddress(shash!(
                     "0x13386f165f065115c1da38d755be261023c32f0134a03a8e66b6bb1e0016014"
                 )),

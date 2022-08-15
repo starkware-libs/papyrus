@@ -11,9 +11,9 @@ use crate::test_utils::get_test_storage;
 #[test]
 fn test_append_diff() -> Result<(), anyhow::Error> {
     let c0 = ContractAddress(shash!("0x11"));
-    let c1 = ContractAddress(shash!("0x2"));
-    let c2 = ContractAddress(shash!("0x3"));
-    let c3 = ContractAddress(shash!("0x4"));
+    let c1 = ContractAddress(shash!("0x12"));
+    let c2 = ContractAddress(shash!("0x13"));
+    let c3 = ContractAddress(shash!("0x14"));
     let cl0 = ClassHash(shash!("0x4"));
     let cl1 = ClassHash(shash!("0x5"));
     let cl2 = ClassHash(shash!("0x6"));
@@ -21,12 +21,12 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     let c_cls1 = ContractClass::default();
     let key0 = StorageKey(shash!("0x1001"));
     let key1 = StorageKey(shash!("0x101"));
-    let mut diff0 = StateDiff {
-        deployed_contracts: vec![
+    let diff0 = StateDiff::new(
+        vec![
             DeployedContract { address: c0, class_hash: cl0 },
             DeployedContract { address: c1, class_hash: cl1 },
         ],
-        storage_diffs: vec![
+        vec![
             StorageDiff {
                 address: c0,
                 diff: vec![
@@ -36,12 +36,13 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
             },
             StorageDiff { address: c1, diff: vec![] },
         ],
-        declared_classes: vec![(cl0, c_cls0.clone()), (cl1, c_cls1)],
-        nonces: vec![(c0, Nonce(StarkHash::from_u64(1)))],
-    };
-    let mut diff1 = StateDiff {
-        deployed_contracts: vec![DeployedContract { address: c2, class_hash: cl0 }],
-        storage_diffs: vec![
+        vec![(cl0, c_cls0.clone()), (cl1, c_cls1)],
+        vec![(c0, Nonce(StarkHash::from_u64(1)))],
+    )
+    .unwrap();
+    let diff1 = StateDiff::new(
+        vec![DeployedContract { address: c2, class_hash: cl0 }],
+        vec![
             StorageDiff {
                 address: c0,
                 diff: vec![
@@ -54,13 +55,14 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
                 diff: vec![StorageEntry { key: key0.clone(), value: shash!("0x0") }],
             },
         ],
-        declared_classes: vec![(cl0, c_cls0.clone())],
-        nonces: vec![
+        vec![(cl0, c_cls0.clone())],
+        vec![
             (c0, Nonce(StarkHash::from_u64(2))),
             (c1, Nonce(StarkHash::from_u64(1))),
             (c2, Nonce(StarkHash::from_u64(1))),
         ],
-    };
+    )
+    .unwrap();
 
     let (_, mut writer) = get_test_storage();
     let mut txn = writer.begin_rw_txn()?;
@@ -77,9 +79,14 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     // Check for ClassAlreadyExists error when trying to declare a different class to an existing
     // class hash.
     let txn = writer.begin_rw_txn()?;
-    let mut class = diff1.declared_classes[0].1.clone();
+    let (deployed_contracts, storage_diffs, mut declared_classes, nonces) = diff1.destruct();
+    let mut class = declared_classes[0].1.clone();
     class.abi = serde_json::Value::String("junk".to_string());
-    diff1.declared_classes[0].1 = class;
+
+    declared_classes[0].1 = class;
+    let diff1 =
+        StateDiff::new(deployed_contracts, storage_diffs, declared_classes, nonces).unwrap();
+
     if let Err(err) = txn.append_state_diff(BlockNumber(2), diff1) {
         assert_matches!(err, StorageError::ClassAlreadyExists { class_hash: _ });
     } else {
@@ -88,9 +95,12 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     // Check for ContractAlreadyExists error when trying to deploy a different class hash to an
     // existing contract address.
     let txn = writer.begin_rw_txn()?;
-    let mut contract = diff0.deployed_contracts[0].clone();
+    let (mut deployed_contracts, storage_diffs, declared_classes, nonces) = diff0.destruct();
+    let mut contract = deployed_contracts[0].clone();
     contract.class_hash = cl2;
-    diff0.deployed_contracts[0] = contract;
+    deployed_contracts[0] = contract;
+    let diff0 =
+        StateDiff::new(deployed_contracts, storage_diffs, declared_classes, nonces).unwrap();
     if let Err(err) = txn.append_state_diff(BlockNumber(2), diff0) {
         assert_matches!(err, StorageError::ContractAlreadyExists { address: _ });
     } else {

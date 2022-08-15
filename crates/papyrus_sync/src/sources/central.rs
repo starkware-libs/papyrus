@@ -5,7 +5,9 @@ use futures::{future, pin_mut, TryStreamExt};
 use futures_util::StreamExt;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
-use starknet_api::{BlockBody, BlockHeader, BlockNumber, ClassHash, ContractClass, StateDiff};
+use starknet_api::{
+    BlockBody, BlockHeader, BlockNumber, ClassHash, ContractClass, StarknetApiError, StateDiff,
+};
 use starknet_client::{
     client_to_starknet_api_storage_diff, BlockStateUpdate, ClientCreationError, ClientError,
     RetryConfig, StarknetClient, StarknetClientTrait,
@@ -35,6 +37,8 @@ pub enum CentralError {
     StateUpdateNotFound,
     #[error("Could not find a block with block number {:?}.", block_number)]
     BlockNotFound { block_number: BlockNumber },
+    #[error(transparent)]
+    StarknetApiError(#[from] Arc<StarknetApiError>),
 }
 
 impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
@@ -71,16 +75,26 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                           return;
                         }
                     };
-                    let state_diff_forward = StateDiff {
-                        deployed_contracts: state_update.state_diff.deployed_contracts,
-                        storage_diffs: client_to_starknet_api_storage_diff(
-                            state_update.state_diff.storage_diffs),
-                        declared_classes: classes,
+                    let state_diff_forward = StateDiff::new(
+                        state_update.state_diff.deployed_contracts,
+                        client_to_starknet_api_storage_diff(state_update.state_diff.storage_diffs),
+                        classes,
                         // TODO(dan): fix once nonces are available.
-                        nonces: vec![],
-                    };
-                    yield Ok((current_block_number, state_diff_forward));
-                    current_block_number = current_block_number.next();
+                        vec![],
+                    );
+                    match state_diff_forward {
+                        Ok(state_diff_forward) => {
+                            yield Ok((current_block_number, state_diff_forward));
+                            current_block_number = current_block_number.next();
+                        }
+                        Err(err) => {
+                            debug!("Block number {}: {:#?}", current_block_number.0, err);
+                            yield (Err(CentralError::StarknetApiError(Arc::new(err))));
+                            return;
+                        }
+                    }
+
+
                 }
             }
         }
