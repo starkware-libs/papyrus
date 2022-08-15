@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 use starknet_api::{
@@ -69,7 +69,8 @@ impl From<BlockStatus> for NodeBlockStatus {
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct StateDiff {
-    pub storage_diffs: HashMap<ContractAddress, Vec<StorageEntry>>,
+    // BTreeMap keeps ordering and is efficiently iterable.
+    pub storage_diffs: BTreeMap<ContractAddress, Vec<StorageEntry>>,
     pub deployed_contracts: Vec<DeployedContract>,
     #[serde(default)]
     pub declared_classes: Vec<ClassHash>,
@@ -87,7 +88,7 @@ impl StateDiff {
 /// Converts the client representation of [`BlockStateUpdate`] storage diffs to a [`starknet_api`]
 /// [`StorageDiff`].
 pub fn client_to_starknet_api_storage_diff(
-    storage_diffs: HashMap<ContractAddress, Vec<StorageEntry>>,
+    storage_diffs: BTreeMap<ContractAddress, Vec<StorageEntry>>,
 ) -> Vec<StorageDiff> {
     storage_diffs.into_iter().map(|(address, diff)| StorageDiff { address, diff }).collect()
 }
