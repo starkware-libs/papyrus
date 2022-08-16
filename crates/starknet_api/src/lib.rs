@@ -36,4 +36,6 @@ pub enum StarknetApiError {
     StorageDiffsNotSorted,
     #[error("Declared classes are not sorted by class hash.")]
     DeclaredClassesNotSorted,
+    #[error("Nonces are not sorted by address.")]
+    NoncesNotSorted,
 }

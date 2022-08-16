@@ -85,6 +85,13 @@ impl StateDiff {
             return Err(StarknetApiError::DeclaredClassesNotSorted);
         }
 
+        let are_nonces_sorted_by_address =
+            std::iter::zip(nonces.iter().map(|i| i.0), nonces.iter().skip(1).map(|i| i.0))
+                .all(|addresses| addresses.0 < addresses.1);
+        if !are_nonces_sorted_by_address {
+            return Err(StarknetApiError::NoncesNotSorted);
+        }
+
         Ok(Self { deployed_contracts, storage_diffs, declared_classes, nonces })
     }
 

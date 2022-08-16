@@ -55,6 +55,8 @@ pub enum CentralError {
     StorageDiffsNotSorted,
     #[error("Declared classes in state diff are not sorted by class hash.")]
     DeclaredClassesNotSorted,
+    #[error("Nonces in state diff are not sorted by contract address.")]
+    NoncesNotSorted,
 }
 
 impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
@@ -111,6 +113,9 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                         }
                         Err(StarknetApiError::DeclaredClassesNotSorted) => {
                             yield (Err(CentralError::DeclaredClassesNotSorted));
+                        }
+                        Err(StarknetApiError::NoncesNotSorted) => {
+                            yield (Err(CentralError::NoncesNotSorted));
                         }
                     }
 
