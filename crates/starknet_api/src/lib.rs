@@ -27,3 +27,13 @@ pub use self::transaction::{
     TransactionOffsetInBlock, TransactionOutput, TransactionReceipt, TransactionSignature,
     TransactionVersion,
 };
+
+#[derive(thiserror::Error, Clone, Copy, Debug)]
+pub enum StarknetApiError {
+    #[error("Deployed contracts are not sorted by address.")]
+    DeployedContractsNotSorted,
+    #[error("Storage diffs are not sorted by address.")]
+    StorageDiffsNotSorted,
+    #[error("Declared classes are not sorted by class hash.")]
+    DeclaredClassesNotSorted,
+}

@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use assert_matches::assert_matches;
-use assert_unordered::assert_eq_unordered;
 use async_trait::async_trait;
 use futures_util::pin_mut;
 use mockall::{mock, predicate};
@@ -268,11 +267,11 @@ async fn stream_state_updates() {
         vec![StorageDiff { address: contract_address1, diff: vec![storage_entry] }],
         storage_diffs
     );
-    assert_eq_unordered!(
+    assert_eq!(
         vec![
-            (class_hash3, contract_class3),
-            (class_hash2, contract_class2),
             (class_hash1, contract_class1),
+            (class_hash2, contract_class2),
+            (class_hash3, contract_class3),
         ],
         declared_classes,
     );

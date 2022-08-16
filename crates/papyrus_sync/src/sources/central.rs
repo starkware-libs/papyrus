@@ -6,7 +6,9 @@ use futures::{future, pin_mut, TryStreamExt};
 use futures_util::StreamExt;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
-use starknet_api::{BlockBody, BlockHeader, BlockNumber, ClassHash, ContractClass, StateDiff};
+use starknet_api::{
+    BlockBody, BlockHeader, BlockNumber, ClassHash, ContractClass, StarknetApiError, StateDiff,
+};
 use starknet_client::{
     client_to_starknet_api_storage_diff, BlockStateUpdate, ClientCreationError, ClientError,
     RetryConfig, StarknetClient, StarknetClientTrait,
@@ -47,8 +49,12 @@ pub enum CentralError {
     StateUpdateNotFound,
     #[error(transparent)]
     BlockNotFound(#[from] BlockNotFound),
-    #[error("State diff is not sorted by address.")]
-    StateDiffNotSorted,
+    #[error("Deployed contracts in state diff are not sorted by address.")]
+    DeployedContractsNotSorted,
+    #[error("Storage diffs in state diff are not sorted by address.")]
+    StorageDiffsNotSorted,
+    #[error("Declared classes in state diff are not sorted by class hash.")]
+    DeclaredClassesNotSorted,
 }
 
 impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
@@ -97,8 +103,14 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                             yield Ok((current_block_number, state_diff_forward));
                             current_block_number = current_block_number.next();
                         }
-                        Err(_) => {
-                            yield (Err(CentralError::StateDiffNotSorted));
+                        Err(StarknetApiError::DeployedContractsNotSorted) => {
+                            yield (Err(CentralError::DeployedContractsNotSorted));
+                        }
+                        Err(StarknetApiError::StorageDiffsNotSorted) => {
+                            yield (Err(CentralError::StorageDiffsNotSorted));
+                        }
+                        Err(StarknetApiError::DeclaredClassesNotSorted) => {
+                            yield (Err(CentralError::DeclaredClassesNotSorted));
                         }
                     }
 

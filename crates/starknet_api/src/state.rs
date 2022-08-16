@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{BlockNumber, ClassHash, ContractAddress, ContractClass, Nonce, StarkFelt};
+use crate::StarknetApiError;
 
 /// The sequential numbering of the states between blocks in StarkNet.
 // Example:
@@ -53,28 +54,35 @@ impl StateDiff {
         storage_diffs: Vec<StorageDiff>,
         declared_classes: Vec<(ClassHash, ContractClass)>,
         nonces: Vec<(ContractAddress, Nonce)>,
-    ) -> Result<Self, String> {
-        // TODO(yair): Create starknet_api error enum?
+    ) -> Result<Self, StarknetApiError> {
         // TODO(yair): Use std::Vec::is_sorted_by_key once it becomes stable.
-        let is_deployed_contrcats_sorted_by_address = std::iter::zip(
+        let are_deployed_contrcats_sorted_by_address = std::iter::zip(
             deployed_contracts.iter().map(|i| i.address),
             deployed_contracts.iter().skip(1).map(|i| i.address),
         )
         .all(|addresses| addresses.0 < addresses.1);
 
-        if !is_deployed_contrcats_sorted_by_address {
-            return Err(String::from("Deployed contracts are not sorted by address"));
+        if !are_deployed_contrcats_sorted_by_address {
+            return Err(StarknetApiError::DeployedContractsNotSorted);
         }
 
-        let is_storage_diffs_sorted_by_address = std::iter::zip(
+        let are_storage_diffs_sorted_by_address = std::iter::zip(
             storage_diffs.iter().map(|i| i.address),
             storage_diffs.iter().skip(1).map(|i| i.address),
         )
         .all(|addresses| addresses.0 < addresses.1);
 
-        // TODO(yair): Create enum.
-        if !is_storage_diffs_sorted_by_address {
-            return Err(String::from("Storage diffs are not sorted by address"));
+        if !are_storage_diffs_sorted_by_address {
+            return Err(StarknetApiError::StorageDiffsNotSorted);
+        }
+
+        let are_declared_classes_sorted_by_hash = std::iter::zip(
+            declared_classes.iter().map(|i| i.0),
+            declared_classes.iter().skip(1).map(|i| i.0),
+        )
+        .all(|hashes| hashes.0 < hashes.1);
+        if !are_declared_classes_sorted_by_hash {
+            return Err(StarknetApiError::DeclaredClassesNotSorted);
         }
 
         Ok(Self { deployed_contracts, storage_diffs, declared_classes, nonces })

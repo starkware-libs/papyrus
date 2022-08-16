@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use starknet_api::{
@@ -76,12 +76,16 @@ pub struct StateDiff {
     pub declared_classes: Vec<ClassHash>,
 }
 impl StateDiff {
-    pub fn class_hashes(&self) -> HashSet<ClassHash> {
-        let mut class_hashes = HashSet::from_iter(self.declared_classes.iter().cloned());
-        for contract in &self.deployed_contracts {
-            class_hashes.insert(contract.class_hash);
-        }
-        class_hashes
+    pub fn class_hashes(&self) -> Vec<ClassHash> {
+        // TODO(yair): both vectors should be sorted, so merge sorted vecs instead of appending and
+        // then sorting.
+        let mut res = self.declared_classes.clone();
+        res.append(
+            &mut self.deployed_contracts.iter().map(|contract| contract.class_hash).collect(),
+        );
+        res.sort();
+        res.dedup();
+        res
     }
 }
 
