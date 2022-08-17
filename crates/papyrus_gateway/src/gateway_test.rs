@@ -152,7 +152,7 @@ async fn test_get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
         .append_body(block.header.block_number, &block.body)?
         .commit()?;
 
-    let expected_transaction = block.body.transactions.index(0);
+    let expected_transaction = block.body.transactions().index(0);
     let expected_block = Block {
         status: BlockStatus::default(),
         header: block.header.into(),
@@ -228,7 +228,7 @@ async fn test_get_block_w_full_transactions() -> Result<(), anyhow::Error> {
         .append_body(block.header.block_number, &block.body)?
         .commit()?;
 
-    let expected_transaction = block.body.transactions.index(0);
+    let expected_transaction = block.body.transactions().index(0);
     let expected_block = Block {
         status: BlockStatus::default(),
         header: block.header.into(),
@@ -576,7 +576,7 @@ async fn test_get_transaction_by_hash() -> Result<(), anyhow::Error> {
     let block = get_test_block(1);
     storage_writer.begin_rw_txn()?.append_body(block.header.block_number, &block.body)?.commit()?;
 
-    let expected_transaction = block.body.transactions.index(0);
+    let expected_transaction = block.body.transactions().index(0);
     let res = module
         .call::<_, TransactionWithType>(
             "starknet_getTransactionByHash",
@@ -614,7 +614,7 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
         .append_body(block.header.block_number, &block.body)?
         .commit()?;
 
-    let expected_transaction = block.body.transactions.index(0);
+    let expected_transaction = block.body.transactions().index(0);
 
     // Get transaction by block hash.
     let res = module
@@ -838,13 +838,13 @@ async fn test_get_transaction_receipt() -> Result<(), anyhow::Error> {
         .append_body(block.header.block_number, &block.body)?
         .commit()?;
 
-    let transaction_hash = block.body.transactions.index(0).transaction_hash();
+    let transaction_hash = block.body.transactions().index(0).transaction_hash();
     let expected_receipt = TransactionReceiptWithStatus {
         receipt: TransactionReceipt {
             transaction_hash,
             block_hash: block.header.block_hash,
             block_number: block.header.block_number,
-            output: block.body.transaction_outputs.index(0).clone(),
+            output: block.body.transaction_outputs().index(0).clone(),
         },
         status: TransactionStatus::default(),
     };

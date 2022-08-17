@@ -29,4 +29,7 @@ pub use self::transaction::{
 };
 
 #[derive(thiserror::Error, Clone, Copy, Debug)]
-pub enum StarknetApiError {}
+pub enum StarknetApiError {
+    #[error("Transactions and transaction outputs don't have the same length.")]
+    TransationsLengthDontMatch,
+}
