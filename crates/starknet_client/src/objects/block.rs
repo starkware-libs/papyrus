@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockHash, BlockNumber, BlockTimestamp, ClassHash, ContractAddress, DeployedContract, GasPrice,
-    GlobalRoot, NodeBlockStatus, StorageDiff, StorageEntry,
+    GlobalRoot, StorageDiff, StorageEntry,
 };
 
 use super::transaction::{Transaction, TransactionReceipt};
@@ -55,14 +55,14 @@ impl Default for BlockStatus {
     }
 }
 
-impl From<BlockStatus> for NodeBlockStatus {
+impl From<BlockStatus> for starknet_api::BlockStatus {
     fn from(status: BlockStatus) -> Self {
         match status {
-            BlockStatus::Aborted => NodeBlockStatus::Rejected,
-            BlockStatus::AcceptedOnL1 => NodeBlockStatus::AcceptedOnL1,
-            BlockStatus::AcceptedOnL2 => NodeBlockStatus::AcceptedOnL2,
-            BlockStatus::Pending => NodeBlockStatus::Pending,
-            BlockStatus::Reverted => NodeBlockStatus::Rejected,
+            BlockStatus::Aborted => starknet_api::BlockStatus::Rejected,
+            BlockStatus::AcceptedOnL1 => starknet_api::BlockStatus::AcceptedOnL1,
+            BlockStatus::AcceptedOnL2 => starknet_api::BlockStatus::AcceptedOnL2,
+            BlockStatus::Pending => starknet_api::BlockStatus::Pending,
+            BlockStatus::Reverted => starknet_api::BlockStatus::Rejected,
         }
     }
 }

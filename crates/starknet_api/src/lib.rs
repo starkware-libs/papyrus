@@ -10,8 +10,8 @@ mod state;
 mod transaction;
 
 pub use self::block::{
-    BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus as NodeBlockStatus, BlockTimestamp,
-    GasPrice, GlobalRoot,
+    BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
+    GlobalRoot,
 };
 pub use self::core::{ClassHash, ContractAddress, Nonce};
 pub use self::hash::{StarkFelt, StarkHash, GENESIS_HASH};
