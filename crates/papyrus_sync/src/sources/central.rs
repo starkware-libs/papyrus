@@ -49,14 +49,8 @@ pub enum CentralError {
     StateUpdateNotFound,
     #[error(transparent)]
     BlockNotFound(#[from] BlockNotFound),
-    #[error("Deployed contracts in state diff are not sorted by address.")]
-    DeployedContractsNotSorted,
-    #[error("Storage diffs in state diff are not sorted by address.")]
-    StorageDiffsNotSorted,
-    #[error("Declared classes in state diff are not sorted by class hash.")]
-    DeclaredClassesNotSorted,
-    #[error("Nonces in state diff are not sorted by contract address.")]
-    NoncesNotSorted,
+    #[error(transparent)]
+    StarknetApiError(#[from] Arc<StarknetApiError>),
 }
 
 impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
@@ -105,17 +99,8 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                             yield Ok((current_block_number, state_diff_forward));
                             current_block_number = current_block_number.next();
                         }
-                        Err(StarknetApiError::DeployedContractsNotSorted) => {
-                            yield (Err(CentralError::DeployedContractsNotSorted));
-                        }
-                        Err(StarknetApiError::StorageDiffsNotSorted) => {
-                            yield (Err(CentralError::StorageDiffsNotSorted));
-                        }
-                        Err(StarknetApiError::DeclaredClassesNotSorted) => {
-                            yield (Err(CentralError::DeclaredClassesNotSorted));
-                        }
-                        Err(StarknetApiError::NoncesNotSorted) => {
-                            yield (Err(CentralError::NoncesNotSorted));
+                        Err(err) => {
+                            yield (Err(CentralError::StarknetApiError(Arc::new(err))));
                         }
                     }
 
