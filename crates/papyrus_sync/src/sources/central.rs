@@ -100,7 +100,9 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                             current_block_number = current_block_number.next();
                         }
                         Err(err) => {
+                            debug!("Block number {}: {:#?}", current_block_number.0, err);
                             yield (Err(CentralError::StarknetApiError(Arc::new(err))));
+                            return;
                         }
                     }
 
