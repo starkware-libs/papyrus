@@ -38,4 +38,6 @@ pub enum StarknetApiError {
     DeclaredClassesNotSorted,
     #[error("Nonces are not sorted by address.")]
     NoncesNotSorted,
+    #[error("Transactions and transaction outputs don't have the same length.")]
+    TransationsLengthDontMatch,
 }

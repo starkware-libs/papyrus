@@ -6,7 +6,8 @@ use futures_util::StreamExt;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockBody, BlockHeader, BlockNumber, ClassHash, ContractClass, StarknetApiError, StateDiff,
+    BlockBody, BlockHeader, BlockNumber, ClassHash, ContractClass, DeclareTransactionOutput,
+    StarknetApiError, StateDiff,
 };
 use starknet_client::{
     client_to_starknet_api_storage_diff, BlockStateUpdate, ClientCreationError, ClientError,
@@ -126,16 +127,32 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                                 status: block.status.into(),
                             };
                             // TODO(spapini): Fill the correct tx outputs.
-                            let body = BlockBody {
-                                transactions: block
-                                    .transactions
+                            let mut dummy_tx_outputs = vec![];
+                            for _ in &block.transactions {
+                                dummy_tx_outputs.push(starknet_api::TransactionOutput::Declare(DeclareTransactionOutput::default()));
+                            }
+
+                            let body = BlockBody::new(
+                                block.transactions
                                     .into_iter()
                                     .map(|x| x.into())
                                     .collect(),
-                                    transaction_outputs: vec![]
-                            };
-                            yield Ok((current_block_number, header, body));
-                            current_block_number = current_block_number.next();
+                                dummy_tx_outputs
+                            );
+                            match body {
+                                Ok(body) => {
+                                    yield Ok((current_block_number, header, body));
+                                    current_block_number = current_block_number.next();
+                                }
+                                Err(err) => {
+                                    debug!(
+                                        "Received error for block {}: {:?}.",
+                                        current_block_number.0, err
+                                    );
+                                    yield (Err(CentralError::StarknetApiError(Arc::new(err))));
+                                    return;
+                                }
+                            }
                         }
                         Ok(None) => {
                             debug!("Block number {} doesn't exist.", current_block_number.0);
