@@ -1,4 +1,3 @@
-use std::fmt::{self, Display, Formatter};
 use std::sync::Arc;
 
 use async_stream::stream;
@@ -28,25 +27,14 @@ pub struct GenericCentralSource<TStarknetClient: StarknetClientTrait + Send + Sy
     pub starknet_client: Arc<TStarknetClient>,
 }
 
-#[derive(thiserror::Error, Debug, Deserialize, Serialize)]
-pub struct BlockNotFound {
-    pub block_number: BlockNumber,
-}
-
-impl Display for BlockNotFound {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
 #[derive(thiserror::Error, Debug)]
 pub enum CentralError {
     #[error(transparent)]
     ClientError(#[from] Arc<ClientError>),
     #[error("Could not find a state update.")]
     StateUpdateNotFound,
-    #[error(transparent)]
-    BlockNotFound(#[from] BlockNotFound),
+    #[error("Could not find a block with block number {:?}.", block_number)]
+    BlockNotFound { block_number: BlockNumber },
 }
 
 impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
@@ -140,9 +128,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                         }
                         Ok(None) => {
                             debug!("Block number {} doesn't exist.", current_block_number.0);
-                            yield (Err(CentralError::BlockNotFound(
-                                BlockNotFound{block_number: current_block_number}
-                            )));
+                            yield (Err(CentralError::BlockNotFound { block_number: current_block_number }));
                             return;
                         }
                         Err(err) => {

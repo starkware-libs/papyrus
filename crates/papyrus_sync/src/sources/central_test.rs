@@ -16,7 +16,7 @@ use starknet_client::{
 };
 use tokio_stream::StreamExt;
 
-use crate::sources::central::{BlockNotFound, CentralError, GenericCentralSource};
+use crate::sources::central::{CentralError, GenericCentralSource};
 use crate::StateDiff;
 
 // Using mock! and not automock because StarknetClient is defined in another crate. For more
@@ -110,9 +110,7 @@ async fn stream_block_headers_some_are_missing() {
         if expected_block_num == BlockNumber(MISSING_BLOCK_NUMBER) {
             assert_matches!(
                 block_tuple,
-                Err(CentralError::BlockNotFound(BlockNotFound {
-                    block_number
-                }))
+                Err(CentralError::BlockNotFound { block_number })
                 if block_number == expected_block_num
             );
         } else {
