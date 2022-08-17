@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::serde_utils::{HexAsBytes, NonPrefixedHexAsBytes, PrefixedHexAsBytes};
 use super::{ContractAddress, StarkHash, Transaction};
-use crate::TransactionOutput;
+use crate::{StarknetApiError, TransactionOutput};
 
 // TODO(spapini): Verify the invariant that it is in range.
 /// The hash of a StarkNet block.
@@ -110,6 +110,26 @@ pub struct BlockHeader {
 /// The transactions in a StarkNet block.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockBody {
-    pub transactions: Vec<Transaction>,
-    pub transaction_outputs: Vec<TransactionOutput>,
+    transactions: Vec<Transaction>,
+    transaction_outputs: Vec<TransactionOutput>,
+}
+impl BlockBody {
+    pub fn new(
+        transactions: Vec<Transaction>,
+        transaction_outputs: Vec<TransactionOutput>,
+    ) -> Result<Self, StarknetApiError> {
+        if transactions.len() == transaction_outputs.len() {
+            Ok(BlockBody { transactions, transaction_outputs })
+        } else {
+            Err(StarknetApiError::TransationsLengthDontMatch)
+        }
+    }
+
+    pub fn transactions(&self) -> &Vec<Transaction> {
+        &self.transactions
+    }
+
+    pub fn transaction_outputs(&self) -> &Vec<TransactionOutput> {
+        &self.transaction_outputs
+    }
 }

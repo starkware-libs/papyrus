@@ -139,16 +139,27 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                                 status: block.status.into(),
                             };
                             // TODO(spapini): Fill the correct tx outputs.
-                            let body = BlockBody {
-                                transactions: block
-                                    .transactions
+                            let body = BlockBody::new(
+                                block.transactions
                                     .into_iter()
                                     .map(|x| x.into())
                                     .collect(),
-                                    transaction_outputs: vec![]
-                            };
-                            yield Ok((current_block_number, header, body));
-                            current_block_number = current_block_number.next();
+                                vec![]
+                            );
+                            match body {
+                                Ok(body) => {
+                                    yield Ok((current_block_number, header, body));
+                                    current_block_number = current_block_number.next();
+                                }
+                                Err(err) => {
+                                    debug!(
+                                        "Received error for block {}: {:?}.",
+                                        current_block_number.0, err
+                                    );
+                                    yield (Err(CentralError::StarknetApiError(Arc::new(err))));
+                                    return;
+                                }
+                            }
                         }
                         Ok(None) => {
                             debug!("Block number {} doesn't exist.", current_block_number.0);
