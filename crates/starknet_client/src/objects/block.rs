@@ -174,7 +174,9 @@ impl TryFrom<Block> for starknet_api::Block {
             status: block.status.into(),
         };
 
-        Ok(Self { header, body: starknet_api::BlockBody { transactions, transaction_outputs } })
+        let body = starknet_api::BlockBody::new(transactions, transaction_outputs)?;
+
+        Ok(Self { header, body })
     }
 }
 

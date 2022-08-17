@@ -111,8 +111,15 @@ fn get_block_by_number<Mode: TransactionKind>(
         .map_err(internal_server_error)?
         .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
 
+    let dummy_tx_output = TransactionOutput::Declare(DeclareTransactionOutput::default());
+    let mut dummy_tx_outputs = vec![];
+    for _ in &transactions {
+        dummy_tx_outputs.push(dummy_tx_output.clone());
+    }
+
     // TODO(spapini): Fill the correct tx outputs.
-    Ok((header, BlockBody { transactions, transaction_outputs: vec![] }))
+    let body = BlockBody::new(transactions, dummy_tx_outputs).map_err(internal_server_error)?;
+    Ok((header, body))
 }
 
 #[async_trait]
@@ -136,7 +143,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let block_number = get_block_number(&txn, block_id)?;
         let (header, body) = get_block_by_number(&txn, block_number)?;
         let transaction_hashes: Vec<TransactionHash> =
-            body.transactions.iter().map(|transaction| transaction.transaction_hash()).collect();
+            body.transactions().iter().map(|transaction| transaction.transaction_hash()).collect();
 
         Ok(Block { header, transactions: Transactions::Hashes(transaction_hashes) })
     }
@@ -149,7 +156,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         Ok(Block {
             header,
             transactions: Transactions::Full(
-                body.transactions.into_iter().map(TransactionWithType::from).collect(),
+                body.transactions().clone().into_iter().map(TransactionWithType::from).collect(),
             ),
         })
     }
