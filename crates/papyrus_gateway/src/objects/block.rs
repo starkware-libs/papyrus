@@ -1,35 +1,9 @@
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockHash, BlockHeader as StarknetBlockHeader, BlockNumber, BlockTimestamp, ContractAddress,
-    GlobalRoot, NodeBlockStatus,
+    BlockHash, BlockNumber, BlockStatus, BlockTimestamp, ContractAddress, GlobalRoot,
 };
 
 use super::transaction::Transactions;
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub enum BlockStatus {
-    #[serde(rename = "PENDING")]
-    Pending,
-    #[serde(rename = "PROVEN")]
-    Proven,
-    #[serde(rename = "ACCEPTED_ON_L2")]
-    AcceptedOnL2,
-    #[serde(rename = "ACCEPTED_ON_L1")]
-    AcceptedOnL1,
-    #[serde(rename = "REJECTED")]
-    Rejected,
-}
-
-impl From<NodeBlockStatus> for BlockStatus {
-    fn from(status: NodeBlockStatus) -> Self {
-        match status {
-            NodeBlockStatus::Pending => BlockStatus::Pending,
-            NodeBlockStatus::AcceptedOnL2 => BlockStatus::AcceptedOnL2,
-            NodeBlockStatus::AcceptedOnL1 => BlockStatus::AcceptedOnL1,
-            NodeBlockStatus::Rejected => BlockStatus::Rejected,
-        }
-    }
-}
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockHeader {
@@ -42,13 +16,13 @@ pub struct BlockHeader {
     pub accepted_time: BlockTimestamp,
 }
 
-impl From<StarknetBlockHeader> for BlockHeader {
-    fn from(header: StarknetBlockHeader) -> Self {
+impl From<starknet_api::BlockHeader> for BlockHeader {
+    fn from(header: starknet_api::BlockHeader) -> Self {
         BlockHeader {
             block_hash: header.block_hash,
             parent_hash: header.parent_hash,
             block_number: header.block_number,
-            status: header.status.into(),
+            status: header.status,
             sequencer: header.sequencer,
             new_root: header.state_root,
             accepted_time: header.timestamp,
