@@ -3,48 +3,24 @@ use std::sync::Arc;
 
 use assert_matches::assert_matches;
 use assert_unordered::assert_eq_unordered;
-use async_trait::async_trait;
 use futures_util::pin_mut;
-use mockall::{mock, predicate};
+use mockall::predicate;
 use reqwest::StatusCode;
 use starknet_api::{
     shash, BlockHash, BlockNumber, ClassHash, ContractAddress, ContractClass, DeployedContract,
     GlobalRoot, StarkHash, StorageDiff, StorageEntry, StorageKey,
 };
 use starknet_client::{
-    Block, BlockStateUpdate, ClientError, StarknetClientTrait, StateDiff as ClientStateDiff,
+    Block, BlockStateUpdate, ClientError, MockStarknetClientTrait, StateDiff as ClientStateDiff,
 };
 use tokio_stream::StreamExt;
 
 use crate::sources::central::{CentralError, GenericCentralSource};
 use crate::StateDiff;
 
-// Using mock! and not automock because StarknetClient is defined in another crate. For more
-// details, See mockall's documentation: https://docs.rs/mockall/latest/mockall/
-mock! {
-    pub StarknetClient {}
-
-    #[async_trait]
-    impl StarknetClientTrait for StarknetClient {
-        async fn block_number(&self) -> Result<Option<BlockNumber>, ClientError>;
-
-        async fn block(&self, block_number: BlockNumber) -> Result<Option<Block>, ClientError>;
-
-        async fn class_by_hash(
-            &self,
-            class_hash: ClassHash
-        ) -> Result<Option<ContractClass>, ClientError>;
-
-        async fn state_update(
-            &self,
-            block_number: BlockNumber,
-        ) -> Result<Option<BlockStateUpdate>, ClientError>;
-    }
-}
-
 #[tokio::test]
 async fn last_block_number() {
-    let mut mock = MockStarknetClient::new();
+    let mut mock = MockStarknetClientTrait::new();
 
     // We need to perform all the mocks before moving the mock into central_source.
     const EXPECTED_LAST_BLOCK_NUMBER: BlockNumber = BlockNumber(9);
@@ -60,7 +36,7 @@ async fn last_block_number() {
 async fn stream_block_headers() {
     const START_BLOCK_NUMBER: u64 = 5;
     const END_BLOCK_NUMBER: u64 = 9;
-    let mut mock = MockStarknetClient::new();
+    let mut mock = MockStarknetClientTrait::new();
 
     // We need to perform all the mocks before moving the mock into central_source.
     for i in START_BLOCK_NUMBER..END_BLOCK_NUMBER {
@@ -87,7 +63,7 @@ async fn stream_block_headers_some_are_missing() {
     const START_BLOCK_NUMBER: u64 = 5;
     const END_BLOCK_NUMBER: u64 = 13;
     const MISSING_BLOCK_NUMBER: u64 = 9;
-    let mut mock = MockStarknetClient::new();
+    let mut mock = MockStarknetClientTrait::new();
 
     // We need to perform all the mocks before moving the mock into central_source.
     for i in START_BLOCK_NUMBER..MISSING_BLOCK_NUMBER {
@@ -127,7 +103,7 @@ async fn stream_block_headers_error() {
     const START_BLOCK_NUMBER: u64 = 5;
     const END_BLOCK_NUMBER: u64 = 13;
     const ERROR_BLOCK_NUMBER: u64 = 9;
-    let mut mock = MockStarknetClient::new();
+    let mut mock = MockStarknetClientTrait::new();
     const CODE: StatusCode = StatusCode::NOT_FOUND;
     const MESSAGE: &str = "msg";
 
@@ -214,7 +190,7 @@ async fn stream_state_updates() {
         state_diff: client_state_diff2,
     };
 
-    let mut mock = MockStarknetClient::new();
+    let mut mock = MockStarknetClientTrait::new();
     let block_state_update1_clone = block_state_update1.clone();
     mock.expect_state_update()
         .with(predicate::eq(BlockNumber(START_BLOCK_NUMBER)))
