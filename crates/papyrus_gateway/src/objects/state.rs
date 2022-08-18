@@ -6,9 +6,9 @@ use starknet_api::{
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StorageDiff {
-    pub address: ContractAddress,
-    pub key: StorageKey,
-    pub value: StarkFelt,
+    address: ContractAddress,
+    key: StorageKey,
+    value: StarkFelt,
 }
 
 pub fn from_starknet_storage_diffs(storage_diffs: Vec<StarknetStorageDiff>) -> Vec<StorageDiff> {
