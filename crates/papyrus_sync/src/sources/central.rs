@@ -5,7 +5,7 @@ use futures::{future, pin_mut, TryStreamExt};
 use futures_util::StreamExt;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
-use starknet_api::{BlockBody, BlockHeader, BlockNumber, ClassHash, ContractClass, StateDiff};
+use starknet_api::{Block, BlockNumber, ClassHash, ContractClass, StateDiff};
 use starknet_client::{
     client_to_starknet_api_storage_diff, BlockStateUpdate, ClientCreationError, ClientError,
     RetryConfig, StarknetClient, StarknetClientTrait,
@@ -86,13 +86,12 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
         }
     }
 
-    // TODO(dan): return all block data.
     // TODO(shahak): rename.
     pub fn stream_new_blocks(
         &self,
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
-    ) -> impl Stream<Item = Result<(BlockNumber, BlockHeader, BlockBody), CentralError>> + '_ {
+    ) -> impl Stream<Item = Result<(BlockNumber, Block), CentralError>> + '_ {
         let mut current_block_number = initial_block_number;
         stream! {
             while current_block_number < up_to_block_number {
@@ -104,26 +103,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                     match maybe_block {
                         Ok(Some(block)) => {
                             info!("Received new block: {}.", block.block_number.0);
-                            let header = BlockHeader {
-                                block_hash: block.block_hash,
-                                parent_hash: block.parent_block_hash,
-                                block_number: block.block_number,
-                                gas_price: block.gas_price,
-                                state_root: block.state_root,
-                                sequencer: block.sequencer_address,
-                                timestamp: block.timestamp,
-                                status: block.status.into(),
-                            };
-                            // TODO(spapini): Fill the correct tx outputs.
-                            let body = BlockBody {
-                                transactions: block
-                                    .transactions
-                                    .into_iter()
-                                    .map(|x| x.into())
-                                    .collect(),
-                                    transaction_outputs: vec![]
-                            };
-                            yield Ok((current_block_number, header, body));
+                            yield Ok((current_block_number, block.into()));
                             current_block_number = current_block_number.next();
                         }
                         Ok(None) => {

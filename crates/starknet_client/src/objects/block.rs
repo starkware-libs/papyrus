@@ -27,6 +27,34 @@ pub struct Block {
     pub transaction_receipts: Vec<TransactionReceipt>,
 }
 
+impl From<Block> for starknet_api::Block {
+    fn from(block: Block) -> Self {
+        // Get the header.
+        let header = starknet_api::BlockHeader {
+            block_hash: block.block_hash,
+            parent_hash: block.parent_block_hash,
+            block_number: block.block_number,
+            gas_price: block.gas_price,
+            state_root: block.state_root,
+            sequencer: block.sequencer_address,
+            timestamp: block.timestamp,
+            status: block.status.into(),
+        };
+
+        // Get the transactions and the transaction outputs.
+        let (transaction_outputs, transactions) = block
+            .transaction_receipts
+            .into_iter()
+            .zip(block.transactions.into_iter())
+            .map(|(receipt, tx)| {
+                (receipt.into_starknet_api_transaction_output(tx.transaction_type()), tx.into())
+            })
+            .unzip::<_, _, Vec<starknet_api::TransactionOutput>, Vec<starknet_api::Transaction>>();
+
+        Self { header, body: starknet_api::BlockBody { transactions, transaction_outputs } }
+    }
+}
+
 /// A state update derived from a single block as returned by the starknet gateway.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct BlockStateUpdate {

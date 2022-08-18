@@ -10,7 +10,7 @@ mod state;
 mod transaction;
 
 pub use self::block::{
-    BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
+    Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
     GlobalRoot,
 };
 pub use self::core::{ClassHash, ContractAddress, Nonce};
