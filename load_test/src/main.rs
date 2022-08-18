@@ -1,3 +1,4 @@
+// This code is inspired by the pathfinder load test.
 use goose::goose::{GooseUser, Scenario, Transaction, TransactionError, TransactionResult};
 use goose::{scenario, transaction, GooseAttack, GooseError};
 use serde::de::DeserializeOwned;
@@ -6,7 +7,6 @@ use serde_json::json;
 
 type MethodResult<T> = Result<T, TransactionError>;
 
-// Taken from pathfinder.
 async fn post_jsonrpc_request<T: DeserializeOwned>(
     user: &mut GooseUser,
     method: &str,
@@ -23,7 +23,6 @@ async fn post_jsonrpc_request<T: DeserializeOwned>(
     Ok(response.result)
 }
 
-// Taken from pathfinder.
 fn jsonrpc_request(method: &str, params: serde_json::Value) -> serde_json::Value {
     json!({
         "jsonrpc": "2.0",
