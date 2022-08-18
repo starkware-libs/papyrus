@@ -148,16 +148,16 @@ async fn test_get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
         .commit()?;
 
     let expected_transaction = body.transactions.get(0).unwrap();
-    let expected_block = Block {
-        header: header.into(),
-        transactions: Transactions::Hashes(vec![expected_transaction.transaction_hash()]),
-    };
+    let expected_block = Block::new(
+        header.into(),
+        Transactions::Hashes(vec![expected_transaction.transaction_hash()]),
+    );
 
     // Get block by hash.
     let block = module
         .call::<_, Block>(
             "starknet_getBlockWithTxHashes",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header.block_hash))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header().block_hash()))],
         )
         .await
         .unwrap();
@@ -167,7 +167,9 @@ async fn test_get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
     let block = module
         .call::<_, Block>(
             "starknet_getBlockWithTxHashes",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Number(expected_block.header.block_number))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(
+                expected_block.header().block_number(),
+            ))],
         )
         .await?;
     assert_eq!(block, expected_block);
@@ -223,16 +225,14 @@ async fn test_get_block_w_full_transactions() -> Result<(), anyhow::Error> {
         .commit()?;
 
     let expected_transaction = body.transactions.get(0).unwrap();
-    let expected_block = Block {
-        header: header.into(),
-        transactions: Transactions::Full(vec![expected_transaction.clone().into()]),
-    };
+    let expected_block =
+        Block::new(header.into(), Transactions::Full(vec![expected_transaction.clone().into()]));
 
     // Get block by hash.
     let block = module
         .call::<_, Block>(
             "starknet_getBlockWithTxs",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header.block_hash))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header().block_hash()))],
         )
         .await?;
     assert_eq!(block, expected_block);
@@ -241,7 +241,9 @@ async fn test_get_block_w_full_transactions() -> Result<(), anyhow::Error> {
     let block = module
         .call::<_, Block>(
             "starknet_getBlockWithTxs",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Number(expected_block.header.block_number))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(
+                expected_block.header().block_number(),
+            ))],
         )
         .await?;
     assert_eq!(block, expected_block);

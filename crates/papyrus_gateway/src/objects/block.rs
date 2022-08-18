@@ -7,13 +7,24 @@ use super::transaction::Transactions;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockHeader {
-    pub block_hash: BlockHash,
-    pub parent_hash: BlockHash,
-    pub block_number: BlockNumber,
-    pub status: BlockStatus,
-    pub sequencer_address: ContractAddress,
-    pub new_root: GlobalRoot,
-    pub timestamp: BlockTimestamp,
+    block_hash: BlockHash,
+    parent_hash: BlockHash,
+    block_number: BlockNumber,
+    status: BlockStatus,
+    sequencer_address: ContractAddress,
+    new_root: GlobalRoot,
+    timestamp: BlockTimestamp,
+}
+
+impl BlockHeader {
+    pub fn block_hash(&self) -> BlockHash {
+        self.block_hash
+    }
+
+    #[cfg(test)]
+    pub fn block_number(&self) -> BlockNumber {
+        self.block_number
+    }
 }
 
 impl From<starknet_api::BlockHeader> for BlockHeader {
@@ -33,6 +44,17 @@ impl From<starknet_api::BlockHeader> for BlockHeader {
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct Block {
     #[serde(flatten)]
-    pub header: BlockHeader,
-    pub transactions: Transactions,
+    header: BlockHeader,
+    transactions: Transactions,
+}
+
+impl Block {
+    pub fn new(header: BlockHeader, transactions: Transactions) -> Self {
+        Block { header, transactions }
+    }
+
+    #[cfg(test)]
+    pub fn header(&self) -> &BlockHeader {
+        &self.header
+    }
 }

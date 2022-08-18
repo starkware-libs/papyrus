@@ -128,7 +128,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
             get_latest_block_number(&txn)?.ok_or_else(|| Error::from(JsonRpcError::NoBlocks))?;
         let header = get_block_header_by_number(&txn, block_number)?;
 
-        Ok(BlockHashAndNumber { block_hash: header.block_hash, block_number })
+        Ok(BlockHashAndNumber { block_hash: header.block_hash(), block_number })
     }
 
     fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> Result<Block, Error> {
@@ -138,7 +138,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let transaction_hashes: Vec<TransactionHash> =
             body.transactions.iter().map(|transaction| transaction.transaction_hash()).collect();
 
-        Ok(Block { header, transactions: Transactions::Hashes(transaction_hashes) })
+        Ok(Block::new(header, Transactions::Hashes(transaction_hashes)))
     }
 
     fn get_block_w_full_transactions(&self, block_id: BlockId) -> Result<Block, Error> {
@@ -146,12 +146,12 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let block_number = get_block_number(&txn, block_id)?;
         let (header, body) = get_block_by_number(&txn, block_number)?;
 
-        Ok(Block {
+        Ok(Block::new(
             header,
-            transactions: Transactions::Full(
+            Transactions::Full(
                 body.transactions.into_iter().map(TransactionWithType::from).collect(),
             ),
-        })
+        ))
     }
 
     fn get_storage_at(
