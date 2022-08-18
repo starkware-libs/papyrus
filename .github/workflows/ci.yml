@@ -26,6 +26,21 @@ jobs:
       - run: |
           cargo test
 
+  build-load-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v1
+      - run: >
+          cd load_test;
+          cargo build
+
   integration-test:
     runs-on: ${{ matrix.os }}
     strategy:
