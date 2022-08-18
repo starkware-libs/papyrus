@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use assert_matches::assert_matches;
-use async_trait::async_trait;
 use futures_util::pin_mut;
 use mockall::predicate;
 use reqwest::StatusCode;
