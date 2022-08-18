@@ -18,15 +18,15 @@ use papyrus_storage::{
 };
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockBody, BlockHash, BlockNumber, ClassHash, ContractAddress, ContractClass,
-    DeclareTransactionOutput, GlobalRoot, Nonce, StarkFelt, StarkHash, StateNumber, StorageKey,
-    TransactionHash, TransactionOffsetInBlock, TransactionOutput, TransactionReceipt, GENESIS_HASH,
+    BlockNumber, ClassHash, ContractAddress, ContractClass, GlobalRoot, Nonce, StarkFelt,
+    StarkHash, StateNumber, StorageKey, Transaction, TransactionHash, TransactionOffsetInBlock,
+    TransactionReceipt, GENESIS_HASH,
 };
 
 use self::api::{BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcError, JsonRpcServer, Tag};
 use self::objects::{
     from_starknet_storage_diffs, Block, BlockHeader, GateWayStateDiff, StateUpdate,
-    TransactionWithType, Transactions,
+    TransactionReceiptWithStatus, TransactionWithType, Transactions,
 };
 
 #[derive(Serialize, Deserialize)]
@@ -103,7 +103,7 @@ fn get_block_header_by_number<Mode: TransactionKind>(
 fn get_block_by_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
     block_number: BlockNumber,
-) -> Result<(BlockHeader, BlockBody), Error> {
+) -> Result<(BlockHeader, Vec<Transaction>), Error> {
     let header = get_block_header_by_number(txn, block_number)?;
 
     let transactions = txn
@@ -111,8 +111,7 @@ fn get_block_by_number<Mode: TransactionKind>(
         .map_err(internal_server_error)?
         .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
 
-    // TODO(spapini): Fill the correct tx outputs.
-    Ok((header, BlockBody { transactions, transaction_outputs: vec![] }))
+    Ok((header, transactions))
 }
 
 #[async_trait]
@@ -134,9 +133,9 @@ impl JsonRpcServer for JsonRpcServerImpl {
     fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> Result<Block, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
-        let (header, body) = get_block_by_number(&txn, block_number)?;
+        let (header, transactions) = get_block_by_number(&txn, block_number)?;
         let transaction_hashes: Vec<TransactionHash> =
-            body.transactions.iter().map(|transaction| transaction.transaction_hash()).collect();
+            transactions.iter().map(|transaction| transaction.transaction_hash()).collect();
 
         Ok(Block { header, transactions: Transactions::Hashes(transaction_hashes) })
     }
@@ -144,12 +143,12 @@ impl JsonRpcServer for JsonRpcServerImpl {
     fn get_block_w_full_transactions(&self, block_id: BlockId) -> Result<Block, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
-        let (header, body) = get_block_by_number(&txn, block_number)?;
+        let (header, transactions) = get_block_by_number(&txn, block_number)?;
 
         Ok(Block {
             header,
             transactions: Transactions::Full(
-                body.transactions.into_iter().map(TransactionWithType::from).collect(),
+                transactions.into_iter().map(TransactionWithType::from).collect(),
             ),
         })
     }
@@ -270,20 +269,30 @@ impl JsonRpcServer for JsonRpcServerImpl {
     fn get_transaction_receipt(
         &self,
         transaction_hash: TransactionHash,
-    ) -> Result<TransactionReceipt, Error> {
+    ) -> Result<TransactionReceiptWithStatus, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
-        let (block_number, _tx_offset_in_block) = txn
+        let (block_number, tx_offset_in_block) = txn
             .get_transaction_idx_by_hash(&transaction_hash)
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::InvalidTransactionHash))?;
 
-        // TODO(anatg): Get the transaction receipt from the storage.\
-        Ok(TransactionReceipt {
-            transaction_hash,
-            block_hash: BlockHash::default(),
-            block_number,
-            output: TransactionOutput::Declare(DeclareTransactionOutput::default()),
+        let header =
+            get_block_header_by_number(&txn, block_number).map_err(internal_server_error)?;
+
+        let output = txn
+            .get_transaction_output(block_number, tx_offset_in_block)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| Error::from(JsonRpcError::InvalidTransactionHash))?;
+
+        Ok(TransactionReceiptWithStatus {
+            receipt: TransactionReceipt {
+                transaction_hash,
+                block_hash: header.block_hash,
+                block_number,
+                output,
+            },
+            status: header.status.into(),
         })
     }
 
