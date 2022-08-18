@@ -1,3 +1,4 @@
+// This code is inspired by the pathfinder load test.
 use goose::goose::{GooseUser, Scenario, Transaction, TransactionError, TransactionResult};
 use goose::{scenario, transaction, GooseAttack, GooseError};
 use serde::de::DeserializeOwned;
@@ -6,7 +7,6 @@ use serde_json::json;
 
 type MethodResult<T> = Result<T, TransactionError>;
 
-// Taken from pathfinder.
 async fn post_jsonrpc_request<T: DeserializeOwned>(
     user: &mut GooseUser,
     method: &str,
@@ -23,7 +23,6 @@ async fn post_jsonrpc_request<T: DeserializeOwned>(
     Ok(response.result)
 }
 
-// Taken from pathfinder.
 fn jsonrpc_request(method: &str, params: serde_json::Value) -> serde_json::Value {
     json!({
         "jsonrpc": "2.0",
@@ -33,7 +32,11 @@ fn jsonrpc_request(method: &str, params: serde_json::Value) -> serde_json::Value
     })
 }
 
-async fn loadtest_getBlockWithTxHashes_by_number(user: &mut GooseUser) -> TransactionResult {
+/// Tests the rpc:
+/// ```
+/// getBlockWithTxHashes
+/// ```
+async fn loadtest_get_block_with_tx_hashes_by_number(user: &mut GooseUser) -> TransactionResult {
     post_jsonrpc_request(
         user,
         "starknet_getBlockWithTxHashes",
@@ -47,7 +50,7 @@ async fn main() -> Result<(), GooseError> {
     GooseAttack::initialize()?
         .register_scenario(
             scenario!("block_by_number")
-                .register_transaction(transaction!(loadtest_getBlockWithTxHashes_by_number)),
+                .register_transaction(transaction!(loadtest_get_block_with_tx_hashes_by_number)),
         )
         .execute()
         .await?;
