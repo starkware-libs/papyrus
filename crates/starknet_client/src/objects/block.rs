@@ -69,7 +69,7 @@ impl From<BlockStatus> for starknet_api::BlockStatus {
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct StateDiff {
-    // BTreeMap keeps ordering and is efficiently iterable.
+    // BTreeMap is serialized as a mapping in json, keeps ordering and is efficiently iterable.
     pub storage_diffs: BTreeMap<ContractAddress, Vec<StorageEntry>>,
     pub deployed_contracts: Vec<DeployedContract>,
     #[serde(default)]
