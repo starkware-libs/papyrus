@@ -41,6 +41,20 @@ pub enum CentralError {
     StarknetApiError(#[from] Arc<StarknetApiError>),
 }
 
+fn get_state_diff(
+    maybe_state_update: CentralResult<(BlockStateUpdate, Vec<(ClassHash, ContractClass)>)>,
+) -> CentralResult<StateDiff> {
+    let (state_update, classes) = maybe_state_update?;
+    StateDiff::new(
+        state_update.state_diff.deployed_contracts,
+        client_to_starknet_api_storage_diff(state_update.state_diff.storage_diffs),
+        classes,
+        // TODO(dan): fix once nonces are available.
+        vec![],
+    )
+    .map_err(|err| CentralError::StarknetApiError(Arc::new(err)))
+}
+
 impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
     GenericCentralSource<TStarknetClient>
 {
@@ -66,35 +80,18 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                     );
                 pin_mut!(state_update_stream);
                 while let Some(maybe_state_update) = state_update_stream.next().await{
-                    let (state_update, classes) = match maybe_state_update{
-                        Ok(((state_update, classes))) => (state_update, classes),
-                        Err(err) => {
-                          match err{
-                              _ => yield (Err(err)),
-                          }
-                          return;
-                        }
-                    };
-                    let state_diff_forward = StateDiff::new(
-                        state_update.state_diff.deployed_contracts,
-                        client_to_starknet_api_storage_diff(state_update.state_diff.storage_diffs),
-                        classes,
-                        // TODO(dan): fix once nonces are available.
-                        vec![],
-                    );
-                    match state_diff_forward {
-                        Ok(state_diff_forward) => {
-                            yield Ok((current_block_number, state_diff_forward));
+                    let state_diff = get_state_diff(maybe_state_update);
+                    match state_diff {
+                        Ok(state_diff) => {
+                            yield Ok((current_block_number, state_diff));
                             current_block_number = current_block_number.next();
                         }
                         Err(err) => {
                             debug!("Block number {}: {:#?}", current_block_number.0, err);
-                            yield (Err(CentralError::StarknetApiError(Arc::new(err))));
+                            yield Err(err);
                             return;
                         }
                     }
-
-
                 }
             }
         }
