@@ -236,7 +236,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         // Get the old root.
         let parent_block_number = get_block_number(
             &txn,
-            BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.parent_hash)),
+            BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.parent_hash())),
         );
         let mut old_root =
             GlobalRoot(StarkHash::from_hex(GENESIS_HASH).map_err(internal_server_error)?);
@@ -245,7 +245,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 .get_block_header(parent_block_number.unwrap())
                 .map_err(internal_server_error)?
                 .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
-            old_root = parent_header.state_root;
+            old_root = parent_header.state_root();
         }
 
         // Get the block state diff.
@@ -255,8 +255,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
             .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
 
         Ok(StateUpdate {
-            block_hash: header.block_hash,
-            new_root: header.state_root,
+            block_hash: header.block_hash(),
+            new_root: header.state_root(),
             old_root,
             state_diff: GateWayStateDiff {
                 storage_diffs: from_starknet_storage_diffs(db_state_diff.storage_diffs),

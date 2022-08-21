@@ -115,16 +115,16 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                     match maybe_block {
                         Ok(Some(block)) => {
                             info!("Received new block: {}.", block.block_number.0);
-                            let header = BlockHeader {
-                                block_hash: block.block_hash,
-                                parent_hash: block.parent_block_hash,
-                                block_number: block.block_number,
-                                gas_price: block.gas_price,
-                                state_root: block.state_root,
-                                sequencer: block.sequencer_address,
-                                timestamp: block.timestamp,
-                                status: block.status.into(),
-                            };
+                            let header = BlockHeader::new(
+                                block.block_hash,
+                                block.parent_block_hash,
+                                block.block_number,
+                                block.gas_price,
+                                block.state_root,
+                                block.sequencer_address,
+                                block.timestamp,
+                                block.status.into(),
+                            );
                             // TODO(spapini): Fill the correct tx outputs.
                             let body = BlockBody {
                                 transactions: block

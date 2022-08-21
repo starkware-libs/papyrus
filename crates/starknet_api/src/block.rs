@@ -96,15 +96,74 @@ impl Default for BlockStatus {
 /// The header of a StarkNet block.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockHeader {
-    pub block_hash: BlockHash,
-    pub parent_hash: BlockHash,
-    pub block_number: BlockNumber,
-    pub gas_price: GasPrice,
-    pub state_root: GlobalRoot,
-    pub sequencer: ContractAddress,
-    pub timestamp: BlockTimestamp,
-    pub status: BlockStatus,
+    block_hash: BlockHash,
+    parent_hash: BlockHash,
+    block_number: BlockNumber,
+    gas_price: GasPrice,
+    state_root: GlobalRoot,
+    sequencer: ContractAddress,
+    timestamp: BlockTimestamp,
+    status: BlockStatus,
     // TODO(dan): add missing commitments.
+}
+
+impl BlockHeader {
+    pub fn new(
+        block_hash: BlockHash,
+        parent_hash: BlockHash,
+        block_number: BlockNumber,
+        gas_price: GasPrice,
+        state_root: GlobalRoot,
+        sequencer: ContractAddress,
+        timestamp: BlockTimestamp,
+        status: BlockStatus,
+    ) -> Self {
+        BlockHeader {
+            block_hash,
+            parent_hash,
+            block_number,
+            gas_price,
+            state_root,
+            sequencer,
+            timestamp,
+            status,
+        }
+    }
+    pub fn block_hash(&self) -> BlockHash {
+        self.block_hash
+    }
+
+    pub fn parent_hash(&self) -> BlockHash {
+        self.parent_hash
+    }
+
+    pub fn state_root(&self) -> GlobalRoot {
+        self.state_root
+    }
+
+    pub fn destruct(
+        self,
+    ) -> (
+        BlockHash,
+        BlockHash,
+        BlockNumber,
+        GasPrice,
+        GlobalRoot,
+        ContractAddress,
+        BlockTimestamp,
+        BlockStatus,
+    ) {
+        (
+            self.block_hash,
+            self.parent_hash,
+            self.block_number,
+            self.gas_price,
+            self.state_root,
+            self.sequencer,
+            self.timestamp,
+            self.status,
+        )
+    }
 }
 
 /// The transactions in a StarkNet block.
