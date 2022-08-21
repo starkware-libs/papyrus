@@ -71,14 +71,11 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff) {
             StorageDiff {
                 address: address0,
                 diff: vec![
-                    StorageEntry { key: key0.clone(), value: value0 },
-                    StorageEntry { key: key1, value: value1 },
+                    StorageEntry::new(key0.clone(), value0),
+                    StorageEntry::new(key1, value1),
                 ],
             },
-            StorageDiff {
-                address: address1,
-                diff: vec![StorageEntry { key: key0, value: value0 }],
-            },
+            StorageDiff { address: address1, diff: vec![StorageEntry::new(key0, value0)] },
         ],
         vec![(hash0, class0), (hash1, class1)],
         vec![(address0, Nonce(StarkHash::from_u64(1))), (address1, Nonce(StarkHash::from_u64(1)))],
@@ -311,8 +308,8 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
     let (_, storage_diffs, _, _) = diff.destruct();
 
     let address = storage_diffs.get(0).unwrap().address;
-    let key = storage_diffs.get(0).unwrap().diff.get(0).unwrap().key.clone();
-    let expected_value = storage_diffs.get(0).unwrap().diff.get(0).unwrap().value;
+    let key = storage_diffs.get(0).unwrap().diff.get(0).unwrap().key().clone();
+    let expected_value = *storage_diffs.get(0).unwrap().diff.get(0).unwrap().value();
 
     // Get storage by block hash.
     let res = module

@@ -159,7 +159,7 @@ async fn stream_state_updates() {
     let block_hash1 = BlockHash(shash!("0x333"));
     let block_hash2 = BlockHash(shash!("0x444"));
 
-    let storage_entry = StorageEntry { key: StorageKey(shash!("0x555")), value: shash!("0x666") };
+    let storage_entry = StorageEntry::new(StorageKey(shash!("0x555")), shash!("0x666"));
 
     // TODO(shahak): Fill these contract classes with non-empty data.
     let contract_class1 = ContractClass::default();

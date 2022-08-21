@@ -17,8 +17,8 @@ pub fn from_starknet_storage_diffs(storage_diffs: Vec<StarknetStorageDiff>) -> V
         for storage_entry in diff.diff {
             res.push(StorageDiff {
                 address: diff.address,
-                key: storage_entry.key,
-                value: storage_entry.value,
+                key: storage_entry.key().clone(),
+                value: *storage_entry.value(),
             });
         }
     }

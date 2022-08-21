@@ -27,8 +27,8 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
             StorageDiff {
                 address: c0,
                 diff: vec![
-                    StorageEntry { key: key0.clone(), value: shash!("0x200") },
-                    StorageEntry { key: key1.clone(), value: shash!("0x201") },
+                    StorageEntry::new(key0.clone(), shash!("0x200")),
+                    StorageEntry::new(key1.clone(), shash!("0x201")),
                 ],
             },
             StorageDiff { address: c1, diff: vec![] },
@@ -43,14 +43,11 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
             StorageDiff {
                 address: c0,
                 diff: vec![
-                    StorageEntry { key: key0.clone(), value: shash!("0x300") },
-                    StorageEntry { key: key1.clone(), value: shash!("0x0") },
+                    StorageEntry::new(key0.clone(), shash!("0x300")),
+                    StorageEntry::new(key1.clone(), shash!("0x0")),
                 ],
             },
-            StorageDiff {
-                address: c1,
-                diff: vec![StorageEntry { key: key0.clone(), value: shash!("0x0") }],
-            },
+            StorageDiff { address: c1, diff: vec![StorageEntry::new(key0.clone(), shash!("0x0"))] },
         ],
         vec![(cl0, c_cls0.clone())],
         vec![
