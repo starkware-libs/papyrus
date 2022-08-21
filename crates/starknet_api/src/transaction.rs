@@ -197,32 +197,69 @@ impl ContractClass {
     pub fn set_abi(&mut self, abi: serde_json::Value) {
         self.abi = abi;
     }
-
 }
 
 /// A declare transaction in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeclareTransaction {
-    pub transaction_hash: TransactionHash,
-    pub max_fee: Fee,
-    pub version: TransactionVersion,
-    pub signature: TransactionSignature,
-    pub nonce: Nonce,
-    pub class_hash: ClassHash,
-    pub sender_address: ContractAddress,
+    transaction_hash: TransactionHash,
+    max_fee: Fee,
+    version: TransactionVersion,
+    signature: TransactionSignature,
+    nonce: Nonce,
+    class_hash: ClassHash,
+    sender_address: ContractAddress,
+}
+
+impl DeclareTransaction {
+    pub fn new(
+        transaction_hash: TransactionHash,
+        max_fee: Fee,
+        version: TransactionVersion,
+        signature: TransactionSignature,
+        nonce: Nonce,
+        class_hash: ClassHash,
+        sender_address: ContractAddress,
+    ) -> Self {
+        Self { transaction_hash, max_fee, version, signature, nonce, class_hash, sender_address }
+    }
 }
 
 /// An invoke transaction in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct InvokeTransaction {
-    pub transaction_hash: TransactionHash,
-    pub max_fee: Fee,
-    pub version: TransactionVersion,
-    pub signature: TransactionSignature,
-    pub nonce: Nonce,
-    pub contract_address: ContractAddress,
-    pub entry_point_selector: EntryPointSelector,
-    pub call_data: CallData,
+    transaction_hash: TransactionHash,
+    max_fee: Fee,
+    version: TransactionVersion,
+    signature: TransactionSignature,
+    nonce: Nonce,
+    contract_address: ContractAddress,
+    entry_point_selector: EntryPointSelector,
+    call_data: CallData,
+}
+
+impl InvokeTransaction {
+    pub fn new(
+        transaction_hash: TransactionHash,
+        max_fee: Fee,
+        version: TransactionVersion,
+        signature: TransactionSignature,
+        nonce: Nonce,
+        contract_address: ContractAddress,
+        entry_point_selector: EntryPointSelector,
+        call_data: CallData,
+    ) -> Self {
+        Self {
+            transaction_hash,
+            max_fee,
+            version,
+            signature,
+            nonce,
+            contract_address,
+            entry_point_selector,
+            call_data,
+       }
+    }
 }
 
 /// A contract address salt in StarkNet.
@@ -234,12 +271,32 @@ pub struct ContractAddressSalt(pub StarkHash);
 /// A deploy transaction in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeployTransaction {
-    pub transaction_hash: TransactionHash,
-    pub version: TransactionVersion,
-    pub class_hash: ClassHash,
-    pub contract_address: ContractAddress,
-    pub contract_address_salt: ContractAddressSalt,
-    pub constructor_calldata: CallData,
+    transaction_hash: TransactionHash,
+    version: TransactionVersion,
+    class_hash: ClassHash,
+    contract_address: ContractAddress,
+    contract_address_salt: ContractAddressSalt,
+    constructor_calldata: CallData,
+}
+
+impl DeployTransaction {
+    pub fn new(
+        transaction_hash: TransactionHash,
+        version: TransactionVersion,
+        class_hash: ClassHash,
+        contract_address: ContractAddress,
+        contract_address_salt: ContractAddressSalt,
+        constructor_calldata: CallData,
+    ) -> Self {
+        Self {
+            transaction_hash,
+            version,
+            class_hash,
+            contract_address,
+            contract_address_salt,
+            constructor_calldata,
+        }
+    }
 }
 
 /// A transaction status in StarkNet.

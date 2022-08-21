@@ -36,14 +36,14 @@ pub fn get_test_block(transaction_count: usize) -> (BlockHeader, BlockBody) {
     let mut transactions = vec![];
     let mut transaction_outputs = vec![];
     for i in 0..transaction_count {
-        let transaction = Transaction::Deploy(DeployTransaction {
-            transaction_hash: TransactionHash(StarkHash::from_u64(i as u64)),
-            version: TransactionVersion(shash!("0x1")),
-            contract_address: ContractAddress(shash!("0x2")),
-            constructor_calldata: CallData(vec![shash!("0x3")]),
-            class_hash: ClassHash(StarkHash::from_u64(i as u64)),
-            contract_address_salt: ContractAddressSalt(shash!("0x4")),
-        });
+        let transaction = Transaction::Deploy(DeployTransaction::new(
+            TransactionHash(StarkHash::from_u64(i as u64)),
+            TransactionVersion(shash!("0x1")),
+            ClassHash(StarkHash::from_u64(i as u64)),
+            ContractAddress(shash!("0x2")),
+            ContractAddressSalt(shash!("0x4")),
+            CallData(vec![shash!("0x3")]),
+        ));
         transactions.push(transaction);
         let transaction_output =
             TransactionOutput::Deploy(DeployTransactionOutput { actual_fee: Fee::default() });
