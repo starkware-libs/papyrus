@@ -108,6 +108,7 @@ pub struct BlockHeader {
 }
 
 impl BlockHeader {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         block_hash: BlockHash,
         parent_hash: BlockHash,

@@ -92,6 +92,7 @@ pub struct Program {
 }
 
 impl Program {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         attributes: serde_json::Value,
         builtins: serde_json::Value,
@@ -239,6 +240,7 @@ pub struct InvokeTransaction {
 }
 
 impl InvokeTransaction {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         transaction_hash: TransactionHash,
         max_fee: Fee,
