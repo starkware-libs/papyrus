@@ -50,15 +50,15 @@ where
 }
 
 fn split_diff_for_storage(state_diff: StateDiff) -> (ThinStateDiff, Vec<DeclaredContract>) {
+    let (deployed_contracts, storage_diffs, declared_classes, nonces) = state_diff.destruct();
     let thin_state_diff = ThinStateDiff {
-        deployed_contracts: state_diff.deployed_contracts,
-        storage_diffs: state_diff.storage_diffs,
-        declared_classes: Vec::from_iter(state_diff.declared_classes.iter().map(|(ch, _)| *ch)),
-        nonces: state_diff.nonces,
+        deployed_contracts,
+        storage_diffs,
+        declared_classes: Vec::from_iter(declared_classes.iter().map(|(ch, _)| *ch)),
+        nonces,
     };
     let declared_classes = Vec::from_iter(
-        state_diff
-            .declared_classes
+        declared_classes
             .into_iter()
             .map(|(ch, co)| DeclaredContract { class_hash: ch, contract_class: co }),
     );

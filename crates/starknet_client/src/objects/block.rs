@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use starknet_api::{
@@ -69,25 +69,30 @@ impl From<BlockStatus> for starknet_api::BlockStatus {
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct StateDiff {
-    pub storage_diffs: HashMap<ContractAddress, Vec<StorageEntry>>,
+    // BTreeMap is serialized as a mapping in json, keeps ordering and is efficiently iterable.
+    pub storage_diffs: BTreeMap<ContractAddress, Vec<StorageEntry>>,
     pub deployed_contracts: Vec<DeployedContract>,
     #[serde(default)]
     pub declared_classes: Vec<ClassHash>,
 }
 impl StateDiff {
-    pub fn class_hashes(&self) -> HashSet<ClassHash> {
-        let mut class_hashes = HashSet::from_iter(self.declared_classes.iter().cloned());
-        for contract in &self.deployed_contracts {
-            class_hashes.insert(contract.class_hash);
-        }
-        class_hashes
+    pub fn class_hashes(&self) -> Vec<ClassHash> {
+        // TODO(yair): both vectors should be sorted, so merge sorted vecs instead of appending and
+        // then sorting.
+        let mut res = self.declared_classes.clone();
+        res.append(
+            &mut self.deployed_contracts.iter().map(|contract| contract.class_hash).collect(),
+        );
+        res.sort();
+        res.dedup();
+        res
     }
 }
 
 /// Converts the client representation of [`BlockStateUpdate`] storage diffs to a [`starknet_api`]
 /// [`StorageDiff`].
 pub fn client_to_starknet_api_storage_diff(
-    storage_diffs: HashMap<ContractAddress, Vec<StorageEntry>>,
+    storage_diffs: BTreeMap<ContractAddress, Vec<StorageEntry>>,
 ) -> Vec<StorageDiff> {
     storage_diffs.into_iter().map(|(address, diff)| StorageDiff { address, diff }).collect()
 }
