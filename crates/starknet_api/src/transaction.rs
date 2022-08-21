@@ -46,9 +46,9 @@ pub struct EventKey(pub StarkFelt);
 /// An event in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct Event {
-    pub from_address: ContractAddress,
-    pub keys: Vec<EventKey>,
-    pub data: EventData,
+    from_address: ContractAddress,
+    keys: Vec<EventKey>,
+    data: EventData,
 }
 
 /// The selector of an entry point in StarkNet.
