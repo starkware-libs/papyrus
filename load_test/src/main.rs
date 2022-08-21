@@ -45,12 +45,32 @@ async fn loadtest_get_block_with_tx_hashes_by_number(user: &mut GooseUser) -> Tr
     .await
 }
 
+/// Tests the rpc:
+/// ```
+/// getBlockWithTxHashes
+/// ```
+async fn loadtest_get_block_with_tx_hashes_by_hash(user: &mut GooseUser) -> TransactionResult {
+    // TODO(shahak): Get a hash by getting a block instead of relying on that this hash exists.
+    post_jsonrpc_request(
+        user,
+        "starknet_getBlockWithTxHashes",
+        json!({ "block_id": {
+            "block_number": "0x58d8604f22510af5b120d1204ebf25292a79bfb09c4882c2e456abc2763d4a"
+        }}),
+    )
+    .await
+}
+
 #[tokio::main]
 async fn main() -> Result<(), GooseError> {
     GooseAttack::initialize()?
         .register_scenario(
             scenario!("block_by_number")
                 .register_transaction(transaction!(loadtest_get_block_with_tx_hashes_by_number)),
+        )
+        .register_scenario(
+            scenario!("block_by_hash")
+                .register_transaction(transaction!(loadtest_get_block_with_tx_hashes_by_hash)),
         )
         .execute()
         .await?;
