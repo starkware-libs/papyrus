@@ -102,8 +102,8 @@ async fn test_serialization_precision() {
 #[tokio::test]
 async fn contract_class() {
     let starknet_client = StarknetClient::new(&mockito::server_url(), get_test_config()).unwrap();
-    let expected_contract_class = ContractClass {
-        abi: serde_json::to_value(vec![HashMap::from([
+    let expected_contract_class = ContractClass::new(
+        serde_json::to_value(vec![HashMap::from([
             (
                 "inputs".to_string(),
                 serde_json::to_value(vec![HashMap::from([
@@ -117,7 +117,7 @@ async fn contract_class() {
             ("outputs".to_string(), serde_json::Value::Array(Vec::new())),
         ])])
         .unwrap(),
-        program: Program::new(
+        Program::new(
             serde_json::Value::Array(vec![serde_json::json!(1234)]),
             serde_json::Value::Array(Vec::new()),
             serde_json::Value::Array(vec![
@@ -134,7 +134,7 @@ async fn contract_class() {
             ),
             serde_json::Value::Object(serde_json::Map::new()),
         ),
-        entry_points_by_type: HashMap::from([
+        HashMap::from([
             (EntryPointType::L1Handler, vec![]),
             (
                 EntryPointType::Constructor,
@@ -159,7 +159,7 @@ async fn contract_class() {
                 )],
             ),
         ]),
-    };
+    );
     let mock_by_hash =
         mock(
             "GET",

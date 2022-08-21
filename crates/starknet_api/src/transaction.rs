@@ -169,10 +169,10 @@ impl Default for EntryPointType {
 /// A contract class in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ContractClass {
-    pub abi: serde_json::Value,
-    pub program: Program,
+    abi: serde_json::Value,
+    program: Program,
     /// The selector of each entry point is a unique identifier in the program.
-    pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
+    entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
 }
 
 impl ContractClass {
@@ -185,6 +185,19 @@ impl ContractClass {
     pub fn from_byte_vec(byte_vec: &[u8]) -> ContractClass {
         serde_json::from_slice::<ContractClass>(byte_vec).expect("Contract class from bytes")
     }
+
+    pub fn new(
+        abi: serde_json::Value,
+        program: Program,
+        entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
+    ) -> Self {
+        Self { abi, program, entry_points_by_type }
+    }
+
+    pub fn set_abi(&mut self, abi: serde_json::Value) {
+        self.abi = abi;
+    }
+
 }
 
 /// A declare transaction in StarkNet.
