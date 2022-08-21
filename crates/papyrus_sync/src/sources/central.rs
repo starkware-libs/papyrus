@@ -126,14 +126,13 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                                 block.status.into(),
                             );
                             // TODO(spapini): Fill the correct tx outputs.
-                            let body = BlockBody {
-                                transactions: block
-                                    .transactions
+                            let body = BlockBody::new (
+                                block.transactions
                                     .into_iter()
                                     .map(|x| x.into())
                                     .collect(),
-                                    transaction_outputs: vec![]
-                            };
+                                vec![]
+                            );
                             yield Ok((current_block_number, header, body));
                             current_block_number = current_block_number.next();
                         }

@@ -169,6 +169,23 @@ impl BlockHeader {
 /// The transactions in a StarkNet block.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockBody {
-    pub transactions: Vec<Transaction>,
-    pub transaction_outputs: Vec<TransactionOutput>,
+    transactions: Vec<Transaction>,
+    transaction_outputs: Vec<TransactionOutput>,
+}
+
+impl BlockBody {
+    pub fn new(
+        transactions: Vec<Transaction>,
+        transaction_outputs: Vec<TransactionOutput>,
+    ) -> Self {
+        Self { transactions, transaction_outputs }
+    }
+
+    pub fn transactions(&self) -> &Vec<Transaction> {
+        &self.transactions
+    }
+
+    pub fn transaction_outputs(&self) -> &Vec<TransactionOutput> {
+        &self.transaction_outputs
+    }
 }

@@ -155,7 +155,7 @@ fn write_transactions<'env>(
     transaction_hash_to_idx_table: &'env TransactionHashToIdxTable<'env>,
     block_number: BlockNumber,
 ) -> StorageResult<()> {
-    for (index, tx) in block_body.transactions.iter().enumerate() {
+    for (index, tx) in block_body.transactions().iter().enumerate() {
         let tx_offset_in_block = TransactionOffsetInBlock(index as u64);
         transactions_table.insert(txn, &(block_number, tx_offset_in_block), tx)?;
         update_tx_hash_mapping(
@@ -175,7 +175,7 @@ fn write_transaction_outputs<'env>(
     transaction_outputs_table: &'env TransactionOutputsTable<'env>,
     block_number: BlockNumber,
 ) -> StorageResult<()> {
-    for (index, tx_output) in block_body.transaction_outputs.iter().enumerate() {
+    for (index, tx_output) in block_body.transaction_outputs().iter().enumerate() {
         let tx_offset_in_block = TransactionOffsetInBlock(index as u64);
         transaction_outputs_table.insert(txn, &(block_number, tx_offset_in_block), tx_output)?;
     }
