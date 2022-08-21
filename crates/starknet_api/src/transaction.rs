@@ -258,7 +258,7 @@ impl InvokeTransaction {
             contract_address,
             entry_point_selector,
             call_data,
-       }
+        }
     }
 }
 
@@ -331,8 +331,8 @@ pub struct MessageToL2 {
 /// An L2 to L1 message in StarkNet.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct MessageToL1 {
-    pub to_address: EthAddress,
-    pub payload: L2ToL1Payload,
+    to_address: EthAddress,
+    payload: L2ToL1Payload,
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
