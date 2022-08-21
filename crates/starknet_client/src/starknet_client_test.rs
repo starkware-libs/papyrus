@@ -138,25 +138,25 @@ async fn contract_class() {
             (EntryPointType::L1Handler, vec![]),
             (
                 EntryPointType::Constructor,
-                vec![EntryPoint {
-                    selector: EntryPointSelector(shash!(
+                vec![EntryPoint::new(
+                    EntryPointSelector(shash!(
                         "0x028ffe4ff0f226a9107253e17a904099aa4f63a02a5621de0576e5aa71bc5194"
                     )),
-                    offset: EntryPointOffset(shash!(
+                    EntryPointOffset(shash!(
                         "0x0000000000000000000000000000000000000000000000000000000000000062"
                     )),
-                }],
+                )],
             ),
             (
                 EntryPointType::External,
-                vec![EntryPoint {
-                    selector: EntryPointSelector(shash!(
+                vec![EntryPoint::new(
+                    EntryPointSelector(shash!(
                         "0x0000000000000000000000000000000000000000000000000000000000000000"
                     )),
-                    offset: EntryPointOffset(shash!(
+                    EntryPointOffset(shash!(
                         "0x0000000000000000000000000000000000000000000000000000000000000086"
                     )),
-                }],
+                )],
             ),
         ]),
     };

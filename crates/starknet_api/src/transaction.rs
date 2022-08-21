@@ -66,8 +66,14 @@ pub struct EntryPointOffset(pub StarkFelt);
 /// An entry point of a contract in StarkNet.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct EntryPoint {
-    pub selector: EntryPointSelector,
-    pub offset: EntryPointOffset,
+    selector: EntryPointSelector,
+    offset: EntryPointOffset,
+}
+
+impl EntryPoint {
+    pub fn new(selector: EntryPointSelector, offset: EntryPointOffset) -> Self {
+        Self { selector, offset }
+    }
 }
 
 /// A program corresponding to a contract class in StarkNet.
