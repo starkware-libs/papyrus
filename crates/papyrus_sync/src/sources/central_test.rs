@@ -169,8 +169,8 @@ async fn stream_state_updates() {
     let client_state_diff1 = ClientStateDiff {
         storage_diffs: BTreeMap::from([(contract_address1, vec![storage_entry.clone()])]),
         deployed_contracts: vec![
-            DeployedContract { address: contract_address1, class_hash: class_hash2 },
-            DeployedContract { address: contract_address2, class_hash: class_hash3 },
+            DeployedContract::new(contract_address1, class_hash2),
+            DeployedContract::new(contract_address2, class_hash3),
         ],
         declared_classes: vec![class_hash1, class_hash3],
     };
@@ -232,8 +232,8 @@ async fn stream_state_updates() {
     let (deployed_contracts, storage_diffs, declared_classes, nonces) = state_diff.destruct();
     assert_eq!(
         vec![
-            DeployedContract { address: contract_address1, class_hash: class_hash2 },
-            DeployedContract { address: contract_address2, class_hash: class_hash3 },
+            DeployedContract::new(contract_address1, class_hash2),
+            DeployedContract::new(contract_address2, class_hash3),
         ],
         deployed_contracts
     );

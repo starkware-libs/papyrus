@@ -22,10 +22,7 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     let key0 = StorageKey(shash!("0x1001"));
     let key1 = StorageKey(shash!("0x101"));
     let diff0 = StateDiff::new(
-        vec![
-            DeployedContract { address: c0, class_hash: cl0 },
-            DeployedContract { address: c1, class_hash: cl1 },
-        ],
+        vec![DeployedContract::new(c0, cl0), DeployedContract::new(c1, cl1)],
         vec![
             StorageDiff {
                 address: c0,
@@ -41,7 +38,7 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     )
     .unwrap();
     let diff1 = StateDiff::new(
-        vec![DeployedContract { address: c2, class_hash: cl0 }],
+        vec![DeployedContract::new(c2, cl0)],
         vec![
             StorageDiff {
                 address: c0,
@@ -96,8 +93,7 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     // existing contract address.
     let txn = writer.begin_rw_txn()?;
     let (mut deployed_contracts, storage_diffs, declared_classes, nonces) = diff0.destruct();
-    let mut contract = deployed_contracts[0].clone();
-    contract.class_hash = cl2;
+    let contract = DeployedContract::new(deployed_contracts[0].address(), cl2);
     deployed_contracts[0] = contract;
     let diff0 =
         StateDiff::new(deployed_contracts, storage_diffs, declared_classes, nonces).unwrap();

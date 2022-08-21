@@ -81,7 +81,7 @@ impl StateDiff {
         // then sorting.
         let mut res = self.declared_classes.clone();
         res.append(
-            &mut self.deployed_contracts.iter().map(|contract| contract.class_hash).collect(),
+            &mut self.deployed_contracts.iter().map(|contract| contract.class_hash()).collect(),
         );
         res.sort();
         res.dedup();

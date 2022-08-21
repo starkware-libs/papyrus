@@ -103,8 +103,21 @@ impl StateDiff {
 /// A deployed contract in StarkNet.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeployedContract {
-    pub address: ContractAddress,
-    pub class_hash: ClassHash,
+    address: ContractAddress,
+    class_hash: ClassHash,
+}
+
+impl DeployedContract {
+    pub fn new(address: ContractAddress, class_hash: ClassHash) -> Self {
+        Self { address, class_hash }
+    }
+    pub fn address(&self) -> ContractAddress {
+        self.address
+    }
+
+    pub fn class_hash(&self) -> ClassHash {
+        self.class_hash
+    }
 }
 
 /// A declared contract in StarkNet.
