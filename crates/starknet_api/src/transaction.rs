@@ -80,15 +80,41 @@ impl EntryPoint {
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct Program {
     #[serde(default)]
-    pub attributes: serde_json::Value,
-    pub builtins: serde_json::Value,
-    pub data: serde_json::Value,
-    pub debug_info: serde_json::Value,
-    pub hints: serde_json::Value,
-    pub identifiers: serde_json::Value,
-    pub main_scope: serde_json::Value,
-    pub prime: serde_json::Value,
-    pub reference_manager: serde_json::Value,
+    attributes: serde_json::Value,
+    builtins: serde_json::Value,
+    data: serde_json::Value,
+    debug_info: serde_json::Value,
+    hints: serde_json::Value,
+    identifiers: serde_json::Value,
+    main_scope: serde_json::Value,
+    prime: serde_json::Value,
+    reference_manager: serde_json::Value,
+}
+
+impl Program {
+    pub fn new(
+        attributes: serde_json::Value,
+        builtins: serde_json::Value,
+        data: serde_json::Value,
+        debug_info: serde_json::Value,
+        hints: serde_json::Value,
+        identifiers: serde_json::Value,
+        main_scope: serde_json::Value,
+        prime: serde_json::Value,
+        reference_manager: serde_json::Value,
+    ) -> Self {
+        Self {
+            attributes,
+            builtins,
+            data,
+            debug_info,
+            hints,
+            identifiers,
+            main_scope,
+            prime,
+            reference_manager,
+        }
+    }
 }
 
 /// The calldata of a transaction in StarkNet.
