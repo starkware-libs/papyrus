@@ -46,9 +46,9 @@ pub struct EventKey(pub StarkFelt);
 /// An event in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct Event {
-    pub from_address: ContractAddress,
-    pub keys: Vec<EventKey>,
-    pub data: EventData,
+    from_address: ContractAddress,
+    keys: Vec<EventKey>,
+    data: EventData,
 }
 
 /// The selector of an entry point in StarkNet.
@@ -66,23 +66,56 @@ pub struct EntryPointOffset(pub StarkFelt);
 /// An entry point of a contract in StarkNet.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct EntryPoint {
-    pub selector: EntryPointSelector,
-    pub offset: EntryPointOffset,
+    selector: EntryPointSelector,
+    offset: EntryPointOffset,
+}
+
+impl EntryPoint {
+    pub fn new(selector: EntryPointSelector, offset: EntryPointOffset) -> Self {
+        Self { selector, offset }
+    }
 }
 
 /// A program corresponding to a contract class in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct Program {
     #[serde(default)]
-    pub attributes: serde_json::Value,
-    pub builtins: serde_json::Value,
-    pub data: serde_json::Value,
-    pub debug_info: serde_json::Value,
-    pub hints: serde_json::Value,
-    pub identifiers: serde_json::Value,
-    pub main_scope: serde_json::Value,
-    pub prime: serde_json::Value,
-    pub reference_manager: serde_json::Value,
+    attributes: serde_json::Value,
+    builtins: serde_json::Value,
+    data: serde_json::Value,
+    debug_info: serde_json::Value,
+    hints: serde_json::Value,
+    identifiers: serde_json::Value,
+    main_scope: serde_json::Value,
+    prime: serde_json::Value,
+    reference_manager: serde_json::Value,
+}
+
+impl Program {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        attributes: serde_json::Value,
+        builtins: serde_json::Value,
+        data: serde_json::Value,
+        debug_info: serde_json::Value,
+        hints: serde_json::Value,
+        identifiers: serde_json::Value,
+        main_scope: serde_json::Value,
+        prime: serde_json::Value,
+        reference_manager: serde_json::Value,
+    ) -> Self {
+        Self {
+            attributes,
+            builtins,
+            data,
+            debug_info,
+            hints,
+            identifiers,
+            main_scope,
+            prime,
+            reference_manager,
+        }
+    }
 }
 
 /// The calldata of a transaction in StarkNet.
@@ -137,10 +170,10 @@ impl Default for EntryPointType {
 /// A contract class in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ContractClass {
-    pub abi: serde_json::Value,
-    pub program: Program,
+    abi: serde_json::Value,
+    program: Program,
     /// The selector of each entry point is a unique identifier in the program.
-    pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
+    entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
 }
 
 impl ContractClass {
@@ -153,31 +186,82 @@ impl ContractClass {
     pub fn from_byte_vec(byte_vec: &[u8]) -> ContractClass {
         serde_json::from_slice::<ContractClass>(byte_vec).expect("Contract class from bytes")
     }
+
+    pub fn new(
+        abi: serde_json::Value,
+        program: Program,
+        entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
+    ) -> Self {
+        Self { abi, program, entry_points_by_type }
+    }
+
+    pub fn set_abi(&mut self, abi: serde_json::Value) {
+        self.abi = abi;
+    }
 }
 
 /// A declare transaction in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeclareTransaction {
-    pub transaction_hash: TransactionHash,
-    pub max_fee: Fee,
-    pub version: TransactionVersion,
-    pub signature: TransactionSignature,
-    pub nonce: Nonce,
-    pub class_hash: ClassHash,
-    pub sender_address: ContractAddress,
+    transaction_hash: TransactionHash,
+    max_fee: Fee,
+    version: TransactionVersion,
+    signature: TransactionSignature,
+    nonce: Nonce,
+    class_hash: ClassHash,
+    sender_address: ContractAddress,
+}
+
+impl DeclareTransaction {
+    pub fn new(
+        transaction_hash: TransactionHash,
+        max_fee: Fee,
+        version: TransactionVersion,
+        signature: TransactionSignature,
+        nonce: Nonce,
+        class_hash: ClassHash,
+        sender_address: ContractAddress,
+    ) -> Self {
+        Self { transaction_hash, max_fee, version, signature, nonce, class_hash, sender_address }
+    }
 }
 
 /// An invoke transaction in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct InvokeTransaction {
-    pub transaction_hash: TransactionHash,
-    pub max_fee: Fee,
-    pub version: TransactionVersion,
-    pub signature: TransactionSignature,
-    pub nonce: Nonce,
-    pub contract_address: ContractAddress,
-    pub entry_point_selector: EntryPointSelector,
-    pub call_data: CallData,
+    transaction_hash: TransactionHash,
+    max_fee: Fee,
+    version: TransactionVersion,
+    signature: TransactionSignature,
+    nonce: Nonce,
+    contract_address: ContractAddress,
+    entry_point_selector: EntryPointSelector,
+    call_data: CallData,
+}
+
+impl InvokeTransaction {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        transaction_hash: TransactionHash,
+        max_fee: Fee,
+        version: TransactionVersion,
+        signature: TransactionSignature,
+        nonce: Nonce,
+        contract_address: ContractAddress,
+        entry_point_selector: EntryPointSelector,
+        call_data: CallData,
+    ) -> Self {
+        Self {
+            transaction_hash,
+            max_fee,
+            version,
+            signature,
+            nonce,
+            contract_address,
+            entry_point_selector,
+            call_data,
+        }
+    }
 }
 
 /// A contract address salt in StarkNet.
@@ -189,12 +273,32 @@ pub struct ContractAddressSalt(pub StarkHash);
 /// A deploy transaction in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeployTransaction {
-    pub transaction_hash: TransactionHash,
-    pub version: TransactionVersion,
-    pub class_hash: ClassHash,
-    pub contract_address: ContractAddress,
-    pub contract_address_salt: ContractAddressSalt,
-    pub constructor_calldata: CallData,
+    transaction_hash: TransactionHash,
+    version: TransactionVersion,
+    class_hash: ClassHash,
+    contract_address: ContractAddress,
+    contract_address_salt: ContractAddressSalt,
+    constructor_calldata: CallData,
+}
+
+impl DeployTransaction {
+    pub fn new(
+        transaction_hash: TransactionHash,
+        version: TransactionVersion,
+        class_hash: ClassHash,
+        contract_address: ContractAddress,
+        contract_address_salt: ContractAddressSalt,
+        constructor_calldata: CallData,
+    ) -> Self {
+        Self {
+            transaction_hash,
+            version,
+            class_hash,
+            contract_address,
+            contract_address_salt,
+            constructor_calldata,
+        }
+    }
 }
 
 /// A transaction status in StarkNet.
@@ -222,15 +326,15 @@ impl Default for TransactionStatus {
 /// An L1 to L2 message in StarkNet.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct MessageToL2 {
-    pub from_address: EthAddress,
-    pub payload: L1ToL2Payload,
+    from_address: EthAddress,
+    payload: L1ToL2Payload,
 }
 
 /// An L2 to L1 message in StarkNet.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct MessageToL1 {
-    pub to_address: EthAddress,
-    pub payload: L2ToL1Payload,
+    to_address: EthAddress,
+    payload: L2ToL1Payload,
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -239,10 +343,21 @@ pub struct StatusData(pub Vec<StarkFelt>);
 /// A transaction receipt in StarkNet.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct TransactionReceipt {
-    pub transaction_hash: TransactionHash,
-    pub block_hash: BlockHash,
-    pub block_number: BlockNumber,
-    pub output: TransactionOutput,
+    transaction_hash: TransactionHash,
+    block_hash: BlockHash,
+    block_number: BlockNumber,
+    output: TransactionOutput,
+}
+
+impl TransactionReceipt {
+    pub fn new(
+        transaction_hash: TransactionHash,
+        block_hash: BlockHash,
+        block_number: BlockNumber,
+        output: TransactionOutput,
+    ) -> Self {
+        Self { transaction_hash, block_hash, block_number, output }
+    }
 }
 
 /// A transaction output in StarkNet.
@@ -259,22 +374,28 @@ pub enum TransactionOutput {
 /// An invoke transaction output in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct InvokeTransactionOutput {
-    pub actual_fee: Fee,
-    pub messages_sent: Vec<MessageToL1>,
-    pub l1_origin_message: Option<MessageToL2>,
-    pub events: Vec<Event>,
+    actual_fee: Fee,
+    messages_sent: Vec<MessageToL1>,
+    l1_origin_message: Option<MessageToL2>,
+    events: Vec<Event>,
 }
 
 /// A declare transaction output in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeclareTransactionOutput {
-    pub actual_fee: Fee,
+    actual_fee: Fee,
 }
 
 /// A deploy transaction output in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeployTransactionOutput {
-    pub actual_fee: Fee,
+    actual_fee: Fee,
+}
+
+impl DeployTransactionOutput {
+    pub fn new(actual_fee: Fee) -> Self {
+        Self { actual_fee }
+    }
 }
 
 impl TransactionOutput {

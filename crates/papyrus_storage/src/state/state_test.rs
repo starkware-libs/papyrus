@@ -81,7 +81,7 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     let txn = writer.begin_rw_txn()?;
     let (deployed_contracts, storage_diffs, mut declared_classes, nonces) = diff1.destruct();
     let mut class = declared_classes[0].1.clone();
-    class.abi = serde_json::Value::String("junk".to_string());
+    class.set_abi(serde_json::Value::String("junk".to_string()));
 
     declared_classes[0].1 = class;
     let diff1 =

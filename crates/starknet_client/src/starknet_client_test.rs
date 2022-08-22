@@ -102,8 +102,8 @@ async fn test_serialization_precision() {
 #[tokio::test]
 async fn contract_class() {
     let starknet_client = StarknetClient::new(&mockito::server_url(), get_test_config()).unwrap();
-    let expected_contract_class = ContractClass {
-        abi: serde_json::to_value(vec![HashMap::from([
+    let expected_contract_class = ContractClass::new(
+        serde_json::to_value(vec![HashMap::from([
             (
                 "inputs".to_string(),
                 serde_json::to_value(vec![HashMap::from([
@@ -117,49 +117,49 @@ async fn contract_class() {
             ("outputs".to_string(), serde_json::Value::Array(Vec::new())),
         ])])
         .unwrap(),
-        program: Program {
-            attributes: serde_json::Value::Array(vec![serde_json::json!(1234)]),
-            builtins: serde_json::Value::Array(Vec::new()),
-            data: serde_json::Value::Array(vec![
+        Program::new(
+            serde_json::Value::Array(vec![serde_json::json!(1234)]),
+            serde_json::Value::Array(Vec::new()),
+            serde_json::Value::Array(vec![
                 serde_json::Value::String("0x20780017fff7ffd".to_string()),
                 serde_json::Value::String("0x4".to_string()),
                 serde_json::Value::String("0x400780017fff7ffd".to_string()),
             ]),
-            debug_info: serde_json::Value::Null,
-            hints: serde_json::Value::Object(serde_json::Map::new()),
-            identifiers: serde_json::Value::Object(serde_json::Map::new()),
-            main_scope: serde_json::Value::String("__main__".to_string()),
-            prime: serde_json::Value::String(
+            serde_json::Value::Null,
+            serde_json::Value::Object(serde_json::Map::new()),
+            serde_json::Value::Object(serde_json::Map::new()),
+            serde_json::Value::String("__main__".to_string()),
+            serde_json::Value::String(
                 "0x800000000000011000000000000000000000000000000000000000000000001".to_string(),
             ),
-            reference_manager: serde_json::Value::Object(serde_json::Map::new()),
-        },
-        entry_points_by_type: HashMap::from([
+            serde_json::Value::Object(serde_json::Map::new()),
+        ),
+        HashMap::from([
             (EntryPointType::L1Handler, vec![]),
             (
                 EntryPointType::Constructor,
-                vec![EntryPoint {
-                    selector: EntryPointSelector(shash!(
+                vec![EntryPoint::new(
+                    EntryPointSelector(shash!(
                         "0x028ffe4ff0f226a9107253e17a904099aa4f63a02a5621de0576e5aa71bc5194"
                     )),
-                    offset: EntryPointOffset(shash!(
+                    EntryPointOffset(shash!(
                         "0x0000000000000000000000000000000000000000000000000000000000000062"
                     )),
-                }],
+                )],
             ),
             (
                 EntryPointType::External,
-                vec![EntryPoint {
-                    selector: EntryPointSelector(shash!(
+                vec![EntryPoint::new(
+                    EntryPointSelector(shash!(
                         "0x0000000000000000000000000000000000000000000000000000000000000000"
                     )),
-                    offset: EntryPointOffset(shash!(
+                    EntryPointOffset(shash!(
                         "0x0000000000000000000000000000000000000000000000000000000000000086"
                     )),
-                }],
+                )],
             ),
         ]),
-    };
+    );
     let mock_by_hash =
         mock(
             "GET",

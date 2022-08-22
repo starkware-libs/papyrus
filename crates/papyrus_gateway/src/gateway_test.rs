@@ -820,12 +820,12 @@ async fn test_get_transaction_receipt() -> Result<(), anyhow::Error> {
     // TODO(anatg): Write a transaction receipt to the storage.
 
     let transaction_hash = body.transactions.get(0).unwrap().transaction_hash();
-    let expected_receipt = TransactionReceipt {
+    let expected_receipt = TransactionReceipt::new(
         transaction_hash,
-        block_hash: BlockHash::default(),
+        BlockHash::default(),
         block_number,
-        output: TransactionOutput::Declare(DeclareTransactionOutput::default()),
-    };
+        TransactionOutput::Declare(DeclareTransactionOutput::default()),
+    );
     let res = module
         .call::<_, TransactionReceipt>("starknet_getTransactionReceipt", [transaction_hash])
         .await

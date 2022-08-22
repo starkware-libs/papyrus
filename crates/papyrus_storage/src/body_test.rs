@@ -14,18 +14,18 @@ async fn test_append_body() -> Result<(), anyhow::Error> {
 
     let txs: Vec<Transaction> = (0..10)
         .map(|i| {
-            Transaction::Deploy(DeployTransaction {
-                transaction_hash: TransactionHash(StarkHash::from_u64(i as u64)),
-                version: TransactionVersion(shash!("0x1")),
-                contract_address: ContractAddress(StarkHash::from_u64(i as u64)),
-                constructor_calldata: CallData(vec![StarkHash::from_u64(i as u64)]),
-                class_hash: ClassHash(StarkHash::from_u64(i as u64)),
-                contract_address_salt: ContractAddressSalt(shash!("0x2")),
-            })
+            Transaction::Deploy(DeployTransaction::new(
+                TransactionHash(StarkHash::from_u64(i as u64)),
+                TransactionVersion(shash!("0x1")),
+                ClassHash(StarkHash::from_u64(i as u64)),
+                ContractAddress(StarkHash::from_u64(i as u64)),
+                ContractAddressSalt(shash!("0x2")),
+                CallData(vec![StarkHash::from_u64(i as u64)]),
+            ))
         })
         .collect();
     let tx_outputs: Vec<TransactionOutput> = (0..10)
-        .map(|i| TransactionOutput::Deploy(DeployTransactionOutput { actual_fee: Fee(i as u128) }))
+        .map(|i| TransactionOutput::Deploy(DeployTransactionOutput::new(Fee(i as u128))))
         .collect();
 
     let body0 = BlockBody {
