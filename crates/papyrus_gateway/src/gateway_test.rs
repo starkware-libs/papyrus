@@ -22,11 +22,6 @@ use super::objects::{
 };
 use super::{run_server, GatewayConfig, JsonRpcServerImpl};
 
-#[cfg(test)]
-fn get_header_block_number(header: &BlockHeader) -> BlockNumber {
-    header.clone().destruct().2
-}
-
 fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff) {
     let parent_hash =
         BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
@@ -130,14 +125,13 @@ async fn test_block_hash_and_number() -> Result<(), anyhow::Error> {
 
     // Add a block and check again.
     let (header, _) = get_test_block(1);
-    let block_number = get_header_block_number(&header);
-    storage_writer.begin_rw_txn()?.append_header(block_number, &header)?.commit()?;
+    storage_writer.begin_rw_txn()?.append_header(header.block_number(), &header)?.commit()?;
     let block_hash_and_number = module
         .call::<_, BlockHashAndNumber>("starknet_blockHashAndNumber", EmptyParams::new())
         .await?;
     assert_eq!(
         block_hash_and_number,
-        BlockHashAndNumber { block_hash: header.block_hash(), block_number }
+        BlockHashAndNumber { block_hash: header.block_hash(), block_number: header.block_number() }
     );
     Ok(())
 }
@@ -148,11 +142,10 @@ async fn test_get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
     let (header, body) = get_test_block(1);
-    let block_number = get_header_block_number(&header);
     storage_writer
         .begin_rw_txn()?
-        .append_header(block_number, &header)?
-        .append_body(block_number, &body)?
+        .append_header(header.block_number(), &header)?
+        .append_body(header.block_number(), &body)?
         .commit()?;
 
     let expected_transaction = body.transactions().get(0).unwrap();
@@ -224,11 +217,10 @@ async fn test_get_block_w_full_transactions() -> Result<(), anyhow::Error> {
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
     let (header, body) = get_test_block(1);
-    let block_number = get_header_block_number(&header);
     storage_writer
         .begin_rw_txn()?
-        .append_header(block_number, &header)?
-        .append_body(block_number, &body)?
+        .append_header(header.block_number(), &header)?
+        .append_body(header.block_number(), &body)?
         .commit()?;
 
     let expected_transaction = body.transactions().get(0).unwrap();
@@ -298,11 +290,10 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
     let (header, _, diff) = get_test_state_diff();
-    let block_number = get_header_block_number(&header);
     storage_writer
         .begin_rw_txn()?
-        .append_header(block_number, &header)?
-        .append_state_diff(block_number, diff.clone())?
+        .append_header(header.block_number(), &header)?
+        .append_state_diff(header.block_number(), diff.clone())?
         .commit()?;
 
     let (_, storage_diffs, _, _) = diff.destruct();
@@ -328,7 +319,11 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, StarkFelt>(
             "starknet_getStorageAt",
-            (address, key.clone(), BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number))),
+            (
+                address,
+                key.clone(),
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number())),
+            ),
         )
         .await?;
     assert_eq!(res, expected_value);
@@ -398,11 +393,10 @@ async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
     let (header, _, diff) = get_test_state_diff();
-    let block_number = get_header_block_number(&header);
     storage_writer
         .begin_rw_txn()?
-        .append_header(block_number, &header)?
-        .append_state_diff(block_number, diff.clone())?
+        .append_header(header.block_number(), &header)?
+        .append_state_diff(header.block_number(), diff.clone())?
         .commit()?;
 
     let (deployed_contracts, _, _, _) = diff.destruct();
@@ -423,7 +417,7 @@ async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, ClassHash>(
             "starknet_getClassHashAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number)), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number())), address),
         )
         .await?;
     assert_eq!(res, expected_class_hash);
@@ -433,7 +427,7 @@ async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
         .call::<_, ClassHash>(
             "starknet_getClassHashAt",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number)),
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number())),
                 ContractAddress(shash!("0x12")),
             ),
         )
@@ -487,11 +481,10 @@ async fn test_get_nonce() -> Result<(), anyhow::Error> {
 
     // TODO(anatg): Write the nonces to the storage once it's supported.
     let (header, _, diff) = get_test_state_diff();
-    let block_number = get_header_block_number(&header);
     storage_writer
         .begin_rw_txn()?
-        .append_header(block_number, &header)?
-        .append_state_diff(block_number, diff.clone())?
+        .append_header(header.block_number(), &header)?
+        .append_state_diff(header.block_number(), diff.clone())?
         .commit()?;
 
     let (deployed_contracts, _, _, _) = diff.destruct();
@@ -511,7 +504,7 @@ async fn test_get_nonce() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, Nonce>(
             "starknet_getNonce",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number)), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number())), address),
         )
         .await?;
     assert_eq!(res, expected_nonce);
@@ -593,11 +586,10 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
     let (header, body) = get_test_block(1);
-    let block_number = get_header_block_number(&header);
     storage_writer
         .begin_rw_txn()?
-        .append_header(block_number, &header)?
-        .append_body(block_number, &body)?
+        .append_header(header.block_number(), &header)?
+        .append_body(header.block_number(), &body)?
         .commit()?;
 
     let expected_transaction = body.transactions().get(0).unwrap();
@@ -616,7 +608,7 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
     let res = module
         .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number)), 0),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number())), 0),
         )
         .await
         .unwrap();
@@ -678,11 +670,10 @@ async fn test_get_block_transaction_count() -> Result<(), anyhow::Error> {
 
     let transaction_count = 5;
     let (header, body) = get_test_block(transaction_count);
-    let block_number = get_header_block_number(&header);
     storage_writer
         .begin_rw_txn()?
-        .append_header(block_number, &header)?
-        .append_body(block_number, &body)?
+        .append_header(header.block_number(), &header)?
+        .append_body(header.block_number(), &body)?
         .commit()?;
 
     // Get block by hash.
@@ -698,7 +689,7 @@ async fn test_get_block_transaction_count() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, usize>(
             "starknet_getBlockTransactionCount",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number()))],
         )
         .await?;
     assert_eq!(res, transaction_count);
@@ -747,14 +738,12 @@ async fn test_get_state_update() -> Result<(), anyhow::Error> {
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
     let (parent_header, header, diff) = get_test_state_diff();
-    let block_number = get_header_block_number(&header);
-    let parent_block_number = get_header_block_number(&parent_header);
     storage_writer
         .begin_rw_txn()?
-        .append_header(parent_block_number, &parent_header)?
-        .append_state_diff(parent_block_number, StateDiff::default())?
-        .append_header(block_number, &header)?
-        .append_state_diff(block_number, diff.clone())?
+        .append_header(parent_header.block_number(), &parent_header)?
+        .append_state_diff(parent_header.block_number(), StateDiff::default())?
+        .append_header(header.block_number(), &header)?
+        .append_state_diff(header.block_number(), diff.clone())?
         .commit()?;
 
     let (deployed_contracts, storage_diffs, _, _) = diff.destruct();
@@ -785,7 +774,7 @@ async fn test_get_state_update() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, StateUpdate>(
             "starknet_getStateUpdate",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number()))],
         )
         .await?;
     assert_eq!(res, expected_update);
@@ -869,14 +858,12 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
     let (parent_header, header, diff) = get_test_state_diff();
-    let block_number = get_header_block_number(&header);
-    let parent_block_number = get_header_block_number(&parent_header);
     storage_writer
         .begin_rw_txn()?
-        .append_header(parent_block_number, &parent_header)?
-        .append_state_diff(parent_block_number, StateDiff::default())?
-        .append_header(block_number, &header)?
-        .append_state_diff(block_number, diff.clone())?
+        .append_header(parent_header.block_number(), &parent_header)?
+        .append_state_diff(parent_header.block_number(), StateDiff::default())?
+        .append_header(header.block_number(), &header)?
+        .append_state_diff(header.block_number(), diff.clone())?
         .commit()?;
 
     let (_, _, declared_classes, _) = diff.destruct();
@@ -897,7 +884,7 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, ContractClass>(
             "starknet_getClass",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number)), class_hash),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number())), class_hash),
         )
         .await?;
     assert_eq!(res, expected_contract_class);
@@ -907,7 +894,7 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
         .call::<_, ContractClass>(
             "starknet_getClass",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number)),
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number())),
                 ClassHash(shash!("0x6")),
             ),
         )
@@ -923,7 +910,10 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, ContractClass>(
             "starknet_getClass",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_block_number)), class_hash),
+            (
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_header.block_number())),
+                class_hash,
+            ),
         )
         .await
         .unwrap_err();
@@ -975,14 +965,12 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
     let (parent_header, header, diff) = get_test_state_diff();
-    let block_number = get_header_block_number(&header);
-    let parent_block_number = get_header_block_number(&parent_header);
     storage_writer
         .begin_rw_txn()?
-        .append_header(parent_block_number, &parent_header)?
-        .append_state_diff(parent_block_number, StateDiff::default())?
-        .append_header(block_number, &header)?
-        .append_state_diff(block_number, diff.clone())?
+        .append_header(parent_header.block_number(), &parent_header)?
+        .append_state_diff(parent_header.block_number(), StateDiff::default())?
+        .append_header(header.block_number(), &header)?
+        .append_state_diff(header.block_number(), diff.clone())?
         .commit()?;
 
     let (deployed_contracts, _, declared_classes, _) = diff.destruct();
@@ -1002,7 +990,7 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, ContractClass>(
             "starknet_getClassAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number)), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number())), address),
         )
         .await?;
     assert_eq!(res, expected_contract_class);
@@ -1012,7 +1000,7 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
         .call::<_, ContractClass>(
             "starknet_getClassAt",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number)),
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number())),
                 ContractAddress(shash!("0x12")),
             ),
         )
@@ -1028,7 +1016,10 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, ContractClass>(
             "starknet_getClassAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_block_number)), address),
+            (
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_header.block_number())),
+                address,
+            ),
         )
         .await
         .unwrap_err();

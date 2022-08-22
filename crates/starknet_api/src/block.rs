@@ -142,6 +142,11 @@ impl BlockHeader {
         self.state_root
     }
 
+    #[cfg(any(feature = "testing", test))]
+    pub fn block_number(&self) -> BlockNumber {
+        self.block_number
+    }
+
     pub fn destruct(
         self,
     ) -> (
