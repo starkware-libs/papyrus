@@ -2,9 +2,10 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    CallData, ClassHash, ContractAddress, ContractAddressSalt, EntryPointSelector, EntryPointType,
-    EthAddress, Event, Fee, L1ToL2Payload, L2ToL1Payload, Nonce, StarkHash, TransactionHash,
-    TransactionSignature, TransactionVersion,
+    CallData, ClassHash, ContractAddress, ContractAddressSalt, DeclareTransactionOutput,
+    DeployTransactionOutput, EntryPointSelector, EntryPointType, EthAddress, Event, Fee,
+    InvokeTransactionOutput, L1ToL2Payload, L2ToL1Payload, Nonce, StarkHash, TransactionHash,
+    TransactionOutput, TransactionSignature, TransactionVersion,
 };
 
 // TODO(dan): consider extracting common fields out (version, hash, type).
@@ -24,6 +25,16 @@ impl From<Transaction> for starknet_api::Transaction {
             }
             Transaction::Deploy(deploy_tx) => starknet_api::Transaction::Deploy(deploy_tx.into()),
             Transaction::Invoke(invoke_tx) => starknet_api::Transaction::Invoke(invoke_tx.into()),
+        }
+    }
+}
+
+impl Transaction {
+    pub fn transaction_type(&self) -> TransactionType {
+        match self {
+            Transaction::Declare(tx) => tx.r#type,
+            Transaction::Deploy(tx) => tx.r#type,
+            Transaction::Invoke(tx) => tx.r#type,
         }
     }
 }
@@ -122,6 +133,48 @@ pub struct TransactionReceipt {
     pub actual_fee: Fee,
 }
 
+impl TransactionReceipt {
+    pub fn into_starknet_api_transaction_output(
+        self,
+        tx_type: TransactionType,
+    ) -> Option<TransactionOutput> {
+        match tx_type {
+            TransactionType::Declare | TransactionType::Deploy
+                if self.l1_to_l2_consumed_message != L1ToL2Message::default()
+                    || !self.l2_to_l1_messages.is_empty()
+                    || !self.events.is_empty() =>
+            {
+                None
+            }
+            TransactionType::Declare => {
+                Some(TransactionOutput::Declare(DeclareTransactionOutput {
+                    actual_fee: self.actual_fee,
+                }))
+            }
+            TransactionType::Deploy => Some(TransactionOutput::Deploy(DeployTransactionOutput {
+                actual_fee: self.actual_fee,
+            })),
+            TransactionType::InvokeFunction => {
+                let l1_origin_message = match self.l1_to_l2_consumed_message {
+                    message if message == L1ToL2Message::default() => None,
+                    message => Some(starknet_api::MessageToL2::from(message)),
+                };
+
+                Some(TransactionOutput::Invoke(InvokeTransactionOutput {
+                    actual_fee: self.actual_fee,
+                    messages_sent: self
+                        .l2_to_l1_messages
+                        .into_iter()
+                        .map(starknet_api::MessageToL1::from)
+                        .collect(),
+                    l1_origin_message,
+                    events: self.events,
+                }))
+            }
+        }
+    }
+}
+
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct ExecutionResources {
     pub n_steps: u64,
@@ -158,6 +211,12 @@ pub struct L1ToL2Message {
     pub nonce: L1ToL2Nonce,
 }
 
+impl From<L1ToL2Message> for starknet_api::MessageToL2 {
+    fn from(message: L1ToL2Message) -> Self {
+        starknet_api::MessageToL2 { from_address: message.from_address, payload: message.payload }
+    }
+}
+
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct L2ToL1Message {
     pub from_address: ContractAddress,
@@ -165,10 +224,16 @@ pub struct L2ToL1Message {
     pub payload: L2ToL1Payload,
 }
 
+impl From<L2ToL1Message> for starknet_api::MessageToL1 {
+    fn from(message: L2ToL1Message) -> Self {
+        starknet_api::MessageToL1 { to_address: message.to_address, payload: message.payload }
+    }
+}
+
 #[derive(
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct TransactionIndexInBlock(pub u32);
+pub struct TransactionIndexInBlock(pub usize);
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum TransactionType {

@@ -16,7 +16,7 @@ use log::error;
 use mockall::automock;
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
-use starknet_api::{BlockNumber, ClassHash, ContractClass};
+use starknet_api::{BlockNumber, ClassHash, ContractClass, TransactionHash};
 use url::Url;
 
 pub use self::objects::block::{
@@ -118,6 +118,13 @@ pub enum ClientError {
     /// A client error representing errors returned by the starknet client.
     #[error(transparent)]
     StarknetError(#[from] StarknetError),
+    /// A client error representing a mismatched transaction and thransaction receipt.
+    #[error(
+        "Mismatched transaction receipt for transaction hash {:?} in block number {:?}.",
+        tx_hash,
+        block_number
+    )]
+    MismatchTransactionReceipt { tx_hash: TransactionHash, block_number: BlockNumber },
 }
 
 const GET_BLOCK_URL: &str = "feeder_gateway/get_block";
