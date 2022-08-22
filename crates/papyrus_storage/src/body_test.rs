@@ -28,19 +28,16 @@ async fn test_append_body() -> Result<(), anyhow::Error> {
         .map(|i| TransactionOutput::Deploy(DeployTransactionOutput { actual_fee: Fee(i as u128) }))
         .collect();
 
-    let body0 = BlockBody {
-        transactions: vec![txs[0].clone()],
-        transaction_outputs: vec![tx_outputs[0].clone()],
-    };
-    let body1 = BlockBody { transactions: vec![], transaction_outputs: vec![] };
-    let body2 = BlockBody {
-        transactions: vec![txs[1].clone(), txs[2].clone()],
-        transaction_outputs: vec![tx_outputs[1].clone(), tx_outputs[2].clone()],
-    };
-    let body3 = BlockBody {
-        transactions: vec![txs[3].clone(), txs[0].clone()],
-        transaction_outputs: vec![tx_outputs[3].clone(), tx_outputs[0].clone()],
-    };
+    let body0 = BlockBody::new(vec![txs[0].clone()], vec![tx_outputs[0].clone()]);
+    let body1 = BlockBody::new(vec![], vec![]);
+    let body2 = BlockBody::new(
+        vec![txs[1].clone(), txs[2].clone()],
+        vec![tx_outputs[1].clone(), tx_outputs[2].clone()],
+    );
+    let body3 = BlockBody::new(
+        vec![txs[3].clone(), txs[0].clone()],
+        vec![tx_outputs[3].clone(), tx_outputs[0].clone()],
+    );
     writer
         .begin_rw_txn()?
         .append_body(BlockNumber(0), &body0)?

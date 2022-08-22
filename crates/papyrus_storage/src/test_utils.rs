@@ -1,7 +1,8 @@
 use starknet_api::{
-    shash, BlockBody, BlockHash, BlockHeader, BlockNumber, CallData, ClassHash, ContractAddress,
-    ContractAddressSalt, DeployTransaction, DeployTransactionOutput, Fee, StarkHash, Transaction,
-    TransactionHash, TransactionOutput, TransactionVersion,
+    shash, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, CallData,
+    ClassHash, ContractAddress, ContractAddressSalt, DeployTransaction, DeployTransactionOutput,
+    Fee, GasPrice, GlobalRoot, StarkHash, Transaction, TransactionHash, TransactionOutput,
+    TransactionVersion,
 };
 use tempfile::tempdir;
 
@@ -21,13 +22,17 @@ pub fn get_test_storage() -> (StorageReader, StorageWriter) {
 }
 
 pub fn get_test_block(transaction_count: usize) -> (BlockHeader, BlockBody) {
-    let header = BlockHeader {
-        block_hash: BlockHash(shash!(
-            "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"
-        )),
-        block_number: BlockNumber(0),
-        ..BlockHeader::default()
-    };
+    let header = BlockHeader::new(
+        BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483")),
+        BlockHash::default(),
+        BlockNumber(0),
+        GasPrice::default(),
+        GlobalRoot::default(),
+        ContractAddress::default(),
+        BlockTimestamp::default(),
+        BlockStatus::default(),
+    );
+
     let mut transactions = vec![];
     let mut transaction_outputs = vec![];
     for i in 0..transaction_count {
@@ -44,6 +49,6 @@ pub fn get_test_block(transaction_count: usize) -> (BlockHeader, BlockBody) {
             TransactionOutput::Deploy(DeployTransactionOutput { actual_fee: Fee::default() });
         transaction_outputs.push(transaction_output);
     }
-    let body = BlockBody { transactions, transaction_outputs };
+    let body = BlockBody::new(transactions, transaction_outputs);
     (header, body)
 }

@@ -7,9 +7,10 @@ use jsonrpsee::types::EmptyParams;
 use papyrus_storage::test_utils::get_test_block;
 use papyrus_storage::{test_utils, BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 use starknet_api::{
-    shash, BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, ContractClass,
-    DeclareTransactionOutput, DeployedContract, GlobalRoot, Nonce, StarkFelt, StarkHash, StateDiff,
-    StorageDiff, StorageEntry, StorageKey, TransactionHash, TransactionOutput, TransactionReceipt,
+    shash, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, ClassHash,
+    ContractAddress, ContractClass, DeclareTransactionOutput, DeployedContract, GasPrice,
+    GlobalRoot, Nonce, StarkFelt, StarkHash, StateDiff, StorageDiff, StorageEntry, StorageKey,
+    TransactionHash, TransactionOutput, TransactionReceipt,
 };
 
 use super::api::{
@@ -25,21 +26,29 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff) {
     let parent_hash =
         BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
     let state_root = GlobalRoot(shash!("0x12"));
-    let parent_header = BlockHeader {
-        block_number: BlockNumber(0),
-        block_hash: parent_hash,
+    let parent_header = BlockHeader::new(
+        parent_hash,
+        BlockHash::default(),
+        BlockNumber(0),
+        GasPrice::default(),
         state_root,
-        ..BlockHeader::default()
-    };
+        ContractAddress::default(),
+        BlockTimestamp::default(),
+        BlockStatus::default(),
+    );
 
     let block_hash =
         BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5493"));
-    let header = BlockHeader {
-        block_number: BlockNumber(1),
+    let header = BlockHeader::new(
         block_hash,
         parent_hash,
-        ..BlockHeader::default()
-    };
+        BlockNumber(1),
+        GasPrice::default(),
+        GlobalRoot::default(),
+        ContractAddress::default(),
+        BlockTimestamp::default(),
+        BlockStatus::default(),
+    );
 
     let address0 = ContractAddress(shash!("0x11"));
     let hash0 = ClassHash(shash!("0x4"));
@@ -122,13 +131,13 @@ async fn test_block_hash_and_number() -> Result<(), anyhow::Error> {
 
     // Add a block and check again.
     let (header, _) = get_test_block(1);
-    storage_writer.begin_rw_txn()?.append_header(header.block_number, &header)?.commit()?;
+    storage_writer.begin_rw_txn()?.append_header(header.block_number(), &header)?.commit()?;
     let block_hash_and_number = module
         .call::<_, BlockHashAndNumber>("starknet_blockHashAndNumber", EmptyParams::new())
         .await?;
     assert_eq!(
         block_hash_and_number,
-        BlockHashAndNumber { block_hash: header.block_hash, block_number: header.block_number }
+        BlockHashAndNumber { block_hash: header.block_hash(), block_number: header.block_number() }
     );
     Ok(())
 }
@@ -141,11 +150,11 @@ async fn test_get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
     let (header, body) = get_test_block(1);
     storage_writer
         .begin_rw_txn()?
-        .append_header(header.block_number, &header)?
-        .append_body(header.block_number, &body)?
+        .append_header(header.block_number(), &header)?
+        .append_body(header.block_number(), &body)?
         .commit()?;
 
-    let expected_transaction = body.transactions.get(0).unwrap();
+    let expected_transaction = body.transactions().get(0).unwrap();
     let expected_block = Block {
         header: header.into(),
         transactions: Transactions::Hashes(vec![expected_transaction.transaction_hash()]),
@@ -216,11 +225,11 @@ async fn test_get_block_w_full_transactions() -> Result<(), anyhow::Error> {
     let (header, body) = get_test_block(1);
     storage_writer
         .begin_rw_txn()?
-        .append_header(header.block_number, &header)?
-        .append_body(header.block_number, &body)?
+        .append_header(header.block_number(), &header)?
+        .append_body(header.block_number(), &body)?
         .commit()?;
 
-    let expected_transaction = body.transactions.get(0).unwrap();
+    let expected_transaction = body.transactions().get(0).unwrap();
     let expected_block = Block {
         header: header.into(),
         transactions: Transactions::Full(vec![expected_transaction.clone().into()]),
@@ -289,8 +298,8 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
     let (header, _, diff) = get_test_state_diff();
     storage_writer
         .begin_rw_txn()?
-        .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, diff.clone())?
+        .append_header(header.block_number(), &header)?
+        .append_state_diff(header.block_number(), diff.clone())?
         .commit()?;
 
     let (_, storage_diffs, _, _) = diff.destruct();
@@ -306,7 +315,7 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
             (
                 address,
                 key.clone(),
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)),
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash())),
             ),
         )
         .await?;
@@ -319,7 +328,7 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
             (
                 address,
                 key.clone(),
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number())),
             ),
         )
         .await?;
@@ -332,7 +341,7 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
             (
                 ContractAddress(shash!("0x12")),
                 key.clone(),
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)),
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash())),
             ),
         )
         .await
@@ -392,8 +401,8 @@ async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
     let (header, _, diff) = get_test_state_diff();
     storage_writer
         .begin_rw_txn()?
-        .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, diff.clone())?
+        .append_header(header.block_number(), &header)?
+        .append_state_diff(header.block_number(), diff.clone())?
         .commit()?;
 
     let (deployed_contracts, _, _, _) = diff.destruct();
@@ -405,7 +414,7 @@ async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, ClassHash>(
             "starknet_getClassHashAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash())), address),
         )
         .await?;
     assert_eq!(res, expected_class_hash);
@@ -414,7 +423,7 @@ async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, ClassHash>(
             "starknet_getClassHashAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number())), address),
         )
         .await?;
     assert_eq!(res, expected_class_hash);
@@ -424,7 +433,7 @@ async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
         .call::<_, ClassHash>(
             "starknet_getClassHashAt",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number())),
                 ContractAddress(shash!("0x12")),
             ),
         )
@@ -480,8 +489,8 @@ async fn test_get_nonce() -> Result<(), anyhow::Error> {
     let (header, _, diff) = get_test_state_diff();
     storage_writer
         .begin_rw_txn()?
-        .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, diff.clone())?
+        .append_header(header.block_number(), &header)?
+        .append_state_diff(header.block_number(), diff.clone())?
         .commit()?;
 
     let (deployed_contracts, _, _, _) = diff.destruct();
@@ -492,7 +501,7 @@ async fn test_get_nonce() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, Nonce>(
             "starknet_getNonce",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash())), address),
         )
         .await?;
     assert_eq!(res, expected_nonce);
@@ -501,7 +510,7 @@ async fn test_get_nonce() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, Nonce>(
             "starknet_getNonce",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number())), address),
         )
         .await?;
     assert_eq!(res, expected_nonce);
@@ -551,7 +560,7 @@ async fn test_get_transaction_by_hash() -> Result<(), anyhow::Error> {
     let (_, body) = get_test_block(1);
     storage_writer.begin_rw_txn()?.append_body(BlockNumber(0), &body)?.commit()?;
 
-    let expected_transaction = body.transactions.get(0).unwrap();
+    let expected_transaction = body.transactions().get(0).unwrap();
     let res = module
         .call::<_, TransactionWithType>(
             "starknet_getTransactionByHash",
@@ -585,17 +594,17 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
     let (header, body) = get_test_block(1);
     storage_writer
         .begin_rw_txn()?
-        .append_header(header.block_number, &header)?
-        .append_body(header.block_number, &body)?
+        .append_header(header.block_number(), &header)?
+        .append_body(header.block_number(), &body)?
         .commit()?;
 
-    let expected_transaction = body.transactions.get(0).unwrap();
+    let expected_transaction = body.transactions().get(0).unwrap();
 
     // Get transaction by block hash.
     let res = module
         .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), 0),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash())), 0),
         )
         .await
         .unwrap();
@@ -605,7 +614,7 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
     let res = module
         .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), 0),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number())), 0),
         )
         .await
         .unwrap();
@@ -648,7 +657,7 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
     let err = module
         .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), 1),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash())), 1),
         )
         .await
         .unwrap_err();
@@ -669,15 +678,15 @@ async fn test_get_block_transaction_count() -> Result<(), anyhow::Error> {
     let (header, body) = get_test_block(transaction_count);
     storage_writer
         .begin_rw_txn()?
-        .append_header(header.block_number, &header)?
-        .append_body(header.block_number, &body)?
+        .append_header(header.block_number(), &header)?
+        .append_body(header.block_number(), &body)?
         .commit()?;
 
     // Get block by hash.
     let res = module
         .call::<_, usize>(
             "starknet_getBlockTransactionCount",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash()))],
         )
         .await?;
     assert_eq!(res, transaction_count);
@@ -686,7 +695,7 @@ async fn test_get_block_transaction_count() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, usize>(
             "starknet_getBlockTransactionCount",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number()))],
         )
         .await?;
     assert_eq!(res, transaction_count);
@@ -737,18 +746,18 @@ async fn test_get_state_update() -> Result<(), anyhow::Error> {
     let (parent_header, header, diff) = get_test_state_diff();
     storage_writer
         .begin_rw_txn()?
-        .append_header(parent_header.block_number, &parent_header)?
-        .append_state_diff(parent_header.block_number, StateDiff::default())?
-        .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, diff.clone())?
+        .append_header(parent_header.block_number(), &parent_header)?
+        .append_state_diff(parent_header.block_number(), StateDiff::default())?
+        .append_header(header.block_number(), &header)?
+        .append_state_diff(header.block_number(), diff.clone())?
         .commit()?;
 
     let (deployed_contracts, storage_diffs, _, _) = diff.destruct();
 
     let expected_update = StateUpdate {
-        block_hash: header.block_hash,
-        new_root: header.state_root,
-        old_root: parent_header.state_root,
+        block_hash: header.block_hash(),
+        new_root: header.state_root(),
+        old_root: parent_header.state_root(),
         state_diff: GateWayStateDiff {
             storage_diffs: from_starknet_storage_diffs(storage_diffs),
             declared_classes: vec![],
@@ -762,7 +771,7 @@ async fn test_get_state_update() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, StateUpdate>(
             "starknet_getStateUpdate",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash()))],
         )
         .await?;
     assert_eq!(res, expected_update);
@@ -771,7 +780,7 @@ async fn test_get_state_update() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, StateUpdate>(
             "starknet_getStateUpdate",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number()))],
         )
         .await?;
     assert_eq!(res, expected_update);
@@ -819,7 +828,7 @@ async fn test_get_transaction_receipt() -> Result<(), anyhow::Error> {
     storage_writer.begin_rw_txn()?.append_body(block_number, &body)?.commit()?;
     // TODO(anatg): Write a transaction receipt to the storage.
 
-    let transaction_hash = body.transactions.get(0).unwrap().transaction_hash();
+    let transaction_hash = body.transactions().get(0).unwrap().transaction_hash();
     let expected_receipt = TransactionReceipt {
         transaction_hash,
         block_hash: BlockHash::default(),
@@ -857,10 +866,10 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
     let (parent_header, header, diff) = get_test_state_diff();
     storage_writer
         .begin_rw_txn()?
-        .append_header(parent_header.block_number, &parent_header)?
-        .append_state_diff(parent_header.block_number, StateDiff::default())?
-        .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, diff.clone())?
+        .append_header(parent_header.block_number(), &parent_header)?
+        .append_state_diff(parent_header.block_number(), StateDiff::default())?
+        .append_header(header.block_number(), &header)?
+        .append_state_diff(header.block_number(), diff.clone())?
         .commit()?;
 
     let (_, _, declared_classes, _) = diff.destruct();
@@ -872,7 +881,7 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, ContractClass>(
             "starknet_getClass",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), class_hash),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash())), class_hash),
         )
         .await?;
     assert_eq!(res, expected_contract_class);
@@ -881,7 +890,7 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, ContractClass>(
             "starknet_getClass",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), class_hash),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number())), class_hash),
         )
         .await?;
     assert_eq!(res, expected_contract_class);
@@ -891,7 +900,7 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
         .call::<_, ContractClass>(
             "starknet_getClass",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number())),
                 ClassHash(shash!("0x6")),
             ),
         )
@@ -908,7 +917,7 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
         .call::<_, ContractClass>(
             "starknet_getClass",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_header.block_number)),
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_header.block_number())),
                 class_hash,
             ),
         )
@@ -964,10 +973,10 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
     let (parent_header, header, diff) = get_test_state_diff();
     storage_writer
         .begin_rw_txn()?
-        .append_header(parent_header.block_number, &parent_header)?
-        .append_state_diff(parent_header.block_number, StateDiff::default())?
-        .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, diff.clone())?
+        .append_header(parent_header.block_number(), &parent_header)?
+        .append_state_diff(parent_header.block_number(), StateDiff::default())?
+        .append_header(header.block_number(), &header)?
+        .append_state_diff(header.block_number(), diff.clone())?
         .commit()?;
 
     let (deployed_contracts, _, declared_classes, _) = diff.destruct();
@@ -978,7 +987,7 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, ContractClass>(
             "starknet_getClassAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash())), address),
         )
         .await?;
     assert_eq!(res, expected_contract_class);
@@ -987,7 +996,7 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, ContractClass>(
             "starknet_getClassAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number())), address),
         )
         .await?;
     assert_eq!(res, expected_contract_class);
@@ -997,7 +1006,7 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
         .call::<_, ContractClass>(
             "starknet_getClassAt",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number())),
                 ContractAddress(shash!("0x12")),
             ),
         )
@@ -1013,7 +1022,10 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, ContractClass>(
             "starknet_getClassAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_header.block_number)), address),
+            (
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_header.block_number())),
+                address,
+            ),
         )
         .await
         .unwrap_err();

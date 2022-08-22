@@ -18,14 +18,24 @@ pub struct BlockHeader {
 
 impl From<starknet_api::BlockHeader> for BlockHeader {
     fn from(header: starknet_api::BlockHeader) -> Self {
+        let (
+            block_hash,
+            parent_hash,
+            block_number,
+            _gas_price,
+            state_root,
+            sequencer,
+            timestamp,
+            status,
+        ) = header.destruct();
         BlockHeader {
-            block_hash: header.block_hash,
-            parent_hash: header.parent_hash,
-            block_number: header.block_number,
-            status: header.status,
-            sequencer_address: header.sequencer,
-            new_root: header.state_root,
-            timestamp: header.timestamp,
+            block_hash,
+            parent_hash,
+            block_number,
+            status,
+            sequencer_address: sequencer,
+            new_root: state_root,
+            timestamp,
         }
     }
 }

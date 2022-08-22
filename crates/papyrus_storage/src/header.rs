@@ -75,10 +75,10 @@ fn update_hash_mapping<'env>(
     block_header: &BlockHeader,
     block_number: BlockNumber,
 ) -> Result<(), StorageError> {
-    let res = block_hash_to_number_table.insert(txn, &block_header.block_hash, &block_number);
+    let res = block_hash_to_number_table.insert(txn, &block_header.block_hash(), &block_number);
     res.map_err(|err| match err {
         DbError::InnerDbError(libmdbx::Error::KeyExist) => StorageError::BlockHashAlreadyExists {
-            block_hash: block_header.block_hash,
+            block_hash: block_header.block_hash(),
             block_number,
         },
         err => err.into(),
