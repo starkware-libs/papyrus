@@ -343,10 +343,21 @@ pub struct StatusData(pub Vec<StarkFelt>);
 /// A transaction receipt in StarkNet.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct TransactionReceipt {
-    pub transaction_hash: TransactionHash,
-    pub block_hash: BlockHash,
-    pub block_number: BlockNumber,
-    pub output: TransactionOutput,
+    transaction_hash: TransactionHash,
+    block_hash: BlockHash,
+    block_number: BlockNumber,
+    output: TransactionOutput,
+}
+
+impl TransactionReceipt {
+    pub fn new(
+        transaction_hash: TransactionHash,
+        block_hash: BlockHash,
+        block_number: BlockNumber,
+        output: TransactionOutput,
+    ) -> Self {
+        Self { transaction_hash, block_hash, block_number, output }
+    }
 }
 
 /// A transaction output in StarkNet.

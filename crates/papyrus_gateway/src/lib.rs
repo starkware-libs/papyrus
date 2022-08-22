@@ -279,12 +279,12 @@ impl JsonRpcServer for JsonRpcServerImpl {
             .ok_or_else(|| Error::from(JsonRpcError::InvalidTransactionHash))?;
 
         // TODO(anatg): Get the transaction receipt from the storage.\
-        Ok(TransactionReceipt {
+        Ok(TransactionReceipt::new(
             transaction_hash,
-            block_hash: BlockHash::default(),
+            BlockHash::default(),
             block_number,
-            output: TransactionOutput::Declare(DeclareTransactionOutput::default()),
-        })
+            TransactionOutput::Declare(DeclareTransactionOutput::default()),
+        ))
     }
 
     fn get_class(&self, block_id: BlockId, class_hash: ClassHash) -> Result<ContractClass, Error> {
