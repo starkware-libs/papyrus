@@ -39,28 +39,28 @@ fn load_block_state_update_succeeds() {
                     "0x13386f165f065115c1da38d755be261023c32f0134a03a8e66b6bb1e0016014"
                 )),
                 vec![
-                    StorageEntry {
-                        key: StorageKey(shash!(
+                    StorageEntry::new(
+                        StorageKey(shash!(
                             "0x3b3a699bb6ef37ff4b9c4e14319c7d8e9c9bdd10ff402d1ebde18c62ae58381"
                         )),
-                        value: shash!("0x61454dd6e5c83621e41b74c"),
-                    },
-                    StorageEntry {
-                        key: StorageKey(shash!(
+                        shash!("0x61454dd6e5c83621e41b74c"),
+                    ),
+                    StorageEntry::new(
+                        StorageKey(shash!(
                             "0x1557182e4359a1f0c6301278e8f5b35a776ab58d39892581e357578fb287836"
                         )),
-                        value: shash!("0x79dd8085e3e5a96ea43e7d"),
-                    },
+                        shash!("0x79dd8085e3e5a96ea43e7d"),
+                    ),
                 ],
             )]),
-            deployed_contracts: vec![DeployedContract {
-                address: ContractAddress(shash!(
+            deployed_contracts: vec![DeployedContract::new(
+                ContractAddress(shash!(
                     "0x3e10411edafd29dfe6d427d03e35cb261b7a5efeee61bf73909ada048c029b9"
                 )),
-                class_hash: ClassHash(shash!(
+                ClassHash(shash!(
                     "0x071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64"
                 )),
-            }],
+            )],
             declared_classes: vec![],
         },
     };

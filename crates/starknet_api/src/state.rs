@@ -103,24 +103,63 @@ impl StateDiff {
 /// A deployed contract in StarkNet.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeployedContract {
-    pub address: ContractAddress,
-    pub class_hash: ClassHash,
+    address: ContractAddress,
+    class_hash: ClassHash,
+}
+
+impl DeployedContract {
+    pub fn new(address: ContractAddress, class_hash: ClassHash) -> Self {
+        Self { address, class_hash }
+    }
+    pub fn address(&self) -> ContractAddress {
+        self.address
+    }
+
+    pub fn class_hash(&self) -> ClassHash {
+        self.class_hash
+    }
 }
 
 /// A declared contract in StarkNet.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct DeclaredContract {
-    pub class_hash: ClassHash,
-    pub contract_class: ContractClass,
+    class_hash: ClassHash,
+    contract_class: ContractClass,
 }
 
-// Invariant: Addresses are strictly increasing. In particular, no address appears twice.
-// TODO(spapini): Enforce the invariant.
+impl DeclaredContract {
+    pub fn new(class_hash: ClassHash, contract_class: ContractClass) -> Self {
+        Self { class_hash, contract_class }
+    }
+
+    pub fn class_hash(&self) -> ClassHash {
+        self.class_hash
+    }
+
+    pub fn contract_class(&self) -> &ContractClass {
+        &self.contract_class
+    }
+}
+
 /// Storage differences in StarkNet.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StorageDiff {
-    pub address: ContractAddress,
-    pub diff: Vec<StorageEntry>,
+    address: ContractAddress,
+    diff: Vec<StorageEntry>,
+}
+
+impl StorageDiff {
+    pub fn new(address: ContractAddress, diff: Vec<StorageEntry>) -> Self {
+        Self { address, diff }
+    }
+
+    pub fn address(&self) -> ContractAddress {
+        self.address
+    }
+
+    pub fn diff(&self) -> &Vec<StorageEntry> {
+        &self.diff
+    }
 }
 
 // TODO: Invariant: this is in range.
@@ -132,6 +171,19 @@ pub struct StorageKey(pub StarkFelt);
 /// A storage entry in a StarkNet contract.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StorageEntry {
-    pub key: StorageKey,
-    pub value: StarkFelt,
+    key: StorageKey,
+    value: StarkFelt,
+}
+
+impl StorageEntry {
+    pub fn new(key: StorageKey, value: StarkFelt) -> Self {
+        Self { key, value }
+    }
+    pub fn key(&self) -> &StorageKey {
+        &self.key
+    }
+
+    pub fn value(&self) -> &StarkFelt {
+        &self.value
+    }
 }

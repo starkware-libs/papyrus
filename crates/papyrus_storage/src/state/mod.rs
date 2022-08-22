@@ -5,7 +5,7 @@ mod state_test;
 
 use starknet_api::{
     BlockNumber, ClassHash, ContractAddress, ContractClass, DeclaredContract, Nonce, StarkFelt,
-    StateDiff, StateNumber, StorageDiff, StorageEntry, StorageKey,
+    StateDiff, StateNumber, StorageKey,
 };
 
 pub use self::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
@@ -57,11 +57,8 @@ fn split_diff_for_storage(state_diff: StateDiff) -> (ThinStateDiff, Vec<Declared
         declared_classes: Vec::from_iter(declared_classes.iter().map(|(ch, _)| *ch)),
         nonces,
     };
-    let declared_classes = Vec::from_iter(
-        declared_classes
-            .into_iter()
-            .map(|(ch, co)| DeclaredContract { class_hash: ch, contract_class: co }),
-    );
+    let declared_classes =
+        Vec::from_iter(declared_classes.into_iter().map(|(ch, co)| DeclaredContract::new(ch, co)));
     (thin_state_diff, declared_classes)
 }
 
@@ -138,20 +135,21 @@ fn write_declared_classes<'env>(
 ) -> StorageResult<()> {
     for declared_class in declared_classes {
         // TODO(dan): remove this check after regenesis, in favor of insert().
-        if let Some(value) = declared_classes_table.get(txn, &declared_class.class_hash)? {
-            if ContractClass::from_byte_vec(&value.contract_class) != declared_class.contract_class
+        if let Some(value) = declared_classes_table.get(txn, &declared_class.class_hash())? {
+            if ContractClass::from_byte_vec(&value.contract_class)
+                != *declared_class.contract_class()
             {
                 return Err(StorageError::ClassAlreadyExists {
-                    class_hash: declared_class.class_hash,
+                    class_hash: declared_class.class_hash(),
                 });
             }
             continue;
         }
         let value = IndexedDeclaredContract {
             block_number,
-            contract_class: declared_class.contract_class.to_byte_vec(),
+            contract_class: declared_class.contract_class().to_byte_vec(),
         };
-        let res = declared_classes_table.insert(txn, &declared_class.class_hash, &value);
+        let res = declared_classes_table.insert(txn, &declared_class.class_hash(), &value);
         match res {
             Ok(()) => continue,
             Err(err) => return Err(err.into()),
@@ -168,12 +166,12 @@ fn write_deployed_contracts<'env>(
     nonces_table: &'env NoncesTable<'env>,
 ) -> StorageResult<()> {
     for deployed_contract in &state_diff.deployed_contracts {
-        let class_hash = deployed_contract.class_hash;
+        let class_hash = deployed_contract.class_hash();
         let value = IndexedDeployedContract { block_number, class_hash };
-        deployed_contracts_table.insert(txn, &deployed_contract.address, &value).map_err(
+        deployed_contracts_table.insert(txn, &deployed_contract.address(), &value).map_err(
             |err| {
                 if matches!(err, DbError::InnerDbError(libmdbx::Error::KeyExist)) {
-                    StorageError::ContractAlreadyExists { address: deployed_contract.address }
+                    StorageError::ContractAlreadyExists { address: deployed_contract.address() }
                 } else {
                     StorageError::from(err)
                 }
@@ -181,18 +179,18 @@ fn write_deployed_contracts<'env>(
         )?;
 
         nonces_table
-            .insert(txn, &(deployed_contract.address, block_number), &Nonce::default())
+            .insert(txn, &(deployed_contract.address(), block_number), &Nonce::default())
             .map_err(|err| {
-                if matches!(err, DbError::InnerDbError(libmdbx::Error::KeyExist)) {
-                    StorageError::NonceReWrite {
-                        contract_address: deployed_contract.address,
-                        nonce: Nonce::default(),
-                        block_number,
-                    }
-                } else {
-                    StorageError::from(err)
+            if matches!(err, DbError::InnerDbError(libmdbx::Error::KeyExist)) {
+                StorageError::NonceReWrite {
+                    contract_address: deployed_contract.address(),
+                    nonce: Nonce::default(),
+                    block_number,
                 }
-            })?;
+            } else {
+                StorageError::from(err)
+            }
+        })?;
     }
     Ok(())
 }
@@ -215,9 +213,13 @@ fn write_storage_diffs<'env>(
     block_number: BlockNumber,
     storage_table: &'env ContractStorageTable<'env>,
 ) -> StorageResult<()> {
-    for StorageDiff { address, diff } in &state_diff.storage_diffs {
-        for StorageEntry { key, value } in diff {
-            storage_table.upsert(txn, &(*address, key.clone(), block_number), value)?;
+    for storage_diff in &state_diff.storage_diffs {
+        for storage_entry in storage_diff.diff() {
+            storage_table.upsert(
+                txn,
+                &(storage_diff.address(), storage_entry.key().clone(), block_number),
+                storage_entry.value(),
+            )?;
         }
     }
     Ok(())

@@ -81,7 +81,7 @@ impl StateDiff {
         // then sorting.
         let mut res = self.declared_classes.clone();
         res.append(
-            &mut self.deployed_contracts.iter().map(|contract| contract.class_hash).collect(),
+            &mut self.deployed_contracts.iter().map(|contract| contract.class_hash()).collect(),
         );
         res.sort();
         res.dedup();
@@ -94,5 +94,5 @@ impl StateDiff {
 pub fn client_to_starknet_api_storage_diff(
     storage_diffs: BTreeMap<ContractAddress, Vec<StorageEntry>>,
 ) -> Vec<StorageDiff> {
-    storage_diffs.into_iter().map(|(address, diff)| StorageDiff { address, diff }).collect()
+    storage_diffs.into_iter().map(|(address, diff)| StorageDiff::new(address, diff)).collect()
 }

@@ -159,7 +159,7 @@ async fn stream_state_updates() {
     let block_hash1 = BlockHash(shash!("0x333"));
     let block_hash2 = BlockHash(shash!("0x444"));
 
-    let storage_entry = StorageEntry { key: StorageKey(shash!("0x555")), value: shash!("0x666") };
+    let storage_entry = StorageEntry::new(StorageKey(shash!("0x555")), shash!("0x666"));
 
     // TODO(shahak): Fill these contract classes with non-empty data.
     let contract_class1 = ContractClass::default();
@@ -169,8 +169,8 @@ async fn stream_state_updates() {
     let client_state_diff1 = ClientStateDiff {
         storage_diffs: BTreeMap::from([(contract_address1, vec![storage_entry.clone()])]),
         deployed_contracts: vec![
-            DeployedContract { address: contract_address1, class_hash: class_hash2 },
-            DeployedContract { address: contract_address2, class_hash: class_hash3 },
+            DeployedContract::new(contract_address1, class_hash2),
+            DeployedContract::new(contract_address2, class_hash3),
         ],
         declared_classes: vec![class_hash1, class_hash3],
     };
@@ -232,15 +232,12 @@ async fn stream_state_updates() {
     let (deployed_contracts, storage_diffs, declared_classes, nonces) = state_diff.destruct();
     assert_eq!(
         vec![
-            DeployedContract { address: contract_address1, class_hash: class_hash2 },
-            DeployedContract { address: contract_address2, class_hash: class_hash3 },
+            DeployedContract::new(contract_address1, class_hash2),
+            DeployedContract::new(contract_address2, class_hash3),
         ],
         deployed_contracts
     );
-    assert_eq!(
-        vec![StorageDiff { address: contract_address1, diff: vec![storage_entry] }],
-        storage_diffs
-    );
+    assert_eq!(vec![StorageDiff::new(contract_address1, vec![storage_entry])], storage_diffs);
     assert_eq!(
         vec![
             (class_hash1, contract_class1),
