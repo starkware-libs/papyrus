@@ -10,7 +10,7 @@ use papyrus_storage::{
     StateStorageWriter, StorageError, StorageReader, StorageWriter,
 };
 use serde::{Deserialize, Serialize};
-use starknet_api::{BlockBody, BlockHeader, BlockNumber, StateDiff};
+use starknet_api::{Block, BlockNumber, StateDiff};
 use starknet_client::ClientError;
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig};
@@ -38,7 +38,7 @@ pub enum StateSyncError {
     SyncError { message: String },
 }
 pub enum SyncEvent {
-    BlockAvailable { block_number: BlockNumber, header: BlockHeader, body: BlockBody },
+    BlockAvailable { block_number: BlockNumber, block: Block },
     StateDiffAvailable { block_number: BlockNumber, state_diff: StateDiff },
 }
 
@@ -77,11 +77,11 @@ impl StateSync {
                   complete => break,
                 };
                 match sync_event {
-                    Some(SyncEvent::BlockAvailable { block_number, header, body }) => {
+                    Some(SyncEvent::BlockAvailable { block_number, block }) => {
                         self.writer
                             .begin_rw_txn()?
-                            .append_header(block_number, &header)?
-                            .append_body(block_number, &body)?
+                            .append_header(block_number, &block.header)?
+                            .append_body(block_number, &block.body)?
                             .commit()?;
                     }
                     Some(SyncEvent::StateDiffAvailable { block_number, state_diff }) => {
@@ -127,12 +127,8 @@ fn stream_new_blocks(
                 .stream_new_blocks(header_marker, last_block_number)
                 .fuse();
             pin_mut!(block_stream);
-            while let Some(Ok((block_number, header, body))) = block_stream.next().await {
-                yield SyncEvent::BlockAvailable {
-                    block_number,
-                    header,
-                    body,
-                };
+            while let Some(Ok((block_number, block))) = block_stream.next().await {
+                yield SyncEvent::BlockAvailable { block_number, block };
             }
         }
     }

@@ -5,9 +5,7 @@ use futures::{future, pin_mut, TryStreamExt};
 use futures_util::StreamExt;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
-use starknet_api::{
-    BlockBody, BlockHeader, BlockNumber, ClassHash, ContractClass, StarknetApiError, StateDiff,
-};
+use starknet_api::{Block, BlockNumber, ClassHash, ContractClass, StarknetApiError, StateDiff};
 use starknet_client::{
     client_to_starknet_api_storage_diff, BlockStateUpdate, ClientCreationError, ClientError,
     RetryConfig, StarknetClient, StarknetClientTrait,
@@ -97,13 +95,12 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
         }
     }
 
-    // TODO(dan): return all block data.
     // TODO(shahak): rename.
     pub fn stream_new_blocks(
         &self,
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
-    ) -> impl Stream<Item = Result<(BlockNumber, BlockHeader, BlockBody), CentralError>> + '_ {
+    ) -> impl Stream<Item = Result<(BlockNumber, Block), CentralError>> + '_ {
         let mut current_block_number = initial_block_number;
         stream! {
             while current_block_number < up_to_block_number {
@@ -112,42 +109,28 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                         .map(|bn| async move { self.starknet_client.block(BlockNumber(bn)).await })
                         .buffered(CONCURRENT_REQUESTS);
                 while let Some(maybe_block) = res.next().await {
-                    match maybe_block {
+                    let res = match maybe_block {
                         Ok(Some(block)) => {
                             info!("Received new block: {}.", block.block_number.0);
-                            let header = BlockHeader {
-                                block_hash: block.block_hash,
-                                parent_hash: block.parent_block_hash,
-                                block_number: block.block_number,
-                                gas_price: block.gas_price,
-                                state_root: block.state_root,
-                                sequencer: block.sequencer_address,
-                                timestamp: block.timestamp,
-                                status: block.status.into(),
-                            };
-                            // TODO(spapini): Fill the correct tx outputs.
-                            let body = BlockBody {
-                                transactions: block
-                                    .transactions
-                                    .into_iter()
-                                    .map(|x| x.into())
-                                    .collect(),
-                                    transaction_outputs: vec![]
-                            };
-                            yield Ok((current_block_number, header, body));
-                            current_block_number = current_block_number.next();
+                            Block::try_from(block)
+                                .map_err(|err| CentralError::ClientError(Arc::new(err)))
                         }
                         Ok(None) => {
-                            debug!("Block number {} doesn't exist.", current_block_number.0);
-                            yield (Err(CentralError::BlockNotFound { block_number: current_block_number }));
-                            return;
+                            Err(CentralError::BlockNotFound { block_number: current_block_number })
+                        }
+                        Err(err) => Err(CentralError::ClientError(Arc::new(err))),
+                    };
+                    match res {
+                        Ok(block) => {
+                            yield Ok((current_block_number, block));
+                            current_block_number = current_block_number.next();
                         }
                         Err(err) => {
                             debug!(
                                 "Received error for block {}: {:?}.",
                                 current_block_number.0, err
                             );
-                            yield (Err(CentralError::ClientError(Arc::new(err))));
+                            yield (Err(err));
                             return;
                         }
                     }
