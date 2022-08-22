@@ -141,13 +141,25 @@ impl DeclaredContract {
     }
 }
 
-// Invariant: Addresses are strictly increasing. In particular, no address appears twice.
-// TODO(spapini): Enforce the invariant.
 /// Storage differences in StarkNet.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StorageDiff {
-    pub address: ContractAddress,
-    pub diff: Vec<StorageEntry>,
+    address: ContractAddress,
+    diff: Vec<StorageEntry>,
+}
+
+impl StorageDiff {
+    pub fn new(address: ContractAddress, diff: Vec<StorageEntry>) -> Self {
+        Self { address, diff }
+    }
+
+    pub fn address(&self) -> ContractAddress {
+        self.address
+    }
+
+    pub fn diff(&self) -> &Vec<StorageEntry> {
+        &self.diff
+    }
 }
 
 // TODO: Invariant: this is in range.

@@ -5,7 +5,7 @@ mod state_test;
 
 use starknet_api::{
     BlockNumber, ClassHash, ContractAddress, ContractClass, DeclaredContract, Nonce, StarkFelt,
-    StateDiff, StateNumber, StorageDiff, StorageKey,
+    StateDiff, StateNumber, StorageKey,
 };
 
 pub use self::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
@@ -213,11 +213,11 @@ fn write_storage_diffs<'env>(
     block_number: BlockNumber,
     storage_table: &'env ContractStorageTable<'env>,
 ) -> StorageResult<()> {
-    for StorageDiff { address, diff } in &state_diff.storage_diffs {
-        for storage_entry in diff {
+    for storage_diff in &state_diff.storage_diffs {
+        for storage_entry in storage_diff.diff() {
             storage_table.upsert(
                 txn,
-                &(*address, storage_entry.key().clone(), block_number),
+                &(storage_diff.address(), storage_entry.key().clone(), block_number),
                 storage_entry.value(),
             )?;
         }

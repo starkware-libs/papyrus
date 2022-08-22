@@ -63,14 +63,11 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff) {
     let diff = StateDiff::new(
         vec![DeployedContract::new(address0, hash0), DeployedContract::new(address1, hash1)],
         vec![
-            StorageDiff {
-                address: address0,
-                diff: vec![
-                    StorageEntry::new(key0.clone(), value0),
-                    StorageEntry::new(key1, value1),
-                ],
-            },
-            StorageDiff { address: address1, diff: vec![StorageEntry::new(key0, value0)] },
+            StorageDiff::new(
+                address0,
+                vec![StorageEntry::new(key0.clone(), value0), StorageEntry::new(key1, value1)],
+            ),
+            StorageDiff::new(address1, vec![StorageEntry::new(key0, value0)]),
         ],
         vec![(hash0, class0), (hash1, class1)],
         vec![(address0, Nonce(StarkHash::from_u64(1))), (address1, Nonce(StarkHash::from_u64(1)))],
@@ -298,9 +295,9 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
 
     let (_, storage_diffs, _, _) = diff.destruct();
 
-    let address = storage_diffs.get(0).unwrap().address;
-    let key = storage_diffs.get(0).unwrap().diff.get(0).unwrap().key().clone();
-    let expected_value = *storage_diffs.get(0).unwrap().diff.get(0).unwrap().value();
+    let address = storage_diffs.get(0).unwrap().address();
+    let key = storage_diffs.get(0).unwrap().diff().get(0).unwrap().key().clone();
+    let expected_value = *storage_diffs.get(0).unwrap().diff().get(0).unwrap().value();
 
     // Get storage by block hash.
     let res = module
