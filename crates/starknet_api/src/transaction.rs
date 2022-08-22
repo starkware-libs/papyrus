@@ -326,8 +326,8 @@ impl Default for TransactionStatus {
 /// An L1 to L2 message in StarkNet.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct MessageToL2 {
-    pub from_address: EthAddress,
-    pub payload: L1ToL2Payload,
+    from_address: EthAddress,
+    payload: L1ToL2Payload,
 }
 
 /// An L2 to L1 message in StarkNet.
