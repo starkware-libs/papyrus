@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use starknet_api::{Transaction, TransactionHash};
+use starknet_api::{BlockStatus, Transaction, TransactionHash, TransactionReceipt};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum Transactions {
@@ -43,4 +43,44 @@ impl From<Transaction> for TransactionWithType {
             }
         }
     }
+}
+
+/// A transaction status in StarkNet.
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub enum TransactionStatus {
+    /// The transaction passed the validation and entered the pending block.
+    #[serde(rename = "PENDING")]
+    Pending,
+    /// The transaction passed the validation and entered an actual created block.
+    #[serde(rename = "ACCEPTED_ON_L2")]
+    AcceptedOnL2,
+    /// The transaction was accepted on-chain.
+    #[serde(rename = "ACCEPTED_ON_L1")]
+    AcceptedOnL1,
+    /// The transaction failed validation.
+    #[serde(rename = "REJECTED")]
+    Rejected,
+}
+impl Default for TransactionStatus {
+    fn default() -> Self {
+        TransactionStatus::AcceptedOnL2
+    }
+}
+
+impl From<BlockStatus> for TransactionStatus {
+    fn from(status: BlockStatus) -> Self {
+        match status {
+            BlockStatus::AcceptedOnL1 => TransactionStatus::AcceptedOnL1,
+            BlockStatus::AcceptedOnL2 => TransactionStatus::AcceptedOnL2,
+            BlockStatus::Pending => TransactionStatus::Pending,
+            BlockStatus::Rejected => TransactionStatus::Rejected,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct TransactionReceiptWithStatus {
+    pub status: TransactionStatus,
+    #[serde(flatten)]
+    pub receipt: TransactionReceipt,
 }
