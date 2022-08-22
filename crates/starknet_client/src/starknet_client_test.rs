@@ -241,6 +241,16 @@ async fn get_block() {
 }
 
 #[tokio::test]
+async fn mismatch_transaction_receipt_error() {
+    let raw_block = read_resource_file("block_with_mismatch_transaction_receipts.json");
+    let block: Block = serde_json::from_str(&raw_block).unwrap();
+    let err = starknet_api::Block::try_from(block).unwrap_err();
+    assert_matches!(err, ClientError::MismatchTransactionReceipt { tx_hash, block_number: _ } if
+        tx_hash == TransactionHash(shash!("0x1c60d1088f403f3ca990e12131e71fed086920dae52ccee3e5e80e1bf19dc0f"))
+    );
+}
+
+#[tokio::test]
 async fn block_unserializable() {
     let starknet_client = StarknetClient::new(&mockito::server_url(), get_test_config()).unwrap();
     let body =

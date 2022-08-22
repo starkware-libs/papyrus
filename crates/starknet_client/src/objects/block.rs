@@ -7,6 +7,7 @@ use starknet_api::{
 };
 
 use super::transaction::{Transaction, TransactionReceipt};
+use crate::{ClientError, ClientResult};
 
 /// A block as returned by the starknet gateway.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
@@ -27,8 +28,10 @@ pub struct Block {
     pub transaction_receipts: Vec<TransactionReceipt>,
 }
 
-impl From<Block> for starknet_api::Block {
-    fn from(block: Block) -> Self {
+impl TryFrom<Block> for starknet_api::Block {
+    type Error = ClientError;
+
+    fn try_from(block: Block) -> ClientResult<Self> {
         // Get the header.
         let header = starknet_api::BlockHeader {
             block_hash: block.block_hash,
@@ -42,16 +45,25 @@ impl From<Block> for starknet_api::Block {
         };
 
         // Get the transactions and the transaction outputs.
-        let (transaction_outputs, transactions) = block
-            .transaction_receipts
-            .into_iter()
-            .zip(block.transactions.into_iter())
-            .map(|(receipt, tx)| {
-                (receipt.into_starknet_api_transaction_output(tx.transaction_type()), tx.into())
-            })
-            .unzip::<_, _, Vec<starknet_api::TransactionOutput>, Vec<starknet_api::Transaction>>();
+        let mut iter =
+            block.transaction_receipts.into_iter().zip(block.transactions.into_iter()).map(
+                |(receipt, tx)| {
+                    (
+                        receipt.into_starknet_api_transaction_output(tx.transaction_type()),
+                        starknet_api::Transaction::from(tx),
+                    )
+                },
+            );
+        if let Some((_output, tx)) = iter.find(|(output, _tx)| output.is_none()) {
+            return Err(ClientError::MismatchTransactionReceipt {
+                tx_hash: tx.transaction_hash(),
+                block_number: block.block_number,
+            });
+        }
+        let (transaction_outputs, transactions) =
+            iter.map(|(output, tx)| (output.unwrap(), tx)).unzip();
 
-        Self { header, body: starknet_api::BlockBody { transactions, transaction_outputs } }
+        Ok(Self { header, body: starknet_api::BlockBody { transactions, transaction_outputs } })
     }
 }
 

@@ -137,21 +137,33 @@ impl TransactionReceipt {
     pub fn into_starknet_api_transaction_output(
         self,
         tx_type: TransactionType,
-    ) -> TransactionOutput {
+    ) -> Option<TransactionOutput> {
+        let non_invoke_receipt = TransactionReceipt {
+            transaction_index: self.transaction_index,
+            transaction_hash: self.transaction_hash,
+            actual_fee: self.actual_fee,
+            ..TransactionReceipt::default()
+        };
+
         match tx_type {
+            TransactionType::Declare | TransactionType::Deploy if self != non_invoke_receipt => {
+                None
+            }
             TransactionType::Declare => {
-                TransactionOutput::Declare(DeclareTransactionOutput { actual_fee: self.actual_fee })
+                Some(TransactionOutput::Declare(DeclareTransactionOutput {
+                    actual_fee: self.actual_fee,
+                }))
             }
-            TransactionType::Deploy => {
-                TransactionOutput::Deploy(DeployTransactionOutput { actual_fee: self.actual_fee })
-            }
+            TransactionType::Deploy => Some(TransactionOutput::Deploy(DeployTransactionOutput {
+                actual_fee: self.actual_fee,
+            })),
             TransactionType::InvokeFunction => {
                 let l1_origin_message = match self.l1_to_l2_consumed_message {
                     message if message == L1ToL2Message::default() => None,
                     message => Some(starknet_api::MessageToL2::from(message)),
                 };
 
-                TransactionOutput::Invoke(InvokeTransactionOutput {
+                Some(TransactionOutput::Invoke(InvokeTransactionOutput {
                     actual_fee: self.actual_fee,
                     messages_sent: self
                         .l2_to_l1_messages
@@ -160,7 +172,7 @@ impl TransactionReceipt {
                         .collect(),
                     l1_origin_message,
                     events: self.events,
-                })
+                }))
             }
         }
     }
@@ -173,21 +185,8 @@ pub struct ExecutionResources {
     pub n_memory_holes: u64,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
-#[serde(untagged)]
-pub enum BuiltinInstanceCounter {
-    NonEmpty(HashMap<String, u64>),
-    Empty(EmptyBuiltinInstanceCounter),
-}
-
-impl Default for BuiltinInstanceCounter {
-    fn default() -> Self {
-        BuiltinInstanceCounter::Empty(EmptyBuiltinInstanceCounter {})
-    }
-}
-
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
-pub struct EmptyBuiltinInstanceCounter {}
+pub struct BuiltinInstanceCounter(HashMap<String, u64>);
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct L1ToL2Nonce(pub StarkHash);
