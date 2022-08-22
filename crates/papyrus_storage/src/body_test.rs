@@ -25,7 +25,7 @@ async fn test_append_body() -> Result<(), anyhow::Error> {
         })
         .collect();
     let tx_outputs: Vec<TransactionOutput> = (0..10)
-        .map(|i| TransactionOutput::Deploy(DeployTransactionOutput { actual_fee: Fee(i as u128) }))
+        .map(|i| TransactionOutput::Deploy(DeployTransactionOutput::new(Fee(i as u128) )))
         .collect();
 
     let body0 = BlockBody::new(vec![txs[0].clone()], vec![tx_outputs[0].clone()]);

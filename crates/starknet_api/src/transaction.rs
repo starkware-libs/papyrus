@@ -374,22 +374,28 @@ pub enum TransactionOutput {
 /// An invoke transaction output in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct InvokeTransactionOutput {
-    pub actual_fee: Fee,
-    pub messages_sent: Vec<MessageToL1>,
-    pub l1_origin_message: Option<MessageToL2>,
-    pub events: Vec<Event>,
+    actual_fee: Fee,
+    messages_sent: Vec<MessageToL1>,
+    l1_origin_message: Option<MessageToL2>,
+    events: Vec<Event>,
 }
 
 /// A declare transaction output in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeclareTransactionOutput {
-    pub actual_fee: Fee,
+    actual_fee: Fee,
 }
 
 /// A deploy transaction output in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeployTransactionOutput {
-    pub actual_fee: Fee,
+    actual_fee: Fee,
+}
+
+impl DeployTransactionOutput {
+    pub fn new(actual_fee: Fee) -> Self {
+        Self { actual_fee }
+    }
 }
 
 impl TransactionOutput {
