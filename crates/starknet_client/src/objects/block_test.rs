@@ -1,14 +1,16 @@
 use std::collections::BTreeMap;
 
 use assert::assert_ok;
+use assert_matches::assert_matches;
 use starknet_api::serde_utils::bytes_from_hex_str;
 use starknet_api::{
     shash, BlockHash, ClassHash, ContractAddress, DeployedContract, GlobalRoot, StarkHash,
-    StorageEntry, StorageKey,
+    StorageEntry, StorageKey, TransactionHash,
 };
 
-use super::super::test_utils::read_resource::read_resource_file;
 use super::block::{Block, BlockStateUpdate, StateDiff};
+use crate::test_utils::read_resource::read_resource_file;
+use crate::ClientError;
 
 #[test]
 fn load_block_succeeds() {
@@ -69,4 +71,14 @@ fn load_block_state_update_succeeds() {
         serde_json::from_str::<BlockStateUpdate>(&read_resource_file("block_state_update.json"))
             .unwrap()
     )
+}
+
+#[tokio::test]
+async fn mismatch_transaction_receipt_error() {
+    let raw_block = read_resource_file("block_with_mismatch_transaction_receipts.json");
+    let block: Block = serde_json::from_str(&raw_block).unwrap();
+    let err = starknet_api::Block::try_from(block).unwrap_err();
+    assert_matches!(err, ClientError::MismatchTransactionReceipt { tx_hash, block_number: _ } if
+        tx_hash == TransactionHash(shash!("0x1c60d1088f403f3ca990e12131e71fed086920dae52ccee3e5e80e1bf19dc0f"))
+    );
 }

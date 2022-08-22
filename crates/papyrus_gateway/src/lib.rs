@@ -100,18 +100,16 @@ fn get_block_header_by_number<Mode: TransactionKind>(
 }
 
 // TODO(spapini): Move this logic into storage (e.g. get_block_body()).
-fn get_block_by_number<Mode: TransactionKind>(
+fn get_block_txs_by_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
     block_number: BlockNumber,
-) -> Result<(BlockHeader, Vec<Transaction>), Error> {
-    let header = get_block_header_by_number(txn, block_number)?;
-
+) -> Result<Vec<Transaction>, Error> {
     let transactions = txn
         .get_block_transactions(block_number)
         .map_err(internal_server_error)?
         .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
 
-    Ok((header, transactions))
+    Ok(transactions)
 }
 
 #[async_trait]
@@ -133,7 +131,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
     fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> Result<Block, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
-        let (header, transactions) = get_block_by_number(&txn, block_number)?;
+        let header = get_block_header_by_number(&txn, block_number)?;
+        let transactions = get_block_txs_by_number(&txn, block_number)?;
         let transaction_hashes: Vec<TransactionHash> =
             transactions.iter().map(|transaction| transaction.transaction_hash()).collect();
 
@@ -143,7 +142,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
     fn get_block_w_full_transactions(&self, block_id: BlockId) -> Result<Block, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
-        let (header, transactions) = get_block_by_number(&txn, block_number)?;
+        let header = get_block_header_by_number(&txn, block_number)?;
+        let transactions = get_block_txs_by_number(&txn, block_number)?;
 
         Ok(Block {
             header,
@@ -213,11 +213,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
     fn get_block_transaction_count(&self, block_id: BlockId) -> Result<usize, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
-
-        let transactions = txn
-            .get_block_transactions(block_number)
-            .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
+        let transactions = get_block_txs_by_number(&txn, block_number)?;
 
         Ok(transactions.len())
     }
@@ -227,10 +223,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
         // Get the block header for the block hash and state root.
         let block_number = get_block_number(&txn, block_id)?;
-        let header = txn
-            .get_block_header(block_number)
-            .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
+        let header = get_block_header_by_number(&txn, block_number)?;
 
         // Get the old root.
         let parent_block_number = get_block_number(
@@ -240,11 +233,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let mut old_root =
             GlobalRoot(StarkHash::from_hex(GENESIS_HASH).map_err(internal_server_error)?);
         if parent_block_number.is_ok() {
-            let parent_header = txn
-                .get_block_header(parent_block_number.unwrap())
-                .map_err(internal_server_error)?
-                .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
-            old_root = parent_header.state_root;
+            let parent_header = get_block_header_by_number(&txn, parent_block_number.unwrap())?;
+            old_root = parent_header.new_root;
         }
 
         // Get the block state diff.
@@ -255,7 +245,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
         Ok(StateUpdate {
             block_hash: header.block_hash,
-            new_root: header.state_root,
+            new_root: header.new_root,
             old_root,
             state_diff: GateWayStateDiff {
                 storage_diffs: from_starknet_storage_diffs(db_state_diff.storage_diffs),

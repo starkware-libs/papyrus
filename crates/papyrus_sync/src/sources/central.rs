@@ -109,23 +109,28 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                         .map(|bn| async move { self.starknet_client.block(BlockNumber(bn)).await })
                         .buffered(CONCURRENT_REQUESTS);
                 while let Some(maybe_block) = res.next().await {
-                    match maybe_block {
+                    let res = match maybe_block {
                         Ok(Some(block)) => {
                             info!("Received new block: {}.", block.block_number.0);
-                            yield Ok((current_block_number, block.into()));
-                            current_block_number = current_block_number.next();
+                            Block::try_from(block)
+                                .map_err(|err| CentralError::ClientError(Arc::new(err)))
                         }
                         Ok(None) => {
-                            debug!("Block number {} doesn't exist.", current_block_number.0);
-                            yield (Err(CentralError::BlockNotFound { block_number: current_block_number }));
-                            return;
+                            Err(CentralError::BlockNotFound { block_number: current_block_number })
+                        }
+                        Err(err) => Err(CentralError::ClientError(Arc::new(err))),
+                    };
+                    match res {
+                        Ok(block) => {
+                            yield Ok((current_block_number, block));
+                            current_block_number = current_block_number.next();
                         }
                         Err(err) => {
                             debug!(
                                 "Received error for block {}: {:?}.",
                                 current_block_number.0, err
                             );
-                            yield (Err(CentralError::ClientError(Arc::new(err))));
+                            yield (Err(err));
                             return;
                         }
                     }
