@@ -10,16 +10,16 @@ use papyrus_storage::test_utils::{get_test_block, get_test_storage};
 use papyrus_storage::{BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 use starknet_api::{
     shash, BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, ContractClass,
-    DeclareTransactionOutput, DeployedContract, GlobalRoot, Nonce, StarkFelt, StarkHash, StateDiff,
-    StorageDiff, StorageEntry, StorageKey, TransactionHash, TransactionOutput, TransactionReceipt,
+    DeployedContract, GlobalRoot, Nonce, StarkFelt, StarkHash, StateDiff, StorageDiff,
+    StorageEntry, StorageKey, TransactionHash, TransactionReceipt,
 };
 
 use super::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcClient, JsonRpcError, JsonRpcServer, Tag,
 };
 use super::objects::{
-    from_starknet_storage_diffs, Block, GateWayStateDiff, StateUpdate, TransactionWithType,
-    Transactions,
+    from_starknet_storage_diffs, Block, GateWayStateDiff, StateUpdate,
+    TransactionReceiptWithStatus, TransactionWithType, Transactions,
 };
 use super::{run_server, GatewayConfig, JsonRpcServerImpl};
 
@@ -832,27 +832,36 @@ async fn test_get_transaction_receipt() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
-    let (_, body) = get_test_block(1);
+    let (header, body) = get_test_block(1);
     let block_number = BlockNumber(0);
-    storage_writer.begin_rw_txn()?.append_body(block_number, &body)?.commit()?;
-    // TODO(anatg): Write a transaction receipt to the storage.
+    storage_writer
+        .begin_rw_txn()?
+        .append_header(block_number, &header)?
+        .append_body(block_number, &body)?
+        .commit()?;
 
     let transaction_hash = body.transactions.index(0).transaction_hash();
-    let expected_receipt = TransactionReceipt {
-        transaction_hash,
-        block_hash: BlockHash::default(),
-        block_number,
-        output: TransactionOutput::Declare(DeclareTransactionOutput::default()),
+    let expected_receipt = TransactionReceiptWithStatus {
+        receipt: TransactionReceipt {
+            transaction_hash,
+            block_hash: header.block_hash,
+            block_number,
+            output: body.transaction_outputs.index(0).clone(),
+        },
+        status: header.status.into(),
     };
     let res = module
-        .call::<_, TransactionReceipt>("starknet_getTransactionReceipt", [transaction_hash])
+        .call::<_, TransactionReceiptWithStatus>(
+            "starknet_getTransactionReceipt",
+            [transaction_hash],
+        )
         .await
         .unwrap();
     assert_eq!(res, expected_receipt.clone());
 
     // Ask for an invalid transaction.
     let err = module
-        .call::<_, TransactionReceipt>(
+        .call::<_, TransactionReceiptWithStatus>(
             "starknet_getTransactionReceipt",
             [TransactionHash(StarkHash::from_u64(1))],
         )

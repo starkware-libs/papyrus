@@ -3,10 +3,10 @@ use jsonrpsee::proc_macros::rpc;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockHash, BlockNumber, ClassHash, ContractAddress, ContractClass, Nonce, StarkFelt,
-    StorageKey, TransactionHash, TransactionOffsetInBlock, TransactionReceipt,
+    StorageKey, TransactionHash, TransactionOffsetInBlock,
 };
 
-use super::objects::{Block, StateUpdate, TransactionWithType};
+use super::objects::{Block, StateUpdate, TransactionReceiptWithStatus, TransactionWithType};
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum Tag {
@@ -110,7 +110,7 @@ pub trait JsonRpc {
     fn get_transaction_receipt(
         &self,
         transaction_hash: TransactionHash,
-    ) -> Result<TransactionReceipt, Error>;
+    ) -> Result<TransactionReceiptWithStatus, Error>;
 
     /// Gets the contract class definition associated with the given hash.
     #[method(name = "getClass")]
