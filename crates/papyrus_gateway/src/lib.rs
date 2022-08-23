@@ -275,7 +275,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let header =
             get_block_header_by_number(&txn, block_number).map_err(internal_server_error)?;
 
-        let output = txn
+        let tx_output = txn
             .get_transaction_output(block_number, tx_offset_in_block)
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::InvalidTransactionHash))?;
@@ -285,7 +285,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 transaction_hash,
                 block_hash: header.block_hash,
                 block_number,
-                output,
+                output: tx_output,
             },
             status: TransactionStatus::default(),
         })
