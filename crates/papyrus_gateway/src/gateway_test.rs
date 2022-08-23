@@ -1,3 +1,5 @@
+use std::ops::Index;
+
 use assert_matches::assert_matches;
 use jsonrpsee::core::Error;
 use jsonrpsee::http_client::HttpClientBuilder;
@@ -145,7 +147,7 @@ async fn test_get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
         .append_body(header.block_number, &body)?
         .commit()?;
 
-    let expected_transaction = body.transactions.get(0).unwrap();
+    let expected_transaction = body.transactions.index(0);
     let expected_block = Block {
         header: header.into(),
         transactions: Transactions::Hashes(vec![expected_transaction.transaction_hash()]),
@@ -220,7 +222,7 @@ async fn test_get_block_w_full_transactions() -> Result<(), anyhow::Error> {
         .append_body(header.block_number, &body)?
         .commit()?;
 
-    let expected_transaction = body.transactions.get(0).unwrap();
+    let expected_transaction = body.transactions.index(0);
     let expected_block = Block {
         header: header.into(),
         transactions: Transactions::Full(vec![expected_transaction.clone().into()]),
@@ -295,9 +297,11 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
 
     let (_, storage_diffs, _, _) = diff.destruct();
 
-    let address = storage_diffs.get(0).unwrap().address;
-    let key = storage_diffs.get(0).unwrap().diff.get(0).unwrap().key.clone();
-    let expected_value = storage_diffs.get(0).unwrap().diff.get(0).unwrap().value;
+    let storage_diff = storage_diffs.index(0);
+    let address = storage_diff.address;
+    let storage_entry = storage_diff.diff.index(0);
+    let key = storage_entry.key.clone();
+    let expected_value = storage_entry.value;
 
     // Get storage by block hash.
     let res = module
@@ -398,8 +402,9 @@ async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
 
     let (deployed_contracts, _, _, _) = diff.destruct();
 
-    let address = deployed_contracts.get(0).unwrap().address;
-    let expected_class_hash = deployed_contracts.get(0).unwrap().class_hash;
+    let contract = deployed_contracts.index(0);
+    let address = contract.address;
+    let expected_class_hash = contract.class_hash;
 
     // Get class hash by block hash.
     let res = module
@@ -485,7 +490,7 @@ async fn test_get_nonce() -> Result<(), anyhow::Error> {
         .commit()?;
 
     let (deployed_contracts, _, _, _) = diff.destruct();
-    let address = deployed_contracts.get(0).unwrap().address;
+    let address = deployed_contracts.index(0).address;
     let expected_nonce = Nonce::default();
 
     // Get class hash by block hash.
@@ -551,7 +556,7 @@ async fn test_get_transaction_by_hash() -> Result<(), anyhow::Error> {
     let (_, body) = get_test_block(1);
     storage_writer.begin_rw_txn()?.append_body(BlockNumber(0), &body)?.commit()?;
 
-    let expected_transaction = body.transactions.get(0).unwrap();
+    let expected_transaction = body.transactions.index(0);
     let res = module
         .call::<_, TransactionWithType>(
             "starknet_getTransactionByHash",
@@ -589,7 +594,7 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
         .append_body(header.block_number, &body)?
         .commit()?;
 
-    let expected_transaction = body.transactions.get(0).unwrap();
+    let expected_transaction = body.transactions.index(0);
 
     // Get transaction by block hash.
     let res = module
@@ -822,13 +827,13 @@ async fn test_get_transaction_receipt() -> Result<(), anyhow::Error> {
         .append_body(block_number, &body)?
         .commit()?;
 
-    let transaction_hash = body.transactions.get(0).unwrap().transaction_hash();
+    let transaction_hash = body.transactions.index(0).transaction_hash();
     let expected_receipt = TransactionReceiptWithStatus {
         receipt: TransactionReceipt {
             transaction_hash,
             block_hash: header.block_hash,
             block_number,
-            output: body.transaction_outputs.get(0).unwrap().clone(),
+            output: body.transaction_outputs.index(0).clone(),
         },
         status: header.status.into(),
     };
@@ -874,8 +879,9 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
 
     let (_, _, declared_classes, _) = diff.destruct();
 
-    let class_hash = declared_classes.get(0).unwrap().0;
-    let expected_contract_class = declared_classes.get(0).unwrap().1.clone();
+    let class = declared_classes.index(0);
+    let class_hash = class.0;
+    let expected_contract_class = class.1.clone();
 
     // Get class by block hash.
     let res = module
@@ -980,8 +986,8 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
         .commit()?;
 
     let (deployed_contracts, _, declared_classes, _) = diff.destruct();
-    let address = deployed_contracts.get(0).unwrap().address;
-    let expected_contract_class = declared_classes.get(0).unwrap().1.clone();
+    let address = deployed_contracts.index(0).address;
+    let expected_contract_class = declared_classes.index(0).1.clone();
 
     // Get class by block hash.
     let res = module
