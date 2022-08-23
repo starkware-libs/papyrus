@@ -195,6 +195,7 @@ impl ContractClass {
         Self { abi, program, entry_points_by_type }
     }
 
+    #[cfg(any(feature = "testing", test))]
     pub fn set_abi(&mut self, abi: serde_json::Value) {
         self.abi = abi;
     }
