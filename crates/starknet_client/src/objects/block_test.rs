@@ -5,10 +5,11 @@ use assert_matches::assert_matches;
 use starknet_api::serde_utils::bytes_from_hex_str;
 use starknet_api::{
     shash, BlockHash, ClassHash, ContractAddress, DeployedContract, GlobalRoot, StarkHash,
-    StorageEntry, StorageKey, TransactionHash,
+    StorageEntry, StorageKey, TransactionHash, TransactionOffsetInBlock,
 };
 
-use super::block::{Block, BlockStateUpdate, StateDiff};
+use super::block::{Block, BlockStateUpdate, StateDiff, TransactionReceiptsError};
+use super::transaction::TransactionReceipt;
 use crate::test_utils::read_resource::read_resource_file;
 use crate::ClientError;
 
@@ -74,11 +75,65 @@ fn load_block_state_update_succeeds() {
 }
 
 #[tokio::test]
-async fn mismatch_transaction_receipt_error() {
-    let raw_block = read_resource_file("block_with_mismatch_transaction_receipts.json");
+async fn try_into_starknet_api() {
+    let raw_block = read_resource_file("block.json");
     let block: Block = serde_json::from_str(&raw_block).unwrap();
-    let err = starknet_api::Block::try_from(block).unwrap_err();
-    assert_matches!(err, ClientError::MismatchTransactionReceipt { tx_hash, block_number: _ } if
-        tx_hash == TransactionHash(shash!("0x1c60d1088f403f3ca990e12131e71fed086920dae52ccee3e5e80e1bf19dc0f"))
+    let expected_num_of_tx_outputs = block.transactions.len();
+    let starknet_api_block = starknet_api::Block::try_from(block).unwrap();
+    assert_eq!(expected_num_of_tx_outputs, starknet_api_block.body.transaction_outputs.len());
+
+    let mut err_block: Block = serde_json::from_str(&raw_block).unwrap();
+    err_block.transaction_receipts.pop();
+    let err = starknet_api::Block::try_from(err_block).unwrap_err();
+    assert_matches!(
+        err,
+        ClientError::TransactionReceiptsError(TransactionReceiptsError::WrongNumberOfReceipts {
+            block_number: _,
+            num_of_txs: _,
+            num_of_receipts: _,
+        })
+    );
+
+    let mut err_block: Block = serde_json::from_str(&raw_block).unwrap();
+    err_block.transaction_receipts[0].transaction_index = TransactionOffsetInBlock(1);
+    let err = starknet_api::Block::try_from(err_block).unwrap_err();
+    assert_matches!(
+        err,
+        ClientError::TransactionReceiptsError(TransactionReceiptsError::MismatchTransactionIndex {
+            block_number: _,
+            tx_index: _,
+            tx_hash: _,
+            receipt_tx_index: _,
+        })
+    );
+
+    let mut err_block: Block = serde_json::from_str(&raw_block).unwrap();
+    err_block.transaction_receipts[0].transaction_hash = TransactionHash(shash!("0x4"));
+    let err = starknet_api::Block::try_from(err_block).unwrap_err();
+    assert_matches!(
+        err,
+        ClientError::TransactionReceiptsError(TransactionReceiptsError::MismatchTransactionHash {
+            block_number: _,
+            tx_index: _,
+            tx_hash: _,
+            receipt_tx_hash: _,
+        })
+    );
+
+    let mut err_block: Block = serde_json::from_str(&raw_block).unwrap();
+    err_block.transaction_receipts[0] = TransactionReceipt {
+        transaction_index: TransactionOffsetInBlock(0),
+        transaction_hash: err_block.transactions[0].transaction_hash(),
+        ..err_block.transaction_receipts[1].clone()
+    };
+    let err = starknet_api::Block::try_from(err_block).unwrap_err();
+    assert_matches!(
+        err,
+        ClientError::TransactionReceiptsError(TransactionReceiptsError::MismatchFields {
+            block_number: _,
+            tx_index: _,
+            tx_hash: _,
+            tx_type: _,
+        })
     );
 }

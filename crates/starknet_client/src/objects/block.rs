@@ -1,12 +1,13 @@
 use std::collections::BTreeMap;
+use std::ops::Index;
 
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockHash, BlockNumber, BlockTimestamp, ClassHash, ContractAddress, DeployedContract, GasPrice,
-    GlobalRoot, StorageDiff, StorageEntry,
+    GlobalRoot, StorageDiff, StorageEntry, TransactionHash, TransactionOffsetInBlock,
 };
 
-use super::transaction::{Transaction, TransactionReceipt};
+use super::transaction::{L1ToL2Message, Transaction, TransactionReceipt, TransactionType};
 use crate::{ClientError, ClientResult};
 
 /// A block as returned by the starknet gateway.
@@ -28,10 +29,139 @@ pub struct Block {
     pub transaction_receipts: Vec<TransactionReceipt>,
 }
 
+/// Errors that might be encountered while converting the client representation of [`Block`] to a
+/// [`starknet_api`][`Block`], specifically when converting a list of [`TransactionReceipt`] to a
+/// list of [`starknet_api`][`TransactionOutput`].
+#[derive(thiserror::Error, Debug)]
+pub enum TransactionReceiptsError {
+    #[error(
+        "In block number {:?} there are {:?} transactions and {:?} transaction receipts.",
+        block_number,
+        num_of_txs,
+        num_of_receipts
+    )]
+    WrongNumberOfReceipts { block_number: BlockNumber, num_of_txs: usize, num_of_receipts: usize },
+    #[error(
+        "In block number {:?}, transaction in index {:?} with hash {:?} and type {:?} has a \
+         receipt with mismatched fields.",
+        block_number,
+        tx_index,
+        tx_hash,
+        tx_type
+    )]
+    MismatchFields {
+        block_number: BlockNumber,
+        tx_index: TransactionOffsetInBlock,
+        tx_hash: TransactionHash,
+        tx_type: TransactionType,
+    },
+    #[error(
+        "In block number {:?}, transaction in index {:?} with hash {:?} has a receipt with \
+         transaction hash {:?}.",
+        block_number,
+        tx_index,
+        tx_hash,
+        receipt_tx_hash
+    )]
+    MismatchTransactionHash {
+        block_number: BlockNumber,
+        tx_index: TransactionOffsetInBlock,
+        tx_hash: TransactionHash,
+        receipt_tx_hash: TransactionHash,
+    },
+    #[error(
+        "In block number {:?}, transaction in index {:?} with hash {:?} has a receipt with \
+         transaction index {:?}.",
+        block_number,
+        tx_index,
+        tx_hash,
+        receipt_tx_index
+    )]
+    MismatchTransactionIndex {
+        block_number: BlockNumber,
+        tx_index: TransactionOffsetInBlock,
+        tx_hash: TransactionHash,
+        receipt_tx_index: TransactionOffsetInBlock,
+    },
+}
+
+/// Converts the client representation of [`Block`] to a [`starknet_api`][`Block`].
 impl TryFrom<Block> for starknet_api::Block {
     type Error = ClientError;
 
     fn try_from(block: Block) -> ClientResult<Self> {
+        // Check that the number of receipts is the same as the number of transactions.
+        let num_of_txs = block.transactions.len();
+        let num_of_receipts = block.transaction_receipts.len();
+        if num_of_txs != num_of_receipts {
+            return Err(ClientError::TransactionReceiptsError(
+                TransactionReceiptsError::WrongNumberOfReceipts {
+                    block_number: block.block_number,
+                    num_of_txs,
+                    num_of_receipts,
+                },
+            ));
+        }
+
+        // Get the transaction outputs.
+        let mut transaction_outputs = vec![];
+        for (i, receipt) in block.transaction_receipts.into_iter().enumerate() {
+            let transaction = block.transactions.index(i);
+
+            // Check that the transaction index that appears in the receipt is the same as the
+            // index of the transaction.
+            if i != receipt.transaction_index.0 {
+                return Err(ClientError::TransactionReceiptsError(
+                    TransactionReceiptsError::MismatchTransactionIndex {
+                        block_number: block.block_number,
+                        tx_index: TransactionOffsetInBlock(i),
+                        tx_hash: transaction.transaction_hash(),
+                        receipt_tx_index: receipt.transaction_index,
+                    },
+                ));
+            }
+
+            // Check that the transaction hash that appears in the receipt is the same as in the
+            // transaction.
+            if transaction.transaction_hash() != receipt.transaction_hash {
+                return Err(ClientError::TransactionReceiptsError(
+                    TransactionReceiptsError::MismatchTransactionHash {
+                        block_number: block.block_number,
+                        tx_index: TransactionOffsetInBlock(i),
+                        tx_hash: transaction.transaction_hash(),
+                        receipt_tx_hash: receipt.transaction_hash,
+                    },
+                ));
+            }
+
+            // Check that the receipt has the correct fields according to the transaction type.
+            if transaction.transaction_type() != TransactionType::InvokeFunction
+                && (receipt.l1_to_l2_consumed_message != L1ToL2Message::default()
+                    || !receipt.l2_to_l1_messages.is_empty()
+                    || !receipt.events.is_empty())
+            {
+                return Err(ClientError::TransactionReceiptsError(
+                    TransactionReceiptsError::MismatchFields {
+                        block_number: block.block_number,
+                        tx_index: TransactionOffsetInBlock(i),
+                        tx_hash: transaction.transaction_hash(),
+                        tx_type: transaction.transaction_type(),
+                    },
+                ));
+            }
+
+            let tx_output =
+                receipt.into_starknet_api_transaction_output(transaction.transaction_type());
+            transaction_outputs.push(tx_output);
+        }
+
+        // Get the transactions.
+        // Note: This cannot happen before getting the transaction outputs since we need to borrow
+        // the block transactions inside the for loop for the transaction type (TransactionType is
+        // defined in starknet_client therefore starknet_api::Transaction cannot return it).
+        let transactions: Vec<starknet_api::Transaction> =
+            block.transactions.into_iter().map(starknet_api::Transaction::from).collect();
+
         // Get the header.
         let header = starknet_api::BlockHeader {
             block_hash: block.block_hash,
@@ -43,25 +173,6 @@ impl TryFrom<Block> for starknet_api::Block {
             timestamp: block.timestamp,
             status: block.status.into(),
         };
-
-        // Get the transactions and the transaction outputs.
-        let mut iter =
-            block.transaction_receipts.into_iter().zip(block.transactions.into_iter()).map(
-                |(receipt, tx)| {
-                    (
-                        receipt.into_starknet_api_transaction_output(tx.transaction_type()),
-                        starknet_api::Transaction::from(tx),
-                    )
-                },
-            );
-        if let Some((_output, tx)) = iter.find(|(output, _tx)| output.is_none()) {
-            return Err(ClientError::MismatchTransactionReceipt {
-                tx_hash: tx.transaction_hash(),
-                block_number: block.block_number,
-            });
-        }
-        let (transaction_outputs, transactions) =
-            iter.map(|(output, tx)| (output.unwrap(), tx)).unzip();
 
         Ok(Self { header, body: starknet_api::BlockBody { transactions, transaction_outputs } })
     }

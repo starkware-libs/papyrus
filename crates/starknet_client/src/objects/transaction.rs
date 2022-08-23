@@ -5,7 +5,7 @@ use starknet_api::{
     CallData, ClassHash, ContractAddress, ContractAddressSalt, DeclareTransactionOutput,
     DeployTransactionOutput, EntryPointSelector, EntryPointType, EthAddress, Event, Fee,
     InvokeTransactionOutput, L1ToL2Payload, L2ToL1Payload, Nonce, StarkHash, TransactionHash,
-    TransactionOutput, TransactionSignature, TransactionVersion,
+    TransactionOffsetInBlock, TransactionOutput, TransactionSignature, TransactionVersion,
 };
 
 // TODO(dan): consider extracting common fields out (version, hash, type).
@@ -30,6 +30,14 @@ impl From<Transaction> for starknet_api::Transaction {
 }
 
 impl Transaction {
+    pub fn transaction_hash(&self) -> TransactionHash {
+        match self {
+            Transaction::Declare(tx) => tx.transaction_hash,
+            Transaction::Deploy(tx) => tx.transaction_hash,
+            Transaction::Invoke(tx) => tx.transaction_hash,
+        }
+    }
+
     pub fn transaction_type(&self) -> TransactionType {
         match self {
             Transaction::Declare(tx) => tx.r#type,
@@ -123,7 +131,7 @@ impl From<InvokeTransaction> for starknet_api::InvokeTransaction {
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct TransactionReceipt {
-    pub transaction_index: TransactionIndexInBlock,
+    pub transaction_index: TransactionOffsetInBlock,
     pub transaction_hash: TransactionHash,
     #[serde(default)]
     pub l1_to_l2_consumed_message: L1ToL2Message,
@@ -137,30 +145,21 @@ impl TransactionReceipt {
     pub fn into_starknet_api_transaction_output(
         self,
         tx_type: TransactionType,
-    ) -> Option<TransactionOutput> {
+    ) -> TransactionOutput {
         match tx_type {
-            TransactionType::Declare | TransactionType::Deploy
-                if self.l1_to_l2_consumed_message != L1ToL2Message::default()
-                    || !self.l2_to_l1_messages.is_empty()
-                    || !self.events.is_empty() =>
-            {
-                None
-            }
             TransactionType::Declare => {
-                Some(TransactionOutput::Declare(DeclareTransactionOutput {
-                    actual_fee: self.actual_fee,
-                }))
+                TransactionOutput::Declare(DeclareTransactionOutput { actual_fee: self.actual_fee })
             }
-            TransactionType::Deploy => Some(TransactionOutput::Deploy(DeployTransactionOutput {
-                actual_fee: self.actual_fee,
-            })),
+            TransactionType::Deploy => {
+                TransactionOutput::Deploy(DeployTransactionOutput { actual_fee: self.actual_fee })
+            }
             TransactionType::InvokeFunction => {
                 let l1_origin_message = match self.l1_to_l2_consumed_message {
                     message if message == L1ToL2Message::default() => None,
                     message => Some(starknet_api::MessageToL2::from(message)),
                 };
 
-                Some(TransactionOutput::Invoke(InvokeTransactionOutput {
+                TransactionOutput::Invoke(InvokeTransactionOutput {
                     actual_fee: self.actual_fee,
                     messages_sent: self
                         .l2_to_l1_messages
@@ -169,7 +168,7 @@ impl TransactionReceipt {
                         .collect(),
                     l1_origin_message,
                     events: self.events,
-                }))
+                })
             }
         }
     }
@@ -229,11 +228,6 @@ impl From<L2ToL1Message> for starknet_api::MessageToL1 {
         starknet_api::MessageToL1 { to_address: message.to_address, payload: message.payload }
     }
 }
-
-#[derive(
-    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct TransactionIndexInBlock(pub usize);
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum TransactionType {
