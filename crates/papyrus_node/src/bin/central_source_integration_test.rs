@@ -13,7 +13,7 @@ async fn main() {
     let mut block_marker = BlockNumber(200);
     let block_stream = central_source.stream_new_blocks(block_marker, last_block_number).fuse();
     pin_mut!(block_stream);
-    while let Some(Ok((block_number, _header, _body))) = block_stream.next().await {
+    while let Some(Ok((block_number, _block))) = block_stream.next().await {
         assert!(
             block_marker == block_number,
             "Expected block number ({}) does not match the result ({}).",
