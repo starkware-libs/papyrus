@@ -24,10 +24,7 @@ use starknet_api::{
 };
 
 use self::api::{BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcError, JsonRpcServer, Tag};
-use self::objects::{
-    from_starknet_storage_diffs, Block, BlockHeader, GateWayStateDiff, StateUpdate,
-    TransactionWithType, Transactions,
-};
+use self::objects::{Block, BlockHeader, StateUpdate, TransactionWithType, Transactions};
 
 #[derive(Serialize, Deserialize)]
 pub struct GatewayConfig {
@@ -258,12 +255,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
             block_hash: header.block_hash,
             new_root: header.state_root,
             old_root,
-            state_diff: GateWayStateDiff {
-                storage_diffs: from_starknet_storage_diffs(db_state_diff.storage_diffs),
-                declared_classes: vec![],
-                deployed_contracts: db_state_diff.deployed_contracts,
-                nonces: vec![],
-            },
+            state_diff: db_state_diff.into(),
         })
     }
 

@@ -238,7 +238,7 @@ async fn stream_state_updates() {
         deployed_contracts
     );
     assert_eq!(
-        vec![StorageDiff { address: contract_address1, diff: vec![storage_entry] }],
+        vec![StorageDiff { address: contract_address1, storage_entries: vec![storage_entry] }],
         storage_diffs
     );
     assert_eq!(
