@@ -32,6 +32,7 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff) {
         block_number: BlockNumber(0),
         block_hash: parent_hash,
         state_root,
+        sequencer: ContractAddress(shash!("0x12")),
         ..BlockHeader::default()
     };
 
@@ -41,6 +42,7 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff) {
         block_number: BlockNumber(1),
         block_hash,
         parent_hash,
+        sequencer: ContractAddress(shash!("0x12")),
         ..BlockHeader::default()
     };
 

@@ -3,8 +3,15 @@
 #[path = "serde_utils_test.rs"]
 mod serde_utils_test;
 
+use log;
 use serde::de::{Deserialize, Visitor};
 use serde::ser::{Serialize, SerializeTuple};
+
+use crate::{shash, ContractAddress, StarkHash};
+
+//// Upper bound for contract addresses (2**251 - 256).
+pub const CONTRACT_ADRESS_UPPER_BOUND: &str =
+    "0x7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00";
 
 /// A hexadecimal value as a byte array used for serialisation/deserialisation.
 ///
@@ -68,6 +75,30 @@ impl<const N: usize, const PREFIXED: bool> Serialize for HexAsBytes<N, PREFIXED>
                 seq.serialize_element(element)?;
             }
             seq.end()
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ContractAddress {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let hash = StarkHash::deserialize(deserializer)?;
+
+        let lower_bound = StarkHash::from_u64(0);
+        let upper_bound = shash!(CONTRACT_ADRESS_UPPER_BOUND);
+
+        if hash > lower_bound && hash < upper_bound {
+            Ok(ContractAddress(hash))
+        } else {
+            let error_msg = format!(
+                "Failed to deserialize contract address. Expected StarkHash in range [1, \
+                 {CONTRACT_ADRESS_UPPER_BOUND}), received {:#?}.",
+                hash
+            );
+            log::error!("{}", error_msg);
+            Err(serde::de::Error::custom(error_msg))
         }
     }
 }
