@@ -94,7 +94,7 @@
             "actual_fee": "0xdb2148b8ea5"
         },
         {
-            "transaction_index": 11,
+            "transaction_index": 2,
             "transaction_hash": "0x3ff2070e6723bb9b6414977324f916eb53b51f9691e5d9a4fb67160d048958b",
             "l2_to_l1_messages": [],
             "events": [],

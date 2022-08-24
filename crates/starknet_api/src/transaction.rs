@@ -16,7 +16,7 @@ pub struct TransactionHash(pub StarkHash);
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct TransactionOffsetInBlock(pub u64);
+pub struct TransactionOffsetInBlock(pub usize);
 
 /// A fee in StarkNet.
 #[derive(

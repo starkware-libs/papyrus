@@ -21,6 +21,7 @@ use url::Url;
 
 pub use self::objects::block::{
     client_to_starknet_api_storage_diff, Block, BlockStateUpdate, StateDiff,
+    TransactionReceiptsError,
 };
 use self::retry::Retry;
 pub use self::retry::RetryConfig;
@@ -118,6 +119,9 @@ pub enum ClientError {
     /// A client error representing errors returned by the starknet client.
     #[error(transparent)]
     StarknetError(#[from] StarknetError),
+    /// A client error representing transaction receipts errors.
+    #[error(transparent)]
+    TransactionReceiptsError(#[from] TransactionReceiptsError),
 }
 
 const GET_BLOCK_URL: &str = "feeder_gateway/get_block";

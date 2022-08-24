@@ -113,3 +113,9 @@ pub struct BlockBody {
     pub transactions: Vec<Transaction>,
     pub transaction_outputs: Vec<TransactionOutput>,
 }
+
+#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct Block {
+    pub header: BlockHeader,
+    pub body: BlockBody,
+}
