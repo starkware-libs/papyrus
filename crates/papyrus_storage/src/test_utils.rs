@@ -26,6 +26,9 @@ pub fn get_test_block(transaction_count: usize) -> (BlockHeader, BlockBody) {
             "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"
         )),
         block_number: BlockNumber(0),
+        sequencer: ContractAddress(shash!(
+            "0x6324f76f396c5e1d79d2637cc714842c864b2cc732e164717819c77885bddd6"
+        )),
         ..BlockHeader::default()
     };
     let mut transactions = vec![];
@@ -34,7 +37,9 @@ pub fn get_test_block(transaction_count: usize) -> (BlockHeader, BlockBody) {
         let transaction = Transaction::Deploy(DeployTransaction {
             transaction_hash: TransactionHash(StarkHash::from_u64(i as u64)),
             version: TransactionVersion(shash!("0x1")),
-            contract_address: ContractAddress(shash!("0x2")),
+            contract_address: ContractAddress(shash!(
+                "0x6324f76f396c5e1d79d2637cc714842c864b2cc732e164717819c77885bddd6"
+            )),
             constructor_calldata: CallData(vec![shash!("0x3")]),
             class_hash: ClassHash(StarkHash::from_u64(i as u64)),
             contract_address_salt: ContractAddressSalt(shash!("0x4")),
