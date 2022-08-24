@@ -13,12 +13,12 @@ use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::{ErrorObject, INTERNAL_ERROR_MSG};
 use log::{error, info};
 use papyrus_storage::{
-    BodyStorageReader, HeaderStorageReader, StateStorageReader, StorageReader, StorageTxn,
-    TransactionKind,
+    BodyStorageReader, HeaderStorageReader, StateStorageReader, StatusStorageReader, StorageReader,
+    StorageTxn, TransactionKind,
 };
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockBody, BlockHash, BlockNumber, ClassHash, ContractAddress, ContractClass,
+    BlockBody, BlockHash, BlockNumber, BlockStatus, ClassHash, ContractAddress, ContractClass,
     DeclareTransactionOutput, GlobalRoot, Nonce, StarkFelt, StarkHash, StateNumber, StorageKey,
     TransactionHash, TransactionOffsetInBlock, TransactionOutput, TransactionReceipt, GENESIS_HASH,
 };
@@ -87,6 +87,15 @@ fn get_latest_block_number<Mode: TransactionKind>(
     Ok(txn.get_header_marker().map_err(internal_server_error)?.prev())
 }
 
+fn get_block_status_by_number<Mode: TransactionKind>(
+    txn: &StorageTxn<'_, Mode>,
+    block_number: BlockNumber,
+) -> Result<BlockStatus, Error> {
+    txn.get_block_status(block_number)
+        .map_err(internal_server_error)?
+        .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))
+}
+
 fn get_block_header_by_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
     block_number: BlockNumber,
@@ -134,19 +143,22 @@ impl JsonRpcServer for JsonRpcServerImpl {
     fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> Result<Block, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
+        let status = get_block_status_by_number(&txn, block_number)?;
         let (header, body) = get_block_by_number(&txn, block_number)?;
         let transaction_hashes: Vec<TransactionHash> =
             body.transactions.iter().map(|transaction| transaction.transaction_hash()).collect();
 
-        Ok(Block { header, transactions: Transactions::Hashes(transaction_hashes) })
+        Ok(Block { status, header, transactions: Transactions::Hashes(transaction_hashes) })
     }
 
     fn get_block_w_full_transactions(&self, block_id: BlockId) -> Result<Block, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
+        let status = get_block_status_by_number(&txn, block_number)?;
         let (header, body) = get_block_by_number(&txn, block_number)?;
 
         Ok(Block {
+            status,
             header,
             transactions: Transactions::Full(
                 body.transactions.into_iter().map(TransactionWithType::from).collect(),

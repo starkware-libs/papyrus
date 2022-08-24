@@ -123,7 +123,6 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                                 state_root: block.state_root,
                                 sequencer: block.sequencer_address,
                                 timestamp: block.timestamp,
-                                status: block.status.into(),
                             };
                             // TODO(spapini): Fill the correct tx outputs.
                             let body = BlockBody {

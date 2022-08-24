@@ -2,6 +2,7 @@ mod body;
 mod db;
 mod header;
 mod state;
+mod status;
 
 #[cfg(any(feature = "testing", test))]
 #[path = "test_utils.rs"]
@@ -13,8 +14,8 @@ use std::sync::Arc;
 use db::DbTableStats;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, Nonce, StarkFelt, StorageKey,
-    Transaction, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
+    BlockHash, BlockHeader, BlockNumber, BlockStatus, ClassHash, ContractAddress, Nonce, StarkFelt,
+    StorageKey, Transaction, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
 };
 use state::{IndexedDeclaredContract, IndexedDeployedContract};
 
@@ -26,6 +27,7 @@ use self::db::{
 };
 pub use self::header::{HeaderStorageReader, HeaderStorageWriter};
 pub use self::state::{StateStorageReader, StateStorageWriter, ThinStateDiff};
+pub use self::status::{StatusStorageReader, StatusStorageWriter};
 
 #[derive(Serialize, Deserialize)]
 pub struct StorageConfig {
@@ -76,6 +78,7 @@ pub enum MarkerKind {
     Header,
     Body,
     State,
+    Status,
 }
 pub type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
 
@@ -99,6 +102,7 @@ struct_field_names! {
         markers: TableIdentifier<MarkerKind, BlockNumber>,
         nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
         headers: TableIdentifier<BlockNumber, BlockHeader>,
+        statuses: TableIdentifier<BlockNumber, BlockStatus>,
         block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
         transactions: TableIdentifier<(BlockNumber, TransactionOffsetInBlock), Transaction>,
         transaction_outputs: TableIdentifier<(BlockNumber, TransactionOffsetInBlock), TransactionOutput>,
@@ -152,6 +156,7 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         markers: db_writer.create_table("markers")?,
         nonces: db_writer.create_table("nonces")?,
         headers: db_writer.create_table("headers")?,
+        statuses: db_writer.create_table("statuses")?,
         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
         transactions: db_writer.create_table("transactions")?,
         transaction_outputs: db_writer.create_table("transaction_outputs")?,
