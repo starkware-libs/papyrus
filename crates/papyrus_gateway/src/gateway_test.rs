@@ -10,20 +10,20 @@ use papyrus_storage::test_utils::{get_test_block, get_test_storage};
 use papyrus_storage::{BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 use starknet_api::{
     shash, BlockHash, BlockHeader, BlockNumber, BlockStatus, ClassHash, ContractAddress,
-    ContractClass, DeployedContract, GlobalRoot, Nonce, StarkFelt, StarkHash, StateDiff,
-    StorageDiff, StorageEntry, StorageKey, TransactionHash, TransactionReceipt,
+    ContractClass, DeployedContract, GlobalRoot, Nonce, StarkFelt, StarkHash, StorageDiff,
+    StorageEntry, StorageKey, TransactionHash, TransactionReceipt,
 };
 
 use super::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcClient, JsonRpcError, JsonRpcServer, Tag,
 };
 use super::objects::{
-    from_starknet_storage_diffs, Block, GateWayStateDiff, StateUpdate,
-    TransactionReceiptWithStatus, TransactionStatus, TransactionWithType, Transactions,
+    Block, StateUpdate, TransactionReceiptWithStatus, TransactionStatus, TransactionWithType,
+    Transactions,
 };
 use super::{run_server, GatewayConfig, JsonRpcServerImpl};
 
-fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff) {
+fn get_test_state_diff() -> (BlockHeader, BlockHeader, starknet_api::StateDiff) {
     let parent_hash =
         BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
     let state_root = GlobalRoot(shash!("0x12"));
@@ -53,7 +53,7 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff) {
     let value0 = shash!("0x200");
     let key1 = StorageKey(shash!("0x1002"));
     let value1 = shash!("0x201");
-    let diff = StateDiff::new(
+    let diff = starknet_api::StateDiff::new(
         vec![
             DeployedContract { address: address0, class_hash: hash0 },
             DeployedContract { address: address1, class_hash: hash1 },
@@ -61,14 +61,14 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff) {
         vec![
             StorageDiff {
                 address: address0,
-                diff: vec![
+                storage_entries: vec![
                     StorageEntry { key: key0.clone(), value: value0 },
                     StorageEntry { key: key1, value: value1 },
                 ],
             },
             StorageDiff {
                 address: address1,
-                diff: vec![StorageEntry { key: key0, value: value0 }],
+                storage_entries: vec![StorageEntry { key: key0, value: value0 }],
             },
         ],
         vec![(hash0, class0), (hash1, class1)],
@@ -306,7 +306,7 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
 
     let storage_diff = storage_diffs.index(0);
     let address = storage_diff.address;
-    let storage_entry = storage_diff.diff.index(0);
+    let storage_entry = storage_diff.storage_entries.index(0);
     let key = storage_entry.key.clone();
     let expected_value = storage_entry.value;
 
@@ -763,25 +763,17 @@ async fn test_get_state_update() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(parent_header.block_number, &parent_header)?
-        .append_state_diff(parent_header.block_number, StateDiff::default())?
+        .append_state_diff(parent_header.block_number, starknet_api::StateDiff::default())?
         .append_header(header.block_number, &header)?
         .append_state_diff(header.block_number, diff.clone())?
         .commit()?;
-
-    let (deployed_contracts, storage_diffs, _, _) = diff.destruct();
 
     let expected_update = StateUpdate {
         block_hash: header.block_hash,
         new_root: header.state_root,
         old_root: parent_header.state_root,
-        state_diff: GateWayStateDiff {
-            storage_diffs: from_starknet_storage_diffs(storage_diffs),
-            declared_classes: vec![],
-            deployed_contracts,
-            nonces: vec![],
-        },
+        state_diff: diff.into(),
     };
-    assert_eq!(expected_update.state_diff.storage_diffs.len(), 3);
 
     // Get state update by block hash.
     let res = module
@@ -891,7 +883,7 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(parent_header.block_number, &parent_header)?
-        .append_state_diff(parent_header.block_number, StateDiff::default())?
+        .append_state_diff(parent_header.block_number, starknet_api::StateDiff::default())?
         .append_header(header.block_number, &header)?
         .append_state_diff(header.block_number, diff.clone())?
         .commit()?;
@@ -999,7 +991,7 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(parent_header.block_number, &parent_header)?
-        .append_state_diff(parent_header.block_number, StateDiff::default())?
+        .append_state_diff(parent_header.block_number, starknet_api::StateDiff::default())?
         .append_header(header.block_number, &header)?
         .append_state_diff(header.block_number, diff.clone())?
         .commit()?;
