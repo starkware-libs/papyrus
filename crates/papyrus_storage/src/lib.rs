@@ -1,6 +1,7 @@
 mod body;
 mod db;
 mod header;
+mod serializers;
 mod state;
 
 #[cfg(any(feature = "testing", test))]
