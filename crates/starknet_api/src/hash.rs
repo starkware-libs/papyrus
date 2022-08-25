@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use super::serde_utils::{
     bytes_from_hex_str, DeserializationError, HexAsBytes, PrefixedHexAsBytes,
 };
+use crate::serde_utils::hex_str_from_bytes;
 
 /// Genesis state hash.
 pub const GENESIS_HASH: &str = "0x0";
@@ -17,10 +18,18 @@ pub const GENESIS_HASH: &str = "0x0";
 /// A hash in StarkNet.
 #[derive(Copy, Clone, Eq, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(from = "PrefixedHexAsBytes<32_usize>", into = "PrefixedHexAsBytes<32_usize>")]
-pub struct StarkHash(pub [u8; 32]);
+pub struct StarkHash([u8; 32]);
+impl StarkHash {
+    pub fn bytes(&self) -> &[u8] {
+        &self.0
+    }
+    pub fn into_bytes(self) -> [u8; 32] {
+        self.0
+    }
+}
 impl From<PrefixedHexAsBytes<32_usize>> for StarkHash {
     fn from(val: PrefixedHexAsBytes<32_usize>) -> Self {
-        StarkHash(val.0)
+        StarkHash::new(val.0).unwrap()
     }
 }
 impl From<StarkHash> for PrefixedHexAsBytes<32_usize> {
@@ -37,10 +46,25 @@ impl Debug for StarkHash {
 }
 
 impl StarkHash {
+    /// Returns a new [`StarkHash`].
+    pub fn new(bytes: [u8; 32]) -> Result<StarkHash, DeserializationError> {
+        if bytes[0] >= 0x10 {
+            return Err(DeserializationError::OutOfRange {
+                string: hex_str_from_bytes::<32, true>(bytes),
+            });
+        }
+        Ok(Self(bytes))
+    }
     /// Returns a [`StarkHash`] corresponding to `hex_str`.
     pub fn from_hex(hex_str: &str) -> Result<StarkHash, DeserializationError> {
         let bytes = bytes_from_hex_str::<32, true>(hex_str)?;
-        Ok(StarkHash(bytes))
+        Self::new(bytes)
+    }
+    /// Returns a [`StarkHash`] corresponding to `hex_str`, without checking for out of range.
+    /// Should not be used under normal circumstances.
+    pub fn from_hex_unchecked(hex_str: &str) -> Result<StarkHash, DeserializationError> {
+        let bytes = bytes_from_hex_str::<32, true>(hex_str)?;
+        Ok(Self(bytes))
     }
     /// Returns a [`StarkHash`] corresponding to `val`.
     pub fn from_u64(val: u64) -> StarkHash {
