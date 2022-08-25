@@ -56,13 +56,13 @@ impl StateDiff {
         nonces: Vec<(ContractAddress, Nonce)>,
     ) -> Result<Self, StarknetApiError> {
         // TODO(yair): Use std::Vec::is_sorted_by_key once it becomes stable.
-        let are_deployed_contrcats_sorted_by_address = std::iter::zip(
+        let are_deployed_contracts_sorted_by_address = std::iter::zip(
             deployed_contracts.iter().map(|i| i.address),
             deployed_contracts.iter().skip(1).map(|i| i.address),
         )
         .all(|addresses| addresses.0 < addresses.1);
 
-        if !are_deployed_contrcats_sorted_by_address {
+        if !are_deployed_contracts_sorted_by_address {
             return Err(StarknetApiError::DeployedContractsNotSorted);
         }
 
