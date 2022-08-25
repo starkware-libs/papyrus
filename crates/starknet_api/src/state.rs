@@ -126,7 +126,7 @@ pub struct StorageDiff {
 // TODO: Invariant: this is in range.
 // TODO(spapini): Enforce the invariant.
 /// A storage key in a StarkNet contract.
-#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Serialize, PartialOrd, Ord)]
 pub struct StorageKey(pub StarkFelt);
 
 /// A storage entry in a StarkNet contract.

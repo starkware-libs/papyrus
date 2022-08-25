@@ -6,9 +6,7 @@ use crate::TransactionOutput;
 
 // TODO(spapini): Verify the invariant that it is in range.
 /// The hash of a StarkNet block.
-#[derive(
-    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
+#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Serialize, PartialOrd, Ord)]
 pub struct BlockHash(pub StarkHash);
 
 /// The root of the global state at a StarkNet block.

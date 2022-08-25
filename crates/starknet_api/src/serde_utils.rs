@@ -7,11 +7,17 @@ use log;
 use serde::de::{Deserialize, Visitor};
 use serde::ser::{Serialize, SerializeTuple};
 
-use crate::{shash, ContractAddress, StarkHash};
+use crate::{shash, BlockHash, ContractAddress, StarkHash, StorageKey};
 
 //// Upper bound for contract addresses (2**251 - 256).
 pub const CONTRACT_ADRESS_UPPER_BOUND: &str =
     "0x7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00";
+
+pub const STORAGE_KEY_UPPER_BOUND: &str =
+    "0x800000000000000000000000000000000000000000000000000000000000000";
+
+pub const BLOCK_HASH_UPPER_BOUND: &str =
+    "0x800000000000000000000000000000000000000000000000000000000000000";
 
 /// A hexadecimal value as a byte array used for serialisation/deserialisation.
 ///
@@ -89,12 +95,57 @@ impl<'de> Deserialize<'de> for ContractAddress {
         let lower_bound = StarkHash::from_u64(0);
         let upper_bound = shash!(CONTRACT_ADRESS_UPPER_BOUND);
 
-        if hash > lower_bound && hash < upper_bound {
+        if validate_exclusive_range(hash, Some(lower_bound), Some(upper_bound)) {
             Ok(ContractAddress(hash))
         } else {
             let error_msg = format!(
                 "Failed to deserialize contract address. Expected StarkHash in range [1, \
                  {CONTRACT_ADRESS_UPPER_BOUND}), received {:#?}.",
+                hash
+            );
+            log::error!("{}", error_msg);
+            Err(serde::de::Error::custom(error_msg))
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for StorageKey {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let hash = StarkHash::deserialize(deserializer)?;
+
+        let upper_bound = shash!(STORAGE_KEY_UPPER_BOUND);
+
+        if validate_exclusive_range(hash, None, Some(upper_bound)) {
+            Ok(StorageKey(hash))
+        } else {
+            let error_msg = format!(
+                "Failed to deserialize storage key. Expected StarkHash in range [0, \
+                 {STORAGE_KEY_UPPER_BOUND}), received {:#?}.",
+                hash
+            );
+            log::error!("{}", error_msg);
+            Err(serde::de::Error::custom(error_msg))
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for BlockHash {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let hash = StarkHash::deserialize(deserializer)?;
+        let upper_bound = shash!(BLOCK_HASH_UPPER_BOUND);
+
+        if validate_exclusive_range(hash, None, Some(upper_bound)) {
+            Ok(BlockHash(hash))
+        } else {
+            let error_msg = format!(
+                "Failed to deserialize block hash. Expected StarkHash in range [0, \
+                 {BLOCK_HASH_UPPER_BOUND}), received {:#?}.",
                 hash
             );
             log::error!("{}", error_msg);
@@ -146,4 +197,22 @@ pub fn hex_str_from_bytes<const N: usize, const PREFIXED: bool>(bytes: [u8; N]) 
     let mut hex_str = hex_str.trim_start_matches('0');
     hex_str = if hex_str.is_empty() { "0" } else { hex_str };
     if PREFIXED { format!("0x{}", hex_str) } else { hex_str.to_string() }
+}
+
+fn validate_exclusive_range(
+    val: StarkHash,
+    lower_bound: Option<StarkHash>,
+    upper_bound: Option<StarkHash>,
+) -> bool {
+    if let Some(bound) = lower_bound {
+        if val <= bound {
+            return false;
+        }
+    }
+    if let Some(bound) = upper_bound {
+        if val >= bound {
+            return false;
+        }
+    }
+    true
 }

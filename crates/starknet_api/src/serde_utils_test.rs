@@ -1,8 +1,11 @@
 use assert_matches::assert_matches;
 
-use super::{bytes_from_hex_str, hex_str_from_bytes, DeserializationError, HexAsBytes};
-use crate::serde_utils::CONTRACT_ADRESS_UPPER_BOUND;
-use crate::{shash, ContractAddress, StarkHash};
+use super::{
+    bytes_from_hex_str, hex_str_from_bytes, DeserializationError, HexAsBytes,
+    BLOCK_HASH_UPPER_BOUND,
+};
+use crate::serde_utils::{CONTRACT_ADRESS_UPPER_BOUND, STORAGE_KEY_UPPER_BOUND};
+use crate::{shash, BlockHash, ContractAddress, StarkHash, StorageKey};
 
 #[test]
 fn test_hex_str_from_bytes() {
@@ -110,7 +113,7 @@ fn test_hex_as_bytes_serde_not_prefixed() {
 }
 
 #[test]
-fn test_desirialize_contract_address() {
+fn test_deserialize_contract_address() {
     let expected = ContractAddress(shash!(
         "0x6324f76f396c5e1d79d2637cc714842c864b2cc732e164717819c77885bddd6"
     ));
@@ -126,5 +129,31 @@ fn test_desirialize_contract_address() {
     let not_in_range = ContractAddress(shash!(CONTRACT_ADRESS_UPPER_BOUND));
     let serialized = &serde_json::to_string(&not_in_range.0).unwrap();
     let deserialized = serde_json::from_str::<ContractAddress>(serialized);
+    assert!(deserialized.is_err());
+}
+
+#[test]
+fn test_deserialize_storage_key() {
+    let expected = StorageKey(shash!("0x1"));
+    let serialized = &serde_json::to_string(&expected.0).unwrap();
+    let deserialized = serde_json::from_str::<StorageKey>(serialized).unwrap();
+    assert_eq!(expected, deserialized);
+
+    let not_in_range = StorageKey(shash!(STORAGE_KEY_UPPER_BOUND));
+    let serialized = &serde_json::to_string(&not_in_range.0).unwrap();
+    let deserialized = serde_json::from_str::<StorageKey>(serialized);
+    assert!(deserialized.is_err());
+}
+
+#[test]
+fn test_deserialize_block_hash() {
+    let expected = BlockHash(shash!("0x1"));
+    let serialized = &serde_json::to_string(&expected.0).unwrap();
+    let deserialized = serde_json::from_str::<BlockHash>(serialized).unwrap();
+    assert_eq!(expected, deserialized);
+
+    let not_in_range = BlockHash(shash!(BLOCK_HASH_UPPER_BOUND));
+    let serialized = &serde_json::to_string(&not_in_range.0).unwrap();
+    let deserialized = serde_json::from_str::<BlockHash>(serialized);
     assert!(deserialized.is_err());
 }
