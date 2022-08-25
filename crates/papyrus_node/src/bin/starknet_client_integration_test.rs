@@ -13,12 +13,15 @@ async fn main() {
     let _state_diff =
         starknet_client.state_update(BlockNumber(123456)).await.expect("Get state diff");
     let _contract_class_by_hash = starknet_client
-        .class_by_hash(ClassHash(StarkHash(
-            bytes_from_hex_str::<32, true>(
-                "0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17",
+        .class_by_hash(ClassHash(
+            StarkHash::new(
+                bytes_from_hex_str::<32, true>(
+                    "0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17",
+                )
+                .unwrap(),
             )
             .unwrap(),
-        )))
+        ))
         .await
         .expect("Get class by hash");
 }
