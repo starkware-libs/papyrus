@@ -6,12 +6,14 @@ use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
-use papyrus_storage::test_utils::{get_test_block, get_test_storage};
+use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 use starknet_api::{
-    shash, BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, ContractClass,
-    DeclareTransactionOutput, DeployedContract, GlobalRoot, Nonce, StarkFelt, StarkHash, StateDiff,
-    StorageDiff, StorageEntry, StorageKey, TransactionHash, TransactionOutput, TransactionReceipt,
+    shash, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, CallData, ClassHash,
+    ContractAddress, ContractAddressSalt, ContractClass, DeclareTransactionOutput,
+    DeployTransaction, DeployTransactionOutput, DeployedContract, Fee, GlobalRoot, Nonce,
+    StarkFelt, StarkHash, StateDiff, StorageDiff, StorageEntry, StorageKey, Transaction,
+    TransactionHash, TransactionOutput, TransactionReceipt, TransactionVersion,
 };
 
 use super::api::{
@@ -22,6 +24,35 @@ use super::objects::{
     Transactions,
 };
 use super::{run_server, GatewayConfig, JsonRpcServerImpl};
+
+pub fn get_test_block(transaction_count: usize) -> starknet_api::Block {
+    let header = BlockHeader {
+        block_hash: BlockHash(shash!(
+            "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"
+        )),
+        block_number: BlockNumber(0),
+        ..BlockHeader::default()
+    };
+    let mut transactions = vec![];
+    let mut transaction_outputs = vec![];
+    for i in 0..transaction_count {
+        let transaction = Transaction::Deploy(DeployTransaction {
+            transaction_hash: TransactionHash(StarkHash::from_u64(i as u64)),
+            version: TransactionVersion(shash!("0x1")),
+            contract_address: ContractAddress(shash!("0x2")),
+            constructor_calldata: CallData(vec![shash!("0x3")]),
+            class_hash: ClassHash(StarkHash::from_u64(i as u64)),
+            contract_address_salt: ContractAddressSalt(shash!("0x4")),
+        });
+        transactions.push(transaction);
+        let transaction_output =
+            TransactionOutput::Deploy(DeployTransactionOutput { actual_fee: Fee::default() });
+        transaction_outputs.push(transaction_output);
+    }
+    let body = BlockBody { transactions, transaction_outputs };
+
+    starknet_api::Block { status: BlockStatus::default(), header, body }
+}
 
 fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff) {
     let parent_hash =
@@ -123,14 +154,20 @@ async fn test_block_hash_and_number() -> Result<(), anyhow::Error> {
     ));
 
     // Add a block and check again.
-    let (header, _) = get_test_block(1);
-    storage_writer.begin_rw_txn()?.append_header(header.block_number, &header)?.commit()?;
+    let block = get_test_block(1);
+    storage_writer
+        .begin_rw_txn()?
+        .append_header(block.header.block_number, &block.header)?
+        .commit()?;
     let block_hash_and_number = module
         .call::<_, BlockHashAndNumber>("starknet_blockHashAndNumber", EmptyParams::new())
         .await?;
     assert_eq!(
         block_hash_and_number,
-        BlockHashAndNumber { block_hash: header.block_hash, block_number: header.block_number }
+        BlockHashAndNumber {
+            block_hash: block.header.block_hash,
+            block_number: block.header.block_number,
+        }
     );
     Ok(())
 }
@@ -140,16 +177,17 @@ async fn test_get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
-    let (header, body) = get_test_block(1);
+    let block = get_test_block(1);
     storage_writer
         .begin_rw_txn()?
-        .append_header(header.block_number, &header)?
-        .append_body(header.block_number, &body)?
+        .append_header(block.header.block_number, &block.header)?
+        .append_body(block.header.block_number, &block.body)?
         .commit()?;
 
-    let expected_transaction = body.transactions.index(0);
+    let expected_transaction = block.body.transactions.index(0);
     let expected_block = Block {
-        header: header.into(),
+        status: block.status,
+        header: block.header.into(),
         transactions: Transactions::Hashes(vec![expected_transaction.transaction_hash()]),
     };
 
@@ -215,16 +253,17 @@ async fn test_get_block_w_full_transactions() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
-    let (header, body) = get_test_block(1);
+    let block = get_test_block(1);
     storage_writer
         .begin_rw_txn()?
-        .append_header(header.block_number, &header)?
-        .append_body(header.block_number, &body)?
+        .append_header(block.header.block_number, &block.header)?
+        .append_body(block.header.block_number, &block.body)?
         .commit()?;
 
-    let expected_transaction = body.transactions.index(0);
+    let expected_transaction = block.body.transactions.index(0);
     let expected_block = Block {
-        header: header.into(),
+        status: block.status,
+        header: block.header.into(),
         transactions: Transactions::Full(vec![expected_transaction.clone().into()]),
     };
 
@@ -566,10 +605,10 @@ async fn test_get_transaction_by_hash() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
-    let (_, body) = get_test_block(1);
-    storage_writer.begin_rw_txn()?.append_body(BlockNumber(0), &body)?.commit()?;
+    let block = get_test_block(1);
+    storage_writer.begin_rw_txn()?.append_body(block.header.block_number, &block.body)?.commit()?;
 
-    let expected_transaction = body.transactions.index(0);
+    let expected_transaction = block.body.transactions.index(0);
     let res = module
         .call::<_, TransactionWithType>(
             "starknet_getTransactionByHash",
@@ -600,20 +639,20 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
-    let (header, body) = get_test_block(1);
+    let block = get_test_block(1);
     storage_writer
         .begin_rw_txn()?
-        .append_header(header.block_number, &header)?
-        .append_body(header.block_number, &body)?
+        .append_header(block.header.block_number, &block.header)?
+        .append_body(block.header.block_number, &block.body)?
         .commit()?;
 
-    let expected_transaction = body.transactions.index(0);
+    let expected_transaction = block.body.transactions.index(0);
 
     // Get transaction by block hash.
     let res = module
         .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), 0),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash)), 0),
         )
         .await
         .unwrap();
@@ -623,7 +662,7 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
     let res = module
         .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), 0),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(block.header.block_number)), 0),
         )
         .await
         .unwrap();
@@ -666,7 +705,7 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
     let err = module
         .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), 1),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash)), 1),
         )
         .await
         .unwrap_err();
@@ -684,18 +723,18 @@ async fn test_get_block_transaction_count() -> Result<(), anyhow::Error> {
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
     let transaction_count = 5;
-    let (header, body) = get_test_block(transaction_count);
+    let block = get_test_block(transaction_count);
     storage_writer
         .begin_rw_txn()?
-        .append_header(header.block_number, &header)?
-        .append_body(header.block_number, &body)?
+        .append_header(block.header.block_number, &block.header)?
+        .append_body(block.header.block_number, &block.body)?
         .commit()?;
 
     // Get block by hash.
     let res = module
         .call::<_, usize>(
             "starknet_getBlockTransactionCount",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash))],
         )
         .await?;
     assert_eq!(res, transaction_count);
@@ -704,7 +743,7 @@ async fn test_get_block_transaction_count() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, usize>(
             "starknet_getBlockTransactionCount",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(block.header.block_number))],
         )
         .await?;
     assert_eq!(res, transaction_count);
@@ -832,16 +871,15 @@ async fn test_get_transaction_receipt() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
-    let (_, body) = get_test_block(1);
-    let block_number = BlockNumber(0);
-    storage_writer.begin_rw_txn()?.append_body(block_number, &body)?.commit()?;
+    let block = get_test_block(1);
+    storage_writer.begin_rw_txn()?.append_body(block.header.block_number, &block.body)?.commit()?;
     // TODO(anatg): Write a transaction receipt to the storage.
 
-    let transaction_hash = body.transactions.index(0).transaction_hash();
+    let transaction_hash = block.body.transactions.index(0).transaction_hash();
     let expected_receipt = TransactionReceipt {
         transaction_hash,
         block_hash: BlockHash::default(),
-        block_number,
+        block_number: block.header.block_number,
         output: TransactionOutput::Declare(DeclareTransactionOutput::default()),
     };
     let res = module

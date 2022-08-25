@@ -18,7 +18,7 @@ use papyrus_storage::{
 };
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockBody, BlockHash, BlockNumber, ClassHash, ContractAddress, ContractClass,
+    BlockBody, BlockHash, BlockNumber, BlockStatus, ClassHash, ContractAddress, ContractClass,
     DeclareTransactionOutput, GlobalRoot, Nonce, StarkFelt, StarkHash, StateNumber, StorageKey,
     TransactionHash, TransactionOffsetInBlock, TransactionOutput, TransactionReceipt, GENESIS_HASH,
 };
@@ -138,7 +138,11 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let transaction_hashes: Vec<TransactionHash> =
             body.transactions.iter().map(|transaction| transaction.transaction_hash()).collect();
 
-        Ok(Block { header, transactions: Transactions::Hashes(transaction_hashes) })
+        Ok(Block {
+            status: BlockStatus::default(),
+            header,
+            transactions: Transactions::Hashes(transaction_hashes),
+        })
     }
 
     fn get_block_w_full_transactions(&self, block_id: BlockId) -> Result<Block, Error> {
@@ -147,6 +151,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let (header, body) = get_block_by_number(&txn, block_number)?;
 
         Ok(Block {
+            status: BlockStatus::default(),
             header,
             transactions: Transactions::Full(
                 body.transactions.into_iter().map(TransactionWithType::from).collect(),
