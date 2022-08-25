@@ -1,5 +1,5 @@
 use starknet_api::{
-    shash, Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, CallData, ClassHash,
+    shash, Block, BlockBody, BlockHash, BlockHeader, BlockNumber, CallData, ClassHash,
     ContractAddress, ContractAddressSalt, DeployTransaction, DeployTransactionOutput, Fee,
     StarkHash, Transaction, TransactionHash, TransactionOutput, TransactionVersion,
 };
@@ -46,5 +46,5 @@ pub fn get_test_block(transaction_count: usize) -> Block {
     }
     let body = BlockBody { transactions, transaction_outputs };
 
-    Block { status: BlockStatus::default(), header, body }
+    Block { header, body }
 }

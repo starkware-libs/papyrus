@@ -9,9 +9,10 @@ use jsonrpsee::types::EmptyParams;
 use papyrus_storage::test_utils::{get_test_block, get_test_storage};
 use papyrus_storage::{BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 use starknet_api::{
-    shash, BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, ContractClass,
-    DeclareTransactionOutput, DeployedContract, GlobalRoot, Nonce, StarkFelt, StarkHash, StateDiff,
-    StorageDiff, StorageEntry, StorageKey, TransactionHash, TransactionOutput, TransactionReceipt,
+    shash, BlockHash, BlockHeader, BlockNumber, BlockStatus, ClassHash, ContractAddress,
+    ContractClass, DeclareTransactionOutput, DeployedContract, GlobalRoot, Nonce, StarkFelt,
+    StarkHash, StateDiff, StorageDiff, StorageEntry, StorageKey, TransactionHash,
+    TransactionOutput, TransactionReceipt,
 };
 
 use super::api::{
@@ -155,7 +156,7 @@ async fn test_get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
 
     let expected_transaction = block.body.transactions.index(0);
     let expected_block = Block {
-        status: block.status,
+        status: BlockStatus::default(),
         header: block.header.into(),
         transactions: Transactions::Hashes(vec![expected_transaction.transaction_hash()]),
     };
@@ -231,7 +232,7 @@ async fn test_get_block_w_full_transactions() -> Result<(), anyhow::Error> {
 
     let expected_transaction = block.body.transactions.index(0);
     let expected_block = Block {
-        status: block.status,
+        status: BlockStatus::default(),
         header: block.header.into(),
         transactions: Transactions::Full(vec![expected_transaction.clone().into()]),
     };

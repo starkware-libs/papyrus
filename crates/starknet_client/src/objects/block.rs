@@ -173,11 +173,7 @@ impl TryFrom<Block> for starknet_api::Block {
             timestamp: block.timestamp,
         };
 
-        Ok(Self {
-            status: block.status.into(),
-            header,
-            body: starknet_api::BlockBody { transactions, transaction_outputs },
-        })
+        Ok(Self { header, body: starknet_api::BlockBody { transactions, transaction_outputs } })
     }
 }
 
