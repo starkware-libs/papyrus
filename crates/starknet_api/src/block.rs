@@ -103,7 +103,6 @@ pub struct BlockHeader {
     pub state_root: GlobalRoot,
     pub sequencer: ContractAddress,
     pub timestamp: BlockTimestamp,
-    pub status: BlockStatus,
     // TODO(dan): add missing commitments.
 }
 
@@ -116,6 +115,7 @@ pub struct BlockBody {
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct Block {
+    pub status: BlockStatus,
     pub header: BlockHeader,
     pub body: BlockBody,
 }
