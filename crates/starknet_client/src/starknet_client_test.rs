@@ -205,9 +205,12 @@ async fn contract_class() {
     .with_body(body)
     .create();
     let err = starknet_client
-        .class_by_hash(ClassHash(shash!(
-            "0x484de75f165c844f9d8c5b07a7d1a650a476815dc7a061126fd41bb998c043d1"
-        )))
+        .class_by_hash(ClassHash(
+            StarkHash::from_hex_unchecked(
+                "0x484de75f165c844f9d8c5b07a7d1a650a476815dc7a061126fd41bb998c043d1",
+            )
+            .unwrap(),
+        ))
         .await
         .unwrap_err();
     mock_by_hash.assert();

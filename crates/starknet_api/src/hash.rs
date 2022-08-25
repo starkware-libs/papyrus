@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use super::serde_utils::{
     bytes_from_hex_str, DeserializationError, HexAsBytes, PrefixedHexAsBytes,
 };
+use crate::serde_utils::hex_str_from_bytes;
 
 /// Genesis state hash.
 pub const GENESIS_HASH: &str = "0x0";
@@ -37,10 +38,25 @@ impl Debug for StarkHash {
 }
 
 impl StarkHash {
+    /// Returns a new [`StarkHash`].
+    pub fn new(bytes: [u8; 32]) -> Result<StarkHash, DeserializationError> {
+        if bytes[0] >= 0x10 {
+            return Err(DeserializationError::OutOfRange {
+                string: hex_str_from_bytes::<32, true>(bytes),
+            });
+        }
+        Ok(Self(bytes))
+    }
     /// Returns a [`StarkHash`] corresponding to `hex_str`.
     pub fn from_hex(hex_str: &str) -> Result<StarkHash, DeserializationError> {
         let bytes = bytes_from_hex_str::<32, true>(hex_str)?;
-        Ok(StarkHash(bytes))
+        Self::new(bytes)
+    }
+    /// Returns a [`StarkHash`] corresponding to `hex_str`, without checking for out of range.
+    /// Should not be used under normal circumstances.
+    pub fn from_hex_unchecked(hex_str: &str) -> Result<StarkHash, DeserializationError> {
+        let bytes = bytes_from_hex_str::<32, true>(hex_str)?;
+        Ok(Self(bytes))
     }
     /// Returns a [`StarkHash`] corresponding to `val`.
     pub fn from_u64(val: u64) -> StarkHash {
