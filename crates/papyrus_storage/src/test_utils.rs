@@ -1,7 +1,7 @@
 use starknet_api::{
-    shash, BlockBody, BlockHash, BlockHeader, BlockNumber, CallData, ClassHash, ContractAddress,
-    ContractAddressSalt, DeployTransaction, DeployTransactionOutput, Fee, StarkHash, Transaction,
-    TransactionHash, TransactionOutput, TransactionVersion,
+    shash, Block, BlockBody, BlockHash, BlockHeader, BlockNumber, CallData, ClassHash,
+    ContractAddress, ContractAddressSalt, DeployTransaction, DeployTransactionOutput, Fee,
+    StarkHash, Transaction, TransactionHash, TransactionOutput, TransactionVersion,
 };
 use tempfile::tempdir;
 
@@ -20,7 +20,7 @@ pub fn get_test_storage() -> (StorageReader, StorageWriter) {
     open_storage(config).expect("Failed to open storage.")
 }
 
-pub fn get_test_block(transaction_count: usize) -> (BlockHeader, BlockBody) {
+pub fn get_test_block(transaction_count: usize) -> Block {
     let header = BlockHeader {
         block_hash: BlockHash(shash!(
             "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"
@@ -45,5 +45,6 @@ pub fn get_test_block(transaction_count: usize) -> (BlockHeader, BlockBody) {
         transaction_outputs.push(transaction_output);
     }
     let body = BlockBody { transactions, transaction_outputs };
-    (header, body)
+
+    Block { header, body }
 }
