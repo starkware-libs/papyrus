@@ -29,4 +29,7 @@ pub use self::transaction::{
 };
 
 #[derive(thiserror::Error, Clone, Copy, Debug)]
-pub enum StarknetApiError {}
+pub enum StarknetApiError {
+    #[error("Value out of range.")]
+    OutOfRange,
+}

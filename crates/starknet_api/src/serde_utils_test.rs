@@ -1,7 +1,6 @@
 use assert_matches::assert_matches;
 
 use super::{bytes_from_hex_str, hex_str_from_bytes, DeserializationError, HexAsBytes};
-use crate::serde_utils::CONTRACT_ADRESS_UPPER_BOUND;
 use crate::{shash, ContractAddress, StarkHash};
 
 #[test]
@@ -110,21 +109,15 @@ fn test_hex_as_bytes_serde_not_prefixed() {
 }
 
 #[test]
-fn test_desirialize_contract_address() {
-    let expected = ContractAddress(shash!(
+fn test_deserialize_contract_address() {
+    let expected = ContractAddress::new(shash!(
         "0x6324f76f396c5e1d79d2637cc714842c864b2cc732e164717819c77885bddd6"
-    ));
-    let serialized = &serde_json::to_string(&expected.0).unwrap();
+    ))
+    .unwrap();
+    let serialized = &serde_json::to_string(&expected).unwrap();
     let deserialized = serde_json::from_str::<ContractAddress>(serialized).unwrap();
     assert_eq!(expected, deserialized);
 
-    let not_in_range = ContractAddress(shash!("0x0"));
-    let serialized = &serde_json::to_string(&not_in_range.0).unwrap();
-    let deserialized = serde_json::from_str::<ContractAddress>(serialized);
-    assert!(deserialized.is_err());
-
-    let not_in_range = ContractAddress(shash!(CONTRACT_ADRESS_UPPER_BOUND));
-    let serialized = &serde_json::to_string(&not_in_range.0).unwrap();
-    let deserialized = serde_json::from_str::<ContractAddress>(serialized);
-    assert!(deserialized.is_err());
+    assert!(ContractAddress::new(shash!(ContractAddress::LOWER_BOUND)).is_err());
+    assert!(ContractAddress::new(shash!(ContractAddress::UPPER_BOUND)).is_err());
 }

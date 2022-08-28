@@ -10,7 +10,7 @@ async fn test_append_header() -> Result<(), anyhow::Error> {
 
     let create_block_header = |block_number| BlockHeader {
         block_number: BlockNumber(block_number),
-        sequencer: ContractAddress(shash!("0x12")),
+        sequencer: ContractAddress::new(shash!("0x12")).unwrap(),
         ..BlockHeader::default()
     };
 

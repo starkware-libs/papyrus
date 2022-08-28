@@ -38,9 +38,10 @@ fn load_block_state_update_succeeds() {
         )),
         state_diff: StateDiff {
             storage_diffs: BTreeMap::from([(
-                ContractAddress(shash!(
+                ContractAddress::new(shash!(
                     "0x13386f165f065115c1da38d755be261023c32f0134a03a8e66b6bb1e0016014"
-                )),
+                ))
+                .unwrap(),
                 vec![
                     StorageEntry {
                         key: StorageKey(shash!(
@@ -57,9 +58,10 @@ fn load_block_state_update_succeeds() {
                 ],
             )]),
             deployed_contracts: vec![DeployedContract {
-                address: ContractAddress(shash!(
+                address: ContractAddress::new(shash!(
                     "0x3e10411edafd29dfe6d427d03e35cb261b7a5efeee61bf73909ada048c029b9"
-                )),
+                ))
+                .unwrap(),
                 class_hash: ClassHash(shash!(
                     "0x071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64"
                 )),

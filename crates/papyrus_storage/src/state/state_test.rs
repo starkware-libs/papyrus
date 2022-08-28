@@ -10,10 +10,10 @@ use crate::test_utils::get_test_storage;
 
 #[test]
 fn test_append_diff() -> Result<(), anyhow::Error> {
-    let c0 = ContractAddress(shash!("0x11"));
-    let c1 = ContractAddress(shash!("0x12"));
-    let c2 = ContractAddress(shash!("0x13"));
-    let c3 = ContractAddress(shash!("0x14"));
+    let c0 = ContractAddress::new(shash!("0x11")).unwrap();
+    let c1 = ContractAddress::new(shash!("0x12")).unwrap();
+    let c2 = ContractAddress::new(shash!("0x13")).unwrap();
+    let c3 = ContractAddress::new(shash!("0x14")).unwrap();
     let cl0 = ClassHash(shash!("0x4"));
     let cl1 = ClassHash(shash!("0x5"));
     let cl2 = ClassHash(shash!("0x6"));

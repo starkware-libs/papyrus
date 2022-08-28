@@ -152,8 +152,8 @@ async fn stream_state_updates() {
     let class_hash1 = ClassHash(shash!("0x123"));
     let class_hash2 = ClassHash(shash!("0x456"));
     let class_hash3 = ClassHash(shash!("0x789"));
-    let contract_address1 = ContractAddress(shash!("0xabc"));
-    let contract_address2 = ContractAddress(shash!("0xdef"));
+    let contract_address1 = ContractAddress::new(shash!("0xabc")).unwrap();
+    let contract_address2 = ContractAddress::new(shash!("0xdef")).unwrap();
     let root1 = GlobalRoot(shash!("0x111"));
     let root2 = GlobalRoot(shash!("0x222"));
     let block_hash1 = BlockHash(shash!("0x333"));

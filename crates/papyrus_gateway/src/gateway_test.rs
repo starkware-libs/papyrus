@@ -32,7 +32,7 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff) {
         block_number: BlockNumber(0),
         block_hash: parent_hash,
         state_root,
-        sequencer: ContractAddress(shash!("0x12")),
+        sequencer: ContractAddress::new(shash!("0x12")).unwrap(),
         ..BlockHeader::default()
     };
 
@@ -42,13 +42,13 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff) {
         block_number: BlockNumber(1),
         block_hash,
         parent_hash,
-        sequencer: ContractAddress(shash!("0x12")),
+        sequencer: ContractAddress::new(shash!("0x12")).unwrap(),
         ..BlockHeader::default()
     };
 
-    let address0 = ContractAddress(shash!("0x11"));
+    let address0 = ContractAddress::new(shash!("0x11")).unwrap();
     let hash0 = ClassHash(shash!("0x4"));
-    let address1 = ContractAddress(shash!("0x21"));
+    let address1 = ContractAddress::new(shash!("0x21")).unwrap();
     let hash1 = ClassHash(shash!("0x5"));
     let class0 = ContractClass::default();
     let class1 = ContractClass::default();
@@ -344,7 +344,7 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
         .call::<_, StarkFelt>(
             "starknet_getStorageAt",
             (
-                ContractAddress(shash!("0x12")),
+                ContractAddress::new(shash!("0x12")).unwrap(),
                 key.clone(),
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)),
             ),
@@ -440,7 +440,7 @@ async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
             "starknet_getClassHashAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ContractAddress(shash!("0x12")),
+                ContractAddress::new(shash!("0x12")).unwrap(),
             ),
         )
         .await
@@ -525,7 +525,7 @@ async fn test_get_nonce() -> Result<(), anyhow::Error> {
             "starknet_getNonce",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ContractAddress(shash!("0x31")),
+                ContractAddress::new(shash!("0x31")).unwrap(),
             ),
         )
         .await
@@ -1026,7 +1026,7 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
             "starknet_getClassAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ContractAddress(shash!("0x12")),
+                ContractAddress::new(shash!("0x12")).unwrap(),
             ),
         )
         .await
