@@ -96,6 +96,8 @@ impl Default for BlockStatus {
 /// The header of a StarkNet block.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockHeader {
+    // TODO(anatg): Consider removing the block hash from the header (note it can be computed from
+    // the rest of the fields.
     pub block_hash: BlockHash,
     pub parent_hash: BlockHash,
     pub block_number: BlockNumber,
@@ -103,7 +105,6 @@ pub struct BlockHeader {
     pub state_root: GlobalRoot,
     pub sequencer: ContractAddress,
     pub timestamp: BlockTimestamp,
-    pub status: BlockStatus,
     // TODO(dan): add missing commitments.
 }
 
