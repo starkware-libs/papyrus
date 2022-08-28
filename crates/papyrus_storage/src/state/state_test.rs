@@ -38,8 +38,7 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
         ],
         vec![(cl0, c_cls0.clone()), (cl1, c_cls1)],
         vec![(c0, Nonce(StarkHash::from_u64(1)))],
-    )
-    .unwrap();
+    );
     let diff1 = StateDiff::new(
         vec![DeployedContract { address: c2, class_hash: cl0 }],
         vec![
@@ -61,8 +60,7 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
             (c1, Nonce(StarkHash::from_u64(1))),
             (c2, Nonce(StarkHash::from_u64(1))),
         ],
-    )
-    .unwrap();
+    );
 
     let (_, mut writer) = get_test_storage();
     let mut txn = writer.begin_rw_txn()?;
@@ -84,8 +82,7 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     class.abi = serde_json::Value::String("junk".to_string());
 
     declared_classes[0].1 = class;
-    let diff1 =
-        StateDiff::new(deployed_contracts, storage_diffs, declared_classes, nonces).unwrap();
+    let diff1 = StateDiff::new(deployed_contracts, storage_diffs, declared_classes, nonces);
 
     if let Err(err) = txn.append_state_diff(BlockNumber(2), diff1) {
         assert_matches!(err, StorageError::ClassAlreadyExists { class_hash: _ });
@@ -99,8 +96,7 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     let mut contract = deployed_contracts[0].clone();
     contract.class_hash = cl2;
     deployed_contracts[0] = contract;
-    let diff0 =
-        StateDiff::new(deployed_contracts, storage_diffs, declared_classes, nonces).unwrap();
+    let diff0 = StateDiff::new(deployed_contracts, storage_diffs, declared_classes, nonces);
     if let Err(err) = txn.append_state_diff(BlockNumber(2), diff0) {
         assert_matches!(err, StorageError::ContractAlreadyExists { address: _ });
     } else {

@@ -74,8 +74,7 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff) {
         ],
         vec![(hash0, class0), (hash1, class1)],
         vec![(address0, Nonce(StarkHash::from_u64(1))), (address1, Nonce(StarkHash::from_u64(1)))],
-    )
-    .unwrap();
+    );
 
     (parent_header, header, diff)
 }

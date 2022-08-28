@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
 use super::{BlockNumber, ClassHash, ContractAddress, ContractClass, Nonce, StarkFelt};
-use crate::StarknetApiError;
 
 /// The sequential numbering of the states between blocks in StarkNet.
 // Example:
@@ -50,49 +49,16 @@ type StateDiffAsTuple = (
 
 impl StateDiff {
     pub fn new(
-        deployed_contracts: Vec<DeployedContract>,
-        storage_diffs: Vec<StorageDiff>,
-        declared_classes: Vec<(ClassHash, ContractClass)>,
-        nonces: Vec<(ContractAddress, Nonce)>,
-    ) -> Result<Self, StarknetApiError> {
-        // TODO(yair): Use std::Vec::is_sorted_by_key once it becomes stable.
-        let are_deployed_contrcats_sorted_by_address = std::iter::zip(
-            deployed_contracts.iter().map(|i| i.address),
-            deployed_contracts.iter().skip(1).map(|i| i.address),
-        )
-        .all(|addresses| addresses.0 < addresses.1);
-
-        if !are_deployed_contrcats_sorted_by_address {
-            return Err(StarknetApiError::DeployedContractsNotSorted);
-        }
-
-        let are_storage_diffs_sorted_by_address = std::iter::zip(
-            storage_diffs.iter().map(|i| i.address),
-            storage_diffs.iter().skip(1).map(|i| i.address),
-        )
-        .all(|addresses| addresses.0 < addresses.1);
-
-        if !are_storage_diffs_sorted_by_address {
-            return Err(StarknetApiError::StorageDiffsNotSorted);
-        }
-
-        let are_declared_classes_sorted_by_hash = std::iter::zip(
-            declared_classes.iter().map(|i| i.0),
-            declared_classes.iter().skip(1).map(|i| i.0),
-        )
-        .all(|hashes| hashes.0 < hashes.1);
-        if !are_declared_classes_sorted_by_hash {
-            return Err(StarknetApiError::DeclaredClassesNotSorted);
-        }
-
-        let are_nonces_sorted_by_address =
-            std::iter::zip(nonces.iter().map(|i| i.0), nonces.iter().skip(1).map(|i| i.0))
-                .all(|addresses| addresses.0 < addresses.1);
-        if !are_nonces_sorted_by_address {
-            return Err(StarknetApiError::NoncesNotSorted);
-        }
-
-        Ok(Self { deployed_contracts, storage_diffs, declared_classes, nonces })
+        mut deployed_contracts: Vec<DeployedContract>,
+        mut storage_diffs: Vec<StorageDiff>,
+        mut declared_classes: Vec<(ClassHash, ContractClass)>,
+        mut nonces: Vec<(ContractAddress, Nonce)>,
+    ) -> Self {
+        deployed_contracts.sort_by_key(|dc| dc.address);
+        storage_diffs.sort_by_key(|sd| sd.address);
+        declared_classes.sort_by_key(|dc| dc.0);
+        nonces.sort_by_key(|n| n.0);
+        Self { deployed_contracts, storage_diffs, declared_classes, nonces }
     }
 
     pub fn destruct(self) -> StateDiffAsTuple {
