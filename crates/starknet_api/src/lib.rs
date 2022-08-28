@@ -29,13 +29,4 @@ pub use self::transaction::{
 };
 
 #[derive(thiserror::Error, Clone, Copy, Debug)]
-pub enum StarknetApiError {
-    #[error("Deployed contracts are not sorted by address.")]
-    DeployedContractsNotSorted,
-    #[error("Storage diffs are not sorted by address.")]
-    StorageDiffsNotSorted,
-    #[error("Declared classes are not sorted by class hash.")]
-    DeclaredClassesNotSorted,
-    #[error("Nonces are not sorted by address.")]
-    NoncesNotSorted,
-}
+pub enum StarknetApiError {}
