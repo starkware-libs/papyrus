@@ -15,8 +15,8 @@ use super::objects::transaction::{DeclareTransaction, TransactionType};
 use super::test_utils::read_resource::read_resource_file;
 use super::test_utils::retry::get_test_config;
 use super::{
-    Block, ClientError, RetryErrorCode, StarknetClient, StarknetClientTrait, StarknetError,
-    StarknetErrorCode, BLOCK_NUMBER_QUERY, CLASS_HASH_QUERY, GET_BLOCK_URL, GET_STATE_UPDATE_URL,
+    Block, ClientError, RetryErrorCode, StarknetClient, StarknetClientTrait, BLOCK_NUMBER_QUERY,
+    CLASS_HASH_QUERY, GET_BLOCK_URL, GET_STATE_UPDATE_URL,
 };
 
 #[test]
@@ -188,30 +188,6 @@ async fn contract_class() {
     let class = starknet_client.class_by_hash(ClassHash(shash!("0x7"))).await.unwrap();
     mock_by_hash.assert();
     assert!(class.is_none());
-
-    // Out of range class hash.
-    let body = r#"{
-        "code": "StarknetErrorCode.OUT_OF_RANGE_CLASS_HASH",
-        "message": "class_hash 0x484de75f165c844f9d8c5b07a7d1a650a476815dc7a061126fd41bb998c043d1 is out of range"
-    }"#;
-    let mock_by_hash = mock(
-        "GET",
-        &format!(
-            "/feeder_gateway/get_class_by_hash?\
-             {CLASS_HASH_QUERY}=0x484de75f165c844f9d8c5b07a7d1a650a476815dc7a061126fd41bb998c043d1"
-        )[..],
-    )
-    .with_status(500)
-    .with_body(body)
-    .create();
-    let err = starknet_client
-        .class_by_hash(ClassHash(shash!(
-            "0x484de75f165c844f9d8c5b07a7d1a650a476815dc7a061126fd41bb998c043d1"
-        )))
-        .await
-        .unwrap_err();
-    mock_by_hash.assert();
-    assert_matches!(err, ClientError::StarknetError(StarknetError { code, message: _ }) if code == StarknetErrorCode::OutOfRangeClassHash);
 }
 
 #[tokio::test]

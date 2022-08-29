@@ -80,6 +80,8 @@ pub enum DeserializationError {
     MissingPrefix { hex_str: String },
     #[error("Bad input - expected #bytes: {expected_byte_count}, string found: {string_found}.")]
     BadInput { expected_byte_count: usize, string_found: String },
+    #[error("Out of range {string}.")]
+    OutOfRange { string: String },
 }
 
 pub fn bytes_from_hex_str<const N: usize, const PREFIXED: bool>(
