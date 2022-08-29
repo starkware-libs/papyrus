@@ -4,10 +4,11 @@ use crate::{shash, StarkHash};
 fn test_hash_macro() {
     assert_eq!(
         shash!("0x123"),
-        StarkHash([
+        StarkHash::new([
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0x1, 0x23
         ])
+        .unwrap()
     );
 }
 
