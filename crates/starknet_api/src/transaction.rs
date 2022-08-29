@@ -197,28 +197,6 @@ pub struct DeployTransaction {
     pub constructor_calldata: CallData,
 }
 
-/// A transaction status in StarkNet.
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub enum TransactionStatus {
-    /// The transaction passed the validation and entered the pending block.
-    #[serde(rename = "PENDING")]
-    Pending,
-    /// The transaction passed the validation and entered an actual created block.
-    #[serde(rename = "ACCEPTED_ON_L2")]
-    AcceptedOnL2,
-    /// The transaction was accepted on-chain.
-    #[serde(rename = "ACCEPTED_ON_L1")]
-    AcceptedOnL1,
-    /// The transaction failed validation.
-    #[serde(rename = "REJECTED")]
-    Rejected,
-}
-impl Default for TransactionStatus {
-    fn default() -> Self {
-        TransactionStatus::AcceptedOnL2
-    }
-}
-
 /// An L1 to L2 message in StarkNet.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct MessageToL2 {
@@ -233,15 +211,13 @@ pub struct MessageToL1 {
     pub payload: L2ToL1Payload,
 }
 
-#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct StatusData(pub Vec<StarkFelt>);
-
 /// A transaction receipt in StarkNet.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct TransactionReceipt {
     pub transaction_hash: TransactionHash,
     pub block_hash: BlockHash,
     pub block_number: BlockNumber,
+    #[serde(flatten)]
     pub output: TransactionOutput,
 }
 

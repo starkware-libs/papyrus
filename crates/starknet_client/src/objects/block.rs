@@ -171,7 +171,6 @@ impl TryFrom<Block> for starknet_api::Block {
             state_root: block.state_root,
             sequencer: block.sequencer_address,
             timestamp: block.timestamp,
-            status: block.status.into(),
         };
 
         Ok(Self { header, body: starknet_api::BlockBody { transactions, transaction_outputs } })

@@ -43,14 +43,13 @@ fn get_state_diff(
     maybe_state_update: CentralResult<(BlockStateUpdate, Vec<(ClassHash, ContractClass)>)>,
 ) -> CentralResult<StateDiff> {
     let (state_update, classes) = maybe_state_update?;
-    StateDiff::new(
+    Ok(StateDiff::new(
         state_update.state_diff.deployed_contracts,
         client_to_starknet_api_storage_diff(state_update.state_diff.storage_diffs),
         classes,
         // TODO(dan): fix once nonces are available.
         vec![],
-    )
-    .map_err(|err| CentralError::StarknetApiError(Arc::new(err)))
+    ))
 }
 
 impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
