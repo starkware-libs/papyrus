@@ -29,12 +29,12 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
         vec![
             StorageDiff {
                 address: c0,
-                diff: vec![
+                storage_entries: vec![
                     StorageEntry { key: key0.clone(), value: shash!("0x200") },
                     StorageEntry { key: key1.clone(), value: shash!("0x201") },
                 ],
             },
-            StorageDiff { address: c1, diff: vec![] },
+            StorageDiff { address: c1, storage_entries: vec![] },
         ],
         vec![(cl0, c_cls0.clone()), (cl1, c_cls1)],
         vec![(c0, Nonce(StarkHash::from_u64(1)))],
@@ -44,14 +44,14 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
         vec![
             StorageDiff {
                 address: c0,
-                diff: vec![
+                storage_entries: vec![
                     StorageEntry { key: key0.clone(), value: shash!("0x300") },
                     StorageEntry { key: key1.clone(), value: shash!("0x0") },
                 ],
             },
             StorageDiff {
                 address: c1,
-                diff: vec![StorageEntry { key: key0.clone(), value: shash!("0x0") }],
+                storage_entries: vec![StorageEntry { key: key0.clone(), value: shash!("0x0") }],
             },
         ],
         vec![(cl0, c_cls0.clone())],

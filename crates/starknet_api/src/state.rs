@@ -30,6 +30,8 @@ impl StateNumber {
     }
 }
 
+// TODO(anatg): Consider replacing this with ThinStateDiff (that is, remove ContractClass)
+// and append contract classes to the storage separately.
 // Invariant: Addresses are strictly increasing.
 /// The differences between two states in StarkNet.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
@@ -86,7 +88,7 @@ pub struct DeclaredContract {
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StorageDiff {
     pub address: ContractAddress,
-    pub diff: Vec<StorageEntry>,
+    pub storage_entries: Vec<StorageEntry>,
 }
 
 // TODO: Invariant: this is in range.

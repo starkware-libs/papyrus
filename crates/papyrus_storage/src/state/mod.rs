@@ -215,8 +215,8 @@ fn write_storage_diffs<'env>(
     block_number: BlockNumber,
     storage_table: &'env ContractStorageTable<'env>,
 ) -> StorageResult<()> {
-    for StorageDiff { address, diff } in &state_diff.storage_diffs {
-        for StorageEntry { key, value } in diff {
+    for StorageDiff { address, storage_entries } in &state_diff.storage_diffs {
+        for StorageEntry { key, value } in storage_entries {
             storage_table.upsert(txn, &(*address, key.clone(), block_number), value)?;
         }
     }
