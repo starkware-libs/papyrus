@@ -3,6 +3,7 @@ mod api;
 mod gateway_test;
 mod objects;
 
+use std::collections::HashSet;
 use std::fmt::Display;
 use std::net::SocketAddr;
 
@@ -18,25 +19,30 @@ use papyrus_storage::{
 };
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockNumber, BlockStatus, ClassHash, ContractAddress, ContractClass, GlobalRoot, Nonce,
-    StarkFelt, StarkHash, StateNumber, StorageKey, Transaction, TransactionHash,
-    TransactionOffsetInBlock, TransactionReceipt, GENESIS_HASH,
+    BlockNumber, BlockStatus, ClassHash, ContractAddress, ContractClass, GlobalRoot,
+    InvokeTransactionOutput, Nonce, StarkFelt, StarkHash, StateNumber, StorageKey, Transaction,
+    TransactionHash, TransactionOffsetInBlock, TransactionOutput, TransactionReceipt, GENESIS_HASH,
 };
 
-use self::api::{BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcError, JsonRpcServer, Tag};
+use self::api::{
+    BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcError,
+    JsonRpcServer, Tag,
+};
 use self::objects::{
-    from_starknet_storage_diffs, Block, BlockHeader, GateWayStateDiff, StateUpdate,
+    from_starknet_storage_diffs, Block, BlockHeader, Event, GateWayStateDiff, StateUpdate,
     TransactionReceiptWithStatus, TransactionStatus, TransactionWithType, Transactions,
 };
 
 #[derive(Serialize, Deserialize)]
 pub struct GatewayConfig {
     pub server_ip: String,
+    pub max_events_chunk_size: usize,
 }
 
 /// Rpc server.
 struct JsonRpcServerImpl {
     storage_reader: StorageReader,
+    pub max_events_chunk_size: usize,
 }
 
 impl From<JsonRpcError> for Error {
@@ -52,6 +58,29 @@ fn internal_server_error(err: impl Display) -> Error {
         INTERNAL_ERROR_MSG,
         None::<()>,
     )))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ContinuationTokenAsTuple {
+    block_number: BlockNumber,
+    transaction_index: usize,
+    event_index: usize,
+}
+
+impl ContinuationToken {
+    fn parse(&self) -> Result<ContinuationTokenAsTuple, Error> {
+        let (block_number, transaction_index, event_index) = serde_json::from_str(&self.0)
+            .map_err(|_err| Error::from(JsonRpcError::InvalidContinuationToken))?;
+
+        Ok(ContinuationTokenAsTuple { block_number, transaction_index, event_index })
+    }
+
+    fn new(ct: ContinuationTokenAsTuple) -> Result<Self, Error> {
+        Ok(Self(
+            serde_json::to_string(&(ct.block_number, ct.transaction_index, ct.event_index))
+                .map_err(internal_server_error)?,
+        ))
+    }
 }
 
 fn get_block_number<Mode: TransactionKind>(
@@ -110,6 +139,35 @@ fn get_block_txs_by_number<Mode: TransactionKind>(
         .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
 
     Ok(transactions)
+}
+
+fn get_transaction_output<Mode: TransactionKind>(
+    txn: &StorageTxn<'_, Mode>,
+    block_number: BlockNumber,
+    transaction_index: usize,
+) -> Result<TransactionOutput, Error> {
+    txn.get_transaction_output(block_number, TransactionOffsetInBlock(transaction_index))
+        .map_err(internal_server_error)?
+        .ok_or_else(|| Error::from(JsonRpcError::InvalidTransactionHash))
+}
+
+fn get_transaction_events<Mode: TransactionKind>(
+    txn: &StorageTxn<'_, Mode>,
+    block_number: BlockNumber,
+    transaction_index: usize,
+) -> Result<Vec<starknet_api::Event>, Error> {
+    let tx_output = get_transaction_output(txn, block_number, transaction_index)?;
+    if let TransactionOutput::Invoke(InvokeTransactionOutput {
+        actual_fee: _,
+        messages_sent: _,
+        l1_origin_message: _,
+        events,
+    }) = tx_output
+    {
+        Ok(events)
+    } else {
+        Ok(vec![])
+    }
 }
 
 #[async_trait]
@@ -361,6 +419,93 @@ impl JsonRpcServer for JsonRpcServerImpl {
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))
     }
+
+    fn get_events(
+        &self,
+        filter: EventFilter,
+    ) -> Result<(Vec<Event>, Option<ContinuationToken>), Error> {
+        // Check the chunk size.
+        if filter.chunk_size > self.max_events_chunk_size {
+            return Err(Error::from(JsonRpcError::PageSizeTooBig));
+        }
+
+        // Get the requested block numbers.
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let from_block_number = get_block_number(&txn, filter.from_block)?;
+        let to_block_number = get_block_number(&txn, filter.to_block)?;
+        if from_block_number > to_block_number {
+            return Err(Error::from(JsonRpcError::InvalidBlockId));
+        }
+
+        // Check the continuation token.
+        let mut ct = ContinuationTokenAsTuple {
+            block_number: from_block_number,
+            transaction_index: 0,
+            event_index: 0,
+        };
+        if filter.continuation_token.is_some() {
+            ct = filter.continuation_token.unwrap().parse()?;
+            if ct.block_number > to_block_number {
+                return Err(Error::from(JsonRpcError::InvalidContinuationToken));
+            }
+            let events = get_transaction_events(&txn, ct.block_number, ct.transaction_index)
+                .map_err(|_err| Error::from(JsonRpcError::InvalidContinuationToken))?;
+            if events.is_empty() || ct.event_index >= events.len() {
+                return Err(Error::from(JsonRpcError::InvalidContinuationToken));
+            }
+        }
+
+        // Collect the requested events.
+        let filter_keys = filter.keys.iter().collect::<HashSet<_>>();
+        let mut filtered_events = vec![];
+
+        // Go over the blocks.
+        for block_number in
+            ct.block_number.iter().take_while(|block_number| *block_number <= to_block_number)
+        {
+            let header =
+                get_block_header_by_number(&txn, block_number).map_err(internal_server_error)?;
+            let transactions =
+                get_block_txs_by_number(&txn, block_number).map_err(internal_server_error)?;
+
+            // Go over the transactions in the block.
+            for (transaction_index, transaction) in
+                transactions.iter().enumerate().skip(ct.transaction_index)
+            {
+                ct.transaction_index = 0;
+                let events = get_transaction_events(&txn, block_number, transaction_index)
+                    .map_err(internal_server_error)?;
+
+                // Go over the events in the transaction output.
+                for (event_index, event) in events.into_iter().enumerate().skip(ct.event_index) {
+                    ct.event_index = 0;
+                    let event_keys = event.keys.iter().collect::<HashSet<_>>();
+                    if event.from_address == filter.address && !event_keys.is_disjoint(&filter_keys)
+                    {
+                        if filtered_events.len() == filter.chunk_size {
+                            return Ok((
+                                filtered_events,
+                                Some(ContinuationToken::new(ContinuationTokenAsTuple {
+                                    block_number,
+                                    transaction_index,
+                                    event_index,
+                                })?),
+                            ));
+                        }
+                        let emitted_event = Event {
+                            block_hash: header.block_hash,
+                            block_number,
+                            transaction_hash: transaction.transaction_hash(),
+                            event,
+                        };
+                        filtered_events.push(emitted_event);
+                    }
+                }
+            }
+        }
+
+        Ok((filtered_events, None))
+    }
 }
 
 pub async fn run_server(
@@ -370,7 +515,10 @@ pub async fn run_server(
     info!("Starting gateway.");
     let server = HttpServerBuilder::default().build(&config.server_ip).await?;
     let addr = server.local_addr()?;
-    let handle = server.start(JsonRpcServerImpl { storage_reader }.into_rpc())?;
+    let handle = server.start(
+        JsonRpcServerImpl { storage_reader, max_events_chunk_size: config.max_events_chunk_size }
+            .into_rpc(),
+    )?;
     info!("Gateway is running - {}.", addr);
     Ok((addr, handle))
 }

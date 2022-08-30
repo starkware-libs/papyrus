@@ -9,6 +9,7 @@ Config(
     ),
     gateway: GatewayConfig(
         server_ip: "localhost:8080",
+        max_events_chunk_size: 1000,
     ),
     storage: StorageConfig(
         db_config: DbConfig(

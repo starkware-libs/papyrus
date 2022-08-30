@@ -6,22 +6,93 @@ use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
-use papyrus_storage::test_utils::{get_test_block, get_test_storage};
+use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 use starknet_api::{
-    shash, BlockHash, BlockHeader, BlockNumber, BlockStatus, ClassHash, ContractAddress,
-    ContractClass, DeployedContract, GlobalRoot, Nonce, StarkFelt, StarkHash, StateDiff,
-    StorageDiff, StorageEntry, StorageKey, TransactionHash, TransactionReceipt,
+    shash, BlockHash, BlockHeader, BlockNumber, BlockStatus, CallData, ClassHash, ContractAddress,
+    ContractAddressSalt, ContractClass, DeployTransaction, DeployTransactionOutput,
+    DeployedContract, EventData, EventKey, Fee, GlobalRoot, InvokeTransaction,
+    InvokeTransactionOutput, Nonce, StarkFelt, StarkHash, StateDiff, StorageDiff, StorageEntry,
+    StorageKey, Transaction, TransactionHash, TransactionOutput, TransactionReceipt,
+    TransactionVersion,
 };
 
 use super::api::{
-    BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcClient, JsonRpcError, JsonRpcServer, Tag,
+    BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcClient,
+    JsonRpcError, JsonRpcServer, Tag,
 };
 use super::objects::{
-    from_starknet_storage_diffs, Block, GateWayStateDiff, StateUpdate,
+    from_starknet_storage_diffs, Block, Event, GateWayStateDiff, StateUpdate,
     TransactionReceiptWithStatus, TransactionStatus, TransactionWithType, Transactions,
 };
-use super::{run_server, GatewayConfig, JsonRpcServerImpl};
+use super::{run_server, ContinuationTokenAsTuple, GatewayConfig, JsonRpcServerImpl};
+
+pub fn get_test_block(transaction_count_per_type: usize) -> starknet_api::Block {
+    let header = starknet_api::BlockHeader {
+        block_hash: BlockHash(shash!(
+            "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"
+        )),
+        block_number: BlockNumber(0),
+        ..starknet_api::BlockHeader::default()
+    };
+    let mut transactions = vec![];
+    let mut transaction_outputs = vec![];
+    for i in 0..transaction_count_per_type {
+        // Add deploy transaction.
+        let transaction = Transaction::Deploy(DeployTransaction {
+            transaction_hash: TransactionHash(StarkHash::from_u64(i as u64)),
+            version: TransactionVersion(shash!("0x1")),
+            contract_address: ContractAddress(shash!("0x2")),
+            constructor_calldata: CallData(vec![shash!("0x3")]),
+            class_hash: ClassHash(StarkHash::from_u64(i as u64)),
+            contract_address_salt: ContractAddressSalt(shash!("0x4")),
+        });
+        transactions.push(transaction);
+
+        // Add invoke transaction.
+        let transaction = Transaction::Invoke(InvokeTransaction {
+            transaction_hash: TransactionHash(StarkHash::from_u64(i as u64 + 100)),
+            ..InvokeTransaction::default()
+        });
+        transactions.push(transaction);
+
+        // Add deploy transaction output.
+        let transaction_output =
+            TransactionOutput::Deploy(DeployTransactionOutput { actual_fee: Fee::default() });
+        transaction_outputs.push(transaction_output);
+
+        // Add invoke transaction output.
+        let transaction_output = TransactionOutput::Invoke(InvokeTransactionOutput {
+            events: vec![
+                starknet_api::Event {
+                    from_address: ContractAddress(shash!("0x22")),
+                    keys: vec![EventKey(shash!("0x6")), EventKey(shash!("0x7"))],
+                    data: EventData::default(),
+                },
+                starknet_api::Event {
+                    from_address: ContractAddress(shash!("0x22")),
+                    keys: vec![EventKey(shash!("0x6"))],
+                    data: EventData::default(),
+                },
+                starknet_api::Event {
+                    from_address: ContractAddress(shash!("0x22")),
+                    keys: vec![EventKey(shash!("0x7"))],
+                    data: EventData::default(),
+                },
+                starknet_api::Event {
+                    from_address: ContractAddress(shash!("0x23")),
+                    keys: vec![EventKey(shash!("0x7"))],
+                    data: EventData::default(),
+                },
+            ],
+            ..InvokeTransactionOutput::default()
+        });
+        transaction_outputs.push(transaction_output);
+    }
+    let body = starknet_api::BlockBody { transactions, transaction_outputs };
+
+    starknet_api::Block { header, body }
+}
 
 fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff) {
     let parent_hash =
@@ -81,7 +152,7 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff) {
 #[tokio::test]
 async fn test_block_number() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+    let module = JsonRpcServerImpl { storage_reader, max_events_chunk_size: 10 }.into_rpc();
 
     // No blocks yet.
     let err = module
@@ -108,7 +179,7 @@ async fn test_block_number() -> Result<(), anyhow::Error> {
 #[tokio::test]
 async fn test_block_hash_and_number() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+    let module = JsonRpcServerImpl { storage_reader, max_events_chunk_size: 10 }.into_rpc();
 
     // No blocks yet.
     let err = module
@@ -143,7 +214,7 @@ async fn test_block_hash_and_number() -> Result<(), anyhow::Error> {
 #[tokio::test]
 async fn test_get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+    let module = JsonRpcServerImpl { storage_reader, max_events_chunk_size: 10 }.into_rpc();
 
     let block = get_test_block(1);
     storage_writer
@@ -152,11 +223,12 @@ async fn test_get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
         .append_body(block.header.block_number, &block.body)?
         .commit()?;
 
-    let expected_transaction = block.body.transactions.index(0);
     let expected_block = Block {
         status: BlockStatus::default(),
         header: block.header.into(),
-        transactions: Transactions::Hashes(vec![expected_transaction.transaction_hash()]),
+        transactions: Transactions::Hashes(
+            block.body.transactions.iter().map(|tx| tx.transaction_hash()).collect(),
+        ),
     };
 
     // Get block by hash.
@@ -219,7 +291,7 @@ async fn test_get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
 #[tokio::test]
 async fn test_get_block_w_full_transactions() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+    let module = JsonRpcServerImpl { storage_reader, max_events_chunk_size: 10 }.into_rpc();
 
     let block = get_test_block(1);
     storage_writer
@@ -228,11 +300,12 @@ async fn test_get_block_w_full_transactions() -> Result<(), anyhow::Error> {
         .append_body(block.header.block_number, &block.body)?
         .commit()?;
 
-    let expected_transaction = block.body.transactions.index(0);
     let expected_block = Block {
         status: BlockStatus::default(),
         header: block.header.into(),
-        transactions: Transactions::Full(vec![expected_transaction.clone().into()]),
+        transactions: Transactions::Full(
+            block.body.transactions.into_iter().map(TransactionWithType::from).collect(),
+        ),
     };
 
     // Get block by hash.
@@ -293,7 +366,7 @@ async fn test_get_block_w_full_transactions() -> Result<(), anyhow::Error> {
 #[tokio::test]
 async fn test_get_storage_at() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+    let module = JsonRpcServerImpl { storage_reader, max_events_chunk_size: 10 }.into_rpc();
 
     let (header, _, diff) = get_test_state_diff();
     storage_writer
@@ -398,7 +471,7 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
 #[tokio::test]
 async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+    let module = JsonRpcServerImpl { storage_reader, max_events_chunk_size: 10 }.into_rpc();
 
     let (header, _, diff) = get_test_state_diff();
     storage_writer
@@ -486,7 +559,7 @@ async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
 #[tokio::test]
 async fn test_get_nonce() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+    let module = JsonRpcServerImpl { storage_reader, max_events_chunk_size: 10 }.into_rpc();
 
     let (header, _, diff) = get_test_state_diff();
     storage_writer
@@ -571,7 +644,7 @@ async fn test_get_nonce() -> Result<(), anyhow::Error> {
 #[tokio::test]
 async fn test_get_transaction_by_hash() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+    let module = JsonRpcServerImpl { storage_reader, max_events_chunk_size: 10 }.into_rpc();
 
     let block = get_test_block(1);
     storage_writer.begin_rw_txn()?.append_body(block.header.block_number, &block.body)?.commit()?;
@@ -605,7 +678,7 @@ async fn test_get_transaction_by_hash() -> Result<(), anyhow::Error> {
 #[tokio::test]
 async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+    let module = JsonRpcServerImpl { storage_reader, max_events_chunk_size: 10 }.into_rpc();
 
     let block = get_test_block(1);
     storage_writer
@@ -673,7 +746,7 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
     let err = module
         .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash)), 1),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash)), 3),
         )
         .await
         .unwrap_err();
@@ -688,10 +761,9 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
 #[tokio::test]
 async fn test_get_block_transaction_count() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+    let module = JsonRpcServerImpl { storage_reader, max_events_chunk_size: 10 }.into_rpc();
 
-    let transaction_count = 5;
-    let block = get_test_block(transaction_count);
+    let block = get_test_block(5);
     storage_writer
         .begin_rw_txn()?
         .append_header(block.header.block_number, &block.header)?
@@ -705,7 +777,7 @@ async fn test_get_block_transaction_count() -> Result<(), anyhow::Error> {
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash))],
         )
         .await?;
-    assert_eq!(res, transaction_count);
+    assert_eq!(res, 10);
 
     // Get block by number.
     let res = module
@@ -714,13 +786,13 @@ async fn test_get_block_transaction_count() -> Result<(), anyhow::Error> {
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(block.header.block_number))],
         )
         .await?;
-    assert_eq!(res, transaction_count);
+    assert_eq!(res, 10);
 
     // Ask for the latest block.
     let res = module
         .call::<_, usize>("starknet_getBlockTransactionCount", [BlockId::Tag(Tag::Latest)])
         .await?;
-    assert_eq!(res, transaction_count);
+    assert_eq!(res, 10);
 
     // Ask for an invalid block hash.
     let err = module
@@ -757,7 +829,7 @@ async fn test_get_block_transaction_count() -> Result<(), anyhow::Error> {
 #[tokio::test]
 async fn test_get_state_update() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+    let module = JsonRpcServerImpl { storage_reader, max_events_chunk_size: 10 }.into_rpc();
 
     let (parent_header, header, diff) = get_test_state_diff();
     storage_writer
@@ -837,7 +909,7 @@ async fn test_get_state_update() -> Result<(), anyhow::Error> {
 #[tokio::test]
 async fn test_get_transaction_receipt() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+    let module = JsonRpcServerImpl { storage_reader, max_events_chunk_size: 10 }.into_rpc();
 
     let block = get_test_block(1);
     storage_writer
@@ -885,7 +957,7 @@ async fn test_get_transaction_receipt() -> Result<(), anyhow::Error> {
 #[tokio::test]
 async fn test_get_class() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+    let module = JsonRpcServerImpl { storage_reader, max_events_chunk_size: 10 }.into_rpc();
 
     let (parent_header, header, diff) = get_test_state_diff();
     storage_writer
@@ -993,7 +1065,7 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
 #[tokio::test]
 async fn test_get_class_at() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let module = JsonRpcServerImpl { storage_reader }.into_rpc();
+    let module = JsonRpcServerImpl { storage_reader, max_events_chunk_size: 10 }.into_rpc();
 
     let (parent_header, header, diff) = get_test_state_diff();
     storage_writer
@@ -1094,11 +1166,129 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
+async fn test_get_events() -> Result<(), anyhow::Error> {
+    let (storage_reader, mut storage_writer) = get_test_storage();
+    let module = JsonRpcServerImpl { storage_reader, max_events_chunk_size: 10 }.into_rpc();
+
+    let block = get_test_block(2);
+    storage_writer
+        .begin_rw_txn()?
+        .append_header(block.header.block_number, &block.header)?
+        .append_body(block.header.block_number, &block.body)?
+        .commit()?;
+    let expected_event0 = starknet_api::Event {
+        from_address: ContractAddress(shash!("0x22")),
+        keys: vec![EventKey(shash!("0x6")), EventKey(shash!("0x7"))],
+        data: EventData::default(),
+    };
+    let expected_event1 = starknet_api::Event {
+        from_address: ContractAddress(shash!("0x22")),
+        keys: vec![EventKey(shash!("0x7"))],
+        data: EventData::default(),
+    };
+    let expected_emitted_event0 = Event {
+        block_hash: block.header.block_hash,
+        block_number: block.header.block_number,
+        transaction_hash: TransactionHash(StarkHash::from_u64(100)),
+        event: expected_event0.clone(),
+    };
+    let expected_emitted_event1 = Event {
+        block_hash: block.header.block_hash,
+        block_number: block.header.block_number,
+        transaction_hash: TransactionHash(StarkHash::from_u64(100)),
+        event: expected_event1.clone(),
+    };
+    let expected_emitted_event2 = Event {
+        block_hash: block.header.block_hash,
+        block_number: block.header.block_number,
+        transaction_hash: TransactionHash(StarkHash::from_u64(101)),
+        event: expected_event0,
+    };
+    let expected_emitted_event3 = Event {
+        block_hash: block.header.block_hash,
+        block_number: block.header.block_number,
+        transaction_hash: TransactionHash(StarkHash::from_u64(101)),
+        event: expected_event1,
+    };
+
+    // Filter with chunk_size = 2.
+    let mut filter0 = EventFilter {
+        from_block: BlockId::HashOrNumber(BlockHashOrNumber::Number(block.header.block_number)),
+        to_block: BlockId::HashOrNumber(BlockHashOrNumber::Number(block.header.block_number)),
+        continuation_token: None,
+        chunk_size: 2,
+        address: ContractAddress(shash!("0x22")),
+        keys: vec![EventKey(shash!("0x7")), EventKey(shash!("0x8"))],
+    };
+    let expected_events0 = vec![expected_emitted_event0.clone(), expected_emitted_event1.clone()];
+    let expected_continuation_token0 = ContinuationToken::new(ContinuationTokenAsTuple {
+        block_number: block.header.block_number,
+        transaction_index: 3,
+        event_index: 0,
+    })
+    .unwrap();
+    let expected_events1 = vec![expected_emitted_event2.clone(), expected_emitted_event3.clone()];
+
+    // Get first chunk of filtered events.
+    let (events, continuation_token) = module
+        .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter0.clone()])
+        .await?;
+    assert_eq!(events, expected_events0);
+    assert_eq!(continuation_token, Some(expected_continuation_token0));
+
+    // Get second chunk of filtered events.
+    filter0.continuation_token = continuation_token;
+    let (events, continuation_token) = module
+        .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter0])
+        .await?;
+    assert_eq!(events, expected_events1);
+    assert_eq!(continuation_token, None);
+
+    // Filter with chunk_size = 3.
+    let mut filter1 = EventFilter {
+        from_block: BlockId::HashOrNumber(BlockHashOrNumber::Number(block.header.block_number)),
+        to_block: BlockId::HashOrNumber(BlockHashOrNumber::Number(block.header.block_number)),
+        continuation_token: None,
+        chunk_size: 3,
+        address: ContractAddress(shash!("0x22")),
+        keys: vec![EventKey(shash!("0x7")), EventKey(shash!("0x8"))],
+    };
+    let expected_events2 =
+        vec![expected_emitted_event0, expected_emitted_event1, expected_emitted_event2];
+    let expected_continuation_token1 = ContinuationToken::new(ContinuationTokenAsTuple {
+        block_number: block.header.block_number,
+        transaction_index: 3,
+        event_index: 2,
+    })
+    .unwrap();
+    let expected_events3 = vec![expected_emitted_event3];
+
+    // Get first chunk of filtered events.
+    let (events, continuation_token) = module
+        .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter1.clone()])
+        .await?;
+    assert_eq!(events, expected_events2);
+    assert_eq!(continuation_token, Some(expected_continuation_token1));
+
+    // Get second chunk of filtered events.
+    filter1.continuation_token = continuation_token;
+    let (events, continuation_token) = module
+        .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter1])
+        .await?;
+    assert_eq!(events, expected_events3);
+    assert_eq!(continuation_token, None);
+
+    Ok(())
+}
+
+#[tokio::test]
 async fn test_run_server() -> Result<(), anyhow::Error> {
     let (storage_reader, _) = get_test_storage();
-    let (addr, _handle) =
-        run_server(GatewayConfig { server_ip: String::from("127.0.0.1:0") }, storage_reader)
-            .await?;
+    let (addr, _handle) = run_server(
+        GatewayConfig { server_ip: String::from("127.0.0.1:0"), max_events_chunk_size: 10 },
+        storage_reader,
+    )
+    .await?;
     let client = HttpClientBuilder::default().build(format!("http://{:?}", addr))?;
     let err = client.block_number().await.unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(

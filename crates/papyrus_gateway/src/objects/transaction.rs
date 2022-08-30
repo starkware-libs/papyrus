@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
-use starknet_api::{BlockStatus, Transaction, TransactionHash, TransactionReceipt};
+use starknet_api::{
+    BlockHash, BlockNumber, BlockStatus, Transaction, TransactionHash, TransactionReceipt,
+};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum Transactions {
@@ -83,4 +85,13 @@ pub struct TransactionReceiptWithStatus {
     pub status: TransactionStatus,
     #[serde(flatten)]
     pub receipt: TransactionReceipt,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
+pub struct Event {
+    pub block_hash: BlockHash,
+    pub block_number: BlockNumber,
+    pub transaction_hash: TransactionHash,
+    #[serde(flatten)]
+    pub event: starknet_api::Event,
 }

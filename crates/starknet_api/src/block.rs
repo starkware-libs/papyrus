@@ -48,6 +48,21 @@ impl BlockNumber {
             i => Some(BlockNumber(i - 1)),
         }
     }
+
+    pub fn iter(&self) -> BlockNumberIter {
+        BlockNumberIter(*self)
+    }
+}
+
+pub struct BlockNumberIter(BlockNumber);
+impl Iterator for BlockNumberIter {
+    type Item = BlockNumber;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let res = self.0;
+        self.0 = self.0.next();
+        Some(res)
+    }
 }
 
 /// The timestamp of a StarkNet block.

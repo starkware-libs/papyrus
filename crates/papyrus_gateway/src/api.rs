@@ -2,11 +2,13 @@ use jsonrpsee::core::Error;
 use jsonrpsee::proc_macros::rpc;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockHash, BlockNumber, ClassHash, ContractAddress, ContractClass, Nonce, StarkFelt,
+    BlockHash, BlockNumber, ClassHash, ContractAddress, ContractClass, EventKey, Nonce, StarkFelt,
     StorageKey, TransactionHash, TransactionOffsetInBlock,
 };
 
-use super::objects::{Block, StateUpdate, TransactionReceiptWithStatus, TransactionWithType};
+use super::objects::{
+    Block, Event, StateUpdate, TransactionReceiptWithStatus, TransactionWithType,
+};
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum Tag {
@@ -47,6 +49,10 @@ pub enum JsonRpcError {
     InvalidTransactionIndex = 27,
     #[error("The supplied contract class hash is invalid or unknown.")]
     InvalidContractClassHash = 28,
+    #[error("Requested page size is too big.")]
+    PageSizeTooBig = 31,
+    #[error("The supplied continuation token is invalid or unknown.")]
+    InvalidContinuationToken = 33,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -54,6 +60,19 @@ pub struct BlockHashAndNumber {
     pub block_hash: BlockHash,
     pub block_number: BlockNumber,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct EventFilter {
+    pub from_block: BlockId,
+    pub to_block: BlockId,
+    pub continuation_token: Option<ContinuationToken>,
+    pub chunk_size: usize,
+    pub address: ContractAddress,
+    pub keys: Vec<EventKey>,
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Deserialize, Serialize)]
+pub struct ContinuationToken(pub String);
 
 #[rpc(server, client, namespace = "starknet")]
 pub trait JsonRpc {
@@ -140,4 +159,11 @@ pub trait JsonRpc {
         block_id: BlockId,
         contract_address: ContractAddress,
     ) -> Result<Nonce, Error>;
+
+    /// Returns all events matching the given filter.
+    #[method(name = "getEvents")]
+    fn get_events(
+        &self,
+        filter: EventFilter,
+    ) -> Result<(Vec<Event>, Option<ContinuationToken>), Error>;
 }
