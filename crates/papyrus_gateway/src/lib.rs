@@ -19,13 +19,13 @@ use papyrus_storage::{
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockNumber, BlockStatus, ClassHash, ContractAddress, ContractClass, GlobalRoot, Nonce,
-    StarkFelt, StarkHash, StateNumber, StorageKey, Transaction, TransactionHash,
-    TransactionOffsetInBlock, TransactionReceipt, GENESIS_HASH,
+    StarkFelt, StarkHash, StateNumber, StorageKey, TransactionHash, TransactionOffsetInBlock,
+    TransactionReceipt, GENESIS_HASH,
 };
 
 use self::api::{BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcError, JsonRpcServer, Tag};
 use self::objects::{
-    Block, BlockHeader, StateUpdate, TransactionReceiptWithStatus, TransactionStatus,
+    Block, BlockHeader, StateUpdate, Transaction, TransactionReceiptWithStatus, TransactionStatus,
     TransactionWithType, Transactions,
 };
 
@@ -109,7 +109,7 @@ fn get_block_txs_by_number<Mode: TransactionKind>(
         .map_err(internal_server_error)?
         .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
 
-    Ok(transactions)
+    Ok(transactions.into_iter().map(Transaction::from).collect())
 }
 
 #[async_trait]
