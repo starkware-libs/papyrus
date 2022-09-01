@@ -135,10 +135,20 @@ impl TryFrom<Block> for starknet_api::Block {
             }
 
             // Check that the receipt has the correct fields according to the transaction type.
+            if transaction.transaction_type() != TransactionType::L1Handler
+                && receipt.l1_to_l2_consumed_message != L1ToL2Message::default()
+            {
+                return Err(ClientError::TransactionReceiptsError(
+                    TransactionReceiptsError::MismatchFields {
+                        block_number: block.block_number,
+                        tx_index: TransactionOffsetInBlock(i),
+                        tx_hash: transaction.transaction_hash(),
+                        tx_type: transaction.transaction_type(),
+                    },
+                ));
+            }
             if transaction.transaction_type() != TransactionType::InvokeFunction
-                && (receipt.l1_to_l2_consumed_message != L1ToL2Message::default()
-                    || !receipt.l2_to_l1_messages.is_empty()
-                    || !receipt.events.is_empty())
+                && (!receipt.l2_to_l1_messages.is_empty() || !receipt.events.is_empty())
             {
                 return Err(ClientError::TransactionReceiptsError(
                     TransactionReceiptsError::MismatchFields {

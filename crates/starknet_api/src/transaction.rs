@@ -155,6 +155,17 @@ impl ContractClass {
     }
 }
 
+/// An L1 handler transaction in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct L1HandlerTransaction {
+    pub transaction_hash: TransactionHash,
+    pub version: TransactionVersion,
+    pub nonce: Nonce,
+    pub contract_address: ContractAddress,
+    pub entry_point_selector: EntryPointSelector,
+    pub calldata: CallData,
+}
+
 /// A declare transaction in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeclareTransaction {
@@ -178,7 +189,7 @@ pub struct InvokeTransaction {
     pub contract_address: ContractAddress,
     // An invoke transaction without an entry point selector invokes the 'execute' function.
     pub entry_point_selector: Option<EntryPointSelector>,
-    pub call_data: CallData,
+    pub calldata: CallData,
 }
 
 /// A contract address salt in StarkNet.
@@ -231,6 +242,8 @@ pub enum TransactionOutput {
     Deploy(DeployTransactionOutput),
     /// An invoke transaction output.
     Invoke(InvokeTransactionOutput),
+    /// An L1 handler transaction output.
+    L1Handler(L1HandlerTransactionOutput),
 }
 
 /// An invoke transaction output in StarkNet.
@@ -238,8 +251,13 @@ pub enum TransactionOutput {
 pub struct InvokeTransactionOutput {
     pub actual_fee: Fee,
     pub messages_sent: Vec<MessageToL1>,
-    pub l1_origin_message: Option<MessageToL2>,
     pub events: Vec<Event>,
+}
+
+/// An L1 handler transaction output in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct L1HandlerTransactionOutput {
+    pub actual_fee: Fee,
 }
 
 /// A declare transaction output in StarkNet.
@@ -260,6 +278,7 @@ impl TransactionOutput {
             TransactionOutput::Declare(output) => output.actual_fee,
             TransactionOutput::Deploy(output) => output.actual_fee,
             TransactionOutput::Invoke(output) => output.actual_fee,
+            TransactionOutput::L1Handler(output) => output.actual_fee,
         }
     }
 }
@@ -273,6 +292,8 @@ pub enum Transaction {
     Deploy(DeployTransaction),
     /// An invoke transaction.
     Invoke(InvokeTransaction),
+    /// An L1 handler transaction.
+    L1Handler(L1HandlerTransaction),
 }
 impl Transaction {
     pub fn transaction_hash(&self) -> TransactionHash {
@@ -280,6 +301,7 @@ impl Transaction {
             Transaction::Declare(tx) => tx.transaction_hash,
             Transaction::Deploy(tx) => tx.transaction_hash,
             Transaction::Invoke(tx) => tx.transaction_hash,
+            Transaction::L1Handler(tx) => tx.transaction_hash,
         }
     }
 }
