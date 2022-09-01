@@ -15,6 +15,8 @@ pub enum TransactionType {
     Deploy,
     #[serde(rename(deserialize = "INVOKE", serialize = "INVOKE"))]
     Invoke,
+    #[serde(rename(deserialize = "L1_HANDLER", serialize = "L1_HANDLER"))]
+    L1Handler,
 }
 impl Default for TransactionType {
     fn default() -> Self {
@@ -40,6 +42,9 @@ impl From<Transaction> for TransactionWithType {
             }
             Transaction::Invoke(_) => {
                 TransactionWithType { r#type: TransactionType::Invoke, transaction }
+            }
+            Transaction::L1Handler(_) => {
+                TransactionWithType { r#type: TransactionType::L1Handler, transaction }
             }
         }
     }
