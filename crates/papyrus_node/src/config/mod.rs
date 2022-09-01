@@ -16,7 +16,7 @@ pub struct Config {
     pub sync: SyncConfig,
 }
 
-pub fn load_config(path: &'static str) -> anyhow::Result<Config> {
+pub fn load_config(path: &str) -> anyhow::Result<Config> {
     let config_contents = fs::read_to_string(path).expect("Something went wrong reading the file");
     let config: Config = ron::from_str(&config_contents)?;
     Ok(config)
