@@ -6,6 +6,7 @@ use starknet_api::{
     DeployTransactionOutput, EntryPointSelector, EntryPointType, EthAddress, Event, Fee,
     InvokeTransactionOutput, L1ToL2Payload, L2ToL1Payload, Nonce, StarkHash, TransactionHash,
     TransactionOffsetInBlock, TransactionOutput, TransactionSignature, TransactionVersion,
+    GENESIS_HASH,
 };
 
 // TODO(dan): consider extracting common fields out (version, hash, type).
@@ -115,7 +116,14 @@ pub struct InvokeTransaction {
 
 impl From<InvokeTransaction> for starknet_api::InvokeTransaction {
     fn from(invoke_tx: InvokeTransaction) -> Self {
-        starknet_api::InvokeTransaction {
+        let mut entry_point_selector = None;
+        if invoke_tx.entry_point_selector
+            != EntryPointSelector(StarkHash::from_hex(GENESIS_HASH).unwrap())
+        {
+            entry_point_selector = Some(invoke_tx.entry_point_selector);
+        }
+
+        Self {
             transaction_hash: invoke_tx.transaction_hash,
             max_fee: invoke_tx.max_fee,
             version: invoke_tx.version,
@@ -123,7 +131,7 @@ impl From<InvokeTransaction> for starknet_api::InvokeTransaction {
             // TODO(anatg): Get the real nonce when the sequencer returns one.
             nonce: Nonce::default(),
             contract_address: invoke_tx.contract_address,
-            entry_point_selector: invoke_tx.entry_point_selector,
+            entry_point_selector,
             call_data: invoke_tx.calldata,
         }
     }
