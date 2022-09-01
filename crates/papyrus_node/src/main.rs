@@ -22,9 +22,9 @@ async fn main() -> anyhow::Result<()> {
     let sync_thread = tokio::spawn(async move { sync.run().await });
 
     // Pass reader to storage.
-    let (run_server_res, sync_thread_res) =
-        tokio::join!(run_server(config.gateway, storage_reader.clone(),), sync_thread);
-    run_server_res?;
+    let (socket_address, server_handle) =
+        run_server(config.gateway, storage_reader.clone()).await?;
+    let (run_server_res, sync_thread_res) = tokio::join!(server_handle, sync_thread);
     sync_thread_res??;
 
     Ok(())
