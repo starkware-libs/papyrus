@@ -34,6 +34,14 @@ fn jsonrpc_request(method: &str, params: serde_json::Value) -> serde_json::Value
 
 /// Tests the rpc:
 /// ```
+/// getBlockNumber
+/// ```
+async fn loadtest_get_block_number(user: &mut GooseUser) -> TransactionResult {
+    post_jsonrpc_request(user, "starknet_getBlockWithTxHashes", json!({})).await
+}
+
+/// Tests the rpc:
+/// ```
 /// getBlockWithTxHashes
 /// ```
 async fn loadtest_get_block_with_tx_hashes_by_number(user: &mut GooseUser) -> TransactionResult {
@@ -64,6 +72,9 @@ async fn loadtest_get_block_with_tx_hashes_by_hash(user: &mut GooseUser) -> Tran
 #[tokio::main]
 async fn main() -> Result<(), GooseError> {
     GooseAttack::initialize()?
+        .register_scenario(
+            scenario!("block_number").register_transaction(transaction!(loadtest_get_block_number)),
+        )
         .register_scenario(
             scenario!("block_by_number")
                 .register_transaction(transaction!(loadtest_get_block_with_tx_hashes_by_number)),
