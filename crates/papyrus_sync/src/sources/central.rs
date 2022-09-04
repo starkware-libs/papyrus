@@ -5,7 +5,7 @@ use futures::{future, pin_mut, TryStreamExt};
 use futures_util::StreamExt;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
-use starknet_api::{Block, BlockNumber, ClassHash, ContractClass, StarknetApiError, StateDiff};
+use starknet_api::{Block, BlockNumber, DeclaredContract, StarknetApiError, StateDiff};
 use starknet_client::{
     client_to_starknet_api_storage_diff, BlockStateUpdate, ClientCreationError, ClientError,
     RetryConfig, StarknetClient, StarknetClientTrait,
@@ -40,7 +40,7 @@ pub enum CentralError {
 }
 
 fn get_state_diff(
-    maybe_state_update: CentralResult<(BlockStateUpdate, Vec<(ClassHash, ContractClass)>)>,
+    maybe_state_update: CentralResult<(BlockStateUpdate, Vec<DeclaredContract>)>,
 ) -> CentralResult<StateDiff> {
     let (state_update, classes) = maybe_state_update?;
     Ok(StateDiff::new(
@@ -141,8 +141,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
     fn state_update_stream(
         &self,
         block_number_stream: impl Stream<Item = BlockNumber> + Send + Sync + 'static,
-    ) -> impl Stream<Item = CentralResult<(BlockStateUpdate, Vec<(ClassHash, ContractClass)>)>>
-    {
+    ) -> impl Stream<Item = CentralResult<(BlockStateUpdate, Vec<DeclaredContract>)>> {
         let starknet_client = self.starknet_client.clone();
         let (state_updates0, mut state_updates1) = block_number_stream
             .map(move |block_number| {
@@ -183,14 +182,14 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                     }
                 };
                 let len = state_update.state_diff.class_hashes().len();
-                let classes: Result<Vec<(ClassHash, ContractClass)>, _> = flat_classes
+                let classes: Result<Vec<DeclaredContract>, _> = flat_classes
                     .take_n(len)
                     .await
                     .expect("Failed to download state update")
                     .into_iter()
                     .map(|(class_hash, class)| {
                         match class{
-                            Ok(Some(class)) => Ok((class_hash, class)),
+                            Ok(Some(class)) => Ok(DeclaredContract { class_hash, contract_class: class }),
                             Ok(None) => Err(CentralError::StateUpdateNotFound),
                             Err(err) => Err(CentralError::ClientError(err)),
                         }

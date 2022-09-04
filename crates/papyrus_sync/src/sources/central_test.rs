@@ -6,8 +6,8 @@ use futures_util::pin_mut;
 use mockall::predicate;
 use reqwest::StatusCode;
 use starknet_api::{
-    shash, BlockHash, BlockNumber, ClassHash, ContractAddress, ContractClass, DeployedContract,
-    GlobalRoot, StarkHash, StorageDiff, StorageEntry, StorageKey,
+    shash, BlockHash, BlockNumber, ClassHash, ContractAddress, ContractClass, DeclaredContract,
+    DeployedContract, GlobalRoot, StarkHash, StorageDiff, StorageEntry, StorageKey,
 };
 use starknet_client::{
     Block, BlockStateUpdate, ClientError, MockStarknetClientTrait, StateDiff as ClientStateDiff,
@@ -243,9 +243,9 @@ async fn stream_state_updates() {
     );
     assert_eq!(
         vec![
-            (class_hash1, contract_class1),
-            (class_hash2, contract_class2),
-            (class_hash3, contract_class3),
+            DeclaredContract { class_hash: class_hash1, contract_class: contract_class1 },
+            DeclaredContract { class_hash: class_hash2, contract_class: contract_class2 },
+            DeclaredContract { class_hash: class_hash3, contract_class: contract_class3 },
         ],
         declared_classes,
     );

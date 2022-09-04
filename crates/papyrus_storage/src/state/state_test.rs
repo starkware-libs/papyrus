@@ -1,7 +1,8 @@
 use assert_matches::assert_matches;
 use starknet_api::{
-    shash, BlockNumber, ClassHash, ContractAddress, ContractClass, DeployedContract, Nonce,
-    StarkHash, StateDiff, StateNumber, StorageDiff, StorageEntry, StorageKey,
+    shash, BlockNumber, ClassHash, ContractAddress, ContractClass, ContractNonce, DeclaredContract,
+    DeployedContract, Nonce, StarkHash, StateDiff, StateNumber, StorageDiff, StorageEntry,
+    StorageKey,
 };
 
 use super::{StateStorageReader, StateStorageWriter, StorageError};
@@ -36,8 +37,11 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
             },
             StorageDiff { address: c1, storage_entries: vec![] },
         ],
-        vec![(cl0, c_cls0.clone()), (cl1, c_cls1)],
-        vec![(c0, Nonce(StarkHash::from_u64(1)))],
+        vec![
+            DeclaredContract { class_hash: cl0, contract_class: c_cls0.clone() },
+            DeclaredContract { class_hash: cl1, contract_class: c_cls1 },
+        ],
+        vec![ContractNonce { contract_address: c0, nonce: Nonce(StarkHash::from_u64(1)) }],
     );
     let diff1 = StateDiff::new(
         vec![DeployedContract { address: c2, class_hash: cl0 }],
@@ -54,11 +58,11 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
                 storage_entries: vec![StorageEntry { key: key0.clone(), value: shash!("0x0") }],
             },
         ],
-        vec![(cl0, c_cls0.clone())],
+        vec![DeclaredContract { class_hash: cl0, contract_class: c_cls0.clone() }],
         vec![
-            (c0, Nonce(StarkHash::from_u64(2))),
-            (c1, Nonce(StarkHash::from_u64(1))),
-            (c2, Nonce(StarkHash::from_u64(1))),
+            ContractNonce { contract_address: c0, nonce: Nonce(StarkHash::from_u64(2)) },
+            ContractNonce { contract_address: c1, nonce: Nonce(StarkHash::from_u64(1)) },
+            ContractNonce { contract_address: c2, nonce: Nonce(StarkHash::from_u64(1)) },
         ],
     );
 
@@ -78,10 +82,10 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     // class hash.
     let txn = writer.begin_rw_txn()?;
     let (deployed_contracts, storage_diffs, mut declared_classes, nonces) = diff1.destruct();
-    let mut class = declared_classes[0].1.clone();
+    let mut class = declared_classes[0].contract_class.clone();
     class.abi = serde_json::Value::String("junk".to_string());
 
-    declared_classes[0].1 = class;
+    declared_classes[0].contract_class = class;
     let diff1 = StateDiff::new(deployed_contracts, storage_diffs, declared_classes, nonces);
 
     if let Err(err) = txn.append_state_diff(BlockNumber(2), diff1) {
