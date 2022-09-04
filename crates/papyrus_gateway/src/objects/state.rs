@@ -1,14 +1,8 @@
 use papyrus_storage::ThinStateDiff;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockHash, ClassHash, ContractAddress, DeployedContract, GlobalRoot, Nonce, StorageDiff,
+    BlockHash, ClassHash, ContractNonce, DeployedContract, GlobalRoot, StorageDiff,
 };
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct ContractNonce {
-    pub contract_address: ContractAddress,
-    pub nonce: Nonce,
-}
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeclaredContract {
@@ -33,11 +27,7 @@ impl From<ThinStateDiff> for StateDiff {
                 .map(|class_hash| DeclaredContract { class_hash })
                 .collect(),
             deployed_contracts: diff.deployed_contracts,
-            nonces: diff
-                .nonces
-                .into_iter()
-                .map(|(contract_address, nonce)| ContractNonce { contract_address, nonce })
-                .collect(),
+            nonces: diff.nonces,
         }
     }
 }
@@ -49,13 +39,12 @@ impl From<starknet_api::StateDiff> for StateDiff {
             storage_diffs,
             declared_contracts: declared_classes
                 .into_iter()
-                .map(|(class_hash, _class)| DeclaredContract { class_hash })
+                .map(|declared_contract| DeclaredContract {
+                    class_hash: declared_contract.class_hash,
+                })
                 .collect(),
             deployed_contracts,
-            nonces: nonces
-                .into_iter()
-                .map(|(contract_address, nonce)| ContractNonce { contract_address, nonce })
-                .collect(),
+            nonces,
         }
     }
 }

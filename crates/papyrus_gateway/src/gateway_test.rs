@@ -10,8 +10,8 @@ use papyrus_storage::test_utils::{get_test_block, get_test_storage};
 use papyrus_storage::{BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 use starknet_api::{
     shash, BlockHash, BlockHeader, BlockNumber, BlockStatus, ClassHash, ContractAddress,
-    ContractClass, DeployedContract, GlobalRoot, Nonce, StarkFelt, StarkHash, StorageDiff,
-    StorageEntry, StorageKey, TransactionHash, TransactionReceipt,
+    ContractClass, ContractNonce, DeclaredContract, DeployedContract, GlobalRoot, Nonce, StarkFelt,
+    StarkHash, StorageDiff, StorageEntry, StorageKey, TransactionHash, TransactionReceipt,
 };
 
 use super::api::{
@@ -71,8 +71,14 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, starknet_api::StateDiff) 
                 storage_entries: vec![StorageEntry { key: key0, value: value0 }],
             },
         ],
-        vec![(hash0, class0), (hash1, class1)],
-        vec![(address0, Nonce(StarkHash::from_u64(1))), (address1, Nonce(StarkHash::from_u64(1)))],
+        vec![
+            DeclaredContract { class_hash: hash0, contract_class: class0 },
+            DeclaredContract { class_hash: hash1, contract_class: class1 },
+        ],
+        vec![
+            ContractNonce { contract_address: address0, nonce: Nonce(StarkHash::from_u64(1)) },
+            ContractNonce { contract_address: address1, nonce: Nonce(StarkHash::from_u64(1)) },
+        ],
     );
 
     (parent_header, header, diff)
@@ -496,7 +502,9 @@ async fn test_get_nonce() -> Result<(), anyhow::Error> {
         .commit()?;
 
     let (_, _, _, nonces) = diff.destruct();
-    let (address, expected_nonce) = nonces.index(0);
+    let contract_nonce = nonces.index(0);
+    let address = contract_nonce.contract_address;
+    let expected_nonce = contract_nonce.nonce;
 
     // Get class hash by block hash.
     let res = module
@@ -505,7 +513,7 @@ async fn test_get_nonce() -> Result<(), anyhow::Error> {
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), address),
         )
         .await?;
-    assert_eq!(res, *expected_nonce);
+    assert_eq!(res, expected_nonce);
 
     // Get class hash by block number.
     let res = module
@@ -514,7 +522,7 @@ async fn test_get_nonce() -> Result<(), anyhow::Error> {
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), address),
         )
         .await?;
-    assert_eq!(res, *expected_nonce);
+    assert_eq!(res, expected_nonce);
 
     // Ask for an invalid contract.
     let err = module
@@ -890,9 +898,9 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
 
     let (_, _, declared_classes, _) = diff.destruct();
 
-    let class = declared_classes.index(0);
-    let class_hash = class.0;
-    let expected_contract_class = class.1.clone();
+    let declared_contract = declared_classes.index(0);
+    let class_hash = declared_contract.class_hash;
+    let expected_contract_class = declared_contract.contract_class.clone();
 
     // Get class by block hash.
     let res = module
@@ -998,7 +1006,7 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
 
     let (deployed_contracts, _, declared_classes, _) = diff.destruct();
     let address = deployed_contracts.index(0).address;
-    let expected_contract_class = declared_classes.index(0).1.clone();
+    let expected_contract_class = declared_classes.index(0).contract_class.clone();
 
     // Get class by block hash.
     let res = module

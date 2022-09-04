@@ -54,14 +54,11 @@ fn split_diff_for_storage(state_diff: StateDiff) -> (ThinStateDiff, Vec<Declared
     let thin_state_diff = ThinStateDiff {
         deployed_contracts,
         storage_diffs,
-        declared_classes: Vec::from_iter(declared_classes.iter().map(|(ch, _)| *ch)),
+        declared_classes: Vec::from_iter(
+            declared_classes.iter().map(|declared_contract| declared_contract.class_hash),
+        ),
         nonces,
     };
-    let declared_classes = Vec::from_iter(
-        declared_classes
-            .into_iter()
-            .map(|(ch, co)| DeclaredContract { class_hash: ch, contract_class: co }),
-    );
     (thin_state_diff, declared_classes)
 }
 
@@ -203,8 +200,12 @@ fn write_nonces<'env>(
     block_number: BlockNumber,
     contracts_table: &'env NoncesTable<'env>,
 ) -> StorageResult<()> {
-    for (contract_address, nonce) in &state_diff.nonces {
-        contracts_table.upsert(txn, &(*contract_address, block_number), nonce)?;
+    for contract_nonce in &state_diff.nonces {
+        contracts_table.upsert(
+            txn,
+            &(contract_nonce.contract_address, block_number),
+            &contract_nonce.nonce,
+        )?;
     }
     Ok(())
 }

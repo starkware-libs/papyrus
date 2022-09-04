@@ -38,34 +38,36 @@ impl StateNumber {
 pub struct StateDiff {
     deployed_contracts: Vec<DeployedContract>,
     storage_diffs: Vec<StorageDiff>,
-    declared_classes: Vec<(ClassHash, ContractClass)>,
-    nonces: Vec<(ContractAddress, Nonce)>,
+    declared_classes: Vec<DeclaredContract>,
+    nonces: Vec<ContractNonce>,
 }
 
-type StateDiffAsTuple = (
-    Vec<DeployedContract>,
-    Vec<StorageDiff>,
-    Vec<(ClassHash, ContractClass)>,
-    Vec<(ContractAddress, Nonce)>,
-);
+type StateDiffAsTuple =
+    (Vec<DeployedContract>, Vec<StorageDiff>, Vec<DeclaredContract>, Vec<ContractNonce>);
 
 impl StateDiff {
     pub fn new(
         mut deployed_contracts: Vec<DeployedContract>,
         mut storage_diffs: Vec<StorageDiff>,
-        mut declared_classes: Vec<(ClassHash, ContractClass)>,
-        mut nonces: Vec<(ContractAddress, Nonce)>,
+        mut declared_classes: Vec<DeclaredContract>,
+        mut nonces: Vec<ContractNonce>,
     ) -> Self {
         deployed_contracts.sort_by_key(|dc| dc.address);
         storage_diffs.sort_by_key(|sd| sd.address);
-        declared_classes.sort_by_key(|dc| dc.0);
-        nonces.sort_by_key(|n| n.0);
+        declared_classes.sort_by_key(|dc| dc.class_hash);
+        nonces.sort_by_key(|n| n.contract_address);
         Self { deployed_contracts, storage_diffs, declared_classes, nonces }
     }
 
     pub fn destruct(self) -> StateDiffAsTuple {
         (self.deployed_contracts, self.storage_diffs, self.declared_classes, self.nonces)
     }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct ContractNonce {
+    pub contract_address: ContractAddress,
+    pub nonce: Nonce,
 }
 
 /// A deployed contract in StarkNet.

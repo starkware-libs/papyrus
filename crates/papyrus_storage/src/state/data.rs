@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use starknet_api::{BlockNumber, ClassHash, ContractAddress, DeployedContract, Nonce, StorageDiff};
+use starknet_api::{BlockNumber, ClassHash, ContractNonce, DeployedContract, StorageDiff};
 
 // Data structs that are serialized into the database.
 
@@ -22,5 +22,5 @@ pub struct ThinStateDiff {
     pub deployed_contracts: Vec<DeployedContract>,
     pub storage_diffs: Vec<StorageDiff>,
     pub declared_classes: Vec<ClassHash>,
-    pub nonces: Vec<(ContractAddress, Nonce)>,
+    pub nonces: Vec<ContractNonce>,
 }
