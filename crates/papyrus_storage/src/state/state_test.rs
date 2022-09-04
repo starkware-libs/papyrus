@@ -11,17 +11,17 @@ use crate::test_utils::get_test_storage;
 
 #[test]
 fn test_append_diff() -> Result<(), anyhow::Error> {
-    let c0 = ContractAddress(shash!("0x11"));
-    let c1 = ContractAddress(shash!("0x12"));
-    let c2 = ContractAddress(shash!("0x13"));
-    let c3 = ContractAddress(shash!("0x14"));
+    let c0 = ContractAddress::try_from(shash!("0x11")).unwrap();
+    let c1 = ContractAddress::try_from(shash!("0x12")).unwrap();
+    let c2 = ContractAddress::try_from(shash!("0x13")).unwrap();
+    let c3 = ContractAddress::try_from(shash!("0x14")).unwrap();
     let cl0 = ClassHash(shash!("0x4"));
     let cl1 = ClassHash(shash!("0x5"));
     let cl2 = ClassHash(shash!("0x6"));
     let c_cls0 = ContractClass::default();
     let c_cls1 = ContractClass::default();
-    let key0 = StorageKey(shash!("0x1001"));
-    let key1 = StorageKey(shash!("0x101"));
+    let key0 = StorageKey::try_from(shash!("0x1001")).unwrap();
+    let key1 = StorageKey::try_from(shash!("0x101")).unwrap();
     let diff0 = StateDiff::new(
         vec![
             DeployedContract { address: c0, class_hash: cl0 },
