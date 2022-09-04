@@ -1,3 +1,7 @@
+#[cfg(test)]
+#[path = "state_test.rs"]
+mod state_test;
+
 use serde::{Deserialize, Serialize};
 
 use super::{BlockNumber, ClassHash, ContractAddress, ContractClass, Nonce, StarkFelt};
