@@ -13,6 +13,9 @@ use crate::serde_utils::hex_str_from_bytes;
 
 /// Genesis state hash.
 pub const GENESIS_HASH: &str = "0x0";
+/// 2**251 - 256 - 1
+pub const PATRICIA_KEY_UPPER_BOUND: &str =
+    "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeff";
 
 // TODO: Move to a different crate.
 /// A hash in StarkNet.
@@ -78,4 +81,42 @@ macro_rules! shash {
     ($s:expr) => {
         StarkHash::from_hex($s).unwrap()
     };
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(try_from = "PrefixedHexAsBytes<32_usize>", into = "PrefixedHexAsBytes<32_usize>")]
+pub struct PatriciaKey(StarkHash);
+impl PatriciaKey {
+    pub fn new(hash: StarkHash) -> Result<PatriciaKey, DeserializationError> {
+        if hash > shash!(PATRICIA_KEY_UPPER_BOUND) {
+            return Err(DeserializationError::OutOfRange {
+                string: format!("[0x0, {PATRICIA_KEY_UPPER_BOUND})"),
+            });
+        }
+        Ok(PatriciaKey(hash))
+    }
+    pub fn hash(&self) -> &StarkHash {
+        &self.0
+    }
+    pub fn into_hash(self) -> StarkHash {
+        self.0
+    }
+}
+impl TryFrom<PrefixedHexAsBytes<32_usize>> for PatriciaKey {
+    type Error = DeserializationError;
+    fn try_from(val: PrefixedHexAsBytes<32_usize>) -> Result<Self, Self::Error> {
+        let hash = StarkHash::new(val.0)?;
+        PatriciaKey::new(hash)
+    }
+}
+impl From<PatriciaKey> for PrefixedHexAsBytes<32_usize> {
+    fn from(val: PatriciaKey) -> Self {
+        HexAsBytes(val.hash().into_bytes())
+    }
+}
+
+impl Debug for PatriciaKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("PatriciaKey").field(&self.hash()).finish()
+    }
 }

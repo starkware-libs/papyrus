@@ -14,7 +14,7 @@ pub use self::block::{
     GlobalRoot,
 };
 pub use self::core::{ClassHash, ContractAddress, Nonce};
-pub use self::hash::{StarkFelt, StarkHash, GENESIS_HASH};
+pub use self::hash::{PatriciaKey, StarkFelt, StarkHash, GENESIS_HASH};
 pub use self::state::{
     ContractNonce, DeclaredContract, DeployedContract, StateDiff, StateNumber, StorageDiff,
     StorageEntry, StorageKey,
