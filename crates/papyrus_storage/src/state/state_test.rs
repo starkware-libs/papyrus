@@ -1,8 +1,8 @@
 use assert_matches::assert_matches;
 use starknet_api::{
     shash, BlockNumber, ClassHash, ContractAddress, ContractClass, ContractNonce, DeclaredContract,
-    DeployedContract, Nonce, StarkHash, StateDiff, StateNumber, StorageDiff, StorageEntry,
-    StorageKey,
+    DeployedContract, Nonce, PatriciaKey, StarkHash, StateDiff, StateNumber, StorageDiff,
+    StorageEntry, StorageKey,
 };
 
 use super::{StateStorageReader, StateStorageWriter, StorageError};
@@ -11,17 +11,17 @@ use crate::test_utils::get_test_storage;
 
 #[test]
 fn test_append_diff() -> Result<(), anyhow::Error> {
-    let c0 = ContractAddress(shash!("0x11"));
-    let c1 = ContractAddress(shash!("0x12"));
-    let c2 = ContractAddress(shash!("0x13"));
-    let c3 = ContractAddress(shash!("0x14"));
-    let cl0 = ClassHash(shash!("0x4"));
-    let cl1 = ClassHash(shash!("0x5"));
-    let cl2 = ClassHash(shash!("0x6"));
+    let c0 = ContractAddress(PatriciaKey::new(shash!("0x11")).unwrap());
+    let c1 = ContractAddress(PatriciaKey::new(shash!("0x12")).unwrap());
+    let c2 = ContractAddress(PatriciaKey::new(shash!("0x13")).unwrap());
+    let c3 = ContractAddress(PatriciaKey::new(shash!("0x14")).unwrap());
+    let cl0 = ClassHash(PatriciaKey::new(shash!("0x4")).unwrap());
+    let cl1 = ClassHash(PatriciaKey::new(shash!("0x5")).unwrap());
+    let cl2 = ClassHash(PatriciaKey::new(shash!("0x6")).unwrap());
     let c_cls0 = ContractClass::default();
     let c_cls1 = ContractClass::default();
-    let key0 = StorageKey(shash!("0x1001"));
-    let key1 = StorageKey(shash!("0x101"));
+    let key0 = StorageKey(PatriciaKey::new(shash!("0x1001")).unwrap());
+    let key1 = StorageKey(PatriciaKey::new(shash!("0x101")).unwrap());
     let diff0 = StateDiff::new(
         vec![
             DeployedContract { address: c0, class_hash: cl0 },

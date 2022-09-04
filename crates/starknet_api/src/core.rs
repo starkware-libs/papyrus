@@ -1,18 +1,18 @@
 use serde::{Deserialize, Serialize};
 
-use super::{StarkFelt, StarkHash};
+use super::{PatriciaKey, StarkFelt};
 
 /// The address of a StarkNet contract.
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct ContractAddress(pub StarkHash);
+pub struct ContractAddress(pub PatriciaKey);
 
 /// The hash of a StarkNet [ContractClass](`super::ContractClass`).
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct ClassHash(pub StarkHash);
+pub struct ClassHash(pub PatriciaKey);
 
 /// The nonce of a StarkNet contract.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]

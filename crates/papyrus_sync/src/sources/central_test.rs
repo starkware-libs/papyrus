@@ -7,7 +7,7 @@ use mockall::predicate;
 use reqwest::StatusCode;
 use starknet_api::{
     shash, BlockHash, BlockNumber, ClassHash, ContractAddress, ContractClass, DeclaredContract,
-    DeployedContract, GlobalRoot, StarkHash, StorageDiff, StorageEntry, StorageKey,
+    DeployedContract, GlobalRoot, PatriciaKey, StarkHash, StorageDiff, StorageEntry, StorageKey,
 };
 use starknet_client::{Block, ClientError, MockStarknetClientTrait, StateUpdate};
 use tokio_stream::StreamExt;
@@ -146,17 +146,20 @@ async fn stream_state_updates() {
     const START_BLOCK_NUMBER: u64 = 5;
     const END_BLOCK_NUMBER: u64 = 7;
 
-    let class_hash1 = ClassHash(shash!("0x123"));
-    let class_hash2 = ClassHash(shash!("0x456"));
-    let class_hash3 = ClassHash(shash!("0x789"));
-    let contract_address1 = ContractAddress(shash!("0xabc"));
-    let contract_address2 = ContractAddress(shash!("0xdef"));
+    let class_hash1 = ClassHash(PatriciaKey::new(shash!("0x123")).unwrap());
+    let class_hash2 = ClassHash(PatriciaKey::new(shash!("0x456")).unwrap());
+    let class_hash3 = ClassHash(PatriciaKey::new(shash!("0x789")).unwrap());
+    let contract_address1 = ContractAddress(PatriciaKey::new(shash!("0xabc")).unwrap());
+    let contract_address2 = ContractAddress(PatriciaKey::new(shash!("0xdef")).unwrap());
     let root1 = GlobalRoot(shash!("0x111"));
     let root2 = GlobalRoot(shash!("0x222"));
     let block_hash1 = BlockHash(shash!("0x333"));
     let block_hash2 = BlockHash(shash!("0x444"));
 
-    let storage_entry = StorageEntry { key: StorageKey(shash!("0x555")), value: shash!("0x666") };
+    let storage_entry = StorageEntry {
+        key: StorageKey(PatriciaKey::new(shash!("0x555")).unwrap()),
+        value: shash!("0x666"),
+    };
 
     // TODO(shahak): Fill these contract classes with non-empty data.
     let contract_class1 = ContractClass::default();
