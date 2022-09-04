@@ -44,7 +44,7 @@ pub fn get_test_block(transaction_count: usize) -> Block {
             TransactionOutput::Deploy(DeployTransactionOutput { actual_fee: Fee::default() });
         transaction_outputs.push(transaction_output);
     }
-    let body = BlockBody { transactions, transaction_outputs };
 
+    let body = BlockBody::new(transactions, transaction_outputs).unwrap();
     Block { header, body }
 }

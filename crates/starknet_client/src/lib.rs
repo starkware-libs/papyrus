@@ -16,7 +16,7 @@ use log::error;
 use mockall::automock;
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
-use starknet_api::{BlockNumber, ClassHash, ContractClass};
+use starknet_api::{BlockNumber, ClassHash, ContractClass, StarknetApiError};
 use url::Url;
 
 pub use self::objects::block::{
@@ -116,6 +116,9 @@ pub enum ClientError {
     /// A client error representing deserialisation errors.
     #[error(transparent)]
     SerdeError(#[from] serde_json::Error),
+    /// A client error representing errors from [`starknet_api`].
+    #[error(transparent)]
+    StarknetApiError(#[from] StarknetApiError),
     /// A client error representing errors returned by the starknet client.
     #[error(transparent)]
     StarknetError(#[from] StarknetError),
