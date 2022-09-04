@@ -1,6 +1,5 @@
 use papyrus_node::config::load_config;
-use starknet_api::serde_utils::bytes_from_hex_str;
-use starknet_api::{BlockNumber, ClassHash, StarkHash};
+use starknet_api::{shash, BlockNumber, ClassHash, PatriciaKey, StarkHash};
 use starknet_client::{StarknetClient, StarknetClientTrait};
 
 #[tokio::main]
@@ -13,16 +12,12 @@ async fn main() {
     let _block_123456 = starknet_client.block(BlockNumber(123456)).await.expect("Get block");
     let _state_diff =
         starknet_client.state_update(BlockNumber(123456)).await.expect("Get state diff");
-    let _contract_class_by_hash = starknet_client
-        .class_by_hash(ClassHash(
-            StarkHash::new(
-                bytes_from_hex_str::<32, true>(
-                    "0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17",
-                )
-                .unwrap(),
-            )
-            .unwrap(),
+    let class_hash = ClassHash(
+        PatriciaKey::new(shash!(
+            "0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17"
         ))
-        .await
-        .expect("Get class by hash");
+        .unwrap(),
+    );
+    let _contract_class_by_hash =
+        starknet_client.class_by_hash(class_hash).await.expect("Get class by hash");
 }

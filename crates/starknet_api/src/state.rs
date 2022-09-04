@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{BlockNumber, ClassHash, ContractAddress, ContractClass, Nonce, StarkFelt};
+use crate::hash::PatriciaKey;
 
 /// The sequential numbering of the states between blocks in StarkNet.
 // Example:
@@ -97,7 +98,7 @@ pub struct StorageDiff {
 // TODO(spapini): Enforce the invariant.
 /// A storage key in a StarkNet contract.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct StorageKey(pub StarkFelt);
+pub struct StorageKey(pub PatriciaKey);
 
 /// A storage entry in a StarkNet contract.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
