@@ -181,7 +181,7 @@ impl TryFrom<Block> for starknet_api::Block {
 
 /// A state update derived from a single block as returned by the starknet gateway.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
-pub struct BlockStateUpdate {
+pub struct StateUpdate {
     pub block_hash: BlockHash,
     pub new_root: GlobalRoot,
     pub old_root: GlobalRoot,
@@ -241,8 +241,8 @@ impl StateDiff {
     }
 }
 
-/// Converts the client representation of [`BlockStateUpdate`] storage diffs to a [`starknet_api`]
-/// [`StorageDiff`].
+/// Converts the client representation of [`starknet_client`][`StateUpdate`] storage diffs to a
+/// [`starknet_api`][`StorageDiff`].
 pub fn client_to_starknet_api_storage_diff(
     storage_diffs: BTreeMap<ContractAddress, Vec<StorageEntry>>,
 ) -> Vec<StorageDiff> {
