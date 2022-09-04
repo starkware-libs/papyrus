@@ -1,26 +1,18 @@
 // This code is inspired by the pathfinder load test.
-use goose::goose::{GooseUser, Scenario, Transaction, TransactionError, TransactionResult};
+use goose::goose::{GooseUser, Scenario, Transaction, TransactionResult};
 use goose::{scenario, transaction, GooseAttack, GooseError};
-use serde::de::DeserializeOwned;
-use serde::Deserialize;
+use goose_eggs::{validate_and_load_static_assets, Validate};
 use serde_json::json;
 
-type MethodResult<T> = Result<T, TransactionError>;
-
-async fn post_jsonrpc_request<T: DeserializeOwned>(
+async fn post_jsonrpc_request(
     user: &mut GooseUser,
     method: &str,
     params: serde_json::Value,
-) -> MethodResult<T> {
+) -> TransactionResult {
     let request = jsonrpc_request(method, params);
-    let response = user.post_json("", &request).await?.response?;
-    #[derive(Deserialize)]
-    struct TransactionReceiptResponse<T> {
-        result: T,
-    }
-    let response: TransactionReceiptResponse<T> = response.json().await?;
-
-    Ok(response.result)
+    let goose = user.post_json("", &request).await?;
+    validate_and_load_static_assets(user, goose, &Validate::builder().status(200).build()).await?;
+    Ok(())
 }
 
 fn jsonrpc_request(method: &str, params: serde_json::Value) -> serde_json::Value {
