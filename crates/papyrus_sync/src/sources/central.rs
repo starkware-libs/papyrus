@@ -7,8 +7,8 @@ use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use starknet_api::{Block, BlockNumber, DeclaredContract, StarknetApiError, StateDiff};
 use starknet_client::{
-    client_to_starknet_api_storage_diff, BlockStateUpdate, ClientCreationError, ClientError,
-    RetryConfig, StarknetClient, StarknetClientTrait,
+    client_to_starknet_api_storage_diff, ClientCreationError, ClientError, RetryConfig,
+    StarknetClient, StarknetClientTrait, StateUpdate,
 };
 use tokio_stream::Stream;
 
@@ -40,7 +40,7 @@ pub enum CentralError {
 }
 
 fn get_state_diff(
-    maybe_state_update: CentralResult<(BlockStateUpdate, Vec<DeclaredContract>)>,
+    maybe_state_update: CentralResult<(StateUpdate, Vec<DeclaredContract>)>,
 ) -> CentralResult<StateDiff> {
     let (state_update, classes) = maybe_state_update?;
     Ok(StateDiff::new(
@@ -141,7 +141,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
     fn state_update_stream(
         &self,
         block_number_stream: impl Stream<Item = BlockNumber> + Send + Sync + 'static,
-    ) -> impl Stream<Item = CentralResult<(BlockStateUpdate, Vec<DeclaredContract>)>> {
+    ) -> impl Stream<Item = CentralResult<(StateUpdate, Vec<DeclaredContract>)>> {
         let starknet_client = self.starknet_client.clone();
         let (state_updates0, mut state_updates1) = block_number_stream
             .map(move |block_number| {

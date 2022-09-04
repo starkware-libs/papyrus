@@ -9,13 +9,10 @@ use starknet_api::{
     shash, BlockHash, BlockNumber, ClassHash, ContractAddress, ContractClass, DeclaredContract,
     DeployedContract, GlobalRoot, StarkHash, StorageDiff, StorageEntry, StorageKey,
 };
-use starknet_client::{
-    Block, BlockStateUpdate, ClientError, MockStarknetClientTrait, StateDiff as ClientStateDiff,
-};
+use starknet_client::{Block, ClientError, MockStarknetClientTrait, StateUpdate};
 use tokio_stream::StreamExt;
 
 use crate::sources::central::{CentralError, GenericCentralSource};
-use crate::StateDiff;
 
 #[tokio::test]
 async fn last_block_number() {
@@ -166,7 +163,7 @@ async fn stream_state_updates() {
     let contract_class2 = ContractClass::default();
     let contract_class3 = ContractClass::default();
 
-    let client_state_diff1 = ClientStateDiff {
+    let client_state_diff1 = starknet_client::StateDiff {
         storage_diffs: BTreeMap::from([(contract_address1, vec![storage_entry.clone()])]),
         deployed_contracts: vec![
             DeployedContract { address: contract_address1, class_hash: class_hash2 },
@@ -174,15 +171,15 @@ async fn stream_state_updates() {
         ],
         declared_classes: vec![class_hash1, class_hash3],
     };
-    let client_state_diff2 = ClientStateDiff::default();
+    let client_state_diff2 = starknet_client::StateDiff::default();
 
-    let block_state_update1 = BlockStateUpdate {
+    let block_state_update1 = StateUpdate {
         block_hash: block_hash1,
         new_root: root2,
         old_root: root1,
         state_diff: client_state_diff1,
     };
-    let block_state_update2 = BlockStateUpdate {
+    let block_state_update2 = StateUpdate {
         block_hash: block_hash2,
         new_root: root2,
         old_root: root2,
@@ -257,7 +254,7 @@ async fn stream_state_updates() {
         panic!("Match of streamed state_update failed!");
     };
     assert_eq!(initial_block_num.next(), current_block_num);
-    assert_eq!(state_diff, StateDiff::default());
+    assert_eq!(state_diff, starknet_api::StateDiff::default());
 
     assert!(stream.next().await.is_none());
 }

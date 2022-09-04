@@ -10,7 +10,7 @@ use starknet_api::{
 };
 
 // TODO(dan): use SN structs once available & sort.
-use super::objects::block::BlockStateUpdate;
+use super::objects::block::StateUpdate;
 use super::objects::transaction::{DeclareTransaction, TransactionType};
 use super::test_utils::read_resource::read_resource_file;
 use super::test_utils::retry::get_test_config;
@@ -86,7 +86,7 @@ async fn test_state_update() {
             .create();
     let state_update = starknet_client.state_update(BlockNumber(123456)).await.unwrap();
     mock.assert();
-    let expected_state_update: BlockStateUpdate = serde_json::from_str(&raw_state_update).unwrap();
+    let expected_state_update: StateUpdate = serde_json::from_str(&raw_state_update).unwrap();
     assert_eq!(state_update.unwrap(), expected_state_update);
 }
 

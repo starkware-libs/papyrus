@@ -20,8 +20,7 @@ use starknet_api::{BlockNumber, ClassHash, ContractClass, StarknetApiError};
 use url::Url;
 
 pub use self::objects::block::{
-    client_to_starknet_api_storage_diff, Block, BlockStateUpdate, StateDiff,
-    TransactionReceiptsError,
+    client_to_starknet_api_storage_diff, Block, StateDiff, StateUpdate, TransactionReceiptsError,
 };
 use self::retry::Retry;
 pub use self::retry::RetryConfig;
@@ -41,11 +40,8 @@ pub trait StarknetClientTrait {
     async fn block(&self, block_number: BlockNumber) -> ClientResult<Option<Block>>;
     /// Returns a [`ContractClass`] corresponding to `class_hash`.
     async fn class_by_hash(&self, class_hash: ClassHash) -> ClientResult<Option<ContractClass>>;
-    /// Returns a [`BlockStateUpdate`] corresponding to `block_number`.
-    async fn state_update(
-        &self,
-        block_number: BlockNumber,
-    ) -> ClientResult<Option<BlockStateUpdate>>;
+    /// Returns a [`starknet_clinet`][`StateUpdate`] corresponding to `block_number`.
+    async fn state_update(&self, block_number: BlockNumber) -> ClientResult<Option<StateUpdate>>;
 }
 
 /// A starknet client.
@@ -283,16 +279,13 @@ impl StarknetClientTrait for StarknetClient {
         }
     }
 
-    async fn state_update(
-        &self,
-        block_number: BlockNumber,
-    ) -> ClientResult<Option<BlockStateUpdate>> {
+    async fn state_update(&self, block_number: BlockNumber) -> ClientResult<Option<StateUpdate>> {
         let mut url = self.urls.get_state_update.clone();
         url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.0.to_string());
         let response = self.request_with_retry(url).await;
         match response {
             Ok(raw_state_update) => {
-                let state_update: BlockStateUpdate = serde_json::from_str(&raw_state_update)?;
+                let state_update: StateUpdate = serde_json::from_str(&raw_state_update)?;
                 Ok(Some(state_update))
             }
             Err(err) => match err {

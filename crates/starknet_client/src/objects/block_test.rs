@@ -8,7 +8,7 @@ use starknet_api::{
     StorageEntry, StorageKey, TransactionHash, TransactionOffsetInBlock,
 };
 
-use super::block::{Block, BlockStateUpdate, StateDiff, TransactionReceiptsError};
+use super::block::{Block, StateDiff, StateUpdate, TransactionReceiptsError};
 use super::transaction::TransactionReceipt;
 use crate::test_utils::read_resource::read_resource_file;
 use crate::ClientError;
@@ -20,7 +20,7 @@ fn load_block_succeeds() {
 
 #[test]
 fn load_block_state_update_succeeds() {
-    let expected_state_update = BlockStateUpdate {
+    let expected_state_update = StateUpdate {
         block_hash: BlockHash(shash!(
             "0x3f65ef25e87a83d92f32f5e4869a33580f9db47ec980c1ff27bdb5151914de5"
         )),
@@ -75,7 +75,7 @@ fn load_block_state_update_succeeds() {
     };
     assert_eq!(
         expected_state_update,
-        serde_json::from_str::<BlockStateUpdate>(&read_resource_file("block_state_update.json"))
+        serde_json::from_str::<StateUpdate>(&read_resource_file("block_state_update.json"))
             .unwrap()
     )
 }
