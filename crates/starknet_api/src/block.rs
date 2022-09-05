@@ -10,7 +10,18 @@ use crate::{StarknetApiError, TransactionOutput};
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct BlockHash(pub StarkHash);
+pub struct BlockHash(StarkHash);
+
+impl BlockHash {
+    #[cfg(any(feature = "testing", test))]
+    pub fn new(hash: StarkHash) -> Self {
+        Self(hash)
+    }
+    #[cfg(any(feature = "testing", test))]
+    pub fn hash(&self) -> StarkHash {
+        self.0
+    }
+}
 
 /// The root of the global state at a StarkNet block.
 #[derive(
