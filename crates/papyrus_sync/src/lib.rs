@@ -10,7 +10,7 @@ use papyrus_storage::{
     StateStorageWriter, StorageError, StorageReader, StorageWriter,
 };
 use serde::{Deserialize, Serialize};
-use starknet_api::{Block, BlockNumber, StateDiff};
+use starknet_api::{Block, BlockNumber, DeclaredContract, StateDiff};
 use starknet_client::ClientError;
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig};
@@ -38,8 +38,15 @@ pub enum StateSyncError {
     SyncError { message: String },
 }
 pub enum SyncEvent {
-    BlockAvailable { block_number: BlockNumber, block: Block },
-    StateDiffAvailable { block_number: BlockNumber, state_diff: StateDiff },
+    BlockAvailable {
+        block_number: BlockNumber,
+        block: Block,
+    },
+    StateDiffAvailable {
+        block_number: BlockNumber,
+        state_diff: StateDiff,
+        deployed_classes: Vec<DeclaredContract>,
+    },
 }
 
 #[allow(clippy::new_without_default)]
@@ -84,10 +91,14 @@ impl StateSync {
                             .append_body(block_number, &block.body)?
                             .commit()?;
                     }
-                    Some(SyncEvent::StateDiffAvailable { block_number, state_diff }) => {
+                    Some(SyncEvent::StateDiffAvailable {
+                        block_number,
+                        state_diff,
+                        deployed_classes,
+                    }) => {
                         self.writer
                             .begin_rw_txn()?
-                            .append_state_diff(block_number, state_diff)?
+                            .append_state_diff(block_number, state_diff, deployed_classes)?
                             .commit()?;
                     }
                     None => {
@@ -162,10 +173,11 @@ fn stream_new_state_diffs(
                 .fuse();
             pin_mut!(state_diff_stream);
             // TODO(dan): reconsider let Some(Ok as it hides errors.
-            while let Some(Ok((block_number, state_diff))) = state_diff_stream.next().await {
+            while let Some(Ok((block_number, state_diff, deployed_classes))) = state_diff_stream.next().await {
                 yield SyncEvent::StateDiffAvailable {
                     block_number,
                     state_diff,
+                    deployed_classes,
                 };
             }
         }
