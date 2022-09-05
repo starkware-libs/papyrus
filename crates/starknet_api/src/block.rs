@@ -1,3 +1,9 @@
+#[cfg(test)]
+#[path = "block_test.rs"]
+mod block_test;
+
+use std::fmt;
+
 use serde::{Deserialize, Serialize};
 
 use super::serde_utils::{HexAsBytes, NonPrefixedHexAsBytes, PrefixedHexAsBytes};
@@ -10,20 +16,34 @@ use crate::{StarknetApiError, TransactionOutput};
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct BlockHash(pub StarkHash);
+pub struct BlockHash(StarkHash);
+
+impl BlockHash {
+    #[cfg(any(feature = "testing", test))]
+    pub fn new(hash: StarkHash) -> Self {
+        Self(hash)
+    }
+}
 
 /// The root of the global state at a StarkNet block.
 #[derive(
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 #[serde(try_from = "NonPrefixedHexAsBytes<32_usize>", into = "NonPrefixedHexAsBytes<32_usize>")]
-pub struct GlobalRoot(pub StarkHash);
+pub struct GlobalRoot(StarkHash);
+
+impl GlobalRoot {
+    pub fn new(hash: StarkHash) -> Self {
+        Self(hash)
+    }
+}
+
 // We don't use the regular StarkHash deserialization since the Starknet sequencer returns the
 // global root hash as a hex string without a "0x" prefix.
 impl TryFrom<NonPrefixedHexAsBytes<32_usize>> for GlobalRoot {
     type Error = DeserializationError;
     fn try_from(val: NonPrefixedHexAsBytes<32_usize>) -> Result<Self, Self::Error> {
-        Ok(GlobalRoot(StarkHash::new(val.0)?))
+        Ok(GlobalRoot::new(StarkHash::new(val.0)?))
     }
 }
 impl From<GlobalRoot> for NonPrefixedHexAsBytes<32_usize> {
@@ -36,8 +56,12 @@ impl From<GlobalRoot> for NonPrefixedHexAsBytes<32_usize> {
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct BlockNumber(pub u64);
+pub struct BlockNumber(u64);
 impl BlockNumber {
+    pub const fn new(block_number: u64) -> Self {
+        Self(block_number)
+    }
+
     pub fn next(&self) -> BlockNumber {
         BlockNumber(self.0 + 1)
     }
@@ -48,20 +72,31 @@ impl BlockNumber {
             i => Some(BlockNumber(i - 1)),
         }
     }
+
+    pub fn iter_up_to(&self, up_to: Self) -> impl Iterator<Item = BlockNumber> {
+        let range = self.0..up_to.0;
+        range.map(Self)
+    }
+}
+
+impl fmt::Display for BlockNumber {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }
 
 /// The timestamp of a StarkNet block.
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct BlockTimestamp(pub u64);
+pub struct BlockTimestamp(u64);
 
 /// The gas price at a StarkNet block.
 #[derive(
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 #[serde(from = "PrefixedHexAsBytes<16_usize>", into = "PrefixedHexAsBytes<16_usize>")]
-pub struct GasPrice(pub u128);
+pub struct GasPrice(u128);
 impl From<PrefixedHexAsBytes<16_usize>> for GasPrice {
     fn from(val: PrefixedHexAsBytes<16_usize>) -> Self {
         GasPrice(u128::from_be_bytes(val.0))
