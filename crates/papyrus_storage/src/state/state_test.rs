@@ -70,12 +70,12 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     let mut txn = writer.begin_rw_txn()?;
     assert_eq!(txn.get_state_diff(BlockNumber(0))?, None);
     assert_eq!(txn.get_state_diff(BlockNumber(1))?, None);
-    txn = txn.append_state_diff(BlockNumber(0), diff0.clone())?;
-    let (thin_state_diff_0, _declared_classes_0) = split_diff_for_storage(diff0.clone());
+    txn = txn.append_state_diff(BlockNumber(0), diff0.clone(), vec![])?;
+    let (thin_state_diff_0, _declared_classes_0) = split_diff_for_storage(diff0.clone(), vec![]);
     assert_eq!(txn.get_state_diff(BlockNumber(0))?.unwrap(), thin_state_diff_0);
     assert_eq!(txn.get_state_diff(BlockNumber(1))?, None);
-    txn = txn.append_state_diff(BlockNumber(1), diff1.clone())?;
-    let (this_state_diff_1, _declared_classes_1) = split_diff_for_storage(diff1.clone());
+    txn = txn.append_state_diff(BlockNumber(1), diff1.clone(), vec![])?;
+    let (this_state_diff_1, _declared_classes_1) = split_diff_for_storage(diff1.clone(), vec![]);
     txn.commit()?;
 
     // Check for ClassAlreadyExists error when trying to declare a different class to an existing
@@ -88,7 +88,7 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     declared_classes[0].contract_class = class;
     let diff1 = StateDiff::new(deployed_contracts, storage_diffs, declared_classes, nonces);
 
-    if let Err(err) = txn.append_state_diff(BlockNumber(2), diff1) {
+    if let Err(err) = txn.append_state_diff(BlockNumber(2), diff1, vec![]) {
         assert_matches!(err, StorageError::ClassAlreadyExists { class_hash: _ });
     } else {
         panic!("Unexpected Ok.");
@@ -101,7 +101,7 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     contract.class_hash = cl2;
     deployed_contracts[0] = contract;
     let diff0 = StateDiff::new(deployed_contracts, storage_diffs, declared_classes, nonces);
-    if let Err(err) = txn.append_state_diff(BlockNumber(2), diff0) {
+    if let Err(err) = txn.append_state_diff(BlockNumber(2), diff0, vec![]) {
         assert_matches!(err, StorageError::ContractAlreadyExists { address: _ });
     } else {
         panic!("Unexpected Ok.");
