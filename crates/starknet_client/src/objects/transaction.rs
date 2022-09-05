@@ -6,7 +6,6 @@ use starknet_api::{
     DeployTransactionOutput, EntryPointSelector, EntryPointType, EthAddress, Event, Fee,
     InvokeTransactionOutput, L1ToL2Payload, L2ToL1Payload, Nonce, StarkHash, TransactionHash,
     TransactionOffsetInBlock, TransactionOutput, TransactionSignature, TransactionVersion,
-    GENESIS_HASH,
 };
 
 // TODO(dan): consider extracting common fields out (version, hash, type).
@@ -117,9 +116,7 @@ pub struct InvokeTransaction {
 impl From<InvokeTransaction> for starknet_api::InvokeTransaction {
     fn from(invoke_tx: InvokeTransaction) -> Self {
         let mut entry_point_selector = None;
-        if invoke_tx.entry_point_selector
-            != EntryPointSelector(StarkHash::from_hex(GENESIS_HASH).unwrap())
-        {
+        if invoke_tx.entry_point_selector != EntryPointSelector::default() {
             entry_point_selector = Some(invoke_tx.entry_point_selector);
         }
 
