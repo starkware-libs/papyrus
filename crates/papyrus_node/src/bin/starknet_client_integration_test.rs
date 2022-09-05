@@ -9,6 +9,7 @@ async fn main() {
     let starknet_client = StarknetClient::new(&config.central.url, config.central.retry_config)
         .expect("Create new client");
     let _latest_block_number = starknet_client.block_number().await.expect("Get block number");
+    let _block_1564 = starknet_client.block(BlockNumber(1564)).await.expect("Get block");
     let _block_123456 = starknet_client.block(BlockNumber(123456)).await.expect("Get block");
     let _state_diff =
         starknet_client.state_update(BlockNumber(123456)).await.expect("Get state diff");

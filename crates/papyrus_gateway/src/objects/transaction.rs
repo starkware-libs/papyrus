@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockStatus, CallData, ContractAddress, DeclareTransaction, DeployTransaction,
-    EntryPointSelector, Fee, Nonce, TransactionHash, TransactionReceipt, TransactionSignature,
-    TransactionVersion,
+    EntryPointSelector, Fee, L1HandlerTransaction, Nonce, TransactionHash, TransactionReceipt,
+    TransactionSignature, TransactionVersion,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -33,7 +33,7 @@ impl From<starknet_api::InvokeTransaction> for InvokeTransactionV0 {
             nonce: tx.nonce,
             contract_address: tx.contract_address,
             entry_point_selector: tx.entry_point_selector.unwrap_or_default(),
-            calldata: tx.call_data,
+            calldata: tx.calldata,
         }
     }
 }
@@ -58,7 +58,7 @@ impl From<starknet_api::InvokeTransaction> for InvokeTransactionV1 {
             signature: tx.signature,
             nonce: tx.nonce,
             sender_address: tx.contract_address,
-            calldata: tx.call_data,
+            calldata: tx.calldata,
         }
     }
 }
@@ -76,6 +76,7 @@ pub enum Transaction {
     Declare(DeclareTransaction),
     Deploy(DeployTransaction),
     Invoke(InvokeTransaction),
+    L1Handler(L1HandlerTransaction),
 }
 
 impl Transaction {
@@ -85,6 +86,7 @@ impl Transaction {
             Transaction::Deploy(tx) => tx.transaction_hash,
             Transaction::Invoke(InvokeTransaction::Version0(tx)) => tx.transaction_hash,
             Transaction::Invoke(InvokeTransaction::Version1(tx)) => tx.transaction_hash,
+            Transaction::L1Handler(tx) => tx.transaction_hash,
         }
     }
 }
@@ -101,6 +103,9 @@ impl From<starknet_api::Transaction> for Transaction {
                     Transaction::Invoke(InvokeTransaction::Version0(invoke_tx.into()))
                 }
             }
+            starknet_api::Transaction::L1Handler(l1_handler_tx) => {
+                Transaction::L1Handler(l1_handler_tx)
+            }
         }
     }
 }
@@ -113,6 +118,8 @@ pub enum TransactionType {
     Deploy,
     #[serde(rename(deserialize = "INVOKE", serialize = "INVOKE"))]
     Invoke,
+    #[serde(rename(deserialize = "L1_HANDLER", serialize = "L1_HANDLER"))]
+    L1Handler,
 }
 impl Default for TransactionType {
     fn default() -> Self {
@@ -138,6 +145,9 @@ impl From<Transaction> for TransactionWithType {
             }
             Transaction::Invoke(_) => {
                 TransactionWithType { r#type: TransactionType::Invoke, transaction }
+            }
+            Transaction::L1Handler(_) => {
+                TransactionWithType { r#type: TransactionType::L1Handler, transaction }
             }
         }
     }

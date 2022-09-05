@@ -4,8 +4,9 @@ use serde::{Deserialize, Serialize};
 use starknet_api::{
     CallData, ClassHash, ContractAddress, ContractAddressSalt, DeclareTransactionOutput,
     DeployTransactionOutput, EntryPointSelector, EntryPointType, EthAddress, Event, Fee,
-    InvokeTransactionOutput, L1ToL2Payload, L2ToL1Payload, Nonce, StarkHash, TransactionHash,
-    TransactionOffsetInBlock, TransactionOutput, TransactionSignature, TransactionVersion,
+    InvokeTransactionOutput, L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, Nonce,
+    StarkHash, TransactionHash, TransactionOffsetInBlock, TransactionOutput, TransactionSignature,
+    TransactionVersion,
 };
 
 // TODO(dan): consider extracting common fields out (version, hash, type).
@@ -15,6 +16,7 @@ pub enum Transaction {
     Declare(DeclareTransaction),
     Deploy(DeployTransaction),
     Invoke(InvokeTransaction),
+    L1Handler(L1HandlerTransaction),
 }
 
 impl From<Transaction> for starknet_api::Transaction {
@@ -25,6 +27,9 @@ impl From<Transaction> for starknet_api::Transaction {
             }
             Transaction::Deploy(deploy_tx) => starknet_api::Transaction::Deploy(deploy_tx.into()),
             Transaction::Invoke(invoke_tx) => starknet_api::Transaction::Invoke(invoke_tx.into()),
+            Transaction::L1Handler(l1_handler_tx) => {
+                starknet_api::Transaction::L1Handler(l1_handler_tx.into())
+            }
         }
     }
 }
@@ -35,6 +40,7 @@ impl Transaction {
             Transaction::Declare(tx) => tx.transaction_hash,
             Transaction::Deploy(tx) => tx.transaction_hash,
             Transaction::Invoke(tx) => tx.transaction_hash,
+            Transaction::L1Handler(tx) => tx.transaction_hash,
         }
     }
 
@@ -43,6 +49,31 @@ impl Transaction {
             Transaction::Declare(tx) => tx.r#type,
             Transaction::Deploy(tx) => tx.r#type,
             Transaction::Invoke(tx) => tx.r#type,
+            Transaction::L1Handler(tx) => tx.r#type,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct L1HandlerTransaction {
+    pub transaction_hash: TransactionHash,
+    pub version: TransactionVersion,
+    pub nonce: Nonce,
+    pub contract_address: ContractAddress,
+    pub entry_point_selector: EntryPointSelector,
+    pub calldata: CallData,
+    pub r#type: TransactionType,
+}
+
+impl From<L1HandlerTransaction> for starknet_api::L1HandlerTransaction {
+    fn from(l1_handler_tx: L1HandlerTransaction) -> Self {
+        starknet_api::L1HandlerTransaction {
+            transaction_hash: l1_handler_tx.transaction_hash,
+            version: l1_handler_tx.version,
+            nonce: l1_handler_tx.nonce,
+            contract_address: l1_handler_tx.contract_address,
+            entry_point_selector: l1_handler_tx.entry_point_selector,
+            calldata: l1_handler_tx.calldata,
         }
     }
 }
@@ -129,7 +160,7 @@ impl From<InvokeTransaction> for starknet_api::InvokeTransaction {
             nonce: Nonce::default(),
             contract_address: invoke_tx.contract_address,
             entry_point_selector,
-            call_data: invoke_tx.calldata,
+            calldata: invoke_tx.calldata,
         }
     }
 }
@@ -158,21 +189,18 @@ impl TransactionReceipt {
             TransactionType::Deploy => {
                 TransactionOutput::Deploy(DeployTransactionOutput { actual_fee: self.actual_fee })
             }
-            TransactionType::InvokeFunction => {
-                let l1_origin_message = match self.l1_to_l2_consumed_message {
-                    message if message == L1ToL2Message::default() => None,
-                    message => Some(starknet_api::MessageToL2::from(message)),
-                };
-
-                TransactionOutput::Invoke(InvokeTransactionOutput {
+            TransactionType::InvokeFunction => TransactionOutput::Invoke(InvokeTransactionOutput {
+                actual_fee: self.actual_fee,
+                messages_sent: self
+                    .l2_to_l1_messages
+                    .into_iter()
+                    .map(starknet_api::MessageToL1::from)
+                    .collect(),
+                events: self.events,
+            }),
+            TransactionType::L1Handler => {
+                TransactionOutput::L1Handler(L1HandlerTransactionOutput {
                     actual_fee: self.actual_fee,
-                    messages_sent: self
-                        .l2_to_l1_messages
-                        .into_iter()
-                        .map(starknet_api::MessageToL1::from)
-                        .collect(),
-                    l1_origin_message,
-                    events: self.events,
                 })
             }
         }
@@ -242,6 +270,8 @@ pub enum TransactionType {
     Deploy,
     #[serde(rename(deserialize = "INVOKE_FUNCTION", serialize = "INVOKE_FUNCTION"))]
     InvokeFunction,
+    #[serde(rename(deserialize = "L1_HANDLER", serialize = "L1_HANDLER"))]
+    L1Handler,
 }
 impl Default for TransactionType {
     fn default() -> Self {
