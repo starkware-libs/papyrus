@@ -235,7 +235,7 @@ impl StarknetClient {
     ) -> ClientResult<Option<Block>> {
         let mut url = self.urls.get_block.clone();
         if let Some(block_number) = block_number {
-            url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.0.to_string());
+            url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.to_string());
         }
 
         let response = self.request_with_retry(url).await;
@@ -281,7 +281,7 @@ impl StarknetClientTrait for StarknetClient {
 
     async fn state_update(&self, block_number: BlockNumber) -> ClientResult<Option<StateUpdate>> {
         let mut url = self.urls.get_state_update.clone();
-        url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.0.to_string());
+        url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.to_string());
         let response = self.request_with_retry(url).await;
         match response {
             Ok(raw_state_update) => {

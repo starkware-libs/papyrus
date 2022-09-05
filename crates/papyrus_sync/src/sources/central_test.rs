@@ -19,7 +19,7 @@ async fn last_block_number() {
     let mut mock = MockStarknetClientTrait::new();
 
     // We need to perform all the mocks before moving the mock into central_source.
-    const EXPECTED_LAST_BLOCK_NUMBER: BlockNumber = BlockNumber(9);
+    const EXPECTED_LAST_BLOCK_NUMBER: BlockNumber = BlockNumber::new(9);
     mock.expect_block_number().times(1).returning(|| Ok(Some(EXPECTED_LAST_BLOCK_NUMBER)));
 
     let central_source = GenericCentralSource { starknet_client: Arc::new(mock) };
@@ -37,21 +37,21 @@ async fn stream_block_headers() {
     // We need to perform all the mocks before moving the mock into central_source.
     for i in START_BLOCK_NUMBER..END_BLOCK_NUMBER {
         mock.expect_block()
-            .with(predicate::eq(BlockNumber(i)))
+            .with(predicate::eq(BlockNumber::new(i)))
             .times(1)
             .returning(|_block_number| Ok(Some(Block::default())));
     }
     let central_source = GenericCentralSource { starknet_client: Arc::new(mock) };
 
-    let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
+    let mut expected_block_num = BlockNumber::new(START_BLOCK_NUMBER);
     let stream =
-        central_source.stream_new_blocks(expected_block_num, BlockNumber(END_BLOCK_NUMBER));
+        central_source.stream_new_blocks(expected_block_num, BlockNumber::new(END_BLOCK_NUMBER));
     pin_mut!(stream);
     while let Some(Ok((block_number, _block))) = stream.next().await {
         assert_eq!(expected_block_num, block_number);
         expected_block_num = expected_block_num.next();
     }
-    assert_eq!(expected_block_num, BlockNumber(END_BLOCK_NUMBER));
+    assert_eq!(expected_block_num, BlockNumber::new(END_BLOCK_NUMBER));
 }
 
 #[tokio::test]
@@ -64,22 +64,22 @@ async fn stream_block_headers_some_are_missing() {
     // We need to perform all the mocks before moving the mock into central_source.
     for i in START_BLOCK_NUMBER..MISSING_BLOCK_NUMBER {
         mock.expect_block()
-            .with(predicate::eq(BlockNumber(i)))
+            .with(predicate::eq(BlockNumber::new(i)))
             .times(1)
             .returning(|_| Ok(Some(Block::default())));
     }
     mock.expect_block()
-        .with(predicate::eq(BlockNumber(MISSING_BLOCK_NUMBER)))
+        .with(predicate::eq(BlockNumber::new(MISSING_BLOCK_NUMBER)))
         .times(1)
         .returning(|_| Ok(None));
     let central_source = GenericCentralSource { starknet_client: Arc::new(mock) };
 
-    let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
+    let mut expected_block_num = BlockNumber::new(START_BLOCK_NUMBER);
     let stream =
-        central_source.stream_new_blocks(expected_block_num, BlockNumber(END_BLOCK_NUMBER));
+        central_source.stream_new_blocks(expected_block_num, BlockNumber::new(END_BLOCK_NUMBER));
     pin_mut!(stream);
     while let Some(block_tuple) = stream.next().await {
-        if expected_block_num == BlockNumber(MISSING_BLOCK_NUMBER) {
+        if expected_block_num == BlockNumber::new(MISSING_BLOCK_NUMBER) {
             assert_matches!(
                 block_tuple,
                 Err(CentralError::BlockNotFound { block_number })
@@ -91,7 +91,7 @@ async fn stream_block_headers_some_are_missing() {
         }
         expected_block_num = expected_block_num.next();
     }
-    assert_eq!(expected_block_num, BlockNumber(MISSING_BLOCK_NUMBER + 1));
+    assert_eq!(expected_block_num, BlockNumber::new(MISSING_BLOCK_NUMBER + 1));
 }
 
 #[tokio::test]
@@ -106,23 +106,24 @@ async fn stream_block_headers_error() {
     // We need to perform all the mocks before moving the mock into central_source.
     for i in START_BLOCK_NUMBER..ERROR_BLOCK_NUMBER {
         mock.expect_block()
-            .with(predicate::eq(BlockNumber(i)))
+            .with(predicate::eq(BlockNumber::new(i)))
             .times(1)
             .returning(|_x| Ok(Some(Block::default())));
     }
-    mock.expect_block().with(predicate::eq(BlockNumber(ERROR_BLOCK_NUMBER))).times(1).returning(
-        |_block_number| {
+    mock.expect_block()
+        .with(predicate::eq(BlockNumber::new(ERROR_BLOCK_NUMBER)))
+        .times(1)
+        .returning(|_block_number| {
             Err(ClientError::BadResponseStatus { code: CODE, message: String::from(MESSAGE) })
-        },
-    );
+        });
     let central_source = GenericCentralSource { starknet_client: Arc::new(mock) };
 
-    let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
+    let mut expected_block_num = BlockNumber::new(START_BLOCK_NUMBER);
     let stream =
-        central_source.stream_new_blocks(expected_block_num, BlockNumber(END_BLOCK_NUMBER));
+        central_source.stream_new_blocks(expected_block_num, BlockNumber::new(END_BLOCK_NUMBER));
     pin_mut!(stream);
     while let Some(block_tuple) = stream.next().await {
-        if expected_block_num == BlockNumber(ERROR_BLOCK_NUMBER) {
+        if expected_block_num == BlockNumber::new(ERROR_BLOCK_NUMBER) {
             assert_matches!(
                 block_tuple,
                 Err(CentralError::ClientError(err_ptr))
@@ -138,7 +139,7 @@ async fn stream_block_headers_error() {
         }
         expected_block_num = expected_block_num.next();
     }
-    assert_eq!(expected_block_num, BlockNumber(ERROR_BLOCK_NUMBER + 1));
+    assert_eq!(expected_block_num, BlockNumber::new(ERROR_BLOCK_NUMBER + 1));
 }
 
 #[tokio::test]
@@ -151,10 +152,10 @@ async fn stream_state_updates() {
     let class_hash3 = ClassHash(shash!("0x789"));
     let contract_address1 = ContractAddress::try_from(shash!("0xabc")).unwrap();
     let contract_address2 = ContractAddress::try_from(shash!("0xdef")).unwrap();
-    let root1 = GlobalRoot(shash!("0x111"));
-    let root2 = GlobalRoot(shash!("0x222"));
-    let block_hash1 = BlockHash(shash!("0x333"));
-    let block_hash2 = BlockHash(shash!("0x444"));
+    let root1 = GlobalRoot::new(shash!("0x111"));
+    let root2 = GlobalRoot::new(shash!("0x222"));
+    let block_hash1 = BlockHash::new(shash!("0x333"));
+    let block_hash2 = BlockHash::new(shash!("0x444"));
 
     let storage_entry = StorageEntry {
         key: StorageKey::try_from(shash!("0x555")).unwrap(),
@@ -192,12 +193,12 @@ async fn stream_state_updates() {
     let mut mock = MockStarknetClientTrait::new();
     let block_state_update1_clone = block_state_update1.clone();
     mock.expect_state_update()
-        .with(predicate::eq(BlockNumber(START_BLOCK_NUMBER)))
+        .with(predicate::eq(BlockNumber::new(START_BLOCK_NUMBER)))
         .times(1)
         .returning(move |_x| Ok(Some(block_state_update1_clone.clone())));
     let block_state_update2_clone = block_state_update2.clone();
     mock.expect_state_update()
-        .with(predicate::eq(BlockNumber(START_BLOCK_NUMBER + 1)))
+        .with(predicate::eq(BlockNumber::new(START_BLOCK_NUMBER + 1)))
         .times(1)
         .returning(move |_x| Ok(Some(block_state_update2_clone.clone())));
     let contract_class1_clone = contract_class1.clone();
@@ -217,10 +218,10 @@ async fn stream_state_updates() {
         .returning(move |_x| Ok(Some(contract_class3_clone.clone())));
 
     let central_source = GenericCentralSource { starknet_client: Arc::new(mock) };
-    let initial_block_num = BlockNumber(START_BLOCK_NUMBER);
+    let initial_block_num = BlockNumber::new(START_BLOCK_NUMBER);
 
     let stream =
-        central_source.stream_state_updates(initial_block_num, BlockNumber(END_BLOCK_NUMBER));
+        central_source.stream_state_updates(initial_block_num, BlockNumber::new(END_BLOCK_NUMBER));
     pin_mut!(stream);
 
     let (current_block_num, state_diff, deployed_contract_class_definitions) =

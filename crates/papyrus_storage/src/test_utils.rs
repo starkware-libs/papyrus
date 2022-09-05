@@ -22,10 +22,10 @@ pub fn get_test_storage() -> (StorageReader, StorageWriter) {
 
 pub fn get_test_block(transaction_count: usize) -> Block {
     let header = BlockHeader {
-        block_hash: BlockHash(shash!(
+        block_hash: BlockHash::new(shash!(
             "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"
         )),
-        block_number: BlockNumber(0),
+        block_number: BlockNumber::new(0),
         ..BlockHeader::default()
     };
     let mut transactions = vec![];
