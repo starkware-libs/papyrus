@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 use std::ops::Index;
 
 use serde::{Deserialize, Serialize};
@@ -226,12 +226,18 @@ pub struct StateDiff {
     pub declared_classes: Vec<ClassHash>,
 }
 impl StateDiff {
-    pub fn class_hashes(&self) -> HashSet<ClassHash> {
-        let mut class_hashes = HashSet::from_iter(self.declared_classes.iter().cloned());
-        for contract in &self.deployed_contracts {
-            class_hashes.insert(contract.class_hash);
-        }
-        class_hashes
+    // Returns the declared class hashes and after them the deployed class hashes that weren't in
+    // the declared.
+    pub fn class_hashes(&self) -> Vec<ClassHash> {
+        let mut deployed_class_hashes = self
+            .deployed_contracts
+            .iter()
+            .map(|contract| contract.class_hash)
+            .filter(|hash| !self.declared_classes.contains(hash))
+            .collect();
+        let mut declared_class_hashes = self.declared_classes.clone();
+        declared_class_hashes.append(&mut deployed_class_hashes);
+        declared_class_hashes
     }
 }
 
