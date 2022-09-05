@@ -25,7 +25,7 @@ use super::{run_server, GatewayConfig, JsonRpcServerImpl};
 
 fn get_test_state_diff() -> (BlockHeader, BlockHeader, starknet_api::StateDiff) {
     let parent_hash =
-        BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
+        BlockHash::new(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
     let state_root = GlobalRoot(shash!("0x12"));
     let parent_header = BlockHeader {
         block_number: BlockNumber(0),
@@ -35,7 +35,7 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, starknet_api::StateDiff) 
     };
 
     let block_hash =
-        BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5493"));
+        BlockHash::new(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5493"));
     let header = BlockHeader {
         block_number: BlockNumber(1),
         block_hash,
@@ -194,7 +194,7 @@ async fn test_get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, Block>(
             "starknet_getBlockWithTxHashes",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash::new(shash!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             ))))],
         )
@@ -268,7 +268,7 @@ async fn test_get_block_w_full_transactions() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, Block>(
             "starknet_getBlockWithTxs",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash::new(shash!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             ))))],
         )
@@ -367,7 +367,7 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
             (
                 address,
                 key.clone(),
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash::new(shash!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
             ),
@@ -459,7 +459,7 @@ async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
         .call::<_, ClassHash>(
             "starknet_getClassHashAt",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash::new(shash!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
                 address,
@@ -546,7 +546,7 @@ async fn test_get_nonce() -> Result<(), anyhow::Error> {
         .call::<_, Nonce>(
             "starknet_getNonce",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash::new(shash!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
                 address,
@@ -649,7 +649,7 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
         .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash::new(shash!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
                 0,
@@ -734,7 +734,7 @@ async fn test_get_block_transaction_count() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, usize>(
             "starknet_getBlockTransactionCount",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash::new(shash!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             ))))],
         )
@@ -805,7 +805,7 @@ async fn test_get_state_update() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, StateUpdate>(
             "starknet_getStateUpdate",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash::new(shash!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             ))))],
         )
@@ -959,7 +959,7 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
         .call::<_, ContractClass>(
             "starknet_getClass",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash::new(shash!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
                 class_hash,
@@ -1062,7 +1062,7 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
         .call::<_, ContractClass>(
             "starknet_getClassAt",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash::new(shash!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
                 address,

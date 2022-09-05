@@ -21,7 +21,7 @@ fn load_block_succeeds() {
 #[test]
 fn load_block_state_update_succeeds() {
     let expected_state_update = StateUpdate {
-        block_hash: BlockHash(shash!(
+        block_hash: BlockHash::new(shash!(
             "0x3f65ef25e87a83d92f32f5e4869a33580f9db47ec980c1ff27bdb5151914de5"
         )),
         new_root: GlobalRoot(

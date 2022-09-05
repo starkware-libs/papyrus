@@ -153,8 +153,8 @@ async fn stream_state_updates() {
     let contract_address2 = ContractAddress(shash!("0xdef"));
     let root1 = GlobalRoot(shash!("0x111"));
     let root2 = GlobalRoot(shash!("0x222"));
-    let block_hash1 = BlockHash(shash!("0x333"));
-    let block_hash2 = BlockHash(shash!("0x444"));
+    let block_hash1 = BlockHash::new(shash!("0x333"));
+    let block_hash2 = BlockHash::new(shash!("0x444"));
 
     let storage_entry = StorageEntry { key: StorageKey(shash!("0x555")), value: shash!("0x666") };
 
