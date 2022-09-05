@@ -26,7 +26,7 @@ use super::{run_server, GatewayConfig, JsonRpcServerImpl};
 fn get_test_state_diff() -> (BlockHeader, BlockHeader, starknet_api::StateDiff) {
     let parent_hash =
         BlockHash::new(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
-    let state_root = GlobalRoot(shash!("0x12"));
+    let state_root = GlobalRoot::new(shash!("0x12"));
     let parent_header = BlockHeader {
         block_number: BlockNumber(0),
         block_hash: parent_hash,
