@@ -176,7 +176,8 @@ pub struct InvokeTransaction {
     pub signature: TransactionSignature,
     pub nonce: Nonce,
     pub contract_address: ContractAddress,
-    pub entry_point_selector: EntryPointSelector,
+    // An invoke transaction without an entry point selector invokes the 'execute' function.
+    pub entry_point_selector: Option<EntryPointSelector>,
     pub call_data: CallData,
 }
 
