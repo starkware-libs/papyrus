@@ -3,6 +3,9 @@ name = "starknet_api"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+testing = []
+
 [dependencies]
 hex = { version = "0.4.3" }
 serde = { version = "1.0.130", features = ["derive"] }
