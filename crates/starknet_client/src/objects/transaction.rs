@@ -16,6 +16,7 @@ pub enum Transaction {
     Declare(DeclareTransaction),
     Deploy(DeployTransaction),
     Invoke(InvokeTransaction),
+    L1Handler(L1HandlerTransaction),
 }
 
 impl From<Transaction> for starknet_api::Transaction {
@@ -26,6 +27,9 @@ impl From<Transaction> for starknet_api::Transaction {
             }
             Transaction::Deploy(deploy_tx) => starknet_api::Transaction::Deploy(deploy_tx.into()),
             Transaction::Invoke(invoke_tx) => starknet_api::Transaction::Invoke(invoke_tx.into()),
+            Transaction::L1Handler(l1_handler_tx) => {
+                starknet_api::Transaction::L1Handler(l1_handler_tx.into())
+            }
         }
     }
 }
@@ -36,6 +40,7 @@ impl Transaction {
             Transaction::Declare(tx) => tx.transaction_hash,
             Transaction::Deploy(tx) => tx.transaction_hash,
             Transaction::Invoke(tx) => tx.transaction_hash,
+            Transaction::L1Handler(tx) => tx.transaction_hash,
         }
     }
 
@@ -44,6 +49,31 @@ impl Transaction {
             Transaction::Declare(tx) => tx.r#type,
             Transaction::Deploy(tx) => tx.r#type,
             Transaction::Invoke(tx) => tx.r#type,
+            Transaction::L1Handler(tx) => tx.r#type,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct L1HandlerTransaction {
+    pub transaction_hash: TransactionHash,
+    pub version: TransactionVersion,
+    pub nonce: Nonce,
+    pub contract_address: ContractAddress,
+    pub entry_point_selector: EntryPointSelector,
+    pub calldata: CallData,
+    pub r#type: TransactionType,
+}
+
+impl From<L1HandlerTransaction> for starknet_api::L1HandlerTransaction {
+    fn from(l1_handler_tx: L1HandlerTransaction) -> Self {
+        starknet_api::L1HandlerTransaction {
+            transaction_hash: l1_handler_tx.transaction_hash,
+            version: l1_handler_tx.version,
+            nonce: l1_handler_tx.nonce,
+            contract_address: l1_handler_tx.contract_address,
+            entry_point_selector: l1_handler_tx.entry_point_selector,
+            calldata: l1_handler_tx.calldata,
         }
     }
 }
