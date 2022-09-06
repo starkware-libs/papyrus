@@ -58,12 +58,9 @@ async fn get_block_number() {
 #[tokio::test]
 async fn declare_tx_serde() {
     let declare_tx = DeclareTransaction {
-        class_hash: ClassHash(
-            PatriciaKey::new(shash!(
-                "0x7319e2f01b0947afd86c0bb0e95029551b32f6dc192c47b2e8b08415eebbc25"
-            ))
-            .unwrap(),
-        ),
+        class_hash: ClassHash(shash!(
+            "0x7319e2f01b0947afd86c0bb0e95029551b32f6dc192c47b2e8b08415eebbc25"
+        )),
         sender_address: ContractAddress(PatriciaKey::new(shash!("0x1")).unwrap()),
         nonce: Nonce(shash!("0x0")),
         max_fee: Fee(0),
@@ -173,12 +170,9 @@ async fn contract_class() {
         .with_body(read_resource_file("contract_class.json"))
         .create();
     let contract_class = starknet_client
-        .class_by_hash(ClassHash(
-            PatriciaKey::new(shash!(
-                "0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17"
-            ))
-            .unwrap(),
-        ))
+        .class_by_hash(ClassHash(shash!(
+            "0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17"
+        )))
         .await
         .unwrap();
     mock_by_hash.assert();
@@ -191,10 +185,7 @@ async fn contract_class() {
             .with_status(500)
             .with_body(body)
             .create();
-    let class = starknet_client
-        .class_by_hash(ClassHash(PatriciaKey::new(shash!("0x7")).unwrap()))
-        .await
-        .unwrap();
+    let class = starknet_client.class_by_hash(ClassHash(shash!("0x7"))).await.unwrap();
     mock_by_hash.assert();
     assert!(class.is_none());
 }

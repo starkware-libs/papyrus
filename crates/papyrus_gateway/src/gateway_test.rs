@@ -46,9 +46,9 @@ fn get_test_state_diff()
     };
 
     let address0 = ContractAddress(PatriciaKey::new(shash!("0x11")).unwrap());
-    let hash0 = ClassHash(PatriciaKey::new(shash!("0x4")).unwrap());
+    let hash0 = ClassHash(shash!("0x4"));
     let address1 = ContractAddress(PatriciaKey::new(shash!("0x21")).unwrap());
-    let hash1 = ClassHash(PatriciaKey::new(shash!("0x5")).unwrap());
+    let hash1 = ClassHash(shash!("0x5"));
     let class0 = ContractClass::default();
     let class1 = ContractClass::default();
     let key0 = StorageKey(PatriciaKey::new(shash!("0x1001")).unwrap());
@@ -928,7 +928,7 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
             "starknet_getClass",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ClassHash(PatriciaKey::new(shash!("0x6")).unwrap()),
+                ClassHash(shash!("0x6")),
             ),
         )
         .await
