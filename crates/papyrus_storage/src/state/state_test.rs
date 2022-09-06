@@ -15,9 +15,9 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     let c1 = ContractAddress(PatriciaKey::new(shash!("0x12")).unwrap());
     let c2 = ContractAddress(PatriciaKey::new(shash!("0x13")).unwrap());
     let c3 = ContractAddress(PatriciaKey::new(shash!("0x14")).unwrap());
-    let cl0 = ClassHash(PatriciaKey::new(shash!("0x4")).unwrap());
-    let cl1 = ClassHash(PatriciaKey::new(shash!("0x5")).unwrap());
-    let cl2 = ClassHash(PatriciaKey::new(shash!("0x6")).unwrap());
+    let cl0 = ClassHash(shash!("0x4"));
+    let cl1 = ClassHash(shash!("0x5"));
+    let cl2 = ClassHash(shash!("0x6"));
     let c_cls0 = ContractClass::default();
     let c_cls1 = ContractClass::default();
     let key0 = StorageKey(PatriciaKey::new(shash!("0x1001")).unwrap());

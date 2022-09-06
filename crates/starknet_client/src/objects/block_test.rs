@@ -78,12 +78,9 @@ fn load_block_state_update_succeeds() {
                     ))
                     .unwrap(),
                 ),
-                class_hash: ClassHash(
-                    PatriciaKey::new(shash!(
-                        "0x071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64"
-                    ))
-                    .unwrap(),
-                ),
+                class_hash: ClassHash(shash!(
+                    "0x071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64"
+                )),
             }],
             declared_classes: vec![],
         },
