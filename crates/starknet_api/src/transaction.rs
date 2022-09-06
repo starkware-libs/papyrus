@@ -258,18 +258,24 @@ pub struct InvokeTransactionOutput {
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct L1HandlerTransactionOutput {
     pub actual_fee: Fee,
+    pub messages_sent: Vec<MessageToL1>,
+    pub events: Vec<Event>,
 }
 
 /// A declare transaction output in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeclareTransactionOutput {
     pub actual_fee: Fee,
+    pub messages_sent: Vec<MessageToL1>,
+    pub events: Vec<Event>,
 }
 
 /// A deploy transaction output in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeployTransactionOutput {
     pub actual_fee: Fee,
+    pub messages_sent: Vec<MessageToL1>,
+    pub events: Vec<Event>,
 }
 
 impl TransactionOutput {

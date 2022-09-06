@@ -147,18 +147,6 @@ impl TryFrom<Block> for starknet_api::Block {
                     },
                 ));
             }
-            if transaction.transaction_type() != TransactionType::InvokeFunction
-                && (!receipt.l2_to_l1_messages.is_empty() || !receipt.events.is_empty())
-            {
-                return Err(ClientError::TransactionReceiptsError(
-                    TransactionReceiptsError::MismatchFields {
-                        block_number: block.block_number,
-                        tx_index: TransactionOffsetInBlock(i),
-                        tx_hash: transaction.transaction_hash(),
-                        tx_type: transaction.transaction_type(),
-                    },
-                ));
-            }
 
             let tx_output =
                 receipt.into_starknet_api_transaction_output(transaction.transaction_type());

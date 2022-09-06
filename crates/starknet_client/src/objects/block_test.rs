@@ -130,23 +130,6 @@ async fn try_into_starknet_api() {
     err_block.transaction_receipts[0] = TransactionReceipt {
         transaction_index: TransactionOffsetInBlock(0),
         transaction_hash: err_block.transactions[0].transaction_hash(),
-        ..err_block.transaction_receipts[1].clone()
-    };
-    let err = starknet_api::Block::try_from(err_block).unwrap_err();
-    assert_matches!(
-        err,
-        ClientError::TransactionReceiptsError(TransactionReceiptsError::MismatchFields {
-            block_number: _,
-            tx_index: _,
-            tx_hash: _,
-            tx_type: _,
-        })
-    );
-
-    let mut err_block: Block = serde_json::from_str(&raw_block).unwrap();
-    err_block.transaction_receipts[0] = TransactionReceipt {
-        transaction_index: TransactionOffsetInBlock(0),
-        transaction_hash: err_block.transactions[0].transaction_hash(),
         ..err_block.transaction_receipts[3].clone()
     };
     let err = starknet_api::Block::try_from(err_block).unwrap_err();

@@ -40,8 +40,11 @@ pub fn get_test_block(transaction_count: usize) -> Block {
             contract_address_salt: ContractAddressSalt(shash!("0x4")),
         });
         transactions.push(transaction);
-        let transaction_output =
-            TransactionOutput::Deploy(DeployTransactionOutput { actual_fee: Fee::default() });
+        let transaction_output = TransactionOutput::Deploy(DeployTransactionOutput {
+            actual_fee: Fee::default(),
+            messages_sent: vec![],
+            events: vec![],
+        });
         transaction_outputs.push(transaction_output);
     }
 
