@@ -1,3 +1,7 @@
+#[cfg(test)]
+#[path = "state_test.rs"]
+mod state_test;
+
 use serde::{Deserialize, Serialize};
 
 use super::{BlockNumber, ClassHash, ContractAddress, ContractClass, Nonce, StarkFelt};
@@ -49,14 +53,14 @@ impl StateDiff {
     pub fn new(
         mut deployed_contracts: Vec<DeployedContract>,
         mut storage_diffs: Vec<StorageDiff>,
-        mut declared_classes: Vec<DeclaredContract>,
+        mut declared_contracts: Vec<DeclaredContract>,
         mut nonces: Vec<ContractNonce>,
     ) -> Self {
         deployed_contracts.sort_by_key(|dc| dc.address);
         storage_diffs.sort_by_key(|sd| sd.address);
-        declared_classes.sort_by_key(|dc| dc.class_hash);
+        declared_contracts.sort_by_key(|dc| dc.class_hash);
         nonces.sort_by_key(|n| n.contract_address);
-        Self { deployed_contracts, storage_diffs, declared_classes, nonces }
+        Self { deployed_contracts, storage_diffs, declared_classes: declared_contracts, nonces }
     }
 
     pub fn destruct(self) -> StateDiffAsTuple {
