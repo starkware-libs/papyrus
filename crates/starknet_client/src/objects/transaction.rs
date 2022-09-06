@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize};
 use starknet_api::{
     CallData, ClassHash, ContractAddress, ContractAddressSalt, DeclareTransactionOutput,
     DeployTransactionOutput, EntryPointSelector, EntryPointType, EthAddress, Event, Fee,
-    InvokeTransactionOutput, L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, Nonce,
-    StarkHash, TransactionHash, TransactionOffsetInBlock, TransactionOutput, TransactionSignature,
-    TransactionVersion,
+    InvokeTransactionOutput, L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, MessageToL1,
+    Nonce, StarkHash, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
+    TransactionSignature, TransactionVersion,
 };
 
 // TODO(dan): consider extracting common fields out (version, hash, type).
@@ -173,6 +173,7 @@ pub struct TransactionReceipt {
     pub l1_to_l2_consumed_message: L1ToL2Message,
     pub l2_to_l1_messages: Vec<L2ToL1Message>,
     pub events: Vec<Event>,
+    #[serde(default)]
     pub execution_resources: ExecutionResources,
     pub actual_fee: Fee,
 }
@@ -182,25 +183,28 @@ impl TransactionReceipt {
         self,
         tx_type: TransactionType,
     ) -> TransactionOutput {
+        let messages_sent = self.l2_to_l1_messages.into_iter().map(MessageToL1::from).collect();
         match tx_type {
-            TransactionType::Declare => {
-                TransactionOutput::Declare(DeclareTransactionOutput { actual_fee: self.actual_fee })
-            }
-            TransactionType::Deploy => {
-                TransactionOutput::Deploy(DeployTransactionOutput { actual_fee: self.actual_fee })
-            }
+            TransactionType::Declare => TransactionOutput::Declare(DeclareTransactionOutput {
+                actual_fee: self.actual_fee,
+                messages_sent,
+                events: self.events,
+            }),
+            TransactionType::Deploy => TransactionOutput::Deploy(DeployTransactionOutput {
+                actual_fee: self.actual_fee,
+                messages_sent,
+                events: self.events,
+            }),
             TransactionType::InvokeFunction => TransactionOutput::Invoke(InvokeTransactionOutput {
                 actual_fee: self.actual_fee,
-                messages_sent: self
-                    .l2_to_l1_messages
-                    .into_iter()
-                    .map(starknet_api::MessageToL1::from)
-                    .collect(),
+                messages_sent,
                 events: self.events,
             }),
             TransactionType::L1Handler => {
                 TransactionOutput::L1Handler(L1HandlerTransactionOutput {
                     actual_fee: self.actual_fee,
+                    messages_sent,
+                    events: self.events,
                 })
             }
         }
