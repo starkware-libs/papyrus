@@ -1,0 +1,66 @@
+{
+    "jsonrpc": "2.0",
+    "result": {
+        "block_hash": "0x1530943c3f4f05c20a80e3dc1e4edc6247785ba4f24f320576757a87fefce54",
+        "new_root": "0x4d4b33bd04574b14b42c7836d1b94ca4a2260d205866a270d47a6c1148f2335",
+        "old_root": "0xbc493a70aa2abeb9bfc4a07b11c17c028f3aee47e0c9e595516944bbe66ef3",
+        "state_diff": {
+            "storage_diffs": [
+                {
+                    "address": "0x2aee9f0a17a412ddcbb62fa317e273eb891c9e3fbb0b7aa5f68b8b23c3623f",
+                    "storage_entries": [
+                        {
+                            "key": "0x76a995c9fb71ab65b534238e93a4554eab92f04c2ce6ecf19244c82aeb48d5b",
+                            "value": "0xf4ce7d15fc4cd4c73a6d1f54c9546744b1abfb68001cb2c8cc8fcfdb335406"
+                        }
+                    ]
+                },
+                {
+                    "address": "0x18b2088accbd652384e5ac545fd249095cb17bdc709868d1d748094d52b9f7d",
+                    "storage_entries": [
+                        {
+                            "key": "0x5",
+                            "value": "0x66"
+                        }
+                    ]
+                },
+                {
+                    "address": "0x228e1d46c4a2f14fb8a7be2010d09f9bdead26038475dd16543c79eec662330",
+                    "storage_entries": [
+                        {
+                            "key": "0x5",
+                            "value": "0x456"
+                        }
+                    ]
+                },
+                {
+                    "address": "0x600014b24fa27caea849fda508691415c309d58c3d0c3f5f6a727c21c74651c",
+                    "storage_entries": [
+                        {
+                            "key": "0x5",
+                            "value": "0x0"
+                        }
+                    ]
+                },
+                {
+                    "address": "0x7c38021eb1f890c5d572125302fe4a0d2f79d38b018d68a9fcd102145d4e451",
+                    "storage_entries": [
+                        {
+                            "key": "0x5",
+                            "value": "0x64"
+                        }
+                    ]
+                }
+            ],
+            "declared_contracts": [],
+            "deployed_contracts": [
+                {
+                    "address": "0x2aee9f0a17a412ddcbb62fa317e273eb891c9e3fbb0b7aa5f68b8b23c3623f",
+                    "class_hash": "0x10455c752b86932ce552f2b0fe81a880746649b9aee7e0d842bf3f52378f9f8"
+                }
+            ],
+            "nonces": []
+        }
+    },
+    "id": "1"
+}

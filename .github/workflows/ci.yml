@@ -54,7 +54,8 @@ jobs:
       - uses: Swatinem/rust-cache@v1
       - run: >
           cargo run -p papyrus_node --bin starknet_client_integration_test;
-          cargo run -p papyrus_node --bin central_source_integration_test
+          cargo run -p papyrus_node --bin central_source_integration_test;
+          cargo run -p papyrus_node --bin gateway_integration_test
 
   rustfmt:
     runs-on: ubuntu-latest

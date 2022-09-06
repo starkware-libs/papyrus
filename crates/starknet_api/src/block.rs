@@ -31,6 +31,11 @@ impl From<GlobalRoot> for NonPrefixedHexAsBytes<32_usize> {
         HexAsBytes(val.0.into_bytes())
     }
 }
+impl From<GlobalRoot> for PrefixedHexAsBytes<32_usize> {
+    fn from(val: GlobalRoot) -> Self {
+        HexAsBytes(val.0.into_bytes())
+    }
+}
 
 /// The block number of a StarkNet block.
 #[derive(

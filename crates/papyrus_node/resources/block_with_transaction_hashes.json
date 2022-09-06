@@ -1,0 +1,19 @@
+{
+    "jsonrpc": "2.0",
+    "result": {
+        "status": "ACCEPTED_ON_L2",
+        "block_hash": "0x11172ea58125f54df2c07df73accd9236558944ec0ee650d80968f863267764",
+        "parent_hash": "0x75e00250d4343326f322e370df4c9c73c7be105ad9f532eeb97891a34d9e4a5",
+        "block_number": 2,
+        "sequencer_address": "0x0",
+        "new_root": "0x4ec6613e22be91dbaa3afbdd0323c5b7b651c76477efabaec1b754428da7e72",
+        "timestamp": 1636989993,
+        "transactions": [
+            "0x4fd5affac8690a4192e82854074b10bff750f358fdffc75f716bc39c0ac1398",
+            "0x408eed260e84b3f3a744f1ba6b272db426655abef02573a0c7c6f6cfe2f8aa",
+            "0x26ba19170037a8bb65918b1f82ebb1d944232107f8df0fa78ae53ccccff0d34",
+            "0x4c01d307a5878c8d2763c860a4db2b208d278c1bf6798eaeb46befd99156b98"
+        ]
+    },
+    "id": "1"
+}

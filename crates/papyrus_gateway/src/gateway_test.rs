@@ -10,8 +10,8 @@ use papyrus_storage::test_utils::{get_test_block, get_test_storage};
 use papyrus_storage::{BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 use starknet_api::{
     shash, BlockHash, BlockHeader, BlockNumber, BlockStatus, ClassHash, ContractAddress,
-    ContractClass, ContractNonce, DeclaredContract, DeployedContract, GlobalRoot, Nonce, StarkFelt,
-    StarkHash, StorageDiff, StorageEntry, StorageKey, TransactionHash, TransactionReceipt,
+    ContractClass, ContractNonce, DeclaredContract, DeployedContract, Nonce, StarkFelt, StarkHash,
+    StorageDiff, StorageEntry, StorageKey, TransactionHash, TransactionReceipt,
 };
 
 use super::api::{
@@ -26,7 +26,7 @@ use super::{run_server, GatewayConfig, JsonRpcServerImpl};
 fn get_test_state_diff() -> (BlockHeader, BlockHeader, starknet_api::StateDiff) {
     let parent_hash =
         BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
-    let state_root = GlobalRoot(shash!("0x12"));
+    let state_root = starknet_api::GlobalRoot(shash!("0x12"));
     let parent_header = BlockHeader {
         block_number: BlockNumber(0),
         block_hash: parent_hash,
@@ -778,8 +778,8 @@ async fn test_get_state_update() -> Result<(), anyhow::Error> {
 
     let expected_update = StateUpdate {
         block_hash: header.block_hash,
-        new_root: header.state_root,
-        old_root: parent_header.state_root,
+        new_root: header.state_root.into(),
+        old_root: parent_header.state_root.into(),
         state_diff: diff.into(),
     };
 
