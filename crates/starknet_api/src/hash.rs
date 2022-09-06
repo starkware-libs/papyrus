@@ -13,9 +13,9 @@ use crate::serde_utils::hex_str_from_bytes;
 
 /// Genesis state hash.
 pub const GENESIS_HASH: &str = "0x0";
-/// 2**251 - 256 - 1
+/// 2**251
 pub const PATRICIA_KEY_UPPER_BOUND: &str =
-    "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeff";
+    "0x800000000000000000000000000000000000000000000000000000000000000";
 
 // TODO: Move to a different crate.
 /// A hash in StarkNet.
@@ -89,7 +89,7 @@ macro_rules! shash {
 pub struct PatriciaKey(StarkHash);
 impl PatriciaKey {
     pub fn new(hash: StarkHash) -> Result<PatriciaKey, DeserializationError> {
-        if hash > shash!(PATRICIA_KEY_UPPER_BOUND) {
+        if hash >= shash!(PATRICIA_KEY_UPPER_BOUND) {
             return Err(DeserializationError::OutOfRange {
                 string: format!("[0x0, {PATRICIA_KEY_UPPER_BOUND})"),
             });
