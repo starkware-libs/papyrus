@@ -302,11 +302,11 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
-    let (header, _, diff, deployed_classes) = get_test_state_diff();
+    let (header, _, diff, deployed_contract_class_definitions) = get_test_state_diff();
     storage_writer
         .begin_rw_txn()?
         .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, diff.clone(), deployed_classes)?
+        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
         .commit()?;
 
     let (_, storage_diffs, _, _) = diff.destruct();
@@ -407,11 +407,11 @@ async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
-    let (header, _, diff, deployed_classes) = get_test_state_diff();
+    let (header, _, diff, deployed_contract_class_definitions) = get_test_state_diff();
     storage_writer
         .begin_rw_txn()?
         .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, diff.clone(), deployed_classes)?
+        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
         .commit()?;
 
     let (deployed_contracts, _, _, _) = diff.destruct();
@@ -495,11 +495,11 @@ async fn test_get_nonce() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
-    let (header, _, diff, deployed_classes) = get_test_state_diff();
+    let (header, _, diff, deployed_contract_class_definitions) = get_test_state_diff();
     storage_writer
         .begin_rw_txn()?
         .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, diff.clone(), deployed_classes)?
+        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
         .commit()?;
 
     let (_, _, _, nonces) = diff.destruct();
@@ -768,13 +768,13 @@ async fn test_get_state_update() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
-    let (parent_header, header, diff, deployed_classes) = get_test_state_diff();
+    let (parent_header, header, diff, deployed_contract_class_definitions) = get_test_state_diff();
     storage_writer
         .begin_rw_txn()?
         .append_header(parent_header.block_number, &parent_header)?
         .append_state_diff(parent_header.block_number, starknet_api::StateDiff::default(), vec![])?
         .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, diff.clone(), deployed_classes)?
+        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
         .commit()?;
 
     let expected_update = StateUpdate {
@@ -888,13 +888,13 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
-    let (parent_header, header, diff, deployed_classes) = get_test_state_diff();
+    let (parent_header, header, diff, deployed_contract_class_definitions) = get_test_state_diff();
     storage_writer
         .begin_rw_txn()?
         .append_header(parent_header.block_number, &parent_header)?
         .append_state_diff(parent_header.block_number, starknet_api::StateDiff::default(), vec![])?
         .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, diff.clone(), deployed_classes)?
+        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
         .commit()?;
 
     let (_, _, declared_classes, _) = diff.destruct();
@@ -996,13 +996,13 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
-    let (parent_header, header, diff, deployed_classes) = get_test_state_diff();
+    let (parent_header, header, diff, deployed_contract_class_definitions) = get_test_state_diff();
     storage_writer
         .begin_rw_txn()?
         .append_header(parent_header.block_number, &parent_header)?
         .append_state_diff(parent_header.block_number, starknet_api::StateDiff::default(), vec![])?
         .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, diff.clone(), deployed_classes)?
+        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
         .commit()?;
 
     let (deployed_contracts, _, declared_classes, _) = diff.destruct();

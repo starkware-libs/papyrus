@@ -67,7 +67,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                 while let Some(maybe_state_update) = state_update_stream.next().await{
                     match maybe_state_update {
                         Ok((state_update, classes)) => {
-                            let (declared_classes, deployed_classes) = classes.split_at(state_update.state_diff.declared_classes.len());
+                            let (declared_classes, deployed_contract_class_definitions) = classes.split_at(state_update.state_diff.declared_classes.len());
                             let state_diff = StateDiff::new(
                                 state_update.state_diff.deployed_contracts,
                                 client_to_starknet_api_storage_diff(state_update.state_diff.storage_diffs),
@@ -75,7 +75,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                                 // TODO(dan): fix once nonces are available.
                                 vec![],
                             );
-                            yield Ok((current_block_number, state_diff, deployed_classes.to_vec()));
+                            yield Ok((current_block_number, state_diff, deployed_contract_class_definitions.to_vec()));
                             current_block_number = current_block_number.next();
                         }
                         Err(err) => {
@@ -167,7 +167,6 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
 
         let res_stream = stream! {
             while let Some(maybe_state_update) = state_updates1.next().await {
-
                 // Get the next state update.
                 let state_update = match maybe_state_update {
                     Ok(Some(state_update)) => state_update,

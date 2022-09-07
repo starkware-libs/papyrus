@@ -46,13 +46,16 @@ where
         self,
         block_number: BlockNumber,
         state_diff: StateDiff,
-        deployed_classes: Vec<DeclaredContract>,
+        // TODO(anatg): Remove once there are no more deployed contracts with undeclared classes.
+        // Class definitions of deployed contracts with classes that were not declared in this
+        // state diff.
+        deployed_contract_class_definitions: Vec<DeclaredContract>,
     ) -> StorageResult<Self>;
 }
 
 fn split_diff_for_storage(
     state_diff: StateDiff,
-    deployed_classes: Vec<DeclaredContract>,
+    deployed_contract_class_definitions: Vec<DeclaredContract>,
 ) -> (ThinStateDiff, Vec<DeclaredContract>) {
     let (deployed_contracts, storage_diffs, mut declared_classes, nonces) = state_diff.destruct();
     let thin_state_diff = ThinStateDiff {
@@ -63,7 +66,7 @@ fn split_diff_for_storage(
         ),
         nonces,
     };
-    declared_classes.extend(deployed_classes.into_iter());
+    declared_classes.extend(deployed_contract_class_definitions.into_iter());
     (thin_state_diff, declared_classes)
 }
 
@@ -88,7 +91,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         self,
         block_number: BlockNumber,
         state_diff: StateDiff,
-        deployed_classes: Vec<DeclaredContract>,
+        deployed_contract_class_definitions: Vec<DeclaredContract>,
     ) -> StorageResult<Self> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let nonces_table = self.txn.open_table(&self.tables.nonces)?;
@@ -98,7 +101,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
 
         let (thin_state_diff, declared_classes) =
-            split_diff_for_storage(state_diff, deployed_classes);
+            split_diff_for_storage(state_diff, deployed_contract_class_definitions);
 
         update_marker(&self.txn, &markers_table, block_number)?;
         // Write state diff.

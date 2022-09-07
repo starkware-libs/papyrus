@@ -5,9 +5,14 @@ use starknet_api::{
 };
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct DeclaredContract {
+    pub class_hash: ClassHash,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StateDiff {
     pub storage_diffs: Vec<StorageDiff>,
-    pub declared_contracts: Vec<ClassHash>,
+    pub declared_contracts: Vec<DeclaredContract>,
     pub deployed_contracts: Vec<DeployedContract>,
     pub nonces: Vec<ContractNonce>,
 }
@@ -16,7 +21,11 @@ impl From<ThinStateDiff> for StateDiff {
     fn from(diff: ThinStateDiff) -> Self {
         Self {
             storage_diffs: diff.storage_diffs,
-            declared_contracts: diff.declared_classes,
+            declared_contracts: diff
+                .declared_classes
+                .into_iter()
+                .map(|class_hash| DeclaredContract { class_hash })
+                .collect(),
             deployed_contracts: diff.deployed_contracts,
             nonces: diff.nonces,
         }
@@ -30,7 +39,9 @@ impl From<starknet_api::StateDiff> for StateDiff {
             storage_diffs,
             declared_contracts: declared_classes
                 .into_iter()
-                .map(|declared_contract| declared_contract.class_hash)
+                .map(|declared_contract| DeclaredContract {
+                    class_hash: declared_contract.class_hash,
+                })
                 .collect(),
             deployed_contracts,
             nonces,
