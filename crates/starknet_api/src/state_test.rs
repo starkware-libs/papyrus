@@ -1,4 +1,7 @@
+use assert_matches::assert_matches;
+
 use super::StateDiff;
+use crate::serde_utils::DeserializationError;
 use crate::{
     shash, ClassHash, ContractAddress, ContractClass, ContractNonce, DeclaredContract,
     DeployedContract, Nonce, PatriciaKey, StarkHash, StorageDiff,
@@ -52,4 +55,19 @@ fn test_sorted() {
         state_diff.destruct(),
         (sorted_deployed_contracts, sorted_storage_diffs, sorted_declared_contracts, sorted_nonces)
     );
+}
+
+#[test]
+fn test_valid_patricia_key() {
+    let hash = shash!("0x123");
+    let patricia_key = PatriciaKey::new(hash).unwrap();
+    assert_eq!(patricia_key.into_hash(), hash);
+}
+
+#[test]
+fn test_out_of_range_patricia_key() {
+    // 2**251
+    let hash = shash!("0x800000000000000000000000000000000000000000000000000000000000000");
+    let err = PatriciaKey::new(hash);
+    assert_matches!(err, Err(DeserializationError::OutOfRange { string: _err_str }));
 }
