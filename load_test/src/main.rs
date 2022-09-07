@@ -11,7 +11,14 @@ async fn post_jsonrpc_request(
 ) -> TransactionResult {
     let request = jsonrpc_request(method, params);
     let goose = user.post_json("", &request).await?;
-    validate_and_load_static_assets(user, goose, &Validate::builder().status(200).build()).await?;
+    validate_and_load_static_assets(
+        user,
+        goose,
+        // The gateway returns the result under the key "result" and returns an "error" instead if
+        // an error occured.
+        &Validate::builder().status(200).text("result").build(),
+    )
+    .await?;
     Ok(())
 }
 
