@@ -8,23 +8,23 @@ use tokio_stream::StreamExt;
 async fn main() {
     let config = load_config("config/config.ron").expect("Load config");
     let central_source = CentralSource::new(config.central).expect("Create new client");
-    let last_block_number = BlockNumber(203);
+    let last_block_number = BlockNumber::new(203);
 
-    let mut block_marker = BlockNumber(200);
+    let mut block_marker = BlockNumber::new(200);
     let block_stream = central_source.stream_new_blocks(block_marker, last_block_number).fuse();
     pin_mut!(block_stream);
     while let Some(Ok((block_number, _block))) = block_stream.next().await {
         assert!(
             block_marker == block_number,
             "Expected block number ({}) does not match the result ({}).",
-            block_marker.0,
-            block_number.0
+            block_marker.str(),
+            block_number.str()
         );
         block_marker = block_marker.next();
     }
     assert!(block_marker == last_block_number);
 
-    let mut state_marker = BlockNumber(200);
+    let mut state_marker = BlockNumber::new(200);
     let header_stream = central_source.stream_state_updates(state_marker, last_block_number).fuse();
     pin_mut!(header_stream);
     while let Some(Ok((block_number, _state_difff, _deployed_classes))) = header_stream.next().await
@@ -32,8 +32,8 @@ async fn main() {
         assert!(
             state_marker == block_number,
             "Expected block number ({}) does not match the result ({}).",
-            state_marker.0,
-            block_number.0
+            state_marker.str(),
+            block_number.str()
         );
         state_marker = state_marker.next();
     }

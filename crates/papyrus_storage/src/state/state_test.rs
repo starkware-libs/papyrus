@@ -68,14 +68,15 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
 
     let (_, mut writer) = get_test_storage();
     let mut txn = writer.begin_rw_txn()?;
-    assert_eq!(txn.get_state_diff(BlockNumber(0))?, None);
-    assert_eq!(txn.get_state_diff(BlockNumber(1))?, None);
-    txn = txn.append_state_diff(BlockNumber(0), diff0.clone(), vec![])?;
+    assert_eq!(txn.get_state_diff(BlockNumber::new(0))?, None);
+    assert_eq!(txn.get_state_diff(BlockNumber::new(1))?, None);
+    txn = txn.append_state_diff(BlockNumber::new(0), diff0.clone(), vec![])?;
     let (thin_state_diff_0, _declared_classes_0) = split_diff_for_storage(diff0.clone(), vec![]);
-    assert_eq!(txn.get_state_diff(BlockNumber(0))?.unwrap(), thin_state_diff_0);
-    assert_eq!(txn.get_state_diff(BlockNumber(1))?, None);
-    txn = txn.append_state_diff(BlockNumber(1), diff1.clone(), vec![])?;
+    assert_eq!(txn.get_state_diff(BlockNumber::new(0))?.unwrap(), thin_state_diff_0);
+    assert_eq!(txn.get_state_diff(BlockNumber::new(1))?, None);
+    txn = txn.append_state_diff(BlockNumber::new(1), diff1.clone(), vec![])?;
     let (this_state_diff_1, _declared_classes_1) = split_diff_for_storage(diff1.clone(), vec![]);
+
     txn.commit()?;
 
     // Check for ClassAlreadyExists error when trying to declare a different class to an existing
@@ -88,7 +89,7 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     declared_classes[0].contract_class = class;
     let diff1 = StateDiff::new(deployed_contracts, storage_diffs, declared_classes, nonces);
 
-    if let Err(err) = txn.append_state_diff(BlockNumber(2), diff1, vec![]) {
+    if let Err(err) = txn.append_state_diff(BlockNumber::new(2), diff1, vec![]) {
         assert_matches!(err, StorageError::ClassAlreadyExists { class_hash: _ });
     } else {
         panic!("Unexpected Ok.");
@@ -101,21 +102,21 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     contract.class_hash = cl2;
     deployed_contracts[0] = contract;
     let diff0 = StateDiff::new(deployed_contracts, storage_diffs, declared_classes, nonces);
-    if let Err(err) = txn.append_state_diff(BlockNumber(2), diff0, vec![]) {
+    if let Err(err) = txn.append_state_diff(BlockNumber::new(2), diff0, vec![]) {
         assert_matches!(err, StorageError::ContractAlreadyExists { address: _ });
     } else {
         panic!("Unexpected Ok.");
     }
     let txn = writer.begin_rw_txn()?;
-    assert_eq!(txn.get_state_diff(BlockNumber(0))?.unwrap(), thin_state_diff_0);
-    assert_eq!(txn.get_state_diff(BlockNumber(1))?.unwrap(), this_state_diff_1);
+    assert_eq!(txn.get_state_diff(BlockNumber::new(0))?.unwrap(), thin_state_diff_0);
+    assert_eq!(txn.get_state_diff(BlockNumber::new(1))?.unwrap(), this_state_diff_1);
 
     let statetxn = txn.get_state_reader()?;
 
     // State numbers.
-    let state0 = StateNumber::right_before_block(BlockNumber(0));
-    let state1 = StateNumber::right_before_block(BlockNumber(1));
-    let state2 = StateNumber::right_before_block(BlockNumber(2));
+    let state0 = StateNumber::right_before_block(BlockNumber::new(0));
+    let state1 = StateNumber::right_before_block(BlockNumber::new(1));
+    let state2 = StateNumber::right_before_block(BlockNumber::new(2));
 
     // Class0.
     assert_eq!(statetxn.get_class_definition_at(state0, &cl0)?, None);

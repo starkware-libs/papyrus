@@ -13,24 +13,24 @@ use super::{BlockNumber, ClassHash, ContractAddress, ContractClass, Nonce, Stark
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct StateNumber(u64);
+pub struct StateNumber(BlockNumber);
 impl StateNumber {
     // The state at the beginning of the block.
     pub fn right_before_block(block_number: BlockNumber) -> StateNumber {
-        StateNumber(block_number.0)
+        StateNumber(block_number)
     }
     // The state at the end of the block.
     pub fn right_after_block(block_number: BlockNumber) -> StateNumber {
-        StateNumber(block_number.next().0)
+        StateNumber(block_number.next())
     }
     pub fn is_before(&self, block_number: BlockNumber) -> bool {
-        self.0 <= block_number.0
+        self.0 <= block_number
     }
     pub fn is_after(&self, block_number: BlockNumber) -> bool {
-        self.0 > block_number.0
+        self.0 > block_number
     }
     pub fn block_after(&self) -> BlockNumber {
-        BlockNumber(self.0)
+        self.0
     }
 }
 

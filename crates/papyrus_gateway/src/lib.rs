@@ -67,7 +67,7 @@ fn get_block_number<Mode: TransactionKind>(
             // Check that the block exists.
             let last_block_number = get_latest_block_number(txn)?
                 .ok_or_else(|| Error::from(JsonRpcError::BlockNotFound))?;
-            if block_number.0 > last_block_number.0 {
+            if block_number > last_block_number {
                 return Err(Error::from(JsonRpcError::BlockNotFound));
             }
             block_number

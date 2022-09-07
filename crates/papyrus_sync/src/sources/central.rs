@@ -60,8 +60,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
             while current_block_number < up_to_block_number {
                 let state_update_stream = self
                     .state_update_stream(
-                        futures_util::stream::iter(current_block_number.0..up_to_block_number.0)
-                            .map(|block_number| BlockNumber(block_number)),
+                        futures_util::stream::iter(current_block_number.iter_up_to(up_to_block_number))
                     );
                 pin_mut!(state_update_stream);
                 while let Some(maybe_state_update) = state_update_stream.next().await{
@@ -79,7 +78,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                             current_block_number = current_block_number.next();
                         }
                         Err(err) => {
-                            debug!("Block number {}: {:#?}", current_block_number.0, err);
+                            debug!("Block number {}: {:#?}", current_block_number.str(), err);
                             yield Err(err);
                             return;
                         }
@@ -99,13 +98,13 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
         stream! {
             while current_block_number < up_to_block_number {
                 let mut res =
-                    futures_util::stream::iter(current_block_number.0..up_to_block_number.0)
-                        .map(|bn| async move { self.starknet_client.block(BlockNumber(bn)).await })
+                    futures_util::stream::iter(current_block_number.iter_up_to(up_to_block_number))
+                        .map(|bn| async move { self.starknet_client.block(bn).await })
                         .buffered(CONCURRENT_REQUESTS);
                 while let Some(maybe_block) = res.next().await {
                     let res = match maybe_block {
                         Ok(Some(block)) => {
-                            info!("Received new block: {}.", block.block_number.0);
+                            info!("Received new block: {}.", block.block_number.str());
                             Block::try_from(block)
                                 .map_err(|err| CentralError::ClientError(Arc::new(err)))
                         }
@@ -122,7 +121,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                         Err(err) => {
                             debug!(
                                 "Received error for block {}: {:?}.",
-                                current_block_number.0, err
+                                current_block_number.str(), err
                             );
                             yield (Err(err));
                             return;

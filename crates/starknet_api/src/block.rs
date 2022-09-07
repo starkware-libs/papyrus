@@ -1,3 +1,7 @@
+#[cfg(test)]
+#[path = "block_test.rs"]
+mod block_test;
+
 use serde::{Deserialize, Serialize};
 
 use super::serde_utils::{HexAsBytes, NonPrefixedHexAsBytes, PrefixedHexAsBytes};
@@ -58,8 +62,12 @@ impl From<GlobalRoot> for NonPrefixedHexAsBytes<32_usize> {
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct BlockNumber(pub u64);
+pub struct BlockNumber(u64);
 impl BlockNumber {
+    pub const fn new(block_number: u64) -> Self {
+        Self(block_number)
+    }
+
     pub fn next(&self) -> BlockNumber {
         BlockNumber(self.0 + 1)
     }
@@ -69,6 +77,15 @@ impl BlockNumber {
             0 => None,
             i => Some(BlockNumber(i - 1)),
         }
+    }
+
+    pub fn iter_up_to(&self, up_to: Self) -> impl Iterator<Item = BlockNumber> {
+        let range = self.0..up_to.0;
+        range.map(Self)
+    }
+
+    pub fn str(&self) -> String {
+        self.0.to_string()
     }
 }
 
