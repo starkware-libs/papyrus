@@ -56,7 +56,7 @@ impl StateSync {
     pub async fn run(&mut self) -> anyhow::Result<(), StateSyncError> {
         info!("State sync started.");
         loop {
-            let header_stream = stream_new_blocks(
+            let block_stream = stream_new_blocks(
                 self.reader.clone(),
                 &self.central_source,
                 self.config.block_propagation_sleep_duration,
@@ -68,11 +68,11 @@ impl StateSync {
                 self.config.block_propagation_sleep_duration,
             )
             .fuse();
-            pin_mut!(header_stream, state_diff_stream);
+            pin_mut!(block_stream, state_diff_stream);
 
             loop {
                 let sync_event: Option<SyncEvent> = select! {
-                  res = header_stream.next() => res,
+                  res = block_stream.next() => res,
                   res = state_diff_stream.next() => res,
                   complete => break,
                 };
@@ -116,7 +116,7 @@ fn stream_new_blocks(
                 .await
                 .expect("Cannot read from block storage.");
             info!(
-                "Downloading headers [{} - {}).",
+                "Downloading blocks [{} - {}).",
                 header_marker.0, last_block_number.0
             );
             if header_marker == last_block_number {
