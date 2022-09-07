@@ -117,7 +117,7 @@ fn stream_new_blocks(
                 .expect("Cannot read from block storage.");
             info!(
                 "Downloading headers [{} - {}).",
-                header_marker.0, last_block_number.0
+                header_marker.str(), last_block_number.str()
             );
             if header_marker == last_block_number {
                 tokio::time::sleep(block_propation_sleep_duration).await;
@@ -151,7 +151,7 @@ fn stream_new_state_diffs(
             drop(txn);
             info!(
                 "Downloading state diffs [{} - {}).",
-                state_marker.0, last_block_number.0
+                state_marker.str(), last_block_number.str()
             );
             if state_marker == last_block_number {
                 tokio::time::sleep(block_propation_sleep_duration).await;

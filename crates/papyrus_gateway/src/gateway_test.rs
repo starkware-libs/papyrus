@@ -28,7 +28,7 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, starknet_api::StateDiff) 
         BlockHash::new(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
     let state_root = GlobalRoot::new(shash!("0x12"));
     let parent_header = BlockHeader {
-        block_number: BlockNumber(0),
+        block_number: BlockNumber::new(0),
         block_hash: parent_hash,
         state_root,
         ..BlockHeader::default()
@@ -37,7 +37,7 @@ fn get_test_state_diff() -> (BlockHeader, BlockHeader, starknet_api::StateDiff) 
     let block_hash =
         BlockHash::new(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5493"));
     let header = BlockHeader {
-        block_number: BlockNumber(1),
+        block_number: BlockNumber::new(1),
         block_hash,
         parent_hash,
         ..BlockHeader::default()
@@ -103,11 +103,11 @@ async fn test_block_number() -> Result<(), anyhow::Error> {
     // Add a block and check again.
     storage_writer
         .begin_rw_txn()?
-        .append_header(BlockNumber(0), &BlockHeader::default())?
+        .append_header(BlockNumber::new(0), &BlockHeader::default())?
         .commit()?;
     let block_number =
         module.call::<_, BlockNumber>("starknet_blockNumber", EmptyParams::new()).await?;
-    assert_eq!(block_number, BlockNumber(0));
+    assert_eq!(block_number, BlockNumber::new(0));
     Ok(())
 }
 
@@ -210,7 +210,7 @@ async fn test_get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, Block>(
             "starknet_getBlockWithTxHashes",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber::new(1)))],
         )
         .await
         .unwrap_err();
@@ -284,7 +284,7 @@ async fn test_get_block_w_full_transactions() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, Block>(
             "starknet_getBlockWithTxs",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber::new(1)))],
         )
         .await
         .unwrap_err();
@@ -387,7 +387,7 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
             (
                 address,
                 key.clone(),
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))),
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber::new(1))),
             ),
         )
         .await
@@ -477,7 +477,7 @@ async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, ClassHash>(
             "starknet_getClassHashAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber::new(1))), address),
         )
         .await
         .unwrap_err();
@@ -564,7 +564,7 @@ async fn test_get_nonce() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, Nonce>(
             "starknet_getNonce",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber::new(1))), address),
         )
         .await
         .unwrap_err();
@@ -667,7 +667,7 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
     let err = module
         .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), 0),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber::new(1))), 0),
         )
         .await
         .unwrap_err();
@@ -750,7 +750,7 @@ async fn test_get_block_transaction_count() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, usize>(
             "starknet_getBlockTransactionCount",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber::new(1)))],
         )
         .await
         .unwrap_err();
@@ -821,7 +821,7 @@ async fn test_get_state_update() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, StateUpdate>(
             "starknet_getStateUpdate",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2)))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber::new(2)))],
         )
         .await
         .unwrap_err();
@@ -977,7 +977,7 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, ContractClass>(
             "starknet_getClass",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))), class_hash),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber::new(2))), class_hash),
         )
         .await
         .unwrap_err();
@@ -1080,7 +1080,7 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, ContractClass>(
             "starknet_getClassAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber::new(2))), address),
         )
         .await
         .unwrap_err();
