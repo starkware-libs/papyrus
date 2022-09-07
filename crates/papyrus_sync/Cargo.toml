@@ -30,3 +30,4 @@ assert_unordered = { version = "0.3.5" }
 mockall = { version = "0.11.2" }
 tempfile = { version = "3.3.0" }
 starknet_client = { path = "../starknet_client", features = ["testing"] }
+starknet_api = { path = "../starknet_api", features = ["testing"] }
