@@ -201,8 +201,8 @@ async fn test_get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidBlockId as i32,
-        JsonRpcError::InvalidBlockId.to_string(),
+        JsonRpcError::BlockNotFound as i32,
+        JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
 
@@ -215,8 +215,8 @@ async fn test_get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidBlockId as i32,
-        JsonRpcError::InvalidBlockId.to_string(),
+        JsonRpcError::BlockNotFound as i32,
+        JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
     Ok(())
@@ -275,8 +275,8 @@ async fn test_get_block_w_full_transactions() -> Result<(), anyhow::Error> {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidBlockId as i32,
-        JsonRpcError::InvalidBlockId.to_string(),
+        JsonRpcError::BlockNotFound as i32,
+        JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
 
@@ -289,8 +289,8 @@ async fn test_get_block_w_full_transactions() -> Result<(), anyhow::Error> {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidBlockId as i32,
-        JsonRpcError::InvalidBlockId.to_string(),
+        JsonRpcError::BlockNotFound as i32,
+        JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
     Ok(())
@@ -375,8 +375,8 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidBlockId as i32,
-        JsonRpcError::InvalidBlockId.to_string(),
+        JsonRpcError::BlockNotFound as i32,
+        JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
 
@@ -393,8 +393,8 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidBlockId as i32,
-        JsonRpcError::InvalidBlockId.to_string(),
+        JsonRpcError::BlockNotFound as i32,
+        JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
 
@@ -468,8 +468,8 @@ async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidBlockId as i32,
-        JsonRpcError::InvalidBlockId.to_string(),
+        JsonRpcError::BlockNotFound as i32,
+        JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
 
@@ -482,8 +482,8 @@ async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidBlockId as i32,
-        JsonRpcError::InvalidBlockId.to_string(),
+        JsonRpcError::BlockNotFound as i32,
+        JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
     Ok(())
@@ -555,8 +555,8 @@ async fn test_get_nonce() -> Result<(), anyhow::Error> {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidBlockId as i32,
-        JsonRpcError::InvalidBlockId.to_string(),
+        JsonRpcError::BlockNotFound as i32,
+        JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
 
@@ -569,8 +569,8 @@ async fn test_get_nonce() -> Result<(), anyhow::Error> {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidBlockId as i32,
-        JsonRpcError::InvalidBlockId.to_string(),
+        JsonRpcError::BlockNotFound as i32,
+        JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
     Ok(())
@@ -603,8 +603,8 @@ async fn test_get_transaction_by_hash() -> Result<(), anyhow::Error> {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidTransactionHash as i32,
-        JsonRpcError::InvalidTransactionHash.to_string(),
+        JsonRpcError::TransactionHashNotFound as i32,
+        JsonRpcError::TransactionHashNotFound.to_string(),
         None::<()>,
     ));
     Ok(())
@@ -658,8 +658,8 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidBlockId as i32,
-        JsonRpcError::InvalidBlockId.to_string(),
+        JsonRpcError::BlockNotFound as i32,
+        JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
 
@@ -672,8 +672,8 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidBlockId as i32,
-        JsonRpcError::InvalidBlockId.to_string(),
+        JsonRpcError::BlockNotFound as i32,
+        JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
 
@@ -741,8 +741,8 @@ async fn test_get_block_transaction_count() -> Result<(), anyhow::Error> {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidBlockId as i32,
-        JsonRpcError::InvalidBlockId.to_string(),
+        JsonRpcError::BlockNotFound as i32,
+        JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
 
@@ -755,8 +755,8 @@ async fn test_get_block_transaction_count() -> Result<(), anyhow::Error> {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidBlockId as i32,
-        JsonRpcError::InvalidBlockId.to_string(),
+        JsonRpcError::BlockNotFound as i32,
+        JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
     Ok(())
@@ -812,8 +812,8 @@ async fn test_get_state_update() -> Result<(), anyhow::Error> {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidBlockId as i32,
-        JsonRpcError::InvalidBlockId.to_string(),
+        JsonRpcError::BlockNotFound as i32,
+        JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
 
@@ -826,8 +826,8 @@ async fn test_get_state_update() -> Result<(), anyhow::Error> {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidBlockId as i32,
-        JsonRpcError::InvalidBlockId.to_string(),
+        JsonRpcError::BlockNotFound as i32,
+        JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
 
@@ -874,8 +874,8 @@ async fn test_get_transaction_receipt() -> Result<(), anyhow::Error> {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidTransactionHash as i32,
-        JsonRpcError::InvalidTransactionHash.to_string(),
+        JsonRpcError::TransactionHashNotFound as i32,
+        JsonRpcError::TransactionHashNotFound.to_string(),
         None::<()>,
     ));
 
@@ -932,8 +932,8 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidContractClassHash as i32,
-        JsonRpcError::InvalidContractClassHash.to_string(),
+        JsonRpcError::ClassHashNotFound as i32,
+        JsonRpcError::ClassHashNotFound.to_string(),
         None::<()>,
     ));
 
@@ -949,8 +949,8 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidContractClassHash as i32,
-        JsonRpcError::InvalidContractClassHash.to_string(),
+        JsonRpcError::ClassHashNotFound as i32,
+        JsonRpcError::ClassHashNotFound.to_string(),
         None::<()>,
     ));
 
@@ -968,8 +968,8 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidBlockId as i32,
-        JsonRpcError::InvalidBlockId.to_string(),
+        JsonRpcError::BlockNotFound as i32,
+        JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
 
@@ -982,8 +982,8 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidBlockId as i32,
-        JsonRpcError::InvalidBlockId.to_string(),
+        JsonRpcError::BlockNotFound as i32,
+        JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
 
@@ -1071,8 +1071,8 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidBlockId as i32,
-        JsonRpcError::InvalidBlockId.to_string(),
+        JsonRpcError::BlockNotFound as i32,
+        JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
 
@@ -1085,8 +1085,8 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
-        JsonRpcError::InvalidBlockId as i32,
-        JsonRpcError::InvalidBlockId.to_string(),
+        JsonRpcError::BlockNotFound as i32,
+        JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
 

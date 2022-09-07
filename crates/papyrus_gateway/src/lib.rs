@@ -62,18 +62,19 @@ fn get_block_number<Mode: TransactionKind>(
         BlockId::HashOrNumber(BlockHashOrNumber::Hash(block_hash)) => txn
             .get_block_number_by_hash(&block_hash)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?,
+            .ok_or_else(|| Error::from(JsonRpcError::BlockNotFound))?,
         BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number)) => {
             // Check that the block exists.
             let last_block_number = get_latest_block_number(txn)?
-                .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
+                .ok_or_else(|| Error::from(JsonRpcError::BlockNotFound))?;
             if block_number.0 > last_block_number.0 {
-                return Err(Error::from(JsonRpcError::InvalidBlockId));
+                return Err(Error::from(JsonRpcError::BlockNotFound));
             }
             block_number
         }
-        BlockId::Tag(Tag::Latest) => get_latest_block_number(txn)?
-            .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?,
+        BlockId::Tag(Tag::Latest) => {
+            get_latest_block_number(txn)?.ok_or_else(|| Error::from(JsonRpcError::BlockNotFound))?
+        }
         BlockId::Tag(Tag::Pending) => {
             // TODO(anatg): Support pending block.
             todo!("Pending tag is not supported yet.")
@@ -94,7 +95,7 @@ fn get_block_header_by_number<Mode: TransactionKind>(
     let header = txn
         .get_block_header(block_number)
         .map_err(internal_server_error)?
-        .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
+        .ok_or_else(|| Error::from(JsonRpcError::BlockNotFound))?;
 
     Ok(BlockHeader::from(header))
 }
@@ -107,7 +108,7 @@ fn get_block_txs_by_number<Mode: TransactionKind>(
     let transactions = txn
         .get_block_transactions(block_number)
         .map_err(internal_server_error)?
-        .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
+        .ok_or_else(|| Error::from(JsonRpcError::BlockNotFound))?;
 
     Ok(transactions.into_iter().map(Transaction::from).collect())
 }
@@ -189,12 +190,12 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let (block_number, tx_offset_in_block) = txn
             .get_transaction_idx_by_hash(&transaction_hash)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::InvalidTransactionHash))?;
+            .ok_or_else(|| Error::from(JsonRpcError::TransactionHashNotFound))?;
 
         let transaction = txn
             .get_transaction(block_number, tx_offset_in_block)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::InvalidTransactionHash))?;
+            .ok_or_else(|| Error::from(JsonRpcError::TransactionHashNotFound))?;
 
         Ok(TransactionWithType::from(transaction))
     }
@@ -246,7 +247,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let db_state_diff = txn
             .get_state_diff(block_number)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::InvalidBlockId))?;
+            .ok_or_else(|| Error::from(JsonRpcError::BlockNotFound))?;
 
         Ok(StateUpdate {
             block_hash: header.block_hash,
@@ -265,7 +266,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let (block_number, tx_offset_in_block) = txn
             .get_transaction_idx_by_hash(&transaction_hash)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::InvalidTransactionHash))?;
+            .ok_or_else(|| Error::from(JsonRpcError::TransactionHashNotFound))?;
 
         let header =
             get_block_header_by_number(&txn, block_number).map_err(internal_server_error)?;
@@ -273,7 +274,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let tx_output = txn
             .get_transaction_output(block_number, tx_offset_in_block)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::InvalidTransactionHash))?;
+            .ok_or_else(|| Error::from(JsonRpcError::TransactionHashNotFound))?;
 
         Ok(TransactionReceiptWithStatus {
             receipt: TransactionReceipt {
@@ -297,7 +298,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         state_reader
             .get_class_definition_at(state_number, &class_hash)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::InvalidContractClassHash))
+            .ok_or_else(|| Error::from(JsonRpcError::ClassHashNotFound))
     }
 
     fn get_class_at(
