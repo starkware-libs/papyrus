@@ -73,6 +73,7 @@ impl StarkHash {
 pub type StarkFelt = StarkHash;
 
 /// A utility macro to create a [`StarkHash`] from a hex string representation.
+#[cfg(any(feature = "testing", test))]
 #[macro_export]
 macro_rules! shash {
     ($s:expr) => {
