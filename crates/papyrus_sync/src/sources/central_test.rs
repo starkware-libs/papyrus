@@ -220,12 +220,18 @@ async fn stream_state_updates() {
         central_source.stream_state_updates(initial_block_num, BlockNumber(END_BLOCK_NUMBER));
     pin_mut!(stream);
 
-    let (current_block_num, state_diff) = if let Some(Ok(state_diff_tuple)) = stream.next().await {
-        state_diff_tuple
-    } else {
-        panic!("Match of streamed state_update failed!");
-    };
+    let (current_block_num, state_diff, deployed_contract_class_definitions) =
+        if let Some(Ok(state_diff_tuple)) = stream.next().await {
+            state_diff_tuple
+        } else {
+            panic!("Match of streamed state_update failed!");
+        };
     assert_eq!(initial_block_num, current_block_num);
+    assert_eq!(
+        vec![DeclaredContract { class_hash: class_hash2, contract_class: contract_class2 }],
+        deployed_contract_class_definitions,
+    );
+
     let (deployed_contracts, storage_diffs, declared_classes, nonces) = state_diff.destruct();
     assert_eq!(
         vec![
@@ -241,18 +247,18 @@ async fn stream_state_updates() {
     assert_eq!(
         vec![
             DeclaredContract { class_hash: class_hash1, contract_class: contract_class1 },
-            DeclaredContract { class_hash: class_hash2, contract_class: contract_class2 },
             DeclaredContract { class_hash: class_hash3, contract_class: contract_class3 },
         ],
         declared_classes,
     );
     assert!(nonces.is_empty());
 
-    let (current_block_num, state_diff) = if let Some(Ok(state_diff_tuple)) = stream.next().await {
-        state_diff_tuple
-    } else {
-        panic!("Match of streamed state_update failed!");
-    };
+    let (current_block_num, state_diff, _deployed_classes) =
+        if let Some(Ok(state_diff_tuple)) = stream.next().await {
+            state_diff_tuple
+        } else {
+            panic!("Match of streamed state_update failed!");
+        };
     assert_eq!(initial_block_num.next(), current_block_num);
     assert_eq!(state_diff, starknet_api::StateDiff::default());
 

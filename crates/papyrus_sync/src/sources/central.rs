@@ -39,19 +39,6 @@ pub enum CentralError {
     StarknetApiError(#[from] Arc<StarknetApiError>),
 }
 
-fn get_state_diff(
-    maybe_state_update: CentralResult<(StateUpdate, Vec<DeclaredContract>)>,
-) -> CentralResult<StateDiff> {
-    let (state_update, classes) = maybe_state_update?;
-    Ok(StateDiff::new(
-        state_update.state_diff.deployed_contracts,
-        client_to_starknet_api_storage_diff(state_update.state_diff.storage_diffs),
-        classes,
-        // TODO(dan): fix once nonces are available.
-        vec![],
-    ))
-}
-
 impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
     GenericCentralSource<TStarknetClient>
 {
@@ -66,7 +53,8 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
         &self,
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
-    ) -> impl Stream<Item = CentralResult<(BlockNumber, StateDiff)>> + '_ {
+    ) -> impl Stream<Item = CentralResult<(BlockNumber, StateDiff, Vec<DeclaredContract>)>> + '_
+    {
         let mut current_block_number = initial_block_number;
         stream! {
             while current_block_number < up_to_block_number {
@@ -77,10 +65,17 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                     );
                 pin_mut!(state_update_stream);
                 while let Some(maybe_state_update) = state_update_stream.next().await{
-                    let state_diff = get_state_diff(maybe_state_update);
-                    match state_diff {
-                        Ok(state_diff) => {
-                            yield Ok((current_block_number, state_diff));
+                    match maybe_state_update {
+                        Ok((state_update, classes)) => {
+                            let (declared_classes, deployed_contract_class_definitions) = classes.split_at(state_update.state_diff.declared_classes.len());
+                            let state_diff = StateDiff::new(
+                                state_update.state_diff.deployed_contracts,
+                                client_to_starknet_api_storage_diff(state_update.state_diff.storage_diffs),
+                                declared_classes.to_vec(),
+                                // TODO(dan): fix once nonces are available.
+                                vec![],
+                            );
+                            yield Ok((current_block_number, state_diff, deployed_contract_class_definitions.to_vec()));
                             current_block_number = current_block_number.next();
                         }
                         Err(err) => {
@@ -142,6 +137,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
         &self,
         block_number_stream: impl Stream<Item = BlockNumber> + Send + Sync + 'static,
     ) -> impl Stream<Item = CentralResult<(StateUpdate, Vec<DeclaredContract>)>> {
+        // Stream the state updates.
         let starknet_client = self.starknet_client.clone();
         let (state_updates0, mut state_updates1) = block_number_stream
             .map(move |block_number| {
@@ -152,6 +148,8 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
             // Client error is not cloneable.
             .map_err(Arc::new)
             .fanout(CONCURRENT_REQUESTS);
+
+        // Stream the declared and deployed classes.
         let starknet_client = self.starknet_client.clone();
         let mut flat_classes = state_updates0
             // In case state_updates1 contains a ClientError, we yield it and break - without
@@ -166,8 +164,10 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
             })
             .buffered(CONCURRENT_REQUESTS)
             .map(|(class_hash, class)| (class_hash, class.map_err(Arc::new)));
+
         let res_stream = stream! {
             while let Some(maybe_state_update) = state_updates1.next().await {
+                // Get the next state update.
                 let state_update = match maybe_state_update {
                     Ok(Some(state_update)) => state_update,
                     Ok(None) => {
@@ -181,6 +181,8 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                         break;
                     }
                 };
+
+                // Get the next state declared and deployed classes.
                 let len = state_update.state_diff.class_hashes().len();
                 let classes: Result<Vec<DeclaredContract>, _> = flat_classes
                     .take_n(len)
