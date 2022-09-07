@@ -220,13 +220,18 @@ async fn stream_state_updates() {
         central_source.stream_state_updates(initial_block_num, BlockNumber(END_BLOCK_NUMBER));
     pin_mut!(stream);
 
-    let (current_block_num, state_diff, _deployed_classes) =
+    let (current_block_num, state_diff, deployed_classes) =
         if let Some(Ok(state_diff_tuple)) = stream.next().await {
             state_diff_tuple
         } else {
             panic!("Match of streamed state_update failed!");
         };
     assert_eq!(initial_block_num, current_block_num);
+    assert_eq!(
+        vec![DeclaredContract { class_hash: class_hash2, contract_class: contract_class2 }],
+        deployed_classes,
+    );
+
     let (deployed_contracts, storage_diffs, declared_classes, nonces) = state_diff.destruct();
     assert_eq!(
         vec![

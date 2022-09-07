@@ -45,7 +45,9 @@ pub enum SyncEvent {
     StateDiffAvailable {
         block_number: BlockNumber,
         state_diff: StateDiff,
-        deployed_classes: Vec<DeclaredContract>,
+        // TODO(anatg): Remove once there are no more deployed contracts with undeclared classes.
+        // Class definitions of deployed contracts with classes that were not declared.
+        deployed_contract_class_definitions: Vec<DeclaredContract>,
     },
 }
 
@@ -94,11 +96,15 @@ impl StateSync {
                     Some(SyncEvent::StateDiffAvailable {
                         block_number,
                         state_diff,
-                        deployed_classes,
+                        deployed_contract_class_definitions,
                     }) => {
                         self.writer
                             .begin_rw_txn()?
-                            .append_state_diff(block_number, state_diff, deployed_classes)?
+                            .append_state_diff(
+                                block_number,
+                                state_diff,
+                                deployed_contract_class_definitions,
+                            )?
                             .commit()?;
                     }
                     None => {
@@ -173,11 +179,11 @@ fn stream_new_state_diffs(
                 .fuse();
             pin_mut!(state_diff_stream);
             // TODO(dan): reconsider let Some(Ok as it hides errors.
-            while let Some(Ok((block_number, state_diff, deployed_classes))) = state_diff_stream.next().await {
+            while let Some(Ok((block_number, state_diff, deployed_contract_class_definitions))) = state_diff_stream.next().await {
                 yield SyncEvent::StateDiffAvailable {
                     block_number,
                     state_diff,
-                    deployed_classes,
+                    deployed_contract_class_definitions,
                 };
             }
         }
