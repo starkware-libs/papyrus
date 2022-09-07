@@ -39,14 +39,14 @@ pub enum JsonRpcError {
     NoBlocks,
     #[error("Contract not found.")]
     ContractNotFound = 20,
-    #[error("Invalid block id.")]
-    InvalidBlockId = 24,
-    #[error("Invalid transaction hash.")]
-    InvalidTransactionHash = 25,
+    #[error("Block not found.")]
+    BlockNotFound = 24,
+    #[error("Transaction hash not found.")]
+    TransactionHashNotFound = 25,
     #[error("Invalid transaction index in a block.")]
     InvalidTransactionIndex = 27,
-    #[error("The supplied contract class hash is invalid or unknown.")]
-    InvalidContractClassHash = 28,
+    #[error("Class hash not found.")]
+    ClassHashNotFound = 28,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
