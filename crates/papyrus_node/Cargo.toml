@@ -7,6 +7,7 @@ edition = "2021"
 anyhow = { version = "1.0.44" }
 async-stream = { version = "0.3.3" }
 bincode = { version = "1.3.3" }
+clap = { version = "3.2.19", features = ["derive"] }
 papyrus_storage = { path = "../papyrus_storage" }
 papyrus_sync = { path = "../papyrus_sync" }
 futures-util = { version = "0.3.21" }
