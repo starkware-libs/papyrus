@@ -150,17 +150,17 @@ impl<'env> StorageTxn<'env, RW> {
 pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, StorageWriter)> {
     let (db_reader, mut db_writer) = open_env(db_config)?;
     let tables = Arc::new(Tables {
+        block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
+        contract_storage: db_writer.create_table("contract_storage")?,
+        declared_classes: db_writer.create_table("declared_classes")?,
+        deployed_contracts: db_writer.create_table("deployed_contracts")?,
+        headers: db_writer.create_table("headers")?,
         markers: db_writer.create_table("markers")?,
         nonces: db_writer.create_table("nonces")?,
-        headers: db_writer.create_table("headers")?,
-        block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
-        transactions: db_writer.create_table("transactions")?,
-        transaction_outputs: db_writer.create_table("transaction_outputs")?,
-        transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
         state_diffs: db_writer.create_table("state_diffs")?,
-        deployed_contracts: db_writer.create_table("deployed_contracts")?,
-        declared_classes: db_writer.create_table("declared_classes")?,
-        contract_storage: db_writer.create_table("contract_storage")?,
+        transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
+        transaction_outputs: db_writer.create_table("transaction_outputs")?,
+        transactions: db_writer.create_table("transactions")?,
     });
     let reader = StorageReader { db_reader, tables: tables.clone() };
     let writer = StorageWriter { db_writer, tables };
