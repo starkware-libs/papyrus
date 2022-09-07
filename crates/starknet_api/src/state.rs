@@ -2,10 +2,16 @@
 #[path = "state_test.rs"]
 mod state_test;
 
+use std::fmt::Debug;
+
 use serde::{Deserialize, Serialize};
 
-use super::{BlockNumber, ClassHash, ContractAddress, ContractClass, Nonce, StarkFelt};
-use crate::hash::PatriciaKey;
+use super::serde_utils::{DeserializationError, HexAsBytes, PrefixedHexAsBytes};
+use super::{BlockNumber, ClassHash, ContractAddress, ContractClass, Nonce, StarkFelt, StarkHash};
+
+/// 2**251
+pub const PATRICIA_KEY_UPPER_BOUND: &str =
+    "0x800000000000000000000000000000000000000000000000000000000000000";
 
 /// The sequential numbering of the states between blocks in StarkNet.
 // Example:
@@ -32,6 +38,44 @@ impl StateNumber {
     }
     pub fn block_after(&self) -> BlockNumber {
         BlockNumber(self.0)
+    }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(try_from = "PrefixedHexAsBytes<32_usize>", into = "PrefixedHexAsBytes<32_usize>")]
+pub struct PatriciaKey(StarkHash);
+impl PatriciaKey {
+    pub fn new(hash: StarkHash) -> Result<PatriciaKey, DeserializationError> {
+        if hash >= StarkHash::from_hex(PATRICIA_KEY_UPPER_BOUND)? {
+            return Err(DeserializationError::OutOfRange {
+                string: format!("[0x0, {PATRICIA_KEY_UPPER_BOUND})"),
+            });
+        }
+        Ok(PatriciaKey(hash))
+    }
+    pub fn hash(&self) -> &StarkHash {
+        &self.0
+    }
+    pub fn into_hash(self) -> StarkHash {
+        self.0
+    }
+}
+impl TryFrom<PrefixedHexAsBytes<32_usize>> for PatriciaKey {
+    type Error = DeserializationError;
+    fn try_from(val: PrefixedHexAsBytes<32_usize>) -> Result<Self, Self::Error> {
+        let hash = StarkHash::new(val.0)?;
+        PatriciaKey::new(hash)
+    }
+}
+impl From<PatriciaKey> for PrefixedHexAsBytes<32_usize> {
+    fn from(val: PatriciaKey) -> Self {
+        HexAsBytes(val.hash().into_bytes())
+    }
+}
+
+impl Debug for PatriciaKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("PatriciaKey").field(&self.hash()).finish()
     }
 }
 
