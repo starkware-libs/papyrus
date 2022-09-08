@@ -1,38 +1,47 @@
+use std::convert::TryFrom;
+
 use assert_matches::assert_matches;
 
 use super::StateDiff;
 use crate::serde_utils::DeserializationError;
+use crate::state::PatriciaKey;
 use crate::{
     shash, ClassHash, ContractAddress, ContractClass, ContractNonce, DeclaredContract,
-    DeployedContract, Nonce, PatriciaKey, StarkHash, StorageDiff,
+    DeployedContract, Nonce, StarkHash, StorageDiff,
 };
 
 #[test]
 fn state_sorted() {
     let hash0 = shash!("0x0");
     let hash1 = shash!("0x1");
-    let patricia0 = PatriciaKey::new(hash0).unwrap();
-    let patricia1 = PatriciaKey::new(hash1).unwrap();
 
-    let dep_contract_0 =
-        DeployedContract { address: ContractAddress(patricia0), class_hash: ClassHash(hash0) };
-    let dep_contract_1 =
-        DeployedContract { address: ContractAddress(patricia1), class_hash: ClassHash(hash1) };
+    let dep_contract_0 = DeployedContract {
+        address: ContractAddress::try_from(hash0).unwrap(),
+        class_hash: ClassHash(hash0),
+    };
+    let dep_contract_1 = DeployedContract {
+        address: ContractAddress::try_from(hash1).unwrap(),
+        class_hash: ClassHash(hash1),
+    };
 
     let storage_diff_0 =
-        StorageDiff { address: ContractAddress(patricia0), storage_entries: vec![] };
+        StorageDiff { address: ContractAddress::try_from(hash0).unwrap(), storage_entries: vec![] };
     let storage_diff_1 =
-        StorageDiff { address: ContractAddress(patricia1), storage_entries: vec![] };
+        StorageDiff { address: ContractAddress::try_from(hash1).unwrap(), storage_entries: vec![] };
 
     let dec_contract_0 =
         DeclaredContract { class_hash: ClassHash(hash0), contract_class: ContractClass::default() };
     let dec_contract_1 =
         DeclaredContract { class_hash: ClassHash(hash1), contract_class: ContractClass::default() };
 
-    let nonce_0 =
-        ContractNonce { contract_address: ContractAddress(patricia0), nonce: Nonce(hash0) };
-    let nonce_1 =
-        ContractNonce { contract_address: ContractAddress(patricia1), nonce: Nonce(hash1) };
+    let nonce_0 = ContractNonce {
+        contract_address: ContractAddress::try_from(hash0).unwrap(),
+        nonce: Nonce(hash0),
+    };
+    let nonce_1 = ContractNonce {
+        contract_address: ContractAddress::try_from(hash1).unwrap(),
+        nonce: Nonce(hash1),
+    };
 
     let unsorted_deployed_contracts = vec![dep_contract_1.clone(), dep_contract_0.clone()];
     let unsorted_storage_diffs = vec![storage_diff_1.clone(), storage_diff_0.clone()];
