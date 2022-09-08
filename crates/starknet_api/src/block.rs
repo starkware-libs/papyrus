@@ -2,6 +2,7 @@
 #[path = "block_test.rs"]
 mod block_test;
 
+use std::fmt;
 use serde::{Deserialize, Serialize};
 
 use super::serde_utils::{HexAsBytes, NonPrefixedHexAsBytes, PrefixedHexAsBytes};
@@ -84,8 +85,11 @@ impl BlockNumber {
         range.map(Self)
     }
 
-    pub fn str(&self) -> String {
-        self.0.to_string()
+}
+
+impl fmt::Display for BlockNumber {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

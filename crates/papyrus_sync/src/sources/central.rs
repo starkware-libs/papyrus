@@ -78,7 +78,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                             current_block_number = current_block_number.next();
                         }
                         Err(err) => {
-                            debug!("Block number {}: {:#?}", current_block_number.str(), err);
+                            debug!("Block number {}: {:#?}", current_block_number, err);
                             yield Err(err);
                             return;
                         }
@@ -104,7 +104,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                 while let Some(maybe_block) = res.next().await {
                     let res = match maybe_block {
                         Ok(Some(block)) => {
-                            info!("Received new block: {}.", block.block_number.str());
+                            info!("Received new block: {}.", block.block_number);
                             Block::try_from(block)
                                 .map_err(|err| CentralError::ClientError(Arc::new(err)))
                         }
@@ -121,7 +121,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                         Err(err) => {
                             debug!(
                                 "Received error for block {}: {:?}.",
-                                current_block_number.str(), err
+                                current_block_number, err
                             );
                             yield (Err(err));
                             return;
