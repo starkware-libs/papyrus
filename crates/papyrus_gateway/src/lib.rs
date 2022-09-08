@@ -14,7 +14,7 @@ use jsonrpsee::types::error::{ErrorObject, INTERNAL_ERROR_MSG};
 use log::{error, info};
 use papyrus_storage::{
     BodyStorageReader, HeaderStorageReader, StateStorageReader, StorageReader, StorageTxn,
-    TransactionKind,
+    TransactionIndex, TransactionKind,
 };
 use serde::{Deserialize, Serialize};
 use starknet_api::{
@@ -187,7 +187,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
     ) -> Result<TransactionWithType, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
-        let (block_number, tx_offset_in_block) = txn
+        let TransactionIndex(block_number, tx_offset_in_block) = txn
             .get_transaction_idx_by_hash(&transaction_hash)
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::TransactionHashNotFound))?;
@@ -263,7 +263,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
     ) -> Result<TransactionReceiptWithStatus, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
-        let (block_number, tx_offset_in_block) = txn
+        let TransactionIndex(block_number, tx_offset_in_block) = txn
             .get_transaction_idx_by_hash(&transaction_hash)
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::TransactionHashNotFound))?;
