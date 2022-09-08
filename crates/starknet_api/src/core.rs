@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{StarkFelt, StarkHash};
-use crate::state::PatriciaKey;
+use super::{PatriciaKey, StarkFelt, StarkHash};
 
 /// The address of a StarkNet contract.
 #[derive(
