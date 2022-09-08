@@ -10,30 +10,33 @@ fn state_sorted() {
 
     let dep_contract_0 = DeployedContract {
         address: ContractAddress::try_from(hash0).unwrap(),
-        class_hash: ClassHash(hash0),
+        class_hash: ClassHash::new(hash0),
     };
     let dep_contract_1 = DeployedContract {
         address: ContractAddress::try_from(hash1).unwrap(),
-        class_hash: ClassHash(hash1),
+        class_hash: ClassHash::new(hash1),
     };
-
     let storage_diff_0 =
         StorageDiff { address: ContractAddress::try_from(hash0).unwrap(), storage_entries: vec![] };
     let storage_diff_1 =
         StorageDiff { address: ContractAddress::try_from(hash1).unwrap(), storage_entries: vec![] };
 
-    let dec_contract_0 =
-        DeclaredContract { class_hash: ClassHash(hash0), contract_class: ContractClass::default() };
-    let dec_contract_1 =
-        DeclaredContract { class_hash: ClassHash(hash1), contract_class: ContractClass::default() };
+    let dec_contract_0 = DeclaredContract {
+        class_hash: ClassHash::new(hash0),
+        contract_class: ContractClass::default(),
+    };
+    let dec_contract_1 = DeclaredContract {
+        class_hash: ClassHash::new(hash1),
+        contract_class: ContractClass::default(),
+    };
 
     let nonce_0 = ContractNonce {
         contract_address: ContractAddress::try_from(hash0).unwrap(),
-        nonce: Nonce(hash0),
+        nonce: Nonce::new(hash0),
     };
     let nonce_1 = ContractNonce {
         contract_address: ContractAddress::try_from(hash1).unwrap(),
-        nonce: Nonce(hash1),
+        nonce: Nonce::new(hash1),
     };
 
     let unsorted_deployed_contracts = vec![dep_contract_1.clone(), dep_contract_0.clone()];

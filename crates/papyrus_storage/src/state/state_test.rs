@@ -15,9 +15,9 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     let c1 = ContractAddress::try_from(shash!("0x12")).unwrap();
     let c2 = ContractAddress::try_from(shash!("0x13")).unwrap();
     let c3 = ContractAddress::try_from(shash!("0x14")).unwrap();
-    let cl0 = ClassHash(shash!("0x4"));
-    let cl1 = ClassHash(shash!("0x5"));
-    let cl2 = ClassHash(shash!("0x6"));
+    let cl0 = ClassHash::new(shash!("0x4"));
+    let cl1 = ClassHash::new(shash!("0x5"));
+    let cl2 = ClassHash::new(shash!("0x6"));
     let c_cls0 = ContractClass::default();
     let c_cls1 = ContractClass::default();
     let key0 = StorageKey::try_from(shash!("0x1001")).unwrap();
@@ -41,7 +41,7 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
             DeclaredContract { class_hash: cl0, contract_class: c_cls0.clone() },
             DeclaredContract { class_hash: cl1, contract_class: c_cls1 },
         ],
-        vec![ContractNonce { contract_address: c0, nonce: Nonce(StarkHash::from_u64(1)) }],
+        vec![ContractNonce { contract_address: c0, nonce: Nonce::new(StarkHash::from_u64(1)) }],
     );
     let diff1 = StateDiff::new(
         vec![DeployedContract { address: c2, class_hash: cl0 }],
@@ -60,9 +60,9 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
         ],
         vec![DeclaredContract { class_hash: cl0, contract_class: c_cls0.clone() }],
         vec![
-            ContractNonce { contract_address: c0, nonce: Nonce(StarkHash::from_u64(2)) },
-            ContractNonce { contract_address: c1, nonce: Nonce(StarkHash::from_u64(1)) },
-            ContractNonce { contract_address: c2, nonce: Nonce(StarkHash::from_u64(1)) },
+            ContractNonce { contract_address: c0, nonce: Nonce::new(StarkHash::from_u64(2)) },
+            ContractNonce { contract_address: c1, nonce: Nonce::new(StarkHash::from_u64(1)) },
+            ContractNonce { contract_address: c2, nonce: Nonce::new(StarkHash::from_u64(1)) },
         ],
     );
 
@@ -133,8 +133,8 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     assert_eq!(statetxn.get_class_hash_at(state1, &c0)?, Some(cl0));
     assert_eq!(statetxn.get_class_hash_at(state2, &c0)?, Some(cl0));
     assert_eq!(statetxn.get_nonce_at(state0, &c0)?, None);
-    assert_eq!(statetxn.get_nonce_at(state1, &c0)?, Some(Nonce(StarkHash::from_u64(1))));
-    assert_eq!(statetxn.get_nonce_at(state2, &c0)?, Some(Nonce(StarkHash::from_u64(2))));
+    assert_eq!(statetxn.get_nonce_at(state1, &c0)?, Some(Nonce::new(StarkHash::from_u64(1))));
+    assert_eq!(statetxn.get_nonce_at(state2, &c0)?, Some(Nonce::new(StarkHash::from_u64(2))));
 
     // Contract1.
     assert_eq!(statetxn.get_class_hash_at(state0, &c1)?, None);
@@ -142,7 +142,7 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     assert_eq!(statetxn.get_class_hash_at(state2, &c1)?, Some(cl1));
     assert_eq!(statetxn.get_nonce_at(state0, &c1)?, None);
     assert_eq!(statetxn.get_nonce_at(state1, &c1)?, Some(Nonce::default()));
-    assert_eq!(statetxn.get_nonce_at(state2, &c1)?, Some(Nonce(StarkHash::from_u64(1))));
+    assert_eq!(statetxn.get_nonce_at(state2, &c1)?, Some(Nonce::new(StarkHash::from_u64(1))));
 
     // Contract2.
     assert_eq!(statetxn.get_class_hash_at(state0, &c2)?, None);
@@ -150,7 +150,7 @@ fn test_append_diff() -> Result<(), anyhow::Error> {
     assert_eq!(statetxn.get_class_hash_at(state2, &c2)?, Some(cl0));
     assert_eq!(statetxn.get_nonce_at(state0, &c2)?, None);
     assert_eq!(statetxn.get_nonce_at(state1, &c2)?, None);
-    assert_eq!(statetxn.get_nonce_at(state2, &c2)?, Some(Nonce(StarkHash::from_u64(1))));
+    assert_eq!(statetxn.get_nonce_at(state2, &c2)?, Some(Nonce::new(StarkHash::from_u64(1))));
 
     // Contract3.
     assert_eq!(statetxn.get_class_hash_at(state0, &c3)?, None);

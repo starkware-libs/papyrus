@@ -147,9 +147,9 @@ async fn stream_state_updates() {
     const START_BLOCK_NUMBER: u64 = 5;
     const END_BLOCK_NUMBER: u64 = 7;
 
-    let class_hash1 = ClassHash(shash!("0x123"));
-    let class_hash2 = ClassHash(shash!("0x456"));
-    let class_hash3 = ClassHash(shash!("0x789"));
+    let class_hash1 = ClassHash::new(shash!("0x123"));
+    let class_hash2 = ClassHash::new(shash!("0x456"));
+    let class_hash3 = ClassHash::new(shash!("0x789"));
     let contract_address1 = ContractAddress::try_from(shash!("0xabc")).unwrap();
     let contract_address2 = ContractAddress::try_from(shash!("0xdef")).unwrap();
     let root1 = GlobalRoot::new(shash!("0x111"));
