@@ -1,3 +1,4 @@
+use assert_matches::assert_matches;
 use starknet_api::{
     shash, BlockBody, BlockNumber, CallData, ClassHash, ContractAddress, ContractAddressSalt,
     DeployTransaction, DeployTransactionOutput, Fee, StarkHash, Transaction, TransactionHash,
@@ -47,13 +48,10 @@ async fn test_append_body() -> Result<(), anyhow::Error> {
 
     // Check for MarkerMismatch error  when trying to append the wrong block number.
     if let Err(err) = writer.begin_rw_txn()?.append_body(BlockNumber::new(5), &body2) {
-        match err {
-            StorageError::MarkerMismatch { expected, found } => {
-                assert_eq!(expected, BlockNumber::new(2));
-                assert_eq!(found, BlockNumber::new(5));
-            }
-            _ => panic!("Unexpected error"),
-        }
+        assert_matches!(
+            err,
+            StorageError::MarkerMismatch { expected, found }
+        if expected == BlockNumber::new(2) && found == BlockNumber::new(5));
     } else {
         panic!("Unexpected Ok.");
     }
@@ -61,18 +59,15 @@ async fn test_append_body() -> Result<(), anyhow::Error> {
     writer.begin_rw_txn()?.append_body(BlockNumber::new(2), &body2)?.commit()?;
 
     if let Err(err) = writer.begin_rw_txn()?.append_body(BlockNumber::new(3), &body3) {
-        match err {
+        assert_matches!(
+            err,
             StorageError::TransactionHashAlreadyExists {
                 tx_hash,
                 block_number,
                 tx_offset_in_block,
-            } => {
-                assert_eq!(tx_hash, txs[0].transaction_hash());
-                assert_eq!(block_number, BlockNumber::new(3));
-                assert_eq!(tx_offset_in_block, TransactionOffsetInBlock(1));
             }
-            _ => panic!("Unexpected error."),
-        }
+            if tx_hash == txs[0].transaction_hash() && block_number == BlockNumber::new(3) && tx_offset_in_block == TransactionOffsetInBlock(1)
+        );
     } else {
         panic!("Unexpected Ok.");
     }

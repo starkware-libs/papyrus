@@ -1,3 +1,4 @@
+use assert_matches::assert_matches;
 use starknet_api::{BlockHash, BlockHeader, BlockNumber};
 
 use super::{HeaderStorageReader, HeaderStorageWriter, StorageError};
@@ -11,13 +12,11 @@ async fn test_append_header() -> Result<(), anyhow::Error> {
     if let Err(err) =
         writer.begin_rw_txn()?.append_header(BlockNumber::new(5), &BlockHeader::default())
     {
-        match err {
-            StorageError::MarkerMismatch { expected, found } => {
-                assert_eq!(expected, BlockNumber::new(0));
-                assert_eq!(found, BlockNumber::new(5));
-            }
-            _ => panic!("Unexpected error"),
-        }
+        assert_matches!(
+            err,
+            StorageError::MarkerMismatch { expected, found }
+            if expected == BlockNumber::new(0) && found == BlockNumber::new(5)
+        );
     } else {
         panic!("Unexpected Ok.");
     }
