@@ -34,7 +34,7 @@ pub fn get_test_block(transaction_count: usize) -> Block {
         let transaction = Transaction::Deploy(DeployTransaction {
             transaction_hash: TransactionHash(StarkHash::from_u64(i as u64)),
             version: TransactionVersion(shash!("0x1")),
-            contract_address: ContractAddress(shash!("0x2")),
+            contract_address: ContractAddress::try_from(shash!("0x2")).unwrap(),
             constructor_calldata: CallData(vec![shash!("0x3")]),
             class_hash: ClassHash(StarkHash::from_u64(i as u64)),
             contract_address_salt: ContractAddressSalt(shash!("0x4")),

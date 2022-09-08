@@ -17,7 +17,7 @@ async fn test_append_body() -> Result<(), anyhow::Error> {
             Transaction::Deploy(DeployTransaction {
                 transaction_hash: TransactionHash(StarkHash::from_u64(i as u64)),
                 version: TransactionVersion(shash!("0x1")),
-                contract_address: ContractAddress(StarkHash::from_u64(i as u64)),
+                contract_address: ContractAddress::try_from(StarkHash::from_u64(i as u64)).unwrap(),
                 constructor_calldata: CallData(vec![StarkHash::from_u64(i as u64)]),
                 class_hash: ClassHash(StarkHash::from_u64(i as u64)),
                 contract_address_salt: ContractAddressSalt(shash!("0x2")),

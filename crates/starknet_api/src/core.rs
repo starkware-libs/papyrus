@@ -1,12 +1,21 @@
 use serde::{Deserialize, Serialize};
 
-use super::{StarkFelt, StarkHash};
+use crate::serde_utils::DeserializationError;
+use crate::state::PatriciaKey;
+use crate::{StarkFelt, StarkHash};
 
 /// The address of a StarkNet contract.
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct ContractAddress(pub StarkHash);
+pub struct ContractAddress(PatriciaKey);
+
+impl TryFrom<StarkHash> for ContractAddress {
+    type Error = DeserializationError;
+    fn try_from(hash: StarkHash) -> Result<Self, Self::Error> {
+        Ok(Self(PatriciaKey::new(hash)?))
+    }
+}
 
 /// The hash of a StarkNet [ContractClass](`super::ContractClass`).
 #[derive(
