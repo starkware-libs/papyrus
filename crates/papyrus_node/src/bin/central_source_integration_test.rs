@@ -17,8 +17,8 @@ async fn main() {
         assert!(
             block_marker == block_number,
             "Expected block number ({}) does not match the result ({}).",
-            block_marker.str(),
-            block_number.str()
+            block_marker,
+            block_number
         );
         block_marker = block_marker.next();
     }
@@ -31,8 +31,8 @@ async fn main() {
         assert!(
             state_marker == block_number,
             "Expected block number ({}) does not match the result ({}).",
-            state_marker.str(),
-            block_number.str()
+            state_marker,
+            block_number
         );
         state_marker = state_marker.next();
     }
