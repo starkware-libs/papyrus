@@ -8,7 +8,7 @@ use crate::{
 };
 
 #[test]
-fn test_sorted() {
+fn state_sorted() {
     let hash0 = shash!("0x0");
     let hash1 = shash!("0x1");
     let patricia0 = PatriciaKey::new(hash0).unwrap();
@@ -58,14 +58,14 @@ fn test_sorted() {
 }
 
 #[test]
-fn test_valid_patricia_key() {
+fn patricia_key_valid() {
     let hash = shash!("0x123");
     let patricia_key = PatriciaKey::new(hash).unwrap();
-    assert_eq!(patricia_key.into_hash(), hash);
+    assert_eq!(patricia_key.0, hash);
 }
 
 #[test]
-fn test_out_of_range_patricia_key() {
+fn patricia_key_out_of_range() {
     // 2**251
     let hash = shash!("0x800000000000000000000000000000000000000000000000000000000000000");
     let err = PatriciaKey::new(hash);
