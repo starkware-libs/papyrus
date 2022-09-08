@@ -1,8 +1,8 @@
 use papyrus_storage::ThinStateDiff;
 use serde::{Deserialize, Serialize};
-use starknet_api::{
-    BlockHash, ClassHash, ContractNonce, DeployedContract, GlobalRoot, StorageDiff,
-};
+use starknet_api::{BlockHash, ClassHash, ContractNonce, DeployedContract, StorageDiff};
+
+use super::block::GlobalRoot;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeclaredContract {
