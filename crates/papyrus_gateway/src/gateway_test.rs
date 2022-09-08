@@ -10,9 +10,8 @@ use papyrus_storage::test_utils::{get_test_block, get_test_storage};
 use papyrus_storage::{BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 use starknet_api::{
     shash, BlockHash, BlockHeader, BlockNumber, BlockStatus, ClassHash, ContractAddress,
-    ContractClass, ContractNonce, DeclaredContract, DeployedContract, GlobalRoot, Nonce,
-    PatriciaKey, StarkFelt, StarkHash, StorageDiff, StorageEntry, StorageKey, TransactionHash,
-    TransactionReceipt,
+    ContractClass, ContractNonce, DeclaredContract, DeployedContract, GlobalRoot, Nonce, StarkFelt,
+    StarkHash, StorageDiff, StorageEntry, StorageKey, TransactionHash, TransactionReceipt,
 };
 
 use super::api::{
@@ -45,15 +44,15 @@ fn get_test_state_diff()
         ..BlockHeader::default()
     };
 
-    let address0 = ContractAddress(PatriciaKey::new(shash!("0x11")).unwrap());
+    let address0 = ContractAddress::try_from(shash!("0x11")).unwrap();
     let hash0 = ClassHash(shash!("0x4"));
-    let address1 = ContractAddress(PatriciaKey::new(shash!("0x21")).unwrap());
+    let address1 = ContractAddress::try_from(shash!("0x21")).unwrap();
     let hash1 = ClassHash(shash!("0x5"));
     let class0 = ContractClass::default();
     let class1 = ContractClass::default();
-    let key0 = StorageKey(PatriciaKey::new(shash!("0x1001")).unwrap());
+    let key0 = StorageKey::try_from(shash!("0x1001")).unwrap();
     let value0 = shash!("0x200");
-    let key1 = StorageKey(PatriciaKey::new(shash!("0x1002")).unwrap());
+    let key1 = StorageKey::try_from(shash!("0x1002")).unwrap();
     let value1 = shash!("0x201");
     let diff = starknet_api::StateDiff::new(
         vec![
@@ -349,7 +348,7 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
         .call::<_, StarkFelt>(
             "starknet_getStorageAt",
             (
-                ContractAddress(PatriciaKey::new(shash!("0x12")).unwrap()),
+                ContractAddress::try_from(shash!("0x12")).unwrap(),
                 key.clone(),
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)),
             ),
@@ -445,7 +444,7 @@ async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
             "starknet_getClassHashAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ContractAddress(PatriciaKey::new(shash!("0x12")).unwrap()),
+                ContractAddress::try_from(shash!("0x12")).unwrap(),
             ),
         )
         .await
@@ -532,7 +531,7 @@ async fn test_get_nonce() -> Result<(), anyhow::Error> {
             "starknet_getNonce",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ContractAddress(PatriciaKey::new(shash!("0x31")).unwrap()),
+                ContractAddress::try_from(shash!("0x31")).unwrap(),
             ),
         )
         .await
@@ -1034,7 +1033,7 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
             "starknet_getClassAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ContractAddress(PatriciaKey::new(shash!("0x12")).unwrap()),
+                ContractAddress::try_from(shash!("0x12")).unwrap(),
             ),
         )
         .await
