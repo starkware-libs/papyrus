@@ -96,7 +96,7 @@ pub struct BlockTimestamp(u64);
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 #[serde(from = "PrefixedHexAsBytes<16_usize>", into = "PrefixedHexAsBytes<16_usize>")]
-pub struct GasPrice(pub u128);
+pub struct GasPrice(u128);
 impl From<PrefixedHexAsBytes<16_usize>> for GasPrice {
     fn from(val: PrefixedHexAsBytes<16_usize>) -> Self {
         GasPrice(u128::from_be_bytes(val.0))
