@@ -1,9 +1,35 @@
+use std::convert::TryFrom;
+
 use serde::{Deserialize, Serialize};
+use starknet_api::serde_utils::{DeserializationError, HexAsBytes, PrefixedHexAsBytes};
 use starknet_api::{
-    BlockHash, BlockNumber, BlockStatus, BlockTimestamp, ContractAddress, GlobalRoot,
+    BlockHash, BlockNumber, BlockStatus, BlockTimestamp, ContractAddress, StarkHash,
 };
 
 use super::transaction::Transactions;
+
+#[derive(
+    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+#[serde(try_from = "PrefixedHexAsBytes<32_usize>", into = "PrefixedHexAsBytes<32_usize>")]
+pub struct GlobalRoot(pub StarkHash);
+impl TryFrom<PrefixedHexAsBytes<32_usize>> for GlobalRoot {
+    type Error = DeserializationError;
+    fn try_from(val: PrefixedHexAsBytes<32_usize>) -> Result<Self, Self::Error> {
+        Ok(GlobalRoot(StarkHash::try_from(val)?))
+    }
+}
+impl From<GlobalRoot> for PrefixedHexAsBytes<32_usize> {
+    fn from(val: GlobalRoot) -> Self {
+        HexAsBytes(val.0.into_bytes())
+    }
+}
+impl From<starknet_api::GlobalRoot> for GlobalRoot {
+    fn from(val: starknet_api::GlobalRoot) -> Self {
+        // Should not fail.
+        Self::try_from(PrefixedHexAsBytes::from(val)).unwrap()
+    }
+}
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockHeader {
@@ -22,7 +48,7 @@ impl From<starknet_api::BlockHeader> for BlockHeader {
             parent_hash: header.parent_hash,
             block_number: header.block_number,
             sequencer_address: header.sequencer,
-            new_root: header.state_root,
+            new_root: header.state_root.into(),
             timestamp: header.timestamp,
         }
     }
