@@ -3,6 +3,7 @@
 mod block_test;
 
 use std::fmt;
+
 use serde::{Deserialize, Serialize};
 
 use super::serde_utils::{HexAsBytes, NonPrefixedHexAsBytes, PrefixedHexAsBytes};
@@ -22,10 +23,6 @@ impl BlockHash {
     pub fn new(hash: StarkHash) -> Self {
         Self(hash)
     }
-    #[cfg(any(feature = "testing", test))]
-    pub fn hash(&self) -> StarkHash {
-        self.0
-    }
 }
 
 /// The root of the global state at a StarkNet block.
@@ -39,10 +36,6 @@ impl GlobalRoot {
     pub fn new(hash: StarkHash) -> Self {
         Self(hash)
     }
-
-    pub fn into_bytes(&self) -> [u8; 32] {
-        self.0.into_bytes()
-    }
 }
 
 // We don't use the regular StarkHash deserialization since the Starknet sequencer returns the
@@ -55,7 +48,7 @@ impl TryFrom<NonPrefixedHexAsBytes<32_usize>> for GlobalRoot {
 }
 impl From<GlobalRoot> for NonPrefixedHexAsBytes<32_usize> {
     fn from(val: GlobalRoot) -> Self {
-        HexAsBytes(val.into_bytes())
+        HexAsBytes(val.0.into_bytes())
     }
 }
 
@@ -84,7 +77,6 @@ impl BlockNumber {
         let range = self.0..up_to.0;
         range.map(Self)
     }
-
 }
 
 impl fmt::Display for BlockNumber {
