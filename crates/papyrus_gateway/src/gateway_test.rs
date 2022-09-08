@@ -45,9 +45,9 @@ fn get_test_state_diff()
     };
 
     let address0 = ContractAddress::try_from(shash!("0x11")).unwrap();
-    let hash0 = ClassHash(shash!("0x4"));
+    let hash0 = ClassHash::new(shash!("0x4"));
     let address1 = ContractAddress::try_from(shash!("0x21")).unwrap();
-    let hash1 = ClassHash(shash!("0x5"));
+    let hash1 = ClassHash::new(shash!("0x5"));
     let class0 = ContractClass::default();
     let class1 = ContractClass::default();
     let key0 = StorageKey::try_from(shash!("0x1001")).unwrap();
@@ -77,8 +77,8 @@ fn get_test_state_diff()
             DeclaredContract { class_hash: hash1, contract_class: class1 },
         ],
         vec![
-            ContractNonce { contract_address: address0, nonce: Nonce(StarkHash::from_u64(1)) },
-            ContractNonce { contract_address: address1, nonce: Nonce(StarkHash::from_u64(1)) },
+            ContractNonce { contract_address: address0, nonce: Nonce::new(StarkHash::from_u64(1)) },
+            ContractNonce { contract_address: address1, nonce: Nonce::new(StarkHash::from_u64(1)) },
         ],
     );
 
@@ -927,7 +927,7 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
             "starknet_getClass",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ClassHash(shash!("0x6")),
+                ClassHash::new(shash!("0x6")),
             ),
         )
         .await
