@@ -101,16 +101,20 @@ struct_field_names! {
         nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
         headers: TableIdentifier<BlockNumber, BlockHeader>,
         block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
-        transactions: TableIdentifier<(BlockNumber, TransactionOffsetInBlock), Transaction>,
-        transaction_outputs: TableIdentifier<(BlockNumber, TransactionOffsetInBlock), TransactionOutput>,
+        transactions: TableIdentifier<TransactionIndex, Transaction>,
+        transaction_outputs: TableIdentifier<TransactionIndex, TransactionOutput>,
         transaction_hash_to_idx:
-            TableIdentifier<TransactionHash, (BlockNumber, TransactionOffsetInBlock)>,
+            TableIdentifier<TransactionHash, TransactionIndex>,
         state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
         declared_classes: TableIdentifier<ClassHash, IndexedDeclaredContract>,
         deployed_contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
         contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>
     }
 }
+
+#[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
+
 #[derive(Clone)]
 pub struct StorageReader {
     db_reader: DbReader,

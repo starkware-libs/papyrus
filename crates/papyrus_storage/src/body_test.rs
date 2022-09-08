@@ -7,6 +7,7 @@ use starknet_api::{
 
 use super::{BodyStorageReader, BodyStorageWriter, StorageError};
 use crate::test_utils::get_test_storage;
+use crate::TransactionIndex;
 
 #[tokio::test]
 async fn test_append_body() -> Result<(), anyhow::Error> {
@@ -104,15 +105,15 @@ async fn test_append_body() -> Result<(), anyhow::Error> {
     // Check transaction hash.
     assert_eq!(
         txn.get_transaction_idx_by_hash(&txs[0].transaction_hash())?,
-        Some((BlockNumber(0), TransactionOffsetInBlock(0)))
+        Some(TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(0)))
     );
     assert_eq!(
         txn.get_transaction_idx_by_hash(&txs[1].transaction_hash())?,
-        Some((BlockNumber(2), TransactionOffsetInBlock(0)))
+        Some(TransactionIndex(BlockNumber(2), TransactionOffsetInBlock(0)))
     );
     assert_eq!(
         txn.get_transaction_idx_by_hash(&txs[2].transaction_hash())?,
-        Some((BlockNumber(2), TransactionOffsetInBlock(1)))
+        Some(TransactionIndex(BlockNumber(2), TransactionOffsetInBlock(1)))
     );
 
     // Check block transactions.
