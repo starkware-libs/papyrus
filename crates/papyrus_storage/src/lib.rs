@@ -45,13 +45,9 @@ pub enum StorageError {
     BlockHashAlreadyExists { block_hash: BlockHash, block_number: BlockNumber },
     #[error(
         "Transaction hash {tx_hash:?} already exists, when adding transaction \
-         {tx_offset_in_block:?} at block number {block_number:?}."
+         {transaction_index:?}."
     )]
-    TransactionHashAlreadyExists {
-        tx_hash: TransactionHash,
-        block_number: BlockNumber,
-        tx_offset_in_block: TransactionOffsetInBlock,
-    },
+    TransactionHashAlreadyExists { tx_hash: TransactionHash, transaction_index: TransactionIndex },
     #[error("State diff redployed to an existing contract address {address:?}.")]
     ContractAlreadyExists { address: ContractAddress },
     #[error(

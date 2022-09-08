@@ -66,16 +66,13 @@ async fn test_append_body() -> Result<(), anyhow::Error> {
     writer.begin_rw_txn()?.append_body(BlockNumber::new(2), &body2)?.commit()?;
 
     if let Err(err) = writer.begin_rw_txn()?.append_body(BlockNumber::new(3), &body3) {
+        let expected_tx_index = TransactionIndex(BlockNumber::new(3), TransactionOffsetInBlock(1));
         assert_matches!(
             err,
             StorageError::TransactionHashAlreadyExists {
                 tx_hash,
-                block_number,
-                tx_offset_in_block,
-            }
-            if tx_hash == txs[0].transaction_hash()
-                && block_number == BlockNumber::new(3)
-                && tx_offset_in_block == TransactionOffsetInBlock(1)
+                transaction_index
+            } if tx_hash == txs[0].transaction_hash() && transaction_index == expected_tx_index
         );
     } else {
         panic!("Unexpected Ok.");
@@ -97,10 +94,13 @@ async fn test_append_body() -> Result<(), anyhow::Error> {
 
     for (block_number, tx_offset, original_index) in tx_cases {
         let expected_tx = original_index.map(|i| &txs[i]);
-        assert_eq!(txn.get_transaction(block_number, tx_offset)?.as_ref(), expected_tx);
+        assert_eq!(
+            txn.get_transaction(TransactionIndex(block_number, tx_offset))?.as_ref(),
+            expected_tx
+        );
         let expected_tx_output = original_index.map(|i| &tx_outputs[i]);
         assert_eq!(
-            txn.get_transaction_output(block_number, tx_offset)?.as_ref(),
+            txn.get_transaction_output(TransactionIndex(block_number, tx_offset))?.as_ref(),
             expected_tx_output
         );
     }
