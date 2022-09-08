@@ -21,11 +21,24 @@ impl TryFrom<StarkHash> for ContractAddress {
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct ClassHash(pub StarkHash);
+pub struct ClassHash(StarkHash);
+
+impl ClassHash {
+    pub fn new(hash: StarkHash) -> Self {
+        Self(hash)
+    }
+}
 
 /// The nonce of a StarkNet contract.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct Nonce(pub StarkFelt);
+pub struct Nonce(StarkFelt);
+
+impl Nonce {
+    pub fn new(felt: StarkFelt) -> Self {
+        Self(felt)
+    }
+}
+
 impl Default for Nonce {
     fn default() -> Self {
         Nonce(StarkFelt::from_u64(0))
