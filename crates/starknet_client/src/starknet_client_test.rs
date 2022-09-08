@@ -1,12 +1,13 @@
 use std::collections::HashMap;
+use std::convert::TryFrom;
 
 use assert_matches::assert_matches;
 use mockito::mock;
 use reqwest::StatusCode;
 use starknet_api::{
     shash, BlockNumber, ClassHash, ContractAddress, ContractClass, EntryPoint, EntryPointOffset,
-    EntryPointSelector, EntryPointType, Fee, Nonce, PatriciaKey, Program, StarkHash,
-    TransactionHash, TransactionSignature, TransactionVersion,
+    EntryPointSelector, EntryPointType, Fee, Nonce, Program, StarkHash, TransactionHash,
+    TransactionSignature, TransactionVersion,
 };
 
 // TODO(dan): use SN structs once available & sort.
@@ -61,7 +62,7 @@ async fn declare_tx_serde() {
         class_hash: ClassHash(shash!(
             "0x7319e2f01b0947afd86c0bb0e95029551b32f6dc192c47b2e8b08415eebbc25"
         )),
-        sender_address: ContractAddress(PatriciaKey::new(shash!("0x1")).unwrap()),
+        sender_address: ContractAddress::try_from(shash!("0x1")).unwrap(),
         nonce: Nonce(shash!("0x0")),
         max_fee: Fee(0),
         version: TransactionVersion(shash!("0x1")),

@@ -43,7 +43,7 @@ impl StateNumber {
 
 #[derive(Copy, Clone, Eq, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(try_from = "PrefixedHexAsBytes<32_usize>", into = "PrefixedHexAsBytes<32_usize>")]
-pub struct PatriciaKey(StarkHash);
+pub(crate) struct PatriciaKey(StarkHash);
 impl PatriciaKey {
     pub fn new(hash: StarkHash) -> Result<PatriciaKey, DeserializationError> {
         if hash >= StarkHash::from_hex(PATRICIA_KEY_UPPER_BOUND)? {
@@ -61,6 +61,7 @@ impl TryFrom<PrefixedHexAsBytes<32_usize>> for PatriciaKey {
         PatriciaKey::new(hash)
     }
 }
+
 impl From<PatriciaKey> for PrefixedHexAsBytes<32_usize> {
     fn from(val: PatriciaKey) -> Self {
         HexAsBytes(val.0.into_bytes())
@@ -140,7 +141,14 @@ pub struct StorageDiff {
 // TODO(spapini): Enforce the invariant.
 /// A storage key in a StarkNet contract.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct StorageKey(pub PatriciaKey);
+pub struct StorageKey(PatriciaKey);
+
+impl TryFrom<StarkHash> for StorageKey {
+    type Error = DeserializationError;
+    fn try_from(val: StarkHash) -> Result<Self, Self::Error> {
+        Ok(Self(PatriciaKey::new(val)?))
+    }
+}
 
 /// A storage entry in a StarkNet contract.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
