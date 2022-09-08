@@ -89,7 +89,7 @@ impl fmt::Display for BlockNumber {
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct BlockTimestamp(pub u64);
+pub struct BlockTimestamp(u64);
 
 /// The gas price at a StarkNet block.
 #[derive(
