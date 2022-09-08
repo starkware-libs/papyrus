@@ -53,12 +53,6 @@ impl PatriciaKey {
         }
         Ok(PatriciaKey(hash))
     }
-    pub fn hash(&self) -> &StarkHash {
-        &self.0
-    }
-    pub fn into_hash(self) -> StarkHash {
-        self.0
-    }
 }
 impl TryFrom<PrefixedHexAsBytes<32_usize>> for PatriciaKey {
     type Error = DeserializationError;
@@ -69,13 +63,13 @@ impl TryFrom<PrefixedHexAsBytes<32_usize>> for PatriciaKey {
 }
 impl From<PatriciaKey> for PrefixedHexAsBytes<32_usize> {
     fn from(val: PatriciaKey) -> Self {
-        HexAsBytes(val.hash().into_bytes())
+        HexAsBytes(val.0.into_bytes())
     }
 }
 
 impl Debug for PatriciaKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("PatriciaKey").field(&self.hash()).finish()
+        f.debug_tuple("PatriciaKey").field(&self.0).finish()
     }
 }
 
