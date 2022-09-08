@@ -779,8 +779,8 @@ async fn test_get_state_update() -> Result<(), anyhow::Error> {
 
     let expected_update = StateUpdate {
         block_hash: header.block_hash,
-        new_root: header.state_root,
-        old_root: parent_header.state_root,
+        new_root: header.state_root.into(),
+        old_root: parent_header.state_root.into(),
         state_diff: diff.into(),
     };
 

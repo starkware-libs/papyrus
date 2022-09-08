@@ -18,15 +18,15 @@ use papyrus_storage::{
 };
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockNumber, BlockStatus, ClassHash, ContractAddress, ContractClass, GlobalRoot, Nonce,
-    StarkFelt, StarkHash, StateNumber, StorageKey, TransactionHash, TransactionOffsetInBlock,
+    BlockNumber, BlockStatus, ClassHash, ContractAddress, ContractClass, Nonce, StarkFelt,
+    StarkHash, StateNumber, StorageKey, TransactionHash, TransactionOffsetInBlock,
     TransactionReceipt, GENESIS_HASH,
 };
 
 use self::api::{BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcError, JsonRpcServer, Tag};
 use self::objects::{
-    Block, BlockHeader, StateUpdate, Transaction, TransactionReceiptWithStatus, TransactionStatus,
-    TransactionWithType, Transactions,
+    Block, BlockHeader, GlobalRoot, StateUpdate, Transaction, TransactionReceiptWithStatus,
+    TransactionStatus, TransactionWithType, Transactions,
 };
 
 #[derive(Serialize, Deserialize)]
