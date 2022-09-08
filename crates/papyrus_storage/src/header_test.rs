@@ -5,7 +5,7 @@ use super::{HeaderStorageReader, HeaderStorageWriter, StorageError};
 use crate::test_utils::get_test_storage;
 
 #[tokio::test]
-async fn test_append_header() -> Result<(), anyhow::Error> {
+async fn append_header() -> Result<(), anyhow::Error> {
     let (reader, mut writer) = get_test_storage();
 
     // Check for MarkerMismatch error  when trying to append the wrong block number.

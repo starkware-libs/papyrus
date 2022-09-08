@@ -7,12 +7,12 @@ fn get_test_env() -> (DbReader, DbWriter) {
 }
 
 #[test]
-fn test_open_env() {
+fn open_env_scenario() {
     get_test_env();
 }
 
 #[test]
-fn test_txns() {
+fn txns_scenarios() {
     // Create an environment and a table.
     let (reader, mut writer) = get_test_env();
     let table_id = writer.create_table::<[u8; 3], [u8; 5]>("table").unwrap();
@@ -44,7 +44,7 @@ fn test_txns() {
 }
 #[test]
 
-fn test_stats() {
+fn table_stats() {
     // Create an environment and a table.
     let (reader, mut writer) = get_test_env();
     let table_id = writer.create_table::<[u8; 3], [u8; 5]>("table").unwrap();
