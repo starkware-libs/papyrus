@@ -10,16 +10,17 @@ use papyrus_storage::test_utils::{get_test_block, get_test_storage};
 use papyrus_storage::{BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 use starknet_api::{
     shash, BlockHash, BlockHeader, BlockNumber, BlockStatus, ClassHash, ContractAddress,
-    ContractClass, ContractNonce, DeclaredContract, DeployedContract, GlobalRoot, Nonce, StarkFelt,
-    StarkHash, StorageDiff, StorageEntry, StorageKey, TransactionHash, TransactionReceipt,
+    ContractClass, ContractNonce, DeclareTransactionOutput, DeclaredContract, DeployedContract,
+    GlobalRoot, Nonce, StarkFelt, StarkHash, StorageDiff, StorageEntry, StorageKey,
+    TransactionHash, TransactionOutput,
 };
 
 use super::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcClient, JsonRpcError, JsonRpcServer, Tag,
 };
 use super::objects::{
-    Block, StateUpdate, TransactionReceiptWithStatus, TransactionStatus, TransactionWithType,
-    Transactions,
+    Block, StateUpdate, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
+    TransactionWithType, Transactions,
 };
 use super::{run_server, GatewayConfig, JsonRpcServerImpl};
 
@@ -853,7 +854,9 @@ async fn test_get_transaction_receipt() -> Result<(), anyhow::Error> {
             transaction_hash,
             block_hash: block.header.block_hash,
             block_number: block.header.block_number,
-            output: block.body.transaction_outputs().index(0).clone(),
+            // Since the returned json is the same for declare and deploy transaction outputs, it
+            // will be serialized as declare transaction output.
+            output: TransactionOutput::Declare(DeclareTransactionOutput::default()).into(),
         },
         status: TransactionStatus::default(),
     };
@@ -864,7 +867,7 @@ async fn test_get_transaction_receipt() -> Result<(), anyhow::Error> {
         )
         .await
         .unwrap();
-    assert_eq!(res, expected_receipt.clone());
+    assert_eq!(res, expected_receipt);
 
     // Ask for an invalid transaction.
     let err = module
