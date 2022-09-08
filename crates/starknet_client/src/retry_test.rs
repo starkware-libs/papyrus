@@ -31,7 +31,7 @@ impl Worker {
 }
 
 #[tokio::test]
-async fn test_fail_on_all_attempts() {
+async fn fail_on_all_attempts() {
     let config = get_test_config();
     let worker = Worker::new(10);
     Retry::new(&config).start(|| worker.work()).await.unwrap_err();
@@ -39,7 +39,7 @@ async fn test_fail_on_all_attempts() {
 }
 
 #[tokio::test]
-async fn test_success_on_third_attempt() {
+async fn success_on_third_attempt() {
     let config = get_test_config();
     let worker = Worker::new(2);
     Retry::new(&config).start(|| worker.work()).await.unwrap();

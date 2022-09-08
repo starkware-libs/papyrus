@@ -10,7 +10,7 @@ use crate::state::split_diff_for_storage;
 use crate::test_utils::get_test_storage;
 
 #[test]
-fn test_append_diff() -> Result<(), anyhow::Error> {
+fn append_state_diff() -> Result<(), anyhow::Error> {
     let c0 = ContractAddress::try_from(shash!("0x11")).unwrap();
     let c1 = ContractAddress::try_from(shash!("0x12")).unwrap();
     let c2 = ContractAddress::try_from(shash!("0x13")).unwrap();

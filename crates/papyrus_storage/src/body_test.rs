@@ -10,7 +10,7 @@ use crate::test_utils::get_test_storage;
 use crate::TransactionIndex;
 
 #[tokio::test]
-async fn test_append_body() -> Result<(), anyhow::Error> {
+async fn append_body() -> Result<(), anyhow::Error> {
     let (reader, mut writer) = get_test_storage();
 
     let txs: Vec<Transaction> = (0..10)
