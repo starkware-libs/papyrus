@@ -1,9 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::serde_utils::{HexAsBytes, NonPrefixedHexAsBytes, PrefixedHexAsBytes};
-use super::{ContractAddress, StarkHash, Transaction};
-use crate::serde_utils::DeserializationError;
-use crate::{StarknetApiError, TransactionOutput};
+use super::{ContractAddress, StarkHash, StarknetApiError, Transaction, TransactionOutput};
 
 // TODO(spapini): Verify the invariant that it is in range.
 /// The hash of a StarkNet block.
@@ -21,7 +19,7 @@ pub struct GlobalRoot(pub StarkHash);
 // We don't use the regular StarkHash deserialization since the Starknet sequencer returns the
 // global root hash as a hex string without a "0x" prefix.
 impl TryFrom<NonPrefixedHexAsBytes<32_usize>> for GlobalRoot {
-    type Error = DeserializationError;
+    type Error = StarknetApiError;
     fn try_from(val: NonPrefixedHexAsBytes<32_usize>) -> Result<Self, Self::Error> {
         Ok(GlobalRoot(StarkHash::new(val.0)?))
     }

@@ -6,10 +6,8 @@ use std::fmt::Debug;
 
 use serde::{Deserialize, Serialize};
 
-use super::serde_utils::{
-    bytes_from_hex_str, DeserializationError, HexAsBytes, PrefixedHexAsBytes,
-};
-use crate::serde_utils::hex_str_from_bytes;
+use super::serde_utils::{bytes_from_hex_str, hex_str_from_bytes, HexAsBytes, PrefixedHexAsBytes};
+use super::StarknetApiError;
 
 /// Genesis state hash.
 pub const GENESIS_HASH: &str = "0x0";
@@ -28,7 +26,7 @@ impl StarkHash {
     }
 }
 impl TryFrom<PrefixedHexAsBytes<32_usize>> for StarkHash {
-    type Error = DeserializationError;
+    type Error = StarknetApiError;
     fn try_from(val: PrefixedHexAsBytes<32_usize>) -> Result<Self, Self::Error> {
         StarkHash::new(val.0)
     }
@@ -48,16 +46,16 @@ impl Debug for StarkHash {
 
 impl StarkHash {
     /// Returns a new [`StarkHash`].
-    pub fn new(bytes: [u8; 32]) -> Result<StarkHash, DeserializationError> {
+    pub fn new(bytes: [u8; 32]) -> Result<StarkHash, StarknetApiError> {
         if bytes[0] >= 0x10 {
-            return Err(DeserializationError::OutOfRange {
+            return Err(StarknetApiError::OutOfRange {
                 string: hex_str_from_bytes::<32, true>(bytes),
             });
         }
         Ok(Self(bytes))
     }
     /// Returns a [`StarkHash`] corresponding to `hex_str`.
-    pub fn from_hex(hex_str: &str) -> Result<StarkHash, DeserializationError> {
+    pub fn from_hex(hex_str: &str) -> Result<StarkHash, StarknetApiError> {
         let bytes = bytes_from_hex_str::<32, true>(hex_str)?;
         Self::new(bytes)
     }

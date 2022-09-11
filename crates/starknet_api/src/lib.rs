@@ -9,6 +9,8 @@ pub mod serde_utils;
 mod state;
 mod transaction;
 
+use serde_utils::DeserializationError;
+
 pub use self::block::{
     Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
     GlobalRoot,
@@ -28,8 +30,12 @@ pub use self::transaction::{
     TransactionOutput, TransactionReceipt, TransactionSignature, TransactionVersion,
 };
 
-#[derive(thiserror::Error, Clone, Copy, Debug)]
+#[derive(thiserror::Error, Clone, Debug)]
 pub enum StarknetApiError {
+    #[error(transparent)]
+    DeserializationError(#[from] DeserializationError),
+    #[error("Out of range {string}.")]
+    OutOfRange { string: String },
     #[error("Transactions and transaction outputs don't have the same length.")]
     TransationsLengthDontMatch,
 }

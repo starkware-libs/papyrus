@@ -6,8 +6,11 @@ use std::fmt::Debug;
 
 use serde::{Deserialize, Serialize};
 
-use super::serde_utils::{DeserializationError, HexAsBytes, PrefixedHexAsBytes};
-use super::{BlockNumber, ClassHash, ContractAddress, ContractClass, Nonce, StarkFelt, StarkHash};
+use super::serde_utils::{HexAsBytes, PrefixedHexAsBytes};
+use super::{
+    BlockNumber, ClassHash, ContractAddress, ContractClass, Nonce, StarkFelt, StarkHash,
+    StarknetApiError,
+};
 
 /// 2**251
 pub const PATRICIA_KEY_UPPER_BOUND: &str =
@@ -45,9 +48,9 @@ impl StateNumber {
 #[serde(try_from = "PrefixedHexAsBytes<32_usize>", into = "PrefixedHexAsBytes<32_usize>")]
 pub(crate) struct PatriciaKey(StarkHash);
 impl PatriciaKey {
-    pub fn new(hash: StarkHash) -> Result<PatriciaKey, DeserializationError> {
+    pub fn new(hash: StarkHash) -> Result<PatriciaKey, StarknetApiError> {
         if hash >= StarkHash::from_hex(PATRICIA_KEY_UPPER_BOUND)? {
-            return Err(DeserializationError::OutOfRange {
+            return Err(StarknetApiError::OutOfRange {
                 string: format!("[0x0, {PATRICIA_KEY_UPPER_BOUND})"),
             });
         }
@@ -55,7 +58,7 @@ impl PatriciaKey {
     }
 }
 impl TryFrom<PrefixedHexAsBytes<32_usize>> for PatriciaKey {
-    type Error = DeserializationError;
+    type Error = StarknetApiError;
     fn try_from(val: PrefixedHexAsBytes<32_usize>) -> Result<Self, Self::Error> {
         let hash = StarkHash::new(val.0)?;
         PatriciaKey::new(hash)
@@ -144,7 +147,7 @@ pub struct StorageDiff {
 pub struct StorageKey(PatriciaKey);
 
 impl TryFrom<StarkHash> for StorageKey {
-    type Error = DeserializationError;
+    type Error = StarknetApiError;
     fn try_from(val: StarkHash) -> Result<Self, Self::Error> {
         Ok(Self(PatriciaKey::new(val)?))
     }
