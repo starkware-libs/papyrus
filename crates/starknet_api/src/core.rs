@@ -73,3 +73,9 @@ impl Default for Nonce {
         Nonce(StarkFelt::from_u64(0))
     }
 }
+
+/// The selector of an entry point in StarkNet.
+#[derive(
+    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct EntryPointSelector(pub StarkHash);
