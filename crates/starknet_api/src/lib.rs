@@ -15,19 +15,18 @@ pub use self::block::{
     Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
     GlobalRoot,
 };
-pub use self::core::{ClassHash, ContractAddress, Nonce};
+pub use self::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
 pub use self::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 pub use self::state::{
-    ContractNonce, DeclaredContract, DeployedContract, StateDiff, StateNumber, StorageDiff,
-    StorageEntry, StorageKey,
+    ContractClass, ContractNonce, DeclaredContract, DeployedContract, EntryPoint, EntryPointOffset,
+    EntryPointType, Program, StateDiff, StateNumber, StorageDiff, StorageEntry, StorageKey,
 };
 pub use self::transaction::{
-    CallData, ContractAddressSalt, ContractClass, DeclareTransaction, DeclareTransactionOutput,
-    DeployTransaction, DeployTransactionOutput, EntryPoint, EntryPointOffset, EntryPointSelector,
-    EntryPointType, EthAddress, Event, Fee, InvokeTransaction, InvokeTransactionOutput,
+    CallData, ContractAddressSalt, DeclareTransaction, DeclareTransactionOutput, DeployTransaction,
+    DeployTransactionOutput, EthAddress, Event, Fee, InvokeTransaction, InvokeTransactionOutput,
     L1HandlerTransaction, L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, MessageToL1,
-    MessageToL2, Program, Transaction, TransactionHash, TransactionOffsetInBlock,
-    TransactionOutput, TransactionReceipt, TransactionSignature, TransactionVersion,
+    MessageToL2, Transaction, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
+    TransactionReceipt, TransactionSignature, TransactionVersion,
 };
 
 #[derive(thiserror::Error, Clone, Debug)]
