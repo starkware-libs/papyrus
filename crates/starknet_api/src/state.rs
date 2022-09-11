@@ -2,13 +2,14 @@
 #[path = "state_test.rs"]
 mod state_test;
 
+use std::collections::HashMap;
 use std::fmt::Debug;
 
 use serde::{Deserialize, Serialize};
 
 use super::core::PatriciaKey;
 use super::{
-    BlockNumber, ClassHash, ContractAddress, ContractClass, Nonce, StarkFelt, StarkHash,
+    BlockNumber, ClassHash, ContractAddress, EntryPointSelector, Nonce, StarkFelt, StarkHash,
     StarknetApiError,
 };
 
@@ -37,6 +38,76 @@ impl StateNumber {
     }
     pub fn block_after(&self) -> BlockNumber {
         BlockNumber(self.0)
+    }
+}
+
+/// The offset of an entry point in StarkNet.
+#[derive(
+    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct EntryPointOffset(pub StarkFelt);
+
+/// An entry point of a contract in StarkNet.
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct EntryPoint {
+    pub selector: EntryPointSelector,
+    pub offset: EntryPointOffset,
+}
+
+/// A program corresponding to a contract class in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct Program {
+    #[serde(default)]
+    pub attributes: serde_json::Value,
+    pub builtins: serde_json::Value,
+    pub data: serde_json::Value,
+    pub debug_info: serde_json::Value,
+    pub hints: serde_json::Value,
+    pub identifiers: serde_json::Value,
+    pub main_scope: serde_json::Value,
+    pub prime: serde_json::Value,
+    pub reference_manager: serde_json::Value,
+}
+
+/// An entry point type of a contract in StarkNet.
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(deny_unknown_fields)]
+pub enum EntryPointType {
+    /// A constructor entry point.
+    #[serde(rename = "CONSTRUCTOR")]
+    Constructor,
+    /// An external4 entry point.
+    #[serde(rename = "EXTERNAL")]
+    External,
+    /// An L1 handler entry point.
+    #[serde(rename = "L1_HANDLER")]
+    L1Handler,
+}
+
+impl Default for EntryPointType {
+    fn default() -> Self {
+        EntryPointType::L1Handler
+    }
+}
+
+/// A contract class in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct ContractClass {
+    pub abi: serde_json::Value,
+    pub program: Program,
+    /// The selector of each entry point is a unique identifier in the program.
+    pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
+}
+
+impl ContractClass {
+    /// Returns a byte vector representation of a contract class.
+    pub fn to_byte_vec(&self) -> Vec<u8> {
+        serde_json::to_vec(self).expect("Bytes from contract class")
+    }
+
+    /// Returns a contract class corresponding to the given byte vector.
+    pub fn from_byte_vec(byte_vec: &[u8]) -> ContractClass {
+        serde_json::from_slice::<ContractClass>(byte_vec).expect("Contract class from bytes")
     }
 }
 
