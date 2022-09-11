@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use crate::serde_utils::DeserializationError;
-use crate::state::PatriciaKey;
-use crate::{StarkFelt, StarkHash};
+use super::state::PatriciaKey;
+use super::{StarkFelt, StarkHash, StarknetApiError};
 
 /// The address of a StarkNet contract.
 #[derive(
@@ -11,7 +10,7 @@ use crate::{StarkFelt, StarkHash};
 pub struct ContractAddress(PatriciaKey);
 
 impl TryFrom<StarkHash> for ContractAddress {
-    type Error = DeserializationError;
+    type Error = StarknetApiError;
     fn try_from(hash: StarkHash) -> Result<Self, Self::Error> {
         Ok(Self(PatriciaKey::new(hash)?))
     }
