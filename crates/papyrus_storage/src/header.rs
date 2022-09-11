@@ -28,6 +28,8 @@ where
         block_number: BlockNumber,
         block_header: &BlockHeader,
     ) -> StorageResult<Self>;
+
+    fn revert_header(self, block_number: BlockNumber) -> StorageResult<Self>;
 }
 impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode> {
     fn get_header_marker(&self) -> StorageResult<BlockNumber> {
@@ -65,6 +67,28 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
 
         // Write mapping.
         update_hash_mapping(&self.txn, &block_hash_to_number_table, block_header, block_number)?;
+        Ok(self)
+    }
+
+    fn revert_header(self, block_number: BlockNumber) -> StorageResult<Self> {
+        let markers_table = self.txn.open_table(&self.tables.markers)?;
+        let headers_table = self.txn.open_table(&self.tables.headers)?;
+        let block_hash_to_number_table = self.txn.open_table(&self.tables.block_hash_to_number)?;
+
+        // Assert that header marker equals the reverted block number + 1
+        let current_header_marker = self.get_header_marker()?;
+        if current_header_marker != block_number.next() {
+            return Err(StorageError::InvalidRevert {
+                revert_block_number: block_number,
+                block_number_marker: current_header_marker,
+            });
+        }
+
+        let reverted_block_hash = headers_table.get(&self.txn, &block_number)?.unwrap().block_hash;
+
+        markers_table.upsert(&self.txn, &MarkerKind::Header, &block_number)?;
+        headers_table.delete(&self.txn, &block_number)?;
+        block_hash_to_number_table.delete(&self.txn, &reverted_block_hash)?;
         Ok(self)
     }
 }
