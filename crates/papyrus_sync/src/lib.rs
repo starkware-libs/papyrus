@@ -179,13 +179,20 @@ fn stream_new_state_diffs(
                 .stream_state_updates(state_marker, last_block_number)
                 .fuse();
             pin_mut!(state_diff_stream);
-            // TODO(dan): reconsider let Some(Ok as it hides errors.
-            while let Some(Ok((block_number, state_diff, deployed_contract_class_definitions))) = state_diff_stream.next().await {
-                yield SyncEvent::StateDiffAvailable {
-                    block_number,
-                    state_diff,
-                    deployed_contract_class_definitions,
-                };
+            while let Some(maybe_state_diff) = state_diff_stream.next().await {
+                match maybe_state_diff {
+                    Ok((block_number, state_diff, deployed_contract_class_definitions)) => {
+                        yield SyncEvent::StateDiffAvailable {
+                            block_number,
+                            state_diff,
+                            deployed_contract_class_definitions,
+                        }
+                    }
+                    Err(err) => {
+                        error!("{}", err);
+                        break;
+                    }
+                }
             }
         }
     }
