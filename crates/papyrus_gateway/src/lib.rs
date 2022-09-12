@@ -18,15 +18,15 @@ use papyrus_storage::{
 };
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockNumber, BlockStatus, ClassHash, ContractAddress, ContractClass, GlobalRoot, Nonce,
-    StarkFelt, StarkHash, StateNumber, StorageKey, TransactionHash, TransactionOffsetInBlock,
-    TransactionReceipt, GENESIS_HASH,
+    BlockNumber, BlockStatus, ClassHash, ContractAddress, GlobalRoot, Nonce, StarkFelt, StarkHash,
+    StateNumber, StorageKey, TransactionHash, TransactionOffsetInBlock, TransactionReceipt,
+    GENESIS_HASH,
 };
 
 use self::api::{BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcError, JsonRpcServer, Tag};
 use self::objects::{
-    Block, BlockHeader, StateUpdate, Transaction, TransactionReceiptWithStatus, TransactionStatus,
-    TransactionWithType, Transactions,
+    Block, BlockHeader, ContractClass, StateUpdate, Transaction, TransactionReceiptWithStatus,
+    TransactionStatus, TransactionWithType, Transactions,
 };
 
 #[derive(Serialize, Deserialize)]
@@ -294,11 +294,11 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let state_number = StateNumber::right_after_block(block_number);
         let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
 
-        // TODO(anatg): Change the program in the class definition to the rpc api expected format.
-        state_reader
+        let class = state_reader
             .get_class_definition_at(state_number, &class_hash)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::ClassHashNotFound))
+            .ok_or_else(|| Error::from(JsonRpcError::ClassHashNotFound))?;
+        class.try_into().map_err(internal_server_error)
     }
 
     fn get_class_at(
@@ -317,11 +317,11 @@ impl JsonRpcServer for JsonRpcServerImpl {
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))?;
 
-        // TODO(anatg): Change the program in the class definition to the rpc api expected format.
-        state_reader
+        let class = state_reader
             .get_class_definition_at(state_number, &class_hash)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))
+            .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))?;
+        class.try_into().map_err(internal_server_error)
     }
 
     fn get_class_hash_at(
