@@ -1,8 +1,30 @@
+use std::collections::HashMap;
+
 use papyrus_storage::ThinStateDiff;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockHash, ClassHash, ContractNonce, DeployedContract, GlobalRoot, StorageDiff,
+    BlockHash, ClassHash, ContractNonce, DeployedContract, EntryPoint, EntryPointType, GlobalRoot,
+    StarknetApiError, StorageDiff,
 };
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct ContractClass {
+    pub abi: serde_json::Value,
+    pub program: String,
+    /// The selector of each entry point is a unique identifier in the program.
+    pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
+}
+
+impl TryFrom<starknet_api::ContractClass> for ContractClass {
+    type Error = StarknetApiError;
+    fn try_from(class: starknet_api::ContractClass) -> Result<Self, Self::Error> {
+        Ok(Self {
+            abi: class.abi,
+            program: class.program.encode()?,
+            entry_points_by_type: class.entry_points_by_type,
+        })
+    }
+}
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeclaredContract {
