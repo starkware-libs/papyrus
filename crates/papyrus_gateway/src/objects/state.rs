@@ -1,26 +1,27 @@
 use std::collections::HashMap;
 
+use papyrus_storage::compression_utils::{CompressedObject, CompressionError};
 use papyrus_storage::ThinStateDiff;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockHash, ClassHash, ContractNonce, DeployedContract, EntryPoint, EntryPointType, GlobalRoot,
-    StarknetApiError, StorageDiff,
+    Program, StorageDiff,
 };
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ContractClass {
     pub abi: serde_json::Value,
-    pub program: String,
+    pub program: CompressedObject<Program>,
     /// The selector of each entry point is a unique identifier in the program.
     pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
 }
 
 impl TryFrom<starknet_api::ContractClass> for ContractClass {
-    type Error = StarknetApiError;
+    type Error = CompressionError;
     fn try_from(class: starknet_api::ContractClass) -> Result<Self, Self::Error> {
         Ok(Self {
             abi: class.abi,
-            program: class.program.encode()?,
+            program: CompressedObject::encode(class.program)?,
             entry_points_by_type: class.entry_points_by_type,
         })
     }
