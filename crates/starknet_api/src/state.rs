@@ -4,7 +4,11 @@ mod state_test;
 
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::io::Read;
 
+use flate2::read::GzDecoder;
+use flate2::write::GzEncoder;
+use flate2::Compression;
 use serde::{Deserialize, Serialize};
 
 use super::core::PatriciaKey;
@@ -67,6 +71,25 @@ pub struct Program {
     pub main_scope: serde_json::Value,
     pub prime: serde_json::Value,
     pub reference_manager: serde_json::Value,
+}
+
+impl Program {
+    /// Returns a gzip compression of a program.
+    pub fn encode(&self) -> Result<String, StarknetApiError> {
+        let mut encoder = GzEncoder::new(Vec::new(), Compression::fast());
+        serde_json::to_writer(&mut encoder, self)?;
+        let bytes = encoder.finish()?;
+        Ok(base64::encode(bytes))
+    }
+
+    /// Returns a decompressed program.
+    pub fn decode(input: String) -> Result<Self, StarknetApiError> {
+        let bytes = base64::decode(input)?;
+        let mut decoder = GzDecoder::new(bytes.as_slice());
+        let mut buff = Vec::new();
+        decoder.read_to_end(&mut buff)?;
+        Ok(serde_json::from_slice(&buff)?)
+    }
 }
 
 /// An entry point type of a contract in StarkNet.
