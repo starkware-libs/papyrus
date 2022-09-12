@@ -1,7 +1,23 @@
-use crate::{
-    shash, ClassHash, ContractAddress, ContractClass, ContractNonce, DeclaredContract,
-    DeployedContract, Nonce, StarkHash, StateDiff, StorageDiff,
+use std::env;
+use std::fs::read_to_string;
+use std::path::Path;
+use std::string::String;
+
+use super::{
+    ContractClass, ContractNonce, DeclaredContract, DeployedContract, Program, StateDiff,
+    StorageDiff,
 };
+use crate::{shash, ClassHash, ContractAddress, Nonce, StarkHash};
+
+fn read_resource_file(path_in_resource_dir: &str) -> String {
+    let path = Path::new(&env::current_dir().expect("Failed to find current directory."))
+        .join("resources")
+        .join(path_in_resource_dir);
+    read_to_string(path.to_str().unwrap())
+        .expect("Failed to read resource file.")
+        .replace('\n', "")
+        .replace(' ', "")
+}
 
 #[test]
 fn state_sorted() {
@@ -57,4 +73,14 @@ fn state_sorted() {
         state_diff.destruct(),
         (sorted_deployed_contracts, sorted_storage_diffs, sorted_declared_contracts, sorted_nonces)
     );
+}
+
+#[test]
+fn encode_decode_program() {
+    let program: Program = serde_json::from_str(&read_resource_file("program.json"))
+        .expect("Failed to serde program resource file.");
+
+    let encoded = program.encode().unwrap();
+    let decoded = Program::decode(encoded).unwrap();
+    assert_eq!(program, decoded);
 }
