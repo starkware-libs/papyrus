@@ -8,8 +8,9 @@ use tokio::task::JoinHandle;
 
 #[derive(Parser)]
 struct Args {
-    #[clap(short, long, value_parser, default_value_t = false)]
-    no_sync: bool,
+    /// If set, the node will sync and get new blocks and state diffs from the source.
+    #[clap(short, long, value_parser, default_value_t = true)]
+    sync: bool,
 }
 
 #[tokio::main]
@@ -27,7 +28,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Sync.
     let mut sync_thread_opt: Option<JoinHandle<anyhow::Result<(), StateSyncError>>> = None;
-    if !args.no_sync {
+    if args.sync {
         let mut sync =
             StateSync::new(config.sync, central_source, storage_reader.clone(), storage_writer);
         sync_thread_opt = Some(tokio::spawn(async move { sync.run().await }));
