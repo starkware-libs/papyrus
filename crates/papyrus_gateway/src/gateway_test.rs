@@ -10,9 +10,8 @@ use papyrus_storage::test_utils::{get_test_block, get_test_storage};
 use papyrus_storage::{BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 use starknet_api::{
     shash, BlockHash, BlockHeader, BlockNumber, BlockStatus, ClassHash, ContractAddress,
-    ContractClass, ContractNonce, DeclareTransactionOutput, DeclaredContract, DeployedContract,
-    GlobalRoot, Nonce, StarkFelt, StarkHash, StorageDiff, StorageEntry, StorageKey,
-    TransactionHash, TransactionOutput,
+    ContractClass, ContractNonce, DeclaredContract, DeployedContract, GlobalRoot, Nonce, StarkFelt,
+    StarkHash, StorageDiff, StorageEntry, StorageKey, TransactionHash,
 };
 
 use super::api::{
@@ -854,9 +853,7 @@ async fn test_get_transaction_receipt() -> Result<(), anyhow::Error> {
             transaction_hash,
             block_hash: block.header.block_hash,
             block_number: block.header.block_number,
-            // Since the returned json is the same for declare and deploy transaction outputs, it
-            // will be serialized as declare transaction output.
-            output: TransactionOutput::Declare(DeclareTransactionOutput::default()).into(),
+            output: block.body.transaction_outputs().index(0).clone().into(),
         },
         status: TransactionStatus::default(),
     };
@@ -867,7 +864,10 @@ async fn test_get_transaction_receipt() -> Result<(), anyhow::Error> {
         )
         .await
         .unwrap();
-    assert_eq!(res, expected_receipt);
+    // The returned jsons of some transaction outputs are the same. When deserialized, the first
+    // struct in the TransactionOutput enum that matches the json is chosen. To not depend here
+    // on the order of structs we compare the serialized data.
+    assert_eq!(serde_json::to_string(&res)?, serde_json::to_string(&expected_receipt)?);
 
     // Ask for an invalid transaction.
     let err = module
