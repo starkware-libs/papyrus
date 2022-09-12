@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{ArgAction, Parser};
 use log::info;
 use papyrus_monitoring_gateway::run_server as monitoring_run_server;
 use papyrus_node::config::load_config;
@@ -8,12 +8,10 @@ use tokio::task::JoinHandle;
 
 #[derive(Parser)]
 struct Args {
-    #[clap(short, long, value_parser, default_value_t = false)]
+    /// If set, the node will sync and get new blocks and state diffs from the source.
+    #[clap(short, long, value_parser, action = ArgAction::SetTrue)]
     no_sync: bool,
-}
 
-#[derive(Parser)]
-struct Args {
     /// If set, use this path for the storage instead of the one in the config.
     #[clap(short, long, value_parser)]
     storage_path: Option<String>,
