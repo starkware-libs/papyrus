@@ -7,7 +7,9 @@ edition = "2021"
 testing = ["tempfile"]
 
 [dependencies]
+base64 = { version = "0.13.0" }
 bincode = { version = "1.3.3" }
+flate2 = { version = "1.0.24" }
 futures-util = { version = "0.3.21" }
 libmdbx = { version = ">=0.1.5,<0.1.8", features = ["lifetimed-bytes"] }
 log = { version = "0.4" }

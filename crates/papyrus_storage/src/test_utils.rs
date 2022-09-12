@@ -1,3 +1,7 @@
+use std::env;
+use std::fs::read_to_string;
+use std::path::Path;
+
 use starknet_api::{
     shash, Block, BlockBody, BlockHash, BlockHeader, BlockNumber, CallData, ClassHash,
     ContractAddress, ContractAddressSalt, DeployTransaction, DeployTransactionOutput, Fee,
@@ -18,6 +22,16 @@ pub fn get_test_config() -> DbConfig {
 pub fn get_test_storage() -> (StorageReader, StorageWriter) {
     let config = get_test_config();
     open_storage(config).expect("Failed to open storage.")
+}
+
+pub fn read_resource_file(path_in_resource_dir: &str) -> String {
+    let path = Path::new(&env::current_dir().expect("Failed to find current directory."))
+        .join("resources")
+        .join(path_in_resource_dir);
+    read_to_string(path.to_str().unwrap())
+        .expect("Failed to read resource file.")
+        .replace('\n', "")
+        .replace(' ', "")
 }
 
 pub fn get_test_block(transaction_count: usize) -> Block {
