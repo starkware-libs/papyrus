@@ -11,7 +11,7 @@ use serde::ser::{Serialize, SerializeTuple};
 /// The `PREFIXED` generic type symbolize whether a string representation of the hex value should be
 /// prefixed by `0x` or not.
 #[derive(Debug, Eq, PartialEq)]
-pub struct HexAsBytes<const N: usize, const PREFIXED: bool>(pub [u8; N]);
+pub struct HexAsBytes<const N: usize, const PREFIXED: bool>(pub(crate) [u8; N]);
 
 pub type PrefixedHexAsBytes<const N: usize> = HexAsBytes<N, true>;
 pub type NonPrefixedHexAsBytes<const N: usize> = HexAsBytes<N, false>;
