@@ -1,13 +1,17 @@
-use clap::Parser;
+use clap::{ArgAction, Parser};
 use log::info;
-use papyrus_gateway::run_server;
 use papyrus_monitoring_gateway::run_server as monitoring_run_server;
 use papyrus_node::config::load_config;
 use papyrus_storage::open_storage;
-use papyrus_sync::{CentralSource, StateSync};
+use papyrus_sync::{CentralSource, StateSync, StateSyncError};
+use tokio::task::JoinHandle;
 
 #[derive(Parser)]
 struct Args {
+    /// If set, the node will sync and get new blocks and state diffs from its sources.
+    #[clap(short, long, value_parser, action = ArgAction::SetTrue)]
+    no_sync: bool,
+
     /// If set, use this path for the storage instead of the one in the config.
     #[clap(short, long, value_parser)]
     storage_path: Option<String>,
@@ -30,17 +34,22 @@ async fn main() -> anyhow::Result<()> {
     let central_source = CentralSource::new(config.central)?;
 
     // Sync.
-    let mut sync =
-        StateSync::new(config.sync, central_source, storage_reader.clone(), storage_writer);
-    let sync_thread = tokio::spawn(async move { sync.run().await });
+    let mut sync_thread_opt: Option<JoinHandle<anyhow::Result<(), StateSyncError>>> = None;
+    if !args.no_sync {
+        let mut sync =
+            StateSync::new(config.sync, central_source, storage_reader.clone(), storage_writer);
+        sync_thread_opt = Some(tokio::spawn(async move { sync.run().await }));
+    }
 
     // Pass reader to storage.
-    let (_, server_handle) = run_server(config.gateway, storage_reader.clone()).await?;
     let (_, monitoring_server_handle) =
         monitoring_run_server(config.monitoring_gateway, storage_reader.clone()).await?;
-    let (_, _, sync_thread_res) =
-        tokio::join!(server_handle, monitoring_server_handle, sync_thread);
-    sync_thread_res??;
+    if let Some(sync_thread) = sync_thread_opt {
+        let (_, sync_thread_res) = tokio::join!(monitoring_server_handle, sync_thread);
+        sync_thread_res??;
+    } else {
+        tokio::join!(monitoring_server_handle);
+    }
 
     Ok(())
 }
