@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use papyrus_storage::ThinStateDiff;
 use serde::{Deserialize, Serialize};
 use starknet_api::{BlockHash, GlobalRoot};
