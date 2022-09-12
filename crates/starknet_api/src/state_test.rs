@@ -3,11 +3,10 @@ use std::fs::read_to_string;
 use std::path::Path;
 use std::string::String;
 
-use super::{
-    ContractClass, ContractNonce, DeclaredContract, DeployedContract, Program, StateDiff,
-    StorageDiff,
+use crate::{
+    shash, ClassHash, ContractAddress, ContractClass, ContractNonce, DeclaredContract,
+    DeployedContract, Nonce, Program, StarkHash, StateDiff, StorageDiff,
 };
-use crate::{shash, ClassHash, ContractAddress, Nonce, StarkHash};
 
 fn read_resource_file(path_in_resource_dir: &str) -> String {
     let path = Path::new(&env::current_dir().expect("Failed to find current directory."))
