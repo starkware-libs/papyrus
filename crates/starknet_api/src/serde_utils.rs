@@ -5,6 +5,7 @@ mod serde_utils_test;
 
 use serde::de::{Deserialize, Visitor};
 use serde::ser::{Serialize, SerializeTuple};
+use stark_hash::OverflowError as PFOverflowError;
 
 /// A hexadecimal value as a byte array used for serialisation/deserialisation.
 ///
@@ -80,6 +81,8 @@ pub enum DeserializationError {
     MissingPrefix { hex_str: String },
     #[error("Bad input - expected #bytes: {expected_byte_count}, string found: {string_found}.")]
     BadInput { expected_byte_count: usize, string_found: String },
+    #[error(transparent)]
+    OverflowError(#[from] PFOverflowError),
 }
 
 pub fn bytes_from_hex_str<const N: usize, const PREFIXED: bool>(

@@ -5,9 +5,11 @@ mod hash_test;
 use std::fmt::Debug;
 
 use serde::{Deserialize, Serialize};
+use stark_hash::{stark_hash as pf_stark_hash, StarkHash as PFStarkHash};
 
 use super::serde_utils::{bytes_from_hex_str, hex_str_from_bytes, HexAsBytes, PrefixedHexAsBytes};
 use super::StarknetApiError;
+use crate::serde_utils::DeserializationError;
 
 /// Genesis state hash.
 pub const GENESIS_HASH: &str = "0x0";
@@ -43,6 +45,20 @@ impl Debug for StarkHash {
         f.debug_tuple("StarkHash").field(&s).finish()
     }
 }
+impl TryFrom<StarkHash> for PFStarkHash {
+    type Error = StarknetApiError;
+    fn try_from(val: StarkHash) -> Result<Self, Self::Error> {
+        PFStarkHash::from_be_slice(val.bytes()).map_err(|err| {
+            StarknetApiError::DeserializationError(DeserializationError::OverflowError(err))
+        })
+    }
+}
+impl TryFrom<PFStarkHash> for StarkHash {
+    type Error = StarknetApiError;
+    fn try_from(val: PFStarkHash) -> Result<Self, Self::Error> {
+        StarkHash::new(val.to_be_bytes())
+    }
+}
 
 impl StarkHash {
     /// Returns a new [`StarkHash`].
@@ -65,6 +81,10 @@ impl StarkHash {
         bytes[24..32].copy_from_slice(&val.to_be_bytes());
         StarkHash(bytes)
     }
+}
+
+pub fn pedersen(a: StarkHash, b: StarkHash) -> Result<StarkHash, StarknetApiError> {
+    StarkHash::try_from(pf_stark_hash(PFStarkHash::try_from(a)?, PFStarkHash::try_from(b)?))
 }
 
 /// The StarkNet elliptic curve field element.

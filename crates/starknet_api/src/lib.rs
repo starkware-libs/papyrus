@@ -16,7 +16,7 @@ pub use self::block::{
     GlobalRoot,
 };
 pub use self::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
-pub use self::hash::{StarkFelt, StarkHash, GENESIS_HASH};
+pub use self::hash::{pedersen, StarkFelt, StarkHash, GENESIS_HASH};
 pub use self::state::{
     ContractClass, ContractNonce, DeclaredContract, DeployedContract, EntryPoint, EntryPointOffset,
     EntryPointType, Program, StateDiff, StateNumber, StorageDiff, StorageEntry, StorageKey,
