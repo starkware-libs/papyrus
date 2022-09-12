@@ -30,18 +30,12 @@ pub use self::transaction::{
     TransactionVersion,
 };
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Clone, Debug)]
 pub enum StarknetApiError {
     #[error(transparent)]
     InnerDeserialization(#[from] InnerDeserialization),
-    #[error(transparent)]
-    DecodeError(#[from] base64::DecodeError),
-    #[error(transparent)]
-    IOError(#[from] std::io::Error),
     #[error("Out of range {string}.")]
     OutOfRange { string: String },
-    #[error(transparent)]
-    SerdeError(#[from] serde_json::Error),
     #[error("Transactions and transaction outputs don't have the same length.")]
     TransationsLengthDontMatch,
     #[error("Duplicate key in StateDiff: {object}.")]
