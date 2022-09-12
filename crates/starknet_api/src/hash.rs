@@ -6,7 +6,9 @@ use std::fmt::Debug;
 
 use serde::{Deserialize, Serialize};
 
-use super::serde_utils::{bytes_from_hex_str, hex_str_from_bytes, HexAsBytes, PrefixedHexAsBytes};
+use super::serde_utils::{
+    bytes_from_hex_str, hex_str_from_bytes, HexAsBytes, NonPrefixedHexAsBytes, PrefixedHexAsBytes,
+};
 use super::StarknetApiError;
 
 /// Genesis state hash.
@@ -28,6 +30,14 @@ impl StarkHash {
 impl TryFrom<PrefixedHexAsBytes<32_usize>> for StarkHash {
     type Error = StarknetApiError;
     fn try_from(val: PrefixedHexAsBytes<32_usize>) -> Result<Self, Self::Error> {
+        StarkHash::new(val.0)
+    }
+}
+// TODO(anatg): Remove once Starknet sequencer returns the global root hash as a hex string with a
+// "0x" prefix.
+impl TryFrom<NonPrefixedHexAsBytes<32_usize>> for StarkHash {
+    type Error = StarknetApiError;
+    fn try_from(val: NonPrefixedHexAsBytes<32_usize>) -> Result<Self, Self::Error> {
         StarkHash::new(val.0)
     }
 }
