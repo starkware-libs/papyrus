@@ -12,7 +12,7 @@ async fn main() {
     let _block_123456 = starknet_client.block(BlockNumber::new(123456)).await.expect("Get block");
     let _state_diff =
         starknet_client.state_update(BlockNumber::new(123456)).await.expect("Get state diff");
-    let class_hash = ClassHash(
+    let class_hash = ClassHash::new(
         StarkHash::from_hex("0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17")
             .unwrap(),
     );
