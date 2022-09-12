@@ -48,30 +48,33 @@ async fn test_append_body() -> Result<(), anyhow::Error> {
     .unwrap();
     writer
         .begin_rw_txn()?
-        .append_body(BlockNumber(0), &body0)?
-        .append_body(BlockNumber(1), &body1)?
+        .append_body(BlockNumber::new(0), &body0)?
+        .append_body(BlockNumber::new(1), &body1)?
         .commit()?;
 
     // Check for MarkerMismatch error  when trying to append the wrong block number.
-    if let Err(err) = writer.begin_rw_txn()?.append_body(BlockNumber(5), &body2) {
+    if let Err(err) = writer.begin_rw_txn()?.append_body(BlockNumber::new(5), &body2) {
         assert_matches!(
             err,
-            StorageError::MarkerMismatch { expected: BlockNumber(2), found: BlockNumber(5) }
-        );
+            StorageError::MarkerMismatch { expected, found }
+        if expected == BlockNumber::new(2) && found == BlockNumber::new(5));
     } else {
         panic!("Unexpected Ok.");
     }
 
-    writer.begin_rw_txn()?.append_body(BlockNumber(2), &body2)?.commit()?;
+    writer.begin_rw_txn()?.append_body(BlockNumber::new(2), &body2)?.commit()?;
 
-    if let Err(err) = writer.begin_rw_txn()?.append_body(BlockNumber(3), &body3) {
+    if let Err(err) = writer.begin_rw_txn()?.append_body(BlockNumber::new(3), &body3) {
         assert_matches!(
             err,
             StorageError::TransactionHashAlreadyExists {
                 tx_hash,
-                block_number: BlockNumber(3),
-                tx_offset_in_block: TransactionOffsetInBlock(1)
-            } if tx_hash == txs[0].transaction_hash()
+                block_number,
+                tx_offset_in_block,
+            }
+            if tx_hash == txs[0].transaction_hash()
+                && block_number == BlockNumber::new(3)
+                && tx_offset_in_block == TransactionOffsetInBlock(1)
         );
     } else {
         panic!("Unexpected Ok.");
@@ -79,16 +82,16 @@ async fn test_append_body() -> Result<(), anyhow::Error> {
 
     let txn = reader.begin_ro_txn()?;
     // Check marker.
-    assert_eq!(txn.get_body_marker()?, BlockNumber(3));
+    assert_eq!(txn.get_body_marker()?, BlockNumber::new(3));
 
     // Check single transactions and outputs.
     let tx_cases = vec![
-        (BlockNumber(0), TransactionOffsetInBlock(0), Some(0)),
-        (BlockNumber(0), TransactionOffsetInBlock(1), None),
-        (BlockNumber(1), TransactionOffsetInBlock(0), None),
-        (BlockNumber(2), TransactionOffsetInBlock(0), Some(1)),
-        (BlockNumber(2), TransactionOffsetInBlock(1), Some(2)),
-        (BlockNumber(2), TransactionOffsetInBlock(2), None),
+        (BlockNumber::new(0), TransactionOffsetInBlock(0), Some(0)),
+        (BlockNumber::new(0), TransactionOffsetInBlock(1), None),
+        (BlockNumber::new(1), TransactionOffsetInBlock(0), None),
+        (BlockNumber::new(2), TransactionOffsetInBlock(0), Some(1)),
+        (BlockNumber::new(2), TransactionOffsetInBlock(1), Some(2)),
+        (BlockNumber::new(2), TransactionOffsetInBlock(2), None),
     ];
 
     for (block_number, tx_offset, original_index) in tx_cases {
@@ -104,36 +107,36 @@ async fn test_append_body() -> Result<(), anyhow::Error> {
     // Check transaction hash.
     assert_eq!(
         txn.get_transaction_idx_by_hash(&txs[0].transaction_hash())?,
-        Some((BlockNumber(0), TransactionOffsetInBlock(0)))
+        Some((BlockNumber::new(0), TransactionOffsetInBlock(0)))
     );
     assert_eq!(
         txn.get_transaction_idx_by_hash(&txs[1].transaction_hash())?,
-        Some((BlockNumber(2), TransactionOffsetInBlock(0)))
+        Some((BlockNumber::new(2), TransactionOffsetInBlock(0)))
     );
     assert_eq!(
         txn.get_transaction_idx_by_hash(&txs[2].transaction_hash())?,
-        Some((BlockNumber(2), TransactionOffsetInBlock(1)))
+        Some((BlockNumber::new(2), TransactionOffsetInBlock(1)))
     );
 
     // Check block transactions.
-    assert_eq!(txn.get_block_transactions(BlockNumber(0))?, Some(vec![txs[0].clone()]));
-    assert_eq!(txn.get_block_transactions(BlockNumber(1))?, Some(vec![]));
+    assert_eq!(txn.get_block_transactions(BlockNumber::new(0))?, Some(vec![txs[0].clone()]));
+    assert_eq!(txn.get_block_transactions(BlockNumber::new(1))?, Some(vec![]));
     assert_eq!(
-        txn.get_block_transactions(BlockNumber(2))?,
+        txn.get_block_transactions(BlockNumber::new(2))?,
         Some(vec![txs[1].clone(), txs[2].clone()])
     );
-    assert_eq!(txn.get_block_transactions(BlockNumber(3))?, None);
+    assert_eq!(txn.get_block_transactions(BlockNumber::new(3))?, None);
 
     // Check block transaction outputs.
     assert_eq!(
-        txn.get_block_transaction_outputs(BlockNumber(0))?,
+        txn.get_block_transaction_outputs(BlockNumber::new(0))?,
         Some(vec![tx_outputs[0].clone()])
     );
-    assert_eq!(txn.get_block_transaction_outputs(BlockNumber(1))?, Some(vec![]));
+    assert_eq!(txn.get_block_transaction_outputs(BlockNumber::new(1))?, Some(vec![]));
     assert_eq!(
-        txn.get_block_transaction_outputs(BlockNumber(2))?,
+        txn.get_block_transaction_outputs(BlockNumber::new(2))?,
         Some(vec![tx_outputs[1].clone(), tx_outputs[2].clone()])
     );
-    assert_eq!(txn.get_block_transaction_outputs(BlockNumber(3))?, None);
+    assert_eq!(txn.get_block_transaction_outputs(BlockNumber::new(3))?, None);
     Ok(())
 }

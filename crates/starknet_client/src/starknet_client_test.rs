@@ -44,7 +44,7 @@ async fn get_block_number() {
         .create();
     let block_number = starknet_client.block_number().await.unwrap();
     mock_block.assert();
-    assert_eq!(block_number.unwrap(), BlockNumber(273466));
+    assert_eq!(block_number.unwrap(), BlockNumber::new(273466));
 
     // There are no blocks in Starknet.
     let body = r#"{"code": "StarknetErrorCode.BLOCK_NOT_FOUND", "message": "Block number -1 was not found."}"#;
@@ -84,7 +84,7 @@ async fn test_state_update() {
             .with_status(200)
             .with_body(&raw_state_update)
             .create();
-    let state_update = starknet_client.state_update(BlockNumber(123456)).await.unwrap();
+    let state_update = starknet_client.state_update(BlockNumber::new(123456)).await.unwrap();
     mock.assert();
     let expected_state_update: StateUpdate = serde_json::from_str(&raw_state_update).unwrap();
     assert_eq!(state_update.unwrap(), expected_state_update);
@@ -199,7 +199,7 @@ async fn get_block() {
             .with_status(200)
             .with_body(&raw_block)
             .create();
-    let block = starknet_client.block(BlockNumber(20)).await.unwrap().unwrap();
+    let block = starknet_client.block(BlockNumber::new(20)).await.unwrap().unwrap();
     mock_block.assert();
     let expected_block: Block = serde_json::from_str(&raw_block).unwrap();
     assert_eq!(block, expected_block);
@@ -211,7 +211,7 @@ async fn get_block() {
             .with_status(500)
             .with_body(body)
             .create();
-    let block = starknet_client.block(BlockNumber(9999999999)).await.unwrap();
+    let block = starknet_client.block(BlockNumber::new(9999999999)).await.unwrap();
     mock_no_block.assert();
     assert!(block.is_none());
 }
@@ -225,7 +225,7 @@ async fn block_unserializable() {
         .with_status(200)
         .with_body(body)
         .create();
-    let error = starknet_client.block(BlockNumber(20)).await.unwrap_err();
+    let error = starknet_client.block(BlockNumber::new(20)).await.unwrap_err();
     mock.assert();
     assert_matches!(error, ClientError::SerdeError(_));
 }
