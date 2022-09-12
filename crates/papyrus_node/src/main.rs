@@ -8,6 +8,7 @@ use papyrus_sync::{CentralSource, StateSync};
 
 #[derive(Parser)]
 struct Args {
+    /// If set, use this path for the storage instead of the one in the config.
     #[clap(short, long, value_parser)]
     storage_path: Option<String>,
 }
