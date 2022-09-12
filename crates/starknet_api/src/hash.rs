@@ -27,9 +27,6 @@ impl StarkHash {
     pub fn bytes(&self) -> &[u8] {
         &self.0
     }
-    pub fn into_bytes(self) -> [u8; 32] {
-        self.0
-    }
 }
 impl TryFrom<PrefixedHexAsBytes<32_usize>> for StarkHash {
     type Error = StarknetApiError;
