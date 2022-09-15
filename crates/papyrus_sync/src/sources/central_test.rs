@@ -7,9 +7,9 @@ use mockall::predicate;
 use reqwest::StatusCode;
 use starknet_api::{
     shash, BlockHash, BlockNumber, ClassHash, ContractAddress, ContractClass, DeclaredContract,
-    DeployedContract, GlobalRoot, StarkHash, StorageDiff, StorageEntry, StorageKey,
+    DeployedContract, StarkHash, StorageDiff, StorageEntry, StorageKey,
 };
-use starknet_client::{Block, ClientError, MockStarknetClientTrait, StateUpdate};
+use starknet_client::{Block, ClientError, GlobalRoot, MockStarknetClientTrait, StateUpdate};
 use tokio_stream::StreamExt;
 
 use crate::sources::central::{CentralError, GenericCentralSource};
@@ -152,8 +152,8 @@ async fn stream_state_updates() {
     let class_hash3 = ClassHash::new(shash!("0x789"));
     let contract_address1 = ContractAddress::try_from(shash!("0xabc")).unwrap();
     let contract_address2 = ContractAddress::try_from(shash!("0xdef")).unwrap();
-    let root1 = GlobalRoot::new(shash!("0x111"));
-    let root2 = GlobalRoot::new(shash!("0x222"));
+    let root1 = GlobalRoot(shash!("0x111"));
+    let root2 = GlobalRoot(shash!("0x222"));
     let block_hash1 = BlockHash::new(shash!("0x333"));
     let block_hash2 = BlockHash::new(shash!("0x444"));
 

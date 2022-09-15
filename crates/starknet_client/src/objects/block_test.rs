@@ -4,11 +4,11 @@ use assert::assert_ok;
 use assert_matches::assert_matches;
 use starknet_api::serde_utils::bytes_from_hex_str;
 use starknet_api::{
-    shash, BlockHash, ClassHash, ContractAddress, DeployedContract, GlobalRoot, StarkHash,
-    StorageEntry, StorageKey, TransactionHash, TransactionOffsetInBlock,
+    shash, BlockHash, ClassHash, ContractAddress, DeployedContract, StarkHash, StorageEntry,
+    StorageKey, TransactionHash, TransactionOffsetInBlock,
 };
 
-use super::block::{Block, StateDiff, StateUpdate, TransactionReceiptsError};
+use super::block::{Block, GlobalRoot, StateDiff, StateUpdate, TransactionReceiptsError};
 use super::transaction::TransactionReceipt;
 use crate::test_utils::read_resource::read_resource_file;
 use crate::ClientError;
@@ -24,7 +24,7 @@ fn load_block_state_update_succeeds() {
         block_hash: BlockHash::new(shash!(
             "0x3f65ef25e87a83d92f32f5e4869a33580f9db47ec980c1ff27bdb5151914de5"
         )),
-        new_root: GlobalRoot::new(
+        new_root: GlobalRoot(
             StarkHash::new(
                 bytes_from_hex_str::<32, false>(
                     "02ade8eea6eb6523d22a408a1f035bd351a9a5dce28926ca92d7abb490c0e74a",
@@ -33,7 +33,7 @@ fn load_block_state_update_succeeds() {
             )
             .unwrap(),
         ),
-        old_root: GlobalRoot::new(
+        old_root: GlobalRoot(
             StarkHash::new(
                 bytes_from_hex_str::<32, false>(
                     "0465b219d93bcb2776aa3abb009423be3e2d04dba6453d7e027830740cd699a4",

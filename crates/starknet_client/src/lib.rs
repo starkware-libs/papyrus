@@ -20,7 +20,8 @@ use starknet_api::{BlockNumber, ClassHash, ContractClass, StarknetApiError};
 use url::Url;
 
 pub use self::objects::block::{
-    client_to_starknet_api_storage_diff, Block, StateDiff, StateUpdate, TransactionReceiptsError,
+    client_to_starknet_api_storage_diff, Block, GlobalRoot, StateDiff, StateUpdate,
+    TransactionReceiptsError,
 };
 use self::retry::Retry;
 pub use self::retry::RetryConfig;
