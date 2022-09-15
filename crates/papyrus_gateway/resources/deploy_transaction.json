@@ -1,0 +1,16 @@
+{
+    "jsonrpc": "2.0",
+    "result": {
+        "type": "DEPLOY",
+        "transaction_hash": "0x4dd12d3b82c3d0b216503c6abf63f1ccad222461582eac82057d46c327331d2",
+        "version": "0x0",
+        "class_hash": "0x10455c752b86932ce552f2b0fe81a880746649b9aee7e0d842bf3f52378f9f8",
+        "contract_address": "0x543e54f26ae33686f57da2ceebed98b340c3a78e9390931bd84fb711d5caabc",
+        "contract_address_salt": "0x25ad1e011d139412b19ec5284fe6e95f4e53d319056c5650042eb3322cc370d",
+        "constructor_calldata": [
+            "0x70be09c520814c13480a220ad31eb94bf37f0259e002b0275e55f3c309ee823",
+            "0x1dc19dce5326f42f2b319d78b237148d1e582efbf700efd6eb2c9fcbc451327"
+        ]
+    },
+    "id": "1"
+}
