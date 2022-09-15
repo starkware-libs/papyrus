@@ -72,6 +72,7 @@ async fn main() -> Result<(), GooseError> {
             scenario!("block_by_hash")
                 .register_transaction(transaction!(loadtest_get_block_with_tx_hashes_by_hash)),
         )
+        .set_default(GooseDefault::Host, "http://127.0.0.1:8080")?
         .execute()
         .await?;
     Ok(())
