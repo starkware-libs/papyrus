@@ -45,13 +45,9 @@ pub enum StorageError {
     BlockHashAlreadyExists { block_hash: BlockHash, block_number: BlockNumber },
     #[error(
         "Transaction hash {tx_hash:?} already exists, when adding transaction \
-         {tx_offset_in_block:?} at block number {block_number:?}."
+         {transaction_index:?}."
     )]
-    TransactionHashAlreadyExists {
-        tx_hash: TransactionHash,
-        block_number: BlockNumber,
-        tx_offset_in_block: TransactionOffsetInBlock,
-    },
+    TransactionHashAlreadyExists { tx_hash: TransactionHash, transaction_index: TransactionIndex },
     #[error("State diff redployed to an existing contract address {address:?}.")]
     ContractAlreadyExists { address: ContractAddress },
     #[error(
@@ -101,10 +97,10 @@ struct_field_names! {
         nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
         headers: TableIdentifier<BlockNumber, BlockHeader>,
         block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
-        transactions: TableIdentifier<(BlockNumber, TransactionOffsetInBlock), Transaction>,
-        transaction_outputs: TableIdentifier<(BlockNumber, TransactionOffsetInBlock), TransactionOutput>,
+        transactions: TableIdentifier<TransactionIndex, Transaction>,
+        transaction_outputs: TableIdentifier<TransactionIndex, TransactionOutput>,
         transaction_hash_to_idx:
-        TableIdentifier<TransactionHash, (BlockNumber, TransactionOffsetInBlock)>,
+            TableIdentifier<TransactionHash, TransactionIndex>,
         state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
         declared_classes: TableIdentifier<ClassHash, IndexedDeclaredContract>,
         deployed_contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
@@ -115,6 +111,9 @@ struct_field_names! {
 pub fn table_names() -> &'static [&'static str] {
     Tables::field_names()
 }
+
+#[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
 
 #[derive(Clone)]
 pub struct StorageReader {

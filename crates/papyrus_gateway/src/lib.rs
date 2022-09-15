@@ -14,7 +14,7 @@ use jsonrpsee::types::error::{ErrorObject, INTERNAL_ERROR_MSG};
 use log::{error, info};
 use papyrus_storage::{
     BodyStorageReader, HeaderStorageReader, StateStorageReader, StorageReader, StorageTxn,
-    TransactionKind,
+    TransactionIndex, TransactionKind,
 };
 use serde::{Deserialize, Serialize};
 use starknet_api::{
@@ -187,13 +187,13 @@ impl JsonRpcServer for JsonRpcServerImpl {
     ) -> Result<TransactionWithType, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
-        let (block_number, tx_offset_in_block) = txn
+        let transaction_index = txn
             .get_transaction_idx_by_hash(&transaction_hash)
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::TransactionHashNotFound))?;
 
         let transaction = txn
-            .get_transaction(block_number, tx_offset_in_block)
+            .get_transaction(transaction_index)
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::TransactionHashNotFound))?;
 
@@ -209,7 +209,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let block_number = get_block_number(&txn, block_id)?;
 
         let transaction = txn
-            .get_transaction(block_number, index)
+            .get_transaction(TransactionIndex(block_number, index))
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::InvalidTransactionIndex))?;
 
@@ -263,7 +263,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
     ) -> Result<TransactionReceiptWithStatus, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
-        let (block_number, tx_offset_in_block) = txn
+        let TransactionIndex(block_number, tx_offset_in_block) = txn
             .get_transaction_idx_by_hash(&transaction_hash)
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::TransactionHashNotFound))?;
@@ -272,7 +272,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
             get_block_header_by_number(&txn, block_number).map_err(internal_server_error)?;
 
         let tx_output = txn
-            .get_transaction_output(block_number, tx_offset_in_block)
+            .get_transaction_output(TransactionIndex(block_number, tx_offset_in_block))
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::TransactionHashNotFound))?;
 

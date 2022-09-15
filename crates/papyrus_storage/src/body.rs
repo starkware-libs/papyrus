@@ -9,13 +9,11 @@ use starknet_api::{
 
 use super::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use super::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
+use crate::TransactionIndex;
 
-pub type TransactionsTable<'env> =
-    TableHandle<'env, (BlockNumber, TransactionOffsetInBlock), Transaction>;
-pub type TransactionOutputsTable<'env> =
-    TableHandle<'env, (BlockNumber, TransactionOffsetInBlock), TransactionOutput>;
-pub type TransactionHashToIdxTable<'env> =
-    TableHandle<'env, TransactionHash, (BlockNumber, TransactionOffsetInBlock)>;
+pub type TransactionsTable<'env> = TableHandle<'env, TransactionIndex, Transaction>;
+pub type TransactionOutputsTable<'env> = TableHandle<'env, TransactionIndex, TransactionOutput>;
+pub type TransactionHashToIdxTable<'env> = TableHandle<'env, TransactionHash, TransactionIndex>;
 
 pub trait BodyStorageReader {
     // The block number marker is the first block number that doesn't exist yet.
@@ -23,18 +21,16 @@ pub trait BodyStorageReader {
     // TODO(spapini): get_transaction_by_hash.
     fn get_transaction(
         &self,
-        block_number: BlockNumber,
-        tx_offset_in_block: TransactionOffsetInBlock,
+        transaction_index: TransactionIndex,
     ) -> StorageResult<Option<Transaction>>;
     fn get_transaction_output(
         &self,
-        block_number: BlockNumber,
-        tx_offset_in_block: TransactionOffsetInBlock,
+        transaction_index: TransactionIndex,
     ) -> StorageResult<Option<TransactionOutput>>;
     fn get_transaction_idx_by_hash(
         &self,
         tx_hash: &TransactionHash,
-    ) -> StorageResult<Option<(BlockNumber, TransactionOffsetInBlock)>>;
+    ) -> StorageResult<Option<TransactionIndex>>;
     fn get_block_transactions(
         &self,
         block_number: BlockNumber,
@@ -59,27 +55,24 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
     }
     fn get_transaction(
         &self,
-        block_number: BlockNumber,
-        tx_offset_in_block: TransactionOffsetInBlock,
+        transaction_index: TransactionIndex,
     ) -> StorageResult<Option<Transaction>> {
         let transactions_table = self.txn.open_table(&self.tables.transactions)?;
-        let transaction = transactions_table.get(&self.txn, &(block_number, tx_offset_in_block))?;
+        let transaction = transactions_table.get(&self.txn, &transaction_index)?;
         Ok(transaction)
     }
     fn get_transaction_output(
         &self,
-        block_number: BlockNumber,
-        tx_offset_in_block: TransactionOffsetInBlock,
+        transaction_index: TransactionIndex,
     ) -> StorageResult<Option<TransactionOutput>> {
         let transaction_outputs_table = self.txn.open_table(&self.tables.transaction_outputs)?;
-        let transaction_output =
-            transaction_outputs_table.get(&self.txn, &(block_number, tx_offset_in_block))?;
+        let transaction_output = transaction_outputs_table.get(&self.txn, &transaction_index)?;
         Ok(transaction_output)
     }
     fn get_transaction_idx_by_hash(
         &self,
         tx_hash: &TransactionHash,
-    ) -> StorageResult<Option<(BlockNumber, TransactionOffsetInBlock)>> {
+    ) -> StorageResult<Option<TransactionIndex>> {
         let transaction_hash_to_idx_table =
             self.txn.open_table(&self.tables.transaction_hash_to_idx)?;
         let idx = transaction_hash_to_idx_table.get(&self.txn, tx_hash)?;
@@ -94,9 +87,10 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         }
         let transactions_table = self.txn.open_table(&self.tables.transactions)?;
         let mut cursor = transactions_table.cursor(&self.txn)?;
-        let mut current = cursor.lower_bound(&(block_number, TransactionOffsetInBlock(0)))?;
+        let mut current =
+            cursor.lower_bound(&TransactionIndex(block_number, TransactionOffsetInBlock(0)))?;
         let mut res = Vec::new();
-        while let Some(((current_block_number, _), tx)) = current {
+        while let Some((TransactionIndex(current_block_number, _), tx)) = current {
             if current_block_number != block_number {
                 break;
             }
@@ -114,9 +108,10 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         }
         let transaction_outputs_table = self.txn.open_table(&self.tables.transaction_outputs)?;
         let mut cursor = transaction_outputs_table.cursor(&self.txn)?;
-        let mut current = cursor.lower_bound(&(block_number, TransactionOffsetInBlock(0)))?;
+        let mut current =
+            cursor.lower_bound(&TransactionIndex(block_number, TransactionOffsetInBlock(0)))?;
         let mut res = Vec::new();
-        while let Some(((current_block_number, _), tx)) = current {
+        while let Some((TransactionIndex(current_block_number, _), tx)) = current {
             if current_block_number != block_number {
                 break;
             }
@@ -157,14 +152,9 @@ fn write_transactions<'env>(
 ) -> StorageResult<()> {
     for (index, tx) in block_body.transactions().iter().enumerate() {
         let tx_offset_in_block = TransactionOffsetInBlock(index);
-        transactions_table.insert(txn, &(block_number, tx_offset_in_block), tx)?;
-        update_tx_hash_mapping(
-            txn,
-            transaction_hash_to_idx_table,
-            tx,
-            block_number,
-            tx_offset_in_block,
-        )?;
+        let transaction_index = TransactionIndex(block_number, tx_offset_in_block);
+        transactions_table.insert(txn, &transaction_index, tx)?;
+        update_tx_hash_mapping(txn, transaction_hash_to_idx_table, tx, transaction_index)?;
     }
     Ok(())
 }
@@ -177,7 +167,11 @@ fn write_transaction_outputs<'env>(
 ) -> StorageResult<()> {
     for (index, tx_output) in block_body.transaction_outputs().iter().enumerate() {
         let tx_offset_in_block = TransactionOffsetInBlock(index);
-        transaction_outputs_table.insert(txn, &(block_number, tx_offset_in_block), tx_output)?;
+        transaction_outputs_table.insert(
+            txn,
+            &TransactionIndex(block_number, tx_offset_in_block),
+            tx_output,
+        )?;
     }
     Ok(())
 }
@@ -186,18 +180,13 @@ fn update_tx_hash_mapping<'env>(
     txn: &DbTransaction<'env, RW>,
     transaction_hash_to_idx_table: &'env TransactionHashToIdxTable<'env>,
     tx: &Transaction,
-    block_number: BlockNumber,
-    tx_offset_in_block: TransactionOffsetInBlock,
+    transaction_index: TransactionIndex,
 ) -> Result<(), StorageError> {
     let tx_hash = tx.transaction_hash();
-    let res = transaction_hash_to_idx_table.insert(
-        txn,
-        &tx.transaction_hash(),
-        &(block_number, tx_offset_in_block),
-    );
+    let res = transaction_hash_to_idx_table.insert(txn, &tx.transaction_hash(), &transaction_index);
     res.map_err(|err| match err {
         DbError::InnerDbError(libmdbx::Error::KeyExist) => {
-            StorageError::TransactionHashAlreadyExists { tx_hash, block_number, tx_offset_in_block }
+            StorageError::TransactionHashAlreadyExists { tx_hash, transaction_index }
         }
         err => err.into(),
     })?;
