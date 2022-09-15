@@ -6,7 +6,7 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
-use super::serde_utils::{HexAsBytes, NonPrefixedHexAsBytes, PrefixedHexAsBytes};
+use super::serde_utils::{HexAsBytes, PrefixedHexAsBytes};
 use super::{ContractAddress, StarkHash, StarknetApiError, Transaction, TransactionOutput};
 
 // TODO(spapini): Verify the invariant that it is in range.
@@ -27,26 +27,11 @@ impl BlockHash {
 #[derive(
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-#[serde(try_from = "NonPrefixedHexAsBytes<32_usize>", into = "NonPrefixedHexAsBytes<32_usize>")]
 pub struct GlobalRoot(StarkHash);
 
 impl GlobalRoot {
     pub fn new(hash: StarkHash) -> Self {
         Self(hash)
-    }
-}
-
-// We don't use the regular StarkHash deserialization since the Starknet sequencer returns the
-// global root hash as a hex string without a "0x" prefix.
-impl TryFrom<NonPrefixedHexAsBytes<32_usize>> for GlobalRoot {
-    type Error = StarknetApiError;
-    fn try_from(val: NonPrefixedHexAsBytes<32_usize>) -> Result<Self, Self::Error> {
-        Ok(GlobalRoot::new(StarkHash::new(val.0)?))
-    }
-}
-impl From<GlobalRoot> for NonPrefixedHexAsBytes<32_usize> {
-    fn from(val: GlobalRoot) -> Self {
-        HexAsBytes(val.0.into_bytes())
     }
 }
 

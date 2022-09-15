@@ -2,13 +2,35 @@ use std::collections::BTreeMap;
 use std::ops::Index;
 
 use serde::{Deserialize, Serialize};
+use starknet_api::serde_utils::NonPrefixedHexAsBytes;
 use starknet_api::{
     BlockHash, BlockNumber, BlockTimestamp, ClassHash, ContractAddress, DeployedContract, GasPrice,
-    GlobalRoot, StorageDiff, StorageEntry, TransactionHash, TransactionOffsetInBlock,
+    StarkHash, StarknetApiError, StorageDiff, StorageEntry, TransactionHash,
+    TransactionOffsetInBlock,
 };
 
 use super::transaction::{L1ToL2Message, Transaction, TransactionReceipt, TransactionType};
 use crate::{ClientError, ClientResult};
+
+#[derive(
+    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+#[serde(try_from = "NonPrefixedHexAsBytes<32_usize>")]
+pub struct GlobalRoot(pub StarkHash);
+
+// We don't use the regular StarkHash deserialization since the Starknet sequencer returns the
+// global root hash as a hex string without a "0x" prefix.
+impl TryFrom<NonPrefixedHexAsBytes<32_usize>> for GlobalRoot {
+    type Error = StarknetApiError;
+    fn try_from(val: NonPrefixedHexAsBytes<32_usize>) -> Result<Self, Self::Error> {
+        Ok(Self(StarkHash::try_from(val)?))
+    }
+}
+impl From<GlobalRoot> for starknet_api::GlobalRoot {
+    fn from(val: GlobalRoot) -> Self {
+        Self::new(val.0)
+    }
+}
 
 /// A block as returned by the starknet gateway.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
@@ -166,7 +188,7 @@ impl TryFrom<Block> for starknet_api::Block {
             parent_hash: block.parent_block_hash,
             block_number: block.block_number,
             gas_price: block.gas_price,
-            state_root: block.state_root,
+            state_root: block.state_root.into(),
             sequencer: block.sequencer_address,
             timestamp: block.timestamp,
         };
