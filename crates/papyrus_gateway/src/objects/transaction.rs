@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockStatus, CallData, ContractAddress, DeclareTransaction, DeployTransaction,
-    EntryPointSelector, Fee, L1HandlerTransaction, Nonce, TransactionHash, TransactionReceipt,
-    TransactionSignature, TransactionVersion,
+    BlockHash, BlockNumber, BlockStatus, CallData, ContractAddress, DeclareTransaction,
+    DeclareTransactionOutput, DeployTransaction, DeployTransactionOutput, EntryPointSelector, Fee,
+    InvokeTransactionOutput, L1HandlerTransaction, L1HandlerTransactionOutput, Nonce,
+    TransactionHash, TransactionSignature, TransactionVersion,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -197,4 +198,41 @@ pub struct TransactionReceiptWithStatus {
     pub status: TransactionStatus,
     #[serde(flatten)]
     pub receipt: TransactionReceipt,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct TransactionReceipt {
+    pub transaction_hash: TransactionHash,
+    pub block_hash: BlockHash,
+    pub block_number: BlockNumber,
+    #[serde(flatten)]
+    pub output: TransactionOutput,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(untagged)]
+pub enum TransactionOutput {
+    Declare(DeclareTransactionOutput),
+    Deploy(DeployTransactionOutput),
+    Invoke(InvokeTransactionOutput),
+    L1Handler(L1HandlerTransactionOutput),
+}
+
+impl From<starknet_api::TransactionOutput> for TransactionOutput {
+    fn from(tx_output: starknet_api::TransactionOutput) -> Self {
+        match tx_output {
+            starknet_api::TransactionOutput::Declare(declare_tx_output) => {
+                TransactionOutput::Declare(declare_tx_output)
+            }
+            starknet_api::TransactionOutput::Deploy(deploy_tx_output) => {
+                TransactionOutput::Deploy(deploy_tx_output)
+            }
+            starknet_api::TransactionOutput::Invoke(invoke_tx_output) => {
+                TransactionOutput::Invoke(invoke_tx_output)
+            }
+            starknet_api::TransactionOutput::L1Handler(l1_handler_tx_output) => {
+                TransactionOutput::L1Handler(l1_handler_tx_output)
+            }
+        }
+    }
 }

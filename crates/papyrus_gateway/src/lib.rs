@@ -20,13 +20,13 @@ use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockNumber, BlockStatus, ClassHash, ContractAddress, ContractClass, GlobalRoot, Nonce,
     StarkFelt, StarkHash, StateNumber, StorageKey, TransactionHash, TransactionOffsetInBlock,
-    TransactionReceipt, GENESIS_HASH,
+    GENESIS_HASH,
 };
 
 use self::api::{BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcError, JsonRpcServer, Tag};
 use self::objects::{
-    Block, BlockHeader, StateUpdate, Transaction, TransactionReceiptWithStatus, TransactionStatus,
-    TransactionWithType, Transactions,
+    Block, BlockHeader, StateUpdate, Transaction, TransactionReceipt, TransactionReceiptWithStatus,
+    TransactionStatus, TransactionWithType, Transactions,
 };
 
 #[derive(Serialize, Deserialize)]
@@ -281,7 +281,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 transaction_hash,
                 block_hash: header.block_hash,
                 block_number,
-                output: tx_output,
+                output: tx_output.into(),
             },
             status: TransactionStatus::default(),
         })
