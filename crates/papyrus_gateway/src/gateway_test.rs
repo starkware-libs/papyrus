@@ -1,4 +1,8 @@
+use std::env;
+use std::fs::read_to_string;
+use std::net::SocketAddr;
 use std::ops::Index;
+use std::path::Path;
 
 use assert_matches::assert_matches;
 use jsonrpsee::core::Error;
@@ -6,8 +10,9 @@ use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
-use papyrus_storage::test_utils::{get_test_block, get_test_storage};
-use papyrus_storage::{BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
+use papyrus_storage::test_utils::{get_test_block, get_test_config, get_test_storage};
+use papyrus_storage::{open_storage, BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
+use reqwest::Client;
 use starknet_api::{
     shash, BlockHash, BlockHeader, BlockNumber, BlockStatus, ClassHash, ContractAddress,
     ContractClass, ContractNonce, DeclaredContract, DeployedContract, GlobalRoot, Nonce, StarkFelt,
@@ -1111,5 +1116,93 @@ async fn run_server_scneario() -> Result<(), anyhow::Error> {
         JsonRpcError::NoBlocks.to_string(),
         None::<()>,
     ));
+    Ok(())
+}
+
+fn read_resource_file(path_in_resource_dir: &str) -> String {
+    let path = Path::new(&env::current_dir().expect("Problem with the current directory."))
+        .join("resources")
+        .join(path_in_resource_dir);
+    read_to_string(path.to_str().unwrap())
+        .expect("Failed to read resource file.")
+        .replace('\n', "")
+        .replace(' ', "")
+}
+
+async fn send_request(address: SocketAddr, method: &str, params: &str) -> String {
+    let client = Client::new();
+    client
+        .post(format!("http://{:?}", address))
+        .header("Content-Type", "application/json")
+        .body(format!(
+            r#"{{"jsonrpc":"2.0","id":"1","method":"{}","params":[{}]}}"#,
+            method, params
+        ))
+        .send()
+        .await
+        .expect("Failed to send request.")
+        .text()
+        .await
+        .expect("Failed to get response text.")
+}
+
+#[tokio::test]
+async fn serde() -> Result<(), anyhow::Error> {
+    let mut db_config = get_test_config();
+    let path = Path::new(&env::current_dir().expect("Problem with the current directory."))
+        .join("resources/data/mdbx.dat");
+    assert!(path.exists(), "The mdbx data file was not found.");
+    db_config.path = String::from(path.to_str().unwrap());
+    let gateway_config = GatewayConfig { server_ip: String::from("127.0.0.1:0") };
+
+    let (storage_reader, _writer) = open_storage(db_config).expect("Failed to open storage.");
+    let (server_address, _handle) =
+        run_server(gateway_config, storage_reader).await.expect("Failed to run server.");
+
+    serde_block(server_address).await?;
+    serde_transaction(server_address).await?;
+    Ok(())
+}
+
+async fn serde_block(server_address: SocketAddr) -> Result<(), anyhow::Error> {
+    let res = send_request(server_address, "starknet_getBlockWithTxs", r#"{"block_number": 1}"#);
+    assert_eq!(res.await, read_resource_file("block_with_transactions.json"));
+
+    let res = send_request(
+        server_address,
+        "starknet_getBlockWithTxHashes",
+        r#"{"block_hash": "0x11172ea58125f54df2c07df73accd9236558944ec0ee650d80968f863267764"}"#,
+    );
+    assert_eq!(res.await, read_resource_file("block_with_transaction_hashes.json"));
+
+    let res =
+        send_request(server_address, "starknet_getBlockTransactionCount", r#"{"block_number": 6}"#);
+    assert_eq!(res.await, r#"{"jsonrpc":"2.0","result":3,"id":"1"}"#);
+
+    Ok(())
+}
+
+async fn serde_transaction(server_address: SocketAddr) -> Result<(), anyhow::Error> {
+    let res = send_request(
+        server_address,
+        "starknet_getTransactionByBlockIdAndIndex",
+        r#"{"block_number": 1}, 0"#,
+    );
+    assert_eq!(res.await, read_resource_file("deploy_transaction.json"));
+
+    let res = send_request(
+        server_address,
+        "starknet_getTransactionByHash",
+        r#""0x4dd12d3b82c3d0b216503c6abf63f1ccad222461582eac82057d46c327331d2""#,
+    );
+    assert_eq!(res.await, read_resource_file("deploy_transaction.json"));
+
+    let res = send_request(
+        server_address,
+        "starknet_getTransactionReceipt",
+        r#""0x6525d9aa309e5c80abbdafcc434d53202e06866597cd6dbbc91e5894fad7155""#,
+    );
+    assert_eq!(res.await, read_resource_file("invoke_transaction_receipt.json"));
+
     Ok(())
 }
