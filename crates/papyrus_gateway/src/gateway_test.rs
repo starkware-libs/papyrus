@@ -86,7 +86,7 @@ fn get_test_state_diff()
 }
 
 #[tokio::test]
-async fn test_block_number() -> Result<(), anyhow::Error> {
+async fn block_number() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
@@ -113,7 +113,7 @@ async fn test_block_number() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
-async fn test_block_hash_and_number() -> Result<(), anyhow::Error> {
+async fn block_hash_and_number() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
@@ -148,7 +148,7 @@ async fn test_block_hash_and_number() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
-async fn test_get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
+async fn get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
@@ -224,7 +224,7 @@ async fn test_get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
-async fn test_get_block_w_full_transactions() -> Result<(), anyhow::Error> {
+async fn get_block_w_full_transactions() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
@@ -298,7 +298,7 @@ async fn test_get_block_w_full_transactions() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
-async fn test_get_storage_at() -> Result<(), anyhow::Error> {
+async fn get_storage_at() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
@@ -403,7 +403,7 @@ async fn test_get_storage_at() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
-async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
+async fn get_class_hash_at() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
@@ -491,7 +491,7 @@ async fn test_get_class_hash_at() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
-async fn test_get_nonce() -> Result<(), anyhow::Error> {
+async fn get_nonce() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
@@ -578,7 +578,7 @@ async fn test_get_nonce() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
-async fn test_get_transaction_by_hash() -> Result<(), anyhow::Error> {
+async fn get_transaction_by_hash() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
@@ -612,7 +612,7 @@ async fn test_get_transaction_by_hash() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
-async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Error> {
+async fn get_transaction_by_block_id_and_index() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
@@ -695,7 +695,7 @@ async fn test_get_transaction_by_block_id_and_index() -> Result<(), anyhow::Erro
 }
 
 #[tokio::test]
-async fn test_get_block_transaction_count() -> Result<(), anyhow::Error> {
+async fn get_block_transaction_count() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
@@ -764,7 +764,7 @@ async fn test_get_block_transaction_count() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
-async fn test_get_state_update() -> Result<(), anyhow::Error> {
+async fn get_state_update() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
@@ -836,7 +836,7 @@ async fn test_get_state_update() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
-async fn test_get_transaction_receipt() -> Result<(), anyhow::Error> {
+async fn get_transaction_receipt() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
@@ -887,7 +887,7 @@ async fn test_get_transaction_receipt() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
-async fn test_get_class() -> Result<(), anyhow::Error> {
+async fn get_class() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
@@ -995,7 +995,7 @@ async fn test_get_class() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
-async fn test_get_class_at() -> Result<(), anyhow::Error> {
+async fn get_class_at() -> Result<(), anyhow::Error> {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
@@ -1098,7 +1098,7 @@ async fn test_get_class_at() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
-async fn test_run_server() -> Result<(), anyhow::Error> {
+async fn run_server_scneario() -> Result<(), anyhow::Error> {
     let (storage_reader, _) = get_test_storage();
     let (addr, _handle) =
         run_server(GatewayConfig { server_ip: String::from("127.0.0.1:0") }, storage_reader)

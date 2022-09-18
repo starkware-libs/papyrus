@@ -20,7 +20,7 @@ use super::{
 };
 
 #[test]
-fn test_new_urls() {
+fn new_urls() {
     let url_base_str = "https://url";
     let starknet_client = StarknetClient::new(url_base_str, get_test_config()).unwrap();
     assert_eq!(
@@ -76,7 +76,7 @@ async fn declare_tx_serde() {
 }
 
 #[tokio::test]
-async fn test_state_update() {
+async fn state_update() {
     let starknet_client = StarknetClient::new(&mockito::server_url(), get_test_config()).unwrap();
     let raw_state_update = read_resource_file("block_state_update.json");
     let mock =
@@ -91,7 +91,7 @@ async fn test_state_update() {
 }
 
 #[tokio::test]
-async fn test_serialization_precision() {
+async fn serialization_precision() {
     let input =
         "{\"value\":244116128358498188146337218061232635775543270890529169229936851982759783745}";
     let serialized = serde_json::from_str::<serde_json::Value>(input).unwrap();

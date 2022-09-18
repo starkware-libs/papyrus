@@ -3,7 +3,7 @@ use assert_matches::assert_matches;
 use super::{bytes_from_hex_str, hex_str_from_bytes, DeserializationError, HexAsBytes};
 
 #[test]
-fn test_hex_str_from_bytes() {
+fn hex_str_from_bytes_scenarios() {
     // even length.
     assert_eq!(hex_str_from_bytes::<1, true>([106]), "0x6a");
 
@@ -18,7 +18,7 @@ fn test_hex_str_from_bytes() {
 }
 
 #[test]
-fn test_hex_str_from_bytes_zero() {
+fn hex_str_from_bytes_zero() {
     // Prefixed.
     assert_eq!(hex_str_from_bytes::<3, true>([0, 0, 0]), "0x0");
 
@@ -27,7 +27,7 @@ fn test_hex_str_from_bytes_zero() {
 }
 
 #[test]
-fn test_bytes_from_hex_str() {
+fn bytes_from_hex_str_scenarios() {
     // even length.
     let hex_str = "0x6a";
     let res = bytes_from_hex_str::<1, true>(hex_str).unwrap();
@@ -45,7 +45,7 @@ fn test_bytes_from_hex_str() {
 }
 
 #[test]
-fn test_bytes_from_hex_str_padding() {
+fn bytes_from_hex_str_padding() {
     // even length.
     let hex_str = "0xda2b";
     let res = bytes_from_hex_str::<4, true>(hex_str).unwrap();
@@ -58,7 +58,7 @@ fn test_bytes_from_hex_str_padding() {
 }
 
 #[test]
-fn test_bytes_from_hex_str_errors() {
+fn bytes_from_hex_str_errors() {
     // Short buffer.
     let hex_str = "0xda2b";
     let err = bytes_from_hex_str::<1, true>(hex_str);
@@ -90,7 +90,7 @@ fn test_bytes_from_hex_str_errors() {
 }
 
 #[test]
-fn test_hex_as_bytes_serde_prefixed() {
+fn hex_as_bytes_serde_prefixed() {
     let hex_as_bytes = HexAsBytes::<3, true>([1, 2, 3]);
     assert_eq!(
         hex_as_bytes,
@@ -99,7 +99,7 @@ fn test_hex_as_bytes_serde_prefixed() {
 }
 
 #[test]
-fn test_hex_as_bytes_serde_not_prefixed() {
+fn hex_as_bytes_serde_not_prefixed() {
     let hex_as_bytes = HexAsBytes::<3, false>([1, 2, 3]);
     assert_eq!(
         hex_as_bytes,
