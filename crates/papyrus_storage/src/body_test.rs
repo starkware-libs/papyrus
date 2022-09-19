@@ -6,8 +6,8 @@ use starknet_api::{
 };
 
 use super::{BodyStorageReader, BodyStorageWriter, StorageError};
-use crate::test_utils::get_test_storage;
-use crate::TransactionIndex;
+use crate::test_utils::{get_test_body, get_test_storage};
+use crate::{StorageWriter, TransactionIndex};
 
 #[tokio::test]
 async fn append_body() -> Result<(), anyhow::Error> {
@@ -139,5 +139,122 @@ async fn append_body() -> Result<(), anyhow::Error> {
         Some(vec![tx_outputs[1].clone(), tx_outputs[2].clone()])
     );
     assert_eq!(txn.get_block_transaction_outputs(BlockNumber::new(3))?, None);
+    Ok(())
+}
+
+#[tokio::test]
+async fn revert_non_existing_body_fails() -> Result<(), anyhow::Error> {
+    let (_, mut writer) = get_test_storage();
+    if let Err(err) = writer.begin_rw_txn()?.revert_body(BlockNumber::new(5)) {
+        assert_matches!(
+            err,
+            StorageError::InvalidRevert {
+                revert_block_number,
+                block_number_marker
+            }
+            if revert_block_number == BlockNumber::new(5) && block_number_marker == BlockNumber::new(0)
+        )
+    } else {
+        panic!("Unexpected Ok.");
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn revert_last_body_success() -> Result<(), anyhow::Error> {
+    let (_, mut writer) = get_test_storage();
+    writer.begin_rw_txn()?.append_body(BlockNumber::new(0), &BlockBody::default())?.commit()?;
+    writer.begin_rw_txn()?.revert_body(BlockNumber::new(0))?.commit()?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn revert_old_body_fails() -> Result<(), anyhow::Error> {
+    let (_, mut writer) = get_test_storage();
+    append_2_bodies(&mut writer)?;
+    if let Err(err) = writer.begin_rw_txn()?.revert_body(BlockNumber::new(0)) {
+        assert_matches!(
+            err,
+            StorageError::InvalidRevert {
+                revert_block_number,
+                block_number_marker
+            }
+            if revert_block_number == BlockNumber::new(0) && block_number_marker == BlockNumber::new(2)
+        );
+    } else {
+        panic!("Unexpected Ok.");
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn revert_body_updates_marker() -> Result<(), anyhow::Error> {
+    let (reader, mut writer) = get_test_storage();
+    append_2_bodies(&mut writer)?;
+
+    // Verify that the body marker before revert is 2.
+    assert_eq!(reader.begin_ro_txn()?.get_body_marker()?, BlockNumber::new(2));
+
+    writer.begin_rw_txn()?.revert_body(BlockNumber::new(1))?.commit()?;
+    assert_eq!(reader.begin_ro_txn()?.get_body_marker()?, BlockNumber::new(1));
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn get_reverted_body_returns_none() -> Result<(), anyhow::Error> {
+    let (reader, mut writer) = get_test_storage();
+    append_2_bodies(&mut writer)?;
+
+    // Verify that we can get block 1's transactions before the revert.
+    assert!(reader.begin_ro_txn()?.get_block_transactions(BlockNumber::new(1))?.is_some());
+    assert!(reader.begin_ro_txn()?.get_block_transaction_outputs(BlockNumber::new(1))?.is_some());
+
+    writer.begin_rw_txn()?.revert_body(BlockNumber::new(1))?.commit()?;
+    assert!(reader.begin_ro_txn()?.get_block_transactions(BlockNumber::new(1))?.is_none());
+    assert!(reader.begin_ro_txn()?.get_block_transaction_outputs(BlockNumber::new(1))?.is_none());
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn revert_transactions() -> Result<(), anyhow::Error> {
+    let (reader, mut writer) = get_test_storage();
+    let body = get_test_body(10);
+    writer.begin_rw_txn()?.append_body(BlockNumber::new(0), &body)?.commit()?;
+
+    for (offset, tx_hash) in body.transactions().iter().map(|tx| tx.transaction_hash()).enumerate()
+    {
+        let tx_index = TransactionIndex(BlockNumber::new(0), TransactionOffsetInBlock(offset));
+
+        assert!(reader.begin_ro_txn()?.get_transaction(tx_index)?.is_some());
+        assert!(reader.begin_ro_txn()?.get_transaction_output(tx_index)?.is_some());
+        assert_eq!(
+            reader.begin_ro_txn()?.get_transaction_idx_by_hash(&tx_hash)?.unwrap(),
+            tx_index
+        );
+    }
+
+    writer.begin_rw_txn()?.revert_body(BlockNumber::new(0))?.commit()?;
+
+    for (offset, tx_hash) in body.transactions().iter().map(|tx| tx.transaction_hash()).enumerate()
+    {
+        let tx_index = TransactionIndex(BlockNumber::new(0), TransactionOffsetInBlock(offset));
+
+        assert!(reader.begin_ro_txn()?.get_transaction(tx_index)?.is_none());
+        assert!(reader.begin_ro_txn()?.get_transaction_output(tx_index)?.is_none());
+        assert!(reader.begin_ro_txn()?.get_transaction_idx_by_hash(&tx_hash)?.is_none());
+    }
+
+    Ok(())
+}
+
+fn append_2_bodies(writer: &mut StorageWriter) -> Result<(), anyhow::Error> {
+    writer
+        .begin_rw_txn()?
+        .append_body(BlockNumber::new(0), &BlockBody::default())?
+        .append_body(BlockNumber::new(1), &BlockBody::default())?
+        .commit()?;
+
     Ok(())
 }
