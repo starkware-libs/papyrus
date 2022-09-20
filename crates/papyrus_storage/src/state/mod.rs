@@ -17,6 +17,7 @@ pub type DeployedContractsTable<'env> = TableHandle<'env, ContractAddress, Index
 pub type ContractStorageTable<'env> =
     TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), StarkFelt>;
 pub type NoncesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumber), Nonce>;
+use log::warn;
 
 // Structure of state data:
 // * declared_classes: (class_hash) -> (block_num, contract_class). Each entry specifies at which
@@ -51,6 +52,8 @@ where
         // state diff.
         deployed_contract_class_definitions: Vec<DeclaredContract>,
     ) -> StorageResult<Self>;
+
+    fn revert_state_diff(self, block_number: BlockNumber) -> StorageResult<Self>;
 }
 
 impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for StorageTxn<'env, Mode> {
@@ -107,6 +110,65 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         state_diffs_table.insert(&self.txn, &block_number, &thin_state_diff)?;
 
         Ok(self)
+    }
+
+    fn revert_state_diff(self, block_number: BlockNumber) -> StorageResult<Self> {
+        let markers_table = self.txn.open_table(&self.tables.markers)?;
+        let declared_classes_table = self.txn.open_table(&self.tables.declared_classes)?;
+        let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
+        let nonces_table = self.txn.open_table(&self.tables.nonces)?;
+        let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
+        let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
+
+        let current_state_marker = self.get_state_marker()?;
+
+        // State diffs are synced after the blocks, so it might happen that we try to revert a state
+        // diff that wasn't synced yet.
+        if current_state_marker < block_number {
+            warn!(
+                "Attempt to revert non-existing state diff of block {:?}. Returning without \
+                 action.",
+                block_number
+            );
+            return Ok(self);
+        }
+
+        if current_state_marker != block_number.next() {
+            return Err(StorageError::InvalidRevert {
+                revert_block_number: block_number,
+                block_number_marker: current_state_marker,
+            });
+        }
+        markers_table.upsert(&self.txn, &MarkerKind::State, &block_number)?;
+
+        if let Some(thin_state_diff) = self.get_state_diff(block_number)? {
+            delete_declared_classes(
+                &self.txn,
+                block_number,
+                &thin_state_diff,
+                &declared_classes_table,
+            )?;
+
+            delete_deployed_contracts(
+                &self.txn,
+                block_number,
+                &thin_state_diff,
+                &deployed_contracts_table,
+                &nonces_table,
+            )?;
+
+            delete_storage_diffs(&self.txn, block_number, &thin_state_diff, &storage_table)?;
+
+            delete_nonces(&self.txn, block_number, &thin_state_diff, &nonces_table)?;
+
+            state_diffs_table.delete(&self.txn, &block_number)?;
+
+            Ok(self)
+        } else {
+            Err(StorageError::DBInconsistency {
+                msg: format!("StateDiff {} doesn't exist.", block_number),
+            })
+        }
     }
 }
 
@@ -219,6 +281,76 @@ fn write_storage_diffs<'env>(
         for StorageEntry { key, value } in storage_entries {
             storage_table.upsert(txn, &(*address, key.clone(), block_number), value)?;
         }
+    }
+    Ok(())
+}
+
+fn delete_declared_classes<'env>(
+    txn: &'env DbTransaction<'env, RW>,
+    block_number: BlockNumber,
+    thin_state_diff: &ThinStateDiff,
+    declared_classes_table: &'env DeclaredClassesTable<'env>,
+) -> StorageResult<()> {
+    for declared_contract_hash in thin_state_diff.declared_contract_hashes() {
+        let maybe_indexed_declared_class =
+            declared_classes_table.get(txn, declared_contract_hash)?;
+        match maybe_indexed_declared_class {
+            None => StorageError::DBInconsistency {
+                msg: format!("Missing declared class {:#?}", declared_contract_hash),
+            },
+            Some(IndexedDeclaredContract {
+                block_number: declared_block_number,
+                contract_class: _,
+            }) => {
+                // If the class was declared in a different block then we should'nt delete it.
+                // TODO(yair): add test for this situation.
+                if block_number == declared_block_number {
+                    declared_classes_table.delete(txn, declared_contract_hash)?;
+                }
+                continue;
+            }
+        };
+    }
+
+    Ok(())
+}
+
+fn delete_deployed_contracts<'env>(
+    txn: &'env DbTransaction<'env, RW>,
+    block_number: BlockNumber,
+    thin_state_diff: &ThinStateDiff,
+    deployed_contracts_table: &'env DeployedContractsTable<'env>,
+    nonces_table: &'env NoncesTable<'env>,
+) -> StorageResult<()> {
+    for contract_address in thin_state_diff.deployed_contracts().iter().map(|dc| dc.address) {
+        deployed_contracts_table.delete(txn, &contract_address)?;
+        nonces_table.delete(txn, &(contract_address, block_number))?;
+    }
+    Ok(())
+}
+
+fn delete_storage_diffs<'env>(
+    txn: &'env DbTransaction<'env, RW>,
+    block_number: BlockNumber,
+    thin_state_diff: &ThinStateDiff,
+    storage_table: &'env ContractStorageTable<'env>,
+) -> StorageResult<()> {
+    for StorageDiff { address, storage_entries } in thin_state_diff.storage_diffs() {
+        for StorageEntry { key, value: _ } in storage_entries {
+            storage_table.delete(txn, &(*address, key.clone(), block_number))?;
+        }
+    }
+    Ok(())
+}
+
+fn delete_nonces<'env>(
+    txn: &'env DbTransaction<'env, RW>,
+    block_number: BlockNumber,
+    thin_state_diff: &ThinStateDiff,
+    contracts_table: &'env NoncesTable<'env>,
+) -> StorageResult<()> {
+    for contract_nonce in thin_state_diff.nonces() {
+        contracts_table.delete(txn, &(contract_nonce.contract_address, block_number))?;
     }
     Ok(())
 }

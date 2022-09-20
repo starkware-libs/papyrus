@@ -1,4 +1,5 @@
 use assert_matches::assert_matches;
+use logtest::Logger;
 use starknet_api::{
     shash, BlockNumber, ClassHash, ContractAddress, ContractClass, ContractNonce, DeclaredContract,
     DeployedContract, Nonce, StarkHash, StateDiff, StateNumber, StorageDiff, StorageEntry,
@@ -6,7 +7,8 @@ use starknet_api::{
 };
 
 use super::{StateStorageReader, StateStorageWriter, StorageError};
-use crate::test_utils::get_test_storage;
+use crate::test_utils::{get_test_state_diff, get_test_storage};
+use crate::StorageWriter;
 
 #[test]
 fn append_state_diff() -> Result<(), anyhow::Error> {
@@ -173,6 +175,92 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     assert_eq!(statetxn.get_storage_at(state0, &c1, &key0)?, shash!("0x0"));
     assert_eq!(statetxn.get_storage_at(state1, &c1, &key0)?, shash!("0x0"));
     assert_eq!(statetxn.get_storage_at(state2, &c1, &key0)?, shash!("0x0"));
+
+    Ok(())
+}
+
+#[test]
+fn revert_non_existing_state_diff() -> Result<(), anyhow::Error> {
+    let (_, mut writer) = get_test_storage();
+
+    let mut logger = Logger::start();
+    let block_number = BlockNumber::new(5);
+    writer.begin_rw_txn()?.revert_state_diff(block_number)?;
+    let expected_warn = format!(
+        "Attempt to revert non-existing state diff of block {:?}. Returning without action.",
+        block_number
+    );
+    assert_eq!(logger.pop().unwrap().args(), expected_warn);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn revert_last_state_diff_success() -> Result<(), anyhow::Error> {
+    let (_, mut writer) = get_test_storage();
+    let (_, _, state_diff, declared_contracts) = get_test_state_diff();
+    writer
+        .begin_rw_txn()?
+        .append_state_diff(BlockNumber::new(0), state_diff, declared_contracts)?
+        .commit()?;
+
+    writer.begin_rw_txn()?.revert_state_diff(BlockNumber::new(0))?.commit()?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn revert_old_state_diff_fails() -> Result<(), anyhow::Error> {
+    let (_, mut writer) = get_test_storage();
+    append_2_state_diffs(&mut writer)?;
+    if let Err(err) = writer.begin_rw_txn()?.revert_state_diff(BlockNumber::new(0)) {
+        assert_matches!(
+            err,
+            StorageError::InvalidRevert {
+                revert_block_number,
+                block_number_marker
+            }
+            if revert_block_number == BlockNumber::new(0) && block_number_marker == BlockNumber::new(2)
+        );
+    } else {
+        panic!("Unexpected Ok.");
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn revert_state_diff_updates_marker() -> Result<(), anyhow::Error> {
+    let (reader, mut writer) = get_test_storage();
+    append_2_state_diffs(&mut writer)?;
+
+    // Verify that the state marker before revert is 2.
+    assert_eq!(reader.begin_ro_txn()?.get_state_marker()?, BlockNumber::new(2));
+
+    writer.begin_rw_txn()?.revert_state_diff(BlockNumber::new(1))?.commit()?;
+    assert_eq!(reader.begin_ro_txn()?.get_state_marker()?, BlockNumber::new(1));
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn get_reverted_state_diff_returns_none() -> Result<(), anyhow::Error> {
+    let (reader, mut writer) = get_test_storage();
+    append_2_state_diffs(&mut writer)?;
+
+    // Verify that we can get block 1's state before the revert.
+    assert!(reader.begin_ro_txn()?.get_state_diff(BlockNumber::new(1))?.is_some());
+
+    writer.begin_rw_txn()?.revert_state_diff(BlockNumber::new(1))?.commit()?;
+    assert!(reader.begin_ro_txn()?.get_state_diff(BlockNumber::new(1))?.is_none());
+
+    Ok(())
+}
+
+fn append_2_state_diffs(writer: &mut StorageWriter) -> Result<(), anyhow::Error> {
+    writer
+        .begin_rw_txn()?
+        .append_state_diff(BlockNumber::new(0), StateDiff::default(), vec![])?
+        .append_state_diff(BlockNumber::new(1), StateDiff::default(), vec![])?
+        .commit()?;
 
     Ok(())
 }

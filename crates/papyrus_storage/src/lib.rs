@@ -63,6 +63,8 @@ pub enum StorageError {
         "Cannot revert block {revert_block_number:?}, current marker is {block_number_marker:?}."
     )]
     InvalidRevert { revert_block_number: BlockNumber, block_number_marker: BlockNumber },
+    #[error("DB in inconsistent state: {msg:?}.")]
+    DBInconsistency { msg: String },
 }
 pub type StorageResult<V> = std::result::Result<V, StorageError>;
 

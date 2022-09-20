@@ -25,4 +25,5 @@ url = { version = "2.2.2" }
 [dev-dependencies]
 anyhow = { version = "1.0.44" }
 assert_matches = { version = "1.5.0" }
+logtest = { version = "2.0.0" }
 starknet_api = { path = "../starknet_api", features = ["testing"] }
