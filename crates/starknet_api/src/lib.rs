@@ -37,4 +37,6 @@ pub enum StarknetApiError {
     OutOfRange { string: String },
     #[error("Transactions and transaction outputs don't have the same length.")]
     TransationsLengthDontMatch,
+    #[error("Duplicate key in StateDiff: {object}.")]
+    DuplicateInStateDiff { object: String },
 }
