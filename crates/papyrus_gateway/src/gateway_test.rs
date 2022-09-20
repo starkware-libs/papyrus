@@ -80,7 +80,8 @@ fn get_test_state_diff()
             ContractNonce { contract_address: address0, nonce: Nonce::new(StarkHash::from_u64(1)) },
             ContractNonce { contract_address: address1, nonce: Nonce::new(StarkHash::from_u64(1)) },
         ],
-    );
+    )
+    .unwrap();
 
     (parent_header, header, diff, vec![])
 }

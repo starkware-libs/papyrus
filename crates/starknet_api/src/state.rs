@@ -126,18 +126,46 @@ pub struct StateDiff {
 type StateDiffAsTuple =
     (Vec<DeployedContract>, Vec<StorageDiff>, Vec<DeclaredContract>, Vec<ContractNonce>);
 
+fn is_unique<T, B, F>(sorted: &Vec<T>, f: F) -> bool
+where
+    F: Fn(&T) -> B,
+    B: PartialEq,
+{
+    sorted.as_slice().windows(2).all(|w| f(&w[0]) != f(&w[1]))
+}
+
 impl StateDiff {
     pub fn new(
         mut deployed_contracts: Vec<DeployedContract>,
         mut storage_diffs: Vec<StorageDiff>,
         mut declared_contracts: Vec<DeclaredContract>,
         mut nonces: Vec<ContractNonce>,
-    ) -> Self {
+    ) -> Result<Self, StarknetApiError> {
         deployed_contracts.sort_by_key(|dc| dc.address);
         storage_diffs.sort_by_key(|sd| sd.address);
         declared_contracts.sort_by_key(|dc| dc.class_hash);
         nonces.sort_by_key(|n| n.contract_address);
-        Self { deployed_contracts, storage_diffs, declared_classes: declared_contracts, nonces }
+
+        if !is_unique(&deployed_contracts, |dc| dc.address) {
+            return Err(StarknetApiError::DuplicateInStateDiff {
+                object: String::from("deployed_contracts"),
+            });
+        }
+        if !is_unique(&storage_diffs, |sd| sd.address) {
+            return Err(StarknetApiError::DuplicateInStateDiff {
+                object: String::from("storage_diffs"),
+            });
+        }
+        if !is_unique(&declared_contracts, |dc| dc.class_hash) {
+            return Err(StarknetApiError::DuplicateInStateDiff {
+                object: String::from("declared_contracts"),
+            });
+        }
+        if !is_unique(&nonces, |n| n.contract_address) {
+            return Err(StarknetApiError::DuplicateInStateDiff { object: String::from("nonces") });
+        }
+
+        Ok(Self { deployed_contracts, storage_diffs, declared_classes: declared_contracts, nonces })
     }
 
     pub fn destruct(self) -> StateDiffAsTuple {
