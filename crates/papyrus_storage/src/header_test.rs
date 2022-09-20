@@ -144,3 +144,23 @@ fn append_2_headers(writer: &mut StorageWriter) -> Result<(), anyhow::Error> {
 
     Ok(())
 }
+
+#[tokio::test]
+async fn revert_header_adds_ommer() -> Result<(), anyhow::Error> {
+    let (reader, mut writer) = get_test_storage();
+    assert!(reader.begin_ro_txn()?.get_ommer_block_header(BlockHash::default())?.is_none());
+    writer.begin_rw_txn()?.append_header(BlockNumber::new(0), &BlockHeader::default())?.commit()?;
+    writer.begin_rw_txn()?.revert_header(BlockNumber::new(0))?.commit()?;
+    assert!(reader.begin_ro_txn()?.get_ommer_block_header(BlockHash::default())?.is_some());
+    Ok(())
+}
+
+#[tokio::test]
+async fn insert_ommer() -> Result<(), anyhow::Error> {
+    let (reader, mut writer) = get_test_storage();
+    let hash = BlockHash::new(shash!("0x0"));
+    assert!(reader.begin_ro_txn()?.get_ommer_block_header(hash)?.is_none());
+    writer.begin_rw_txn()?.insert_ommer_header(hash, &BlockHeader::default())?.commit()?;
+    assert!(reader.begin_ro_txn()?.get_ommer_block_header(hash)?.is_some());
+    Ok(())
+}

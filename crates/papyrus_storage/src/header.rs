@@ -17,6 +17,8 @@ pub trait HeaderStorageReader {
         &self,
         block_hash: &BlockHash,
     ) -> StorageResult<Option<BlockNumber>>;
+
+    fn get_ommer_block_header(&self, block_hash: BlockHash) -> StorageResult<Option<BlockHeader>>;
 }
 pub trait HeaderStorageWriter
 where
@@ -30,6 +32,12 @@ where
     ) -> StorageResult<Self>;
 
     fn revert_header(self, block_number: BlockNumber) -> StorageResult<Self>;
+
+    fn insert_ommer_header(
+        self,
+        block_hash: BlockHash,
+        block_header: &BlockHeader,
+    ) -> StorageResult<Self>;
 }
 impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode> {
     fn get_header_marker(&self) -> StorageResult<BlockNumber> {
@@ -48,6 +56,13 @@ impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode>
         let block_hash_to_number_table = self.txn.open_table(&self.tables.block_hash_to_number)?;
         let block_number = block_hash_to_number_table.get(&self.txn, block_hash)?;
         Ok(block_number)
+    }
+
+    fn get_ommer_block_header(&self, block_hash: BlockHash) -> StorageResult<Option<BlockHeader>> {
+        let ommer_headers_table = self.txn.open_table(&self.tables.ommer_headers)?;
+        let block_header = ommer_headers_table.get(&self.txn, &block_hash)?;
+
+        Ok(block_header)
     }
 }
 impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
@@ -74,6 +89,7 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let headers_table = self.txn.open_table(&self.tables.headers)?;
         let block_hash_to_number_table = self.txn.open_table(&self.tables.block_hash_to_number)?;
+        let ommer_table = self.txn.open_table(&self.tables.ommer_headers)?;
 
         // Assert that header marker equals the reverted block number + 1
         let current_header_marker = self.get_header_marker()?;
@@ -84,11 +100,22 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
             });
         }
 
-        let reverted_block_hash = headers_table.get(&self.txn, &block_number)?.unwrap().block_hash;
+        let reverted_block = headers_table.get(&self.txn, &block_number)?.unwrap();
 
         markers_table.upsert(&self.txn, &MarkerKind::Header, &block_number)?;
         headers_table.delete(&self.txn, &block_number)?;
-        block_hash_to_number_table.delete(&self.txn, &reverted_block_hash)?;
+        block_hash_to_number_table.delete(&self.txn, &reverted_block.block_hash)?;
+        insert_ommer(&self.txn, &ommer_table, reverted_block.block_hash, &reverted_block)?;
+        Ok(self)
+    }
+
+    fn insert_ommer_header(
+        self,
+        block_hash: BlockHash,
+        block_header: &BlockHeader,
+    ) -> StorageResult<Self> {
+        let ommer_headers_table = self.txn.open_table(&self.tables.ommer_headers)?;
+        insert_ommer(&self.txn, &ommer_headers_table, block_hash, block_header)?;
         Ok(self)
     }
 }
@@ -123,5 +150,16 @@ fn update_marker<'env>(
 
     // Advance marker.
     markers_table.upsert(txn, &MarkerKind::Header, &block_number.next())?;
+    Ok(())
+}
+
+type OmmerHeadersTable<'env> = TableHandle<'env, BlockHash, BlockHeader>;
+fn insert_ommer<'env>(
+    txn: &DbTransaction<'env, RW>,
+    ommer_table: &'env OmmerHeadersTable<'env>,
+    block_hash: BlockHash,
+    block_header: &BlockHeader,
+) -> StorageResult<()> {
+    ommer_table.insert(&txn, &block_hash, block_header)?;
     Ok(())
 }
