@@ -1,7 +1,9 @@
 use starknet_api::{
     shash, Block, BlockBody, BlockHash, BlockHeader, BlockNumber, CallData, ClassHash,
-    ContractAddress, ContractAddressSalt, DeployTransaction, DeployTransactionOutput, Fee,
-    StarkHash, Transaction, TransactionHash, TransactionOutput, TransactionVersion,
+    ContractAddress, ContractAddressSalt, ContractClass, ContractNonce, DeclaredContract,
+    DeployTransaction, DeployTransactionOutput, DeployedContract, Fee, GlobalRoot, Nonce,
+    StarkHash, StorageDiff, StorageEntry, StorageKey, Transaction, TransactionHash,
+    TransactionOutput, TransactionVersion,
 };
 use tempfile::tempdir;
 
@@ -54,4 +56,67 @@ pub fn get_test_block(transaction_count: usize) -> Block {
     };
 
     Block { header, body: get_test_body(transaction_count) }
+}
+
+pub fn get_test_state_diff()
+-> (BlockHeader, BlockHeader, starknet_api::StateDiff, Vec<DeclaredContract>) {
+    let parent_hash =
+        BlockHash::new(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
+    let state_root = GlobalRoot::new(shash!("0x12"));
+    let parent_header = BlockHeader {
+        block_number: BlockNumber::new(0),
+        block_hash: parent_hash,
+        state_root,
+        ..BlockHeader::default()
+    };
+
+    let block_hash =
+        BlockHash::new(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5493"));
+    let header = BlockHeader {
+        block_number: BlockNumber::new(1),
+        block_hash,
+        parent_hash,
+        ..BlockHeader::default()
+    };
+
+    let address0 = ContractAddress::try_from(shash!("0x11")).unwrap();
+    let hash0 = ClassHash::new(shash!("0x4"));
+    let address1 = ContractAddress::try_from(shash!("0x21")).unwrap();
+    let hash1 = ClassHash::new(shash!("0x5"));
+    let class0 = ContractClass::default();
+    let class1 = ContractClass::default();
+    let key0 = StorageKey::try_from(shash!("0x1001")).unwrap();
+    let value0 = shash!("0x200");
+    let key1 = StorageKey::try_from(shash!("0x1002")).unwrap();
+    let value1 = shash!("0x201");
+    let diff = starknet_api::StateDiff::new(
+        vec![
+            DeployedContract { address: address0, class_hash: hash0 },
+            DeployedContract { address: address1, class_hash: hash1 },
+        ],
+        vec![
+            StorageDiff {
+                address: address0,
+                storage_entries: vec![
+                    StorageEntry { key: key0.clone(), value: value0 },
+                    StorageEntry { key: key1, value: value1 },
+                ],
+            },
+            StorageDiff {
+                address: address1,
+                storage_entries: vec![StorageEntry { key: key0, value: value0 }],
+            },
+        ],
+        vec![
+            DeclaredContract { class_hash: hash0, contract_class: class0 },
+            DeclaredContract { class_hash: hash1, contract_class: class1 },
+        ],
+        vec![
+            ContractNonce { contract_address: address0, nonce: Nonce::new(StarkHash::from_u64(1)) },
+            ContractNonce { contract_address: address1, nonce: Nonce::new(StarkHash::from_u64(1)) },
+        ],
+    )
+    .unwrap();
+
+    (parent_header, header, diff, vec![])
 }
