@@ -244,7 +244,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         }
 
         // Get the block state diff.
-        let db_state_diff = txn
+        let thin_state_diff = txn
             .get_state_diff(block_number)
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::BlockNotFound))?;
@@ -253,7 +253,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
             block_hash: header.block_hash,
             new_root: header.new_root,
             old_root,
-            state_diff: db_state_diff.into(),
+            state_diff: thin_state_diff,
         })
     }
 

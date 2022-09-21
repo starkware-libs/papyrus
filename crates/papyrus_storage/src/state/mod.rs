@@ -8,6 +8,7 @@ use starknet_api::{
     StateDiff, StateNumber, StorageDiff, StorageEntry, StorageKey,
 };
 
+use self::data::split_diff_for_storage;
 pub use self::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
 use super::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use super::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
@@ -51,23 +52,6 @@ where
         // state diff.
         deployed_contract_class_definitions: Vec<DeclaredContract>,
     ) -> StorageResult<Self>;
-}
-
-fn split_diff_for_storage(
-    state_diff: StateDiff,
-    deployed_contract_class_definitions: Vec<DeclaredContract>,
-) -> (ThinStateDiff, Vec<DeclaredContract>) {
-    let (deployed_contracts, storage_diffs, mut declared_classes, nonces) = state_diff.destruct();
-    let thin_state_diff = ThinStateDiff {
-        deployed_contracts,
-        storage_diffs,
-        declared_classes: Vec::from_iter(
-            declared_classes.iter().map(|declared_contract| declared_contract.class_hash),
-        ),
-        nonces,
-    };
-    declared_classes.extend(deployed_contract_class_definitions.into_iter());
-    (thin_state_diff, declared_classes)
 }
 
 impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for StorageTxn<'env, Mode> {
@@ -174,7 +158,7 @@ fn write_deployed_contracts<'env>(
     deployed_contracts_table: &'env DeployedContractsTable<'env>,
     nonces_table: &'env NoncesTable<'env>,
 ) -> StorageResult<()> {
-    for deployed_contract in &state_diff.deployed_contracts {
+    for deployed_contract in state_diff.deployed_contracts() {
         let class_hash = deployed_contract.class_hash;
         let value = IndexedDeployedContract { block_number, class_hash };
         deployed_contracts_table.insert(txn, &deployed_contract.address, &value).map_err(
@@ -210,7 +194,7 @@ fn write_nonces<'env>(
     block_number: BlockNumber,
     contracts_table: &'env NoncesTable<'env>,
 ) -> StorageResult<()> {
-    for contract_nonce in &state_diff.nonces {
+    for contract_nonce in state_diff.nonces() {
         contracts_table.upsert(
             txn,
             &(contract_nonce.contract_address, block_number),
@@ -226,7 +210,7 @@ fn write_storage_diffs<'env>(
     block_number: BlockNumber,
     storage_table: &'env ContractStorageTable<'env>,
 ) -> StorageResult<()> {
-    for StorageDiff { address, storage_entries } in &state_diff.storage_diffs {
+    for StorageDiff { address, storage_entries } in state_diff.storage_diffs() {
         for StorageEntry { key, value } in storage_entries {
             storage_table.upsert(txn, &(*address, key.clone(), block_number), value)?;
         }
