@@ -1119,19 +1119,20 @@ async fn run_server_scneario() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn read_resource_file(path_in_resource_dir: &str) -> String {
+fn read_resource_file(path_in_resource_dir: &str) -> Result<String, anyhow::Error> {
     let path = Path::new(&env::current_dir().expect("Problem with the current directory."))
         .join("resources")
         .join(path_in_resource_dir);
-    read_to_string(path.to_str().unwrap())
-        .expect("Failed to read resource file.")
-        .replace('\n', "")
-        .replace(' ', "")
+    Ok(read_to_string(path.to_str().unwrap())?.replace('\n', "").replace(' ', ""))
 }
 
-async fn send_request(address: SocketAddr, method: &str, params: &str) -> String {
+async fn send_request(
+    address: SocketAddr,
+    method: &str,
+    params: &str,
+) -> Result<String, anyhow::Error> {
     let client = Client::new();
-    client
+    Ok(client
         .post(format!("http://{:?}", address))
         .header("Content-Type", "application/json")
         .body(format!(
@@ -1139,15 +1140,13 @@ async fn send_request(address: SocketAddr, method: &str, params: &str) -> String
             method, params
         ))
         .send()
-        .await
-        .expect("Failed to send request.")
+        .await?
         .text()
-        .await
-        .expect("Failed to get response text.")
+        .await?)
 }
 
 #[tokio::test]
-async fn serde() -> Result<(), anyhow::Error> {
+async fn serialize_returns_expcted_json() -> Result<(), anyhow::Error> {
     let mut db_config = get_test_config();
     let path = Path::new(&env::current_dir().expect("Problem with the current directory."))
         .join("resources/data/mdbx.dat");
@@ -1156,8 +1155,7 @@ async fn serde() -> Result<(), anyhow::Error> {
     let gateway_config = GatewayConfig { server_ip: String::from("127.0.0.1:0") };
 
     let (storage_reader, _writer) = open_storage(db_config).expect("Failed to open storage.");
-    let (server_address, _handle) =
-        run_server(gateway_config, storage_reader).await.expect("Failed to run server.");
+    let (server_address, _handle) = run_server(gateway_config, storage_reader).await?;
 
     serde_block(server_address).await?;
     serde_transaction(server_address).await?;
@@ -1165,19 +1163,22 @@ async fn serde() -> Result<(), anyhow::Error> {
 }
 
 async fn serde_block(server_address: SocketAddr) -> Result<(), anyhow::Error> {
-    let res = send_request(server_address, "starknet_getBlockWithTxs", r#"{"block_number": 1}"#);
-    assert_eq!(res.await, read_resource_file("block_with_transactions.json"));
+    let res =
+        send_request(server_address, "starknet_getBlockWithTxs", r#"{"block_number": 1}"#).await?;
+    assert_eq!(res, read_resource_file("block_with_transactions.json")?);
 
     let res = send_request(
         server_address,
         "starknet_getBlockWithTxHashes",
         r#"{"block_hash": "0x11172ea58125f54df2c07df73accd9236558944ec0ee650d80968f863267764"}"#,
-    );
-    assert_eq!(res.await, read_resource_file("block_with_transaction_hashes.json"));
+    )
+    .await?;
+    assert_eq!(res, read_resource_file("block_with_transaction_hashes.json")?);
 
     let res =
-        send_request(server_address, "starknet_getBlockTransactionCount", r#"{"block_number": 6}"#);
-    assert_eq!(res.await, r#"{"jsonrpc":"2.0","result":3,"id":"1"}"#);
+        send_request(server_address, "starknet_getBlockTransactionCount", r#"{"block_number": 6}"#)
+            .await?;
+    assert_eq!(res, r#"{"jsonrpc":"2.0","result":3,"id":"1"}"#);
 
     Ok(())
 }
@@ -1187,22 +1188,25 @@ async fn serde_transaction(server_address: SocketAddr) -> Result<(), anyhow::Err
         server_address,
         "starknet_getTransactionByBlockIdAndIndex",
         r#"{"block_number": 1}, 0"#,
-    );
-    assert_eq!(res.await, read_resource_file("deploy_transaction.json"));
+    )
+    .await?;
+    assert_eq!(res, read_resource_file("deploy_transaction.json")?);
 
     let res = send_request(
         server_address,
         "starknet_getTransactionByHash",
         r#""0x4dd12d3b82c3d0b216503c6abf63f1ccad222461582eac82057d46c327331d2""#,
-    );
-    assert_eq!(res.await, read_resource_file("deploy_transaction.json"));
+    )
+    .await?;
+    assert_eq!(res, read_resource_file("deploy_transaction.json")?);
 
     let res = send_request(
         server_address,
         "starknet_getTransactionReceipt",
         r#""0x6525d9aa309e5c80abbdafcc434d53202e06866597cd6dbbc91e5894fad7155""#,
-    );
-    assert_eq!(res.await, read_resource_file("invoke_transaction_receipt.json"));
+    )
+    .await?;
+    assert_eq!(res, read_resource_file("invoke_transaction_receipt.json")?);
 
     Ok(())
 }
