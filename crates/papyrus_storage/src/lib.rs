@@ -2,6 +2,7 @@ mod body;
 pub mod compression_utils;
 mod db;
 mod header;
+mod ommer;
 mod serializers;
 mod state;
 
@@ -15,8 +16,9 @@ use std::sync::Arc;
 use db::DbTableStats;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, Nonce, StarkFelt, StorageKey,
-    Transaction, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
+    Block, BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, DeclaredContract,
+    Nonce, StarkFelt, StateDiff, StorageKey, Transaction, TransactionHash,
+    TransactionOffsetInBlock, TransactionOutput,
 };
 use state::{IndexedDeclaredContract, IndexedDeployedContract};
 
@@ -27,6 +29,7 @@ use self::db::{
     RO, RW,
 };
 pub use self::header::{HeaderStorageReader, HeaderStorageWriter};
+pub use self::ommer::OmmerStorageWriter;
 pub use self::state::{StateStorageReader, StateStorageWriter, ThinStateDiff};
 
 #[derive(Serialize, Deserialize)]
@@ -64,6 +67,8 @@ pub enum StorageError {
         "Cannot revert block {revert_block_number:?}, current marker is {block_number_marker:?}."
     )]
     InvalidRevert { revert_block_number: BlockNumber, block_number_marker: BlockNumber },
+    #[error(transparent)]
+    SerdeError(#[from] serde_json::Error),
 }
 pub type StorageResult<V> = std::result::Result<V, StorageError>;
 
@@ -98,18 +103,19 @@ macro_rules! struct_field_names {
 
 struct_field_names! {
     struct Tables {
-        markers: TableIdentifier<MarkerKind, BlockNumber>,
-        nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
-        headers: TableIdentifier<BlockNumber, BlockHeader>,
         block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
-        transactions: TableIdentifier<TransactionIndex, Transaction>,
-        transaction_outputs: TableIdentifier<TransactionIndex, TransactionOutput>,
-        transaction_hash_to_idx:
-            TableIdentifier<TransactionHash, TransactionIndex>,
-        state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
+        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
         declared_classes: TableIdentifier<ClassHash, IndexedDeclaredContract>,
         deployed_contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
-        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>
+        headers: TableIdentifier<BlockNumber, BlockHeader>,
+        markers: TableIdentifier<MarkerKind, BlockNumber>,
+        nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
+        ommer_blocks: TableIdentifier<BlockHash, Block>,
+        ommer_state_diffs: TableIdentifier<BlockHash, (StateDiff, Vec<DeclaredContract>)>,
+        state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
+        transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
+        transaction_outputs: TableIdentifier<TransactionIndex, TransactionOutput>,
+        transactions: TableIdentifier<TransactionIndex, Transaction>
     }
 }
 
@@ -164,6 +170,8 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         declared_classes: db_writer.create_table("declared_classes")?,
         deployed_contracts: db_writer.create_table("deployed_contracts")?,
         headers: db_writer.create_table("headers")?,
+        ommer_blocks: db_writer.create_table("ommer_blocks")?,
+        ommer_state_diffs: db_writer.create_table("ommer_state_diffs")?,
         markers: db_writer.create_table("markers")?,
         nonces: db_writer.create_table("nonces")?,
         state_diffs: db_writer.create_table("state_diffs")?,
