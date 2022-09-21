@@ -1,6 +1,7 @@
 mod body;
 mod db;
 mod header;
+mod ommer;
 mod serializers;
 mod state;
 
@@ -14,8 +15,9 @@ use std::sync::Arc;
 use db::DbTableStats;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, Nonce, StarkFelt, StorageKey,
-    Transaction, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
+    Block, BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, DeclaredContract,
+    Nonce, StarkFelt, StateDiff, StorageKey, Transaction, TransactionHash,
+    TransactionOffsetInBlock, TransactionOutput,
 };
 use state::{IndexedDeclaredContract, IndexedDeployedContract};
 
@@ -26,6 +28,7 @@ use self::db::{
     RO, RW,
 };
 pub use self::header::{HeaderStorageReader, HeaderStorageWriter};
+pub use self::ommer::OmmerStorageWriter;
 pub use self::state::{StateStorageReader, StateStorageWriter, ThinStateDiff};
 
 #[derive(Serialize, Deserialize)]
@@ -63,6 +66,8 @@ pub enum StorageError {
         "Cannot revert block {revert_block_number:?}, current marker is {block_number_marker:?}."
     )]
     InvalidRevert { revert_block_number: BlockNumber, block_number_marker: BlockNumber },
+    #[error(transparent)]
+    SerdeError(#[from] serde_json::Error),
 }
 pub type StorageResult<V> = std::result::Result<V, StorageError>;
 
@@ -79,6 +84,24 @@ pub enum MarkerKind {
     State,
 }
 pub type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
+
+// Keeping serialization of (StateDiff, Vec<DeclaredContract>) since the storage serde doesn't
+// handle complex types.
+#[derive(Serialize, Deserialize)]
+struct SerializedOmmerStateDiff(String);
+impl SerializedOmmerStateDiff {
+    pub fn try_from(pair: &(StateDiff, Vec<DeclaredContract>)) -> StorageResult<Self> {
+        let serialized = serde_json::to_string(pair).map_err(StorageError::SerdeError)?;
+        Ok(Self(serialized))
+    }
+
+    #[cfg(test)]
+    pub fn try_into(self) -> StorageResult<(StateDiff, Vec<DeclaredContract>)> {
+        let value: (StateDiff, Vec<DeclaredContract>) =
+            serde_json::from_str(self.0.as_str()).map_err(StorageError::SerdeError)?;
+        Ok(value)
+    }
+}
 
 macro_rules! struct_field_names {
     (struct $name:ident { $($fname:ident : $ftype:ty),* }) => {
@@ -97,18 +120,19 @@ macro_rules! struct_field_names {
 
 struct_field_names! {
     struct Tables {
-        markers: TableIdentifier<MarkerKind, BlockNumber>,
-        nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
-        headers: TableIdentifier<BlockNumber, BlockHeader>,
         block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
-        transactions: TableIdentifier<TransactionIndex, Transaction>,
-        transaction_outputs: TableIdentifier<TransactionIndex, TransactionOutput>,
-        transaction_hash_to_idx:
-            TableIdentifier<TransactionHash, TransactionIndex>,
-        state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
+        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
         declared_classes: TableIdentifier<ClassHash, IndexedDeclaredContract>,
         deployed_contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
-        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>
+        headers: TableIdentifier<BlockNumber, BlockHeader>,
+        markers: TableIdentifier<MarkerKind, BlockNumber>,
+        nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
+        ommer_blocks: TableIdentifier<BlockHash, Block>,
+        ommer_state_diffs: TableIdentifier<BlockHash, SerializedOmmerStateDiff>,
+        state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
+        transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
+        transaction_outputs: TableIdentifier<TransactionIndex, TransactionOutput>,
+        transactions: TableIdentifier<TransactionIndex, Transaction>
     }
 }
 
@@ -163,6 +187,8 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         declared_classes: db_writer.create_table("declared_classes")?,
         deployed_contracts: db_writer.create_table("deployed_contracts")?,
         headers: db_writer.create_table("headers")?,
+        ommer_blocks: db_writer.create_table("ommer_blocks")?,
+        ommer_state_diffs: db_writer.create_table("ommer_state_diffs")?,
         markers: db_writer.create_table("markers")?,
         nonces: db_writer.create_table("nonces")?,
         state_diffs: db_writer.create_table("state_diffs")?,
