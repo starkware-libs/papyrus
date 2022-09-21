@@ -4,14 +4,14 @@ use std::hash::Hash;
 
 use integer_encoding::*;
 use starknet_api::{
-    BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, CallData, ClassHash,
-    ContractAddress, ContractAddressSalt, ContractClass, ContractNonce, DeclareTransaction,
-    DeclareTransactionOutput, DeclaredContract, DeployTransaction, DeployTransactionOutput,
-    DeployedContract, EntryPoint, EntryPointOffset, EntryPointSelector, EntryPointType, EthAddress,
-    Event, EventData, EventKey, Fee, GasPrice, GlobalRoot, InvokeTransaction,
-    InvokeTransactionOutput, L1HandlerTransaction, L1HandlerTransactionOutput, L1ToL2Payload,
-    L2ToL1Payload, MessageToL1, MessageToL2, Nonce, PatriciaKey, Program, StarkFelt, StarkHash,
-    StateDiff, StorageDiff, StorageEntry, StorageKey, Transaction, TransactionHash,
+    Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, CallData,
+    ClassHash, ContractAddress, ContractAddressSalt, ContractClass, ContractNonce,
+    DeclareTransaction, DeclareTransactionOutput, DeclaredContract, DeployTransaction,
+    DeployTransactionOutput, DeployedContract, EntryPoint, EntryPointOffset, EntryPointSelector,
+    EntryPointType, EthAddress, Event, EventData, EventKey, Fee, GasPrice, GlobalRoot,
+    InvokeTransaction, InvokeTransactionOutput, L1HandlerTransaction, L1HandlerTransactionOutput,
+    L1ToL2Payload, L2ToL1Payload, MessageToL1, MessageToL2, Nonce, PatriciaKey, Program, StarkFelt,
+    StarkHash, StateDiff, StorageDiff, StorageEntry, StorageKey, Transaction, TransactionHash,
     TransactionOffsetInBlock, TransactionOutput, TransactionSignature, TransactionVersion,
 };
 
@@ -507,6 +507,7 @@ auto_storage_serde! {
     (ContractAddress, BlockNumber);
     (ContractAddress, Nonce);
     (ContractAddress, StorageKey, BlockNumber);
+    (StateDiff, Vec<DeclaredContract>);
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -539,5 +540,40 @@ impl StorageSerde for ThinStateDiff {
                 .ok()?
                 .into(),
         )
+    }
+}
+
+impl StorageSerde for StateDiff {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+        self.deployed_contracts().serialize_into(res)?;
+        self.storage_diffs().serialize_into(res)?;
+        self.declared_contracts().serialize_into(res)?;
+        self.nonces().serialize_into(res)
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        let deployed_contracts = Vec::<DeployedContract>::deserialize_from(bytes)?;
+        let storage_diffs = Vec::<StorageDiff>::deserialize_from(bytes)?;
+        let declared_contracts = Vec::<DeclaredContract>::deserialize_from(bytes)?;
+        let nonces = Vec::<ContractNonce>::deserialize_from(bytes)?;
+
+        StateDiff::new(deployed_contracts, storage_diffs, declared_contracts, nonces).ok()
+    }
+}
+
+impl StorageSerde for Block {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+        self.header.serialize_into(res)?;
+        self.body.transactions().serialize_into(res)?;
+        self.body.transaction_outputs().serialize_into(res)?;
+        Ok(())
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        let header = BlockHeader::deserialize_from(bytes)?;
+        let transactions = Vec::<Transaction>::deserialize_from(bytes)?;
+        let transaction_outputs = Vec::<TransactionOutput>::deserialize_from(bytes)?;
+        let body = BlockBody::new(transactions, transaction_outputs).ok()?;
+        Some(Block { header, body })
     }
 }
