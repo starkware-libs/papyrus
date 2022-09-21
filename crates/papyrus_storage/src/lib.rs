@@ -109,7 +109,8 @@ struct_field_names! {
         declared_classes: TableIdentifier<ClassHash, IndexedDeclaredContract>,
         deployed_contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
         contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
-        ommer_headers: TableIdentifier<BlockHash, BlockHeader>
+        ommer_headers: TableIdentifier<BlockHash, BlockHeader>,
+        ommer_block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>
     }
 }
 
@@ -171,6 +172,7 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         transaction_outputs: db_writer.create_table("transaction_outputs")?,
         transactions: db_writer.create_table("transactions")?,
         ommer_headers: db_writer.create_table("ommer_headers")?,
+        ommer_block_hash_to_number: db_writer.create_table("ommer_block_hash_to_number")?,
     });
     let reader = StorageReader { db_reader, tables: tables.clone() };
     let writer = StorageWriter { db_writer, tables };

@@ -90,6 +90,8 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
         let headers_table = self.txn.open_table(&self.tables.headers)?;
         let block_hash_to_number_table = self.txn.open_table(&self.tables.block_hash_to_number)?;
         let ommer_table = self.txn.open_table(&self.tables.ommer_headers)?;
+        let ommer_block_hash_to_number_table =
+            self.txn.open_table(&self.tables.ommer_block_hash_to_number)?;
 
         // Assert that header marker equals the reverted block number + 1
         let current_header_marker = self.get_header_marker()?;
@@ -105,7 +107,14 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
         markers_table.upsert(&self.txn, &MarkerKind::Header, &block_number)?;
         headers_table.delete(&self.txn, &block_number)?;
         block_hash_to_number_table.delete(&self.txn, &reverted_block.block_hash)?;
-        insert_ommer(&self.txn, &ommer_table, reverted_block.block_hash, &reverted_block)?;
+        insert_ommer(
+            &self.txn,
+            &ommer_table,
+            &ommer_block_hash_to_number_table,
+            reverted_block.block_hash,
+            &reverted_block,
+        )?;
+
         Ok(self)
     }
 
@@ -115,7 +124,16 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
         block_header: &BlockHeader,
     ) -> StorageResult<Self> {
         let ommer_headers_table = self.txn.open_table(&self.tables.ommer_headers)?;
-        insert_ommer(&self.txn, &ommer_headers_table, block_hash, block_header)?;
+        let ommer_block_hash_to_number_table =
+            self.txn.open_table(&self.tables.ommer_block_hash_to_number)?;
+        insert_ommer(
+            &self.txn,
+            &ommer_headers_table,
+            &ommer_block_hash_to_number_table,
+            block_hash,
+            block_header,
+        )?;
+
         Ok(self)
     }
 }
@@ -157,9 +175,16 @@ type OmmerHeadersTable<'env> = TableHandle<'env, BlockHash, BlockHeader>;
 fn insert_ommer<'env>(
     txn: &DbTransaction<'env, RW>,
     ommer_table: &'env OmmerHeadersTable<'env>,
+    ommer_block_hash_to_number_table: &'env BlockHashToNumberTable<'env>,
     block_hash: BlockHash,
     block_header: &BlockHeader,
 ) -> StorageResult<()> {
     ommer_table.insert(&txn, &block_hash, block_header)?;
+    update_hash_mapping(
+        &txn,
+        &ommer_block_hash_to_number_table,
+        block_header,
+        block_header.block_number,
+    )?;
     Ok(())
 }
