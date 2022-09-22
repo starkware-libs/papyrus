@@ -93,6 +93,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                         state_diff,
                         deployed_contract_class_definitions,
                     }) => {
+                        // TODO(yair): handle receiving StateDiff of a reverted block.
                         self.writer
                             .begin_rw_txn()?
                             .append_state_diff(
