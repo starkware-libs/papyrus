@@ -91,7 +91,7 @@ impl StateSync {
                         self.writer
                             .begin_rw_txn()?
                             .append_header(block_number, &block.header)?
-                            .append_body(block_number, &block.body)?
+                            .append_body(block_number, block.body)?
                             .commit()?;
                     }
                     Some(SyncEvent::StateDiffAvailable {

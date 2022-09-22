@@ -6,18 +6,22 @@ use integer_encoding::*;
 use starknet_api::{
     BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, CallData, ClassHash,
     ContractAddress, ContractAddressSalt, ContractClass, ContractNonce, DeclareTransaction,
-    DeclareTransactionOutput, DeclaredContract, DeployTransaction, DeployTransactionOutput,
-    DeployedContract, EntryPoint, EntryPointOffset, EntryPointSelector, EntryPointType, EthAddress,
-    Event, EventData, EventKey, Fee, GasPrice, GlobalRoot, InvokeTransaction,
-    InvokeTransactionOutput, L1HandlerTransaction, L1HandlerTransactionOutput, L1ToL2Payload,
-    L2ToL1Payload, MessageToL1, MessageToL2, Nonce, PatriciaKey, Program, StarkFelt, StarkHash,
-    StateDiff, StorageDiff, StorageEntry, StorageKey, Transaction, TransactionHash,
-    TransactionOffsetInBlock, TransactionOutput, TransactionSignature, TransactionVersion,
+    DeclaredContract, DeployTransaction, DeployedContract, EntryPoint, EntryPointOffset,
+    EntryPointSelector, EntryPointType, EthAddress, EventContent, EventData,
+    EventIndexInTransactionOutput, EventKey, Fee, GasPrice, GlobalRoot, InvokeTransaction,
+    L1HandlerTransaction, L1ToL2Payload, L2ToL1Payload, MessageToL1, MessageToL2, Nonce,
+    PatriciaKey, Program, StarkFelt, StarkHash, StateDiff, StorageDiff, StorageEntry, StorageKey,
+    Transaction, TransactionHash, TransactionOffsetInBlock, TransactionSignature,
+    TransactionVersion,
 };
 
+use crate::body::events::{
+    ThinDeclareTransactionOutput, ThinDeployTransactionOutput, ThinInvokeTransactionOutput,
+    ThinL1HandlerTransactionOutput, ThinTransactionOutput,
+};
 use crate::db::serialization::StorageSerde;
 use crate::state::{IndexedDeclaredContract, IndexedDeployedContract};
-use crate::{MarkerKind, ThinStateDiff, TransactionIndex};
+use crate::{EventIndex, MarkerKind, ThinStateDiff, TransactionIndex};
 
 ////////////////////////////////////////////////////////////////////////
 // Starknet API structs.
@@ -76,6 +80,17 @@ impl StorageSerde for StorageKey {
 }
 
 impl StorageSerde for TransactionOffsetInBlock {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+        (self.0 as u64).serialize_into(res)
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        Some(Self(u64::deserialize_from(bytes)? as usize))
+    }
+}
+
+// TODO(anatg): Consider using wrapper instead.
+impl StorageSerde for EventIndexInTransactionOutput {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
         (self.0 as u64).serialize_into(res)
     }
@@ -361,10 +376,10 @@ auto_storage_serde! {
         pub class_hash: ClassHash,
         pub sender_address: ContractAddress,
     }
-    pub struct DeclareTransactionOutput {
+    pub struct ThinDeclareTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
-        pub events: Vec<Event>,
+        pub events_contract_addresses: Vec<ContractAddress>,
     }
     pub struct DeployedContract {
         pub address: ContractAddress,
@@ -378,10 +393,10 @@ auto_storage_serde! {
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: CallData,
     }
-    pub struct DeployTransactionOutput {
+    pub struct ThinDeployTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
-        pub events: Vec<Event>,
+        pub events_contract_addresses: Vec<ContractAddress>,
     }
     pub struct EntryPoint {
         pub selector: EntryPointSelector,
@@ -394,8 +409,7 @@ auto_storage_serde! {
         External = 1,
         L1Handler = 2,
     }
-    pub struct Event {
-        pub from_address: ContractAddress,
+    pub struct EventContent {
         pub keys: Vec<EventKey>,
         pub data: EventData,
     }
@@ -420,10 +434,10 @@ auto_storage_serde! {
         pub entry_point_selector: Option<EntryPointSelector>,
         pub calldata: CallData,
     }
-    pub struct InvokeTransactionOutput {
+    pub struct ThinInvokeTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
-        pub events: Vec<Event>,
+        pub events_contract_addresses: Vec<ContractAddress>,
     }
     pub struct L1HandlerTransaction {
         pub transaction_hash: TransactionHash,
@@ -433,10 +447,10 @@ auto_storage_serde! {
         pub entry_point_selector: EntryPointSelector,
         pub calldata: CallData,
     }
-    pub struct L1HandlerTransactionOutput {
+    pub struct ThinL1HandlerTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
-        pub events: Vec<Event>,
+        pub events_contract_addresses: Vec<ContractAddress>,
     }
     pub struct L1ToL2Payload(pub Vec<StarkFelt>);
     pub struct L2ToL1Payload(pub Vec<StarkFelt>);
@@ -480,11 +494,12 @@ auto_storage_serde! {
     }
     pub struct TransactionHash(pub StarkHash);
     struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
-    pub enum TransactionOutput {
-        Declare(DeclareTransactionOutput) = 0,
-        Deploy(DeployTransactionOutput) = 1,
-        Invoke(InvokeTransactionOutput) = 2,
-        L1Handler(L1HandlerTransactionOutput) = 3,
+    struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
+    pub enum ThinTransactionOutput {
+        Declare(ThinDeclareTransactionOutput) = 0,
+        Deploy(ThinDeployTransactionOutput) = 1,
+        Invoke(ThinInvokeTransactionOutput) = 2,
+        L1Handler(ThinL1HandlerTransactionOutput) = 3,
     }
     pub struct TransactionVersion(pub StarkFelt);
     pub struct TransactionSignature(pub Vec<StarkFelt>);
@@ -507,6 +522,7 @@ auto_storage_serde! {
     (ContractAddress, BlockNumber);
     (ContractAddress, Nonce);
     (ContractAddress, StorageKey, BlockNumber);
+    (ContractAddress, EventIndex);
 }
 
 ////////////////////////////////////////////////////////////////////////
