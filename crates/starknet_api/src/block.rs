@@ -3,6 +3,7 @@
 mod block_test;
 
 use std::fmt;
+use std::vec::IntoIter;
 
 use serde::{Deserialize, Serialize};
 
@@ -152,6 +153,10 @@ impl BlockBody {
 
     pub fn transaction_outputs(&self) -> &Vec<TransactionOutput> {
         &self.transaction_outputs
+    }
+
+    pub fn transaction_outputs_into_iter(self) -> IntoIter<TransactionOutput> {
+        self.transaction_outputs.into_iter()
     }
 }
 

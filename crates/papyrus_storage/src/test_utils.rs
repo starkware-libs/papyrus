@@ -1,7 +1,8 @@
 use starknet_api::{
     shash, Block, BlockBody, BlockHash, BlockHeader, BlockNumber, CallData, ClassHash,
-    ContractAddress, ContractAddressSalt, DeployTransaction, DeployTransactionOutput, Fee,
-    StarkHash, Transaction, TransactionHash, TransactionOutput, TransactionVersion,
+    ContractAddress, ContractAddressSalt, DeployTransaction, DeployTransactionOutput, EthAddress,
+    Event, EventContent, EventData, Fee, L2ToL1Payload, MessageToL1, StarkHash, Transaction,
+    TransactionHash, TransactionOutput, TransactionVersion,
 };
 use tempfile::tempdir;
 
@@ -42,8 +43,24 @@ pub fn get_test_block(transaction_count: usize) -> Block {
         transactions.push(transaction);
         let transaction_output = TransactionOutput::Deploy(DeployTransactionOutput {
             actual_fee: Fee::default(),
-            messages_sent: vec![],
-            events: vec![],
+            messages_sent: vec![MessageToL1 {
+                to_address: EthAddress::default(),
+                payload: L2ToL1Payload(vec![]),
+            }],
+            events: vec![
+                Event {
+                    from_address: ContractAddress::try_from(shash!("0x4")).unwrap(),
+                    content: EventContent { keys: vec![], data: EventData(vec![shash!("0x1")]) },
+                },
+                Event {
+                    from_address: ContractAddress::try_from(shash!("0x2")).unwrap(),
+                    content: EventContent { keys: vec![], data: EventData(vec![shash!("0x2")]) },
+                },
+                Event {
+                    from_address: ContractAddress::try_from(shash!("0x3")).unwrap(),
+                    content: EventContent { keys: vec![], data: EventData(vec![shash!("0x3")]) },
+                },
+            ],
         });
         transaction_outputs.push(transaction_output);
     }

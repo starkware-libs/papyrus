@@ -23,7 +23,8 @@ pub use self::state::{
 };
 pub use self::transaction::{
     CallData, ContractAddressSalt, DeclareTransaction, DeclareTransactionOutput, DeployTransaction,
-    DeployTransactionOutput, EthAddress, Event, Fee, InvokeTransaction, InvokeTransactionOutput,
+    DeployTransactionOutput, EthAddress, Event, EventContent, EventData,
+    EventIndexInTransactionOutput, Fee, InvokeTransaction, InvokeTransactionOutput,
     L1HandlerTransaction, L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, MessageToL1,
     MessageToL2, Transaction, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
     TransactionReceipt, TransactionSignature, TransactionVersion,

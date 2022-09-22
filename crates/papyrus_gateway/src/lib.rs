@@ -25,8 +25,8 @@ use starknet_api::{
 
 use self::api::{BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcError, JsonRpcServer, Tag};
 use self::objects::{
-    Block, BlockHeader, StateUpdate, Transaction, TransactionReceipt, TransactionReceiptWithStatus,
-    TransactionStatus, TransactionWithType, Transactions,
+    Block, BlockHeader, StateUpdate, Transaction, TransactionOutput, TransactionReceipt,
+    TransactionReceiptWithStatus, TransactionStatus, TransactionWithType, Transactions,
 };
 
 #[derive(Serialize, Deserialize)]
@@ -263,16 +263,22 @@ impl JsonRpcServer for JsonRpcServerImpl {
     ) -> Result<TransactionReceiptWithStatus, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
-        let TransactionIndex(block_number, tx_offset_in_block) = txn
+        let transaction_index = txn
             .get_transaction_idx_by_hash(&transaction_hash)
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::TransactionHashNotFound))?;
 
+        let block_number = transaction_index.0;
         let header =
             get_block_header_by_number(&txn, block_number).map_err(internal_server_error)?;
 
-        let tx_output = txn
-            .get_transaction_output(TransactionIndex(block_number, tx_offset_in_block))
+        let thin_tx_output = txn
+            .get_transaction_output(transaction_index)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| Error::from(JsonRpcError::TransactionHashNotFound))?;
+
+        let events = txn
+            .get_transaction_events(transaction_index)
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::TransactionHashNotFound))?;
 
@@ -281,7 +287,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 transaction_hash,
                 block_hash: header.block_hash,
                 block_number,
-                output: tx_output.into(),
+                output: TransactionOutput::from_thin_transaction_output(thin_tx_output, events),
             },
             status: TransactionStatus::default(),
         })

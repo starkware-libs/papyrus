@@ -1,8 +1,9 @@
+use papyrus_storage::ThinTransactionOutput;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockHash, BlockNumber, BlockStatus, CallData, ContractAddress, DeclareTransaction,
-    DeclareTransactionOutput, DeployTransaction, DeployTransactionOutput, EntryPointSelector, Fee,
-    InvokeTransactionOutput, L1HandlerTransaction, L1HandlerTransactionOutput, Nonce,
+    DeclareTransactionOutput, DeployTransaction, DeployTransactionOutput, EntryPointSelector,
+    Event, Fee, InvokeTransactionOutput, L1HandlerTransaction, L1HandlerTransactionOutput, Nonce,
     TransactionHash, TransactionSignature, TransactionVersion,
 };
 
@@ -216,6 +217,44 @@ pub enum TransactionOutput {
     Deploy(DeployTransactionOutput),
     Invoke(InvokeTransactionOutput),
     L1Handler(L1HandlerTransactionOutput),
+}
+
+impl TransactionOutput {
+    pub fn from_thin_transaction_output(
+        thin_tx_output: ThinTransactionOutput,
+        events: Vec<Event>,
+    ) -> Self {
+        match thin_tx_output {
+            ThinTransactionOutput::Declare(thin_declare) => {
+                TransactionOutput::Declare(DeclareTransactionOutput {
+                    actual_fee: thin_declare.actual_fee,
+                    messages_sent: thin_declare.messages_sent,
+                    events,
+                })
+            }
+            ThinTransactionOutput::Deploy(thin_deploy) => {
+                TransactionOutput::Deploy(DeployTransactionOutput {
+                    actual_fee: thin_deploy.actual_fee,
+                    messages_sent: thin_deploy.messages_sent,
+                    events,
+                })
+            }
+            ThinTransactionOutput::Invoke(thin_invoke) => {
+                TransactionOutput::Invoke(InvokeTransactionOutput {
+                    actual_fee: thin_invoke.actual_fee,
+                    messages_sent: thin_invoke.messages_sent,
+                    events,
+                })
+            }
+            ThinTransactionOutput::L1Handler(thin_l1handler) => {
+                TransactionOutput::L1Handler(L1HandlerTransactionOutput {
+                    actual_fee: thin_l1handler.actual_fee,
+                    messages_sent: thin_l1handler.messages_sent,
+                    events,
+                })
+            }
+        }
+    }
 }
 
 impl From<starknet_api::TransactionOutput> for TransactionOutput {
