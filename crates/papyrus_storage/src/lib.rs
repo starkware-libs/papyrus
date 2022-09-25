@@ -59,6 +59,10 @@ pub enum StorageError {
          {block_number:?}."
     )]
     NonceReWrite { nonce: Nonce, block_number: BlockNumber, contract_address: ContractAddress },
+    #[error(
+        "Cannot revert block {revert_block_number:?}, current marker is {block_number_marker:?}."
+    )]
+    InvalidRevert { revert_block_number: BlockNumber, block_number_marker: BlockNumber },
 }
 pub type StorageResult<V> = std::result::Result<V, StorageError>;
 
