@@ -8,7 +8,6 @@ use starknet_api::{
     StateDiff, StateNumber, StorageDiff, StorageEntry, StorageKey,
 };
 
-use self::data::split_diff_for_storage;
 pub use self::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
 use super::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use super::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
@@ -84,23 +83,29 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
         let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
 
-        let (thin_state_diff, declared_classes) =
-            split_diff_for_storage(state_diff, deployed_contract_class_definitions);
-
         update_marker(&self.txn, &markers_table, block_number)?;
-        // Write state diff.
-        state_diffs_table.insert(&self.txn, &block_number, &thin_state_diff)?;
+
         // Write state.
+        let declared_classes = [
+            state_diff.declared_contracts().as_slice(),
+            deployed_contract_class_definitions.as_slice(),
+        ]
+        .concat();
         write_declared_classes(declared_classes, &self.txn, block_number, &declared_classes_table)?;
         write_deployed_contracts(
-            &thin_state_diff,
+            &state_diff,
             &self.txn,
             block_number,
             &deployed_contracts_table,
             &nonces_table,
         )?;
-        write_storage_diffs(&thin_state_diff, &self.txn, block_number, &storage_table)?;
-        write_nonces(&thin_state_diff, &self.txn, block_number, &nonces_table)?;
+        write_storage_diffs(&state_diff, &self.txn, block_number, &storage_table)?;
+        write_nonces(&state_diff, &self.txn, block_number, &nonces_table)?;
+
+        // Write state diff.
+        let thin_state_diff = ThinStateDiff::from(state_diff);
+        state_diffs_table.insert(&self.txn, &block_number, &thin_state_diff)?;
+
         Ok(self)
     }
 }
@@ -152,7 +157,7 @@ fn write_declared_classes<'env>(
 }
 
 fn write_deployed_contracts<'env>(
-    state_diff: &ThinStateDiff,
+    state_diff: &StateDiff,
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     deployed_contracts_table: &'env DeployedContractsTable<'env>,
@@ -189,7 +194,7 @@ fn write_deployed_contracts<'env>(
 }
 
 fn write_nonces<'env>(
-    state_diff: &ThinStateDiff,
+    state_diff: &StateDiff,
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     contracts_table: &'env NoncesTable<'env>,
@@ -205,7 +210,7 @@ fn write_nonces<'env>(
 }
 
 fn write_storage_diffs<'env>(
-    state_diff: &ThinStateDiff,
+    state_diff: &StateDiff,
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     storage_table: &'env ContractStorageTable<'env>,
