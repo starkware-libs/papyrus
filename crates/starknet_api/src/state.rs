@@ -220,6 +220,12 @@ impl TryFrom<StarkHash> for StorageKey {
     }
 }
 
+impl StorageKey {
+    pub fn key(&self) -> &PatriciaKey {
+        &self.0
+    }
+}
+
 /// A storage entry in a StarkNet contract.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StorageEntry {

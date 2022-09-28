@@ -17,9 +17,11 @@ use super::{ContractAddress, StarkHash, StarknetApiError, Transaction, Transacti
 pub struct BlockHash(StarkHash);
 
 impl BlockHash {
-    #[cfg(any(feature = "testing", test))]
     pub fn new(hash: StarkHash) -> Self {
         Self(hash)
+    }
+    pub fn block_hash(&self) -> &StarkHash {
+        &self.0
     }
 }
 
@@ -32,6 +34,9 @@ pub struct GlobalRoot(StarkHash);
 impl GlobalRoot {
     pub fn new(hash: StarkHash) -> Self {
         Self(hash)
+    }
+    pub fn root(&self) -> &StarkHash {
+        &self.0
     }
 }
 
@@ -60,6 +65,9 @@ impl BlockNumber {
         let range = self.0..up_to.0;
         range.map(Self)
     }
+    pub fn number(&self) -> &u64 {
+        &self.0
+    }
 }
 
 impl fmt::Display for BlockNumber {
@@ -73,6 +81,15 @@ impl fmt::Display for BlockNumber {
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct BlockTimestamp(u64);
+
+impl BlockTimestamp {
+    pub fn new(time_stamp: u64) -> Self {
+        Self(time_stamp)
+    }
+    pub fn time_stamp(&self) -> &u64 {
+        &self.0
+    }
+}
 
 /// The gas price at a StarkNet block.
 #[derive(
@@ -88,6 +105,15 @@ impl From<PrefixedHexAsBytes<16_usize>> for GasPrice {
 impl From<GasPrice> for PrefixedHexAsBytes<16_usize> {
     fn from(val: GasPrice) -> Self {
         HexAsBytes(val.0.to_be_bytes())
+    }
+}
+
+impl GasPrice {
+    pub fn new(price: u128) -> Self {
+        Self(price)
+    }
+    pub fn price(&self) -> &u128 {
+        &self.0
     }
 }
 

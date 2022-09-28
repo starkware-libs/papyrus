@@ -13,7 +13,7 @@ pub const PATRICIA_KEY_UPPER_BOUND: &str =
     "0x800000000000000000000000000000000000000000000000000000000000000";
 
 #[derive(Copy, Clone, Eq, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub(crate) struct PatriciaKey(StarkHash);
+pub struct PatriciaKey(StarkHash);
 impl PatriciaKey {
     pub fn new(hash: StarkHash) -> Result<PatriciaKey, StarknetApiError> {
         if hash >= StarkHash::from_hex(PATRICIA_KEY_UPPER_BOUND)? {
@@ -22,6 +22,9 @@ impl PatriciaKey {
             });
         }
         Ok(PatriciaKey(hash))
+    }
+    pub fn key(&self) -> &StarkHash {
+        &self.0
     }
 }
 
@@ -44,6 +47,12 @@ impl TryFrom<StarkHash> for ContractAddress {
     }
 }
 
+impl ContractAddress {
+    pub fn contract_address(&self) -> &PatriciaKey {
+        &self.0
+    }
+}
+
 /// The hash of a StarkNet [ContractClass](`super::ContractClass`).
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
@@ -54,6 +63,9 @@ impl ClassHash {
     pub fn new(hash: StarkHash) -> Self {
         Self(hash)
     }
+    pub fn class_hash(&self) -> &StarkHash {
+        &self.0
+    }
 }
 
 /// The nonce of a StarkNet contract.
@@ -63,6 +75,9 @@ pub struct Nonce(StarkFelt);
 impl Nonce {
     pub fn new(felt: StarkFelt) -> Self {
         Self(felt)
+    }
+    pub fn nonce(&self) -> &StarkFelt {
+        &self.0
     }
 }
 
