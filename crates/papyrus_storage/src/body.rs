@@ -46,6 +46,8 @@ where
 {
     // To enforce that no commit happen after a failure, we consume and return Self on success.
     fn append_body(self, block_number: BlockNumber, block_body: &BlockBody) -> StorageResult<Self>;
+
+    fn revert_body(self, block_number: BlockNumber) -> StorageResult<Self>;
 }
 
 impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
@@ -139,6 +141,36 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
         )?;
         write_transaction_outputs(block_body, &self.txn, &transaction_outputs_table, block_number)?;
 
+        Ok(self)
+    }
+
+    fn revert_body(self, block_number: BlockNumber) -> StorageResult<Self> {
+        let markers_table = self.txn.open_table(&self.tables.markers)?;
+        let transactions_table = self.txn.open_table(&self.tables.transactions)?;
+        let transaction_outputs_table = self.txn.open_table(&self.tables.transaction_outputs)?;
+        let transaction_hash_to_idx_table =
+            self.txn.open_table(&self.tables.transaction_hash_to_idx)?;
+
+        // Assert that body marker equals the reverted block number + 1
+        let current_header_marker = self.get_body_marker()?;
+        if current_header_marker != block_number.next() {
+            return Err(StorageError::InvalidRevert {
+                revert_block_number: block_number,
+                block_number_marker: current_header_marker,
+            });
+        }
+
+        let transactions = self.get_block_transactions(block_number)?.unwrap();
+        let tx_hashes_iter = transactions.iter().map(|tx| tx.transaction_hash());
+
+        // Delete the transactions data.
+        for (offset, tx_hash) in tx_hashes_iter.enumerate() {
+            let tx_index = TransactionIndex(block_number, TransactionOffsetInBlock(offset));
+            transactions_table.delete(&self.txn, &tx_index)?;
+            transaction_outputs_table.delete(&self.txn, &tx_index)?;
+            transaction_hash_to_idx_table.delete(&self.txn, &tx_hash)?;
+        }
+        markers_table.upsert(&self.txn, &MarkerKind::Body, &block_number)?;
         Ok(self)
     }
 }

@@ -20,14 +20,7 @@ pub fn get_test_storage() -> (StorageReader, StorageWriter) {
     open_storage(config).expect("Failed to open storage.")
 }
 
-pub fn get_test_block(transaction_count: usize) -> Block {
-    let header = BlockHeader {
-        block_hash: BlockHash::new(shash!(
-            "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"
-        )),
-        block_number: BlockNumber::new(0),
-        ..BlockHeader::default()
-    };
+pub fn get_test_body(transaction_count: usize) -> BlockBody {
     let mut transactions = vec![];
     let mut transaction_outputs = vec![];
     for i in 0..transaction_count {
@@ -48,6 +41,17 @@ pub fn get_test_block(transaction_count: usize) -> Block {
         transaction_outputs.push(transaction_output);
     }
 
-    let body = BlockBody::new(transactions, transaction_outputs).unwrap();
-    Block { header, body }
+    BlockBody::new(transactions, transaction_outputs).unwrap()
+}
+
+pub fn get_test_block(transaction_count: usize) -> Block {
+    let header = BlockHeader {
+        block_hash: BlockHash::new(shash!(
+            "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"
+        )),
+        block_number: BlockNumber::new(0),
+        ..BlockHeader::default()
+    };
+
+    Block { header, body: get_test_body(transaction_count) }
 }

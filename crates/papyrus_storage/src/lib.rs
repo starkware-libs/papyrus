@@ -116,7 +116,7 @@ pub fn table_names() -> &'static [&'static str] {
     Tables::field_names()
 }
 
-#[derive(Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
 
 #[derive(Clone)]
