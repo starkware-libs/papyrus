@@ -1,6 +1,6 @@
 mod body;
+pub mod compression_utils;
 mod db;
-pub mod encoding_utils;
 mod header;
 mod serializers;
 mod state;
