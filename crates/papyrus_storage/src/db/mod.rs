@@ -53,9 +53,9 @@ pub struct DbTableStats {
 #[derive(thiserror::Error, Debug)]
 pub enum DbError {
     #[error(transparent)]
-    InnerDbError(#[from] libmdbx::Error),
+    Inner(#[from] libmdbx::Error),
     #[error("Deserialization failed.")]
-    DeserializationError,
+    Deserialization,
 }
 pub type Result<V> = result::Result<V, DbError>;
 
@@ -129,7 +129,7 @@ impl<'env, 'txn, K: StorageSerde, V: StorageSerde> TableHandle<'env, K, V> {
         // TODO: Support zero-copy. This might require a return type of Cow<'env, ValueType>.
         let bin_key = key.serialize();
         if let Some(bytes) = txn.txn.get::<Cow<'env, [u8]>>(&self.database, &bin_key)? {
-            let value = V::deserialize(&mut bytes.as_ref()).ok_or(DbError::DeserializationError)?;
+            let value = V::deserialize(&mut bytes.as_ref()).ok_or(DbError::Deserialization)?;
             Ok(Some(value))
         } else {
             Ok(None)
@@ -220,9 +220,9 @@ impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'tx
             None => Ok(None),
             Some((key_bytes, value_bytes)) => {
                 let key =
-                    K::deserialize(&mut key_bytes.as_ref()).ok_or(DbError::DeserializationError)?;
-                let value = V::deserialize(&mut value_bytes.as_ref())
-                    .ok_or(DbError::DeserializationError)?;
+                    K::deserialize(&mut key_bytes.as_ref()).ok_or(DbError::Deserialization)?;
+                let value =
+                    V::deserialize(&mut value_bytes.as_ref()).ok_or(DbError::Deserialization)?;
                 Ok(Some((key, value)))
             }
         }
@@ -234,9 +234,9 @@ impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'tx
             None => Ok(None),
             Some((key_bytes, value_bytes)) => {
                 let key =
-                    K::deserialize(&mut key_bytes.as_ref()).ok_or(DbError::DeserializationError)?;
-                let value = V::deserialize(&mut value_bytes.as_ref())
-                    .ok_or(DbError::DeserializationError)?;
+                    K::deserialize(&mut key_bytes.as_ref()).ok_or(DbError::Deserialization)?;
+                let value =
+                    V::deserialize(&mut value_bytes.as_ref()).ok_or(DbError::Deserialization)?;
                 Ok(Some((key, value)))
             }
         }
@@ -250,9 +250,9 @@ impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'tx
             None => Ok(None),
             Some((key_bytes, value_bytes)) => {
                 let key =
-                    K::deserialize(&mut key_bytes.as_ref()).ok_or(DbError::DeserializationError)?;
-                let value = V::deserialize(&mut value_bytes.as_ref())
-                    .ok_or(DbError::DeserializationError)?;
+                    K::deserialize(&mut key_bytes.as_ref()).ok_or(DbError::Deserialization)?;
+                let value =
+                    V::deserialize(&mut value_bytes.as_ref()).ok_or(DbError::Deserialization)?;
                 Ok(Some((key, value)))
             }
         }

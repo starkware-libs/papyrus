@@ -217,7 +217,7 @@ fn update_tx_hash_mapping<'env>(
     let tx_hash = tx.transaction_hash();
     let res = transaction_hash_to_idx_table.insert(txn, &tx.transaction_hash(), &transaction_index);
     res.map_err(|err| match err {
-        DbError::InnerDbError(libmdbx::Error::KeyExist) => {
+        DbError::Inner(libmdbx::Error::KeyExist) => {
             StorageError::TransactionHashAlreadyExists { tx_hash, transaction_index }
         }
         err => err.into(),
