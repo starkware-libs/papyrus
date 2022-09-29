@@ -2,17 +2,17 @@
     "jsonrpc": "2.0",
     "result": {
         "status": "ACCEPTED_ON_L2",
-        "block_hash": "0x11172ea58125f54df2c07df73accd9236558944ec0ee650d80968f863267764",
-        "parent_hash": "0x75e00250d4343326f322e370df4c9c73c7be105ad9f532eeb97891a34d9e4a5",
-        "block_number": 2,
+        "block_hash": "0x75e00250d4343326f322e370df4c9c73c7be105ad9f532eeb97891a34d9e4a5",
+        "parent_hash": "0x7d328a71faf48c5c3857e99f20a77b18522480956d1cd5bff1ff2df3c8b427b",
+        "block_number": 1,
         "sequencer_address": "0x0",
-        "new_root": "0x4ec6613e22be91dbaa3afbdd0323c5b7b651c76477efabaec1b754428da7e72",
-        "timestamp": 1636989993,
+        "new_root": "0x3f04ffa63e188d602796505a2ee4f6e1f294ee29a914b057af8e75b17259d9f",
+        "timestamp": 1636989916,
         "transactions": [
-            "0x4fd5affac8690a4192e82854074b10bff750f358fdffc75f716bc39c0ac1398",
-            "0x408eed260e84b3f3a744f1ba6b272db426655abef02573a0c7c6f6cfe2f8aa",
-            "0x26ba19170037a8bb65918b1f82ebb1d944232107f8df0fa78ae53ccccff0d34",
-            "0x4c01d307a5878c8d2763c860a4db2b208d278c1bf6798eaeb46befd99156b98"
+            "0x4dd12d3b82c3d0b216503c6abf63f1ccad222461582eac82057d46c327331d2",
+            "0x1a5f7247cc207f5b5c2e48b7605e46b872b83a2fa842955aea42d3cd80dbff",
+            "0x5ea9bca61575eeb4ed38a16cefcbf66ba1ed642642df1a1c07b44316791b378",
+            "0x6525d9aa309e5c80abbdafcc434d53202e06866597cd6dbbc91e5894fad7155"
         ]
     },
     "id": "1"

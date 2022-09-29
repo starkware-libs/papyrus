@@ -1,7 +1,5 @@
-use std::env;
 use std::net::SocketAddr;
 use std::ops::Index;
-use std::path::Path;
 
 use assert_matches::assert_matches;
 use jsonrpsee::core::Error;
@@ -9,8 +7,8 @@ use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
-use papyrus_storage::test_utils::{get_test_block, get_test_config, get_test_storage};
-use papyrus_storage::{open_storage, BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
+use papyrus_storage::test_utils::{get_alpha4_block_number_1, get_test_block, get_test_storage};
+use papyrus_storage::{BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 use starknet_api::{
     shash, BlockHash, BlockHeader, BlockNumber, BlockStatus, ClassHash, ContractAddress,
     ContractClass, ContractNonce, DeclaredContract, DeployedContract, GlobalRoot, Nonce, StarkFelt,
@@ -1122,13 +1120,18 @@ async fn run_server_scneario() -> Result<(), anyhow::Error> {
 async fn serialize_returns_expcted_json() -> Result<(), anyhow::Error> {
     // TODO(anatg): Use the papyrus_node/main.rs, when it has configuration for running different
     // components, for openning the storage and running the server.
-    let mut db_config = get_test_config();
-    let path = Path::new(&env::current_dir()?).join("resources/data/mdbx.dat");
-    assert!(path.exists(), "The reference DB data file was not found.");
-    db_config.path = String::from(path.to_str().unwrap());
-    let gateway_config = GatewayConfig { server_ip: String::from("127.0.0.1:0") };
+    let (storage_reader, mut storage_writer) = get_test_storage();
+    let block = get_alpha4_block_number_1();
+    let dummy_block_number_0 = get_test_block(0);
+    storage_writer
+        .begin_rw_txn()?
+        .append_header(dummy_block_number_0.header.block_number, &dummy_block_number_0.header)?
+        .append_body(dummy_block_number_0.header.block_number, &dummy_block_number_0.body)?
+        .append_header(block.header.block_number, &block.header)?
+        .append_body(block.header.block_number, &block.body)?
+        .commit()?;
 
-    let (storage_reader, _writer) = open_storage(db_config)?;
+    let gateway_config = GatewayConfig { server_ip: String::from("127.0.0.1:0") };
     let (server_address, _handle) = run_server(gateway_config, storage_reader).await?;
 
     serde_block(server_address).await?;
@@ -1144,15 +1147,15 @@ async fn serde_block(server_address: SocketAddr) -> Result<(), anyhow::Error> {
     let res = send_request(
         server_address,
         "starknet_getBlockWithTxHashes",
-        r#"{"block_hash": "0x11172ea58125f54df2c07df73accd9236558944ec0ee650d80968f863267764"}"#,
+        r#"{"block_hash": "0x75e00250d4343326f322e370df4c9c73c7be105ad9f532eeb97891a34d9e4a5"}"#,
     )
     .await?;
     assert_eq!(res, read_resource_file("block_with_transaction_hashes.json")?);
 
     let res =
-        send_request(server_address, "starknet_getBlockTransactionCount", r#"{"block_number": 6}"#)
+        send_request(server_address, "starknet_getBlockTransactionCount", r#"{"block_number": 1}"#)
             .await?;
-    assert_eq!(res, r#"{"jsonrpc":"2.0","result":3,"id":"1"}"#);
+    assert_eq!(res, r#"{"jsonrpc":"2.0","result":4,"id":"1"}"#);
 
     Ok(())
 }

@@ -73,6 +73,12 @@ impl fmt::Display for BlockNumber {
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct BlockTimestamp(u64);
+impl BlockTimestamp {
+    #[cfg(any(feature = "testing", test))]
+    pub fn new(timestamp: u64) -> Self {
+        Self(timestamp)
+    }
+}
 
 /// The gas price at a StarkNet block.
 #[derive(
