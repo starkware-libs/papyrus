@@ -15,10 +15,10 @@ use serde::{Deserialize, Serialize};
 pub enum CompressionError {
     /// An error representing reading and writing errors.
     #[error(transparent)]
-    IOError(#[from] std::io::Error),
+    IO(#[from] std::io::Error),
     /// An error representing serialization and deserialization errors.
     #[error(transparent)]
-    SerdeError(#[from] serde_json::Error),
+    Serde(#[from] serde_json::Error),
 }
 
 /// An object that was encoded with [`GzEncoder`].
