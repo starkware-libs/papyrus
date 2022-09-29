@@ -19,7 +19,11 @@ impl TryFrom<starknet_api::ContractClass> for ContractClass {
     fn try_from(class: starknet_api::ContractClass) -> Result<Self, Self::Error> {
         Ok(Self {
             abi: class.abi,
-            program: base64::encode(GzEncoded::encode(class.program)?),
+            // TODO(anatg): Remove serde_json::to_vec when the StorageSerde implementation for
+            // program doesn't call bincode anymore.
+            program: base64::encode(GzEncoded::encode(
+                serde_json::to_vec(&class.program).expect("Failed to serialize program"),
+            )?),
             entry_points_by_type: class.entry_points_by_type,
         })
     }

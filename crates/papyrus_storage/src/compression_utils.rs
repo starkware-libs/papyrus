@@ -10,15 +10,17 @@ use flate2::write::GzEncoder;
 use flate2::Compression;
 use serde::{Deserialize, Serialize};
 
+use crate::db::serialization::StorageSerde;
+
 /// Errors that may be returned when encoding or decoding with one of the functions in this file.
 #[derive(thiserror::Error, Debug)]
 pub enum CompressionError {
     /// An error representing reading and writing errors.
     #[error(transparent)]
     IO(#[from] std::io::Error),
-    /// An error representing serialization and deserialization errors.
-    #[error(transparent)]
-    Serde(#[from] serde_json::Error),
+    /// An internal serde error.
+    #[error("Internal serde error.")]
+    InternalSerde,
 }
 
 /// An object that was encoded with [`GzEncoder`].
@@ -26,23 +28,23 @@ pub enum CompressionError {
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct GzEncoded<I>(Vec<u8>, PhantomData<I>);
 
-impl<'a, I> GzEncoded<I>
+impl<I> GzEncoded<I>
 where
-    I: Deserialize<'a> + Serialize + Sized,
+    I: StorageSerde,
 {
     /// Returns a gzip compression of a given item.
     pub fn encode(item: I) -> Result<Self, CompressionError> {
         let mut encoder = GzEncoder::new(Vec::new(), Compression::fast());
-        serde_json::to_writer(&mut encoder, &item)?;
+        item.serialize_into(&mut encoder);
         let bytes = encoder.finish()?;
         Ok(Self(bytes, PhantomData))
     }
 
     /// Returns a decompressed item.
-    pub fn decode(&self, buff: &'a mut Vec<u8>) -> Result<I, CompressionError> {
+    pub fn decode(&self, buff: &mut Vec<u8>) -> Result<I, CompressionError> {
         let mut decoder = GzDecoder::new(self.0.as_slice());
         decoder.read_to_end(buff)?;
-        Ok(serde_json::from_slice(buff)?)
+        I::deserialize_from(&mut buff.as_slice()).ok_or(CompressionError::InternalSerde)
     }
 }
 
