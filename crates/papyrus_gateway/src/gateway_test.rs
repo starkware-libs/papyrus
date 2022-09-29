@@ -1,5 +1,4 @@
 use std::env;
-use std::fs::read_to_string;
 use std::net::SocketAddr;
 use std::ops::Index;
 use std::path::Path;
@@ -12,7 +11,6 @@ use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
 use papyrus_storage::test_utils::{get_test_block, get_test_config, get_test_storage};
 use papyrus_storage::{open_storage, BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
-use reqwest::Client;
 use starknet_api::{
     shash, BlockHash, BlockHeader, BlockNumber, BlockStatus, ClassHash, ContractAddress,
     ContractClass, ContractNonce, DeclaredContract, DeployedContract, GlobalRoot, Nonce, StarkFelt,
@@ -26,6 +24,7 @@ use super::objects::{
     Block, StateUpdate, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
     TransactionWithType, Transactions,
 };
+use super::test_utils::{read_resource_file, send_request};
 use super::{run_server, GatewayConfig, JsonRpcServerImpl};
 
 fn get_test_state_diff()
@@ -1119,34 +1118,10 @@ async fn run_server_scneario() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn read_resource_file(path_in_resource_dir: &str) -> Result<String, anyhow::Error> {
-    let path = Path::new(&env::current_dir().expect("Problem with the current directory."))
-        .join("resources")
-        .join(path_in_resource_dir);
-    Ok(read_to_string(path.to_str().unwrap())?.replace('\n', "").replace(' ', ""))
-}
-
-async fn send_request(
-    address: SocketAddr,
-    method: &str,
-    params: &str,
-) -> Result<String, anyhow::Error> {
-    let client = Client::new();
-    Ok(client
-        .post(format!("http://{:?}", address))
-        .header("Content-Type", "application/json")
-        .body(format!(
-            r#"{{"jsonrpc":"2.0","id":"1","method":"{}","params":[{}]}}"#,
-            method, params
-        ))
-        .send()
-        .await?
-        .text()
-        .await?)
-}
-
 #[tokio::test]
 async fn serialize_returns_expcted_json() -> Result<(), anyhow::Error> {
+    // TODO(anatg): Use the papyrus_node/main.rs, when it has configuration for running different
+    // components, for openning the storage and running the server.
     let mut db_config = get_test_config();
     let path = Path::new(&env::current_dir()?).join("resources/data/mdbx.dat");
     assert!(path.exists(), "The reference DB data file was not found.");

@@ -2,6 +2,9 @@ mod api;
 #[cfg(test)]
 mod gateway_test;
 mod objects;
+#[cfg(any(feature = "testing", test))]
+#[path = "test_utils.rs"]
+pub mod test_utils;
 
 use std::fmt::Display;
 use std::net::SocketAddr;
