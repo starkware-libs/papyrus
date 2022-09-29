@@ -6,7 +6,6 @@ use starknet_api::{
 };
 
 use super::{StateStorageReader, StateStorageWriter, StorageError};
-use crate::state::split_diff_for_storage;
 use crate::test_utils::get_test_storage;
 
 #[test]
@@ -71,11 +70,11 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     assert_eq!(txn.get_state_diff(BlockNumber::new(0))?, None);
     assert_eq!(txn.get_state_diff(BlockNumber::new(1))?, None);
     txn = txn.append_state_diff(BlockNumber::new(0), diff0.clone(), vec![])?;
-    let (thin_state_diff_0, _declared_classes_0) = split_diff_for_storage(diff0.clone(), vec![]);
+    let thin_state_diff_0 = diff0.clone().into();
     assert_eq!(txn.get_state_diff(BlockNumber::new(0))?.unwrap(), thin_state_diff_0);
     assert_eq!(txn.get_state_diff(BlockNumber::new(1))?, None);
     txn = txn.append_state_diff(BlockNumber::new(1), diff1.clone(), vec![])?;
-    let (this_state_diff_1, _declared_classes_1) = split_diff_for_storage(diff1.clone(), vec![]);
+    let thin_state_diff_1 = diff1.clone().into();
 
     txn.commit()?;
 
@@ -109,7 +108,7 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     }
     let txn = writer.begin_rw_txn()?;
     assert_eq!(txn.get_state_diff(BlockNumber::new(0))?.unwrap(), thin_state_diff_0);
-    assert_eq!(txn.get_state_diff(BlockNumber::new(1))?.unwrap(), this_state_diff_1);
+    assert_eq!(txn.get_state_diff(BlockNumber::new(1))?.unwrap(), thin_state_diff_1);
 
     let statetxn = txn.get_state_reader()?;
 
