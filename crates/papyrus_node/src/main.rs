@@ -1,5 +1,6 @@
 use clap::{ArgAction, Parser};
 use log::info;
+use papyrus_gateway::run_server;
 use papyrus_monitoring_gateway::run_server as monitoring_run_server;
 use papyrus_node::config::load_config;
 use papyrus_storage::open_storage;
@@ -40,15 +41,16 @@ async fn main() -> anyhow::Result<()> {
             StateSync::new(config.sync, central_source, storage_reader.clone(), storage_writer);
         sync_thread_opt = Some(tokio::spawn(async move { sync.run().await }));
     }
-
     // Pass reader to storage.
+    let (_, server_handle) = run_server(config.gateway, storage_reader.clone()).await?;
     let (_, monitoring_server_handle) =
         monitoring_run_server(config.monitoring_gateway, storage_reader.clone()).await?;
     if let Some(sync_thread) = sync_thread_opt {
-        let (_, sync_thread_res) = tokio::join!(monitoring_server_handle, sync_thread);
+        let (_, _, sync_thread_res) =
+            tokio::join!(server_handle, monitoring_server_handle, sync_thread);
         sync_thread_res??;
     } else {
-        tokio::join!(monitoring_server_handle);
+        tokio::join!(server_handle, monitoring_server_handle);
     }
 
     Ok(())
