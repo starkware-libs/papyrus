@@ -22,46 +22,6 @@ use crate::{MarkerKind, ThinStateDiff, TransactionIndex};
 ////////////////////////////////////////////////////////////////////////
 // Starknet API structs.
 ////////////////////////////////////////////////////////////////////////
-impl StorageSerde for BlockHash {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
-        self.block_hash().serialize_into(res)
-    }
-
-    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        Some(Self::new(StarkHash::deserialize(bytes)?))
-    }
-}
-
-impl StorageSerde for BlockNumber {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
-        self.number().serialize_into(res)
-    }
-
-    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        Some(Self::new(u64::deserialize_from(bytes)?))
-    }
-}
-
-impl StorageSerde for BlockTimestamp {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
-        self.time_stamp().serialize_into(res)
-    }
-
-    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        Some(Self::new(bincode::deserialize_from(bytes).ok()?))
-    }
-}
-
-impl StorageSerde for ClassHash {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
-        self.class_hash().serialize_into(res)
-    }
-
-    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        Some(Self::new(StarkHash::deserialize(bytes)?))
-    }
-}
-
 impl StorageSerde for ContractAddress {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
         self.contract_address().serialize_into(res)
@@ -69,36 +29,6 @@ impl StorageSerde for ContractAddress {
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         ContractAddress::try_from(StarkHash::deserialize(bytes)?).ok()
-    }
-}
-
-impl StorageSerde for GasPrice {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
-        self.price().serialize_into(res)
-    }
-
-    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        Some(Self::new(bincode::deserialize_from(bytes).ok()?))
-    }
-}
-
-impl StorageSerde for GlobalRoot {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
-        self.root().serialize_into(res)
-    }
-
-    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        Some(Self::new(StarkHash::deserialize_from(bytes)?))
-    }
-}
-
-impl StorageSerde for Nonce {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
-        self.nonce().serialize_into(res)
-    }
-
-    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        Some(Self::new(StarkHash::deserialize(bytes)?))
     }
 }
 
@@ -267,7 +197,7 @@ macro_rules! auto_storage_serde {
         }
         auto_storage_serde!($($rest)*);
     };
-    // Structs.
+    // Structs with public fields.
     ($(pub)? struct $name:ident { $(pub $field:ident : $ty:ty ,)* } $($rest:tt)*) => {
         impl StorageSerde for $name {
             fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
@@ -282,6 +212,23 @@ macro_rules! auto_storage_serde {
                         $field: <$ty>::deserialize_from(bytes)?,
                     )*
                 })
+            }
+        }
+        auto_storage_serde!($($rest)*);
+    };
+    // Structs with private fields and getters.
+    (wrapper($name:ident, $($field_getter:ident : $ty:ty ,)*); $($rest:tt)* ) => {
+        impl StorageSerde for $name {
+            fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+                $(
+                    self.$field_getter().serialize_into(res)?;
+                )*
+                Ok(())
+            }
+            fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+                Some(Self::new(
+                    $(<$ty>::deserialize_from(bytes)?,)*
+                ))
             }
         }
         auto_storage_serde!($($rest)*);
@@ -542,11 +489,19 @@ auto_storage_serde! {
     pub struct TransactionVersion(pub StarkFelt);
     pub struct TransactionSignature(pub Vec<StarkFelt>);
 
+    wrapper(BlockHash, block_hash : StarkHash,);
+    wrapper(BlockNumber, number : u64,);
+    wrapper(BlockTimestamp, time_stamp : u64,);
+    wrapper(ClassHash, class_hash : StarkHash,);
+    wrapper(GasPrice, price : u128,);
+    wrapper(GlobalRoot, root : StarkHash,);
+    wrapper(Nonce, nonce : StarkFelt,);
+
     bincode(EthAddress);
     bincode(u8);
+    bincode(u32);
     bincode(u64);
     bincode(u128);
-    bincode(u32);
 
     (BlockNumber, TransactionOffsetInBlock);
     (ContractAddress, BlockNumber);
