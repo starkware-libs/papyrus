@@ -19,8 +19,8 @@ pub enum CompressionError {
     #[error(transparent)]
     IO(#[from] std::io::Error),
     /// An internal serde error.
-    #[error("Internal serde error.")]
-    InternalSerde,
+    #[error("Internal deserialization error.")]
+    InnerDeserialization,
 }
 
 /// An object that was encoded with [`GzEncoder`].
@@ -35,7 +35,7 @@ where
     /// Returns a gzip compression of a given item.
     pub fn encode(item: I) -> Result<Self, CompressionError> {
         let mut encoder = GzEncoder::new(Vec::new(), Compression::fast());
-        item.serialize_into(&mut encoder);
+        item.serialize_into(&mut encoder)?;
         let bytes = encoder.finish()?;
         Ok(Self(bytes, PhantomData))
     }
@@ -44,7 +44,7 @@ where
     pub fn decode(&self, buff: &mut Vec<u8>) -> Result<I, CompressionError> {
         let mut decoder = GzDecoder::new(self.0.as_slice());
         decoder.read_to_end(buff)?;
-        I::deserialize_from(&mut buff.as_slice()).ok_or(CompressionError::InternalSerde)
+        I::deserialize_from(&mut buff.as_slice()).ok_or(CompressionError::InnerDeserialization)
     }
 }
 
