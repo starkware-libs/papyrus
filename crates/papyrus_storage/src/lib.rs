@@ -1,4 +1,5 @@
 mod body;
+pub mod compression_utils;
 mod db;
 mod header;
 mod serializers;
