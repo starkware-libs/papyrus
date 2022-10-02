@@ -1,3 +1,7 @@
+use std::env;
+use std::fs::read_to_string;
+use std::path::Path;
+
 use starknet_api::serde_utils::bytes_from_hex_str;
 use starknet_api::{
     shash, Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockTimestamp, CallData,
@@ -22,6 +26,11 @@ pub fn get_test_config() -> DbConfig {
 pub fn get_test_storage() -> (StorageReader, StorageWriter) {
     let config = get_test_config();
     open_storage(config).expect("Failed to open storage.")
+}
+
+pub fn read_resource_file(path_in_resource_dir: &str) -> Result<String, anyhow::Error> {
+    let path = Path::new(&env::current_dir()?).join("resources").join(path_in_resource_dir);
+    Ok(read_to_string(path.to_str().unwrap())?.replace('\n', "").replace(' ', ""))
 }
 
 pub fn get_test_body(transaction_count: usize) -> BlockBody {

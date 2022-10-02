@@ -11,16 +11,16 @@ use papyrus_storage::test_utils::{get_alpha4_block_number_1, get_test_block, get
 use papyrus_storage::{BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 use starknet_api::{
     shash, BlockHash, BlockHeader, BlockNumber, BlockStatus, ClassHash, ContractAddress,
-    ContractClass, ContractNonce, DeclaredContract, DeployedContract, GlobalRoot, Nonce, StarkFelt,
-    StarkHash, StorageDiff, StorageEntry, StorageKey, TransactionHash,
+    ContractNonce, DeclaredContract, DeployedContract, GlobalRoot, Nonce, StarkFelt, StarkHash,
+    StorageDiff, StorageEntry, StorageKey, TransactionHash,
 };
 
 use super::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcClient, JsonRpcError, JsonRpcServer, Tag,
 };
 use super::objects::{
-    Block, StateUpdate, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
-    TransactionWithType, Transactions,
+    Block, ContractClass, StateUpdate, TransactionReceipt, TransactionReceiptWithStatus,
+    TransactionStatus, TransactionWithType, Transactions,
 };
 use super::test_utils::{read_resource_file, send_request};
 use super::{run_server, GatewayConfig, JsonRpcServerImpl};
@@ -50,8 +50,8 @@ fn get_test_state_diff()
     let hash0 = ClassHash::new(shash!("0x4"));
     let address1 = ContractAddress::try_from(shash!("0x21")).unwrap();
     let hash1 = ClassHash::new(shash!("0x5"));
-    let class0 = ContractClass::default();
-    let class1 = ContractClass::default();
+    let class0 = starknet_api::ContractClass::default();
+    let class1 = starknet_api::ContractClass::default();
     let key0 = StorageKey::try_from(shash!("0x1001")).unwrap();
     let value0 = shash!("0x200");
     let key1 = StorageKey::try_from(shash!("0x1002")).unwrap();
@@ -907,7 +907,7 @@ async fn get_class() -> Result<(), anyhow::Error> {
 
     let declared_contract = declared_classes.index(0);
     let class_hash = declared_contract.class_hash;
-    let expected_contract_class = declared_contract.contract_class.clone();
+    let expected_contract_class = declared_contract.contract_class.clone().try_into()?;
 
     // Get class by block hash.
     let res = module
@@ -1013,7 +1013,7 @@ async fn get_class_at() -> Result<(), anyhow::Error> {
 
     let (deployed_contracts, _, declared_classes, _) = diff.destruct();
     let address = deployed_contracts.index(0).address;
-    let expected_contract_class = declared_classes.index(0).contract_class.clone();
+    let expected_contract_class = declared_classes.index(0).contract_class.clone().try_into()?;
 
     // Get class by block hash.
     let res = module
