@@ -82,13 +82,6 @@ impl fmt::Display for BlockNumber {
 )]
 pub struct BlockTimestamp(u64);
 impl BlockTimestamp {
-    #[cfg(any(feature = "testing", test))]
-    pub fn new(timestamp: u64) -> Self {
-        Self(timestamp)
-    }
-}
-
-impl BlockTimestamp {
     pub fn new(time_stamp: u64) -> Self {
         Self(time_stamp)
     }
