@@ -1,3 +1,4 @@
+use std::net::SocketAddr;
 use std::ops::Index;
 
 use assert_matches::assert_matches;
@@ -6,7 +7,7 @@ use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
-use papyrus_storage::test_utils::{get_test_block, get_test_storage};
+use papyrus_storage::test_utils::{get_alpha4_block_number_1, get_test_block, get_test_storage};
 use papyrus_storage::{BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 use starknet_api::{
     shash, BlockHash, BlockHeader, BlockNumber, BlockStatus, ClassHash, ContractAddress,
@@ -21,6 +22,7 @@ use super::objects::{
     Block, ContractClass, StateUpdate, TransactionReceipt, TransactionReceiptWithStatus,
     TransactionStatus, TransactionWithType, Transactions,
 };
+use super::test_utils::{read_resource_file, send_request};
 use super::{run_server, GatewayConfig, JsonRpcServerImpl};
 
 fn get_test_state_diff()
@@ -1111,5 +1113,77 @@ async fn run_server_scneario() -> Result<(), anyhow::Error> {
         JsonRpcError::NoBlocks.to_string(),
         None::<()>,
     ));
+    Ok(())
+}
+
+#[tokio::test]
+async fn serialize_returns_expcted_json() -> Result<(), anyhow::Error> {
+    // TODO(anatg): Use the papyrus_node/main.rs, when it has configuration for running different
+    // components, for openning the storage and running the server.
+    let (storage_reader, mut storage_writer) = get_test_storage();
+    let block = get_alpha4_block_number_1();
+    let dummy_block_number_0 = get_test_block(0);
+    storage_writer
+        .begin_rw_txn()?
+        .append_header(dummy_block_number_0.header.block_number, &dummy_block_number_0.header)?
+        .append_body(dummy_block_number_0.header.block_number, &dummy_block_number_0.body)?
+        .append_header(block.header.block_number, &block.header)?
+        .append_body(block.header.block_number, &block.body)?
+        .commit()?;
+
+    let gateway_config = GatewayConfig { server_ip: String::from("127.0.0.1:0") };
+    let (server_address, _handle) = run_server(gateway_config, storage_reader).await?;
+
+    serde_block(server_address).await?;
+    serde_transaction(server_address).await?;
+    Ok(())
+}
+
+async fn serde_block(server_address: SocketAddr) -> Result<(), anyhow::Error> {
+    let res =
+        send_request(server_address, "starknet_getBlockWithTxs", r#"{"block_number": 1}"#).await?;
+    assert_eq!(res, read_resource_file("block_with_transactions.json")?);
+
+    let res = send_request(
+        server_address,
+        "starknet_getBlockWithTxHashes",
+        r#"{"block_hash": "0x75e00250d4343326f322e370df4c9c73c7be105ad9f532eeb97891a34d9e4a5"}"#,
+    )
+    .await?;
+    assert_eq!(res, read_resource_file("block_with_transaction_hashes.json")?);
+
+    let res =
+        send_request(server_address, "starknet_getBlockTransactionCount", r#"{"block_number": 1}"#)
+            .await?;
+    assert_eq!(res, r#"{"jsonrpc":"2.0","result":4,"id":"1"}"#);
+
+    Ok(())
+}
+
+async fn serde_transaction(server_address: SocketAddr) -> Result<(), anyhow::Error> {
+    let res = send_request(
+        server_address,
+        "starknet_getTransactionByBlockIdAndIndex",
+        r#"{"block_number": 1}, 0"#,
+    )
+    .await?;
+    assert_eq!(res, read_resource_file("deploy_transaction.json")?);
+
+    let res = send_request(
+        server_address,
+        "starknet_getTransactionByHash",
+        r#""0x4dd12d3b82c3d0b216503c6abf63f1ccad222461582eac82057d46c327331d2""#,
+    )
+    .await?;
+    assert_eq!(res, read_resource_file("deploy_transaction.json")?);
+
+    let res = send_request(
+        server_address,
+        "starknet_getTransactionReceipt",
+        r#""0x6525d9aa309e5c80abbdafcc434d53202e06866597cd6dbbc91e5894fad7155""#,
+    )
+    .await?;
+    assert_eq!(res, read_resource_file("invoke_transaction_receipt.json")?);
+
     Ok(())
 }

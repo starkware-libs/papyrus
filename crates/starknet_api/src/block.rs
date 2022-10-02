@@ -81,7 +81,6 @@ impl fmt::Display for BlockNumber {
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct BlockTimestamp(u64);
-
 impl BlockTimestamp {
     pub fn new(time_stamp: u64) -> Self {
         Self(time_stamp)

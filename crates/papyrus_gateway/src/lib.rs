@@ -2,6 +2,9 @@ mod api;
 #[cfg(test)]
 mod gateway_test;
 mod objects;
+#[cfg(any(feature = "testing", test))]
+#[path = "test_utils.rs"]
+pub mod test_utils;
 
 use std::fmt::Display;
 use std::net::SocketAddr;
@@ -99,7 +102,6 @@ fn get_block_header_by_number<Mode: TransactionKind>(
     Ok(BlockHeader::from(header))
 }
 
-// TODO(spapini): Move this logic into storage (e.g. get_block_body()).
 fn get_block_txs_by_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
     block_number: BlockNumber,

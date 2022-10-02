@@ -7,6 +7,7 @@ use starknet_api::{
 };
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(untagged)]
 pub enum Transactions {
     Hashes(Vec<TransactionHash>),
     Full(Vec<TransactionWithType>),
