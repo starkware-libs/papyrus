@@ -1,4 +1,4 @@
-mod data;
+pub mod data;
 #[cfg(test)]
 #[path = "state_test.rs"]
 mod state_test;
@@ -168,7 +168,7 @@ fn write_deployed_contracts<'env>(
         let value = IndexedDeployedContract { block_number, class_hash };
         deployed_contracts_table.insert(txn, &deployed_contract.address, &value).map_err(
             |err| {
-                if matches!(err, DbError::InnerDbError(libmdbx::Error::KeyExist)) {
+                if matches!(err, DbError::Inner(libmdbx::Error::KeyExist)) {
                     StorageError::ContractAlreadyExists { address: deployed_contract.address }
                 } else {
                     StorageError::from(err)
@@ -179,7 +179,7 @@ fn write_deployed_contracts<'env>(
         nonces_table
             .insert(txn, &(deployed_contract.address, block_number), &Nonce::default())
             .map_err(|err| {
-                if matches!(err, DbError::InnerDbError(libmdbx::Error::KeyExist)) {
+                if matches!(err, DbError::Inner(libmdbx::Error::KeyExist)) {
                     StorageError::NonceReWrite {
                         contract_address: deployed_contract.address,
                         nonce: Nonce::default(),

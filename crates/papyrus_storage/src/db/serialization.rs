@@ -1,17 +1,19 @@
+use super::DbError;
+
 pub trait StorageSerde: Sized {
-    fn serialize_into(&self, res: &mut impl std::io::Write);
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error>;
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self>;
 }
 
 pub trait StorageSerdeEx: StorageSerde {
-    fn serialize(&self) -> Vec<u8>;
+    fn serialize(&self) -> Result<Vec<u8>, DbError>;
     fn deserialize(bytes: &mut impl std::io::Read) -> Option<Self>;
 }
 impl<T: StorageSerde> StorageSerdeEx for T {
-    fn serialize(&self) -> Vec<u8> {
+    fn serialize(&self) -> Result<Vec<u8>, DbError> {
         let mut res: Vec<u8> = Vec::new();
-        self.serialize_into(&mut res);
-        res
+        self.serialize_into(&mut res).map_err(|_| DbError::Serialization)?;
+        Ok(res)
     }
     fn deserialize(bytes: &mut impl std::io::Read) -> Option<Self> {
         let res = Self::deserialize_from(bytes)?;

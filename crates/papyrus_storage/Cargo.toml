@@ -9,6 +9,7 @@ testing = ["tempfile", "web3"]
 [dependencies]
 bincode = { version = "1.3.3" }
 futures-util = { version = "0.3.21" }
+integer-encoding = { version = "3.0.4" }
 libmdbx = { version = ">=0.1.5,<0.1.8", features = ["lifetimed-bytes"] }
 log = { version = "0.4" }
 reqwest = { version = "0.11", features = ["json", "blocking"] }

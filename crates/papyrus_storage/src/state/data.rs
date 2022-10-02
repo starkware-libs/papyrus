@@ -28,6 +28,21 @@ pub struct ThinStateDiff {
     nonces: Vec<ContractNonce>,
 }
 
+impl ThinStateDiff {
+    pub fn deployed_contracts(&self) -> &Vec<DeployedContract> {
+        &self.deployed_contracts
+    }
+    pub fn storage_diffs(&self) -> &Vec<StorageDiff> {
+        &self.storage_diffs
+    }
+    pub fn declared_contract_hashes(&self) -> &Vec<ClassHash> {
+        &self.declared_contract_hashes
+    }
+    pub fn nonces(&self) -> &Vec<ContractNonce> {
+        &self.nonces
+    }
+}
+
 impl From<StateDiff> for ThinStateDiff {
     fn from(diff: StateDiff) -> Self {
         let (deployed_contracts, storage_diffs, declared_classes, nonces) = diff.destruct();
