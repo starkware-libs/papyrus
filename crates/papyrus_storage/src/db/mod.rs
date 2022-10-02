@@ -53,9 +53,11 @@ pub struct DbTableStats {
 #[derive(thiserror::Error, Debug)]
 pub enum DbError {
     #[error(transparent)]
-    InnerDbError(#[from] libmdbx::Error),
+    Inner(#[from] libmdbx::Error),
     #[error("Deserialization failed.")]
-    DeserializationError,
+    InnerDeserialization,
+    #[error("Serialization failed.")]
+    Serialization,
 }
 pub type Result<V> = result::Result<V, DbError>;
 
@@ -127,9 +129,9 @@ impl<'env, 'txn, K: StorageSerde, V: StorageSerde> TableHandle<'env, K, V> {
         key: &K,
     ) -> Result<Option<V>> {
         // TODO: Support zero-copy. This might require a return type of Cow<'env, ValueType>.
-        let bin_key = key.serialize();
+        let bin_key = key.serialize()?;
         if let Some(bytes) = txn.txn.get::<Cow<'env, [u8]>>(&self.database, &bin_key)? {
-            let value = V::deserialize(&mut bytes.as_ref()).ok_or(DbError::DeserializationError)?;
+            let value = V::deserialize(&mut bytes.as_ref()).ok_or(DbError::InnerDeserialization)?;
             Ok(Some(value))
         } else {
             Ok(None)
@@ -137,20 +139,20 @@ impl<'env, 'txn, K: StorageSerde, V: StorageSerde> TableHandle<'env, K, V> {
     }
 
     pub fn upsert(&'env self, txn: &DbTransaction<'env, RW>, key: &K, value: &V) -> Result<()> {
-        let data = value.serialize();
-        let bin_key = key.serialize();
+        let data = value.serialize()?;
+        let bin_key = key.serialize()?;
         txn.txn.put(&self.database, &bin_key, &data, WriteFlags::UPSERT)?;
         Ok(())
     }
     pub fn insert(&'env self, txn: &DbTransaction<'env, RW>, key: &K, value: &V) -> Result<()> {
-        let data = value.serialize();
-        let bin_key = key.serialize();
+        let data = value.serialize()?;
+        let bin_key = key.serialize()?;
         txn.txn.put(&self.database, &bin_key, &data, WriteFlags::NO_OVERWRITE)?;
         Ok(())
     }
     #[allow(dead_code)]
     pub fn delete(&'env self, txn: &DbTransaction<'env, RW>, key: &K) -> Result<()> {
-        let bin_key = key.serialize();
+        let bin_key = key.serialize()?;
         txn.txn.del(&self.database, &bin_key, None)?;
         Ok(())
     }
@@ -220,9 +222,9 @@ impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'tx
             None => Ok(None),
             Some((key_bytes, value_bytes)) => {
                 let key =
-                    K::deserialize(&mut key_bytes.as_ref()).ok_or(DbError::DeserializationError)?;
+                    K::deserialize(&mut key_bytes.as_ref()).ok_or(DbError::InnerDeserialization)?;
                 let value = V::deserialize(&mut value_bytes.as_ref())
-                    .ok_or(DbError::DeserializationError)?;
+                    .ok_or(DbError::InnerDeserialization)?;
                 Ok(Some((key, value)))
             }
         }
@@ -234,25 +236,25 @@ impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'tx
             None => Ok(None),
             Some((key_bytes, value_bytes)) => {
                 let key =
-                    K::deserialize(&mut key_bytes.as_ref()).ok_or(DbError::DeserializationError)?;
+                    K::deserialize(&mut key_bytes.as_ref()).ok_or(DbError::InnerDeserialization)?;
                 let value = V::deserialize(&mut value_bytes.as_ref())
-                    .ok_or(DbError::DeserializationError)?;
+                    .ok_or(DbError::InnerDeserialization)?;
                 Ok(Some((key, value)))
             }
         }
     }
     /// Position at first key greater than or equal to specified key.
     pub fn lower_bound(&mut self, key: &K) -> Result<Option<(K, V)>> {
-        let key_bytes = key.serialize();
+        let key_bytes = key.serialize()?;
         let prev_cursor_res =
             self.cursor.set_range::<DbKeyType<'_>, DbValueType<'_>>(&key_bytes)?;
         match prev_cursor_res {
             None => Ok(None),
             Some((key_bytes, value_bytes)) => {
                 let key =
-                    K::deserialize(&mut key_bytes.as_ref()).ok_or(DbError::DeserializationError)?;
+                    K::deserialize(&mut key_bytes.as_ref()).ok_or(DbError::InnerDeserialization)?;
                 let value = V::deserialize(&mut value_bytes.as_ref())
-                    .ok_or(DbError::DeserializationError)?;
+                    .ok_or(DbError::InnerDeserialization)?;
                 Ok(Some((key, value)))
             }
         }
