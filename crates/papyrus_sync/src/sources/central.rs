@@ -5,7 +5,7 @@ use futures::{future, pin_mut, TryStreamExt};
 use futures_util::StreamExt;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
-use starknet_api::{Block, BlockNumber, DeclaredContract, StarknetApiError, StateDiff};
+use starknet_api::{Block, BlockHash, BlockNumber, DeclaredContract, StarknetApiError, StateDiff};
 use starknet_client::{
     client_to_starknet_api_storage_diff, ClientCreationError, ClientError, RetryConfig,
     StarknetClient, StarknetClientTrait, StateUpdate,
@@ -47,6 +47,16 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
             .block_number()
             .await?
             .map_or(Ok(BlockNumber::default()), |block_number| Ok(block_number.next()))
+    }
+
+    pub async fn get_block_hash(
+        &self,
+        block_number: BlockNumber,
+    ) -> Result<Option<BlockHash>, ClientError> {
+        self.starknet_client
+            .block(block_number)
+            .await?
+            .map_or(Ok(None), |block| Ok(Some(block.block_hash)))
     }
 
     pub fn stream_state_updates(

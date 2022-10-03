@@ -50,6 +50,9 @@ pub enum SyncEvent {
         // state diff.
         deployed_contract_class_definitions: Vec<DeclaredContract>,
     },
+    RevertRequired {
+        block_number: BlockNumber,
+    },
 }
 
 #[allow(clippy::new_without_default)]
@@ -108,6 +111,9 @@ impl StateSync {
                             )?
                             .commit()?;
                     }
+                    Some(SyncEvent::RevertRequired { block_number }) => {
+                        todo!("Revert block {}", block_number)
+                    }
                     None => {
                         return Err(StateSyncError::SyncError {
                             message: "Got an empty event.".to_string(),
@@ -116,6 +122,32 @@ impl StateSync {
                 }
             }
         }
+    }
+}
+
+/// Checks if centrals block hash at the block number is different from ours (or doesn't exist).
+/// If so, a revert is required.
+async fn should_revert_block(
+    reader: &StorageReader,
+    central_source: &CentralSource,
+    block_number: BlockNumber,
+) -> bool {
+    if let Some(central_block_hash) =
+        central_source.get_block_hash(block_number).await.expect("Cannot read from central.")
+    {
+        let storage_block_header = reader
+            .begin_ro_txn()
+            .expect("Cannot read from block storage.")
+            .get_block_header(block_number)
+            .expect("Cannot read from block storage.");
+
+        match storage_block_header {
+            Some(block_header) => block_header.block_hash == central_block_hash,
+            None => false,
+        }
+    } else {
+        // Block number doesn't exist in central, revert.
+        true
     }
 }
 
@@ -129,10 +161,24 @@ fn stream_new_blocks(
             let header_marker = reader.begin_ro_txn().expect("Cannot read from block storage.")
                 .get_header_marker()
                 .expect("Cannot read from block storage.");
+
+            // Revert last blocks if needed.
+            let mut last_block_in_storage = header_marker.prev();
+            while let Some(block_number) = last_block_in_storage {
+                if should_revert_block(&reader, central_source, block_number).await {
+                    yield SyncEvent::RevertRequired { block_number };
+                    last_block_in_storage = block_number.prev();
+                }
+                else {
+                    break;
+                }
+            }
+
             let last_block_number = central_source
                 .get_block_marker()
                 .await
-                .expect("Cannot read from block storage.");
+                .expect("Cannot read from central.");
+
             info!(
                 "Downloading blocks [{} - {}).",
                 header_marker, last_block_number
