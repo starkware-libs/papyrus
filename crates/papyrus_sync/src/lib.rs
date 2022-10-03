@@ -61,6 +61,32 @@ pub enum SyncEvent {
     },
 }
 
+async fn handle_reverts<TCentralSource: CentralSourceTrait + Sync + Send>(
+    reader: &StorageReader,
+    central_source: Arc<TCentralSource>,
+) {
+    let header_marker = reader
+        .begin_ro_txn()
+        .expect("Cannot read from block storage.")
+        .get_header_marker()
+        .expect("Cannot read from block storage.");
+
+    // Revert last blocks if needed.
+    let mut last_block_in_storage = header_marker.prev();
+    while let Some(block_number) = last_block_in_storage {
+        if should_revert_block(reader, central_source.clone(), block_number).await {
+            revert_block(block_number);
+            last_block_in_storage = block_number.prev();
+        } else {
+            break;
+        }
+    }
+}
+
+fn revert_block(block_number: BlockNumber) {
+    unimplemented!("Revert block {}", block_number);
+}
+
 #[allow(clippy::new_without_default)]
 impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSync<TCentralSource> {
     pub async fn run(&mut self) -> anyhow::Result<(), StateSyncError> {
@@ -88,6 +114,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 };
                 match sync_event {
                     Some(SyncEvent::BlockAvailable { block_number, block }) => {
+                        handle_reverts(&self.reader, self.central_source.clone()).await;
                         self.writer
                             .begin_rw_txn()?
                             .append_header(block_number, &block.header)?
@@ -119,6 +146,32 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     }
 }
 
+/// Checks if centrals block hash at the block number is different from ours (or doesn't exist).
+/// If so, a revert is required.
+async fn should_revert_block<TCentralSource: CentralSourceTrait + Sync + Send>(
+    reader: &StorageReader,
+    central_source: Arc<TCentralSource>,
+    block_number: BlockNumber,
+) -> bool {
+    if let Some(central_block_hash) =
+        central_source.get_block_hash(block_number).await.expect("Cannot read from central.")
+    {
+        let storage_block_header = reader
+            .begin_ro_txn()
+            .expect("Cannot read from block storage.")
+            .get_block_header(block_number)
+            .expect("Cannot read from block storage.");
+
+        match storage_block_header {
+            Some(block_header) => block_header.block_hash != central_block_hash,
+            None => false,
+        }
+    } else {
+        // Block number doesn't exist in central, revert.
+        true
+    }
+}
+
 fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
@@ -129,10 +182,12 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
             let header_marker = reader.begin_ro_txn().expect("Cannot read from block storage.")
                 .get_header_marker()
                 .expect("Cannot read from block storage.");
+
             let last_block_number = central_source
                 .get_block_marker()
                 .await
-                .expect("Cannot read from block storage.");
+                .expect("Cannot read from central.");
+
             info!(
                 "Downloading blocks [{} - {}).",
                 header_marker, last_block_number
