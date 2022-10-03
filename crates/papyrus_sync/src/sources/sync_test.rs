@@ -120,6 +120,8 @@ async fn sync_happy_flow() -> Result<(), anyhow::Error> {
         .boxed();
         state_stream
     });
+    mock.expect_get_block_hash()
+        .returning(|bn| Ok(Some(BlockHash(shash!(format!("0x{}", bn.0).as_str())))));
     let (reader, writer) = get_test_storage();
     let sync_future = run_sync(reader.clone(), writer, mock);
 
