@@ -12,8 +12,8 @@ use papyrus_storage::test_utils::{
 };
 use papyrus_storage::{BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 use starknet_api::{
-    shash, BlockHash, BlockHeader, BlockNumber, BlockStatus, ClassHash, ContractAddress,
-    ContractClass, Nonce, StarkFelt, StarkHash, TransactionHash,
+    shash, BlockHash, BlockHeader, BlockNumber, BlockStatus, ClassHash, ContractAddress, Nonce,
+    StarkFelt, StarkHash, TransactionHash,
 };
 
 use super::api::{

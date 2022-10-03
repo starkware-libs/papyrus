@@ -194,7 +194,7 @@ pub fn get_alpha4_block_number_1() -> Block {
     Block { header, body: BlockBody::new(transactions, transaction_outputs).unwrap() }
 }
 
-fn get_test_state_diff()
+pub fn get_test_state_diff()
 -> (BlockHeader, BlockHeader, starknet_api::StateDiff, Vec<DeclaredContract>) {
     let parent_hash =
         BlockHash::new(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
