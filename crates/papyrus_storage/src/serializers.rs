@@ -46,12 +46,12 @@ impl StorageSerde for PatriciaKey {
 impl StorageSerde for serde_json::Value {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
         // TODO(anatg): Deal with serde_json error.
-        serde_json::to_vec(self).unwrap().serialize_into(res)
+        serde_json::to_writer(res, self).unwrap();
+        Ok(())
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        let bytes = Vec::deserialize_from(bytes)?;
-        serde_json::from_slice(bytes.as_slice()).ok()
+        serde_json::from_reader(bytes).ok()
     }
 }
 
@@ -453,17 +453,6 @@ auto_storage_serde! {
         pub from_address: EthAddress,
         pub payload: L1ToL2Payload,
     }
-    pub struct Program {
-        pub attributes: serde_json::Value,
-        pub builtins: serde_json::Value,
-        pub data: serde_json::Value,
-        pub debug_info: serde_json::Value,
-        pub hints: serde_json::Value,
-        pub identifiers: serde_json::Value,
-        pub main_scope: serde_json::Value,
-        pub prime: serde_json::Value,
-        pub reference_manager: serde_json::Value,
-    }
     pub struct StorageDiff {
         pub address: ContractAddress,
         pub storage_entries: Vec<StorageEntry>,
@@ -539,5 +528,19 @@ impl StorageSerde for ThinStateDiff {
                 .ok()?
                 .into(),
         )
+    }
+}
+
+impl StorageSerde for Program {
+    /// Serializes the entire program as one json value.
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+        // TODO(anatg): Deal with serde_json error.
+        serde_json::to_value(self).unwrap().serialize_into(res)
+    }
+
+    /// Deserializes the entire program as one json value.
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        let value = serde_json::Value::deserialize_from(bytes)?;
+        serde_json::from_value(value).ok()
     }
 }

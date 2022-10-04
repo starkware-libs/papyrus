@@ -17,9 +17,15 @@ pub struct ContractClass {
 impl TryFrom<starknet_api::ContractClass> for ContractClass {
     type Error = CompressionError;
     fn try_from(class: starknet_api::ContractClass) -> Result<Self, Self::Error> {
+        let mut program_value = serde_json::to_value(&class.program).unwrap();
+        // Remove the 'attributes' key if it is null.
+        if class.program.attributes == serde_json::value::Value::Null {
+            program_value.as_object_mut().unwrap().remove("attributes");
+        }
+
         Ok(Self {
             abi: class.abi,
-            program: base64::encode(GzEncoded::encode(class.program)?),
+            program: base64::encode(GzEncoded::encode(program_value)?),
             entry_points_by_type: class.entry_points_by_type,
         })
     }
