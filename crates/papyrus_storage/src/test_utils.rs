@@ -30,9 +30,27 @@ pub fn get_test_storage() -> (StorageReader, StorageWriter) {
     open_storage(config).expect("Failed to open storage.")
 }
 
-pub fn read_resource_file(path_in_resource_dir: &str) -> Result<String, anyhow::Error> {
-    let path = Path::new(&env::current_dir()?).join("resources").join(path_in_resource_dir);
-    Ok(read_to_string(path.to_str().unwrap())?.replace('\n', "").replace(' ', ""))
+pub fn read_json_file(path_in_resource_dir: &str) -> Result<serde_json::Value, anyhow::Error> {
+    // Reads from the directory containing the manifest at run time, same as current working
+    // directory.
+    read_json_file_from_dir(&env::var("CARGO_MANIFEST_DIR")?, path_in_resource_dir)
+}
+
+fn read_json_file_from_storage_resources(
+    path_in_resource_dir: &str,
+) -> Result<serde_json::Value, anyhow::Error> {
+    // Reads from the directory containing the manifest at compile time, which is the storage crate
+    // directory.
+    read_json_file_from_dir(env!("CARGO_MANIFEST_DIR"), path_in_resource_dir)
+}
+
+fn read_json_file_from_dir(
+    dir: &str,
+    path_in_resource_dir: &str,
+) -> Result<serde_json::Value, anyhow::Error> {
+    let path = Path::new(dir).join("resources").join(path_in_resource_dir);
+    let json_str = read_to_string(path.to_str().unwrap())?;
+    Ok(serde_json::from_str(&json_str)?)
 }
 
 pub fn get_test_body(transaction_count: usize) -> BlockBody {
@@ -78,16 +96,60 @@ pub fn get_test_body(transaction_count: usize) -> BlockBody {
 pub fn get_test_block(transaction_count: usize) -> Block {
     let header = BlockHeader {
         block_hash: BlockHash::new(shash!(
-            "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"
+            "0x7d328a71faf48c5c3857e99f20a77b18522480956d1cd5bff1ff2df3c8b427b"
         )),
         block_number: BlockNumber::new(0),
+        state_root: GlobalRoot::new(shash!(
+            "0x02c2bb91714f8448ed814bdac274ab6fcdbafc22d835f9e847e5bee8c2e5444e"
+        )),
         ..BlockHeader::default()
     };
 
     Block { header, body: get_test_body(transaction_count) }
 }
 
-pub fn get_alpha4_block_number_1() -> Block {
+pub fn get_test_state_diff1() -> (StateDiff, Vec<DeclaredContract>) {
+    let address0 = ContractAddress::try_from(shash!(
+        "0x543e54f26ae33686f57da2ceebed98b340c3a78e9390931bd84fb711d5caabc"
+    ))
+    .unwrap();
+    let hash0 =
+        ClassHash::new(shash!("0x10455c752b86932ce552f2b0fe81a880746649b9aee7e0d842bf3f52378f9f8"));
+    let class_value = read_json_file_from_storage_resources("contract_class.json").unwrap();
+    let class0 = serde_json::from_value(class_value).unwrap();
+
+    let key0 = StorageKey::try_from(shash!(
+        "0x70be09c520814c13480a220ad31eb94bf37f0259e002b0275e55f3c309ee823"
+    ))
+    .unwrap();
+    let value0 = shash!("0x1dc19dce5326f42f2b319d78b237148d1e582efbf700efd6eb2c9fcbc451327");
+    let key1 = StorageKey::try_from(shash!(
+        "0x420eefdc029d53134b57551d676c9a450e5f75f9f017ca75f6fb28350f60d54"
+    ))
+    .unwrap();
+    let value1 = shash!("0x7c7139d51f4642ec66088959e69eb890e2e6e87c08dad2a223da9161c99c939");
+
+    let diff = StateDiff::new(
+        vec![DeployedContract { address: address0, class_hash: hash0 }],
+        vec![StorageDiff {
+            address: address0,
+            storage_entries: vec![
+                StorageEntry { key: key0, value: value0 },
+                StorageEntry { key: key1, value: value1 },
+            ],
+        }],
+        vec![],
+        vec![],
+    )
+    .unwrap();
+
+    let deployed_contract_class_definitions =
+        vec![DeclaredContract { class_hash: hash0, contract_class: class0 }];
+
+    (diff, deployed_contract_class_definitions)
+}
+
+pub fn get_test_block1() -> Block {
     let header = BlockHeader {
         block_hash: BlockHash::new(shash!(
             "0x75e00250d4343326f322e370df4c9c73c7be105ad9f532eeb97891a34d9e4a5"

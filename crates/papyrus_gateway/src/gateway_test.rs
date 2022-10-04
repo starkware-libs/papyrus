@@ -23,7 +23,7 @@ use super::objects::{
     Block, ContractClass, StateUpdate, TransactionReceipt, TransactionReceiptWithStatus,
     TransactionStatus, TransactionWithType, Transactions,
 };
-use super::test_utils::{read_resource_file, send_request};
+use super::test_utils::send_request;
 use super::{run_server, GatewayConfig, JsonRpcServerImpl};
 
 #[tokio::test]
@@ -1062,28 +1062,59 @@ async fn serialize_returns_expcted_json() -> Result<(), anyhow::Error> {
     // TODO(anatg): Use the papyrus_node/main.rs, when it has configuration for running different
     // components, for openning the storage and running the server.
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let block = get_alpha4_block_number_1();
-    let dummy_block_number_0 = get_test_block(0);
+    let block0 = get_test_block(0);
+    let block1 = get_test_block1();
+    let (state_diff, deployed_contract_class_definitions) = get_test_state_diff1();
     storage_writer
         .begin_rw_txn()?
+<<<<<<< HEAD
         .append_header(dummy_block_number_0.header.block_number, &dummy_block_number_0.header)?
         .append_body(dummy_block_number_0.header.block_number, dummy_block_number_0.body)?
         .append_header(block.header.block_number, &block.header)?
         .append_body(block.header.block_number, block.body)?
+=======
+        .append_header(block0.header.block_number, &block0.header)?
+        .append_body(block0.header.block_number, &block0.body)?
+        .append_state_diff(block0.header.block_number, StateDiff::default(), vec![])?
+        .append_header(block1.header.block_number, &block1.header)?
+        .append_body(block1.header.block_number, &block1.body)?
+        .append_state_diff(
+            block1.header.block_number,
+            state_diff,
+            deployed_contract_class_definitions,
+        )?
+>>>>>>> Add more serde tests to gateway
         .commit()?;
 
     let gateway_config = GatewayConfig { server_ip: String::from("127.0.0.1:0") };
     let (server_address, _handle) = run_server(gateway_config, storage_reader).await?;
 
+    serde_state(server_address).await?;
     serde_block(server_address).await?;
     serde_transaction(server_address).await?;
+    Ok(())
+}
+
+async fn serde_state(server_address: SocketAddr) -> Result<(), anyhow::Error> {
+    let res =
+        send_request(server_address, "starknet_getStateUpdate", r#"{"block_number": 1}"#).await?;
+    assert_eq!(res, read_json_file("state_update.json")?);
+
+    let res = send_request(
+        server_address,
+        "starknet_getClassAt",
+        r#"{"block_number": 1}, "0x543e54f26ae33686f57da2ceebed98b340c3a78e9390931bd84fb711d5caabc""#,
+    )
+    .await?;
+    assert_eq!(res, read_json_file("contract_class.json")?);
+
     Ok(())
 }
 
 async fn serde_block(server_address: SocketAddr) -> Result<(), anyhow::Error> {
     let res =
         send_request(server_address, "starknet_getBlockWithTxs", r#"{"block_number": 1}"#).await?;
-    assert_eq!(res, read_resource_file("block_with_transactions.json")?);
+    assert_eq!(res, read_json_file("block_with_transactions.json")?);
 
     let res = send_request(
         server_address,
@@ -1091,12 +1122,14 @@ async fn serde_block(server_address: SocketAddr) -> Result<(), anyhow::Error> {
         r#"{"block_hash": "0x75e00250d4343326f322e370df4c9c73c7be105ad9f532eeb97891a34d9e4a5"}"#,
     )
     .await?;
-    assert_eq!(res, read_resource_file("block_with_transaction_hashes.json")?);
+    assert_eq!(res, read_json_file("block_with_transaction_hashes.json")?);
 
     let res =
         send_request(server_address, "starknet_getBlockTransactionCount", r#"{"block_number": 1}"#)
             .await?;
-    assert_eq!(res, r#"{"jsonrpc":"2.0","result":4,"id":"1"}"#);
+    let expeced: serde_json::Value =
+        serde_json::from_str(r#"{"jsonrpc":"2.0","result":4,"id":"1"}"#)?;
+    assert_eq!(res, expeced);
 
     Ok(())
 }
@@ -1108,7 +1141,7 @@ async fn serde_transaction(server_address: SocketAddr) -> Result<(), anyhow::Err
         r#"{"block_number": 1}, 0"#,
     )
     .await?;
-    assert_eq!(res, read_resource_file("deploy_transaction.json")?);
+    assert_eq!(res, read_json_file("deploy_transaction.json")?);
 
     let res = send_request(
         server_address,
@@ -1116,7 +1149,7 @@ async fn serde_transaction(server_address: SocketAddr) -> Result<(), anyhow::Err
         r#""0x4dd12d3b82c3d0b216503c6abf63f1ccad222461582eac82057d46c327331d2""#,
     )
     .await?;
-    assert_eq!(res, read_resource_file("deploy_transaction.json")?);
+    assert_eq!(res, read_json_file("deploy_transaction.json")?);
 
     let res = send_request(
         server_address,
@@ -1124,7 +1157,7 @@ async fn serde_transaction(server_address: SocketAddr) -> Result<(), anyhow::Err
         r#""0x6525d9aa309e5c80abbdafcc434d53202e06866597cd6dbbc91e5894fad7155""#,
     )
     .await?;
-    assert_eq!(res, read_resource_file("invoke_transaction_receipt.json")?);
+    assert_eq!(res, read_json_file("invoke_transaction_receipt.json")?);
 
     Ok(())
 }
