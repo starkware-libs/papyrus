@@ -15,11 +15,13 @@ use std::sync::Arc;
 use db::DbTableStats;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, Nonce, StarkFelt, StorageKey,
-    Transaction, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
+    BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, EventContent,
+    EventIndexInTransactionOutput, Nonce, StarkFelt, StorageKey, Transaction, TransactionHash,
+    TransactionOffsetInBlock,
 };
 use state::{IndexedDeclaredContract, IndexedDeployedContract};
 
+pub use self::body::events::ThinTransactionOutput;
 pub use self::body::{BodyStorageReader, BodyStorageWriter};
 pub use self::db::TransactionKind;
 use self::db::{
@@ -64,6 +66,11 @@ pub enum StorageError {
         "Cannot revert block {revert_block_number:?}, current marker is {block_number_marker:?}."
     )]
     InvalidRevert { revert_block_number: BlockNumber, block_number_marker: BlockNumber },
+    #[error(
+        "Event with index {event_index:?} emitted from contract address {from_address:?} was not \
+         found."
+    )]
+    EventNotFound { event_index: EventIndex, from_address: ContractAddress },
 }
 pub type StorageResult<V> = std::result::Result<V, StorageError>;
 
@@ -102,8 +109,9 @@ struct_field_names! {
         nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
         headers: TableIdentifier<BlockNumber, BlockHeader>,
         block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
+        events: TableIdentifier<(ContractAddress, EventIndex), EventContent>,
         transactions: TableIdentifier<TransactionIndex, Transaction>,
-        transaction_outputs: TableIdentifier<TransactionIndex, TransactionOutput>,
+        transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
         transaction_hash_to_idx:
             TableIdentifier<TransactionHash, TransactionIndex>,
         state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
@@ -117,8 +125,11 @@ pub fn table_names() -> &'static [&'static str] {
     Tables::field_names()
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize)]
+pub struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
 
 #[derive(Clone)]
 pub struct StorageReader {
@@ -163,6 +174,7 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         contract_storage: db_writer.create_table("contract_storage")?,
         declared_classes: db_writer.create_table("declared_classes")?,
         deployed_contracts: db_writer.create_table("deployed_contracts")?,
+        events: db_writer.create_table("events")?,
         headers: db_writer.create_table("headers")?,
         markers: db_writer.create_table("markers")?,
         nonces: db_writer.create_table("nonces")?,

@@ -23,11 +23,11 @@ pub use self::state::{
 };
 pub use self::transaction::{
     CallData, ContractAddressSalt, DeclareTransaction, DeclareTransactionOutput, DeployTransaction,
-    DeployTransactionOutput, EthAddress, Event, EventData, EventKey, Fee, InvokeTransaction,
-    InvokeTransactionOutput, L1HandlerTransaction, L1HandlerTransactionOutput, L1ToL2Payload,
-    L2ToL1Payload, MessageToL1, MessageToL2, Transaction, TransactionHash,
-    TransactionOffsetInBlock, TransactionOutput, TransactionReceipt, TransactionSignature,
-    TransactionVersion,
+    DeployTransactionOutput, EthAddress, Event, EventContent, EventData,
+    EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction, InvokeTransactionOutput,
+    L1HandlerTransaction, L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, MessageToL1,
+    MessageToL2, Transaction, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
+    TransactionReceipt, TransactionSignature, TransactionVersion,
 };
 
 #[derive(thiserror::Error, Clone, Debug)]

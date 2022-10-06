@@ -19,6 +19,12 @@ pub struct TransactionHash(pub StarkHash);
 )]
 pub struct TransactionOffsetInBlock(pub usize);
 
+/// The index of an event in a StarkNet [`TransactionOutput`](super::TransactionOutput).
+#[derive(
+    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct EventIndexInTransactionOutput(pub usize);
+
 /// A fee in StarkNet.
 #[derive(
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
@@ -44,12 +50,18 @@ pub struct EventData(pub Vec<StarkFelt>);
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct EventKey(pub StarkFelt);
 
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct EventContent {
+    pub keys: Vec<EventKey>,
+    pub data: EventData,
+}
+
 /// An event in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct Event {
     pub from_address: ContractAddress,
-    pub keys: Vec<EventKey>,
-    pub data: EventData,
+    #[serde(flatten)]
+    pub content: EventContent,
 }
 
 /// The calldata of a transaction in StarkNet.
@@ -210,6 +222,15 @@ impl TransactionOutput {
             TransactionOutput::Deploy(output) => output.actual_fee,
             TransactionOutput::Invoke(output) => output.actual_fee,
             TransactionOutput::L1Handler(output) => output.actual_fee,
+        }
+    }
+
+    pub fn events(&self) -> &Vec<Event> {
+        match self {
+            TransactionOutput::Declare(output) => &output.events,
+            TransactionOutput::Deploy(output) => &output.events,
+            TransactionOutput::Invoke(output) => &output.events,
+            TransactionOutput::L1Handler(output) => &output.events,
         }
     }
 }

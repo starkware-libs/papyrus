@@ -159,7 +159,7 @@ async fn get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(block.header.block_number, &block.header)?
-        .append_body(block.header.block_number, &block.body)?
+        .append_body(block.header.block_number, block.body.clone())?
         .commit()?;
 
     let expected_transaction = block.body.transactions().index(0);
@@ -235,7 +235,7 @@ async fn get_block_w_full_transactions() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(block.header.block_number, &block.header)?
-        .append_body(block.header.block_number, &block.body)?
+        .append_body(block.header.block_number, block.body.clone())?
         .commit()?;
 
     let expected_transaction = block.body.transactions().index(0);
@@ -586,7 +586,10 @@ async fn get_transaction_by_hash() -> Result<(), anyhow::Error> {
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
 
     let block = get_test_block(1);
-    storage_writer.begin_rw_txn()?.append_body(block.header.block_number, &block.body)?.commit()?;
+    storage_writer
+        .begin_rw_txn()?
+        .append_body(block.header.block_number, block.body.clone())?
+        .commit()?;
 
     let expected_transaction = block.body.transactions().index(0);
     let res = module
@@ -623,7 +626,7 @@ async fn get_transaction_by_block_id_and_index() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(block.header.block_number, &block.header)?
-        .append_body(block.header.block_number, &block.body)?
+        .append_body(block.header.block_number, block.body.clone())?
         .commit()?;
 
     let expected_transaction = block.body.transactions().index(0);
@@ -707,7 +710,7 @@ async fn get_block_transaction_count() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(block.header.block_number, &block.header)?
-        .append_body(block.header.block_number, &block.body)?
+        .append_body(block.header.block_number, block.body)?
         .commit()?;
 
     // Get block by hash.
@@ -847,7 +850,7 @@ async fn get_transaction_receipt() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(block.header.block_number, &block.header)?
-        .append_body(block.header.block_number, &block.body)?
+        .append_body(block.header.block_number, block.body.clone())?
         .commit()?;
 
     let transaction_hash = block.body.transactions().index(0).transaction_hash();
@@ -1126,9 +1129,9 @@ async fn serialize_returns_expcted_json() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(dummy_block_number_0.header.block_number, &dummy_block_number_0.header)?
-        .append_body(dummy_block_number_0.header.block_number, &dummy_block_number_0.body)?
+        .append_body(dummy_block_number_0.header.block_number, dummy_block_number_0.body)?
         .append_header(block.header.block_number, &block.header)?
-        .append_body(block.header.block_number, &block.body)?
+        .append_body(block.header.block_number, block.body)?
         .commit()?;
 
     let gateway_config = GatewayConfig { server_ip: String::from("127.0.0.1:0") };

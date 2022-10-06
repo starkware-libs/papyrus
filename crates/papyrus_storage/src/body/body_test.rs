@@ -1,39 +1,17 @@
 use assert_matches::assert_matches;
-use starknet_api::{
-    shash, BlockBody, BlockNumber, CallData, ClassHash, ContractAddress, ContractAddressSalt,
-    DeployTransaction, DeployTransactionOutput, Fee, StarkHash, Transaction, TransactionHash,
-    TransactionOffsetInBlock, TransactionOutput, TransactionVersion,
-};
+use starknet_api::{BlockBody, BlockNumber, TransactionOffsetInBlock};
 
-use super::{BodyStorageReader, BodyStorageWriter, StorageError};
-use crate::test_utils::{get_test_body, get_test_storage};
-use crate::{StorageWriter, TransactionIndex};
+use super::events::ThinTransactionOutput;
+use super::{BodyStorageReader, BodyStorageWriter};
+use crate::test_utils::{get_test_block, get_test_body, get_test_storage};
+use crate::{StorageError, StorageWriter, TransactionIndex};
 
 #[tokio::test]
 async fn append_body() -> Result<(), anyhow::Error> {
     let (reader, mut writer) = get_test_storage();
-
-    let txs: Vec<Transaction> = (0..10)
-        .map(|i| {
-            Transaction::Deploy(DeployTransaction {
-                transaction_hash: TransactionHash(StarkHash::from_u64(i as u64)),
-                version: TransactionVersion(shash!("0x1")),
-                contract_address: ContractAddress::try_from(StarkHash::from_u64(i as u64)).unwrap(),
-                constructor_calldata: CallData(vec![StarkHash::from_u64(i as u64)]),
-                class_hash: ClassHash::new(StarkHash::from_u64(i as u64)),
-                contract_address_salt: ContractAddressSalt(shash!("0x2")),
-            })
-        })
-        .collect();
-    let tx_outputs: Vec<TransactionOutput> = (0..10)
-        .map(|i| {
-            TransactionOutput::Deploy(DeployTransactionOutput {
-                actual_fee: Fee(i as u128),
-                messages_sent: vec![],
-                events: vec![],
-            })
-        })
-        .collect();
+    let body = get_test_block(10).body;
+    let txs = body.transactions();
+    let tx_outputs = body.transaction_outputs();
 
     let body0 = BlockBody::new(vec![txs[0].clone()], vec![tx_outputs[0].clone()]).unwrap();
     let body1 = BlockBody::new(vec![], vec![]).unwrap();
@@ -49,12 +27,12 @@ async fn append_body() -> Result<(), anyhow::Error> {
     .unwrap();
     writer
         .begin_rw_txn()?
-        .append_body(BlockNumber::new(0), &body0)?
-        .append_body(BlockNumber::new(1), &body1)?
+        .append_body(BlockNumber::new(0), body0)?
+        .append_body(BlockNumber::new(1), body1)?
         .commit()?;
 
-    // Check for MarkerMismatch error  when trying to append the wrong block number.
-    if let Err(err) = writer.begin_rw_txn()?.append_body(BlockNumber::new(5), &body2) {
+    // Check for MarkerMismatch error when trying to append the wrong block number.
+    if let Err(err) = writer.begin_rw_txn()?.append_body(BlockNumber::new(5), body2.clone()) {
         assert_matches!(
             err,
             StorageError::MarkerMismatch { expected, found }
@@ -63,9 +41,9 @@ async fn append_body() -> Result<(), anyhow::Error> {
         panic!("Unexpected Ok.");
     }
 
-    writer.begin_rw_txn()?.append_body(BlockNumber::new(2), &body2)?.commit()?;
+    writer.begin_rw_txn()?.append_body(BlockNumber::new(2), body2)?.commit()?;
 
-    if let Err(err) = writer.begin_rw_txn()?.append_body(BlockNumber::new(3), &body3) {
+    if let Err(err) = writer.begin_rw_txn()?.append_body(BlockNumber::new(3), body3) {
         let expected_tx_index = TransactionIndex(BlockNumber::new(3), TransactionOffsetInBlock(1));
         assert_matches!(
             err,
@@ -82,7 +60,7 @@ async fn append_body() -> Result<(), anyhow::Error> {
     // Check marker.
     assert_eq!(txn.get_body_marker()?, BlockNumber::new(3));
 
-    // Check single transactions and outputs.
+    // Check single transactions, outputs and events.
     let tx_cases = vec![
         (BlockNumber::new(0), TransactionOffsetInBlock(0), Some(0)),
         (BlockNumber::new(0), TransactionOffsetInBlock(1), None),
@@ -93,16 +71,21 @@ async fn append_body() -> Result<(), anyhow::Error> {
     ];
 
     for (block_number, tx_offset, original_index) in tx_cases {
-        let expected_tx = original_index.map(|i| &txs[i]);
+        let expected_tx = original_index.map(|i| txs[i].clone());
+        assert_eq!(txn.get_transaction(TransactionIndex(block_number, tx_offset))?, expected_tx);
+
+        let expected_tx_output =
+            original_index.map(|i| ThinTransactionOutput::from(tx_outputs[i].clone()));
         assert_eq!(
-            txn.get_transaction(TransactionIndex(block_number, tx_offset))?.as_ref(),
-            expected_tx
-        );
-        let expected_tx_output = original_index.map(|i| &tx_outputs[i]);
-        assert_eq!(
-            txn.get_transaction_output(TransactionIndex(block_number, tx_offset))?.as_ref(),
+            txn.get_transaction_output(TransactionIndex(block_number, tx_offset))?,
             expected_tx_output
         );
+
+        let expected_events = original_index.map(|i| tx_outputs[i].events().clone());
+        assert_eq!(
+            txn.get_transaction_events(TransactionIndex(block_number, tx_offset))?,
+            expected_events
+        )
     }
 
     // Check transaction hash.
@@ -131,12 +114,15 @@ async fn append_body() -> Result<(), anyhow::Error> {
     // Check block transaction outputs.
     assert_eq!(
         txn.get_block_transaction_outputs(BlockNumber::new(0))?,
-        Some(vec![tx_outputs[0].clone()])
+        Some(vec![ThinTransactionOutput::from(tx_outputs[0].clone())])
     );
     assert_eq!(txn.get_block_transaction_outputs(BlockNumber::new(1))?, Some(vec![]));
     assert_eq!(
         txn.get_block_transaction_outputs(BlockNumber::new(2))?,
-        Some(vec![tx_outputs[1].clone(), tx_outputs[2].clone()])
+        Some(vec![
+            ThinTransactionOutput::from(tx_outputs[1].clone()),
+            ThinTransactionOutput::from(tx_outputs[2].clone()),
+        ])
     );
     assert_eq!(txn.get_block_transaction_outputs(BlockNumber::new(3))?, None);
     Ok(())
@@ -163,7 +149,7 @@ async fn revert_non_existing_body_fails() -> Result<(), anyhow::Error> {
 #[tokio::test]
 async fn revert_last_body_success() -> Result<(), anyhow::Error> {
     let (_, mut writer) = get_test_storage();
-    writer.begin_rw_txn()?.append_body(BlockNumber::new(0), &BlockBody::default())?.commit()?;
+    writer.begin_rw_txn()?.append_body(BlockNumber::new(0), BlockBody::default())?.commit()?;
     writer.begin_rw_txn()?.revert_body(BlockNumber::new(0))?.commit()?;
     Ok(())
 }
@@ -221,7 +207,7 @@ async fn get_reverted_body_returns_none() -> Result<(), anyhow::Error> {
 async fn revert_transactions() -> Result<(), anyhow::Error> {
     let (reader, mut writer) = get_test_storage();
     let body = get_test_body(10);
-    writer.begin_rw_txn()?.append_body(BlockNumber::new(0), &body)?.commit()?;
+    writer.begin_rw_txn()?.append_body(BlockNumber::new(0), body.clone())?.commit()?;
 
     for (offset, tx_hash) in body.transactions().iter().map(|tx| tx.transaction_hash()).enumerate()
     {
@@ -252,8 +238,8 @@ async fn revert_transactions() -> Result<(), anyhow::Error> {
 fn append_2_bodies(writer: &mut StorageWriter) -> Result<(), anyhow::Error> {
     writer
         .begin_rw_txn()?
-        .append_body(BlockNumber::new(0), &BlockBody::default())?
-        .append_body(BlockNumber::new(1), &BlockBody::default())?
+        .append_body(BlockNumber::new(0), BlockBody::default())?
+        .append_body(BlockNumber::new(1), BlockBody::default())?
         .commit()?;
 
     Ok(())
