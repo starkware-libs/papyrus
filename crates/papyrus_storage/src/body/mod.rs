@@ -1,7 +1,6 @@
 #[cfg(test)]
 #[path = "body_test.rs"]
 mod body_test;
-#[path = "events.rs"]
 pub(crate) mod events;
 
 use starknet_api::{
@@ -257,23 +256,9 @@ fn write_events<'env>(
     events_table: &'env EventsTable<'env>,
     transaction_index: TransactionIndex,
 ) -> StorageResult<()> {
-    let mut sorted_events: Vec<(ContractAddress, EventIndexInTransactionOutput, &EventContent)> =
-        tx_output
-            .events()
-            .iter()
-            .enumerate()
-            .map(|(index, event)| {
-                (event.from_address, EventIndexInTransactionOutput(index), &event.content)
-            })
-            .collect();
-    sorted_events.sort_by_key(|&(address, _, _)| address);
-
-    for (from_address, index, event_content) in sorted_events.into_iter() {
-        events_table.insert(
-            txn,
-            &(from_address, EventIndex(transaction_index, index)),
-            event_content,
-        )?;
+    for (index, event) in tx_output.events().iter().enumerate() {
+        let event_index = EventIndex(transaction_index, EventIndexInTransactionOutput(index));
+        events_table.insert(txn, &(event.from_address, event_index), &event.content)?;
     }
     Ok(())
 }

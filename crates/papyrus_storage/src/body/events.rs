@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use starknet_api::{ContractAddress, Fee, MessageToL1, TransactionOutput};
 
-// Each [`ThinTransactionOutput`] holds a list of events contract addresses so that given a thin
+// Each [`ThinTransactionOutput`] holds a list of event contract addresses so that given a thin
 // transaction output we can get all its events from the events table (see
 // [`get_transaction_events`] in [`BodyStorageReader`]). These events contract addresses are taken
 // from the events in the order of the events in [`starknet_api`][`TransactionOutput`].
