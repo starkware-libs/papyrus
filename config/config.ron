@@ -1,6 +1,5 @@
 Config(
     chain_id: ("SN_GOERLI"),
-    gateway_server_ip: "localhost:8080",
     central: CentralSourceConfig(
         url: "https://alpha4.starknet.io/",
         retry_config: RetryConfig(
@@ -8,6 +7,12 @@ Config(
             retry_max_delay_millis: 30000,
             max_retries: 10,
         ),
+    ),
+    gateway: GatewayConfig(
+        chain_id: ("SN_GOERLI"),
+        server_ip: "localhost:8080",
+        max_events_chunk_size: 1000,
+        max_events_keys: 100,
     ),
     monitoring_gateway: MonitoringGatewayConfig(
         server_ip: "localhost:8081",

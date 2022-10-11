@@ -24,7 +24,7 @@ use starknet_api::transaction::{
     TransactionOffsetInBlock,
 };
 
-pub use crate::body::events::ThinTransactionOutput;
+pub use crate::body::events::{EventsReader, ThinTransactionOutput};
 pub use crate::body::{BodyStorageReader, BodyStorageWriter};
 pub use crate::db::serialization::{StorageSerde, StorageSerdeError};
 pub use crate::db::TransactionKind;
