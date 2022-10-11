@@ -7,10 +7,10 @@ use starknet_api::{
     shash, Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockTimestamp, CallData,
     ClassHash, ContractAddress, ContractAddressSalt, ContractClass, ContractNonce,
     DeclaredContract, DeployTransaction, DeployTransactionOutput, DeployedContract,
-    EntryPointSelector, EthAddress, Event, EventContent, EventData, Fee, GasPrice, GlobalRoot,
-    InvokeTransaction, InvokeTransactionOutput, L2ToL1Payload, MessageToL1, Nonce, StarkHash,
-    StorageDiff, StorageEntry, StorageKey, Transaction, TransactionHash, TransactionOutput,
-    TransactionSignature, TransactionVersion,
+    EntryPointSelector, EthAddress, Event, EventContent, EventData, EventKey, Fee, GasPrice,
+    GlobalRoot, InvokeTransaction, InvokeTransactionOutput, L2ToL1Payload, MessageToL1, Nonce,
+    StarkHash, StorageDiff, StorageEntry, StorageKey, Transaction, TransactionHash,
+    TransactionOutput, TransactionSignature, TransactionVersion,
 };
 use tempfile::tempdir;
 use web3::types::H160;
@@ -48,6 +48,7 @@ pub fn get_test_body(transaction_count: usize) -> BlockBody {
             contract_address_salt: ContractAddressSalt(shash!("0x4")),
         });
         transactions.push(transaction);
+
         let transaction_output = TransactionOutput::Deploy(DeployTransactionOutput {
             actual_fee: Fee::default(),
             messages_sent: vec![MessageToL1 {
@@ -56,16 +57,39 @@ pub fn get_test_body(transaction_count: usize) -> BlockBody {
             }],
             events: vec![
                 Event {
-                    from_address: ContractAddress::try_from(shash!("0x4")).unwrap(),
-                    content: EventContent { keys: vec![], data: EventData(vec![shash!("0x1")]) },
+                    from_address: ContractAddress::try_from(shash!("0x22")).unwrap(),
+                    content: EventContent {
+                        keys: vec![EventKey(shash!("0x7")), EventKey(shash!("0x6"))],
+                        data: EventData(vec![shash!("0x1")]),
+                    },
                 },
                 Event {
-                    from_address: ContractAddress::try_from(shash!("0x2")).unwrap(),
-                    content: EventContent { keys: vec![], data: EventData(vec![shash!("0x2")]) },
+                    from_address: ContractAddress::try_from(shash!("0x22")).unwrap(),
+                    content: EventContent {
+                        keys: vec![EventKey(shash!("0x6"))],
+                        data: EventData(vec![shash!("0x2")]),
+                    },
                 },
                 Event {
-                    from_address: ContractAddress::try_from(shash!("0x3")).unwrap(),
-                    content: EventContent { keys: vec![], data: EventData(vec![shash!("0x3")]) },
+                    from_address: ContractAddress::try_from(shash!("0x23")).unwrap(),
+                    content: EventContent {
+                        keys: vec![EventKey(shash!("0x7"))],
+                        data: EventData(vec![shash!("0x3")]),
+                    },
+                },
+                Event {
+                    from_address: ContractAddress::try_from(shash!("0x22")).unwrap(),
+                    content: EventContent {
+                        keys: vec![EventKey(shash!("0x9"))],
+                        data: EventData(vec![shash!("0x4")]),
+                    },
+                },
+                Event {
+                    from_address: ContractAddress::try_from(shash!("0x22")).unwrap(),
+                    content: EventContent {
+                        keys: vec![EventKey(shash!("0x6")), EventKey(shash!("0x7"))],
+                        data: EventData(vec![shash!("0x5")]),
+                    },
                 },
             ],
         });

@@ -2,8 +2,8 @@ use papyrus_storage::ThinTransactionOutput;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockHash, BlockNumber, BlockStatus, CallData, ContractAddress, DeclareTransaction,
-    DeclareTransactionOutput, DeployTransaction, DeployTransactionOutput, EntryPointSelector,
-    Event, Fee, InvokeTransactionOutput, L1HandlerTransaction, L1HandlerTransactionOutput, Nonce,
+    DeclareTransactionOutput, DeployTransaction, DeployTransactionOutput, EntryPointSelector, Fee,
+    InvokeTransactionOutput, L1HandlerTransaction, L1HandlerTransactionOutput, Nonce,
     TransactionHash, TransactionSignature, TransactionVersion,
 };
 
@@ -223,7 +223,7 @@ pub enum TransactionOutput {
 impl TransactionOutput {
     pub fn from_thin_transaction_output(
         thin_tx_output: ThinTransactionOutput,
-        events: Vec<Event>,
+        events: Vec<starknet_api::Event>,
     ) -> Self {
         match thin_tx_output {
             ThinTransactionOutput::Declare(thin_declare) => {
@@ -275,4 +275,13 @@ impl From<starknet_api::TransactionOutput> for TransactionOutput {
             }
         }
     }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
+pub struct Event {
+    pub block_hash: BlockHash,
+    pub block_number: BlockNumber,
+    pub transaction_hash: TransactionHash,
+    #[serde(flatten)]
+    pub event: starknet_api::Event,
 }
