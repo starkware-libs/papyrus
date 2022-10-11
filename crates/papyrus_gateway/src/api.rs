@@ -1,13 +1,15 @@
+use std::collections::HashSet;
+
 use jsonrpsee::core::Error;
 use jsonrpsee::proc_macros::rpc;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockHash, BlockNumber, ClassHash, ContractAddress, Nonce, StarkFelt, StorageKey,
+    BlockHash, BlockNumber, ClassHash, ContractAddress, EventKey, Nonce, StarkFelt, StorageKey,
     TransactionHash, TransactionOffsetInBlock,
 };
 
 use super::objects::{
-    Block, ContractClass, StateUpdate, TransactionReceiptWithStatus, TransactionWithType,
+    Block, ContractClass, Event, StateUpdate, TransactionReceiptWithStatus, TransactionWithType,
 };
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -49,6 +51,12 @@ pub enum JsonRpcError {
     InvalidTransactionIndex = 27,
     #[error("Class hash not found.")]
     ClassHashNotFound = 28,
+    #[error("Requested page size is too big.")]
+    PageSizeTooBig = 31,
+    #[error("The supplied continuation token is invalid or unknown.")]
+    InvalidContinuationToken = 33,
+    #[error("Too many keys provided in a filter.")]
+    TooManyKeysInFilter = 34,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -56,6 +64,20 @@ pub struct BlockHashAndNumber {
     pub block_hash: BlockHash,
     pub block_number: BlockNumber,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct EventFilter {
+    pub from_block: Option<BlockId>,
+    pub to_block: Option<BlockId>,
+    pub continuation_token: Option<ContinuationToken>,
+    pub chunk_size: usize,
+    pub address: Option<ContractAddress>,
+    #[serde(default)]
+    pub keys: Vec<HashSet<EventKey>>,
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Deserialize, Serialize)]
+pub struct ContinuationToken(pub String);
 
 #[rpc(server, client, namespace = "starknet")]
 pub trait JsonRpc {
@@ -146,4 +168,11 @@ pub trait JsonRpc {
     /// Returns the currently configured StarkNet chain id.
     #[method(name = "chainId")]
     fn chain_id(&self) -> Result<String, Error>;
+
+    /// Returns all events matching the given filter.
+    #[method(name = "getEvents")]
+    fn get_events(
+        &self,
+        filter: EventFilter,
+    ) -> Result<(Vec<Event>, Option<ContinuationToken>), Error>;
 }
