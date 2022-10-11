@@ -71,6 +71,8 @@ pub enum StorageError {
          found."
     )]
     EventNotFound { event_index: EventIndex, from_address: ContractAddress },
+    #[error("DB in inconsistent state: {msg:?}.")]
+    DBInconsistency { msg: String },
 }
 pub type StorageResult<V> = std::result::Result<V, StorageError>;
 
