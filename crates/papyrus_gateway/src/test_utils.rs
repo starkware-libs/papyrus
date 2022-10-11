@@ -31,5 +31,10 @@ pub fn get_test_chain_id() -> ChainId {
 }
 
 pub fn get_test_gateway_config() -> GatewayConfig {
-    GatewayConfig { chain_id: get_test_chain_id(), server_ip: String::from("127.0.0.1:0") }
+    GatewayConfig {
+        chain_id: get_test_chain_id(),
+        server_ip: String::from("127.0.0.1:0"),
+        max_events_chunk_size: 10,
+        max_events_keys: 10,
+    }
 }
