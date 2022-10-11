@@ -12,7 +12,7 @@ fn gzip_encode_decode_contract_program() -> Result<(), anyhow::Error> {
 
     let encoded = GzEncoded::encode(program.clone())?;
     let mut buff = Vec::new();
-    let decoded = encoded.decode(&mut buff).unwrap();
+    let decoded = encoded.decode(&mut buff)?;
     assert_eq!(program, decoded);
     assert!(encoded.0.len() < len_before_compression);
 

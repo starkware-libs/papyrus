@@ -8,12 +8,13 @@ use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
 use papyrus_storage::test_utils::{
-    get_alpha4_block_number_1, get_test_block, get_test_state_diff, get_test_storage,
+    get_alpha4_starknet_block, get_test_block, get_test_state_diff, get_test_storage,
+    read_json_file,
 };
 use papyrus_storage::{BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 use starknet_api::{
     shash, BlockHash, BlockHeader, BlockNumber, BlockStatus, ClassHash, ContractAddress, Nonce,
-    StarkFelt, StarkHash, TransactionHash,
+    StarkFelt, StarkHash, StateDiff, TransactionHash,
 };
 
 use super::api::{
@@ -846,7 +847,7 @@ async fn get_class() -> Result<(), anyhow::Error> {
 
     let (_, _, declared_classes, _) = diff.destruct();
 
-    let declared_contract = declared_classes.index(0);
+    let declared_contract = declared_classes.index(1);
     let class_hash = declared_contract.class_hash;
     let expected_contract_class = declared_contract.contract_class.clone().try_into()?;
 
@@ -874,7 +875,7 @@ async fn get_class() -> Result<(), anyhow::Error> {
             "starknet_getClass",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ClassHash::new(shash!("0x6")),
+                ClassHash::new(shash!("0x7")),
             ),
         )
         .await
@@ -949,12 +950,23 @@ async fn get_class_at() -> Result<(), anyhow::Error> {
         .append_header(parent_header.block_number, &parent_header)?
         .append_state_diff(parent_header.block_number, starknet_api::StateDiff::default(), vec![])?
         .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
+        .append_state_diff(
+            header.block_number,
+            diff.clone(),
+            deployed_contract_class_definitions.clone(),
+        )?
         .commit()?;
 
-    let (deployed_contracts, _, declared_classes, _) = diff.destruct();
-    let address = deployed_contracts.index(0).address;
-    let expected_contract_class = declared_classes.index(0).contract_class.clone().try_into()?;
+    let (deployed_contracts, _, _, _) = diff.destruct();
+    let address = deployed_contracts.index(1).address;
+    let hash = deployed_contracts.index(1).class_hash;
+    let expected_contract_class = deployed_contract_class_definitions
+        .iter()
+        .find(|c| c.class_hash == hash)
+        .unwrap()
+        .contract_class
+        .clone()
+        .try_into()?;
 
     // Get class by block hash.
     let res = module
@@ -1063,27 +1075,20 @@ async fn serialize_returns_expcted_json() -> Result<(), anyhow::Error> {
     // components, for openning the storage and running the server.
     let (storage_reader, mut storage_writer) = get_test_storage();
     let block0 = get_test_block(0);
-    let block1 = get_test_block1();
-    let (state_diff, deployed_contract_class_definitions) = get_test_state_diff1();
+    let block1 = get_alpha4_starknet_block();
+    let (_, _, state_diff, deployed_contract_class_definitions) = get_test_state_diff();
     storage_writer
         .begin_rw_txn()?
-<<<<<<< HEAD
-        .append_header(dummy_block_number_0.header.block_number, &dummy_block_number_0.header)?
-        .append_body(dummy_block_number_0.header.block_number, dummy_block_number_0.body)?
-        .append_header(block.header.block_number, &block.header)?
-        .append_body(block.header.block_number, block.body)?
-=======
         .append_header(block0.header.block_number, &block0.header)?
-        .append_body(block0.header.block_number, &block0.body)?
+        .append_body(block0.header.block_number, block0.body)?
         .append_state_diff(block0.header.block_number, StateDiff::default(), vec![])?
         .append_header(block1.header.block_number, &block1.header)?
-        .append_body(block1.header.block_number, &block1.body)?
+        .append_body(block1.header.block_number, block1.body)?
         .append_state_diff(
             block1.header.block_number,
             state_diff,
             deployed_contract_class_definitions,
         )?
->>>>>>> Add more serde tests to gateway
         .commit()?;
 
     let gateway_config = GatewayConfig { server_ip: String::from("127.0.0.1:0") };
