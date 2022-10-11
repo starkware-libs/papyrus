@@ -22,14 +22,16 @@ use starknet_api::{
 };
 use state::{IndexedDeclaredContract, IndexedDeployedContract};
 
-pub use self::body::events::ThinTransactionOutput;
+pub use self::body::events::{
+    EventsReader, EventsTableCursor, EventsTableKey, EventsTableKeyValue, ThinTransactionOutput,
+};
 pub use self::body::{BodyStorageReader, BodyStorageWriter};
 pub use self::db::serialization::StorageSerde;
-pub use self::db::TransactionKind;
 use self::db::{
     open_env, DbConfig, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier,
-    RO, RW,
+    RW,
 };
+pub use self::db::{TransactionKind, RO};
 pub use self::header::{HeaderStorageReader, HeaderStorageWriter};
 pub use self::ommer::OmmerStorageWriter;
 pub use self::state::{StateStorageReader, StateStorageWriter, ThinStateDiff};
