@@ -33,7 +33,7 @@ pub trait BodyStorageReader {
     ) -> StorageResult<Option<ThinTransactionOutput>>;
     fn get_transaction_events(
         &self,
-        transaction_inedx: TransactionIndex,
+        transaction_index: TransactionIndex,
     ) -> StorageResult<Option<Vec<Event>>>;
     fn get_transaction_idx_by_hash(
         &self,
