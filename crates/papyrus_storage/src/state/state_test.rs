@@ -187,7 +187,7 @@ fn revert_non_existing_state_diff() -> Result<(), anyhow::Error> {
     let block_number = BlockNumber::new(5);
     writer.begin_rw_txn()?.revert_state_diff(block_number)?;
     let expected_warn = format!(
-        "Attempt to revert non-existing state diff of block {:?}. Returning without action.",
+        "Attempt to revert a non-existing state diff of block {:?}. Returning without an action.",
         block_number
     );
     assert_eq!(logger.pop().unwrap().args(), expected_warn);

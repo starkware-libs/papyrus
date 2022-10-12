@@ -128,7 +128,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         // diff that wasn't synced yet.
         if current_state_marker <= block_number {
             warn!(
-                "Attempt to revert non-existing state diff of block {:?}. Returning without \
+                "Attempt to revert a non-existing state diff of block {:?}. Returning without an \
                  action.",
                 block_number
             );
@@ -150,7 +150,6 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
                 &thin_state_diff,
                 &declared_classes_table,
             )?;
-
             delete_deployed_contracts(
                 &self.txn,
                 block_number,
@@ -158,11 +157,8 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
                 &deployed_contracts_table,
                 &nonces_table,
             )?;
-
             delete_storage_diffs(&self.txn, block_number, &thin_state_diff, &storage_table)?;
-
             delete_nonces(&self.txn, block_number, &thin_state_diff, &nonces_table)?;
-
             state_diffs_table.delete(&self.txn, &block_number)?;
 
             Ok(self)
