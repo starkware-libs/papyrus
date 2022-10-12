@@ -1,4 +1,4 @@
-use starknet_api::{BlockHash, DeclaredContract};
+use starknet_api::{BlockHash, BlockHeader, DeclaredContract};
 
 #[cfg(test)]
 #[path = "ommer_test.rs"]
@@ -17,6 +17,13 @@ where
         block_hash: BlockHash,
         thin_state_diff: &ThinStateDiff,
         declared_classes: &[DeclaredContract],
+    ) -> StorageResult<Self>;
+
+    // To enforce that no commit happen after a failure, we consume and return Self on success.
+    fn insert_ommer_header(
+        self,
+        block_hash: BlockHash,
+        header: &BlockHeader,
     ) -> StorageResult<Self>;
 }
 
@@ -61,6 +68,17 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
             let value = contract_nonce.nonce;
             nonces_table.insert(&self.txn, &key, &value)?;
         }
+
+        Ok(self)
+    }
+
+    fn insert_ommer_header(
+        self,
+        block_hash: BlockHash,
+        header: &BlockHeader,
+    ) -> StorageResult<Self> {
+        let headers_table = self.txn.open_table(&self.tables.ommer_headers)?;
+        headers_table.insert(&self.txn, &block_hash, header)?;
 
         Ok(self)
     }
