@@ -519,8 +519,11 @@ auto_storage_serde! {
     bincode(u128);
 
     (BlockNumber, TransactionOffsetInBlock);
+    (ContractAddress, BlockHash);
+    (BlockHash, ClassHash);
     (ContractAddress, BlockNumber);
     (ContractAddress, Nonce);
+    (ContractAddress, StorageKey, BlockHash);
     (ContractAddress, StorageKey, BlockNumber);
     (ContractAddress, EventIndex);
 }
