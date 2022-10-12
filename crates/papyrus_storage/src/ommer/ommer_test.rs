@@ -1,6 +1,6 @@
 use starknet_api::{DeclaredContract, StateNumber};
 
-use crate::test_utils::{get_test_state_diff, get_test_storage};
+use crate::test_utils::{get_test_block, get_test_state_diff, get_test_storage};
 use crate::{OmmerStorageWriter, StateStorageReader, StateStorageWriter, ThinStateDiff};
 
 #[test]
@@ -53,6 +53,17 @@ fn insert_raw_state_diff_to_ommer() -> Result<(), anyhow::Error> {
         .begin_rw_txn()?
         .insert_ommer_state_diff(header.block_hash, &thin_state_diff, &declared_classes)?
         .commit()?;
+
+    Ok(())
+}
+
+#[test]
+fn insert_header_to_ommer() -> Result<(), anyhow::Error> {
+    let (_, mut writer) = get_test_storage();
+    let block = get_test_block(7);
+    let block_hash = block.header.block_hash;
+
+    writer.begin_rw_txn()?.insert_ommer_header(block_hash, &block.header)?.commit()?;
 
     Ok(())
 }

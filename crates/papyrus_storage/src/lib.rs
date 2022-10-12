@@ -123,6 +123,7 @@ struct_field_names! {
         deployed_contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
         contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
 
+        ommer_headers: TableIdentifier<BlockHash, BlockHeader>,
         ommer_nonces: TableIdentifier<(ContractAddress, BlockHash), Nonce>,
         ommer_state_diffs: TableIdentifier<BlockHash, ThinStateDiff>,
         ommer_declared_classes: TableIdentifier<(BlockHash, ClassHash), Vec<u8>>,
@@ -193,6 +194,7 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         transaction_outputs: db_writer.create_table("transaction_outputs")?,
         transactions: db_writer.create_table("transactions")?,
 
+        ommer_headers: db_writer.create_table("ommer_headers")?,
         ommer_contract_storage: db_writer.create_table("ommer_contract_storage")?,
         ommer_declared_classes: db_writer.create_table("ommer_declared_classes")?,
         ommer_deployed_contracts: db_writer.create_table("ommer_deployed_contracts")?,
