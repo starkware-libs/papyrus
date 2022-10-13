@@ -28,9 +28,9 @@ where
     fn insert_ommer_body(
         self,
         block_hash: BlockHash,
-        transactions: &Vec<Transaction>,
-        thin_transaction_outputs: &Vec<ThinTransactionOutput>,
-        transaction_outputs_events: &Vec<Vec<Event>>,
+        transactions: &[Transaction],
+        thin_transaction_outputs: &[ThinTransactionOutput],
+        transaction_outputs_events: &[Vec<Event>],
     ) -> StorageResult<Self>;
 
     fn insert_ommer_state_diff(
@@ -56,9 +56,9 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
     fn insert_ommer_body(
         self,
         block_hash: BlockHash,
-        transactions: &Vec<Transaction>,
-        thin_transaction_outputs: &Vec<ThinTransactionOutput>,
-        transaction_outputs_events: &Vec<Vec<Event>>,
+        transactions: &[Transaction],
+        thin_transaction_outputs: &[ThinTransactionOutput],
+        transaction_outputs_events: &[Vec<Event>],
     ) -> StorageResult<Self> {
         assert!(transactions.len() == thin_transaction_outputs.len());
         assert!(transactions.len() == transaction_outputs_events.len());
