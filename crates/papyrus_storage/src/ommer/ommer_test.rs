@@ -1,12 +1,61 @@
 use starknet_api::{
-    DeclaredContract, Event, StateNumber, TransactionOffsetInBlock, TransactionOutput,
+    BlockNumber, DeclaredContract, Event, StateNumber, Transaction, TransactionOffsetInBlock,
+    TransactionOutput,
 };
 
 use crate::test_utils::{get_test_block, get_test_state_diff, get_test_storage};
 use crate::{
     BodyStorageReader, BodyStorageWriter, OmmerStorageWriter, StateStorageReader,
-    StateStorageWriter, ThinStateDiff, ThinTransactionOutput, TransactionIndex,
+    StateStorageWriter, StorageReader, StorageResult, ThinStateDiff, ThinTransactionOutput,
+    TransactionIndex,
 };
+
+// TODO(yair): These functions were written and used in order to experience writing ommer blocks in
+// a revert scenario (vs. scenario of raw blocks that need to be written directly to the ommer
+// tables). Need to move them to the sync crate and use them in the revert flow (+ moving the
+// tests).
+fn extract_body_data_from_storage(
+    reader: &StorageReader,
+    block_number: BlockNumber,
+) -> StorageResult<(Vec<Transaction>, Vec<ThinTransactionOutput>, Vec<Vec<Event>>)> {
+    let transactions = reader.begin_ro_txn()?.get_block_transactions(block_number)?.unwrap();
+    let thin_transaction_outputs =
+        reader.begin_ro_txn()?.get_block_transaction_outputs(block_number)?.unwrap();
+
+    // collect the events into vector of vectors.
+    let tx_indices = (0..transactions.len())
+        .map(|idx| TransactionIndex(block_number, TransactionOffsetInBlock(idx)));
+    let transaction_outputs_events: Vec<Vec<Event>> = tx_indices
+        .map(|tx_idx| {
+            reader.begin_ro_txn().unwrap().get_transaction_events(tx_idx).unwrap().unwrap()
+        })
+        .collect();
+    Ok((transactions, thin_transaction_outputs, transaction_outputs_events))
+}
+
+fn extract_state_diff_data_from_storage(
+    reader: &StorageReader,
+    block_number: BlockNumber,
+) -> StorageResult<(ThinStateDiff, Vec<DeclaredContract>)> {
+    let state_number = StateNumber::right_after_block(block_number);
+
+    let thin_state_diff = reader.begin_ro_txn()?.get_state_diff(block_number)?.unwrap();
+    let txn = reader.begin_ro_txn()?;
+    let state_reader = txn.get_state_reader()?;
+    let class_hashes = thin_state_diff.declared_contract_hashes();
+    let declared_classes: Vec<DeclaredContract> = class_hashes
+        .iter()
+        .map(|class_hash| DeclaredContract {
+            class_hash: *class_hash,
+            contract_class: state_reader
+                .get_class_definition_at(state_number, class_hash)
+                .unwrap()
+                .unwrap(),
+        })
+        .collect();
+
+    Ok((thin_state_diff, declared_classes))
+}
 
 #[test]
 fn insert_header_to_ommer() -> Result<(), anyhow::Error> {
@@ -29,19 +78,8 @@ fn move_body_to_ommer() -> Result<(), anyhow::Error> {
     // Add body to cannonical tables.
     writer.begin_rw_txn()?.append_body(block_number, block.body)?.commit()?;
 
-    // Get the body from the cannonical tables.
-    let transactions = reader.begin_ro_txn()?.get_block_transactions(block_number)?.unwrap();
-    let thin_transaction_outputs =
-        reader.begin_ro_txn()?.get_block_transaction_outputs(block_number)?.unwrap();
-
-    // collect the events into vector of vectors.
-    let tx_indices = (0..transactions.len())
-        .map(|idx| TransactionIndex(block_number, TransactionOffsetInBlock(idx)));
-    let transaction_outputs_events: Vec<Vec<Event>> = tx_indices
-        .map(|tx_idx| {
-            reader.begin_ro_txn().unwrap().get_transaction_events(tx_idx).unwrap().unwrap()
-        })
-        .collect();
+    let (transactions, thin_transaction_outputs, transaction_outputs_events) =
+        extract_body_data_from_storage(&reader, block_number)?;
 
     writer
         .begin_rw_txn()?
@@ -86,13 +124,11 @@ fn insert_body_to_ommer() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-
 #[test]
 fn move_state_diff_to_ommer() -> Result<(), anyhow::Error> {
     let (reader, mut writer) = get_test_storage();
     let (header, _, state_diff, declared_classes) = get_test_state_diff();
     let block_number = header.block_number;
-    let state_number = StateNumber::right_after_block(block_number);
 
     // Add state diff to cannonical tables.
     writer
@@ -100,21 +136,8 @@ fn move_state_diff_to_ommer() -> Result<(), anyhow::Error> {
         .append_state_diff(block_number, state_diff, declared_classes)?
         .commit()?;
 
-    // Get the state diff from the cannonical tables.
-    let thin_state_diff = reader.begin_ro_txn()?.get_state_diff(block_number)?.unwrap();
-    let txn = reader.begin_ro_txn()?;
-    let state_reader = txn.get_state_reader()?;
-    let class_hashes = thin_state_diff.declared_contract_hashes();
-    let declared_classes: Vec<DeclaredContract> = class_hashes
-        .iter()
-        .map(|class_hash| DeclaredContract {
-            class_hash: *class_hash,
-            contract_class: state_reader
-                .get_class_definition_at(state_number, class_hash)
-                .unwrap()
-                .unwrap(),
-        })
-        .collect();
+    let (thin_state_diff, declared_classes) =
+        extract_state_diff_data_from_storage(&reader, block_number)?;
 
     // Add the state diff to the ommer tables.
     writer
