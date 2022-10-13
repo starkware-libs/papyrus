@@ -14,15 +14,16 @@ use crate::{
 // a revert scenario (vs. scenario of raw blocks that need to be written directly to the ommer
 // tables). Need to move them to the sync crate and use them in the revert flow (+ moving the
 // tests).
+type ExtractedBodyData = (Vec<Transaction>, Vec<ThinTransactionOutput>, Vec<Vec<Event>>);
 fn extract_body_data_from_storage(
     reader: &StorageReader,
     block_number: BlockNumber,
-) -> StorageResult<(Vec<Transaction>, Vec<ThinTransactionOutput>, Vec<Vec<Event>>)> {
+) -> StorageResult<ExtractedBodyData> {
     let transactions = reader.begin_ro_txn()?.get_block_transactions(block_number)?.unwrap();
     let thin_transaction_outputs =
         reader.begin_ro_txn()?.get_block_transaction_outputs(block_number)?.unwrap();
 
-    // collect the events into vector of vectors.
+    // Collect the events into vector of vectors.
     let tx_indices = (0..transactions.len())
         .map(|idx| TransactionIndex(block_number, TransactionOffsetInBlock(idx)));
     let transaction_outputs_events: Vec<Vec<Event>> = tx_indices
