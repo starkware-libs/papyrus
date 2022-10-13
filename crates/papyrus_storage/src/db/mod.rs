@@ -21,7 +21,7 @@ use self::serialization::{StorageSerde, StorageSerdeEx};
 
 // Maximum number of Sub-Databases.
 // TODO(spapini): Get these from configuration, and have a separate test configuration.
-const MAX_DBS: usize = 20;
+const MAX_DBS: usize = 21;
 const MIN_SIZE: usize = 1 << 20; // Minimum db size 1MB;
 const GROWTH_STEP: isize = 1 << 26; // Growth step 64MB;
 

@@ -21,7 +21,9 @@ use crate::body::events::{
 };
 use crate::db::serialization::StorageSerde;
 use crate::state::{IndexedDeclaredContract, IndexedDeployedContract};
-use crate::{EventIndex, MarkerKind, ThinStateDiff, TransactionIndex};
+use crate::{
+    EventIndex, MarkerKind, OmmerEventIndex, OmmerTransactionIndex, ThinStateDiff, TransactionIndex,
+};
 
 ////////////////////////////////////////////////////////////////////////
 // Starknet API structs.
@@ -512,6 +514,8 @@ auto_storage_serde! {
     pub struct TransactionHash(pub StarkHash);
     struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
     struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
+    struct OmmerTransactionIndex(pub BlockHash, pub TransactionOffsetInBlock);
+    struct OmmerEventIndex(pub OmmerTransactionIndex, pub EventIndexInTransactionOutput);
     pub enum ThinTransactionOutput {
         Declare(ThinDeclareTransactionOutput) = 0,
         Deploy(ThinDeployTransactionOutput) = 1,
@@ -544,6 +548,7 @@ auto_storage_serde! {
     (ContractAddress, StorageKey, BlockHash);
     (ContractAddress, StorageKey, BlockNumber);
     (ContractAddress, EventIndex);
+    (ContractAddress, OmmerEventIndex);
 }
 
 ////////////////////////////////////////////////////////////////////////

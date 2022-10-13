@@ -123,6 +123,9 @@ struct_field_names! {
         deployed_contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
         contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
 
+        ommer_transactions: TableIdentifier<OmmerTransactionIndex, Transaction>,
+        ommer_transaction_outputs: TableIdentifier<OmmerTransactionIndex, ThinTransactionOutput>,
+        ommer_events: TableIdentifier<(ContractAddress, OmmerEventIndex), EventContent>,
         ommer_headers: TableIdentifier<BlockHash, BlockHeader>,
         ommer_nonces: TableIdentifier<(ContractAddress, BlockHash), Nonce>,
         ommer_state_diffs: TableIdentifier<BlockHash, ThinStateDiff>,
@@ -141,6 +144,12 @@ pub struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub struct OmmerTransactionIndex(pub BlockHash, pub TransactionOffsetInBlock);
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize)]
+pub struct OmmerEventIndex(pub OmmerTransactionIndex, pub EventIndexInTransactionOutput);
 
 #[derive(Clone)]
 pub struct StorageReader {
@@ -194,12 +203,15 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         transaction_outputs: db_writer.create_table("transaction_outputs")?,
         transactions: db_writer.create_table("transactions")?,
 
+        ommer_events: db_writer.create_table("ommer_events")?,
         ommer_headers: db_writer.create_table("ommer_headers")?,
         ommer_contract_storage: db_writer.create_table("ommer_contract_storage")?,
         ommer_declared_classes: db_writer.create_table("ommer_declared_classes")?,
         ommer_deployed_contracts: db_writer.create_table("ommer_deployed_contracts")?,
         ommer_nonces: db_writer.create_table("ommer_nonces")?,
         ommer_state_diffs: db_writer.create_table("ommer_state_diffs")?,
+        ommer_transaction_outputs: db_writer.create_table("ommer_transaction_outputs")?,
+        ommer_transactions: db_writer.create_table("ommer_transactions")?,
     });
     let reader = StorageReader { db_reader, tables: tables.clone() };
     let writer = StorageWriter { db_writer, tables };
