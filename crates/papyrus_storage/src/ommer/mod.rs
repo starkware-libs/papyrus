@@ -109,8 +109,8 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
 
         for declared_class in declared_classes {
             let key = (block_hash, declared_class.class_hash);
-            let value = declared_class.contract_class.to_byte_vec();
-            ommer_declared_classes_table.insert(&self.txn, &key, &value)?;
+            let value = &declared_class.contract_class;
+            ommer_declared_classes_table.insert(&self.txn, &key, value)?;
         }
 
         for deployed_contract in thin_state_diff.deployed_contracts() {
