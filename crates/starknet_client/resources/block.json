@@ -17,7 +17,6 @@
         {
             "contract_address": "0x6d0a7c29de4ea81d1b9982c04f691320a6b65eef9d6ea847b4b077a0305a24e",
             "entry_point_selector": "0x15d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad",
-            "entry_point_type": "EXTERNAL",
             "calldata": [
                 "0x1",
                 "0x7394cbe418daa16e42b87ba67372d4ab4a5df0b05c6e554d158458ce245bc10",

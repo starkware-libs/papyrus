@@ -146,6 +146,20 @@ pub struct DeployTransaction {
     pub constructor_calldata: CallData,
 }
 
+/// A deploy account transaction in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct DeployAccountTransaction {
+    pub transaction_hash: TransactionHash,
+    pub max_fee: Fee,
+    pub version: TransactionVersion,
+    pub signature: TransactionSignature,
+    pub nonce: Nonce,
+    pub class_hash: ClassHash,
+    pub contract_address: ContractAddress,
+    pub contract_address_salt: ContractAddressSalt,
+    pub constructor_calldata: CallData,
+}
+
 /// An L1 to L2 message in StarkNet.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct MessageToL2 {
@@ -177,6 +191,8 @@ pub enum TransactionOutput {
     Declare(DeclareTransactionOutput),
     /// A deploy transaction output.
     Deploy(DeployTransactionOutput),
+    /// A deploy account transaction output.
+    DeployAccount(DeployAccountTransactionOutput),
     /// An invoke transaction output.
     Invoke(InvokeTransactionOutput),
     /// An L1 handler transaction output.
@@ -215,11 +231,20 @@ pub struct DeployTransactionOutput {
     pub events: Vec<Event>,
 }
 
+/// A deploy transaction output in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct DeployAccountTransactionOutput {
+    pub actual_fee: Fee,
+    pub messages_sent: Vec<MessageToL1>,
+    pub events: Vec<Event>,
+}
+
 impl TransactionOutput {
     pub fn actual_fee(&self) -> Fee {
         match self {
             TransactionOutput::Declare(output) => output.actual_fee,
             TransactionOutput::Deploy(output) => output.actual_fee,
+            TransactionOutput::DeployAccount(output) => output.actual_fee,
             TransactionOutput::Invoke(output) => output.actual_fee,
             TransactionOutput::L1Handler(output) => output.actual_fee,
         }
@@ -229,6 +254,7 @@ impl TransactionOutput {
         match self {
             TransactionOutput::Declare(output) => &output.events,
             TransactionOutput::Deploy(output) => &output.events,
+            TransactionOutput::DeployAccount(output) => &output.events,
             TransactionOutput::Invoke(output) => &output.events,
             TransactionOutput::L1Handler(output) => &output.events,
         }
@@ -242,6 +268,8 @@ pub enum Transaction {
     Declare(DeclareTransaction),
     /// A deploy transaction.
     Deploy(DeployTransaction),
+    /// A deploy account transaction.
+    DeployAccount(DeployAccountTransaction),
     /// An invoke transaction.
     Invoke(InvokeTransaction),
     /// An L1 handler transaction.
@@ -252,6 +280,7 @@ impl Transaction {
         match self {
             Transaction::Declare(tx) => tx.transaction_hash,
             Transaction::Deploy(tx) => tx.transaction_hash,
+            Transaction::DeployAccount(tx) => tx.transaction_hash,
             Transaction::Invoke(tx) => tx.transaction_hash,
             Transaction::L1Handler(tx) => tx.transaction_hash,
         }

@@ -8,6 +8,11 @@ async fn main() {
     let starknet_client = StarknetClient::new(&config.central.url, config.central.retry_config)
         .expect("Create new client");
     let _latest_block_number = starknet_client.block_number().await.expect("Get block number");
+    // A block with invoke transaction version 1.
+    let _block_376150 = starknet_client.block(BlockNumber::new(376150)).await.expect("Get block");
+    // A block with deploy account transaction.
+    let _block_376051 = starknet_client.block(BlockNumber::new(376051)).await.expect("Get block");
+    // TODO(anatg): Write what's special in this block.
     let _block_1564 = starknet_client.block(BlockNumber::new(1564)).await.expect("Get block");
     let _block_123456 = starknet_client.block(BlockNumber::new(123456)).await.expect("Get block");
     let _state_diff =

@@ -6,8 +6,8 @@ use integer_encoding::*;
 use starknet_api::{
     BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, CallData, ClassHash,
     ContractAddress, ContractAddressSalt, ContractClass, ContractNonce, DeclareTransaction,
-    DeclaredContract, DeployTransaction, DeployedContract, EntryPoint, EntryPointOffset,
-    EntryPointSelector, EntryPointType, EthAddress, EventContent, EventData,
+    DeclaredContract, DeployAccountTransaction, DeployTransaction, DeployedContract, EntryPoint,
+    EntryPointOffset, EntryPointSelector, EntryPointType, EthAddress, EventContent, EventData,
     EventIndexInTransactionOutput, EventKey, Fee, GasPrice, GlobalRoot, InvokeTransaction,
     L1HandlerTransaction, L1ToL2Payload, L2ToL1Payload, MessageToL1, MessageToL2, Nonce,
     PatriciaKey, Program, StarkFelt, StarkHash, StateDiff, StorageDiff, StorageEntry, StorageKey,
@@ -16,8 +16,8 @@ use starknet_api::{
 };
 
 use crate::body::events::{
-    ThinDeclareTransactionOutput, ThinDeployTransactionOutput, ThinInvokeTransactionOutput,
-    ThinL1HandlerTransactionOutput, ThinTransactionOutput,
+    ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput, ThinDeployTransactionOutput,
+    ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
 };
 use crate::db::serialization::StorageSerde;
 use crate::state::{IndexedDeclaredContract, IndexedDeployedContract};
@@ -393,7 +393,23 @@ auto_storage_serde! {
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: CallData,
     }
+    pub struct DeployAccountTransaction {
+        pub transaction_hash: TransactionHash,
+        pub max_fee: Fee,
+        pub version: TransactionVersion,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub class_hash: ClassHash,
+        pub contract_address: ContractAddress,
+        pub contract_address_salt: ContractAddressSalt,
+        pub constructor_calldata: CallData,
+    }
     pub struct ThinDeployTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events_contract_addresses: Vec<ContractAddress>,
+    }
+    pub struct ThinDeployAccountTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
@@ -489,8 +505,9 @@ auto_storage_serde! {
     pub enum Transaction {
         Declare(DeclareTransaction) = 0,
         Deploy(DeployTransaction) = 1,
-        Invoke(InvokeTransaction) = 2,
-        L1Handler(L1HandlerTransaction) = 3,
+        DeployAccount(DeployAccountTransaction) = 2,
+        Invoke(InvokeTransaction) = 3,
+        L1Handler(L1HandlerTransaction) = 4,
     }
     pub struct TransactionHash(pub StarkHash);
     struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
@@ -498,8 +515,9 @@ auto_storage_serde! {
     pub enum ThinTransactionOutput {
         Declare(ThinDeclareTransactionOutput) = 0,
         Deploy(ThinDeployTransactionOutput) = 1,
-        Invoke(ThinInvokeTransactionOutput) = 2,
-        L1Handler(ThinL1HandlerTransactionOutput) = 3,
+        DeployAccount(ThinDeployAccountTransactionOutput) = 2,
+        Invoke(ThinInvokeTransactionOutput) = 3,
+        L1Handler(ThinL1HandlerTransactionOutput) = 4,
     }
     pub struct TransactionVersion(pub StarkFelt);
     pub struct TransactionSignature(pub Vec<StarkFelt>);
