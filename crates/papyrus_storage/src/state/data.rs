@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockNumber, ClassHash, ContractNonce, DeployedContract, StateDiff, StorageDiff,
+    BlockNumber, ClassHash, ContractClass, ContractNonce, DeployedContract, StateDiff, StorageDiff,
 };
 
 // Data structs that are serialized into the database.
@@ -14,7 +14,7 @@ pub struct IndexedDeployedContract {
 #[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct IndexedDeclaredContract {
     pub block_number: BlockNumber,
-    pub contract_class: Vec<u8>,
+    pub contract_class: ContractClass,
 }
 
 // Invariant: Addresses are strictly increasing.

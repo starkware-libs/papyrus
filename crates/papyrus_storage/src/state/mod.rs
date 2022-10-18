@@ -195,18 +195,15 @@ fn write_declared_classes<'env>(
     for declared_class in declared_classes {
         // TODO(dan): remove this check after regenesis, in favor of insert().
         if let Some(value) = declared_classes_table.get(txn, &declared_class.class_hash)? {
-            if ContractClass::from_byte_vec(&value.contract_class) != declared_class.contract_class
-            {
+            if value.contract_class != declared_class.contract_class {
                 return Err(StorageError::ClassAlreadyExists {
                     class_hash: declared_class.class_hash,
                 });
             }
             continue;
         }
-        let value = IndexedDeclaredContract {
-            block_number,
-            contract_class: declared_class.contract_class.to_byte_vec(),
-        };
+        let value =
+            IndexedDeclaredContract { block_number, contract_class: declared_class.contract_class };
         let res = declared_classes_table.insert(txn, &declared_class.class_hash, &value);
         match res {
             Ok(()) => continue,
@@ -466,7 +463,7 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         let value = self.declared_classes_table.get(self.txn, class_hash)?;
         if let Some(value) = value {
             if state_number.is_after(value.block_number) {
-                return Ok(Some(ContractClass::from_byte_vec(&value.contract_class)));
+                return Ok(Some(value.contract_class));
             }
         }
         Ok(None)

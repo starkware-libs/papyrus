@@ -420,7 +420,7 @@ auto_storage_serde! {
     pub struct Fee(pub u128);
     pub struct IndexedDeclaredContract {
         pub block_number: BlockNumber,
-        pub contract_class: Vec<u8>,
+        pub contract_class: ContractClass,
     }
     pub struct IndexedDeployedContract {
         pub block_number: BlockNumber,
