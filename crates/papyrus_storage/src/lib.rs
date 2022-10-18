@@ -123,9 +123,9 @@ struct_field_names! {
         deployed_contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
         contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
 
-        ommer_transactions: TableIdentifier<OmmerTransactionIndex, Transaction>,
-        ommer_transaction_outputs: TableIdentifier<OmmerTransactionIndex, ThinTransactionOutput>,
-        ommer_events: TableIdentifier<(ContractAddress, OmmerEventIndex), EventContent>,
+        ommer_transactions: TableIdentifier<OmmerTransactionKey, Transaction>,
+        ommer_transaction_outputs: TableIdentifier<OmmerTransactionKey, ThinTransactionOutput>,
+        ommer_events: TableIdentifier<(ContractAddress, OmmerEventKey), EventContent>,
         ommer_headers: TableIdentifier<BlockHash, BlockHeader>,
         ommer_nonces: TableIdentifier<(ContractAddress, BlockHash), Nonce>,
         ommer_state_diffs: TableIdentifier<BlockHash, ThinStateDiff>,
@@ -139,6 +139,7 @@ pub fn table_names() -> &'static [&'static str] {
     Tables::field_names()
 }
 
+// TODO(yair): move the key structs from the main lib file.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
 
@@ -146,10 +147,10 @@ pub struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
 pub struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
-pub struct OmmerTransactionIndex(pub BlockHash, pub TransactionOffsetInBlock);
+pub struct OmmerTransactionKey(pub BlockHash, pub TransactionOffsetInBlock);
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize)]
-pub struct OmmerEventIndex(pub OmmerTransactionIndex, pub EventIndexInTransactionOutput);
+pub struct OmmerEventKey(pub OmmerTransactionKey, pub EventIndexInTransactionOutput);
 
 #[derive(Clone)]
 pub struct StorageReader {

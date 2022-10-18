@@ -9,7 +9,7 @@ mod ommer_test;
 
 use crate::db::RW;
 use crate::{
-    OmmerEventIndex, OmmerTransactionIndex, StorageResult, StorageTxn, ThinStateDiff,
+    OmmerEventKey, OmmerTransactionKey, StorageResult, StorageTxn, ThinStateDiff,
     ThinTransactionOutput,
 };
 
@@ -69,7 +69,7 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
         let ommer_events_table = self.txn.open_table(&self.tables.ommer_events)?;
 
         for idx in 0..transactions.len() {
-            let tx_index = OmmerTransactionIndex(block_hash, TransactionOffsetInBlock(idx));
+            let tx_index = OmmerTransactionKey(block_hash, TransactionOffsetInBlock(idx));
             ommer_transactions_table.insert(&self.txn, &tx_index, &transactions[idx])?;
             ommer_transaction_outputs_table.insert(
                 &self.txn,
@@ -79,7 +79,7 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
             let events = &transaction_outputs_events[idx];
             for (event_offset, event) in events.iter().enumerate() {
                 let event_index =
-                    OmmerEventIndex(tx_index, EventIndexInTransactionOutput(event_offset));
+                    OmmerEventKey(tx_index, EventIndexInTransactionOutput(event_offset));
                 ommer_events_table.insert(
                     &self.txn,
                     &(event.from_address, event_index),
