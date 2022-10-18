@@ -10,6 +10,7 @@ use starknet_api::{ContractAddress, Fee, MessageToL1, TransactionOutput};
 pub enum ThinTransactionOutput {
     Declare(ThinDeclareTransactionOutput),
     Deploy(ThinDeployTransactionOutput),
+    DeployAccount(ThinDeployAccountTransactionOutput),
     Invoke(ThinInvokeTransactionOutput),
     L1Handler(ThinL1HandlerTransactionOutput),
 }
@@ -19,6 +20,7 @@ impl ThinTransactionOutput {
         match self {
             ThinTransactionOutput::Declare(tx_output) => tx_output.events_contract_addresses,
             ThinTransactionOutput::Deploy(tx_output) => tx_output.events_contract_addresses,
+            ThinTransactionOutput::DeployAccount(tx_output) => tx_output.events_contract_addresses,
             ThinTransactionOutput::Invoke(tx_output) => tx_output.events_contract_addresses,
             ThinTransactionOutput::L1Handler(tx_output) => tx_output.events_contract_addresses,
         }
@@ -53,6 +55,13 @@ pub struct ThinDeployTransactionOutput {
     pub events_contract_addresses: Vec<ContractAddress>,
 }
 
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct ThinDeployAccountTransactionOutput {
+    pub actual_fee: Fee,
+    pub messages_sent: Vec<MessageToL1>,
+    pub events_contract_addresses: Vec<ContractAddress>,
+}
+
 impl From<TransactionOutput> for ThinTransactionOutput {
     fn from(transaction_output: TransactionOutput) -> Self {
         let events_contract_addresses =
@@ -67,6 +76,13 @@ impl From<TransactionOutput> for ThinTransactionOutput {
             }
             TransactionOutput::Deploy(tx_output) => {
                 ThinTransactionOutput::Deploy(ThinDeployTransactionOutput {
+                    actual_fee: tx_output.actual_fee,
+                    messages_sent: tx_output.messages_sent,
+                    events_contract_addresses,
+                })
+            }
+            TransactionOutput::DeployAccount(tx_output) => {
+                ThinTransactionOutput::DeployAccount(ThinDeployAccountTransactionOutput {
                     actual_fee: tx_output.actual_fee,
                     messages_sent: tx_output.messages_sent,
                     events_contract_addresses,

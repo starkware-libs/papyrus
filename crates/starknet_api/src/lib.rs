@@ -22,7 +22,8 @@ pub use self::state::{
     EntryPointType, Program, StateDiff, StateNumber, StorageDiff, StorageEntry, StorageKey,
 };
 pub use self::transaction::{
-    CallData, ContractAddressSalt, DeclareTransaction, DeclareTransactionOutput, DeployTransaction,
+    CallData, ContractAddressSalt, DeclareTransaction, DeclareTransactionOutput,
+    DeployAccountTransaction, DeployAccountTransactionOutput, DeployTransaction,
     DeployTransactionOutput, EthAddress, Event, EventContent, EventData,
     EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction, InvokeTransactionOutput,
     L1HandlerTransaction, L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, MessageToL1,

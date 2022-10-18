@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     CallData, ClassHash, ContractAddress, ContractAddressSalt, DeclareTransactionOutput,
-    DeployTransactionOutput, EntryPointSelector, EntryPointType, EthAddress, Event, Fee,
-    InvokeTransactionOutput, L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, MessageToL1,
-    Nonce, StarkHash, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
+    DeployAccountTransactionOutput, DeployTransactionOutput, EntryPointSelector, EthAddress, Event,
+    Fee, InvokeTransactionOutput, L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload,
+    MessageToL1, Nonce, StarkHash, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
     TransactionSignature, TransactionVersion,
 };
 
@@ -15,6 +15,7 @@ use starknet_api::{
 pub enum Transaction {
     Declare(DeclareTransaction),
     Deploy(DeployTransaction),
+    DeployAccount(DeployAccountTransaction),
     Invoke(InvokeTransaction),
     L1Handler(L1HandlerTransaction),
 }
@@ -26,6 +27,9 @@ impl From<Transaction> for starknet_api::Transaction {
                 starknet_api::Transaction::Declare(declare_tx.into())
             }
             Transaction::Deploy(deploy_tx) => starknet_api::Transaction::Deploy(deploy_tx.into()),
+            Transaction::DeployAccount(deploy_acc_tx) => {
+                starknet_api::Transaction::DeployAccount(deploy_acc_tx.into())
+            }
             Transaction::Invoke(invoke_tx) => starknet_api::Transaction::Invoke(invoke_tx.into()),
             Transaction::L1Handler(l1_handler_tx) => {
                 starknet_api::Transaction::L1Handler(l1_handler_tx.into())
@@ -39,6 +43,7 @@ impl Transaction {
         match self {
             Transaction::Declare(tx) => tx.transaction_hash,
             Transaction::Deploy(tx) => tx.transaction_hash,
+            Transaction::DeployAccount(tx) => tx.transaction_hash,
             Transaction::Invoke(tx) => tx.transaction_hash,
             Transaction::L1Handler(tx) => tx.transaction_hash,
         }
@@ -48,6 +53,7 @@ impl Transaction {
         match self {
             Transaction::Declare(tx) => tx.r#type,
             Transaction::Deploy(tx) => tx.r#type,
+            Transaction::DeployAccount(tx) => tx.r#type,
             Transaction::Invoke(tx) => tx.r#type,
             Transaction::L1Handler(tx) => tx.r#type,
         }
@@ -131,11 +137,41 @@ impl From<DeployTransaction> for starknet_api::DeployTransaction {
 }
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+pub struct DeployAccountTransaction {
+    pub contract_address: ContractAddress,
+    pub contract_address_salt: ContractAddressSalt,
+    pub class_hash: ClassHash,
+    pub constructor_calldata: CallData,
+    pub nonce: Nonce,
+    pub max_fee: Fee,
+    pub signature: TransactionSignature,
+    pub transaction_hash: TransactionHash,
+    #[serde(default)]
+    pub version: TransactionVersion,
+    pub r#type: TransactionType,
+}
+
+impl From<DeployAccountTransaction> for starknet_api::DeployAccountTransaction {
+    fn from(deploy_tx: DeployAccountTransaction) -> Self {
+        starknet_api::DeployAccountTransaction {
+            transaction_hash: deploy_tx.transaction_hash,
+            version: deploy_tx.version,
+            contract_address: deploy_tx.contract_address,
+            constructor_calldata: deploy_tx.constructor_calldata,
+            class_hash: deploy_tx.class_hash,
+            contract_address_salt: deploy_tx.contract_address_salt,
+            max_fee: deploy_tx.max_fee,
+            signature: deploy_tx.signature,
+            nonce: deploy_tx.nonce,
+        }
+    }
+}
+
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct InvokeTransaction {
     pub calldata: CallData,
     pub contract_address: ContractAddress,
     pub entry_point_selector: EntryPointSelector,
-    pub entry_point_type: EntryPointType,
     pub max_fee: Fee,
     pub signature: TransactionSignature,
     pub transaction_hash: TransactionHash,
@@ -195,6 +231,13 @@ impl TransactionReceipt {
                 messages_sent,
                 events: self.events,
             }),
+            TransactionType::DeployAccount => {
+                TransactionOutput::DeployAccount(DeployAccountTransactionOutput {
+                    actual_fee: self.actual_fee,
+                    messages_sent,
+                    events: self.events,
+                })
+            }
             TransactionType::InvokeFunction => TransactionOutput::Invoke(InvokeTransactionOutput {
                 actual_fee: self.actual_fee,
                 messages_sent,
@@ -272,6 +315,8 @@ pub enum TransactionType {
     Declare,
     #[serde(rename(deserialize = "DEPLOY", serialize = "DEPLOY"))]
     Deploy,
+    #[serde(rename(deserialize = "DEPLOY_ACCOUNT", serialize = "DEPLOY_ACCOUNT"))]
+    DeployAccount,
     #[serde(rename(deserialize = "INVOKE_FUNCTION", serialize = "INVOKE_FUNCTION"))]
     InvokeFunction,
     #[serde(rename(deserialize = "L1_HANDLER", serialize = "L1_HANDLER"))]

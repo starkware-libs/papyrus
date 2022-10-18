@@ -2,8 +2,9 @@ use papyrus_storage::ThinTransactionOutput;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockHash, BlockNumber, BlockStatus, CallData, ContractAddress, DeclareTransaction,
-    DeclareTransactionOutput, DeployTransaction, DeployTransactionOutput, EntryPointSelector,
-    Event, Fee, InvokeTransactionOutput, L1HandlerTransaction, L1HandlerTransactionOutput, Nonce,
+    DeclareTransactionOutput, DeployAccountTransaction, DeployAccountTransactionOutput,
+    DeployTransaction, DeployTransactionOutput, EntryPointSelector, Event, Fee,
+    InvokeTransactionOutput, L1HandlerTransaction, L1HandlerTransactionOutput, Nonce,
     TransactionHash, TransactionSignature, TransactionVersion,
 };
 
@@ -78,6 +79,7 @@ pub enum InvokeTransaction {
 pub enum Transaction {
     Declare(DeclareTransaction),
     Deploy(DeployTransaction),
+    DeployAccount(DeployAccountTransaction),
     Invoke(InvokeTransaction),
     L1Handler(L1HandlerTransaction),
 }
@@ -87,6 +89,7 @@ impl Transaction {
         match self {
             Transaction::Declare(tx) => tx.transaction_hash,
             Transaction::Deploy(tx) => tx.transaction_hash,
+            Transaction::DeployAccount(tx) => tx.transaction_hash,
             Transaction::Invoke(InvokeTransaction::Version0(tx)) => tx.transaction_hash,
             Transaction::Invoke(InvokeTransaction::Version1(tx)) => tx.transaction_hash,
             Transaction::L1Handler(tx) => tx.transaction_hash,
@@ -99,6 +102,9 @@ impl From<starknet_api::Transaction> for Transaction {
         match tx {
             starknet_api::Transaction::Declare(declare_tx) => Transaction::Declare(declare_tx),
             starknet_api::Transaction::Deploy(deploy_tx) => Transaction::Deploy(deploy_tx),
+            starknet_api::Transaction::DeployAccount(deploy_tx) => {
+                Transaction::DeployAccount(deploy_tx)
+            }
             starknet_api::Transaction::Invoke(invoke_tx) => {
                 if invoke_tx.entry_point_selector.is_none() {
                     Transaction::Invoke(InvokeTransaction::Version1(invoke_tx.into()))
@@ -119,6 +125,8 @@ pub enum TransactionType {
     Declare,
     #[serde(rename(deserialize = "DEPLOY", serialize = "DEPLOY"))]
     Deploy,
+    #[serde(rename(deserialize = "DEPLOY_ACCOUNT", serialize = "DEPLOY_ACCOUNT"))]
+    DeployAccount,
     #[serde(rename(deserialize = "INVOKE", serialize = "INVOKE"))]
     Invoke,
     #[serde(rename(deserialize = "L1_HANDLER", serialize = "L1_HANDLER"))]
@@ -145,6 +153,9 @@ impl From<Transaction> for TransactionWithType {
             }
             Transaction::Deploy(_) => {
                 TransactionWithType { r#type: TransactionType::Deploy, transaction }
+            }
+            Transaction::DeployAccount(_) => {
+                TransactionWithType { r#type: TransactionType::DeployAccount, transaction }
             }
             Transaction::Invoke(_) => {
                 TransactionWithType { r#type: TransactionType::Invoke, transaction }
@@ -216,6 +227,7 @@ pub struct TransactionReceipt {
 pub enum TransactionOutput {
     Declare(DeclareTransactionOutput),
     Deploy(DeployTransactionOutput),
+    DeployAccount(DeployAccountTransactionOutput),
     Invoke(InvokeTransactionOutput),
     L1Handler(L1HandlerTransactionOutput),
 }
@@ -235,6 +247,13 @@ impl TransactionOutput {
             }
             ThinTransactionOutput::Deploy(thin_deploy) => {
                 TransactionOutput::Deploy(DeployTransactionOutput {
+                    actual_fee: thin_deploy.actual_fee,
+                    messages_sent: thin_deploy.messages_sent,
+                    events,
+                })
+            }
+            ThinTransactionOutput::DeployAccount(thin_deploy) => {
+                TransactionOutput::DeployAccount(DeployAccountTransactionOutput {
                     actual_fee: thin_deploy.actual_fee,
                     messages_sent: thin_deploy.messages_sent,
                     events,
@@ -266,6 +285,9 @@ impl From<starknet_api::TransactionOutput> for TransactionOutput {
             }
             starknet_api::TransactionOutput::Deploy(deploy_tx_output) => {
                 TransactionOutput::Deploy(deploy_tx_output)
+            }
+            starknet_api::TransactionOutput::DeployAccount(deploy_tx_output) => {
+                TransactionOutput::DeployAccount(deploy_tx_output)
             }
             starknet_api::TransactionOutput::Invoke(invoke_tx_output) => {
                 TransactionOutput::Invoke(invoke_tx_output)
