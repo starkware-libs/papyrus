@@ -171,7 +171,8 @@ impl From<DeployAccountTransaction> for starknet_api::DeployAccountTransaction {
 pub struct InvokeTransaction {
     pub calldata: CallData,
     pub contract_address: ContractAddress,
-    pub entry_point_selector: EntryPointSelector,
+    pub entry_point_selector: Option<EntryPointSelector>,
+    pub nonce: Option<Nonce>,
     pub max_fee: Fee,
     pub signature: TransactionSignature,
     pub transaction_hash: TransactionHash,
@@ -182,20 +183,14 @@ pub struct InvokeTransaction {
 
 impl From<InvokeTransaction> for starknet_api::InvokeTransaction {
     fn from(invoke_tx: InvokeTransaction) -> Self {
-        let mut entry_point_selector = None;
-        if invoke_tx.entry_point_selector != EntryPointSelector::default() {
-            entry_point_selector = Some(invoke_tx.entry_point_selector);
-        }
-
         Self {
             transaction_hash: invoke_tx.transaction_hash,
             max_fee: invoke_tx.max_fee,
             version: invoke_tx.version,
             signature: invoke_tx.signature,
-            // TODO(anatg): Get the real nonce when the sequencer returns one.
-            nonce: Nonce::default(),
+            nonce: invoke_tx.nonce.unwrap_or_default(),
             contract_address: invoke_tx.contract_address,
-            entry_point_selector,
+            entry_point_selector: invoke_tx.entry_point_selector,
             calldata: invoke_tx.calldata,
         }
     }
