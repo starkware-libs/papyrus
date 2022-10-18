@@ -264,3 +264,50 @@ fn append_2_state_diffs(writer: &mut StorageWriter) -> Result<(), anyhow::Error>
 
     Ok(())
 }
+
+#[test]
+fn revert_doesnt_delete_previously_declared_classes() -> Result<(), anyhow::Error> {
+    // Append 2 state diffs that use the same declared class.
+    let c0 = ContractAddress::try_from(shash!("0x11")).unwrap();
+    let cl0 = ClassHash::new(shash!("0x4"));
+    let c_cls0 = ContractClass::default();
+    let diff0 = StateDiff::new(
+        vec![DeployedContract { address: c0, class_hash: cl0 }],
+        vec![],
+        vec![DeclaredContract { class_hash: cl0, contract_class: c_cls0.clone() }],
+        vec![ContractNonce { contract_address: c0, nonce: Nonce::new(StarkHash::from_u64(1)) }],
+    )?;
+
+    let c1 = ContractAddress::try_from(shash!("0x12")).unwrap();
+    let diff1 = StateDiff::new(
+        vec![DeployedContract { address: c1, class_hash: cl0 }],
+        vec![],
+        vec![DeclaredContract { class_hash: cl0, contract_class: c_cls0 }],
+        vec![ContractNonce { contract_address: c1, nonce: Nonce::new(StarkHash::from_u64(2)) }],
+    )?;
+
+    let (reader, mut writer) = get_test_storage();
+    writer
+        .begin_rw_txn()?
+        .append_state_diff(BlockNumber::new(0), diff0, vec![])?
+        .append_state_diff(BlockNumber::new(1), diff1, vec![])?
+        .commit()?;
+
+    // Assert that reverting diff 1 doesn't delete declared class from diff 0.
+    writer.begin_rw_txn()?.revert_state_diff(BlockNumber::new(1))?.commit()?;
+    let declared_class = reader
+        .begin_ro_txn()?
+        .get_state_reader()?
+        .get_class_definition_at(StateNumber::right_after_block(BlockNumber::new(0)), &cl0)?;
+    assert!(declared_class.is_some());
+
+    // Assert that reverting diff 0 deletes the declared class.
+    writer.begin_rw_txn()?.revert_state_diff(BlockNumber::new(0))?.commit()?;
+    let declared_class = reader
+        .begin_ro_txn()?
+        .get_state_reader()?
+        .get_class_definition_at(StateNumber::right_after_block(BlockNumber::new(0)), &cl0)?;
+    assert!(declared_class.is_none());
+
+    Ok(())
+}
