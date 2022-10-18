@@ -109,29 +109,27 @@ macro_rules! struct_field_names {
 
 struct_field_names! {
     struct Tables {
-        markers: TableIdentifier<MarkerKind, BlockNumber>,
-        nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
-        headers: TableIdentifier<BlockNumber, BlockHeader>,
         block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
-        events: TableIdentifier<(ContractAddress, EventIndex), EventContent>,
-        transactions: TableIdentifier<TransactionIndex, Transaction>,
-        transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
-        transaction_hash_to_idx:
-            TableIdentifier<TransactionHash, TransactionIndex>,
-        state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
+        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
         declared_classes: TableIdentifier<ClassHash, IndexedDeclaredContract>,
         deployed_contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
-        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
-
-        ommer_transactions: TableIdentifier<OmmerTransactionKey, Transaction>,
-        ommer_transaction_outputs: TableIdentifier<OmmerTransactionKey, ThinTransactionOutput>,
+        events: TableIdentifier<(ContractAddress, EventIndex), EventContent>,
+        headers: TableIdentifier<BlockNumber, BlockHeader>,
+        markers: TableIdentifier<MarkerKind, BlockNumber>,
+        nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
+        ommer_contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockHash), StarkFelt>,
+        ommer_declared_classes: TableIdentifier<(BlockHash, ClassHash), Vec<u8>>,
+        ommer_deployed_contracts: TableIdentifier<(ContractAddress, BlockHash), ClassHash>,
         ommer_events: TableIdentifier<(ContractAddress, OmmerEventKey), EventContent>,
         ommer_headers: TableIdentifier<BlockHash, BlockHeader>,
         ommer_nonces: TableIdentifier<(ContractAddress, BlockHash), Nonce>,
         ommer_state_diffs: TableIdentifier<BlockHash, ThinStateDiff>,
-        ommer_declared_classes: TableIdentifier<(BlockHash, ClassHash), Vec<u8>>,
-        ommer_deployed_contracts: TableIdentifier<(ContractAddress, BlockHash), ClassHash>,
-        ommer_contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockHash), StarkFelt>
+        ommer_transaction_outputs: TableIdentifier<OmmerTransactionKey, ThinTransactionOutput>,
+        ommer_transactions: TableIdentifier<OmmerTransactionKey, Transaction>,
+        state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
+        transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
+        transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
+        transactions: TableIdentifier<TransactionIndex, Transaction>
     }
 }
 
@@ -199,20 +197,19 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         headers: db_writer.create_table("headers")?,
         markers: db_writer.create_table("markers")?,
         nonces: db_writer.create_table("nonces")?,
-        state_diffs: db_writer.create_table("state_diffs")?,
-        transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
-        transaction_outputs: db_writer.create_table("transaction_outputs")?,
-        transactions: db_writer.create_table("transactions")?,
-
-        ommer_events: db_writer.create_table("ommer_events")?,
-        ommer_headers: db_writer.create_table("ommer_headers")?,
         ommer_contract_storage: db_writer.create_table("ommer_contract_storage")?,
         ommer_declared_classes: db_writer.create_table("ommer_declared_classes")?,
         ommer_deployed_contracts: db_writer.create_table("ommer_deployed_contracts")?,
+        ommer_events: db_writer.create_table("ommer_events")?,
+        ommer_headers: db_writer.create_table("ommer_headers")?,
         ommer_nonces: db_writer.create_table("ommer_nonces")?,
         ommer_state_diffs: db_writer.create_table("ommer_state_diffs")?,
         ommer_transaction_outputs: db_writer.create_table("ommer_transaction_outputs")?,
         ommer_transactions: db_writer.create_table("ommer_transactions")?,
+        state_diffs: db_writer.create_table("state_diffs")?,
+        transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
+        transaction_outputs: db_writer.create_table("transaction_outputs")?,
+        transactions: db_writer.create_table("transactions")?,
     });
     let reader = StorageReader { db_reader, tables: tables.clone() };
     let writer = StorageWriter { db_writer, tables };
