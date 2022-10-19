@@ -90,7 +90,7 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
 
         Ok(self)
     }
-    
+
     fn insert_ommer_state_diff(
         self,
         block_hash: BlockHash,
