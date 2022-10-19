@@ -16,7 +16,7 @@ use std::sync::Arc;
 use db::DbTableStats;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, EventContent,
+    BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, ContractClass, EventContent,
     EventIndexInTransactionOutput, Nonce, StarkFelt, StorageKey, Transaction, TransactionHash,
     TransactionOffsetInBlock,
 };
@@ -118,7 +118,7 @@ struct_field_names! {
         markers: TableIdentifier<MarkerKind, BlockNumber>,
         nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
         ommer_contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockHash), StarkFelt>,
-        ommer_declared_classes: TableIdentifier<(BlockHash, ClassHash), Vec<u8>>,
+        ommer_declared_classes: TableIdentifier<(BlockHash, ClassHash), ContractClass>,
         ommer_deployed_contracts: TableIdentifier<(ContractAddress, BlockHash), ClassHash>,
         ommer_events: TableIdentifier<(ContractAddress, OmmerEventKey), EventContent>,
         ommer_headers: TableIdentifier<BlockHash, BlockHeader>,
