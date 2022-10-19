@@ -314,7 +314,6 @@ fn delete_declared_classes<'env>(
                 contract_class: _,
             }) => {
                 // If the class was declared in a different block then we should'nt delete it.
-                // TODO(yair): add test for this situation.
                 if block_number == declared_block_number {
                     declared_classes_table.delete(txn, class_hash)?;
                 }
