@@ -24,6 +24,7 @@ use state::{IndexedDeclaredContract, IndexedDeployedContract};
 
 pub use self::body::events::ThinTransactionOutput;
 pub use self::body::{BodyStorageReader, BodyStorageWriter};
+pub use self::db::serialization::StorageSerde;
 pub use self::db::TransactionKind;
 use self::db::{
     open_env, DbConfig, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier,
