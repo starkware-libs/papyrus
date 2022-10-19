@@ -2,6 +2,7 @@ mod body;
 pub mod compression_utils;
 mod db;
 mod header;
+mod ommer;
 mod serializers;
 mod state;
 
@@ -29,6 +30,7 @@ use self::db::{
     RO, RW,
 };
 pub use self::header::{HeaderStorageReader, HeaderStorageWriter};
+pub use self::ommer::OmmerStorageWriter;
 pub use self::state::{StateStorageReader, StateStorageWriter, ThinStateDiff};
 
 #[derive(Serialize, Deserialize)]
@@ -119,7 +121,17 @@ struct_field_names! {
         state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
         declared_classes: TableIdentifier<ClassHash, IndexedDeclaredContract>,
         deployed_contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
-        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>
+        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
+
+        ommer_transactions: TableIdentifier<OmmerTransactionKey, Transaction>,
+        ommer_transaction_outputs: TableIdentifier<OmmerTransactionKey, ThinTransactionOutput>,
+        ommer_events: TableIdentifier<(ContractAddress, OmmerEventKey), EventContent>,
+        ommer_headers: TableIdentifier<BlockHash, BlockHeader>,
+        ommer_nonces: TableIdentifier<(ContractAddress, BlockHash), Nonce>,
+        ommer_state_diffs: TableIdentifier<BlockHash, ThinStateDiff>,
+        ommer_declared_classes: TableIdentifier<(BlockHash, ClassHash), Vec<u8>>,
+        ommer_deployed_contracts: TableIdentifier<(ContractAddress, BlockHash), ClassHash>,
+        ommer_contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockHash), StarkFelt>
     }
 }
 
@@ -127,11 +139,18 @@ pub fn table_names() -> &'static [&'static str] {
     Tables::field_names()
 }
 
+// TODO(yair): move the key structs from the main lib file.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub struct OmmerTransactionKey(pub BlockHash, pub TransactionOffsetInBlock);
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize)]
+pub struct OmmerEventKey(pub OmmerTransactionKey, pub EventIndexInTransactionOutput);
 
 #[derive(Clone)]
 pub struct StorageReader {
@@ -184,6 +203,16 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
         transaction_outputs: db_writer.create_table("transaction_outputs")?,
         transactions: db_writer.create_table("transactions")?,
+
+        ommer_events: db_writer.create_table("ommer_events")?,
+        ommer_headers: db_writer.create_table("ommer_headers")?,
+        ommer_contract_storage: db_writer.create_table("ommer_contract_storage")?,
+        ommer_declared_classes: db_writer.create_table("ommer_declared_classes")?,
+        ommer_deployed_contracts: db_writer.create_table("ommer_deployed_contracts")?,
+        ommer_nonces: db_writer.create_table("ommer_nonces")?,
+        ommer_state_diffs: db_writer.create_table("ommer_state_diffs")?,
+        ommer_transaction_outputs: db_writer.create_table("ommer_transaction_outputs")?,
+        ommer_transactions: db_writer.create_table("ommer_transactions")?,
     });
     let reader = StorageReader { db_reader, tables: tables.clone() };
     let writer = StorageWriter { db_writer, tables };
