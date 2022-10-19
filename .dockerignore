@@ -5,4 +5,4 @@
 /Cargo.lock
 .git
 **/resources
-/load_test/target
+/load_test
