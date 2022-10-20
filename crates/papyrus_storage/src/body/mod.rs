@@ -4,17 +4,16 @@ mod body_test;
 pub(crate) mod events;
 
 use starknet_api::{
-    BlockBody, BlockNumber, ContractAddress, Event, EventContent, EventIndexInTransactionOutput,
-    Transaction, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
+    BlockBody, BlockNumber, Event, EventIndexInTransactionOutput, Transaction, TransactionHash,
+    TransactionOffsetInBlock, TransactionOutput,
 };
 
-use self::events::ThinTransactionOutput;
+use self::events::{EventsTable, ThinTransactionOutput};
 use super::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use super::{
     EventIndex, MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn, TransactionIndex,
 };
 
-pub type EventsTable<'env> = TableHandle<'env, (ContractAddress, EventIndex), EventContent>;
 pub type TransactionsTable<'env> = TableHandle<'env, TransactionIndex, Transaction>;
 pub type TransactionOutputsTable<'env> = TableHandle<'env, TransactionIndex, ThinTransactionOutput>;
 pub type TransactionHashToIdxTable<'env> = TableHandle<'env, TransactionHash, TransactionIndex>;

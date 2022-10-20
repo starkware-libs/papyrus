@@ -4,19 +4,21 @@ use starknet_api::{
     TransactionOffsetInBlock, TransactionOutput,
 };
 
+use super::TransactionOutputsTable;
 use crate::db::{DbCursor, DbTransaction, TableHandle, RO};
 use crate::{EventIndex, StorageResult, StorageTxn, TransactionIndex};
 
 pub type EventsTableKey = (ContractAddress, EventIndex);
 pub type EventsTableKeyValue = (EventsTableKey, EventContent);
-pub type EventsTableCursor<'env> = DbCursor<'env, RO, EventsTableKey, EventContent>;
+pub type EventsTableCursor<'txn> = DbCursor<'txn, RO, EventsTableKey, EventContent>;
+pub type EventsTable<'env> = TableHandle<'env, EventsTableKey, EventContent>;
 
-pub enum EventIter<'env> {
-    Key(EventsTableKeyIter<'env>),
-    Index(EventIndexIter<'env>),
+pub enum EventIter<'txn, 'env> {
+    Key(EventsTableKeyIter<'txn>),
+    Index(EventIndexIter<'txn, 'env>),
 }
 
-impl Iterator for EventIter<'_> {
+impl Iterator for EventIter<'_, '_> {
     type Item = EventsTableKeyValue;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -31,9 +33,9 @@ impl Iterator for EventIter<'_> {
     }
 }
 
-pub struct EventsTableKeyIter<'env> {
+pub struct EventsTableKeyIter<'txn> {
     current: Option<EventsTableKeyValue>,
-    cursor: EventsTableCursor<'env>,
+    cursor: EventsTableCursor<'txn>,
 }
 
 impl EventsTableKeyIter<'_> {
@@ -44,15 +46,15 @@ impl EventsTableKeyIter<'_> {
     }
 }
 
-pub struct EventIndexIter<'env> {
-    txn: &'env DbTransaction<'env, RO>,
-    transaction_outputs_table: TableHandle<'env, TransactionIndex, ThinTransactionOutput>,
-    events_table: TableHandle<'env, (ContractAddress, EventIndex), EventContent>,
+pub struct EventIndexIter<'txn, 'env> {
+    txn: &'txn DbTransaction<'env, RO>,
+    transaction_outputs_table: TransactionOutputsTable<'env>,
+    events_table: EventsTable<'env>,
     current: Option<EventsTableKeyValue>,
     to_block_number: BlockNumber,
 }
 
-impl EventIndexIter<'_> {
+impl EventIndexIter<'_, '_> {
     fn get_event(
         &mut self,
         event_index: EventIndex,
@@ -119,20 +121,20 @@ impl EventIndexIter<'_> {
     }
 }
 
-pub trait EventsReader<'env> {
+pub trait EventsReader<'txn, 'env> {
     fn iter_events(
         &'env self,
         address: Option<ContractAddress>,
         event_index: EventIndex,
         to_block_number: BlockNumber,
-    ) -> StorageResult<EventIter<'env>>;
+    ) -> StorageResult<EventIter<'txn, 'env>>;
 }
 
-impl<'env> StorageTxn<'env, RO> {
+impl<'txn, 'env> StorageTxn<'env, RO> {
     fn iter_events_by_key(
         &'env self,
         key: EventsTableKey,
-    ) -> StorageResult<EventsTableKeyIter<'env>> {
+    ) -> StorageResult<EventsTableKeyIter<'txn>> {
         let events_table = self.txn.open_table(&self.tables.events)?;
         let mut cursor = events_table.cursor(&self.txn)?;
         let current = cursor.lower_bound(&key)?;
@@ -143,7 +145,7 @@ impl<'env> StorageTxn<'env, RO> {
         &'env self,
         event_index: EventIndex,
         to_block_number: BlockNumber,
-    ) -> StorageResult<EventIndexIter<'env>> {
+    ) -> StorageResult<EventIndexIter<'txn, 'env>> {
         let transaction_outputs_table = self.txn.open_table(&self.tables.transaction_outputs)?;
         let events_table = self.txn.open_table(&self.tables.events)?;
         let mut it = EventIndexIter {
@@ -158,13 +160,13 @@ impl<'env> StorageTxn<'env, RO> {
     }
 }
 
-impl<'env> EventsReader<'env> for StorageTxn<'env, RO> {
+impl<'txn, 'env> EventsReader<'txn, 'env> for StorageTxn<'env, RO> {
     fn iter_events(
         &'env self,
         address: Option<ContractAddress>,
         event_index: EventIndex,
         to_block_number: BlockNumber,
-    ) -> StorageResult<EventIter<'env>> {
+    ) -> StorageResult<EventIter<'txn, 'env>> {
         if address.is_some() {
             return Ok(EventIter::Key(self.iter_events_by_key((address.unwrap(), event_index))?));
         }
