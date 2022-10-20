@@ -2,7 +2,7 @@ use std::fmt::Write;
 
 use clap::{ArgAction, Parser};
 use log::info;
-use papyrus_gateway::{run_server, GatewayConfig};
+use papyrus_gateway::run_server;
 use papyrus_monitoring_gateway::run_server as monitoring_run_server;
 use papyrus_node::config::load_config;
 use papyrus_storage::open_storage;
