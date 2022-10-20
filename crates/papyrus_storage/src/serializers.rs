@@ -52,12 +52,13 @@ impl StorageSerde for PatriciaKey {
 impl StorageSerde for serde_json::Value {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
         // TODO(anatg): Deal with serde_json error.
-        serde_json::to_vec(self).unwrap().serialize_into(res)
+        let bytes = serde_json::to_vec(self).unwrap();
+        bytes.serialize_into(res)
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        let bytes = Vec::deserialize_from(bytes)?;
-        serde_json::from_slice(bytes.as_slice()).ok()
+        let buf = Vec::deserialize_from(bytes)?;
+        serde_json::from_slice(buf.as_slice()).ok()
     }
 }
 
