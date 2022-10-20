@@ -1,0 +1,7 @@
+/data
+/logs
+/target
+/Cargo.lock
+.git
+**/resources
+/load_test
