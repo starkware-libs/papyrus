@@ -426,7 +426,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let to_block_number = maybe_to_block_number.unwrap();
         if from_block_number > to_block_number {
             // TODO(anatg): Add a test for this case.
-            return Err(Error::from(JsonRpcError::BlockNotFound));
+            return Ok((vec![], None));
         }
 
         // Get the event index. If there's a continuation token we take the event index from there.
@@ -457,7 +457,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 break;
             }
             if filter.keys.iter().enumerate().all(|(i, keys)| {
-                keys.is_empty() || (content.keys.len() > i && keys.contains(&content.keys[i]))
+                content.keys.len() > i && (keys.is_empty() || keys.contains(&content.keys[i]))
             }) {
                 if filtered_events.len() == filter.chunk_size {
                     return Ok((
