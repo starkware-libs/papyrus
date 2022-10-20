@@ -2,6 +2,7 @@
 #[path = "header_test.rs"]
 mod header_test;
 
+use log::info;
 use starknet_api::{BlockHash, BlockHeader, BlockNumber};
 
 use super::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
@@ -59,7 +60,6 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let headers_table = self.txn.open_table(&self.tables.headers)?;
         let block_hash_to_number_table = self.txn.open_table(&self.tables.block_hash_to_number)?;
-
         update_marker(&self.txn, &markers_table, block_number)?;
 
         // Write header.

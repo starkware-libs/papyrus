@@ -76,6 +76,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                             );
                             match maybe_state_diff {
                                 Ok(state_diff) => {
+                                info!("Received new state diff: {}.", current_block_number);
                                     yield Ok((current_block_number, state_diff, deployed_contract_class_definitions.to_vec()));
                                     current_block_number = current_block_number.next();
                                 }
@@ -167,6 +168,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
             .map(|state_update| state_update.state_diff.class_hashes())
             .flat_map(futures::stream::iter)
             .map(move |class_hash| {
+                // cache here
                 let starknet_client = starknet_client.clone();
                 async move { (class_hash, starknet_client.class_by_hash(class_hash).await) }
             })

@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package common_proto;
+
+message FieldElement
+{
+    bytes element = 1;
+}
+
+message BlockNumber
+{
+    uint64 number = 1;
+}
+
+message BlockHeader
+{
+    FieldElement parent_block_hash = 1;
+    uint64 block_number = 2;
+    FieldElement global_state_root = 3;
+    FieldElement sequencer_address = 4;
+    uint64 block_timestamp = 5;
+
+    // uint32 transaction_count = 6;
+    // FieldElement transaction_commitment = 7;
+
+    // uint32 event_count = 8;
+    // FieldElement event_commitment = 9;
+
+    // uint32 protocol_version = 10;
+
+}

@@ -27,7 +27,7 @@ pub struct ThinStateDiff {
     declared_contract_hashes: Vec<ClassHash>,
     nonces: Vec<ContractNonce>,
 }
-
+// move storage serde impl here.
 impl ThinStateDiff {
     pub fn deployed_contracts(&self) -> &Vec<DeployedContract> {
         &self.deployed_contracts

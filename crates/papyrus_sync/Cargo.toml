@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+papyrus_p2p = { path = "../papyrus_p2p" }
+
 anyhow = { version = "1.0.44" }
 async-stream = { version = "0.3.3" }
 async-trait = { version = "0.1.56" }

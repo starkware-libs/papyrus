@@ -144,7 +144,7 @@ impl Default for BlockStatus {
 pub struct BlockHeader {
     // TODO(anatg): Consider removing the block hash from the header (note it can be computed from
     // the rest of the fields.
-    pub block_hash: BlockHash,
+    pub block_hash: BlockHash, // remove?
     pub parent_hash: BlockHash,
     pub block_number: BlockNumber,
     pub gas_price: GasPrice,

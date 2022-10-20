@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use starknet_api::{Block, BlockNumber, DeclaredContract, StateDiff};
 use starknet_client::ClientError;
 
-pub use self::sources::{CentralError, CentralSource, CentralSourceConfig};
+pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, P2PSource};
 
 #[derive(Serialize, Deserialize)]
 pub struct SyncConfig {
@@ -192,6 +192,117 @@ fn stream_new_state_diffs(
                         error!("{}", err);
                         break;
                     }
+                }
+            }
+        }
+    }
+}
+
+pub mod p2p {
+    use std::time::Duration;
+
+    use async_stream::stream;
+    use futures::{pin_mut, select, Stream, StreamExt};
+    use log::info;
+    use papyrus_storage::{
+        HeaderStorageReader, HeaderStorageWriter, StorageError, StorageReader, StorageWriter,
+    };
+    use starknet_api::{BlockHeader, BlockNumber};
+
+    use crate::P2PSource;
+
+    pub struct StateSync {
+        reader: papyrus_storage::StorageReader,
+        writer: papyrus_storage::StorageWriter,
+        p2p_source: P2PSource,
+    }
+
+    #[derive(thiserror::Error, Debug)]
+    pub enum StateSyncError {
+        #[error(transparent)]
+        StorageError(#[from] StorageError),
+        #[error("Sync error: {message:?}.")]
+        SyncError { message: String },
+    }
+
+    #[derive(Debug)]
+    pub enum SyncEvent {
+        HeaderAvailable { block_number: BlockNumber, block_header: BlockHeader },
+    }
+
+    #[allow(clippy::new_without_default)]
+    impl StateSync {
+        pub fn new(
+            reader: StorageReader,
+            writer: StorageWriter,
+            p2p_source: P2PSource,
+        ) -> StateSync {
+            StateSync { reader, writer, p2p_source }
+        }
+
+        pub async fn run(&mut self) -> anyhow::Result<(), StateSyncError> {
+            info!("State sync P2P started.");
+            loop {
+                let block_header_stream = stream_new_blocks(
+                    self.reader.clone(),
+                    &self.p2p_source,
+                    Duration::from_secs(60),
+                )
+                .fuse();
+                pin_mut!(block_header_stream);
+
+                loop {
+                    let sync_event: Option<SyncEvent> = select! {
+                        res = block_header_stream.next() => res,
+                        complete => break,
+                    };
+                    info!("Got sync event {sync_event:?}.");
+                    match sync_event {
+                        Some(SyncEvent::HeaderAvailable { block_number, block_header }) => {
+                            self.writer
+                                .begin_rw_txn()?
+                                .append_header(block_number, &block_header)?
+                                .commit()?;
+                            info!("appended header {block_number:?}.");
+                        }
+                        None => {
+                            return Err(StateSyncError::SyncError {
+                                message: "Got an empty event.".to_string(),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn stream_new_blocks(
+        reader: StorageReader,
+        p2p_source: &P2PSource,
+        block_propation_sleep_duration: Duration,
+    ) -> impl Stream<Item = SyncEvent> + '_ {
+        stream! {
+            loop {
+                let header_marker = reader.begin_ro_txn().expect("Cannot read from block storage.")
+                    .get_header_marker()
+                    .expect("Cannot read from block storage.");
+                let last_block_number = p2p_source
+                    .get_block_marker()
+                    .await;
+                info!(
+                    "Downloading blocks [{} - {}).",
+                    header_marker, last_block_number
+                );
+                if header_marker == last_block_number {
+                    tokio::time::sleep(block_propation_sleep_duration).await;
+                    continue;
+                }
+                let block_header_stream = p2p_source
+                    .stream_new_blocks(header_marker, last_block_number)
+                    .fuse();
+                pin_mut!(block_header_stream);
+                while let Some(Ok((block_number, block_header))) = block_header_stream.next().await {
+                    yield SyncEvent::HeaderAvailable { block_number, block_header };
                 }
             }
         }
