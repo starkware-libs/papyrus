@@ -129,7 +129,7 @@ struct ContinuationTokenAsStruct(EventIndex);
 impl ContinuationToken {
     fn parse(&self) -> Result<ContinuationTokenAsStruct, Error> {
         let ct = serde_json::from_str(&self.0)
-            .map_err(|_err| Error::from(JsonRpcError::InvalidContinuationToken))?;
+            .map_err(|_| Error::from(JsonRpcError::InvalidContinuationToken))?;
 
         Ok(ContinuationTokenAsStruct(ct))
     }
@@ -429,7 +429,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
             return Err(Error::from(JsonRpcError::BlockNotFound));
         }
 
-        // Get the event index. If there's a comtinuation token we take the event index from there.
+        // Get the event index. If there's a continuation token we take the event index from there.
         // Otherwise, we take the first index in the from_block_number.
         let mut event_index = EventIndex(
             TransactionIndex(from_block_number, TransactionOffsetInBlock(0)),
@@ -441,6 +441,9 @@ impl JsonRpcServer for JsonRpcServerImpl {
         }
 
         // Collect the requested events.
+        // Once we collected enough events, we continue to check if there are any more events
+        // corresponding to the requested filter. If there are, we return a continuation token
+        // pointing to the next relevant event. Otherwise, we return a continuation token None.
         let mut filtered_events = vec![];
         for ((from_address, event_index), content) in txn
             .iter_events(filter.address, event_index, to_block_number)
