@@ -50,9 +50,29 @@ pub enum SyncEvent {
         // state diff.
         deployed_contract_class_definitions: Vec<DeclaredContract>,
     },
-    RevertRequired {
-        block_number: BlockNumber,
-    },
+}
+
+fn revert_block(block_number: BlockNumber) {
+    unimplemented!("Revert block {}", block_number);
+}
+
+async fn handle_reverts(reader: &StorageReader, central_source: &CentralSource) {
+    let header_marker = reader
+        .begin_ro_txn()
+        .expect("Cannot read from block storage.")
+        .get_header_marker()
+        .expect("Cannot read from block storage.");
+
+    // Revert last blocks if needed.
+    let mut last_block_in_storage = header_marker.prev();
+    while let Some(block_number) = last_block_in_storage {
+        if should_revert_block(&reader, central_source, block_number).await {
+            revert_block(block_number);
+            last_block_in_storage = block_number.prev();
+        } else {
+            break;
+        }
+    }
 }
 
 #[allow(clippy::new_without_default)]
@@ -69,6 +89,7 @@ impl StateSync {
     pub async fn run(&mut self) -> anyhow::Result<(), StateSyncError> {
         info!("State sync started.");
         loop {
+            handle_reverts(&self.reader, &self.central_source).await;
             let block_stream = stream_new_blocks(
                 self.reader.clone(),
                 &self.central_source,
@@ -110,9 +131,6 @@ impl StateSync {
                                 deployed_contract_class_definitions,
                             )?
                             .commit()?;
-                    }
-                    Some(SyncEvent::RevertRequired { block_number }) => {
-                        todo!("Revert block {}", block_number)
                     }
                     None => {
                         return Err(StateSyncError::SyncError {
@@ -162,27 +180,10 @@ fn stream_new_blocks(
                 .get_header_marker()
                 .expect("Cannot read from block storage.");
 
-            // Revert last blocks if needed.
-            let mut last_block_in_storage = header_marker.prev();
-            while let Some(block_number) = last_block_in_storage {
-                if should_revert_block(&reader, central_source, block_number).await {
-                    yield SyncEvent::RevertRequired { block_number };
-                    last_block_in_storage = block_number.prev();
-                }
-                else {
-                    break;
-                }
-            }
-
             let last_block_number = central_source
                 .get_block_marker()
                 .await
                 .expect("Cannot read from central.");
-
-            // Header marker might have changed due to reverts.
-            let header_marker = reader.begin_ro_txn().expect("Cannot read from block storage.")
-                .get_header_marker()
-                .expect("Cannot read from block storage.");
 
             info!(
                 "Downloading blocks [{} - {}).",
