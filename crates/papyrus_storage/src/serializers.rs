@@ -74,7 +74,7 @@ impl StorageSerde for StarkHash {
 
 impl StorageSerde for StorageKey {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
-        self.clone().key().serialize_into(res)
+        self.key().serialize_into(res)
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
