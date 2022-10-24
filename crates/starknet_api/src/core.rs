@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{StarkFelt, StarkHash, StarknetApiError};
 
-/// 2**251
+/// Patricia key upper bound - 2**251.
 pub const PATRICIA_KEY_UPPER_BOUND: &str =
     "0x800000000000000000000000000000000000000000000000000000000000000";
 
@@ -65,6 +65,7 @@ impl Default for Nonce {
     }
 }
 
+/// A key in a StarkNet Patricia tree.
 #[derive(Copy, Clone, Eq, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct PatriciaKey(StarkHash);
 impl PatriciaKey {
