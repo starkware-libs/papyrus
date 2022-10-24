@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use super::serde_utils::{HexAsBytes, PrefixedHexAsBytes};
 use super::{ContractAddress, StarkHash, StarknetApiError, Transaction, TransactionOutput};
 
+/// A StarkNet block.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct Block {
     pub header: BlockHeader,
@@ -62,7 +63,6 @@ impl BlockBody {
     }
 }
 
-// TODO(spapini): Verify the invariant that it is in range.
 /// The hash of a StarkNet block.
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
