@@ -49,10 +49,10 @@ impl BlockBody {
             Err(StarknetApiError::TransationsLengthDontMatch)
         }
     }
-    pub fn transactions(&self) -> &Vec<Transaction> {
+    pub fn transactions(&self) -> &[Transaction] {
         &self.transactions
     }
-    pub fn transaction_outputs(&self) -> &Vec<TransactionOutput> {
+    pub fn transaction_outputs(&self) -> &[TransactionOutput] {
         &self.transaction_outputs
     }
     pub fn transaction_outputs_into_iter(self) -> IntoIter<TransactionOutput> {
