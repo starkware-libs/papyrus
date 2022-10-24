@@ -1,9 +1,9 @@
 use assert_matches::assert_matches;
 use logtest::Logger;
 use starknet_api::{
-    shash, BlockNumber, ClassHash, ContractAddress, ContractClass, ContractNonce, DeclaredContract,
-    DeployedContract, Nonce, StarkHash, StateDiff, StateNumber, StorageDiff, StorageEntry,
-    StorageKey,
+    shash, BlockNumber, ClassHash, ContractAddress, ContractClass, ContractClassAbiEntry,
+    ContractNonce, DeclaredContract, DeployedContract, FunctionAbiEntry, Nonce, StarkHash,
+    StateDiff, StateNumber, StorageDiff, StorageEntry, StorageKey,
 };
 
 use super::{StateStorageReader, StateStorageWriter, StorageError};
@@ -85,7 +85,11 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     let txn = writer.begin_rw_txn()?;
     let (deployed_contracts, storage_diffs, mut declared_classes, nonces) = diff1.destruct();
     let mut class = declared_classes[0].contract_class.clone();
-    class.abi = serde_json::Value::String("junk".to_string());
+    class.abi = Some(vec![ContractClassAbiEntry::Function(FunctionAbiEntry {
+        name: String::from("junk"),
+        inputs: vec![],
+        outputs: vec![],
+    })]);
 
     declared_classes[0].contract_class = class;
     let diff1 = StateDiff::new(deployed_contracts, storage_diffs, declared_classes, nonces)?;
