@@ -1,7 +1,7 @@
 use crate::BlockNumber;
 
 #[test]
-fn test_block_number_iteration() {
+fn block_number_iteration() {
     let start: u64 = 3;
     let up_until: u64 = 10;
 
