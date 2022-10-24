@@ -1,12 +1,12 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::ops::Index;
 
 use serde::{Deserialize, Serialize};
 use starknet_api::serde_utils::NonPrefixedHexAsBytes;
 use starknet_api::{
-    BlockHash, BlockNumber, BlockTimestamp, ClassHash, ContractAddress, DeployedContract, GasPrice,
-    StarkHash, StarknetApiError, StorageDiff, StorageEntry, TransactionHash,
-    TransactionOffsetInBlock,
+    BlockHash, BlockNumber, BlockTimestamp, ClassHash, ContractAddress, DeployedContract,
+    EntryPoint, EntryPointType, GasPrice, Program, StarkHash, StarknetApiError, StorageDiff,
+    StorageEntry, StructMember, TransactionHash, TransactionOffsetInBlock, TypedParameter,
 };
 
 use super::transaction::{L1ToL2Message, Transaction, TransactionReceipt, TransactionType};
@@ -272,4 +272,84 @@ pub fn client_to_starknet_api_storage_diff(
         .into_iter()
         .map(|(address, storage_entries)| StorageDiff { address, storage_entries })
         .collect()
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum ContractClassAbiEntry {
+    Event(EventAbiEntry),
+    Function(FunctionAbiEntry),
+    Struct(StructAbiEntry),
+}
+impl From<ContractClassAbiEntry> for starknet_api::ContractClassAbiEntry {
+    fn from(entry: ContractClassAbiEntry) -> Self {
+        match entry {
+            ContractClassAbiEntry::Event(entry) => Self::Event(entry.into()),
+            ContractClassAbiEntry::Function(entry) => {
+                if entry.r#type == "l1_handler" {
+                    Self::L1Handler(starknet_api::L1HandlerAbiEntry {
+                        name: entry.name,
+                        inputs: entry.inputs,
+                        outputs: entry.outputs,
+                    })
+                } else {
+                    Self::Function(starknet_api::FunctionAbiEntry {
+                        name: entry.name,
+                        inputs: entry.inputs,
+                        outputs: entry.outputs,
+                    })
+                }
+            }
+            ContractClassAbiEntry::Struct(entry) => Self::Struct(entry.into()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct EventAbiEntry {
+    pub r#type: String,
+    pub name: String,
+    pub keys: Vec<TypedParameter>,
+    pub data: Vec<TypedParameter>,
+}
+impl From<EventAbiEntry> for starknet_api::EventAbiEntry {
+    fn from(entry: EventAbiEntry) -> Self {
+        Self { name: entry.name, keys: entry.keys, data: entry.data }
+    }
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct FunctionAbiEntry {
+    pub r#type: String,
+    pub name: String,
+    pub inputs: Vec<TypedParameter>,
+    pub outputs: Vec<TypedParameter>,
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct StructAbiEntry {
+    pub r#type: String,
+    pub name: String,
+    pub size: usize,
+    pub members: Vec<StructMember>,
+}
+impl From<StructAbiEntry> for starknet_api::StructAbiEntry {
+    fn from(entry: StructAbiEntry) -> Self {
+        Self { name: entry.name, size: entry.size, members: entry.members }
+    }
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct ContractClass {
+    pub abi: Option<Vec<ContractClassAbiEntry>>,
+    pub program: Program,
+    /// The selector of each entry point is a unique identifier in the program.
+    pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
+}
+
+impl From<ContractClass> for starknet_api::ContractClass {
+    fn from(class: ContractClass) -> Self {
+        let abi = class.abi.map(|entries| entries.into_iter().map(|entry| entry.into()).collect());
+        Self { abi, program: class.program, entry_points_by_type: class.entry_points_by_type }
+    }
 }

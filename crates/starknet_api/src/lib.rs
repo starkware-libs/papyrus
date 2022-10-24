@@ -18,8 +18,10 @@ pub use self::block::{
 pub use self::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 pub use self::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 pub use self::state::{
-    ContractClass, ContractNonce, DeclaredContract, DeployedContract, EntryPoint, EntryPointOffset,
-    EntryPointType, Program, StateDiff, StateNumber, StorageDiff, StorageEntry, StorageKey,
+    ContractClass, ContractClassAbiEntry, ContractNonce, DeclaredContract, DeployedContract,
+    EntryPoint, EntryPointOffset, EntryPointType, EventAbiEntry, FunctionAbiEntry,
+    L1HandlerAbiEntry, Program, StateDiff, StateNumber, StorageDiff, StorageEntry, StorageKey,
+    StructAbiEntry, StructMember, TypedParameter,
 };
 pub use self::transaction::{
     CallData, ContractAddressSalt, DeclareTransaction, DeclareTransactionOutput,

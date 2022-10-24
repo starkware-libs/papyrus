@@ -199,7 +199,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                     .into_iter()
                     .map(|(class_hash, class)| {
                         match class{
-                            Ok(Some(class)) => Ok(DeclaredContract { class_hash, contract_class: class }),
+                            Ok(Some(class)) => Ok(DeclaredContract { class_hash, contract_class: class.into() }),
                             Ok(None) => Err(CentralError::StateUpdateNotFound),
                             Err(err) => Err(CentralError::ClientError(err)),
                         }

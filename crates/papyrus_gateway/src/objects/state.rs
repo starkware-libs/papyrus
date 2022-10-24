@@ -3,11 +3,77 @@ use std::collections::HashMap;
 use papyrus_storage::compression_utils::{CompressionError, GzEncoded};
 use papyrus_storage::{StorageSerde, ThinStateDiff};
 use serde::{Deserialize, Serialize};
-use starknet_api::{BlockHash, EntryPoint, EntryPointType, GlobalRoot};
+use starknet_api::{
+    BlockHash, EntryPoint, EntryPointType, EventAbiEntry, FunctionAbiEntry, GlobalRoot,
+    StructAbiEntry,
+};
+
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+#[serde(untagged)]
+pub enum ContractClassAbiEntry {
+    /// An event abi entry.
+    Event(EventAbiEntry),
+    /// A function abi entry.
+    Function(FunctionAbiEntry),
+    /// A struct abi entry.
+    Struct(StructAbiEntry),
+}
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub enum ContractClassAbiEntryType {
+    #[serde(rename(deserialize = "event", serialize = "event"))]
+    Event,
+    #[serde(rename(deserialize = "function", serialize = "function"))]
+    Function,
+    #[serde(rename(deserialize = "l1_handler", serialize = "l1_handler"))]
+    L1Handler,
+    #[serde(rename(deserialize = "struct", serialize = "struct"))]
+    Struct,
+}
+impl Default for ContractClassAbiEntryType {
+    fn default() -> Self {
+        ContractClassAbiEntryType::Function
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+pub struct ContractClassAbiEntryWithType {
+    pub r#type: ContractClassAbiEntryType,
+    #[serde(flatten)]
+    pub entry: ContractClassAbiEntry,
+}
+
+impl From<starknet_api::ContractClassAbiEntry> for ContractClassAbiEntryWithType {
+    fn from(entry: starknet_api::ContractClassAbiEntry) -> Self {
+        match entry {
+            starknet_api::ContractClassAbiEntry::Event(entry) => Self {
+                r#type: ContractClassAbiEntryType::Event,
+                entry: ContractClassAbiEntry::Event(entry),
+            },
+            starknet_api::ContractClassAbiEntry::Function(entry) => Self {
+                r#type: ContractClassAbiEntryType::Function,
+                entry: ContractClassAbiEntry::Function(entry),
+            },
+            starknet_api::ContractClassAbiEntry::L1Handler(entry) => Self {
+                r#type: ContractClassAbiEntryType::L1Handler,
+                entry: ContractClassAbiEntry::Function(FunctionAbiEntry {
+                    name: entry.name,
+                    inputs: entry.inputs,
+                    outputs: entry.outputs,
+                }),
+            },
+            starknet_api::ContractClassAbiEntry::Struct(entry) => Self {
+                r#type: ContractClassAbiEntryType::Struct,
+                entry: ContractClassAbiEntry::Struct(entry),
+            },
+        }
+    }
+}
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ContractClass {
-    pub abi: serde_json::Value,
+    pub abi: Option<Vec<ContractClassAbiEntryWithType>>,
     /// A base64 encoding of the gzip-compressed JSON representation of program.
     pub program: String,
     /// The selector of each entry point is a unique identifier in the program.
@@ -25,7 +91,7 @@ impl TryFrom<starknet_api::ContractClass> for ContractClass {
         }
 
         Ok(Self {
-            abi: class.abi,
+            abi: class.abi.map(|entries| entries.into_iter().map(|entry| entry.into()).collect()),
             program: base64::encode(GzEncoded::encode(Program(program_value))?),
             entry_points_by_type: class.entry_points_by_type,
         })
