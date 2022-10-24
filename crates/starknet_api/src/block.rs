@@ -49,15 +49,12 @@ impl BlockBody {
             Err(StarknetApiError::TransationsLengthDontMatch)
         }
     }
-
     pub fn transactions(&self) -> &Vec<Transaction> {
         &self.transactions
     }
-
     pub fn transaction_outputs(&self) -> &Vec<TransactionOutput> {
         &self.transaction_outputs
     }
-
     pub fn transaction_outputs_into_iter(self) -> IntoIter<TransactionOutput> {
         self.transaction_outputs.into_iter()
     }
@@ -68,7 +65,6 @@ impl BlockBody {
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct BlockHash(StarkHash);
-
 impl BlockHash {
     pub fn new(hash: StarkHash) -> Self {
         Self(hash)
@@ -87,18 +83,15 @@ impl BlockNumber {
     pub const fn new(block_number: u64) -> Self {
         Self(block_number)
     }
-
     pub fn next(&self) -> BlockNumber {
         BlockNumber(self.0 + 1)
     }
-
     pub fn prev(&self) -> Option<BlockNumber> {
         match self.0 {
             0 => None,
             i => Some(BlockNumber(i - 1)),
         }
     }
-
     pub fn iter_up_to(&self, up_to: Self) -> impl Iterator<Item = BlockNumber> {
         let range = self.0..up_to.0;
         range.map(Self)
@@ -144,6 +137,7 @@ pub enum BlockStatus {
     #[serde(rename = "REJECTED")]
     Rejected,
 }
+
 impl Default for BlockStatus {
     fn default() -> Self {
         BlockStatus::AcceptedOnL2
@@ -156,17 +150,6 @@ impl Default for BlockStatus {
 )]
 #[serde(from = "PrefixedHexAsBytes<16_usize>", into = "PrefixedHexAsBytes<16_usize>")]
 pub struct GasPrice(u128);
-impl From<PrefixedHexAsBytes<16_usize>> for GasPrice {
-    fn from(val: PrefixedHexAsBytes<16_usize>) -> Self {
-        GasPrice(u128::from_be_bytes(val.0))
-    }
-}
-impl From<GasPrice> for PrefixedHexAsBytes<16_usize> {
-    fn from(val: GasPrice) -> Self {
-        HexAsBytes(val.0.to_be_bytes())
-    }
-}
-
 impl GasPrice {
     pub fn new(price: u128) -> Self {
         Self(price)
@@ -176,12 +159,23 @@ impl GasPrice {
     }
 }
 
+impl From<PrefixedHexAsBytes<16_usize>> for GasPrice {
+    fn from(val: PrefixedHexAsBytes<16_usize>) -> Self {
+        GasPrice(u128::from_be_bytes(val.0))
+    }
+}
+
+impl From<GasPrice> for PrefixedHexAsBytes<16_usize> {
+    fn from(val: GasPrice) -> Self {
+        HexAsBytes(val.0.to_be_bytes())
+    }
+}
+
 /// The root of the global state at a StarkNet block.
 #[derive(
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct GlobalRoot(StarkHash);
-
 impl GlobalRoot {
     pub fn new(hash: StarkHash) -> Self {
         Self(hash)
