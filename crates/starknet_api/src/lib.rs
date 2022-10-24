@@ -15,11 +15,12 @@ pub use self::block::{
     Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
     GlobalRoot,
 };
-pub use self::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
+pub use self::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 pub use self::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 pub use self::state::{
     ContractClass, ContractNonce, DeclaredContract, DeployedContract, EntryPoint, EntryPointOffset,
-    EntryPointType, Program, StateDiff, StateNumber, StorageDiff, StorageEntry, StorageKey,
+    EntryPointSelector, EntryPointType, Program, StateDiff, StateNumber, StorageDiff, StorageEntry,
+    StorageKey,
 };
 pub use self::transaction::{
     CallData, ContractAddressSalt, DeclareTransaction, DeclareTransactionOutput,

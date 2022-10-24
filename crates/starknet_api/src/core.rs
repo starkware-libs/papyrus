@@ -12,28 +12,6 @@ use super::{StarkFelt, StarkHash, StarknetApiError};
 pub const PATRICIA_KEY_UPPER_BOUND: &str =
     "0x800000000000000000000000000000000000000000000000000000000000000";
 
-#[derive(Copy, Clone, Eq, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct PatriciaKey(StarkHash);
-impl PatriciaKey {
-    pub fn new(hash: StarkHash) -> Result<PatriciaKey, StarknetApiError> {
-        if hash >= StarkHash::from_hex(PATRICIA_KEY_UPPER_BOUND)? {
-            return Err(StarknetApiError::OutOfRange {
-                string: format!("[0x0, {PATRICIA_KEY_UPPER_BOUND})"),
-            });
-        }
-        Ok(PatriciaKey(hash))
-    }
-    pub fn key(&self) -> &StarkHash {
-        &self.0
-    }
-}
-
-impl Debug for PatriciaKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("PatriciaKey").field(&self.0).finish()
-    }
-}
-
 /// The address of a StarkNet contract.
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
@@ -87,8 +65,24 @@ impl Default for Nonce {
     }
 }
 
-/// The selector of an entry point in StarkNet.
-#[derive(
-    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct EntryPointSelector(pub StarkHash);
+#[derive(Copy, Clone, Eq, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct PatriciaKey(StarkHash);
+impl PatriciaKey {
+    pub fn new(hash: StarkHash) -> Result<PatriciaKey, StarknetApiError> {
+        if hash >= StarkHash::from_hex(PATRICIA_KEY_UPPER_BOUND)? {
+            return Err(StarknetApiError::OutOfRange {
+                string: format!("[0x0, {PATRICIA_KEY_UPPER_BOUND})"),
+            });
+        }
+        Ok(PatriciaKey(hash))
+    }
+    pub fn key(&self) -> &StarkHash {
+        &self.0
+    }
+}
+
+impl Debug for PatriciaKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("PatriciaKey").field(&self.0).finish()
+    }
+}

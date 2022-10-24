@@ -9,8 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use super::core::PatriciaKey;
 use super::{
-    BlockNumber, ClassHash, ContractAddress, EntryPointSelector, Nonce, StarkFelt, StarkHash,
-    StarknetApiError,
+    BlockNumber, ClassHash, ContractAddress, Nonce, StarkFelt, StarkHash, StarknetApiError,
 };
 
 /// The sequential numbering of the states between blocks in StarkNet.
@@ -46,6 +45,12 @@ impl StateNumber {
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct EntryPointOffset(pub StarkFelt);
+
+/// The selector of an entry point in StarkNet.
+#[derive(
+    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct EntryPointSelector(pub StarkHash);
 
 /// An entry point of a contract in StarkNet.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
