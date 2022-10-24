@@ -6,10 +6,12 @@ use futures_util::pin_mut;
 use mockall::predicate;
 use reqwest::StatusCode;
 use starknet_api::{
-    shash, BlockHash, BlockNumber, ClassHash, ContractAddress, ContractClass, DeclaredContract,
-    DeployedContract, StarkHash, StorageDiff, StorageEntry, StorageKey,
+    shash, BlockHash, BlockNumber, ClassHash, ContractAddress, DeclaredContract, DeployedContract,
+    StarkHash, StorageDiff, StorageEntry, StorageKey,
 };
-use starknet_client::{Block, ClientError, GlobalRoot, MockStarknetClientTrait, StateUpdate};
+use starknet_client::{
+    Block, ClientError, ContractClass, GlobalRoot, MockStarknetClientTrait, StateUpdate,
+};
 use tokio_stream::StreamExt;
 
 use crate::sources::central::{CentralError, GenericCentralSource};
@@ -232,7 +234,7 @@ async fn stream_state_updates() {
         };
     assert_eq!(initial_block_num, current_block_num);
     assert_eq!(
-        vec![DeclaredContract { class_hash: class_hash2, contract_class: contract_class2 }],
+        vec![DeclaredContract { class_hash: class_hash2, contract_class: contract_class2.into() }],
         deployed_contract_class_definitions,
     );
 
@@ -250,8 +252,8 @@ async fn stream_state_updates() {
     );
     assert_eq!(
         vec![
-            DeclaredContract { class_hash: class_hash1, contract_class: contract_class1 },
-            DeclaredContract { class_hash: class_hash3, contract_class: contract_class3 },
+            DeclaredContract { class_hash: class_hash1, contract_class: contract_class1.into() },
+            DeclaredContract { class_hash: class_hash3, contract_class: contract_class3.into() },
         ],
         declared_classes,
     );

@@ -90,10 +90,69 @@ impl Default for EntryPointType {
     }
 }
 
+/// A contract class abi entry in StarkNet.
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub enum ContractClassAbiEntry {
+    /// An event abi entry.
+    Event(EventAbiEntry),
+    /// A function abi entry.
+    Function(FunctionAbiEntry),
+    /// An l1-handler abi entry.
+    L1Handler(L1HandlerAbiEntry),
+    /// A struct abi entry.
+    Struct(StructAbiEntry),
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct TypedParameter {
+    pub name: String,
+    pub r#type: String,
+}
+
+/// An event abi entry in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct EventAbiEntry {
+    pub name: String,
+    pub keys: Vec<TypedParameter>,
+    pub data: Vec<TypedParameter>,
+}
+
+/// A function abi entry in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct FunctionAbiEntry {
+    pub name: String,
+    pub inputs: Vec<TypedParameter>,
+    pub outputs: Vec<TypedParameter>,
+}
+
+/// A function abi entry in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct L1HandlerAbiEntry {
+    pub name: String,
+    pub inputs: Vec<TypedParameter>,
+    pub outputs: Vec<TypedParameter>,
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct StructMember {
+    #[serde(flatten)]
+    pub param: TypedParameter,
+    pub offset: usize,
+}
+
+/// A struct abi entry in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct StructAbiEntry {
+    pub name: String,
+    pub size: usize,
+    pub members: Vec<StructMember>,
+}
+
 /// A contract class in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ContractClass {
-    pub abi: serde_json::Value,
+    pub abi: Option<Vec<ContractClassAbiEntry>>,
     pub program: Program,
     /// The selector of each entry point is a unique identifier in the program.
     pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,

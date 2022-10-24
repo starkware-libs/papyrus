@@ -5,14 +5,15 @@ use std::hash::Hash;
 use integer_encoding::*;
 use starknet_api::{
     BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, CallData, ClassHash,
-    ContractAddress, ContractAddressSalt, ContractClass, ContractNonce, DeclareTransaction,
-    DeclaredContract, DeployAccountTransaction, DeployTransaction, DeployedContract, EntryPoint,
-    EntryPointOffset, EntryPointSelector, EntryPointType, EthAddress, EventContent, EventData,
-    EventIndexInTransactionOutput, EventKey, Fee, GasPrice, GlobalRoot, InvokeTransaction,
+    ContractAddress, ContractAddressSalt, ContractClass, ContractClassAbiEntry, ContractNonce,
+    DeclareTransaction, DeclaredContract, DeployAccountTransaction, DeployTransaction,
+    DeployedContract, EntryPoint, EntryPointOffset, EntryPointSelector, EntryPointType, EthAddress,
+    EventAbiEntry, EventContent, EventData, EventIndexInTransactionOutput, EventKey, Fee,
+    FunctionAbiEntry, GasPrice, GlobalRoot, InvokeTransaction, L1HandlerAbiEntry,
     L1HandlerTransaction, L1ToL2Payload, L2ToL1Payload, MessageToL1, MessageToL2, Nonce,
     PatriciaKey, Program, StarkFelt, StarkHash, StateDiff, StorageDiff, StorageEntry, StorageKey,
-    Transaction, TransactionHash, TransactionOffsetInBlock, TransactionSignature,
-    TransactionVersion,
+    StructAbiEntry, StructMember, Transaction, TransactionHash, TransactionOffsetInBlock,
+    TransactionSignature, TransactionVersion, TypedParameter,
 };
 
 use crate::body::events::{
@@ -100,6 +101,16 @@ impl StorageSerde for EventIndexInTransactionOutput {
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         Some(Self(u64::deserialize_from(bytes)? as usize))
+    }
+}
+
+impl StorageSerde for String {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+        (self.as_bytes().to_vec()).serialize_into(res)
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        Self::from_utf8(Vec::deserialize_from(bytes)?).ok()
     }
 }
 
@@ -357,8 +368,42 @@ auto_storage_serde! {
     }
     pub struct CallData(pub Vec<StarkFelt>);
     pub struct ContractAddressSalt(pub StarkHash);
+    pub enum ContractClassAbiEntry {
+        Event(EventAbiEntry) = 0,
+        Function(FunctionAbiEntry) = 1,
+        L1Handler(L1HandlerAbiEntry) = 2,
+        Struct(StructAbiEntry) = 3,
+    }
+    pub struct TypedParameter {
+        pub name: String,
+        pub r#type: String,
+    }
+    pub struct EventAbiEntry {
+        pub name: String,
+        pub keys: Vec<TypedParameter>,
+        pub data: Vec<TypedParameter>,
+    }
+    pub struct FunctionAbiEntry {
+        pub name: String,
+        pub inputs: Vec<TypedParameter>,
+        pub outputs: Vec<TypedParameter>,
+    }
+    pub struct L1HandlerAbiEntry {
+        pub name: String,
+        pub inputs: Vec<TypedParameter>,
+        pub outputs: Vec<TypedParameter>,
+    }
+    pub struct StructMember {
+        pub param: TypedParameter,
+        pub offset: usize,
+    }
+    pub struct StructAbiEntry {
+        pub name: String,
+        pub size: usize,
+        pub members: Vec<StructMember>,
+    }
     pub struct ContractClass {
-        pub abi: serde_json::Value,
+        pub abi: Option<Vec<ContractClassAbiEntry>>,
         pub program: Program,
         pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
     }
@@ -535,11 +580,13 @@ auto_storage_serde! {
     wrapper(GlobalRoot, root : StarkHash,);
     wrapper(Nonce, nonce : StarkFelt,);
 
+    bincode(bool);
     bincode(EthAddress);
     bincode(u8);
     bincode(u32);
     bincode(u64);
     bincode(u128);
+    bincode(usize);
 
     (BlockNumber, TransactionOffsetInBlock);
     (ContractAddress, BlockHash);
