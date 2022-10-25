@@ -114,12 +114,12 @@ pub struct StateDiff {
 type StateDiffAsTuple =
     (Vec<DeployedContract>, Vec<StorageDiff>, Vec<DeclaredContract>, Vec<ContractNonce>);
 
-fn is_unique<T, B, F>(sorted: &Vec<T>, f: F) -> bool
+fn is_unique<T, B, F>(sorted: &[T], f: F) -> bool
 where
     F: Fn(&T) -> &B,
     B: PartialEq,
 {
-    sorted.as_slice().windows(2).all(|w| f(&w[0]) != f(&w[1]))
+    sorted.windows(2).all(|w| f(&w[0]) != f(&w[1]))
 }
 
 impl StateDiff {
