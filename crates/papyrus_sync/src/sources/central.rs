@@ -48,12 +48,12 @@ pub trait CentralSourceTrait {
         &self,
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
-    ) -> BlocksStream;
+    ) -> BlocksStream<'_>;
     fn stream_state_updates(
         &self,
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
-    ) -> StateUpdatesStream;
+    ) -> StateUpdatesStream<'_>;
 }
 
 type BlocksStream<'a> = BoxStream<'a, Result<(BlockNumber, Block), CentralError>>;
@@ -75,7 +75,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
         &self,
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
-    ) -> StateUpdatesStream {
+    ) -> StateUpdatesStream<'_> {
         let mut current_block_number = initial_block_number;
         let stream = stream! {
             while current_block_number < up_to_block_number {
@@ -124,7 +124,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
         &self,
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
-    ) -> BlocksStream {
+    ) -> BlocksStream<'_> {
         let mut current_block_number = initial_block_number;
         let stream = stream! {
             while current_block_number < up_to_block_number {
