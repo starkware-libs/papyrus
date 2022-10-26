@@ -14,7 +14,7 @@ use starknet_client::{
 };
 use tokio_stream::StreamExt;
 
-use crate::sources::central::{CentralError, GenericCentralSource, CentralSourceTrait};
+use crate::sources::central::{CentralError, CentralSourceTrait, GenericCentralSource};
 
 #[tokio::test]
 async fn last_block_number() {
