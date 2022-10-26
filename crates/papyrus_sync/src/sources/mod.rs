@@ -3,4 +3,4 @@ mod central;
 mod central_test;
 mod stream_utils;
 
-pub use central::{CentralError, CentralSource, CentralSourceConfig};
+pub use central::{CentralError, CentralSource, CentralSourceTrait, CentralSourceConfig, CentralResult};

@@ -1,5 +1,6 @@
 mod sources;
 
+use std::sync::Arc;
 use std::time::Duration;
 
 use async_stream::stream;
@@ -13,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use starknet_api::{Block, BlockNumber, DeclaredContract, StateDiff};
 use starknet_client::ClientError;
 
-pub use self::sources::{CentralError, CentralSource, CentralSourceConfig};
+pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
 
 #[derive(Serialize, Deserialize)]
 pub struct SyncConfig {
@@ -23,7 +24,7 @@ pub struct SyncConfig {
 // Orchestrates specific network interfaces (e.g. central, p2p, l1) and writes to Storage.
 pub struct StateSync {
     config: SyncConfig,
-    central_source: CentralSource,
+    central_source: Arc<dyn CentralSourceTrait + Sync + Send>,
     reader: StorageReader,
     writer: StorageWriter,
 }
@@ -56,11 +57,11 @@ pub enum SyncEvent {
 impl StateSync {
     pub fn new(
         config: SyncConfig,
-        central_source: CentralSource,
+        central_source: impl CentralSourceTrait + Sync + Send + 'static,
         reader: StorageReader,
         writer: StorageWriter,
     ) -> StateSync {
-        StateSync { config, central_source, reader, writer }
+        StateSync { config, central_source: Arc::new(central_source), reader, writer }
     }
 
     pub async fn run(&mut self) -> anyhow::Result<(), StateSyncError> {
@@ -121,7 +122,7 @@ impl StateSync {
 
 fn stream_new_blocks(
     reader: StorageReader,
-    central_source: &CentralSource,
+    central_source: &Arc<dyn CentralSourceTrait + Sync + Send>,
     block_propation_sleep_duration: Duration,
 ) -> impl Stream<Item = SyncEvent> + '_ {
     stream! {
@@ -154,7 +155,7 @@ fn stream_new_blocks(
 
 fn stream_new_state_diffs(
     reader: StorageReader,
-    central_source: &CentralSource,
+    central_source: &Arc<dyn CentralSourceTrait + Sync + Send>,
     block_propation_sleep_duration: Duration,
 ) -> impl Stream<Item = SyncEvent> + '_ {
     stream! {

@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
 use async_stream::stream;
+use async_trait::async_trait;
+use futures::stream::BoxStream;
 use futures::{future, pin_mut, TryStreamExt};
 use futures_util::StreamExt;
 use log::{debug, error, info};
@@ -39,24 +41,43 @@ pub enum CentralError {
     StarknetApiError(#[from] Arc<StarknetApiError>),
 }
 
-impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
-    GenericCentralSource<TStarknetClient>
+#[async_trait]
+pub trait CentralSourceTrait {
+    async fn get_block_marker(&self) -> Result<BlockNumber, ClientError>;
+    fn stream_new_blocks(
+        &self,
+        initial_block_number: BlockNumber,
+        up_to_block_number: BlockNumber,
+    ) -> BlocksStream;
+    fn stream_state_updates(
+        &self,
+        initial_block_number: BlockNumber,
+        up_to_block_number: BlockNumber,
+    ) -> StateUpdatesStream;
+}
+
+type BlocksStream<'a> = BoxStream<'a, Result<(BlockNumber, Block), CentralError>>;
+type StateUpdatesStream<'a> =
+    BoxStream<'a, CentralResult<(BlockNumber, StateDiff, Vec<DeclaredContract>)>>;
+
+#[async_trait]
+impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSourceTrait
+    for GenericCentralSource<TStarknetClient>
 {
-    pub async fn get_block_marker(&self) -> Result<BlockNumber, ClientError> {
+    async fn get_block_marker(&self) -> Result<BlockNumber, ClientError> {
         self.starknet_client
             .block_number()
             .await?
             .map_or(Ok(BlockNumber::default()), |block_number| Ok(block_number.next()))
     }
 
-    pub fn stream_state_updates(
+    fn stream_state_updates(
         &self,
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
-    ) -> impl Stream<Item = CentralResult<(BlockNumber, StateDiff, Vec<DeclaredContract>)>> + '_
-    {
+    ) -> StateUpdatesStream {
         let mut current_block_number = initial_block_number;
-        stream! {
+        let stream = stream! {
             while current_block_number < up_to_block_number {
                 let state_update_stream = self
                     .state_update_stream(
@@ -94,17 +115,18 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                     }
                 }
             }
-        }
+        };
+        stream.boxed()
     }
 
     // TODO(shahak): rename.
-    pub fn stream_new_blocks(
+    fn stream_new_blocks(
         &self,
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
-    ) -> impl Stream<Item = Result<(BlockNumber, Block), CentralError>> + '_ {
+    ) -> BlocksStream {
         let mut current_block_number = initial_block_number;
-        stream! {
+        let stream = stream! {
             while current_block_number < up_to_block_number {
                 let mut res =
                     futures_util::stream::iter(current_block_number.iter_up_to(up_to_block_number))
@@ -138,9 +160,14 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                     }
                 }
             }
-        }
+        };
+        stream.boxed()
     }
+}
 
+impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
+    GenericCentralSource<TStarknetClient>
+{
     fn state_update_stream(
         &self,
         block_number_stream: impl Stream<Item = BlockNumber> + Send + Sync + 'static,

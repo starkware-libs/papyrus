@@ -12,7 +12,7 @@ use starknet_api::{
 use starknet_client::{Block, ClientError, GlobalRoot, MockStarknetClientTrait, StateUpdate};
 use tokio_stream::StreamExt;
 
-use crate::sources::central::{CentralError, GenericCentralSource};
+use crate::sources::central::{CentralError, GenericCentralSource, CentralSourceTrait};
 
 #[tokio::test]
 async fn last_block_number() {
