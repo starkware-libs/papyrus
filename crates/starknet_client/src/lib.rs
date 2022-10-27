@@ -16,7 +16,7 @@ use log::error;
 use mockall::automock;
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
-use starknet_api::{BlockNumber, ClassHash, ContractClass, StarknetApiError};
+use starknet_api::{BlockNumber, ChainId, ClassHash, ContractClass, StarknetApiError};
 use url::Url;
 
 pub use self::objects::block::{
@@ -25,6 +25,16 @@ pub use self::objects::block::{
 };
 use self::retry::Retry;
 pub use self::retry::RetryConfig;
+
+const SN_GOERLI_URL: &str = "https://alpha4.starknet.io/";
+const SN_MAIN_URL: &str = "https://alpha-mainnet.starknet.io/";
+
+pub fn starknet_chain_url(chain_id: ChainId) -> &'static str {
+    match chain_id {
+        ChainId::Goerli => SN_GOERLI_URL,
+        ChainId::Main => SN_MAIN_URL,
+    }
+}
 
 /// A [`Result`] in which the error is a [`ClientError`].
 pub type ClientResult<T> = Result<T, ClientError>;
@@ -148,8 +158,21 @@ impl Display for StarknetError {
 }
 
 impl StarknetClient {
-    /// Creates a new client for a starknet gateway at `url_str` with retry_config [`RetryConfig`].
+    /// Creates a new client with retry_config [`RetryConfig`], for a starknet chain with
+    /// `chain_id`.
     pub fn new(
+        chain_id: ChainId,
+        retry_config: RetryConfig,
+    ) -> Result<StarknetClient, ClientCreationError> {
+        Ok(StarknetClient {
+            urls: StarknetUrls::new(starknet_chain_url(chain_id))?,
+            internal_client: Client::builder().build()?,
+            retry_config,
+        })
+    }
+
+    /// Creates a new client for an http server at `url_str` with retry_config [`RetryConfig`].
+    pub fn get_test_client(
         url_str: &str,
         retry_config: RetryConfig,
     ) -> Result<StarknetClient, ClientCreationError> {

@@ -1,3 +1,5 @@
+use std::fmt::Write;
+
 use clap::{ArgAction, Parser};
 use log::info;
 use papyrus_gateway::run_server;
@@ -21,18 +23,21 @@ struct Args {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    log4rs::init_file("config/log4rs.yaml", Default::default()).unwrap();
+    log4rs::init_file("config/log4rs.yaml", Default::default())?;
     info!("Booting up.");
 
     let mut config = load_config("config/config.ron")?;
+
     if let Some(storage_path_str) = args.storage_path {
         config.storage.db_config.path = storage_path_str;
+    } else {
+        config.storage.db_config.path.write_str(&format!("/{:?}", config.chain_id))?;
     }
 
     let (storage_reader, storage_writer) = open_storage(config.storage.db_config)?;
 
     // Network interface.
-    let central_source = CentralSource::new(config.central)?;
+    let central_source = CentralSource::new(config.central, config.chain_id)?;
 
     // Sync.
     let mut sync_thread_opt: Option<JoinHandle<anyhow::Result<(), StateSyncError>>> = None;
@@ -42,7 +47,7 @@ async fn main() -> anyhow::Result<()> {
         sync_thread_opt = Some(tokio::spawn(async move { sync.run().await }));
     }
 
-    // Pass reader to storage.
+    // Pass reader to gateway.
     let (_, server_handle) = run_server(config.gateway, storage_reader.clone()).await?;
     let (_, monitoring_server_handle) =
         monitoring_run_server(config.monitoring_gateway, storage_reader.clone()).await?;

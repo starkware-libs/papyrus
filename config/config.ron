@@ -1,6 +1,6 @@
 Config(
+    chain_id: SN_GOERLI,
     central: CentralSourceConfig(
-        url: "https://alpha4.starknet.io/",
         retry_config: RetryConfig(
             retry_base_millis: 30,
             retry_max_delay_millis: 30000,

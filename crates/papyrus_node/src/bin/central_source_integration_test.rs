@@ -1,13 +1,14 @@
 use futures_util::pin_mut;
 use papyrus_node::config::load_config;
 use papyrus_sync::CentralSource;
-use starknet_api::BlockNumber;
+use starknet_api::{BlockNumber, ChainId};
 use tokio_stream::StreamExt;
 
 #[tokio::main]
 async fn main() {
     let config = load_config("config/config.ron").expect("Load config");
-    let central_source = CentralSource::new(config.central).expect("Create new client");
+    let central_source =
+        CentralSource::new(config.central, ChainId::Goerli).expect("Create new client");
     let last_block_number = BlockNumber::new(203);
 
     let mut block_marker = BlockNumber::new(200);
