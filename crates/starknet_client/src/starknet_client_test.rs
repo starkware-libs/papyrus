@@ -6,11 +6,11 @@ use reqwest::StatusCode;
 use starknet_api::{
     shash, BlockNumber, ClassHash, ContractAddress, EntryPoint, EntryPointOffset,
     EntryPointSelector, EntryPointType, Fee, Nonce, Program, StarkHash, TransactionHash,
-    TransactionSignature, TransactionVersion, TypedParameter,
+    TransactionSignature, TransactionVersion,
 };
 
 // TODO(dan): use SN structs once available & sort.
-use super::objects::block::{ContractClass, ContractClassAbiEntry, FunctionAbiEntry, StateUpdate};
+use super::objects::block::{ContractClass, StateUpdate};
 use super::objects::transaction::{DeclareTransaction, TransactionType};
 use super::test_utils::read_resource::read_resource_file;
 use super::test_utils::retry::get_test_config;
@@ -103,15 +103,20 @@ async fn serialization_precision() {
 async fn contract_class() {
     let starknet_client = StarknetClient::new(&mockito::server_url(), get_test_config()).unwrap();
     let expected_contract_class = ContractClass {
-        abi: Some(vec![ContractClassAbiEntry::Function(FunctionAbiEntry {
-            r#type: String::from("constructor"),
-            name: String::from("constructor"),
-            inputs: vec![TypedParameter {
-                name: "implementation".to_string(),
-                r#type: "felt".to_string(),
-            }],
-            outputs: vec![],
-        })]),
+        abi: serde_json::to_value(vec![HashMap::from([
+            (
+                "inputs".to_string(),
+                serde_json::to_value(vec![HashMap::from([
+                    ("name".to_string(), serde_json::Value::String("implementation".to_string())),
+                    ("type".to_string(), serde_json::Value::String("felt".to_string())),
+                ])])
+                .unwrap(),
+            ),
+            ("name".to_string(), serde_json::Value::String("constructor".to_string())),
+            ("type".to_string(), serde_json::Value::String("constructor".to_string())),
+            ("outputs".to_string(), serde_json::Value::Array(Vec::new())),
+        ])])
+        .unwrap(),
         program: Program {
             attributes: serde_json::Value::Array(vec![serde_json::json!(1234)]),
             builtins: serde_json::Value::Array(Vec::new()),
