@@ -341,7 +341,7 @@ impl From<StructAbiEntry> for starknet_api::StructAbiEntry {
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ContractClass {
-    pub abi: Option<Vec<ContractClassAbiEntry>>,
+    pub abi: serde_json::Value,
     pub program: Program,
     /// The selector of each entry point is a unique identifier in the program.
     pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
@@ -349,7 +349,14 @@ pub struct ContractClass {
 
 impl From<ContractClass> for starknet_api::ContractClass {
     fn from(class: ContractClass) -> Self {
-        let abi = class.abi.map(|entries| entries.into_iter().map(|entry| entry.into()).collect());
-        Self { abi, program: class.program, entry_points_by_type: class.entry_points_by_type }
+        // Starknet does not verify the abi. If we can't parse it, we set it to None.
+        let abi = serde_json::from_value::<Vec<ContractClassAbiEntry>>(class.abi).ok();
+        let starknet_abi =
+            abi.map(|entries| entries.into_iter().map(|entry| entry.into()).collect());
+        Self {
+            abi: starknet_abi,
+            program: class.program,
+            entry_points_by_type: class.entry_points_by_type,
+        }
     }
 }
