@@ -60,13 +60,13 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         loop {
             let block_stream = stream_new_blocks(
                 self.reader.clone(),
-                &self.central_source,
+                self.central_source.clone(),
                 self.config.block_propagation_sleep_duration,
             )
             .fuse();
             let state_diff_stream = stream_new_state_diffs(
                 self.reader.clone(),
-                &self.central_source,
+                self.central_source.clone(),
                 self.config.block_propagation_sleep_duration,
             )
             .fuse();
@@ -113,9 +113,9 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
 
 fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
-    central_source: &Arc<TCentralSource>,
+    central_source: Arc<TCentralSource>,
     block_propation_sleep_duration: Duration,
-) -> impl Stream<Item = SyncEvent> + '_ {
+) -> impl Stream<Item = SyncEvent> {
     stream! {
         loop {
             let header_marker = reader.begin_ro_txn().expect("Cannot read from block storage.")
@@ -146,9 +146,9 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
 
 fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
-    central_source: &Arc<TCentralSource>,
+    central_source: Arc<TCentralSource>,
     block_propation_sleep_duration: Duration,
-) -> impl Stream<Item = SyncEvent> + '_ {
+) -> impl Stream<Item = SyncEvent> {
     stream! {
         loop {
             let txn = reader.begin_ro_txn().expect("Cannot read from block storage.");
