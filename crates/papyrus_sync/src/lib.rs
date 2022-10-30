@@ -50,6 +50,8 @@ pub enum SyncEvent {
         // state diff.
         deployed_contract_class_definitions: Vec<DeclaredContract>,
     },
+    BlocksStreamFinished,
+    StateDiffStreamFinished,
 }
 
 #[allow(clippy::new_without_default)]
@@ -82,9 +84,17 @@ impl StateSync {
 
             loop {
                 let sync_event: Option<SyncEvent> = select! {
-                  res = block_stream.next() => res,
+                  res = block_stream.next() => {
+                    match res {
+                        None => Some(SyncEvent::BlocksStreamFinished),
+                        _ => res,
+                    }
+                  },
                   res = state_diff_stream.next() => res,
-                  complete => break,
+                  complete => {
+                    info!("Node fully synced!");
+                    break;
+                  },
                 };
                 match sync_event {
                     Some(SyncEvent::BlockAvailable { block_number, block }) => {
@@ -108,6 +118,10 @@ impl StateSync {
                             )?
                             .commit()?;
                     }
+                    Some(SyncEvent::BlocksStreamFinished) => info!("Finished streaming blocks."),
+                    Some(SyncEvent::StateDiffStreamFinished) => {
+                        info!("Finished streaming state updates.")
+                    }
                     None => {
                         return Err(StateSyncError::SyncError {
                             message: "Got an empty event.".to_string(),
@@ -126,7 +140,8 @@ fn stream_new_blocks(
 ) -> impl Stream<Item = SyncEvent> + '_ {
     stream! {
         loop {
-            let header_marker = reader.begin_ro_txn().expect("Cannot read from block storage.")
+            let txn = reader.begin_ro_txn().expect("Cannot read from block storage.");
+            let header_marker = txn
                 .get_header_marker()
                 .expect("Cannot read from block storage.");
             let last_block_number = central_source
@@ -138,6 +153,13 @@ fn stream_new_blocks(
                 header_marker, last_block_number
             );
             if header_marker == last_block_number {
+                let state_marker = txn
+                .get_state_marker()
+                .expect("Cannot read from block storage.");
+                if state_marker == header_marker {
+                    break;
+                }
+
                 tokio::time::sleep(block_propation_sleep_duration).await;
                 continue;
             }
@@ -172,6 +194,14 @@ fn stream_new_state_diffs(
                 state_marker, last_block_number
             );
             if state_marker == last_block_number {
+                let central_last_block_number = central_source
+                .get_block_marker()
+                .await
+                .expect("Cannot read from block storage.");
+                if (state_marker == central_last_block_number) {
+                    break;
+                }
+
                 tokio::time::sleep(block_propation_sleep_duration).await;
                 continue;
             }
