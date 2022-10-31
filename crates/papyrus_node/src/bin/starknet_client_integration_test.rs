@@ -1,4 +1,4 @@
-use papyrus_node::config::load_config;
+use config::load_config;
 use starknet_api::{BlockNumber, ClassHash, StarkHash};
 use starknet_client::{StarknetClient, StarknetClientTrait};
 

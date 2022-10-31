@@ -1,14 +1,14 @@
 use std::sync::Arc;
 
 use async_stream::stream;
+use config::CentralSourceConfig;
 use futures::{future, pin_mut, TryStreamExt};
 use futures_util::StreamExt;
 use log::{debug, error, info};
-use serde::{Deserialize, Serialize};
 use starknet_api::{Block, BlockNumber, DeclaredContract, StarknetApiError, StateDiff};
 use starknet_client::{
-    client_to_starknet_api_storage_diff, ClientCreationError, ClientError, RetryConfig,
-    StarknetClient, StarknetClientTrait, StateUpdate,
+    client_to_starknet_api_storage_diff, ClientCreationError, ClientError, StarknetClient,
+    StarknetClientTrait, StateUpdate,
 };
 use tokio_stream::Stream;
 
@@ -18,11 +18,7 @@ use super::stream_utils::MyStreamExt;
 const CONCURRENT_REQUESTS: usize = 300;
 
 pub type CentralResult<T> = Result<T, CentralError>;
-#[derive(Serialize, Deserialize)]
-pub struct CentralSourceConfig {
-    pub url: String,
-    pub retry_config: RetryConfig,
-}
+
 pub struct GenericCentralSource<TStarknetClient: StarknetClientTrait + Send + Sync> {
     pub starknet_client: Arc<TStarknetClient>,
 }

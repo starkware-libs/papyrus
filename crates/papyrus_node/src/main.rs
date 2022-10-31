@@ -1,8 +1,8 @@
 use clap::{ArgAction, Parser};
+use config::load_config;
 use log::info;
 use papyrus_gateway::run_server;
 use papyrus_monitoring_gateway::run_server as monitoring_run_server;
-use papyrus_node::config::load_config;
 use papyrus_storage::open_storage;
 use papyrus_sync::{CentralSource, StateSync, StateSyncError};
 use tokio::task::JoinHandle;

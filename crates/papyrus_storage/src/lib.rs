@@ -13,6 +13,7 @@ pub mod test_utils;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use config::DbConfig;
 use db::DbTableStats;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
@@ -27,17 +28,11 @@ pub use self::body::{BodyStorageReader, BodyStorageWriter};
 pub use self::db::serialization::StorageSerde;
 pub use self::db::TransactionKind;
 use self::db::{
-    open_env, DbConfig, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier,
-    RO, RW,
+    open_env, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier, RO, RW,
 };
 pub use self::header::{HeaderStorageReader, HeaderStorageWriter};
 pub use self::ommer::OmmerStorageWriter;
 pub use self::state::{StateStorageReader, StateStorageWriter, ThinStateDiff};
-
-#[derive(Serialize, Deserialize)]
-pub struct StorageConfig {
-    pub db_config: DbConfig,
-}
 
 #[derive(thiserror::Error, Debug)]
 pub enum StorageError {

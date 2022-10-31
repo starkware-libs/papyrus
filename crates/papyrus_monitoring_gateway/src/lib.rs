@@ -6,6 +6,7 @@ use std::fmt::Display;
 use std::net::SocketAddr;
 
 // use api::JsonRpcError;
+use config::MonitoringGatewayConfig;
 use jsonrpsee::core::{async_trait, Error};
 use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::http_server::{HttpServerBuilder, HttpServerHandle};
@@ -13,14 +14,8 @@ use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::{ErrorObject, INTERNAL_ERROR_MSG};
 use log::{error, info};
 use papyrus_storage::{DbTablesStats, StorageReader};
-use serde::{Deserialize, Serialize};
 
 use self::api::JsonRpcServer;
-
-#[derive(Serialize, Deserialize)]
-pub struct MonitoringGatewayConfig {
-    pub server_ip: String,
-}
 
 /// Rpc server.
 struct JsonRpcServerImpl {

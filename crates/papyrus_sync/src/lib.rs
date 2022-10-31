@@ -3,22 +3,17 @@ mod sources;
 use std::time::Duration;
 
 use async_stream::stream;
+use config::SyncConfig;
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use log::{error, info};
 use papyrus_storage::{
     BodyStorageWriter, HeaderStorageReader, HeaderStorageWriter, StateStorageReader,
     StateStorageWriter, StorageError, StorageReader, StorageWriter,
 };
-use serde::{Deserialize, Serialize};
 use starknet_api::{Block, BlockNumber, DeclaredContract, StateDiff};
 use starknet_client::ClientError;
 
-pub use self::sources::{CentralError, CentralSource, CentralSourceConfig};
-
-#[derive(Serialize, Deserialize)]
-pub struct SyncConfig {
-    pub block_propagation_sleep_duration: Duration,
-}
+pub use self::sources::{CentralError, CentralSource};
 
 // Orchestrates specific network interfaces (e.g. central, p2p, l1) and writes to Storage.
 pub struct StateSync {

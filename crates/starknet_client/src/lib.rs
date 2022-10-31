@@ -8,9 +8,11 @@ pub mod retry;
 mod starknet_client_test;
 #[cfg(test)]
 mod test_utils;
+
 use std::fmt::{self, Display, Formatter};
 
 use async_trait::async_trait;
+use config::RetryConfig;
 use log::error;
 #[cfg(any(feature = "testing", test))]
 use mockall::automock;
@@ -24,7 +26,6 @@ pub use self::objects::block::{
     TransactionReceiptsError,
 };
 use self::retry::Retry;
-pub use self::retry::RetryConfig;
 
 /// A [`Result`] in which the error is a [`ClientError`].
 pub type ClientResult<T> = Result<T, ClientError>;

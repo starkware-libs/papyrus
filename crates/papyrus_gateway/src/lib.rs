@@ -9,6 +9,7 @@ pub mod test_utils;
 use std::fmt::Display;
 use std::net::SocketAddr;
 
+use config::GatewayConfig;
 use jsonrpsee::core::{async_trait, Error};
 use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::http_server::{HttpServerBuilder, HttpServerHandle};
@@ -19,7 +20,6 @@ use papyrus_storage::{
     BodyStorageReader, HeaderStorageReader, StateStorageReader, StorageReader, StorageTxn,
     TransactionIndex, TransactionKind,
 };
-use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockNumber, BlockStatus, ClassHash, ContractAddress, GlobalRoot, Nonce, StarkFelt, StarkHash,
     StateNumber, StorageKey, TransactionHash, TransactionOffsetInBlock, GENESIS_HASH,
@@ -31,11 +31,6 @@ use self::objects::{
     TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus, TransactionWithType,
     Transactions,
 };
-
-#[derive(Serialize, Deserialize)]
-pub struct GatewayConfig {
-    pub server_ip: String,
-}
 
 /// Rpc server.
 struct JsonRpcServerImpl {

@@ -8,6 +8,7 @@ use std::path::Path;
 use std::result;
 use std::sync::Arc;
 
+use config::DbConfig;
 use libmdbx::{Cursor, DatabaseFlags, Geometry, WriteFlags, WriteMap};
 use serde::{Deserialize, Serialize};
 
@@ -31,12 +32,6 @@ type Environment = libmdbx::Environment<EnvironmentKind>;
 
 type DbKeyType<'env> = Cow<'env, [u8]>;
 type DbValueType<'env> = Cow<'env, [u8]>;
-
-#[derive(Serialize, Deserialize)]
-pub struct DbConfig {
-    pub path: String,
-    pub max_size: usize,
-}
 
 /// A single table statistics.
 #[derive(Serialize, Deserialize, Debug)]

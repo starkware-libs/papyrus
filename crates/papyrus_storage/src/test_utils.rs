@@ -2,6 +2,7 @@ use std::env;
 use std::fs::read_to_string;
 use std::path::Path;
 
+use config::DbConfig;
 use starknet_api::serde_utils::bytes_from_hex_str;
 use starknet_api::{
     shash, Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockTimestamp, CallData,
@@ -16,8 +17,8 @@ use tempfile::tempdir;
 use web3::types::H160;
 
 use super::{open_storage, StorageReader, StorageWriter};
-use crate::db::DbConfig;
 
+// TODO(anatg): Move to config lib.
 pub fn get_test_config() -> DbConfig {
     let dir = tempdir().unwrap();
     DbConfig {
