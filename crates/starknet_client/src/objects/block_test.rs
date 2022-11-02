@@ -152,18 +152,21 @@ async fn try_into_starknet_api() {
 }
 
 #[tokio::test]
-async fn abi_into_starknet_api() {
-    let mut raw_abi: serde_json::Value =
-        serde_json::from_str(&read_resource_file("abi.json")).unwrap();
+async fn abi_into_starknet_api_full() {
+    // TODO(anatg): Find an abi json with event entries.
+    let raw_abi: serde_json::Value = serde_json::from_str(&read_resource_file("abi.json")).unwrap();
     let abi = serde_json::from_value::<Vec<ContractClassAbiEntry>>(raw_abi.clone()).unwrap();
     let expected_num_of_entries = abi.len();
 
-    let mut class = ContractClass { abi: raw_abi, ..ContractClass::default() };
-    let mut starknet_api_class = starknet_api::ContractClass::from(class);
+    let class = ContractClass { abi: raw_abi, ..ContractClass::default() };
+    let starknet_api_class = starknet_api::ContractClass::from(class);
     assert_eq!(expected_num_of_entries, starknet_api_class.abi.unwrap().len());
+}
 
-    raw_abi = serde_json::to_value("junk").unwrap();
-    class = ContractClass { abi: raw_abi, ..ContractClass::default() };
-    starknet_api_class = starknet_api::ContractClass::from(class);
+#[tokio::test]
+async fn abi_into_starknet_api_none() {
+    let raw_abi = serde_json::to_value("junk").unwrap();
+    let class = ContractClass { abi: raw_abi, ..ContractClass::default() };
+    let starknet_api_class = starknet_api::ContractClass::from(class);
     assert!(starknet_api_class.abi.is_none())
 }

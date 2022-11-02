@@ -4,8 +4,8 @@ use papyrus_storage::compression_utils::{CompressionError, GzEncoded};
 use papyrus_storage::{StorageSerde, ThinStateDiff};
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockHash, EntryPoint, EntryPointType, EventAbiEntry, FunctionAbiEntry, GlobalRoot,
-    StructAbiEntry,
+    BlockHash, EntryPoint, EntryPointType, EventAbiEntry, FunctionAbiEntry, FunctionAbiEntryType,
+    GlobalRoot, StructAbiEntry,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
@@ -22,6 +22,8 @@ pub enum ContractClassAbiEntry {
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum ContractClassAbiEntryType {
+    #[serde(rename(deserialize = "constructor", serialize = "constructor"))]
+    Constructor,
     #[serde(rename(deserialize = "event", serialize = "event"))]
     Event,
     #[serde(rename(deserialize = "function", serialize = "function"))]
@@ -34,6 +36,16 @@ pub enum ContractClassAbiEntryType {
 impl Default for ContractClassAbiEntryType {
     fn default() -> Self {
         ContractClassAbiEntryType::Function
+    }
+}
+
+impl From<FunctionAbiEntryType> for ContractClassAbiEntryType {
+    fn from(t: FunctionAbiEntryType) -> Self {
+        match t {
+            FunctionAbiEntryType::Constructor => ContractClassAbiEntryType::Constructor,
+            FunctionAbiEntryType::Function => ContractClassAbiEntryType::Function,
+            FunctionAbiEntryType::L1Handler => ContractClassAbiEntryType::L1Handler,
+        }
     }
 }
 
@@ -52,16 +64,8 @@ impl From<starknet_api::ContractClassAbiEntry> for ContractClassAbiEntryWithType
                 entry: ContractClassAbiEntry::Event(entry),
             },
             starknet_api::ContractClassAbiEntry::Function(entry) => Self {
-                r#type: ContractClassAbiEntryType::Function,
-                entry: ContractClassAbiEntry::Function(entry),
-            },
-            starknet_api::ContractClassAbiEntry::L1Handler(entry) => Self {
-                r#type: ContractClassAbiEntryType::L1Handler,
-                entry: ContractClassAbiEntry::Function(FunctionAbiEntry {
-                    name: entry.name,
-                    inputs: entry.inputs,
-                    outputs: entry.outputs,
-                }),
+                r#type: entry.r#type.clone().into(),
+                entry: ContractClassAbiEntry::Function(entry.entry),
             },
             starknet_api::ContractClassAbiEntry::Struct(entry) => Self {
                 r#type: ContractClassAbiEntryType::Struct,

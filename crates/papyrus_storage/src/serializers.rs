@@ -9,11 +9,11 @@ use starknet_api::{
     DeclareTransaction, DeclaredContract, DeployAccountTransaction, DeployTransaction,
     DeployedContract, EntryPoint, EntryPointOffset, EntryPointSelector, EntryPointType, EthAddress,
     EventAbiEntry, EventContent, EventData, EventIndexInTransactionOutput, EventKey, Fee,
-    FunctionAbiEntry, GasPrice, GlobalRoot, InvokeTransaction, L1HandlerAbiEntry,
-    L1HandlerTransaction, L1ToL2Payload, L2ToL1Payload, MessageToL1, MessageToL2, Nonce,
-    PatriciaKey, Program, StarkFelt, StarkHash, StateDiff, StorageDiff, StorageEntry, StorageKey,
-    StructAbiEntry, StructMember, Transaction, TransactionHash, TransactionOffsetInBlock,
-    TransactionSignature, TransactionVersion, TypedParameter,
+    FunctionAbiEntry, FunctionAbiEntryType, FunctionAbiEntryWithType, GasPrice, GlobalRoot,
+    InvokeTransaction, L1HandlerTransaction, L1ToL2Payload, L2ToL1Payload, MessageToL1,
+    MessageToL2, Nonce, PatriciaKey, Program, StarkFelt, StarkHash, StateDiff, StorageDiff,
+    StorageEntry, StorageKey, StructAbiEntry, StructMember, Transaction, TransactionHash,
+    TransactionOffsetInBlock, TransactionSignature, TransactionVersion, TypedParameter,
 };
 
 use crate::body::events::{
@@ -370,9 +370,13 @@ auto_storage_serde! {
     pub struct ContractAddressSalt(pub StarkHash);
     pub enum ContractClassAbiEntry {
         Event(EventAbiEntry) = 0,
-        Function(FunctionAbiEntry) = 1,
-        L1Handler(L1HandlerAbiEntry) = 2,
-        Struct(StructAbiEntry) = 3,
+        Function(FunctionAbiEntryWithType) = 1,
+        Struct(StructAbiEntry) = 2,
+    }
+    pub enum FunctionAbiEntryType {
+        Constructor = 0,
+        Function = 1,
+        L1Handler = 2,
     }
     pub struct TypedParameter {
         pub name: String,
@@ -383,12 +387,11 @@ auto_storage_serde! {
         pub keys: Vec<TypedParameter>,
         pub data: Vec<TypedParameter>,
     }
-    pub struct FunctionAbiEntry {
-        pub name: String,
-        pub inputs: Vec<TypedParameter>,
-        pub outputs: Vec<TypedParameter>,
+    pub struct FunctionAbiEntryWithType {
+        pub r#type: FunctionAbiEntryType,
+        pub entry: FunctionAbiEntry,
     }
-    pub struct L1HandlerAbiEntry {
+    pub struct FunctionAbiEntry {
         pub name: String,
         pub inputs: Vec<TypedParameter>,
         pub outputs: Vec<TypedParameter>,
@@ -402,6 +405,7 @@ auto_storage_serde! {
         pub size: usize,
         pub members: Vec<StructMember>,
     }
+    // TODO(anatg): Consider using the compression utils.
     pub struct ContractClass {
         pub abi: Option<Vec<ContractClassAbiEntry>>,
         pub program: Program,
