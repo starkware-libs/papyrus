@@ -4,7 +4,7 @@
         "abi": [
             {"members": [{"name": "index", "offset": 0, "type": "felt"}, {"name": "values", "offset": 1, "type": "(felt, felt)"}], "name": "IndexAndValues", "size": 3, "type": "struct"},
             {"inputs": [{"name": "index", "type": "felt"}, {"name": "diffs_len", "type": "felt"}, {"name": "diffs", "type": "felt*"}], "name": "advance_counter", "outputs": [], "type": "function"},
-            {"inputs": [{"name": "address", "type": "felt"}, {"name": "value", "type": "felt"}], "name": "constructor", "outputs": [], "type": "function"},
+            {"inputs": [{"name": "address", "type": "felt"}, {"name": "value", "type": "felt"}], "name": "constructor", "outputs": [], "type": "constructor"},
             {"inputs": [{"name": "index_and_x", "type": "IndexAndValues"}], "name": "xor_counters", "outputs": [], "type": "function"},
             {"inputs": [{"name": "address", "type": "felt"}, {"name": "index_and_x", "type": "IndexAndValues"}], "name": "call_xor_counters", "outputs": [], "type": "function"},
             {"inputs": [{"name": "index", "type": "felt"}], "name": "add_signature_to_counters", "outputs": [], "type": "function"},
