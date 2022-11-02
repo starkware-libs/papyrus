@@ -8,6 +8,10 @@ use serde::{Deserialize, Serialize};
 
 use super::{StarkFelt, StarkHash, StarknetApiError};
 
+/// Starknet chain id.
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct ChainId(pub String);
+
 /// 2**251
 pub const PATRICIA_KEY_UPPER_BOUND: &str =
     "0x800000000000000000000000000000000000000000000000000000000000000";

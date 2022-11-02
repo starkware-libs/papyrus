@@ -1,4 +1,5 @@
 Config(
+    chain_id: ("SN_GOERLI"),
     central: CentralSourceConfig(
         url: "https://alpha4.starknet.io/",
         retry_config: RetryConfig(
