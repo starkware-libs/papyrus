@@ -93,13 +93,12 @@ impl Default for EntryPointType {
 /// A contract class abi entry in StarkNet.
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
+#[serde(untagged)]
 pub enum ContractClassAbiEntry {
     /// An event abi entry.
     Event(EventAbiEntry),
     /// A function abi entry.
-    Function(FunctionAbiEntry),
-    /// An l1-handler abi entry.
-    L1Handler(L1HandlerAbiEntry),
+    Function(FunctionAbiEntryWithType),
     /// A struct abi entry.
     Struct(StructAbiEntry),
 }
@@ -118,6 +117,22 @@ pub struct EventAbiEntry {
     pub data: Vec<TypedParameter>,
 }
 
+/// A function abi entry type in StarkNet.
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+pub enum FunctionAbiEntryType {
+    #[serde(rename = "constructor")]
+    Constructor,
+    #[serde(rename = "other")]
+    Other,
+    #[serde(rename = "l1_handler")]
+    L1Handler,
+}
+impl Default for FunctionAbiEntryType {
+    fn default() -> Self {
+        FunctionAbiEntryType::Other
+    }
+}
+
 /// A function abi entry in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct FunctionAbiEntry {
@@ -126,12 +141,12 @@ pub struct FunctionAbiEntry {
     pub outputs: Vec<TypedParameter>,
 }
 
-/// A function abi entry in StarkNet.
+/// A function abi entry with type in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct L1HandlerAbiEntry {
-    pub name: String,
-    pub inputs: Vec<TypedParameter>,
-    pub outputs: Vec<TypedParameter>,
+pub struct FunctionAbiEntryWithType {
+    pub r#type: FunctionAbiEntryType,
+    #[serde(flatten)]
+    pub entry: FunctionAbiEntry,
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]

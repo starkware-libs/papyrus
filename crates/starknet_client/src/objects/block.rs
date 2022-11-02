@@ -6,7 +6,7 @@ use starknet_api::serde_utils::NonPrefixedHexAsBytes;
 use starknet_api::{
     BlockHash, BlockNumber, BlockTimestamp, ClassHash, ContractAddress, DeployedContract,
     EntryPoint, EntryPointType, GasPrice, Program, StarkHash, StarknetApiError, StorageDiff,
-    StorageEntry, StructMember, TransactionHash, TransactionOffsetInBlock, TypedParameter,
+    StorageEntry, TransactionHash, TransactionOffsetInBlock,
 };
 
 use super::transaction::{L1ToL2Message, Transaction, TransactionReceipt, TransactionType};
@@ -281,26 +281,19 @@ pub enum ContractClassAbiEntry {
     Function(FunctionAbiEntry),
     Struct(StructAbiEntry),
 }
-impl From<ContractClassAbiEntry> for starknet_api::ContractClassAbiEntry {
-    fn from(entry: ContractClassAbiEntry) -> Self {
-        match entry {
-            ContractClassAbiEntry::Event(entry) => Self::Event(entry.into()),
-            ContractClassAbiEntry::Function(entry) => {
-                if entry.r#type == "l1_handler" {
-                    Self::L1Handler(starknet_api::L1HandlerAbiEntry {
-                        name: entry.name,
-                        inputs: entry.inputs,
-                        outputs: entry.outputs,
-                    })
-                } else {
-                    Self::Function(starknet_api::FunctionAbiEntry {
-                        name: entry.name,
-                        inputs: entry.inputs,
-                        outputs: entry.outputs,
-                    })
-                }
+
+impl ContractClassAbiEntry {
+    fn try_into(self) -> Result<starknet_api::ContractClassAbiEntry, ()> {
+        match self {
+            ContractClassAbiEntry::Event(entry) => {
+                Ok(starknet_api::ContractClassAbiEntry::Event(entry.entry))
             }
-            ContractClassAbiEntry::Struct(entry) => Self::Struct(entry.into()),
+            ContractClassAbiEntry::Function(entry) => {
+                Ok(starknet_api::ContractClassAbiEntry::Function(entry.try_into()?))
+            }
+            ContractClassAbiEntry::Struct(entry) => {
+                Ok(starknet_api::ContractClassAbiEntry::Struct(entry.entry))
+            }
         }
     }
 }
@@ -308,35 +301,34 @@ impl From<ContractClassAbiEntry> for starknet_api::ContractClassAbiEntry {
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct EventAbiEntry {
     pub r#type: String,
-    pub name: String,
-    pub keys: Vec<TypedParameter>,
-    pub data: Vec<TypedParameter>,
-}
-impl From<EventAbiEntry> for starknet_api::EventAbiEntry {
-    fn from(entry: EventAbiEntry) -> Self {
-        Self { name: entry.name, keys: entry.keys, data: entry.data }
-    }
+    #[serde(flatten)]
+    pub entry: starknet_api::EventAbiEntry,
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct FunctionAbiEntry {
     pub r#type: String,
-    pub name: String,
-    pub inputs: Vec<TypedParameter>,
-    pub outputs: Vec<TypedParameter>,
+    #[serde(flatten)]
+    pub entry: starknet_api::FunctionAbiEntry,
+}
+
+impl FunctionAbiEntry {
+    fn try_into(self) -> Result<starknet_api::FunctionAbiEntryWithType, ()> {
+        match self.r#type.as_str() {
+            "constructor" => Ok(starknet_api::FunctionAbiEntryType::Constructor),
+            "function" => Ok(starknet_api::FunctionAbiEntryType::Other),
+            "l1_handler" => Ok(starknet_api::FunctionAbiEntryType::L1Handler),
+            _ => Err(()),
+        }
+        .map(|t| starknet_api::FunctionAbiEntryWithType { r#type: t, entry: self.entry })
+    }
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct StructAbiEntry {
     pub r#type: String,
-    pub name: String,
-    pub size: usize,
-    pub members: Vec<StructMember>,
-}
-impl From<StructAbiEntry> for starknet_api::StructAbiEntry {
-    fn from(entry: StructAbiEntry) -> Self {
-        Self { name: entry.name, size: entry.size, members: entry.members }
-    }
+    #[serde(flatten)]
+    pub entry: starknet_api::StructAbiEntry,
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
@@ -350,13 +342,10 @@ pub struct ContractClass {
 impl From<ContractClass> for starknet_api::ContractClass {
     fn from(class: ContractClass) -> Self {
         // Starknet does not verify the abi. If we can't parse it, we set it to None.
-        let abi = serde_json::from_value::<Vec<ContractClassAbiEntry>>(class.abi).ok();
-        let starknet_abi =
-            abi.map(|entries| entries.into_iter().map(|entry| entry.into()).collect());
-        Self {
-            abi: starknet_abi,
-            program: class.program,
-            entry_points_by_type: class.entry_points_by_type,
-        }
+        let abi = serde_json::from_value::<Vec<ContractClassAbiEntry>>(class.abi)
+            .ok()
+            .map(|entries| entries.into_iter().map(ContractClassAbiEntry::try_into).collect())
+            .and_then(Result::ok);
+        Self { abi, program: class.program, entry_points_by_type: class.entry_points_by_type }
     }
 }
