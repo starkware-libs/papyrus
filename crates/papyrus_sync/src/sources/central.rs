@@ -6,6 +6,8 @@ use futures::stream::BoxStream;
 use futures::{future, pin_mut, TryStreamExt};
 use futures_util::StreamExt;
 use log::{debug, error, info};
+#[cfg(any(feature = "testing", test))]
+use mockall::automock;
 use serde::{Deserialize, Serialize};
 use starknet_api::{Block, BlockNumber, DeclaredContract, StarknetApiError, StateDiff};
 use starknet_client::{
@@ -41,6 +43,7 @@ pub enum CentralError {
     StarknetApiError(#[from] Arc<StarknetApiError>),
 }
 
+#[cfg_attr(any(test, feature = "testing"), automock)]
 #[async_trait]
 pub trait CentralSourceTrait {
     async fn get_block_marker(&self) -> Result<BlockNumber, ClientError>;
@@ -56,8 +59,8 @@ pub trait CentralSourceTrait {
     ) -> StateUpdatesStream<'_>;
 }
 
-type BlocksStream<'a> = BoxStream<'a, Result<(BlockNumber, Block), CentralError>>;
-type StateUpdatesStream<'a> =
+pub(crate) type BlocksStream<'a> = BoxStream<'a, Result<(BlockNumber, Block), CentralError>>;
+pub(crate)type StateUpdatesStream<'a> =
     BoxStream<'a, CentralResult<(BlockNumber, StateDiff, Vec<DeclaredContract>)>>;
 
 #[async_trait]

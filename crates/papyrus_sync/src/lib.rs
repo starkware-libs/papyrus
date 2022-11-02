@@ -51,95 +51,137 @@ pub enum SyncEvent {
         // state diff.
         deployed_contract_class_definitions: Vec<DeclaredContract>,
     },
+    BlocksStreamConsumed,
+    StateUpdatesStreamConsumed,
+}
+
+enum SyncStatus {
+    FullySynced(BlockNumber),
+    Syncing { blocks_marker: BlockNumber, state_marker: BlockNumber, central_marker: BlockNumber },
 }
 
 #[allow(clippy::new_without_default)]
 impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSync<TCentralSource> {
-    pub async fn run(&mut self) -> anyhow::Result<(), StateSyncError> {
-        info!("State sync started.");
-        loop {
-            let block_stream = stream_new_blocks(
-                self.reader.clone(),
-                self.central_source.clone(),
-                self.config.block_propagation_sleep_duration,
-            )
-            .fuse();
-            let state_diff_stream = stream_new_state_diffs(
-                self.reader.clone(),
-                self.central_source.clone(),
-                self.config.block_propagation_sleep_duration,
-            )
-            .fuse();
-            pin_mut!(block_stream, state_diff_stream);
+    pub(crate) async fn iteration(
+        &mut self,
+        blocks_marker: BlockNumber,
+        central_marker: BlockNumber,
+    ) -> anyhow::Result<(), StateSyncError> {
+        info!("Creating streams for fetching blocks and state updates.");
+        let block_stream =
+            stream_new_blocks(self.central_source.clone(), blocks_marker, central_marker).fuse();
+        let state_diff_stream = stream_new_state_diffs(
+            self.reader.clone(),
+            self.central_source.clone(),
+            central_marker,
+            self.config.block_propagation_sleep_duration,
+        )
+        .fuse();
+        pin_mut!(block_stream, state_diff_stream);
 
-            loop {
-                let sync_event: Option<SyncEvent> = select! {
-                  res = block_stream.next() => res,
-                  res = state_diff_stream.next() => res,
-                  complete => break,
-                };
-                match sync_event {
-                    Some(SyncEvent::BlockAvailable { block_number, block }) => {
-                        self.writer
-                            .begin_rw_txn()?
-                            .append_header(block_number, &block.header)?
-                            .append_body(block_number, block.body)?
-                            .commit()?;
+        info!("Getting next sync event from streams.");
+        loop {
+            let sync_event: Option<SyncEvent> = select! {
+                res = block_stream.next() => {
+                    match res {
+                        None => Some(SyncEvent::BlocksStreamConsumed),
+                        _ => res,
                     }
-                    Some(SyncEvent::StateDiffAvailable {
-                        block_number,
-                        state_diff,
-                        deployed_contract_class_definitions,
-                    }) => {
-                        self.writer
-                            .begin_rw_txn()?
-                            .append_state_diff(
-                                block_number,
-                                state_diff,
-                                deployed_contract_class_definitions,
-                            )?
-                            .commit()?;
+                },
+                res = state_diff_stream.next() => {
+                    match res {
+                        None => Some(SyncEvent::StateUpdatesStreamConsumed),
+                        _ => res,
                     }
-                    None => {
-                        return Err(StateSyncError::SyncError {
-                            message: "Got an empty event.".to_string(),
-                        });
-                    }
+                },
+                complete => break,
+            };
+            match sync_event {
+                Some(SyncEvent::BlockAvailable { block_number, block }) => {
+                    info!("Block {} available.", block_number);
+                    self.writer
+                        .begin_rw_txn()?
+                        .append_header(block_number, &block.header)?
+                        .append_body(block_number, block.body)?
+                        .commit()?;
+                }
+                Some(SyncEvent::StateDiffAvailable {
+                    block_number,
+                    state_diff,
+                    deployed_contract_class_definitions,
+                }) => {
+                    info!("State diff {} available.", block_number);
+                    self.writer
+                        .begin_rw_txn()?
+                        .append_state_diff(
+                            block_number,
+                            state_diff,
+                            deployed_contract_class_definitions,
+                        )?
+                        .commit()?;
+                }
+                Some(SyncEvent::BlocksStreamConsumed) => {
+                    info!("Consumed the blocks stream.");
+                }
+                Some(SyncEvent::StateUpdatesStreamConsumed) => {
+                    info!("Consumed the state updates stream.");
+                }
+                None => {
+                    return Err(StateSyncError::SyncError {
+                        message: "Got an empty event.".to_string(),
+                    });
                 }
             }
         }
+        Ok(())
+    }
+
+    async fn sync_status(&self) -> anyhow::Result<SyncStatus, StateSyncError> {
+        let central_marker = self.central_source.get_block_marker().await?;
+        let blocks_marker = self.reader.begin_ro_txn()?.get_header_marker()?;
+        let state_marker = self.reader.begin_ro_txn()?.get_state_marker()?;
+        if blocks_marker == central_marker {
+            return Ok(SyncStatus::FullySynced(central_marker));
+        }
+        Ok(SyncStatus::Syncing { blocks_marker, state_marker, central_marker })
+    }
+
+    pub async fn run(&mut self) -> anyhow::Result<(), StateSyncError> {
+        info!("Sync starting.");
+        loop {
+            let sync_status = self.sync_status().await?;
+            match sync_status {
+                SyncStatus::FullySynced(block_number) => {
+                    info!("Fully synced up to block {}", block_number);
+                    break;
+                }
+                SyncStatus::Syncing { blocks_marker, state_marker, central_marker } => {
+                    info!(
+                        "Sync status: central currently at block {}, blocks at {}, state updates at {}.",
+                        central_marker, blocks_marker, state_marker
+                    );
+                    self.iteration(blocks_marker, central_marker).await?;
+                    tokio::time::sleep(self.config.block_propagation_sleep_duration).await;
+                }
+            }
+        }
+        Ok(())
     }
 }
 
 fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
-    reader: StorageReader,
     central_source: Arc<TCentralSource>,
-    block_propation_sleep_duration: Duration,
+    header_marker: BlockNumber,
+    last_block_number: BlockNumber,
 ) -> impl Stream<Item = SyncEvent> {
     stream! {
-        loop {
-            let header_marker = reader.begin_ro_txn().expect("Cannot read from block storage.")
-                .get_header_marker()
-                .expect("Cannot read from block storage.");
-            let last_block_number = central_source
-                .get_block_marker()
-                .await
-                .expect("Cannot read from block storage.");
-            info!(
-                "Downloading blocks [{} - {}).",
-                header_marker, last_block_number
-            );
-            if header_marker == last_block_number {
-                tokio::time::sleep(block_propation_sleep_duration).await;
-                continue;
-            }
-            let block_stream = central_source
-                .stream_new_blocks(header_marker, last_block_number)
-                .fuse();
-            pin_mut!(block_stream);
-            while let Some(Ok((block_number, block))) = block_stream.next().await {
-                yield SyncEvent::BlockAvailable { block_number, block };
-            }
+        info!("Creating stream for fetching blocks from central ({} up to {})", header_marker, last_block_number);
+        let block_stream = central_source
+            .stream_new_blocks(header_marker, last_block_number)
+            .fuse();
+        pin_mut!(block_stream);
+        while let Some(Ok((block_number, block))) = block_stream.next().await {
+            yield SyncEvent::BlockAvailable { block_number, block };
         }
     }
 }
@@ -147,28 +189,30 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
 fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
+    last_block_number: BlockNumber,
     block_propation_sleep_duration: Duration,
 ) -> impl Stream<Item = SyncEvent> {
     stream! {
         loop {
-            let txn = reader.begin_ro_txn().expect("Cannot read from block storage.");
-            let state_marker = txn
-                .get_state_marker()
+            let state_marker = reader.begin_ro_txn().expect("Cannot read from block storage.").get_state_marker()
                 .expect("Cannot read from block storage.");
-            let last_block_number = txn
-                .get_header_marker()
-                .expect("Cannot read from block storage.");
-            drop(txn);
+
             info!(
                 "Downloading state diffs [{} - {}).",
                 state_marker, last_block_number
             );
             if state_marker == last_block_number {
+                info!("State marker reached block {}, stop streaming", last_block_number);
+                break;
+            }
+            let blocks_marker = reader.begin_ro_txn().expect("Cannot read from block storage.").get_header_marker().expect("Cannot read from block storage.");
+            if state_marker == blocks_marker {
+                info!("State marker caught with block marker, waiting for blocks marker to advance");
                 tokio::time::sleep(block_propation_sleep_duration).await;
-                continue;
+                continue
             }
             let state_diff_stream = central_source
-                .stream_state_updates(state_marker, last_block_number)
+                .stream_state_updates(state_marker, blocks_marker)
                 .fuse();
             pin_mut!(state_diff_stream);
             while let Some(maybe_state_diff) = state_diff_stream.next().await {
