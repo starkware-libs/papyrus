@@ -90,6 +90,79 @@ impl Default for EntryPointType {
     }
 }
 
+/// A contract class abi entry in StarkNet.
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub enum ContractClassAbiEntry {
+    /// An event abi entry.
+    Event(EventAbiEntry),
+    /// A function abi entry.
+    Function(FunctionAbiEntryWithType),
+    /// A struct abi entry.
+    Struct(StructAbiEntry),
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct TypedParameter {
+    pub name: String,
+    pub r#type: String,
+}
+
+/// An event abi entry in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct EventAbiEntry {
+    pub name: String,
+    pub keys: Vec<TypedParameter>,
+    pub data: Vec<TypedParameter>,
+}
+
+/// A function abi entry type in StarkNet.
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+pub enum FunctionAbiEntryType {
+    #[serde(rename = "constructor")]
+    Constructor,
+    #[serde(rename = "function")]
+    Other,
+    #[serde(rename = "l1_handler")]
+    L1Handler,
+}
+impl Default for FunctionAbiEntryType {
+    fn default() -> Self {
+        FunctionAbiEntryType::Other
+    }
+}
+
+/// A function abi entry in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct FunctionAbiEntry {
+    pub name: String,
+    pub inputs: Vec<TypedParameter>,
+    pub outputs: Vec<TypedParameter>,
+}
+
+/// A function abi entry with type in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct FunctionAbiEntryWithType {
+    pub r#type: FunctionAbiEntryType,
+    #[serde(flatten)]
+    pub entry: FunctionAbiEntry,
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct StructMember {
+    #[serde(flatten)]
+    pub param: TypedParameter,
+    pub offset: usize,
+}
+
+/// A struct abi entry in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct StructAbiEntry {
+    pub name: String,
+    pub size: usize,
+    pub members: Vec<StructMember>,
+}
+
 /// A contract class in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ContractClass {
