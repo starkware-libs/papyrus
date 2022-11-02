@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 pub struct Config {
+    pub chain_id: String,
     pub central: CentralSourceConfig,
     pub gateway: GatewayConfig,
     pub monitoring_gateway: MonitoringGatewayConfig,
