@@ -8,11 +8,10 @@ use papyrus_monitoring_gateway::MonitoringGatewayConfig;
 use papyrus_storage::StorageConfig;
 use papyrus_sync::{CentralSourceConfig, SyncConfig};
 use serde::{Deserialize, Serialize};
-use starknet_api::ChainId;
 
 #[derive(Deserialize, Serialize)]
 pub struct Config {
-    pub chain_id: ChainId,
+    pub chain_id: String,
     pub central: CentralSourceConfig,
     pub gateway: GatewayConfig,
     pub monitoring_gateway: MonitoringGatewayConfig,

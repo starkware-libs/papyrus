@@ -9,25 +9,7 @@ pub mod serde_utils;
 mod state;
 mod transaction;
 
-use serde::{Deserialize, Serialize};
 use serde_utils::InnerDeserialization;
-
-/// Starknet chain id.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-#[serde(deny_unknown_fields)]
-pub enum ChainId {
-    /// Starknet testnet id.
-    #[serde(rename = "SN_GOERLI")]
-    Goerli,
-    // Starknet main network id.
-    #[serde(rename = "SN_MAIN")]
-    Main,
-}
-impl Default for ChainId {
-    fn default() -> Self {
-        ChainId::Goerli
-    }
-}
 
 pub use self::block::{
     Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,

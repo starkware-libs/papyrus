@@ -5,7 +5,7 @@ use futures::{future, pin_mut, TryStreamExt};
 use futures_util::StreamExt;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
-use starknet_api::{Block, BlockNumber, ChainId, DeclaredContract, StarknetApiError, StateDiff};
+use starknet_api::{Block, BlockNumber, DeclaredContract, StarknetApiError, StateDiff};
 use starknet_client::{
     client_to_starknet_api_storage_diff, ClientCreationError, ClientError, RetryConfig,
     StarknetClient, StarknetClientTrait, StateUpdate,
@@ -219,7 +219,7 @@ pub type CentralSource = GenericCentralSource<StarknetClient>;
 impl CentralSource {
     pub fn new(
         config: CentralSourceConfig,
-        chain_id: ChainId,
+        chain_id: &str,
     ) -> Result<CentralSource, ClientCreationError> {
         let starknet_client = StarknetClient::new(chain_id, config.retry_config)?;
         info!("Central source is configured with {:?}.", chain_id);

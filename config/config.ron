@@ -1,5 +1,5 @@
 Config(
-    chain_id: SN_GOERLI,
+    chain_id: "SN_GOERLI",
     central: CentralSourceConfig(
         retry_config: RetryConfig(
             retry_base_millis: 30,

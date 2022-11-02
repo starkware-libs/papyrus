@@ -37,7 +37,7 @@ async fn main() -> anyhow::Result<()> {
     let (storage_reader, storage_writer) = open_storage(config.storage.db_config)?;
 
     // Network interface.
-    let central_source = CentralSource::new(config.central, config.chain_id)?;
+    let central_source = CentralSource::new(config.central, &config.chain_id)?;
 
     // Sync.
     let mut sync_thread_opt: Option<JoinHandle<anyhow::Result<(), StateSyncError>>> = None;
