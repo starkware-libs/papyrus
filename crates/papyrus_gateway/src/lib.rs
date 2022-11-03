@@ -431,14 +431,14 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
         // Get the event index. If there's a continuation token we take the event index from there.
         // Otherwise, we take the first index in the from_block_number.
-        let mut event_index = EventIndex(
-            TransactionIndex(from_block_number, TransactionOffsetInBlock(0)),
-            EventIndexInTransactionOutput(0),
-        );
-        if filter.continuation_token.is_some() {
+        let event_index = match filter.continuation_token {
             // TODO(anatg): Add a test for InvalidContinuationToken.
-            event_index = filter.continuation_token.unwrap().parse()?.0;
-        }
+            Some(token) => token.parse()?.0,
+            None => EventIndex(
+                TransactionIndex(from_block_number, TransactionOffsetInBlock(0)),
+                EventIndexInTransactionOutput(0),
+            ),
+        };
 
         // Collect the requested events.
         // Once we collected enough events, we continue to check if there are any more events
