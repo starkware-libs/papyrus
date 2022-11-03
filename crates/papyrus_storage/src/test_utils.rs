@@ -6,11 +6,12 @@ use starknet_api::serde_utils::bytes_from_hex_str;
 use starknet_api::{
     shash, Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockTimestamp, CallData,
     ClassHash, ContractAddress, ContractAddressSalt, ContractClass, ContractNonce,
-    DeclaredContract, DeployTransaction, DeployTransactionOutput, DeployedContract,
+    DeclareTransaction, DeclareTransactionOutput, DeclaredContract, DeployAccountTransaction,
+    DeployAccountTransactionOutput, DeployTransaction, DeployTransactionOutput, DeployedContract,
     EntryPointSelector, EthAddress, Event, EventContent, EventData, Fee, GasPrice, GlobalRoot,
-    InvokeTransaction, InvokeTransactionOutput, L2ToL1Payload, MessageToL1, Nonce, StarkHash,
-    StateDiff, StorageDiff, StorageEntry, StorageKey, Transaction, TransactionHash,
-    TransactionOutput, TransactionSignature, TransactionVersion,
+    InvokeTransaction, InvokeTransactionOutput, L1HandlerTransaction, L1HandlerTransactionOutput,
+    L2ToL1Payload, MessageToL1, Nonce, StarkHash, StateDiff, StorageDiff, StorageEntry, StorageKey,
+    Transaction, TransactionHash, TransactionOutput, TransactionSignature, TransactionVersion,
 };
 use tempfile::tempdir;
 use web3::types::H160;
@@ -237,6 +238,127 @@ pub fn get_alpha4_starknet_block() -> Block {
     };
 
     Block { header, body: get_alpha4_starknet_body() }
+}
+
+pub fn get_body_with_all_tx_types() -> BlockBody {
+    let mut transactions = vec![];
+    let mut transaction_outputs = vec![];
+
+    let actual_fee = Fee::default();
+    let messages_sent =
+        vec![MessageToL1 { to_address: EthAddress::default(), payload: L2ToL1Payload(vec![]) }];
+    let events = vec![Event {
+        from_address: ContractAddress::try_from(shash!("0x4")).unwrap(),
+        content: EventContent { keys: vec![], data: EventData(vec![shash!("0x1")]) },
+    }];
+
+    // Declare.
+    let transaction = Transaction::Declare(DeclareTransaction {
+        transaction_hash: TransactionHash(StarkHash::from_u64(1)),
+        version: TransactionVersion(shash!("0x1")),
+        class_hash: ClassHash::new(StarkHash::from_u64(11)),
+        max_fee: Fee::default(),
+        signature: TransactionSignature(vec![]),
+        nonce: Nonce::new(shash!("0x2")),
+        sender_address: ContractAddress::try_from(shash!("0x4")).unwrap(),
+    });
+    transactions.push(transaction);
+    let transaction_output = TransactionOutput::Declare(DeclareTransactionOutput {
+        actual_fee,
+        messages_sent: messages_sent.clone(),
+        events: events.clone(),
+    });
+    transaction_outputs.push(transaction_output);
+
+    // Deploy.
+    let transaction = Transaction::Deploy(DeployTransaction {
+        transaction_hash: TransactionHash(StarkHash::from_u64(2)),
+        version: TransactionVersion(shash!("0x1")),
+        contract_address: ContractAddress::try_from(shash!("0x2")).unwrap(),
+        constructor_calldata: CallData(vec![shash!("0x3")]),
+        class_hash: ClassHash::new(StarkHash::from_u64(22)),
+        contract_address_salt: ContractAddressSalt(shash!("0x4")),
+    });
+    transactions.push(transaction);
+    let transaction_output = TransactionOutput::Deploy(DeployTransactionOutput {
+        actual_fee,
+        messages_sent: messages_sent.clone(),
+        events: events.clone(),
+    });
+    transaction_outputs.push(transaction_output);
+
+    // Deploy account.
+    let transaction = Transaction::DeployAccount(DeployAccountTransaction {
+        transaction_hash: TransactionHash(StarkHash::from_u64(3)),
+        version: TransactionVersion(shash!("0x1")),
+        contract_address: ContractAddress::try_from(shash!("0x2")).unwrap(),
+        constructor_calldata: CallData(vec![shash!("0x3")]),
+        class_hash: ClassHash::new(StarkHash::from_u64(33)),
+        contract_address_salt: ContractAddressSalt(shash!("0x4")),
+        max_fee: Fee::default(),
+        signature: TransactionSignature(vec![]),
+        nonce: Nonce::new(shash!("0x2")),
+    });
+    transactions.push(transaction);
+    let transaction_output = TransactionOutput::DeployAccount(DeployAccountTransactionOutput {
+        actual_fee,
+        messages_sent: messages_sent.clone(),
+        events: events.clone(),
+    });
+    transaction_outputs.push(transaction_output);
+
+    // Invoke.
+    let transaction = Transaction::Invoke(InvokeTransaction {
+        transaction_hash: TransactionHash(StarkHash::from_u64(4)),
+        version: TransactionVersion(shash!("0x1")),
+        contract_address: ContractAddress::try_from(shash!("0x2")).unwrap(),
+        entry_point_selector: Some(EntryPointSelector(shash!("0x5"))),
+        calldata: CallData(vec![shash!("0x6")]),
+        max_fee: Fee::default(),
+        signature: TransactionSignature(vec![]),
+        nonce: Nonce::new(shash!("0x2")),
+    });
+    transactions.push(transaction);
+    let transaction_output = TransactionOutput::Invoke(InvokeTransactionOutput {
+        actual_fee,
+        messages_sent: messages_sent.clone(),
+        events: events.clone(),
+    });
+    transaction_outputs.push(transaction_output);
+
+    // L1 handler.
+    let transaction = Transaction::L1Handler(L1HandlerTransaction {
+        transaction_hash: TransactionHash(StarkHash::from_u64(5)),
+        version: TransactionVersion(shash!("0x1")),
+        contract_address: ContractAddress::try_from(shash!("0x2")).unwrap(),
+        entry_point_selector: EntryPointSelector(shash!("0x5")),
+        calldata: CallData(vec![shash!("0x6")]),
+        nonce: Nonce::new(shash!("0x2")),
+    });
+    transactions.push(transaction);
+    let transaction_output = TransactionOutput::L1Handler(L1HandlerTransactionOutput {
+        actual_fee,
+        messages_sent,
+        events,
+    });
+    transaction_outputs.push(transaction_output);
+
+    BlockBody::new(transactions, transaction_outputs).unwrap()
+}
+
+pub fn get_block_with_all_tx_types() -> Block {
+    let header = BlockHeader {
+        block_hash: BlockHash::new(shash!(
+            "0x7d328a71faf48c5c3857e99f20a77b18522480956d1cd5bff1ff2df3c8b427b"
+        )),
+        block_number: BlockNumber::new(0),
+        state_root: GlobalRoot::new(shash!(
+            "0x02c2bb91714f8448ed814bdac274ab6fcdbafc22d835f9e847e5bee8c2e5444e"
+        )),
+        ..BlockHeader::default()
+    };
+
+    Block { header, body: get_body_with_all_tx_types() }
 }
 
 pub fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff, Vec<DeclaredContract>) {

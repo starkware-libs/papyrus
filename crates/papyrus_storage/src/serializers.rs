@@ -4,10 +4,10 @@ use std::hash::Hash;
 
 use integer_encoding::*;
 use starknet_api::{
-    BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, CallData, ClassHash,
-    ContractAddress, ContractAddressSalt, ContractClass, ContractNonce, DeclareTransaction,
-    DeclaredContract, DeployAccountTransaction, DeployTransaction, DeployedContract, EntryPoint,
-    EntryPointOffset, EntryPointSelector, EntryPointType, EthAddress, EventContent, EventData,
+    BlockHash, BlockHeader, BlockNumber, BlockTimestamp, CallData, ClassHash, ContractAddress,
+    ContractAddressSalt, ContractClass, ContractNonce, DeclareTransaction, DeclaredContract,
+    DeployAccountTransaction, DeployTransaction, DeployedContract, EntryPoint, EntryPointOffset,
+    EntryPointSelector, EntryPointType, EthAddress, EventContent, EventData,
     EventIndexInTransactionOutput, EventKey, Fee, GasPrice, GlobalRoot, InvokeTransaction,
     L1HandlerTransaction, L1ToL2Payload, L2ToL1Payload, MessageToL1, MessageToL2, Nonce,
     PatriciaKey, Program, StarkFelt, StarkHash, StateDiff, StorageDiff, StorageEntry, StorageKey,
@@ -348,12 +348,6 @@ auto_storage_serde! {
         pub state_root: GlobalRoot,
         pub sequencer: ContractAddress,
         pub timestamp: BlockTimestamp,
-    }
-    pub enum BlockStatus {
-        Pending = 0,
-        AcceptedOnL2 = 1,
-        AcceptedOnL1 = 2,
-        Rejected = 3,
     }
     pub struct CallData(pub Vec<StarkFelt>);
     pub struct ContractAddressSalt(pub StarkHash);

@@ -3,13 +3,13 @@ use starknet_api::{BlockBody, BlockNumber, TransactionOffsetInBlock};
 
 use super::events::ThinTransactionOutput;
 use super::{BodyStorageReader, BodyStorageWriter};
-use crate::test_utils::{get_test_block, get_test_body, get_test_storage};
+use crate::test_utils::{get_body_with_all_tx_types, get_test_body, get_test_storage};
 use crate::{StorageError, StorageWriter, TransactionIndex};
 
 #[tokio::test]
 async fn append_body() -> Result<(), anyhow::Error> {
     let (reader, mut writer) = get_test_storage();
-    let body = get_test_block(10).body;
+    let body = get_test_body(10);
     let txs = body.transactions();
     let tx_outputs = body.transaction_outputs();
 
@@ -125,6 +125,25 @@ async fn append_body() -> Result<(), anyhow::Error> {
         ])
     );
     assert_eq!(txn.get_block_transaction_outputs(BlockNumber::new(3))?, None);
+    Ok(())
+}
+
+#[tokio::test]
+async fn append_body_with_all_tx_types() -> Result<(), anyhow::Error> {
+    let (reader, mut writer) = get_test_storage();
+    let body = get_body_with_all_tx_types();
+    let block_number = BlockNumber::new(0);
+    writer.begin_rw_txn()?.append_body(block_number, body.clone())?.commit()?;
+
+    let txn = reader.begin_ro_txn()?;
+    let txs = body.transactions();
+    for (i, expected_tx) in txs.iter().enumerate() {
+        let tx = txn
+            .get_transaction(TransactionIndex(block_number, TransactionOffsetInBlock(i)))?
+            .unwrap();
+        assert_eq!(&tx, expected_tx);
+    }
+
     Ok(())
 }
 
