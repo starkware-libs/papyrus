@@ -5,23 +5,32 @@ mod events_test;
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockNumber, ContractAddress, EventContent, EventIndexInTransactionOutput, Fee, MessageToL1,
-    TransactionOffsetInBlock, TransactionOutput,
+    TransactionOutput,
 };
 
-use super::TransactionOutputsTable;
 use crate::db::{DbCursor, DbTransaction, TableHandle, RO};
 use crate::{EventIndex, StorageResult, StorageTxn, TransactionIndex};
 
+// EventIndex is a tuple:
+// (block number, transaction offset in block, event index in transaction output).
+// This is the order of the events as they are emitted.
 pub type EventsTableKey = (ContractAddress, EventIndex);
 pub type EventsTableKeyValue = (EventsTableKey, EventContent);
 pub type EventsTableCursor<'txn> = DbCursor<'txn, RO, EventsTableKey, EventContent>;
 pub type EventsTable<'env> = TableHandle<'env, EventsTableKey, EventContent>;
+type TransactionOutputsKeyValue = (TransactionIndex, ThinTransactionOutput);
+type TransactionOutputsTableCursor<'txn> =
+    DbCursor<'txn, RO, TransactionIndex, ThinTransactionOutput>;
 
 pub enum EventIter<'txn, 'env> {
-    Key(EventsTableKeyIter<'txn>),
-    Index(EventIndexIter<'txn, 'env>),
+    Key(EventIterByContractAddress<'txn>),
+    Index(EventIterByEventIndex<'txn, 'env>),
 }
 
+/// This iterator is a wrapper of two iterators [`EventIterByContractAddress`]
+/// and [`EventIterByEventIndex`].
+/// With this wrapper we can execute the same code, regardless the
+/// type of iteration used.
 impl Iterator for EventIter<'_, '_> {
     type Item = EventsTableKeyValue;
 
@@ -37,37 +46,45 @@ impl Iterator for EventIter<'_, '_> {
     }
 }
 
-pub struct EventsTableKeyIter<'txn> {
+/// This iterator goes over the events in the order of the events table key.
+/// That is, the events iterated first by the contract address and then by the event index.
+pub struct EventIterByContractAddress<'txn> {
     current: Option<EventsTableKeyValue>,
     cursor: EventsTableCursor<'txn>,
 }
 
-impl EventsTableKeyIter<'_> {
+impl EventIterByContractAddress<'_> {
     pub fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
-        let res = self.current.clone();
+        let res = self.current.take();
         self.current = self.cursor.next()?;
         Ok(res)
     }
 }
 
-pub struct EventIndexIter<'txn, 'env> {
+/// This iterator goes over the events in the order of the event index.
+/// That is, the events are iterated by the order they are emitted.
+/// First by the block number, then by the transaction offset in the block,
+/// and finally, by the event index in the transaction output.
+pub struct EventIterByEventIndex<'txn, 'env> {
     txn: &'txn DbTransaction<'env, RO>,
-    transaction_outputs_table: TransactionOutputsTable<'env>,
+    tx_current: Option<TransactionOutputsKeyValue>,
+    tx_cursor: TransactionOutputsTableCursor<'txn>,
     events_table: EventsTable<'env>,
     current: Option<EventsTableKeyValue>,
     to_block_number: BlockNumber,
 }
 
-impl EventIndexIter<'_, '_> {
+impl EventIterByEventIndex<'_, '_> {
     fn get_event(
-        &mut self,
-        event_index: EventIndex,
-        tx_output: ThinTransactionOutput,
+        &self,
+        tx_index: &TransactionIndex,
+        event_index_in_tx: &EventIndexInTransactionOutput,
+        tx_output: &ThinTransactionOutput,
     ) -> StorageResult<Option<EventsTableKeyValue>> {
         if let Some(address) =
-            tx_output.events_contract_addresses().into_iter().nth((event_index.1).0)
+            tx_output.events_contract_addresses_as_ref().iter().nth(event_index_in_tx.0)
         {
-            let key = (address, event_index);
+            let key = (*address, EventIndex(*tx_index, *event_index_in_tx));
             if let Some(content) = self.events_table.get(self.txn, &key)? {
                 return Ok(Some((key, content)));
             }
@@ -78,49 +95,40 @@ impl EventIndexIter<'_, '_> {
 
     /// Returns a key-value pair that corresponds to the first index greater than or equal to the
     /// specified index.
-    fn lower_bound(
+    fn next_event_by_event_index(
         &mut self,
-        event_index: EventIndex,
+        event_index_in_tx: &EventIndexInTransactionOutput,
     ) -> StorageResult<Option<EventsTableKeyValue>> {
         // Check the specified index. If there's an event there return it.
-        if let Some(tx_output) = self.transaction_outputs_table.get(self.txn, &event_index.0)? {
-            if let Some(item) = self.get_event(event_index, tx_output)? {
+        if let Some((tx_index, tx_output)) = &self.tx_current {
+            if let Some(item) = self.get_event(tx_index, event_index_in_tx, tx_output)? {
                 return Ok(Some(item));
             };
         }
 
         // There are no more events in the specified transaction, so we go over the rest of the
         // transactions until we find an event.
-        let next_tx_index = TransactionIndex(
-            (event_index.0).0,
-            TransactionOffsetInBlock(((event_index.0).1).0 + 1),
-        );
-        let mut cursor = self.transaction_outputs_table.cursor(self.txn)?;
-        let mut next = cursor.lower_bound(&next_tx_index)?;
-        while let Some((tx_output_index, tx_output)) = next {
-            if tx_output_index.0 > self.to_block_number {
+        self.tx_current = self.tx_cursor.next()?;
+        while let Some((tx_index, tx_output)) = &self.tx_current {
+            if tx_index.0 > self.to_block_number {
                 break;
             }
-            let event_index = EventIndex(tx_output_index, EventIndexInTransactionOutput(0));
-            if let Some(item) = self.get_event(event_index, tx_output)? {
+            if let Some(item) =
+                self.get_event(tx_index, &EventIndexInTransactionOutput(0), tx_output)?
+            {
                 return Ok(Some(item));
             }
-            next = cursor.next()?;
+            self.tx_current = self.tx_cursor.next()?;
         }
 
         Ok(None)
     }
 
     pub fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
-        if self.current.is_none() {
-            return Ok(None);
-        }
-
-        let res = self.current.clone();
-        let mut next_event_index = (self.current.as_ref().unwrap().0).1;
-        next_event_index.1 = EventIndexInTransactionOutput((next_event_index.1).0 + 1);
-        self.current = self.lower_bound(next_event_index)?;
-
+        let Some((key, _)) = self.current else { return Ok(None) };
+        let res = self.current.take();
+        let current_event_index_in_tx = (key.1).1;
+        self.current = self.next_event_by_event_index(&current_event_index_in_tx.next())?;
         Ok(res)
     }
 }
@@ -135,31 +143,39 @@ pub trait EventsReader<'txn, 'env> {
 }
 
 impl<'txn, 'env> StorageTxn<'env, RO> {
-    fn iter_events_by_key(
+    /// Returns an events iterator that iterates events by the events table key,
+    /// starting from the first event with a key greater or equal to the given key.
+    fn iter_events_by_contract_address(
         &'env self,
         key: EventsTableKey,
-    ) -> StorageResult<EventsTableKeyIter<'txn>> {
+    ) -> StorageResult<EventIterByContractAddress<'txn>> {
         let events_table = self.txn.open_table(&self.tables.events)?;
         let mut cursor = events_table.cursor(&self.txn)?;
         let current = cursor.lower_bound(&key)?;
-        Ok(EventsTableKeyIter { current, cursor })
+        Ok(EventIterByContractAddress { current, cursor })
     }
 
-    fn iter_events_by_index(
+    /// Returns an events iterator that iterates events by event index,
+    /// starting from the first event with an index greater or equal to the given index,
+    /// upto the given to_block_number.
+    fn iter_events_by_event_index(
         &'env self,
         event_index: EventIndex,
         to_block_number: BlockNumber,
-    ) -> StorageResult<EventIndexIter<'txn, 'env>> {
+    ) -> StorageResult<EventIterByEventIndex<'txn, 'env>> {
         let transaction_outputs_table = self.txn.open_table(&self.tables.transaction_outputs)?;
+        let mut tx_cursor = transaction_outputs_table.cursor(&self.txn)?;
+        let tx_current = tx_cursor.lower_bound(&event_index.0)?;
         let events_table = self.txn.open_table(&self.tables.events)?;
-        let mut it = EventIndexIter {
+        let mut it = EventIterByEventIndex {
             txn: &self.txn,
-            transaction_outputs_table,
+            tx_current,
+            tx_cursor,
             events_table,
             current: None,
             to_block_number,
         };
-        it.current = it.lower_bound(event_index)?;
+        it.current = it.next_event_by_event_index(&event_index.1)?;
         Ok(it)
     }
 }
@@ -172,10 +188,12 @@ impl<'txn, 'env> EventsReader<'txn, 'env> for StorageTxn<'env, RO> {
         to_block_number: BlockNumber,
     ) -> StorageResult<EventIter<'txn, 'env>> {
         if address.is_some() {
-            return Ok(EventIter::Key(self.iter_events_by_key((address.unwrap(), event_index))?));
+            return Ok(EventIter::Key(
+                self.iter_events_by_contract_address((address.unwrap(), event_index))?,
+            ));
         }
 
-        Ok(EventIter::Index(self.iter_events_by_index(event_index, to_block_number)?))
+        Ok(EventIter::Index(self.iter_events_by_event_index(event_index, to_block_number)?))
     }
 }
 
@@ -201,6 +219,15 @@ impl ThinTransactionOutput {
             ThinTransactionOutput::DeployAccount(tx_output) => tx_output.events_contract_addresses,
             ThinTransactionOutput::Invoke(tx_output) => tx_output.events_contract_addresses,
             ThinTransactionOutput::L1Handler(tx_output) => tx_output.events_contract_addresses,
+        }
+    }
+    pub fn events_contract_addresses_as_ref(&self) -> &Vec<ContractAddress> {
+        match self {
+            ThinTransactionOutput::Declare(tx_output) => &tx_output.events_contract_addresses,
+            ThinTransactionOutput::Deploy(tx_output) => &tx_output.events_contract_addresses,
+            ThinTransactionOutput::DeployAccount(tx_output) => &tx_output.events_contract_addresses,
+            ThinTransactionOutput::Invoke(tx_output) => &tx_output.events_contract_addresses,
+            ThinTransactionOutput::L1Handler(tx_output) => &tx_output.events_contract_addresses,
         }
     }
 }
