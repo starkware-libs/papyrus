@@ -44,7 +44,7 @@ impl From<FunctionAbiEntryType> for ContractClassAbiEntryType {
         match t {
             FunctionAbiEntryType::Constructor => ContractClassAbiEntryType::Constructor,
             FunctionAbiEntryType::L1Handler => ContractClassAbiEntryType::L1Handler,
-            FunctionAbiEntryType::Other => ContractClassAbiEntryType::Function,
+            FunctionAbiEntryType::Regular => ContractClassAbiEntryType::Function,
         }
     }
 }

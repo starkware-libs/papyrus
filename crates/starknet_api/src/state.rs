@@ -122,14 +122,14 @@ pub struct EventAbiEntry {
 pub enum FunctionAbiEntryType {
     #[serde(rename = "constructor")]
     Constructor,
-    #[serde(rename = "other")]
-    Other,
     #[serde(rename = "l1_handler")]
     L1Handler,
+    #[serde(rename = "regular")]
+    Regular,
 }
 impl Default for FunctionAbiEntryType {
     fn default() -> Self {
-        FunctionAbiEntryType::Other
+        FunctionAbiEntryType::Regular
     }
 }
 
