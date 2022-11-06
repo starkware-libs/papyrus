@@ -50,7 +50,7 @@ impl From<StarkHash> for PrefixedHexAsBytes<32_usize> {
 
 impl Debug for StarkHash {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = format!("0x{}", hex::encode(&self.0));
+        let s = format!("0x{}", hex::encode(self.0));
         f.debug_tuple("StarkHash").field(&s).finish()
     }
 }

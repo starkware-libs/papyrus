@@ -37,6 +37,8 @@ pub enum StateSyncError {
     #[error("Sync error: {message:?}.")]
     SyncError { message: String },
 }
+
+#[allow(clippy::large_enum_variant)]
 pub enum SyncEvent {
     BlockAvailable {
         block_number: BlockNumber,
