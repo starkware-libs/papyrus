@@ -23,8 +23,8 @@ type TransactionOutputsTableCursor<'txn> =
     DbCursor<'txn, RO, TransactionIndex, ThinTransactionOutput>;
 
 pub enum EventIter<'txn, 'env> {
-    Key(EventIterByContractAddress<'txn>),
-    Index(EventIterByEventIndex<'txn, 'env>),
+    ByContractAddress(EventIterByContractAddress<'txn>),
+    ByEventIndex(EventIterByEventIndex<'txn, 'env>),
 }
 
 /// This iterator is a wrapper of two iterators [`EventIterByContractAddress`]
@@ -36,8 +36,8 @@ impl Iterator for EventIter<'_, '_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let res = match self {
-            EventIter::Key(it) => it.next(),
-            EventIter::Index(it) => it.next(),
+            EventIter::ByContractAddress(it) => it.next(),
+            EventIter::ByEventIndex(it) => it.next(),
         };
         if res.is_err() {
             return None;
@@ -54,6 +54,7 @@ pub struct EventIterByContractAddress<'txn> {
 }
 
 impl EventIterByContractAddress<'_> {
+    /// This is the iterator next function. It gets the next item and returns the current one.
     pub fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
         let res = self.current.take();
         self.current = self.cursor.next()?;
@@ -93,20 +94,22 @@ impl EventIterByEventIndex<'_, '_> {
         Ok(None)
     }
 
-    /// Returns a key-value pair that corresponds to the first index greater than or equal to the
-    /// specified index.
-    fn next_event_by_event_index(
+    // Returns a key-value pair that corresponds to the first event index greater than or equals to
+    // the specified index, starting from the current transaction (self.tx_current).
+    // It updates tx_cursor and tx_current.
+    fn find_next_event_by_event_index(
         &mut self,
         event_index_in_tx: &EventIndexInTransactionOutput,
     ) -> StorageResult<Option<EventsTableKeyValue>> {
-        // Check the specified index. If there's an event there return it.
+        // Checks the specified index in the current transaction. If there's an event there returns
+        // it.
         if let Some((tx_index, tx_output)) = &self.tx_current {
             if let Some(item) = self.get_event(tx_index, event_index_in_tx, tx_output)? {
                 return Ok(Some(item));
             };
         }
 
-        // There are no more events in the specified transaction, so we go over the rest of the
+        // There are no more events in the current transaction, so we go over the rest of the
         // transactions until we find an event.
         self.tx_current = self.tx_cursor.next()?;
         while let Some((tx_index, tx_output)) = &self.tx_current {
@@ -124,13 +127,15 @@ impl EventIterByEventIndex<'_, '_> {
         Ok(None)
     }
 
+    /// This is the iterator next function. It gets the next item and returns the current one.
     pub fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
         match self.current {
             None => Ok(None),
             Some((key, _)) => {
                 let res = self.current.take();
                 let current_event_index_in_tx = (key.1).1;
-                self.current = self.next_event_by_event_index(&current_event_index_in_tx.next())?;
+                self.current =
+                    self.find_next_event_by_event_index(&current_event_index_in_tx.next())?;
                 Ok(res)
             }
         }
@@ -138,6 +143,9 @@ impl EventIterByEventIndex<'_, '_> {
 }
 
 pub trait EventsReader<'txn, 'env> {
+    /// Returns an itrator over events, which is a wrapper of two iterators.
+    /// If the address is none it iterates the events by the order of the event index,
+    /// else, it iterated the events by the order of the contract addresses.
     fn iter_events(
         &'env self,
         address: Option<ContractAddress>,
@@ -147,8 +155,8 @@ pub trait EventsReader<'txn, 'env> {
 }
 
 impl<'txn, 'env> StorageTxn<'env, RO> {
-    /// Returns an events iterator that iterates events by the events table key,
-    /// starting from the first event with a key greater or equal to the given key.
+    // Returns an events iterator that iterates events by the events table key,
+    // starting from the first event with a key greater or equals to the given key.
     fn iter_events_by_contract_address(
         &'env self,
         key: EventsTableKey,
@@ -159,9 +167,9 @@ impl<'txn, 'env> StorageTxn<'env, RO> {
         Ok(EventIterByContractAddress { current, cursor })
     }
 
-    /// Returns an events iterator that iterates events by event index,
-    /// starting from the first event with an index greater or equal to the given index,
-    /// upto the given to_block_number.
+    // Returns an events iterator that iterates events by event index,
+    // starting from the first event with an index greater or equals to the given index,
+    // upto the given to_block_number.
     fn iter_events_by_event_index(
         &'env self,
         event_index: EventIndex,
@@ -171,6 +179,7 @@ impl<'txn, 'env> StorageTxn<'env, RO> {
         let mut tx_cursor = transaction_outputs_table.cursor(&self.txn)?;
         let tx_current = tx_cursor.lower_bound(&event_index.0)?;
         let events_table = self.txn.open_table(&self.tables.events)?;
+
         let mut it = EventIterByEventIndex {
             txn: &self.txn,
             tx_current,
@@ -179,7 +188,7 @@ impl<'txn, 'env> StorageTxn<'env, RO> {
             current: None,
             to_block_number,
         };
-        it.current = it.next_event_by_event_index(&event_index.1)?;
+        it.current = it.find_next_event_by_event_index(&event_index.1)?;
         Ok(it)
     }
 }
@@ -192,12 +201,12 @@ impl<'txn, 'env> EventsReader<'txn, 'env> for StorageTxn<'env, RO> {
         to_block_number: BlockNumber,
     ) -> StorageResult<EventIter<'txn, 'env>> {
         if address.is_some() {
-            return Ok(EventIter::Key(
+            return Ok(EventIter::ByContractAddress(
                 self.iter_events_by_contract_address((address.unwrap(), event_index))?,
             ));
         }
 
-        Ok(EventIter::Index(self.iter_events_by_event_index(event_index, to_block_number)?))
+        Ok(EventIter::ByEventIndex(self.iter_events_by_event_index(event_index, to_block_number)?))
     }
 }
 
