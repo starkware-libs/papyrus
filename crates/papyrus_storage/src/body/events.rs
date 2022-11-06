@@ -125,11 +125,15 @@ impl EventIterByEventIndex<'_, '_> {
     }
 
     pub fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
-        let Some((key, _)) = self.current else { return Ok(None) };
-        let res = self.current.take();
-        let current_event_index_in_tx = (key.1).1;
-        self.current = self.next_event_by_event_index(&current_event_index_in_tx.next())?;
-        Ok(res)
+        match self.current {
+            None => Ok(None),
+            Some((key, _)) => {
+                let res = self.current.take();
+                let current_event_index_in_tx = (key.1).1;
+                self.current = self.next_event_by_event_index(&current_event_index_in_tx.next())?;
+                Ok(res)
+            }
+        }
     }
 }
 
