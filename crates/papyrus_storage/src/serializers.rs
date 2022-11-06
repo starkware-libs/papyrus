@@ -376,8 +376,8 @@ auto_storage_serde! {
     }
     pub enum FunctionAbiEntryType {
         Constructor = 0,
-        Other = 1,
-        L1Handler = 2,
+        L1Handler = 1,
+        Regular = 2,
     }
     pub struct TypedParameter {
         pub name: String,

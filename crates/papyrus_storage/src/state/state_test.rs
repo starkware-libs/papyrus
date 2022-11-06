@@ -87,7 +87,7 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     let (deployed_contracts, storage_diffs, mut declared_classes, nonces) = diff1.destruct();
     let mut class = declared_classes[0].contract_class.clone();
     class.abi = Some(vec![ContractClassAbiEntry::Function(FunctionAbiEntryWithType {
-        r#type: FunctionAbiEntryType::Other,
+        r#type: FunctionAbiEntryType::Regular,
         entry: FunctionAbiEntry { name: String::from("junk"), inputs: vec![], outputs: vec![] },
     })]);
 
