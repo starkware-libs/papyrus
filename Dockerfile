@@ -1,16 +1,17 @@
 FROM rust:1.63
 
-# Copy all Cargo.toml files
+# We will at first compile only the dependency crates and then we'll compile the source code. This
+# will cause the compilation of the dependency crates to be cached even when the source code is
+# changed.
+
+# Copy all files and then delete non-Cargo.toml files. Because the compilation will happen in a
+# different stage, the non-Cargo.toml files won't affect the cache (For more on docker stages, read
+# https://docs.docker.com/build/building/multi-stage/).
 COPY . /app/
 RUN find /app \! -name "Cargo.toml" -type f -delete 
 RUN find /app -empty -type d -delete 
 
-FROM rust:1.63
 WORKDIR /app/
-
-RUN apt update && apt install -y clang
-
-COPY --from=0 /app .
 
 # Create empty lib.rs files.
 # In order for cargo init to work, we need to not have a Cargo.toml file. We'll rename Cargo.toml
@@ -24,8 +25,18 @@ RUN for dir in crates/*; do \
 done
 RUN mv _Cargo.toml Cargo.toml
 
+# Starting a new stage so that the next layers will be cached if a non-Cargo.toml file is changed.
+FROM rust:1.63
+WORKDIR /app/
+
+RUN apt update && apt install -y clang
+
+# Copy all the files from the previous stage (which are Cargo.toml and empty lib.rs files).
+COPY --from=0 /app .
+
 RUN CARGO_INCREMENTAL=0 cargo build --release --package papyrus_node
 
+# Copy the rest of the files.
 COPY . .
 
 RUN touch crates/*/src/lib.rs
