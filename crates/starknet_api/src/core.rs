@@ -2,7 +2,8 @@
 #[path = "core_test.rs"]
 mod core_test;
 
-use std::fmt::Debug;
+use std::fmt;
+use std::fmt::{Debug, Display};
 
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +12,11 @@ use super::{StarkFelt, StarkHash, StarknetApiError};
 /// Starknet chain id.
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ChainId(pub String);
+impl Display for ChainId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
 
 /// 2**251
 pub const PATRICIA_KEY_UPPER_BOUND: &str =

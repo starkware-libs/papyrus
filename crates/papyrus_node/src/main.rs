@@ -31,7 +31,7 @@ async fn main() -> anyhow::Result<()> {
     if let Some(storage_path_str) = args.storage_path {
         config.storage.db_config.path = storage_path_str;
     } else {
-        config.storage.db_config.path.write_str(&format!("/{:?}", config.chain_id))?;
+        config.storage.db_config.path.write_str(&format!("/{}", config.chain_id))?;
     }
 
     let (storage_reader, storage_writer) = open_storage(config.storage.db_config)?;
