@@ -41,6 +41,15 @@ impl StateNumber {
     }
 }
 
+/// A contract class in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct ContractClass {
+    pub abi: Option<Vec<ContractClassAbiEntry>>,
+    pub program: Program,
+    /// The selector of each entry point is a unique identifier in the program.
+    pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
+}
+
 /// The offset of an entry point in StarkNet.
 #[derive(
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
@@ -162,15 +171,6 @@ pub struct StructAbiEntry {
     pub name: String,
     pub size: usize,
     pub members: Vec<StructMember>,
-}
-
-/// A contract class in StarkNet.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct ContractClass {
-    pub abi: Option<Vec<ContractClassAbiEntry>>,
-    pub program: Program,
-    /// The selector of each entry point is a unique identifier in the program.
-    pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
 }
 
 // TODO(anatg): Consider replacing this with ThinStateDiff (that is, remove ContractClass)
