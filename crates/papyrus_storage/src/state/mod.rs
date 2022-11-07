@@ -91,11 +91,9 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         update_marker(&self.txn, &markers_table, block_number)?;
 
         // Write state.
-        let declared_classes = [
-            state_diff.declared_contracts().as_slice(),
-            deployed_contract_class_definitions.as_slice(),
-        ]
-        .concat();
+        let declared_classes =
+            [state_diff.declared_contracts(), deployed_contract_class_definitions.as_slice()]
+                .concat();
         write_declared_classes(declared_classes, &self.txn, block_number, &declared_classes_table)?;
         write_deployed_contracts(
             &state_diff,

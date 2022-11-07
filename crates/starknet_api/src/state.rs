@@ -152,16 +152,16 @@ impl StateDiff {
     pub fn destruct(self) -> StateDiffAsTuple {
         (self.deployed_contracts, self.storage_diffs, self.declared_classes, self.nonces)
     }
-    pub fn deployed_contracts(&self) -> &Vec<DeployedContract> {
+    pub fn deployed_contracts(&self) -> &[DeployedContract] {
         &self.deployed_contracts
     }
-    pub fn storage_diffs(&self) -> &Vec<StorageDiff> {
+    pub fn storage_diffs(&self) -> &[StorageDiff] {
         &self.storage_diffs
     }
-    pub fn declared_contracts(&self) -> &Vec<DeclaredContract> {
+    pub fn declared_contracts(&self) -> &[DeclaredContract] {
         &self.declared_classes
     }
-    pub fn nonces(&self) -> &Vec<ContractNonce> {
+    pub fn nonces(&self) -> &[ContractNonce] {
         &self.nonces
     }
 }
