@@ -251,9 +251,7 @@ async fn get_storage_at() -> Result<(), anyhow::Error> {
         .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
         .commit()?;
 
-    let (_, storage_diffs, _, _) = diff.destruct();
-
-    let storage_diff = storage_diffs.index(0);
+    let storage_diff = diff.storage_diffs().index(0);
     let address = storage_diff.address;
     let storage_entry = storage_diff.storage_entries.index(0);
     let key = storage_entry.key.clone();
@@ -356,9 +354,7 @@ async fn get_class_hash_at() -> Result<(), anyhow::Error> {
         .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
         .commit()?;
 
-    let (deployed_contracts, _, _, _) = diff.destruct();
-
-    let contract = deployed_contracts.index(0);
+    let contract = diff.deployed_contracts().index(0);
     let address = contract.address;
     let expected_class_hash = contract.class_hash;
 
@@ -444,8 +440,7 @@ async fn get_nonce() -> Result<(), anyhow::Error> {
         .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
         .commit()?;
 
-    let (_, _, _, nonces) = diff.destruct();
-    let contract_nonce = nonces.index(0);
+    let contract_nonce = diff.nonces().index(0);
     let address = contract_nonce.contract_address;
     let expected_nonce = contract_nonce.nonce;
 
@@ -845,9 +840,7 @@ async fn get_class() -> Result<(), anyhow::Error> {
         .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
         .commit()?;
 
-    let (_, _, declared_classes, _) = diff.destruct();
-
-    let declared_contract = declared_classes.index(1);
+    let declared_contract = diff.declared_contracts().index(1);
     let class_hash = declared_contract.class_hash;
     let expected_contract_class = declared_contract.contract_class.clone().try_into()?;
 
@@ -957,7 +950,7 @@ async fn get_class_at() -> Result<(), anyhow::Error> {
         )?
         .commit()?;
 
-    let (deployed_contracts, _, _, _) = diff.destruct();
+    let deployed_contracts = diff.deployed_contracts();
     let address = deployed_contracts.index(1).address;
     let hash = deployed_contracts.index(1).class_hash;
     let expected_contract_class = deployed_contract_class_definitions

@@ -1,5 +1,6 @@
 use assert_matches::assert_matches;
 
+use crate::state::StateDiffAsTuple;
 use crate::{
     shash, ClassHash, ContractAddress, ContractClass, ContractNonce, DeclaredContract,
     DeployedContract, Nonce, StarkHash, StarknetApiError, StateDiff, StorageDiff,
@@ -60,7 +61,7 @@ fn state_sorted() {
     let sorted_nonces = vec![nonce_0, nonce_1];
 
     assert_eq!(
-        state_diff.destruct(),
+        Into::<StateDiffAsTuple>::into(state_diff),
         (sorted_deployed_contracts, sorted_storage_diffs, sorted_declared_contracts, sorted_nonces)
     );
 }

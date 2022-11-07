@@ -45,7 +45,7 @@ impl ThinStateDiff {
 
 impl From<StateDiff> for ThinStateDiff {
     fn from(diff: StateDiff) -> Self {
-        let (deployed_contracts, storage_diffs, declared_classes, nonces) = diff.destruct();
+        let (deployed_contracts, storage_diffs, declared_classes, nonces) = diff.into();
         Self {
             deployed_contracts,
             storage_diffs,
