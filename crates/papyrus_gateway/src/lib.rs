@@ -21,8 +21,8 @@ use papyrus_storage::{
 };
 use serde::{Deserialize, Serialize};
 use starknet_api::{
-    BlockNumber, BlockStatus, ClassHash, ContractAddress, GlobalRoot, Nonce, StarkFelt, StarkHash,
-    StateNumber, StorageKey, TransactionHash, TransactionOffsetInBlock, GENESIS_HASH,
+    BlockNumber, BlockStatus, ChainId, ClassHash, ContractAddress, GlobalRoot, Nonce, StarkFelt,
+    StarkHash, StateNumber, StorageKey, TransactionHash, TransactionOffsetInBlock, GENESIS_HASH,
 };
 
 use self::api::{BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcError, JsonRpcServer, Tag};
@@ -32,13 +32,15 @@ use self::objects::{
     Transactions,
 };
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct GatewayConfig {
+    pub chain_id: ChainId,
     pub server_ip: String,
 }
 
 /// Rpc server.
 struct JsonRpcServerImpl {
+    chain_id: ChainId,
     storage_reader: StorageReader,
 }
 
@@ -365,6 +367,10 @@ impl JsonRpcServer for JsonRpcServerImpl {
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))
     }
+
+    fn chain_id(&self) -> Result<String, Error> {
+        Ok(self.chain_id.as_hex())
+    }
 }
 
 pub async fn run_server(
@@ -374,7 +380,8 @@ pub async fn run_server(
     info!("Starting gateway.");
     let server = HttpServerBuilder::default().build(&config.server_ip).await?;
     let addr = server.local_addr()?;
-    let handle = server.start(JsonRpcServerImpl { storage_reader }.into_rpc())?;
+    let handle =
+        server.start(JsonRpcServerImpl { chain_id: config.chain_id, storage_reader }.into_rpc())?;
     info!("Gateway is running - {}.", addr);
     Ok((addr, handle))
 }
