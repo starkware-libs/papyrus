@@ -135,11 +135,15 @@ pub trait JsonRpc {
         contract_address: ContractAddress,
     ) -> Result<ClassHash, Error>;
 
-    /// Get the nonce associated with the given address in the given block.
+    /// Gets the nonce associated with the given address in the given block.
     #[method(name = "getNonce")]
     fn get_nonce(
         &self,
         block_id: BlockId,
         contract_address: ContractAddress,
     ) -> Result<Nonce, Error>;
+
+    /// Returns the currently configured StarkNet chain id.
+    #[method(name = "chainId")]
+    fn chain_id(&self) -> Result<String, Error>;
 }

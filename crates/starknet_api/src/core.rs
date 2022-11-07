@@ -11,10 +11,19 @@ use super::{StarkFelt, StarkHash, StarknetApiError};
 
 /// Starknet chain id.
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct ChainId(pub String);
+pub struct ChainId(String);
 impl Display for ChainId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.0)
+    }
+}
+impl ChainId {
+    pub fn new(chain_id: &'static str) -> Self {
+        Self(String::from(chain_id))
+    }
+
+    pub fn as_hex(&self) -> String {
+        format!("0x{}", hex::encode(&self.0))
     }
 }
 
