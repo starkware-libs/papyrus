@@ -84,7 +84,7 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     // Check for ClassAlreadyExists error when trying to declare a different class to an existing
     // class hash.
     let txn = writer.begin_rw_txn()?;
-    let (deployed_contracts, storage_diffs, mut declared_classes, nonces) = diff1.destruct();
+    let (deployed_contracts, storage_diffs, mut declared_classes, nonces) = diff1.into();
     let mut class = declared_classes[0].contract_class.clone();
     class.abi = Some(vec![ContractClassAbiEntry::Function(FunctionAbiEntryWithType {
         r#type: FunctionAbiEntryType::Regular,
@@ -102,7 +102,7 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     // Check for ContractAlreadyExists error when trying to deploy a different class hash to an
     // existing contract address.
     let txn = writer.begin_rw_txn()?;
-    let (mut deployed_contracts, storage_diffs, declared_classes, nonces) = diff0.destruct();
+    let (mut deployed_contracts, storage_diffs, declared_classes, nonces) = diff0.into();
     let mut contract = deployed_contracts[0].clone();
     contract.class_hash = cl2;
     deployed_contracts[0] = contract;

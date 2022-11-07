@@ -238,7 +238,7 @@ async fn stream_state_updates() {
         deployed_contract_class_definitions,
     );
 
-    let (deployed_contracts, storage_diffs, declared_classes, nonces) = state_diff.destruct();
+    let (deployed_contracts, storage_diffs, declared_classes, nonces) = state_diff.into();
     assert_eq!(
         vec![
             DeployedContract { address: contract_address1, class_hash: class_hash2 },
