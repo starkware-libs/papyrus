@@ -1,4 +1,5 @@
 use assert_matches::assert_matches;
+use pretty_assertions::assert_eq;
 
 use crate::{
     shash, ClassHash, ContractAddress, ContractClass, ContractNonce, DeclaredContract,
