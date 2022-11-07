@@ -16,11 +16,11 @@ use log::error;
 use mockall::automock;
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
-use starknet_api::{BlockNumber, ClassHash, ContractClass, StarknetApiError};
+use starknet_api::{BlockNumber, ClassHash, StarknetApiError};
 use url::Url;
 
 pub use self::objects::block::{
-    client_to_starknet_api_storage_diff, Block, GlobalRoot, StateDiff, StateUpdate,
+    client_to_starknet_api_storage_diff, Block, ContractClass, GlobalRoot, StateDiff, StateUpdate,
     TransactionReceiptsError,
 };
 use self::retry::Retry;

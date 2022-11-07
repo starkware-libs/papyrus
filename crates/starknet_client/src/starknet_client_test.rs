@@ -4,13 +4,13 @@ use assert_matches::assert_matches;
 use mockito::mock;
 use reqwest::StatusCode;
 use starknet_api::{
-    shash, BlockNumber, ClassHash, ContractAddress, ContractClass, EntryPoint, EntryPointOffset,
+    shash, BlockNumber, ClassHash, ContractAddress, EntryPoint, EntryPointOffset,
     EntryPointSelector, EntryPointType, Fee, Nonce, Program, StarkHash, TransactionHash,
     TransactionSignature, TransactionVersion,
 };
 
 // TODO(dan): use SN structs once available & sort.
-use super::objects::block::StateUpdate;
+use super::objects::block::{ContractClass, StateUpdate};
 use super::objects::transaction::{DeclareTransaction, TransactionType};
 use super::test_utils::read_resource::read_resource_file;
 use super::test_utils::retry::get_test_config;
