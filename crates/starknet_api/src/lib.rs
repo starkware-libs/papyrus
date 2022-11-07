@@ -15,7 +15,7 @@ pub use self::block::{
     Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
     GlobalRoot,
 };
-pub use self::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
+pub use self::core::{ChainId, ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 pub use self::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 pub use self::state::{
     ContractClass, ContractNonce, DeclaredContract, DeployedContract, EntryPoint, EntryPointOffset,
