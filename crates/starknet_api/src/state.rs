@@ -7,11 +7,10 @@ use std::fmt::Debug;
 
 use serde::{Deserialize, Serialize};
 
-use super::core::PatriciaKey;
-use super::{
-    BlockNumber, ClassHash, ContractAddress, EntryPointSelector, Nonce, StarkFelt, StarkHash,
-    StarknetApiError,
-};
+use crate::block::BlockNumber;
+use crate::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
+use crate::hash::{StarkFelt, StarkHash};
+use crate::StarknetApiError;
 
 /// The sequential numbering of the states between blocks in StarkNet.
 // Example:
