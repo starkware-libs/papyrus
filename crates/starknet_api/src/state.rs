@@ -20,7 +20,7 @@ use super::{
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct StateNumber(BlockNumber);
+pub struct StateNumber(pub BlockNumber);
 impl StateNumber {
     // The state at the beginning of the block.
     pub fn right_before_block(block_number: BlockNumber) -> StateNumber {
