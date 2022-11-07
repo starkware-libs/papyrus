@@ -22,11 +22,11 @@ use super::{
 )]
 pub struct StateNumber(pub BlockNumber);
 impl StateNumber {
-    // The state at the beginning of the block.
+    /// The state at the beginning of the block.
     pub fn right_before_block(block_number: BlockNumber) -> StateNumber {
         StateNumber(block_number)
     }
-    // The state at the end of the block.
+    /// The state at the end of the block.
     pub fn right_after_block(block_number: BlockNumber) -> StateNumber {
         StateNumber(block_number.next())
     }
@@ -173,10 +173,8 @@ pub struct StructAbiEntry {
     pub members: Vec<StructMember>,
 }
 
-// TODO(anatg): Consider replacing this with ThinStateDiff (that is, remove ContractClass)
-// and append contract classes to the storage separately.
-// Invariant: Addresses are strictly increasing.
 /// The differences between two states in StarkNet.
+// Invariant: Addresses are strictly increasing.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct StateDiff {
     deployed_contracts: Vec<DeployedContract>,
@@ -243,6 +241,7 @@ impl From<StateDiff> for StateDiffAsTuple {
     }
 }
 
+/// The nonce of a StarkNet contract.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ContractNonce {
     pub contract_address: ContractAddress,
@@ -263,8 +262,8 @@ pub struct DeclaredContract {
     pub contract_class: ContractClass,
 }
 
-// Invariant: Addresses are strictly increasing. In particular, no address appears twice.
-// TODO(spapini): Enforce the invariant.
+// Invariant: Addresses are strictly increasing.
+// TODO: Enforce the invariant.
 /// Storage differences in StarkNet.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StorageDiff {
@@ -272,11 +271,9 @@ pub struct StorageDiff {
     pub storage_entries: Vec<StorageEntry>,
 }
 
-// TODO: Invariant: this is in range.
-// TODO(spapini): Enforce the invariant.
 /// A storage key in a StarkNet contract.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct StorageKey(PatriciaKey);
+pub struct StorageKey(pub PatriciaKey);
 
 impl TryFrom<StarkHash> for StorageKey {
     type Error = StarknetApiError;
