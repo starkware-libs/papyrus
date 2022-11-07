@@ -27,6 +27,7 @@ impl ChainId {
 pub const PATRICIA_KEY_UPPER_BOUND: &str =
     "0x800000000000000000000000000000000000000000000000000000000000000";
 
+// Invariant: key is in range.
 #[derive(Copy, Clone, Eq, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct PatriciaKey(StarkHash);
 impl PatriciaKey {
