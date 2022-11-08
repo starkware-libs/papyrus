@@ -34,7 +34,7 @@ impl StateNumber {
         self.0 <= block_number
     }
     pub fn is_after(&self, block_number: BlockNumber) -> bool {
-        self.0 > block_number
+        !self.is_before(block_number)
     }
     pub fn block_after(&self) -> BlockNumber {
         self.0
