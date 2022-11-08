@@ -1,5 +1,5 @@
 Config(
-    chain_id: ChainId("SN_GOERLI"),    
+    chain_id: ChainId("SN_GOERLI"),
     gateway_server_ip: "localhost:8080",
     central: CentralSourceConfig(
         url: "https://alpha4.starknet.io/",
