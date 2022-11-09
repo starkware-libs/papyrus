@@ -1,5 +1,6 @@
 mod sources;
 
+use std::sync::Arc;
 use std::time::Duration;
 
 use async_stream::stream;
@@ -13,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use starknet_api::{Block, BlockNumber, DeclaredContract, StateDiff};
 use starknet_client::ClientError;
 
-pub use self::sources::{CentralError, CentralSource, CentralSourceConfig};
+pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
 
 #[derive(Serialize, Deserialize)]
 pub struct SyncConfig {
@@ -21,9 +22,9 @@ pub struct SyncConfig {
 }
 
 // Orchestrates specific network interfaces (e.g. central, p2p, l1) and writes to Storage.
-pub struct StateSync {
+pub struct GenericStateSync<TCentralSource: CentralSourceTrait + Sync + Send> {
     config: SyncConfig,
-    central_source: CentralSource,
+    central_source: Arc<TCentralSource>,
     reader: StorageReader,
     writer: StorageWriter,
 }
@@ -55,28 +56,19 @@ pub enum SyncEvent {
 }
 
 #[allow(clippy::new_without_default)]
-impl StateSync {
-    pub fn new(
-        config: SyncConfig,
-        central_source: CentralSource,
-        reader: StorageReader,
-        writer: StorageWriter,
-    ) -> StateSync {
-        StateSync { config, central_source, reader, writer }
-    }
-
+impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSync<TCentralSource> {
     pub async fn run(&mut self) -> anyhow::Result<(), StateSyncError> {
         info!("State sync started.");
         loop {
             let block_stream = stream_new_blocks(
                 self.reader.clone(),
-                &self.central_source,
+                self.central_source.clone(),
                 self.config.block_propagation_sleep_duration,
             )
             .fuse();
             let state_diff_stream = stream_new_state_diffs(
                 self.reader.clone(),
-                &self.central_source,
+                self.central_source.clone(),
                 self.config.block_propagation_sleep_duration,
             )
             .fuse();
@@ -121,11 +113,11 @@ impl StateSync {
     }
 }
 
-fn stream_new_blocks(
+fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
-    central_source: &CentralSource,
+    central_source: Arc<TCentralSource>,
     block_propation_sleep_duration: Duration,
-) -> impl Stream<Item = SyncEvent> + '_ {
+) -> impl Stream<Item = SyncEvent> {
     stream! {
         loop {
             let header_marker = reader.begin_ro_txn().expect("Cannot read from block storage.")
@@ -154,11 +146,11 @@ fn stream_new_blocks(
     }
 }
 
-fn stream_new_state_diffs(
+fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
-    central_source: &CentralSource,
+    central_source: Arc<TCentralSource>,
     block_propation_sleep_duration: Duration,
-) -> impl Stream<Item = SyncEvent> + '_ {
+) -> impl Stream<Item = SyncEvent> {
     stream! {
         loop {
             let txn = reader.begin_ro_txn().expect("Cannot read from block storage.");
@@ -197,5 +189,18 @@ fn stream_new_state_diffs(
                 }
             }
         }
+    }
+}
+
+pub type StateSync = GenericStateSync<CentralSource>;
+
+impl StateSync {
+    pub fn new(
+        config: SyncConfig,
+        central_source: CentralSource,
+        reader: StorageReader,
+        writer: StorageWriter,
+    ) -> Self {
+        Self { config, central_source: Arc::new(central_source), reader, writer }
     }
 }
