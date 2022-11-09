@@ -203,10 +203,10 @@ impl StateDiff {
         mut declared_contracts: Vec<DeclaredContract>,
         mut nonces: Vec<ContractNonce>,
     ) -> Result<Self, StarknetApiError> {
-        deployed_contracts.sort_by_key(|dc| dc.address);
-        storage_diffs.sort_by_key(|sd| sd.address);
-        declared_contracts.sort_by_key(|dc| dc.class_hash);
-        nonces.sort_by_key(|n| n.contract_address);
+        deployed_contracts.sort_unstable_by_key(|dc| dc.address);
+        storage_diffs.sort_unstable_by_key(|sd| sd.address);
+        declared_contracts.sort_unstable_by_key(|dc| dc.class_hash);
+        nonces.sort_unstable_by_key(|n| n.contract_address);
 
         if !is_unique(&deployed_contracts, |dc| &dc.address) {
             return Err(StarknetApiError::DuplicateInStateDiff {
