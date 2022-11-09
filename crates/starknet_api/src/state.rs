@@ -232,6 +232,8 @@ impl StateDiff {
             });
         }
 
+        // TODO: Once nonces are implemented, verify their uniqueness.
+
         Ok(Self { deployed_contracts, storage_diffs, declared_classes: declared_contracts, nonces })
     }
 
