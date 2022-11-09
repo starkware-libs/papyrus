@@ -54,7 +54,6 @@ pub struct EventIterByContractAddress<'txn> {
 }
 
 impl EventIterByContractAddress<'_> {
-    /// This is the iterator next function. It gets the next item and returns the current one.
     pub fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
         let res = self.current.take();
         self.current = self.cursor.next()?;
@@ -71,74 +70,52 @@ pub struct EventIterByEventIndex<'txn, 'env> {
     tx_current: Option<TransactionOutputsKeyValue>,
     tx_cursor: TransactionOutputsTableCursor<'txn>,
     events_table: EventsTable<'env>,
-    current: Option<EventsTableKeyValue>,
+    event_index_in_tx_current: EventIndexInTransactionOutput,
     to_block_number: BlockNumber,
 }
 
 impl EventIterByEventIndex<'_, '_> {
-    fn get_event(
-        &self,
-        tx_index: &TransactionIndex,
-        event_index_in_tx: &EventIndexInTransactionOutput,
-        tx_output: &ThinTransactionOutput,
-    ) -> StorageResult<Option<EventsTableKeyValue>> {
-        if let Some(address) =
-            tx_output.events_contract_addresses_as_ref().iter().nth(event_index_in_tx.0)
-        {
-            let key = (*address, EventIndex(*tx_index, *event_index_in_tx));
-            if let Some(content) = self.events_table.get(self.txn, &key)? {
-                return Ok(Some((key, content)));
-            }
-        }
-
-        Ok(None)
-    }
-
-    // Returns a key-value pair that corresponds to the first event index greater than or equals to
-    // the specified index, starting from the current transaction (self.tx_current).
-    // It updates tx_cursor and tx_current.
-    fn find_next_event_by_event_index(
-        &mut self,
-        event_index_in_tx: &EventIndexInTransactionOutput,
-    ) -> StorageResult<Option<EventsTableKeyValue>> {
-        // Checks the specified index in the current transaction. If there's an event there returns
-        // it.
-        if let Some((tx_index, tx_output)) = &self.tx_current {
-            if let Some(item) = self.get_event(tx_index, event_index_in_tx, tx_output)? {
-                return Ok(Some(item));
-            };
-        }
-
-        // There are no more events in the current transaction, so we go over the rest of the
-        // transactions until we find an event.
-        self.tx_current = self.tx_cursor.next()?;
+    // Finds the event that corresponds to the first event index greater than or equals to the
+    // current event index. The current event index is composed of the transaction index of the
+    // current transaction (tx_current) and the event index in current transaction output
+    // (event_index_in_tx_current).
+    fn find_next_event_by_event_index(&mut self) -> StorageResult<Option<()>> {
         while let Some((tx_index, tx_output)) = &self.tx_current {
             if tx_index.0 > self.to_block_number {
                 break;
             }
-            if let Some(item) =
-                self.get_event(tx_index, &EventIndexInTransactionOutput(0), tx_output)?
+            // Checks if there's an event in the current event index.
+            if tx_output.events_contract_addresses_as_ref().len() > self.event_index_in_tx_current.0
             {
-                return Ok(Some(item));
+                return Ok(Some(()));
             }
+
+            // There are no more events in the current transaction, so we go over the rest of the
+            // transactions until we find an event.
             self.tx_current = self.tx_cursor.next()?;
+            self.event_index_in_tx_current = EventIndexInTransactionOutput(0);
         }
 
         Ok(None)
     }
 
-    /// This is the iterator next function. It gets the next item and returns the current one.
     pub fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
-        match self.current {
-            None => Ok(None),
-            Some((key, _)) => {
-                let res = self.current.take();
-                let current_event_index_in_tx = (key.1).1;
-                self.current =
-                    self.find_next_event_by_event_index(&current_event_index_in_tx.next())?;
-                Ok(res)
+        if let Some((tx_index, tx_output)) = &self.tx_current {
+            if let Some(address) = tx_output
+                .events_contract_addresses_as_ref()
+                .iter()
+                .nth(self.event_index_in_tx_current.0)
+            {
+                let key = (*address, EventIndex(*tx_index, self.event_index_in_tx_current));
+                if let Some(content) = self.events_table.get(self.txn, &key)? {
+                    self.event_index_in_tx_current.0 += 1;
+                    self.find_next_event_by_event_index()?;
+                    return Ok(Some((key, content)));
+                }
             }
         }
+
+        Ok(None)
     }
 }
 
@@ -185,10 +162,10 @@ impl<'txn, 'env> StorageTxn<'env, RO> {
             tx_current,
             tx_cursor,
             events_table,
-            current: None,
+            event_index_in_tx_current: event_index.1,
             to_block_number,
         };
-        it.current = it.find_next_event_by_event_index(&event_index.1)?;
+        it.find_next_event_by_event_index()?;
         Ok(it)
     }
 }

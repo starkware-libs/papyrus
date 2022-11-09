@@ -24,12 +24,6 @@ pub struct TransactionOffsetInBlock(pub usize);
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct EventIndexInTransactionOutput(pub usize);
-impl EventIndexInTransactionOutput {
-    // Note that there might not be an event in this index.
-    pub fn next(&self) -> Self {
-        Self(self.0 + 1)
-    }
-}
 
 /// A fee in StarkNet.
 #[derive(
