@@ -210,13 +210,13 @@ impl StateDiff {
 
         if !is_unique(&deployed_contracts, |dc| &dc.address) {
             return Err(StarknetApiError::DuplicateInStateDiff {
-                object: String::from("deployed_contracts"),
+                object: "deployed_contracts".to_string(),
             });
         }
 
         if !is_unique(&declared_contracts, |dc| dc) {
             return Err(StarknetApiError::DuplicateInStateDiff {
-                object: String::from("declared_contracts"),
+                object: "declared_contracts".to_string(),
             });
         }
 
