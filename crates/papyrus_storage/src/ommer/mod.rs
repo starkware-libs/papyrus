@@ -121,7 +121,7 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
 
         for storage_diff in thin_state_diff.storage_diffs() {
             for storage_entry in &storage_diff.storage_entries {
-                let key = (storage_diff.address, storage_entry.key.clone(), block_hash);
+                let key = (storage_diff.address, storage_entry.key, block_hash);
                 let value = storage_entry.value;
                 ommer_storage_table.insert(&self.txn, &key, &value)?;
             }
