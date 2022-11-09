@@ -226,7 +226,7 @@ impl StateDiff {
             }
         }
 
-        if !is_unique(&declared_contracts, |dc| dc) {
+        if !is_unique(&declared_contracts, |dc| &dc.class_hash) {
             return Err(StarknetApiError::DuplicateInStateDiff {
                 object: "declared_contracts".to_string(),
             });
