@@ -33,8 +33,8 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
             StorageDiff {
                 address: c0,
                 storage_entries: vec![
-                    StorageEntry { key: key0.clone(), value: shash!("0x200") },
-                    StorageEntry { key: key1.clone(), value: shash!("0x201") },
+                    StorageEntry { key: key0, value: shash!("0x200") },
+                    StorageEntry { key: key1, value: shash!("0x201") },
                 ],
             },
             StorageDiff { address: c1, storage_entries: vec![] },
@@ -51,13 +51,13 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
             StorageDiff {
                 address: c0,
                 storage_entries: vec![
-                    StorageEntry { key: key0.clone(), value: shash!("0x300") },
-                    StorageEntry { key: key1.clone(), value: shash!("0x0") },
+                    StorageEntry { key: key0, value: shash!("0x300") },
+                    StorageEntry { key: key1, value: shash!("0x0") },
                 ],
             },
             StorageDiff {
                 address: c1,
-                storage_entries: vec![StorageEntry { key: key0.clone(), value: shash!("0x0") }],
+                storage_entries: vec![StorageEntry { key: key0, value: shash!("0x0") }],
             },
         ],
         vec![DeclaredContract { class_hash: cl0, contract_class: c_cls0.clone() }],

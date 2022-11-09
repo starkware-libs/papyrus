@@ -254,18 +254,14 @@ async fn get_storage_at() -> Result<(), anyhow::Error> {
     let storage_diff = diff.storage_diffs().index(0);
     let address = storage_diff.address;
     let storage_entry = storage_diff.storage_entries.index(0);
-    let key = storage_entry.key.clone();
+    let key = storage_entry.key;
     let expected_value = storage_entry.value;
 
     // Get storage by block hash.
     let res = module
         .call::<_, StarkFelt>(
             "starknet_getStorageAt",
-            (
-                address,
-                key.clone(),
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)),
-            ),
+            (address, key, BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))),
         )
         .await?;
     assert_eq!(res, expected_value);
@@ -274,11 +270,7 @@ async fn get_storage_at() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, StarkFelt>(
             "starknet_getStorageAt",
-            (
-                address,
-                key.clone(),
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-            ),
+            (address, key, BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))),
         )
         .await?;
     assert_eq!(res, expected_value);
@@ -289,7 +281,7 @@ async fn get_storage_at() -> Result<(), anyhow::Error> {
             "starknet_getStorageAt",
             (
                 ContractAddress::try_from(shash!("0x12")).unwrap(),
-                key.clone(),
+                key,
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)),
             ),
         )
@@ -307,7 +299,7 @@ async fn get_storage_at() -> Result<(), anyhow::Error> {
             "starknet_getStorageAt",
             (
                 address,
-                key.clone(),
+                key,
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash::new(shash!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
@@ -325,11 +317,7 @@ async fn get_storage_at() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, StarkFelt>(
             "starknet_getStorageAt",
-            (
-                address,
-                key.clone(),
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber::new(1))),
-            ),
+            (address, key, BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber::new(1)))),
         )
         .await
         .unwrap_err();
