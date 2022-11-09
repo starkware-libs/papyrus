@@ -27,7 +27,7 @@ pub async fn send_request(
 }
 
 pub fn get_test_chain_id() -> ChainId {
-    ChainId::new("SN_GOERLI")
+    ChainId(String::from("SN_GOERLI"))
 }
 
 pub fn get_test_gateway_config() -> GatewayConfig {
