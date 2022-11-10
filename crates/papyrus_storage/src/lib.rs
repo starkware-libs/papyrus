@@ -88,7 +88,7 @@ pub struct DbTablesStats {
     pub stats: HashMap<String, DbTableStats>,
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub enum MarkerKind {
     Header,
     Body,
