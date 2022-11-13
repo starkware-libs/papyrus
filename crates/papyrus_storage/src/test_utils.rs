@@ -132,9 +132,7 @@ pub fn get_test_header() -> BlockHeader {
 }
 
 pub fn get_test_block(transaction_count: usize) -> Block {
-    let header = get_test_header();
-
-    Block { header, body: get_test_body(transaction_count) }
+    Block { header: get_test_header(), body: get_test_body(transaction_count) }
 }
 
 /// Returns the body of block number 1 in starknet mainnet.
@@ -265,6 +263,15 @@ pub fn get_alpha4_starknet_block() -> Block {
     };
 
     Block { header, body: get_alpha4_starknet_body() }
+}
+
+pub fn get_test_contract_class() -> ContractClass {
+    serde_json::from_value(read_json_file_from_storage_resources("contract_class.json").unwrap())
+        .unwrap()
+}
+
+pub fn get_test_program() -> Program {
+    serde_json::from_value(read_json_file_from_storage_resources("program.json").unwrap()).unwrap()
 }
 
 pub fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff, Vec<DeclaredContract>) {
