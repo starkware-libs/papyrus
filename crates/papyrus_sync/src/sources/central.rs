@@ -87,7 +87,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                 while let Some(maybe_state_update) = state_update_stream.next().await{
                     match maybe_state_update {
                         Ok((state_update, classes)) => {
-                            let (declared_classes, deployed_contract_class_definitions) = classes.split_at(state_update.state_diff.declared_classes.len());
+                            let (declared_classes, deployed_contract_class_definitions) = classes.split_at(state_update.state_diff.declared_contracts.len());
                             let maybe_state_diff = StateDiff::new(
                                 state_update.state_diff.deployed_contracts,
                                 client_to_starknet_api_storage_diff(state_update.state_diff.storage_diffs),
