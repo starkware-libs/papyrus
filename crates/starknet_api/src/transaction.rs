@@ -1,11 +1,73 @@
 use serde::{Deserialize, Serialize};
 use web3::types::H160;
 
-use super::serde_utils::PrefixedHexAsBytes;
-use super::{
+use crate::serde_utils::PrefixedHexAsBytes;
+use crate::{
     BlockHash, BlockNumber, ClassHash, ContractAddress, EntryPointSelector, Nonce, StarkFelt,
     StarkHash,
 };
+
+/// A transaction in StarkNet.
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub enum Transaction {
+    /// A declare transaction.
+    Declare(DeclareTransaction),
+    /// A deploy transaction.
+    Deploy(DeployTransaction),
+    /// A deploy account transaction.
+    DeployAccount(DeployAccountTransaction),
+    /// An invoke transaction.
+    Invoke(InvokeTransaction),
+    /// An L1 handler transaction.
+    L1Handler(L1HandlerTransaction),
+}
+impl Transaction {
+    pub fn transaction_hash(&self) -> TransactionHash {
+        match self {
+            Transaction::Declare(tx) => tx.transaction_hash,
+            Transaction::Deploy(tx) => tx.transaction_hash,
+            Transaction::DeployAccount(tx) => tx.transaction_hash,
+            Transaction::Invoke(tx) => tx.transaction_hash,
+            Transaction::L1Handler(tx) => tx.transaction_hash,
+        }
+    }
+}
+
+/// A transaction output in StarkNet.
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub enum TransactionOutput {
+    /// A declare transaction output.
+    Declare(DeclareTransactionOutput),
+    /// A deploy transaction output.
+    Deploy(DeployTransactionOutput),
+    /// A deploy account transaction output.
+    DeployAccount(DeployAccountTransactionOutput),
+    /// An invoke transaction output.
+    Invoke(InvokeTransactionOutput),
+    /// An L1 handler transaction output.
+    L1Handler(L1HandlerTransactionOutput),
+}
+impl TransactionOutput {
+    pub fn actual_fee(&self) -> Fee {
+        match self {
+            TransactionOutput::Declare(output) => output.actual_fee,
+            TransactionOutput::Deploy(output) => output.actual_fee,
+            TransactionOutput::DeployAccount(output) => output.actual_fee,
+            TransactionOutput::Invoke(output) => output.actual_fee,
+            TransactionOutput::L1Handler(output) => output.actual_fee,
+        }
+    }
+
+    pub fn events(&self) -> &Vec<Event> {
+        match self {
+            TransactionOutput::Declare(output) => &output.events,
+            TransactionOutput::Deploy(output) => &output.events,
+            TransactionOutput::DeployAccount(output) => &output.events,
+            TransactionOutput::Invoke(output) => &output.events,
+            TransactionOutput::L1Handler(output) => &output.events,
+        }
+    }
+}
 
 /// The hash of a transaction in a StarkNet.
 #[derive(
@@ -184,21 +246,6 @@ pub struct TransactionReceipt {
     pub output: TransactionOutput,
 }
 
-/// A transaction output in StarkNet.
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub enum TransactionOutput {
-    /// A declare transaction output.
-    Declare(DeclareTransactionOutput),
-    /// A deploy transaction output.
-    Deploy(DeployTransactionOutput),
-    /// A deploy account transaction output.
-    DeployAccount(DeployAccountTransactionOutput),
-    /// An invoke transaction output.
-    Invoke(InvokeTransactionOutput),
-    /// An L1 handler transaction output.
-    L1Handler(L1HandlerTransactionOutput),
-}
-
 /// An invoke transaction output in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct InvokeTransactionOutput {
@@ -237,52 +284,4 @@ pub struct DeployAccountTransactionOutput {
     pub actual_fee: Fee,
     pub messages_sent: Vec<MessageToL1>,
     pub events: Vec<Event>,
-}
-
-impl TransactionOutput {
-    pub fn actual_fee(&self) -> Fee {
-        match self {
-            TransactionOutput::Declare(output) => output.actual_fee,
-            TransactionOutput::Deploy(output) => output.actual_fee,
-            TransactionOutput::DeployAccount(output) => output.actual_fee,
-            TransactionOutput::Invoke(output) => output.actual_fee,
-            TransactionOutput::L1Handler(output) => output.actual_fee,
-        }
-    }
-
-    pub fn events(&self) -> &Vec<Event> {
-        match self {
-            TransactionOutput::Declare(output) => &output.events,
-            TransactionOutput::Deploy(output) => &output.events,
-            TransactionOutput::DeployAccount(output) => &output.events,
-            TransactionOutput::Invoke(output) => &output.events,
-            TransactionOutput::L1Handler(output) => &output.events,
-        }
-    }
-}
-
-/// A transaction in StarkNet.
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub enum Transaction {
-    /// A declare transaction.
-    Declare(DeclareTransaction),
-    /// A deploy transaction.
-    Deploy(DeployTransaction),
-    /// A deploy account transaction.
-    DeployAccount(DeployAccountTransaction),
-    /// An invoke transaction.
-    Invoke(InvokeTransaction),
-    /// An L1 handler transaction.
-    L1Handler(L1HandlerTransaction),
-}
-impl Transaction {
-    pub fn transaction_hash(&self) -> TransactionHash {
-        match self {
-            Transaction::Declare(tx) => tx.transaction_hash,
-            Transaction::Deploy(tx) => tx.transaction_hash,
-            Transaction::DeployAccount(tx) => tx.transaction_hash,
-            Transaction::Invoke(tx) => tx.transaction_hash,
-            Transaction::L1Handler(tx) => tx.transaction_hash,
-        }
-    }
 }
