@@ -1,6 +1,9 @@
 use std::net::SocketAddr;
 
 use reqwest::Client;
+use starknet_api::ChainId;
+
+use super::GatewayConfig;
 
 // TODO(anatg): See if this can be usefull for the benchmark testing as well.
 pub async fn send_request(
@@ -21,4 +24,12 @@ pub async fn send_request(
         .text()
         .await?;
     Ok(serde_json::from_str(&res_str)?)
+}
+
+pub fn get_test_chain_id() -> ChainId {
+    ChainId("SN_GOERLI".to_string())
+}
+
+pub fn get_test_gateway_config() -> GatewayConfig {
+    GatewayConfig { chain_id: get_test_chain_id(), server_ip: String::from("127.0.0.1:0") }
 }

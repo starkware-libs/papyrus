@@ -13,8 +13,8 @@ use starknet_api::ChainId;
 #[derive(Deserialize, Serialize)]
 pub struct Config {
     pub chain_id: ChainId,
+    pub gateway_server_ip: String,
     pub central: CentralSourceConfig,
-    pub gateway: GatewayConfig,
     pub monitoring_gateway: MonitoringGatewayConfig,
     pub storage: StorageConfig,
     pub sync: SyncConfig,

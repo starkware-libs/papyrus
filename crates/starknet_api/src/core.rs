@@ -17,6 +17,11 @@ impl Display for ChainId {
         write!(f, "{:?}", self.0)
     }
 }
+impl ChainId {
+    pub fn as_hex(&self) -> String {
+        format!("0x{}", hex::encode(&self.0))
+    }
+}
 
 /// 2**251
 pub const PATRICIA_KEY_UPPER_BOUND: &str =
