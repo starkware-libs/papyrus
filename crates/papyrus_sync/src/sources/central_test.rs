@@ -7,7 +7,7 @@ use mockall::predicate;
 use reqwest::StatusCode;
 use starknet_api::{
     shash, BlockHash, BlockNumber, ClassHash, ContractAddress, DeclaredContract, DeployedContract,
-    StarkHash, StorageDiff, StorageEntry, StorageKey,
+    Nonce, StarkHash, StorageDiff, StorageEntry, StorageKey,
 };
 use starknet_client::{
     Block, ClientError, ContractClass, GlobalRoot, MockStarknetClientTrait, StateUpdate,
@@ -154,6 +154,7 @@ async fn stream_state_updates() {
     let class_hash3 = ClassHash::new(shash!("0x789"));
     let contract_address1 = ContractAddress::try_from(shash!("0xabc")).unwrap();
     let contract_address2 = ContractAddress::try_from(shash!("0xdef")).unwrap();
+    let nonce1 = Nonce::new(shash!("0x123456789abcdef"));
     let root1 = GlobalRoot(shash!("0x111"));
     let root2 = GlobalRoot(shash!("0x222"));
     let block_hash1 = BlockHash::new(shash!("0x333"));
@@ -176,6 +177,7 @@ async fn stream_state_updates() {
             DeployedContract { address: contract_address2, class_hash: class_hash3 },
         ],
         declared_contracts: vec![class_hash1, class_hash3],
+        nonces: BTreeMap::from([(contract_address1, nonce1)]),
     };
     let client_state_diff2 = starknet_client::StateDiff::default();
 

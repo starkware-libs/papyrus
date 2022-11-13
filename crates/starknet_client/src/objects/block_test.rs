@@ -4,7 +4,7 @@ use assert::assert_ok;
 use assert_matches::assert_matches;
 use starknet_api::serde_utils::bytes_from_hex_str;
 use starknet_api::{
-    shash, BlockHash, ClassHash, ContractAddress, DeployedContract, StarkHash, StorageEntry,
+    shash, BlockHash, ClassHash, ContractAddress, DeployedContract, Nonce, StarkHash, StorageEntry,
     StorageKey, TransactionHash, TransactionOffsetInBlock,
 };
 
@@ -78,6 +78,13 @@ fn load_block_state_update_succeeds() {
                 )),
             }],
             declared_contracts: vec![],
+            nonces: BTreeMap::from([(
+                ContractAddress::try_from(shash!(
+                    "0x51c62af8919b31499b36bd1f1f702c8ef5a6309554427186c7bd456b862c115"
+                ))
+                .unwrap(),
+                Nonce::new(shash!("0x12")),
+            )]),
         },
     };
     assert_eq!(
