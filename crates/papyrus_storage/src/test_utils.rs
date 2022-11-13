@@ -8,8 +8,8 @@ use starknet_api::{
     ClassHash, ContractAddress, ContractAddressSalt, ContractClass, ContractNonce,
     DeclaredContract, DeployTransaction, DeployTransactionOutput, DeployedContract,
     EntryPointSelector, EthAddress, Event, EventContent, EventData, Fee, GasPrice, GlobalRoot,
-    InvokeTransaction, InvokeTransactionOutput, L2ToL1Payload, MessageToL1, Nonce, StarkHash,
-    StateDiff, StorageDiff, StorageEntry, StorageKey, Transaction, TransactionHash,
+    InvokeTransaction, InvokeTransactionOutput, L2ToL1Payload, MessageToL1, Nonce, Program,
+    StarkHash, StateDiff, StorageDiff, StorageEntry, StorageKey, Transaction, TransactionHash,
     TransactionOutput, TransactionSignature, TransactionVersion,
 };
 use tempfile::tempdir;
@@ -108,9 +108,7 @@ pub fn get_test_header() -> BlockHeader {
 }
 
 pub fn get_test_block(transaction_count: usize) -> Block {
-    let header = get_test_header();
-
-    Block { header, body: get_test_body(transaction_count) }
+    Block { header: get_test_header(), body: get_test_body(transaction_count) }
 }
 
 /// Returns the body of block number 1 in starknet mainnet.
@@ -243,6 +241,15 @@ pub fn get_alpha4_starknet_block() -> Block {
     Block { header, body: get_alpha4_starknet_body() }
 }
 
+pub fn get_test_contract_class() -> ContractClass {
+    serde_json::from_value(read_json_file_from_storage_resources("contract_class.json").unwrap())
+        .unwrap()
+}
+
+pub fn get_test_program() -> Program {
+    serde_json::from_value(read_json_file_from_storage_resources("program.json").unwrap()).unwrap()
+}
+
 pub fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff, Vec<DeclaredContract>) {
     let parent_hash =
         BlockHash::new(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
@@ -269,8 +276,7 @@ pub fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff, Vec<Declar
     .unwrap();
     let hash0 =
         ClassHash::new(shash!("0x10455c752b86932ce552f2b0fe81a880746649b9aee7e0d842bf3f52378f9f8"));
-    let class_value = read_json_file_from_storage_resources("contract_class.json").unwrap();
-    let class0 = serde_json::from_value(class_value).unwrap();
+    let class0 = get_test_contract_class();
     let address1 = ContractAddress::try_from(shash!("0x21")).unwrap();
     let hash1 = ClassHash::new(shash!("0x5"));
     let class1 = ContractClass::default();
