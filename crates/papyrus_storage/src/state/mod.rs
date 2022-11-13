@@ -272,7 +272,7 @@ fn write_storage_diffs<'env>(
 ) -> StorageResult<()> {
     for StorageDiff { address, storage_entries } in state_diff.storage_diffs() {
         for StorageEntry { key, value } in storage_entries {
-            storage_table.upsert(txn, &(*address, key.clone(), block_number), value)?;
+            storage_table.upsert(txn, &(*address, *key, block_number), value)?;
         }
     }
     Ok(())
@@ -342,7 +342,7 @@ fn delete_storage_diffs<'env>(
 ) -> StorageResult<()> {
     for StorageDiff { address, storage_entries } in thin_state_diff.storage_diffs() {
         for StorageEntry { key, value: _ } in storage_entries {
-            storage_table.delete(txn, &(*address, key.clone(), block_number))?;
+            storage_table.delete(txn, &(*address, *key, block_number))?;
         }
     }
     Ok(())
@@ -433,7 +433,7 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         // The updates to the storage key are indexed by the block_number at which they occurred.
         let first_irrelevant_block: BlockNumber = state_number.block_after();
         // The relevant update is the last update strictly before `first_irrelevant_block`.
-        let db_key = (*address, key.clone(), first_irrelevant_block);
+        let db_key = (*address, *key, first_irrelevant_block);
         // Find the previous db item.
         let mut cursor = self.storage_table.cursor(self.txn)?;
         cursor.lower_bound(&db_key)?;

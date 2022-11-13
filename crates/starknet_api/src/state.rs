@@ -202,10 +202,13 @@ impl StateDiff {
         mut declared_contracts: Vec<DeclaredContract>,
         mut nonces: Vec<ContractNonce>,
     ) -> Result<Self, StarknetApiError> {
-        deployed_contracts.sort_by_key(|dc| dc.address);
-        storage_diffs.sort_by_key(|sd| sd.address);
-        declared_contracts.sort_by_key(|dc| dc.class_hash);
-        nonces.sort_by_key(|n| n.contract_address);
+        deployed_contracts.sort_unstable_by_key(|dc| dc.address);
+        storage_diffs.sort_unstable_by_key(|sd| sd.address);
+        for storage_diff in storage_diffs.iter_mut() {
+            storage_diff.storage_entries.sort_unstable_by_key(|se| se.key);
+        }
+        declared_contracts.sort_unstable_by_key(|dc| dc.class_hash);
+        nonces.sort_unstable_by_key(|n| n.contract_address);
 
         if !is_unique(&deployed_contracts, |dc| &dc.address) {
             return Err(StarknetApiError::DuplicateInStateDiff {
@@ -213,11 +216,22 @@ impl StateDiff {
             });
         }
 
-        if !is_unique(&declared_contracts, |dc| dc) {
+        for storage_diff in storage_diffs.iter() {
+            let storage_entries = &storage_diff.storage_entries;
+            if !is_unique(storage_entries.as_slice(), |se| &se.key) {
+                return Err(StarknetApiError::DuplicateInStateDiff {
+                    object: format!("storage_entries at {:?}", storage_diff.address),
+                });
+            }
+        }
+
+        if !is_unique(&declared_contracts, |dc| &dc.class_hash) {
             return Err(StarknetApiError::DuplicateInStateDiff {
                 object: "declared_contracts".to_string(),
             });
         }
+
+        // TODO: Once nonces are implemented, verify their uniqueness.
 
         Ok(Self { deployed_contracts, storage_diffs, declared_classes: declared_contracts, nonces })
     }
@@ -274,7 +288,9 @@ pub struct StorageDiff {
 // TODO: Invariant: this is in range.
 // TODO(spapini): Enforce the invariant.
 /// A storage key in a StarkNet contract.
-#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(
+    Debug, Default, Clone, Copy, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
 pub struct StorageKey(PatriciaKey);
 
 impl TryFrom<StarkHash> for StorageKey {
