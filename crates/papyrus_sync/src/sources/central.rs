@@ -7,7 +7,9 @@ use futures::{future, pin_mut, TryStreamExt};
 use futures_util::StreamExt;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
-use starknet_api::{Block, BlockNumber, DeclaredContract, StarknetApiError, StateDiff};
+use starknet_api::{
+    Block, BlockNumber, ContractNonce, DeclaredContract, StarknetApiError, StateDiff,
+};
 use starknet_client::{
     client_to_starknet_api_storage_diff, ClientCreationError, ClientError, RetryConfig,
     StarknetClient, StarknetClientTrait, StateUpdate,
@@ -87,13 +89,23 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                 while let Some(maybe_state_update) = state_update_stream.next().await{
                     match maybe_state_update {
                         Ok((state_update, classes)) => {
-                            let (declared_classes, deployed_contract_class_definitions) = classes.split_at(state_update.state_diff.declared_contracts.len());
+                            let (declared_classes, deployed_contract_class_definitions) =
+                                classes.split_at(state_update.state_diff.declared_contracts.len());
                             let maybe_state_diff = StateDiff::new(
                                 state_update.state_diff.deployed_contracts,
-                                client_to_starknet_api_storage_diff(state_update.state_diff.storage_diffs),
+                                client_to_starknet_api_storage_diff(
+                                    state_update.state_diff.storage_diffs,
+                                ),
                                 declared_classes.to_vec(),
-                                // TODO(dan): fix once nonces are available.
-                                vec![],
+                                state_update
+                                    .state_diff
+                                    .nonces
+                                    .into_iter()
+                                    .map(|(contract_address, nonce)| ContractNonce {
+                                        contract_address,
+                                        nonce,
+                                    })
+                                    .collect(),
                             );
                             match maybe_state_diff {
                                 Ok(state_diff) => {

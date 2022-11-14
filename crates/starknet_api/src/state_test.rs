@@ -69,35 +69,27 @@ fn state_sorted() {
 #[test]
 fn state_unique() {
     let hash0 = shash!("0x0");
-
+    let hash1 = shash!("0x1");
     let dep_contract = DeployedContract {
         address: ContractAddress::try_from(hash0).unwrap(),
         class_hash: ClassHash::new(hash0),
     };
-
     let storage_diff =
         StorageDiff { address: ContractAddress::try_from(hash0).unwrap(), storage_entries: vec![] };
-
     let dec_contract = DeclaredContract {
         class_hash: ClassHash::new(hash0),
         contract_class: ContractClass::default(),
     };
-
     let nonce = ContractNonce {
         contract_address: ContractAddress::try_from(hash0).unwrap(),
         nonce: Nonce::new(hash0),
     };
 
-    let hash1 = shash!("0x1");
+    // Deployed contracts.
     let deployed_contract_duplicate = DeployedContract {
         address: ContractAddress::try_from(hash0).unwrap(),
         class_hash: ClassHash::new(hash1),
     };
-    let declared_contract_duplicate = DeclaredContract {
-        class_hash: ClassHash::new(hash0),
-        contract_class: ContractClass::default(),
-    };
-
     let state_diff_with_duplicate_deployed_contract = StateDiff::new(
         vec![dep_contract.clone(), deployed_contract_duplicate],
         vec![storage_diff.clone()],
@@ -106,11 +98,29 @@ fn state_unique() {
     );
     assert_matches!(state_diff_with_duplicate_deployed_contract, Err(StarknetApiError::DuplicateInStateDiff{object}) if object == "deployed_contracts");
 
+    // Declared contracts.
+    let declared_contract_duplicate = DeclaredContract {
+        class_hash: ClassHash::new(hash0),
+        contract_class: ContractClass::default(),
+    };
     let state_diff_with_duplicate_declared_contract = StateDiff::new(
-        vec![dep_contract],
-        vec![storage_diff],
-        vec![dec_contract, declared_contract_duplicate],
-        vec![nonce],
+        vec![dep_contract.clone()],
+        vec![storage_diff.clone()],
+        vec![dec_contract.clone(), declared_contract_duplicate],
+        vec![nonce.clone()],
     );
     assert_matches!(state_diff_with_duplicate_declared_contract, Err(StarknetApiError::DuplicateInStateDiff{object}) if object == "declared_contracts");
+
+    // Nonces.
+    let nonce_duplicate = ContractNonce {
+        contract_address: ContractAddress::try_from(hash0).unwrap(),
+        nonce: Nonce::new(hash1),
+    };
+    let state_diff_with_duplicate_nonces = StateDiff::new(
+        vec![dep_contract],
+        vec![storage_diff],
+        vec![dec_contract],
+        vec![nonce, nonce_duplicate],
+    );
+    assert_matches!(state_diff_with_duplicate_nonces, Err(StarknetApiError::DuplicateInStateDiff{object}) if object == "nonces");
 }

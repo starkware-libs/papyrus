@@ -6,8 +6,8 @@ use futures_util::pin_mut;
 use mockall::predicate;
 use reqwest::StatusCode;
 use starknet_api::{
-    shash, BlockHash, BlockNumber, ClassHash, ContractAddress, DeclaredContract, DeployedContract,
-    Nonce, StarkHash, StorageDiff, StorageEntry, StorageKey,
+    shash, BlockHash, BlockNumber, ClassHash, ContractAddress, ContractNonce, DeclaredContract,
+    DeployedContract, Nonce, StarkHash, StorageDiff, StorageEntry, StorageKey,
 };
 use starknet_client::{
     Block, ClientError, ContractClass, GlobalRoot, MockStarknetClientTrait, StateUpdate,
@@ -259,7 +259,7 @@ async fn stream_state_updates() {
         ],
         declared_classes,
     );
-    assert!(nonces.is_empty());
+    assert_eq!(vec![ContractNonce { contract_address: contract_address1, nonce: nonce1 }], nonces);
 
     let (current_block_num, state_diff, _deployed_classes) =
         if let Some(Ok(state_diff_tuple)) = stream.next().await {
