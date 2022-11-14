@@ -13,13 +13,13 @@ use super::{
 )]
 pub struct TransactionHash(pub StarkHash);
 
-/// The index of a transaction in a StarkNet [`BlockBody`](super::BlockBody).
+/// The index of a transaction in a StarkNet [`BlockBody`](crate::BlockBody).
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct TransactionOffsetInBlock(pub usize);
 
-/// The index of an event in a StarkNet [`TransactionOutput`](super::TransactionOutput).
+/// The index of an event in a StarkNet [`TransactionOutput`](crate::TransactionOutput).
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
@@ -50,6 +50,7 @@ pub struct EventData(pub Vec<StarkFelt>);
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct EventKey(pub StarkFelt);
 
+/// An event content in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct EventContent {
     pub keys: Vec<EventKey>,
@@ -231,7 +232,7 @@ pub struct DeployTransactionOutput {
     pub events: Vec<Event>,
 }
 
-/// A deploy transaction output in StarkNet.
+/// A deploy-account transaction output in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeployAccountTransactionOutput {
     pub actual_fee: Fee,
