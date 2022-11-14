@@ -204,9 +204,6 @@ impl StateDiff {
     ) -> Result<Self, StarknetApiError> {
         deployed_contracts.sort_unstable_by_key(|dc| dc.address);
         storage_diffs.sort_unstable_by_key(|sd| sd.address);
-        for storage_diff in storage_diffs.iter_mut() {
-            storage_diff.storage_entries.sort_unstable_by_key(|se| se.key);
-        }
         declared_contracts.sort_unstable_by_key(|dc| dc.class_hash);
         nonces.sort_unstable_by_key(|n| n.contract_address);
 
@@ -216,13 +213,10 @@ impl StateDiff {
             });
         }
 
-        for storage_diff in storage_diffs.iter() {
-            let storage_entries = &storage_diff.storage_entries;
-            if !is_unique(storage_entries.as_slice(), |se| &se.key) {
-                return Err(StarknetApiError::DuplicateInStateDiff {
-                    object: format!("storage_entries at {:?}", storage_diff.address),
-                });
-            }
+        if !is_unique(&storage_diffs, |sd| &sd.address) {
+            return Err(StarknetApiError::DuplicateInStateDiff {
+                object: "storage_diffs".to_string(),
+            });
         }
 
         if !is_unique(&declared_contracts, |dc| &dc.class_hash) {
@@ -276,17 +270,33 @@ pub struct DeclaredContract {
     pub contract_class: ContractClass,
 }
 
-// Invariant: Addresses are strictly increasing. In particular, no address appears twice.
-// TODO(spapini): Enforce the invariant.
+// Invariant: Storage keys are strictly increasing. In particular, no key appears twice.
 /// Storage differences in StarkNet.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StorageDiff {
     pub address: ContractAddress,
-    pub storage_entries: Vec<StorageEntry>,
+    storage_entries: Vec<StorageEntry>,
+}
+
+impl StorageDiff {
+    // TODO: Test creation of StorageDiff.
+    pub fn new(
+        address: ContractAddress,
+        mut storage_entries: Vec<StorageEntry>,
+    ) -> Result<Self, StarknetApiError> {
+        storage_entries.sort_unstable_by_key(|se| se.key);
+        if !is_unique(storage_entries.as_slice(), |se| &se.key) {
+            return Err(StarknetApiError::DuplicateStorageEntry);
+        }
+        Ok(Self { address, storage_entries })
+    }
+
+    pub fn storage_entries(&self) -> &[StorageEntry] {
+        &self.storage_entries
+    }
 }
 
 // TODO: Invariant: this is in range.
-// TODO(spapini): Enforce the invariant.
 /// A storage key in a StarkNet contract.
 #[derive(
     Debug, Default, Clone, Copy, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,

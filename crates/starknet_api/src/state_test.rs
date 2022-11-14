@@ -20,9 +20,9 @@ fn state_sorted() {
         class_hash: ClassHash::new(hash1),
     };
     let storage_diff_0 =
-        StorageDiff { address: ContractAddress::try_from(hash0).unwrap(), storage_entries: vec![] };
+        StorageDiff::new(ContractAddress::try_from(hash0).unwrap(), vec![]).unwrap();
     let storage_diff_1 =
-        StorageDiff { address: ContractAddress::try_from(hash1).unwrap(), storage_entries: vec![] };
+        StorageDiff::new(ContractAddress::try_from(hash1).unwrap(), vec![]).unwrap();
 
     let dec_contract_0 = DeclaredContract {
         class_hash: ClassHash::new(hash0),
