@@ -7,7 +7,7 @@ use std::collections::HashSet;
 
 use starknet_api::{
     BlockNumber, ClassHash, ContractAddress, ContractClass, DeclaredContract, Nonce, StarkFelt,
-    StateDiff, StateNumber, StorageDiff, StorageEntry, StorageKey,
+    StateDiff, StateNumber, StorageEntry, StorageKey,
 };
 
 pub use self::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
@@ -270,9 +270,10 @@ fn write_storage_diffs<'env>(
     block_number: BlockNumber,
     storage_table: &'env ContractStorageTable<'env>,
 ) -> StorageResult<()> {
-    for StorageDiff { address, storage_entries } in state_diff.storage_diffs() {
+    for storage_diff in state_diff.storage_diffs() {
+        let storage_entries = storage_diff.storage_entries();
         for StorageEntry { key, value } in storage_entries {
-            storage_table.upsert(txn, &(*address, *key, block_number), value)?;
+            storage_table.upsert(txn, &(storage_diff.address, *key, block_number), value)?;
         }
     }
     Ok(())
@@ -340,9 +341,10 @@ fn delete_storage_diffs<'env>(
     thin_state_diff: &ThinStateDiff,
     storage_table: &'env ContractStorageTable<'env>,
 ) -> StorageResult<()> {
-    for StorageDiff { address, storage_entries } in thin_state_diff.storage_diffs() {
+    for storage_diff in thin_state_diff.storage_diffs() {
+        let storage_entries = storage_diff.storage_entries();
         for StorageEntry { key, value: _ } in storage_entries {
-            storage_table.delete(txn, &(*address, *key, block_number))?;
+            storage_table.delete(txn, &(storage_diff.address, *key, block_number))?;
         }
     }
     Ok(())
