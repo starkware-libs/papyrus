@@ -88,25 +88,35 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                     match maybe_state_update {
                         Ok((state_update, classes)) => {
                             let (declared_classes, deployed_contract_class_definitions) = classes.split_at(state_update.state_diff.declared_classes.len());
-                            let maybe_state_diff = StateDiff::new(
-                                state_update.state_diff.deployed_contracts,
-                                client_to_starknet_api_storage_diff(state_update.state_diff.storage_diffs),
-                                declared_classes.to_vec(),
-                                // TODO(dan): fix once nonces are available.
-                                vec![],
-                            );
-                            match maybe_state_diff {
-                                Ok(state_diff) => {
-                                    yield Ok((current_block_number, state_diff, deployed_contract_class_definitions.to_vec()));
-                                    current_block_number = current_block_number.next();
-                                }
+                            let maybe_storage_diffs = client_to_starknet_api_storage_diff(state_update.state_diff.storage_diffs);
+                            match maybe_storage_diffs {
+                                Ok(storage_diffs) => {
+                                    let maybe_state_diff = StateDiff::new(
+                                        state_update.state_diff.deployed_contracts,
+                                        storage_diffs,
+                                        declared_classes.to_vec(),
+                                        // TODO(dan): fix once nonces are available.
+                                        vec![],
+                                    );
+                                    match maybe_state_diff {
+                                        Ok(state_diff) => {
+                                            yield Ok((current_block_number, state_diff, deployed_contract_class_definitions.to_vec()));
+                                            current_block_number = current_block_number.next();
+                                        }
+                                        Err(err) => {
+                                            debug!("Block number {}: {:#?}", current_block_number, err);
+                                            yield Err(CentralError::StarknetApiError(Arc::new(err)));
+                                            return;
+                                        }
+                                    }
+                                },
                                 Err(err) => {
                                     debug!("Block number {}: {:#?}", current_block_number, err);
-                                    yield Err(CentralError::StarknetApiError(Arc::new(err)));
+                                    yield Err(CentralError::ClientError(Arc::new(err)));
                                     return;
                                 }
                             }
-                        }
+                        },
                         Err(err) => {
                             debug!("Block number {}: {:#?}", current_block_number, err);
                             yield Err(err);
