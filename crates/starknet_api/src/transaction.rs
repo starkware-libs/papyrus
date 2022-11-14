@@ -7,102 +7,6 @@ use super::{
     StarkHash,
 };
 
-/// The hash of a transaction in a StarkNet.
-#[derive(
-    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct TransactionHash(pub StarkHash);
-
-/// The index of a transaction in a StarkNet [`BlockBody`](super::BlockBody).
-#[derive(
-    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct TransactionOffsetInBlock(pub usize);
-
-/// The index of an event in a StarkNet [`TransactionOutput`](super::TransactionOutput).
-#[derive(
-    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct EventIndexInTransactionOutput(pub usize);
-
-/// A fee in StarkNet.
-#[derive(
-    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-#[serde(from = "PrefixedHexAsBytes<16_usize>", into = "PrefixedHexAsBytes<16_usize>")]
-pub struct Fee(pub u128);
-impl From<PrefixedHexAsBytes<16_usize>> for Fee {
-    fn from(val: PrefixedHexAsBytes<16_usize>) -> Self {
-        Self(u128::from_be_bytes(val.0))
-    }
-}
-impl From<Fee> for PrefixedHexAsBytes<16_usize> {
-    fn from(fee: Fee) -> Self {
-        Self(fee.0.to_be_bytes())
-    }
-}
-
-/// An event data in StarkNet.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct EventData(pub Vec<StarkFelt>);
-
-/// An event key in StarkNet.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct EventKey(pub StarkFelt);
-
-#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct EventContent {
-    pub keys: Vec<EventKey>,
-    pub data: EventData,
-}
-
-/// An event in StarkNet.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct Event {
-    pub from_address: ContractAddress,
-    #[serde(flatten)]
-    pub content: EventContent,
-}
-
-/// The calldata of a transaction in StarkNet.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct CallData(pub Vec<StarkFelt>);
-
-/// An Ethereum address in StarkNet.
-#[derive(
-    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct EthAddress(pub H160);
-
-/// The payload of [`MessageToL2`].
-#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct L1ToL2Payload(pub Vec<StarkFelt>);
-
-/// The payload of [`MessageToL1`].
-#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct L2ToL1Payload(pub Vec<StarkFelt>);
-
-/// A transaction version in StarkNet.
-#[derive(
-    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct TransactionVersion(pub StarkFelt);
-
-/// A transaction signature in StarkNet.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct TransactionSignature(pub Vec<StarkFelt>);
-
-/// An L1 handler transaction in StarkNet.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct L1HandlerTransaction {
-    pub transaction_hash: TransactionHash,
-    pub version: TransactionVersion,
-    pub nonce: Nonce,
-    pub contract_address: ContractAddress,
-    pub entry_point_selector: EntryPointSelector,
-    pub calldata: CallData,
-}
-
 /// A declare transaction in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeclareTransaction {
@@ -113,6 +17,30 @@ pub struct DeclareTransaction {
     pub nonce: Nonce,
     pub class_hash: ClassHash,
     pub sender_address: ContractAddress,
+}
+
+/// A deploy-account transaction in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct DeployAccountTransaction {
+    pub transaction_hash: TransactionHash,
+    pub max_fee: Fee,
+    pub version: TransactionVersion,
+    pub signature: TransactionSignature,
+    pub nonce: Nonce,
+    pub class_hash: ClassHash,
+    pub contract_address: ContractAddress,
+    pub contract_address_salt: ContractAddressSalt,
+    pub constructor_calldata: CallData,
+}
+/// A deploy transaction in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct DeployTransaction {
+    pub transaction_hash: TransactionHash,
+    pub version: TransactionVersion,
+    pub class_hash: ClassHash,
+    pub contract_address: ContractAddress,
+    pub contract_address_salt: ContractAddressSalt,
+    pub constructor_calldata: CallData,
 }
 
 /// An invoke transaction in StarkNet.
@@ -129,74 +57,31 @@ pub struct InvokeTransaction {
     pub calldata: CallData,
 }
 
-/// A contract address salt in StarkNet.
-#[derive(
-    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct ContractAddressSalt(pub StarkHash);
-
-/// A deploy transaction in StarkNet.
+/// An L1 handler transaction in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct DeployTransaction {
+pub struct L1HandlerTransaction {
     pub transaction_hash: TransactionHash,
     pub version: TransactionVersion,
-    pub class_hash: ClassHash,
-    pub contract_address: ContractAddress,
-    pub contract_address_salt: ContractAddressSalt,
-    pub constructor_calldata: CallData,
-}
-
-/// A deploy account transaction in StarkNet.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct DeployAccountTransaction {
-    pub transaction_hash: TransactionHash,
-    pub max_fee: Fee,
-    pub version: TransactionVersion,
-    pub signature: TransactionSignature,
     pub nonce: Nonce,
-    pub class_hash: ClassHash,
     pub contract_address: ContractAddress,
-    pub contract_address_salt: ContractAddressSalt,
-    pub constructor_calldata: CallData,
+    pub entry_point_selector: EntryPointSelector,
+    pub calldata: CallData,
 }
 
-/// An L1 to L2 message in StarkNet.
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct MessageToL2 {
-    pub from_address: EthAddress,
-    pub payload: L1ToL2Payload,
+/// A declare transaction output in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct DeclareTransactionOutput {
+    pub actual_fee: Fee,
+    pub messages_sent: Vec<MessageToL1>,
+    pub events: Vec<Event>,
 }
 
-/// An L2 to L1 message in StarkNet.
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct MessageToL1 {
-    pub to_address: EthAddress,
-    pub payload: L2ToL1Payload,
-}
-
-/// A transaction receipt in StarkNet.
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct TransactionReceipt {
-    pub transaction_hash: TransactionHash,
-    pub block_hash: BlockHash,
-    pub block_number: BlockNumber,
-    #[serde(flatten)]
-    pub output: TransactionOutput,
-}
-
-/// A transaction output in StarkNet.
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub enum TransactionOutput {
-    /// A declare transaction output.
-    Declare(DeclareTransactionOutput),
-    /// A deploy transaction output.
-    Deploy(DeployTransactionOutput),
-    /// A deploy account transaction output.
-    DeployAccount(DeployAccountTransactionOutput),
-    /// An invoke transaction output.
-    Invoke(InvokeTransactionOutput),
-    /// An L1 handler transaction output.
-    L1Handler(L1HandlerTransactionOutput),
+/// A deploy transaction output in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct DeployTransactionOutput {
+    pub actual_fee: Fee,
+    pub messages_sent: Vec<MessageToL1>,
+    pub events: Vec<Event>,
 }
 
 /// An invoke transaction output in StarkNet.
@@ -215,20 +100,133 @@ pub struct L1HandlerTransactionOutput {
     pub events: Vec<Event>,
 }
 
-/// A declare transaction output in StarkNet.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct DeclareTransactionOutput {
-    pub actual_fee: Fee,
-    pub messages_sent: Vec<MessageToL1>,
-    pub events: Vec<Event>,
+/// A transaction receipt in StarkNet.
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct TransactionReceipt {
+    pub transaction_hash: TransactionHash,
+    pub block_hash: BlockHash,
+    pub block_number: BlockNumber,
+    #[serde(flatten)]
+    pub output: TransactionOutput,
 }
 
-/// A deploy transaction output in StarkNet.
+/// A fee in StarkNet.
+#[derive(
+    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+#[serde(from = "PrefixedHexAsBytes<16_usize>", into = "PrefixedHexAsBytes<16_usize>")]
+pub struct Fee(pub u128);
+impl From<PrefixedHexAsBytes<16_usize>> for Fee {
+    fn from(val: PrefixedHexAsBytes<16_usize>) -> Self {
+        Self(u128::from_be_bytes(val.0))
+    }
+}
+impl From<Fee> for PrefixedHexAsBytes<16_usize> {
+    fn from(fee: Fee) -> Self {
+        Self(fee.0.to_be_bytes())
+    }
+}
+
+/// The hash of a transaction in a StarkNet.
+#[derive(
+    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct TransactionHash(pub StarkHash);
+
+/// A contract address salt in StarkNet.
+#[derive(
+    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct ContractAddressSalt(pub StarkHash);
+
+/// A transaction signature in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct DeployTransactionOutput {
-    pub actual_fee: Fee,
-    pub messages_sent: Vec<MessageToL1>,
-    pub events: Vec<Event>,
+pub struct TransactionSignature(pub Vec<StarkFelt>);
+
+/// A transaction version in StarkNet.
+#[derive(
+    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct TransactionVersion(pub StarkFelt);
+
+/// The calldata of a transaction in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct CallData(pub Vec<StarkFelt>);
+
+/// An L1 to L2 message in StarkNet.
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct MessageToL2 {
+    pub from_address: EthAddress,
+    pub payload: L1ToL2Payload,
+}
+
+/// An L2 to L1 message in StarkNet.
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct MessageToL1 {
+    pub to_address: EthAddress,
+    pub payload: L2ToL1Payload,
+}
+/// An Ethereum address in StarkNet.
+#[derive(
+    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct EthAddress(pub H160);
+
+/// The payload of [`MessageToL2`].
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct L1ToL2Payload(pub Vec<StarkFelt>);
+
+/// The payload of [`MessageToL1`].
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct L2ToL1Payload(pub Vec<StarkFelt>);
+
+/// An event in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct Event {
+    pub from_address: ContractAddress,
+    #[serde(flatten)]
+    pub content: EventContent,
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct EventContent {
+    pub keys: Vec<EventKey>,
+    pub data: EventData,
+}
+
+/// An event key in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct EventKey(pub StarkFelt);
+
+/// An event data in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct EventData(pub Vec<StarkFelt>);
+
+/// The index of a transaction in a StarkNet [`BlockBody`](super::BlockBody).
+#[derive(
+    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct TransactionOffsetInBlock(pub usize);
+
+/// The index of an event in a StarkNet [`TransactionOutput`](super::TransactionOutput).
+#[derive(
+    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct EventIndexInTransactionOutput(pub usize);
+
+/// A transaction output in StarkNet.
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub enum TransactionOutput {
+    /// A declare transaction output.
+    Declare(DeclareTransactionOutput),
+    /// A deploy transaction output.
+    Deploy(DeployTransactionOutput),
+    /// A deploy account transaction output.
+    DeployAccount(DeployAccountTransactionOutput),
+    /// An invoke transaction output.
+    Invoke(InvokeTransactionOutput),
+    /// An L1 handler transaction output.
+    L1Handler(L1HandlerTransactionOutput),
 }
 
 /// A deploy transaction output in StarkNet.
