@@ -270,7 +270,10 @@ pub fn client_to_starknet_api_storage_diff(
 ) -> Vec<StorageDiff> {
     storage_diffs
         .into_iter()
-        .map(|(address, storage_entries)| StorageDiff { address, storage_entries })
+        .map(|(address, storage_entries)| {
+            StorageDiff::new(address, storage_entries)
+                .expect("Received duplicate key in storage diffs")
+        })
         .collect()
 }
 
