@@ -89,9 +89,9 @@ async fn sync_happy_flow() -> Result<(), anyhow::Error> {
 
     // Mock having N_BLOCKS chain in central.
     let mut mock = MockCentralSourceTrait::new();
-    mock.expect_get_block_marker().returning(|| Ok(BlockNumber::new(N_BLOCKS.into())));
+    mock.expect_get_block_marker().returning(|| Ok(BlockNumber::new(N_BLOCKS)));
     mock.expect_stream_new_blocks().returning(move |initial, up_to| {
-        let blocks_stream: BlocksStream = stream! {
+        let blocks_stream: BlocksStream<'_> = stream! {
             for i in initial.iter_up_to(up_to) {
                 if i.number() >= &N_BLOCKS {
                     yield Err(CentralError::BlockNotFound { block_number: i })
@@ -104,7 +104,7 @@ async fn sync_happy_flow() -> Result<(), anyhow::Error> {
         blocks_stream
     });
     mock.expect_stream_state_updates().returning(move |initial, up_to| {
-        let state_stream: StateUpdatesStream = stream! {
+        let state_stream: StateUpdatesStream<'_> = stream! {
             for i in initial.iter_up_to(up_to) {
                 if i.number() >= &N_BLOCKS {
                     yield Err(CentralError::BlockNotFound { block_number: i })
