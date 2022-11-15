@@ -60,7 +60,7 @@ impl TransactionOutput {
         }
     }
 
-    pub fn events(&self) -> &Vec<Event> {
+    pub fn events(&self) -> &[Event] {
         match self {
             TransactionOutput::Declare(output) => &output.events,
             TransactionOutput::Deploy(output) => &output.events,
