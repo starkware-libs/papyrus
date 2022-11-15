@@ -104,7 +104,7 @@ fn insert_body_to_ommer() -> Result<(), anyhow::Error> {
     let transactions = body.transactions().clone();
 
     fn split_tx_output(tx_output: TransactionOutput) -> (ThinTransactionOutput, Vec<Event>) {
-        let events = tx_output.events().clone();
+        let events = Vec::from(tx_output.events());
         let thin_tx_output = ThinTransactionOutput::from(tx_output);
         (thin_tx_output, events)
     }

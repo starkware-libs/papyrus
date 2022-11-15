@@ -81,7 +81,7 @@ async fn append_body() -> Result<(), anyhow::Error> {
             expected_tx_output
         );
 
-        let expected_events = original_index.map(|i| tx_outputs[i].events().clone());
+        let expected_events = original_index.map(|i| Vec::from(tx_outputs[i].events()));
         assert_eq!(
             txn.get_transaction_events(TransactionIndex(block_number, tx_offset))?,
             expected_events
