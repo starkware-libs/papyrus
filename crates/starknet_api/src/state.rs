@@ -279,7 +279,6 @@ pub struct StorageDiff {
 }
 
 impl StorageDiff {
-    // TODO: Test creation of StorageDiff.
     pub fn new(
         address: ContractAddress,
         mut storage_entries: Vec<StorageEntry>,

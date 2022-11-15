@@ -3,8 +3,38 @@ use assert_matches::assert_matches;
 use crate::state::StateDiffAsTuple;
 use crate::{
     shash, ClassHash, ContractAddress, ContractClass, ContractNonce, DeclaredContract,
-    DeployedContract, Nonce, StarkHash, StarknetApiError, StateDiff, StorageDiff,
+    DeployedContract, Nonce, StarkHash, StarknetApiError, StateDiff, StorageDiff, StorageEntry,
+    StorageKey,
 };
+
+#[test]
+fn storage_diff_sorted() {
+    let storage_key_0 = StorageKey::try_from(shash!("0x0")).unwrap();
+    let storage_key_1 = StorageKey::try_from(shash!("0x1")).unwrap();
+    let unsorted_storage_entries = vec![
+        StorageEntry { key: storage_key_1, value: shash!("0x1") },
+        StorageEntry { key: storage_key_0, value: shash!("0x0") },
+    ];
+    let address = ContractAddress::try_from(shash!("0x0")).unwrap();
+    let storage_diff = StorageDiff::new(address, unsorted_storage_entries).unwrap();
+    let sorted_storage_entries = vec![
+        StorageEntry { key: storage_key_0, value: shash!("0x0") },
+        StorageEntry { key: storage_key_1, value: shash!("0x1") },
+    ];
+    assert_eq!(storage_diff.storage_entries(), sorted_storage_entries);
+}
+
+#[test]
+fn storage_diff_unique() {
+    let address = ContractAddress::try_from(shash!("0x0")).unwrap();
+    let storage_key = StorageKey::try_from(shash!("0x0")).unwrap();
+    let storage_entries_with_duplicates = vec![
+        StorageEntry { key: storage_key, value: shash!("0x1") },
+        StorageEntry { key: storage_key, value: shash!("0x0") },
+    ];
+    let storage_diff = StorageDiff::new(address, storage_entries_with_duplicates);
+    assert_matches!(storage_diff, Err(StarknetApiError::DuplicateStorageEntry));
+}
 
 #[test]
 fn state_sorted() {
