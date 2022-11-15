@@ -30,14 +30,15 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
             DeployedContract { address: c1, class_hash: cl1 },
         ],
         vec![
-            StorageDiff {
-                address: c0,
-                storage_entries: vec![
+            StorageDiff::new(
+                c0,
+                vec![
                     StorageEntry { key: key0, value: shash!("0x200") },
                     StorageEntry { key: key1, value: shash!("0x201") },
                 ],
-            },
-            StorageDiff { address: c1, storage_entries: vec![] },
+            )
+            .unwrap(),
+            StorageDiff::new(c1, vec![]).unwrap(),
         ],
         vec![
             DeclaredContract { class_hash: cl0, contract_class: c_cls0.clone() },
@@ -48,17 +49,15 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     let diff1 = StateDiff::new(
         vec![DeployedContract { address: c2, class_hash: cl0 }],
         vec![
-            StorageDiff {
-                address: c0,
-                storage_entries: vec![
+            StorageDiff::new(
+                c0,
+                vec![
                     StorageEntry { key: key0, value: shash!("0x300") },
                     StorageEntry { key: key1, value: shash!("0x0") },
                 ],
-            },
-            StorageDiff {
-                address: c1,
-                storage_entries: vec![StorageEntry { key: key0, value: shash!("0x0") }],
-            },
+            )
+            .unwrap(),
+            StorageDiff::new(c1, vec![StorageEntry { key: key0, value: shash!("0x0") }]).unwrap(),
         ],
         vec![DeclaredContract { class_hash: cl0, contract_class: c_cls0.clone() }],
         vec![
