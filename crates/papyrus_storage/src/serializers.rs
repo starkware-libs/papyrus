@@ -20,6 +20,10 @@ use starknet_api::{
     TransactionOffsetInBlock, TransactionSignature, TransactionVersion, TypedParameter,
 };
 
+#[cfg(test)]
+use self::serializers_test::{
+    auto_storage_serde_test, create_test, impl_get_test_instance, GetTestInstance, StorageSerdeTest,
+};
 use crate::body::events::{
     ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput, ThinDeployTransactionOutput,
     ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
@@ -81,27 +85,6 @@ impl StorageSerde for StorageKey {
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         StorageKey::try_from(StarkHash::deserialize(bytes)?).ok()
-    }
-}
-
-impl StorageSerde for TransactionOffsetInBlock {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
-        (self.0 as u64).serialize_into(res)
-    }
-
-    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        Some(Self(u64::deserialize_from(bytes)? as usize))
-    }
-}
-
-// TODO(anatg): Consider using wrapper instead.
-impl StorageSerde for EventIndexInTransactionOutput {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
-        (self.0 as u64).serialize_into(res)
-    }
-
-    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        Some(Self(u64::deserialize_from(bytes)? as usize))
     }
 }
 
@@ -213,6 +196,8 @@ macro_rules! auto_storage_serde {
                 Some(Self (<$ty>::deserialize_from(bytes)?))
             }
         }
+        #[cfg(test)]
+        auto_storage_serde_test!($name, struct $name ($ty));
         auto_storage_serde!($($rest)*);
     };
     // Tuple structs (no names associated with fields) - two fields.
@@ -226,6 +211,8 @@ macro_rules! auto_storage_serde {
                 Some($name(<$ty0>::deserialize_from(bytes)?, <$ty1>::deserialize_from(bytes)?))
             }
         }
+        #[cfg(test)]
+        auto_storage_serde_test!($name, struct $name ($ty0, $ty1));
         auto_storage_serde!($($rest)*);
     };
     // Structs with public fields.
@@ -245,6 +232,8 @@ macro_rules! auto_storage_serde {
                 })
             }
         }
+        #[cfg(test)]
+        auto_storage_serde_test!($name, struct $name { $(pub $field : $ty ,)* });
         auto_storage_serde!($($rest)*);
     };
     // Tuples - two elements.
@@ -261,6 +250,8 @@ macro_rules! auto_storage_serde {
                 ))
             }
         }
+        #[cfg(test)]
+        auto_storage_serde_test!(($ty0, $ty1));
         auto_storage_serde!($($rest)*);
     };
     // Tuples - three elements.
@@ -279,6 +270,8 @@ macro_rules! auto_storage_serde {
                 ))
             }
         }
+        #[cfg(test)]
+        auto_storage_serde_test!(($ty0, $ty1, $ty2));
         auto_storage_serde!($($rest)*);
     };
     // enums.
@@ -309,6 +302,8 @@ macro_rules! auto_storage_serde {
                     _ => None,}
             }
         }
+        #[cfg(test)]
+        auto_storage_serde_test!($name, enum $name { $($variant $( ($ty) )? = $num ,)* });
         auto_storage_serde!($($rest)*);
     };
     // Binary.
@@ -323,6 +318,8 @@ macro_rules! auto_storage_serde {
                 bincode::deserialize_from(bytes).ok()
             }
         }
+        #[cfg(test)]
+        auto_storage_serde_test!($name, bincode($name));
         auto_storage_serde!($($rest)*);
     }
 }
@@ -559,6 +556,8 @@ auto_storage_serde! {
     }
     pub struct TransactionVersion(pub StarkFelt);
     pub struct TransactionSignature(pub Vec<StarkFelt>);
+    pub struct TransactionOffsetInBlock(pub usize);
+    pub struct EventIndexInTransactionOutput(pub usize);
 
     pub struct BlockHash(pub StarkHash);
     pub struct BlockNumber(pub u64);
