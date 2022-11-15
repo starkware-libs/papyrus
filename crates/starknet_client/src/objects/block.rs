@@ -267,11 +267,12 @@ impl StateDiff {
 /// [`starknet_api`][`StorageDiff`].
 pub fn client_to_starknet_api_storage_diff(
     storage_diffs: BTreeMap<ContractAddress, Vec<StorageEntry>>,
-) -> Vec<StorageDiff> {
-    storage_diffs
-        .into_iter()
-        .map(|(address, storage_entries)| StorageDiff { address, storage_entries })
-        .collect()
+) -> ClientResult<Vec<StorageDiff>> {
+    let mut res = Vec::with_capacity(storage_diffs.len());
+    for (address, storage_entries) in storage_diffs {
+        res.push(StorageDiff::new(address, storage_entries)?);
+    }
+    Ok(res)
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]

@@ -33,9 +33,6 @@ impl StateDiff {
     ) -> Result<Self, StarknetApiError> {
         deployed_contracts.sort_unstable_by_key(|dc| dc.address);
         storage_diffs.sort_unstable_by_key(|sd| sd.address);
-        for storage_diff in storage_diffs.iter_mut() {
-            storage_diff.storage_entries.sort_unstable_by_key(|se| se.key);
-        }
         declared_contracts.sort_unstable_by_key(|dc| dc.class_hash);
         nonces.sort_unstable_by_key(|n| n.contract_address);
 
@@ -45,13 +42,10 @@ impl StateDiff {
             });
         }
 
-        for storage_diff in storage_diffs.iter() {
-            let storage_entries = &storage_diff.storage_entries;
-            if !is_unique(storage_entries.as_slice(), |se| &se.key) {
-                return Err(StarknetApiError::DuplicateInStateDiff {
-                    object: format!("storage_entries at {:?}", storage_diff.address),
-                });
-            }
+        if !is_unique(&storage_diffs, |sd| &sd.address) {
+            return Err(StarknetApiError::DuplicateInStateDiff {
+                object: "storage_diffs".to_string(),
+            });
         }
 
         if !is_unique(&declared_contracts, |dc| &dc.class_hash) {
@@ -109,15 +103,6 @@ pub struct DeployedContract {
 pub struct DeclaredContract {
     pub class_hash: ClassHash,
     pub contract_class: ContractClass,
-}
-
-// Invariant: Addresses are strictly increasing. In particular, no address appears twice.
-// TODO(spapini): Enforce the invariant.
-/// Storage differences in StarkNet.
-#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct StorageDiff {
-    pub address: ContractAddress,
-    pub storage_entries: Vec<StorageEntry>,
 }
 
 /// The sequential numbering of the states between blocks in StarkNet.
@@ -211,6 +196,21 @@ pub struct Program {
     pub reference_manager: serde_json::Value,
 }
 
+// Invariant: Storage keys are strictly increasing. In particular, no key appears twice.
+/// Storage differences in StarkNet.
+#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct StorageDiff {
+    pub address: ContractAddress,
+    storage_entries: Vec<StorageEntry>,
+}
+
+/// A storage entry in a StarkNet contract.
+#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct StorageEntry {
+    pub key: StorageKey,
+    pub value: StarkFelt,
+}
+
 /// A contract class abi entry in StarkNet.
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -287,7 +287,6 @@ pub struct TypedParameter {
 }
 
 // TODO: Invariant: this is in range.
-// TODO(spapini): Enforce the invariant.
 /// A storage key in a StarkNet contract.
 #[derive(
     Debug, Default, Clone, Copy, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
@@ -308,11 +307,21 @@ impl TryFrom<StarkHash> for StorageKey {
     }
 }
 
-/// A storage entry in a StarkNet contract.
-#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct StorageEntry {
-    pub key: StorageKey,
-    pub value: StarkFelt,
+impl StorageDiff {
+    pub fn new(
+        address: ContractAddress,
+        mut storage_entries: Vec<StorageEntry>,
+    ) -> Result<Self, StarknetApiError> {
+        storage_entries.sort_unstable_by_key(|se| se.key);
+        if !is_unique(storage_entries.as_slice(), |se| &se.key) {
+            return Err(StarknetApiError::DuplicateStorageEntry);
+        }
+        Ok(Self { address, storage_entries })
+    }
+
+    pub fn storage_entries(&self) -> &[StorageEntry] {
+        &self.storage_entries
+    }
 }
 
 fn is_unique<T, B, F>(sorted: &[T], f: F) -> bool
