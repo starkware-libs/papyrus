@@ -8,8 +8,8 @@ use starknet_api::{
     ClassHash, ContractAddress, ContractAddressSalt, ContractClass, ContractNonce,
     DeclaredContract, DeployTransaction, DeployTransactionOutput, DeployedContract,
     EntryPointSelector, EthAddress, Event, EventContent, EventData, Fee, GasPrice, GlobalRoot,
-    InvokeTransaction, InvokeTransactionOutput, L2ToL1Payload, MessageToL1, Nonce, Program,
-    StarkHash, StateDiff, StorageDiff, StorageEntry, StorageKey, Transaction, TransactionHash,
+    InvokeTransaction, InvokeTransactionOutput, L2ToL1Payload, MessageToL1, Nonce, StarkHash,
+    StateDiff, StorageDiff, StorageEntry, StorageKey, Transaction, TransactionHash,
     TransactionOutput, TransactionSignature, TransactionVersion,
 };
 use tempfile::tempdir;
@@ -36,7 +36,7 @@ pub fn read_json_file(path_in_resource_dir: &str) -> Result<serde_json::Value, a
     read_json_file_from_dir(&env::var("CARGO_MANIFEST_DIR")?, path_in_resource_dir)
 }
 
-pub(crate) fn read_json_file_from_storage_resources(
+fn read_json_file_from_storage_resources(
     path_in_resource_dir: &str,
 ) -> Result<serde_json::Value, anyhow::Error> {
     // Reads from the directory containing the manifest at compile time, which is the storage crate
@@ -94,8 +94,8 @@ pub fn get_test_body(transaction_count: usize) -> BlockBody {
     BlockBody::new(transactions, transaction_outputs).unwrap()
 }
 
-pub fn get_test_header() -> BlockHeader {
-    BlockHeader {
+pub fn get_test_block(transaction_count: usize) -> Block {
+    let header = BlockHeader {
         block_hash: BlockHash::new(shash!(
             "0x7d328a71faf48c5c3857e99f20a77b18522480956d1cd5bff1ff2df3c8b427b"
         )),
@@ -104,11 +104,9 @@ pub fn get_test_header() -> BlockHeader {
             "0x02c2bb91714f8448ed814bdac274ab6fcdbafc22d835f9e847e5bee8c2e5444e"
         )),
         ..BlockHeader::default()
-    }
-}
+    };
 
-pub fn get_test_block(transaction_count: usize) -> Block {
-    Block { header: get_test_header(), body: get_test_body(transaction_count) }
+    Block { header, body: get_test_body(transaction_count) }
 }
 
 /// Returns the body of block number 1 in starknet mainnet.
@@ -241,15 +239,6 @@ pub fn get_alpha4_starknet_block() -> Block {
     Block { header, body: get_alpha4_starknet_body() }
 }
 
-pub fn get_test_contract_class() -> ContractClass {
-    serde_json::from_value(read_json_file_from_storage_resources("contract_class.json").unwrap())
-        .unwrap()
-}
-
-pub fn get_test_program() -> Program {
-    serde_json::from_value(read_json_file_from_storage_resources("program.json").unwrap()).unwrap()
-}
-
 pub fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff, Vec<DeclaredContract>) {
     let parent_hash =
         BlockHash::new(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
@@ -276,7 +265,8 @@ pub fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff, Vec<Declar
     .unwrap();
     let hash0 =
         ClassHash::new(shash!("0x10455c752b86932ce552f2b0fe81a880746649b9aee7e0d842bf3f52378f9f8"));
-    let class0 = get_test_contract_class();
+    let class_value = read_json_file_from_storage_resources("contract_class.json").unwrap();
+    let class0 = serde_json::from_value(class_value).unwrap();
     let address1 = ContractAddress::try_from(shash!("0x21")).unwrap();
     let hash1 = ClassHash::new(shash!("0x5"));
     let class1 = ContractClass::default();
