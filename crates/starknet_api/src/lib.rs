@@ -43,4 +43,6 @@ pub enum StarknetApiError {
     TransationsLengthDontMatch,
     #[error("Duplicate key in StateDiff: {object}.")]
     DuplicateInStateDiff { object: String },
+    #[error("Duplicate key in StorageEntry.")]
+    DuplicateStorageEntry,
 }
