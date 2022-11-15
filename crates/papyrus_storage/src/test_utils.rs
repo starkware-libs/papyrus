@@ -289,13 +289,16 @@ pub fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff, Vec<Declar
             DeployedContract { address: address0, class_hash: hash0 },
             DeployedContract { address: address1, class_hash: hash1 },
         ],
-        vec![StorageDiff {
-            address: address0,
-            storage_entries: vec![
-                StorageEntry { key: key0, value: value0 },
-                StorageEntry { key: key1, value: value1 },
-            ],
-        }],
+        vec![
+            StorageDiff::new(
+                address0,
+                vec![
+                    StorageEntry { key: key0, value: value0 },
+                    StorageEntry { key: key1, value: value1 },
+                ],
+            )
+            .unwrap(),
+        ],
         vec![
             DeclaredContract { class_hash: hash1, contract_class: class1.clone() },
             DeclaredContract { class_hash: hash2, contract_class: class2 },

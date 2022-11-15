@@ -104,6 +104,7 @@ impl StorageSerde for EventIndexInTransactionOutput {
     }
 }
 
+// TODO: Move to Primitive types area.
 impl StorageSerde for String {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
         (self.as_bytes().to_vec()).serialize_into(res)
@@ -547,10 +548,6 @@ auto_storage_serde! {
         pub prime: serde_json::Value,
         pub reference_manager: serde_json::Value,
     }
-    pub struct StorageDiff {
-        pub address: ContractAddress,
-        pub storage_entries: Vec<StorageEntry>,
-    }
     pub struct StorageEntry {
         pub key: StorageKey,
         pub value: StarkFelt,
@@ -634,5 +631,21 @@ impl StorageSerde for ThinStateDiff {
                 .ok()?
                 .into(),
         )
+    }
+}
+
+// TODO: Move to Starknet API structs area.
+impl StorageSerde for StorageDiff {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+        self.address.serialize_into(res)?;
+        res.write_varint(self.storage_entries().len())
+            .expect("I/O error during storage entries serialization");
+        for x in self.storage_entries() {
+            x.serialize_into(res)?
+        }
+        Ok(())
+    }
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        Self::new(ContractAddress::deserialize_from(bytes)?, Vec::deserialize_from(bytes)?).ok()
     }
 }
