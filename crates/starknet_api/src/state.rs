@@ -12,166 +12,6 @@ use crate::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, Patrici
 use crate::hash::{StarkFelt, StarkHash};
 use crate::StarknetApiError;
 
-/// The sequential numbering of the states between blocks in StarkNet.
-// Example:
-// States: S0       S1       S2
-// Blocks      B0->     B1->
-#[derive(
-    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct StateNumber(pub BlockNumber);
-impl StateNumber {
-    // The state at the beginning of the block.
-    pub fn right_before_block(block_number: BlockNumber) -> StateNumber {
-        StateNumber(block_number)
-    }
-    // The state at the end of the block.
-    pub fn right_after_block(block_number: BlockNumber) -> StateNumber {
-        StateNumber(block_number.next())
-    }
-    pub fn is_before(&self, block_number: BlockNumber) -> bool {
-        self.0 <= block_number
-    }
-    pub fn is_after(&self, block_number: BlockNumber) -> bool {
-        !self.is_before(block_number)
-    }
-    pub fn block_after(&self) -> BlockNumber {
-        self.0
-    }
-}
-
-/// A contract class in StarkNet.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct ContractClass {
-    pub abi: Option<Vec<ContractClassAbiEntry>>,
-    pub program: Program,
-    /// The selector of each entry point is a unique identifier in the program.
-    pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
-}
-
-/// The offset of an entry point in StarkNet.
-#[derive(
-    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct EntryPointOffset(pub StarkFelt);
-
-/// An entry point of a contract in StarkNet.
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct EntryPoint {
-    pub selector: EntryPointSelector,
-    pub offset: EntryPointOffset,
-}
-
-/// A program corresponding to a contract class in StarkNet.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct Program {
-    #[serde(default)]
-    pub attributes: serde_json::Value,
-    pub builtins: serde_json::Value,
-    pub data: serde_json::Value,
-    pub debug_info: serde_json::Value,
-    pub hints: serde_json::Value,
-    pub identifiers: serde_json::Value,
-    pub main_scope: serde_json::Value,
-    pub prime: serde_json::Value,
-    pub reference_manager: serde_json::Value,
-}
-
-/// An entry point type of a contract in StarkNet.
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-#[serde(deny_unknown_fields)]
-pub enum EntryPointType {
-    /// A constructor entry point.
-    #[serde(rename = "CONSTRUCTOR")]
-    Constructor,
-    /// An external4 entry point.
-    #[serde(rename = "EXTERNAL")]
-    External,
-    /// An L1 handler entry point.
-    #[serde(rename = "L1_HANDLER")]
-    L1Handler,
-}
-
-impl Default for EntryPointType {
-    fn default() -> Self {
-        EntryPointType::L1Handler
-    }
-}
-
-/// A contract class abi entry in StarkNet.
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-#[serde(untagged)]
-pub enum ContractClassAbiEntry {
-    /// An event abi entry.
-    Event(EventAbiEntry),
-    /// A function abi entry.
-    Function(FunctionAbiEntryWithType),
-    /// A struct abi entry.
-    Struct(StructAbiEntry),
-}
-
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct TypedParameter {
-    pub name: String,
-    pub r#type: String,
-}
-
-/// An event abi entry in StarkNet.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct EventAbiEntry {
-    pub name: String,
-    pub keys: Vec<TypedParameter>,
-    pub data: Vec<TypedParameter>,
-}
-
-/// A function abi entry type in StarkNet.
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
-pub enum FunctionAbiEntryType {
-    #[serde(rename = "constructor")]
-    Constructor,
-    #[serde(rename = "l1_handler")]
-    L1Handler,
-    #[serde(rename = "regular")]
-    Regular,
-}
-impl Default for FunctionAbiEntryType {
-    fn default() -> Self {
-        FunctionAbiEntryType::Regular
-    }
-}
-
-/// A function abi entry in StarkNet.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct FunctionAbiEntry {
-    pub name: String,
-    pub inputs: Vec<TypedParameter>,
-    pub outputs: Vec<TypedParameter>,
-}
-
-/// A function abi entry with type in StarkNet.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct FunctionAbiEntryWithType {
-    pub r#type: FunctionAbiEntryType,
-    #[serde(flatten)]
-    pub entry: FunctionAbiEntry,
-}
-
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct StructMember {
-    #[serde(flatten)]
-    pub param: TypedParameter,
-    pub offset: usize,
-}
-
-/// A struct abi entry in StarkNet.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct StructAbiEntry {
-    pub name: String,
-    pub size: usize,
-    pub members: Vec<StructMember>,
-}
-
 // TODO(anatg): Consider replacing this with ThinStateDiff (that is, remove ContractClass)
 // and append contract classes to the storage separately.
 // Invariant: Addresses are strictly increasing.
@@ -182,17 +22,6 @@ pub struct StateDiff {
     storage_diffs: Vec<StorageDiff>,
     declared_classes: Vec<DeclaredContract>,
     nonces: Vec<ContractNonce>,
-}
-
-type StateDiffAsTuple =
-    (Vec<DeployedContract>, Vec<StorageDiff>, Vec<DeclaredContract>, Vec<ContractNonce>);
-
-fn is_unique<T, B, F>(sorted: &[T], f: F) -> bool
-where
-    F: Fn(&T) -> &B,
-    B: PartialEq,
-{
-    sorted.windows(2).all(|w| f(&w[0]) != f(&w[1]))
 }
 
 impl StateDiff {
@@ -239,16 +68,22 @@ impl StateDiff {
     pub fn deployed_contracts(&self) -> &[DeployedContract] {
         &self.deployed_contracts
     }
+
     pub fn storage_diffs(&self) -> &[StorageDiff] {
         &self.storage_diffs
     }
+
     pub fn declared_contracts(&self) -> &[DeclaredContract] {
         &self.declared_classes
     }
+
     pub fn nonces(&self) -> &[ContractNonce] {
         &self.nonces
     }
 }
+
+type StateDiffAsTuple =
+    (Vec<DeployedContract>, Vec<StorageDiff>, Vec<DeclaredContract>, Vec<ContractNonce>);
 
 impl From<StateDiff> for StateDiffAsTuple {
     fn from(diff: StateDiff) -> StateDiffAsTuple {
@@ -285,6 +120,172 @@ pub struct StorageDiff {
     pub storage_entries: Vec<StorageEntry>,
 }
 
+/// The sequential numbering of the states between blocks in StarkNet.
+// Example:
+// States: S0       S1       S2
+// Blocks      B0->     B1->
+#[derive(
+    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct StateNumber(pub BlockNumber);
+
+impl StateNumber {
+    // The state at the beginning of the block.
+    pub fn right_before_block(block_number: BlockNumber) -> StateNumber {
+        StateNumber(block_number)
+    }
+
+    // The state at the end of the block.
+    pub fn right_after_block(block_number: BlockNumber) -> StateNumber {
+        StateNumber(block_number.next())
+    }
+
+    pub fn is_before(&self, block_number: BlockNumber) -> bool {
+        self.0 <= block_number
+    }
+
+    pub fn is_after(&self, block_number: BlockNumber) -> bool {
+        !self.is_before(block_number)
+    }
+
+    pub fn block_after(&self) -> BlockNumber {
+        self.0
+    }
+}
+
+/// A contract class in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct ContractClass {
+    pub abi: Option<Vec<ContractClassAbiEntry>>,
+    pub program: Program,
+    /// The selector of each entry point is a unique identifier in the program.
+    pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
+}
+
+/// An entry point type of a contract in StarkNet.
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(deny_unknown_fields)]
+pub enum EntryPointType {
+    /// A constructor entry point.
+    #[serde(rename = "CONSTRUCTOR")]
+    Constructor,
+    /// An external4 entry point.
+    #[serde(rename = "EXTERNAL")]
+    External,
+    /// An L1 handler entry point.
+    #[serde(rename = "L1_HANDLER")]
+    L1Handler,
+}
+
+impl Default for EntryPointType {
+    fn default() -> Self {
+        EntryPointType::L1Handler
+    }
+}
+
+/// An entry point of a contract in StarkNet.
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct EntryPoint {
+    pub selector: EntryPointSelector,
+    pub offset: EntryPointOffset,
+}
+
+/// The offset of an entry point in StarkNet.
+#[derive(
+    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct EntryPointOffset(pub StarkFelt);
+
+/// A program corresponding to a contract class in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct Program {
+    #[serde(default)]
+    pub attributes: serde_json::Value,
+    pub builtins: serde_json::Value,
+    pub data: serde_json::Value,
+    pub debug_info: serde_json::Value,
+    pub hints: serde_json::Value,
+    pub identifiers: serde_json::Value,
+    pub main_scope: serde_json::Value,
+    pub prime: serde_json::Value,
+    pub reference_manager: serde_json::Value,
+}
+
+/// A contract class abi entry in StarkNet.
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+#[serde(untagged)]
+pub enum ContractClassAbiEntry {
+    /// An event abi entry.
+    Event(EventAbiEntry),
+    /// A function abi entry.
+    Function(FunctionAbiEntryWithType),
+    /// A struct abi entry.
+    Struct(StructAbiEntry),
+}
+
+/// An event abi entry in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct EventAbiEntry {
+    pub name: String,
+    pub keys: Vec<TypedParameter>,
+    pub data: Vec<TypedParameter>,
+}
+
+/// A function abi entry with type in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct FunctionAbiEntryWithType {
+    pub r#type: FunctionAbiEntryType,
+    #[serde(flatten)]
+    pub entry: FunctionAbiEntry,
+}
+
+/// A function abi entry type in StarkNet.
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+pub enum FunctionAbiEntryType {
+    #[serde(rename = "constructor")]
+    Constructor,
+    #[serde(rename = "l1_handler")]
+    L1Handler,
+    #[serde(rename = "regular")]
+    Regular,
+}
+
+impl Default for FunctionAbiEntryType {
+    fn default() -> Self {
+        FunctionAbiEntryType::Regular
+    }
+}
+
+/// A function abi entry in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct FunctionAbiEntry {
+    pub name: String,
+    pub inputs: Vec<TypedParameter>,
+    pub outputs: Vec<TypedParameter>,
+}
+
+/// A struct abi entry in StarkNet.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct StructAbiEntry {
+    pub name: String,
+    pub size: usize,
+    pub members: Vec<StructMember>,
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct StructMember {
+    #[serde(flatten)]
+    pub param: TypedParameter,
+    pub offset: usize,
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct TypedParameter {
+    pub name: String,
+    pub r#type: String,
+}
+
 // TODO: Invariant: this is in range.
 // TODO(spapini): Enforce the invariant.
 /// A storage key in a StarkNet contract.
@@ -293,16 +294,17 @@ pub struct StorageDiff {
 )]
 pub struct StorageKey(PatriciaKey);
 
-impl TryFrom<StarkHash> for StorageKey {
-    type Error = StarknetApiError;
-    fn try_from(val: StarkHash) -> Result<Self, Self::Error> {
-        Ok(Self(PatriciaKey::new(val)?))
-    }
-}
-
 impl StorageKey {
     pub fn key(&self) -> &PatriciaKey {
         &self.0
+    }
+}
+
+impl TryFrom<StarkHash> for StorageKey {
+    type Error = StarknetApiError;
+
+    fn try_from(val: StarkHash) -> Result<Self, Self::Error> {
+        Ok(Self(PatriciaKey::new(val)?))
     }
 }
 
@@ -311,4 +313,12 @@ impl StorageKey {
 pub struct StorageEntry {
     pub key: StorageKey,
     pub value: StarkFelt,
+}
+
+fn is_unique<T, B, F>(sorted: &[T], f: F) -> bool
+where
+    F: Fn(&T) -> &B,
+    B: PartialEq,
+{
+    sorted.windows(2).all(|w| f(&w[0]) != f(&w[1]))
 }
