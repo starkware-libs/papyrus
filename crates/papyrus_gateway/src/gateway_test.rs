@@ -258,7 +258,7 @@ async fn get_storage_at() -> Result<(), anyhow::Error> {
 
     let storage_diff = diff.storage_diffs().index(0);
     let address = storage_diff.address;
-    let storage_entry = storage_diff.storage_entries.index(0);
+    let storage_entry = storage_diff.storage_entries().index(0);
     let key = storage_entry.key;
     let expected_value = storage_entry.value;
 
