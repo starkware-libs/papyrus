@@ -540,6 +540,7 @@ auto_storage_serde! {
     pub struct Program {
         pub attributes: serde_json::Value,
         pub builtins: serde_json::Value,
+        pub compiler_version: serde_json::Value,
         pub data: serde_json::Value,
         pub debug_info: serde_json::Value,
         pub hints: serde_json::Value,
