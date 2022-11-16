@@ -212,6 +212,8 @@ pub struct Program {
     #[serde(default)]
     pub attributes: serde_json::Value,
     pub builtins: serde_json::Value,
+    #[serde(default)]
+    pub compiler_version: serde_json::Value,
     pub data: serde_json::Value,
     pub debug_info: serde_json::Value,
     pub hints: serde_json::Value,
