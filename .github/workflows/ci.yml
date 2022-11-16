@@ -22,7 +22,6 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - uses: Swatinem/rust-cache@v1
       - run: |
           cargo test
 
@@ -51,7 +50,6 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - uses: Swatinem/rust-cache@v1
       - run: >
           cargo run -p papyrus_node --bin starknet_client_integration_test;
           cargo run -p papyrus_node --bin central_source_integration_test
@@ -101,7 +99,6 @@ jobs:
         with:
           components: clippy
           toolchain: stable
-      - uses: Swatinem/rust-cache@v1
       - run: >
           cargo clippy --all-targets --all-features -- -D warnings -D future-incompatible
           -D nonstandard-style -D rust-2018-idioms -D unused
