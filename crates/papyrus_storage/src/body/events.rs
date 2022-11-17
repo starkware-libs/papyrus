@@ -75,6 +75,23 @@ pub struct EventIterByEventIndex<'txn, 'env> {
 }
 
 impl EventIterByEventIndex<'_, '_> {
+    pub fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
+        if let Some((tx_index, tx_output)) = &self.tx_current {
+            if let Some(address) =
+                tx_output.events_contract_addresses_as_ref().get(self.event_index_in_tx_current.0)
+            {
+                let key = (*address, EventIndex(*tx_index, self.event_index_in_tx_current));
+                if let Some(content) = self.events_table.get(self.txn, &key)? {
+                    self.event_index_in_tx_current.0 += 1;
+                    self.find_next_event_by_event_index()?;
+                    return Ok(Some((key, content)));
+                }
+            }
+        }
+
+        Ok(None)
+    }
+
     // Finds the event that corresponds to the first event index greater than or equals to the
     // current event index. The current event index is composed of the transaction index of the
     // current transaction (tx_current) and the event index in current transaction output
@@ -98,23 +115,6 @@ impl EventIterByEventIndex<'_, '_> {
         }
 
         Ok(())
-    }
-
-    pub fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
-        if let Some((tx_index, tx_output)) = &self.tx_current {
-            if let Some(address) =
-                tx_output.events_contract_addresses_as_ref().get(self.event_index_in_tx_current.0)
-            {
-                let key = (*address, EventIndex(*tx_index, self.event_index_in_tx_current));
-                if let Some(content) = self.events_table.get(self.txn, &key)? {
-                    self.event_index_in_tx_current.0 += 1;
-                    self.find_next_event_by_event_index()?;
-                    return Ok(Some((key, content)));
-                }
-            }
-        }
-
-        Ok(None)
     }
 }
 
