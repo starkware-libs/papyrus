@@ -13,9 +13,6 @@ use serde::ser::{Serialize, SerializeTuple};
 #[derive(Debug, Eq, PartialEq)]
 pub struct HexAsBytes<const N: usize, const PREFIXED: bool>(pub(crate) [u8; N]);
 
-pub type PrefixedHexAsBytes<const N: usize> = HexAsBytes<N, true>;
-pub type NonPrefixedHexAsBytes<const N: usize> = HexAsBytes<N, false>;
-
 impl<'de, const N: usize, const PREFIXED: bool> Deserialize<'de> for HexAsBytes<N, PREFIXED> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -71,6 +68,10 @@ impl<const N: usize, const PREFIXED: bool> Serialize for HexAsBytes<N, PREFIXED>
         }
     }
 }
+
+
+pub type PrefixedHexAsBytes<const N: usize> = HexAsBytes<N, true>;
+pub type NonPrefixedHexAsBytes<const N: usize> = HexAsBytes<N, false>;
 
 #[derive(thiserror::Error, Clone, Debug)]
 pub enum InnerDeserialization {
