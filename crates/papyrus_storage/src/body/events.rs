@@ -102,10 +102,8 @@ impl EventIterByEventIndex<'_, '_> {
 
     pub fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
         if let Some((tx_index, tx_output)) = &self.tx_current {
-            if let Some(address) = tx_output
-                .events_contract_addresses_as_ref()
-                .iter()
-                .nth(self.event_index_in_tx_current.0)
+            if let Some(address) =
+                tx_output.events_contract_addresses_as_ref().get(self.event_index_in_tx_current.0)
             {
                 let key = (*address, EventIndex(*tx_index, self.event_index_in_tx_current));
                 if let Some(content) = self.events_table.get(self.txn, &key)? {
