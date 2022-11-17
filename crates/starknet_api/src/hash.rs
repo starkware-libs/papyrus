@@ -12,47 +12,29 @@ use super::serde_utils::{
 };
 use super::StarknetApiError;
 
-/// Genesis state hash.
-pub const GENESIS_HASH: &str = "0x0";
-// Felt encoding constants.
-const CHOOSER_FULL: u8 = 15;
-const CHOOSER_HALF: u8 = 14;
-
 // TODO: Move to a different crate.
 /// A hash in StarkNet.
 #[derive(Copy, Clone, Eq, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(try_from = "PrefixedHexAsBytes<32_usize>", into = "PrefixedHexAsBytes<32_usize>")]
 pub struct StarkHash([u8; 32]);
-impl StarkHash {
-    pub fn bytes(&self) -> &[u8] {
-        &self.0
-    }
-}
-impl TryFrom<PrefixedHexAsBytes<32_usize>> for StarkHash {
-    type Error = StarknetApiError;
-    fn try_from(val: PrefixedHexAsBytes<32_usize>) -> Result<Self, Self::Error> {
-        StarkHash::new(val.0)
-    }
-}
-// TODO(anatg): Remove once Starknet sequencer returns the global root hash as a hex string with a
-// "0x" prefix.
-impl TryFrom<NonPrefixedHexAsBytes<32_usize>> for StarkHash {
-    type Error = StarknetApiError;
-    fn try_from(val: NonPrefixedHexAsBytes<32_usize>) -> Result<Self, Self::Error> {
-        StarkHash::new(val.0)
-    }
-}
-impl From<StarkHash> for PrefixedHexAsBytes<32_usize> {
-    fn from(val: StarkHash) -> Self {
-        HexAsBytes(val.0)
-    }
-}
 
-impl Debug for StarkHash {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = format!("0x{}", hex::encode(self.0));
-        f.debug_tuple("StarkHash").field(&s).finish()
-    }
+/// The StarkNet elliptic curve field element.
+pub type StarkFelt = StarkHash;
+
+/// Genesis state hash.
+pub const GENESIS_HASH: &str = "0x0";
+
+// Felt encoding constants.
+const CHOOSER_FULL: u8 = 15;
+const CHOOSER_HALF: u8 = 14;
+
+/// A utility macro to create a [`StarkHash`] from a hex string representation.
+#[cfg(any(feature = "testing", test))]
+#[macro_export]
+macro_rules! shash {
+    ($s:expr) => {
+        StarkHash::from_hex($s).unwrap()
+    };
 }
 
 impl StarkHash {
@@ -139,16 +121,37 @@ impl StarkHash {
         bytes.read_exact(&mut res[first_index + 1..]).ok()?;
         Some(Self(res))
     }
+
+    pub fn bytes(&self) -> &[u8] {
+        &self.0
+    }
 }
 
-/// The StarkNet elliptic curve field element.
-pub type StarkFelt = StarkHash;
+impl TryFrom<PrefixedHexAsBytes<32_usize>> for StarkHash {
+    type Error = StarknetApiError;
+    fn try_from(val: PrefixedHexAsBytes<32_usize>) -> Result<Self, Self::Error> {
+        StarkHash::new(val.0)
+    }
+}
 
-/// A utility macro to create a [`StarkHash`] from a hex string representation.
-#[cfg(any(feature = "testing", test))]
-#[macro_export]
-macro_rules! shash {
-    ($s:expr) => {
-        StarkHash::from_hex($s).unwrap()
-    };
+// TODO(anatg): Remove once Starknet sequencer returns the global root hash as a hex string with a
+// "0x" prefix.
+impl TryFrom<NonPrefixedHexAsBytes<32_usize>> for StarkHash {
+    type Error = StarknetApiError;
+    fn try_from(val: NonPrefixedHexAsBytes<32_usize>) -> Result<Self, Self::Error> {
+        StarkHash::new(val.0)
+    }
+}
+
+impl From<StarkHash> for PrefixedHexAsBytes<32_usize> {
+    fn from(val: StarkHash) -> Self {
+        HexAsBytes(val.0)
+    }
+}
+
+impl Debug for StarkHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = format!("0x{}", hex::encode(self.0));
+        f.debug_tuple("StarkHash").field(&s).finish()
+    }
 }
