@@ -6,15 +6,15 @@ mod serde_utils_test;
 use serde::de::{Deserialize, Visitor};
 use serde::ser::{Serialize, SerializeTuple};
 
+pub type PrefixedHexAsBytes<const N: usize> = HexAsBytes<N, true>;
+pub type NonPrefixedHexAsBytes<const N: usize> = HexAsBytes<N, false>;
+
 /// A hexadecimal value as a byte array used for serialisation/deserialisation.
 ///
 /// The `PREFIXED` generic type symbolize whether a string representation of the hex value should be
 /// prefixed by `0x` or not.
 #[derive(Debug, Eq, PartialEq)]
 pub struct HexAsBytes<const N: usize, const PREFIXED: bool>(pub(crate) [u8; N]);
-
-pub type PrefixedHexAsBytes<const N: usize> = HexAsBytes<N, true>;
-pub type NonPrefixedHexAsBytes<const N: usize> = HexAsBytes<N, false>;
 
 impl<'de, const N: usize, const PREFIXED: bool> Deserialize<'de> for HexAsBytes<N, PREFIXED> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
