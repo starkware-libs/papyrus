@@ -9,44 +9,24 @@ use serde::{Deserialize, Serialize};
 
 use super::{StarkFelt, StarkHash, StarknetApiError};
 
+/// 2**251
+pub const PATRICIA_KEY_UPPER_BOUND: &str =
+    "0x800000000000000000000000000000000000000000000000000000000000000";
+
+
 /// Starknet chain id.
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ChainId(pub String);
-impl Display for ChainId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.0)
-    }
-}
+
 impl ChainId {
     pub fn as_hex(&self) -> String {
         format!("0x{}", hex::encode(&self.0))
     }
 }
 
-/// 2**251
-pub const PATRICIA_KEY_UPPER_BOUND: &str =
-    "0x800000000000000000000000000000000000000000000000000000000000000";
-
-// Invariant: key is in range
-#[derive(Copy, Clone, Eq, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct PatriciaKey(StarkHash);
-impl PatriciaKey {
-    pub fn new(hash: StarkHash) -> Result<PatriciaKey, StarknetApiError> {
-        if hash >= StarkHash::from_hex(PATRICIA_KEY_UPPER_BOUND)? {
-            return Err(StarknetApiError::OutOfRange {
-                string: format!("[0x0, {PATRICIA_KEY_UPPER_BOUND})"),
-            });
-        }
-        Ok(PatriciaKey(hash))
-    }
-    pub fn key(&self) -> &StarkHash {
-        &self.0
-    }
-}
-
-impl Debug for PatriciaKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("PatriciaKey").field(&self.0).finish()
+impl Display for ChainId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.0)
     }
 }
 
@@ -56,16 +36,16 @@ impl Debug for PatriciaKey {
 )]
 pub struct ContractAddress(PatriciaKey);
 
+impl ContractAddress {
+    pub fn contract_address(&self) -> &PatriciaKey {
+        &self.0
+    }
+}
+
 impl TryFrom<StarkHash> for ContractAddress {
     type Error = StarknetApiError;
     fn try_from(hash: StarkHash) -> Result<Self, Self::Error> {
         Ok(Self(PatriciaKey::new(hash)?))
-    }
-}
-
-impl ContractAddress {
-    pub fn contract_address(&self) -> &PatriciaKey {
-        &self.0
     }
 }
 
@@ -108,3 +88,25 @@ impl Default for Nonce {
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct EntryPointSelector(pub StarkHash);
+
+// Invariant: key is in range
+#[derive(Copy, Clone, Eq, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct PatriciaKey(StarkHash);
+
+impl PatriciaKey {
+    pub fn new(hash: StarkHash) -> Result<PatriciaKey, StarknetApiError> {
+        if hash < StarkHash::from_hex(PATRICIA_KEY_UPPER_BOUND)? {
+            return Ok(PatriciaKey(hash));
+        }
+        Err(StarknetApiError::OutOfRange { string: format!("[0x0, {PATRICIA_KEY_UPPER_BOUND})") })
+    }
+    pub fn key(&self) -> &StarkHash {
+        &self.0
+    }
+}
+
+impl Debug for PatriciaKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("PatriciaKey").field(&self.0).finish()
+    }
+}
