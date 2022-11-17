@@ -77,7 +77,7 @@ fn load_block_state_update_succeeds() {
                     "0x071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64"
                 )),
             }],
-            declared_classes: vec![],
+            declared_contracts: vec![],
         },
     };
     assert_eq!(
