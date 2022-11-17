@@ -37,6 +37,7 @@ use self::objects::{
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct GatewayConfig {
+    #[serde(default)]
     pub chain_id: ChainId,
     pub server_ip: String,
     pub max_events_chunk_size: usize,
@@ -393,7 +394,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
     fn chain_id(&self) -> Result<String, Error> {
         Ok(self.chain_id.as_hex())
     }
-    
+
     fn get_events(
         &self,
         filter: EventFilter,

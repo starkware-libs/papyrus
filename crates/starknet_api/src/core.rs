@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use super::{StarkFelt, StarkHash, StarknetApiError};
 
 /// Starknet chain id.
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ChainId(pub String);
 impl Display for ChainId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
