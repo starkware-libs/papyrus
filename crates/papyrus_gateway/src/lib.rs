@@ -23,7 +23,9 @@ use starknet_api::block::{BlockNumber, BlockStatus, GlobalRoot};
 use starknet_api::core::{ChainId, ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 use starknet_api::state::{StateNumber, StorageKey};
-use starknet_api::transaction::{EventIndexInTransactionOutput, TransactionHash, TransactionOffsetInBlock};
+use starknet_api::transaction::{
+    EventIndexInTransactionOutput, TransactionHash, TransactionOffsetInBlock,
+};
 
 use self::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcError,
@@ -393,7 +395,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
     fn chain_id(&self) -> Result<String, Error> {
         Ok(self.chain_id.as_hex())
     }
-    
+
     fn get_events(
         &self,
         filter: EventFilter,

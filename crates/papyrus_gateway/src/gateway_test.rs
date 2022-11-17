@@ -26,25 +26,21 @@ use starknet_api::{patky, shash};
 
 use super::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcClient,
-    JsonRpcError, JsonRpcServer, Tag,
+    JsonRpcError, Tag,
 };
 use super::objects::{
     Block, ContractClass, Event, StateUpdate, TransactionReceipt, TransactionReceiptWithStatus,
     TransactionStatus, TransactionWithType, Transactions,
 };
-use super::test_utils::{get_test_chain_id, get_test_gateway_config, send_request};
-use super::{run_server, ContinuationTokenAsStruct, JsonRpcServerImpl};
+use super::test_utils::{
+    get_test_gateway_config, get_test_rpc_server, get_test_rpc_server_and_storage_writer,
+    send_request,
+};
+use super::{run_server, ContinuationTokenAsStruct};
 
 #[tokio::test]
 async fn block_number() -> Result<(), anyhow::Error> {
-    let (storage_reader, mut storage_writer) = get_test_storage();
-    let chain_id = get_test_chain_id();
-    let module = JsonRpcServerImpl {
-        chain_id,
-        storage_reader,
-        max_events_chunk_size: 10,
-        max_events_keys: 10,
-    }.into_rpc();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     // No blocks yet.
     let err = module
@@ -70,15 +66,7 @@ async fn block_number() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn block_hash_and_number() -> Result<(), anyhow::Error> {
-    let (storage_reader, mut storage_writer) = get_test_storage();
-    let chain_id = get_test_chain_id();
-    let module = JsonRpcServerImpl {
-        chain_id,
-        storage_reader,
-        max_events_chunk_size: 10,
-        max_events_keys: 10,
-    }
-    .into_rpc();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     // No blocks yet.
     let err = module
@@ -112,15 +100,7 @@ async fn block_hash_and_number() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
-    let (storage_reader, mut storage_writer) = get_test_storage();
-    let chain_id = get_test_chain_id();
-    let module = JsonRpcServerImpl {
-        chain_id,
-        storage_reader,
-        max_events_chunk_size: 10,
-        max_events_keys: 10,
-    }
-    .into_rpc();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     let block = get_test_block(1);
     storage_writer
@@ -195,15 +175,7 @@ async fn get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn get_block_w_full_transactions() -> Result<(), anyhow::Error> {
-    let (storage_reader, mut storage_writer) = get_test_storage();
-    let chain_id = get_test_chain_id();
-    let module = JsonRpcServerImpl {
-        chain_id,
-        storage_reader,
-        max_events_chunk_size: 10,
-        max_events_keys: 10,
-    }
-    .into_rpc();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     let block = get_test_block(1);
     storage_writer
@@ -276,10 +248,7 @@ async fn get_block_w_full_transactions() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn get_storage_at() -> Result<(), anyhow::Error> {
-    let (storage_reader, mut storage_writer) = get_test_storage();
-    let chain_id = get_test_chain_id();
-    let module = JsonRpcServerImpl { chain_id, storage_reader, max_events_chunk_size: 10, max_events_keys: 10 }.into_rpc();
-
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     let (header, _, diff, deployed_contract_class_definitions) = get_test_state_diff();
     storage_writer
@@ -369,9 +338,7 @@ async fn get_storage_at() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn get_class_hash_at() -> Result<(), anyhow::Error> {
-    let (storage_reader, mut storage_writer) = get_test_storage();
-    let chain_id = get_test_chain_id();
-    let module = JsonRpcServerImpl { chain_id, storage_reader, max_events_chunk_size: 10, max_events_keys: 10 }.into_rpc();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     let (header, _, diff, deployed_contract_class_definitions) = get_test_state_diff();
     storage_writer
@@ -456,9 +423,7 @@ async fn get_class_hash_at() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn get_nonce() -> Result<(), anyhow::Error> {
-    let (storage_reader, mut storage_writer) = get_test_storage();
-    let chain_id = get_test_chain_id();
-    let module = JsonRpcServerImpl { chain_id, storage_reader, max_events_chunk_size: 10, max_events_keys: 10 }.into_rpc();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     let (header, _, diff, deployed_contract_class_definitions) = get_test_state_diff();
     storage_writer
@@ -543,9 +508,7 @@ async fn get_nonce() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn get_transaction_by_hash() -> Result<(), anyhow::Error> {
-    let (storage_reader, mut storage_writer) = get_test_storage();
-    let chain_id = get_test_chain_id();
-    let module = JsonRpcServerImpl { chain_id, storage_reader, max_events_chunk_size: 10, max_events_keys: 10 }.into_rpc();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     let block = get_test_block(1);
     storage_writer
@@ -581,9 +544,7 @@ async fn get_transaction_by_hash() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn get_transaction_by_block_id_and_index() -> Result<(), anyhow::Error> {
-    let (storage_reader, mut storage_writer) = get_test_storage();
-    let chain_id = get_test_chain_id();
-    let module = JsonRpcServerImpl { chain_id, storage_reader, max_events_chunk_size: 10, max_events_keys: 10 }.into_rpc();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     let block = get_test_block(1);
     storage_writer
@@ -665,9 +626,7 @@ async fn get_transaction_by_block_id_and_index() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn get_block_transaction_count() -> Result<(), anyhow::Error> {
-    let (storage_reader, mut storage_writer) = get_test_storage();
-    let chain_id = get_test_chain_id();
-    let module = JsonRpcServerImpl { chain_id, storage_reader, max_events_chunk_size: 10, max_events_keys: 10 }.into_rpc();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     let transaction_count = 5;
     let block = get_test_block(transaction_count);
@@ -735,9 +694,7 @@ async fn get_block_transaction_count() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn get_state_update() -> Result<(), anyhow::Error> {
-    let (storage_reader, mut storage_writer) = get_test_storage();
-    let chain_id = get_test_chain_id();
-    let module = JsonRpcServerImpl { chain_id, storage_reader, max_events_chunk_size: 10, max_events_keys: 10 }.into_rpc();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     let (parent_header, header, diff, deployed_contract_class_definitions) = get_test_state_diff();
     storage_writer
@@ -812,9 +769,7 @@ async fn get_state_update() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn get_transaction_receipt() -> Result<(), anyhow::Error> {
-    let (storage_reader, mut storage_writer) = get_test_storage();
-    let chain_id = get_test_chain_id();
-    let module = JsonRpcServerImpl { chain_id, storage_reader, max_events_chunk_size: 10, max_events_keys: 10 }.into_rpc();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     let block = get_test_block(1);
     storage_writer
@@ -864,9 +819,7 @@ async fn get_transaction_receipt() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn get_class() -> Result<(), anyhow::Error> {
-    let (storage_reader, mut storage_writer) = get_test_storage();
-    let chain_id = get_test_chain_id();
-    let module = JsonRpcServerImpl { chain_id, storage_reader, max_events_chunk_size: 10, max_events_keys: 10 }.into_rpc();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     let (parent_header, header, diff, deployed_contract_class_definitions) = get_test_state_diff();
     storage_writer
@@ -975,9 +928,7 @@ async fn get_class() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn get_class_at() -> Result<(), anyhow::Error> {
-    let (storage_reader, mut storage_writer) = get_test_storage();
-    let chain_id = get_test_chain_id();
-    let module = JsonRpcServerImpl { chain_id, storage_reader, max_events_chunk_size: 10, max_events_keys: 10 }.into_rpc();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     let (parent_header, header, diff, deployed_contract_class_definitions) = get_test_state_diff();
     storage_writer
@@ -1094,9 +1045,7 @@ async fn get_class_at() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn chain_id() -> Result<(), anyhow::Error> {
-    let (storage_reader, _) = get_test_storage();
-    let chain_id = get_test_chain_id();
-    let module = JsonRpcServerImpl { chain_id, storage_reader, max_events_chunk_size: 10, max_events_keys: 10 }.into_rpc();
+    let module = get_test_rpc_server();
 
     let res = module.call::<_, String>("starknet_chainId", EmptyParams::new()).await?;
     // The result should be equal to the result of the following python code
@@ -1109,9 +1058,7 @@ async fn chain_id() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn get_6_events_chunk_size_2_with_address() -> Result<(), anyhow::Error> {
-    let (storage_reader, mut storage_writer) = get_test_storage();
-    let chain_id = get_test_chain_id();
-    let module = JsonRpcServerImpl { chain_id, storage_reader, max_events_chunk_size: 10, max_events_keys: 10 }.into_rpc();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     let block = get_test_block(2);
     let block_number = block.header.block_number;
@@ -1196,9 +1143,7 @@ async fn get_6_events_chunk_size_2_with_address() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn get_2_events_chunk_size_2_with_address() -> Result<(), anyhow::Error> {
-    let (storage_reader, mut storage_writer) = get_test_storage();
-    let chain_id = get_test_chain_id();
-    let module = JsonRpcServerImpl { chain_id, storage_reader, max_events_chunk_size: 10, max_events_keys: 10 }.into_rpc();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     let block = get_test_block(2);
     let block_number = block.header.block_number;
@@ -1247,9 +1192,7 @@ async fn get_2_events_chunk_size_2_with_address() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn get_4_events_chunk_size_3_with_address() -> Result<(), anyhow::Error> {
-    let (storage_reader, mut storage_writer) = get_test_storage();
-    let chain_id = get_test_chain_id();
-    let module = JsonRpcServerImpl { chain_id, storage_reader, max_events_chunk_size: 10, max_events_keys: 10 }.into_rpc();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     let block = get_test_block(2);
     let block_number = block.header.block_number;
@@ -1318,9 +1261,7 @@ async fn get_4_events_chunk_size_3_with_address() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn get_6_events_chunk_size_2_without_address() -> Result<(), anyhow::Error> {
-    let (storage_reader, mut storage_writer) = get_test_storage();
-    let chain_id = get_test_chain_id();
-    let module = JsonRpcServerImpl { chain_id, storage_reader, max_events_chunk_size: 10, max_events_keys: 10 }.into_rpc();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     let block = get_test_block(2);
     let block_number = block.header.block_number;
@@ -1404,9 +1345,7 @@ async fn get_6_events_chunk_size_2_without_address() -> Result<(), anyhow::Error
 
 #[tokio::test]
 async fn get_6_events_chunk_size_4_without_address() -> Result<(), anyhow::Error> {
-    let (storage_reader, mut storage_writer) = get_test_storage();
-    let chain_id = get_test_chain_id();
-    let module = JsonRpcServerImpl { chain_id, storage_reader, max_events_chunk_size: 10, max_events_keys: 10 }.into_rpc();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     let block = get_test_block(2);
     let block_number = block.header.block_number;
