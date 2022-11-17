@@ -12,10 +12,8 @@ use crate::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, Patrici
 use crate::hash::{StarkFelt, StarkHash};
 use crate::StarknetApiError;
 
-// TODO(anatg): Consider replacing this with ThinStateDiff (that is, remove ContractClass)
-// and append contract classes to the storage separately.
-// Invariant: Addresses are strictly increasing.
 /// The differences between two states in StarkNet.
+// Invariant: Addresses are strictly increasing.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct StateDiff {
     deployed_contracts: Vec<DeployedContract>,
@@ -85,6 +83,7 @@ impl From<StateDiff> for StateDiffAsTuple {
     }
 }
 
+/// The nonce of a StarkNet contract.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ContractNonce {
     pub contract_address: ContractAddress,
@@ -105,8 +104,8 @@ pub struct DeclaredContract {
     pub contract_class: ContractClass,
 }
 
-// Invariant: Storage keys are strictly increasing. In particular, no key appears twice.
 /// Storage differences in StarkNet.
+// Invariant: Storage keys are strictly increasing. In particular, no key appears twice.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StorageDiff {
     pub address: ContractAddress,
@@ -140,12 +139,12 @@ impl StorageDiff {
 pub struct StateNumber(pub BlockNumber);
 
 impl StateNumber {
-    // The state at the beginning of the block.
+    /// The state at the beginning of the block.
     pub fn right_before_block(block_number: BlockNumber) -> StateNumber {
         StateNumber(block_number)
     }
 
-    // The state at the end of the block.
+    /// The state at the end of the block.
     pub fn right_after_block(block_number: BlockNumber) -> StateNumber {
         StateNumber(block_number.next())
     }
@@ -296,7 +295,6 @@ pub struct TypedParameter {
     pub r#type: String,
 }
 
-// TODO: Invariant: this is in range.
 /// A storage key in a StarkNet contract.
 #[derive(
     Debug, Default, Clone, Copy, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
