@@ -393,7 +393,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
     fn chain_id(&self) -> Result<String, Error> {
         Ok(self.chain_id.as_hex())
     }
-    
+
     fn get_events(
         &self,
         filter: EventFilter,
