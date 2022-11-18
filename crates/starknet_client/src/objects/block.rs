@@ -245,7 +245,7 @@ pub struct StateDiff {
     pub storage_diffs: BTreeMap<ContractAddress, Vec<StorageEntry>>,
     pub deployed_contracts: Vec<DeployedContract>,
     #[serde(default)]
-    pub declared_classes: Vec<ClassHash>,
+    pub declared_contracts: Vec<ClassHash>,
 }
 impl StateDiff {
     // Returns the declared class hashes and after them the deployed class hashes that weren't in
@@ -255,9 +255,9 @@ impl StateDiff {
             .deployed_contracts
             .iter()
             .map(|contract| contract.class_hash)
-            .filter(|hash| !self.declared_classes.contains(hash))
+            .filter(|hash| !self.declared_contracts.contains(hash))
             .collect();
-        let mut declared_class_hashes = self.declared_classes.clone();
+        let mut declared_class_hashes = self.declared_contracts.clone();
         declared_class_hashes.append(&mut deployed_class_hashes);
         declared_class_hashes
     }
