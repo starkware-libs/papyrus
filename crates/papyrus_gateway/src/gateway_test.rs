@@ -30,8 +30,7 @@ use super::objects::{
     TransactionStatus, TransactionWithType, Transactions,
 };
 use super::test_utils::{
-    get_test_gateway_config, get_test_rpc_server, get_test_rpc_server_and_storage_writer,
-    send_request,
+    get_test_gateway_config_and_chain_id, get_test_rpc_server_and_storage_writer, send_request,
 };
 use super::{run_server, ContinuationTokenAsStruct};
 
@@ -1030,7 +1029,7 @@ async fn get_class_at() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn chain_id() -> Result<(), anyhow::Error> {
-    let module = get_test_rpc_server();
+    let (module, _) = get_test_rpc_server_and_storage_writer();
 
     let res = module.call::<_, String>("starknet_chainId", EmptyParams::new()).await?;
     // The result should be equal to the result of the following python code
@@ -1053,16 +1052,15 @@ async fn get_6_events_chunk_size_2_with_address() -> Result<(), anyhow::Error> {
         .append_body(block_number, block.body.clone())?
         .commit()?;
 
-    // Create the filter. The allowed keys at index 0 are 0x7 or 0x9.
-    let mut filter_keys = HashSet::new();
-    filter_keys.insert(EventKey(shash!("0x7")));
-    filter_keys.insert(EventKey(shash!("0x6")));
+    // Create the filter. The allowed keys at index 0 are 0x7 or 0x6.
+    let filter_keys = HashSet::from([EventKey(shash!("0x7")), EventKey(shash!("0x6"))]);
     let block_id = BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number));
+    let chunk_size = 2;
     let mut filter = EventFilter {
         from_block: Some(block_id),
         to_block: Some(block_id),
         continuation_token: None,
-        chunk_size: 2,
+        chunk_size,
         address: Some(ContractAddress::try_from(shash!("0x22"))?),
         keys: vec![filter_keys],
     };
@@ -1084,8 +1082,9 @@ async fn get_6_events_chunk_size_2_with_address() -> Result<(), anyhow::Error> {
         Event { block_hash, block_number, transaction_hash: tx_hash3, event: event1.clone() },
         Event { block_hash, block_number, transaction_hash: tx_hash3, event: event4.clone() },
     ];
+    let mut emitted_events_iter = emitted_events.chunks(chunk_size);
 
-    // Create the expected continuation token and chunks of events.
+    // Create the expected continuation token.
     let expected_continuation_token0 =
         ContinuationToken::new(ContinuationTokenAsStruct(EventIndex(
             TransactionIndex(block_number, TransactionOffsetInBlock(0)),
@@ -1096,15 +1095,12 @@ async fn get_6_events_chunk_size_2_with_address() -> Result<(), anyhow::Error> {
             TransactionIndex(block_number, TransactionOffsetInBlock(1)),
             EventIndexInTransactionOutput(1),
         )))?;
-    let expected_events0 = vec![emitted_events[0].clone(), emitted_events[1].clone()];
-    let expected_events1 = vec![emitted_events[2].clone(), emitted_events[3].clone()];
-    let expected_events2 = vec![emitted_events[4].clone(), emitted_events[5].clone()];
 
     // Get first chunk of filtered events.
     let (res, continuation_token) = module
         .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter.clone()])
         .await?;
-    assert_eq!(res, expected_events0);
+    assert_eq!(res, emitted_events_iter.next().unwrap());
     assert_eq!(continuation_token, Some(expected_continuation_token0));
 
     // Get second chunk of filtered events.
@@ -1112,7 +1108,7 @@ async fn get_6_events_chunk_size_2_with_address() -> Result<(), anyhow::Error> {
     let (res, continuation_token) = module
         .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter.clone()])
         .await?;
-    assert_eq!(res, expected_events1);
+    assert_eq!(res, emitted_events_iter.next().unwrap());
     assert_eq!(continuation_token, Some(expected_continuation_token1));
 
     // Get third chunk of filtered events.
@@ -1120,7 +1116,7 @@ async fn get_6_events_chunk_size_2_with_address() -> Result<(), anyhow::Error> {
     let (res, continuation_token) = module
         .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter])
         .await?;
-    assert_eq!(res, expected_events2);
+    assert_eq!(res, emitted_events_iter.next().unwrap());
     assert_eq!(continuation_token, None);
 
     Ok(())
@@ -1139,18 +1135,18 @@ async fn get_2_events_chunk_size_2_with_address() -> Result<(), anyhow::Error> {
         .commit()?;
 
     // Create the filter. The allowed key at index 1 is 0x6.
-    let mut filter_keys = HashSet::new();
-    filter_keys.insert(EventKey(shash!("0x6")));
+    let filter_keys = HashSet::from([EventKey(shash!("0x6"))]);
+    let chunk_size = 2;
     let filter = EventFilter {
         from_block: None,
         to_block: None,
         continuation_token: None,
-        chunk_size: 2,
+        chunk_size,
         address: Some(ContractAddress::try_from(shash!("0x22"))?),
         keys: vec![HashSet::new(), filter_keys],
     };
 
-    // Create the events emitted from contract address 0x2 that have at least one of the allowed
+    // Create the events emitted from contract address 0x22 that have at least one of the allowed
     // keys at index 0.
     let event0 = block.body.transaction_outputs().index(0).events().index(0);
     let block_hash = block.header.block_hash;
@@ -1161,15 +1157,13 @@ async fn get_2_events_chunk_size_2_with_address() -> Result<(), anyhow::Error> {
         Event { block_hash, block_number, transaction_hash: tx_hash1, event: event0.clone() },
         Event { block_hash, block_number, transaction_hash: tx_hash3, event: event0.clone() },
     ];
-
-    // Create the expected chunk of events.
-    let expected_events0 = vec![emitted_events[0].clone(), emitted_events[1].clone()];
+    let mut emitted_events_iter = emitted_events.chunks(chunk_size);
 
     // Get the only chunk of filtered events.
     let (res, continuation_token) = module
         .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter.clone()])
         .await?;
-    assert_eq!(res, expected_events0);
+    assert_eq!(res, emitted_events_iter.next().unwrap());
     assert_eq!(continuation_token, None);
 
     Ok(())
@@ -1188,20 +1182,19 @@ async fn get_4_events_chunk_size_3_with_address() -> Result<(), anyhow::Error> {
         .commit()?;
 
     // Create the filter. The allowed keys at index 0 are 0x7 or 0x9.
-    let mut filter_keys = HashSet::new();
-    filter_keys.insert(EventKey(shash!("0x7")));
-    filter_keys.insert(EventKey(shash!("0x9")));
+    let filter_keys = HashSet::from([EventKey(shash!("0x7")), EventKey(shash!("0x9"))]);
     let block_id = BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number));
+    let chunk_size = 3;
     let mut filter = EventFilter {
         from_block: Some(block_id),
         to_block: None,
         continuation_token: None,
-        chunk_size: 3,
+        chunk_size,
         address: Some(ContractAddress::try_from(shash!("0x22"))?),
         keys: vec![filter_keys],
     };
 
-    // Create the events emitted from contract address 0x2 that have at least one of the allowed
+    // Create the events emitted from contract address 0x22 that have at least one of the allowed
     // keys at index 0.
     let event0 = block.body.transaction_outputs().index(0).events().index(0);
     let event3 = block.body.transaction_outputs().index(0).events().index(3);
@@ -1215,22 +1208,20 @@ async fn get_4_events_chunk_size_3_with_address() -> Result<(), anyhow::Error> {
         Event { block_hash, block_number, transaction_hash: tx_hash3, event: event0.clone() },
         Event { block_hash, block_number, transaction_hash: tx_hash3, event: event3.clone() },
     ];
+    let mut emitted_events_iter = emitted_events.chunks(chunk_size);
 
-    // Create the expected continuation token and chunks of events.
+    // Create the expected continuation token.
     let expected_continuation_token0 =
         ContinuationToken::new(ContinuationTokenAsStruct(EventIndex(
             TransactionIndex(block_number, TransactionOffsetInBlock(1)),
             EventIndexInTransactionOutput(3),
         )))?;
-    let expected_events0 =
-        vec![emitted_events[0].clone(), emitted_events[1].clone(), emitted_events[2].clone()];
-    let expected_events1 = vec![emitted_events[3].clone()];
 
     // Get first chunk of filtered events.
     let (res, continuation_token) = module
         .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter.clone()])
         .await?;
-    assert_eq!(res, expected_events0);
+    assert_eq!(res, emitted_events_iter.next().unwrap());
     assert_eq!(continuation_token, Some(expected_continuation_token0));
 
     // Get second chunk of filtered events.
@@ -1238,7 +1229,7 @@ async fn get_4_events_chunk_size_3_with_address() -> Result<(), anyhow::Error> {
     let (res, continuation_token) = module
         .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter])
         .await?;
-    assert_eq!(res, expected_events1);
+    assert_eq!(res, emitted_events_iter.next().unwrap());
     assert_eq!(continuation_token, None);
 
     Ok(())
@@ -1257,20 +1248,18 @@ async fn get_6_events_chunk_size_2_without_address() -> Result<(), anyhow::Error
         .commit()?;
 
     // Create the filter. The allowed keys at index 0 are 0x7 or 0x9.
-    let mut filter_keys = HashSet::new();
-    filter_keys.insert(EventKey(shash!("0x7")));
-    filter_keys.insert(EventKey(shash!("0x9")));
+    let filter_keys = HashSet::from([EventKey(shash!("0x7")), EventKey(shash!("0x9"))]);
+    let chunk_size = 2;
     let mut filter = EventFilter {
         from_block: None,
         to_block: None,
         continuation_token: None,
-        chunk_size: 2,
+        chunk_size,
         address: None,
         keys: vec![filter_keys],
     };
 
-    // Create the events emitted from contract address 0x2 that have at least one of the allowed
-    // keys at index 0.
+    // Create the events that have at least one of the allowed keys at index 0.
     let event0 = block.body.transaction_outputs().index(0).events().index(0);
     let event2 = block.body.transaction_outputs().index(0).events().index(2);
     let event3 = block.body.transaction_outputs().index(0).events().index(3);
@@ -1286,8 +1275,9 @@ async fn get_6_events_chunk_size_2_without_address() -> Result<(), anyhow::Error
         Event { block_hash, block_number, transaction_hash: tx_hash3, event: event2.clone() },
         Event { block_hash, block_number, transaction_hash: tx_hash3, event: event3.clone() },
     ];
+    let mut emitted_events_iter = emitted_events.chunks(chunk_size);
 
-    // Create the expected continuation token and chunks of events.
+    // Create the expected continuation token.
     let expected_continuation_token0 =
         ContinuationToken::new(ContinuationTokenAsStruct(EventIndex(
             TransactionIndex(block_number, TransactionOffsetInBlock(0)),
@@ -1298,15 +1288,12 @@ async fn get_6_events_chunk_size_2_without_address() -> Result<(), anyhow::Error
             TransactionIndex(block_number, TransactionOffsetInBlock(1)),
             EventIndexInTransactionOutput(2),
         )))?;
-    let expected_events0 = vec![emitted_events[0].clone(), emitted_events[1].clone()];
-    let expected_events1 = vec![emitted_events[2].clone(), emitted_events[3].clone()];
-    let expected_events2 = vec![emitted_events[4].clone(), emitted_events[5].clone()];
 
     // Get first chunk of filtered events.
     let (res, continuation_token) = module
         .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter.clone()])
         .await?;
-    assert_eq!(res, expected_events0);
+    assert_eq!(res, emitted_events_iter.next().unwrap());
     assert_eq!(continuation_token, Some(expected_continuation_token0));
 
     // Get second chunk of filtered events.
@@ -1314,7 +1301,7 @@ async fn get_6_events_chunk_size_2_without_address() -> Result<(), anyhow::Error
     let (res, continuation_token) = module
         .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter.clone()])
         .await?;
-    assert_eq!(res, expected_events1);
+    assert_eq!(res, emitted_events_iter.next().unwrap());
     assert_eq!(continuation_token, Some(expected_continuation_token1));
 
     // Get third chunk of filtered events.
@@ -1322,7 +1309,7 @@ async fn get_6_events_chunk_size_2_without_address() -> Result<(), anyhow::Error
     let (res, continuation_token) = module
         .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter])
         .await?;
-    assert_eq!(res, expected_events2);
+    assert_eq!(res, emitted_events_iter.next().unwrap());
     assert_eq!(continuation_token, None);
 
     Ok(())
@@ -1341,20 +1328,18 @@ async fn get_6_events_chunk_size_4_without_address() -> Result<(), anyhow::Error
         .commit()?;
 
     // Create the filter. The allowed keys at index 0 are 0x7 or 0x9.
-    let mut filter_keys = HashSet::new();
-    filter_keys.insert(EventKey(shash!("0x7")));
-    filter_keys.insert(EventKey(shash!("0x9")));
+    let filter_keys = HashSet::from([EventKey(shash!("0x7")), EventKey(shash!("0x9"))]);
+    let chunk_size = 4;
     let mut filter = EventFilter {
         from_block: None,
         to_block: None,
         continuation_token: None,
-        chunk_size: 4,
+        chunk_size,
         address: None,
         keys: vec![filter_keys],
     };
 
-    // Create the events emitted from contract address 0x2 that have at least one of the allowed
-    // keys at index 0.
+    // Create the events that have at least one of the allowed keys at index 0.
     let event0 = block.body.transaction_outputs().index(0).events().index(0);
     let event2 = block.body.transaction_outputs().index(0).events().index(2);
     let event3 = block.body.transaction_outputs().index(0).events().index(3);
@@ -1370,26 +1355,20 @@ async fn get_6_events_chunk_size_4_without_address() -> Result<(), anyhow::Error
         Event { block_hash, block_number, transaction_hash: tx_hash3, event: event2.clone() },
         Event { block_hash, block_number, transaction_hash: tx_hash3, event: event3.clone() },
     ];
+    let mut emitted_events_iter = emitted_events.chunks(chunk_size);
 
-    // Create the expected continuation token and chunks of events.
+    // Create the expected continuation token.
     let expected_continuation_token0 =
         ContinuationToken::new(ContinuationTokenAsStruct(EventIndex(
             TransactionIndex(block_number, TransactionOffsetInBlock(1)),
             EventIndexInTransactionOutput(2),
         )))?;
-    let expected_events0 = vec![
-        emitted_events[0].clone(),
-        emitted_events[1].clone(),
-        emitted_events[2].clone(),
-        emitted_events[3].clone(),
-    ];
-    let expected_events1 = vec![emitted_events[4].clone(), emitted_events[5].clone()];
 
     // Get first chunk of filtered events.
     let (res, continuation_token) = module
         .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter.clone()])
         .await?;
-    assert_eq!(res, expected_events0);
+    assert_eq!(res, emitted_events_iter.next().unwrap());
     assert_eq!(continuation_token, Some(expected_continuation_token0));
 
     // Get second chunk of filtered events.
@@ -1397,7 +1376,7 @@ async fn get_6_events_chunk_size_4_without_address() -> Result<(), anyhow::Error
     let (res, continuation_token) = module
         .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter])
         .await?;
-    assert_eq!(res, expected_events1);
+    assert_eq!(res, emitted_events_iter.next().unwrap());
     assert_eq!(continuation_token, None);
 
     Ok(())
@@ -1406,8 +1385,8 @@ async fn get_6_events_chunk_size_4_without_address() -> Result<(), anyhow::Error
 #[tokio::test]
 async fn run_server_scneario() -> Result<(), anyhow::Error> {
     let (storage_reader, _) = get_test_storage();
-    let gateway_config = get_test_gateway_config();
-    let (addr, _handle) = run_server(gateway_config, storage_reader).await?;
+    let (gateway_config, chain_id) = get_test_gateway_config_and_chain_id();
+    let (addr, _handle) = run_server(gateway_config, chain_id, storage_reader).await?;
     let client = HttpClientBuilder::default().build(format!("http://{:?}", addr))?;
     let err = client.block_number().await.unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
@@ -1440,8 +1419,8 @@ async fn serialize_returns_expcted_json() -> Result<(), anyhow::Error> {
         )?
         .commit()?;
 
-    let gateway_config = get_test_gateway_config();
-    let (server_address, _handle) = run_server(gateway_config, storage_reader).await?;
+    let (gateway_config, chain_id) = get_test_gateway_config_and_chain_id();
+    let (server_address, _handle) = run_server(gateway_config, chain_id, storage_reader).await?;
 
     serde_state(server_address).await?;
     serde_block(server_address).await?;
