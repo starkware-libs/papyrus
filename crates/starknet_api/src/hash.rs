@@ -32,12 +32,10 @@ impl StarkHash {
     /// Returns a new [`StarkHash`].
     pub fn new(bytes: [u8; 32]) -> Result<StarkHash, StarknetApiError> {
         // msb nibble must be 0. This is not a tight bound.
-        if bytes[0] >= 0x10 {
-            return Err(StarknetApiError::OutOfRange {
-                string: hex_str_from_bytes::<32, true>(bytes),
-            });
+        if bytes[0] < 0x10 {
+            return Ok(Self(bytes));
         }
-        Ok(Self(bytes))
+        Err(StarknetApiError::OutOfRange { string: hex_str_from_bytes::<32, true>(bytes) })
     }
 
     /// Returns a [`StarkHash`] corresponding to `hex_str`.
