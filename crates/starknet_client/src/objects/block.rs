@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use starknet_api::serde_utils::NonPrefixedHexAsBytes;
 use starknet_api::{
     BlockHash, BlockNumber, BlockTimestamp, ClassHash, ContractAddress, DeployedContract,
-    EntryPoint, EntryPointType, GasPrice, Program, StarkHash, StarknetApiError, StorageDiff,
+    EntryPoint, EntryPointType, GasPrice, Nonce, Program, StarkHash, StarknetApiError, StorageDiff,
     StorageEntry, TransactionHash, TransactionOffsetInBlock,
 };
 
@@ -240,12 +240,14 @@ impl From<BlockStatus> for starknet_api::BlockStatus {
 }
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct StateDiff {
     // BTreeMap is serialized as a mapping in json, keeps ordering and is efficiently iterable.
     pub storage_diffs: BTreeMap<ContractAddress, Vec<StorageEntry>>,
     pub deployed_contracts: Vec<DeployedContract>,
     #[serde(default)]
     pub declared_contracts: Vec<ClassHash>,
+    pub nonces: BTreeMap<ContractAddress, Nonce>,
 }
 impl StateDiff {
     // Returns the declared class hashes and after them the deployed class hashes that weren't in
