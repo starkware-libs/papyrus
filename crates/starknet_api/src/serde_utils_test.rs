@@ -1,6 +1,6 @@
 use assert_matches::assert_matches;
 
-use super::{bytes_from_hex_str, hex_str_from_bytes, HexAsBytes, InnerDeserialization};
+use super::{bytes_from_hex_str, hex_str_from_bytes, HexAsBytes, InnerDeserializationError};
 
 #[test]
 fn hex_str_from_bytes_scenarios() {
@@ -62,13 +62,13 @@ fn bytes_from_hex_str_errors() {
     // Short buffer.
     let hex_str = "0xda2b";
     let err = bytes_from_hex_str::<1, true>(hex_str);
-    assert_matches!(err, Err(InnerDeserialization::BadInput { expected_byte_count: 1, .. }));
+    assert_matches!(err, Err(InnerDeserializationError::BadInput { expected_byte_count: 1, .. }));
 
     // Invalid hex char.
     let err = bytes_from_hex_str::<1, false>("1z");
     assert_matches!(
         err,
-        Err(InnerDeserialization::FromHexError(hex::FromHexError::InvalidHexCharacter {
+        Err(InnerDeserializationError::FromHex(hex::FromHexError::InvalidHexCharacter {
             c: 'z',
             index: 1
         }))
@@ -76,13 +76,13 @@ fn bytes_from_hex_str_errors() {
 
     // Missing prefix.
     let err = bytes_from_hex_str::<2, true>("11");
-    assert_matches!(err, Err(InnerDeserialization::MissingPrefix { .. }));
+    assert_matches!(err, Err(InnerDeserializationError::MissingPrefix { .. }));
 
     // Unneeded prefix.
     let err = bytes_from_hex_str::<2, false>("0x11");
     assert_matches!(
         err,
-        Err(InnerDeserialization::FromHexError(hex::FromHexError::InvalidHexCharacter {
+        Err(InnerDeserializationError::FromHex(hex::FromHexError::InvalidHexCharacter {
             c: 'x',
             index: 1
         }))
