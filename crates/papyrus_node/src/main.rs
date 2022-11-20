@@ -27,7 +27,6 @@ async fn main() -> anyhow::Result<()> {
     info!("Booting up.");
 
     let mut config = load_config("config/config.ron")?;
-    let gateway_config = config.get_gateway_config();
 
     if let Some(storage_path_str) = args.storage_path {
         config.storage.db_config.path = storage_path_str;
@@ -49,7 +48,8 @@ async fn main() -> anyhow::Result<()> {
     }
 
     // Pass a storage reader to the gateways.
-    let (_, server_handle) = run_server(gateway_config, storage_reader.clone()).await?;
+    let (_, server_handle) =
+        run_server(config.gateway, config.chain_id, storage_reader.clone()).await?;
     let (_, monitoring_server_handle) =
         monitoring_run_server(config.monitoring_gateway, storage_reader.clone()).await?;
     if let Some(sync_thread) = sync_thread_opt {
