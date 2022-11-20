@@ -120,6 +120,7 @@ async fn contract_class() {
         program: Program {
             attributes: serde_json::Value::Array(vec![serde_json::json!(1234)]),
             builtins: serde_json::Value::Array(Vec::new()),
+            compiler_version: serde_json::Value::Null,
             data: serde_json::Value::Array(vec![
                 serde_json::Value::String("0x20780017fff7ffd".to_string()),
                 serde_json::Value::String("0x4".to_string()),

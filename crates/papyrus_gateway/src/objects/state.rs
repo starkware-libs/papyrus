@@ -93,6 +93,10 @@ impl TryFrom<starknet_api::ContractClass> for ContractClass {
         if class.program.attributes == serde_json::value::Value::Null {
             program_value.as_object_mut().unwrap().remove("attributes");
         }
+        // Remove the 'compiler_version' key if it is null.
+        if class.program.compiler_version == serde_json::value::Value::Null {
+            program_value.as_object_mut().unwrap().remove("compiler_version");
+        }
 
         Ok(Self {
             abi: class.abi.map(|entries| entries.into_iter().map(|entry| entry.into()).collect()),
