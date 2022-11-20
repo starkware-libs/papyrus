@@ -37,7 +37,6 @@ use self::objects::{
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct GatewayConfig {
-    pub chain_id: ChainId,
     pub server_ip: String,
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
@@ -453,7 +452,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
             if block_number > to_block_number {
                 break;
             }
-            if filter.address.is_some() && from_address > filter.address.unwrap() {
+            if filter.address.is_some() && from_address != filter.address.unwrap() {
                 break;
             }
             if filter.keys.iter().enumerate().all(|(i, keys)| {
@@ -487,6 +486,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
 pub async fn run_server(
     config: GatewayConfig,
+    chain_id: ChainId,
     storage_reader: StorageReader,
 ) -> anyhow::Result<(SocketAddr, HttpServerHandle)> {
     info!("Starting gateway.");
@@ -494,7 +494,7 @@ pub async fn run_server(
     let addr = server.local_addr()?;
     let handle = server.start(
         JsonRpcServerImpl {
-            chain_id: config.chain_id,
+            chain_id,
             storage_reader,
             max_events_chunk_size: config.max_events_chunk_size,
             max_events_keys: config.max_events_keys,

@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use jsonrpsee::ws_server::RpcModule;
+use jsonrpsee::http_server::RpcModule;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
 use reqwest::Client;
@@ -33,22 +33,24 @@ pub fn get_test_chain_id() -> ChainId {
     ChainId("SN_GOERLI".to_string())
 }
 
-pub fn get_test_gateway_config() -> GatewayConfig {
-    GatewayConfig {
-        chain_id: get_test_chain_id(),
-        server_ip: String::from("127.0.0.1:0"),
-        max_events_chunk_size: 10,
-        max_events_keys: 10,
-    }
+pub fn get_test_gateway_config() -> (GatewayConfig, ChainId) {
+    (
+        GatewayConfig {
+            server_ip: String::from("127.0.0.1:0"),
+            max_events_chunk_size: 10,
+            max_events_keys: 10,
+        },
+        get_test_chain_id(),
+    )
 }
 
 pub(crate) fn get_test_rpc_server_and_storage_writer()
 -> (RpcModule<JsonRpcServerImpl>, StorageWriter) {
     let (storage_reader, storage_writer) = get_test_storage();
-    let config = get_test_gateway_config();
+    let (config, chain_id) = get_test_gateway_config();
     (
         JsonRpcServerImpl {
-            chain_id: config.chain_id,
+            chain_id,
             storage_reader,
             max_events_chunk_size: config.max_events_chunk_size,
             max_events_keys: config.max_events_keys,
@@ -56,16 +58,4 @@ pub(crate) fn get_test_rpc_server_and_storage_writer()
         .into_rpc(),
         storage_writer,
     )
-}
-
-pub(crate) fn get_test_rpc_server() -> RpcModule<JsonRpcServerImpl> {
-    let (storage_reader, _) = get_test_storage();
-    let config = get_test_gateway_config();
-    JsonRpcServerImpl {
-        chain_id: config.chain_id,
-        storage_reader,
-        max_events_chunk_size: config.max_events_chunk_size,
-        max_events_keys: config.max_events_keys,
-    }
-    .into_rpc()
 }
