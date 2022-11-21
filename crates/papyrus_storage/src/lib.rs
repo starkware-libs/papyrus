@@ -33,7 +33,8 @@ use crate::db::{
 pub use crate::db::{TransactionKind, RO};
 pub use crate::header::{HeaderStorageReader, HeaderStorageWriter};
 pub use crate::ommer::OmmerStorageWriter;
-pub use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
+pub use crate::state::data::ThinStateDiff;
+use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract};
 pub use crate::state::{StateStorageReader, StateStorageWriter};
 
 #[derive(Serialize, Deserialize)]
