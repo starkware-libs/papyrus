@@ -7,7 +7,7 @@ use std::vec::IntoIter;
 
 use serde::{Deserialize, Serialize};
 
-use super::serde_utils::{HexAsBytes, PrefixedHexAsBytes};
+use super::serde_utils::{BytesAsHex, PrefixedBytesAsHex};
 use super::{ContractAddress, StarkHash, StarknetApiError, Transaction, TransactionOutput};
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -143,7 +143,7 @@ impl fmt::Display for BlockNumber {
 #[derive(
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-#[serde(from = "PrefixedHexAsBytes<16_usize>", into = "PrefixedHexAsBytes<16_usize>")]
+#[serde(from = "PrefixedBytesAsHex<16_usize>", into = "PrefixedBytesAsHex<16_usize>")]
 pub struct GasPrice(u128);
 
 impl GasPrice {
@@ -155,15 +155,15 @@ impl GasPrice {
     }
 }
 
-impl From<PrefixedHexAsBytes<16_usize>> for GasPrice {
-    fn from(val: PrefixedHexAsBytes<16_usize>) -> Self {
+impl From<PrefixedBytesAsHex<16_usize>> for GasPrice {
+    fn from(val: PrefixedBytesAsHex<16_usize>) -> Self {
         GasPrice(u128::from_be_bytes(val.0))
     }
 }
 
-impl From<GasPrice> for PrefixedHexAsBytes<16_usize> {
+impl From<GasPrice> for PrefixedBytesAsHex<16_usize> {
     fn from(val: GasPrice) -> Self {
-        HexAsBytes(val.0.to_be_bytes())
+        BytesAsHex(val.0.to_be_bytes())
     }
 }
 
