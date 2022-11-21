@@ -20,7 +20,7 @@ use crate::body::events::{
     ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput, ThinDeployTransactionOutput,
     ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
 };
-use crate::db::serialization::StorageSerde;
+use crate::db::serialization::{StorageSerde, StorageSerdeError};
 use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract};
 use crate::{
     EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey, ThinStateDiff, TransactionIndex,
@@ -30,7 +30,7 @@ use crate::{
 // Starknet API structs.
 ////////////////////////////////////////////////////////////////////////
 impl StorageSerde for ContractAddress {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
         self.contract_address().serialize_into(res)
     }
 
@@ -40,7 +40,7 @@ impl StorageSerde for ContractAddress {
 }
 
 impl StorageSerde for PatriciaKey {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
         self.key().serialize_into(res)
     }
 
@@ -51,9 +51,8 @@ impl StorageSerde for PatriciaKey {
 
 // TODO(spapini): Perhaps compress this textual data.
 impl StorageSerde for serde_json::Value {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
-        // TODO(anatg): Deal with serde_json error.
-        let bytes = serde_json::to_vec(self).unwrap();
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        let bytes = serde_json::to_vec(self)?;
         bytes.serialize_into(res)
     }
 
@@ -64,8 +63,9 @@ impl StorageSerde for serde_json::Value {
 }
 
 impl StorageSerde for StarkHash {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
-        self.serialize(res)
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        self.serialize(res)?;
+        Ok(())
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
@@ -74,7 +74,7 @@ impl StorageSerde for StarkHash {
 }
 
 impl StorageSerde for StorageKey {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
         self.key().serialize_into(res)
     }
 
@@ -84,7 +84,7 @@ impl StorageSerde for StorageKey {
 }
 
 impl StorageSerde for TransactionOffsetInBlock {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
         (self.0 as u64).serialize_into(res)
     }
 
@@ -95,7 +95,7 @@ impl StorageSerde for TransactionOffsetInBlock {
 
 // TODO(anatg): Consider using wrapper instead.
 impl StorageSerde for EventIndexInTransactionOutput {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
         (self.0 as u64).serialize_into(res)
     }
 
@@ -106,7 +106,7 @@ impl StorageSerde for EventIndexInTransactionOutput {
 
 // TODO: Move to Primitive types area.
 impl StorageSerde for String {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
         (self.as_bytes().to_vec()).serialize_into(res)
     }
 
@@ -119,13 +119,16 @@ impl StorageSerde for String {
 //  Primitive types.
 ////////////////////////////////////////////////////////////////////////
 impl<T: StorageSerde> StorageSerde for Option<T> {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
         match self {
             Some(value) => {
                 res.write_all(&[1])?;
                 value.serialize_into(res)
             }
-            None => res.write_all(&[0]),
+            None => {
+                res.write_all(&[0])?;
+                Ok(())
+            }
         }
     }
 
@@ -140,8 +143,8 @@ impl<T: StorageSerde> StorageSerde for Option<T> {
     }
 }
 impl<T: StorageSerde> StorageSerde for Vec<T> {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
-        res.write_varint(self.len()).expect("I/O error during Vec serialization");
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        res.write_varint(self.len())?;
         for x in self {
             x.serialize_into(res)?
         }
@@ -149,7 +152,7 @@ impl<T: StorageSerde> StorageSerde for Vec<T> {
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        let n: usize = bytes.read_varint().unwrap();
+        let n: usize = bytes.read_varint().ok()?;
         let mut res = Vec::with_capacity(n as usize);
         for _i in 0..n {
             res.push(T::deserialize_from(bytes)?);
@@ -158,8 +161,8 @@ impl<T: StorageSerde> StorageSerde for Vec<T> {
     }
 }
 impl<K: StorageSerde + Eq + Hash, V: StorageSerde> StorageSerde for HashMap<K, V> {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
-        res.write_varint(self.len()).expect("I/O error during HashMap serialization");
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        res.write_varint(self.len())?;
         for (k, v) in self.iter() {
             k.serialize_into(res)?;
             v.serialize_into(res)?;
@@ -168,7 +171,7 @@ impl<K: StorageSerde + Eq + Hash, V: StorageSerde> StorageSerde for HashMap<K, V
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        let n: usize = bytes.read_varint().unwrap();
+        let n: usize = bytes.read_varint().ok()?;
         let mut res = HashMap::with_capacity(n as usize);
         for _i in 0..n {
             let k = K::deserialize_from(bytes)?;
@@ -181,7 +184,7 @@ impl<K: StorageSerde + Eq + Hash, V: StorageSerde> StorageSerde for HashMap<K, V
     }
 }
 impl<T: StorageSerde + Default + Copy, const N: usize> StorageSerde for [T; N] {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
         for x in self {
             x.serialize_into(res)?;
         }
@@ -205,7 +208,7 @@ macro_rules! auto_storage_serde {
     // Tuple structs (no names associated with fields) - one field.
     ($(pub)? struct $name:ident($(pub)? $ty:ty); $($rest:tt)*) => {
         impl StorageSerde for $name {
-            fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+            fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
                 self.0.serialize_into(res)
             }
             fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
@@ -217,7 +220,7 @@ macro_rules! auto_storage_serde {
     // Tuple structs (no names associated with fields) - two fields.
     ($(pub)? struct $name:ident($(pub)? $ty0:ty, $(pub)? $ty1:ty) ; $($rest:tt)*) => {
         impl StorageSerde for $name {
-            fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+            fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
                 self.0.serialize_into(res)?;
                 self.1.serialize_into(res)
             }
@@ -230,7 +233,7 @@ macro_rules! auto_storage_serde {
     // Structs with public fields.
     ($(pub)? struct $name:ident { $(pub $field:ident : $ty:ty ,)* } $($rest:tt)*) => {
         impl StorageSerde for $name {
-            fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+            fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
                 $(
                     self.$field.serialize_into(res)?;
                 )*
@@ -249,7 +252,7 @@ macro_rules! auto_storage_serde {
     // Structs with private fields and getters.
     (wrapper($name:ident, $($field_getter:ident : $ty:ty ,)*); $($rest:tt)* ) => {
         impl StorageSerde for $name {
-            fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+            fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
                 $(
                     self.$field_getter().serialize_into(res)?;
                 )*
@@ -266,7 +269,7 @@ macro_rules! auto_storage_serde {
     // Tuples - two elements.
     (($ty0:ty, $ty1:ty) ; $($rest:tt)*) => {
         impl StorageSerde for ($ty0, $ty1) {
-            fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+            fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
                 self.0.serialize_into(res)?;
                 self.1.serialize_into(res)
             }
@@ -282,7 +285,7 @@ macro_rules! auto_storage_serde {
     // Tuples - three elements.
     (($ty0:ty, $ty1:ty, $ty2:ty) ; $($rest:tt)*) => {
         impl StorageSerde for ($ty0, $ty1, $ty2) {
-            fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+            fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
                 self.0.serialize_into(res)?;
                 self.1.serialize_into(res)?;
                 self.2.serialize_into(res)
@@ -300,7 +303,7 @@ macro_rules! auto_storage_serde {
     // enums.
     ($(pub)? enum $name:ident { $($variant:ident $( ($ty:ty) )? = $num:expr ,)* } $($rest:tt)*) => {
         impl StorageSerde for $name {
-            fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+            fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
                 match self {
                     $(
                         variant!( value, $variant $( ($ty) )?) => {
@@ -330,8 +333,9 @@ macro_rules! auto_storage_serde {
     // Binary.
     (bincode($name:ident); $($rest:tt)*) => {
         impl StorageSerde for $name {
-            fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
-                bincode::serialize_into(res, self).map_err(|_| std::io::Error::from(std::io::ErrorKind::Other))
+            fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+                bincode::serialize_into(res, self)?;
+                Ok(())
             }
 
             fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
@@ -606,7 +610,7 @@ auto_storage_serde! {
 //  impl StorageSerde for types not supported by the macro.
 ////////////////////////////////////////////////////////////////////////
 impl StorageSerde for ThinStateDiff {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
         self.deployed_contracts().serialize_into(res)?;
         self.storage_diffs().serialize_into(res)?;
         self.declared_contract_hashes().serialize_into(res)?;
@@ -637,10 +641,9 @@ impl StorageSerde for ThinStateDiff {
 
 // TODO: Move to Starknet API structs area.
 impl StorageSerde for StorageDiff {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
         self.address.serialize_into(res)?;
-        res.write_varint(self.storage_entries().len())
-            .expect("I/O error during storage entries serialization");
+        res.write_varint(self.storage_entries().len())?;
         for x in self.storage_entries() {
             x.serialize_into(res)?
         }

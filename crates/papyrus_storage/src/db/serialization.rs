@@ -1,8 +1,18 @@
 use crate::db::DbError;
 
 pub trait StorageSerde: Sized {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error>;
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError>;
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self>;
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum StorageSerdeError {
+    #[error(transparent)]
+    Bincode(#[from] bincode::Error),
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[error(transparent)]
+    Serde(#[from] serde_json::Error),
 }
 
 pub trait StorageSerdeEx: StorageSerde {

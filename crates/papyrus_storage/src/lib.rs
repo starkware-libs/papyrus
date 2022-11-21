@@ -25,7 +25,7 @@ pub use crate::body::events::{
     EventsReader, EventsTableCursor, EventsTableKey, EventsTableKeyValue, ThinTransactionOutput,
 };
 pub use crate::body::{BodyStorageReader, BodyStorageWriter};
-pub use crate::db::serialization::StorageSerde;
+pub use crate::db::serialization::{StorageSerde, StorageSerdeError};
 use crate::db::{
     open_env, DbConfig, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier,
     RW,
