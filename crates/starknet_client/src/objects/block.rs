@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::ops::Index;
 
 use serde::{Deserialize, Serialize};
-use starknet_api::serde_utils::NonPrefixedHexAsBytes;
+use starknet_api::serde_utils::NonPrefixedBytesAsHex;
 use starknet_api::{
     BlockHash, BlockNumber, BlockTimestamp, ClassHash, ContractAddress, DeployedContract,
     EntryPoint, EntryPointType, GasPrice, Nonce, Program, StarkHash, StarknetApiError, StorageDiff,
@@ -15,14 +15,14 @@ use crate::{ClientError, ClientResult};
 #[derive(
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-#[serde(try_from = "NonPrefixedHexAsBytes<32_usize>")]
+#[serde(try_from = "NonPrefixedBytesAsHex<32_usize>")]
 pub struct GlobalRoot(pub StarkHash);
 
 // We don't use the regular StarkHash deserialization since the Starknet sequencer returns the
 // global root hash as a hex string without a "0x" prefix.
-impl TryFrom<NonPrefixedHexAsBytes<32_usize>> for GlobalRoot {
+impl TryFrom<NonPrefixedBytesAsHex<32_usize>> for GlobalRoot {
     type Error = StarknetApiError;
-    fn try_from(val: NonPrefixedHexAsBytes<32_usize>) -> Result<Self, Self::Error> {
+    fn try_from(val: NonPrefixedBytesAsHex<32_usize>) -> Result<Self, Self::Error> {
         Ok(Self(StarkHash::try_from(val)?))
     }
 }

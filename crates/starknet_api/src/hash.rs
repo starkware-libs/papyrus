@@ -8,7 +8,7 @@ use std::io::Error;
 use serde::{Deserialize, Serialize};
 
 use super::serde_utils::{
-    bytes_from_hex_str, hex_str_from_bytes, HexAsBytes, NonPrefixedHexAsBytes, PrefixedHexAsBytes,
+    bytes_from_hex_str, hex_str_from_bytes, BytesAsHex, NonPrefixedBytesAsHex, PrefixedBytesAsHex,
 };
 use super::StarknetApiError;
 
@@ -25,7 +25,7 @@ pub type StarkFelt = StarkHash;
 // TODO: Move to a different crate.
 /// A hash in StarkNet.
 #[derive(Copy, Clone, Eq, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-#[serde(try_from = "PrefixedHexAsBytes<32_usize>", into = "PrefixedHexAsBytes<32_usize>")]
+#[serde(try_from = "PrefixedBytesAsHex<32_usize>", into = "PrefixedBytesAsHex<32_usize>")]
 pub struct StarkHash([u8; 32]);
 
 impl StarkHash {
@@ -120,25 +120,25 @@ impl StarkHash {
     }
 }
 
-impl TryFrom<PrefixedHexAsBytes<32_usize>> for StarkHash {
+impl TryFrom<PrefixedBytesAsHex<32_usize>> for StarkHash {
     type Error = StarknetApiError;
-    fn try_from(val: PrefixedHexAsBytes<32_usize>) -> Result<Self, Self::Error> {
+    fn try_from(val: PrefixedBytesAsHex<32_usize>) -> Result<Self, Self::Error> {
         StarkHash::new(val.0)
     }
 }
 
 // TODO(anatg): Remove once Starknet sequencer returns the global root hash as a hex string with a
 // "0x" prefix.
-impl TryFrom<NonPrefixedHexAsBytes<32_usize>> for StarkHash {
+impl TryFrom<NonPrefixedBytesAsHex<32_usize>> for StarkHash {
     type Error = StarknetApiError;
-    fn try_from(val: NonPrefixedHexAsBytes<32_usize>) -> Result<Self, Self::Error> {
+    fn try_from(val: NonPrefixedBytesAsHex<32_usize>) -> Result<Self, Self::Error> {
         StarkHash::new(val.0)
     }
 }
 
-impl From<StarkHash> for PrefixedHexAsBytes<32_usize> {
+impl From<StarkHash> for PrefixedBytesAsHex<32_usize> {
     fn from(val: StarkHash) -> Self {
-        HexAsBytes(val.0)
+        BytesAsHex(val.0)
     }
 }
 
