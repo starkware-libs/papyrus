@@ -21,18 +21,7 @@ impl ChainId {
 
 /// The address of a StarkNet contract.
 #[derive(
-    Debug,
-    Default,
-    Display,
-    Copy,
-    Clone,
-    Eq,
-    PartialEq,
-    Hash,
-    Deserialize,
-    Serialize,
-    PartialOrd,
-    Ord,
+    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct ContractAddress(pub PatriciaKey);
 
@@ -66,9 +55,7 @@ impl Default for Nonce {
 pub struct EntryPointSelector(pub StarkHash);
 
 // Invariant: key is in range
-#[derive(
-    Copy, Clone, Eq, Display, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
+#[derive(Copy, Clone, Eq, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct PatriciaKey(StarkHash);
 
 /// 2**251
