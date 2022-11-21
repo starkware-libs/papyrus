@@ -27,24 +27,24 @@ async fn append_body() -> Result<(), anyhow::Error> {
     .unwrap();
     writer
         .begin_rw_txn()?
-        .append_body(BlockNumber::new(0), body0)?
-        .append_body(BlockNumber::new(1), body1)?
+        .append_body(BlockNumber(0), body0)?
+        .append_body(BlockNumber(1), body1)?
         .commit()?;
 
     // Check for MarkerMismatch error when trying to append the wrong block number.
-    if let Err(err) = writer.begin_rw_txn()?.append_body(BlockNumber::new(5), body2.clone()) {
+    if let Err(err) = writer.begin_rw_txn()?.append_body(BlockNumber(5), body2.clone()) {
         assert_matches!(
             err,
             StorageError::MarkerMismatch { expected, found }
-        if expected == BlockNumber::new(2) && found == BlockNumber::new(5));
+        if expected == BlockNumber(2) && found == BlockNumber(5));
     } else {
         panic!("Unexpected Ok.");
     }
 
-    writer.begin_rw_txn()?.append_body(BlockNumber::new(2), body2)?.commit()?;
+    writer.begin_rw_txn()?.append_body(BlockNumber(2), body2)?.commit()?;
 
-    if let Err(err) = writer.begin_rw_txn()?.append_body(BlockNumber::new(3), body3) {
-        let expected_tx_index = TransactionIndex(BlockNumber::new(3), TransactionOffsetInBlock(1));
+    if let Err(err) = writer.begin_rw_txn()?.append_body(BlockNumber(3), body3) {
+        let expected_tx_index = TransactionIndex(BlockNumber(3), TransactionOffsetInBlock(1));
         assert_matches!(
             err,
             StorageError::TransactionHashAlreadyExists {
@@ -58,16 +58,16 @@ async fn append_body() -> Result<(), anyhow::Error> {
 
     let txn = reader.begin_ro_txn()?;
     // Check marker.
-    assert_eq!(txn.get_body_marker()?, BlockNumber::new(3));
+    assert_eq!(txn.get_body_marker()?, BlockNumber(3));
 
     // Check single transactions, outputs and events.
     let tx_cases = vec![
-        (BlockNumber::new(0), TransactionOffsetInBlock(0), Some(0)),
-        (BlockNumber::new(0), TransactionOffsetInBlock(1), None),
-        (BlockNumber::new(1), TransactionOffsetInBlock(0), None),
-        (BlockNumber::new(2), TransactionOffsetInBlock(0), Some(1)),
-        (BlockNumber::new(2), TransactionOffsetInBlock(1), Some(2)),
-        (BlockNumber::new(2), TransactionOffsetInBlock(2), None),
+        (BlockNumber(0), TransactionOffsetInBlock(0), Some(0)),
+        (BlockNumber(0), TransactionOffsetInBlock(1), None),
+        (BlockNumber(1), TransactionOffsetInBlock(0), None),
+        (BlockNumber(2), TransactionOffsetInBlock(0), Some(1)),
+        (BlockNumber(2), TransactionOffsetInBlock(1), Some(2)),
+        (BlockNumber(2), TransactionOffsetInBlock(2), None),
     ];
 
     for (block_number, tx_offset, original_index) in tx_cases {
@@ -91,54 +91,54 @@ async fn append_body() -> Result<(), anyhow::Error> {
     // Check transaction hash.
     assert_eq!(
         txn.get_transaction_idx_by_hash(&txs[0].transaction_hash())?,
-        Some(TransactionIndex(BlockNumber::new(0), TransactionOffsetInBlock(0)))
+        Some(TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(0)))
     );
     assert_eq!(
         txn.get_transaction_idx_by_hash(&txs[1].transaction_hash())?,
-        Some(TransactionIndex(BlockNumber::new(2), TransactionOffsetInBlock(0)))
+        Some(TransactionIndex(BlockNumber(2), TransactionOffsetInBlock(0)))
     );
     assert_eq!(
         txn.get_transaction_idx_by_hash(&txs[2].transaction_hash())?,
-        Some(TransactionIndex(BlockNumber::new(2), TransactionOffsetInBlock(1)))
+        Some(TransactionIndex(BlockNumber(2), TransactionOffsetInBlock(1)))
     );
 
     // Check block transactions.
-    assert_eq!(txn.get_block_transactions(BlockNumber::new(0))?, Some(vec![txs[0].clone()]));
-    assert_eq!(txn.get_block_transactions(BlockNumber::new(1))?, Some(vec![]));
+    assert_eq!(txn.get_block_transactions(BlockNumber(0))?, Some(vec![txs[0].clone()]));
+    assert_eq!(txn.get_block_transactions(BlockNumber(1))?, Some(vec![]));
     assert_eq!(
-        txn.get_block_transactions(BlockNumber::new(2))?,
+        txn.get_block_transactions(BlockNumber(2))?,
         Some(vec![txs[1].clone(), txs[2].clone()])
     );
-    assert_eq!(txn.get_block_transactions(BlockNumber::new(3))?, None);
+    assert_eq!(txn.get_block_transactions(BlockNumber(3))?, None);
 
     // Check block transaction outputs.
     assert_eq!(
-        txn.get_block_transaction_outputs(BlockNumber::new(0))?,
+        txn.get_block_transaction_outputs(BlockNumber(0))?,
         Some(vec![ThinTransactionOutput::from(tx_outputs[0].clone())])
     );
-    assert_eq!(txn.get_block_transaction_outputs(BlockNumber::new(1))?, Some(vec![]));
+    assert_eq!(txn.get_block_transaction_outputs(BlockNumber(1))?, Some(vec![]));
     assert_eq!(
-        txn.get_block_transaction_outputs(BlockNumber::new(2))?,
+        txn.get_block_transaction_outputs(BlockNumber(2))?,
         Some(vec![
             ThinTransactionOutput::from(tx_outputs[1].clone()),
             ThinTransactionOutput::from(tx_outputs[2].clone()),
         ])
     );
-    assert_eq!(txn.get_block_transaction_outputs(BlockNumber::new(3))?, None);
+    assert_eq!(txn.get_block_transaction_outputs(BlockNumber(3))?, None);
     Ok(())
 }
 
 #[tokio::test]
 async fn revert_non_existing_body_fails() -> Result<(), anyhow::Error> {
     let (_, mut writer) = get_test_storage();
-    if let Err(err) = writer.begin_rw_txn()?.revert_body(BlockNumber::new(5)) {
+    if let Err(err) = writer.begin_rw_txn()?.revert_body(BlockNumber(5)) {
         assert_matches!(
             err,
             StorageError::InvalidRevert {
                 revert_block_number,
                 block_number_marker
             }
-            if revert_block_number == BlockNumber::new(5) && block_number_marker == BlockNumber::new(0)
+            if revert_block_number == BlockNumber(5) && block_number_marker == BlockNumber(0)
         )
     } else {
         panic!("Unexpected Ok.");
@@ -149,8 +149,8 @@ async fn revert_non_existing_body_fails() -> Result<(), anyhow::Error> {
 #[tokio::test]
 async fn revert_last_body_success() -> Result<(), anyhow::Error> {
     let (_, mut writer) = get_test_storage();
-    writer.begin_rw_txn()?.append_body(BlockNumber::new(0), BlockBody::default())?.commit()?;
-    writer.begin_rw_txn()?.revert_body(BlockNumber::new(0))?.commit()?;
+    writer.begin_rw_txn()?.append_body(BlockNumber(0), BlockBody::default())?.commit()?;
+    writer.begin_rw_txn()?.revert_body(BlockNumber(0))?.commit()?;
     Ok(())
 }
 
@@ -158,14 +158,14 @@ async fn revert_last_body_success() -> Result<(), anyhow::Error> {
 async fn revert_old_body_fails() -> Result<(), anyhow::Error> {
     let (_, mut writer) = get_test_storage();
     append_2_bodies(&mut writer)?;
-    if let Err(err) = writer.begin_rw_txn()?.revert_body(BlockNumber::new(0)) {
+    if let Err(err) = writer.begin_rw_txn()?.revert_body(BlockNumber(0)) {
         assert_matches!(
             err,
             StorageError::InvalidRevert {
                 revert_block_number,
                 block_number_marker
             }
-            if revert_block_number == BlockNumber::new(0) && block_number_marker == BlockNumber::new(2)
+            if revert_block_number == BlockNumber(0) && block_number_marker == BlockNumber(2)
         );
     } else {
         panic!("Unexpected Ok.");
@@ -179,10 +179,10 @@ async fn revert_body_updates_marker() -> Result<(), anyhow::Error> {
     append_2_bodies(&mut writer)?;
 
     // Verify that the body marker before revert is 2.
-    assert_eq!(reader.begin_ro_txn()?.get_body_marker()?, BlockNumber::new(2));
+    assert_eq!(reader.begin_ro_txn()?.get_body_marker()?, BlockNumber(2));
 
-    writer.begin_rw_txn()?.revert_body(BlockNumber::new(1))?.commit()?;
-    assert_eq!(reader.begin_ro_txn()?.get_body_marker()?, BlockNumber::new(1));
+    writer.begin_rw_txn()?.revert_body(BlockNumber(1))?.commit()?;
+    assert_eq!(reader.begin_ro_txn()?.get_body_marker()?, BlockNumber(1));
 
     Ok(())
 }
@@ -193,12 +193,12 @@ async fn get_reverted_body_returns_none() -> Result<(), anyhow::Error> {
     append_2_bodies(&mut writer)?;
 
     // Verify that we can get block 1's transactions before the revert.
-    assert!(reader.begin_ro_txn()?.get_block_transactions(BlockNumber::new(1))?.is_some());
-    assert!(reader.begin_ro_txn()?.get_block_transaction_outputs(BlockNumber::new(1))?.is_some());
+    assert!(reader.begin_ro_txn()?.get_block_transactions(BlockNumber(1))?.is_some());
+    assert!(reader.begin_ro_txn()?.get_block_transaction_outputs(BlockNumber(1))?.is_some());
 
-    writer.begin_rw_txn()?.revert_body(BlockNumber::new(1))?.commit()?;
-    assert!(reader.begin_ro_txn()?.get_block_transactions(BlockNumber::new(1))?.is_none());
-    assert!(reader.begin_ro_txn()?.get_block_transaction_outputs(BlockNumber::new(1))?.is_none());
+    writer.begin_rw_txn()?.revert_body(BlockNumber(1))?.commit()?;
+    assert!(reader.begin_ro_txn()?.get_block_transactions(BlockNumber(1))?.is_none());
+    assert!(reader.begin_ro_txn()?.get_block_transaction_outputs(BlockNumber(1))?.is_none());
 
     Ok(())
 }
@@ -207,11 +207,11 @@ async fn get_reverted_body_returns_none() -> Result<(), anyhow::Error> {
 async fn revert_transactions() -> Result<(), anyhow::Error> {
     let (reader, mut writer) = get_test_storage();
     let body = get_test_body(10);
-    writer.begin_rw_txn()?.append_body(BlockNumber::new(0), body.clone())?.commit()?;
+    writer.begin_rw_txn()?.append_body(BlockNumber(0), body.clone())?.commit()?;
 
     for (offset, tx_hash) in body.transactions().iter().map(|tx| tx.transaction_hash()).enumerate()
     {
-        let tx_index = TransactionIndex(BlockNumber::new(0), TransactionOffsetInBlock(offset));
+        let tx_index = TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(offset));
 
         assert!(reader.begin_ro_txn()?.get_transaction(tx_index)?.is_some());
         assert!(reader.begin_ro_txn()?.get_transaction_output(tx_index)?.is_some());
@@ -221,11 +221,11 @@ async fn revert_transactions() -> Result<(), anyhow::Error> {
         );
     }
 
-    writer.begin_rw_txn()?.revert_body(BlockNumber::new(0))?.commit()?;
+    writer.begin_rw_txn()?.revert_body(BlockNumber(0))?.commit()?;
 
     for (offset, tx_hash) in body.transactions().iter().map(|tx| tx.transaction_hash()).enumerate()
     {
-        let tx_index = TransactionIndex(BlockNumber::new(0), TransactionOffsetInBlock(offset));
+        let tx_index = TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(offset));
 
         assert!(reader.begin_ro_txn()?.get_transaction(tx_index)?.is_none());
         assert!(reader.begin_ro_txn()?.get_transaction_output(tx_index)?.is_none());
@@ -238,8 +238,8 @@ async fn revert_transactions() -> Result<(), anyhow::Error> {
 fn append_2_bodies(writer: &mut StorageWriter) -> Result<(), anyhow::Error> {
     writer
         .begin_rw_txn()?
-        .append_body(BlockNumber::new(0), BlockBody::default())?
-        .append_body(BlockNumber::new(1), BlockBody::default())?
+        .append_body(BlockNumber(0), BlockBody::default())?
+        .append_body(BlockNumber(1), BlockBody::default())?
         .commit()?;
 
     Ok(())

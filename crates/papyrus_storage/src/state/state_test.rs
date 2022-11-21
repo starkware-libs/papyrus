@@ -17,9 +17,9 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     let c1 = ContractAddress::try_from(shash!("0x12")).unwrap();
     let c2 = ContractAddress::try_from(shash!("0x13")).unwrap();
     let c3 = ContractAddress::try_from(shash!("0x14")).unwrap();
-    let cl0 = ClassHash::new(shash!("0x4"));
-    let cl1 = ClassHash::new(shash!("0x5"));
-    let cl2 = ClassHash::new(shash!("0x6"));
+    let cl0 = ClassHash(shash!("0x4"));
+    let cl1 = ClassHash(shash!("0x5"));
+    let cl2 = ClassHash(shash!("0x6"));
     let c_cls0 = ContractClass::default();
     let c_cls1 = ContractClass::default();
     let key0 = StorageKey::try_from(shash!("0x1001")).unwrap();
@@ -44,7 +44,7 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
             DeclaredContract { class_hash: cl0, contract_class: c_cls0.clone() },
             DeclaredContract { class_hash: cl1, contract_class: c_cls1 },
         ],
-        vec![ContractNonce { contract_address: c0, nonce: Nonce::new(StarkHash::from_u64(1)) }],
+        vec![ContractNonce { contract_address: c0, nonce: Nonce(StarkHash::from_u64(1)) }],
     )?;
     let diff1 = StateDiff::new(
         vec![DeployedContract { address: c2, class_hash: cl0 }],
@@ -61,21 +61,21 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
         ],
         vec![DeclaredContract { class_hash: cl0, contract_class: c_cls0.clone() }],
         vec![
-            ContractNonce { contract_address: c0, nonce: Nonce::new(StarkHash::from_u64(2)) },
-            ContractNonce { contract_address: c1, nonce: Nonce::new(StarkHash::from_u64(1)) },
-            ContractNonce { contract_address: c2, nonce: Nonce::new(StarkHash::from_u64(1)) },
+            ContractNonce { contract_address: c0, nonce: Nonce(StarkHash::from_u64(2)) },
+            ContractNonce { contract_address: c1, nonce: Nonce(StarkHash::from_u64(1)) },
+            ContractNonce { contract_address: c2, nonce: Nonce(StarkHash::from_u64(1)) },
         ],
     )?;
 
     let (_, mut writer) = get_test_storage();
     let mut txn = writer.begin_rw_txn()?;
-    assert_eq!(txn.get_state_diff(BlockNumber::new(0))?, None);
-    assert_eq!(txn.get_state_diff(BlockNumber::new(1))?, None);
-    txn = txn.append_state_diff(BlockNumber::new(0), diff0.clone(), vec![])?;
+    assert_eq!(txn.get_state_diff(BlockNumber(0))?, None);
+    assert_eq!(txn.get_state_diff(BlockNumber(1))?, None);
+    txn = txn.append_state_diff(BlockNumber(0), diff0.clone(), vec![])?;
     let thin_state_diff_0 = diff0.clone().into();
-    assert_eq!(txn.get_state_diff(BlockNumber::new(0))?.unwrap(), thin_state_diff_0);
-    assert_eq!(txn.get_state_diff(BlockNumber::new(1))?, None);
-    txn = txn.append_state_diff(BlockNumber::new(1), diff1.clone(), vec![])?;
+    assert_eq!(txn.get_state_diff(BlockNumber(0))?.unwrap(), thin_state_diff_0);
+    assert_eq!(txn.get_state_diff(BlockNumber(1))?, None);
+    txn = txn.append_state_diff(BlockNumber(1), diff1.clone(), vec![])?;
     let thin_state_diff_1 = diff1.clone().into();
 
     txn.commit()?;
@@ -93,7 +93,7 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     declared_classes[0].contract_class = class;
     let diff1 = StateDiff::new(deployed_contracts, storage_diffs, declared_classes, nonces)?;
 
-    if let Err(err) = txn.append_state_diff(BlockNumber::new(2), diff1, vec![]) {
+    if let Err(err) = txn.append_state_diff(BlockNumber(2), diff1, vec![]) {
         assert_matches!(err, StorageError::ClassAlreadyExists { class_hash: _ });
     } else {
         panic!("Unexpected Ok.");
@@ -106,21 +106,21 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     contract.class_hash = cl2;
     deployed_contracts[0] = contract;
     let diff0 = StateDiff::new(deployed_contracts, storage_diffs, declared_classes, nonces)?;
-    if let Err(err) = txn.append_state_diff(BlockNumber::new(2), diff0, vec![]) {
+    if let Err(err) = txn.append_state_diff(BlockNumber(2), diff0, vec![]) {
         assert_matches!(err, StorageError::ContractAlreadyExists { address: _ });
     } else {
         panic!("Unexpected Ok.");
     }
     let txn = writer.begin_rw_txn()?;
-    assert_eq!(txn.get_state_diff(BlockNumber::new(0))?.unwrap(), thin_state_diff_0);
-    assert_eq!(txn.get_state_diff(BlockNumber::new(1))?.unwrap(), thin_state_diff_1);
+    assert_eq!(txn.get_state_diff(BlockNumber(0))?.unwrap(), thin_state_diff_0);
+    assert_eq!(txn.get_state_diff(BlockNumber(1))?.unwrap(), thin_state_diff_1);
 
     let statetxn = txn.get_state_reader()?;
 
     // State numbers.
-    let state0 = StateNumber::right_before_block(BlockNumber::new(0));
-    let state1 = StateNumber::right_before_block(BlockNumber::new(1));
-    let state2 = StateNumber::right_before_block(BlockNumber::new(2));
+    let state0 = StateNumber::right_before_block(BlockNumber(0));
+    let state1 = StateNumber::right_before_block(BlockNumber(1));
+    let state2 = StateNumber::right_before_block(BlockNumber(2));
 
     // Class0.
     assert_eq!(statetxn.get_class_definition_at(state0, &cl0)?, None);
@@ -137,8 +137,8 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     assert_eq!(statetxn.get_class_hash_at(state1, &c0)?, Some(cl0));
     assert_eq!(statetxn.get_class_hash_at(state2, &c0)?, Some(cl0));
     assert_eq!(statetxn.get_nonce_at(state0, &c0)?, None);
-    assert_eq!(statetxn.get_nonce_at(state1, &c0)?, Some(Nonce::new(StarkHash::from_u64(1))));
-    assert_eq!(statetxn.get_nonce_at(state2, &c0)?, Some(Nonce::new(StarkHash::from_u64(2))));
+    assert_eq!(statetxn.get_nonce_at(state1, &c0)?, Some(Nonce(StarkHash::from_u64(1))));
+    assert_eq!(statetxn.get_nonce_at(state2, &c0)?, Some(Nonce(StarkHash::from_u64(2))));
 
     // Contract1.
     assert_eq!(statetxn.get_class_hash_at(state0, &c1)?, None);
@@ -146,7 +146,7 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     assert_eq!(statetxn.get_class_hash_at(state2, &c1)?, Some(cl1));
     assert_eq!(statetxn.get_nonce_at(state0, &c1)?, None);
     assert_eq!(statetxn.get_nonce_at(state1, &c1)?, Some(Nonce::default()));
-    assert_eq!(statetxn.get_nonce_at(state2, &c1)?, Some(Nonce::new(StarkHash::from_u64(1))));
+    assert_eq!(statetxn.get_nonce_at(state2, &c1)?, Some(Nonce(StarkHash::from_u64(1))));
 
     // Contract2.
     assert_eq!(statetxn.get_class_hash_at(state0, &c2)?, None);
@@ -154,7 +154,7 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     assert_eq!(statetxn.get_class_hash_at(state2, &c2)?, Some(cl0));
     assert_eq!(statetxn.get_nonce_at(state0, &c2)?, None);
     assert_eq!(statetxn.get_nonce_at(state1, &c2)?, None);
-    assert_eq!(statetxn.get_nonce_at(state2, &c2)?, Some(Nonce::new(StarkHash::from_u64(1))));
+    assert_eq!(statetxn.get_nonce_at(state2, &c2)?, Some(Nonce(StarkHash::from_u64(1))));
 
     // Contract3.
     assert_eq!(statetxn.get_class_hash_at(state0, &c3)?, None);
@@ -187,7 +187,7 @@ fn revert_non_existing_state_diff() -> Result<(), anyhow::Error> {
     let (_, mut writer) = get_test_storage();
 
     let mut logger = Logger::start();
-    let block_number = BlockNumber::new(5);
+    let block_number = BlockNumber(5);
     writer.begin_rw_txn()?.revert_state_diff(block_number)?;
     let expected_warn = format!(
         "Attempt to revert a non-existing state diff of block {:?}. Returning without an action.",
@@ -204,10 +204,10 @@ async fn revert_last_state_diff_success() -> Result<(), anyhow::Error> {
     let (_, _, state_diff, declared_contracts) = get_test_state_diff();
     writer
         .begin_rw_txn()?
-        .append_state_diff(BlockNumber::new(0), state_diff, declared_contracts)?
+        .append_state_diff(BlockNumber(0), state_diff, declared_contracts)?
         .commit()?;
 
-    writer.begin_rw_txn()?.revert_state_diff(BlockNumber::new(0))?.commit()?;
+    writer.begin_rw_txn()?.revert_state_diff(BlockNumber(0))?.commit()?;
     Ok(())
 }
 
@@ -215,14 +215,14 @@ async fn revert_last_state_diff_success() -> Result<(), anyhow::Error> {
 async fn revert_old_state_diff_fails() -> Result<(), anyhow::Error> {
     let (_, mut writer) = get_test_storage();
     append_2_state_diffs(&mut writer)?;
-    if let Err(err) = writer.begin_rw_txn()?.revert_state_diff(BlockNumber::new(0)) {
+    if let Err(err) = writer.begin_rw_txn()?.revert_state_diff(BlockNumber(0)) {
         assert_matches!(
             err,
             StorageError::InvalidRevert {
                 revert_block_number,
                 block_number_marker
             }
-            if revert_block_number == BlockNumber::new(0) && block_number_marker == BlockNumber::new(2)
+            if revert_block_number == BlockNumber(0) && block_number_marker == BlockNumber(2)
         );
     } else {
         panic!("Unexpected Ok.");
@@ -236,10 +236,10 @@ async fn revert_state_diff_updates_marker() -> Result<(), anyhow::Error> {
     append_2_state_diffs(&mut writer)?;
 
     // Verify that the state marker before revert is 2.
-    assert_eq!(reader.begin_ro_txn()?.get_state_marker()?, BlockNumber::new(2));
+    assert_eq!(reader.begin_ro_txn()?.get_state_marker()?, BlockNumber(2));
 
-    writer.begin_rw_txn()?.revert_state_diff(BlockNumber::new(1))?.commit()?;
-    assert_eq!(reader.begin_ro_txn()?.get_state_marker()?, BlockNumber::new(1));
+    writer.begin_rw_txn()?.revert_state_diff(BlockNumber(1))?.commit()?;
+    assert_eq!(reader.begin_ro_txn()?.get_state_marker()?, BlockNumber(1));
 
     Ok(())
 }
@@ -250,10 +250,10 @@ async fn get_reverted_state_diff_returns_none() -> Result<(), anyhow::Error> {
     append_2_state_diffs(&mut writer)?;
 
     // Verify that we can get block 1's state before the revert.
-    assert!(reader.begin_ro_txn()?.get_state_diff(BlockNumber::new(1))?.is_some());
+    assert!(reader.begin_ro_txn()?.get_state_diff(BlockNumber(1))?.is_some());
 
-    writer.begin_rw_txn()?.revert_state_diff(BlockNumber::new(1))?.commit()?;
-    assert!(reader.begin_ro_txn()?.get_state_diff(BlockNumber::new(1))?.is_none());
+    writer.begin_rw_txn()?.revert_state_diff(BlockNumber(1))?.commit()?;
+    assert!(reader.begin_ro_txn()?.get_state_diff(BlockNumber(1))?.is_none());
 
     Ok(())
 }
@@ -261,8 +261,8 @@ async fn get_reverted_state_diff_returns_none() -> Result<(), anyhow::Error> {
 fn append_2_state_diffs(writer: &mut StorageWriter) -> Result<(), anyhow::Error> {
     writer
         .begin_rw_txn()?
-        .append_state_diff(BlockNumber::new(0), StateDiff::default(), vec![])?
-        .append_state_diff(BlockNumber::new(1), StateDiff::default(), vec![])?
+        .append_state_diff(BlockNumber(0), StateDiff::default(), vec![])?
+        .append_state_diff(BlockNumber(1), StateDiff::default(), vec![])?
         .commit()?;
 
     Ok(())
@@ -272,13 +272,13 @@ fn append_2_state_diffs(writer: &mut StorageWriter) -> Result<(), anyhow::Error>
 fn revert_doesnt_delete_previously_declared_classes() -> Result<(), anyhow::Error> {
     // Append 2 state diffs that use the same declared class.
     let c0 = ContractAddress::try_from(shash!("0x11")).unwrap();
-    let cl0 = ClassHash::new(shash!("0x4"));
+    let cl0 = ClassHash(shash!("0x4"));
     let c_cls0 = ContractClass::default();
     let diff0 = StateDiff::new(
         vec![DeployedContract { address: c0, class_hash: cl0 }],
         vec![],
         vec![DeclaredContract { class_hash: cl0, contract_class: c_cls0.clone() }],
-        vec![ContractNonce { contract_address: c0, nonce: Nonce::new(StarkHash::from_u64(1)) }],
+        vec![ContractNonce { contract_address: c0, nonce: Nonce(StarkHash::from_u64(1)) }],
     )?;
 
     let c1 = ContractAddress::try_from(shash!("0x12")).unwrap();
@@ -286,30 +286,30 @@ fn revert_doesnt_delete_previously_declared_classes() -> Result<(), anyhow::Erro
         vec![DeployedContract { address: c1, class_hash: cl0 }],
         vec![],
         vec![DeclaredContract { class_hash: cl0, contract_class: c_cls0 }],
-        vec![ContractNonce { contract_address: c1, nonce: Nonce::new(StarkHash::from_u64(2)) }],
+        vec![ContractNonce { contract_address: c1, nonce: Nonce(StarkHash::from_u64(2)) }],
     )?;
 
     let (reader, mut writer) = get_test_storage();
     writer
         .begin_rw_txn()?
-        .append_state_diff(BlockNumber::new(0), diff0, vec![])?
-        .append_state_diff(BlockNumber::new(1), diff1, vec![])?
+        .append_state_diff(BlockNumber(0), diff0, vec![])?
+        .append_state_diff(BlockNumber(1), diff1, vec![])?
         .commit()?;
 
     // Assert that reverting diff 1 doesn't delete declared class from diff 0.
-    writer.begin_rw_txn()?.revert_state_diff(BlockNumber::new(1))?.commit()?;
+    writer.begin_rw_txn()?.revert_state_diff(BlockNumber(1))?.commit()?;
     let declared_class = reader
         .begin_ro_txn()?
         .get_state_reader()?
-        .get_class_definition_at(StateNumber::right_after_block(BlockNumber::new(0)), &cl0)?;
+        .get_class_definition_at(StateNumber::right_after_block(BlockNumber(0)), &cl0)?;
     assert!(declared_class.is_some());
 
     // Assert that reverting diff 0 deletes the declared class.
-    writer.begin_rw_txn()?.revert_state_diff(BlockNumber::new(0))?.commit()?;
+    writer.begin_rw_txn()?.revert_state_diff(BlockNumber(0))?.commit()?;
     let declared_class = reader
         .begin_ro_txn()?
         .get_state_reader()?
-        .get_class_definition_at(StateNumber::right_after_block(BlockNumber::new(0)), &cl0)?;
+        .get_class_definition_at(StateNumber::right_after_block(BlockNumber(0)), &cl0)?;
     assert!(declared_class.is_none());
 
     Ok(())

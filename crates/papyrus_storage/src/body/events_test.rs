@@ -30,7 +30,7 @@ async fn iter_events_by_key() -> Result<(), anyhow::Error> {
     let event2 = block.body.transaction_outputs().index(0).events().index(2);
     let event3 = block.body.transaction_outputs().index(0).events().index(3);
     let event4 = block.body.transaction_outputs().index(0).events().index(4);
-    let block_number = BlockNumber::new(0);
+    let block_number = BlockNumber(0);
     let tx_index0 = TransactionIndex(block_number, TransactionOffsetInBlock(0));
     let tx_index1 = TransactionIndex(block_number, TransactionOffsetInBlock(1));
     let emitted_events = vec![
@@ -106,7 +106,7 @@ async fn iter_events_by_index() -> Result<(), anyhow::Error> {
     let event2 = block.body.transaction_outputs().index(0).events().index(2);
     let event3 = block.body.transaction_outputs().index(0).events().index(3);
     let event4 = block.body.transaction_outputs().index(0).events().index(4);
-    let block_number = BlockNumber::new(0);
+    let block_number = BlockNumber(0);
     let tx_index0 = TransactionIndex(block_number, TransactionOffsetInBlock(0));
     let tx_index1 = TransactionIndex(block_number, TransactionOffsetInBlock(1));
     let emitted_events = vec![

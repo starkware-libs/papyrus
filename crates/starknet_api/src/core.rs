@@ -2,15 +2,15 @@
 #[path = "core_test.rs"]
 mod core_test;
 
-use std::fmt;
-use std::fmt::{Debug, Display};
+use std::fmt::{Debug};
 
+use derive_more::Display;
 use serde::{Deserialize, Serialize};
 
 use super::{StarkFelt, StarkHash, StarknetApiError};
 
 /// Starknet chain id.
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Clone, Debug, Display, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ChainId(pub String);
 
 impl ChainId {
@@ -19,23 +19,11 @@ impl ChainId {
     }
 }
 
-impl Display for ChainId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.0)
-    }
-}
-
 /// The address of a StarkNet contract.
 #[derive(
-    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+    Debug, Default, Display, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct ContractAddress(PatriciaKey);
-
-impl ContractAddress {
-    pub fn contract_address(&self) -> &PatriciaKey {
-        &self.0
-    }
-}
+pub struct ContractAddress(pub PatriciaKey);
 
 impl TryFrom<StarkHash> for ContractAddress {
     type Error = StarknetApiError;
@@ -48,29 +36,11 @@ impl TryFrom<StarkHash> for ContractAddress {
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct ClassHash(StarkHash);
-
-impl ClassHash {
-    pub fn new(hash: StarkHash) -> Self {
-        Self(hash)
-    }
-    pub fn class_hash(&self) -> &StarkHash {
-        &self.0
-    }
-}
+pub struct ClassHash(pub StarkHash);
 
 /// The nonce of a StarkNet contract.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct Nonce(StarkFelt);
-
-impl Nonce {
-    pub fn new(felt: StarkFelt) -> Self {
-        Self(felt)
-    }
-    pub fn nonce(&self) -> &StarkFelt {
-        &self.0
-    }
-}
+pub struct Nonce(pub StarkFelt);
 
 impl Default for Nonce {
     fn default() -> Self {
@@ -85,7 +55,7 @@ impl Default for Nonce {
 pub struct EntryPointSelector(pub StarkHash);
 
 // Invariant: key is in range
-#[derive(Copy, Clone, Eq, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Copy, Clone, Eq, Display, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct PatriciaKey(StarkHash);
 
 /// 2**251

@@ -24,7 +24,7 @@ fn load_block_succeeds() {
 #[test]
 fn load_block_state_update_succeeds() {
     let expected_state_update = StateUpdate {
-        block_hash: BlockHash::new(shash!(
+        block_hash: BlockHash(shash!(
             "0x3f65ef25e87a83d92f32f5e4869a33580f9db47ec980c1ff27bdb5151914de5"
         )),
         new_root: GlobalRoot(
@@ -73,7 +73,7 @@ fn load_block_state_update_succeeds() {
                     "0x3e10411edafd29dfe6d427d03e35cb261b7a5efeee61bf73909ada048c029b9"
                 ))
                 .unwrap(),
-                class_hash: ClassHash::new(shash!(
+                class_hash: ClassHash(shash!(
                     "0x071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64"
                 )),
             }],
@@ -83,7 +83,7 @@ fn load_block_state_update_succeeds() {
                     "0x51c62af8919b31499b36bd1f1f702c8ef5a6309554427186c7bd456b862c115"
                 ))
                 .unwrap(),
-                Nonce::new(shash!("0x12")),
+                Nonce(shash!("0x12")),
             )]),
         },
     };

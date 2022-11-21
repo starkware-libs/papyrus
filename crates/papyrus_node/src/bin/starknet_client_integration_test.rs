@@ -9,15 +9,15 @@ async fn main() {
         .expect("Create new client");
     let _latest_block_number = starknet_client.block_number().await.expect("Get block number");
     // A block with invoke transaction version 1.
-    let _block_376150 = starknet_client.block(BlockNumber::new(376150)).await.expect("Get block");
+    let _block_376150 = starknet_client.block(BlockNumber(376150)).await.expect("Get block");
     // A block with deploy account transaction.
-    let _block_376051 = starknet_client.block(BlockNumber::new(376051)).await.expect("Get block");
+    let _block_376051 = starknet_client.block(BlockNumber(376051)).await.expect("Get block");
     // TODO(anatg): Write what's special in this block.
-    let _block_1564 = starknet_client.block(BlockNumber::new(1564)).await.expect("Get block");
-    let _block_123456 = starknet_client.block(BlockNumber::new(123456)).await.expect("Get block");
+    let _block_1564 = starknet_client.block(BlockNumber(1564)).await.expect("Get block");
+    let _block_123456 = starknet_client.block(BlockNumber(123456)).await.expect("Get block");
     let _state_diff =
-        starknet_client.state_update(BlockNumber::new(123456)).await.expect("Get state diff");
-    let class_hash = ClassHash::new(
+        starknet_client.state_update(BlockNumber(123456)).await.expect("Get state diff");
+    let class_hash = ClassHash(
         StarkHash::from_hex("0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17")
             .unwrap(),
     );
