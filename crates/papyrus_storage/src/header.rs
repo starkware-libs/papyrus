@@ -4,8 +4,8 @@ mod header_test;
 
 use starknet_api::{BlockHash, BlockHeader, BlockNumber};
 
-use super::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
-use super::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
+use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
+use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
 pub type BlockHashToNumberTable<'env> = TableHandle<'env, BlockHash, BlockNumber>;
 

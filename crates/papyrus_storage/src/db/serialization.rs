@@ -1,4 +1,4 @@
-use super::DbError;
+use crate::db::DbError;
 
 pub trait StorageSerde: Sized {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error>;

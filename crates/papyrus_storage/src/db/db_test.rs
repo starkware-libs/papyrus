@@ -1,4 +1,4 @@
-use super::{open_env, DbReader, DbWriter};
+use crate::db::{open_env, DbReader, DbWriter};
 use crate::test_utils::get_test_config;
 
 fn get_test_env() -> (DbReader, DbWriter) {

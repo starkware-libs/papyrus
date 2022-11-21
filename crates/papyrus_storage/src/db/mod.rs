@@ -11,7 +11,7 @@ use std::sync::Arc;
 use libmdbx::{Cursor, DatabaseFlags, Geometry, WriteFlags, WriteMap};
 use serde::{Deserialize, Serialize};
 
-use self::serialization::{StorageSerde, StorageSerdeEx};
+use crate::db::serialization::{StorageSerde, StorageSerdeEx};
 
 // Low database layer for interaction with libmdbx. The API is supposedly generic enough to easily
 // replace the database library with other Berkley-like database implementations.
