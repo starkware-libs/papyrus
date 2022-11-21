@@ -47,11 +47,11 @@ async fn block_number() -> Result<(), anyhow::Error> {
     // Add a block and check again.
     storage_writer
         .begin_rw_txn()?
-        .append_header(BlockNumber::new(0), &BlockHeader::default())?
+        .append_header(BlockNumber(0), &BlockHeader::default())?
         .commit()?;
     let block_number =
         module.call::<_, BlockNumber>("starknet_blockNumber", EmptyParams::new()).await?;
-    assert_eq!(block_number, BlockNumber::new(0));
+    assert_eq!(block_number, BlockNumber(0));
     Ok(())
 }
 
@@ -140,7 +140,7 @@ async fn get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, Block>(
             "starknet_getBlockWithTxHashes",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash::new(shash!(
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             ))))],
         )
@@ -156,7 +156,7 @@ async fn get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, Block>(
             "starknet_getBlockWithTxHashes",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber::new(1)))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))],
         )
         .await
         .unwrap_err();
@@ -215,7 +215,7 @@ async fn get_block_w_full_transactions() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, Block>(
             "starknet_getBlockWithTxs",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash::new(shash!(
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             ))))],
         )
@@ -231,7 +231,7 @@ async fn get_block_w_full_transactions() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, Block>(
             "starknet_getBlockWithTxs",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber::new(1)))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))],
         )
         .await
         .unwrap_err();
@@ -305,7 +305,7 @@ async fn get_storage_at() -> Result<(), anyhow::Error> {
             (
                 address,
                 key,
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash::new(shash!(
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
             ),
@@ -322,7 +322,7 @@ async fn get_storage_at() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, StarkFelt>(
             "starknet_getStorageAt",
-            (address, key, BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber::new(1)))),
+            (address, key, BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))),
         )
         .await
         .unwrap_err();
@@ -392,7 +392,7 @@ async fn get_class_hash_at() -> Result<(), anyhow::Error> {
         .call::<_, ClassHash>(
             "starknet_getClassHashAt",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash::new(shash!(
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
                 address,
@@ -410,7 +410,7 @@ async fn get_class_hash_at() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, ClassHash>(
             "starknet_getClassHashAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber::new(1))), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), address),
         )
         .await
         .unwrap_err();
@@ -479,7 +479,7 @@ async fn get_nonce() -> Result<(), anyhow::Error> {
         .call::<_, Nonce>(
             "starknet_getNonce",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash::new(shash!(
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
                 address,
@@ -497,7 +497,7 @@ async fn get_nonce() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, Nonce>(
             "starknet_getNonce",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber::new(1))), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), address),
         )
         .await
         .unwrap_err();
@@ -587,7 +587,7 @@ async fn get_transaction_by_block_id_and_index() -> Result<(), anyhow::Error> {
         .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash::new(shash!(
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
                 0,
@@ -605,7 +605,7 @@ async fn get_transaction_by_block_id_and_index() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber::new(1))), 0),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), 0),
         )
         .await
         .unwrap_err();
@@ -673,7 +673,7 @@ async fn get_block_transaction_count() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, usize>(
             "starknet_getBlockTransactionCount",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash::new(shash!(
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             ))))],
         )
@@ -689,7 +689,7 @@ async fn get_block_transaction_count() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, usize>(
             "starknet_getBlockTransactionCount",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber::new(1)))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))],
         )
         .await
         .unwrap_err();
@@ -745,7 +745,7 @@ async fn get_state_update() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, StateUpdate>(
             "starknet_getStateUpdate",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash::new(shash!(
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             ))))],
         )
@@ -761,7 +761,7 @@ async fn get_state_update() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, StateUpdate>(
             "starknet_getStateUpdate",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber::new(2)))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2)))],
         )
         .await
         .unwrap_err();
@@ -869,7 +869,7 @@ async fn get_class() -> Result<(), anyhow::Error> {
             "starknet_getClass",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ClassHash::new(shash!("0x7")),
+                ClassHash(shash!("0x7")),
             ),
         )
         .await
@@ -902,7 +902,7 @@ async fn get_class() -> Result<(), anyhow::Error> {
         .call::<_, ContractClass>(
             "starknet_getClass",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash::new(shash!(
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
                 class_hash,
@@ -920,7 +920,7 @@ async fn get_class() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, ContractClass>(
             "starknet_getClass",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber::new(2))), class_hash),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))), class_hash),
         )
         .await
         .unwrap_err();
@@ -1017,7 +1017,7 @@ async fn get_class_at() -> Result<(), anyhow::Error> {
         .call::<_, ContractClass>(
             "starknet_getClassAt",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash::new(shash!(
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
                 address,
@@ -1035,7 +1035,7 @@ async fn get_class_at() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, ContractClass>(
             "starknet_getClassAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber::new(2))), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))), address),
         )
         .await
         .unwrap_err();

@@ -44,7 +44,7 @@ async fn get_block_number() {
         .create();
     let block_number = starknet_client.block_number().await.unwrap();
     mock_block.assert();
-    assert_eq!(block_number.unwrap(), BlockNumber::new(273466));
+    assert_eq!(block_number.unwrap(), BlockNumber(273466));
 
     // There are no blocks in Starknet.
     let body = r#"{"code": "StarknetErrorCode.BLOCK_NOT_FOUND", "message": "Block number -1 was not found."}"#;
@@ -58,11 +58,11 @@ async fn get_block_number() {
 #[tokio::test]
 async fn declare_tx_serde() {
     let declare_tx = DeclareTransaction {
-        class_hash: ClassHash::new(shash!(
+        class_hash: ClassHash(shash!(
             "0x7319e2f01b0947afd86c0bb0e95029551b32f6dc192c47b2e8b08415eebbc25"
         )),
         sender_address: ContractAddress::try_from(shash!("0x1")).unwrap(),
-        nonce: Nonce::new(shash!("0x0")),
+        nonce: Nonce(shash!("0x0")),
         max_fee: Fee(0),
         version: TransactionVersion(shash!("0x1")),
         transaction_hash: TransactionHash(shash!(
@@ -84,7 +84,7 @@ async fn state_update() {
             .with_status(200)
             .with_body(&raw_state_update)
             .create();
-    let state_update = starknet_client.state_update(BlockNumber::new(123456)).await.unwrap();
+    let state_update = starknet_client.state_update(BlockNumber(123456)).await.unwrap();
     mock.assert();
     let expected_state_update: StateUpdate = serde_json::from_str(&raw_state_update).unwrap();
     assert_eq!(state_update.unwrap(), expected_state_update);
@@ -171,7 +171,7 @@ async fn contract_class() {
         .with_body(read_resource_file("contract_class.json"))
         .create();
     let contract_class = starknet_client
-        .class_by_hash(ClassHash::new(shash!(
+        .class_by_hash(ClassHash(shash!(
             "0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17"
         )))
         .await
@@ -186,7 +186,7 @@ async fn contract_class() {
             .with_status(500)
             .with_body(body)
             .create();
-    let class = starknet_client.class_by_hash(ClassHash::new(shash!("0x7"))).await.unwrap();
+    let class = starknet_client.class_by_hash(ClassHash(shash!("0x7"))).await.unwrap();
     mock_by_hash.assert();
     assert!(class.is_none());
 }
@@ -200,7 +200,7 @@ async fn get_block() {
             .with_status(200)
             .with_body(&raw_block)
             .create();
-    let block = starknet_client.block(BlockNumber::new(20)).await.unwrap().unwrap();
+    let block = starknet_client.block(BlockNumber(20)).await.unwrap().unwrap();
     mock_block.assert();
     let expected_block: Block = serde_json::from_str(&raw_block).unwrap();
     assert_eq!(block, expected_block);
@@ -212,7 +212,7 @@ async fn get_block() {
             .with_status(500)
             .with_body(body)
             .create();
-    let block = starknet_client.block(BlockNumber::new(9999999999)).await.unwrap();
+    let block = starknet_client.block(BlockNumber(9999999999)).await.unwrap();
     mock_no_block.assert();
     assert!(block.is_none());
 }
@@ -226,7 +226,7 @@ async fn block_unserializable() {
         .with_status(200)
         .with_body(body)
         .create();
-    let error = starknet_client.block(BlockNumber::new(20)).await.unwrap_err();
+    let error = starknet_client.block(BlockNumber(20)).await.unwrap_err();
     mock.assert();
     assert_matches!(error, ClientError::SerdeError(_));
 }
