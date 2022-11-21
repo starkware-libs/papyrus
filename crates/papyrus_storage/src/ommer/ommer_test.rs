@@ -3,12 +3,13 @@ use starknet_api::{
     TransactionOutput,
 };
 
+use crate::body::events::ThinTransactionOutput;
+use crate::body::{BodyStorageReader, BodyStorageWriter};
+use crate::ommer::OmmerStorageWriter;
+use crate::state::data::ThinStateDiff;
+use crate::state::{StateStorageReader, StateStorageWriter};
 use crate::test_utils::{get_test_block, get_test_state_diff, get_test_storage};
-use crate::{
-    BodyStorageReader, BodyStorageWriter, OmmerStorageWriter, StateStorageReader,
-    StateStorageWriter, StorageReader, StorageResult, ThinStateDiff, ThinTransactionOutput,
-    TransactionIndex,
-};
+use crate::{StorageReader, StorageResult, TransactionIndex};
 
 // TODO(yair): These functions were written and used in order to experience writing ommer blocks in
 // a revert scenario (vs. scenario of raw blocks that need to be written directly to the ommer

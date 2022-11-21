@@ -5,8 +5,11 @@ use starknet_api::{
     TransactionOffsetInBlock,
 };
 
+use crate::body::events::EventsReader;
+use crate::body::BodyStorageWriter;
+use crate::header::HeaderStorageWriter;
 use crate::test_utils::{get_test_block, get_test_storage};
-use crate::{BodyStorageWriter, EventIndex, EventsReader, HeaderStorageWriter, TransactionIndex};
+use crate::{EventIndex, TransactionIndex};
 
 #[tokio::test]
 async fn iter_events_by_key() -> Result<(), anyhow::Error> {

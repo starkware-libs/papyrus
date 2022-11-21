@@ -7,11 +7,10 @@ use starknet_api::{
     TransactionOffsetInBlock,
 };
 
+use crate::body::events::ThinTransactionOutput;
 use crate::db::RW;
-use crate::{
-    OmmerEventKey, OmmerTransactionKey, StorageResult, StorageTxn, ThinStateDiff,
-    ThinTransactionOutput,
-};
+use crate::state::data::ThinStateDiff;
+use crate::{OmmerEventKey, OmmerTransactionKey, StorageResult, StorageTxn};
 
 /// Writer for ommer blocks data.
 /// To enforce that no commit happen after a failure, we consume and return Self on success.

@@ -21,10 +21,8 @@ use crate::body::events::{
     ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
 };
 use crate::db::serialization::StorageSerde;
-use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract};
-use crate::{
-    EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey, ThinStateDiff, TransactionIndex,
-};
+use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
+use crate::{EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey, TransactionIndex};
 
 ////////////////////////////////////////////////////////////////////////
 // Starknet API structs.

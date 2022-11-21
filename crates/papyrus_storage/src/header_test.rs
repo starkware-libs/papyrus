@@ -1,9 +1,9 @@
 use assert_matches::assert_matches;
 use starknet_api::{shash, BlockHash, BlockHeader, BlockNumber, StarkHash};
 
-use crate::header::{HeaderStorageReader, HeaderStorageWriter, StorageError};
+use crate::header::{HeaderStorageReader, HeaderStorageWriter};
 use crate::test_utils::get_test_storage;
-use crate::StorageWriter;
+use crate::{StorageError, StorageWriter};
 
 #[tokio::test]
 async fn append_header() -> Result<(), anyhow::Error> {
