@@ -103,6 +103,11 @@ impl StarkHash {
     pub fn bytes(&self) -> &[u8] {
         &self.0
     }
+
+    fn str_format(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = format!("0x{}", hex::encode(self.0));
+        f.debug_tuple("StarkHash").field(&s).finish()
+    }
 }
 
 impl TryFrom<PrefixedBytesAsHex<32_usize>> for StarkHash {
@@ -145,15 +150,13 @@ impl From<StarkHash> for PrefixedBytesAsHex<32_usize> {
 
 impl Debug for StarkHash {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = format!("0x{}", hex::encode(self.0));
-        f.debug_tuple("StarkHash").field(&s).finish()
+        self.str_format(f)
     }
 }
 
 impl Display for StarkHash {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = format!("0x{}", hex::encode(self.0));
-        f.debug_tuple("StarkHash").field(&s).finish()
+        self.str_format(f)
     }
 }
 
