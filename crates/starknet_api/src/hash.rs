@@ -38,19 +38,6 @@ impl StarkHash {
         Err(StarknetApiError::OutOfRange { string: hex_str_from_bytes::<32, true>(bytes) })
     }
 
-    /// Returns a [`StarkHash`] corresponding to `hex_str`.
-    pub fn from_hex(hex_str: &str) -> Result<StarkHash, StarknetApiError> {
-        let bytes = bytes_from_hex_str::<32, true>(hex_str)?;
-        Self::new(bytes)
-    }
-
-    /// Returns a [`StarkHash`] corresponding to `val`.
-    pub fn from_u64(val: u64) -> StarkHash {
-        let mut bytes = [0u8; 32];
-        bytes[24..32].copy_from_slice(&val.to_be_bytes());
-        StarkHash(bytes)
-    }
-
     /// Storage efficient serialization for field elements.
     pub fn serialize(&self, res: &mut impl std::io::Write) -> Result<(), Error> {
         // We use the fact that bytes[0] < 0x10 and encode the size of the felt in the 4 most
@@ -125,6 +112,22 @@ impl TryFrom<PrefixedHexAsBytes<32_usize>> for StarkHash {
     }
 }
 
+impl TryFrom<&str> for StarkHash {
+    type Error = StarknetApiError;
+    fn try_from(val: &str) -> Result<Self, Self::Error> {
+        let bytes = bytes_from_hex_str::<32, true>(val)?;
+        Self::new(bytes)
+    }
+}
+
+impl From<u64> for StarkHash {
+    fn from(val: u64) -> Self {
+        let mut bytes = [0u8; 32];
+        bytes[24..32].copy_from_slice(&val.to_be_bytes());
+        Self(bytes)
+    }
+}
+
 // TODO(anatg): Remove once Starknet sequencer returns the global root hash as a hex string with a
 // "0x" prefix.
 impl TryFrom<NonPrefixedHexAsBytes<32_usize>> for StarkHash {
@@ -159,6 +162,6 @@ impl Display for StarkHash {
 #[macro_export]
 macro_rules! shash {
     ($s:expr) => {
-        StarkHash::from_hex($s).unwrap()
+        StarkHash::try_from($s).unwrap()
     };
 }

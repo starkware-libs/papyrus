@@ -59,11 +59,11 @@ pub fn get_test_body(transaction_count: usize) -> BlockBody {
     let mut transaction_outputs = vec![];
     for i in 0..transaction_count {
         let transaction = Transaction::Deploy(DeployTransaction {
-            transaction_hash: TransactionHash(StarkHash::from_u64(i as u64)),
+            transaction_hash: TransactionHash(StarkHash::from(i as u64)),
             version: TransactionVersion(shash!("0x1")),
             contract_address: ContractAddress::try_from(shash!("0x2")).unwrap(),
             constructor_calldata: CallData(vec![shash!("0x3")]),
-            class_hash: ClassHash(StarkHash::from_u64(i as u64)),
+            class_hash: ClassHash(StarkHash::from(i as u64)),
             contract_address_salt: ContractAddressSalt(shash!("0x4")),
         });
         transactions.push(transaction);
@@ -329,7 +329,7 @@ pub fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff, Vec<Declar
         ],
         vec![ContractNonce {
             contract_address: address0,
-            nonce: Nonce(StarkHash::from_u64(1)),
+            nonce: Nonce(StarkHash::from(1)),
         }],
     )
     .unwrap();

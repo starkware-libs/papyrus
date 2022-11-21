@@ -45,7 +45,7 @@ impl StorageSerde for PatriciaKey {
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        Self::new(StarkHash::deserialize(bytes)?).ok()
+        Self::try_from(StarkHash::deserialize(bytes)?).ok()
     }
 }
 

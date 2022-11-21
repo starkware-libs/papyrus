@@ -28,7 +28,7 @@ pub struct ContractAddress(pub PatriciaKey);
 impl TryFrom<StarkHash> for ContractAddress {
     type Error = StarknetApiError;
     fn try_from(hash: StarkHash) -> Result<Self, Self::Error> {
-        Ok(Self(PatriciaKey::new(hash)?))
+        Ok(Self(PatriciaKey::try_from(hash)?))
     }
 }
 
@@ -44,7 +44,7 @@ pub struct Nonce(pub StarkFelt);
 
 impl Default for Nonce {
     fn default() -> Self {
-        Nonce(StarkFelt::from_u64(0))
+        Nonce(StarkFelt::from(0))
     }
 }
 
@@ -63,14 +63,19 @@ pub const PATRICIA_KEY_UPPER_BOUND: &str =
     "0x800000000000000000000000000000000000000000000000000000000000000";
 
 impl PatriciaKey {
-    pub fn new(hash: StarkHash) -> Result<PatriciaKey, StarknetApiError> {
-        if hash < StarkHash::from_hex(PATRICIA_KEY_UPPER_BOUND)? {
-            return Ok(PatriciaKey(hash));
-        }
-        Err(StarknetApiError::OutOfRange { string: format!("[0x0, {PATRICIA_KEY_UPPER_BOUND})") })
-    }
     pub fn key(&self) -> &StarkHash {
         &self.0
+    }
+}
+
+impl TryFrom<StarkHash> for PatriciaKey {
+    type Error = StarknetApiError;
+
+    fn try_from(value: StarkHash) -> Result<Self, Self::Error> {
+        if value < StarkHash::try_from(PATRICIA_KEY_UPPER_BOUND)? {
+            return Ok(PatriciaKey(value));
+        }
+        Err(StarknetApiError::OutOfRange { string: format!("[0x0, {PATRICIA_KEY_UPPER_BOUND})") })
     }
 }
 
