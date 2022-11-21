@@ -307,7 +307,7 @@ impl TryFrom<StarkHash> for StorageKey {
     type Error = StarknetApiError;
 
     fn try_from(val: StarkHash) -> Result<Self, Self::Error> {
-        Ok(Self(PatriciaKey::new(val)?))
+        Ok(Self(PatriciaKey::try_from(val)?))
     }
 }
 

@@ -18,7 +18,7 @@ async fn main() {
     let _state_diff =
         starknet_client.state_update(BlockNumber(123456)).await.expect("Get state diff");
     let class_hash = ClassHash(
-        StarkHash::from_hex("0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17")
+        StarkHash::try_from("0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17")
             .unwrap(),
     );
     let _contract_class_by_hash =

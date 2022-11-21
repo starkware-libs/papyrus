@@ -44,7 +44,7 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
             DeclaredContract { class_hash: cl0, contract_class: c_cls0.clone() },
             DeclaredContract { class_hash: cl1, contract_class: c_cls1 },
         ],
-        vec![ContractNonce { contract_address: c0, nonce: Nonce(StarkHash::from_u64(1)) }],
+        vec![ContractNonce { contract_address: c0, nonce: Nonce(StarkHash::from(1)) }],
     )?;
     let diff1 = StateDiff::new(
         vec![DeployedContract { address: c2, class_hash: cl0 }],
@@ -61,9 +61,9 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
         ],
         vec![DeclaredContract { class_hash: cl0, contract_class: c_cls0.clone() }],
         vec![
-            ContractNonce { contract_address: c0, nonce: Nonce(StarkHash::from_u64(2)) },
-            ContractNonce { contract_address: c1, nonce: Nonce(StarkHash::from_u64(1)) },
-            ContractNonce { contract_address: c2, nonce: Nonce(StarkHash::from_u64(1)) },
+            ContractNonce { contract_address: c0, nonce: Nonce(StarkHash::from(2)) },
+            ContractNonce { contract_address: c1, nonce: Nonce(StarkHash::from(1)) },
+            ContractNonce { contract_address: c2, nonce: Nonce(StarkHash::from(1)) },
         ],
     )?;
 
@@ -137,8 +137,8 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     assert_eq!(statetxn.get_class_hash_at(state1, &c0)?, Some(cl0));
     assert_eq!(statetxn.get_class_hash_at(state2, &c0)?, Some(cl0));
     assert_eq!(statetxn.get_nonce_at(state0, &c0)?, None);
-    assert_eq!(statetxn.get_nonce_at(state1, &c0)?, Some(Nonce(StarkHash::from_u64(1))));
-    assert_eq!(statetxn.get_nonce_at(state2, &c0)?, Some(Nonce(StarkHash::from_u64(2))));
+    assert_eq!(statetxn.get_nonce_at(state1, &c0)?, Some(Nonce(StarkHash::from(1))));
+    assert_eq!(statetxn.get_nonce_at(state2, &c0)?, Some(Nonce(StarkHash::from(2))));
 
     // Contract1.
     assert_eq!(statetxn.get_class_hash_at(state0, &c1)?, None);
@@ -146,7 +146,7 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     assert_eq!(statetxn.get_class_hash_at(state2, &c1)?, Some(cl1));
     assert_eq!(statetxn.get_nonce_at(state0, &c1)?, None);
     assert_eq!(statetxn.get_nonce_at(state1, &c1)?, Some(Nonce::default()));
-    assert_eq!(statetxn.get_nonce_at(state2, &c1)?, Some(Nonce(StarkHash::from_u64(1))));
+    assert_eq!(statetxn.get_nonce_at(state2, &c1)?, Some(Nonce(StarkHash::from(1))));
 
     // Contract2.
     assert_eq!(statetxn.get_class_hash_at(state0, &c2)?, None);
@@ -154,7 +154,7 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     assert_eq!(statetxn.get_class_hash_at(state2, &c2)?, Some(cl0));
     assert_eq!(statetxn.get_nonce_at(state0, &c2)?, None);
     assert_eq!(statetxn.get_nonce_at(state1, &c2)?, None);
-    assert_eq!(statetxn.get_nonce_at(state2, &c2)?, Some(Nonce(StarkHash::from_u64(1))));
+    assert_eq!(statetxn.get_nonce_at(state2, &c2)?, Some(Nonce(StarkHash::from(1))));
 
     // Contract3.
     assert_eq!(statetxn.get_class_hash_at(state0, &c3)?, None);
@@ -278,7 +278,7 @@ fn revert_doesnt_delete_previously_declared_classes() -> Result<(), anyhow::Erro
         vec![DeployedContract { address: c0, class_hash: cl0 }],
         vec![],
         vec![DeclaredContract { class_hash: cl0, contract_class: c_cls0.clone() }],
-        vec![ContractNonce { contract_address: c0, nonce: Nonce(StarkHash::from_u64(1)) }],
+        vec![ContractNonce { contract_address: c0, nonce: Nonce(StarkHash::from(1)) }],
     )?;
 
     let c1 = ContractAddress::try_from(shash!("0x12")).unwrap();
@@ -286,7 +286,7 @@ fn revert_doesnt_delete_previously_declared_classes() -> Result<(), anyhow::Erro
         vec![DeployedContract { address: c1, class_hash: cl0 }],
         vec![],
         vec![DeclaredContract { class_hash: cl0, contract_class: c_cls0 }],
-        vec![ContractNonce { contract_address: c1, nonce: Nonce(StarkHash::from_u64(2)) }],
+        vec![ContractNonce { contract_address: c1, nonce: Nonce(StarkHash::from(2)) }],
     )?;
 
     let (reader, mut writer) = get_test_storage();
