@@ -2,15 +2,15 @@
 #[path = "core_test.rs"]
 mod core_test;
 
-use std::fmt;
-use std::fmt::{Debug, Display};
+use std::fmt::Debug;
 
+use derive_more::Display;
 use serde::{Deserialize, Serialize};
 
 use super::{StarkFelt, StarkHash, StarknetApiError};
 
 /// Starknet chain id.
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Clone, Debug, Display, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ChainId(pub String);
 
 impl ChainId {
@@ -19,28 +19,16 @@ impl ChainId {
     }
 }
 
-impl Display for ChainId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.0)
-    }
-}
-
 /// The address of a StarkNet contract.
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct ContractAddress(PatriciaKey);
-
-impl ContractAddress {
-    pub fn contract_address(&self) -> &PatriciaKey {
-        &self.0
-    }
-}
+pub struct ContractAddress(pub PatriciaKey);
 
 impl TryFrom<StarkHash> for ContractAddress {
     type Error = StarknetApiError;
     fn try_from(hash: StarkHash) -> Result<Self, Self::Error> {
-        Ok(Self(PatriciaKey::new(hash)?))
+        Ok(Self(PatriciaKey::try_from(hash)?))
     }
 }
 
@@ -48,33 +36,15 @@ impl TryFrom<StarkHash> for ContractAddress {
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct ClassHash(StarkHash);
-
-impl ClassHash {
-    pub fn new(hash: StarkHash) -> Self {
-        Self(hash)
-    }
-    pub fn class_hash(&self) -> &StarkHash {
-        &self.0
-    }
-}
+pub struct ClassHash(pub StarkHash);
 
 /// The nonce of a StarkNet contract.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct Nonce(StarkFelt);
-
-impl Nonce {
-    pub fn new(felt: StarkFelt) -> Self {
-        Self(felt)
-    }
-    pub fn nonce(&self) -> &StarkFelt {
-        &self.0
-    }
-}
+pub struct Nonce(pub StarkFelt);
 
 impl Default for Nonce {
     fn default() -> Self {
-        Nonce(StarkFelt::from_u64(0))
+        Nonce(StarkFelt::from(0))
     }
 }
 
@@ -93,14 +63,19 @@ pub const PATRICIA_KEY_UPPER_BOUND: &str =
     "0x800000000000000000000000000000000000000000000000000000000000000";
 
 impl PatriciaKey {
-    pub fn new(hash: StarkHash) -> Result<PatriciaKey, StarknetApiError> {
-        if hash < StarkHash::from_hex(PATRICIA_KEY_UPPER_BOUND)? {
-            return Ok(PatriciaKey(hash));
-        }
-        Err(StarknetApiError::OutOfRange { string: format!("[0x0, {PATRICIA_KEY_UPPER_BOUND})") })
-    }
     pub fn key(&self) -> &StarkHash {
         &self.0
+    }
+}
+
+impl TryFrom<StarkHash> for PatriciaKey {
+    type Error = StarknetApiError;
+
+    fn try_from(value: StarkHash) -> Result<Self, Self::Error> {
+        if value < StarkHash::try_from(PATRICIA_KEY_UPPER_BOUND)? {
+            return Ok(PatriciaKey(value));
+        }
+        Err(StarknetApiError::OutOfRange { string: format!("[0x0, {PATRICIA_KEY_UPPER_BOUND})") })
     }
 }
 

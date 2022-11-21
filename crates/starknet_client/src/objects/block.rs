@@ -28,7 +28,7 @@ impl TryFrom<NonPrefixedBytesAsHex<32_usize>> for GlobalRoot {
 }
 impl From<GlobalRoot> for starknet_api::GlobalRoot {
     fn from(val: GlobalRoot) -> Self {
-        Self::new(val.0)
+        Self(val.0)
     }
 }
 

@@ -301,19 +301,13 @@ pub struct TypedParameter {
 #[derive(
     Debug, Default, Clone, Copy, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct StorageKey(PatriciaKey);
-
-impl StorageKey {
-    pub fn key(&self) -> &PatriciaKey {
-        &self.0
-    }
-}
+pub struct StorageKey(pub PatriciaKey);
 
 impl TryFrom<StarkHash> for StorageKey {
     type Error = StarknetApiError;
 
     fn try_from(val: StarkHash) -> Result<Self, Self::Error> {
-        Ok(Self(PatriciaKey::new(val)?))
+        Ok(Self(PatriciaKey::try_from(val)?))
     }
 }
 

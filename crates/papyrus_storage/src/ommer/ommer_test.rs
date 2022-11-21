@@ -102,7 +102,7 @@ fn insert_body_to_ommer() -> Result<(), anyhow::Error> {
     let block = get_test_block(7);
     let block_hash = block.header.block_hash;
     let body = block.body;
-    let transactions = body.transactions().clone();
+    let transactions = body.transactions().to_owned();
 
     fn split_tx_output(tx_output: TransactionOutput) -> (ThinTransactionOutput, Vec<Event>) {
         let events = tx_output.events().to_owned();

@@ -2,9 +2,9 @@
 #[path = "block_test.rs"]
 mod block_test;
 
-use std::fmt;
 use std::vec::IntoIter;
 
+use derive_more::Display;
 use serde::{Deserialize, Serialize};
 
 use super::serde_utils::{BytesAsHex, PrefixedBytesAsHex};
@@ -50,11 +50,11 @@ impl BlockBody {
         }
     }
 
-    pub fn transactions(&self) -> &Vec<Transaction> {
+    pub fn transactions(&self) -> &[Transaction] {
         &self.transactions
     }
 
-    pub fn transaction_outputs(&self) -> &Vec<TransactionOutput> {
+    pub fn transaction_outputs(&self) -> &[TransactionOutput] {
         &self.transaction_outputs
     }
 
@@ -91,28 +91,26 @@ impl Default for BlockStatus {
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct BlockHash(StarkHash);
-
-impl BlockHash {
-    pub fn new(hash: StarkHash) -> Self {
-        Self(hash)
-    }
-    pub fn block_hash(&self) -> &StarkHash {
-        &self.0
-    }
-}
+pub struct BlockHash(pub StarkHash);
 
 /// The block number of a StarkNet block.
 #[derive(
-    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+    Debug,
+    Default,
+    Copy,
+    Display,
+    Clone,
+    Eq,
+    PartialEq,
+    Hash,
+    Deserialize,
+    Serialize,
+    PartialOrd,
+    Ord,
 )]
-pub struct BlockNumber(u64);
+pub struct BlockNumber(pub u64);
 
 impl BlockNumber {
-    pub const fn new(block_number: u64) -> Self {
-        Self(block_number)
-    }
-
     pub fn next(&self) -> BlockNumber {
         BlockNumber(self.0 + 1)
     }
@@ -128,15 +126,6 @@ impl BlockNumber {
         let range = self.0..up_to.0;
         range.map(Self)
     }
-    pub fn number(&self) -> &u64 {
-        &self.0
-    }
-}
-
-impl fmt::Display for BlockNumber {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
 }
 
 /// The gas price at a StarkNet block.
@@ -144,16 +133,7 @@ impl fmt::Display for BlockNumber {
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 #[serde(from = "PrefixedBytesAsHex<16_usize>", into = "PrefixedBytesAsHex<16_usize>")]
-pub struct GasPrice(u128);
-
-impl GasPrice {
-    pub fn new(price: u128) -> Self {
-        Self(price)
-    }
-    pub fn price(&self) -> &u128 {
-        &self.0
-    }
-}
+pub struct GasPrice(pub u128);
 
 impl From<PrefixedBytesAsHex<16_usize>> for GasPrice {
     fn from(val: PrefixedBytesAsHex<16_usize>) -> Self {
@@ -171,28 +151,10 @@ impl From<GasPrice> for PrefixedBytesAsHex<16_usize> {
 #[derive(
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct GlobalRoot(StarkHash);
-
-impl GlobalRoot {
-    pub fn new(hash: StarkHash) -> Self {
-        Self(hash)
-    }
-    pub fn root(&self) -> &StarkHash {
-        &self.0
-    }
-}
+pub struct GlobalRoot(pub StarkHash);
 
 /// The timestamp of a StarkNet block.
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct BlockTimestamp(u64);
-
-impl BlockTimestamp {
-    pub fn new(time_stamp: u64) -> Self {
-        Self(time_stamp)
-    }
-    pub fn time_stamp(&self) -> &u64 {
-        &self.0
-    }
-}
+pub struct BlockTimestamp(pub u64);

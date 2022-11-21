@@ -2,7 +2,7 @@
 #[path = "hash_test.rs"]
 mod hash_test;
 
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::io::Error;
 
 use serde::{Deserialize, Serialize};
@@ -32,25 +32,10 @@ impl StarkHash {
     /// Returns a new [`StarkHash`].
     pub fn new(bytes: [u8; 32]) -> Result<StarkHash, StarknetApiError> {
         // msb nibble must be 0. This is not a tight bound.
-        if bytes[0] >= 0x10 {
-            return Err(StarknetApiError::OutOfRange {
-                string: hex_str_from_bytes::<32, true>(bytes),
-            });
+        if bytes[0] < 0x10 {
+            return Ok(Self(bytes));
         }
-        Ok(Self(bytes))
-    }
-
-    /// Returns a [`StarkHash`] corresponding to `hex_str`.
-    pub fn from_hex(hex_str: &str) -> Result<StarkHash, StarknetApiError> {
-        let bytes = bytes_from_hex_str::<32, true>(hex_str)?;
-        Self::new(bytes)
-    }
-
-    /// Returns a [`StarkHash`] corresponding to `val`.
-    pub fn from_u64(val: u64) -> StarkHash {
-        let mut bytes = [0u8; 32];
-        bytes[24..32].copy_from_slice(&val.to_be_bytes());
-        StarkHash(bytes)
+        Err(StarknetApiError::OutOfRange { string: hex_str_from_bytes::<32, true>(bytes) })
     }
 
     /// Storage efficient serialization for field elements.
@@ -118,12 +103,33 @@ impl StarkHash {
     pub fn bytes(&self) -> &[u8] {
         &self.0
     }
+
+    fn str_format(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = format!("0x{}", hex::encode(self.0));
+        f.debug_tuple("StarkHash").field(&s).finish()
+    }
 }
 
 impl TryFrom<PrefixedBytesAsHex<32_usize>> for StarkHash {
     type Error = StarknetApiError;
     fn try_from(val: PrefixedBytesAsHex<32_usize>) -> Result<Self, Self::Error> {
         StarkHash::new(val.0)
+    }
+}
+
+impl TryFrom<&str> for StarkHash {
+    type Error = StarknetApiError;
+    fn try_from(val: &str) -> Result<Self, Self::Error> {
+        let bytes = bytes_from_hex_str::<32, true>(val)?;
+        Self::new(bytes)
+    }
+}
+
+impl From<u64> for StarkHash {
+    fn from(val: u64) -> Self {
+        let mut bytes = [0u8; 32];
+        bytes[24..32].copy_from_slice(&val.to_be_bytes());
+        Self(bytes)
     }
 }
 
@@ -144,8 +150,13 @@ impl From<StarkHash> for PrefixedBytesAsHex<32_usize> {
 
 impl Debug for StarkHash {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = format!("0x{}", hex::encode(self.0));
-        f.debug_tuple("StarkHash").field(&s).finish()
+        self.str_format(f)
+    }
+}
+
+impl Display for StarkHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.str_format(f)
     }
 }
 
@@ -154,6 +165,6 @@ impl Debug for StarkHash {
 #[macro_export]
 macro_rules! shash {
     ($s:expr) => {
-        StarkHash::from_hex($s).unwrap()
+        StarkHash::try_from($s).unwrap()
     };
 }

@@ -241,7 +241,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
             BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.parent_hash)),
         );
         let mut old_root =
-            GlobalRoot::new(StarkHash::from_hex(GENESIS_HASH).map_err(internal_server_error)?);
+            GlobalRoot(StarkHash::try_from(GENESIS_HASH).map_err(internal_server_error)?);
         if parent_block_number.is_ok() {
             let parent_header = get_block_header_by_number(&txn, parent_block_number.unwrap())?;
             old_root = parent_header.new_root;

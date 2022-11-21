@@ -59,11 +59,11 @@ pub fn get_test_body(transaction_count: usize) -> BlockBody {
     let mut transaction_outputs = vec![];
     for i in 0..transaction_count {
         let transaction = Transaction::Deploy(DeployTransaction {
-            transaction_hash: TransactionHash(StarkHash::from_u64(i as u64)),
+            transaction_hash: TransactionHash(StarkHash::from(i as u64)),
             version: TransactionVersion(shash!("0x1")),
             contract_address: ContractAddress::try_from(shash!("0x2")).unwrap(),
             constructor_calldata: CallData(vec![shash!("0x3")]),
-            class_hash: ClassHash::new(StarkHash::from_u64(i as u64)),
+            class_hash: ClassHash(StarkHash::from(i as u64)),
             contract_address_salt: ContractAddressSalt(shash!("0x4")),
         });
         transactions.push(transaction);
@@ -120,11 +120,11 @@ pub fn get_test_body(transaction_count: usize) -> BlockBody {
 
 pub fn get_test_block(transaction_count: usize) -> Block {
     let header = BlockHeader {
-        block_hash: BlockHash::new(shash!(
+        block_hash: BlockHash(shash!(
             "0x7d328a71faf48c5c3857e99f20a77b18522480956d1cd5bff1ff2df3c8b427b"
         )),
-        block_number: BlockNumber::new(0),
-        state_root: GlobalRoot::new(shash!(
+        block_number: BlockNumber(0),
+        state_root: GlobalRoot(shash!(
             "0x02c2bb91714f8448ed814bdac274ab6fcdbafc22d835f9e847e5bee8c2e5444e"
         )),
         ..BlockHeader::default()
@@ -141,7 +141,7 @@ pub fn get_alpha4_starknet_body() -> BlockBody {
                 "0x4dd12d3b82c3d0b216503c6abf63f1ccad222461582eac82057d46c327331d2"
             )),
             version: TransactionVersion::default(),
-            class_hash: ClassHash::new(shash!(
+            class_hash: ClassHash(shash!(
                 "0x10455c752b86932ce552f2b0fe81a880746649b9aee7e0d842bf3f52378f9f8"
             )),
             contract_address: ContractAddress::try_from(shash!(
@@ -161,7 +161,7 @@ pub fn get_alpha4_starknet_body() -> BlockBody {
                 "0x1a5f7247cc207f5b5c2e48b7605e46b872b83a2fa842955aea42d3cd80dbff"
             )),
             version: TransactionVersion::default(),
-            class_hash: ClassHash::new(shash!(
+            class_hash: ClassHash(shash!(
                 "0x10455c752b86932ce552f2b0fe81a880746649b9aee7e0d842bf3f52378f9f8"
             )),
             contract_address: ContractAddress::try_from(shash!(
@@ -181,7 +181,7 @@ pub fn get_alpha4_starknet_body() -> BlockBody {
                 "0x5ea9bca61575eeb4ed38a16cefcbf66ba1ed642642df1a1c07b44316791b378"
             )),
             version: TransactionVersion::default(),
-            class_hash: ClassHash::new(shash!(
+            class_hash: ClassHash(shash!(
                 "0x7b40f8e4afe1316fce16375ac7a06d4dd27c7a4e3bcd6c28afdd208c5db433d"
             )),
             contract_address: ContractAddress::try_from(shash!(
@@ -245,19 +245,19 @@ pub fn get_alpha4_starknet_body() -> BlockBody {
 /// Returns block number 1 in starknet mainnet.
 pub fn get_alpha4_starknet_block() -> Block {
     let header = BlockHeader {
-        block_hash: BlockHash::new(shash!(
+        block_hash: BlockHash(shash!(
             "0x75e00250d4343326f322e370df4c9c73c7be105ad9f532eeb97891a34d9e4a5"
         )),
-        parent_hash: BlockHash::new(shash!(
+        parent_hash: BlockHash(shash!(
             "0x7d328a71faf48c5c3857e99f20a77b18522480956d1cd5bff1ff2df3c8b427b"
         )),
-        block_number: BlockNumber::new(1),
+        block_number: BlockNumber(1),
         gas_price: GasPrice::default(),
-        state_root: GlobalRoot::new(shash!(
+        state_root: GlobalRoot(shash!(
             "0x3f04ffa63e188d602796505a2ee4f6e1f294ee29a914b057af8e75b17259d9f"
         )),
         sequencer: ContractAddress::default(),
-        timestamp: BlockTimestamp::new(1636989916),
+        timestamp: BlockTimestamp(1636989916),
     };
 
     Block { header, body: get_alpha4_starknet_body() }
@@ -265,19 +265,19 @@ pub fn get_alpha4_starknet_block() -> Block {
 
 pub fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff, Vec<DeclaredContract>) {
     let parent_hash =
-        BlockHash::new(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
-    let state_root = GlobalRoot::new(shash!("0x12"));
+        BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
+    let state_root = GlobalRoot(shash!("0x12"));
     let parent_header = BlockHeader {
-        block_number: BlockNumber::new(0),
+        block_number: BlockNumber(0),
         block_hash: parent_hash,
         state_root,
         ..BlockHeader::default()
     };
 
     let block_hash =
-        BlockHash::new(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5493"));
+        BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5493"));
     let header = BlockHeader {
-        block_number: BlockNumber::new(1),
+        block_number: BlockNumber(1),
         block_hash,
         parent_hash,
         ..BlockHeader::default()
@@ -288,13 +288,13 @@ pub fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff, Vec<Declar
     ))
     .unwrap();
     let hash0 =
-        ClassHash::new(shash!("0x10455c752b86932ce552f2b0fe81a880746649b9aee7e0d842bf3f52378f9f8"));
+        ClassHash(shash!("0x10455c752b86932ce552f2b0fe81a880746649b9aee7e0d842bf3f52378f9f8"));
     let class_value = read_json_file_from_storage_resources("contract_class.json").unwrap();
     let class0 = serde_json::from_value(class_value).unwrap();
     let address1 = ContractAddress::try_from(shash!("0x21")).unwrap();
-    let hash1 = ClassHash::new(shash!("0x5"));
+    let hash1 = ClassHash(shash!("0x5"));
     let class1 = ContractClass::default();
-    let hash2 = ClassHash::new(shash!("0x6"));
+    let hash2 = ClassHash(shash!("0x6"));
     let class2 = ContractClass::default();
 
     let key0 = StorageKey::try_from(shash!(
@@ -327,10 +327,7 @@ pub fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff, Vec<Declar
             DeclaredContract { class_hash: hash1, contract_class: class1.clone() },
             DeclaredContract { class_hash: hash2, contract_class: class2 },
         ],
-        vec![ContractNonce {
-            contract_address: address0,
-            nonce: Nonce::new(StarkHash::from_u64(1)),
-        }],
+        vec![ContractNonce { contract_address: address0, nonce: Nonce(StarkHash::from(1)) }],
     )
     .unwrap();
 

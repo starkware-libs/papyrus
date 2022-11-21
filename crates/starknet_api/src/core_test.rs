@@ -6,7 +6,7 @@ use crate::{shash, StarkHash, StarknetApiError};
 #[test]
 fn patricia_key_valid() {
     let hash = shash!("0x123");
-    let patricia_key = PatriciaKey::new(hash).unwrap();
+    let patricia_key = PatriciaKey::try_from(hash).unwrap();
     assert_eq!(patricia_key.0, hash);
 }
 
@@ -14,6 +14,6 @@ fn patricia_key_valid() {
 fn patricia_key_out_of_range() {
     // 2**251
     let hash = shash!("0x800000000000000000000000000000000000000000000000000000000000000");
-    let err = PatriciaKey::new(hash);
+    let err = PatriciaKey::try_from(hash);
     assert_matches!(err, Err(StarknetApiError::OutOfRange { string: _err_str }));
 }

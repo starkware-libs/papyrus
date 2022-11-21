@@ -29,7 +29,7 @@ use crate::{EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey, Transact
 ////////////////////////////////////////////////////////////////////////
 impl StorageSerde for ContractAddress {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
-        self.contract_address().serialize_into(res)
+        self.0.serialize_into(res)
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
@@ -43,7 +43,7 @@ impl StorageSerde for PatriciaKey {
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        Self::new(StarkHash::deserialize(bytes)?).ok()
+        Self::try_from(StarkHash::deserialize(bytes)?).ok()
     }
 }
 
@@ -73,7 +73,7 @@ impl StorageSerde for StarkHash {
 
 impl StorageSerde for StorageKey {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
-        self.key().serialize_into(res)
+        self.0.serialize_into(res)
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
@@ -240,23 +240,6 @@ macro_rules! auto_storage_serde {
                         $field: <$ty>::deserialize_from(bytes)?,
                     )*
                 })
-            }
-        }
-        auto_storage_serde!($($rest)*);
-    };
-    // Structs with private fields and getters.
-    (wrapper($name:ident, $($field_getter:ident : $ty:ty ,)*); $($rest:tt)* ) => {
-        impl StorageSerde for $name {
-            fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
-                $(
-                    self.$field_getter().serialize_into(res)?;
-                )*
-                Ok(())
-            }
-            fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-                Some(Self::new(
-                    $(<$ty>::deserialize_from(bytes)?,)*
-                ))
             }
         }
         auto_storage_serde!($($rest)*);
@@ -573,13 +556,14 @@ auto_storage_serde! {
     pub struct TransactionVersion(pub StarkFelt);
     pub struct TransactionSignature(pub Vec<StarkFelt>);
 
-    wrapper(BlockHash, block_hash : StarkHash,);
-    wrapper(BlockNumber, number : u64,);
-    wrapper(BlockTimestamp, time_stamp : u64,);
-    wrapper(ClassHash, class_hash : StarkHash,);
-    wrapper(GasPrice, price : u128,);
-    wrapper(GlobalRoot, root : StarkHash,);
-    wrapper(Nonce, nonce : StarkFelt,);
+    pub struct BlockHash(pub StarkHash);
+    pub struct BlockNumber(pub u64);
+    pub struct BlockTimestamp(pub u64);
+    pub struct GasPrice(pub u128);
+    pub struct GlobalRoot(pub StarkHash);
+
+    pub struct ClassHash(pub StarkHash);
+    pub struct Nonce(pub StarkFelt);
 
     bincode(bool);
     bincode(EthAddress);

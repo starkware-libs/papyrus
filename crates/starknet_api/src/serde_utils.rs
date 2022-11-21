@@ -73,9 +73,9 @@ impl<const N: usize, const PREFIXED: bool> Serialize for BytesAsHex<N, PREFIXED>
 }
 
 #[derive(thiserror::Error, Clone, Debug)]
-pub enum InnerDeserialization {
+pub enum InnerDeserializationError {
     #[error(transparent)]
-    FromHexError(#[from] hex::FromHexError),
+    FromHex(#[from] hex::FromHexError),
     #[error("Missing prefix 0x in {hex_str}")]
     MissingPrefix { hex_str: String },
     #[error("Bad input - expected #bytes: {expected_byte_count}, string found: {string_found}.")]
@@ -84,11 +84,11 @@ pub enum InnerDeserialization {
 
 pub fn bytes_from_hex_str<const N: usize, const PREFIXED: bool>(
     hex_str: &str,
-) -> Result<[u8; N], InnerDeserialization> {
+) -> Result<[u8; N], InnerDeserializationError> {
     let hex_str = if PREFIXED {
         hex_str
             .strip_prefix("0x")
-            .ok_or(InnerDeserialization::MissingPrefix { hex_str: hex_str.into() })?
+            .ok_or(InnerDeserializationError::MissingPrefix { hex_str: hex_str.into() })?
     } else {
         hex_str
     };
@@ -97,7 +97,7 @@ pub fn bytes_from_hex_str<const N: usize, const PREFIXED: bool>(
     if hex_str.len() > 2 * N {
         let mut err_str = "0x".to_owned();
         err_str.push_str(hex_str);
-        return Err(InnerDeserialization::BadInput {
+        return Err(InnerDeserializationError::BadInput {
             expected_byte_count: N,
             string_found: err_str,
         });
