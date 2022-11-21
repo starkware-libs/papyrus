@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use papyrus_storage::compression_utils::{CompressionError, GzEncoded};
-use papyrus_storage::{StorageSerde, ThinStateDiff};
+use papyrus_storage::{StorageSerde, StorageSerdeError, ThinStateDiff};
 use serde::{Deserialize, Serialize};
 use starknet_api::{
     BlockHash, EntryPoint, EntryPointType, EventAbiEntry, FunctionAbiEntry, FunctionAbiEntryType,
@@ -120,9 +120,8 @@ pub struct StateUpdate {
 pub struct Program(serde_json::Value);
 impl StorageSerde for Program {
     /// Serializes the entire program as one json value.
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), std::io::Error> {
-        // TODO(anatg): Deal with serde_json error.
-        serde_json::to_writer(res, &self.0).unwrap();
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        serde_json::to_writer(res, &self.0)?;
         Ok(())
     }
 
