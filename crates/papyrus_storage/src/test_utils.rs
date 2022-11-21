@@ -327,10 +327,7 @@ pub fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff, Vec<Declar
             DeclaredContract { class_hash: hash1, contract_class: class1.clone() },
             DeclaredContract { class_hash: hash2, contract_class: class2 },
         ],
-        vec![ContractNonce {
-            contract_address: address0,
-            nonce: Nonce(StarkHash::from(1)),
-        }],
+        vec![ContractNonce { contract_address: address0, nonce: Nonce(StarkHash::from(1)) }],
     )
     .unwrap();
 

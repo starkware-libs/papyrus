@@ -2,9 +2,9 @@
 #[path = "block_test.rs"]
 mod block_test;
 
-use derive_more::Display;
 use std::vec::IntoIter;
 
+use derive_more::Display;
 use serde::{Deserialize, Serialize};
 
 use super::serde_utils::{BytesAsHex, PrefixedBytesAsHex};
@@ -95,7 +95,18 @@ pub struct BlockHash(pub StarkHash);
 
 /// The block number of a StarkNet block.
 #[derive(
-    Debug, Default, Copy, Display, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+    Debug,
+    Default,
+    Copy,
+    Display,
+    Clone,
+    Eq,
+    PartialEq,
+    Hash,
+    Deserialize,
+    Serialize,
+    PartialOrd,
+    Ord,
 )]
 pub struct BlockNumber(pub u64);
 
