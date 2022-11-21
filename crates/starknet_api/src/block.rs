@@ -46,7 +46,7 @@ impl BlockBody {
         if transactions.len() == transaction_outputs.len() {
             Ok(BlockBody { transactions, transaction_outputs })
         } else {
-            Err(StarknetApiError::TransationsLengthDontMatch)
+            Err(StarknetApiError::TransactionsLengthDontMatch)
         }
     }
 
