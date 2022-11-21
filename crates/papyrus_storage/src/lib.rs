@@ -21,18 +21,15 @@ use starknet_api::{
     TransactionOffsetInBlock,
 };
 
-pub use crate::body::events::{
-    EventsReader, EventsTableCursor, EventsTableKey, EventsTableKeyValue, ThinTransactionOutput,
-};
+pub use crate::body::events::ThinTransactionOutput;
 pub use crate::body::{BodyStorageReader, BodyStorageWriter};
 pub use crate::db::serialization::StorageSerde;
+pub use crate::db::TransactionKind;
 use crate::db::{
     open_env, DbConfig, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier,
-    RW,
+    RO, RW,
 };
-pub use crate::db::{TransactionKind, RO};
 pub use crate::header::{HeaderStorageReader, HeaderStorageWriter};
-pub use crate::ommer::OmmerStorageWriter;
 pub use crate::state::data::ThinStateDiff;
 use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract};
 pub use crate::state::{StateStorageReader, StateStorageWriter};
