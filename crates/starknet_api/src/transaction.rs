@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use web3::types::H160;
 
-use crate::serde_utils::PrefixedHexAsBytes;
+use crate::serde_utils::PrefixedBytesAsHex;
 use crate::{
     BlockHash, BlockNumber, ClassHash, ContractAddress, EntryPointSelector, Nonce, StarkFelt,
     StarkHash,
@@ -187,16 +187,16 @@ pub struct TransactionReceipt {
 #[derive(
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-#[serde(from = "PrefixedHexAsBytes<16_usize>", into = "PrefixedHexAsBytes<16_usize>")]
+#[serde(from = "PrefixedBytesAsHex<16_usize>", into = "PrefixedBytesAsHex<16_usize>")]
 pub struct Fee(pub u128);
 
-impl From<PrefixedHexAsBytes<16_usize>> for Fee {
-    fn from(val: PrefixedHexAsBytes<16_usize>) -> Self {
+impl From<PrefixedBytesAsHex<16_usize>> for Fee {
+    fn from(val: PrefixedBytesAsHex<16_usize>) -> Self {
         Self(u128::from_be_bytes(val.0))
     }
 }
 
-impl From<Fee> for PrefixedHexAsBytes<16_usize> {
+impl From<Fee> for PrefixedBytesAsHex<16_usize> {
     fn from(fee: Fee) -> Self {
         Self(fee.0.to_be_bytes())
     }

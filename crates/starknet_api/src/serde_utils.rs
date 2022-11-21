@@ -6,24 +6,24 @@ mod serde_utils_test;
 use serde::de::{Deserialize, Visitor};
 use serde::ser::{Serialize, SerializeTuple};
 
-pub type PrefixedHexAsBytes<const N: usize> = HexAsBytes<N, true>;
-pub type NonPrefixedHexAsBytes<const N: usize> = HexAsBytes<N, false>;
+pub type PrefixedBytesAsHex<const N: usize> = BytesAsHex<N, true>;
+pub type NonPrefixedBytesAsHex<const N: usize> = BytesAsHex<N, false>;
 
-/// A hexadecimal value as a byte array used for serialisation/deserialisation.
+/// Byte array used for serialisation/deserialisation a string representation of the hex value.
 ///
 /// The `PREFIXED` generic type symbolize whether a string representation of the hex value should be
 /// prefixed by `0x` or not.
 #[derive(Debug, Eq, PartialEq)]
-pub struct HexAsBytes<const N: usize, const PREFIXED: bool>(pub(crate) [u8; N]);
+pub struct BytesAsHex<const N: usize, const PREFIXED: bool>(pub(crate) [u8; N]);
 
-impl<'de, const N: usize, const PREFIXED: bool> Deserialize<'de> for HexAsBytes<N, PREFIXED> {
+impl<'de, const N: usize, const PREFIXED: bool> Deserialize<'de> for BytesAsHex<N, PREFIXED> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
         struct ByteArrayVisitor<const N: usize, const PREFIXED: bool>;
         impl<'de, const N: usize, const PREFIXED: bool> Visitor<'de> for ByteArrayVisitor<N, PREFIXED> {
-            type Value = HexAsBytes<N, PREFIXED>;
+            type Value = BytesAsHex<N, PREFIXED>;
 
             fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 formatter.write_str("a byte array")
@@ -39,7 +39,7 @@ impl<'de, const N: usize, const PREFIXED: bool> Deserialize<'de> for HexAsBytes<
                     res[i] = value;
                     i += 1;
                 }
-                Ok(HexAsBytes(res))
+                Ok(BytesAsHex(res))
             }
         }
 
@@ -47,14 +47,14 @@ impl<'de, const N: usize, const PREFIXED: bool> Deserialize<'de> for HexAsBytes<
             let s = String::deserialize(deserializer)?;
             bytes_from_hex_str::<N, PREFIXED>(s.as_str())
                 .map_err(serde::de::Error::custom)
-                .map(HexAsBytes)
+                .map(BytesAsHex)
         } else {
             deserializer.deserialize_tuple(N, ByteArrayVisitor)
         }
     }
 }
 
-impl<const N: usize, const PREFIXED: bool> Serialize for HexAsBytes<N, PREFIXED> {
+impl<const N: usize, const PREFIXED: bool> Serialize for BytesAsHex<N, PREFIXED> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
