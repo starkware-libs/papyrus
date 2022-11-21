@@ -8,9 +8,9 @@ use starknet_api::{
     TransactionOffsetInBlock, TransactionOutput,
 };
 
-use self::events::{EventsTable, ThinTransactionOutput};
-use super::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
-use super::{
+use crate::body::events::{EventsTable, ThinTransactionOutput};
+use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
+use crate::{
     EventIndex, MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn, TransactionIndex,
 };
 

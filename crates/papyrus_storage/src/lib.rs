@@ -20,21 +20,22 @@ use starknet_api::{
     EventIndexInTransactionOutput, Nonce, StarkFelt, StorageKey, Transaction, TransactionHash,
     TransactionOffsetInBlock,
 };
-use state::{IndexedDeclaredContract, IndexedDeployedContract};
 
-pub use self::body::events::{
+pub use crate::body::events::{
     EventsReader, EventsTableCursor, EventsTableKey, EventsTableKeyValue, ThinTransactionOutput,
 };
-pub use self::body::{BodyStorageReader, BodyStorageWriter};
-pub use self::db::serialization::StorageSerde;
-use self::db::{
+pub use crate::body::{BodyStorageReader, BodyStorageWriter};
+pub use crate::db::serialization::StorageSerde;
+use crate::db::{
     open_env, DbConfig, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier,
     RW,
 };
-pub use self::db::{TransactionKind, RO};
-pub use self::header::{HeaderStorageReader, HeaderStorageWriter};
-pub use self::ommer::OmmerStorageWriter;
-pub use self::state::{StateStorageReader, StateStorageWriter, ThinStateDiff};
+pub use crate::db::{TransactionKind, RO};
+pub use crate::header::{HeaderStorageReader, HeaderStorageWriter};
+pub use crate::ommer::OmmerStorageWriter;
+pub use crate::state::data::ThinStateDiff;
+use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract};
+pub use crate::state::{StateStorageReader, StateStorageWriter};
 
 #[derive(Serialize, Deserialize)]
 pub struct StorageConfig {

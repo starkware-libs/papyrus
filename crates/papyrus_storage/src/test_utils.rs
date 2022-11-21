@@ -15,8 +15,8 @@ use starknet_api::{
 use tempfile::tempdir;
 use web3::types::H160;
 
-use super::{open_storage, StorageReader, StorageWriter};
 use crate::db::DbConfig;
+use crate::{open_storage, StorageReader, StorageWriter};
 
 pub fn get_test_config() -> DbConfig {
     let dir = tempdir().unwrap();

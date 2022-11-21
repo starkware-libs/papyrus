@@ -1,8 +1,8 @@
 use assert_matches::assert_matches;
 use starknet_api::{BlockBody, BlockNumber, TransactionOffsetInBlock};
 
-use super::events::ThinTransactionOutput;
-use super::{BodyStorageReader, BodyStorageWriter};
+use crate::body::events::ThinTransactionOutput;
+use crate::body::{BodyStorageReader, BodyStorageWriter};
 use crate::test_utils::{get_test_block, get_test_body, get_test_storage};
 use crate::{StorageError, StorageWriter, TransactionIndex};
 

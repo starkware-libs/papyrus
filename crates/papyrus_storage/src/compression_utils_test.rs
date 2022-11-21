@@ -1,6 +1,6 @@
 use starknet_api::Program;
 
-use super::GzEncoded;
+use crate::compression_utils::GzEncoded;
 use crate::test_utils::read_json_file;
 
 #[test]

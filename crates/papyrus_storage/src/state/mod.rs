@@ -10,9 +10,9 @@ use starknet_api::{
     StateDiff, StateNumber, StorageEntry, StorageKey,
 };
 
-pub use self::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
-use super::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
-use super::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
+use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
+use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
+use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
 pub type DeclaredClassesTable<'env> = TableHandle<'env, ClassHash, IndexedDeclaredContract>;
 pub type DeployedContractsTable<'env> = TableHandle<'env, ContractAddress, IndexedDeployedContract>;
