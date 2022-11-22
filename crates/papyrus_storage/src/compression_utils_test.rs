@@ -3,7 +3,6 @@ use starknet_api::Program;
 use crate::compression_utils::GzEncoded;
 use crate::test_utils::read_json_file;
 
-
 #[test]
 fn gzip_encode_decode_contract_program() -> Result<(), anyhow::Error> {
     let program_json = read_json_file("program.json")?;
