@@ -7,8 +7,11 @@ use std::vec::IntoIter;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 
-use super::serde_utils::{BytesAsHex, PrefixedBytesAsHex};
-use super::{ContractAddress, StarkHash, StarknetApiError, Transaction, TransactionOutput};
+use crate::core::ContractAddress;
+use crate::hash::StarkHash;
+use crate::serde_utils::{BytesAsHex, PrefixedBytesAsHex};
+use crate::transaction::{Transaction, TransactionOutput};
+use crate::StarknetApiError;
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct Block {

@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
 use reqwest::Client;
-use starknet_api::ChainId;
+use starknet_api::core::ChainId;
 
 use super::GatewayConfig;
 

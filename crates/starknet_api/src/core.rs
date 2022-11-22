@@ -7,7 +7,8 @@ use std::fmt::Debug;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 
-use super::{StarkFelt, StarkHash, StarknetApiError};
+use crate::hash::{StarkFelt, StarkHash};
+use crate::StarknetApiError;
 
 /// Starknet chain id.
 #[derive(Clone, Debug, Display, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]

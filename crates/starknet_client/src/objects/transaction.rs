@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use starknet_api::{
-    CallData, ClassHash, ContractAddress, ContractAddressSalt, DeclareTransactionOutput,
-    DeployAccountTransactionOutput, DeployTransactionOutput, EntryPointSelector, EthAddress, Event,
-    Fee, InvokeTransactionOutput, L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload,
-    MessageToL1, Nonce, StarkHash, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
-    TransactionSignature, TransactionVersion,
+use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
+use starknet_api::hash::StarkHash;
+use starknet_api::transaction::{
+    CallData, ContractAddressSalt, DeclareTransactionOutput, DeployAccountTransactionOutput,
+    DeployTransactionOutput, EthAddress, Event, Fee, InvokeTransactionOutput,
+    L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, MessageToL1, TransactionHash,
+    TransactionOffsetInBlock, TransactionOutput, TransactionSignature, TransactionVersion,
 };
 
 // TODO(dan): consider extracting common fields out (version, hash, type).
@@ -20,19 +21,23 @@ pub enum Transaction {
     L1Handler(L1HandlerTransaction),
 }
 
-impl From<Transaction> for starknet_api::Transaction {
+impl From<Transaction> for starknet_api::transaction::Transaction {
     fn from(tx: Transaction) -> Self {
         match tx {
             Transaction::Declare(declare_tx) => {
-                starknet_api::Transaction::Declare(declare_tx.into())
+                starknet_api::transaction::Transaction::Declare(declare_tx.into())
             }
-            Transaction::Deploy(deploy_tx) => starknet_api::Transaction::Deploy(deploy_tx.into()),
+            Transaction::Deploy(deploy_tx) => {
+                starknet_api::transaction::Transaction::Deploy(deploy_tx.into())
+            }
             Transaction::DeployAccount(deploy_acc_tx) => {
-                starknet_api::Transaction::DeployAccount(deploy_acc_tx.into())
+                starknet_api::transaction::Transaction::DeployAccount(deploy_acc_tx.into())
             }
-            Transaction::Invoke(invoke_tx) => starknet_api::Transaction::Invoke(invoke_tx.into()),
+            Transaction::Invoke(invoke_tx) => {
+                starknet_api::transaction::Transaction::Invoke(invoke_tx.into())
+            }
             Transaction::L1Handler(l1_handler_tx) => {
-                starknet_api::Transaction::L1Handler(l1_handler_tx.into())
+                starknet_api::transaction::Transaction::L1Handler(l1_handler_tx.into())
             }
         }
     }
@@ -71,9 +76,9 @@ pub struct L1HandlerTransaction {
     pub r#type: TransactionType,
 }
 
-impl From<L1HandlerTransaction> for starknet_api::L1HandlerTransaction {
+impl From<L1HandlerTransaction> for starknet_api::transaction::L1HandlerTransaction {
     fn from(l1_handler_tx: L1HandlerTransaction) -> Self {
-        starknet_api::L1HandlerTransaction {
+        starknet_api::transaction::L1HandlerTransaction {
             transaction_hash: l1_handler_tx.transaction_hash,
             version: l1_handler_tx.version,
             nonce: l1_handler_tx.nonce,
@@ -97,9 +102,9 @@ pub struct DeclareTransaction {
     pub r#type: TransactionType,
 }
 
-impl From<DeclareTransaction> for starknet_api::DeclareTransaction {
+impl From<DeclareTransaction> for starknet_api::transaction::DeclareTransaction {
     fn from(declare_tx: DeclareTransaction) -> Self {
-        starknet_api::DeclareTransaction {
+        starknet_api::transaction::DeclareTransaction {
             transaction_hash: declare_tx.transaction_hash,
             max_fee: declare_tx.max_fee,
             version: declare_tx.version,
@@ -123,9 +128,9 @@ pub struct DeployTransaction {
     pub r#type: TransactionType,
 }
 
-impl From<DeployTransaction> for starknet_api::DeployTransaction {
+impl From<DeployTransaction> for starknet_api::transaction::DeployTransaction {
     fn from(deploy_tx: DeployTransaction) -> Self {
-        starknet_api::DeployTransaction {
+        starknet_api::transaction::DeployTransaction {
             transaction_hash: deploy_tx.transaction_hash,
             version: deploy_tx.version,
             contract_address: deploy_tx.contract_address,
@@ -151,9 +156,9 @@ pub struct DeployAccountTransaction {
     pub r#type: TransactionType,
 }
 
-impl From<DeployAccountTransaction> for starknet_api::DeployAccountTransaction {
+impl From<DeployAccountTransaction> for starknet_api::transaction::DeployAccountTransaction {
     fn from(deploy_tx: DeployAccountTransaction) -> Self {
-        starknet_api::DeployAccountTransaction {
+        starknet_api::transaction::DeployAccountTransaction {
             transaction_hash: deploy_tx.transaction_hash,
             version: deploy_tx.version,
             contract_address: deploy_tx.contract_address,
@@ -181,7 +186,7 @@ pub struct InvokeTransaction {
     pub r#type: TransactionType,
 }
 
-impl From<InvokeTransaction> for starknet_api::InvokeTransaction {
+impl From<InvokeTransaction> for starknet_api::transaction::InvokeTransaction {
     fn from(invoke_tx: InvokeTransaction) -> Self {
         Self {
             transaction_hash: invoke_tx.transaction_hash,
@@ -285,9 +290,12 @@ pub struct L1ToL2Message {
     pub nonce: L1ToL2Nonce,
 }
 
-impl From<L1ToL2Message> for starknet_api::MessageToL2 {
+impl From<L1ToL2Message> for starknet_api::transaction::MessageToL2 {
     fn from(message: L1ToL2Message) -> Self {
-        starknet_api::MessageToL2 { from_address: message.from_address, payload: message.payload }
+        starknet_api::transaction::MessageToL2 {
+            from_address: message.from_address,
+            payload: message.payload,
+        }
     }
 }
 
@@ -298,9 +306,12 @@ pub struct L2ToL1Message {
     pub payload: L2ToL1Payload,
 }
 
-impl From<L2ToL1Message> for starknet_api::MessageToL1 {
+impl From<L2ToL1Message> for starknet_api::transaction::MessageToL1 {
     fn from(message: L2ToL1Message) -> Self {
-        starknet_api::MessageToL1 { to_address: message.to_address, payload: message.payload }
+        starknet_api::transaction::MessageToL1 {
+            to_address: message.to_address,
+            payload: message.payload,
+        }
     }
 }
 

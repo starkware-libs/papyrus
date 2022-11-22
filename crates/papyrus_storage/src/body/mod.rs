@@ -3,9 +3,10 @@
 mod body_test;
 pub(crate) mod events;
 
-use starknet_api::{
-    BlockBody, BlockNumber, Event, EventIndexInTransactionOutput, Transaction, TransactionHash,
-    TransactionOffsetInBlock, TransactionOutput,
+use starknet_api::block::{BlockBody, BlockNumber};
+use starknet_api::transaction::{
+    Event, EventIndexInTransactionOutput, Transaction, TransactionHash, TransactionOffsetInBlock,
+    TransactionOutput,
 };
 
 use crate::body::events::{EventsTable, ThinTransactionOutput};

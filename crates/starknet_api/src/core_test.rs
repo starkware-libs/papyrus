@@ -1,7 +1,7 @@
 use assert_matches::assert_matches;
 
-use super::PatriciaKey;
-use crate::{shash, StarkHash, StarknetApiError};
+use crate::core::{PatriciaKey, StarkHash, StarknetApiError};
+use crate::shash;
 
 #[test]
 fn patricia_key_valid() {

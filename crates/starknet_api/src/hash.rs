@@ -7,10 +7,10 @@ use std::io::Error;
 
 use serde::{Deserialize, Serialize};
 
-use super::serde_utils::{
+use crate::serde_utils::{
     bytes_from_hex_str, hex_str_from_bytes, BytesAsHex, NonPrefixedBytesAsHex, PrefixedBytesAsHex,
 };
-use super::StarknetApiError;
+use crate::StarknetApiError;
 
 /// Genesis state hash.
 pub const GENESIS_HASH: &str = "0x0";
