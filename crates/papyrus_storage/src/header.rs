@@ -2,7 +2,7 @@
 #[path = "header_test.rs"]
 mod header_test;
 
-use starknet_api::{BlockHash, BlockHeader, BlockNumber};
+use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};

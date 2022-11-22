@@ -12,10 +12,12 @@ use papyrus_storage::test_utils::{
     read_json_file,
 };
 use papyrus_storage::{BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
-use starknet_api::{
-    shash, BlockHash, BlockHeader, BlockNumber, BlockStatus, ClassHash, ContractAddress, Nonce,
-    StarkFelt, StarkHash, StateDiff, TransactionHash,
-};
+use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
+use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::shash;
+use starknet_api::state::StateDiff;
+use starknet_api::transaction::TransactionHash;
 
 use super::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcClient, JsonRpcError, JsonRpcServer, Tag,
@@ -711,7 +713,11 @@ async fn get_state_update() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(parent_header.block_number, &parent_header)?
-        .append_state_diff(parent_header.block_number, starknet_api::StateDiff::default(), vec![])?
+        .append_state_diff(
+            parent_header.block_number,
+            starknet_api::state::StateDiff::default(),
+            vec![],
+        )?
         .append_header(header.block_number, &header)?
         .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
         .commit()?;
@@ -836,7 +842,11 @@ async fn get_class() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(parent_header.block_number, &parent_header)?
-        .append_state_diff(parent_header.block_number, starknet_api::StateDiff::default(), vec![])?
+        .append_state_diff(
+            parent_header.block_number,
+            starknet_api::state::StateDiff::default(),
+            vec![],
+        )?
         .append_header(header.block_number, &header)?
         .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
         .commit()?;
@@ -943,7 +953,11 @@ async fn get_class_at() -> Result<(), anyhow::Error> {
     storage_writer
         .begin_rw_txn()?
         .append_header(parent_header.block_number, &parent_header)?
-        .append_state_diff(parent_header.block_number, starknet_api::StateDiff::default(), vec![])?
+        .append_state_diff(
+            parent_header.block_number,
+            starknet_api::state::StateDiff::default(),
+            vec![],
+        )?
         .append_header(header.block_number, &header)?
         .append_state_diff(
             header.block_number,

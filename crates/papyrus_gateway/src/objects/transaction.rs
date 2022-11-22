@@ -1,11 +1,12 @@
 use papyrus_storage::ThinTransactionOutput;
 use serde::{Deserialize, Serialize};
-use starknet_api::{
-    BlockHash, BlockNumber, BlockStatus, CallData, ContractAddress, DeclareTransaction,
-    DeclareTransactionOutput, DeployAccountTransaction, DeployAccountTransactionOutput,
-    DeployTransaction, DeployTransactionOutput, EntryPointSelector, Event, Fee,
-    InvokeTransactionOutput, L1HandlerTransaction, L1HandlerTransactionOutput, Nonce,
-    TransactionHash, TransactionSignature, TransactionVersion,
+use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
+use starknet_api::core::{ContractAddress, EntryPointSelector, Nonce};
+use starknet_api::transaction::{
+    CallData, DeclareTransaction, DeclareTransactionOutput, DeployAccountTransaction,
+    DeployAccountTransactionOutput, DeployTransaction, DeployTransactionOutput, Event, Fee,
+    InvokeTransactionOutput, L1HandlerTransaction, L1HandlerTransactionOutput, TransactionHash,
+    TransactionSignature, TransactionVersion,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -27,8 +28,8 @@ pub struct InvokeTransactionV0 {
     pub calldata: CallData,
 }
 
-impl From<starknet_api::InvokeTransaction> for InvokeTransactionV0 {
-    fn from(tx: starknet_api::InvokeTransaction) -> Self {
+impl From<starknet_api::transaction::InvokeTransaction> for InvokeTransactionV0 {
+    fn from(tx: starknet_api::transaction::InvokeTransaction) -> Self {
         Self {
             transaction_hash: tx.transaction_hash,
             max_fee: tx.max_fee,
@@ -53,8 +54,8 @@ pub struct InvokeTransactionV1 {
     pub calldata: CallData,
 }
 
-impl From<starknet_api::InvokeTransaction> for InvokeTransactionV1 {
-    fn from(tx: starknet_api::InvokeTransaction) -> Self {
+impl From<starknet_api::transaction::InvokeTransaction> for InvokeTransactionV1 {
+    fn from(tx: starknet_api::transaction::InvokeTransaction) -> Self {
         Self {
             transaction_hash: tx.transaction_hash,
             max_fee: tx.max_fee,
@@ -97,22 +98,26 @@ impl Transaction {
     }
 }
 
-impl From<starknet_api::Transaction> for Transaction {
-    fn from(tx: starknet_api::Transaction) -> Self {
+impl From<starknet_api::transaction::Transaction> for Transaction {
+    fn from(tx: starknet_api::transaction::Transaction) -> Self {
         match tx {
-            starknet_api::Transaction::Declare(declare_tx) => Transaction::Declare(declare_tx),
-            starknet_api::Transaction::Deploy(deploy_tx) => Transaction::Deploy(deploy_tx),
-            starknet_api::Transaction::DeployAccount(deploy_tx) => {
+            starknet_api::transaction::Transaction::Declare(declare_tx) => {
+                Transaction::Declare(declare_tx)
+            }
+            starknet_api::transaction::Transaction::Deploy(deploy_tx) => {
+                Transaction::Deploy(deploy_tx)
+            }
+            starknet_api::transaction::Transaction::DeployAccount(deploy_tx) => {
                 Transaction::DeployAccount(deploy_tx)
             }
-            starknet_api::Transaction::Invoke(invoke_tx) => {
+            starknet_api::transaction::Transaction::Invoke(invoke_tx) => {
                 if invoke_tx.entry_point_selector.is_none() {
                     Transaction::Invoke(InvokeTransaction::Version1(invoke_tx.into()))
                 } else {
                     Transaction::Invoke(InvokeTransaction::Version0(invoke_tx.into()))
                 }
             }
-            starknet_api::Transaction::L1Handler(l1_handler_tx) => {
+            starknet_api::transaction::Transaction::L1Handler(l1_handler_tx) => {
                 Transaction::L1Handler(l1_handler_tx)
             }
         }
@@ -167,8 +172,8 @@ impl From<Transaction> for TransactionWithType {
     }
 }
 
-impl From<starknet_api::Transaction> for TransactionWithType {
-    fn from(transaction: starknet_api::Transaction) -> Self {
+impl From<starknet_api::transaction::Transaction> for TransactionWithType {
+    fn from(transaction: starknet_api::transaction::Transaction) -> Self {
         Self::from(Transaction::from(transaction))
     }
 }
@@ -277,22 +282,22 @@ impl TransactionOutput {
     }
 }
 
-impl From<starknet_api::TransactionOutput> for TransactionOutput {
-    fn from(tx_output: starknet_api::TransactionOutput) -> Self {
+impl From<starknet_api::transaction::TransactionOutput> for TransactionOutput {
+    fn from(tx_output: starknet_api::transaction::TransactionOutput) -> Self {
         match tx_output {
-            starknet_api::TransactionOutput::Declare(declare_tx_output) => {
+            starknet_api::transaction::TransactionOutput::Declare(declare_tx_output) => {
                 TransactionOutput::Declare(declare_tx_output)
             }
-            starknet_api::TransactionOutput::Deploy(deploy_tx_output) => {
+            starknet_api::transaction::TransactionOutput::Deploy(deploy_tx_output) => {
                 TransactionOutput::Deploy(deploy_tx_output)
             }
-            starknet_api::TransactionOutput::DeployAccount(deploy_tx_output) => {
+            starknet_api::transaction::TransactionOutput::DeployAccount(deploy_tx_output) => {
                 TransactionOutput::DeployAccount(deploy_tx_output)
             }
-            starknet_api::TransactionOutput::Invoke(invoke_tx_output) => {
+            starknet_api::transaction::TransactionOutput::Invoke(invoke_tx_output) => {
                 TransactionOutput::Invoke(invoke_tx_output)
             }
-            starknet_api::TransactionOutput::L1Handler(l1_handler_tx_output) => {
+            starknet_api::transaction::TransactionOutput::L1Handler(l1_handler_tx_output) => {
                 TransactionOutput::L1Handler(l1_handler_tx_output)
             }
         }

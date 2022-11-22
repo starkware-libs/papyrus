@@ -1,10 +1,11 @@
 use jsonrpsee::core::Error;
 use jsonrpsee::proc_macros::rpc;
 use serde::{Deserialize, Serialize};
-use starknet_api::{
-    BlockHash, BlockNumber, ClassHash, ContractAddress, Nonce, StarkFelt, StorageKey,
-    TransactionHash, TransactionOffsetInBlock,
-};
+use starknet_api::block::{BlockHash, BlockNumber};
+use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::hash::StarkFelt;
+use starknet_api::state::StorageKey;
+use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 
 use super::objects::{
     Block, ContractClass, StateUpdate, TransactionReceiptWithStatus, TransactionWithType,

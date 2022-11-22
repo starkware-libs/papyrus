@@ -1,7 +1,6 @@
-use starknet_api::{
-    BlockNumber, DeclaredContract, Event, StateNumber, Transaction, TransactionOffsetInBlock,
-    TransactionOutput,
-};
+use starknet_api::block::BlockNumber;
+use starknet_api::state::{DeclaredContract, StateNumber};
+use starknet_api::transaction::{Event, Transaction, TransactionOffsetInBlock, TransactionOutput};
 
 use crate::body::events::ThinTransactionOutput;
 use crate::body::{BodyStorageReader, BodyStorageWriter};

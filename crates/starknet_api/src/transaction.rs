@@ -1,11 +1,10 @@
 use serde::{Deserialize, Serialize};
 use web3::types::H160;
 
+use crate::block::{BlockHash, BlockNumber};
+use crate::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
+use crate::hash::{StarkFelt, StarkHash};
 use crate::serde_utils::PrefixedBytesAsHex;
-use crate::{
-    BlockHash, BlockNumber, ClassHash, ContractAddress, EntryPointSelector, Nonce, StarkFelt,
-    StarkHash,
-};
 
 /// A transaction in StarkNet.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]

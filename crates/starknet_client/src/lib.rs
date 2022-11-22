@@ -16,7 +16,9 @@ use log::error;
 use mockall::automock;
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
-use starknet_api::{BlockNumber, ClassHash, StarknetApiError};
+use starknet_api::block::BlockNumber;
+use starknet_api::core::ClassHash;
+use starknet_api::StarknetApiError;
 use url::Url;
 
 pub use self::objects::block::{

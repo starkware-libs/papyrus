@@ -3,11 +3,12 @@ use std::collections::HashMap;
 use assert_matches::assert_matches;
 use mockito::mock;
 use reqwest::StatusCode;
-use starknet_api::{
-    shash, BlockNumber, ClassHash, ContractAddress, EntryPoint, EntryPointOffset,
-    EntryPointSelector, EntryPointType, Fee, Nonce, Program, StarkHash, TransactionHash,
-    TransactionSignature, TransactionVersion,
-};
+use starknet_api::block::BlockNumber;
+use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
+use starknet_api::hash::StarkHash;
+use starknet_api::shash;
+use starknet_api::state::{EntryPoint, EntryPointOffset, EntryPointType, Program};
+use starknet_api::transaction::{Fee, TransactionHash, TransactionSignature, TransactionVersion};
 
 // TODO(dan): use SN structs once available & sort.
 use super::objects::block::{ContractClass, StateUpdate};
