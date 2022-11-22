@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
-use starknet_api::{
-    BlockHash, BlockNumber, BlockStatus, BlockTimestamp, ContractAddress, GlobalRoot,
-};
+use starknet_api::block::{BlockHash, BlockNumber, BlockStatus, BlockTimestamp, GlobalRoot};
+use starknet_api::core::ContractAddress;
 
 use super::transaction::Transactions;
 
@@ -15,8 +14,8 @@ pub struct BlockHeader {
     pub timestamp: BlockTimestamp,
 }
 
-impl From<starknet_api::BlockHeader> for BlockHeader {
-    fn from(header: starknet_api::BlockHeader) -> Self {
+impl From<starknet_api::block::BlockHeader> for BlockHeader {
+    fn from(header: starknet_api::block::BlockHeader) -> Self {
         BlockHeader {
             block_hash: header.block_hash,
             parent_hash: header.parent_hash,

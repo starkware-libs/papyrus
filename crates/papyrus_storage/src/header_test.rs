@@ -1,5 +1,7 @@
 use assert_matches::assert_matches;
-use starknet_api::{shash, BlockHash, BlockHeader, BlockNumber, StarkHash};
+use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
+use starknet_api::hash::StarkHash;
+use starknet_api::shash;
 
 use crate::header::{HeaderStorageReader, HeaderStorageWriter};
 use crate::test_utils::get_test_storage;

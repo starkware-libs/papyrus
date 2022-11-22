@@ -5,9 +5,11 @@ mod state_test;
 
 use std::collections::HashSet;
 
-use starknet_api::{
-    BlockNumber, ClassHash, ContractAddress, ContractClass, DeclaredContract, Nonce, StarkFelt,
-    StateDiff, StateNumber, StorageEntry, StorageKey,
+use starknet_api::block::BlockNumber;
+use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::hash::StarkFelt;
+use starknet_api::state::{
+    ContractClass, DeclaredContract, StateDiff, StateNumber, StorageEntry, StorageKey,
 };
 
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};

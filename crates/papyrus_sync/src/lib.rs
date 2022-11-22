@@ -11,7 +11,8 @@ use papyrus_storage::{
     StateStorageWriter, StorageError, StorageReader, StorageWriter,
 };
 use serde::{Deserialize, Serialize};
-use starknet_api::{Block, BlockNumber, DeclaredContract, StateDiff};
+use starknet_api::block::{Block, BlockNumber};
+use starknet_api::state::{DeclaredContract, StateDiff};
 use starknet_client::ClientError;
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
