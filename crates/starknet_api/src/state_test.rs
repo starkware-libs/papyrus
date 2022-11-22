@@ -123,10 +123,8 @@ fn state_unique() {
     assert_matches!(state_diff_with_duplicate_declared_contract, Err(StarknetApiError::DuplicateInStateDiff{object}) if object == "declared_contracts");
 
     // Nonces.
-    let nonce_duplicate = ContractNonce {
-        contract_address: ContractAddress::try_from(hash0).unwrap(),
-        nonce: Nonce(hash1),
-    };
+    let nonce_duplicate =
+        ContractNonce { contract_address: ContractAddress(patricia_key0), nonce: Nonce(hash1) };
     let state_diff_with_duplicate_nonces = StateDiff::new(
         vec![dep_contract],
         vec![storage_diff],
