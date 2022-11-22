@@ -1,9 +1,9 @@
 use std::ops::Index;
 
 use starknet_api::block::BlockNumber;
-use starknet_api::core::ContractAddress;
+use starknet_api::core::{ContractAddress, PatriciaKey};
 use starknet_api::hash::StarkHash;
-use starknet_api::shash;
+use starknet_api::patky;
 use starknet_api::transaction::{EventIndexInTransactionOutput, TransactionOffsetInBlock};
 
 use crate::body::events::EventsReader;
@@ -25,7 +25,7 @@ async fn iter_events_by_key() -> Result<(), anyhow::Error> {
         .commit()?;
 
     // Create the events emitted starting from contract address 0x22.
-    let address = ContractAddress::try_from(shash!("0x22"))?;
+    let address = ContractAddress(patky!("0x22"));
     let event0 = block.body.transaction_outputs().index(0).events().index(0);
     let event1 = block.body.transaction_outputs().index(0).events().index(1);
     let event2 = block.body.transaction_outputs().index(0).events().index(2);

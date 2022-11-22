@@ -1,14 +1,14 @@
 use assert_matches::assert_matches;
 use logtest::Logger;
 use starknet_api::block::BlockNumber;
-use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::StarkHash;
-use starknet_api::shash;
 use starknet_api::state::{
     ContractClass, ContractClassAbiEntry, ContractNonce, DeclaredContract, DeployedContract,
     FunctionAbiEntry, FunctionAbiEntryType, FunctionAbiEntryWithType, StateDiff, StateNumber,
     StorageDiff, StorageEntry, StorageKey,
 };
+use starknet_api::{patky, shash};
 
 use crate::state::{StateStorageReader, StateStorageWriter, StorageError};
 use crate::test_utils::{get_test_state_diff, get_test_storage};
@@ -16,17 +16,17 @@ use crate::StorageWriter;
 
 #[test]
 fn append_state_diff() -> Result<(), anyhow::Error> {
-    let c0 = ContractAddress::try_from(shash!("0x11")).unwrap();
-    let c1 = ContractAddress::try_from(shash!("0x12")).unwrap();
-    let c2 = ContractAddress::try_from(shash!("0x13")).unwrap();
-    let c3 = ContractAddress::try_from(shash!("0x14")).unwrap();
+    let c0 = ContractAddress(patky!("0x11"));
+    let c1 = ContractAddress(patky!("0x12"));
+    let c2 = ContractAddress(patky!("0x13"));
+    let c3 = ContractAddress(patky!("0x14"));
     let cl0 = ClassHash(shash!("0x4"));
     let cl1 = ClassHash(shash!("0x5"));
     let cl2 = ClassHash(shash!("0x6"));
     let c_cls0 = ContractClass::default();
     let c_cls1 = ContractClass::default();
-    let key0 = StorageKey::try_from(shash!("0x1001")).unwrap();
-    let key1 = StorageKey::try_from(shash!("0x101")).unwrap();
+    let key0 = StorageKey(patky!("0x1001"));
+    let key1 = StorageKey(patky!("0x101"));
     let diff0 = StateDiff::new(
         vec![
             DeployedContract { address: c0, class_hash: cl0 },
@@ -274,7 +274,7 @@ fn append_2_state_diffs(writer: &mut StorageWriter) -> Result<(), anyhow::Error>
 #[test]
 fn revert_doesnt_delete_previously_declared_classes() -> Result<(), anyhow::Error> {
     // Append 2 state diffs that use the same declared class.
-    let c0 = ContractAddress::try_from(shash!("0x11")).unwrap();
+    let c0 = ContractAddress(patky!("0x11"));
     let cl0 = ClassHash(shash!("0x4"));
     let c_cls0 = ContractClass::default();
     let diff0 = StateDiff::new(
@@ -284,7 +284,7 @@ fn revert_doesnt_delete_previously_declared_classes() -> Result<(), anyhow::Erro
         vec![ContractNonce { contract_address: c0, nonce: Nonce(StarkHash::from(1)) }],
     )?;
 
-    let c1 = ContractAddress::try_from(shash!("0x12")).unwrap();
+    let c1 = ContractAddress(patky!("0x12"));
     let diff1 = StateDiff::new(
         vec![DeployedContract { address: c1, class_hash: cl0 }],
         vec![],
