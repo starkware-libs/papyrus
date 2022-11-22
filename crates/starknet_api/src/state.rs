@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::block::BlockNumber;
 use crate::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
-use crate::hash::{StarkFelt, StarkHash};
+use crate::hash::StarkFelt;
 use crate::serde_utils::bytes_from_hex_str;
 use crate::StarknetApiError;
 
@@ -218,11 +218,3 @@ pub struct TypedParameter {
     Debug, Default, Clone, Copy, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct StorageKey(pub PatriciaKey);
-
-impl TryFrom<StarkHash> for StorageKey {
-    type Error = StarknetApiError;
-
-    fn try_from(val: StarkHash) -> Result<Self, Self::Error> {
-        Ok(Self(PatriciaKey::try_from(val)?))
-    }
-}
