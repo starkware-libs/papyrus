@@ -100,10 +100,6 @@ impl StarkHash {
         Some(Self(res))
     }
 
-    pub fn bytes(&self) -> &[u8] {
-        &self.0
-    }
-
     fn str_format(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = format!("0x{}", hex::encode(self.0));
         f.debug_tuple("StarkHash").field(&s).finish()
