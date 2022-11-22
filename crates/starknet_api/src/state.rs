@@ -23,6 +23,8 @@ pub struct StateDiff {
 }
 
 impl StateDiff {
+    /// Creates a new [StateDiff](`crate::state::StateDiff`).
+    /// Sorts each vector by the addresses and verifies that there are no duplicate addresses.
     pub fn new(
         mut deployed_contracts: Vec<DeployedContract>,
         mut storage_diffs: Vec<StorageDiff>,
@@ -57,18 +59,22 @@ impl StateDiff {
         Ok(Self { deployed_contracts, storage_diffs, declared_classes: declared_contracts, nonces })
     }
 
+    /// Getter for the deployed contracts in a StarkNet [StateDiff](`crate::state::StateDiff`).
     pub fn deployed_contracts(&self) -> &[DeployedContract] {
         &self.deployed_contracts
     }
 
+    /// Getter for the storage diffs in a StarkNet [StateDiff](`crate::state::StateDiff`).
     pub fn storage_diffs(&self) -> &[StorageDiff] {
         &self.storage_diffs
     }
 
+    /// Getter for the declared classes in a StarkNet [StateDiff](`crate::state::StateDiff`).
     pub fn declared_contracts(&self) -> &[DeclaredContract] {
         &self.declared_classes
     }
 
+    /// Getter for the contract nonces in a StarkNet [StateDiff](`crate::state::StateDiff`).
     pub fn nonces(&self) -> &[ContractNonce] {
         &self.nonces
     }
@@ -83,7 +89,7 @@ impl From<StateDiff> for StateDiffAsTuple {
     }
 }
 
-/// The nonce of a StarkNet contract.
+/// The nonce of a StarkNet [DeployedContract](`crate::state::DeployedContract`).
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ContractNonce {
     pub contract_address: ContractAddress,
@@ -113,6 +119,8 @@ pub struct StorageDiff {
 }
 
 impl StorageDiff {
+    /// Creates a new [StorageDiff](`crate::state::StorageDiff`).
+    /// Sorts the storage entries by their key and verifies that there are no duplicate entries.
     pub fn new(
         address: ContractAddress,
         mut storage_entries: Vec<StorageEntry>,
@@ -124,6 +132,7 @@ impl StorageDiff {
         Ok(Self { address, storage_entries })
     }
 
+    /// Getter for the storage entries in a StarkNet [StorageDiff](`crate::state::StorageDiff`).
     pub fn storage_entries(&self) -> &[StorageEntry] {
         &self.storage_entries
     }
@@ -171,7 +180,7 @@ pub struct ContractClass {
     pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
 }
 
-/// An entry point type of a contract in StarkNet.
+/// An entry point type of a [ContractClass](`crate::state::ContractClass`) in StarkNet.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(deny_unknown_fields)]
 pub enum EntryPointType {
@@ -192,20 +201,20 @@ impl Default for EntryPointType {
     }
 }
 
-/// An entry point of a contract in StarkNet.
+/// An entry point of a [ContractClass](`crate::state::ContractClass`) in StarkNet.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct EntryPoint {
     pub selector: EntryPointSelector,
     pub offset: EntryPointOffset,
 }
 
-/// The offset of an entry point in StarkNet.
+/// The offset of an [EntryPoint](`crate::state::EntryPoint`) in StarkNet.
 #[derive(
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct EntryPointOffset(pub StarkFelt);
 
-/// A program corresponding to a contract class in StarkNet.
+/// A program corresponding to a [ContractClass](`crate::state::ContractClass`) in StarkNet.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct Program {
     #[serde(default)]
@@ -222,7 +231,7 @@ pub struct Program {
     pub reference_manager: serde_json::Value,
 }
 
-/// A contract class abi entry in StarkNet.
+/// A [ContractClass](`crate::state::ContractClass`) abi entry in StarkNet.
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
@@ -284,6 +293,7 @@ pub struct StructAbiEntry {
     pub members: Vec<StructMember>,
 }
 
+/// A struct member for [StructAbiEntry](`crate::state::StructAbiEntry`).
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct StructMember {
     #[serde(flatten)]

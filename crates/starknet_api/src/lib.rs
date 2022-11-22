@@ -11,6 +11,7 @@ pub mod transaction;
 
 use serde_utils::InnerDeserializationError;
 
+/// The error type returned by StarknetApi.
 #[derive(thiserror::Error, Clone, Debug)]
 pub enum StarknetApiError {
     #[error(transparent)]

@@ -6,7 +6,10 @@ mod serde_utils_test;
 use serde::de::{Deserialize, Visitor};
 use serde::ser::{Serialize, SerializeTuple};
 
+/// A [BytesAsHex](`crate::serde_utils::BytesAsHex`) prefixed with '0x'.
 pub type PrefixedBytesAsHex<const N: usize> = BytesAsHex<N, true>;
+
+/// A [BytesAsHex](`crate::serde_utils::BytesAsHex`) unprefixed.
 pub type NonPrefixedBytesAsHex<const N: usize> = BytesAsHex<N, false>;
 
 /// A byte array that serializes as a hex string.
@@ -72,6 +75,7 @@ impl<const N: usize, const PREFIXED: bool> Serialize for BytesAsHex<N, PREFIXED>
     }
 }
 
+/// The error type returned by the nodes inner deserialization.
 #[derive(thiserror::Error, Clone, Debug)]
 pub enum InnerDeserializationError {
     #[error(transparent)]
@@ -82,6 +86,7 @@ pub enum InnerDeserializationError {
     BadInput { expected_byte_count: usize, string_found: String },
 }
 
+/// Deserializes a Hex decoded as string to a bytes object.
 pub fn bytes_from_hex_str<const N: usize, const PREFIXED: bool>(
     hex_str: &str,
 ) -> Result<[u8; N], InnerDeserializationError> {
@@ -110,6 +115,7 @@ pub fn bytes_from_hex_str<const N: usize, const PREFIXED: bool>(
     Ok(hex::decode(&padded_str)?.try_into().expect("Unexpected length of deserialized hex bytes."))
 }
 
+/// Encodes a bytes object to a string.
 pub fn hex_str_from_bytes<const N: usize, const PREFIXED: bool>(bytes: [u8; N]) -> String {
     let hex_str = hex::encode(bytes);
     let mut hex_str = hex_str.trim_start_matches('0');
