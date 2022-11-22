@@ -39,7 +39,7 @@ impl StorageSerde for ContractAddress {
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        Some(ContractAddress(StarkHash::deserialize(bytes)?.try_into().ok()?))
+        Some(ContractAddress(PatriciaKey::try_from(StarkHash::deserialize(bytes)?).ok()?))
     }
 }
 
@@ -82,7 +82,7 @@ impl StorageSerde for StorageKey {
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        Some(StorageKey(StarkHash::deserialize(bytes)?.try_into().ok()?))
+        Some(StorageKey(PatriciaKey::try_from(StarkHash::deserialize(bytes)?).ok()?))
     }
 }
 
