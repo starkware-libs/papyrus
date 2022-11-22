@@ -150,16 +150,6 @@ macro_rules! impl_get_test_instance {
             }
         }
     };
-    // Structs with private fields and getters.
-    (wrapper($name:ident, $($field_getter:ident : $ty:ty ,)*)) => {
-        impl GetTestInstance for $name {
-            fn get_test_instance() -> Result<Self, anyhow::Error> {
-                Ok(Self::new(
-                    $(<$ty>::get_test_instance()?,)*
-                ))
-            }
-        }
-    };
     // Tuples - two elements.
     (($ty0:ty, $ty1:ty)) => {
         impl GetTestInstance for ($ty0, $ty1) {
