@@ -39,7 +39,6 @@ impl TryFrom<StarkHash> for ContractAddress {
 )]
 pub struct ClassHash(pub StarkHash);
 
-/// The nonce of a StarkNet contract.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct Nonce(pub StarkFelt);
 
