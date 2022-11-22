@@ -1,7 +1,7 @@
 use std::ops::Index;
 
 use starknet_api::{
-    shash, BlockNumber, ContractAddress, EventIndexInTransactionOutput, StarkHash,
+    patky, BlockNumber, ContractAddress, EventIndexInTransactionOutput, PatriciaKey, StarkHash,
     TransactionOffsetInBlock,
 };
 
@@ -24,7 +24,7 @@ async fn iter_events_by_key() -> Result<(), anyhow::Error> {
         .commit()?;
 
     // Create the events emitted starting from contract address 0x22.
-    let address = ContractAddress(shash!("0x22").try_into()?);
+    let address = ContractAddress(patky!("0x22"));
     let event0 = block.body.transaction_outputs().index(0).events().index(0);
     let event1 = block.body.transaction_outputs().index(0).events().index(1);
     let event2 = block.body.transaction_outputs().index(0).events().index(2);
