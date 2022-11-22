@@ -2,15 +2,22 @@ use std::env;
 use std::fs::read_to_string;
 use std::path::Path;
 
+use starknet_api::block::{
+    Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockTimestamp, GasPrice, GlobalRoot,
+};
+use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
+use starknet_api::hash::StarkHash;
 use starknet_api::serde_utils::bytes_from_hex_str;
-use starknet_api::{
-    shash, Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockTimestamp, CallData,
-    ClassHash, ContractAddress, ContractAddressSalt, ContractClass, ContractNonce,
-    DeclaredContract, DeployTransaction, DeployTransactionOutput, DeployedContract,
-    EntryPointSelector, EthAddress, Event, EventContent, EventData, EventKey, Fee, GasPrice,
-    GlobalRoot, InvokeTransaction, InvokeTransactionOutput, L2ToL1Payload, MessageToL1, Nonce,
-    StarkHash, StateDiff, StorageDiff, StorageEntry, StorageKey, Transaction, TransactionHash,
-    TransactionOutput, TransactionSignature, TransactionVersion,
+use starknet_api::shash;
+use starknet_api::state::{
+    ContractClass, ContractNonce, DeclaredContract, DeployedContract, StateDiff, StorageDiff,
+    StorageEntry, StorageKey,
+};
+use starknet_api::transaction::{
+    CallData, ContractAddressSalt, DeployTransaction, DeployTransactionOutput, EthAddress, Event,
+    EventContent, EventData, EventKey, Fee, InvokeTransaction, InvokeTransactionOutput,
+    L2ToL1Payload, MessageToL1, Transaction, TransactionHash, TransactionOutput,
+    TransactionSignature, TransactionVersion,
 };
 use tempfile::tempdir;
 use web3::types::H160;

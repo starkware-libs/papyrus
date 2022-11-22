@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
-use starknet_api::{
-    BlockNumber, ClassHash, ContractClass, ContractNonce, DeployedContract, StateDiff, StorageDiff,
-};
+use starknet_api::block::BlockNumber;
+use starknet_api::core::ClassHash;
+use starknet_api::state::{ContractClass, ContractNonce, DeployedContract, StateDiff, StorageDiff};
 
 // Data structs that are serialized into the database.
 

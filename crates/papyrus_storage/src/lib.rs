@@ -15,9 +15,12 @@ use std::sync::Arc;
 
 use db::DbTableStats;
 use serde::{Deserialize, Serialize};
-use starknet_api::{
-    BlockHash, BlockHeader, BlockNumber, ClassHash, ContractAddress, ContractClass, EventContent,
-    EventIndexInTransactionOutput, Nonce, StarkFelt, StorageKey, Transaction, TransactionHash,
+use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
+use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::hash::StarkFelt;
+use starknet_api::state::{ContractClass, StorageKey};
+use starknet_api::transaction::{
+    EventContent, EventIndexInTransactionOutput, Transaction, TransactionHash,
     TransactionOffsetInBlock,
 };
 

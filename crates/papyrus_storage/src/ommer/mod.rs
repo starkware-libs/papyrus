@@ -2,9 +2,10 @@
 #[path = "ommer_test.rs"]
 mod ommer_test;
 
-use starknet_api::{
-    BlockHash, BlockHeader, DeclaredContract, Event, EventIndexInTransactionOutput, Transaction,
-    TransactionOffsetInBlock,
+use starknet_api::block::{BlockHash, BlockHeader};
+use starknet_api::state::DeclaredContract;
+use starknet_api::transaction::{
+    Event, EventIndexInTransactionOutput, Transaction, TransactionOffsetInBlock,
 };
 
 use crate::body::events::ThinTransactionOutput;

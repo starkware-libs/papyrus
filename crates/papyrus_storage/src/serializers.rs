@@ -3,17 +3,23 @@ use std::convert::TryFrom;
 use std::hash::Hash;
 
 use integer_encoding::*;
-use starknet_api::{
-    BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, CallData, ClassHash,
-    ContractAddress, ContractAddressSalt, ContractClass, ContractClassAbiEntry, ContractNonce,
-    DeclareTransaction, DeclaredContract, DeployAccountTransaction, DeployTransaction,
-    DeployedContract, EntryPoint, EntryPointOffset, EntryPointSelector, EntryPointType, EthAddress,
-    EventAbiEntry, EventContent, EventData, EventIndexInTransactionOutput, EventKey, Fee,
-    FunctionAbiEntry, FunctionAbiEntryType, FunctionAbiEntryWithType, GasPrice, GlobalRoot,
+use starknet_api::block::{
+    BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice, GlobalRoot,
+};
+use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
+use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::state::{
+    ContractClass, ContractClassAbiEntry, ContractNonce, DeclaredContract, DeployedContract,
+    EntryPoint, EntryPointOffset, EntryPointType, EventAbiEntry, FunctionAbiEntry,
+    FunctionAbiEntryType, FunctionAbiEntryWithType, Program, StateDiff, StorageDiff, StorageEntry,
+    StorageKey, StructAbiEntry, StructMember, TypedParameter,
+};
+use starknet_api::transaction::{
+    CallData, ContractAddressSalt, DeclareTransaction, DeployAccountTransaction, DeployTransaction,
+    EthAddress, EventContent, EventData, EventIndexInTransactionOutput, EventKey, Fee,
     InvokeTransaction, L1HandlerTransaction, L1ToL2Payload, L2ToL1Payload, MessageToL1,
-    MessageToL2, Nonce, PatriciaKey, Program, StarkFelt, StarkHash, StateDiff, StorageDiff,
-    StorageEntry, StorageKey, StructAbiEntry, StructMember, Transaction, TransactionHash,
-    TransactionOffsetInBlock, TransactionSignature, TransactionVersion, TypedParameter,
+    MessageToL2, Transaction, TransactionHash, TransactionOffsetInBlock, TransactionSignature,
+    TransactionVersion,
 };
 
 use crate::body::events::{

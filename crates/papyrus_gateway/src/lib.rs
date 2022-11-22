@@ -20,10 +20,11 @@ use papyrus_storage::{
     TransactionIndex, TransactionKind,
 };
 use serde::{Deserialize, Serialize};
-use starknet_api::{
-    BlockNumber, BlockStatus, ChainId, ClassHash, ContractAddress, GlobalRoot, Nonce, StarkFelt,
-    StarkHash, StateNumber, StorageKey, TransactionHash, TransactionOffsetInBlock, GENESIS_HASH,
-};
+use starknet_api::block::{BlockNumber, BlockStatus, GlobalRoot};
+use starknet_api::core::{ChainId, ClassHash, ContractAddress, Nonce};
+use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
+use starknet_api::state::{StateNumber, StorageKey};
+use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 
 use self::api::{BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcError, JsonRpcServer, Tag};
 use self::objects::{

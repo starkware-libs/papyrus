@@ -1,9 +1,10 @@
 use std::ops::Index;
 
-use starknet_api::{
-    shash, BlockNumber, ContractAddress, EventIndexInTransactionOutput, StarkHash,
-    TransactionOffsetInBlock,
-};
+use starknet_api::block::BlockNumber;
+use starknet_api::core::ContractAddress;
+use starknet_api::hash::StarkHash;
+use starknet_api::shash;
+use starknet_api::transaction::{EventIndexInTransactionOutput, TransactionOffsetInBlock};
 
 use crate::body::events::EventsReader;
 use crate::body::BodyStorageWriter;

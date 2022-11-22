@@ -1,4 +1,5 @@
-use crate::{shash, StarkHash};
+use crate::hash::StarkHash;
+use crate::shash;
 
 #[test]
 fn hash_macro() {

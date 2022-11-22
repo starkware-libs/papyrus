@@ -2,12 +2,15 @@ use std::collections::{BTreeMap, HashMap};
 use std::ops::Index;
 
 use serde::{Deserialize, Serialize};
+use starknet_api::block::{BlockHash, BlockNumber, BlockTimestamp, GasPrice};
+use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::hash::StarkHash;
 use starknet_api::serde_utils::NonPrefixedBytesAsHex;
-use starknet_api::{
-    BlockHash, BlockNumber, BlockTimestamp, ClassHash, ContractAddress, DeployedContract,
-    EntryPoint, EntryPointType, GasPrice, Nonce, Program, StarkHash, StarknetApiError, StorageDiff,
-    StorageEntry, TransactionHash, TransactionOffsetInBlock,
+use starknet_api::state::{
+    DeployedContract, EntryPoint, EntryPointType, Program, StorageDiff, StorageEntry,
 };
+use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
+use starknet_api::StarknetApiError;
 
 use super::transaction::{L1ToL2Message, Transaction, TransactionReceipt, TransactionType};
 use crate::{ClientError, ClientResult};
@@ -26,7 +29,7 @@ impl TryFrom<NonPrefixedBytesAsHex<32_usize>> for GlobalRoot {
         Ok(Self(StarkHash::try_from(val)?))
     }
 }
-impl From<GlobalRoot> for starknet_api::GlobalRoot {
+impl From<GlobalRoot> for starknet_api::block::GlobalRoot {
     fn from(val: GlobalRoot) -> Self {
         Self(val.0)
     }
@@ -108,7 +111,7 @@ pub enum TransactionReceiptsError {
 }
 
 /// Converts the client representation of [`Block`] to a [`starknet_api`][`Block`].
-impl TryFrom<Block> for starknet_api::Block {
+impl TryFrom<Block> for starknet_api::block::Block {
     type Error = ClientError;
 
     fn try_from(block: Block) -> ClientResult<Self> {
@@ -179,11 +182,14 @@ impl TryFrom<Block> for starknet_api::Block {
         // Note: This cannot happen before getting the transaction outputs since we need to borrow
         // the block transactions inside the for loop for the transaction type (TransactionType is
         // defined in starknet_client therefore starknet_api::Transaction cannot return it).
-        let transactions: Vec<starknet_api::Transaction> =
-            block.transactions.into_iter().map(starknet_api::Transaction::from).collect();
+        let transactions: Vec<starknet_api::transaction::Transaction> = block
+            .transactions
+            .into_iter()
+            .map(starknet_api::transaction::Transaction::from)
+            .collect();
 
         // Get the header.
-        let header = starknet_api::BlockHeader {
+        let header = starknet_api::block::BlockHeader {
             block_hash: block.block_hash,
             parent_hash: block.parent_block_hash,
             block_number: block.block_number,
@@ -193,7 +199,7 @@ impl TryFrom<Block> for starknet_api::Block {
             timestamp: block.timestamp,
         };
 
-        let body = starknet_api::BlockBody::new(transactions, transaction_outputs)?;
+        let body = starknet_api::block::BlockBody::new(transactions, transaction_outputs)?;
 
         Ok(Self { header, body })
     }
@@ -227,14 +233,14 @@ impl Default for BlockStatus {
     }
 }
 
-impl From<BlockStatus> for starknet_api::BlockStatus {
+impl From<BlockStatus> for starknet_api::block::BlockStatus {
     fn from(status: BlockStatus) -> Self {
         match status {
-            BlockStatus::Aborted => starknet_api::BlockStatus::Rejected,
-            BlockStatus::AcceptedOnL1 => starknet_api::BlockStatus::AcceptedOnL1,
-            BlockStatus::AcceptedOnL2 => starknet_api::BlockStatus::AcceptedOnL2,
-            BlockStatus::Pending => starknet_api::BlockStatus::Pending,
-            BlockStatus::Reverted => starknet_api::BlockStatus::Rejected,
+            BlockStatus::Aborted => starknet_api::block::BlockStatus::Rejected,
+            BlockStatus::AcceptedOnL1 => starknet_api::block::BlockStatus::AcceptedOnL1,
+            BlockStatus::AcceptedOnL2 => starknet_api::block::BlockStatus::AcceptedOnL2,
+            BlockStatus::Pending => starknet_api::block::BlockStatus::Pending,
+            BlockStatus::Reverted => starknet_api::block::BlockStatus::Rejected,
         }
     }
 }
@@ -285,7 +291,7 @@ pub struct ContractClass {
     pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
 }
 
-impl From<ContractClass> for starknet_api::ContractClass {
+impl From<ContractClass> for starknet_api::state::ContractClass {
     fn from(class: ContractClass) -> Self {
         // Starknet does not verify the abi. If we can't parse it, we set it to None.
         let abi = serde_json::from_value::<Vec<ContractClassAbiEntry>>(class.abi)
@@ -305,16 +311,16 @@ pub enum ContractClassAbiEntry {
 }
 
 impl ContractClassAbiEntry {
-    fn try_into(self) -> Result<starknet_api::ContractClassAbiEntry, ()> {
+    fn try_into(self) -> Result<starknet_api::state::ContractClassAbiEntry, ()> {
         match self {
             ContractClassAbiEntry::Event(entry) => {
-                Ok(starknet_api::ContractClassAbiEntry::Event(entry.entry))
+                Ok(starknet_api::state::ContractClassAbiEntry::Event(entry.entry))
             }
             ContractClassAbiEntry::Function(entry) => {
-                Ok(starknet_api::ContractClassAbiEntry::Function(entry.try_into()?))
+                Ok(starknet_api::state::ContractClassAbiEntry::Function(entry.try_into()?))
             }
             ContractClassAbiEntry::Struct(entry) => {
-                Ok(starknet_api::ContractClassAbiEntry::Struct(entry.entry))
+                Ok(starknet_api::state::ContractClassAbiEntry::Struct(entry.entry))
             }
         }
     }
@@ -324,25 +330,25 @@ impl ContractClassAbiEntry {
 pub struct EventAbiEntry {
     pub r#type: String,
     #[serde(flatten)]
-    pub entry: starknet_api::EventAbiEntry,
+    pub entry: starknet_api::state::EventAbiEntry,
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct FunctionAbiEntry {
     pub r#type: String,
     #[serde(flatten)]
-    pub entry: starknet_api::FunctionAbiEntry,
+    pub entry: starknet_api::state::FunctionAbiEntry,
 }
 
 impl FunctionAbiEntry {
-    fn try_into(self) -> Result<starknet_api::FunctionAbiEntryWithType, ()> {
+    fn try_into(self) -> Result<starknet_api::state::FunctionAbiEntryWithType, ()> {
         match self.r#type.as_str() {
-            "constructor" => Ok(starknet_api::FunctionAbiEntryType::Constructor),
-            "function" => Ok(starknet_api::FunctionAbiEntryType::Regular),
-            "l1_handler" => Ok(starknet_api::FunctionAbiEntryType::L1Handler),
+            "constructor" => Ok(starknet_api::state::FunctionAbiEntryType::Constructor),
+            "function" => Ok(starknet_api::state::FunctionAbiEntryType::Regular),
+            "l1_handler" => Ok(starknet_api::state::FunctionAbiEntryType::L1Handler),
             _ => Err(()),
         }
-        .map(|t| starknet_api::FunctionAbiEntryWithType { r#type: t, entry: self.entry })
+        .map(|t| starknet_api::state::FunctionAbiEntryWithType { r#type: t, entry: self.entry })
     }
 }
 
@@ -350,5 +356,5 @@ impl FunctionAbiEntry {
 pub struct StructAbiEntry {
     pub r#type: String,
     #[serde(flatten)]
-    pub entry: starknet_api::StructAbiEntry,
+    pub entry: starknet_api::state::StructAbiEntry,
 }
