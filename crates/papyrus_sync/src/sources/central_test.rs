@@ -6,8 +6,8 @@ use futures_util::pin_mut;
 use mockall::predicate;
 use reqwest::StatusCode;
 use starknet_api::{
-    shash, BlockHash, BlockNumber, ClassHash, ContractAddress, DeclaredContract, DeployedContract,
-    Nonce, StarkHash, StorageDiff, StorageEntry, StorageKey,
+    patky, shash, BlockHash, BlockNumber, ClassHash, ContractAddress, DeclaredContract,
+    DeployedContract, Nonce, PatriciaKey, StarkHash, StorageDiff, StorageEntry, StorageKey,
 };
 use starknet_client::{
     Block, ClientError, ContractClass, GlobalRoot, MockStarknetClientTrait, StateUpdate,
@@ -151,18 +151,15 @@ async fn stream_state_updates() {
     let class_hash1 = ClassHash(shash!("0x123"));
     let class_hash2 = ClassHash(shash!("0x456"));
     let class_hash3 = ClassHash(shash!("0x789"));
-    let contract_address1 = ContractAddress(shash!("0xabc").try_into().unwrap());
-    let contract_address2 = ContractAddress(shash!("0xdef").try_into().unwrap());
+    let contract_address1 = ContractAddress(patky!("0xabc"));
+    let contract_address2 = ContractAddress(patky!("0xdef"));
     let nonce1 = Nonce(shash!("0x123456789abcdef"));
     let root1 = GlobalRoot(shash!("0x111"));
     let root2 = GlobalRoot(shash!("0x222"));
     let block_hash1 = BlockHash(shash!("0x333"));
     let block_hash2 = BlockHash(shash!("0x444"));
 
-    let storage_entry = StorageEntry {
-        key: StorageKey(shash!("0x555").try_into().unwrap()),
-        value: shash!("0x666"),
-    };
+    let storage_entry = StorageEntry { key: StorageKey(patky!("0x555")), value: shash!("0x666") };
 
     // TODO(shahak): Fill these contract classes with non-empty data.
     let contract_class1 = ContractClass::default();

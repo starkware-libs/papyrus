@@ -2,20 +2,20 @@ use assert_matches::assert_matches;
 
 use crate::state::StateDiffAsTuple;
 use crate::{
-    shash, ClassHash, ContractAddress, ContractClass, ContractNonce, DeclaredContract,
-    DeployedContract, Nonce, StarkHash, StarknetApiError, StateDiff, StorageDiff, StorageEntry,
-    StorageKey,
+    patky, shash, ClassHash, ContractAddress, ContractClass, ContractNonce, DeclaredContract,
+    DeployedContract, Nonce, PatriciaKey, StarkHash, StarknetApiError, StateDiff, StorageDiff,
+    StorageEntry, StorageKey,
 };
 
 #[test]
 fn storage_diff_sorted() {
-    let storage_key_0 = StorageKey(shash!("0x0").try_into().unwrap());
-    let storage_key_1 = StorageKey(shash!("0x1").try_into().unwrap());
+    let storage_key_0 = StorageKey(patky!("0x0"));
+    let storage_key_1 = StorageKey(patky!("0x1"));
     let unsorted_storage_entries = vec![
         StorageEntry { key: storage_key_1, value: shash!("0x1") },
         StorageEntry { key: storage_key_0, value: shash!("0x0") },
     ];
-    let address = ContractAddress(shash!("0x0").try_into().unwrap());
+    let address = ContractAddress(patky!("0x0"));
     let storage_diff = StorageDiff::new(address, unsorted_storage_entries).unwrap();
     let sorted_storage_entries = vec![
         StorageEntry { key: storage_key_0, value: shash!("0x0") },
@@ -26,8 +26,8 @@ fn storage_diff_sorted() {
 
 #[test]
 fn storage_diff_unique() {
-    let address = ContractAddress(shash!("0x0").try_into().unwrap());
-    let storage_key = StorageKey(shash!("0x0").try_into().unwrap());
+    let address = ContractAddress(patky!("0x0"));
+    let storage_key = StorageKey(patky!("0x0"));
     let storage_entries_with_duplicates = vec![
         StorageEntry { key: storage_key, value: shash!("0x1") },
         StorageEntry { key: storage_key, value: shash!("0x0") },
@@ -39,34 +39,26 @@ fn storage_diff_unique() {
 #[test]
 fn state_sorted() {
     let hash0 = shash!("0x0");
+    let patricia_key0 = patky!("0x0");
     let hash1 = shash!("0x1");
+    let patricia_key1 = patky!("0x1");
 
-    let dep_contract_0 = DeployedContract {
-        address: ContractAddress(hash0.try_into().unwrap()),
-        class_hash: ClassHash(hash0),
-    };
-    let dep_contract_1 = DeployedContract {
-        address: ContractAddress(hash1.try_into().unwrap()),
-        class_hash: ClassHash(hash1),
-    };
-    let storage_diff_0 =
-        StorageDiff::new(ContractAddress(hash0.try_into().unwrap()), vec![]).unwrap();
-    let storage_diff_1 =
-        StorageDiff::new(ContractAddress(hash1.try_into().unwrap()), vec![]).unwrap();
+    let dep_contract_0 =
+        DeployedContract { address: ContractAddress(patricia_key0), class_hash: ClassHash(hash0) };
+    let dep_contract_1 =
+        DeployedContract { address: ContractAddress(patricia_key1), class_hash: ClassHash(hash1) };
+    let storage_diff_0 = StorageDiff::new(ContractAddress(patricia_key0), vec![]).unwrap();
+    let storage_diff_1 = StorageDiff::new(ContractAddress(patricia_key1), vec![]).unwrap();
 
     let dec_contract_0 =
         DeclaredContract { class_hash: ClassHash(hash0), contract_class: ContractClass::default() };
     let dec_contract_1 =
         DeclaredContract { class_hash: ClassHash(hash1), contract_class: ContractClass::default() };
 
-    let nonce_0 = ContractNonce {
-        contract_address: ContractAddress(hash0.try_into().unwrap()),
-        nonce: Nonce(hash0),
-    };
-    let nonce_1 = ContractNonce {
-        contract_address: ContractAddress(hash1.try_into().unwrap()),
-        nonce: Nonce(hash1),
-    };
+    let nonce_0 =
+        ContractNonce { contract_address: ContractAddress(patricia_key0), nonce: Nonce(hash0) };
+    let nonce_1 =
+        ContractNonce { contract_address: ContractAddress(patricia_key1), nonce: Nonce(hash1) };
 
     let unsorted_deployed_contracts = vec![dep_contract_1.clone(), dep_contract_0.clone()];
     let unsorted_storage_diffs = vec![storage_diff_1.clone(), storage_diff_0.clone()];
@@ -95,30 +87,23 @@ fn state_sorted() {
 #[test]
 fn state_unique() {
     let hash0 = shash!("0x0");
+    let patricia_key0 = patky!("0x0");
 
-    let dep_contract = DeployedContract {
-        address: ContractAddress(hash0.try_into().unwrap()),
-        class_hash: ClassHash(hash0),
-    };
+    let dep_contract =
+        DeployedContract { address: ContractAddress(patricia_key0), class_hash: ClassHash(hash0) };
 
-    let storage_diff = StorageDiff {
-        address: ContractAddress(hash0.try_into().unwrap()),
-        storage_entries: vec![],
-    };
+    let storage_diff =
+        StorageDiff { address: ContractAddress(patricia_key0), storage_entries: vec![] };
 
     let dec_contract =
         DeclaredContract { class_hash: ClassHash(hash0), contract_class: ContractClass::default() };
 
-    let nonce = ContractNonce {
-        contract_address: ContractAddress(hash0.try_into().unwrap()),
-        nonce: Nonce(hash0),
-    };
+    let nonce =
+        ContractNonce { contract_address: ContractAddress(patricia_key0), nonce: Nonce(hash0) };
 
     let hash1 = shash!("0x1");
-    let deployed_contract_duplicate = DeployedContract {
-        address: ContractAddress(hash0.try_into().unwrap()),
-        class_hash: ClassHash(hash1),
-    };
+    let deployed_contract_duplicate =
+        DeployedContract { address: ContractAddress(patricia_key0), class_hash: ClassHash(hash1) };
     let declared_contract_duplicate =
         DeclaredContract { class_hash: ClassHash(hash0), contract_class: ContractClass::default() };
 

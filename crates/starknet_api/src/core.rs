@@ -77,3 +77,12 @@ impl Debug for PatriciaKey {
         f.debug_tuple("PatriciaKey").field(&self.0).finish()
     }
 }
+
+/// A utility macro to create a [`PatriciaKey`] from a hex string representation.
+#[cfg(any(feature = "testing", test))]
+#[macro_export]
+macro_rules! patky {
+    ($s:expr) => {
+        PatriciaKey::try_from(StarkHash::try_from($s).unwrap()).unwrap()
+    };
+}
