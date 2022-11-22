@@ -3,9 +3,10 @@ use std::collections::HashMap;
 use papyrus_storage::compression_utils::{CompressionError, GzEncoded};
 use papyrus_storage::{StorageSerde, StorageSerdeError, ThinStateDiff};
 use serde::{Deserialize, Serialize};
-use starknet_api::{
-    BlockHash, EntryPoint, EntryPointType, EventAbiEntry, FunctionAbiEntry, FunctionAbiEntryType,
-    GlobalRoot, StructAbiEntry,
+use starknet_api::block::{BlockHash, GlobalRoot};
+use starknet_api::state::{
+    EntryPoint, EntryPointType, EventAbiEntry, FunctionAbiEntry, FunctionAbiEntryType,
+    StructAbiEntry,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
@@ -56,18 +57,18 @@ pub struct ContractClassAbiEntryWithType {
     pub entry: ContractClassAbiEntry,
 }
 
-impl From<starknet_api::ContractClassAbiEntry> for ContractClassAbiEntryWithType {
-    fn from(entry: starknet_api::ContractClassAbiEntry) -> Self {
+impl From<starknet_api::state::ContractClassAbiEntry> for ContractClassAbiEntryWithType {
+    fn from(entry: starknet_api::state::ContractClassAbiEntry) -> Self {
         match entry {
-            starknet_api::ContractClassAbiEntry::Event(entry) => Self {
+            starknet_api::state::ContractClassAbiEntry::Event(entry) => Self {
                 r#type: ContractClassAbiEntryType::Event,
                 entry: ContractClassAbiEntry::Event(entry),
             },
-            starknet_api::ContractClassAbiEntry::Function(entry) => Self {
+            starknet_api::state::ContractClassAbiEntry::Function(entry) => Self {
                 r#type: entry.r#type.clone().into(),
                 entry: ContractClassAbiEntry::Function(entry.entry),
             },
-            starknet_api::ContractClassAbiEntry::Struct(entry) => Self {
+            starknet_api::state::ContractClassAbiEntry::Struct(entry) => Self {
                 r#type: ContractClassAbiEntryType::Struct,
                 entry: ContractClassAbiEntry::Struct(entry),
             },
@@ -84,9 +85,9 @@ pub struct ContractClass {
     pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
 }
 
-impl TryFrom<starknet_api::ContractClass> for ContractClass {
+impl TryFrom<starknet_api::state::ContractClass> for ContractClass {
     type Error = CompressionError;
-    fn try_from(class: starknet_api::ContractClass) -> Result<Self, Self::Error> {
+    fn try_from(class: starknet_api::state::ContractClass) -> Result<Self, Self::Error> {
         // TODO(anatg): Deal with serde_json error.
         let mut program_value = serde_json::to_value(&class.program).unwrap();
         // Remove the 'attributes' key if it is null.

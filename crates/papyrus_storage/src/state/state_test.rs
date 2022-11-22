@@ -1,10 +1,13 @@
 use assert_matches::assert_matches;
 use logtest::Logger;
-use starknet_api::{
-    shash, BlockNumber, ClassHash, ContractAddress, ContractClass, ContractClassAbiEntry,
-    ContractNonce, DeclaredContract, DeployedContract, FunctionAbiEntry, FunctionAbiEntryType,
-    FunctionAbiEntryWithType, Nonce, StarkHash, StateDiff, StateNumber, StorageDiff, StorageEntry,
-    StorageKey,
+use starknet_api::block::BlockNumber;
+use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::hash::StarkHash;
+use starknet_api::shash;
+use starknet_api::state::{
+    ContractClass, ContractClassAbiEntry, ContractNonce, DeclaredContract, DeployedContract,
+    FunctionAbiEntry, FunctionAbiEntryType, FunctionAbiEntryWithType, StateDiff, StateNumber,
+    StorageDiff, StorageEntry, StorageKey,
 };
 
 use crate::state::{StateStorageReader, StateStorageWriter, StorageError};

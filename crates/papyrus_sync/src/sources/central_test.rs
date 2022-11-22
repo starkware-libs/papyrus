@@ -5,9 +5,12 @@ use assert_matches::assert_matches;
 use futures_util::pin_mut;
 use mockall::predicate;
 use reqwest::StatusCode;
-use starknet_api::{
-    shash, BlockHash, BlockNumber, ClassHash, ContractAddress, DeclaredContract, DeployedContract,
-    Nonce, StarkHash, StorageDiff, StorageEntry, StorageKey,
+use starknet_api::block::{BlockHash, BlockNumber};
+use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::hash::StarkHash;
+use starknet_api::shash;
+use starknet_api::state::{
+    DeclaredContract, DeployedContract, StorageDiff, StorageEntry, StorageKey,
 };
 use starknet_client::{
     Block, ClientError, ContractClass, GlobalRoot, MockStarknetClientTrait, StateUpdate,
@@ -267,7 +270,7 @@ async fn stream_state_updates() {
             panic!("Match of streamed state_update failed!");
         };
     assert_eq!(initial_block_num.next(), current_block_num);
-    assert_eq!(state_diff, starknet_api::StateDiff::default());
+    assert_eq!(state_diff, starknet_api::state::StateDiff::default());
 
     assert!(stream.next().await.is_none());
 }

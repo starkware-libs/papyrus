@@ -3,9 +3,10 @@
 mod events_test;
 
 use serde::{Deserialize, Serialize};
-use starknet_api::{
-    BlockNumber, ContractAddress, EventContent, EventIndexInTransactionOutput, Fee, MessageToL1,
-    TransactionOutput,
+use starknet_api::block::BlockNumber;
+use starknet_api::core::ContractAddress;
+use starknet_api::transaction::{
+    EventContent, EventIndexInTransactionOutput, Fee, MessageToL1, TransactionOutput,
 };
 
 use crate::db::{DbCursor, DbTransaction, TableHandle, RO};

@@ -7,7 +7,9 @@ use futures::{future, pin_mut, TryStreamExt};
 use futures_util::StreamExt;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
-use starknet_api::{Block, BlockNumber, DeclaredContract, StarknetApiError, StateDiff};
+use starknet_api::block::{Block, BlockNumber};
+use starknet_api::state::{DeclaredContract, StateDiff};
+use starknet_api::StarknetApiError;
 use starknet_client::{
     client_to_starknet_api_storage_diff, ClientCreationError, ClientError, RetryConfig,
     StarknetClient, StarknetClientTrait, StateUpdate,

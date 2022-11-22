@@ -1,11 +1,11 @@
 use assert_matches::assert_matches;
 
-use crate::state::StateDiffAsTuple;
-use crate::{
-    shash, ClassHash, ContractAddress, ContractClass, ContractNonce, DeclaredContract,
-    DeployedContract, Nonce, StarkHash, StarknetApiError, StateDiff, StorageDiff, StorageEntry,
-    StorageKey,
+use crate::hash::StarkHash;
+use crate::state::{
+    ClassHash, ContractAddress, ContractClass, ContractNonce, DeclaredContract, DeployedContract,
+    Nonce, StateDiff, StateDiffAsTuple, StorageDiff, StorageEntry, StorageKey,
 };
+use crate::{shash, StarknetApiError};
 
 #[test]
 fn storage_diff_sorted() {

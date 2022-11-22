@@ -1,4 +1,4 @@
-use crate::BlockNumber;
+use crate::block::BlockNumber;
 
 #[test]
 fn test_block_number_iteration() {
