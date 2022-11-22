@@ -10,7 +10,7 @@ use flate2::write::GzEncoder;
 use flate2::Compression;
 use serde::{Deserialize, Serialize};
 
-use crate::db::serialization::StorageSerde;
+use crate::db::serialization::{StorageSerde, StorageSerdeError};
 
 /// Errors that may be returned when encoding or decoding with one of the functions in this file.
 #[derive(thiserror::Error, Debug)]
@@ -18,9 +18,12 @@ pub enum CompressionError {
     /// An error representing reading and writing errors.
     #[error(transparent)]
     IO(#[from] std::io::Error),
-    /// An internal serde error.
+    /// An internal deserialization problem.
     #[error("Internal deserialization error.")]
     InnerDeserialization,
+    /// An internal serialization problem.
+    #[error(transparent)]
+    StorageSerde(#[from] StorageSerdeError),
 }
 
 /// An object that was encoded with [`GzEncoder`].

@@ -23,7 +23,7 @@ use starknet_api::{
 
 pub use crate::body::events::ThinTransactionOutput;
 pub use crate::body::{BodyStorageReader, BodyStorageWriter};
-pub use crate::db::serialization::StorageSerde;
+pub use crate::db::serialization::{StorageSerde, StorageSerdeError};
 pub use crate::db::TransactionKind;
 use crate::db::{
     open_env, DbConfig, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier,
