@@ -133,7 +133,7 @@ impl From<u64> for StarkHash {
     }
 }
 
-// TODO(anatg): Remove once Starknet sequencer returns the global root hash as a hex string with a
+// TODO: Remove once Starknet sequencer returns the global root hash as a hex string with a
 // "0x" prefix.
 impl TryFrom<NonPrefixedBytesAsHex<32_usize>> for StarkHash {
     type Error = StarknetApiError;
