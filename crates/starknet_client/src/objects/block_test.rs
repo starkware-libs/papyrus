@@ -47,42 +47,51 @@ fn load_block_state_update_succeeds() {
         ),
         state_diff: StateDiff {
             storage_diffs: BTreeMap::from([(
-                ContractAddress::try_from(shash!(
-                    "0x13386f165f065115c1da38d755be261023c32f0134a03a8e66b6bb1e0016014"
-                ))
-                .unwrap(),
+                ContractAddress(
+                    shash!("0x13386f165f065115c1da38d755be261023c32f0134a03a8e66b6bb1e0016014")
+                        .try_into()
+                        .unwrap(),
+                ),
                 vec![
                     StorageEntry {
-                        key: StorageKey::try_from(shash!(
-                            "0x3b3a699bb6ef37ff4b9c4e14319c7d8e9c9bdd10ff402d1ebde18c62ae58381"
-                        ))
-                        .unwrap(),
+                        key: StorageKey(
+                            shash!(
+                                "0x3b3a699bb6ef37ff4b9c4e14319c7d8e9c9bdd10ff402d1ebde18c62ae58381"
+                            )
+                            .try_into()
+                            .unwrap(),
+                        ),
                         value: shash!("0x61454dd6e5c83621e41b74c"),
                     },
                     StorageEntry {
-                        key: StorageKey::try_from(shash!(
-                            "0x1557182e4359a1f0c6301278e8f5b35a776ab58d39892581e357578fb287836"
-                        ))
-                        .unwrap(),
+                        key: StorageKey(
+                            shash!(
+                                "0x1557182e4359a1f0c6301278e8f5b35a776ab58d39892581e357578fb287836"
+                            )
+                            .try_into()
+                            .unwrap(),
+                        ),
                         value: shash!("0x79dd8085e3e5a96ea43e7d"),
                     },
                 ],
             )]),
             deployed_contracts: vec![DeployedContract {
-                address: ContractAddress::try_from(shash!(
-                    "0x3e10411edafd29dfe6d427d03e35cb261b7a5efeee61bf73909ada048c029b9"
-                ))
-                .unwrap(),
+                address: ContractAddress(
+                    shash!("0x3e10411edafd29dfe6d427d03e35cb261b7a5efeee61bf73909ada048c029b9")
+                        .try_into()
+                        .unwrap(),
+                ),
                 class_hash: ClassHash(shash!(
                     "0x071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64"
                 )),
             }],
             declared_contracts: vec![],
             nonces: BTreeMap::from([(
-                ContractAddress::try_from(shash!(
-                    "0x51c62af8919b31499b36bd1f1f702c8ef5a6309554427186c7bd456b862c115"
-                ))
-                .unwrap(),
+                ContractAddress(
+                    shash!("0x51c62af8919b31499b36bd1f1f702c8ef5a6309554427186c7bd456b862c115")
+                        .try_into()
+                        .unwrap(),
+                ),
                 Nonce(shash!("0x12")),
             )]),
         },

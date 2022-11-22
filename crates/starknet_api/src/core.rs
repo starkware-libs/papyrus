@@ -25,13 +25,6 @@ impl ChainId {
 )]
 pub struct ContractAddress(pub PatriciaKey);
 
-impl TryFrom<StarkHash> for ContractAddress {
-    type Error = StarknetApiError;
-    fn try_from(hash: StarkHash) -> Result<Self, Self::Error> {
-        Ok(Self(PatriciaKey::try_from(hash)?))
-    }
-}
-
 /// The hash of a StarkNet [ContractClass](`super::ContractClass`).
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,

@@ -61,7 +61,7 @@ async fn declare_tx_serde() {
         class_hash: ClassHash(shash!(
             "0x7319e2f01b0947afd86c0bb0e95029551b32f6dc192c47b2e8b08415eebbc25"
         )),
-        sender_address: ContractAddress::try_from(shash!("0x1")).unwrap(),
+        sender_address: ContractAddress(shash!("0x1").try_into().unwrap()),
         nonce: Nonce(shash!("0x0")),
         max_fee: Fee(0),
         version: TransactionVersion(shash!("0x1")),

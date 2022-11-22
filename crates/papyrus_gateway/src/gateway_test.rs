@@ -285,7 +285,7 @@ async fn get_storage_at() -> Result<(), anyhow::Error> {
         .call::<_, StarkFelt>(
             "starknet_getStorageAt",
             (
-                ContractAddress::try_from(shash!("0x12")).unwrap(),
+                ContractAddress(shash!("0x12").try_into().unwrap()),
                 key,
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)),
             ),
@@ -376,7 +376,7 @@ async fn get_class_hash_at() -> Result<(), anyhow::Error> {
             "starknet_getClassHashAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ContractAddress::try_from(shash!("0x12")).unwrap(),
+                ContractAddress(shash!("0x12").try_into().unwrap()),
             ),
         )
         .await
@@ -463,7 +463,7 @@ async fn get_nonce() -> Result<(), anyhow::Error> {
             "starknet_getNonce",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ContractAddress::try_from(shash!("0x31")).unwrap(),
+                ContractAddress(shash!("0x31").try_into().unwrap()),
             ),
         )
         .await
@@ -987,7 +987,7 @@ async fn get_class_at() -> Result<(), anyhow::Error> {
             "starknet_getClassAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ContractAddress::try_from(shash!("0x12")).unwrap(),
+                ContractAddress(shash!("0x12").try_into().unwrap()),
             ),
         )
         .await

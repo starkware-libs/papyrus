@@ -13,17 +13,17 @@ use crate::StorageWriter;
 
 #[test]
 fn append_state_diff() -> Result<(), anyhow::Error> {
-    let c0 = ContractAddress::try_from(shash!("0x11")).unwrap();
-    let c1 = ContractAddress::try_from(shash!("0x12")).unwrap();
-    let c2 = ContractAddress::try_from(shash!("0x13")).unwrap();
-    let c3 = ContractAddress::try_from(shash!("0x14")).unwrap();
+    let c0 = ContractAddress(shash!("0x11").try_into()?);
+    let c1 = ContractAddress(shash!("0x12").try_into()?);
+    let c2 = ContractAddress(shash!("0x13").try_into()?);
+    let c3 = ContractAddress(shash!("0x14").try_into()?);
     let cl0 = ClassHash(shash!("0x4"));
     let cl1 = ClassHash(shash!("0x5"));
     let cl2 = ClassHash(shash!("0x6"));
     let c_cls0 = ContractClass::default();
     let c_cls1 = ContractClass::default();
-    let key0 = StorageKey::try_from(shash!("0x1001")).unwrap();
-    let key1 = StorageKey::try_from(shash!("0x101")).unwrap();
+    let key0 = StorageKey(shash!("0x1001").try_into()?);
+    let key1 = StorageKey(shash!("0x101").try_into()?);
     let diff0 = StateDiff::new(
         vec![
             DeployedContract { address: c0, class_hash: cl0 },
@@ -271,7 +271,7 @@ fn append_2_state_diffs(writer: &mut StorageWriter) -> Result<(), anyhow::Error>
 #[test]
 fn revert_doesnt_delete_previously_declared_classes() -> Result<(), anyhow::Error> {
     // Append 2 state diffs that use the same declared class.
-    let c0 = ContractAddress::try_from(shash!("0x11")).unwrap();
+    let c0 = ContractAddress(shash!("0x11").try_into()?);
     let cl0 = ClassHash(shash!("0x4"));
     let c_cls0 = ContractClass::default();
     let diff0 = StateDiff::new(
@@ -281,7 +281,7 @@ fn revert_doesnt_delete_previously_declared_classes() -> Result<(), anyhow::Erro
         vec![ContractNonce { contract_address: c0, nonce: Nonce(StarkHash::from(1)) }],
     )?;
 
-    let c1 = ContractAddress::try_from(shash!("0x12")).unwrap();
+    let c1 = ContractAddress(shash!("0x12").try_into()?);
     let diff1 = StateDiff::new(
         vec![DeployedContract { address: c1, class_hash: cl0 }],
         vec![],

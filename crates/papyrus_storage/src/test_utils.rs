@@ -61,7 +61,7 @@ pub fn get_test_body(transaction_count: usize) -> BlockBody {
         let transaction = Transaction::Deploy(DeployTransaction {
             transaction_hash: TransactionHash(StarkHash::from(i as u64)),
             version: TransactionVersion(shash!("0x1")),
-            contract_address: ContractAddress::try_from(shash!("0x2")).unwrap(),
+            contract_address: ContractAddress(shash!("0x2").try_into().unwrap()),
             constructor_calldata: CallData(vec![shash!("0x3")]),
             class_hash: ClassHash(StarkHash::from(i as u64)),
             contract_address_salt: ContractAddressSalt(shash!("0x4")),
@@ -76,35 +76,35 @@ pub fn get_test_body(transaction_count: usize) -> BlockBody {
             }],
             events: vec![
                 Event {
-                    from_address: ContractAddress::try_from(shash!("0x22")).unwrap(),
+                    from_address: ContractAddress(shash!("0x22").try_into().unwrap()),
                     content: EventContent {
                         keys: vec![EventKey(shash!("0x7")), EventKey(shash!("0x6"))],
                         data: EventData(vec![shash!("0x1")]),
                     },
                 },
                 Event {
-                    from_address: ContractAddress::try_from(shash!("0x22")).unwrap(),
+                    from_address: ContractAddress(shash!("0x22").try_into().unwrap()),
                     content: EventContent {
                         keys: vec![EventKey(shash!("0x6"))],
                         data: EventData(vec![shash!("0x2")]),
                     },
                 },
                 Event {
-                    from_address: ContractAddress::try_from(shash!("0x23")).unwrap(),
+                    from_address: ContractAddress(shash!("0x23").try_into().unwrap()),
                     content: EventContent {
                         keys: vec![EventKey(shash!("0x7"))],
                         data: EventData(vec![shash!("0x3")]),
                     },
                 },
                 Event {
-                    from_address: ContractAddress::try_from(shash!("0x22")).unwrap(),
+                    from_address: ContractAddress(shash!("0x22").try_into().unwrap()),
                     content: EventContent {
                         keys: vec![EventKey(shash!("0x9"))],
                         data: EventData(vec![shash!("0x4")]),
                     },
                 },
                 Event {
-                    from_address: ContractAddress::try_from(shash!("0x22")).unwrap(),
+                    from_address: ContractAddress(shash!("0x22").try_into().unwrap()),
                     content: EventContent {
                         keys: vec![EventKey(shash!("0x6")), EventKey(shash!("0x7"))],
                         data: EventData(vec![shash!("0x5")]),
@@ -144,10 +144,11 @@ pub fn get_alpha4_starknet_body() -> BlockBody {
             class_hash: ClassHash(shash!(
                 "0x10455c752b86932ce552f2b0fe81a880746649b9aee7e0d842bf3f52378f9f8"
             )),
-            contract_address: ContractAddress::try_from(shash!(
-                "0x543e54f26ae33686f57da2ceebed98b340c3a78e9390931bd84fb711d5caabc"
-            ))
-            .unwrap(),
+            contract_address: ContractAddress(
+                shash!("0x543e54f26ae33686f57da2ceebed98b340c3a78e9390931bd84fb711d5caabc")
+                    .try_into()
+                    .unwrap(),
+            ),
             contract_address_salt: ContractAddressSalt(shash!(
                 "0x25ad1e011d139412b19ec5284fe6e95f4e53d319056c5650042eb3322cc370d"
             )),
@@ -164,10 +165,11 @@ pub fn get_alpha4_starknet_body() -> BlockBody {
             class_hash: ClassHash(shash!(
                 "0x10455c752b86932ce552f2b0fe81a880746649b9aee7e0d842bf3f52378f9f8"
             )),
-            contract_address: ContractAddress::try_from(shash!(
-                "0x2fb7ff5b1b474e8e691f5bebad9aa7aa3009f6ef22ccc2816f96cdfe217604d"
-            ))
-            .unwrap(),
+            contract_address: ContractAddress(
+                shash!("0x2fb7ff5b1b474e8e691f5bebad9aa7aa3009f6ef22ccc2816f96cdfe217604d")
+                    .try_into()
+                    .unwrap(),
+            ),
             contract_address_salt: ContractAddressSalt(shash!(
                 "0x3a27aed698130e1817544c060261e8aede51a02f4da510c67ff26c5fbae850e"
             )),
@@ -184,10 +186,11 @@ pub fn get_alpha4_starknet_body() -> BlockBody {
             class_hash: ClassHash(shash!(
                 "0x7b40f8e4afe1316fce16375ac7a06d4dd27c7a4e3bcd6c28afdd208c5db433d"
             )),
-            contract_address: ContractAddress::try_from(shash!(
-                "0x1bb929cc5e6d80f0c71e90365ab77e9cbb2e0a290d72255a3f4d34060b5ed52"
-            ))
-            .unwrap(),
+            contract_address: ContractAddress(
+                shash!("0x1bb929cc5e6d80f0c71e90365ab77e9cbb2e0a290d72255a3f4d34060b5ed52")
+                    .try_into()
+                    .unwrap(),
+            ),
             contract_address_salt: ContractAddressSalt::default(),
             constructor_calldata: CallData(vec![]),
         }),
@@ -199,10 +202,11 @@ pub fn get_alpha4_starknet_body() -> BlockBody {
             version: TransactionVersion::default(),
             signature: TransactionSignature::default(),
             nonce: Nonce::default(),
-            contract_address: ContractAddress::try_from(shash!(
-                "0x2fb7ff5b1b474e8e691f5bebad9aa7aa3009f6ef22ccc2816f96cdfe217604d"
-            ))
-            .unwrap(),
+            contract_address: ContractAddress(
+                shash!("0x2fb7ff5b1b474e8e691f5bebad9aa7aa3009f6ef22ccc2816f96cdfe217604d")
+                    .try_into()
+                    .unwrap(),
+            ),
             entry_point_selector: Some(EntryPointSelector(shash!(
                 "0x12ead94ae9d3f9d2bdb6b847cf255f1f398193a1f88884a0ae8e18f24a037b6"
             ))),
@@ -283,29 +287,32 @@ pub fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff, Vec<Declar
         ..BlockHeader::default()
     };
 
-    let address0 = ContractAddress::try_from(shash!(
-        "0x543e54f26ae33686f57da2ceebed98b340c3a78e9390931bd84fb711d5caabc"
-    ))
-    .unwrap();
+    let address0 = ContractAddress(
+        shash!("0x543e54f26ae33686f57da2ceebed98b340c3a78e9390931bd84fb711d5caabc")
+            .try_into()
+            .unwrap(),
+    );
     let hash0 =
         ClassHash(shash!("0x10455c752b86932ce552f2b0fe81a880746649b9aee7e0d842bf3f52378f9f8"));
     let class_value = read_json_file_from_storage_resources("contract_class.json").unwrap();
     let class0 = serde_json::from_value(class_value).unwrap();
-    let address1 = ContractAddress::try_from(shash!("0x21")).unwrap();
+    let address1 = ContractAddress(shash!("0x21").try_into().unwrap());
     let hash1 = ClassHash(shash!("0x5"));
     let class1 = ContractClass::default();
     let hash2 = ClassHash(shash!("0x6"));
     let class2 = ContractClass::default();
 
-    let key0 = StorageKey::try_from(shash!(
-        "0x70be09c520814c13480a220ad31eb94bf37f0259e002b0275e55f3c309ee823"
-    ))
-    .unwrap();
+    let key0 = StorageKey(
+        shash!("0x70be09c520814c13480a220ad31eb94bf37f0259e002b0275e55f3c309ee823")
+            .try_into()
+            .unwrap(),
+    );
     let value0 = shash!("0x1dc19dce5326f42f2b319d78b237148d1e582efbf700efd6eb2c9fcbc451327");
-    let key1 = StorageKey::try_from(shash!(
-        "0x420eefdc029d53134b57551d676c9a450e5f75f9f017ca75f6fb28350f60d54"
-    ))
-    .unwrap();
+    let key1 = StorageKey(
+        shash!("0x420eefdc029d53134b57551d676c9a450e5f75f9f017ca75f6fb28350f60d54")
+            .try_into()
+            .unwrap(),
+    );
     let value1 = shash!("0x7c7139d51f4642ec66088959e69eb890e2e6e87c08dad2a223da9161c99c939");
 
     let diff = StateDiff::new(
