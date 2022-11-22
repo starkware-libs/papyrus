@@ -62,8 +62,7 @@ impl StorageSerde for serde_json::Value {
 
 impl StorageSerde for StarkHash {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
-        self.serialize(res)?;
-        Ok(())
+        Ok(self.serialize(res)?)
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
@@ -123,10 +122,7 @@ impl<T: StorageSerde> StorageSerde for Option<T> {
                 res.write_all(&[1])?;
                 value.serialize_into(res)
             }
-            None => {
-                res.write_all(&[0])?;
-                Ok(())
-            }
+            None => Ok(res.write_all(&[0])?),
         }
     }
 
