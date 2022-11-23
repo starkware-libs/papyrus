@@ -35,8 +35,8 @@ pub struct BlockHeader {
     // TODO: add missing commitments.
 }
 
-/// The [transactions](`crate::transaction::Transaction`). in a StarkNet
-/// [Block](`crate::block::Block`).
+/// The [transactions](`crate::transaction::Transaction`) and their
+/// [outputs](`crate::transaction::TransactionOutput`) in a StarkNet [Block](`crate::block::Block`).
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockBody {
     transactions: Vec<Transaction>,
@@ -68,7 +68,7 @@ impl BlockBody {
     }
 }
 
-/// The status a StarkNet [Block](`crate::block::Block`).
+/// The status of a StarkNet [Block](`crate::block::Block`).
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum BlockStatus {
     /// A pending block; i.e., a block that is yet to be closed.

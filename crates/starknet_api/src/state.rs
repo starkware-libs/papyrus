@@ -59,22 +59,18 @@ impl StateDiff {
         Ok(Self { deployed_contracts, storage_diffs, declared_classes: declared_contracts, nonces })
     }
 
-    /// Getter for the deployed contracts in a StarkNet [StateDiff](`crate::state::StateDiff`).
     pub fn deployed_contracts(&self) -> &[DeployedContract] {
         &self.deployed_contracts
     }
 
-    /// Getter for the storage diffs in a StarkNet [StateDiff](`crate::state::StateDiff`).
     pub fn storage_diffs(&self) -> &[StorageDiff] {
         &self.storage_diffs
     }
 
-    /// Getter for the declared classes in a StarkNet [StateDiff](`crate::state::StateDiff`).
     pub fn declared_contracts(&self) -> &[DeclaredContract] {
         &self.declared_classes
     }
 
-    /// Getter for the contract nonces in a StarkNet [StateDiff](`crate::state::StateDiff`).
     pub fn nonces(&self) -> &[ContractNonce] {
         &self.nonces
     }
@@ -132,7 +128,6 @@ impl StorageDiff {
         Ok(Self { address, storage_entries })
     }
 
-    /// Getter for the storage entries in a StarkNet [StorageDiff](`crate::state::StorageDiff`).
     pub fn storage_entries(&self) -> &[StorageEntry] {
         &self.storage_entries
     }

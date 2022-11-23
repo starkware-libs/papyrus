@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::hash::{StarkFelt, StarkHash};
 use crate::StarknetApiError;
 
-/// StarkNet chain id.
+/// A StarkNet chain id.
 #[derive(Clone, Debug, Display, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ChainId(pub String);
 
@@ -55,8 +55,8 @@ impl Default for Nonce {
 )]
 pub struct EntryPointSelector(pub StarkHash);
 
-/// Key for nodes of Patricia tree.
-/// Invariant: key is in range.
+/// Key for nodes of a Patricia tree.
+// Invariant: key is in range.
 #[derive(Copy, Clone, Eq, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct PatriciaKey(StarkHash);
 
