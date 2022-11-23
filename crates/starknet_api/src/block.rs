@@ -22,7 +22,7 @@ pub struct Block {
 /// The header of a StarkNet block.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockHeader {
-    // TODO(anatg): Consider removing the block hash from the header (note it can be computed from
+    // TODO: Consider removing the block hash from the header (note it can be computed from
     // the rest of the fields.
     pub block_hash: BlockHash,
     pub parent_hash: BlockHash,
@@ -31,7 +31,7 @@ pub struct BlockHeader {
     pub state_root: GlobalRoot,
     pub sequencer: ContractAddress,
     pub timestamp: BlockTimestamp,
-    // TODO(dan): add missing commitments.
+    // TODO: add missing commitments.
 }
 
 /// The transactions in a StarkNet block.
@@ -89,7 +89,6 @@ impl Default for BlockStatus {
     }
 }
 
-// TODO(spapini): Verify the invariant that it is in range.
 /// The hash of a StarkNet block.
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
