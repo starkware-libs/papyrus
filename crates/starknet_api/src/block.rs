@@ -13,14 +13,14 @@ use crate::serde_utils::{BytesAsHex, PrefixedBytesAsHex};
 use crate::transaction::{Transaction, TransactionOutput};
 use crate::StarknetApiError;
 
-/// A StarkNet block.
+/// A block.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct Block {
     pub header: BlockHeader,
     pub body: BlockBody,
 }
 
-/// The header of a StarkNet [Block](`crate::block::Block`).
+/// The header of a [Block](`crate::block::Block`).
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockHeader {
     // TODO: Consider removing the block hash from the header (note it can be computed from
@@ -35,8 +35,8 @@ pub struct BlockHeader {
     // TODO: add missing commitments.
 }
 
-/// The [transactions](`crate::transaction::Transaction`). in a StarkNet
-/// [Block](`crate::block::Block`).
+/// The [transactions](`crate::transaction::Transaction`) and their
+/// [outputs](`crate::transaction::TransactionOutput`) in a [block](`crate::block::Block`).
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockBody {
     transactions: Vec<Transaction>,
@@ -68,7 +68,7 @@ impl BlockBody {
     }
 }
 
-/// The status a StarkNet [Block](`crate::block::Block`).
+/// The status of a [Block](`crate::block::Block`).
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum BlockStatus {
     /// A pending block; i.e., a block that is yet to be closed.
@@ -91,13 +91,13 @@ impl Default for BlockStatus {
     }
 }
 
-/// The hash of a StarkNet [Block](`crate::block::Block`).
+/// The hash of a [Block](`crate::block::Block`).
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct BlockHash(pub StarkHash);
 
-/// The block number of a StarkNet [Block](`crate::block::Block`).
+/// The number of a [Block](`crate::block::Block`).
 #[derive(
     Debug,
     Default,
@@ -132,7 +132,7 @@ impl BlockNumber {
     }
 }
 
-/// The gas price at a StarkNet [Block](`crate::block::Block`).
+/// The gas price at a [Block](`crate::block::Block`).
 #[derive(
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
@@ -151,13 +151,13 @@ impl From<GasPrice> for PrefixedBytesAsHex<16_usize> {
     }
 }
 
-/// The root of the global state at a StarkNet [Block](`crate::block::Block`).
+/// The root of the global state at a [Block](`crate::block::Block`).
 #[derive(
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct GlobalRoot(pub StarkHash);
 
-/// The timestamp of a StarkNet [Block](`crate::block::Block`).
+/// The timestamp of a [Block](`crate::block::Block`).
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]

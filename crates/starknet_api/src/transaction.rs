@@ -6,7 +6,7 @@ use crate::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
 use crate::hash::{StarkFelt, StarkHash};
 use crate::serde_utils::PrefixedBytesAsHex;
 
-/// A transaction in StarkNet.
+/// A transaction.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum Transaction {
     /// A declare transaction.
@@ -33,7 +33,7 @@ impl Transaction {
     }
 }
 
-/// A transaction output in StarkNet.
+/// A transaction output.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum TransactionOutput {
     /// A declare transaction output.
@@ -70,7 +70,7 @@ impl TransactionOutput {
     }
 }
 
-/// A declare transaction in StarkNet.
+/// A declare transaction.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeclareTransaction {
     pub transaction_hash: TransactionHash,
@@ -82,7 +82,7 @@ pub struct DeclareTransaction {
     pub sender_address: ContractAddress,
 }
 
-/// A deploy account transaction in StarkNet.
+/// A deploy account transaction.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeployAccountTransaction {
     pub transaction_hash: TransactionHash,
@@ -96,7 +96,7 @@ pub struct DeployAccountTransaction {
     pub constructor_calldata: CallData,
 }
 
-/// A deploy transaction in StarkNet.
+/// A deploy transaction.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeployTransaction {
     pub transaction_hash: TransactionHash,
@@ -107,7 +107,7 @@ pub struct DeployTransaction {
     pub constructor_calldata: CallData,
 }
 
-/// An invoke transaction in StarkNet.
+/// An invoke transaction.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct InvokeTransaction {
     pub transaction_hash: TransactionHash,
@@ -121,7 +121,7 @@ pub struct InvokeTransaction {
     pub calldata: CallData,
 }
 
-/// An L1 handler transaction in StarkNet.
+/// An L1 handler transaction.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct L1HandlerTransaction {
     pub transaction_hash: TransactionHash,
@@ -132,7 +132,7 @@ pub struct L1HandlerTransaction {
     pub calldata: CallData,
 }
 
-/// A declare transaction output in StarkNet.
+/// A declare transaction output.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeclareTransactionOutput {
     pub actual_fee: Fee,
@@ -140,7 +140,7 @@ pub struct DeclareTransactionOutput {
     pub events: Vec<Event>,
 }
 
-/// A deploy-account transaction output in StarkNet.
+/// A deploy-account transaction output.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeployAccountTransactionOutput {
     pub actual_fee: Fee,
@@ -148,7 +148,7 @@ pub struct DeployAccountTransactionOutput {
     pub events: Vec<Event>,
 }
 
-/// A deploy transaction output in StarkNet.
+/// A deploy transaction output.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeployTransactionOutput {
     pub actual_fee: Fee,
@@ -156,7 +156,7 @@ pub struct DeployTransactionOutput {
     pub events: Vec<Event>,
 }
 
-/// An invoke transaction output in StarkNet.
+/// An invoke transaction output.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct InvokeTransactionOutput {
     pub actual_fee: Fee,
@@ -164,7 +164,7 @@ pub struct InvokeTransactionOutput {
     pub events: Vec<Event>,
 }
 
-/// An L1 handler transaction output in StarkNet.
+/// An L1 handler transaction output.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct L1HandlerTransactionOutput {
     pub actual_fee: Fee,
@@ -172,7 +172,7 @@ pub struct L1HandlerTransactionOutput {
     pub events: Vec<Event>,
 }
 
-/// A transaction receipt in StarkNet.
+/// A transaction receipt.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct TransactionReceipt {
     pub transaction_hash: TransactionHash,
@@ -182,7 +182,7 @@ pub struct TransactionReceipt {
     pub output: TransactionOutput,
 }
 
-/// A fee in StarkNet.
+/// A fee.
 #[derive(
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
@@ -201,47 +201,47 @@ impl From<Fee> for PrefixedBytesAsHex<16_usize> {
     }
 }
 
-/// The hash of a transaction in a StarkNet.
+/// The hash of a [Transaction](`crate::transaction::Transaction`).
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct TransactionHash(pub StarkHash);
 
-/// A contract address salt in StarkNet.
+/// A contract address salt.
 #[derive(
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct ContractAddressSalt(pub StarkHash);
 
-/// A transaction signature in StarkNet.
+/// A transaction signature.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct TransactionSignature(pub Vec<StarkFelt>);
 
-/// A transaction version in StarkNet.
+/// A transaction version.
 #[derive(
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct TransactionVersion(pub StarkFelt);
 
-/// The calldata of a transaction in StarkNet.
+/// The calldata of a transaction.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct CallData(pub Vec<StarkFelt>);
 
-/// An L1 to L2 message in StarkNet.
+/// An L1 to L2 message.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct MessageToL2 {
     pub from_address: EthAddress,
     pub payload: L1ToL2Payload,
 }
 
-/// An L2 to L1 message in StarkNet.
+/// An L2 to L1 message.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct MessageToL1 {
     pub to_address: EthAddress,
     pub payload: L2ToL1Payload,
 }
 
-/// An Ethereum address in StarkNet.
+/// An Ethereum address.
 #[derive(
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
@@ -255,7 +255,7 @@ pub struct L1ToL2Payload(pub Vec<StarkFelt>);
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct L2ToL1Payload(pub Vec<StarkFelt>);
 
-/// An event in StarkNet.
+/// An event.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct Event {
     pub from_address: ContractAddress,
@@ -263,28 +263,28 @@ pub struct Event {
     pub content: EventContent,
 }
 
-/// An event content in StarkNet.
+/// An event content.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct EventContent {
     pub keys: Vec<EventKey>,
     pub data: EventData,
 }
 
-/// An event key in StarkNet.
+/// An event key.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct EventKey(pub StarkFelt);
 
-/// An event data in StarkNet.
+/// An event data.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct EventData(pub Vec<StarkFelt>);
 
-/// The index of a transaction in a StarkNet [`BlockBody`](crate::BlockBody).
+/// The index of a transaction in [BlockBody](`crate::block::BlockBody`).
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct TransactionOffsetInBlock(pub usize);
 
-/// The index of an event in a StarkNet [`TransactionOutput`](crate::TransactionOutput).
+/// The index of an event in [TransactionOutput](`crate::transaction::TransactionOutput`).
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]

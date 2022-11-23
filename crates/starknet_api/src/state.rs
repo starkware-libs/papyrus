@@ -12,7 +12,7 @@ use crate::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, Patrici
 use crate::hash::{StarkFelt, StarkHash};
 use crate::StarknetApiError;
 
-/// The differences between two states in StarkNet.
+/// The differences between two states.
 // Invariant: Addresses are strictly increasing.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct StateDiff {
@@ -59,22 +59,18 @@ impl StateDiff {
         Ok(Self { deployed_contracts, storage_diffs, declared_classes: declared_contracts, nonces })
     }
 
-    /// Getter for the deployed contracts in a StarkNet [StateDiff](`crate::state::StateDiff`).
     pub fn deployed_contracts(&self) -> &[DeployedContract] {
         &self.deployed_contracts
     }
 
-    /// Getter for the storage diffs in a StarkNet [StateDiff](`crate::state::StateDiff`).
     pub fn storage_diffs(&self) -> &[StorageDiff] {
         &self.storage_diffs
     }
 
-    /// Getter for the declared classes in a StarkNet [StateDiff](`crate::state::StateDiff`).
     pub fn declared_contracts(&self) -> &[DeclaredContract] {
         &self.declared_classes
     }
 
-    /// Getter for the contract nonces in a StarkNet [StateDiff](`crate::state::StateDiff`).
     pub fn nonces(&self) -> &[ContractNonce] {
         &self.nonces
     }
@@ -89,28 +85,28 @@ impl From<StateDiff> for StateDiffAsTuple {
     }
 }
 
-/// The nonce of a StarkNet [DeployedContract](`crate::state::DeployedContract`).
+/// The nonce of a [DeployedContract](`crate::state::DeployedContract`).
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ContractNonce {
     pub contract_address: ContractAddress,
     pub nonce: Nonce,
 }
 
-/// A deployed contract in StarkNet.
+/// A deployed contract.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeployedContract {
     pub address: ContractAddress,
     pub class_hash: ClassHash,
 }
 
-/// A declared contract in StarkNet.
+/// A declared contract.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct DeclaredContract {
     pub class_hash: ClassHash,
     pub contract_class: ContractClass,
 }
 
-/// Storage differences in StarkNet.
+/// Storage differences of a [DeployedContract](`crate::state::DeployedContract`).
 // Invariant: Storage keys are strictly increasing. In particular, no key appears twice.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StorageDiff {
@@ -132,13 +128,12 @@ impl StorageDiff {
         Ok(Self { address, storage_entries })
     }
 
-    /// Getter for the storage entries in a StarkNet [StorageDiff](`crate::state::StorageDiff`).
     pub fn storage_entries(&self) -> &[StorageEntry] {
         &self.storage_entries
     }
 }
 
-/// The sequential numbering of the states between blocks in StarkNet.
+/// The sequential numbering of the states between blocks.
 // Example:
 // States: S0       S1       S2
 // Blocks      B0->     B1->
@@ -171,7 +166,7 @@ impl StateNumber {
     }
 }
 
-/// A contract class in StarkNet.
+/// A contract class.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ContractClass {
     pub abi: Option<Vec<ContractClassAbiEntry>>,
@@ -180,7 +175,7 @@ pub struct ContractClass {
     pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
 }
 
-/// An entry point type of a [ContractClass](`crate::state::ContractClass`) in StarkNet.
+/// An entry point type of a [ContractClass](`crate::state::ContractClass`).
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(deny_unknown_fields)]
 pub enum EntryPointType {
@@ -201,20 +196,20 @@ impl Default for EntryPointType {
     }
 }
 
-/// An entry point of a [ContractClass](`crate::state::ContractClass`) in StarkNet.
+/// An entry point of a [ContractClass](`crate::state::ContractClass`).
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct EntryPoint {
     pub selector: EntryPointSelector,
     pub offset: EntryPointOffset,
 }
 
-/// The offset of an [EntryPoint](`crate::state::EntryPoint`) in StarkNet.
+/// The offset of an [EntryPoint](`crate::state::EntryPoint`).
 #[derive(
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct EntryPointOffset(pub StarkFelt);
 
-/// A program corresponding to a [ContractClass](`crate::state::ContractClass`) in StarkNet.
+/// A program corresponding to a [ContractClass](`crate::state::ContractClass`).
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct Program {
     #[serde(default)]
@@ -231,7 +226,7 @@ pub struct Program {
     pub reference_manager: serde_json::Value,
 }
 
-/// A [ContractClass](`crate::state::ContractClass`) abi entry in StarkNet.
+/// A [ContractClass](`crate::state::ContractClass`) abi entry.
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
@@ -244,7 +239,7 @@ pub enum ContractClassAbiEntry {
     Struct(StructAbiEntry),
 }
 
-/// An event abi entry in StarkNet.
+/// An event abi entry.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct EventAbiEntry {
     pub name: String,
@@ -252,7 +247,7 @@ pub struct EventAbiEntry {
     pub data: Vec<TypedParameter>,
 }
 
-/// A function abi entry with type in StarkNet.
+/// A function abi entry with type.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct FunctionAbiEntryWithType {
     pub r#type: FunctionAbiEntryType,
@@ -260,7 +255,7 @@ pub struct FunctionAbiEntryWithType {
     pub entry: FunctionAbiEntry,
 }
 
-/// A function abi entry type in StarkNet.
+/// A function abi entry type.
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub enum FunctionAbiEntryType {
     #[serde(rename = "constructor")]
@@ -277,7 +272,7 @@ impl Default for FunctionAbiEntryType {
     }
 }
 
-/// A function abi entry in StarkNet.
+/// A function abi entry.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct FunctionAbiEntry {
     pub name: String,
@@ -285,7 +280,7 @@ pub struct FunctionAbiEntry {
     pub outputs: Vec<TypedParameter>,
 }
 
-/// A struct abi entry in StarkNet.
+/// A struct abi entry.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct StructAbiEntry {
     pub name: String,
@@ -307,7 +302,7 @@ pub struct TypedParameter {
     pub r#type: String,
 }
 
-/// A storage key in a StarkNet contract.
+/// A storage key in a contract.
 #[derive(
     Debug, Default, Clone, Copy, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
@@ -321,7 +316,7 @@ impl TryFrom<StarkHash> for StorageKey {
     }
 }
 
-/// A storage entry in a StarkNet contract.
+/// A storage entry in a contract.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StorageEntry {
     pub key: StorageKey,

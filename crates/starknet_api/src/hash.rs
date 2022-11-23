@@ -23,7 +23,7 @@ const CHOOSER_HALF: u8 = 14;
 pub type StarkFelt = StarkHash;
 
 // TODO: Move to a different crate.
-/// A hash in StarkNet.
+/// A hash.
 #[derive(Copy, Clone, Eq, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(try_from = "PrefixedBytesAsHex<32_usize>", into = "PrefixedBytesAsHex<32_usize>")]
 pub struct StarkHash([u8; 32]);

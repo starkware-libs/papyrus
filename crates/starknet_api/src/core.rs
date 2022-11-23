@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::hash::{StarkFelt, StarkHash};
 use crate::StarknetApiError;
 
-/// StarkNet chain id.
+/// A chain id.
 #[derive(Clone, Debug, Display, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ChainId(pub String);
 
@@ -20,7 +20,7 @@ impl ChainId {
     }
 }
 
-/// The address of a StarkNet [Contract](`crate::state::ContractClass`).
+/// The address of a [DeployedContract](`crate::state::DeployedContract`).
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
@@ -33,7 +33,7 @@ impl TryFrom<StarkHash> for ContractAddress {
     }
 }
 
-/// The hash of a StarkNet [Contract](`crate::state::ContractClass`).
+/// The hash of a [ContractClass](`crate::state::ContractClass`).
 #[derive(
     Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
@@ -49,14 +49,14 @@ impl Default for Nonce {
     }
 }
 
-/// The selector of an [EntryPoint](`crate::state::EntryPoint`) in StarkNet.
+/// The selector of an [EntryPoint](`crate::state::EntryPoint`).
 #[derive(
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
 pub struct EntryPointSelector(pub StarkHash);
 
-/// Key for nodes of Patricia tree.
-/// Invariant: key is in range.
+/// A key for nodes of a Patricia tree.
+// Invariant: key is in range.
 #[derive(Copy, Clone, Eq, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct PatriciaKey(StarkHash);
 
