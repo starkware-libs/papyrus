@@ -2,25 +2,26 @@ use crate::hash::StarkHash;
 use crate::shash;
 
 #[test]
-fn hash_macro() {
+fn hash_macro() -> Result<(), anyhow::Error> {
     assert_eq!(
         shash!("0x123"),
         StarkHash::new([
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0x1, 0x23
-        ])
-        .unwrap()
+        ])?
     );
+    Ok(())
 }
 
 #[test]
-fn hash_json_serde() {
+fn hash_json_serde() -> Result<(), anyhow::Error> {
     let hash = shash!("0x123");
-    assert_eq!(hash, serde_json::from_str(&serde_json::to_string(&hash).unwrap()).unwrap());
+    assert_eq!(hash, serde_json::from_str(&serde_json::to_string(&hash)?)?);
+    Ok(())
 }
 
 #[test]
-fn hash_serde() {
+fn hash_serde() -> Result<(), anyhow::Error> {
     fn enc_len(n_nibbles: usize) -> usize {
         match n_nibbles {
             0..=27 => n_nibbles / 2 + 1,
@@ -36,7 +37,7 @@ fn hash_serde() {
         for i in 0..n_nibbles {
             bytes[31 - (i >> 1)] |= 15 << (4 * (i & 1));
         }
-        let h = StarkHash::new(bytes).unwrap();
+        let h = StarkHash::new(bytes)?;
         let mut res = Vec::new();
         assert!(h.serialize(&mut res).is_ok());
         assert_eq!(res.len(), enc_len(n_nibbles));
@@ -44,4 +45,5 @@ fn hash_serde() {
         let d = StarkHash::deserialize(&mut reader).unwrap();
         assert_eq!(bytes, d.0);
     }
+    Ok(())
 }

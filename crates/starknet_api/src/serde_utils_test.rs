@@ -29,34 +29,36 @@ fn hex_str_from_bytes_zero() {
 }
 
 #[test]
-fn bytes_from_hex_str_scenarios() {
+fn bytes_from_hex_str_scenarios() -> Result<(), anyhow::Error> {
     // even length.
     let hex_str = "0x6a";
-    let res = bytes_from_hex_str::<1, true>(hex_str).unwrap();
+    let res = bytes_from_hex_str::<1, true>(hex_str)?;
     assert_eq!(res, [106]);
 
     // odd length.
     let hex_str = "0x6";
-    let res = bytes_from_hex_str::<1, true>(hex_str).unwrap();
+    let res = bytes_from_hex_str::<1, true>(hex_str)?;
     assert_eq!(res, [6]);
 
     // No prefix.
     let hex_str = "6";
-    let res = bytes_from_hex_str::<1, false>(hex_str).unwrap();
+    let res = bytes_from_hex_str::<1, false>(hex_str)?;
     assert_eq!(res, [6]);
+    Ok(())
 }
 
 #[test]
-fn bytes_from_hex_str_padding() {
+fn bytes_from_hex_str_padding() -> Result<(), anyhow::Error> {
     // even length.
     let hex_str = "0xda2b";
-    let res = bytes_from_hex_str::<4, true>(hex_str).unwrap();
+    let res = bytes_from_hex_str::<4, true>(hex_str)?;
     assert_eq!(res, [0, 0, 218, 43]);
 
     // odd length.
     let hex_str = "0xda2";
-    let res = bytes_from_hex_str::<4, true>(hex_str).unwrap();
+    let res = bytes_from_hex_str::<4, true>(hex_str)?;
     assert_eq!(res, [0, 0, 13, 162]);
+    Ok(())
 }
 
 #[test]
@@ -92,19 +94,15 @@ fn bytes_from_hex_str_errors() {
 }
 
 #[test]
-fn hex_as_bytes_serde_prefixed() {
+fn hex_as_bytes_serde_prefixed() -> Result<(), anyhow::Error> {
     let hex_as_bytes = BytesAsHex::<3, true>([1, 2, 3]);
-    assert_eq!(
-        hex_as_bytes,
-        serde_json::from_str(&serde_json::to_string(&hex_as_bytes).unwrap()).unwrap()
-    );
+    assert_eq!(hex_as_bytes, serde_json::from_str(&serde_json::to_string(&hex_as_bytes)?)?);
+    Ok(())
 }
 
 #[test]
-fn hex_as_bytes_serde_not_prefixed() {
+fn hex_as_bytes_serde_not_prefixed() -> Result<(), anyhow::Error> {
     let hex_as_bytes = BytesAsHex::<3, false>([1, 2, 3]);
-    assert_eq!(
-        hex_as_bytes,
-        serde_json::from_str(&serde_json::to_string(&hex_as_bytes).unwrap()).unwrap()
-    );
+    assert_eq!(hex_as_bytes, serde_json::from_str(&serde_json::to_string(&hex_as_bytes)?)?);
+    Ok(())
 }

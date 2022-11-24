@@ -5,10 +5,11 @@ use crate::hash::StarkHash;
 use crate::shash;
 
 #[test]
-fn patricia_key_valid() {
+fn patricia_key_valid() -> Result<(), anyhow::Error> {
     let hash = shash!("0x123");
-    let patricia_key = PatriciaKey::try_from(hash).unwrap();
+    let patricia_key = PatriciaKey::try_from(hash)?;
     assert_eq!(patricia_key.0, hash);
+    Ok(())
 }
 
 #[test]
