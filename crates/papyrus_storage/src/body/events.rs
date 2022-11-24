@@ -40,10 +40,7 @@ impl Iterator for EventIter<'_, '_> {
             EventIter::ByContractAddress(it) => it.next(),
             EventIter::ByEventIndex(it) => it.next(),
         };
-        if res.is_err() {
-            return None;
-        }
-        res.unwrap()
+        res.ok()?
     }
 }
 

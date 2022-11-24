@@ -6,7 +6,7 @@ use super::JsonRpcServerImpl;
 
 #[tokio::test]
 async fn test_stats() -> Result<(), anyhow::Error> {
-    let (storage_reader, mut _storage_writer) = test_utils::get_test_storage();
+    let (storage_reader, mut _storage_writer) = test_utils::get_test_storage()?;
     let module = JsonRpcServerImpl { storage_reader }.into_rpc();
     let stats =
         module.call::<_, DbTablesStats>("starknet_dbTablesStats", EmptyParams::new()).await?;

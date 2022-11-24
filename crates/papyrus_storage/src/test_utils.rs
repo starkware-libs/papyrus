@@ -25,16 +25,16 @@ use web3::types::H160;
 use crate::db::DbConfig;
 use crate::{open_storage, StorageReader, StorageWriter};
 
-pub fn get_test_config() -> DbConfig {
-    let dir = tempdir().unwrap();
-    DbConfig {
+pub fn get_test_config() -> Result<DbConfig, anyhow::Error> {
+    let dir = tempdir()?;
+    Ok(DbConfig {
         path: dir.path().to_str().unwrap().to_string(),
         max_size: 1 << 35, // 32GB.
-    }
+    })
 }
-pub fn get_test_storage() -> (StorageReader, StorageWriter) {
-    let config = get_test_config();
-    open_storage(config).expect("Failed to open storage.")
+pub fn get_test_storage() -> Result<(StorageReader, StorageWriter), anyhow::Error> {
+    let config = get_test_config()?;
+    Ok(open_storage(config)?)
 }
 
 pub fn read_json_file(path_in_resource_dir: &str) -> Result<serde_json::Value, anyhow::Error> {
@@ -61,7 +61,7 @@ fn read_json_file_from_dir(
 }
 
 /// Returns a test block body with a variable number of transactions.
-pub fn get_test_body(transaction_count: usize) -> BlockBody {
+pub fn get_test_body(transaction_count: usize) -> Result<BlockBody, anyhow::Error> {
     let mut transactions = vec![];
     let mut transaction_outputs = vec![];
     for i in 0..transaction_count {
@@ -122,10 +122,10 @@ pub fn get_test_body(transaction_count: usize) -> BlockBody {
         transaction_outputs.push(transaction_output);
     }
 
-    BlockBody::new(transactions, transaction_outputs).unwrap()
+    Ok(BlockBody::new(transactions, transaction_outputs)?)
 }
 
-pub fn get_test_block(transaction_count: usize) -> Block {
+pub fn get_test_block(transaction_count: usize) -> Result<Block, anyhow::Error> {
     let header = BlockHeader {
         block_hash: BlockHash(shash!(
             "0x7d328a71faf48c5c3857e99f20a77b18522480956d1cd5bff1ff2df3c8b427b"
@@ -137,11 +137,11 @@ pub fn get_test_block(transaction_count: usize) -> Block {
         ..BlockHeader::default()
     };
 
-    Block { header, body: get_test_body(transaction_count) }
+    Ok(Block { header, body: get_test_body(transaction_count)? })
 }
 
 /// Returns the body of block number 1 in starknet mainnet.
-pub fn get_alpha4_starknet_body() -> BlockBody {
+pub fn get_alpha4_starknet_body() -> Result<BlockBody, anyhow::Error> {
     let transactions = vec![
         Transaction::Deploy(DeployTransaction {
             transaction_hash: TransactionHash(shash!(
@@ -232,21 +232,20 @@ pub fn get_alpha4_starknet_body() -> BlockBody {
         TransactionOutput::Invoke(InvokeTransactionOutput {
             actual_fee: Fee::default(),
             messages_sent: vec![MessageToL1 {
-                to_address: EthAddress(H160(
-                    bytes_from_hex_str::<20, true>("0xe3402aF6cc1BCa3f22D738AB935a5Dd8AD1Fb230")
-                        .unwrap(),
-                )),
+                to_address: EthAddress(H160(bytes_from_hex_str::<20, true>(
+                    "0xe3402aF6cc1BCa3f22D738AB935a5Dd8AD1Fb230",
+                )?)),
                 payload: L2ToL1Payload(vec![shash!("0xc"), shash!("0x22")]),
             }],
             events: vec![],
         }),
     ];
 
-    BlockBody::new(transactions, transaction_outputs).unwrap()
+    Ok(BlockBody::new(transactions, transaction_outputs)?)
 }
 
 /// Returns block number 1 in starknet mainnet.
-pub fn get_alpha4_starknet_block() -> Block {
+pub fn get_alpha4_starknet_block() -> Result<Block, anyhow::Error> {
     let header = BlockHeader {
         block_hash: BlockHash(shash!(
             "0x75e00250d4343326f322e370df4c9c73c7be105ad9f532eeb97891a34d9e4a5"
@@ -263,10 +262,11 @@ pub fn get_alpha4_starknet_block() -> Block {
         timestamp: BlockTimestamp(1636989916),
     };
 
-    Block { header, body: get_alpha4_starknet_body() }
+    Ok(Block { header, body: get_alpha4_starknet_body()? })
 }
 
-pub fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff, Vec<DeclaredContract>) {
+pub fn get_test_state_diff()
+-> Result<(BlockHeader, BlockHeader, StateDiff, Vec<DeclaredContract>), anyhow::Error> {
     let parent_hash =
         BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
     let state_root = GlobalRoot(shash!("0x12"));
@@ -291,8 +291,8 @@ pub fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff, Vec<Declar
     ));
     let hash0 =
         ClassHash(shash!("0x10455c752b86932ce552f2b0fe81a880746649b9aee7e0d842bf3f52378f9f8"));
-    let class_value = read_json_file_from_storage_resources("contract_class.json").unwrap();
-    let class0 = serde_json::from_value(class_value).unwrap();
+    let class_value = read_json_file_from_storage_resources("contract_class.json")?;
+    let class0 = serde_json::from_value(class_value)?;
     let address1 = ContractAddress(patky!("0x21"));
     let hash1 = ClassHash(shash!("0x5"));
     let class1 = ContractClass::default();
@@ -311,28 +311,24 @@ pub fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff, Vec<Declar
             DeployedContract { address: address0, class_hash: hash0 },
             DeployedContract { address: address1, class_hash: hash1 },
         ],
-        vec![
-            StorageDiff::new(
-                address0,
-                vec![
-                    StorageEntry { key: key0, value: value0 },
-                    StorageEntry { key: key1, value: value1 },
-                ],
-            )
-            .unwrap(),
-        ],
+        vec![StorageDiff::new(
+            address0,
+            vec![
+                StorageEntry { key: key0, value: value0 },
+                StorageEntry { key: key1, value: value1 },
+            ],
+        )?],
         vec![
             DeclaredContract { class_hash: hash1, contract_class: class1.clone() },
             DeclaredContract { class_hash: hash2, contract_class: class2 },
         ],
         vec![ContractNonce { contract_address: address0, nonce: Nonce(StarkHash::from(1)) }],
-    )
-    .unwrap();
+    )?;
 
     let deployed_contract_class_definitions = vec![
         DeclaredContract { class_hash: hash0, contract_class: class0 },
         DeclaredContract { class_hash: hash1, contract_class: class1 },
     ];
 
-    (parent_header, header, diff, deployed_contract_class_definitions)
+    Ok((parent_header, header, diff, deployed_contract_class_definitions))
 }

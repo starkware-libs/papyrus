@@ -9,23 +9,21 @@ use crate::{StorageError, StorageWriter, TransactionIndex};
 
 #[tokio::test]
 async fn append_body() -> Result<(), anyhow::Error> {
-    let (reader, mut writer) = get_test_storage();
-    let body = get_test_block(10).body;
+    let (reader, mut writer) = get_test_storage()?;
+    let body = get_test_block(10)?.body;
     let txs = body.transactions();
     let tx_outputs = body.transaction_outputs();
 
-    let body0 = BlockBody::new(vec![txs[0].clone()], vec![tx_outputs[0].clone()]).unwrap();
-    let body1 = BlockBody::new(vec![], vec![]).unwrap();
+    let body0 = BlockBody::new(vec![txs[0].clone()], vec![tx_outputs[0].clone()])?;
+    let body1 = BlockBody::new(vec![], vec![])?;
     let body2 = BlockBody::new(
         vec![txs[1].clone(), txs[2].clone()],
         vec![tx_outputs[1].clone(), tx_outputs[2].clone()],
-    )
-    .unwrap();
+    )?;
     let body3 = BlockBody::new(
         vec![txs[3].clone(), txs[0].clone()],
         vec![tx_outputs[3].clone(), tx_outputs[0].clone()],
-    )
-    .unwrap();
+    )?;
     writer
         .begin_rw_txn()?
         .append_body(BlockNumber(0), body0)?
@@ -131,7 +129,7 @@ async fn append_body() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn revert_non_existing_body_fails() -> Result<(), anyhow::Error> {
-    let (_, mut writer) = get_test_storage();
+    let (_, mut writer) = get_test_storage()?;
     if let Err(err) = writer.begin_rw_txn()?.revert_body(BlockNumber(5)) {
         assert_matches!(
             err,
@@ -149,7 +147,7 @@ async fn revert_non_existing_body_fails() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn revert_last_body_success() -> Result<(), anyhow::Error> {
-    let (_, mut writer) = get_test_storage();
+    let (_, mut writer) = get_test_storage()?;
     writer.begin_rw_txn()?.append_body(BlockNumber(0), BlockBody::default())?.commit()?;
     writer.begin_rw_txn()?.revert_body(BlockNumber(0))?.commit()?;
     Ok(())
@@ -157,7 +155,7 @@ async fn revert_last_body_success() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn revert_old_body_fails() -> Result<(), anyhow::Error> {
-    let (_, mut writer) = get_test_storage();
+    let (_, mut writer) = get_test_storage()?;
     append_2_bodies(&mut writer)?;
     if let Err(err) = writer.begin_rw_txn()?.revert_body(BlockNumber(0)) {
         assert_matches!(
@@ -176,7 +174,7 @@ async fn revert_old_body_fails() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn revert_body_updates_marker() -> Result<(), anyhow::Error> {
-    let (reader, mut writer) = get_test_storage();
+    let (reader, mut writer) = get_test_storage()?;
     append_2_bodies(&mut writer)?;
 
     // Verify that the body marker before revert is 2.
@@ -190,7 +188,7 @@ async fn revert_body_updates_marker() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn get_reverted_body_returns_none() -> Result<(), anyhow::Error> {
-    let (reader, mut writer) = get_test_storage();
+    let (reader, mut writer) = get_test_storage()?;
     append_2_bodies(&mut writer)?;
 
     // Verify that we can get block 1's transactions before the revert.
@@ -206,8 +204,8 @@ async fn get_reverted_body_returns_none() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn revert_transactions() -> Result<(), anyhow::Error> {
-    let (reader, mut writer) = get_test_storage();
-    let body = get_test_body(10);
+    let (reader, mut writer) = get_test_storage()?;
+    let body = get_test_body(10)?;
     writer.begin_rw_txn()?.append_body(BlockNumber(0), body.clone())?.commit()?;
 
     for (offset, tx_hash) in body.transactions().iter().map(|tx| tx.transaction_hash()).enumerate()

@@ -14,9 +14,9 @@ use crate::{EventIndex, TransactionIndex};
 
 #[tokio::test]
 async fn iter_events_by_key() -> Result<(), anyhow::Error> {
-    let (storage_reader, mut storage_writer) = get_test_storage();
+    let (storage_reader, mut storage_writer) = get_test_storage()?;
 
-    let block = get_test_block(2);
+    let block = get_test_block(2)?;
     let block_number = block.header.block_number;
     storage_writer
         .begin_rw_txn()?
@@ -91,9 +91,9 @@ async fn iter_events_by_key() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn iter_events_by_index() -> Result<(), anyhow::Error> {
-    let (storage_reader, mut storage_writer) = get_test_storage();
+    let (storage_reader, mut storage_writer) = get_test_storage()?;
 
-    let block = get_test_block(2);
+    let block = get_test_block(2)?;
     let block_number = block.header.block_number;
     storage_writer
         .begin_rw_txn()?

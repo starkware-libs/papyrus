@@ -39,9 +39,8 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
                     StorageEntry { key: key0, value: shash!("0x200") },
                     StorageEntry { key: key1, value: shash!("0x201") },
                 ],
-            )
-            .unwrap(),
-            StorageDiff::new(c1, vec![]).unwrap(),
+            )?,
+            StorageDiff::new(c1, vec![])?,
         ],
         vec![
             DeclaredContract { class_hash: cl0, contract_class: c_cls0.clone() },
@@ -58,9 +57,8 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
                     StorageEntry { key: key0, value: shash!("0x300") },
                     StorageEntry { key: key1, value: shash!("0x0") },
                 ],
-            )
-            .unwrap(),
-            StorageDiff::new(c1, vec![StorageEntry { key: key0, value: shash!("0x0") }]).unwrap(),
+            )?,
+            StorageDiff::new(c1, vec![StorageEntry { key: key0, value: shash!("0x0") }])?,
         ],
         vec![DeclaredContract { class_hash: cl0, contract_class: c_cls0.clone() }],
         vec![
@@ -70,7 +68,7 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
         ],
     )?;
 
-    let (_, mut writer) = get_test_storage();
+    let (_, mut writer) = get_test_storage()?;
     let mut txn = writer.begin_rw_txn()?;
     assert_eq!(txn.get_state_diff(BlockNumber(0))?, None);
     assert_eq!(txn.get_state_diff(BlockNumber(1))?, None);
@@ -187,7 +185,7 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
 
 #[test]
 fn revert_non_existing_state_diff() -> Result<(), anyhow::Error> {
-    let (_, mut writer) = get_test_storage();
+    let (_, mut writer) = get_test_storage()?;
 
     let mut logger = Logger::start();
     let block_number = BlockNumber(5);
@@ -203,8 +201,8 @@ fn revert_non_existing_state_diff() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn revert_last_state_diff_success() -> Result<(), anyhow::Error> {
-    let (_, mut writer) = get_test_storage();
-    let (_, _, state_diff, declared_contracts) = get_test_state_diff();
+    let (_, mut writer) = get_test_storage()?;
+    let (_, _, state_diff, declared_contracts) = get_test_state_diff()?;
     writer
         .begin_rw_txn()?
         .append_state_diff(BlockNumber(0), state_diff, declared_contracts)?
@@ -216,7 +214,7 @@ async fn revert_last_state_diff_success() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn revert_old_state_diff_fails() -> Result<(), anyhow::Error> {
-    let (_, mut writer) = get_test_storage();
+    let (_, mut writer) = get_test_storage()?;
     append_2_state_diffs(&mut writer)?;
     if let Err(err) = writer.begin_rw_txn()?.revert_state_diff(BlockNumber(0)) {
         assert_matches!(
@@ -235,7 +233,7 @@ async fn revert_old_state_diff_fails() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn revert_state_diff_updates_marker() -> Result<(), anyhow::Error> {
-    let (reader, mut writer) = get_test_storage();
+    let (reader, mut writer) = get_test_storage()?;
     append_2_state_diffs(&mut writer)?;
 
     // Verify that the state marker before revert is 2.
@@ -249,7 +247,7 @@ async fn revert_state_diff_updates_marker() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn get_reverted_state_diff_returns_none() -> Result<(), anyhow::Error> {
-    let (reader, mut writer) = get_test_storage();
+    let (reader, mut writer) = get_test_storage()?;
     append_2_state_diffs(&mut writer)?;
 
     // Verify that we can get block 1's state before the revert.
@@ -292,7 +290,7 @@ fn revert_doesnt_delete_previously_declared_classes() -> Result<(), anyhow::Erro
         vec![ContractNonce { contract_address: c1, nonce: Nonce(StarkHash::from(2)) }],
     )?;
 
-    let (reader, mut writer) = get_test_storage();
+    let (reader, mut writer) = get_test_storage()?;
     writer
         .begin_rw_txn()?
         .append_state_diff(BlockNumber(0), diff0, vec![])?

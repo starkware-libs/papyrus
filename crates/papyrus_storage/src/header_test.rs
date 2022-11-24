@@ -9,7 +9,7 @@ use crate::{StorageError, StorageWriter};
 
 #[tokio::test]
 async fn append_header() -> Result<(), anyhow::Error> {
-    let (reader, mut writer) = get_test_storage();
+    let (reader, mut writer) = get_test_storage()?;
 
     // Check for MarkerMismatch error  when trying to append the wrong block number.
     if let Err(err) = writer.begin_rw_txn()?.append_header(BlockNumber(5), &BlockHeader::default())
@@ -43,7 +43,7 @@ async fn append_header() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn revert_non_existing_header_fails() -> Result<(), anyhow::Error> {
-    let (_, mut writer) = get_test_storage();
+    let (_, mut writer) = get_test_storage()?;
     if let Err(err) = writer.begin_rw_txn()?.revert_header(BlockNumber(5)) {
         assert_matches!(
             err,
@@ -61,7 +61,7 @@ async fn revert_non_existing_header_fails() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn revert_last_header_success() -> Result<(), anyhow::Error> {
-    let (_, mut writer) = get_test_storage();
+    let (_, mut writer) = get_test_storage()?;
     writer.begin_rw_txn()?.append_header(BlockNumber(0), &BlockHeader::default())?.commit()?;
     writer.begin_rw_txn()?.revert_header(BlockNumber(0))?.commit()?;
     Ok(())
@@ -69,7 +69,7 @@ async fn revert_last_header_success() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn revert_old_header_fails() -> Result<(), anyhow::Error> {
-    let (_, mut writer) = get_test_storage();
+    let (_, mut writer) = get_test_storage()?;
     append_2_headers(&mut writer)?;
     if let Err(err) = writer.begin_rw_txn()?.revert_header(BlockNumber(0)) {
         assert_matches!(
@@ -88,7 +88,7 @@ async fn revert_old_header_fails() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn revert_header_updates_marker() -> Result<(), anyhow::Error> {
-    let (reader, mut writer) = get_test_storage();
+    let (reader, mut writer) = get_test_storage()?;
     append_2_headers(&mut writer)?;
 
     // Verify that the header marker before revert is 2.
@@ -102,7 +102,7 @@ async fn revert_header_updates_marker() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn get_reverted_header_returns_none() -> Result<(), anyhow::Error> {
-    let (reader, mut writer) = get_test_storage();
+    let (reader, mut writer) = get_test_storage()?;
     append_2_headers(&mut writer)?;
 
     // Verify that we can get block 1's header before the revert.
@@ -116,7 +116,7 @@ async fn get_reverted_header_returns_none() -> Result<(), anyhow::Error> {
 
 #[tokio::test]
 async fn get_reverted_block_number_by_hash_returns_none() -> Result<(), anyhow::Error> {
-    let (reader, mut writer) = get_test_storage();
+    let (reader, mut writer) = get_test_storage()?;
     append_2_headers(&mut writer)?;
 
     let block_hash = BlockHash(shash!("0x1"));
