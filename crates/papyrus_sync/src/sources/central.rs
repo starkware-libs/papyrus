@@ -8,7 +8,7 @@ use futures_util::StreamExt;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockNumber};
-use starknet_api::state::{DeclaredContract, StateDiff};
+use starknet_api::state::{ContractNonce, DeclaredContract, StateDiff};
 use starknet_api::StarknetApiError;
 use starknet_client::{
     client_to_starknet_api_storage_diff, ClientCreationError, ClientError, RetryConfig,
@@ -97,8 +97,16 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                                         state_update.state_diff.deployed_contracts,
                                         storage_diffs,
                                         declared_classes.to_vec(),
-                                        // TODO(dan): fix once nonces are available.
-                                        vec![],
+                                        state_update
+                                        .state_diff
+                                        .nonces
+                                        .into_iter()
+                                        .map(|(contract_address, nonce)| ContractNonce {
+                                            contract_address,
+                                            nonce,
+                                        })
+                                        .collect(),
+
                                     );
                                     match maybe_state_diff {
                                         Ok(state_diff) => {

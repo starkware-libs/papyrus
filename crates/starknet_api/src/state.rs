@@ -54,7 +54,9 @@ impl StateDiff {
             });
         }
 
-        // TODO: Once nonces are implemented, verify their uniqueness.
+        if !is_unique(&nonces, |contract_nonce| &contract_nonce.contract_address) {
+            return Err(StarknetApiError::DuplicateInStateDiff { object: "nonces".to_string() });
+        }
 
         Ok(Self { deployed_contracts, storage_diffs, declared_classes: declared_contracts, nonces })
     }
