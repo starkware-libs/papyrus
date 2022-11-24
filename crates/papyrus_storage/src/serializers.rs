@@ -459,7 +459,7 @@ auto_storage_serde! {
         pub selector: EntryPointSelector,
         pub offset: EntryPointOffset,
     }
-    pub struct EntryPointOffset(pub StarkFelt);
+    pub struct EntryPointOffset(pub usize);
     pub struct EntryPointSelector(pub StarkHash);
     pub enum EntryPointType {
         Constructor = 0,
