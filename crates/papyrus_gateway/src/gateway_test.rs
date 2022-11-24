@@ -13,11 +13,11 @@ use papyrus_storage::test_utils::{
 };
 use papyrus_storage::{BodyStorageWriter, HeaderStorageWriter, StateStorageWriter};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
-use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::shash;
 use starknet_api::state::StateDiff;
 use starknet_api::transaction::TransactionHash;
+use starknet_api::{patky, shash};
 
 use super::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcClient, JsonRpcError, JsonRpcServer, Tag,
@@ -287,7 +287,7 @@ async fn get_storage_at() -> Result<(), anyhow::Error> {
         .call::<_, StarkFelt>(
             "starknet_getStorageAt",
             (
-                ContractAddress::try_from(shash!("0x12")).unwrap(),
+                ContractAddress(patky!("0x12")),
                 key,
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)),
             ),
@@ -378,7 +378,7 @@ async fn get_class_hash_at() -> Result<(), anyhow::Error> {
             "starknet_getClassHashAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ContractAddress::try_from(shash!("0x12")).unwrap(),
+                ContractAddress(patky!("0x12")),
             ),
         )
         .await
@@ -465,7 +465,7 @@ async fn get_nonce() -> Result<(), anyhow::Error> {
             "starknet_getNonce",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ContractAddress::try_from(shash!("0x31")).unwrap(),
+                ContractAddress(patky!("0x31")),
             ),
         )
         .await
@@ -1001,7 +1001,7 @@ async fn get_class_at() -> Result<(), anyhow::Error> {
             "starknet_getClassAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ContractAddress::try_from(shash!("0x12")).unwrap(),
+                ContractAddress(patky!("0x12")),
             ),
         )
         .await
