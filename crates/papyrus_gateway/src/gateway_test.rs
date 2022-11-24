@@ -23,8 +23,8 @@ use super::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, JsonRpcClient, JsonRpcError, JsonRpcServer, Tag,
 };
 use super::objects::{
-    Block, ContractClass, StateUpdate, TransactionReceipt, TransactionReceiptWithStatus,
-    TransactionStatus, TransactionWithType, Transactions,
+    Block, ContractClass, StateUpdate, ThinStateDiff, TransactionReceipt,
+    TransactionReceiptWithStatus, TransactionStatus, TransactionWithType, Transactions,
 };
 use super::test_utils::{get_test_chain_id, get_test_gateway_config, send_request};
 use super::{run_server, JsonRpcServerImpl};
@@ -258,9 +258,8 @@ async fn get_storage_at() -> Result<(), anyhow::Error> {
         .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
         .commit()?;
 
-    let storage_diff = diff.storage_diffs().index(0);
-    let address = storage_diff.address;
-    let storage_entry = storage_diff.storage_entries().index(0);
+    let (address, storage_entries) = diff.storage_diffs.iter().next().unwrap();
+    let storage_entry = storage_entries.index(0);
     let key = storage_entry.key;
     let expected_value = storage_entry.value;
 
@@ -268,7 +267,7 @@ async fn get_storage_at() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, StarkFelt>(
             "starknet_getStorageAt",
-            (address, key, BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))),
+            (*address, key, BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))),
         )
         .await?;
     assert_eq!(res, expected_value);
@@ -277,7 +276,7 @@ async fn get_storage_at() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, StarkFelt>(
             "starknet_getStorageAt",
-            (address, key, BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))),
+            (*address, key, BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))),
         )
         .await?;
     assert_eq!(res, expected_value);
@@ -305,7 +304,7 @@ async fn get_storage_at() -> Result<(), anyhow::Error> {
         .call::<_, StarkFelt>(
             "starknet_getStorageAt",
             (
-                address,
+                *address,
                 key,
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
@@ -324,7 +323,7 @@ async fn get_storage_at() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, StarkFelt>(
             "starknet_getStorageAt",
-            (address, key, BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))),
+            (*address, key, BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))),
         )
         .await
         .unwrap_err();
@@ -350,27 +349,25 @@ async fn get_class_hash_at() -> Result<(), anyhow::Error> {
         .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
         .commit()?;
 
-    let contract = diff.deployed_contracts().index(0);
-    let address = contract.address;
-    let expected_class_hash = contract.class_hash;
+    let (address, expected_class_hash) = diff.deployed_contracts.iter().next().unwrap();
 
     // Get class hash by block hash.
     let res = module
         .call::<_, ClassHash>(
             "starknet_getClassHashAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address),
         )
         .await?;
-    assert_eq!(res, expected_class_hash);
+    assert_eq!(res, *expected_class_hash);
 
     // Get class hash by block number.
     let res = module
         .call::<_, ClassHash>(
             "starknet_getClassHashAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *address),
         )
         .await?;
-    assert_eq!(res, expected_class_hash);
+    assert_eq!(res, *expected_class_hash);
 
     // Ask for an invalid contract.
     let err = module
@@ -397,7 +394,7 @@ async fn get_class_hash_at() -> Result<(), anyhow::Error> {
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
-                address,
+                *address,
             ),
         )
         .await
@@ -412,7 +409,7 @@ async fn get_class_hash_at() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, ClassHash>(
             "starknet_getClassHashAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), *address),
         )
         .await
         .unwrap_err();
@@ -437,27 +434,25 @@ async fn get_nonce() -> Result<(), anyhow::Error> {
         .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
         .commit()?;
 
-    let contract_nonce = diff.nonces().index(0);
-    let address = contract_nonce.contract_address;
-    let expected_nonce = contract_nonce.nonce;
+    let (address, expected_nonce) = diff.nonces.iter().next().unwrap();
 
     // Get class hash by block hash.
     let res = module
         .call::<_, Nonce>(
             "starknet_getNonce",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address),
         )
         .await?;
-    assert_eq!(res, expected_nonce);
+    assert_eq!(res, *expected_nonce);
 
     // Get class hash by block number.
     let res = module
         .call::<_, Nonce>(
             "starknet_getNonce",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *address),
         )
         .await?;
-    assert_eq!(res, expected_nonce);
+    assert_eq!(res, *expected_nonce);
 
     // Ask for an invalid contract.
     let err = module
@@ -484,7 +479,7 @@ async fn get_nonce() -> Result<(), anyhow::Error> {
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
-                address,
+                *address,
             ),
         )
         .await
@@ -499,7 +494,7 @@ async fn get_nonce() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, Nonce>(
             "starknet_getNonce",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), *address),
         )
         .await
         .unwrap_err();
@@ -726,7 +721,7 @@ async fn get_state_update() -> Result<(), anyhow::Error> {
         block_hash: header.block_hash,
         new_root: header.state_root,
         old_root: parent_header.state_root,
-        state_diff: diff.into(),
+        state_diff: ThinStateDiff::from(papyrus_storage::ThinStateDiff::from(diff)),
     };
 
     // Get state update by block hash.
@@ -851,15 +846,14 @@ async fn get_class() -> Result<(), anyhow::Error> {
         .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
         .commit()?;
 
-    let declared_contract = diff.declared_contracts().index(1);
-    let class_hash = declared_contract.class_hash;
-    let expected_contract_class = declared_contract.contract_class.clone().try_into()?;
+    let (class_hash, contract_class) = diff.declared_classes.iter().nth(1).unwrap();
+    let expected_contract_class = contract_class.clone().try_into()?;
 
     // Get class by block hash.
     let res = module
         .call::<_, ContractClass>(
             "starknet_getClass",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), class_hash),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *class_hash),
         )
         .await?;
     assert_eq!(res, expected_contract_class);
@@ -868,7 +862,7 @@ async fn get_class() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, ContractClass>(
             "starknet_getClass",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), class_hash),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *class_hash),
         )
         .await?;
     assert_eq!(res, expected_contract_class);
@@ -896,7 +890,7 @@ async fn get_class() -> Result<(), anyhow::Error> {
             "starknet_getClass",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_header.block_number)),
-                class_hash,
+                *class_hash,
             ),
         )
         .await
@@ -930,7 +924,7 @@ async fn get_class() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, ContractClass>(
             "starknet_getClass",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))), class_hash),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))), *class_hash),
         )
         .await
         .unwrap_err();
@@ -966,14 +960,12 @@ async fn get_class_at() -> Result<(), anyhow::Error> {
         )?
         .commit()?;
 
-    let deployed_contracts = diff.deployed_contracts();
-    let address = deployed_contracts.index(1).address;
-    let hash = deployed_contracts.index(1).class_hash;
+    let (address, hash) = diff.deployed_contracts.iter().nth(1).unwrap();
     let expected_contract_class = deployed_contract_class_definitions
         .iter()
-        .find(|c| c.class_hash == hash)
+        .find(|(h, _)| h == hash)
         .unwrap()
-        .contract_class
+        .1
         .clone()
         .try_into()?;
 
@@ -981,7 +973,7 @@ async fn get_class_at() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, ContractClass>(
             "starknet_getClassAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address),
         )
         .await?;
     assert_eq!(res, expected_contract_class);
@@ -990,7 +982,7 @@ async fn get_class_at() -> Result<(), anyhow::Error> {
     let res = module
         .call::<_, ContractClass>(
             "starknet_getClassAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *address),
         )
         .await?;
     assert_eq!(res, expected_contract_class);
@@ -1016,7 +1008,10 @@ async fn get_class_at() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, ContractClass>(
             "starknet_getClassAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_header.block_number)), address),
+            (
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_header.block_number)),
+                *address,
+            ),
         )
         .await
         .unwrap_err();
@@ -1034,7 +1029,7 @@ async fn get_class_at() -> Result<(), anyhow::Error> {
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
-                address,
+                *address,
             ),
         )
         .await
@@ -1049,7 +1044,7 @@ async fn get_class_at() -> Result<(), anyhow::Error> {
     let err = module
         .call::<_, ContractClass>(
             "starknet_getClassAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))), address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))), *address),
         )
         .await
         .unwrap_err();

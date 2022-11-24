@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
 use std::hash::Hash;
 
@@ -9,10 +9,9 @@ use starknet_api::block::{
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{
-    ContractClass, ContractClassAbiEntry, ContractNonce, DeclaredContract, DeployedContract,
-    EntryPoint, EntryPointOffset, EntryPointType, EventAbiEntry, FunctionAbiEntry,
-    FunctionAbiEntryType, FunctionAbiEntryWithType, Program, StateDiff, StorageDiff, StorageEntry,
-    StorageKey, StructAbiEntry, StructMember, TypedParameter,
+    ContractClass, ContractClassAbiEntry, EntryPoint, EntryPointOffset, EntryPointType,
+    EventAbiEntry, FunctionAbiEntry, FunctionAbiEntryType, FunctionAbiEntryWithType, Program,
+    StorageEntry, StorageKey, StructAbiEntry, StructMember, TypedParameter,
 };
 use starknet_api::transaction::{
     CallData, ContractAddressSalt, DeclareTransaction, DeployAccountTransaction, DeployTransaction,
@@ -173,6 +172,29 @@ impl<K: StorageSerde + Eq + Hash, V: StorageSerde> StorageSerde for HashMap<K, V
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         let n: usize = bytes.read_varint().ok()?;
         let mut res = HashMap::with_capacity(n as usize);
+        for _i in 0..n {
+            let k = K::deserialize_from(bytes)?;
+            let v = V::deserialize_from(bytes)?;
+            if res.insert(k, v).is_some() {
+                return None;
+            }
+        }
+        Some(res)
+    }
+}
+impl<K: StorageSerde + Eq + Ord, V: StorageSerde> StorageSerde for BTreeMap<K, V> {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        res.write_varint(self.len())?;
+        for (k, v) in self.iter() {
+            k.serialize_into(res)?;
+            v.serialize_into(res)?;
+        }
+        Ok(())
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        let n: usize = bytes.read_varint().ok()?;
+        let mut res = BTreeMap::new();
         for _i in 0..n {
             let k = K::deserialize_from(bytes)?;
             let v = V::deserialize_from(bytes)?;
@@ -400,14 +422,6 @@ auto_storage_serde! {
         pub program: Program,
         pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
     }
-    pub struct ContractNonce {
-        pub contract_address: ContractAddress,
-        pub nonce: Nonce,
-    }
-    pub struct DeclaredContract {
-        pub class_hash: ClassHash,
-        pub contract_class: ContractClass,
-    }
     pub struct DeclareTransaction {
         pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
@@ -421,10 +435,6 @@ auto_storage_serde! {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
-    }
-    pub struct DeployedContract {
-        pub address: ContractAddress,
-        pub class_hash: ClassHash,
     }
     pub struct DeployTransaction {
         pub transaction_hash: TransactionHash,
@@ -552,6 +562,12 @@ auto_storage_serde! {
     struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
     struct OmmerTransactionKey(pub BlockHash, pub TransactionOffsetInBlock);
     struct OmmerEventKey(pub OmmerTransactionKey, pub EventIndexInTransactionOutput);
+    pub struct ThinStateDiff {
+        pub deployed_contracts: BTreeMap<ContractAddress, ClassHash>,
+        pub storage_diffs: BTreeMap<ContractAddress, Vec<StorageEntry>>,
+        pub declared_contract_hashes: Vec<ClassHash>,
+        pub nonces: BTreeMap<ContractAddress, Nonce>,
+    }
     pub enum ThinTransactionOutput {
         Declare(ThinDeclareTransactionOutput) = 0,
         Deploy(ThinDeployTransactionOutput) = 1,
@@ -588,52 +604,4 @@ auto_storage_serde! {
     (ContractAddress, StorageKey, BlockNumber);
     (ContractAddress, EventIndex);
     (ContractAddress, OmmerEventKey);
-}
-
-////////////////////////////////////////////////////////////////////////
-//  impl StorageSerde for types not supported by the macro.
-////////////////////////////////////////////////////////////////////////
-impl StorageSerde for ThinStateDiff {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
-        self.deployed_contracts().serialize_into(res)?;
-        self.storage_diffs().serialize_into(res)?;
-        self.declared_contract_hashes().serialize_into(res)?;
-        self.nonces().serialize_into(res)
-    }
-
-    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        let deployed_contracts = Vec::<DeployedContract>::deserialize_from(bytes)?;
-        let storage_diffs = Vec::<StorageDiff>::deserialize_from(bytes)?;
-        let declared_contract_hashes = Vec::<ClassHash>::deserialize_from(bytes)?;
-        let nonces = Vec::<ContractNonce>::deserialize_from(bytes)?;
-
-        // We create ThinStateDiff from StateDiff. Add dummy contract classes.
-        let declared_contracts = declared_contract_hashes
-            .into_iter()
-            .map(|declared_contract_hashe| DeclaredContract {
-                class_hash: declared_contract_hashe,
-                contract_class: ContractClass::default(),
-            })
-            .collect();
-        Some(
-            StateDiff::new(deployed_contracts, storage_diffs, declared_contracts, nonces)
-                .ok()?
-                .into(),
-        )
-    }
-}
-
-// TODO: Move to Starknet API structs area.
-impl StorageSerde for StorageDiff {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
-        self.address.serialize_into(res)?;
-        res.write_varint(self.storage_entries().len())?;
-        for x in self.storage_entries() {
-            x.serialize_into(res)?
-        }
-        Ok(())
-    }
-    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        Self::new(ContractAddress::deserialize_from(bytes)?, Vec::deserialize_from(bytes)?).ok()
-    }
 }

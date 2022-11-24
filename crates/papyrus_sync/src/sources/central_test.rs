@@ -9,11 +9,10 @@ use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkHash;
 use starknet_api::shash;
-use starknet_api::state::{
-    DeclaredContract, DeployedContract, StorageDiff, StorageEntry, StorageKey,
-};
+use starknet_api::state::{StorageEntry, StorageKey};
 use starknet_client::{
-    Block, ClientError, ContractClass, GlobalRoot, MockStarknetClientTrait, StateUpdate,
+    Block, ClientError, ContractClass, DeployedContract, GlobalRoot, MockStarknetClientTrait,
+    StateUpdate,
 };
 use tokio_stream::StreamExt;
 
@@ -237,31 +236,24 @@ async fn stream_state_updates() {
             panic!("Match of streamed state_update failed!");
         };
     assert_eq!(initial_block_num, current_block_num);
-    assert_eq!(
-        vec![DeclaredContract { class_hash: class_hash2, contract_class: contract_class2.into() }],
-        deployed_contract_class_definitions,
-    );
+    assert_eq!(vec![(class_hash2, contract_class2.into())], deployed_contract_class_definitions);
 
-    let (deployed_contracts, storage_diffs, declared_classes, nonces) = state_diff.into();
     assert_eq!(
-        vec![
-            DeployedContract { address: contract_address1, class_hash: class_hash2 },
-            DeployedContract { address: contract_address2, class_hash: class_hash3 },
-        ],
-        deployed_contracts
+        BTreeMap::from([(contract_address1, class_hash2), (contract_address2, class_hash3)]),
+        state_diff.deployed_contracts
     );
     assert_eq!(
-        vec![StorageDiff::new(contract_address1, vec![storage_entry]).unwrap()],
-        storage_diffs
+        BTreeMap::from([(contract_address1, vec![storage_entry])]),
+        state_diff.storage_diffs
     );
     assert_eq!(
-        vec![
-            DeclaredContract { class_hash: class_hash1, contract_class: contract_class1.into() },
-            DeclaredContract { class_hash: class_hash3, contract_class: contract_class3.into() },
-        ],
-        declared_classes,
+        BTreeMap::from([
+            (class_hash1, contract_class1.into()),
+            (class_hash3, contract_class3.into()),
+        ]),
+        state_diff.declared_classes,
     );
-    assert!(nonces.is_empty());
+    assert!(state_diff.nonces.is_empty());
 
     let (current_block_num, state_diff, _deployed_classes) =
         if let Some(Ok(state_diff_tuple)) = stream.next().await {

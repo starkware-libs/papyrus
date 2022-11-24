@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use assert_matches::assert_matches;
 use logtest::Logger;
 use starknet_api::block::BlockNumber;
@@ -5,9 +7,8 @@ use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkHash;
 use starknet_api::shash;
 use starknet_api::state::{
-    ContractClass, ContractClassAbiEntry, ContractNonce, DeclaredContract, DeployedContract,
-    FunctionAbiEntry, FunctionAbiEntryType, FunctionAbiEntryWithType, StateDiff, StateNumber,
-    StorageDiff, StorageEntry, StorageKey,
+    ContractClass, ContractClassAbiEntry, FunctionAbiEntry, FunctionAbiEntryType,
+    FunctionAbiEntryWithType, StateDiff, StateNumber, StorageEntry, StorageKey,
 };
 
 use crate::state::{StateStorageReader, StateStorageWriter, StorageError};
@@ -27,48 +28,40 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     let c_cls1 = ContractClass::default();
     let key0 = StorageKey::try_from(shash!("0x1001")).unwrap();
     let key1 = StorageKey::try_from(shash!("0x101")).unwrap();
-    let diff0 = StateDiff::new(
-        vec![
-            DeployedContract { address: c0, class_hash: cl0 },
-            DeployedContract { address: c1, class_hash: cl1 },
-        ],
-        vec![
-            StorageDiff::new(
+    let mut diff0 = StateDiff {
+        deployed_contracts: BTreeMap::from([(c0, cl0), (c1, cl1)]),
+        storage_diffs: BTreeMap::from([
+            (
                 c0,
                 vec![
                     StorageEntry { key: key0, value: shash!("0x200") },
                     StorageEntry { key: key1, value: shash!("0x201") },
                 ],
-            )
-            .unwrap(),
-            StorageDiff::new(c1, vec![]).unwrap(),
-        ],
-        vec![
-            DeclaredContract { class_hash: cl0, contract_class: c_cls0.clone() },
-            DeclaredContract { class_hash: cl1, contract_class: c_cls1 },
-        ],
-        vec![ContractNonce { contract_address: c0, nonce: Nonce(StarkHash::from(1)) }],
-    )?;
-    let diff1 = StateDiff::new(
-        vec![DeployedContract { address: c2, class_hash: cl0 }],
-        vec![
-            StorageDiff::new(
+            ),
+            (c1, vec![]),
+        ]),
+        declared_classes: BTreeMap::from([(cl0, c_cls0.clone()), (cl1, c_cls1)]),
+        nonces: BTreeMap::from([(c0, Nonce(StarkHash::from(1)))]),
+    };
+    let mut diff1 = StateDiff {
+        deployed_contracts: BTreeMap::from([(c2, cl0)]),
+        storage_diffs: BTreeMap::from([
+            (
                 c0,
                 vec![
                     StorageEntry { key: key0, value: shash!("0x300") },
                     StorageEntry { key: key1, value: shash!("0x0") },
                 ],
-            )
-            .unwrap(),
-            StorageDiff::new(c1, vec![StorageEntry { key: key0, value: shash!("0x0") }]).unwrap(),
-        ],
-        vec![DeclaredContract { class_hash: cl0, contract_class: c_cls0.clone() }],
-        vec![
-            ContractNonce { contract_address: c0, nonce: Nonce(StarkHash::from(2)) },
-            ContractNonce { contract_address: c1, nonce: Nonce(StarkHash::from(1)) },
-            ContractNonce { contract_address: c2, nonce: Nonce(StarkHash::from(1)) },
-        ],
-    )?;
+            ),
+            (c1, vec![StorageEntry { key: key0, value: shash!("0x0") }]),
+        ]),
+        declared_classes: BTreeMap::from([(cl0, c_cls0.clone())]),
+        nonces: BTreeMap::from([
+            (c0, Nonce(StarkHash::from(2))),
+            (c1, Nonce(StarkHash::from(1))),
+            (c2, Nonce(StarkHash::from(1))),
+        ]),
+    };
 
     let (_, mut writer) = get_test_storage();
     let mut txn = writer.begin_rw_txn()?;
@@ -86,29 +79,22 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     // Check for ClassAlreadyExists error when trying to declare a different class to an existing
     // class hash.
     let txn = writer.begin_rw_txn()?;
-    let (deployed_contracts, storage_diffs, mut declared_classes, nonces) = diff1.into();
-    let mut class = declared_classes[0].contract_class.clone();
+    let (_, class) = diff1.declared_classes.iter_mut().next().unwrap();
     class.abi = Some(vec![ContractClassAbiEntry::Function(FunctionAbiEntryWithType {
         r#type: FunctionAbiEntryType::Regular,
         entry: FunctionAbiEntry { name: String::from("junk"), inputs: vec![], outputs: vec![] },
     })]);
-
-    declared_classes[0].contract_class = class;
-    let diff1 = StateDiff::new(deployed_contracts, storage_diffs, declared_classes, nonces)?;
-
     if let Err(err) = txn.append_state_diff(BlockNumber(2), diff1, vec![]) {
         assert_matches!(err, StorageError::ClassAlreadyExists { class_hash: _ });
     } else {
         panic!("Unexpected Ok.");
     }
+
     // Check for ContractAlreadyExists error when trying to deploy a different class hash to an
     // existing contract address.
     let txn = writer.begin_rw_txn()?;
-    let (mut deployed_contracts, storage_diffs, declared_classes, nonces) = diff0.into();
-    let mut contract = deployed_contracts[0].clone();
-    contract.class_hash = cl2;
-    deployed_contracts[0] = contract;
-    let diff0 = StateDiff::new(deployed_contracts, storage_diffs, declared_classes, nonces)?;
+    let (_, hash) = diff0.deployed_contracts.iter_mut().next().unwrap();
+    *hash = cl2;
     if let Err(err) = txn.append_state_diff(BlockNumber(2), diff0, vec![]) {
         assert_matches!(err, StorageError::ContractAlreadyExists { address: _ });
     } else {
@@ -277,20 +263,20 @@ fn revert_doesnt_delete_previously_declared_classes() -> Result<(), anyhow::Erro
     let c0 = ContractAddress::try_from(shash!("0x11")).unwrap();
     let cl0 = ClassHash(shash!("0x4"));
     let c_cls0 = ContractClass::default();
-    let diff0 = StateDiff::new(
-        vec![DeployedContract { address: c0, class_hash: cl0 }],
-        vec![],
-        vec![DeclaredContract { class_hash: cl0, contract_class: c_cls0.clone() }],
-        vec![ContractNonce { contract_address: c0, nonce: Nonce(StarkHash::from(1)) }],
-    )?;
+    let diff0 = StateDiff {
+        deployed_contracts: BTreeMap::from([(c0, cl0)]),
+        storage_diffs: BTreeMap::new(),
+        declared_classes: BTreeMap::from([(cl0, c_cls0.clone())]),
+        nonces: BTreeMap::from([(c0, Nonce(StarkHash::from(1)))]),
+    };
 
     let c1 = ContractAddress::try_from(shash!("0x12")).unwrap();
-    let diff1 = StateDiff::new(
-        vec![DeployedContract { address: c1, class_hash: cl0 }],
-        vec![],
-        vec![DeclaredContract { class_hash: cl0, contract_class: c_cls0 }],
-        vec![ContractNonce { contract_address: c1, nonce: Nonce(StarkHash::from(2)) }],
-    )?;
+    let diff1 = StateDiff {
+        deployed_contracts: BTreeMap::from([(c1, cl0)]),
+        storage_diffs: BTreeMap::new(),
+        declared_classes: BTreeMap::from([(cl0, c_cls0)]),
+        nonces: BTreeMap::from([(c1, Nonce(StarkHash::from(2)))]),
+    };
 
     let (reader, mut writer) = get_test_storage();
     writer
