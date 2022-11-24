@@ -4,7 +4,7 @@ use crate::core::PatriciaKey;
 use crate::hash::StarkHash;
 use crate::state::{
     ClassHash, ContractAddress, ContractClass, ContractNonce, DeclaredContract, DeployedContract,
-    Nonce, StateDiff, StateDiffAsTuple, StorageDiff, StorageEntry, StorageKey,
+    EntryPointOffset, Nonce, StateDiff, StateDiffAsTuple, StorageDiff, StorageEntry, StorageKey,
 };
 use crate::{patky, shash, StarknetApiError};
 
@@ -123,4 +123,14 @@ fn state_unique() {
         vec![nonce],
     );
     assert_matches!(state_diff_with_duplicate_declared_contract, Err(StarknetApiError::DuplicateInStateDiff{object}) if object == "declared_contracts");
+}
+
+#[test]
+fn entry_point_offset_serde() {
+    let offset = EntryPointOffset(123);
+    let as_str = serde_json::to_string(&offset).unwrap();
+    assert_eq!("\"0x7b\"", as_str);
+
+    let deserialized: EntryPointOffset = serde_json::from_str(as_str.as_str()).unwrap();
+    assert_eq!(deserialized, offset);
 }

@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::block::BlockNumber;
 use crate::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use crate::hash::{StarkFelt, StarkHash};
+use crate::serde_utils::InnerDeserializationError;
 use crate::StarknetApiError;
 
 /// The differences between two states.
@@ -204,10 +205,32 @@ pub struct EntryPoint {
 }
 
 /// The offset of an [EntryPoint](`crate::state::EntryPoint`).
-#[derive(
-    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct EntryPointOffset(pub StarkFelt);
+#[derive(Debug, Copy, Clone, Default, Eq, PartialEq, Hash, PartialOrd, Ord)]
+pub struct EntryPointOffset(pub usize);
+
+impl<'de> Deserialize<'de> for EntryPointOffset {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let hex_str = String::deserialize(deserializer)?;
+        let without_prefix = hex_str
+            .strip_prefix("0x")
+            .ok_or(InnerDeserializationError::MissingPrefix { hex_str: hex_str.clone() })
+            .map_err(serde::de::Error::custom)?;
+        usize::from_str_radix(without_prefix, 16).map_err(serde::de::Error::custom).map(Self)
+    }
+}
+
+impl Serialize for EntryPointOffset {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let hex_str = format!("0x{:x}", self.0);
+        serializer.serialize_str(hex_str.as_str())
+    }
+}
 
 /// A program corresponding to a [ContractClass](`crate::state::ContractClass`).
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
