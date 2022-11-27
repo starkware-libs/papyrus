@@ -5,19 +5,7 @@ use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StateDiff, StorageKey};
 
-// Data structs that are serialized into the database.
-
-#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct IndexedDeployedContract {
-    pub block_number: BlockNumber,
-    pub class_hash: ClassHash,
-}
-
-#[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
-pub struct IndexedDeclaredContract {
-    pub block_number: BlockNumber,
-    pub contract_class: ContractClass,
-}
+/// Data structs that are serialized into the database.
 
 // Invariant: Addresses are strictly increasing.
 // The invariant is enforced as [`ThinStateDiff`] is created only from [`starknet_api`][`StateDiff`]
@@ -39,4 +27,16 @@ impl From<StateDiff> for ThinStateDiff {
             nonces: diff.nonces,
         }
     }
+}
+
+#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct IndexedDeployedContract {
+    pub block_number: BlockNumber,
+    pub class_hash: ClassHash,
+}
+
+#[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
+pub struct IndexedDeclaredContract {
+    pub block_number: BlockNumber,
+    pub contract_class: ContractClass,
 }
