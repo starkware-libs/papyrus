@@ -27,11 +27,11 @@ use starknet_api::transaction::{
     EventIndexInTransactionOutput, TransactionHash, TransactionOffsetInBlock,
 };
 
-use self::api::{
+use crate::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcError,
     JsonRpcServer, Tag,
 };
-use self::objects::{
+use crate::objects::{
     Block, BlockHeader, ContractClass, Event, StateUpdate, Transaction, TransactionOutput,
     TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus, TransactionWithType,
     Transactions,

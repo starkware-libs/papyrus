@@ -9,7 +9,7 @@ use starknet_api::hash::StarkFelt;
 use starknet_api::state::StorageKey;
 use starknet_api::transaction::{EventKey, TransactionHash, TransactionOffsetInBlock};
 
-use super::objects::{
+use crate::objects::{
     Block, ContractClass, Event, StateUpdate, TransactionReceiptWithStatus, TransactionWithType,
 };
 

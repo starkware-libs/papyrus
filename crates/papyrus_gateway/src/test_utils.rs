@@ -6,7 +6,7 @@ use papyrus_storage::StorageWriter;
 use reqwest::Client;
 use starknet_api::core::ChainId;
 
-use super::{GatewayConfig, JsonRpcServer, JsonRpcServerImpl};
+use crate::{GatewayConfig, JsonRpcServer, JsonRpcServerImpl};
 
 // TODO(anatg): See if this can be usefull for the benchmark testing as well.
 pub async fn send_request(
