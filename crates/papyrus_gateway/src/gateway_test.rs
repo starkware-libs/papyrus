@@ -23,19 +23,19 @@ use starknet_api::transaction::{
 };
 use starknet_api::{patky, shash};
 
-use super::api::{
+use crate::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcClient,
     JsonRpcError, Tag,
 };
-use super::objects::{
+use crate::objects::{
     Block, ContractClass, Event, StateUpdate, ThinStateDiff, TransactionReceipt,
     TransactionReceiptWithStatus, TransactionStatus, TransactionWithType, Transactions,
 };
-use super::test_utils::{
+use crate::test_utils::{
     get_block_to_match_json_file, get_test_gateway_config_and_chain_id,
     get_test_rpc_server_and_storage_writer, send_request,
 };
-use super::{run_server, ContinuationTokenAsStruct};
+use crate::{run_server, ContinuationTokenAsStruct};
 
 #[tokio::test]
 async fn block_number() -> Result<(), anyhow::Error> {
