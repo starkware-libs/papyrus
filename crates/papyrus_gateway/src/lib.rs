@@ -457,6 +457,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
             if filter.address.is_some() && from_address != filter.address.unwrap() {
                 break;
             }
+            // TODO: Consider changing empty sets in the filer keys to None.
             if filter.keys.iter().enumerate().all(|(i, keys)| {
                 content.keys.len() > i && (keys.is_empty() || keys.contains(&content.keys[i]))
             }) {
