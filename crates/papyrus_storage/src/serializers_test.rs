@@ -2,10 +2,13 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use starknet_api::{
-    shash, ContractAddress, ContractNonce, DeclaredContract, DeployedContract, StarkHash,
-    StateDiff, StorageDiff, StorageEntry, StorageKey,
+use starknet_api::core::{ContractAddress, PatriciaKey};
+use starknet_api::hash::StarkHash;
+use starknet_api::state::{
+    ContractNonce, DeclaredContract, DeployedContract, StateDiff, StorageDiff, StorageEntry,
+    StorageKey,
 };
+use starknet_api::{patky, shash};
 
 use crate::{StorageSerde, ThinStateDiff};
 
@@ -242,14 +245,14 @@ create_test!(StarkHash);
 
 impl GetTestInstance for ContractAddress {
     fn get_test_instance() -> Self {
-        Self::try_from(shash!("0x1")).unwrap()
+        Self(patky!("0x1"))
     }
 }
 create_test!(ContractAddress);
 
 impl GetTestInstance for StorageKey {
     fn get_test_instance() -> Self {
-        Self::try_from(shash!("0x1")).unwrap()
+        Self(patky!("0x1"))
     }
 }
 create_test!(StorageKey);
