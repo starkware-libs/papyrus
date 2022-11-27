@@ -137,11 +137,9 @@ fn state_unique() {
 }
 
 #[test]
-fn entry_point_offset_serde() {
+fn entry_point_offset_from_str() {
     let offset = EntryPointOffset(123);
-    let as_str = serde_json::to_string(&offset).unwrap();
-    assert_eq!("\"0x7b\"", as_str);
-
-    let deserialized: EntryPointOffset = serde_json::from_str(as_str.as_str()).unwrap();
-    assert_eq!(deserialized, offset);
+    let as_str: String = offset.into();
+    assert_eq!("0x7b", as_str);
+    assert_eq!(EntryPointOffset::try_from(as_str).unwrap(), offset);
 }
