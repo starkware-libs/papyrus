@@ -9,7 +9,7 @@ use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::StarkHash;
 use starknet_api::state::{
-    DeclaredContract, DeployedContract, StorageDiff, StorageEntry, StorageKey,
+    ContractNonce, DeclaredContract, DeployedContract, StorageDiff, StorageEntry, StorageKey,
 };
 use starknet_api::{patky, shash};
 use starknet_client::{
@@ -258,7 +258,7 @@ async fn stream_state_updates() {
         ],
         declared_classes,
     );
-    assert!(nonces.is_empty());
+    assert_eq!(vec![ContractNonce { contract_address: contract_address1, nonce: nonce1 }], nonces);
 
     let (current_block_num, state_diff, _deployed_classes) =
         if let Some(Ok(state_diff_tuple)) = stream.next().await {
