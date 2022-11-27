@@ -4,13 +4,14 @@ mod state_test;
 
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::mem;
 
 use serde::{Deserialize, Serialize};
 
 use crate::block::BlockNumber;
 use crate::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use crate::hash::{StarkFelt, StarkHash};
-use crate::serde_utils::InnerDeserializationError;
+use crate::serde_utils::bytes_from_hex_str;
 use crate::StarknetApiError;
 
 /// The differences between two states.
@@ -207,30 +208,26 @@ pub struct EntryPoint {
 }
 
 /// The offset of an [EntryPoint](`crate::state::EntryPoint`).
-#[derive(Debug, Copy, Clone, Default, Eq, PartialEq, Hash, PartialOrd, Ord)]
+#[derive(
+    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+#[serde(try_from = "String", into = "String")]
 pub struct EntryPointOffset(pub usize);
 
-impl<'de> Deserialize<'de> for EntryPointOffset {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let hex_str = String::deserialize(deserializer)?;
-        let without_prefix = hex_str
-            .strip_prefix("0x")
-            .ok_or(InnerDeserializationError::MissingPrefix { hex_str: hex_str.clone() })
-            .map_err(serde::de::Error::custom)?;
-        usize::from_str_radix(without_prefix, 16).map_err(serde::de::Error::custom).map(Self)
+impl TryFrom<String> for EntryPointOffset {
+    type Error = StarknetApiError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        const SIZE_OF_USIZE: usize = mem::size_of::<usize>();
+        let bytes = bytes_from_hex_str::<SIZE_OF_USIZE, true>(value.as_str())?;
+        let num = usize::from_be_bytes(bytes);
+        Ok(Self(num))
     }
 }
 
-impl Serialize for EntryPointOffset {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let hex_str = format!("0x{:x}", self.0);
-        serializer.serialize_str(hex_str.as_str())
+impl From<EntryPointOffset> for String {
+    fn from(value: EntryPointOffset) -> Self {
+        format!("0x{:x}", value.0)
     }
 }
 
