@@ -4,12 +4,14 @@ mod state_test;
 
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::mem;
 
 use serde::{Deserialize, Serialize};
 
 use crate::block::BlockNumber;
 use crate::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use crate::hash::{StarkFelt, StarkHash};
+use crate::serde_utils::bytes_from_hex_str;
 use crate::StarknetApiError;
 
 /// The differences between two states.
@@ -209,7 +211,24 @@ pub struct EntryPoint {
 #[derive(
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
 )]
-pub struct EntryPointOffset(pub StarkFelt);
+#[serde(try_from = "String", into = "String")]
+pub struct EntryPointOffset(pub usize);
+
+impl TryFrom<String> for EntryPointOffset {
+    type Error = StarknetApiError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        const SIZE_OF_USIZE: usize = mem::size_of::<usize>();
+        let bytes = bytes_from_hex_str::<SIZE_OF_USIZE, true>(value.as_str())?;
+        Ok(Self(usize::from_be_bytes(bytes)))
+    }
+}
+
+impl From<EntryPointOffset> for String {
+    fn from(value: EntryPointOffset) -> Self {
+        format!("0x{:x}", value.0)
+    }
+}
 
 /// A program corresponding to a [ContractClass](`crate::state::ContractClass`).
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]

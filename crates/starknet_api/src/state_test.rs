@@ -4,7 +4,7 @@ use crate::core::PatriciaKey;
 use crate::hash::StarkHash;
 use crate::state::{
     ClassHash, ContractAddress, ContractClass, ContractNonce, DeclaredContract, DeployedContract,
-    Nonce, StateDiff, StateDiffAsTuple, StorageDiff, StorageEntry, StorageKey,
+    EntryPointOffset, Nonce, StateDiff, StateDiffAsTuple, StorageDiff, StorageEntry, StorageKey,
 };
 use crate::{patky, shash, StarknetApiError};
 
@@ -134,4 +134,12 @@ fn state_unique() {
         vec![nonce, nonce_duplicate],
     );
     assert_matches!(state_diff_with_duplicate_nonces, Err(StarknetApiError::DuplicateInStateDiff{object}) if object == "nonces");
+}
+
+#[test]
+fn entry_point_offset_from_str() {
+    let offset = EntryPointOffset(123);
+    let as_str: String = offset.into();
+    assert_eq!("0x7b", as_str);
+    assert_eq!(EntryPointOffset::try_from(as_str).unwrap(), offset);
 }
