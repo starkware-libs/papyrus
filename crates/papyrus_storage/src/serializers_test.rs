@@ -17,7 +17,7 @@ pub trait StorageSerdeTest: StorageSerde {
 // implements the [`StorageSerde`] and [`GetTestInstance`] traits.
 impl<T: StorageSerde + GetTestInstance + Eq + Debug> StorageSerdeTest for T {
     fn storage_serde_test() -> Result<(), anyhow::Error> {
-        let item = T::get_test_instance()?;
+        let item = T::get_test_instance();
         let mut serialized: Vec<u8> = Vec::new();
         item.serialize_into(&mut serialized)?;
         let bytes = serialized.into_boxed_slice();
@@ -29,7 +29,7 @@ impl<T: StorageSerde + GetTestInstance + Eq + Debug> StorageSerdeTest for T {
 }
 
 pub trait GetTestInstance: Sized {
-    fn get_test_instance() -> Result<Self, anyhow::Error>;
+    fn get_test_instance() -> Self;
 }
 
 // Tests all types that implement the [`StorageSerde`] trait
@@ -83,37 +83,37 @@ pub(crate) use create_test;
 // Implements the [`GetTestInstance`] trait for primitive types.
 ////////////////////////////////////////////////////////////////////////
 impl GetTestInstance for serde_json::Value {
-    fn get_test_instance() -> Result<Self, anyhow::Error> {
-        Ok(serde_json::from_str(r#""0x1""#)?)
+    fn get_test_instance() -> Self {
+        serde_json::from_str(r#""0x1""#).unwrap()
     }
 }
 impl GetTestInstance for String {
-    fn get_test_instance() -> Result<Self, anyhow::Error> {
-        Ok("a".to_string())
+    fn get_test_instance() -> Self {
+        "a".to_string()
     }
 }
 impl<T: GetTestInstance> GetTestInstance for Option<T> {
-    fn get_test_instance() -> Result<Self, anyhow::Error> {
-        Ok(Some(T::get_test_instance()?))
+    fn get_test_instance() -> Self {
+        Some(T::get_test_instance())
     }
 }
 impl<T: GetTestInstance> GetTestInstance for Vec<T> {
-    fn get_test_instance() -> Result<Self, anyhow::Error> {
-        Ok(vec![T::get_test_instance()?])
+    fn get_test_instance() -> Self {
+        vec![T::get_test_instance()]
     }
 }
 impl<K: GetTestInstance + Eq + Hash, V: GetTestInstance> GetTestInstance for HashMap<K, V> {
-    fn get_test_instance() -> Result<Self, anyhow::Error> {
+    fn get_test_instance() -> Self {
         let mut res = HashMap::with_capacity(1);
-        let k = K::get_test_instance()?;
-        let v = V::get_test_instance()?;
+        let k = K::get_test_instance();
+        let v = V::get_test_instance();
         res.insert(k, v);
-        Ok(res)
+        res
     }
 }
 impl<T: GetTestInstance + Default + Copy, const N: usize> GetTestInstance for [T; N] {
-    fn get_test_instance() -> Result<Self, anyhow::Error> {
-        Ok([T::get_test_instance()?; N])
+    fn get_test_instance() -> Self {
+        [T::get_test_instance(); N]
     }
 }
 
@@ -125,75 +125,75 @@ macro_rules! impl_get_test_instance {
     // Tuple structs (no names associated with fields) - one field.
     (struct $name:ident($ty:ty)) => {
         impl GetTestInstance for $name {
-            fn get_test_instance() -> Result<Self, anyhow::Error> {
-                Ok(Self(<$ty>::get_test_instance()?))
+            fn get_test_instance() -> Self {
+                Self(<$ty>::get_test_instance())
             }
         }
     };
     // Tuple structs (no names associated with fields) - two fields.
     (struct $name:ident($ty0:ty, $ty1:ty)) => {
         impl GetTestInstance for $name {
-            fn get_test_instance() -> Result<Self, anyhow::Error> {
-                Ok(Self(<$ty0>::get_test_instance()?, <$ty1>::get_test_instance()?))
+            fn get_test_instance() -> Self {
+                Self(<$ty0>::get_test_instance(), <$ty1>::get_test_instance())
             }
         }
     };
     // Structs with public fields.
     (struct $name:ident { $(pub $field:ident : $ty:ty ,)* }) => {
         impl GetTestInstance for $name {
-            fn get_test_instance() -> Result<Self, anyhow::Error> {
-                Ok(Self {
+            fn get_test_instance() -> Self {
+                Self {
                     $(
-                        $field: <$ty>::get_test_instance()?,
+                        $field: <$ty>::get_test_instance(),
                     )*
-                })
+                }
             }
         }
     };
     // Tuples - two elements.
     (($ty0:ty, $ty1:ty)) => {
         impl GetTestInstance for ($ty0, $ty1) {
-            fn get_test_instance() -> Result<Self, anyhow::Error> {
-                Ok((
-                    <$ty0>::get_test_instance()?,
-                    <$ty1>::get_test_instance()?,
-                ))
+            fn get_test_instance() -> Self {
+                (
+                    <$ty0>::get_test_instance(),
+                    <$ty1>::get_test_instance(),
+                )
             }
         }
     };
     // Tuples - three elements.
     (($ty0:ty, $ty1:ty, $ty2:ty)) => {
         impl GetTestInstance for ($ty0, $ty1, $ty2) {
-            fn get_test_instance() -> Result<Self, anyhow::Error> {
-                Ok((
-                    <$ty0>::get_test_instance()?,
-                    <$ty1>::get_test_instance()?,
-                    <$ty2>::get_test_instance()?,
-                ))
+            fn get_test_instance() -> Self {
+                (
+                    <$ty0>::get_test_instance(),
+                    <$ty1>::get_test_instance(),
+                    <$ty2>::get_test_instance(),
+                )
             }
         }
     };
     // Enums with no inner struct.
     (enum $name:ident { $variant:ident = $num:expr , $($rest:tt)* }) => {
         impl GetTestInstance for $name {
-            fn get_test_instance() -> Result<Self, anyhow::Error> {
-                Ok(Self::$variant)
+            fn get_test_instance() -> Self {
+                Self::$variant
             }
         }
     };
     // Enums with inner struct.
     (enum $name:ident { $variant:ident ($ty:ty) = $num:expr , $($rest:tt)* }) => {
         impl GetTestInstance for $name {
-            fn get_test_instance() -> Result<Self, anyhow::Error> {
-                Ok(Self::$variant(<$ty>::get_test_instance()?))
+            fn get_test_instance() -> Self {
+                Self::$variant(<$ty>::get_test_instance())
             }
         }
     };
     // Binary.
     (bincode($name:ident)) => {
         impl GetTestInstance for $name {
-            fn get_test_instance() -> Result<Self, anyhow::Error> {
-                Ok(Self::default())
+            fn get_test_instance() -> Self {
+                Self::default()
             }
         }
     }
@@ -206,48 +206,50 @@ pub(crate) use impl_get_test_instance;
 // macro to create the tests for them.
 ////////////////////////////////////////////////////////////////////////
 impl GetTestInstance for ThinStateDiff {
-    fn get_test_instance() -> Result<ThinStateDiff, anyhow::Error> {
+    fn get_test_instance() -> Self {
         let state_diff = StateDiff::new(
-            vec![DeployedContract::get_test_instance()?],
-            vec![StorageDiff::get_test_instance()?],
-            vec![DeclaredContract::get_test_instance()?],
-            vec![ContractNonce::get_test_instance()?],
-        )?;
-        Ok(ThinStateDiff::from(state_diff))
+            vec![DeployedContract::get_test_instance()],
+            vec![StorageDiff::get_test_instance()],
+            vec![DeclaredContract::get_test_instance()],
+            vec![ContractNonce::get_test_instance()],
+        )
+        .unwrap();
+        ThinStateDiff::from(state_diff)
     }
 }
 create_test!(ThinStateDiff);
 
 impl GetTestInstance for StorageDiff {
-    fn get_test_instance() -> Result<StorageDiff, anyhow::Error> {
-        Ok(Self::new(
-            ContractAddress::get_test_instance()?,
+    fn get_test_instance() -> Self {
+        Self::new(
+            ContractAddress::get_test_instance(),
             vec![StorageEntry {
-                key: StorageKey::get_test_instance()?,
-                value: StarkHash::get_test_instance()?,
+                key: StorageKey::get_test_instance(),
+                value: StarkHash::get_test_instance(),
             }],
-        )?)
+        )
+        .unwrap()
     }
 }
 create_test!(StorageDiff);
 
 impl GetTestInstance for StarkHash {
-    fn get_test_instance() -> Result<Self, anyhow::Error> {
-        Ok(shash!("0x1"))
+    fn get_test_instance() -> Self {
+        shash!("0x1")
     }
 }
 create_test!(StarkHash);
 
 impl GetTestInstance for ContractAddress {
-    fn get_test_instance() -> Result<Self, anyhow::Error> {
-        Ok(Self::try_from(shash!("0x1"))?)
+    fn get_test_instance() -> Self {
+        Self::try_from(shash!("0x1")).unwrap()
     }
 }
 create_test!(ContractAddress);
 
 impl GetTestInstance for StorageKey {
-    fn get_test_instance() -> Result<Self, anyhow::Error> {
-        Ok(Self::try_from(shash!("0x1"))?)
+    fn get_test_instance() -> Self {
+        Self::try_from(shash!("0x1")).unwrap()
     }
 }
 create_test!(StorageKey);
