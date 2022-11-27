@@ -22,32 +22,39 @@ pub type TransactionHashToIdxTable<'env> = TableHandle<'env, TransactionHash, Tr
 pub trait BodyStorageReader {
     // The block number marker is the first block number that doesn't exist yet.
     fn get_body_marker(&self) -> StorageResult<BlockNumber>;
+
     // TODO(spapini): get_transaction_by_hash.
     fn get_transaction(
         &self,
         transaction_index: TransactionIndex,
     ) -> StorageResult<Option<Transaction>>;
+
     fn get_transaction_output(
         &self,
         transaction_index: TransactionIndex,
     ) -> StorageResult<Option<ThinTransactionOutput>>;
+
     fn get_transaction_events(
         &self,
         transaction_index: TransactionIndex,
     ) -> StorageResult<Option<Vec<Event>>>;
+
     fn get_transaction_idx_by_hash(
         &self,
         tx_hash: &TransactionHash,
     ) -> StorageResult<Option<TransactionIndex>>;
+
     fn get_block_transactions(
         &self,
         block_number: BlockNumber,
     ) -> StorageResult<Option<Vec<Transaction>>>;
+
     fn get_block_transaction_outputs(
         &self,
         block_number: BlockNumber,
     ) -> StorageResult<Option<Vec<ThinTransactionOutput>>>;
 }
+
 pub trait BodyStorageWriter
 where
     Self: Sized,
@@ -63,6 +70,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         Ok(markers_table.get(&self.txn, &MarkerKind::Body)?.unwrap_or_default())
     }
+
     fn get_transaction(
         &self,
         transaction_index: TransactionIndex,
@@ -71,6 +79,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         let transaction = transactions_table.get(&self.txn, &transaction_index)?;
         Ok(transaction)
     }
+
     fn get_transaction_output(
         &self,
         transaction_index: TransactionIndex,
@@ -79,6 +88,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         let transaction_output = transaction_outputs_table.get(&self.txn, &transaction_index)?;
         Ok(transaction_output)
     }
+
     fn get_transaction_events(
         &self,
         transaction_index: TransactionIndex,
@@ -103,6 +113,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
 
         Ok(Some(res))
     }
+
     fn get_transaction_idx_by_hash(
         &self,
         tx_hash: &TransactionHash,
@@ -112,6 +123,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         let idx = transaction_hash_to_idx_table.get(&self.txn, tx_hash)?;
         Ok(idx)
     }
+
     fn get_block_transactions(
         &self,
         block_number: BlockNumber,
@@ -133,6 +145,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         }
         Ok(Some(res))
     }
+
     fn get_block_transaction_outputs(
         &self,
         block_number: BlockNumber,
@@ -155,6 +168,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         Ok(Some(res))
     }
 }
+
 impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
     fn append_body(self, block_number: BlockNumber, block_body: BlockBody) -> StorageResult<Self> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
