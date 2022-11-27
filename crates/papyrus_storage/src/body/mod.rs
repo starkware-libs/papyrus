@@ -1,7 +1,7 @@
 #[cfg(test)]
 #[path = "body_test.rs"]
 mod body_test;
-pub(crate) mod events;
+pub mod events;
 
 use starknet_api::block::{BlockBody, BlockNumber};
 use starknet_api::transaction::{

@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use jsonrpsee::core::Error;
 use jsonrpsee::proc_macros::rpc;
 use serde::{Deserialize, Serialize};
@@ -5,10 +7,10 @@ use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::StorageKey;
-use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
+use starknet_api::transaction::{EventKey, TransactionHash, TransactionOffsetInBlock};
 
 use super::objects::{
-    Block, ContractClass, StateUpdate, TransactionReceiptWithStatus, TransactionWithType,
+    Block, ContractClass, Event, StateUpdate, TransactionReceiptWithStatus, TransactionWithType,
 };
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -50,6 +52,12 @@ pub enum JsonRpcError {
     InvalidTransactionIndex = 27,
     #[error("Class hash not found.")]
     ClassHashNotFound = 28,
+    #[error("Requested page size is too big.")]
+    PageSizeTooBig = 31,
+    #[error("The supplied continuation token is invalid or unknown.")]
+    InvalidContinuationToken = 33,
+    #[error("Too many keys provided in a filter.")]
+    TooManyKeysInFilter = 34,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -57,6 +65,20 @@ pub struct BlockHashAndNumber {
     pub block_hash: BlockHash,
     pub block_number: BlockNumber,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct EventFilter {
+    pub from_block: Option<BlockId>,
+    pub to_block: Option<BlockId>,
+    pub continuation_token: Option<ContinuationToken>,
+    pub chunk_size: usize,
+    pub address: Option<ContractAddress>,
+    #[serde(default)]
+    pub keys: Vec<HashSet<EventKey>>,
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Deserialize, Serialize)]
+pub struct ContinuationToken(pub String);
 
 #[rpc(server, client, namespace = "starknet")]
 pub trait JsonRpc {
@@ -147,4 +169,11 @@ pub trait JsonRpc {
     /// Returns the currently configured StarkNet chain id.
     #[method(name = "chainId")]
     fn chain_id(&self) -> Result<String, Error>;
+
+    /// Returns all events matching the given filter.
+    #[method(name = "getEvents")]
+    fn get_events(
+        &self,
+        filter: EventFilter,
+    ) -> Result<(Vec<Event>, Option<ContinuationToken>), Error>;
 }

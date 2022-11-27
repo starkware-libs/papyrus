@@ -4,7 +4,7 @@ use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
 use starknet_api::core::{ContractAddress, EntryPointSelector, Nonce};
 use starknet_api::transaction::{
     CallData, DeclareTransaction, DeclareTransactionOutput, DeployAccountTransaction,
-    DeployAccountTransactionOutput, DeployTransaction, DeployTransactionOutput, Event, Fee,
+    DeployAccountTransactionOutput, DeployTransaction, DeployTransactionOutput, Fee,
     InvokeTransactionOutput, L1HandlerTransaction, L1HandlerTransactionOutput, TransactionHash,
     TransactionSignature, TransactionVersion,
 };
@@ -240,7 +240,7 @@ pub enum TransactionOutput {
 impl TransactionOutput {
     pub fn from_thin_transaction_output(
         thin_tx_output: ThinTransactionOutput,
-        events: Vec<Event>,
+        events: Vec<starknet_api::transaction::Event>,
     ) -> Self {
         match thin_tx_output {
             ThinTransactionOutput::Declare(thin_declare) => {
@@ -302,4 +302,13 @@ impl From<starknet_api::transaction::TransactionOutput> for TransactionOutput {
             }
         }
     }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
+pub struct Event {
+    pub block_hash: BlockHash,
+    pub block_number: BlockNumber,
+    pub transaction_hash: TransactionHash,
+    #[serde(flatten)]
+    pub event: starknet_api::transaction::Event,
 }
