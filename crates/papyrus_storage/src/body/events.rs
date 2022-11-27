@@ -23,6 +23,35 @@ type TransactionOutputsKeyValue = (TransactionIndex, ThinTransactionOutput);
 type TransactionOutputsTableCursor<'txn> =
     DbCursor<'txn, RO, TransactionIndex, ThinTransactionOutput>;
 
+pub trait EventsReader<'txn, 'env> {
+    /// Returns an itrator over events, which is a wrapper of two iterators.
+    /// If the address is none it iterates the events by the order of the event index,
+    /// else, it iterated the events by the order of the contract addresses.
+    fn iter_events(
+        &'env self,
+        address: Option<ContractAddress>,
+        event_index: EventIndex,
+        to_block_number: BlockNumber,
+    ) -> StorageResult<EventIter<'txn, 'env>>;
+}
+
+impl<'txn, 'env> EventsReader<'txn, 'env> for StorageTxn<'env, RO> {
+    fn iter_events(
+        &'env self,
+        address: Option<ContractAddress>,
+        event_index: EventIndex,
+        to_block_number: BlockNumber,
+    ) -> StorageResult<EventIter<'txn, 'env>> {
+        if address.is_some() {
+            return Ok(EventIter::ByContractAddress(
+                self.iter_events_by_contract_address((address.unwrap(), event_index))?,
+            ));
+        }
+
+        Ok(EventIter::ByEventIndex(self.iter_events_by_event_index(event_index, to_block_number)?))
+    }
+}
+
 pub enum EventIter<'txn, 'env> {
     ByContractAddress(EventIterByContractAddress<'txn>),
     ByEventIndex(EventIterByEventIndex<'txn, 'env>),
@@ -119,18 +148,6 @@ impl EventIterByEventIndex<'_, '_> {
     }
 }
 
-pub trait EventsReader<'txn, 'env> {
-    /// Returns an itrator over events, which is a wrapper of two iterators.
-    /// If the address is none it iterates the events by the order of the event index,
-    /// else, it iterated the events by the order of the contract addresses.
-    fn iter_events(
-        &'env self,
-        address: Option<ContractAddress>,
-        event_index: EventIndex,
-        to_block_number: BlockNumber,
-    ) -> StorageResult<EventIter<'txn, 'env>>;
-}
-
 impl<'txn, 'env> StorageTxn<'env, RO> {
     // Returns an events iterator that iterates events by the events table key,
     // starting from the first event with a key greater or equals to the given key.
@@ -167,23 +184,6 @@ impl<'txn, 'env> StorageTxn<'env, RO> {
         };
         it.find_next_event_by_event_index()?;
         Ok(it)
-    }
-}
-
-impl<'txn, 'env> EventsReader<'txn, 'env> for StorageTxn<'env, RO> {
-    fn iter_events(
-        &'env self,
-        address: Option<ContractAddress>,
-        event_index: EventIndex,
-        to_block_number: BlockNumber,
-    ) -> StorageResult<EventIter<'txn, 'env>> {
-        if address.is_some() {
-            return Ok(EventIter::ByContractAddress(
-                self.iter_events_by_contract_address((address.unwrap(), event_index))?,
-            ));
-        }
-
-        Ok(EventIter::ByEventIndex(self.iter_events_by_event_index(event_index, to_block_number)?))
     }
 }
 
