@@ -15,7 +15,7 @@ use crate::test_utils::{get_test_state_diff, get_test_storage};
 use crate::StorageWriter;
 
 #[test]
-fn append_state_diff() -> Result<(), anyhow::Error> {
+fn append_state_diff() {
     let c0 = ContractAddress(patky!("0x11"));
     let c1 = ContractAddress(patky!("0x12"));
     let c2 = ContractAddress(patky!("0x13"));
@@ -51,21 +51,21 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     };
 
     let (_, mut writer) = get_test_storage();
-    let mut txn = writer.begin_rw_txn()?;
-    assert_eq!(txn.get_state_diff(BlockNumber(0))?, None);
-    assert_eq!(txn.get_state_diff(BlockNumber(1))?, None);
-    txn = txn.append_state_diff(BlockNumber(0), diff0.clone(), vec![])?;
+    let mut txn = writer.begin_rw_txn().unwrap();
+    assert_eq!(txn.get_state_diff(BlockNumber(0)).unwrap(), None);
+    assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap(), None);
+    txn = txn.append_state_diff(BlockNumber(0), diff0.clone(), vec![]).unwrap();
     let thin_state_diff_0 = diff0.clone().into();
-    assert_eq!(txn.get_state_diff(BlockNumber(0))?.unwrap(), thin_state_diff_0);
-    assert_eq!(txn.get_state_diff(BlockNumber(1))?, None);
-    txn = txn.append_state_diff(BlockNumber(1), diff1.clone(), vec![])?;
+    assert_eq!(txn.get_state_diff(BlockNumber(0)).unwrap().unwrap(), thin_state_diff_0);
+    assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap(), None);
+    txn = txn.append_state_diff(BlockNumber(1), diff1.clone(), vec![]).unwrap();
     let thin_state_diff_1 = diff1.clone().into();
 
-    txn.commit()?;
+    txn.commit().unwrap();
 
     // Check for ClassAlreadyExists error when trying to declare a different class to an existing
     // class hash.
-    let txn = writer.begin_rw_txn()?;
+    let txn = writer.begin_rw_txn().unwrap();
     let (_, class) = diff1.declared_classes.iter_mut().next().unwrap();
     class.abi = Some(vec![ContractClassAbiEntry::Function(FunctionAbiEntryWithType {
         r#type: FunctionAbiEntryType::Regular,
@@ -79,7 +79,7 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
 
     // Check for ContractAlreadyExists error when trying to deploy a different class hash to an
     // existing contract address.
-    let txn = writer.begin_rw_txn()?;
+    let txn = writer.begin_rw_txn().unwrap();
     let (_, hash) = diff0.deployed_contracts.iter_mut().next().unwrap();
     *hash = cl2;
     if let Err(err) = txn.append_state_diff(BlockNumber(2), diff0, vec![]) {
@@ -87,11 +87,11 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     } else {
         panic!("Unexpected Ok.");
     }
-    let txn = writer.begin_rw_txn()?;
-    assert_eq!(txn.get_state_diff(BlockNumber(0))?.unwrap(), thin_state_diff_0);
-    assert_eq!(txn.get_state_diff(BlockNumber(1))?.unwrap(), thin_state_diff_1);
+    let txn = writer.begin_rw_txn().unwrap();
+    assert_eq!(txn.get_state_diff(BlockNumber(0)).unwrap().unwrap(), thin_state_diff_0);
+    assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap().unwrap(), thin_state_diff_1);
 
-    let statetxn = txn.get_state_reader()?;
+    let statetxn = txn.get_state_reader().unwrap();
 
     // State numbers.
     let state0 = StateNumber::right_before_block(BlockNumber(0));
@@ -99,99 +99,98 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     let state2 = StateNumber::right_before_block(BlockNumber(2));
 
     // Class0.
-    assert_eq!(statetxn.get_class_definition_at(state0, &cl0)?, None);
-    assert_eq!(statetxn.get_class_definition_at(state1, &cl0)?, Some(c_cls0.clone()));
-    assert_eq!(statetxn.get_class_definition_at(state2, &cl0)?, Some(c_cls0.clone()));
+    assert_eq!(statetxn.get_class_definition_at(state0, &cl0).unwrap(), None);
+    assert_eq!(statetxn.get_class_definition_at(state1, &cl0).unwrap(), Some(c_cls0.clone()));
+    assert_eq!(statetxn.get_class_definition_at(state2, &cl0).unwrap(), Some(c_cls0.clone()));
 
     // Class1.
-    assert_eq!(statetxn.get_class_definition_at(state0, &cl1)?, None);
-    assert_eq!(statetxn.get_class_definition_at(state1, &cl1)?, Some(c_cls0.clone()));
-    assert_eq!(statetxn.get_class_definition_at(state2, &cl1)?, Some(c_cls0));
+    assert_eq!(statetxn.get_class_definition_at(state0, &cl1).unwrap(), None);
+    assert_eq!(statetxn.get_class_definition_at(state1, &cl1).unwrap(), Some(c_cls0.clone()));
+    assert_eq!(statetxn.get_class_definition_at(state2, &cl1).unwrap(), Some(c_cls0));
 
     // Contract0.
-    assert_eq!(statetxn.get_class_hash_at(state0, &c0)?, None);
-    assert_eq!(statetxn.get_class_hash_at(state1, &c0)?, Some(cl0));
-    assert_eq!(statetxn.get_class_hash_at(state2, &c0)?, Some(cl0));
-    assert_eq!(statetxn.get_nonce_at(state0, &c0)?, None);
-    assert_eq!(statetxn.get_nonce_at(state1, &c0)?, Some(Nonce(StarkHash::from(1))));
-    assert_eq!(statetxn.get_nonce_at(state2, &c0)?, Some(Nonce(StarkHash::from(2))));
+    assert_eq!(statetxn.get_class_hash_at(state0, &c0).unwrap(), None);
+    assert_eq!(statetxn.get_class_hash_at(state1, &c0).unwrap(), Some(cl0));
+    assert_eq!(statetxn.get_class_hash_at(state2, &c0).unwrap(), Some(cl0));
+    assert_eq!(statetxn.get_nonce_at(state0, &c0).unwrap(), None);
+    assert_eq!(statetxn.get_nonce_at(state1, &c0).unwrap(), Some(Nonce(StarkHash::from(1))));
+    assert_eq!(statetxn.get_nonce_at(state2, &c0).unwrap(), Some(Nonce(StarkHash::from(2))));
 
     // Contract1.
-    assert_eq!(statetxn.get_class_hash_at(state0, &c1)?, None);
-    assert_eq!(statetxn.get_class_hash_at(state1, &c1)?, Some(cl1));
-    assert_eq!(statetxn.get_class_hash_at(state2, &c1)?, Some(cl1));
-    assert_eq!(statetxn.get_nonce_at(state0, &c1)?, None);
-    assert_eq!(statetxn.get_nonce_at(state1, &c1)?, Some(Nonce::default()));
-    assert_eq!(statetxn.get_nonce_at(state2, &c1)?, Some(Nonce(StarkHash::from(1))));
+    assert_eq!(statetxn.get_class_hash_at(state0, &c1).unwrap(), None);
+    assert_eq!(statetxn.get_class_hash_at(state1, &c1).unwrap(), Some(cl1));
+    assert_eq!(statetxn.get_class_hash_at(state2, &c1).unwrap(), Some(cl1));
+    assert_eq!(statetxn.get_nonce_at(state0, &c1).unwrap(), None);
+    assert_eq!(statetxn.get_nonce_at(state1, &c1).unwrap(), Some(Nonce::default()));
+    assert_eq!(statetxn.get_nonce_at(state2, &c1).unwrap(), Some(Nonce(StarkHash::from(1))));
 
     // Contract2.
-    assert_eq!(statetxn.get_class_hash_at(state0, &c2)?, None);
-    assert_eq!(statetxn.get_class_hash_at(state1, &c2)?, None);
-    assert_eq!(statetxn.get_class_hash_at(state2, &c2)?, Some(cl0));
-    assert_eq!(statetxn.get_nonce_at(state0, &c2)?, None);
-    assert_eq!(statetxn.get_nonce_at(state1, &c2)?, None);
-    assert_eq!(statetxn.get_nonce_at(state2, &c2)?, Some(Nonce(StarkHash::from(1))));
+    assert_eq!(statetxn.get_class_hash_at(state0, &c2).unwrap(), None);
+    assert_eq!(statetxn.get_class_hash_at(state1, &c2).unwrap(), None);
+    assert_eq!(statetxn.get_class_hash_at(state2, &c2).unwrap(), Some(cl0));
+    assert_eq!(statetxn.get_nonce_at(state0, &c2).unwrap(), None);
+    assert_eq!(statetxn.get_nonce_at(state1, &c2).unwrap(), None);
+    assert_eq!(statetxn.get_nonce_at(state2, &c2).unwrap(), Some(Nonce(StarkHash::from(1))));
 
     // Contract3.
-    assert_eq!(statetxn.get_class_hash_at(state0, &c3)?, None);
-    assert_eq!(statetxn.get_class_hash_at(state1, &c3)?, None);
-    assert_eq!(statetxn.get_class_hash_at(state2, &c3)?, None);
-    assert_eq!(statetxn.get_nonce_at(state0, &c3)?, None);
-    assert_eq!(statetxn.get_nonce_at(state1, &c3)?, None);
-    assert_eq!(statetxn.get_nonce_at(state2, &c3)?, None);
+    assert_eq!(statetxn.get_class_hash_at(state0, &c3).unwrap(), None);
+    assert_eq!(statetxn.get_class_hash_at(state1, &c3).unwrap(), None);
+    assert_eq!(statetxn.get_class_hash_at(state2, &c3).unwrap(), None);
+    assert_eq!(statetxn.get_nonce_at(state0, &c3).unwrap(), None);
+    assert_eq!(statetxn.get_nonce_at(state1, &c3).unwrap(), None);
+    assert_eq!(statetxn.get_nonce_at(state2, &c3).unwrap(), None);
 
     // Storage at key0.
-    assert_eq!(statetxn.get_storage_at(state0, &c0, &key0)?, shash!("0x0"));
-    assert_eq!(statetxn.get_storage_at(state1, &c0, &key0)?, shash!("0x200"));
-    assert_eq!(statetxn.get_storage_at(state2, &c0, &key0)?, shash!("0x300"));
+    assert_eq!(statetxn.get_storage_at(state0, &c0, &key0).unwrap(), shash!("0x0"));
+    assert_eq!(statetxn.get_storage_at(state1, &c0, &key0).unwrap(), shash!("0x200"));
+    assert_eq!(statetxn.get_storage_at(state2, &c0, &key0).unwrap(), shash!("0x300"));
 
     // Storage at key1.
-    assert_eq!(statetxn.get_storage_at(state0, &c0, &key1)?, shash!("0x0"));
-    assert_eq!(statetxn.get_storage_at(state1, &c0, &key1)?, shash!("0x201"));
-    assert_eq!(statetxn.get_storage_at(state2, &c0, &key1)?, shash!("0x0"));
+    assert_eq!(statetxn.get_storage_at(state0, &c0, &key1).unwrap(), shash!("0x0"));
+    assert_eq!(statetxn.get_storage_at(state1, &c0, &key1).unwrap(), shash!("0x201"));
+    assert_eq!(statetxn.get_storage_at(state2, &c0, &key1).unwrap(), shash!("0x0"));
 
     // Storage at key2.
-    assert_eq!(statetxn.get_storage_at(state0, &c1, &key0)?, shash!("0x0"));
-    assert_eq!(statetxn.get_storage_at(state1, &c1, &key0)?, shash!("0x0"));
-    assert_eq!(statetxn.get_storage_at(state2, &c1, &key0)?, shash!("0x0"));
-
-    Ok(())
+    assert_eq!(statetxn.get_storage_at(state0, &c1, &key0).unwrap(), shash!("0x0"));
+    assert_eq!(statetxn.get_storage_at(state1, &c1, &key0).unwrap(), shash!("0x0"));
+    assert_eq!(statetxn.get_storage_at(state2, &c1, &key0).unwrap(), shash!("0x0"));
 }
 
 #[test]
-fn revert_non_existing_state_diff() -> Result<(), anyhow::Error> {
+fn revert_non_existing_state_diff() {
     let (_, mut writer) = get_test_storage();
 
     let mut logger = Logger::start();
     let block_number = BlockNumber(5);
-    writer.begin_rw_txn()?.revert_state_diff(block_number)?;
+    writer.begin_rw_txn().unwrap().revert_state_diff(block_number).unwrap();
     let expected_warn = format!(
         "Attempt to revert a non-existing state diff of block {:?}. Returning without an action.",
         block_number
     );
     assert_eq!(logger.pop().unwrap().args(), expected_warn);
-
-    Ok(())
 }
 
 #[tokio::test]
-async fn revert_last_state_diff_success() -> Result<(), anyhow::Error> {
+async fn revert_last_state_diff_success() {
     let (_, mut writer) = get_test_storage();
     let (_, _, state_diff, declared_contracts) = get_test_state_diff();
     writer
-        .begin_rw_txn()?
-        .append_state_diff(BlockNumber(0), state_diff, declared_contracts)?
-        .commit()?;
+        .begin_rw_txn()
+        .unwrap()
+        .append_state_diff(BlockNumber(0), state_diff, declared_contracts)
+        .unwrap()
+        .commit()
+        .unwrap();
 
-    writer.begin_rw_txn()?.revert_state_diff(BlockNumber(0))?.commit()?;
-    Ok(())
+    writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(0)).unwrap().commit().unwrap();
 }
 
 #[tokio::test]
-async fn revert_old_state_diff_fails() -> Result<(), anyhow::Error> {
+async fn revert_old_state_diff_fails() {
     let (_, mut writer) = get_test_storage();
-    append_2_state_diffs(&mut writer)?;
-    if let Err(err) = writer.begin_rw_txn()?.revert_state_diff(BlockNumber(0)) {
+    append_2_state_diffs(&mut writer);
+    let res = writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(0));
+    if let Err(err) = res {
         assert_matches!(
             err,
             StorageError::InvalidRevert {
@@ -203,49 +202,46 @@ async fn revert_old_state_diff_fails() -> Result<(), anyhow::Error> {
     } else {
         panic!("Unexpected Ok.");
     }
-    Ok(())
 }
 
 #[tokio::test]
-async fn revert_state_diff_updates_marker() -> Result<(), anyhow::Error> {
+async fn revert_state_diff_updates_marker() {
     let (reader, mut writer) = get_test_storage();
-    append_2_state_diffs(&mut writer)?;
+    append_2_state_diffs(&mut writer);
 
     // Verify that the state marker before revert is 2.
-    assert_eq!(reader.begin_ro_txn()?.get_state_marker()?, BlockNumber(2));
+    assert_eq!(reader.begin_ro_txn().unwrap().get_state_marker().unwrap(), BlockNumber(2));
 
-    writer.begin_rw_txn()?.revert_state_diff(BlockNumber(1))?.commit()?;
-    assert_eq!(reader.begin_ro_txn()?.get_state_marker()?, BlockNumber(1));
-
-    Ok(())
+    writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(1)).unwrap().commit().unwrap();
+    assert_eq!(reader.begin_ro_txn().unwrap().get_state_marker().unwrap(), BlockNumber(1));
 }
 
 #[tokio::test]
-async fn get_reverted_state_diff_returns_none() -> Result<(), anyhow::Error> {
+async fn get_reverted_state_diff_returns_none() {
     let (reader, mut writer) = get_test_storage();
-    append_2_state_diffs(&mut writer)?;
+    append_2_state_diffs(&mut writer);
 
     // Verify that we can get block 1's state before the revert.
-    assert!(reader.begin_ro_txn()?.get_state_diff(BlockNumber(1))?.is_some());
+    assert!(reader.begin_ro_txn().unwrap().get_state_diff(BlockNumber(1)).unwrap().is_some());
 
-    writer.begin_rw_txn()?.revert_state_diff(BlockNumber(1))?.commit()?;
-    assert!(reader.begin_ro_txn()?.get_state_diff(BlockNumber(1))?.is_none());
-
-    Ok(())
+    writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(1)).unwrap().commit().unwrap();
+    assert!(reader.begin_ro_txn().unwrap().get_state_diff(BlockNumber(1)).unwrap().is_none());
 }
 
-fn append_2_state_diffs(writer: &mut StorageWriter) -> Result<(), anyhow::Error> {
+fn append_2_state_diffs(writer: &mut StorageWriter) {
     writer
-        .begin_rw_txn()?
-        .append_state_diff(BlockNumber(0), StateDiff::default(), vec![])?
-        .append_state_diff(BlockNumber(1), StateDiff::default(), vec![])?
-        .commit()?;
-
-    Ok(())
+        .begin_rw_txn()
+        .unwrap()
+        .append_state_diff(BlockNumber(0), StateDiff::default(), vec![])
+        .unwrap()
+        .append_state_diff(BlockNumber(1), StateDiff::default(), vec![])
+        .unwrap()
+        .commit()
+        .unwrap();
 }
 
 #[test]
-fn revert_doesnt_delete_previously_declared_classes() -> Result<(), anyhow::Error> {
+fn revert_doesnt_delete_previously_declared_classes() {
     // Append 2 state diffs that use the same declared class.
     let c0 = ContractAddress(patky!("0x11"));
     let cl0 = ClassHash(shash!("0x4"));
@@ -267,26 +263,34 @@ fn revert_doesnt_delete_previously_declared_classes() -> Result<(), anyhow::Erro
 
     let (reader, mut writer) = get_test_storage();
     writer
-        .begin_rw_txn()?
-        .append_state_diff(BlockNumber(0), diff0, vec![])?
-        .append_state_diff(BlockNumber(1), diff1, vec![])?
-        .commit()?;
+        .begin_rw_txn()
+        .unwrap()
+        .append_state_diff(BlockNumber(0), diff0, vec![])
+        .unwrap()
+        .append_state_diff(BlockNumber(1), diff1, vec![])
+        .unwrap()
+        .commit()
+        .unwrap();
 
     // Assert that reverting diff 1 doesn't delete declared class from diff 0.
-    writer.begin_rw_txn()?.revert_state_diff(BlockNumber(1))?.commit()?;
+    writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(1)).unwrap().commit().unwrap();
     let declared_class = reader
-        .begin_ro_txn()?
-        .get_state_reader()?
-        .get_class_definition_at(StateNumber::right_after_block(BlockNumber(0)), &cl0)?;
+        .begin_ro_txn()
+        .unwrap()
+        .get_state_reader()
+        .unwrap()
+        .get_class_definition_at(StateNumber::right_after_block(BlockNumber(0)), &cl0)
+        .unwrap();
     assert!(declared_class.is_some());
 
     // Assert that reverting diff 0 deletes the declared class.
-    writer.begin_rw_txn()?.revert_state_diff(BlockNumber(0))?.commit()?;
+    writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(0)).unwrap().commit().unwrap();
     let declared_class = reader
-        .begin_ro_txn()?
-        .get_state_reader()?
-        .get_class_definition_at(StateNumber::right_after_block(BlockNumber(0)), &cl0)?;
+        .begin_ro_txn()
+        .unwrap()
+        .get_state_reader()
+        .unwrap()
+        .get_class_definition_at(StateNumber::right_after_block(BlockNumber(0)), &cl0)
+        .unwrap();
     assert!(declared_class.is_none());
-
-    Ok(())
 }
