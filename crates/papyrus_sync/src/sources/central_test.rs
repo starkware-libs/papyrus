@@ -8,8 +8,8 @@ use reqwest::StatusCode;
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::StarkHash;
-use starknet_api::{patky, shash};
 use starknet_api::state::{StorageEntry, StorageKey};
+use starknet_api::{patky, shash};
 use starknet_client::{
     Block, ClientError, ContractClass, DeployedContract, GlobalRoot, MockStarknetClientTrait,
     StateUpdate,
@@ -250,7 +250,7 @@ async fn stream_state_updates() {
         ]),
         state_diff.declared_classes,
     );
-    assert!(state_diff.nonces.is_empty());
+    assert_eq!(BTreeMap::from([(contract_address1, nonce1)]), state_diff.nonces);
 
     let (current_block_num, state_diff, _deployed_classes) =
         if let Some(Ok(state_diff_tuple)) = stream.next().await {

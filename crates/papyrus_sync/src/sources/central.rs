@@ -101,9 +101,8 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                                     .collect(),
                                 storage_diffs: state_update.state_diff.storage_diffs,
                                 declared_classes: BTreeMap::from_iter(declared_classes.to_vec().into_iter()),
-                                // TODO(dan): fix once nonces are available.
-                                nonces: BTreeMap::new(),
-                            };
+                                nonces: state_update.state_diff.nonces,
+                        };
                             yield Ok((current_block_number, state_diff, deployed_contract_class_definitions.to_vec()));
                             current_block_number = current_block_number.next();
                         },
