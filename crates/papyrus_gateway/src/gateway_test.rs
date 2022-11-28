@@ -1446,7 +1446,7 @@ async fn serialize_returns_expcted_json() -> Result<(), anyhow::Error> {
 async fn serde_state(server_address: SocketAddr) -> Result<(), anyhow::Error> {
     let res =
         send_request(server_address, "starknet_getStateUpdate", r#"{"block_number": 1}"#).await?;
-    assert_eq!(res, read_json_file("state_update.json")?);
+    assert_eq!(res, read_json_file("state_update.json"));
 
     let res = send_request(
         server_address,
@@ -1454,7 +1454,7 @@ async fn serde_state(server_address: SocketAddr) -> Result<(), anyhow::Error> {
         r#"{"block_number": 1}, "0x543e54f26ae33686f57da2ceebed98b340c3a78e9390931bd84fb711d5caabc""#,
     )
     .await?;
-    assert_eq!(res, read_json_file("contract_class.json")?);
+    assert_eq!(res, read_json_file("contract_class.json"));
 
     Ok(())
 }
@@ -1462,7 +1462,7 @@ async fn serde_state(server_address: SocketAddr) -> Result<(), anyhow::Error> {
 async fn serde_block(server_address: SocketAddr) -> Result<(), anyhow::Error> {
     let res =
         send_request(server_address, "starknet_getBlockWithTxs", r#"{"block_number": 1}"#).await?;
-    assert_eq!(res, read_json_file("block_with_transactions.json")?);
+    assert_eq!(res, read_json_file("block_with_transactions.json"));
 
     let res = send_request(
         server_address,
@@ -1470,7 +1470,7 @@ async fn serde_block(server_address: SocketAddr) -> Result<(), anyhow::Error> {
         r#"{"block_hash": "0x75e00250d4343326f322e370df4c9c73c7be105ad9f532eeb97891a34d9e4a5"}"#,
     )
     .await?;
-    assert_eq!(res, read_json_file("block_with_transaction_hashes.json")?);
+    assert_eq!(res, read_json_file("block_with_transaction_hashes.json"));
 
     let res =
         send_request(server_address, "starknet_getBlockTransactionCount", r#"{"block_number": 1}"#)
@@ -1489,7 +1489,7 @@ async fn serde_transaction(server_address: SocketAddr) -> Result<(), anyhow::Err
         r#"{"block_number": 1}, 0"#,
     )
     .await?;
-    assert_eq!(res, read_json_file("deploy_transaction.json")?);
+    assert_eq!(res, read_json_file("deploy_transaction.json"));
 
     let res = send_request(
         server_address,
@@ -1497,7 +1497,7 @@ async fn serde_transaction(server_address: SocketAddr) -> Result<(), anyhow::Err
         r#""0x4dd12d3b82c3d0b216503c6abf63f1ccad222461582eac82057d46c327331d2""#,
     )
     .await?;
-    assert_eq!(res, read_json_file("deploy_transaction.json")?);
+    assert_eq!(res, read_json_file("deploy_transaction.json"));
 
     let res = send_request(
         server_address,
@@ -1505,7 +1505,7 @@ async fn serde_transaction(server_address: SocketAddr) -> Result<(), anyhow::Err
         r#""0x6525d9aa309e5c80abbdafcc434d53202e06866597cd6dbbc91e5894fad7155""#,
     )
     .await?;
-    assert_eq!(res, read_json_file("invoke_transaction_receipt.json")?);
+    assert_eq!(res, read_json_file("invoke_transaction_receipt.json"));
 
     Ok(())
 }

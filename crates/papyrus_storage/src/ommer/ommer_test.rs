@@ -8,7 +8,7 @@ use crate::ommer::OmmerStorageWriter;
 use crate::state::data::ThinStateDiff;
 use crate::state::{StateStorageReader, StateStorageWriter};
 use crate::test_utils::{get_test_block, get_test_state_diff, get_test_storage};
-use crate::{StorageReader, StorageResult, TransactionIndex};
+use crate::{StorageReader, TransactionIndex};
 
 // TODO(yair): These functions were written and used in order to experience writing ommer blocks in
 // a revert scenario (vs. scenario of raw blocks that need to be written directly to the ommer
@@ -18,10 +18,15 @@ type ExtractedBodyData = (Vec<Transaction>, Vec<ThinTransactionOutput>, Vec<Vec<
 fn extract_body_data_from_storage(
     reader: &StorageReader,
     block_number: BlockNumber,
-) -> StorageResult<ExtractedBodyData> {
-    let transactions = reader.begin_ro_txn()?.get_block_transactions(block_number)?.unwrap();
-    let thin_transaction_outputs =
-        reader.begin_ro_txn()?.get_block_transaction_outputs(block_number)?.unwrap();
+) -> ExtractedBodyData {
+    let transactions =
+        reader.begin_ro_txn().unwrap().get_block_transactions(block_number).unwrap().unwrap();
+    let thin_transaction_outputs = reader
+        .begin_ro_txn()
+        .unwrap()
+        .get_block_transaction_outputs(block_number)
+        .unwrap()
+        .unwrap();
 
     // Collect the events into vector of vectors.
     let tx_indices = (0..transactions.len())
@@ -31,18 +36,19 @@ fn extract_body_data_from_storage(
             reader.begin_ro_txn().unwrap().get_transaction_events(tx_idx).unwrap().unwrap()
         })
         .collect();
-    Ok((transactions, thin_transaction_outputs, transaction_outputs_events))
+    (transactions, thin_transaction_outputs, transaction_outputs_events)
 }
 
 fn extract_state_diff_data_from_storage(
     reader: &StorageReader,
     block_number: BlockNumber,
-) -> StorageResult<(ThinStateDiff, Vec<DeclaredContract>)> {
+) -> (ThinStateDiff, Vec<DeclaredContract>) {
     let state_number = StateNumber::right_after_block(block_number);
 
-    let thin_state_diff = reader.begin_ro_txn()?.get_state_diff(block_number)?.unwrap();
-    let txn = reader.begin_ro_txn()?;
-    let state_reader = txn.get_state_reader()?;
+    let thin_state_diff =
+        reader.begin_ro_txn().unwrap().get_state_diff(block_number).unwrap().unwrap();
+    let txn = reader.begin_ro_txn().unwrap();
+    let state_reader = txn.get_state_reader().unwrap();
     let class_hashes = thin_state_diff.declared_contract_hashes();
     let declared_classes: Vec<DeclaredContract> = class_hashes
         .iter()
@@ -55,48 +61,53 @@ fn extract_state_diff_data_from_storage(
         })
         .collect();
 
-    Ok((thin_state_diff, declared_classes))
+    (thin_state_diff, declared_classes)
 }
 
 #[test]
-fn insert_header_to_ommer() -> Result<(), anyhow::Error> {
+fn insert_header_to_ommer() {
     let (_, mut writer) = get_test_storage();
     let block = get_test_block(7);
     let block_hash = block.header.block_hash;
 
-    writer.begin_rw_txn()?.insert_ommer_header(block_hash, &block.header)?.commit()?;
-
-    Ok(())
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .insert_ommer_header(block_hash, &block.header)
+        .unwrap()
+        .commit()
+        .unwrap();
 }
 
 #[test]
-fn move_body_to_ommer() -> Result<(), anyhow::Error> {
+fn move_body_to_ommer() {
     let (reader, mut writer) = get_test_storage();
     let block = get_test_block(7);
     let block_number = block.header.block_number;
     let block_hash = block.header.block_hash;
 
     // Add body to cannonical tables.
-    writer.begin_rw_txn()?.append_body(block_number, block.body)?.commit()?;
+    writer.begin_rw_txn().unwrap().append_body(block_number, block.body).unwrap().commit().unwrap();
 
     let (transactions, thin_transaction_outputs, transaction_outputs_events) =
-        extract_body_data_from_storage(&reader, block_number)?;
+        extract_body_data_from_storage(&reader, block_number);
 
     writer
-        .begin_rw_txn()?
+        .begin_rw_txn()
+        .unwrap()
         .insert_ommer_body(
             block_hash,
             &transactions,
             &thin_transaction_outputs,
             &transaction_outputs_events,
-        )?
-        .commit()?;
-
-    Ok(())
+        )
+        .unwrap()
+        .commit()
+        .unwrap();
 }
 
 #[test]
-fn insert_body_to_ommer() -> Result<(), anyhow::Error> {
+fn insert_body_to_ommer() {
     let (_, mut writer) = get_test_storage();
     let block = get_test_block(7);
     let block_hash = block.header.block_hash;
@@ -113,44 +124,44 @@ fn insert_body_to_ommer() -> Result<(), anyhow::Error> {
         body.transaction_outputs_into_iter().map(split_tx_output).unzip();
 
     writer
-        .begin_rw_txn()?
-        .insert_ommer_body(
-            block_hash,
-            &transactions,
-            &thin_tx_outputs,
-            &transaction_outputs_events,
-        )?
-        .commit()?;
-
-    Ok(())
+        .begin_rw_txn()
+        .unwrap()
+        .insert_ommer_body(block_hash, &transactions, &thin_tx_outputs, &transaction_outputs_events)
+        .unwrap()
+        .commit()
+        .unwrap();
 }
 
 #[test]
-fn move_state_diff_to_ommer() -> Result<(), anyhow::Error> {
+fn move_state_diff_to_ommer() {
     let (reader, mut writer) = get_test_storage();
     let (header, _, state_diff, declared_classes) = get_test_state_diff();
     let block_number = header.block_number;
 
     // Add state diff to cannonical tables.
     writer
-        .begin_rw_txn()?
-        .append_state_diff(block_number, state_diff, declared_classes)?
-        .commit()?;
+        .begin_rw_txn()
+        .unwrap()
+        .append_state_diff(block_number, state_diff, declared_classes)
+        .unwrap()
+        .commit()
+        .unwrap();
 
     let (thin_state_diff, declared_classes) =
-        extract_state_diff_data_from_storage(&reader, block_number)?;
+        extract_state_diff_data_from_storage(&reader, block_number);
 
     // Add the state diff to the ommer tables.
     writer
-        .begin_rw_txn()?
-        .insert_ommer_state_diff(header.block_hash, &thin_state_diff, &declared_classes)?
-        .commit()?;
-
-    Ok(())
+        .begin_rw_txn()
+        .unwrap()
+        .insert_ommer_state_diff(header.block_hash, &thin_state_diff, &declared_classes)
+        .unwrap()
+        .commit()
+        .unwrap();
 }
 
 #[test]
-fn insert_raw_state_diff_to_ommer() -> Result<(), anyhow::Error> {
+fn insert_raw_state_diff_to_ommer() {
     let (_, mut writer) = get_test_storage();
     let (header, _, state_diff, declared_classes) = get_test_state_diff();
 
@@ -158,9 +169,10 @@ fn insert_raw_state_diff_to_ommer() -> Result<(), anyhow::Error> {
 
     // Add the state diff to the ommer tables.
     writer
-        .begin_rw_txn()?
-        .insert_ommer_state_diff(header.block_hash, &thin_state_diff, &declared_classes)?
-        .commit()?;
-
-    Ok(())
+        .begin_rw_txn()
+        .unwrap()
+        .insert_ommer_state_diff(header.block_hash, &thin_state_diff, &declared_classes)
+        .unwrap()
+        .commit()
+        .unwrap();
 }
