@@ -7,6 +7,7 @@ use std::convert::TryFrom;
 use std::hash::Hash;
 
 use integer_encoding::*;
+use log::warn;
 use starknet_api::block::{
     BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice, GlobalRoot,
 };
@@ -163,6 +164,7 @@ impl<K: StorageSerde + Eq + Hash, V: StorageSerde> StorageSerde for HashMap<K, V
             let k = K::deserialize_from(bytes)?;
             let v = V::deserialize_from(bytes)?;
             if res.insert(k, v).is_some() {
+                warn!("An attempt to deserialize a btree map with two values for the same key.");
                 return None;
             }
         }
@@ -186,6 +188,7 @@ impl<K: StorageSerde + Eq + Ord, V: StorageSerde> StorageSerde for BTreeMap<K, V
             let k = K::deserialize_from(bytes)?;
             let v = V::deserialize_from(bytes)?;
             if res.insert(k, v).is_some() {
+                warn!("An attempt to deserialize a hash map with two values for the same key.");
                 return None;
             }
         }
