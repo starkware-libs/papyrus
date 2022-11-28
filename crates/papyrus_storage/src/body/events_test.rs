@@ -13,16 +13,20 @@ use crate::test_utils::{get_test_block, get_test_storage};
 use crate::{EventIndex, TransactionIndex};
 
 #[tokio::test]
-async fn iter_events_by_key() -> Result<(), anyhow::Error> {
+async fn iter_events_by_key() {
     let (storage_reader, mut storage_writer) = get_test_storage();
 
     let block = get_test_block(2);
     let block_number = block.header.block_number;
     storage_writer
-        .begin_rw_txn()?
-        .append_header(block_number, &block.header)?
-        .append_body(block_number, block.body.clone())?
-        .commit()?;
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(block_number, &block.header)
+        .unwrap()
+        .append_body(block_number, block.body.clone())
+        .unwrap()
+        .commit()
+        .unwrap();
 
     // Create the events emitted starting from contract address 0x22.
     let address = ContractAddress(patky!("0x22"));
@@ -81,25 +85,27 @@ async fn iter_events_by_key() -> Result<(), anyhow::Error> {
         TransactionIndex(block_number, TransactionOffsetInBlock(0)),
         EventIndexInTransactionOutput(0),
     );
-    let txn = storage_reader.begin_ro_txn()?;
-    for (i, e) in txn.iter_events(Some(address), event_index, block_number)?.enumerate() {
+    let txn = storage_reader.begin_ro_txn().unwrap();
+    for (i, e) in txn.iter_events(Some(address), event_index, block_number).unwrap().enumerate() {
         assert_eq!(emitted_events[i], e);
     }
-
-    Ok(())
 }
 
 #[tokio::test]
-async fn iter_events_by_index() -> Result<(), anyhow::Error> {
+async fn iter_events_by_index() {
     let (storage_reader, mut storage_writer) = get_test_storage();
 
     let block = get_test_block(2);
     let block_number = block.header.block_number;
     storage_writer
-        .begin_rw_txn()?
-        .append_header(block_number, &block.header)?
-        .append_body(block_number, block.body.clone())?
-        .commit()?;
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(block_number, &block.header)
+        .unwrap()
+        .append_body(block_number, block.body.clone())
+        .unwrap()
+        .commit()
+        .unwrap();
 
     // Create the events emitted starting from event index (0,0,2).
     let event0 = block.body.transaction_outputs().index(0).events().index(0);
@@ -149,10 +155,8 @@ async fn iter_events_by_index() -> Result<(), anyhow::Error> {
         TransactionIndex(block_number, TransactionOffsetInBlock(0)),
         EventIndexInTransactionOutput(2),
     );
-    let txn = storage_reader.begin_ro_txn()?;
-    for (i, e) in txn.iter_events(None, event_index, block_number)?.enumerate() {
+    let txn = storage_reader.begin_ro_txn().unwrap();
+    for (i, e) in txn.iter_events(None, event_index, block_number).unwrap().enumerate() {
         assert_eq!(emitted_events[i], e);
     }
-
-    Ok(())
 }
