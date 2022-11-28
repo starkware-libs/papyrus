@@ -29,7 +29,7 @@ use super::api::{
     JsonRpcError, Tag,
 };
 use super::objects::{
-    Block, ContractClass, StateUpdate, ThinStateDiff, TransactionReceipt,
+    Block, ContractClass, Event, StateUpdate, ThinStateDiff, TransactionReceipt,
     TransactionReceiptWithStatus, TransactionStatus, TransactionWithType, Transactions,
 };
 use super::test_utils::{
