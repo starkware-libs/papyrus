@@ -1076,7 +1076,7 @@ async fn get_6_events_chunk_size_2_with_address() -> Result<(), anyhow::Error> {
         to_block: Some(block_id),
         continuation_token: None,
         chunk_size,
-        address: Some(ContractAddress::try_from(shash!("0x22"))?),
+        address: Some(ContractAddress(patky!("0x22"))),
         keys: vec![filter_keys],
     };
 
@@ -1157,7 +1157,7 @@ async fn get_2_events_chunk_size_2_with_address() -> Result<(), anyhow::Error> {
         to_block: None,
         continuation_token: None,
         chunk_size,
-        address: Some(ContractAddress::try_from(shash!("0x22"))?),
+        address: Some(ContractAddress(patky!("0x22"))),
         keys: vec![HashSet::new(), filter_keys],
     };
 
@@ -1205,7 +1205,7 @@ async fn get_4_events_chunk_size_3_with_address() -> Result<(), anyhow::Error> {
         to_block: None,
         continuation_token: None,
         chunk_size,
-        address: Some(ContractAddress::try_from(shash!("0x22"))?),
+        address: Some(ContractAddress(patky!("0x22"))),
         keys: vec![filter_keys],
     };
 
