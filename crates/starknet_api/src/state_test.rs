@@ -124,7 +124,7 @@ fn state_unique() {
 
     // Nonces.
     let nonce_duplicate = ContractNonce {
-        contract_address: ContractAddress::try_from(hash0).unwrap(),
+        contract_address: ContractAddress(patricia_key0),
         nonce: Nonce(hash1),
     };
     let state_diff_with_duplicate_nonces = StateDiff::new(
