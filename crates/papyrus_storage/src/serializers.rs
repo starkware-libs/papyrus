@@ -189,11 +189,7 @@ impl<K: StorageSerde + Eq + Hash, V: StorageSerde> StorageSerde for IndexMap<K, 
             let k = K::deserialize_from(bytes)?;
             let v = V::deserialize_from(bytes)?;
             if res.insert(k, v).is_some() {
-<<<<<<< HEAD
-                warn!("An attempt to deserialize a hash map with two values for the same key.");
-=======
                 warn!("An attempt to deserialize a index map with two values for the same key.");
->>>>>>> Change BTreeMap to IndexMap
                 return None;
             }
         }
