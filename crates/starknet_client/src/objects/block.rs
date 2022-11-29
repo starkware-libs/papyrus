@@ -1,6 +1,7 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::ops::Index;
 
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockTimestamp, GasPrice};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
@@ -246,12 +247,12 @@ impl From<BlockStatus> for starknet_api::block::BlockStatus {
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct StateDiff {
-    // BTreeMap is serialized as a mapping in json, keeps ordering and is efficiently iterable.
-    pub storage_diffs: BTreeMap<ContractAddress, Vec<StorageEntry>>,
+    // IndexMap is serialized as a mapping in json, keeps ordering and is efficiently iterable.
+    pub storage_diffs: IndexMap<ContractAddress, Vec<StorageEntry>>,
     pub deployed_contracts: Vec<DeployedContract>,
     #[serde(default)]
     pub declared_contracts: Vec<ClassHash>,
-    pub nonces: BTreeMap<ContractAddress, Nonce>,
+    pub nonces: IndexMap<ContractAddress, Nonce>,
 }
 impl StateDiff {
     // Returns the declared class hashes and after them the deployed class hashes that weren't in

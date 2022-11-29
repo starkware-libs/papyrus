@@ -1,6 +1,5 @@
-use std::collections::BTreeMap;
-
 use assert_matches::assert_matches;
+use indexmap::IndexMap;
 use logtest::Logger;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
@@ -29,8 +28,8 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     let key0 = StorageKey(patky!("0x1001"));
     let key1 = StorageKey(patky!("0x101"));
     let mut diff0 = StateDiff {
-        deployed_contracts: BTreeMap::from([(c0, cl0), (c1, cl1)]),
-        storage_diffs: BTreeMap::from([
+        deployed_contracts: IndexMap::from([(c0, cl0), (c1, cl1)]),
+        storage_diffs: IndexMap::from([
             (
                 c0,
                 vec![
@@ -40,12 +39,12 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
             ),
             (c1, vec![]),
         ]),
-        declared_classes: BTreeMap::from([(cl0, c_cls0.clone()), (cl1, c_cls1)]),
-        nonces: BTreeMap::from([(c0, Nonce(StarkHash::from(1)))]),
+        declared_classes: IndexMap::from([(cl0, c_cls0.clone()), (cl1, c_cls1)]),
+        nonces: IndexMap::from([(c0, Nonce(StarkHash::from(1)))]),
     };
     let mut diff1 = StateDiff {
-        deployed_contracts: BTreeMap::from([(c2, cl0)]),
-        storage_diffs: BTreeMap::from([
+        deployed_contracts: IndexMap::from([(c2, cl0)]),
+        storage_diffs: IndexMap::from([
             (
                 c0,
                 vec![
@@ -55,8 +54,8 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
             ),
             (c1, vec![StorageEntry { key: key0, value: shash!("0x0") }]),
         ]),
-        declared_classes: BTreeMap::from([(cl0, c_cls0.clone())]),
-        nonces: BTreeMap::from([
+        declared_classes: IndexMap::from([(cl0, c_cls0.clone())]),
+        nonces: IndexMap::from([
             (c0, Nonce(StarkHash::from(2))),
             (c1, Nonce(StarkHash::from(1))),
             (c2, Nonce(StarkHash::from(1))),
@@ -264,18 +263,18 @@ fn revert_doesnt_delete_previously_declared_classes() -> Result<(), anyhow::Erro
     let cl0 = ClassHash(shash!("0x4"));
     let c_cls0 = ContractClass::default();
     let diff0 = StateDiff {
-        deployed_contracts: BTreeMap::from([(c0, cl0)]),
-        storage_diffs: BTreeMap::new(),
-        declared_classes: BTreeMap::from([(cl0, c_cls0.clone())]),
-        nonces: BTreeMap::from([(c0, Nonce(StarkHash::from(1)))]),
+        deployed_contracts: IndexMap::from([(c0, cl0)]),
+        storage_diffs: IndexMap::new(),
+        declared_classes: IndexMap::from([(cl0, c_cls0.clone())]),
+        nonces: IndexMap::from([(c0, Nonce(StarkHash::from(1)))]),
     };
 
     let c1 = ContractAddress(patky!("0x12"));
     let diff1 = StateDiff {
-        deployed_contracts: BTreeMap::from([(c1, cl0)]),
-        storage_diffs: BTreeMap::new(),
-        declared_classes: BTreeMap::from([(cl0, c_cls0)]),
-        nonces: BTreeMap::from([(c1, Nonce(StarkHash::from(2)))]),
+        deployed_contracts: IndexMap::from([(c1, cl0)]),
+        storage_diffs: IndexMap::new(),
+        declared_classes: IndexMap::from([(cl0, c_cls0)]),
+        nonces: IndexMap::from([(c1, Nonce(StarkHash::from(2)))]),
     };
 
     let (reader, mut writer) = get_test_storage();

@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::hash::Hash;
 
+use indexmap::IndexMap;
 use integer_encoding::*;
 use log::warn;
 use starknet_api::block::{
@@ -171,7 +172,7 @@ impl<K: StorageSerde + Eq + Hash, V: StorageSerde> StorageSerde for HashMap<K, V
         Some(res)
     }
 }
-impl<K: StorageSerde + Eq + Ord, V: StorageSerde> StorageSerde for BTreeMap<K, V> {
+impl<K: StorageSerde + Eq + Hash, V: StorageSerde> StorageSerde for IndexMap<K, V> {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
         res.write_varint(self.len())?;
         for (k, v) in self.iter() {
@@ -183,12 +184,16 @@ impl<K: StorageSerde + Eq + Ord, V: StorageSerde> StorageSerde for BTreeMap<K, V
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         let n: usize = bytes.read_varint().ok()?;
-        let mut res = BTreeMap::new();
+        let mut res = IndexMap::with_capacity(n as usize);
         for _i in 0..n {
             let k = K::deserialize_from(bytes)?;
             let v = V::deserialize_from(bytes)?;
             if res.insert(k, v).is_some() {
+<<<<<<< HEAD
                 warn!("An attempt to deserialize a hash map with two values for the same key.");
+=======
+                warn!("An attempt to deserialize a index map with two values for the same key.");
+>>>>>>> Change BTreeMap to IndexMap
                 return None;
             }
         }
@@ -567,10 +572,10 @@ auto_storage_serde! {
     struct OmmerTransactionKey(pub BlockHash, pub TransactionOffsetInBlock);
     struct OmmerEventKey(pub OmmerTransactionKey, pub EventIndexInTransactionOutput);
     pub struct ThinStateDiff {
-        pub deployed_contracts: BTreeMap<ContractAddress, ClassHash>,
-        pub storage_diffs: BTreeMap<ContractAddress, Vec<StorageEntry>>,
+        pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
+        pub storage_diffs: IndexMap<ContractAddress, Vec<StorageEntry>>,
         pub declared_contract_hashes: Vec<ClassHash>,
-        pub nonces: BTreeMap<ContractAddress, Nonce>,
+        pub nonces: IndexMap<ContractAddress, Nonce>,
     }
     pub enum ThinTransactionOutput {
         Declare(ThinDeclareTransactionOutput) = 0,

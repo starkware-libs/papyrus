@@ -1,7 +1,8 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::mem;
 
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 use crate::block::BlockNumber;
@@ -14,10 +15,10 @@ use crate::StarknetApiError;
 // Invariant: Addresses are strictly increasing.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct StateDiff {
-    pub deployed_contracts: BTreeMap<ContractAddress, ClassHash>,
-    pub storage_diffs: BTreeMap<ContractAddress, Vec<StorageEntry>>,
-    pub declared_classes: BTreeMap<ClassHash, ContractClass>,
-    pub nonces: BTreeMap<ContractAddress, Nonce>,
+    pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
+    pub storage_diffs: IndexMap<ContractAddress, Vec<StorageEntry>>,
+    pub declared_classes: IndexMap<ClassHash, ContractClass>,
+    pub nonces: IndexMap<ContractAddress, Nonce>,
 }
 
 /// The sequential numbering of the states between blocks.
