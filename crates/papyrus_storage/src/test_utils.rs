@@ -1,8 +1,8 @@
-use std::collections::BTreeMap;
 use std::env;
 use std::fs::read_to_string;
 use std::path::Path;
 
+use indexmap::IndexMap;
 use starknet_api::block::{
     Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockTimestamp, GasPrice, GlobalRoot,
 };
@@ -306,16 +306,16 @@ pub fn get_test_state_diff()
     let value1 = shash!("0x7c7139d51f4642ec66088959e69eb890e2e6e87c08dad2a223da9161c99c939");
 
     let diff = StateDiff {
-        deployed_contracts: BTreeMap::from([(address0, hash0), (address1, hash1)]),
-        storage_diffs: BTreeMap::from([(
+        deployed_contracts: IndexMap::from([(address0, hash0), (address1, hash1)]),
+        storage_diffs: IndexMap::from([(
             address0,
             vec![
                 StorageEntry { key: key0, value: value0 },
                 StorageEntry { key: key1, value: value1 },
             ],
         )]),
-        declared_classes: BTreeMap::from([(hash1, class1.clone()), (hash2, class2)]),
-        nonces: BTreeMap::from([(address0, Nonce(StarkHash::from(1)))]),
+        declared_classes: IndexMap::from([(hash1, class1.clone()), (hash2, class2)]),
+        nonces: IndexMap::from([(address0, Nonce(StarkHash::from(1)))]),
     };
 
     let deployed_contract_class_definitions = vec![(hash0, class0), (hash1, class1)];

@@ -1,5 +1,4 @@
-use std::collections::BTreeMap;
-
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
@@ -22,12 +21,12 @@ pub struct IndexedDeclaredContract {
 // Invariant: Addresses are strictly increasing.
 // The invariant is enforced as [`ThinStateDiff`] is created only from [`starknet_api`][`StateDiff`]
 // where the addresses are strictly increasing.
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ThinStateDiff {
-    pub deployed_contracts: BTreeMap<ContractAddress, ClassHash>,
-    pub storage_diffs: BTreeMap<ContractAddress, Vec<StorageEntry>>,
+    pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
+    pub storage_diffs: IndexMap<ContractAddress, Vec<StorageEntry>>,
     pub declared_contract_hashes: Vec<ClassHash>,
-    pub nonces: BTreeMap<ContractAddress, Nonce>,
+    pub nonces: IndexMap<ContractAddress, Nonce>,
 }
 
 impl From<StateDiff> for ThinStateDiff {

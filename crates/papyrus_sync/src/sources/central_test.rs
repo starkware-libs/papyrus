@@ -1,8 +1,8 @@
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use assert_matches::assert_matches;
 use futures_util::pin_mut;
+use indexmap::IndexMap;
 use mockall::predicate;
 use reqwest::StatusCode;
 use starknet_api::block::{BlockHash, BlockNumber};
@@ -169,13 +169,13 @@ async fn stream_state_updates() {
     let contract_class3 = ContractClass::default();
 
     let client_state_diff1 = starknet_client::StateDiff {
-        storage_diffs: BTreeMap::from([(contract_address1, vec![storage_entry.clone()])]),
+        storage_diffs: IndexMap::from([(contract_address1, vec![storage_entry.clone()])]),
         deployed_contracts: vec![
             DeployedContract { address: contract_address1, class_hash: class_hash2 },
             DeployedContract { address: contract_address2, class_hash: class_hash3 },
         ],
         declared_contracts: vec![class_hash1, class_hash3],
-        nonces: BTreeMap::from([(contract_address1, nonce1)]),
+        nonces: IndexMap::from([(contract_address1, nonce1)]),
     };
     let client_state_diff2 = starknet_client::StateDiff::default();
 
@@ -236,21 +236,21 @@ async fn stream_state_updates() {
     assert_eq!(vec![(class_hash2, contract_class2.into())], deployed_contract_class_definitions);
 
     assert_eq!(
-        BTreeMap::from([(contract_address1, class_hash2), (contract_address2, class_hash3)]),
+        IndexMap::from([(contract_address1, class_hash2), (contract_address2, class_hash3)]),
         state_diff.deployed_contracts
     );
     assert_eq!(
-        BTreeMap::from([(contract_address1, vec![storage_entry])]),
+        IndexMap::from([(contract_address1, vec![storage_entry])]),
         state_diff.storage_diffs
     );
     assert_eq!(
-        BTreeMap::from([
-            (class_hash1, contract_class1.into()),
-            (class_hash3, contract_class3.into()),
+        IndexMap::from([
+            (class_hash1, starknet_api::state::ContractClass::from(contract_class1)),
+            (class_hash3, starknet_api::state::ContractClass::from(contract_class3)),
         ]),
         state_diff.declared_classes,
     );
-    assert_eq!(BTreeMap::from([(contract_address1, nonce1)]), state_diff.nonces);
+    assert_eq!(IndexMap::from([(contract_address1, nonce1)]), state_diff.nonces);
 
     let (current_block_num, state_diff, _deployed_classes) =
         if let Some(Ok(state_diff_tuple)) = stream.next().await {

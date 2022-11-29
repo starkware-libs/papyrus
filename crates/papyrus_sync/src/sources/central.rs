@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use async_stream::stream;
@@ -6,6 +5,7 @@ use async_trait::async_trait;
 use futures::stream::BoxStream;
 use futures::{future, pin_mut, TryStreamExt};
 use futures_util::StreamExt;
+use indexmap::IndexMap;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockNumber};
@@ -100,7 +100,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                                     .map(|dc| (dc.address, dc.class_hash))
                                     .collect(),
                                 storage_diffs: state_update.state_diff.storage_diffs,
-                                declared_classes: BTreeMap::from_iter(declared_classes.to_vec().into_iter()),
+                                declared_classes: IndexMap::from_iter(declared_classes.to_vec().into_iter()),
                                 nonces: state_update.state_diff.nonces,
                         };
                             yield Ok((current_block_number, state_diff, deployed_contract_class_definitions.to_vec()));

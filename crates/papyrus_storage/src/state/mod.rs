@@ -3,8 +3,9 @@ pub mod data;
 #[path = "state_test.rs"]
 mod state_test;
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::HashSet;
 
+use indexmap::IndexMap;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
@@ -210,7 +211,7 @@ fn write_declared_classes<'env>(
 }
 
 fn write_deployed_contracts<'env>(
-    deployed_contracts: &BTreeMap<ContractAddress, ClassHash>,
+    deployed_contracts: &IndexMap<ContractAddress, ClassHash>,
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     deployed_contracts_table: &'env DeployedContractsTable<'env>,
@@ -242,7 +243,7 @@ fn write_deployed_contracts<'env>(
 }
 
 fn write_nonces<'env>(
-    nonces: &BTreeMap<ContractAddress, Nonce>,
+    nonces: &IndexMap<ContractAddress, Nonce>,
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     contracts_table: &'env NoncesTable<'env>,
@@ -254,7 +255,7 @@ fn write_nonces<'env>(
 }
 
 fn write_storage_diffs<'env>(
-    storage_diffs: &BTreeMap<ContractAddress, Vec<StorageEntry>>,
+    storage_diffs: &IndexMap<ContractAddress, Vec<StorageEntry>>,
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     storage_table: &'env ContractStorageTable<'env>,
