@@ -6,9 +6,7 @@ use starknet_api::block::{BlockHash, BlockNumber, BlockTimestamp, GasPrice};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkHash;
 use starknet_api::serde_utils::NonPrefixedBytesAsHex;
-use starknet_api::state::{
-    DeployedContract, EntryPoint, EntryPointType, Program, StorageDiff, StorageEntry,
-};
+use starknet_api::state::{EntryPoint, EntryPointType, Program, StorageEntry};
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 use starknet_api::StarknetApiError;
 
@@ -271,14 +269,21 @@ impl StateDiff {
     }
 }
 
+/// A deployed contract.
+#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct DeployedContract {
+    pub address: ContractAddress,
+    pub class_hash: ClassHash,
+}
+
 /// Converts the client representation of [`starknet_client`][`StateUpdate`] storage diffs to a
 /// [`starknet_api`][`StorageDiff`].
 pub fn client_to_starknet_api_storage_diff(
     storage_diffs: BTreeMap<ContractAddress, Vec<StorageEntry>>,
-) -> ClientResult<Vec<StorageDiff>> {
+) -> ClientResult<Vec<(ContractAddress, Vec<StorageEntry>)>> {
     let mut res = Vec::with_capacity(storage_diffs.len());
     for (address, storage_entries) in storage_diffs {
-        res.push(StorageDiff::new(address, storage_entries)?);
+        res.push((address, storage_entries));
     }
     Ok(res)
 }

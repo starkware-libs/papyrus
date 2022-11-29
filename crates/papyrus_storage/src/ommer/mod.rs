@@ -3,7 +3,8 @@
 mod ommer_test;
 
 use starknet_api::block::{BlockHash, BlockHeader};
-use starknet_api::state::DeclaredContract;
+use starknet_api::core::ClassHash;
+use starknet_api::state::ContractClass;
 use starknet_api::transaction::{
     Event, EventIndexInTransactionOutput, Transaction, TransactionOffsetInBlock,
 };
@@ -37,7 +38,7 @@ where
         self,
         block_hash: BlockHash,
         thin_state_diff: &ThinStateDiff,
-        declared_classes: &[DeclaredContract],
+        declared_classes: &[(ClassHash, ContractClass)],
     ) -> StorageResult<Self>;
 }
 
@@ -95,7 +96,7 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
         self,
         block_hash: BlockHash,
         thin_state_diff: &ThinStateDiff,
-        declared_classes: &[DeclaredContract],
+        declared_classes: &[(ClassHash, ContractClass)],
     ) -> StorageResult<Self> {
         let ommer_state_diffs_table = self.txn.open_table(&self.tables.ommer_state_diffs)?;
         let ommer_declared_classes_table =
@@ -107,30 +108,30 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
 
         ommer_state_diffs_table.insert(&self.txn, &block_hash, thin_state_diff)?;
 
-        for declared_class in declared_classes {
-            let key = (block_hash, declared_class.class_hash);
-            let value = &declared_class.contract_class;
+        for (class_hash, contract_class) in declared_classes {
+            let key = (block_hash, *class_hash);
+            let value = contract_class;
             ommer_declared_classes_table.insert(&self.txn, &key, value)?;
         }
 
-        for deployed_contract in thin_state_diff.deployed_contracts() {
-            let key = (deployed_contract.address, block_hash);
-            let value = deployed_contract.class_hash;
-            ommer_deployed_contracts_table.insert(&self.txn, &key, &value)?;
+        for (address, class_hash) in thin_state_diff.deployed_contracts() {
+            let key = (*address, block_hash);
+            let value = class_hash;
+            ommer_deployed_contracts_table.insert(&self.txn, &key, value)?;
         }
 
-        for storage_diff in thin_state_diff.storage_diffs() {
-            for storage_entry in storage_diff.storage_entries() {
-                let key = (storage_diff.address, storage_entry.key, block_hash);
+        for (address, storage_entries) in thin_state_diff.storage_diffs() {
+            for storage_entry in storage_entries {
+                let key = (*address, storage_entry.key, block_hash);
                 let value = storage_entry.value;
                 ommer_storage_table.insert(&self.txn, &key, &value)?;
             }
         }
 
-        for contract_nonce in thin_state_diff.nonces() {
-            let key = (contract_nonce.contract_address, block_hash);
-            let value = contract_nonce.nonce;
-            ommer_nonces_table.insert(&self.txn, &key, &value)?;
+        for (contract_address, nonce) in thin_state_diff.nonces() {
+            let key = (*contract_address, block_hash);
+            let value = nonce;
+            ommer_nonces_table.insert(&self.txn, &key, value)?;
         }
 
         Ok(self)

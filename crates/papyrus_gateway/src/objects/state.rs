@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 
 use papyrus_storage::compression_utils::{CompressionError, GzEncoded};
-use papyrus_storage::{StorageSerde, StorageSerdeError, ThinStateDiff};
+use papyrus_storage::{StorageSerde, StorageSerdeError};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, GlobalRoot};
+use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::state::{
     EntryPoint, EntryPointType, EventAbiEntry, FunctionAbiEntry, FunctionAbiEntryType,
-    StructAbiEntry,
+    StorageEntry, StructAbiEntry,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
@@ -107,12 +108,74 @@ impl TryFrom<starknet_api::state::ContractClass> for ContractClass {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct StateUpdate {
     pub block_hash: BlockHash,
     pub new_root: GlobalRoot,
     pub old_root: GlobalRoot,
     pub state_diff: ThinStateDiff,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+pub struct ThinStateDiff {
+    pub deployed_contracts: Vec<DeployedContract>,
+    pub storage_diffs: Vec<StorageDiff>,
+    pub declared_contract_hashes: Vec<ClassHash>,
+    pub nonces: Vec<ContractNonce>,
+}
+
+impl From<papyrus_storage::ThinStateDiff> for ThinStateDiff {
+    fn from(diff: papyrus_storage::ThinStateDiff) -> Self {
+        Self {
+            deployed_contracts: diff
+                .deployed_contracts()
+                .iter()
+                .map(|(address, class_hash)| DeployedContract {
+                    address: *address,
+                    class_hash: *class_hash,
+                })
+                .collect(),
+            storage_diffs: diff
+                .storage_diffs()
+                .iter()
+                .map(|(address, storage_entries)| StorageDiff {
+                    address: *address,
+                    storage_entries: storage_entries.clone(),
+                })
+                .collect(),
+            declared_contract_hashes: diff.declared_contract_hashes().clone(),
+            nonces: diff
+                .nonces()
+                .iter()
+                .map(|(contract_address, nonce)| ContractNonce {
+                    contract_address: *contract_address,
+                    nonce: *nonce,
+                })
+                .collect(),
+        }
+    }
+}
+
+/// The nonce of a StarkNet contract.
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct ContractNonce {
+    pub contract_address: ContractAddress,
+    pub nonce: Nonce,
+}
+
+/// A deployed contract in StarkNet.
+#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct DeployedContract {
+    pub address: ContractAddress,
+    pub class_hash: ClassHash,
+}
+
+/// Storage differences in StarkNet.
+// Invariant: Storage keys are strictly increasing. In particular, no key appears twice.
+#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct StorageDiff {
+    pub address: ContractAddress,
+    storage_entries: Vec<StorageEntry>,
 }
 
 // The StorageSerde implementation for serde_json::Value writes the length (in bytes)

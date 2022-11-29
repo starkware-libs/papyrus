@@ -22,8 +22,8 @@ use starknet_api::StarknetApiError;
 use url::Url;
 
 pub use self::objects::block::{
-    client_to_starknet_api_storage_diff, Block, ContractClass, GlobalRoot, StateDiff, StateUpdate,
-    TransactionReceiptsError,
+    client_to_starknet_api_storage_diff, Block, ContractClass, DeployedContract, GlobalRoot,
+    StateDiff, StateUpdate, TransactionReceiptsError,
 };
 use self::retry::Retry;
 pub use self::retry::RetryConfig;

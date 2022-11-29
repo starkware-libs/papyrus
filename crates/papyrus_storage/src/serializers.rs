@@ -13,10 +13,9 @@ use starknet_api::block::{
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{
-    ContractClass, ContractClassAbiEntry, ContractNonce, DeclaredContract, DeployedContract,
-    EntryPoint, EntryPointOffset, EntryPointType, EventAbiEntry, FunctionAbiEntry,
-    FunctionAbiEntryType, FunctionAbiEntryWithType, Program, StateDiff, StorageDiff, StorageEntry,
-    StorageKey, StructAbiEntry, StructMember, TypedParameter,
+    ContractClass, ContractClassAbiEntry, EntryPoint, EntryPointOffset, EntryPointType,
+    EventAbiEntry, FunctionAbiEntry, FunctionAbiEntryType, FunctionAbiEntryWithType, Program,
+    StateDiff, StorageEntry, StorageKey, StructAbiEntry, StructMember, TypedParameter,
 };
 use starknet_api::transaction::{
     CallData, ContractAddressSalt, DeclareTransaction, DeployAccountTransaction, DeployTransaction,
@@ -401,14 +400,6 @@ auto_storage_serde! {
         pub program: Program,
         pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
     }
-    pub struct ContractNonce {
-        pub contract_address: ContractAddress,
-        pub nonce: Nonce,
-    }
-    pub struct DeclaredContract {
-        pub class_hash: ClassHash,
-        pub contract_class: ContractClass,
-    }
     pub struct DeclareTransaction {
         pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
@@ -422,10 +413,6 @@ auto_storage_serde! {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
-    }
-    pub struct DeployedContract {
-        pub address: ContractAddress,
-        pub class_hash: ClassHash,
     }
     pub struct DeployTransaction {
         pub transaction_hash: TransactionHash,
@@ -582,6 +569,7 @@ auto_storage_serde! {
     bincode(u128);
     bincode(usize);
 
+    (ContractAddress, ClassHash);
     (BlockNumber, TransactionOffsetInBlock);
     (ContractAddress, BlockHash);
     (BlockHash, ClassHash);
@@ -605,18 +593,15 @@ impl StorageSerde for ThinStateDiff {
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        let deployed_contracts = Vec::<DeployedContract>::deserialize_from(bytes)?;
-        let storage_diffs = Vec::<StorageDiff>::deserialize_from(bytes)?;
+        let deployed_contracts = Vec::<(ContractAddress, ClassHash)>::deserialize_from(bytes)?;
+        let storage_diffs = Vec::<(ContractAddress, Vec<StorageEntry>)>::deserialize_from(bytes)?;
         let declared_contract_hashes = Vec::<ClassHash>::deserialize_from(bytes)?;
-        let nonces = Vec::<ContractNonce>::deserialize_from(bytes)?;
+        let nonces = Vec::<(ContractAddress, Nonce)>::deserialize_from(bytes)?;
 
         // We create ThinStateDiff from StateDiff. Add dummy contract classes.
         let declared_contracts = declared_contract_hashes
             .into_iter()
-            .map(|declared_contract_hashe| DeclaredContract {
-                class_hash: declared_contract_hashe,
-                contract_class: ContractClass::default(),
-            })
+            .map(|declared_contract_hashe| (declared_contract_hashe, ContractClass::default()))
             .collect();
         Some(
             StateDiff::new(deployed_contracts, storage_diffs, declared_contracts, nonces)
@@ -627,16 +612,16 @@ impl StorageSerde for ThinStateDiff {
 }
 
 // TODO: Move to Starknet API structs area.
-impl StorageSerde for StorageDiff {
+impl StorageSerde for (ContractAddress, Vec<StorageEntry>) {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
-        self.address.serialize_into(res)?;
-        res.write_varint(self.storage_entries().len())?;
-        for x in self.storage_entries() {
+        self.0.serialize_into(res)?;
+        res.write_varint(self.1.len())?;
+        for x in &self.1 {
             x.serialize_into(res)?
         }
         Ok(())
     }
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        Self::new(ContractAddress::deserialize_from(bytes)?, Vec::deserialize_from(bytes)?).ok()
+        Some((ContractAddress::deserialize_from(bytes)?, Vec::deserialize_from(bytes)?))
     }
 }

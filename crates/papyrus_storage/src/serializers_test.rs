@@ -2,12 +2,9 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use starknet_api::core::{ContractAddress, PatriciaKey};
+use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::StarkHash;
-use starknet_api::state::{
-    ContractNonce, DeclaredContract, DeployedContract, StateDiff, StorageDiff, StorageEntry,
-    StorageKey,
-};
+use starknet_api::state::{ContractClass, StateDiff, StorageEntry, StorageKey};
 use starknet_api::{patky, shash};
 
 use crate::{StorageSerde, ThinStateDiff};
@@ -209,30 +206,16 @@ pub(crate) use impl_get_test_instance;
 impl GetTestInstance for ThinStateDiff {
     fn get_test_instance() -> Self {
         let state_diff = StateDiff::new(
-            vec![DeployedContract::get_test_instance()],
-            vec![StorageDiff::get_test_instance()],
-            vec![DeclaredContract::get_test_instance()],
-            vec![ContractNonce::get_test_instance()],
+            vec![(ContractAddress::get_test_instance(), ClassHash::get_test_instance())],
+            vec![(ContractAddress::get_test_instance(), vec![StorageEntry::get_test_instance()])],
+            vec![(ClassHash::get_test_instance(), ContractClass::get_test_instance())],
+            vec![(ContractAddress::get_test_instance(), Nonce::get_test_instance())],
         )
         .unwrap();
         ThinStateDiff::from(state_diff)
     }
 }
 create_test!(ThinStateDiff);
-
-impl GetTestInstance for StorageDiff {
-    fn get_test_instance() -> Self {
-        Self::new(
-            ContractAddress::get_test_instance(),
-            vec![StorageEntry {
-                key: StorageKey::get_test_instance(),
-                value: StarkHash::get_test_instance(),
-            }],
-        )
-        .unwrap()
-    }
-}
-create_test!(StorageDiff);
 
 impl GetTestInstance for StarkHash {
     fn get_test_instance() -> Self {

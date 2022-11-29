@@ -1,5 +1,6 @@
 use starknet_api::block::BlockNumber;
-use starknet_api::state::{DeclaredContract, StateNumber};
+use starknet_api::core::ClassHash;
+use starknet_api::state::{ContractClass, StateNumber};
 use starknet_api::transaction::{Event, Transaction, TransactionOffsetInBlock, TransactionOutput};
 
 use crate::body::events::ThinTransactionOutput;
@@ -37,21 +38,20 @@ fn extract_body_data_from_storage(
 fn extract_state_diff_data_from_storage(
     reader: &StorageReader,
     block_number: BlockNumber,
-) -> StorageResult<(ThinStateDiff, Vec<DeclaredContract>)> {
+) -> StorageResult<(ThinStateDiff, Vec<(ClassHash, ContractClass)>)> {
     let state_number = StateNumber::right_after_block(block_number);
 
     let thin_state_diff = reader.begin_ro_txn()?.get_state_diff(block_number)?.unwrap();
     let txn = reader.begin_ro_txn()?;
     let state_reader = txn.get_state_reader()?;
     let class_hashes = thin_state_diff.declared_contract_hashes();
-    let declared_classes: Vec<DeclaredContract> = class_hashes
+    let declared_classes: Vec<(ClassHash, ContractClass)> = class_hashes
         .iter()
-        .map(|class_hash| DeclaredContract {
-            class_hash: *class_hash,
-            contract_class: state_reader
-                .get_class_definition_at(state_number, class_hash)
-                .unwrap()
-                .unwrap(),
+        .map(|class_hash| {
+            (
+                *class_hash,
+                state_reader.get_class_definition_at(state_number, class_hash).unwrap().unwrap(),
+            )
         })
         .collect();
 

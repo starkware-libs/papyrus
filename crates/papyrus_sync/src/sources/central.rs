@@ -8,7 +8,8 @@ use futures_util::StreamExt;
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockNumber};
-use starknet_api::state::{ContractNonce, DeclaredContract, StateDiff};
+use starknet_api::core::ClassHash;
+use starknet_api::state::{ContractClass, StateDiff};
 use starknet_api::StarknetApiError;
 use starknet_client::{
     client_to_starknet_api_storage_diff, ClientCreationError, ClientError, RetryConfig,
@@ -60,7 +61,7 @@ pub trait CentralSourceTrait {
 
 type BlocksStream<'a> = BoxStream<'a, Result<(BlockNumber, Block), CentralError>>;
 type StateUpdatesStream<'a> =
-    BoxStream<'a, CentralResult<(BlockNumber, StateDiff, Vec<DeclaredContract>)>>;
+    BoxStream<'a, CentralResult<(BlockNumber, StateDiff, Vec<(ClassHash, ContractClass)>)>>;
 
 #[async_trait]
 impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSourceTrait
@@ -89,22 +90,19 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                 while let Some(maybe_state_update) = state_update_stream.next().await{
                     match maybe_state_update {
                         Ok((state_update, classes)) => {
-                            let (declared_classes, deployed_contract_class_definitions) = classes.split_at(state_update.state_diff.declared_contracts.len());
+                            let (declared_classes, deployed_contract_class_definitions) =
+                                classes.split_at(state_update.state_diff.declared_contracts.len());
                             let maybe_storage_diffs = client_to_starknet_api_storage_diff(state_update.state_diff.storage_diffs);
                             match maybe_storage_diffs {
                                 Ok(storage_diffs) => {
                                     let maybe_state_diff = StateDiff::new(
-                                        state_update.state_diff.deployed_contracts,
+                                        state_update.state_diff.deployed_contracts.iter().map(|dc| (dc.address, dc.class_hash)).collect(),
                                         storage_diffs,
                                         declared_classes.to_vec(),
                                         state_update
                                         .state_diff
                                         .nonces
                                         .into_iter()
-                                        .map(|(contract_address, nonce)| ContractNonce {
-                                            contract_address,
-                                            nonce,
-                                        })
                                         .collect(),
 
                                     );
@@ -191,7 +189,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
     fn state_update_stream(
         &self,
         block_number_stream: impl Stream<Item = BlockNumber> + Send + Sync + 'static,
-    ) -> impl Stream<Item = CentralResult<(StateUpdate, Vec<DeclaredContract>)>> {
+    ) -> impl Stream<Item = CentralResult<(StateUpdate, Vec<(ClassHash, ContractClass)>)>> {
         // Stream the state updates.
         let starknet_client = self.starknet_client.clone();
         let (state_updates0, mut state_updates1) = block_number_stream
@@ -239,14 +237,14 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
 
                 // Get the next state declared and deployed classes.
                 let len = state_update.state_diff.class_hashes().len();
-                let classes: Result<Vec<DeclaredContract>, _> = flat_classes
+                let classes: Result<Vec<(ClassHash, ContractClass)>, _> = flat_classes
                     .take_n(len)
                     .await
                     .expect("Failed to download state update")
                     .into_iter()
                     .map(|(class_hash, class)| {
                         match class{
-                            Ok(Some(class)) => Ok(DeclaredContract { class_hash, contract_class: class.into() }),
+                            Ok(Some(class)) => Ok((class_hash, class.into())),
                             Ok(None) => Err(CentralError::StateUpdateNotFound),
                             Err(err) => Err(CentralError::ClientError(err)),
                         }

@@ -8,10 +8,7 @@ use starknet_api::block::{
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use starknet_api::hash::StarkHash;
 use starknet_api::serde_utils::bytes_from_hex_str;
-use starknet_api::state::{
-    ContractClass, ContractNonce, DeclaredContract, DeployedContract, StateDiff, StorageDiff,
-    StorageEntry, StorageKey,
-};
+use starknet_api::state::{ContractClass, StateDiff, StorageEntry, StorageKey};
 use starknet_api::transaction::{
     CallData, ContractAddressSalt, DeployTransaction, DeployTransactionOutput, EthAddress, Event,
     EventContent, EventData, EventKey, Fee, InvokeTransaction, InvokeTransactionOutput,
@@ -266,7 +263,8 @@ pub fn get_alpha4_starknet_block() -> Block {
     Block { header, body: get_alpha4_starknet_body() }
 }
 
-pub fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff, Vec<DeclaredContract>) {
+pub fn get_test_state_diff()
+-> (BlockHeader, BlockHeader, StateDiff, Vec<(ClassHash, ContractClass)>) {
     let parent_hash =
         BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
     let state_root = GlobalRoot(shash!("0x12"));
@@ -307,32 +305,20 @@ pub fn get_test_state_diff() -> (BlockHeader, BlockHeader, StateDiff, Vec<Declar
     let value1 = shash!("0x7c7139d51f4642ec66088959e69eb890e2e6e87c08dad2a223da9161c99c939");
 
     let diff = StateDiff::new(
-        vec![
-            DeployedContract { address: address0, class_hash: hash0 },
-            DeployedContract { address: address1, class_hash: hash1 },
-        ],
-        vec![
-            StorageDiff::new(
-                address0,
-                vec![
-                    StorageEntry { key: key0, value: value0 },
-                    StorageEntry { key: key1, value: value1 },
-                ],
-            )
-            .unwrap(),
-        ],
-        vec![
-            DeclaredContract { class_hash: hash1, contract_class: class1.clone() },
-            DeclaredContract { class_hash: hash2, contract_class: class2 },
-        ],
-        vec![ContractNonce { contract_address: address0, nonce: Nonce(StarkHash::from(1)) }],
+        vec![(address0, hash0), (address1, hash1)],
+        vec![(
+            address0,
+            vec![
+                StorageEntry { key: key0, value: value0 },
+                StorageEntry { key: key1, value: value1 },
+            ],
+        )],
+        vec![(hash1, class1.clone()), (hash2, class2)],
+        vec![(address0, Nonce(StarkHash::from(1)))],
     )
     .unwrap();
 
-    let deployed_contract_class_definitions = vec![
-        DeclaredContract { class_hash: hash0, contract_class: class0 },
-        DeclaredContract { class_hash: hash1, contract_class: class1 },
-    ];
+    let deployed_contract_class_definitions = vec![(hash0, class0), (hash1, class1)];
 
     (parent_header, header, diff, deployed_contract_class_definitions)
 }
