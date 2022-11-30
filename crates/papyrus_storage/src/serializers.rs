@@ -8,7 +8,6 @@ use std::hash::Hash;
 
 use indexmap::IndexMap;
 use integer_encoding::*;
-use log::warn;
 use starknet_api::block::{
     BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice, GlobalRoot,
 };
@@ -17,7 +16,7 @@ use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{
     ContractClass, ContractClassAbiEntry, EntryPoint, EntryPointOffset, EntryPointType,
     EventAbiEntry, FunctionAbiEntry, FunctionAbiEntryType, FunctionAbiEntryWithType, Program,
-    StorageEntry, StorageKey, StructAbiEntry, StructMember, TypedParameter,
+    StorageKey, StructAbiEntry, StructMember, TypedParameter,
 };
 use starknet_api::transaction::{
     CallData, ContractAddressSalt, DeclareTransaction, DeployAccountTransaction, DeployTransaction,
@@ -165,7 +164,6 @@ impl<K: StorageSerde + Eq + Hash, V: StorageSerde> StorageSerde for HashMap<K, V
             let k = K::deserialize_from(bytes)?;
             let v = V::deserialize_from(bytes)?;
             if res.insert(k, v).is_some() {
-                warn!("An attempt to deserialize a btree map with two values for the same key.");
                 return None;
             }
         }
@@ -189,7 +187,6 @@ impl<K: StorageSerde + Eq + Hash, V: StorageSerde> StorageSerde for IndexMap<K, 
             let k = K::deserialize_from(bytes)?;
             let v = V::deserialize_from(bytes)?;
             if res.insert(k, v).is_some() {
-                warn!("An attempt to deserialize a index map with two values for the same key.");
                 return None;
             }
         }
@@ -551,10 +548,6 @@ auto_storage_serde! {
         pub prime: serde_json::Value,
         pub reference_manager: serde_json::Value,
     }
-    pub struct StorageEntry {
-        pub key: StorageKey,
-        pub value: StarkFelt,
-    }
     pub enum Transaction {
         Declare(DeclareTransaction) = 0,
         Deploy(DeployTransaction) = 1,
@@ -569,7 +562,7 @@ auto_storage_serde! {
     struct OmmerEventKey(pub OmmerTransactionKey, pub EventIndexInTransactionOutput);
     pub struct ThinStateDiff {
         pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
-        pub storage_diffs: IndexMap<ContractAddress, Vec<StorageEntry>>,
+        pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
         pub declared_contract_hashes: Vec<ClassHash>,
         pub nonces: IndexMap<ContractAddress, Nonce>,
     }

@@ -8,11 +8,11 @@ use reqwest::StatusCode;
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::StarkHash;
-use starknet_api::state::{StorageEntry, StorageKey};
+use starknet_api::state::StorageKey;
 use starknet_api::{patky, shash};
 use starknet_client::{
     Block, ClientError, ContractClass, DeployedContract, GlobalRoot, MockStarknetClientTrait,
-    StateUpdate,
+    StateUpdate, StorageEntry,
 };
 use tokio_stream::StreamExt;
 
@@ -160,8 +160,8 @@ async fn stream_state_updates() {
     let root2 = GlobalRoot(shash!("0x222"));
     let block_hash1 = BlockHash(shash!("0x333"));
     let block_hash2 = BlockHash(shash!("0x444"));
-
-    let storage_entry = StorageEntry { key: StorageKey(patky!("0x555")), value: shash!("0x666") };
+    let key = StorageKey(patky!("0x555"));
+    let value = shash!("0x666");
 
     // TODO(shahak): Fill these contract classes with non-empty data.
     let contract_class1 = ContractClass::default();
@@ -169,7 +169,7 @@ async fn stream_state_updates() {
     let contract_class3 = ContractClass::default();
 
     let client_state_diff1 = starknet_client::StateDiff {
-        storage_diffs: IndexMap::from([(contract_address1, vec![storage_entry.clone()])]),
+        storage_diffs: IndexMap::from([(contract_address1, vec![StorageEntry { key, value }])]),
         deployed_contracts: vec![
             DeployedContract { address: contract_address1, class_hash: class_hash2 },
             DeployedContract { address: contract_address2, class_hash: class_hash3 },
@@ -240,7 +240,7 @@ async fn stream_state_updates() {
         state_diff.deployed_contracts
     );
     assert_eq!(
-        IndexMap::from([(contract_address1, vec![storage_entry])]),
+        IndexMap::from([(contract_address1, IndexMap::from([(key, value)]))]),
         state_diff.storage_diffs
     );
     assert_eq!(

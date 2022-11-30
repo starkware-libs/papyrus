@@ -6,7 +6,7 @@ use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::StarkHash;
 use starknet_api::state::{
     ContractClass, ContractClassAbiEntry, FunctionAbiEntry, FunctionAbiEntryType,
-    FunctionAbiEntryWithType, StateDiff, StateNumber, StorageEntry, StorageKey,
+    FunctionAbiEntryWithType, StateDiff, StateNumber, StorageKey,
 };
 use starknet_api::{patky, shash};
 
@@ -30,14 +30,8 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     let mut diff0 = StateDiff {
         deployed_contracts: IndexMap::from([(c0, cl0), (c1, cl1)]),
         storage_diffs: IndexMap::from([
-            (
-                c0,
-                vec![
-                    StorageEntry { key: key0, value: shash!("0x200") },
-                    StorageEntry { key: key1, value: shash!("0x201") },
-                ],
-            ),
-            (c1, vec![]),
+            (c0, IndexMap::from([(key0, shash!("0x200")), (key1, shash!("0x201"))])),
+            (c1, IndexMap::new()),
         ]),
         declared_classes: IndexMap::from([(cl0, c_cls0.clone()), (cl1, c_cls1)]),
         nonces: IndexMap::from([(c0, Nonce(StarkHash::from(1)))]),
@@ -45,14 +39,8 @@ fn append_state_diff() -> Result<(), anyhow::Error> {
     let mut diff1 = StateDiff {
         deployed_contracts: IndexMap::from([(c2, cl0)]),
         storage_diffs: IndexMap::from([
-            (
-                c0,
-                vec![
-                    StorageEntry { key: key0, value: shash!("0x300") },
-                    StorageEntry { key: key1, value: shash!("0x0") },
-                ],
-            ),
-            (c1, vec![StorageEntry { key: key0, value: shash!("0x0") }]),
+            (c0, IndexMap::from([(key0, shash!("0x300")), (key1, shash!("0x0"))])),
+            (c1, IndexMap::from([(key0, shash!("0x0"))])),
         ]),
         declared_classes: IndexMap::from([(cl0, c_cls0.clone())]),
         nonces: IndexMap::from([

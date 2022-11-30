@@ -5,9 +5,9 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockTimestamp, GasPrice};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
-use starknet_api::hash::StarkHash;
+use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::serde_utils::NonPrefixedBytesAsHex;
-use starknet_api::state::{EntryPoint, EntryPointType, Program, StorageEntry};
+use starknet_api::state::{EntryPoint, EntryPointType, Program, StorageKey};
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 use starknet_api::StarknetApiError;
 
@@ -275,6 +275,13 @@ impl StateDiff {
 pub struct DeployedContract {
     pub address: ContractAddress,
     pub class_hash: ClassHash,
+}
+
+/// A storage entry in a contract.
+#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct StorageEntry {
+    pub key: StorageKey,
+    pub value: StarkFelt,
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]

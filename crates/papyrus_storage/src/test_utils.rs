@@ -9,7 +9,7 @@ use starknet_api::block::{
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use starknet_api::hash::StarkHash;
 use starknet_api::serde_utils::bytes_from_hex_str;
-use starknet_api::state::{ContractClass, StateDiff, StorageEntry, StorageKey};
+use starknet_api::state::{ContractClass, StateDiff, StorageKey};
 use starknet_api::transaction::{
     CallData, ContractAddressSalt, DeployTransaction, DeployTransactionOutput, EthAddress, Event,
     EventContent, EventData, EventKey, Fee, InvokeTransaction, InvokeTransactionOutput,
@@ -309,10 +309,7 @@ pub fn get_test_state_diff()
         deployed_contracts: IndexMap::from([(address0, hash0), (address1, hash1)]),
         storage_diffs: IndexMap::from([(
             address0,
-            vec![
-                StorageEntry { key: key0, value: value0 },
-                StorageEntry { key: key1, value: value1 },
-            ],
+            IndexMap::from([(key0, value0), (key1, value1)]),
         )]),
         declared_classes: IndexMap::from([(hash1, class1.clone()), (hash2, class2)]),
         nonces: IndexMap::from([(address0, Nonce(StarkHash::from(1)))]),
