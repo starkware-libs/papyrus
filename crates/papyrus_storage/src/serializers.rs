@@ -170,6 +170,7 @@ impl<K: StorageSerde + Eq + Hash, V: StorageSerde> StorageSerde for HashMap<K, V
         Some(res)
     }
 }
+// TODO(anatg): Find a way to share code with StorageSerde for HashMap.
 impl<K: StorageSerde + Eq + Hash, V: StorageSerde> StorageSerde for IndexMap<K, V> {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
         res.write_varint(self.len())?;

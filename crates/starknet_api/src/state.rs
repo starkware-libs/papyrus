@@ -64,6 +64,8 @@ pub struct ContractClass {
     pub abi: Option<Vec<ContractClassAbiEntry>>,
     pub program: Program,
     /// The selector of each entry point is a unique identifier in the program.
+    // TODO: Consider changing to IndexMap, since this is used for computing the
+    // class hash.
     pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
 }
 

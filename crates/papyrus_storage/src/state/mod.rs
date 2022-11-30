@@ -96,6 +96,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             Vec::from_iter(state_diff.declared_classes.clone().into_iter());
         let mut declared_classes =
             [declared_classes_as_vec, deployed_contract_class_definitions].concat();
+        //  TODO(anatg): Add a test for this (should fail if not sorted here).
         declared_classes.sort_unstable_by_key(|(hash, _)| *hash);
 
         // Write state.
