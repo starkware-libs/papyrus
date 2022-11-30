@@ -82,30 +82,48 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
         let mut current_block_number = initial_block_number;
         let stream = stream! {
             while current_block_number < up_to_block_number {
-                let state_update_stream = self
-                    .state_update_stream(
-                        futures_util::stream::iter(current_block_number.iter_up_to(up_to_block_number))
-                    );
+                let state_update_stream = self.state_update_stream(futures_util::stream::iter(
+                    current_block_number.iter_up_to(up_to_block_number),
+                ));
                 pin_mut!(state_update_stream);
-                while let Some(maybe_state_update) = state_update_stream.next().await{
+                while let Some(maybe_state_update) = state_update_stream.next().await {
                     match maybe_state_update {
                         Ok((state_update, classes)) => {
                             let (declared_classes, deployed_contract_class_definitions) =
                                 classes.split_at(state_update.state_diff.declared_contracts.len());
                             let state_diff = StateDiff {
-                                deployed_contracts: state_update
-                                    .state_diff
-                                    .deployed_contracts
-                                    .iter()
-                                    .map(|dc| (dc.address, dc.class_hash))
-                                    .collect(),
-                                storage_diffs: state_update.state_diff.storage_diffs,
-                                declared_classes: IndexMap::from_iter(declared_classes.to_vec().into_iter()),
+                                deployed_contracts: IndexMap::from_iter(
+                                    state_update
+                                        .state_diff
+                                        .deployed_contracts
+                                        .iter()
+                                        .map(|dc| (dc.address, dc.class_hash)),
+                                ),
+                                storage_diffs: IndexMap::from_iter(
+                                    state_update.state_diff.storage_diffs.into_iter().map(
+                                        |(address, entries)| {
+                                            (
+                                                address,
+                                                entries
+                                                    .into_iter()
+                                                    .map(|se| (se.key, se.value))
+                                                    .collect(),
+                                            )
+                                        },
+                                    ),
+                                ),
+                                declared_classes: IndexMap::from_iter(
+                                    declared_classes.to_vec().into_iter(),
+                                ),
                                 nonces: state_update.state_diff.nonces,
-                        };
-                            yield Ok((current_block_number, state_diff, deployed_contract_class_definitions.to_vec()));
+                            };
+                            yield Ok((
+                                current_block_number,
+                                state_diff,
+                                deployed_contract_class_definitions.to_vec(),
+                            ));
                             current_block_number = current_block_number.next();
-                        },
+                        }
                         Err(err) => {
                             debug!("Block number {}: {:#?}", current_block_number, err);
                             yield Err(err);

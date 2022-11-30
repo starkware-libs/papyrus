@@ -2,7 +2,8 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
-use starknet_api::state::{ContractClass, StateDiff, StorageEntry};
+use starknet_api::hash::StarkFelt;
+use starknet_api::state::{ContractClass, StateDiff, StorageKey};
 
 // Data structs that are serialized into the database.
 
@@ -24,7 +25,7 @@ pub struct IndexedDeclaredContract {
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ThinStateDiff {
     pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
-    pub storage_diffs: IndexMap<ContractAddress, Vec<StorageEntry>>,
+    pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
     pub declared_contract_hashes: Vec<ClassHash>,
     pub nonces: IndexMap<ContractAddress, Nonce>,
 }

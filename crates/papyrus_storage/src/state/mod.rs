@@ -9,7 +9,7 @@ use indexmap::IndexMap;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
-use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageEntry, StorageKey};
+use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey};
 
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
@@ -91,10 +91,14 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
 
         update_marker(&self.txn, &markers_table, block_number)?;
 
+        // TODO(anatg): Remove once there are no more deployed contracts with undeclared classes.
+        let declared_classes_as_vec =
+            Vec::from_iter(state_diff.declared_classes.clone().into_iter());
+        let mut declared_classes =
+            [declared_classes_as_vec, deployed_contract_class_definitions].concat();
+        declared_classes.sort_unstable_by_key(|(hash, _)| *hash);
+
         // Write state.
-        let v1: Vec<(ClassHash, ContractClass)> =
-            state_diff.declared_classes.clone().into_iter().collect();
-        let declared_classes = [v1, deployed_contract_class_definitions].concat();
         write_declared_classes(declared_classes, &self.txn, block_number, &declared_classes_table)?;
         write_deployed_contracts(
             &state_diff.deployed_contracts,
@@ -199,8 +203,7 @@ fn write_declared_classes<'env>(
             }
             continue;
         }
-        let value =
-            IndexedDeclaredContract { block_number, contract_class: contract_class.clone() };
+        let value = IndexedDeclaredContract { block_number, contract_class };
         let res = declared_classes_table.insert(txn, &class_hash, &value);
         match res {
             Ok(()) => continue,
@@ -255,13 +258,13 @@ fn write_nonces<'env>(
 }
 
 fn write_storage_diffs<'env>(
-    storage_diffs: &IndexMap<ContractAddress, Vec<StorageEntry>>,
+    storage_diffs: &IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     storage_table: &'env ContractStorageTable<'env>,
 ) -> StorageResult<()> {
     for (address, storage_entries) in storage_diffs {
-        for StorageEntry { key, value } in storage_entries {
+        for (key, value) in storage_entries {
             storage_table.upsert(txn, &(*address, *key, block_number), value)?;
         }
     }
@@ -328,7 +331,7 @@ fn delete_storage_diffs<'env>(
     storage_table: &'env ContractStorageTable<'env>,
 ) -> StorageResult<()> {
     for (address, storage_entries) in &thin_state_diff.storage_diffs {
-        for StorageEntry { key, value: _ } in storage_entries {
+        for (key, _) in storage_entries {
             storage_table.delete(txn, &(*address, *key, block_number))?;
         }
     }

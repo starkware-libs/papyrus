@@ -256,28 +256,26 @@ async fn get_storage_at() -> Result<(), anyhow::Error> {
         .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
         .commit()?;
 
-    let (address, storage_entries) = diff.storage_diffs.iter().next().unwrap();
-    let storage_entry = storage_entries.index(0);
-    let key = storage_entry.key;
-    let expected_value = storage_entry.value;
+    let (address, storage_entries) = diff.storage_diffs.get_index(0).unwrap();
+    let (key, expected_value) = storage_entries.get_index(0).unwrap();
 
     // Get storage by block hash.
     let res = module
         .call::<_, StarkFelt>(
             "starknet_getStorageAt",
-            (*address, key, BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))),
+            (*address, *key, BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))),
         )
         .await?;
-    assert_eq!(res, expected_value);
+    assert_eq!(res, *expected_value);
 
     // Get storage by block number.
     let res = module
         .call::<_, StarkFelt>(
             "starknet_getStorageAt",
-            (*address, key, BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))),
+            (*address, *key, BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))),
         )
         .await?;
-    assert_eq!(res, expected_value);
+    assert_eq!(res, *expected_value);
 
     // Ask for an invalid contract.
     let err = module
@@ -345,7 +343,7 @@ async fn get_class_hash_at() -> Result<(), anyhow::Error> {
         .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
         .commit()?;
 
-    let (address, expected_class_hash) = diff.deployed_contracts.iter().next().unwrap();
+    let (address, expected_class_hash) = diff.deployed_contracts.get_index(0).unwrap();
 
     // Get class hash by block hash.
     let res = module
@@ -428,7 +426,7 @@ async fn get_nonce() -> Result<(), anyhow::Error> {
         .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
         .commit()?;
 
-    let (address, expected_nonce) = diff.nonces.iter().next().unwrap();
+    let (address, expected_nonce) = diff.nonces.get_index(0).unwrap();
 
     // Get class hash by block hash.
     let res = module
@@ -828,7 +826,7 @@ async fn get_class() -> Result<(), anyhow::Error> {
         .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
         .commit()?;
 
-    let (class_hash, contract_class) = diff.declared_classes.iter().nth(1).unwrap();
+    let (class_hash, contract_class) = diff.declared_classes.get_index(1).unwrap();
     let expected_contract_class = contract_class.clone().try_into()?;
 
     // Get class by block hash.
@@ -940,7 +938,7 @@ async fn get_class_at() -> Result<(), anyhow::Error> {
         )?
         .commit()?;
 
-    let (address, hash) = diff.deployed_contracts.iter().nth(1).unwrap();
+    let (address, hash) = diff.deployed_contracts.get_index(1).unwrap();
     let expected_contract_class = deployed_contract_class_definitions
         .iter()
         .find(|(h, _)| h == hash)
