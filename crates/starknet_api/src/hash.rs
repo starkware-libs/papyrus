@@ -19,18 +19,18 @@ pub const GENESIS_HASH: &str = "0x0";
 const CHOOSER_FULL: u8 = 15;
 const CHOOSER_HALF: u8 = 14;
 
-/// The StarkNet elliptic curve field element.
-pub type StarkFelt = StarkHash;
+/// A hash.
+pub type StarkHash = StarkFelt;
 
 // TODO: Move to a different crate.
-/// A hash.
+/// The StarkNet field element.
 #[derive(Copy, Clone, Eq, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(try_from = "PrefixedBytesAsHex<32_usize>", into = "PrefixedBytesAsHex<32_usize>")]
-pub struct StarkHash([u8; 32]);
+pub struct StarkFelt([u8; 32]);
 
-impl StarkHash {
-    /// Returns a new [`StarkHash`].
-    pub fn new(bytes: [u8; 32]) -> Result<StarkHash, StarknetApiError> {
+impl StarkFelt {
+    /// Returns a new [`StarkFelt`].
+    pub fn new(bytes: [u8; 32]) -> Result<StarkFelt, StarknetApiError> {
         // msb nibble must be 0. This is not a tight bound.
         if bytes[0] < 0x10 {
             return Ok(Self(bytes));
@@ -106,18 +106,18 @@ impl StarkHash {
 
     fn str_format(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = format!("0x{}", hex::encode(self.0));
-        f.debug_tuple("StarkHash").field(&s).finish()
+        f.debug_tuple("StarkFelt").field(&s).finish()
     }
 }
 
-impl TryFrom<PrefixedBytesAsHex<32_usize>> for StarkHash {
+impl TryFrom<PrefixedBytesAsHex<32_usize>> for StarkFelt {
     type Error = StarknetApiError;
     fn try_from(val: PrefixedBytesAsHex<32_usize>) -> Result<Self, Self::Error> {
-        StarkHash::new(val.0)
+        StarkFelt::new(val.0)
     }
 }
 
-impl TryFrom<&str> for StarkHash {
+impl TryFrom<&str> for StarkFelt {
     type Error = StarknetApiError;
     fn try_from(val: &str) -> Result<Self, Self::Error> {
         let bytes = bytes_from_hex_str::<32, true>(val)?;
@@ -125,7 +125,7 @@ impl TryFrom<&str> for StarkHash {
     }
 }
 
-impl From<u64> for StarkHash {
+impl From<u64> for StarkFelt {
     fn from(val: u64) -> Self {
         let mut bytes = [0u8; 32];
         bytes[24..32].copy_from_slice(&val.to_be_bytes());
@@ -135,32 +135,32 @@ impl From<u64> for StarkHash {
 
 // TODO: Remove once Starknet sequencer returns the global root hash as a hex string with a
 // "0x" prefix.
-impl TryFrom<NonPrefixedBytesAsHex<32_usize>> for StarkHash {
+impl TryFrom<NonPrefixedBytesAsHex<32_usize>> for StarkFelt {
     type Error = StarknetApiError;
     fn try_from(val: NonPrefixedBytesAsHex<32_usize>) -> Result<Self, Self::Error> {
-        StarkHash::new(val.0)
+        StarkFelt::new(val.0)
     }
 }
 
-impl From<StarkHash> for PrefixedBytesAsHex<32_usize> {
-    fn from(val: StarkHash) -> Self {
+impl From<StarkFelt> for PrefixedBytesAsHex<32_usize> {
+    fn from(val: StarkFelt) -> Self {
         BytesAsHex(val.0)
     }
 }
 
-impl Debug for StarkHash {
+impl Debug for StarkFelt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.str_format(f)
     }
 }
 
-impl Display for StarkHash {
+impl Display for StarkFelt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.str_format(f)
     }
 }
 
-/// A utility macro to create a [`StarkHash`] from a hex string representation.
+/// A utility macro to create a [`StarkFelt`] from a hex string representation.
 #[cfg(any(feature = "testing", test))]
 #[macro_export]
 macro_rules! shash {
