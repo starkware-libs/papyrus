@@ -2,15 +2,13 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 
+use indexmap::IndexMap;
 use starknet_api::core::{ContractAddress, PatriciaKey};
 use starknet_api::hash::StarkHash;
-use starknet_api::state::{
-    ContractNonce, DeclaredContract, DeployedContract, StateDiff, StorageDiff, StorageEntry,
-    StorageKey,
-};
+use starknet_api::state::StorageKey;
 use starknet_api::{patky, shash};
 
-use crate::{StorageSerde, ThinStateDiff};
+use crate::StorageSerde;
 
 pub trait StorageSerdeTest: StorageSerde {
     fn storage_serde_test();
@@ -112,6 +110,15 @@ impl<K: GetTestInstance + Eq + Hash, V: GetTestInstance> GetTestInstance for Has
         res
     }
 }
+impl<K: GetTestInstance + Eq + Hash, V: GetTestInstance> GetTestInstance for IndexMap<K, V> {
+    fn get_test_instance() -> Self {
+        let mut res = IndexMap::with_capacity(1);
+        let k = K::get_test_instance();
+        let v = V::get_test_instance();
+        res.insert(k, v);
+        res
+    }
+}
 impl<T: GetTestInstance + Default + Copy, const N: usize> GetTestInstance for [T; N] {
     fn get_test_instance() -> Self {
         [T::get_test_instance(); N]
@@ -206,34 +213,6 @@ pub(crate) use impl_get_test_instance;
 // by the macro [`impl_get_test_instance`] and calls the [`create_test`]
 // macro to create the tests for them.
 ////////////////////////////////////////////////////////////////////////
-impl GetTestInstance for ThinStateDiff {
-    fn get_test_instance() -> Self {
-        let state_diff = StateDiff::new(
-            vec![DeployedContract::get_test_instance()],
-            vec![StorageDiff::get_test_instance()],
-            vec![DeclaredContract::get_test_instance()],
-            vec![ContractNonce::get_test_instance()],
-        )
-        .unwrap();
-        ThinStateDiff::from(state_diff)
-    }
-}
-create_test!(ThinStateDiff);
-
-impl GetTestInstance for StorageDiff {
-    fn get_test_instance() -> Self {
-        Self::new(
-            ContractAddress::get_test_instance(),
-            vec![StorageEntry {
-                key: StorageKey::get_test_instance(),
-                value: StarkHash::get_test_instance(),
-            }],
-        )
-        .unwrap()
-    }
-}
-create_test!(StorageDiff);
-
 impl GetTestInstance for StarkHash {
     fn get_test_instance() -> Self {
         shash!("0x1")

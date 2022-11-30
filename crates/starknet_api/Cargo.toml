@@ -8,6 +8,7 @@ testing = []
 
 [dependencies]
 hex = { version = "0.4.3" }
+indexmap = { version = "1.9.2", features = ["serde"] }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" }
 thiserror = { version = "1.0.31" }

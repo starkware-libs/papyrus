@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::mem;
 
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 use crate::block::BlockNumber;
@@ -18,123 +19,10 @@ use crate::StarknetApiError;
 // Invariant: Addresses are strictly increasing.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct StateDiff {
-    deployed_contracts: Vec<DeployedContract>,
-    storage_diffs: Vec<StorageDiff>,
-    declared_classes: Vec<DeclaredContract>,
-    nonces: Vec<ContractNonce>,
-}
-
-impl StateDiff {
-    /// Creates a new [StateDiff](`crate::state::StateDiff`).
-    /// Sorts each vector by the addresses and verifies that there are no duplicate addresses.
-    pub fn new(
-        mut deployed_contracts: Vec<DeployedContract>,
-        mut storage_diffs: Vec<StorageDiff>,
-        mut declared_contracts: Vec<DeclaredContract>,
-        mut nonces: Vec<ContractNonce>,
-    ) -> Result<Self, StarknetApiError> {
-        deployed_contracts.sort_unstable_by_key(|dc| dc.address);
-        storage_diffs.sort_unstable_by_key(|sd| sd.address);
-        declared_contracts.sort_unstable_by_key(|dc| dc.class_hash);
-        nonces.sort_unstable_by_key(|n| n.contract_address);
-
-        if !is_unique(&deployed_contracts, |dc| &dc.address) {
-            return Err(StarknetApiError::DuplicateInStateDiff {
-                object: "deployed_contracts".to_string(),
-            });
-        }
-
-        if !is_unique(&storage_diffs, |sd| &sd.address) {
-            return Err(StarknetApiError::DuplicateInStateDiff {
-                object: "storage_diffs".to_string(),
-            });
-        }
-
-        if !is_unique(&declared_contracts, |dc| &dc.class_hash) {
-            return Err(StarknetApiError::DuplicateInStateDiff {
-                object: "declared_contracts".to_string(),
-            });
-        }
-
-        if !is_unique(&nonces, |contract_nonce| &contract_nonce.contract_address) {
-            return Err(StarknetApiError::DuplicateInStateDiff { object: "nonces".to_string() });
-        }
-
-        Ok(Self { deployed_contracts, storage_diffs, declared_classes: declared_contracts, nonces })
-    }
-
-    pub fn deployed_contracts(&self) -> &[DeployedContract] {
-        &self.deployed_contracts
-    }
-
-    pub fn storage_diffs(&self) -> &[StorageDiff] {
-        &self.storage_diffs
-    }
-
-    pub fn declared_contracts(&self) -> &[DeclaredContract] {
-        &self.declared_classes
-    }
-
-    pub fn nonces(&self) -> &[ContractNonce] {
-        &self.nonces
-    }
-}
-
-type StateDiffAsTuple =
-    (Vec<DeployedContract>, Vec<StorageDiff>, Vec<DeclaredContract>, Vec<ContractNonce>);
-
-impl From<StateDiff> for StateDiffAsTuple {
-    fn from(diff: StateDiff) -> StateDiffAsTuple {
-        (diff.deployed_contracts, diff.storage_diffs, diff.declared_classes, diff.nonces)
-    }
-}
-
-/// The nonce of a [DeployedContract](`crate::state::DeployedContract`).
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct ContractNonce {
-    pub contract_address: ContractAddress,
-    pub nonce: Nonce,
-}
-
-/// A deployed contract.
-#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct DeployedContract {
-    pub address: ContractAddress,
-    pub class_hash: ClassHash,
-}
-
-/// A declared contract.
-#[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
-pub struct DeclaredContract {
-    pub class_hash: ClassHash,
-    pub contract_class: ContractClass,
-}
-
-/// Storage differences of a [DeployedContract](`crate::state::DeployedContract`).
-// Invariant: Storage keys are strictly increasing. In particular, no key appears twice.
-#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct StorageDiff {
-    pub address: ContractAddress,
-    storage_entries: Vec<StorageEntry>,
-}
-
-impl StorageDiff {
-    /// Creates a new [StorageDiff](`crate::state::StorageDiff`).
-    /// Sorts the storage entries by their key and verifies that there are no duplicate entries.
-    pub fn new(
-        address: ContractAddress,
-        mut storage_entries: Vec<StorageEntry>,
-    ) -> Result<Self, StarknetApiError> {
-        storage_entries.sort_unstable_by_key(|se| se.key);
-        if !is_unique(storage_entries.as_slice(), |se| &se.key) {
-            return Err(StarknetApiError::DuplicateStorageEntry);
-        }
-        Ok(Self { address, storage_entries })
-    }
-
-    pub fn storage_entries(&self) -> &[StorageEntry] {
-        &self.storage_entries
-    }
+    pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
+    pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
+    pub declared_classes: IndexMap<ClassHash, ContractClass>,
+    pub nonces: IndexMap<ContractAddress, Nonce>,
 }
 
 /// The sequential numbering of the states between blocks.
@@ -176,6 +64,8 @@ pub struct ContractClass {
     pub abi: Option<Vec<ContractClassAbiEntry>>,
     pub program: Program,
     /// The selector of each entry point is a unique identifier in the program.
+    // TODO: Consider changing to IndexMap, since this is used for computing the
+    // class hash.
     pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
 }
 
@@ -335,19 +225,4 @@ impl TryFrom<StarkHash> for StorageKey {
     fn try_from(val: StarkHash) -> Result<Self, Self::Error> {
         Ok(Self(PatriciaKey::try_from(val)?))
     }
-}
-
-/// A storage entry in a contract.
-#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct StorageEntry {
-    pub key: StorageKey,
-    pub value: StarkFelt,
-}
-
-fn is_unique<T, B, F>(sorted: &[T], f: F) -> bool
-where
-    F: Fn(&T) -> &B,
-    B: PartialEq,
-{
-    sorted.windows(2).all(|w| f(&w[0]) != f(&w[1]))
 }

@@ -1,3 +1,7 @@
+#[cfg(test)]
+#[path = "sync_test.rs"]
+mod sync_test;
+
 mod sources;
 
 use std::sync::Arc;
@@ -12,7 +16,8 @@ use papyrus_storage::{
 };
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockNumber};
-use starknet_api::state::{DeclaredContract, StateDiff};
+use starknet_api::core::ClassHash;
+use starknet_api::state::{ContractClass, StateDiff};
 use starknet_client::ClientError;
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
@@ -52,7 +57,7 @@ pub enum SyncEvent {
         // TODO(anatg): Remove once there are no more deployed contracts with undeclared classes.
         // Class definitions of deployed contracts with classes that were not declared in this
         // state diff.
-        deployed_contract_class_definitions: Vec<DeclaredContract>,
+        deployed_contract_class_definitions: Vec<(ClassHash, ContractClass)>,
     },
 }
 
@@ -176,7 +181,8 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
             pin_mut!(state_diff_stream);
             while let Some(maybe_state_diff) = state_diff_stream.next().await {
                 match maybe_state_diff {
-                    Ok((block_number, state_diff, deployed_contract_class_definitions)) => {
+                    Ok((block_number, mut state_diff, deployed_contract_class_definitions)) => {
+                        sort_state_diff(&mut state_diff);
                         yield SyncEvent::StateDiffAvailable {
                             block_number,
                             state_diff,
@@ -190,6 +196,16 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
                 }
             }
         }
+    }
+}
+
+pub fn sort_state_diff(diff: &mut StateDiff) {
+    diff.declared_classes.sort_unstable_keys();
+    diff.deployed_contracts.sort_unstable_keys();
+    diff.nonces.sort_unstable_keys();
+    diff.storage_diffs.sort_unstable_keys();
+    for storage_entries in diff.storage_diffs.values_mut() {
+        storage_entries.sort_unstable_keys();
     }
 }
 

@@ -1,14 +1,13 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::ops::Index;
 
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockTimestamp, GasPrice};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
-use starknet_api::hash::StarkHash;
+use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::serde_utils::NonPrefixedBytesAsHex;
-use starknet_api::state::{
-    DeployedContract, EntryPoint, EntryPointType, Program, StorageDiff, StorageEntry,
-};
+use starknet_api::state::{EntryPoint, EntryPointType, Program, StorageKey};
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 use starknet_api::StarknetApiError;
 
@@ -248,12 +247,12 @@ impl From<BlockStatus> for starknet_api::block::BlockStatus {
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct StateDiff {
-    // BTreeMap is serialized as a mapping in json, keeps ordering and is efficiently iterable.
-    pub storage_diffs: BTreeMap<ContractAddress, Vec<StorageEntry>>,
+    // IndexMap is serialized as a mapping in json, keeps ordering and is efficiently iterable.
+    pub storage_diffs: IndexMap<ContractAddress, Vec<StorageEntry>>,
     pub deployed_contracts: Vec<DeployedContract>,
     #[serde(default)]
     pub declared_contracts: Vec<ClassHash>,
-    pub nonces: BTreeMap<ContractAddress, Nonce>,
+    pub nonces: IndexMap<ContractAddress, Nonce>,
 }
 impl StateDiff {
     // Returns the declared class hashes and after them the deployed class hashes that weren't in
@@ -271,16 +270,18 @@ impl StateDiff {
     }
 }
 
-/// Converts the client representation of [`starknet_client`][`StateUpdate`] storage diffs to a
-/// [`starknet_api`][`StorageDiff`].
-pub fn client_to_starknet_api_storage_diff(
-    storage_diffs: BTreeMap<ContractAddress, Vec<StorageEntry>>,
-) -> ClientResult<Vec<StorageDiff>> {
-    let mut res = Vec::with_capacity(storage_diffs.len());
-    for (address, storage_entries) in storage_diffs {
-        res.push(StorageDiff::new(address, storage_entries)?);
-    }
-    Ok(res)
+/// A deployed contract in StarkNet.
+#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct DeployedContract {
+    pub address: ContractAddress,
+    pub class_hash: ClassHash,
+}
+
+/// A storage entry in a contract.
+#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct StorageEntry {
+    pub key: StorageKey,
+    pub value: StarkFelt,
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]

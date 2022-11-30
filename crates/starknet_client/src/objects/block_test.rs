@@ -1,18 +1,17 @@
-use std::collections::BTreeMap;
-
 use assert::assert_ok;
 use assert_matches::assert_matches;
+use indexmap::IndexMap;
 use starknet_api::block::BlockHash;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::StarkHash;
 use starknet_api::serde_utils::bytes_from_hex_str;
-use starknet_api::state::{DeployedContract, StorageEntry, StorageKey};
+use starknet_api::state::StorageKey;
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 use starknet_api::{patky, shash};
 
 use super::block::{
-    Block, ContractClass, ContractClassAbiEntry, GlobalRoot, StateDiff, StateUpdate,
-    TransactionReceiptsError,
+    Block, ContractClass, ContractClassAbiEntry, DeployedContract, GlobalRoot, StateDiff,
+    StateUpdate, StorageEntry, TransactionReceiptsError,
 };
 use super::transaction::TransactionReceipt;
 use crate::test_utils::read_resource::read_resource_file;
@@ -48,7 +47,7 @@ fn load_block_state_update_succeeds() {
             .unwrap(),
         ),
         state_diff: StateDiff {
-            storage_diffs: BTreeMap::from([(
+            storage_diffs: IndexMap::from([(
                 ContractAddress(patky!(
                     "0x13386f165f065115c1da38d755be261023c32f0134a03a8e66b6bb1e0016014"
                 )),
@@ -76,7 +75,7 @@ fn load_block_state_update_succeeds() {
                 )),
             }],
             declared_contracts: vec![],
-            nonces: BTreeMap::from([(
+            nonces: IndexMap::from([(
                 ContractAddress(patky!(
                     "0x51c62af8919b31499b36bd1f1f702c8ef5a6309554427186c7bd456b862c115"
                 )),

@@ -1,19 +1,18 @@
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use assert_matches::assert_matches;
 use futures_util::pin_mut;
+use indexmap::IndexMap;
 use mockall::predicate;
 use reqwest::StatusCode;
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::StarkHash;
-use starknet_api::state::{
-    ContractNonce, DeclaredContract, DeployedContract, StorageDiff, StorageEntry, StorageKey,
-};
+use starknet_api::state::StorageKey;
 use starknet_api::{patky, shash};
 use starknet_client::{
-    Block, ClientError, ContractClass, GlobalRoot, MockStarknetClientTrait, StateUpdate,
+    Block, ClientError, ContractClass, DeployedContract, GlobalRoot, MockStarknetClientTrait,
+    StateUpdate, StorageEntry,
 };
 use tokio_stream::StreamExt;
 
@@ -161,8 +160,8 @@ async fn stream_state_updates() {
     let root2 = GlobalRoot(shash!("0x222"));
     let block_hash1 = BlockHash(shash!("0x333"));
     let block_hash2 = BlockHash(shash!("0x444"));
-
-    let storage_entry = StorageEntry { key: StorageKey(patky!("0x555")), value: shash!("0x666") };
+    let key = StorageKey(patky!("0x555"));
+    let value = shash!("0x666");
 
     // TODO(shahak): Fill these contract classes with non-empty data.
     let contract_class1 = ContractClass::default();
@@ -170,13 +169,13 @@ async fn stream_state_updates() {
     let contract_class3 = ContractClass::default();
 
     let client_state_diff1 = starknet_client::StateDiff {
-        storage_diffs: BTreeMap::from([(contract_address1, vec![storage_entry.clone()])]),
+        storage_diffs: IndexMap::from([(contract_address1, vec![StorageEntry { key, value }])]),
         deployed_contracts: vec![
             DeployedContract { address: contract_address1, class_hash: class_hash2 },
             DeployedContract { address: contract_address2, class_hash: class_hash3 },
         ],
         declared_contracts: vec![class_hash1, class_hash3],
-        nonces: BTreeMap::from([(contract_address1, nonce1)]),
+        nonces: IndexMap::from([(contract_address1, nonce1)]),
     };
     let client_state_diff2 = starknet_client::StateDiff::default();
 
@@ -234,31 +233,24 @@ async fn stream_state_updates() {
             panic!("Match of streamed state_update failed!");
         };
     assert_eq!(initial_block_num, current_block_num);
-    assert_eq!(
-        vec![DeclaredContract { class_hash: class_hash2, contract_class: contract_class2.into() }],
-        deployed_contract_class_definitions,
-    );
+    assert_eq!(vec![(class_hash2, contract_class2.into())], deployed_contract_class_definitions);
 
-    let (deployed_contracts, storage_diffs, declared_classes, nonces) = state_diff.into();
     assert_eq!(
-        vec![
-            DeployedContract { address: contract_address1, class_hash: class_hash2 },
-            DeployedContract { address: contract_address2, class_hash: class_hash3 },
-        ],
-        deployed_contracts
+        IndexMap::from([(contract_address1, class_hash2), (contract_address2, class_hash3)]),
+        state_diff.deployed_contracts
     );
     assert_eq!(
-        vec![StorageDiff::new(contract_address1, vec![storage_entry]).unwrap()],
-        storage_diffs
+        IndexMap::from([(contract_address1, IndexMap::from([(key, value)]))]),
+        state_diff.storage_diffs
     );
     assert_eq!(
-        vec![
-            DeclaredContract { class_hash: class_hash1, contract_class: contract_class1.into() },
-            DeclaredContract { class_hash: class_hash3, contract_class: contract_class3.into() },
-        ],
-        declared_classes,
+        IndexMap::from([
+            (class_hash1, starknet_api::state::ContractClass::from(contract_class1)),
+            (class_hash3, starknet_api::state::ContractClass::from(contract_class3)),
+        ]),
+        state_diff.declared_classes,
     );
-    assert_eq!(vec![ContractNonce { contract_address: contract_address1, nonce: nonce1 }], nonces);
+    assert_eq!(IndexMap::from([(contract_address1, nonce1)]), state_diff.nonces);
 
     let (current_block_num, state_diff, _deployed_classes) =
         if let Some(Ok(state_diff_tuple)) = stream.next().await {

@@ -280,7 +280,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
             block_hash: header.block_hash,
             new_root: header.new_root,
             old_root,
-            state_diff: thin_state_diff,
+            state_diff: thin_state_diff.into(),
         })
     }
 

@@ -1,7 +1,9 @@
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
-use starknet_api::core::ClassHash;
-use starknet_api::state::{ContractClass, ContractNonce, DeployedContract, StateDiff, StorageDiff};
+use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::hash::StarkFelt;
+use starknet_api::state::{ContractClass, StateDiff, StorageKey};
 
 // Data structs that are serialized into the database.
 
@@ -20,39 +22,21 @@ pub struct IndexedDeclaredContract {
 // Invariant: Addresses are strictly increasing.
 // The invariant is enforced as [`ThinStateDiff`] is created only from [`starknet_api`][`StateDiff`]
 // where the addresses are strictly increasing.
-#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ThinStateDiff {
-    deployed_contracts: Vec<DeployedContract>,
-    storage_diffs: Vec<StorageDiff>,
-    declared_contract_hashes: Vec<ClassHash>,
-    nonces: Vec<ContractNonce>,
-}
-
-impl ThinStateDiff {
-    pub fn deployed_contracts(&self) -> &Vec<DeployedContract> {
-        &self.deployed_contracts
-    }
-    pub fn storage_diffs(&self) -> &Vec<StorageDiff> {
-        &self.storage_diffs
-    }
-    pub fn declared_contract_hashes(&self) -> &Vec<ClassHash> {
-        &self.declared_contract_hashes
-    }
-    pub fn nonces(&self) -> &Vec<ContractNonce> {
-        &self.nonces
-    }
+    pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
+    pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
+    pub declared_contract_hashes: Vec<ClassHash>,
+    pub nonces: IndexMap<ContractAddress, Nonce>,
 }
 
 impl From<StateDiff> for ThinStateDiff {
     fn from(diff: StateDiff) -> Self {
-        let (deployed_contracts, storage_diffs, declared_classes, nonces) = diff.into();
         Self {
-            deployed_contracts,
-            storage_diffs,
-            declared_contract_hashes: Vec::from_iter(
-                declared_classes.iter().map(|declared_contract| declared_contract.class_hash),
-            ),
-            nonces,
+            deployed_contracts: diff.deployed_contracts,
+            storage_diffs: diff.storage_diffs,
+            declared_contract_hashes: diff.declared_classes.into_keys().collect(),
+            nonces: diff.nonces,
         }
     }
 }
