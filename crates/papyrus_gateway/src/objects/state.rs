@@ -5,9 +5,10 @@ use papyrus_storage::{StorageSerde, StorageSerdeError};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, GlobalRoot};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::hash::StarkFelt;
 use starknet_api::state::{
-    EntryPoint, EntryPointType, EventAbiEntry, FunctionAbiEntry, FunctionAbiEntryType,
-    StorageEntry, StructAbiEntry,
+    EntryPoint, EntryPointType, EventAbiEntry, FunctionAbiEntry, FunctionAbiEntryType, StorageKey,
+    StructAbiEntry,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
@@ -127,22 +128,26 @@ pub struct ThinStateDiff {
 impl From<papyrus_storage::ThinStateDiff> for ThinStateDiff {
     fn from(diff: papyrus_storage::ThinStateDiff) -> Self {
         Self {
-            deployed_contracts: diff
-                .deployed_contracts
-                .into_iter()
-                .map(|(address, class_hash)| DeployedContract { address, class_hash })
-                .collect(),
-            storage_diffs: diff
-                .storage_diffs
-                .into_iter()
-                .map(|(address, storage_entries)| StorageDiff { address, storage_entries })
-                .collect(),
+            deployed_contracts: Vec::from_iter(
+                diff.deployed_contracts
+                    .into_iter()
+                    .map(|(address, class_hash)| DeployedContract { address, class_hash }),
+            ),
+            storage_diffs: Vec::from_iter(diff.storage_diffs.into_iter().map(
+                |(address, entries)| {
+                    let storage_entries = entries
+                        .into_iter()
+                        .map(|(key, value)| StorageEntry { key, value })
+                        .collect();
+                    StorageDiff { address, storage_entries }
+                },
+            )),
             declared_contract_hashes: diff.declared_contract_hashes,
-            nonces: diff
-                .nonces
-                .into_iter()
-                .map(|(contract_address, nonce)| ContractNonce { contract_address, nonce })
-                .collect(),
+            nonces: Vec::from_iter(
+                diff.nonces
+                    .into_iter()
+                    .map(|(contract_address, nonce)| ContractNonce { contract_address, nonce }),
+            ),
         }
     }
 }
@@ -167,6 +172,13 @@ pub struct DeployedContract {
 pub struct StorageDiff {
     pub address: ContractAddress,
     storage_entries: Vec<StorageEntry>,
+}
+
+/// A storage entry in a contract.
+#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct StorageEntry {
+    pub key: StorageKey,
+    pub value: StarkFelt,
 }
 
 // The StorageSerde implementation for serde_json::Value writes the length (in bytes)

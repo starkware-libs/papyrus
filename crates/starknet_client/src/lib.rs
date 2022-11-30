@@ -22,7 +22,7 @@ use starknet_api::StarknetApiError;
 use url::Url;
 
 pub use self::objects::block::{
-    Block, ContractClass, DeployedContract, GlobalRoot, StateDiff, StateUpdate,
+    Block, ContractClass, DeployedContract, GlobalRoot, StateDiff, StateUpdate, StorageEntry,
     TransactionReceiptsError,
 };
 use self::retry::Retry;

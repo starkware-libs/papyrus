@@ -1,3 +1,7 @@
+#[cfg(test)]
+#[path = "state_test.rs"]
+mod state_test;
+
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::mem;
@@ -16,7 +20,7 @@ use crate::StarknetApiError;
 #[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct StateDiff {
     pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
-    pub storage_diffs: IndexMap<ContractAddress, Vec<StorageEntry>>,
+    pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
     pub declared_classes: IndexMap<ClassHash, ContractClass>,
     pub nonces: IndexMap<ContractAddress, Nonce>,
 }
@@ -219,11 +223,4 @@ impl TryFrom<StarkHash> for StorageKey {
     fn try_from(val: StarkHash) -> Result<Self, Self::Error> {
         Ok(Self(PatriciaKey::try_from(val)?))
     }
-}
-
-/// A storage entry in a contract.
-#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct StorageEntry {
-    pub key: StorageKey,
-    pub value: StarkFelt,
 }

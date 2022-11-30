@@ -25,14 +25,4 @@ pub enum StarknetApiError {
     /// [block](`crate::block::Block`) don't match in size.
     #[error("Transactions and transaction outputs don't have the same length.")]
     TransactionsLengthDontMatch,
-    #[error("Duplicate key in StateDiff: {object}.")]
-    /// An error for when there are multiple objects in a StarkNet
-    /// [StateDiff](`crate::state::StateDiff`) referring to the same
-    /// [ContractAddress](`crate::core::ContractAddress`).
-    DuplicateInStateDiff { object: String },
-    /// An error for when there are multiple [storage entries](`crate::state::StorageEntry`) in a
-    /// StarkNet [StorageDiff](`crate::state::StorageDiff`) referring to the
-    /// same [StorageKey](`crate::state::StorageKey`).
-    #[error("Duplicate key in StorageEntry.")]
-    DuplicateStorageEntry,
 }

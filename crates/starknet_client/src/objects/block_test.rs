@@ -5,13 +5,13 @@ use starknet_api::block::BlockHash;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::StarkHash;
 use starknet_api::serde_utils::bytes_from_hex_str;
-use starknet_api::state::{StorageEntry, StorageKey};
+use starknet_api::state::StorageKey;
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 use starknet_api::{patky, shash};
 
 use super::block::{
     Block, ContractClass, ContractClassAbiEntry, DeployedContract, GlobalRoot, StateDiff,
-    StateUpdate, TransactionReceiptsError,
+    StateUpdate, StorageEntry, TransactionReceiptsError,
 };
 use super::transaction::TransactionReceipt;
 use crate::test_utils::read_resource::read_resource_file;
