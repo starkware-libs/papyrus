@@ -30,8 +30,8 @@ use crate::api::{
 use crate::block::Block;
 use crate::state::{ContractClass, StateUpdate, ThinStateDiff};
 use crate::test_utils::{
-    get_block_to_match_json_file, get_test_gateway_config,
-    get_test_rpc_server_and_storage_writer, send_request,
+    get_block_to_match_json_file, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
+    send_request,
 };
 use crate::transaction::{
     Event, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
@@ -1514,8 +1514,7 @@ async fn serialize_returns_expcted_json() {
         .unwrap();
 
     let gateway_config = get_test_gateway_config();
-    let (server_address, _handle) =
-        run_server(&gateway_config, storage_reader).await.unwrap();
+    let (server_address, _handle) = run_server(&gateway_config, storage_reader).await.unwrap();
 
     serde_state(server_address).await;
     serde_block(server_address).await;

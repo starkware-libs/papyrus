@@ -1,4 +1,4 @@
-use papyrus_node::config::load_config;
+use papyrus_node::config::Config;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 use starknet_api::hash::StarkHash;
@@ -6,7 +6,7 @@ use starknet_client::{StarknetClient, StarknetClientTrait};
 
 #[tokio::main]
 async fn main() {
-    let config = load_config("config/config.ron").expect("Load config");
+    let config = Config::load().expect("Load config");
     let starknet_client = StarknetClient::new(&config.central.url, config.central.retry_config)
         .expect("Create new client");
     let _latest_block_number = starknet_client.block_number().await.expect("Get block number");
