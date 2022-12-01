@@ -9,8 +9,7 @@ use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
 use papyrus_storage::test_utils::{
-    get_alpha4_starknet_block, get_test_block, get_test_state_diff, get_test_storage,
-    read_json_file,
+    get_test_block, get_test_state_diff, get_test_storage, read_json_file,
 };
 use papyrus_storage::{
     BodyStorageWriter, EventIndex, HeaderStorageWriter, StateStorageWriter, TransactionIndex,
@@ -33,7 +32,8 @@ use super::objects::{
     TransactionReceiptWithStatus, TransactionStatus, TransactionWithType, Transactions,
 };
 use super::test_utils::{
-    get_test_gateway_config_and_chain_id, get_test_rpc_server_and_storage_writer, send_request,
+    get_alpha4_starknet_block, get_test_gateway_config_and_chain_id,
+    get_test_rpc_server_and_storage_writer, send_request,
 };
 use super::{run_server, ContinuationTokenAsStruct};
 
