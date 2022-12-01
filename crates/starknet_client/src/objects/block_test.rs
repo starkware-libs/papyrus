@@ -96,7 +96,7 @@ async fn try_into_starknet_api() {
     let block: Block = serde_json::from_str(&raw_block).unwrap();
     let expected_num_of_tx_outputs = block.transactions.len();
     let starknet_api_block = starknet_api::block::Block::try_from(block).unwrap();
-    assert_eq!(expected_num_of_tx_outputs, starknet_api_block.body.transaction_outputs().len());
+    assert_eq!(expected_num_of_tx_outputs, starknet_api_block.body.transaction_outputs.len());
 
     let mut err_block: Block = serde_json::from_str(&raw_block).unwrap();
     err_block.transaction_receipts.pop();

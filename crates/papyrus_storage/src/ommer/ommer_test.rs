@@ -99,9 +99,6 @@ fn move_body_to_ommer() -> Result<(), anyhow::Error> {
 fn insert_body_to_ommer() -> Result<(), anyhow::Error> {
     let (_, mut writer) = get_test_storage();
     let block = get_test_block(7);
-    let block_hash = block.header.block_hash;
-    let body = block.body;
-    let transactions = body.transactions().to_owned();
 
     fn split_tx_output(tx_output: TransactionOutput) -> (ThinTransactionOutput, Vec<Event>) {
         let events = tx_output.events().to_owned();
@@ -110,13 +107,13 @@ fn insert_body_to_ommer() -> Result<(), anyhow::Error> {
     }
 
     let (thin_tx_outputs, transaction_outputs_events): (Vec<_>, Vec<_>) =
-        body.transaction_outputs_into_iter().map(split_tx_output).unzip();
+        block.body.transaction_outputs.into_iter().map(split_tx_output).unzip();
 
     writer
         .begin_rw_txn()?
         .insert_ommer_body(
-            block_hash,
-            &transactions,
+            block.header.block_hash,
+            &block.body.transactions,
             &thin_tx_outputs,
             &transaction_outputs_events,
         )?

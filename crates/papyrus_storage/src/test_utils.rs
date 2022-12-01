@@ -120,7 +120,7 @@ pub fn get_test_body(transaction_count: usize) -> BlockBody {
         transaction_outputs.push(transaction_output);
     }
 
-    BlockBody::new(transactions, transaction_outputs).unwrap()
+    BlockBody { transactions, transaction_outputs }
 }
 
 pub fn get_test_block(transaction_count: usize) -> Block {
@@ -240,7 +240,7 @@ pub fn get_alpha4_starknet_body() -> BlockBody {
         }),
     ];
 
-    BlockBody::new(transactions, transaction_outputs).unwrap()
+    BlockBody { transactions, transaction_outputs }
 }
 
 /// Returns block number 1 in starknet mainnet.
