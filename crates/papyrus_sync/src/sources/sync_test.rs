@@ -5,9 +5,10 @@ use async_stream::stream;
 use futures::StreamExt;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{HeaderStorageReader, StorageReader, StorageWriter};
-use starknet_api::{
-    shash, Block, BlockBody, BlockHash, BlockHeader, BlockNumber, StarkHash, StateDiff,
-};
+use starknet_api::block::{Block, BlockBody, BlockHash, BlockHeader, BlockNumber};
+use starknet_api::hash::StarkHash;
+use starknet_api::shash;
+use starknet_api::state::StateDiff;
 
 use super::central::BlocksStream;
 use crate::sources::central::{MockCentralSourceTrait, StateUpdatesStream};
@@ -63,14 +64,14 @@ async fn sync_empty_chain() -> Result<(), anyhow::Error> {
 
     // Mock central without any block.
     let mut mock = MockCentralSourceTrait::new();
-    mock.expect_get_block_marker().returning(|| Ok(BlockNumber::new(0)));
+    mock.expect_get_block_marker().returning(|| Ok(BlockNumber(0)));
     let (reader, writer) = get_test_storage();
     let sync_future = run_sync(reader.clone(), writer, mock);
 
     // Check that the header marker is 0.
     let check_storage_future = check_storage(reader.clone(), Duration::from_secs(5), |reader| {
         let marker = reader.begin_ro_txn()?.get_header_marker()?;
-        Ok(marker == BlockNumber::new(0))
+        Ok(marker == BlockNumber(0))
     });
 
     tokio::select! {
@@ -89,14 +90,14 @@ async fn sync_happy_flow() -> Result<(), anyhow::Error> {
 
     // Mock having N_BLOCKS chain in central.
     let mut mock = MockCentralSourceTrait::new();
-    mock.expect_get_block_marker().returning(|| Ok(BlockNumber::new(N_BLOCKS)));
+    mock.expect_get_block_marker().returning(|| Ok(BlockNumber(N_BLOCKS)));
     mock.expect_stream_new_blocks().returning(move |initial, up_to| {
         let blocks_stream: BlocksStream<'_> = stream! {
             for i in initial.iter_up_to(up_to) {
-                if i.number() >= &N_BLOCKS {
+                if i.0 >= N_BLOCKS {
                     yield Err(CentralError::BlockNotFound { block_number: i })
                 }
-                let header = BlockHeader{block_number: i, block_hash: BlockHash::new(shash!(format!("0x{}",i.number()).as_str())), ..BlockHeader::default()};
+                let header = BlockHeader{block_number: i, block_hash: BlockHash(shash!(format!("0x{}",i.0).as_str())), ..BlockHeader::default()};
                 yield Ok((i,Block{header, body: BlockBody::default()}));
             }
         }
@@ -106,7 +107,7 @@ async fn sync_happy_flow() -> Result<(), anyhow::Error> {
     mock.expect_stream_state_updates().returning(move |initial, up_to| {
         let state_stream: StateUpdatesStream<'_> = stream! {
             for i in initial.iter_up_to(up_to) {
-                if i.number() >= &N_BLOCKS {
+                if i.0 >= N_BLOCKS {
                     yield Err(CentralError::BlockNotFound { block_number: i })
                 }
                 yield Ok((i, StateDiff::default(), vec![]));
@@ -123,7 +124,7 @@ async fn sync_happy_flow() -> Result<(), anyhow::Error> {
         check_storage(reader, Duration::from_secs(MAX_TIME_TO_SYNC), |reader| {
             let marker = reader.begin_ro_txn()?.get_header_marker()?;
             println!("Block marker currently at {}", marker);
-            Ok(marker == BlockNumber::new(N_BLOCKS))
+            Ok(marker == BlockNumber(N_BLOCKS))
         });
 
     tokio::select! {
