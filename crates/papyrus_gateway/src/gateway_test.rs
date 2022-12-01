@@ -33,7 +33,7 @@ use super::objects::{
     TransactionReceiptWithStatus, TransactionStatus, TransactionWithType, Transactions,
 };
 use super::test_utils::{
-    get_test_gateway_config_and_chain_id, get_test_rpc_server_and_storage_writer, send_request,
+    get_test_gateway_config, get_test_rpc_server_and_storage_writer, send_request,
 };
 use super::{run_server, ContinuationTokenAsStruct};
 
@@ -1393,8 +1393,8 @@ async fn get_6_events_chunk_size_4_without_address() -> Result<(), anyhow::Error
 #[tokio::test]
 async fn run_server_scneario() -> Result<(), anyhow::Error> {
     let (storage_reader, _) = get_test_storage();
-    let (gateway_config, chain_id) = get_test_gateway_config_and_chain_id();
-    let (addr, _handle) = run_server(gateway_config, chain_id, storage_reader).await?;
+    let gateway_config = get_test_gateway_config();
+    let (addr, _handle) = run_server(&gateway_config, storage_reader).await?;
     let client = HttpClientBuilder::default().build(format!("http://{:?}", addr))?;
     let err = client.block_number().await.unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
@@ -1427,8 +1427,8 @@ async fn serialize_returns_expcted_json() -> Result<(), anyhow::Error> {
         )?
         .commit()?;
 
-    let (gateway_config, chain_id) = get_test_gateway_config_and_chain_id();
-    let (server_address, _handle) = run_server(gateway_config, chain_id, storage_reader).await?;
+    let gateway_config = get_test_gateway_config();
+    let (server_address, _handle) = run_server(&gateway_config, storage_reader).await?;
 
     serde_state(server_address).await?;
     serde_block(server_address).await?;
