@@ -2,8 +2,6 @@
 #[path = "block_test.rs"]
 mod block_test;
 
-use std::vec::IntoIter;
-
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 
@@ -11,7 +9,6 @@ use crate::core::ContractAddress;
 use crate::hash::StarkHash;
 use crate::serde_utils::{BytesAsHex, PrefixedBytesAsHex};
 use crate::transaction::{Transaction, TransactionOutput};
-use crate::StarknetApiError;
 
 /// A block.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -39,33 +36,8 @@ pub struct BlockHeader {
 /// [outputs](`crate::transaction::TransactionOutput`) in a [block](`crate::block::Block`).
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockBody {
-    transactions: Vec<Transaction>,
-    transaction_outputs: Vec<TransactionOutput>,
-}
-
-impl BlockBody {
-    pub fn new(
-        transactions: Vec<Transaction>,
-        transaction_outputs: Vec<TransactionOutput>,
-    ) -> Result<Self, StarknetApiError> {
-        if transactions.len() == transaction_outputs.len() {
-            Ok(BlockBody { transactions, transaction_outputs })
-        } else {
-            Err(StarknetApiError::TransactionsLengthDontMatch)
-        }
-    }
-
-    pub fn transactions(&self) -> &[Transaction] {
-        &self.transactions
-    }
-
-    pub fn transaction_outputs(&self) -> &[TransactionOutput] {
-        &self.transaction_outputs
-    }
-
-    pub fn transaction_outputs_into_iter(self) -> IntoIter<TransactionOutput> {
-        self.transaction_outputs.into_iter()
-    }
+    pub transactions: Vec<Transaction>,
+    pub transaction_outputs: Vec<TransactionOutput>,
 }
 
 /// The status of a [Block](`crate::block::Block`).

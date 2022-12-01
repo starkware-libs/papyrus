@@ -11,21 +11,22 @@ use crate::{StorageError, StorageWriter, TransactionIndex};
 async fn append_body() {
     let (reader, mut writer) = get_test_storage();
     let body = get_test_block(10).body;
-    let txs = body.transactions();
-    let tx_outputs = body.transaction_outputs();
+    let txs = body.transactions;
+    let tx_outputs = body.transaction_outputs;
 
-    let body0 = BlockBody::new(vec![txs[0].clone()], vec![tx_outputs[0].clone()]).unwrap();
-    let body1 = BlockBody::new(vec![], vec![]).unwrap();
-    let body2 = BlockBody::new(
-        vec![txs[1].clone(), txs[2].clone()],
-        vec![tx_outputs[1].clone(), tx_outputs[2].clone()],
-    )
-    .unwrap();
-    let body3 = BlockBody::new(
-        vec![txs[3].clone(), txs[0].clone()],
-        vec![tx_outputs[3].clone(), tx_outputs[0].clone()],
-    )
-    .unwrap();
+    let body0 = BlockBody {
+        transactions: vec![txs[0].clone()],
+        transaction_outputs: vec![tx_outputs[0].clone()],
+    };
+    let body1 = BlockBody::default();
+    let body2 = BlockBody {
+        transactions: vec![txs[1].clone(), txs[2].clone()],
+        transaction_outputs: vec![tx_outputs[1].clone(), tx_outputs[2].clone()],
+    };
+    let body3 = BlockBody {
+        transactions: vec![txs[3].clone(), txs[0].clone()],
+        transaction_outputs: vec![tx_outputs[3].clone(), tx_outputs[0].clone()],
+    };
     writer
         .begin_rw_txn()
         .unwrap()
@@ -241,8 +242,7 @@ async fn revert_transactions() {
         .commit()
         .unwrap();
 
-    for (offset, tx_hash) in body.transactions().iter().map(|tx| tx.transaction_hash()).enumerate()
-    {
+    for (offset, tx_hash) in body.transactions.iter().map(|tx| tx.transaction_hash()).enumerate() {
         let tx_index = TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(offset));
 
         assert!(reader.begin_ro_txn().unwrap().get_transaction(tx_index).unwrap().is_some());
@@ -255,8 +255,7 @@ async fn revert_transactions() {
 
     writer.begin_rw_txn().unwrap().revert_body(BlockNumber(0)).unwrap().commit().unwrap();
 
-    for (offset, tx_hash) in body.transactions().iter().map(|tx| tx.transaction_hash()).enumerate()
-    {
+    for (offset, tx_hash) in body.transactions.iter().map(|tx| tx.transaction_hash()).enumerate() {
         let tx_index = TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(offset));
 
         assert!(reader.begin_ro_txn().unwrap().get_transaction(tx_index).unwrap().is_none());

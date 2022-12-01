@@ -221,7 +221,7 @@ fn write_transactions<'env>(
     transaction_hash_to_idx_table: &'env TransactionHashToIdxTable<'env>,
     block_number: BlockNumber,
 ) -> StorageResult<()> {
-    for (index, tx) in block_body.transactions().iter().enumerate() {
+    for (index, tx) in block_body.transactions.iter().enumerate() {
         let tx_offset_in_block = TransactionOffsetInBlock(index);
         let transaction_index = TransactionIndex(block_number, tx_offset_in_block);
         transactions_table.insert(txn, &transaction_index, tx)?;
@@ -237,7 +237,7 @@ fn write_transaction_outputs<'env>(
     events_table: &'env EventsTable<'env>,
     block_number: BlockNumber,
 ) -> StorageResult<()> {
-    for (index, tx_output) in block_body.transaction_outputs_into_iter().enumerate() {
+    for (index, tx_output) in block_body.transaction_outputs.into_iter().enumerate() {
         let transaction_index = TransactionIndex(block_number, TransactionOffsetInBlock(index));
 
         write_events(&tx_output, txn, events_table, transaction_index)?;

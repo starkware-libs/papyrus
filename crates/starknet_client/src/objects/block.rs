@@ -198,7 +198,7 @@ impl TryFrom<Block> for starknet_api::block::Block {
             timestamp: block.timestamp,
         };
 
-        let body = starknet_api::block::BlockBody::new(transactions, transaction_outputs)?;
+        let body = starknet_api::block::BlockBody { transactions, transaction_outputs };
 
         Ok(Self { header, body })
     }

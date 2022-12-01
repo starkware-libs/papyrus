@@ -173,7 +173,7 @@ pub fn get_body_to_match_json_file() -> BlockBody {
         }),
     ];
 
-    BlockBody::new(transactions, transaction_outputs).unwrap()
+    BlockBody { transactions, transaction_outputs }
 }
 
 pub fn get_block_to_match_json_file() -> Block {
