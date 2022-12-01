@@ -27,11 +27,10 @@ use starknet_api::transaction::{
 pub use crate::body::events::{EventsReader, ThinTransactionOutput};
 pub use crate::body::{BodyStorageReader, BodyStorageWriter};
 pub use crate::db::serialization::{StorageSerde, StorageSerdeError};
-pub use crate::db::TransactionKind;
 use crate::db::{
-    open_env, DbConfig, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier,
-    RO, RW,
+    open_env, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier, RO, RW,
 };
+pub use crate::db::{DbConfig, TransactionKind};
 pub use crate::header::{HeaderStorageReader, HeaderStorageWriter};
 pub use crate::state::data::ThinStateDiff;
 use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract};
