@@ -30,7 +30,7 @@ use crate::api::{
 use crate::block::Block;
 use crate::state::{ContractClass, StateUpdate, ThinStateDiff};
 use crate::test_utils::{
-    get_block_to_match_json_file, get_test_gateway_config_and_chain_id,
+    get_block_to_match_json_file, get_test_gateway_config,
     get_test_rpc_server_and_storage_writer, send_request,
 };
 use crate::transaction::{
@@ -1472,8 +1472,8 @@ async fn get_6_events_chunk_size_4_without_address() {
 #[tokio::test]
 async fn run_server_scneario() {
     let (storage_reader, _) = get_test_storage();
-    let (gateway_config, chain_id) = get_test_gateway_config_and_chain_id();
-    let (addr, _handle) = run_server(gateway_config, chain_id, storage_reader).await.unwrap();
+    let gateway_config = get_test_gateway_config();
+    let (addr, _handle) = run_server(&gateway_config, storage_reader).await.unwrap();
     let client = HttpClientBuilder::default().build(format!("http://{:?}", addr)).unwrap();
     let err = client.block_number().await.unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
@@ -1513,9 +1513,9 @@ async fn serialize_returns_expcted_json() {
         .commit()
         .unwrap();
 
-    let (gateway_config, chain_id) = get_test_gateway_config_and_chain_id();
+    let gateway_config = get_test_gateway_config();
     let (server_address, _handle) =
-        run_server(gateway_config, chain_id, storage_reader).await.unwrap();
+        run_server(&gateway_config, storage_reader).await.unwrap();
 
     serde_state(server_address).await;
     serde_block(server_address).await;
