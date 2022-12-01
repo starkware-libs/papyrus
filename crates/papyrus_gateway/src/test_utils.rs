@@ -74,7 +74,7 @@ pub(crate) fn get_test_rpc_server_and_storage_writer()
     )
 }
 
-pub fn get_alpha4_starknet_body() -> BlockBody {
+pub fn get_body_to_match_json_file() -> BlockBody {
     let transactions = vec![
         Transaction::Deploy(DeployTransaction {
             transaction_hash: TransactionHash(shash!(
@@ -178,7 +178,7 @@ pub fn get_alpha4_starknet_body() -> BlockBody {
     BlockBody::new(transactions, transaction_outputs).unwrap()
 }
 
-pub fn get_alpha4_starknet_block() -> Block {
+pub fn get_block_to_match_json_file() -> Block {
     let header = BlockHeader {
         block_hash: BlockHash(shash!(
             "0x75e00250d4343326f322e370df4c9c73c7be105ad9f532eeb97891a34d9e4a5"
@@ -195,5 +195,5 @@ pub fn get_alpha4_starknet_block() -> Block {
         timestamp: BlockTimestamp(1636989916),
     };
 
-    Block { header, body: get_alpha4_starknet_body() }
+    Block { header, body: get_body_to_match_json_file() }
 }
