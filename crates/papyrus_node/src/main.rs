@@ -49,7 +49,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Pass a storage reader to the gateways.
     let (_, server_handle) =
-        run_server(config.gateway, config.chain_id, storage_reader.clone()).await?;
+        run_server(&config.gateway, storage_reader.clone()).await?;
     let (_, monitoring_server_handle) =
         monitoring_run_server(config.monitoring_gateway, storage_reader.clone()).await?;
     if let Some(sync_thread) = sync_thread_opt {
