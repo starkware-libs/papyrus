@@ -1,8 +1,10 @@
+use std::cmp::max;
 use std::sync::Arc;
 use std::time::Duration;
 
 use async_stream::stream;
 use futures::StreamExt;
+use log::{debug, error};
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{HeaderStorageReader, StorageReader, StorageWriter};
 use starknet_api::block::{Block, BlockBody, BlockHash, BlockHeader, BlockNumber};
@@ -12,43 +14,41 @@ use starknet_api::state::StateDiff;
 
 use super::central::BlocksStream;
 use crate::sources::central::{MockCentralSourceTrait, StateUpdatesStream};
-use crate::{CentralError, GenericStateSync, SyncConfig};
+use crate::{CentralError, GenericStateSync, StateSyncError, SyncConfig};
 
-const SYNC_SLEEP_DURATION: u8 = 1;
-const CHECK_STORAGE_INTERVAL: u8 = 2;
+const SYNC_SLEEP_DURATION: Duration = Duration::new(1, 0);
+const CHECK_STORAGE_INTERVAL: Duration = Duration::new(2, 0);
 
-/// Checks periodically if the storage reached a certain state defined by f.
+// Checks periodically if the storage reached a certain state defined by f.
 async fn check_storage(
     reader: StorageReader,
     timeout: Duration,
-    f: impl Fn(&StorageReader) -> anyhow::Result<bool>,
-) -> anyhow::Result<bool> {
-    let interval_time = Duration::from_secs(CHECK_STORAGE_INTERVAL.into());
+    predicate: impl Fn(&StorageReader) -> bool,
+) -> bool {
+    let interval_time = CHECK_STORAGE_INTERVAL;
     let mut interval = tokio::time::interval(interval_time);
     let num_repeats = timeout.as_secs() / interval_time.as_secs();
-    for i in 0..num_repeats {
-        println!("Checking storage {}/{}", i, num_repeats);
-        if f(&reader)? {
-            return Ok(true);
+    for i in 0..max(1, num_repeats) {
+        debug!("Checking storage {}/{}", i, num_repeats);
+        if predicate(&reader) {
+            return true;
         }
 
         interval.tick().await;
     }
-    println!("Check storage timed out.");
+    error!("Check storage timed out.");
 
-    Ok(false)
+    false
 }
 
-/// Runs sync loop with a mocked central - infinite loop unless panicking.
+// Runs sync loop with a mocked central - infinite loop unless panicking.
 async fn run_sync(
     reader: StorageReader,
     writer: StorageWriter,
     central: MockCentralSourceTrait,
-) -> Result<(), anyhow::Error> {
+) -> Result<(), StateSyncError> {
     let mut state_sync = GenericStateSync {
-        config: SyncConfig {
-            block_propagation_sleep_duration: Duration::new(SYNC_SLEEP_DURATION.into(), 0),
-        },
+        config: SyncConfig { block_propagation_sleep_duration: SYNC_SLEEP_DURATION },
         central_source: Arc::new(central),
         reader,
         writer,
@@ -70,13 +70,13 @@ async fn sync_empty_chain() -> Result<(), anyhow::Error> {
 
     // Check that the header marker is 0.
     let check_storage_future = check_storage(reader.clone(), Duration::from_secs(5), |reader| {
-        let marker = reader.begin_ro_txn()?.get_header_marker()?;
-        Ok(marker == BlockNumber(0))
+        let marker = reader.begin_ro_txn().unwrap().get_header_marker().unwrap();
+        marker == BlockNumber(0)
     });
 
     tokio::select! {
         sync_result = sync_future => sync_result.unwrap(),
-        storage_check_result = check_storage_future => assert!(storage_check_result?),
+        storage_check_result = check_storage_future => assert!(storage_check_result),
     }
 
     Ok(())
@@ -122,14 +122,14 @@ async fn sync_happy_flow() -> Result<(), anyhow::Error> {
     // Check that the storage reached N_BLOCKS within MAX_TIME_TO_SYNC.
     let check_storage_future =
         check_storage(reader, Duration::from_secs(MAX_TIME_TO_SYNC), |reader| {
-            let marker = reader.begin_ro_txn()?.get_header_marker()?;
-            println!("Block marker currently at {}", marker);
-            Ok(marker == BlockNumber(N_BLOCKS))
+            let marker = reader.begin_ro_txn().unwrap().get_header_marker().unwrap();
+            debug!("Block marker currently at {}", marker);
+            marker == BlockNumber(N_BLOCKS)
         });
 
     tokio::select! {
         sync_result = sync_future => sync_result.unwrap(),
-        storage_check_result = check_storage_future => assert!(storage_check_result?),
+        storage_check_result = check_storage_future => assert!(storage_check_result),
     }
 
     Ok(())
