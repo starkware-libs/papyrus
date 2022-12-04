@@ -27,30 +27,25 @@ pub fn get_test_config() -> DbConfig {
 }
 pub fn get_test_storage() -> (StorageReader, StorageWriter) {
     let config = get_test_config();
-    open_storage(config).expect("Failed to open storage.")
+    open_storage(config).unwrap()
 }
 
-pub fn read_json_file(path_in_resource_dir: &str) -> Result<serde_json::Value, anyhow::Error> {
+pub fn read_json_file(path_in_resource_dir: &str) -> serde_json::Value {
     // Reads from the directory containing the manifest at run time, same as current working
     // directory.
-    read_json_file_from_dir(&env::var("CARGO_MANIFEST_DIR")?, path_in_resource_dir)
+    read_json_file_from_dir(&env::var("CARGO_MANIFEST_DIR").unwrap(), path_in_resource_dir)
 }
 
-fn read_json_file_from_storage_resources(
-    path_in_resource_dir: &str,
-) -> Result<serde_json::Value, anyhow::Error> {
+fn read_json_file_from_storage_resources(path_in_resource_dir: &str) -> serde_json::Value {
     // Reads from the directory containing the manifest at compile time, which is the storage crate
     // directory.
     read_json_file_from_dir(env!("CARGO_MANIFEST_DIR"), path_in_resource_dir)
 }
 
-fn read_json_file_from_dir(
-    dir: &str,
-    path_in_resource_dir: &str,
-) -> Result<serde_json::Value, anyhow::Error> {
+fn read_json_file_from_dir(dir: &str, path_in_resource_dir: &str) -> serde_json::Value {
     let path = Path::new(dir).join("resources").join(path_in_resource_dir);
-    let json_str = read_to_string(path.to_str().unwrap())?;
-    Ok(serde_json::from_str(&json_str)?)
+    let json_str = read_to_string(path.to_str().unwrap()).unwrap();
+    serde_json::from_str(&json_str).unwrap()
 }
 
 /// Returns a test block body with a variable number of transactions.
@@ -159,7 +154,7 @@ pub fn get_test_state_diff()
     ));
     let hash0 =
         ClassHash(shash!("0x10455c752b86932ce552f2b0fe81a880746649b9aee7e0d842bf3f52378f9f8"));
-    let class_value = read_json_file_from_storage_resources("contract_class.json").unwrap();
+    let class_value = read_json_file_from_storage_resources("contract_class.json");
     let class0 = serde_json::from_value(class_value).unwrap();
     let address1 = ContractAddress(patky!("0x21"));
     let hash1 = ClassHash(shash!("0x5"));
