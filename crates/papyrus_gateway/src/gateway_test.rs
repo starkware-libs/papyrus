@@ -27,13 +27,15 @@ use crate::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcClient,
     JsonRpcError, Tag,
 };
-use crate::objects::{
-    Block, ContractClass, Event, StateUpdate, ThinStateDiff, TransactionReceipt,
-    TransactionReceiptWithStatus, TransactionStatus, TransactionWithType, Transactions,
-};
+use crate::block::Block;
+use crate::state::{ContractClass, StateUpdate, ThinStateDiff};
 use crate::test_utils::{
     get_block_to_match_json_file, get_test_gateway_config_and_chain_id,
     get_test_rpc_server_and_storage_writer, send_request,
+};
+use crate::transaction::{
+    Event, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
+    TransactionWithType, Transactions,
 };
 use crate::{run_server, ContinuationTokenAsStruct};
 
