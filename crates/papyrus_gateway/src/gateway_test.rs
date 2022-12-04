@@ -9,8 +9,7 @@ use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
 use papyrus_storage::test_utils::{
-    get_alpha4_starknet_block, get_test_block, get_test_state_diff, get_test_storage,
-    read_json_file,
+    get_test_block, get_test_state_diff, get_test_storage, read_json_file,
 };
 use papyrus_storage::{
     BodyStorageWriter, EventIndex, HeaderStorageWriter, StateStorageWriter, TransactionIndex,
@@ -33,7 +32,8 @@ use super::objects::{
     TransactionReceiptWithStatus, TransactionStatus, TransactionWithType, Transactions,
 };
 use super::test_utils::{
-    get_test_gateway_config_and_chain_id, get_test_rpc_server_and_storage_writer, send_request,
+    get_block_to_match_json_file, get_test_gateway_config_and_chain_id,
+    get_test_rpc_server_and_storage_writer, send_request,
 };
 use super::{run_server, ContinuationTokenAsStruct};
 
@@ -1411,7 +1411,7 @@ async fn serialize_returns_expcted_json() -> Result<(), anyhow::Error> {
     // components, for openning the storage and running the server.
     let (storage_reader, mut storage_writer) = get_test_storage();
     let block0 = get_test_block(0);
-    let block1 = get_alpha4_starknet_block();
+    let block1 = get_block_to_match_json_file();
     let (_, _, state_diff, deployed_contract_class_definitions) = get_test_state_diff();
     storage_writer
         .begin_rw_txn()?
