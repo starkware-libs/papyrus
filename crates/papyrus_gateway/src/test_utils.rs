@@ -23,11 +23,7 @@ use web3::types::H160;
 use super::{GatewayConfig, JsonRpcServer, JsonRpcServerImpl};
 
 // TODO(anatg): See if this can be usefull for the benchmark testing as well.
-pub async fn send_request(
-    address: SocketAddr,
-    method: &str,
-    params: &str,
-) -> Result<serde_json::Value, anyhow::Error> {
+pub async fn send_request(address: SocketAddr, method: &str, params: &str) -> serde_json::Value {
     let client = Client::new();
     let res_str = client
         .post(format!("http://{:?}", address))
@@ -37,10 +33,12 @@ pub async fn send_request(
             method, params
         ))
         .send()
-        .await?
+        .await
+        .unwrap()
         .text()
-        .await?;
-    Ok(serde_json::from_str(&res_str)?)
+        .await
+        .unwrap();
+    serde_json::from_str(&res_str).unwrap()
 }
 
 pub fn get_test_chain_id() -> ChainId {
