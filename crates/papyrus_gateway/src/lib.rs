@@ -1,9 +1,11 @@
 mod api;
+mod block;
 #[cfg(test)]
 mod gateway_test;
-mod objects;
+mod state;
 #[cfg(any(feature = "testing", test))]
-pub mod test_utils;
+mod test_utils;
+mod transaction;
 
 use std::fmt::Display;
 use std::net::SocketAddr;
@@ -31,10 +33,11 @@ use crate::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcError,
     JsonRpcServer, Tag,
 };
-use crate::objects::{
-    Block, BlockHeader, ContractClass, Event, StateUpdate, Transaction, TransactionOutput,
-    TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus, TransactionWithType,
-    Transactions,
+use crate::block::{Block, BlockHeader};
+use crate::state::{ContractClass, StateUpdate};
+use crate::transaction::{
+    Event, Transaction, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus,
+    TransactionStatus, TransactionWithType, Transactions,
 };
 
 #[derive(Clone, Serialize, Deserialize)]
