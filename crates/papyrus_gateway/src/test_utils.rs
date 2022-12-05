@@ -20,7 +20,7 @@ use starknet_api::transaction::{
 use starknet_api::{patky, shash};
 use web3::types::H160;
 
-use super::{GatewayConfig, JsonRpcServer, JsonRpcServerImpl};
+use crate::{GatewayConfig, JsonRpcServer, JsonRpcServerImpl};
 
 // TODO(anatg): See if this can be usefull for the benchmark testing as well.
 pub async fn send_request(address: SocketAddr, method: &str, params: &str) -> serde_json::Value {

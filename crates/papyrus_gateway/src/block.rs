@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus, BlockTimestamp, GlobalRoot};
 use starknet_api::core::ContractAddress;
 
-use super::transaction::Transactions;
+use crate::transaction::Transactions;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockHeader {

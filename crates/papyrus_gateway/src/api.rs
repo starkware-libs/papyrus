@@ -9,9 +9,9 @@ use starknet_api::hash::StarkFelt;
 use starknet_api::state::StorageKey;
 use starknet_api::transaction::{EventKey, TransactionHash, TransactionOffsetInBlock};
 
-use super::objects::{
-    Block, ContractClass, Event, StateUpdate, TransactionReceiptWithStatus, TransactionWithType,
-};
+use crate::block::Block;
+use crate::state::{ContractClass, StateUpdate};
+use crate::transaction::{Event, TransactionReceiptWithStatus, TransactionWithType};
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum Tag {
