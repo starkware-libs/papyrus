@@ -31,6 +31,17 @@ impl Transaction {
             Transaction::L1Handler(tx) => tx.transaction_hash,
         }
     }
+
+    #[cfg(any(feature = "testing", test))]
+    pub fn set_transaction_hash(&mut self, hash: TransactionHash) {
+        match self {
+            Transaction::Declare(tx) => tx.transaction_hash = hash,
+            Transaction::Deploy(tx) => tx.transaction_hash = hash,
+            Transaction::DeployAccount(tx) => tx.transaction_hash = hash,
+            Transaction::Invoke(tx) => tx.transaction_hash = hash,
+            Transaction::L1Handler(tx) => tx.transaction_hash = hash,
+        }
+    }
 }
 
 /// A transaction output.

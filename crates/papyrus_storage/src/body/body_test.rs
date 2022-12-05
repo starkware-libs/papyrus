@@ -1,16 +1,17 @@
 use assert_matches::assert_matches;
 use starknet_api::block::{BlockBody, BlockNumber};
+use starknet_api::test_utils::get_test_block_body_with_many_txs;
 use starknet_api::transaction::TransactionOffsetInBlock;
 
 use crate::body::events::ThinTransactionOutput;
 use crate::body::{BodyStorageReader, BodyStorageWriter};
-use crate::test_utils::{get_test_block, get_test_body, get_test_storage};
+use crate::test_utils::get_test_storage;
 use crate::{StorageError, StorageWriter, TransactionIndex};
 
 #[tokio::test]
 async fn append_body() {
     let (reader, mut writer) = get_test_storage();
-    let body = get_test_block(10).body;
+    let body = get_test_block_body_with_many_txs(10);
     let txs = body.transactions;
     let tx_outputs = body.transaction_outputs;
 
@@ -233,7 +234,7 @@ async fn get_reverted_body_returns_none() {
 #[tokio::test]
 async fn revert_transactions() {
     let (reader, mut writer) = get_test_storage();
-    let body = get_test_body(10);
+    let body = get_test_block_body_with_many_txs(10);
     writer
         .begin_rw_txn()
         .unwrap()

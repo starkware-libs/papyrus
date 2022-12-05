@@ -3,7 +3,7 @@
     "result": {
         "block_hash": "0x75e00250d4343326f322e370df4c9c73c7be105ad9f532eeb97891a34d9e4a5",
         "new_root": "0x3f04ffa63e188d602796505a2ee4f6e1f294ee29a914b057af8e75b17259d9f",
-        "old_root": "0x2c2bb91714f8448ed814bdac274ab6fcdbafc22d835f9e847e5bee8c2e5444e",
+        "old_root": "0x0",
         "state_diff": {
             "deployed_contracts": [
                 {

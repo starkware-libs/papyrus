@@ -1,6 +1,7 @@
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, StateNumber};
+use starknet_api::test_utils::get_test_block_with_many_txs;
 use starknet_api::transaction::{Event, Transaction, TransactionOffsetInBlock, TransactionOutput};
 
 use crate::body::events::ThinTransactionOutput;
@@ -8,7 +9,7 @@ use crate::body::{BodyStorageReader, BodyStorageWriter};
 use crate::ommer::OmmerStorageWriter;
 use crate::state::data::ThinStateDiff;
 use crate::state::{StateStorageReader, StateStorageWriter};
-use crate::test_utils::{get_test_block, get_test_state_diff, get_test_storage};
+use crate::test_utils::{get_test_state_diff, get_test_storage};
 use crate::{StorageReader, TransactionIndex};
 
 // TODO(yair): These functions were written and used in order to experience writing ommer blocks in
@@ -65,7 +66,7 @@ fn extract_state_diff_data_from_storage(
 #[test]
 fn insert_header_to_ommer() {
     let (_, mut writer) = get_test_storage();
-    let block = get_test_block(7);
+    let block = get_test_block_with_many_txs(7);
     let block_hash = block.header.block_hash;
 
     writer
@@ -80,7 +81,7 @@ fn insert_header_to_ommer() {
 #[test]
 fn move_body_to_ommer() {
     let (reader, mut writer) = get_test_storage();
-    let block = get_test_block(7);
+    let block = get_test_block_with_many_txs(7);
     let block_number = block.header.block_number;
     let block_hash = block.header.block_hash;
 
@@ -107,7 +108,7 @@ fn move_body_to_ommer() {
 #[test]
 fn insert_body_to_ommer() {
     let (_, mut writer) = get_test_storage();
-    let block = get_test_block(7);
+    let block = get_test_block_with_many_txs(7);
 
     fn split_tx_output(tx_output: TransactionOutput) -> (ThinTransactionOutput, Vec<Event>) {
         let events = tx_output.events().to_owned();

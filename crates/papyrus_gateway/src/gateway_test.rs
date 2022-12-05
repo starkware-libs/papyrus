@@ -18,6 +18,7 @@ use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::StateDiff;
+use starknet_api::test_utils::{get_test_block_with_many_txs, GetTestInstance};
 use starknet_api::transaction::{
     EventIndexInTransactionOutput, EventKey, TransactionHash, TransactionOffsetInBlock,
 };
@@ -83,7 +84,7 @@ async fn block_hash_and_number() {
     ));
 
     // Add a block and check again.
-    let block = get_test_block(1);
+    let block = starknet_api::block::Block::get_test_instance();
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -108,7 +109,7 @@ async fn block_hash_and_number() {
 async fn get_block_w_transaction_hashes() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
-    let block = get_test_block(1);
+    let block = starknet_api::block::Block::get_test_instance();
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -188,7 +189,7 @@ async fn get_block_w_transaction_hashes() {
 async fn get_block_w_full_transactions() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
-    let block = get_test_block(1);
+    let block = starknet_api::block::Block::get_test_instance();
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -531,7 +532,7 @@ async fn get_nonce() {
 #[tokio::test]
 async fn get_transaction_by_hash() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let block = get_test_block(1);
+    let block = starknet_api::block::Block::get_test_instance();
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -554,7 +555,7 @@ async fn get_transaction_by_hash() {
     let err = module
         .call::<_, TransactionWithType>(
             "starknet_getTransactionByHash",
-            [TransactionHash(StarkHash::from(1))],
+            [TransactionHash(StarkHash::from(2))],
         )
         .await
         .unwrap_err();
@@ -568,7 +569,7 @@ async fn get_transaction_by_hash() {
 #[tokio::test]
 async fn get_transaction_by_block_id_and_index() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let block = get_test_block(1);
+    let block = starknet_api::block::Block::get_test_instance();
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -653,7 +654,7 @@ async fn get_transaction_by_block_id_and_index() {
 async fn get_block_transaction_count() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
     let transaction_count = 5;
-    let block = get_test_block(transaction_count);
+    let block = get_test_block_with_many_txs(transaction_count);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -805,7 +806,7 @@ async fn get_state_update() {
 #[tokio::test]
 async fn get_transaction_receipt() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let block = get_test_block(1);
+    let block = starknet_api::block::Block::get_test_instance();
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -845,7 +846,7 @@ async fn get_transaction_receipt() {
     let err = module
         .call::<_, TransactionReceiptWithStatus>(
             "starknet_getTransactionReceipt",
-            [TransactionHash(StarkHash::from(1))],
+            [TransactionHash(StarkHash::from(2))],
         )
         .await
         .unwrap_err();
@@ -1488,7 +1489,7 @@ async fn serialize_returns_expcted_json() {
     // TODO(anatg): Use the papyrus_node/main.rs, when it has configuration for running different
     // components, for openning the storage and running the server.
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let block0 = get_test_block(0);
+    let block0 = starknet_api::block::Block::get_test_instance();
     let block1 = get_block_to_match_json_file();
     let (_, _, state_diff, deployed_contract_class_definitions) = get_test_state_diff();
     storage_writer

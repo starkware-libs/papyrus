@@ -4,7 +4,8 @@ use std::hash::Hash;
 use indexmap::IndexMap;
 
 use crate::block::{
-    BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice, GlobalRoot,
+    Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
+    GlobalRoot,
 };
 use crate::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use crate::hash::{StarkFelt, StarkHash};
@@ -14,19 +15,48 @@ use crate::state::{
     StorageKey, StructAbiEntry, StructMember, TypedParameter,
 };
 use crate::transaction::{
-    CallData, ContractAddressSalt, DeclareTransaction, DeployAccountTransaction, DeployTransaction,
-    EthAddress, EventContent, EventData, EventIndexInTransactionOutput, EventKey, Fee,
-    InvokeTransaction, L1HandlerTransaction, L1ToL2Payload, L2ToL1Payload, MessageToL1,
-    MessageToL2, Transaction, TransactionHash, TransactionOffsetInBlock, TransactionSignature,
-    TransactionVersion,
+    CallData, ContractAddressSalt, DeclareTransaction, DeclareTransactionOutput,
+    DeployAccountTransaction, DeployAccountTransactionOutput, DeployTransaction,
+    DeployTransactionOutput, EthAddress, Event, EventContent, EventData,
+    EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction, InvokeTransactionOutput,
+    L1HandlerTransaction, L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, MessageToL1,
+    MessageToL2, Transaction, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
+    TransactionReceipt, TransactionSignature, TransactionVersion,
 };
 use crate::{patky, shash};
+
+// Returns a test block with a variable number of transactions.
+pub fn get_test_block_with_many_txs(transaction_count: usize) -> Block {
+    Block {
+        header: BlockHeader::get_test_instance(),
+        body: get_test_block_body_with_many_txs(transaction_count),
+    }
+}
+
+// Returns a test block body with a variable number of transactions.
+pub fn get_test_block_body_with_many_txs(transaction_count: usize) -> BlockBody {
+    let mut transactions = vec![];
+    let mut transaction_outputs = vec![];
+    for i in 0..transaction_count {
+        let mut transaction = Transaction::get_test_instance();
+        transaction.set_transaction_hash(TransactionHash(StarkHash::from(i as u64)));
+        let transaction_output = get_test_transaction_output(&transaction);
+        transactions.push(transaction);
+        transaction_outputs.push(transaction_output);
+    }
+
+    BlockBody { transactions, transaction_outputs }
+}
 
 pub trait GetTestInstance: Sized {
     fn get_test_instance() -> Self;
 }
 
 auto_impl_get_test_instance! {
+    pub struct Block {
+        pub header: BlockHeader,
+        pub body: BlockBody,
+    }
     pub struct BlockHash(pub StarkHash);
     pub struct BlockHeader {
         pub block_hash: BlockHash,
@@ -67,6 +97,11 @@ auto_impl_get_test_instance! {
         pub class_hash: ClassHash,
         pub sender_address: ContractAddress,
     }
+    pub struct DeclareTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+    }
     pub struct DeployAccountTransaction {
         pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
@@ -78,6 +113,11 @@ auto_impl_get_test_instance! {
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: CallData,
     }
+    pub struct DeployAccountTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+    }
     pub struct DeployTransaction {
         pub transaction_hash: TransactionHash,
         pub version: TransactionVersion,
@@ -85,6 +125,11 @@ auto_impl_get_test_instance! {
         pub contract_address: ContractAddress,
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: CallData,
+    }
+    pub struct DeployTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
     }
     pub struct EntryPoint {
         pub selector: EntryPointSelector,
@@ -96,6 +141,10 @@ auto_impl_get_test_instance! {
         Constructor = 0,
         External = 1,
         L1Handler = 2,
+    }
+    pub struct Event {
+        pub from_address: ContractAddress,
+        pub content: EventContent,
     }
     pub struct EventAbiEntry {
         pub name: String,
@@ -135,6 +184,11 @@ auto_impl_get_test_instance! {
         pub contract_address: ContractAddress,
         pub entry_point_selector: Option<EntryPointSelector>,
         pub calldata: CallData,
+    }
+    pub struct InvokeTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
     }
     pub struct L1ToL2Payload(pub Vec<StarkFelt>);
     pub struct L2ToL1Payload(pub Vec<StarkFelt>);
@@ -181,6 +235,11 @@ auto_impl_get_test_instance! {
         pub entry_point_selector: EntryPointSelector,
         pub calldata: CallData,
     }
+    pub struct L1HandlerTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+    }
     pub enum Transaction {
         Declare(DeclareTransaction) = 0,
         Deploy(DeployTransaction) = 1,
@@ -190,6 +249,19 @@ auto_impl_get_test_instance! {
     }
     pub struct TransactionHash(pub StarkHash);
     pub struct TransactionOffsetInBlock(pub usize);
+    pub enum TransactionOutput {
+        Declare(DeclareTransactionOutput) = 0,
+        Deploy(DeployTransactionOutput) = 1,
+        DeployAccount(DeployAccountTransactionOutput) = 2,
+        Invoke(InvokeTransactionOutput) = 3,
+        L1Handler(L1HandlerTransactionOutput) = 4,
+    }
+    pub struct TransactionReceipt {
+        pub transaction_hash: TransactionHash,
+        pub block_hash: BlockHash,
+        pub block_number: BlockNumber,
+        pub output: TransactionOutput,
+    }
     pub struct TransactionSignature(pub Vec<StarkFelt>);
     pub struct TransactionVersion(pub StarkFelt);
     bool;
@@ -392,5 +464,34 @@ impl GetTestInstance for ContractAddress {
 impl GetTestInstance for StorageKey {
     fn get_test_instance() -> Self {
         Self(patky!("0x1"))
+    }
+}
+
+// Returns a test block body with a single transacion.
+impl GetTestInstance for BlockBody {
+    fn get_test_instance() -> Self {
+        let transaction = Transaction::get_test_instance();
+        let transaction_output = get_test_transaction_output(&transaction);
+        Self { transactions: vec![transaction], transaction_outputs: vec![transaction_output] }
+    }
+}
+
+fn get_test_transaction_output(transaction: &Transaction) -> TransactionOutput {
+    match transaction {
+        Transaction::Declare(_) => {
+            TransactionOutput::Declare(DeclareTransactionOutput::get_test_instance())
+        }
+        Transaction::Deploy(_) => {
+            TransactionOutput::Deploy(DeployTransactionOutput::get_test_instance())
+        }
+        Transaction::DeployAccount(_) => {
+            TransactionOutput::DeployAccount(DeployAccountTransactionOutput::get_test_instance())
+        }
+        Transaction::Invoke(_) => {
+            TransactionOutput::Invoke(InvokeTransactionOutput::get_test_instance())
+        }
+        Transaction::L1Handler(_) => {
+            TransactionOutput::L1Handler(L1HandlerTransactionOutput::get_test_instance())
+        }
     }
 }
