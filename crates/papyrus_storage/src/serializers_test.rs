@@ -39,7 +39,7 @@ impl<T: StorageSerde + GetTestInstance + Eq + Debug> StorageSerdeTest for T {
 
 // Tests all types that implement the [`StorageSerde`] trait
 // via the [`auto_storage_serde`] macro.
-macro_rules! auto_storage_serde_test {
+macro_rules! storage_serde_test {
     ($name:ident) => {
         paste::paste! {
             #[test]
@@ -49,15 +49,15 @@ macro_rules! auto_storage_serde_test {
         }
     };
 }
-pub(crate) use auto_storage_serde_test;
+pub(crate) use storage_serde_test;
 
 ////////////////////////////////////////////////////////////////////////
-// Calls the [`auto_storage_serde_test`] macro to create the tests for
+// Calls the [`storage_serde_test`] macro to create the tests for
 // types not supported by the macro [`auto_storage_serde`].
 ////////////////////////////////////////////////////////////////////////
-auto_storage_serde_test!(StarkHash);
-auto_storage_serde_test!(ContractAddress);
-auto_storage_serde_test!(StorageKey);
+storage_serde_test!(StarkHash);
+storage_serde_test!(ContractAddress);
+storage_serde_test!(StorageKey);
 
 ////////////////////////////////////////////////////////////////////////
 // Implements the [`GetTestInstance`] trait for types defined in this
