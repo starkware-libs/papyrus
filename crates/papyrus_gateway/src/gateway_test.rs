@@ -38,7 +38,7 @@ use super::test_utils::{
 use super::{run_server, ContinuationTokenAsStruct};
 
 #[tokio::test]
-async fn block_number() -> Result<(), anyhow::Error> {
+async fn block_number() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     // No blocks yet.
@@ -54,17 +54,19 @@ async fn block_number() -> Result<(), anyhow::Error> {
 
     // Add a block and check again.
     storage_writer
-        .begin_rw_txn()?
-        .append_header(BlockNumber(0), &BlockHeader::default())?
-        .commit()?;
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(BlockNumber(0), &BlockHeader::default())
+        .unwrap()
+        .commit()
+        .unwrap();
     let block_number =
-        module.call::<_, BlockNumber>("starknet_blockNumber", EmptyParams::new()).await?;
+        module.call::<_, BlockNumber>("starknet_blockNumber", EmptyParams::new()).await.unwrap();
     assert_eq!(block_number, BlockNumber(0));
-    Ok(())
 }
 
 #[tokio::test]
-async fn block_hash_and_number() -> Result<(), anyhow::Error> {
+async fn block_hash_and_number() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     // No blocks yet.
@@ -81,12 +83,16 @@ async fn block_hash_and_number() -> Result<(), anyhow::Error> {
     // Add a block and check again.
     let block = get_test_block(1);
     storage_writer
-        .begin_rw_txn()?
-        .append_header(block.header.block_number, &block.header)?
-        .commit()?;
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(block.header.block_number, &block.header)
+        .unwrap()
+        .commit()
+        .unwrap();
     let block_hash_and_number = module
         .call::<_, BlockHashAndNumber>("starknet_blockHashAndNumber", EmptyParams::new())
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(
         block_hash_and_number,
         BlockHashAndNumber {
@@ -94,19 +100,22 @@ async fn block_hash_and_number() -> Result<(), anyhow::Error> {
             block_number: block.header.block_number,
         }
     );
-    Ok(())
 }
 
 #[tokio::test]
-async fn get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
+async fn get_block_w_transaction_hashes() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     let block = get_test_block(1);
     storage_writer
-        .begin_rw_txn()?
-        .append_header(block.header.block_number, &block.header)?
-        .append_body(block.header.block_number, block.body.clone())?
-        .commit()?;
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(block.header.block_number, &block.header)
+        .unwrap()
+        .append_body(block.header.block_number, block.body.clone())
+        .unwrap()
+        .commit()
+        .unwrap();
 
     let expected_transaction = block.body.transactions().index(0);
     let expected_block = Block {
@@ -131,13 +140,15 @@ async fn get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
             "starknet_getBlockWithTxHashes",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(expected_block.header.block_number))],
         )
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(block, expected_block);
 
     // Ask for the latest block.
     let block = module
         .call::<_, Block>("starknet_getBlockWithTxHashes", [BlockId::Tag(Tag::Latest)])
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(block, expected_block);
 
     // Ask for an invalid block hash.
@@ -169,19 +180,22 @@ async fn get_block_w_transaction_hashes() -> Result<(), anyhow::Error> {
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
-    Ok(())
 }
 
 #[tokio::test]
-async fn get_block_w_full_transactions() -> Result<(), anyhow::Error> {
+async fn get_block_w_full_transactions() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
     let block = get_test_block(1);
     storage_writer
-        .begin_rw_txn()?
-        .append_header(block.header.block_number, &block.header)?
-        .append_body(block.header.block_number, block.body.clone())?
-        .commit()?;
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(block.header.block_number, &block.header)
+        .unwrap()
+        .append_body(block.header.block_number, block.body.clone())
+        .unwrap()
+        .commit()
+        .unwrap();
 
     let expected_transaction = block.body.transactions().index(0);
     let expected_block = Block {
@@ -196,7 +210,8 @@ async fn get_block_w_full_transactions() -> Result<(), anyhow::Error> {
             "starknet_getBlockWithTxs",
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header.block_hash))],
         )
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(block, expected_block);
 
     // Get block by number.
@@ -205,12 +220,15 @@ async fn get_block_w_full_transactions() -> Result<(), anyhow::Error> {
             "starknet_getBlockWithTxs",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(expected_block.header.block_number))],
         )
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(block, expected_block);
 
     // Ask for the latest block.
-    let block =
-        module.call::<_, Block>("starknet_getBlockWithTxs", [BlockId::Tag(Tag::Latest)]).await?;
+    let block = module
+        .call::<_, Block>("starknet_getBlockWithTxs", [BlockId::Tag(Tag::Latest)])
+        .await
+        .unwrap();
     assert_eq!(block, expected_block);
 
     // Ask for an invalid block hash.
@@ -242,19 +260,21 @@ async fn get_block_w_full_transactions() -> Result<(), anyhow::Error> {
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
-    Ok(())
 }
 
 #[tokio::test]
-async fn get_storage_at() -> Result<(), anyhow::Error> {
+async fn get_storage_at() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-
     let (header, _, diff, deployed_contract_class_definitions) = get_test_state_diff();
     storage_writer
-        .begin_rw_txn()?
-        .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
-        .commit()?;
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(header.block_number, &header)
+        .unwrap()
+        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)
+        .unwrap()
+        .commit()
+        .unwrap();
 
     let (address, storage_entries) = diff.storage_diffs.get_index(0).unwrap();
     let (key, expected_value) = storage_entries.get_index(0).unwrap();
@@ -265,7 +285,8 @@ async fn get_storage_at() -> Result<(), anyhow::Error> {
             "starknet_getStorageAt",
             (*address, *key, BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))),
         )
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, *expected_value);
 
     // Get storage by block number.
@@ -274,7 +295,8 @@ async fn get_storage_at() -> Result<(), anyhow::Error> {
             "starknet_getStorageAt",
             (*address, *key, BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))),
         )
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, *expected_value);
 
     // Ask for an invalid contract.
@@ -328,20 +350,21 @@ async fn get_storage_at() -> Result<(), anyhow::Error> {
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
-
-    Ok(())
 }
 
 #[tokio::test]
-async fn get_class_hash_at() -> Result<(), anyhow::Error> {
+async fn get_class_hash_at() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-
     let (header, _, diff, deployed_contract_class_definitions) = get_test_state_diff();
     storage_writer
-        .begin_rw_txn()?
-        .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
-        .commit()?;
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(header.block_number, &header)
+        .unwrap()
+        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)
+        .unwrap()
+        .commit()
+        .unwrap();
 
     let (address, expected_class_hash) = diff.deployed_contracts.get_index(0).unwrap();
 
@@ -351,7 +374,8 @@ async fn get_class_hash_at() -> Result<(), anyhow::Error> {
             "starknet_getClassHashAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address),
         )
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, *expected_class_hash);
 
     // Get class hash by block number.
@@ -360,7 +384,8 @@ async fn get_class_hash_at() -> Result<(), anyhow::Error> {
             "starknet_getClassHashAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *address),
         )
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, *expected_class_hash);
 
     // Ask for an invalid contract.
@@ -412,19 +437,21 @@ async fn get_class_hash_at() -> Result<(), anyhow::Error> {
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
-    Ok(())
 }
 
 #[tokio::test]
-async fn get_nonce() -> Result<(), anyhow::Error> {
+async fn get_nonce() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-
     let (header, _, diff, deployed_contract_class_definitions) = get_test_state_diff();
     storage_writer
-        .begin_rw_txn()?
-        .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
-        .commit()?;
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(header.block_number, &header)
+        .unwrap()
+        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)
+        .unwrap()
+        .commit()
+        .unwrap();
 
     let (address, expected_nonce) = diff.nonces.get_index(0).unwrap();
 
@@ -434,7 +461,8 @@ async fn get_nonce() -> Result<(), anyhow::Error> {
             "starknet_getNonce",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address),
         )
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, *expected_nonce);
 
     // Get class hash by block number.
@@ -443,7 +471,8 @@ async fn get_nonce() -> Result<(), anyhow::Error> {
             "starknet_getNonce",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *address),
         )
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, *expected_nonce);
 
     // Ask for an invalid contract.
@@ -495,18 +524,19 @@ async fn get_nonce() -> Result<(), anyhow::Error> {
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
-    Ok(())
 }
 
 #[tokio::test]
-async fn get_transaction_by_hash() -> Result<(), anyhow::Error> {
+async fn get_transaction_by_hash() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-
     let block = get_test_block(1);
     storage_writer
-        .begin_rw_txn()?
-        .append_body(block.header.block_number, block.body.clone())?
-        .commit()?;
+        .begin_rw_txn()
+        .unwrap()
+        .append_body(block.header.block_number, block.body.clone())
+        .unwrap()
+        .commit()
+        .unwrap();
 
     let expected_transaction = block.body.transactions().index(0);
     let res = module
@@ -531,19 +561,21 @@ async fn get_transaction_by_hash() -> Result<(), anyhow::Error> {
         JsonRpcError::TransactionHashNotFound.to_string(),
         None::<()>,
     ));
-    Ok(())
 }
 
 #[tokio::test]
-async fn get_transaction_by_block_id_and_index() -> Result<(), anyhow::Error> {
+async fn get_transaction_by_block_id_and_index() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-
     let block = get_test_block(1);
     storage_writer
-        .begin_rw_txn()?
-        .append_header(block.header.block_number, &block.header)?
-        .append_body(block.header.block_number, block.body.clone())?
-        .commit()?;
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(block.header.block_number, &block.header)
+        .unwrap()
+        .append_body(block.header.block_number, block.body.clone())
+        .unwrap()
+        .commit()
+        .unwrap();
 
     let expected_transaction = block.body.transactions().index(0);
 
@@ -613,20 +645,22 @@ async fn get_transaction_by_block_id_and_index() -> Result<(), anyhow::Error> {
         JsonRpcError::InvalidTransactionIndex.to_string(),
         None::<()>,
     ));
-    Ok(())
 }
 
 #[tokio::test]
-async fn get_block_transaction_count() -> Result<(), anyhow::Error> {
+async fn get_block_transaction_count() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-
     let transaction_count = 5;
     let block = get_test_block(transaction_count);
     storage_writer
-        .begin_rw_txn()?
-        .append_header(block.header.block_number, &block.header)?
-        .append_body(block.header.block_number, block.body)?
-        .commit()?;
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(block.header.block_number, &block.header)
+        .unwrap()
+        .append_body(block.header.block_number, block.body)
+        .unwrap()
+        .commit()
+        .unwrap();
 
     // Get block by hash.
     let res = module
@@ -634,7 +668,8 @@ async fn get_block_transaction_count() -> Result<(), anyhow::Error> {
             "starknet_getBlockTransactionCount",
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash))],
         )
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, transaction_count);
 
     // Get block by number.
@@ -643,13 +678,15 @@ async fn get_block_transaction_count() -> Result<(), anyhow::Error> {
             "starknet_getBlockTransactionCount",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(block.header.block_number))],
         )
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, transaction_count);
 
     // Ask for the latest block.
     let res = module
         .call::<_, usize>("starknet_getBlockTransactionCount", [BlockId::Tag(Tag::Latest)])
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, transaction_count);
 
     // Ask for an invalid block hash.
@@ -681,25 +718,29 @@ async fn get_block_transaction_count() -> Result<(), anyhow::Error> {
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
-    Ok(())
 }
 
 #[tokio::test]
-async fn get_state_update() -> Result<(), anyhow::Error> {
+async fn get_state_update() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-
     let (parent_header, header, diff, deployed_contract_class_definitions) = get_test_state_diff();
     storage_writer
-        .begin_rw_txn()?
-        .append_header(parent_header.block_number, &parent_header)?
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(parent_header.block_number, &parent_header)
+        .unwrap()
         .append_state_diff(
             parent_header.block_number,
             starknet_api::state::StateDiff::default(),
             vec![],
-        )?
-        .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
-        .commit()?;
+        )
+        .unwrap()
+        .append_header(header.block_number, &header)
+        .unwrap()
+        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)
+        .unwrap()
+        .commit()
+        .unwrap();
 
     let expected_update = StateUpdate {
         block_hash: header.block_hash,
@@ -714,7 +755,8 @@ async fn get_state_update() -> Result<(), anyhow::Error> {
             "starknet_getStateUpdate",
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))],
         )
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, expected_update);
 
     // Get state update by block number.
@@ -723,7 +765,8 @@ async fn get_state_update() -> Result<(), anyhow::Error> {
             "starknet_getStateUpdate",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))],
         )
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, expected_update);
 
     // Ask for an invalid block hash.
@@ -755,20 +798,21 @@ async fn get_state_update() -> Result<(), anyhow::Error> {
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
-
-    Ok(())
 }
 
 #[tokio::test]
-async fn get_transaction_receipt() -> Result<(), anyhow::Error> {
+async fn get_transaction_receipt() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-
     let block = get_test_block(1);
     storage_writer
-        .begin_rw_txn()?
-        .append_header(block.header.block_number, &block.header)?
-        .append_body(block.header.block_number, block.body.clone())?
-        .commit()?;
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(block.header.block_number, &block.header)
+        .unwrap()
+        .append_body(block.header.block_number, block.body.clone())
+        .unwrap()
+        .commit()
+        .unwrap();
 
     let transaction_hash = block.body.transactions().index(0).transaction_hash();
     let expected_receipt = TransactionReceiptWithStatus {
@@ -790,7 +834,10 @@ async fn get_transaction_receipt() -> Result<(), anyhow::Error> {
     // The returned jsons of some transaction outputs are the same. When deserialized, the first
     // struct in the TransactionOutput enum that matches the json is chosen. To not depend here
     // on the order of structs we compare the serialized data.
-    assert_eq!(serde_json::to_string(&res)?, serde_json::to_string(&expected_receipt)?);
+    assert_eq!(
+        serde_json::to_string(&res).unwrap(),
+        serde_json::to_string(&expected_receipt).unwrap(),
+    );
 
     // Ask for an invalid transaction.
     let err = module
@@ -805,29 +852,32 @@ async fn get_transaction_receipt() -> Result<(), anyhow::Error> {
         JsonRpcError::TransactionHashNotFound.to_string(),
         None::<()>,
     ));
-
-    Ok(())
 }
 
 #[tokio::test]
-async fn get_class() -> Result<(), anyhow::Error> {
+async fn get_class() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-
     let (parent_header, header, diff, deployed_contract_class_definitions) = get_test_state_diff();
     storage_writer
-        .begin_rw_txn()?
-        .append_header(parent_header.block_number, &parent_header)?
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(parent_header.block_number, &parent_header)
+        .unwrap()
         .append_state_diff(
             parent_header.block_number,
             starknet_api::state::StateDiff::default(),
             vec![],
-        )?
-        .append_header(header.block_number, &header)?
-        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)?
-        .commit()?;
+        )
+        .unwrap()
+        .append_header(header.block_number, &header)
+        .unwrap()
+        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)
+        .unwrap()
+        .commit()
+        .unwrap();
 
     let (class_hash, contract_class) = diff.declared_classes.get_index(1).unwrap();
-    let expected_contract_class = contract_class.clone().try_into()?;
+    let expected_contract_class = contract_class.clone().try_into().unwrap();
 
     // Get class by block hash.
     let res = module
@@ -835,7 +885,8 @@ async fn get_class() -> Result<(), anyhow::Error> {
             "starknet_getClass",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *class_hash),
         )
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, expected_contract_class);
 
     // Get class by block number.
@@ -844,7 +895,8 @@ async fn get_class() -> Result<(), anyhow::Error> {
             "starknet_getClass",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *class_hash),
         )
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, expected_contract_class);
 
     // Ask for an invalid class hash.
@@ -913,30 +965,33 @@ async fn get_class() -> Result<(), anyhow::Error> {
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
-
-    Ok(())
 }
 
 #[tokio::test]
-async fn get_class_at() -> Result<(), anyhow::Error> {
+async fn get_class_at() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-
     let (parent_header, header, diff, deployed_contract_class_definitions) = get_test_state_diff();
     storage_writer
-        .begin_rw_txn()?
-        .append_header(parent_header.block_number, &parent_header)?
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(parent_header.block_number, &parent_header)
+        .unwrap()
         .append_state_diff(
             parent_header.block_number,
             starknet_api::state::StateDiff::default(),
             vec![],
-        )?
-        .append_header(header.block_number, &header)?
+        )
+        .unwrap()
+        .append_header(header.block_number, &header)
+        .unwrap()
         .append_state_diff(
             header.block_number,
             diff.clone(),
             deployed_contract_class_definitions.clone(),
-        )?
-        .commit()?;
+        )
+        .unwrap()
+        .commit()
+        .unwrap();
 
     let (address, hash) = diff.deployed_contracts.get_index(1).unwrap();
     let expected_contract_class = deployed_contract_class_definitions
@@ -945,7 +1000,8 @@ async fn get_class_at() -> Result<(), anyhow::Error> {
         .unwrap()
         .1
         .clone()
-        .try_into()?;
+        .try_into()
+        .unwrap();
 
     // Get class by block hash.
     let res = module
@@ -953,7 +1009,8 @@ async fn get_class_at() -> Result<(), anyhow::Error> {
             "starknet_getClassAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address),
         )
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, expected_contract_class);
 
     // Get class by block number.
@@ -962,7 +1019,8 @@ async fn get_class_at() -> Result<(), anyhow::Error> {
             "starknet_getClassAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *address),
         )
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, expected_contract_class);
 
     // Ask for an invalid contract.
@@ -1031,34 +1089,34 @@ async fn get_class_at() -> Result<(), anyhow::Error> {
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
-
-    Ok(())
 }
 
 #[tokio::test]
-async fn chain_id() -> Result<(), anyhow::Error> {
+async fn chain_id() {
     let (module, _) = get_test_rpc_server_and_storage_writer();
 
-    let res = module.call::<_, String>("starknet_chainId", EmptyParams::new()).await?;
+    let res = module.call::<_, String>("starknet_chainId", EmptyParams::new()).await.unwrap();
     // The result should be equal to the result of the following python code
     // hex(int.from_bytes(b'SN_GOERLI', byteorder="big", signed=False))
     // taken from starknet documentation:
     // https://docs.starknet.io/documentation/develop/Blocks/transactions/#chain-id.
     assert_eq!(res, String::from("0x534e5f474f45524c49"));
-    Ok(())
 }
 
 #[tokio::test]
-async fn get_6_events_chunk_size_2_with_address() -> Result<(), anyhow::Error> {
+async fn get_6_events_chunk_size_2_with_address() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-
     let block = get_test_block(2);
     let block_number = block.header.block_number;
     storage_writer
-        .begin_rw_txn()?
-        .append_header(block_number, &block.header)?
-        .append_body(block_number, block.body.clone())?
-        .commit()?;
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(block_number, &block.header)
+        .unwrap()
+        .append_body(block_number, block.body.clone())
+        .unwrap()
+        .commit()
+        .unwrap();
 
     // Create the filter. The allowed keys at index 0 are 0x7 or 0x6.
     let filter_keys = HashSet::from([EventKey(shash!("0x7")), EventKey(shash!("0x6"))]);
@@ -1097,17 +1155,20 @@ async fn get_6_events_chunk_size_2_with_address() -> Result<(), anyhow::Error> {
         ContinuationToken::new(ContinuationTokenAsStruct(EventIndex(
             TransactionIndex(block_number, TransactionOffsetInBlock(0)),
             EventIndexInTransactionOutput(4),
-        )))?;
+        )))
+        .unwrap();
     let expected_continuation_token1 =
         ContinuationToken::new(ContinuationTokenAsStruct(EventIndex(
             TransactionIndex(block_number, TransactionOffsetInBlock(1)),
             EventIndexInTransactionOutput(1),
-        )))?;
+        )))
+        .unwrap();
 
     // Get first chunk of filtered events.
     let (res, continuation_token) = module
         .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter.clone()])
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, emitted_events_iter.next().unwrap());
     assert_eq!(continuation_token, Some(expected_continuation_token0));
 
@@ -1115,7 +1176,8 @@ async fn get_6_events_chunk_size_2_with_address() -> Result<(), anyhow::Error> {
     filter.continuation_token = continuation_token;
     let (res, continuation_token) = module
         .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter.clone()])
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, emitted_events_iter.next().unwrap());
     assert_eq!(continuation_token, Some(expected_continuation_token1));
 
@@ -1123,24 +1185,26 @@ async fn get_6_events_chunk_size_2_with_address() -> Result<(), anyhow::Error> {
     filter.continuation_token = continuation_token;
     let (res, continuation_token) = module
         .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter])
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, emitted_events_iter.next().unwrap());
     assert_eq!(continuation_token, None);
-
-    Ok(())
 }
 
 #[tokio::test]
-async fn get_2_events_chunk_size_2_with_address() -> Result<(), anyhow::Error> {
+async fn get_2_events_chunk_size_2_with_address() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-
     let block = get_test_block(2);
     let block_number = block.header.block_number;
     storage_writer
-        .begin_rw_txn()?
-        .append_header(block_number, &block.header)?
-        .append_body(block_number, block.body.clone())?
-        .commit()?;
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(block_number, &block.header)
+        .unwrap()
+        .append_body(block_number, block.body.clone())
+        .unwrap()
+        .commit()
+        .unwrap();
 
     // Create the filter. The allowed key at index 1 is 0x6.
     let filter_keys = HashSet::from([EventKey(shash!("0x6"))]);
@@ -1170,24 +1234,26 @@ async fn get_2_events_chunk_size_2_with_address() -> Result<(), anyhow::Error> {
     // Get the only chunk of filtered events.
     let (res, continuation_token) = module
         .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter.clone()])
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, emitted_events_iter.next().unwrap());
     assert_eq!(continuation_token, None);
-
-    Ok(())
 }
 
 #[tokio::test]
-async fn get_4_events_chunk_size_3_with_address() -> Result<(), anyhow::Error> {
+async fn get_4_events_chunk_size_3_with_address() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-
     let block = get_test_block(2);
     let block_number = block.header.block_number;
     storage_writer
-        .begin_rw_txn()?
-        .append_header(block_number, &block.header)?
-        .append_body(block_number, block.body.clone())?
-        .commit()?;
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(block_number, &block.header)
+        .unwrap()
+        .append_body(block_number, block.body.clone())
+        .unwrap()
+        .commit()
+        .unwrap();
 
     // Create the filter. The allowed keys at index 0 are 0x7 or 0x9.
     let filter_keys = HashSet::from([EventKey(shash!("0x7")), EventKey(shash!("0x9"))]);
@@ -1223,12 +1289,14 @@ async fn get_4_events_chunk_size_3_with_address() -> Result<(), anyhow::Error> {
         ContinuationToken::new(ContinuationTokenAsStruct(EventIndex(
             TransactionIndex(block_number, TransactionOffsetInBlock(1)),
             EventIndexInTransactionOutput(3),
-        )))?;
+        )))
+        .unwrap();
 
     // Get first chunk of filtered events.
     let (res, continuation_token) = module
         .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter.clone()])
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, emitted_events_iter.next().unwrap());
     assert_eq!(continuation_token, Some(expected_continuation_token0));
 
@@ -1236,24 +1304,26 @@ async fn get_4_events_chunk_size_3_with_address() -> Result<(), anyhow::Error> {
     filter.continuation_token = continuation_token;
     let (res, continuation_token) = module
         .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter])
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, emitted_events_iter.next().unwrap());
     assert_eq!(continuation_token, None);
-
-    Ok(())
 }
 
 #[tokio::test]
-async fn get_6_events_chunk_size_2_without_address() -> Result<(), anyhow::Error> {
+async fn get_6_events_chunk_size_2_without_address() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-
     let block = get_test_block(2);
     let block_number = block.header.block_number;
     storage_writer
-        .begin_rw_txn()?
-        .append_header(block_number, &block.header)?
-        .append_body(block_number, block.body.clone())?
-        .commit()?;
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(block_number, &block.header)
+        .unwrap()
+        .append_body(block_number, block.body.clone())
+        .unwrap()
+        .commit()
+        .unwrap();
 
     // Create the filter. The allowed keys at index 0 are 0x7 or 0x9.
     let filter_keys = HashSet::from([EventKey(shash!("0x7")), EventKey(shash!("0x9"))]);
@@ -1290,17 +1360,20 @@ async fn get_6_events_chunk_size_2_without_address() -> Result<(), anyhow::Error
         ContinuationToken::new(ContinuationTokenAsStruct(EventIndex(
             TransactionIndex(block_number, TransactionOffsetInBlock(0)),
             EventIndexInTransactionOutput(3),
-        )))?;
+        )))
+        .unwrap();
     let expected_continuation_token1 =
         ContinuationToken::new(ContinuationTokenAsStruct(EventIndex(
             TransactionIndex(block_number, TransactionOffsetInBlock(1)),
             EventIndexInTransactionOutput(2),
-        )))?;
+        )))
+        .unwrap();
 
     // Get first chunk of filtered events.
     let (res, continuation_token) = module
         .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter.clone()])
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, emitted_events_iter.next().unwrap());
     assert_eq!(continuation_token, Some(expected_continuation_token0));
 
@@ -1308,7 +1381,8 @@ async fn get_6_events_chunk_size_2_without_address() -> Result<(), anyhow::Error
     filter.continuation_token = continuation_token;
     let (res, continuation_token) = module
         .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter.clone()])
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, emitted_events_iter.next().unwrap());
     assert_eq!(continuation_token, Some(expected_continuation_token1));
 
@@ -1316,24 +1390,26 @@ async fn get_6_events_chunk_size_2_without_address() -> Result<(), anyhow::Error
     filter.continuation_token = continuation_token;
     let (res, continuation_token) = module
         .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter])
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, emitted_events_iter.next().unwrap());
     assert_eq!(continuation_token, None);
-
-    Ok(())
 }
 
 #[tokio::test]
-async fn get_6_events_chunk_size_4_without_address() -> Result<(), anyhow::Error> {
+async fn get_6_events_chunk_size_4_without_address() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-
     let block = get_test_block(2);
     let block_number = block.header.block_number;
     storage_writer
-        .begin_rw_txn()?
-        .append_header(block_number, &block.header)?
-        .append_body(block_number, block.body.clone())?
-        .commit()?;
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(block_number, &block.header)
+        .unwrap()
+        .append_body(block_number, block.body.clone())
+        .unwrap()
+        .commit()
+        .unwrap();
 
     // Create the filter. The allowed keys at index 0 are 0x7 or 0x9.
     let filter_keys = HashSet::from([EventKey(shash!("0x7")), EventKey(shash!("0x9"))]);
@@ -1370,12 +1446,14 @@ async fn get_6_events_chunk_size_4_without_address() -> Result<(), anyhow::Error
         ContinuationToken::new(ContinuationTokenAsStruct(EventIndex(
             TransactionIndex(block_number, TransactionOffsetInBlock(1)),
             EventIndexInTransactionOutput(2),
-        )))?;
+        )))
+        .unwrap();
 
     // Get first chunk of filtered events.
     let (res, continuation_token) = module
         .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter.clone()])
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, emitted_events_iter.next().unwrap());
     assert_eq!(continuation_token, Some(expected_continuation_token0));
 
@@ -1383,30 +1461,28 @@ async fn get_6_events_chunk_size_4_without_address() -> Result<(), anyhow::Error
     filter.continuation_token = continuation_token;
     let (res, continuation_token) = module
         .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter])
-        .await?;
+        .await
+        .unwrap();
     assert_eq!(res, emitted_events_iter.next().unwrap());
     assert_eq!(continuation_token, None);
-
-    Ok(())
 }
 
 #[tokio::test]
-async fn run_server_scneario() -> Result<(), anyhow::Error> {
+async fn run_server_scneario() {
     let (storage_reader, _) = get_test_storage();
     let (gateway_config, chain_id) = get_test_gateway_config_and_chain_id();
-    let (addr, _handle) = run_server(gateway_config, chain_id, storage_reader).await?;
-    let client = HttpClientBuilder::default().build(format!("http://{:?}", addr))?;
+    let (addr, _handle) = run_server(gateway_config, chain_id, storage_reader).await.unwrap();
+    let client = HttpClientBuilder::default().build(format!("http://{:?}", addr)).unwrap();
     let err = client.block_number().await.unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
         JsonRpcError::NoBlocks as i32,
         JsonRpcError::NoBlocks.to_string(),
         None::<()>,
     ));
-    Ok(())
 }
 
 #[tokio::test]
-async fn serialize_returns_expcted_json() -> Result<(), anyhow::Error> {
+async fn serialize_returns_expcted_json() {
     // TODO(anatg): Use the papyrus_node/main.rs, when it has configuration for running different
     // components, for openning the storage and running the server.
     let (storage_reader, mut storage_writer) = get_test_storage();
@@ -1414,31 +1490,39 @@ async fn serialize_returns_expcted_json() -> Result<(), anyhow::Error> {
     let block1 = get_block_to_match_json_file();
     let (_, _, state_diff, deployed_contract_class_definitions) = get_test_state_diff();
     storage_writer
-        .begin_rw_txn()?
-        .append_header(block0.header.block_number, &block0.header)?
-        .append_body(block0.header.block_number, block0.body)?
-        .append_state_diff(block0.header.block_number, StateDiff::default(), vec![])?
-        .append_header(block1.header.block_number, &block1.header)?
-        .append_body(block1.header.block_number, block1.body)?
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(block0.header.block_number, &block0.header)
+        .unwrap()
+        .append_body(block0.header.block_number, block0.body)
+        .unwrap()
+        .append_state_diff(block0.header.block_number, StateDiff::default(), vec![])
+        .unwrap()
+        .append_header(block1.header.block_number, &block1.header)
+        .unwrap()
+        .append_body(block1.header.block_number, block1.body)
+        .unwrap()
         .append_state_diff(
             block1.header.block_number,
             state_diff,
             deployed_contract_class_definitions,
-        )?
-        .commit()?;
+        )
+        .unwrap()
+        .commit()
+        .unwrap();
 
     let (gateway_config, chain_id) = get_test_gateway_config_and_chain_id();
-    let (server_address, _handle) = run_server(gateway_config, chain_id, storage_reader).await?;
+    let (server_address, _handle) =
+        run_server(gateway_config, chain_id, storage_reader).await.unwrap();
 
-    serde_state(server_address).await?;
-    serde_block(server_address).await?;
-    serde_transaction(server_address).await?;
-    Ok(())
+    serde_state(server_address).await;
+    serde_block(server_address).await;
+    serde_transaction(server_address).await;
 }
 
-async fn serde_state(server_address: SocketAddr) -> Result<(), anyhow::Error> {
+async fn serde_state(server_address: SocketAddr) {
     let res =
-        send_request(server_address, "starknet_getStateUpdate", r#"{"block_number": 1}"#).await?;
+        send_request(server_address, "starknet_getStateUpdate", r#"{"block_number": 1}"#).await;
     assert_eq!(res, read_json_file("state_update.json"));
 
     let res = send_request(
@@ -1446,15 +1530,13 @@ async fn serde_state(server_address: SocketAddr) -> Result<(), anyhow::Error> {
         "starknet_getClassAt",
         r#"{"block_number": 1}, "0x543e54f26ae33686f57da2ceebed98b340c3a78e9390931bd84fb711d5caabc""#,
     )
-    .await?;
+    .await;
     assert_eq!(res, read_json_file("contract_class.json"));
-
-    Ok(())
 }
 
-async fn serde_block(server_address: SocketAddr) -> Result<(), anyhow::Error> {
+async fn serde_block(server_address: SocketAddr) {
     let res =
-        send_request(server_address, "starknet_getBlockWithTxs", r#"{"block_number": 1}"#).await?;
+        send_request(server_address, "starknet_getBlockWithTxs", r#"{"block_number": 1}"#).await;
     assert_eq!(res, read_json_file("block_with_transactions.json"));
 
     let res = send_request(
@@ -1462,26 +1544,24 @@ async fn serde_block(server_address: SocketAddr) -> Result<(), anyhow::Error> {
         "starknet_getBlockWithTxHashes",
         r#"{"block_hash": "0x75e00250d4343326f322e370df4c9c73c7be105ad9f532eeb97891a34d9e4a5"}"#,
     )
-    .await?;
+    .await;
     assert_eq!(res, read_json_file("block_with_transaction_hashes.json"));
 
     let res =
         send_request(server_address, "starknet_getBlockTransactionCount", r#"{"block_number": 1}"#)
-            .await?;
+            .await;
     let expeced: serde_json::Value =
-        serde_json::from_str(r#"{"jsonrpc":"2.0","result":4,"id":"1"}"#)?;
+        serde_json::from_str(r#"{"jsonrpc":"2.0","result":4,"id":"1"}"#).unwrap();
     assert_eq!(res, expeced);
-
-    Ok(())
 }
 
-async fn serde_transaction(server_address: SocketAddr) -> Result<(), anyhow::Error> {
+async fn serde_transaction(server_address: SocketAddr) {
     let res = send_request(
         server_address,
         "starknet_getTransactionByBlockIdAndIndex",
         r#"{"block_number": 1}, 0"#,
     )
-    .await?;
+    .await;
     assert_eq!(res, read_json_file("deploy_transaction.json"));
 
     let res = send_request(
@@ -1489,7 +1569,7 @@ async fn serde_transaction(server_address: SocketAddr) -> Result<(), anyhow::Err
         "starknet_getTransactionByHash",
         r#""0x4dd12d3b82c3d0b216503c6abf63f1ccad222461582eac82057d46c327331d2""#,
     )
-    .await?;
+    .await;
     assert_eq!(res, read_json_file("deploy_transaction.json"));
 
     let res = send_request(
@@ -1497,8 +1577,6 @@ async fn serde_transaction(server_address: SocketAddr) -> Result<(), anyhow::Err
         "starknet_getTransactionReceipt",
         r#""0x6525d9aa309e5c80abbdafcc434d53202e06866597cd6dbbc91e5894fad7155""#,
     )
-    .await?;
+    .await;
     assert_eq!(res, read_json_file("invoke_transaction_receipt.json"));
-
-    Ok(())
 }
