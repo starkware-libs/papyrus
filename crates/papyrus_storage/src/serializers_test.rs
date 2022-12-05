@@ -48,25 +48,6 @@ macro_rules! auto_storage_serde_test {
             }
         }
     };
-    (($ty0:ty, $ty1:ty)) => {
-        paste::paste! {
-            #[test]
-            fn [<"storage_serde_test" _$ty0:snake _$ty1:snake>]() {
-                <$ty0>::storage_serde_test();
-                <$ty1>::storage_serde_test();
-            }
-        }
-    };
-    (($ty0:ty, $ty1:ty, $ty2:ty)) => {
-        paste::paste! {
-            #[test]
-            fn [<"storage_serde_test" _$ty0:snake _$ty1:snake _$ty2:snake>]() {
-                <$ty0>::storage_serde_test();
-                <$ty1>::storage_serde_test();
-                <$ty2>::storage_serde_test();
-            }
-        }
-    };
 }
 pub(crate) use auto_storage_serde_test;
 
