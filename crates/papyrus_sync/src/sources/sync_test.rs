@@ -1,4 +1,3 @@
-use std::cmp::max;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -19,8 +18,9 @@ use super::central::BlocksStream;
 use crate::sources::central::{MockCentralSourceTrait, StateUpdatesStream};
 use crate::{CentralError, CentralSourceTrait, GenericStateSync, SyncConfig};
 
-const SYNC_SLEEP_DURATION: Duration = Duration::new(1, 0);
-const CHECK_STORAGE_INTERVAL: Duration = Duration::new(2, 0);
+const SYNC_SLEEP_DURATION: Duration = Duration::new(0, 1000 * 1000 * 100); // 100ms
+const DURATION_BEFORE_CHECKING_STORAGE: Duration = Duration::new(0, 1000 * 1000 * 100); // 100ms
+const MAX_CHECK_STORAGE_ITERATIONS: u8 = 3;
 
 enum CheckStoragePredicateResult {
     InProgress,
@@ -34,17 +34,25 @@ async fn check_storage(
     timeout: Duration,
     predicate: impl Fn(&StorageReader) -> CheckStoragePredicateResult,
 ) -> bool {
-    let interval_time = CHECK_STORAGE_INTERVAL;
+    // Let the other thread opportunity to run before starting the check.
+    tokio::time::sleep(DURATION_BEFORE_CHECKING_STORAGE).await;
+    let interval_time = timeout.div_f32(MAX_CHECK_STORAGE_ITERATIONS.into());
     let mut interval = tokio::time::interval(interval_time);
-    let num_repeats = timeout.as_secs() / interval_time.as_secs();
-    for i in 0..max(1, num_repeats) {
-        debug!("Checking storage {}/{}", i, num_repeats);
+    for i in 0..MAX_CHECK_STORAGE_ITERATIONS {
+        debug!("== Checking predicate on storage ({}/{}). ==", i + 1, MAX_CHECK_STORAGE_ITERATIONS);
         match predicate(&reader) {
             CheckStoragePredicateResult::InProgress => {
+                debug!("== Cechk finished, test still in progress. ==");
                 interval.tick().await;
             }
-            CheckStoragePredicateResult::Passed => return true,
-            CheckStoragePredicateResult::Error => return false,
+            CheckStoragePredicateResult::Passed => {
+                debug!("== Check passed. ==");
+                return true;
+            }
+            CheckStoragePredicateResult::Error => {
+                debug!("== Check failed. ==");
+                return false;
+            }
         }
     }
     error!("Check storage timed out.");
@@ -79,7 +87,7 @@ async fn sync_empty_chain() -> Result<(), anyhow::Error> {
     let sync_future = run_sync(reader.clone(), writer, mock);
 
     // Check that the header marker is 0.
-    let check_storage_future = check_storage(reader.clone(), Duration::from_secs(5), |reader| {
+    let check_storage_future = check_storage(reader.clone(), Duration::from_millis(50), |reader| {
         let marker = reader.begin_ro_txn().unwrap().get_header_marker().unwrap();
         if marker == BlockNumber(0) {
             return CheckStoragePredicateResult::Passed;
@@ -98,7 +106,7 @@ async fn sync_empty_chain() -> Result<(), anyhow::Error> {
 #[tokio::test]
 async fn sync_happy_flow() -> Result<(), anyhow::Error> {
     const N_BLOCKS: u64 = 5;
-    const MAX_TIME_TO_SYNC: u64 = 60;
+    const MAX_TIME_TO_SYNC_MS: u64 = 60;
     let _ = simple_logger::init();
 
     // Mock having N_BLOCKS chain in central.
@@ -136,12 +144,12 @@ async fn sync_happy_flow() -> Result<(), anyhow::Error> {
     let (reader, writer) = get_test_storage();
     let sync_future = run_sync(reader.clone(), writer, mock);
 
-    // Check that the storage reached N_BLOCKS within MAX_TIME_TO_SYNC.
+    // Check that the storage reached N_BLOCKS within MAX_TIME_TO_SYNC_MS.
     let check_storage_future =
-        check_storage(reader, Duration::from_secs(MAX_TIME_TO_SYNC), |reader| {
+        check_storage(reader, Duration::from_millis(MAX_TIME_TO_SYNC_MS), |reader| {
             let header_marker = reader.begin_ro_txn().unwrap().get_header_marker().unwrap();
             debug!("Header marker currently at {}", header_marker);
-            if header_marker > BlockNumber(N_BLOCKS) {
+            if header_marker < BlockNumber(N_BLOCKS) {
                 return CheckStoragePredicateResult::InProgress;
             }
             if header_marker > BlockNumber(N_BLOCKS) {
@@ -175,7 +183,9 @@ async fn sync_with_revert() {
     let _ = simple_logger::init();
     let (reader, writer) = get_test_storage();
 
-    // Shared flag for the sync and the storage check threads.
+    // Once the sync reaches N_BLOCKS_BEFORE_REVERT, the check_storage thread will set this flag to
+    // true to mark the central to simulate a revert, and for the check_storage to start checking
+    // for the new blocks after the revert.
     let reverted_mutex = Arc::new(Mutex::new(false));
 
     // Prepare sync thread with mocked central source that will perform a revert once the
@@ -186,15 +196,15 @@ async fn sync_with_revert() {
     // Prepare functions that check that the sync worked up to N_BLOCKS_BEFORE_REVERT and then
     // reacted correctly to the revert.
     const N_BLOCKS_BEFORE_REVERT: u64 = 8;
-    const MAX_TIME_TO_SYNC_BEFORE_REVERT: u64 = 60;
+    const MAX_TIME_TO_SYNC_BEFORE_REVERT_MS: u64 = 100;
     const CHAIN_FORK_BLOCK_NUMBER: u64 = 5;
     const N_BLOCKS_AFTER_REVERT: u64 = 10;
-    const MAX_TIME_TO_SYNC_AFTER_REVERT: u64 = 60;
+    const MAX_TIME_TO_SYNC_AFTER_REVERT_MS: u64 = 500;
 
     // Part 1 - check that the storage reached the point at which we will make the revert.
     let check_storage_before_revert_future = check_storage(
         reader.clone(),
-        Duration::from_secs(MAX_TIME_TO_SYNC_BEFORE_REVERT),
+        Duration::from_millis(MAX_TIME_TO_SYNC_BEFORE_REVERT_MS),
         |reader| {
             let marker = reader.begin_ro_txn().unwrap().get_header_marker().unwrap();
             debug!("Before revert, block marker currently at {}", marker);
@@ -218,7 +228,7 @@ async fn sync_with_revert() {
     // Part 3 - check that the storage reverted correctly.
     let check_storage_after_revert_future = check_storage(
         reader.clone(),
-        Duration::from_secs(MAX_TIME_TO_SYNC_AFTER_REVERT),
+        Duration::from_millis(MAX_TIME_TO_SYNC_AFTER_REVERT_MS),
         |reader| {
             let block_marker = reader.begin_ro_txn().unwrap().get_header_marker().unwrap();
             debug!("After revert, block marker currently at {}", block_marker);
