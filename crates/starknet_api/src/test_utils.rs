@@ -5,6 +5,7 @@ use std::hash::Hash;
 use std::path::Path;
 
 use indexmap::IndexMap;
+use rand::Rng;
 
 use crate::block::{
     Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
@@ -392,19 +393,22 @@ macro_rules! impl_get_test_instance {
             }
         }
     };
-    // Enums with no inner struct.
-    (enum $name:ident { $variant:ident = $num:expr , $($rest:tt)* }) => {
+    // Enums.
+    ($(pub)? enum $name:ident { $($variant:ident $( ($ty:ty) )? = $num:expr ,)* } $($rest:tt)*) => {
         impl GetTestInstance for $name {
             fn get_test_instance() -> Self {
-                Self::$variant
-            }
-        }
-    };
-    // Enums with inner struct.
-    (enum $name:ident { $variant:ident ($ty:ty) = $num:expr , $($rest:tt)* }) => {
-        impl GetTestInstance for $name {
-            fn get_test_instance() -> Self {
-                Self::$variant(<$ty>::get_test_instance())
+                let mut rng = rand::thread_rng();
+                let variant = rng.gen_range(0..$name::VARIANT_COUNT);
+                match variant {
+                    $(
+                        $num => {
+                            Self::$variant$((<$ty>::get_test_instance()))?
+                        }
+                    )*
+                    _ => {
+                        panic!("Variant {:?} should match one of the enum variants.", variant);
+                    }
+                }
             }
         }
     };

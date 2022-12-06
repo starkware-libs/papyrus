@@ -89,6 +89,7 @@ pub struct DbTablesStats {
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[cfg_attr(any(feature = "testing", test), derive(variant_count::VariantCount))]
 pub enum MarkerKind {
     Header,
     Body,

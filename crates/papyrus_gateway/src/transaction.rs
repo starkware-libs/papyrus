@@ -77,10 +77,11 @@ pub enum InvokeTransaction {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(untagged)]
+// Note: When deserializing an untagged enum, no variant can be a prefix of variants to follow.
 pub enum Transaction {
     Declare(DeclareTransaction),
-    Deploy(DeployTransaction),
     DeployAccount(DeployAccountTransaction),
+    Deploy(DeployTransaction),
     Invoke(InvokeTransaction),
     L1Handler(L1HandlerTransaction),
 }

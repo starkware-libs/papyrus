@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
 use indexmap::IndexMap;
+use rand::Rng;
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::{StarkFelt, StarkHash};

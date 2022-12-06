@@ -193,6 +193,7 @@ impl<'txn, 'env> EventsReader<'txn, 'env> for StorageTxn<'env, RO> {
 // from the events in the order of the events in [`starknet_api`][`TransactionOutput`].
 // In particular, they are not sorted and with duplicates.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[cfg_attr(any(feature = "testing", test), derive(variant_count::VariantCount))]
 pub enum ThinTransactionOutput {
     Declare(ThinDeclareTransactionOutput),
     Deploy(ThinDeployTransactionOutput),

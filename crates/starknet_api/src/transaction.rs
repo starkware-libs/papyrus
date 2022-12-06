@@ -8,6 +8,8 @@ use crate::serde_utils::PrefixedBytesAsHex;
 
 /// A transaction.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(deny_unknown_fields)]
+#[cfg_attr(any(feature = "testing", test), derive(variant_count::VariantCount))]
 pub enum Transaction {
     /// A declare transaction.
     Declare(DeclareTransaction),
@@ -46,6 +48,8 @@ impl Transaction {
 
 /// A transaction output.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(deny_unknown_fields)]
+#[cfg_attr(any(feature = "testing", test), derive(variant_count::VariantCount))]
 pub enum TransactionOutput {
     /// A declare transaction output.
     Declare(DeclareTransactionOutput),

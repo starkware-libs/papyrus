@@ -42,6 +42,8 @@ pub struct BlockBody {
 
 /// The status of a [Block](`crate::block::Block`).
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(deny_unknown_fields)]
+#[cfg_attr(any(feature = "testing", test), derive(variant_count::VariantCount))]
 pub enum BlockStatus {
     /// A pending block; i.e., a block that is yet to be closed.
     #[serde(rename = "PENDING")]

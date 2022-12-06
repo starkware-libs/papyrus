@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-testing = ["tempfile"]
+testing = ["rand", "tempfile", "variant_count"]
 
 [dependencies]
 bincode = { version = "1.3.3" }
@@ -14,6 +14,7 @@ indexmap = { version = "1.9.2", features = ["serde"] }
 integer-encoding = { version = "3.0.4" }
 libmdbx = { version = ">=0.1.5,<0.1.8", features = ["lifetimed-bytes"] }
 log = { version = "0.4" }
+rand = { version = "0.8.5", optional = true }
 reqwest = { version = "0.11", features = ["json", "blocking"] }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" }
@@ -23,6 +24,7 @@ thiserror = { version = "1.0.31" }
 tokio = { version = "1.18.2", features = ["full","sync"] }
 tokio-stream = { version = "0.1.8" }
 url = { version = "2.2.2" }
+variant_count = { version = "1.1.0", optional = true }
 
 [dev-dependencies]
 assert_matches = { version = "1.5.0" }
