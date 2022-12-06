@@ -8,9 +8,7 @@ use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
-use papyrus_storage::test_utils::{
-    get_test_block, get_test_state_diff, get_test_storage, read_json_file,
-};
+use papyrus_storage::test_utils::{get_test_block, get_test_storage, read_json_file};
 use papyrus_storage::{
     BodyStorageWriter, EventIndex, HeaderStorageWriter, StateStorageWriter, TransactionIndex,
 };
@@ -32,7 +30,8 @@ use crate::block::Block;
 use crate::state::{ContractClass, StateUpdate};
 use crate::test_utils::{
     get_block_to_match_json_file, get_test_gateway_config_and_chain_id,
-    get_test_rpc_server_and_storage_writer, send_request, write_state_diff_for_second_block,
+    get_test_rpc_server_and_storage_writer, get_test_state_diff, send_request,
+    write_state_diff_for_second_block,
 };
 use crate::transaction::{
     Event, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,

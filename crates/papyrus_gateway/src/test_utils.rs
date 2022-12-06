@@ -1,7 +1,8 @@
 use std::net::SocketAddr;
 
+use indexmap::IndexMap;
 use jsonrpsee::http_server::RpcModule;
-use papyrus_storage::test_utils::get_test_storage;
+use papyrus_storage::test_utils::{get_test_storage, read_json_file};
 use papyrus_storage::{HeaderStorageWriter, StateStorageWriter, StorageWriter};
 use reqwest::Client;
 use starknet_api::block::{
@@ -12,7 +13,7 @@ use starknet_api::core::{
 };
 use starknet_api::hash::StarkHash;
 use starknet_api::serde_utils::bytes_from_hex_str;
-use starknet_api::state::{StateDiff, StateUpdate};
+use starknet_api::state::{ContractClass, StateDiff, StateUpdate, StorageKey};
 use starknet_api::test_utils::GetTestInstance;
 use starknet_api::transaction::{
     CallData, ContractAddressSalt, DeployTransaction, DeployTransactionOutput, EthAddress, Fee,
@@ -225,4 +226,60 @@ pub fn get_block_to_match_json_file() -> Block {
     };
 
     Block { header, body: get_body_to_match_json_file() }
+}
+
+pub fn get_test_state_diff()
+-> (BlockHeader, BlockHeader, StateDiff, Vec<(ClassHash, ContractClass)>) {
+    let parent_hash =
+        BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
+    let state_root = GlobalRoot(shash!("0x12"));
+    let parent_header = BlockHeader {
+        block_number: BlockNumber(0),
+        block_hash: parent_hash,
+        state_root,
+        ..BlockHeader::default()
+    };
+
+    let block_hash =
+        BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5493"));
+    let header = BlockHeader {
+        block_number: BlockNumber(1),
+        block_hash,
+        parent_hash,
+        ..BlockHeader::default()
+    };
+
+    let address0 = ContractAddress(patky!(
+        "0x543e54f26ae33686f57da2ceebed98b340c3a78e9390931bd84fb711d5caabc"
+    ));
+    let hash0 =
+        ClassHash(shash!("0x10455c752b86932ce552f2b0fe81a880746649b9aee7e0d842bf3f52378f9f8"));
+    let class_value = read_json_file("uncompressed_contract_class.json");
+    let class0 = serde_json::from_value(class_value).unwrap();
+    let address1 = ContractAddress(patky!("0x21"));
+    let hash1 = ClassHash(shash!("0x5"));
+    let class1 = ContractClass::default();
+    let hash2 = ClassHash(shash!("0x6"));
+    let class2 = ContractClass::default();
+
+    let key0 =
+        StorageKey(patky!("0x70be09c520814c13480a220ad31eb94bf37f0259e002b0275e55f3c309ee823"));
+    let value0 = shash!("0x1dc19dce5326f42f2b319d78b237148d1e582efbf700efd6eb2c9fcbc451327");
+    let key1 =
+        StorageKey(patky!("0x420eefdc029d53134b57551d676c9a450e5f75f9f017ca75f6fb28350f60d54"));
+    let value1 = shash!("0x7c7139d51f4642ec66088959e69eb890e2e6e87c08dad2a223da9161c99c939");
+
+    let diff = StateDiff {
+        deployed_contracts: IndexMap::from([(address0, hash0), (address1, hash1)]),
+        storage_diffs: IndexMap::from([(
+            address0,
+            IndexMap::from([(key0, value0), (key1, value1)]),
+        )]),
+        declared_classes: IndexMap::from([(hash1, class1.clone()), (hash2, class2)]),
+        nonces: IndexMap::from([(address0, Nonce(StarkHash::from(1)))]),
+    };
+
+    let deployed_contract_class_definitions = vec![(hash0, class0), (hash1, class1)];
+
+    (parent_header, header, diff, deployed_contract_class_definitions)
 }
