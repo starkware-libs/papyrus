@@ -228,27 +228,7 @@ pub fn get_block_to_match_json_file() -> Block {
     Block { header, body: get_body_to_match_json_file() }
 }
 
-pub fn get_test_state_diff()
--> (BlockHeader, BlockHeader, StateDiff, Vec<(ClassHash, ContractClass)>) {
-    let parent_hash =
-        BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5483"));
-    let state_root = GlobalRoot(shash!("0x12"));
-    let parent_header = BlockHeader {
-        block_number: BlockNumber(0),
-        block_hash: parent_hash,
-        state_root,
-        ..BlockHeader::default()
-    };
-
-    let block_hash =
-        BlockHash(shash!("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5493"));
-    let header = BlockHeader {
-        block_number: BlockNumber(1),
-        block_hash,
-        parent_hash,
-        ..BlockHeader::default()
-    };
-
+pub fn get_state_diff_to_match_json_file() -> StateDiff {
     let address0 = ContractAddress(patky!(
         "0x543e54f26ae33686f57da2ceebed98b340c3a78e9390931bd84fb711d5caabc"
     ));
@@ -269,17 +249,13 @@ pub fn get_test_state_diff()
         StorageKey(patky!("0x420eefdc029d53134b57551d676c9a450e5f75f9f017ca75f6fb28350f60d54"));
     let value1 = shash!("0x7c7139d51f4642ec66088959e69eb890e2e6e87c08dad2a223da9161c99c939");
 
-    let diff = StateDiff {
+    StateDiff {
         deployed_contracts: IndexMap::from([(address0, hash0), (address1, hash1)]),
         storage_diffs: IndexMap::from([(
             address0,
             IndexMap::from([(key0, value0), (key1, value1)]),
         )]),
-        declared_classes: IndexMap::from([(hash1, class1.clone()), (hash2, class2)]),
+        declared_classes: IndexMap::from([(hash0, class0), (hash1, class1), (hash2, class2)]),
         nonces: IndexMap::from([(address0, Nonce(StarkHash::from(1)))]),
-    };
-
-    let deployed_contract_class_definitions = vec![(hash0, class0), (hash1, class1)];
-
-    (parent_header, header, diff, deployed_contract_class_definitions)
+    }
 }

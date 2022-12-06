@@ -29,8 +29,8 @@ use crate::api::{
 use crate::block::Block;
 use crate::state::{ContractClass, StateUpdate};
 use crate::test_utils::{
-    get_block_to_match_json_file, get_test_gateway_config_and_chain_id,
-    get_test_rpc_server_and_storage_writer, get_test_state_diff, send_request,
+    get_block_to_match_json_file, get_state_diff_to_match_json_file,
+    get_test_gateway_config_and_chain_id, get_test_rpc_server_and_storage_writer, send_request,
     write_state_diff_for_second_block,
 };
 use crate::transaction::{
@@ -1421,7 +1421,7 @@ async fn serialize_returns_expcted_json() {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let block0 = starknet_api::block::Block::get_test_instance();
     let block1 = get_block_to_match_json_file();
-    let (_, _, state_diff, deployed_contract_class_definitions) = get_test_state_diff();
+    let state_diff = get_state_diff_to_match_json_file();
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -1435,11 +1435,7 @@ async fn serialize_returns_expcted_json() {
         .unwrap()
         .append_body(block1.header.block_number, block1.body)
         .unwrap()
-        .append_state_diff(
-            block1.header.block_number,
-            state_diff,
-            deployed_contract_class_definitions,
-        )
+        .append_state_diff(block1.header.block_number, state_diff, vec![])
         .unwrap()
         .commit()
         .unwrap();

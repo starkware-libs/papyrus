@@ -30,7 +30,7 @@
                     ]
                 }
             ],
-            "declared_contract_hashes": ["0x5", "0x6"],
+            "declared_contract_hashes": ["0x10455c752b86932ce552f2b0fe81a880746649b9aee7e0d842bf3f52378f9f8", "0x5", "0x6"],
             "nonces": [
                 {
                     "contract_address": "0x543e54f26ae33686f57da2ceebed98b340c3a78e9390931bd84fb711d5caabc",
