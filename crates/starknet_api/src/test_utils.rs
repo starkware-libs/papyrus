@@ -5,14 +5,13 @@ use indexmap::IndexMap;
 
 use crate::block::{
     Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
-    GlobalRoot,
 };
-use crate::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
+use crate::core::{ClassHash, ContractAddress, EntryPointSelector, GlobalRoot, Nonce, PatriciaKey};
 use crate::hash::{StarkFelt, StarkHash};
 use crate::state::{
     ContractClass, ContractClassAbiEntry, EntryPoint, EntryPointOffset, EntryPointType,
     EventAbiEntry, FunctionAbiEntry, FunctionAbiEntryType, FunctionAbiEntryWithType, Program,
-    StorageKey, StructAbiEntry, StructMember, TypedParameter,
+    StateDiff, StateUpdate, StorageKey, StructAbiEntry, StructMember, TypedParameter,
 };
 use crate::transaction::{
     CallData, ContractAddressSalt, DeclareTransaction, DeclareTransactionOutput,
@@ -239,6 +238,18 @@ auto_impl_get_test_instance! {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events: Vec<Event>,
+    }
+    pub struct StateDiff {
+        pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
+        pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
+        pub declared_classes: IndexMap<ClassHash, ContractClass>,
+        pub nonces: IndexMap<ContractAddress, Nonce>,
+    }
+    pub struct StateUpdate {
+        pub block_hash: BlockHash,
+        pub new_root: GlobalRoot,
+        pub old_root: GlobalRoot,
+        pub state_diff: StateDiff,
     }
     pub enum Transaction {
         Declare(DeclareTransaction) = 0,

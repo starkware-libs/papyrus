@@ -55,6 +55,12 @@ impl Default for Nonce {
 )]
 pub struct EntryPointSelector(pub StarkHash);
 
+/// The root of the global state at a [Block](`crate::block::Block`).
+#[derive(
+    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct GlobalRoot(pub StarkHash);
+
 /// A key for nodes of a Patricia tree.
 // Invariant: key is in range.
 #[derive(Copy, Clone, Eq, PartialEq, Default, Hash, Deserialize, Serialize, PartialOrd, Ord)]

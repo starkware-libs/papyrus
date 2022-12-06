@@ -3,8 +3,8 @@ use std::fs::read_to_string;
 use std::path::Path;
 
 use indexmap::IndexMap;
-use starknet_api::block::{Block, BlockBody, BlockHash, BlockHeader, BlockNumber, GlobalRoot};
-use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
+use starknet_api::block::{Block, BlockBody, BlockHash, BlockHeader, BlockNumber};
+use starknet_api::core::{ClassHash, ContractAddress, GlobalRoot, Nonce, PatriciaKey};
 use starknet_api::hash::StarkHash;
 use starknet_api::state::{ContractClass, StateDiff, StorageKey};
 use starknet_api::transaction::{

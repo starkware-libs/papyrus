@@ -28,7 +28,7 @@ impl TryFrom<NonPrefixedBytesAsHex<32_usize>> for GlobalRoot {
         Ok(Self(StarkHash::try_from(val)?))
     }
 }
-impl From<GlobalRoot> for starknet_api::block::GlobalRoot {
+impl From<GlobalRoot> for starknet_api::core::GlobalRoot {
     fn from(val: GlobalRoot) -> Self {
         Self(val.0)
     }

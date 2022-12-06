@@ -2,16 +2,18 @@ use std::net::SocketAddr;
 
 use jsonrpsee::http_server::RpcModule;
 use papyrus_storage::test_utils::get_test_storage;
-use papyrus_storage::StorageWriter;
+use papyrus_storage::{HeaderStorageWriter, StateStorageWriter, StorageWriter};
 use reqwest::Client;
 use starknet_api::block::{
-    Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockTimestamp, GasPrice, GlobalRoot,
+    Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockTimestamp, GasPrice,
 };
 use starknet_api::core::{
-    ChainId, ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey,
+    ChainId, ClassHash, ContractAddress, EntryPointSelector, GlobalRoot, Nonce, PatriciaKey,
 };
 use starknet_api::hash::StarkHash;
 use starknet_api::serde_utils::bytes_from_hex_str;
+use starknet_api::state::{StateDiff, StateUpdate};
+use starknet_api::test_utils::GetTestInstance;
 use starknet_api::transaction::{
     CallData, ContractAddressSalt, DeployTransaction, DeployTransactionOutput, EthAddress, Fee,
     InvokeTransaction, InvokeTransactionOutput, L2ToL1Payload, MessageToL1, Transaction,
@@ -70,6 +72,35 @@ pub(crate) fn get_test_rpc_server_and_storage_writer()
         .into_rpc(),
         storage_writer,
     )
+}
+
+pub fn write_state_diff_for_second_block(storage_writer: &mut StorageWriter) -> StateUpdate {
+    let parent_header = BlockHeader::default();
+    let mut header = BlockHeader::get_test_instance();
+    header.block_number = BlockNumber(1);
+    header.parent_hash = parent_header.block_hash;
+    let state_diff = StateDiff::get_test_instance();
+
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(parent_header.block_number, &parent_header)
+        .unwrap()
+        .append_state_diff(parent_header.block_number, StateDiff::default(), vec![])
+        .unwrap()
+        .append_header(header.block_number, &header)
+        .unwrap()
+        .append_state_diff(header.block_number, state_diff.clone(), vec![])
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    StateUpdate {
+        block_hash: header.block_hash,
+        new_root: header.state_root,
+        old_root: parent_header.state_root,
+        state_diff,
+    }
 }
 
 pub fn get_body_to_match_json_file() -> BlockBody {

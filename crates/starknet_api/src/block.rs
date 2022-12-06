@@ -5,7 +5,7 @@ mod block_test;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 
-use crate::core::ContractAddress;
+use crate::core::{ContractAddress, GlobalRoot};
 use crate::hash::StarkHash;
 use crate::serde_utils::{BytesAsHex, PrefixedBytesAsHex};
 use crate::transaction::{Transaction, TransactionOutput};
@@ -122,12 +122,6 @@ impl From<GasPrice> for PrefixedBytesAsHex<16_usize> {
         BytesAsHex(val.0.to_be_bytes())
     }
 }
-
-/// The root of the global state at a [Block](`crate::block::Block`).
-#[derive(
-    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct GlobalRoot(pub StarkHash);
 
 /// The timestamp of a [Block](`crate::block::Block`).
 #[derive(

@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use papyrus_storage::compression_utils::{CompressionError, GzEncoded};
 use papyrus_storage::{StorageSerde, StorageSerdeError};
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockHash, GlobalRoot};
-use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::block::BlockHash;
+use starknet_api::core::{ClassHash, ContractAddress, GlobalRoot, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{
     EntryPoint, EntryPointType, EventAbiEntry, FunctionAbiEntry, FunctionAbiEntryType, StorageKey,
@@ -115,6 +115,19 @@ pub struct StateUpdate {
     pub new_root: GlobalRoot,
     pub old_root: GlobalRoot,
     pub state_diff: ThinStateDiff,
+}
+
+impl From<starknet_api::state::StateUpdate> for StateUpdate {
+    fn from(update: starknet_api::state::StateUpdate) -> Self {
+        Self {
+            block_hash: update.block_hash,
+            new_root: update.new_root,
+            old_root: update.old_root,
+            state_diff: ThinStateDiff::from(papyrus_storage::ThinStateDiff::from(
+                update.state_diff,
+            )),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]

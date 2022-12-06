@@ -9,11 +9,21 @@ use std::mem;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
-use crate::block::BlockNumber;
-use crate::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
+use crate::block::{BlockHash, BlockNumber};
+use crate::core::{ClassHash, ContractAddress, EntryPointSelector, GlobalRoot, Nonce, PatriciaKey};
 use crate::hash::{StarkFelt, StarkHash};
 use crate::serde_utils::bytes_from_hex_str;
 use crate::StarknetApiError;
+
+/// The differences between two states before and after a block with hash block_hash
+/// and their respective roots.
+#[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
+pub struct StateUpdate {
+    pub block_hash: BlockHash,
+    pub new_root: GlobalRoot,
+    pub old_root: GlobalRoot,
+    pub state_diff: StateDiff,
+}
 
 /// The differences between two states.
 // Invariant: Addresses are strictly increasing.

@@ -8,10 +8,11 @@ use starknet_api::state::{
     ContractClass, ContractClassAbiEntry, FunctionAbiEntry, FunctionAbiEntryType,
     FunctionAbiEntryWithType, StateDiff, StateNumber, StorageKey,
 };
+use starknet_api::test_utils::GetTestInstance;
 use starknet_api::{patky, shash};
 
 use crate::state::{StateStorageReader, StateStorageWriter, StorageError};
-use crate::test_utils::{get_test_state_diff, get_test_storage};
+use crate::test_utils::get_test_storage;
 use crate::StorageWriter;
 
 #[test]
@@ -173,11 +174,11 @@ fn revert_non_existing_state_diff() {
 #[tokio::test]
 async fn revert_last_state_diff_success() {
     let (_, mut writer) = get_test_storage();
-    let (_, _, state_diff, declared_contracts) = get_test_state_diff();
+    let state_diff = StateDiff::get_test_instance();
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_state_diff(BlockNumber(0), state_diff, declared_contracts)
+        .append_state_diff(BlockNumber(0), state_diff, vec![])
         .unwrap()
         .commit()
         .unwrap();
