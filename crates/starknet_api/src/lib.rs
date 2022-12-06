@@ -20,9 +20,4 @@ pub enum StarknetApiError {
     #[error("Out of range {string}.")]
     /// An error for when a value is out of range.
     OutOfRange { string: String },
-    /// An error for when the [transactions](`crate::transaction::Transaction`) and the
-    /// [transaction outputs](`crate::transaction::TransactionOutput`) in a StarkNet
-    /// [block](`crate::block::Block`) don't match in size.
-    #[error("Transactions and transaction outputs don't have the same length.")]
-    TransactionsLengthDontMatch,
 }

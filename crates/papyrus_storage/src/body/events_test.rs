@@ -30,11 +30,11 @@ async fn iter_events_by_key() {
 
     // Create the events emitted starting from contract address 0x22.
     let address = ContractAddress(patky!("0x22"));
-    let event0 = block.body.transaction_outputs().index(0).events().index(0);
-    let event1 = block.body.transaction_outputs().index(0).events().index(1);
-    let event2 = block.body.transaction_outputs().index(0).events().index(2);
-    let event3 = block.body.transaction_outputs().index(0).events().index(3);
-    let event4 = block.body.transaction_outputs().index(0).events().index(4);
+    let event0 = block.body.transaction_outputs.index(0).events().index(0);
+    let event1 = block.body.transaction_outputs.index(0).events().index(1);
+    let event2 = block.body.transaction_outputs.index(0).events().index(2);
+    let event3 = block.body.transaction_outputs.index(0).events().index(3);
+    let event4 = block.body.transaction_outputs.index(0).events().index(4);
     let block_number = BlockNumber(0);
     let tx_index0 = TransactionIndex(block_number, TransactionOffsetInBlock(0));
     let tx_index1 = TransactionIndex(block_number, TransactionOffsetInBlock(1));
@@ -108,11 +108,11 @@ async fn iter_events_by_index() {
         .unwrap();
 
     // Create the events emitted starting from event index (0,0,2).
-    let event0 = block.body.transaction_outputs().index(0).events().index(0);
-    let event1 = block.body.transaction_outputs().index(0).events().index(1);
-    let event2 = block.body.transaction_outputs().index(0).events().index(2);
-    let event3 = block.body.transaction_outputs().index(0).events().index(3);
-    let event4 = block.body.transaction_outputs().index(0).events().index(4);
+    let event0 = block.body.transaction_outputs.index(0).events().index(0);
+    let event1 = block.body.transaction_outputs.index(0).events().index(1);
+    let event2 = block.body.transaction_outputs.index(0).events().index(2);
+    let event3 = block.body.transaction_outputs.index(0).events().index(3);
+    let event4 = block.body.transaction_outputs.index(0).events().index(4);
     let block_number = BlockNumber(0);
     let tx_index0 = TransactionIndex(block_number, TransactionOffsetInBlock(0));
     let tx_index1 = TransactionIndex(block_number, TransactionOffsetInBlock(1));

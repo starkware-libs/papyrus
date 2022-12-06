@@ -119,7 +119,7 @@ async fn get_block_w_transaction_hashes() {
         .commit()
         .unwrap();
 
-    let expected_transaction = block.body.transactions().index(0);
+    let expected_transaction = block.body.transactions.index(0);
     let expected_block = Block {
         status: BlockStatus::default(),
         header: block.header.into(),
@@ -199,7 +199,7 @@ async fn get_block_w_full_transactions() {
         .commit()
         .unwrap();
 
-    let expected_transaction = block.body.transactions().index(0);
+    let expected_transaction = block.body.transactions.index(0);
     let expected_block = Block {
         status: BlockStatus::default(),
         header: block.header.into(),
@@ -540,7 +540,7 @@ async fn get_transaction_by_hash() {
         .commit()
         .unwrap();
 
-    let expected_transaction = block.body.transactions().index(0);
+    let expected_transaction = block.body.transactions.index(0);
     let res = module
         .call::<_, TransactionWithType>(
             "starknet_getTransactionByHash",
@@ -579,7 +579,7 @@ async fn get_transaction_by_block_id_and_index() {
         .commit()
         .unwrap();
 
-    let expected_transaction = block.body.transactions().index(0);
+    let expected_transaction = block.body.transactions.index(0);
 
     // Get transaction by block hash.
     let res = module
@@ -816,13 +816,13 @@ async fn get_transaction_receipt() {
         .commit()
         .unwrap();
 
-    let transaction_hash = block.body.transactions().index(0).transaction_hash();
+    let transaction_hash = block.body.transactions.index(0).transaction_hash();
     let expected_receipt = TransactionReceiptWithStatus {
         receipt: TransactionReceipt {
             transaction_hash,
             block_hash: block.header.block_hash,
             block_number: block.header.block_number,
-            output: block.body.transaction_outputs().index(0).clone().into(),
+            output: block.body.transaction_outputs.index(0).clone().into(),
         },
         status: TransactionStatus::default(),
     };
@@ -1135,9 +1135,9 @@ async fn get_6_events_chunk_size_2_with_address() {
 
     // Create the events emitted from contract address 0x22 that have at least one of the allowed
     // keys at index 0.
-    let event0 = block.body.transaction_outputs().index(0).events().index(0);
-    let event1 = block.body.transaction_outputs().index(0).events().index(1);
-    let event4 = block.body.transaction_outputs().index(0).events().index(4);
+    let event0 = block.body.transaction_outputs.index(0).events().index(0);
+    let event1 = block.body.transaction_outputs.index(0).events().index(1);
+    let event4 = block.body.transaction_outputs.index(0).events().index(4);
     let block_hash = block.header.block_hash;
     let block_number = BlockNumber(0);
     let tx_hash1 = TransactionHash(StarkHash::from(0));
@@ -1222,7 +1222,7 @@ async fn get_2_events_chunk_size_2_with_address() {
 
     // Create the events emitted from contract address 0x22 that have at least one of the allowed
     // keys at index 0.
-    let event0 = block.body.transaction_outputs().index(0).events().index(0);
+    let event0 = block.body.transaction_outputs.index(0).events().index(0);
     let block_hash = block.header.block_hash;
     let block_number = BlockNumber(0);
     let tx_hash1 = TransactionHash(StarkHash::from(0));
@@ -1272,8 +1272,8 @@ async fn get_4_events_chunk_size_3_with_address() {
 
     // Create the events emitted from contract address 0x22 that have at least one of the allowed
     // keys at index 0.
-    let event0 = block.body.transaction_outputs().index(0).events().index(0);
-    let event3 = block.body.transaction_outputs().index(0).events().index(3);
+    let event0 = block.body.transaction_outputs.index(0).events().index(0);
+    let event3 = block.body.transaction_outputs.index(0).events().index(3);
     let block_hash = block.header.block_hash;
     let block_number = BlockNumber(0);
     let tx_hash1 = TransactionHash(StarkHash::from(0));
@@ -1340,9 +1340,9 @@ async fn get_6_events_chunk_size_2_without_address() {
     };
 
     // Create the events that have at least one of the allowed keys at index 0.
-    let event0 = block.body.transaction_outputs().index(0).events().index(0);
-    let event2 = block.body.transaction_outputs().index(0).events().index(2);
-    let event3 = block.body.transaction_outputs().index(0).events().index(3);
+    let event0 = block.body.transaction_outputs.index(0).events().index(0);
+    let event2 = block.body.transaction_outputs.index(0).events().index(2);
+    let event3 = block.body.transaction_outputs.index(0).events().index(3);
     let block_hash = block.header.block_hash;
     let block_number = BlockNumber(0);
     let tx_hash1 = TransactionHash(StarkHash::from(0));
@@ -1426,9 +1426,9 @@ async fn get_6_events_chunk_size_4_without_address() {
     };
 
     // Create the events that have at least one of the allowed keys at index 0.
-    let event0 = block.body.transaction_outputs().index(0).events().index(0);
-    let event2 = block.body.transaction_outputs().index(0).events().index(2);
-    let event3 = block.body.transaction_outputs().index(0).events().index(3);
+    let event0 = block.body.transaction_outputs.index(0).events().index(0);
+    let event2 = block.body.transaction_outputs.index(0).events().index(2);
+    let event3 = block.body.transaction_outputs.index(0).events().index(3);
     let block_hash = block.header.block_hash;
     let block_number = BlockNumber(0);
     let tx_hash1 = TransactionHash(StarkHash::from(0));
