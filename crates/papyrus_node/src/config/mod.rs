@@ -64,6 +64,7 @@ pub enum ConfigError {
 // Every step updates the configuration values from which the final members of the Config instance
 // will be built.
 struct ConfigBuilder {
+    chain_id: ChainId,
     // TODO: do we really need a builder for each component, or simply modifing the original struct
     // is enough?
     gateway: GatewayConfigBuilder,
@@ -73,19 +74,14 @@ struct ConfigBuilder {
 // Default configuration values.
 impl Default for ConfigBuilder {
     fn default() -> Self {
-        let chain_id = ChainId(String::from(DEFAULT_CHAIN_ID));
-        Self { gateway: GatewayConfigBuilder::new(chain_id) }
-        // TODO: set default values to other components.
+        ConfigBuilder {
+            chain_id: ChainId(String::from(DEFAULT_CHAIN_ID)),
+            gateway: GatewayConfigBuilder::default(),
+        }
     }
 }
 
 impl ConfigBuilder {
-    // Sets chain_id to all of the relevant configuration builders.
-    fn chain_id(&mut self, chain_id: ChainId) {
-        self.gateway.chain_id = chain_id;
-        // TODO: set other components.
-    }
-
     // Parses a yaml config file and updates the relevant config builders.
     // Absence of a section or a parameter means keeping the current value of the config builder.
     fn yaml(mut self) -> Result<Self, ConfigError> {
@@ -97,8 +93,7 @@ impl ConfigBuilder {
         // not valid, so there is no way to check whether chain_id is in the config but has an
         // invalid type.
         if let Yaml::String(chain_id_str) = &config["chain_id"] {
-            let chain_id = ChainId(chain_id_str.clone());
-            self.chain_id(chain_id);
+            self.chain_id = ChainId(chain_id_str.clone());
         }
 
         let gateway_yaml = &config["gateway"];
@@ -136,7 +131,7 @@ impl ConfigBuilder {
             .try_get_matches()?;
 
         if let Some(chain_id) = args.get_one::<ChainId>("chain_id") {
-            self.chain_id(chain_id.clone());
+            self.chain_id = chain_id.clone();
         }
 
         // TODO: Handle other flags
@@ -153,7 +148,7 @@ impl ConfigBuilder {
     fn build(self) -> Config {
         Config {
             // TODO: Do we really need 'build' method here, or a simple constructor is enough?
-            gateway: self.gateway.build(),
+            gateway: self.gateway.build(&self.chain_id),
             // TODO: delete these instances and create builders for the rest of the config structs
             // based on the stored values (like in the gateway).
             central: CentralSourceConfig {
@@ -178,22 +173,22 @@ impl ConfigBuilder {
 }
 
 struct GatewayConfigBuilder {
-    chain_id: ChainId,
     server_ip: String,
     max_events_chunk_size: usize,
     max_events_keys: usize,
 }
 
-impl GatewayConfigBuilder {
-    fn new(chain_id: ChainId) -> Self {
+impl Default for GatewayConfigBuilder {
+    fn default() -> Self {
         Self {
-            chain_id,
             server_ip: String::from("localhost:8080"),
             max_events_chunk_size: 1000,
             max_events_keys: 100,
         }
     }
+}
 
+impl GatewayConfigBuilder {
     fn yaml(&mut self, gateway_yaml: &Hash) -> Result<(), ConfigError> {
         let mut config = Hash::new();
         let server_ip = Yaml::String("server_ip".to_owned());
@@ -227,9 +222,9 @@ impl GatewayConfigBuilder {
         Ok(())
     }
 
-    fn build(self) -> GatewayConfig {
+    fn build(self, chain_id: &ChainId) -> GatewayConfig {
         GatewayConfig {
-            chain_id: self.chain_id,
+            chain_id: chain_id.clone(),
             server_ip: self.server_ip,
             max_events_chunk_size: self.max_events_chunk_size,
             max_events_keys: self.max_events_keys,
