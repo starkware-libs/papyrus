@@ -28,12 +28,9 @@ pub fn get_test_storage() -> (StorageReader, StorageWriter) {
     open_storage(config).unwrap()
 }
 
-pub fn read_json_file(path_in_resource_dir: &str) -> serde_json::Value {
-    // Reads from the directory containing the manifest at run time, same as current working
-    // directory.
-    let path = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap())
-        .join("resources")
-        .join(path_in_resource_dir);
+// Reads from the directory containing the manifest at run time.
+pub fn read_json_file(path_in_current_dir: &str) -> serde_json::Value {
+    let path = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap()).join(path_in_current_dir);
     let json_str = read_to_string(path.to_str().unwrap()).unwrap();
     serde_json::from_str(&json_str).unwrap()
 }

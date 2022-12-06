@@ -234,7 +234,7 @@ pub fn get_state_diff_to_match_json_file() -> StateDiff {
     ));
     let hash0 =
         ClassHash(shash!("0x10455c752b86932ce552f2b0fe81a880746649b9aee7e0d842bf3f52378f9f8"));
-    let class_value = read_json_file("uncompressed_contract_class.json");
+    let class_value = read_json_file("resources/uncompressed_contract_class.json");
     let class0 = serde_json::from_value(class_value).unwrap();
     let address1 = ContractAddress(patky!("0x21"));
     let hash1 = ClassHash(shash!("0x5"));
