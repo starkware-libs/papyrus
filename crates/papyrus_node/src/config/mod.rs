@@ -19,6 +19,7 @@ use yaml_rust::yaml::Hash;
 use yaml_rust::{Yaml, YamlLoader};
 
 const DEFAULT_CHAIN_ID: &str = "SN_GOERLI";
+const CONFIG_FILE: &str = "config/config.yaml";
 
 /// The configurations of the various components of the node.
 #[derive(Deserialize, Serialize)]
@@ -85,8 +86,8 @@ impl ConfigBuilder {
     // Parses a yaml config file and updates the relevant config builders.
     // Absence of a section or a parameter means keeping the current value of the config builder.
     fn yaml(mut self) -> Result<Self, ConfigError> {
-        let config_contents = fs::read_to_string("config/config.yaml")
-            .expect("Something went wrong reading the file");
+        let config_contents =
+            fs::read_to_string(CONFIG_FILE).expect("Something went wrong reading the file");
         let config = YamlLoader::load_from_str(config_contents.as_str())?.remove(0);
 
         // Notice: BadValue is returned both when the key doesn't exist and when the value type is
