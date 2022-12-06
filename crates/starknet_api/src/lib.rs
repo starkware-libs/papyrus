@@ -17,6 +17,11 @@ pub enum StarknetApiError {
     /// Error in the inner deserialization of the node.
     #[error(transparent)]
     InnerDeserialization(#[from] InnerDeserializationError),
+    #[error(
+        "Invalid ChainId: '{invalid_chain_id}'. Expected non-empty uppercase alphanumeric with \
+         underscores."
+    )]
+    InvalidChainId { invalid_chain_id: String },
     #[error("Out of range {string}.")]
     /// An error for when a value is out of range.
     OutOfRange { string: String },

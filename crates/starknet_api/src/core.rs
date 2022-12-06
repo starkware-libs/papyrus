@@ -10,13 +10,33 @@ use serde::{Deserialize, Serialize};
 use crate::hash::{StarkFelt, StarkHash};
 use crate::StarknetApiError;
 
-/// A chain id.
+/// A chain id (upper case alphanumeric + underscores, not empty string and not only underscores).
 #[derive(Clone, Debug, Display, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ChainId(pub String);
 
 impl ChainId {
     pub fn as_hex(&self) -> String {
         format!("0x{}", hex::encode(&self.0))
+    }
+}
+
+impl Default for ChainId {
+    fn default() -> Self {
+        Self(String::from("MAINNET"))
+    }
+}
+
+impl TryFrom<&str> for ChainId {
+    type Error = StarknetApiError;
+
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        if s.is_empty()
+            || s.chars().all(|c| c == '_')
+            || !s.chars().all(|c| c.is_ascii_uppercase() || c == '_')
+        {
+            return Err(StarknetApiError::InvalidChainId { invalid_chain_id: s.to_owned() });
+        }
+        Ok(ChainId(s.to_owned()))
     }
 }
 
