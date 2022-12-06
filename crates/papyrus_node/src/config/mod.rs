@@ -33,14 +33,8 @@ pub struct Config {
 }
 
 impl Config {
-    /// Builds the configuration for the various components of the node.
-    /// Order of precedence when configuring Papyrus node:
-    ///     - CLI
-    ///     - Configuration file (path: config/config.yaml)
-    ///     - Default values
     pub fn load() -> Result<Self, ConfigError> {
-        // TODO: add configuration from env variables.
-        Ok(ConfigBuilder::default().yaml()?.args()?.build())
+        ConfigBuilder::build()
     }
 }
 
@@ -60,58 +54,93 @@ pub enum ConfigError {
     ConfigValue { section: String, key: String, error: String },
 }
 
-// Keeps the configuration parameters in order to build an instance of Config.
-// Uses the Builder pattern: https://doc.rust-lang.org/1.0.0/style/ownership/builders.html
-// Every step updates the configuration values from which the final members of the Config instance
-// will be built.
 struct ConfigBuilder {
     chain_id: ChainId,
-    // TODO: do we really need a builder for each component, or simply modifing the original struct
-    // is enough?
-    gateway: GatewayConfigBuilder,
-    // TODO: Add more components.
+    gateway: GatewayConfig,
+    central: CentralSourceConfig,
+    monitoring_gateway: MonitoringGatewayConfig,
+    storage: StorageConfig,
+    sync: Option<SyncConfig>,
 }
 
 // Default configuration values.
 impl Default for ConfigBuilder {
     fn default() -> Self {
+        let chain_id = ChainId(String::from(DEFAULT_CHAIN_ID));
+
         ConfigBuilder {
-            chain_id: ChainId(String::from(DEFAULT_CHAIN_ID)),
-            gateway: GatewayConfigBuilder::default(),
+            chain_id: chain_id.clone(),
+            central: CentralSourceConfig {
+                url: String::from("https://alpha4.starknet.io/"),
+                retry_config: RetryConfig {
+                    retry_base_millis: 30,
+                    retry_max_delay_millis: 30000,
+                    max_retries: 10,
+                },
+            },
+            gateway: GatewayConfig {
+                chain_id: chain_id.clone(),
+                server_ip: String::from("localhost:8080"),
+                max_events_chunk_size: 1000,
+                max_events_keys: 100,
+            },
+            monitoring_gateway: MonitoringGatewayConfig {
+                server_ip: String::from("localhost:8081"),
+            },
+            storage: StorageConfig {
+                db_config: DbConfig { path: String::from("./data"), max_size: 1099511627776 },
+            },
+            sync: Some(SyncConfig { block_propagation_sleep_duration: Duration::from_secs(10) }),
         }
     }
 }
 
 impl ConfigBuilder {
-    // Parses a yaml config file and updates the relevant config builders.
-    // Absence of a section or a parameter means keeping the current value of the config builder.
+    fn build() -> Result<Config, ConfigError> {
+        // TODO: add configuration from env variables.
+        let builder = Self::default().yaml()?.args()?.propagate_chain_id();
+        Ok(Config {
+            gateway: builder.gateway,
+            central: builder.central,
+            monitoring_gateway: builder.monitoring_gateway,
+            storage: builder.storage,
+            sync: builder.sync,
+        })
+    }
+
+    // Parses a yaml config file and updates the relevant configurations.
+    // Absence of a section or a parameter means keeping the current value of the configuration.
     fn yaml(mut self) -> Result<Self, ConfigError> {
         let config_contents =
             fs::read_to_string(CONFIG_FILE).expect("Something went wrong reading the file");
         let config = YamlLoader::load_from_str(config_contents.as_str())?.remove(0);
 
-        // Notice: BadValue is returned both when the key doesn't exist and when the value type is
-        // not valid, so there is no way to check whether chain_id is in the config but has an
-        // invalid type.
         if let Yaml::String(chain_id_str) = &config["chain_id"] {
             self.chain_id = ChainId(chain_id_str.clone());
         }
 
-        let gateway_yaml = &config["gateway"];
-        match gateway_yaml {
-            Yaml::BadValue => {} // Received when there is no gateway section in the config file.
-            Yaml::Hash(gateway_config) => {
-                self.gateway.yaml(gateway_config)?;
-            }
-            _ => {
-                return Err(ConfigError::YamlSection { section: String::from("gateway") });
-            }
+        if let Some(gateway_yaml) = parse_section(&config, "gateway")? {
+            self.gateway_yaml(gateway_yaml)?;
         }
 
-        Ok(self)
+        // TODO: the rest of the components.
+
+        return Ok(self);
+
+        fn parse_section<'a>(
+            yaml: &'a Yaml,
+            section: &'a str,
+        ) -> Result<Option<&'a Hash>, ConfigError> {
+            let section_yaml = &yaml[section];
+            match section_yaml {
+                Yaml::BadValue => Ok(None), // The component wasn't configured in the yaml.
+                Yaml::Hash(hash) => Ok(Some(hash)),
+                _ => Err(ConfigError::YamlSection { section: section.to_owned() }),
+            }
+        }
     }
 
-    /// Parse the CLI and update the relevant config builders.
+    // Parse the CLI and update the relevant config builders.
     fn args(mut self) -> Result<Self, ConfigError> {
         let args = Command::new("Papyrus")
             .arg(
@@ -135,7 +164,7 @@ impl ConfigBuilder {
             self.chain_id = chain_id.clone();
         }
 
-        // TODO: Handle other flags
+        // TODO: set other components.
 
         return Ok(self);
 
@@ -145,101 +174,63 @@ impl ConfigBuilder {
         }
     }
 
-    // Builds each components configuration based on the stored values
-    fn build(self) -> Config {
-        Config {
-            // TODO: Do we really need 'build' method here, or a simple constructor is enough?
-            gateway: self.gateway.build(&self.chain_id),
-            // TODO: delete these instances and create builders for the rest of the config structs
-            // based on the stored values (like in the gateway).
-            central: CentralSourceConfig {
-                url: String::from("https://alpha4.starknet.io/"),
-                retry_config: RetryConfig {
-                    retry_base_millis: 30,
-                    retry_max_delay_millis: 30000,
-                    max_retries: 10,
-                },
-            },
-            monitoring_gateway: MonitoringGatewayConfig {
-                server_ip: String::from("localhost::8081"),
-            },
-            storage: StorageConfig {
-                db_config: DbConfig { path: String::from("./data"), max_size: 1099511627776 },
-            },
-            // None value means no syncing.
-            // TODO: set None if no_sync flag was passed.
-            sync: Some(SyncConfig { block_propagation_sleep_duration: Duration::from_secs(10) }),
-        }
+    // Propagates the chain id to all the of configurations that use it.
+    fn propagate_chain_id(mut self) -> Self {
+        self.gateway.chain_id = self.chain_id.clone();
+        self.storage.db_config.path.push_str(format!("/{}", self.chain_id.0).as_str());
+        self
     }
-}
 
-struct GatewayConfigBuilder {
-    server_ip: String,
-    max_events_chunk_size: usize,
-    max_events_keys: usize,
-}
-
-impl Default for GatewayConfigBuilder {
-    fn default() -> Self {
-        Self {
-            server_ip: String::from("localhost:8080"),
-            max_events_chunk_size: 1000,
-            max_events_keys: 100,
-        }
-    }
-}
-
-impl GatewayConfigBuilder {
-    fn yaml(&mut self, gateway_yaml: &Hash) -> Result<(), ConfigError> {
-        let mut config = Hash::new();
+    fn gateway_yaml(&mut self, gateway_yaml: &Hash) -> Result<(), ConfigError> {
+        let mut config_as_hash = Hash::new();
         let server_ip = Yaml::String("server_ip".to_owned());
         let max_events_chunk_size = Yaml::String("max_events_chunk_size".to_owned());
         let max_events_keys = Yaml::String("max_events_keys".to_owned());
 
-        config.insert(server_ip.clone(), Yaml::String(self.server_ip.clone()));
-        config.insert(
+        config_as_hash.insert(server_ip.clone(), Yaml::String(self.gateway.server_ip.clone()));
+        config_as_hash.insert(
             max_events_chunk_size.clone(),
-            usize_param_to_yaml(self.max_events_chunk_size, "gateway", "max_events_chunk_size")?,
+            usize_param_to_yaml(
+                self.gateway.max_events_chunk_size,
+                "gateway",
+                "max_events_chunk_size",
+            )?,
         );
-        config.insert(
+        config_as_hash.insert(
             max_events_keys.clone(),
-            usize_param_to_yaml(self.max_events_keys, "gateway", "max_events_keys")?,
+            usize_param_to_yaml(self.gateway.max_events_keys, "gateway", "max_events_keys")?,
         );
 
-        parse_yaml("gateway", &mut config, gateway_yaml)?;
+        parse_yaml("gateway", &mut config_as_hash, gateway_yaml)?;
 
-        self.server_ip = config.get(&server_ip).unwrap().as_str().unwrap().to_owned();
-        self.max_events_chunk_size = yaml_param_to_usize(
-            config.get(&max_events_chunk_size).unwrap(),
+        self.gateway.server_ip =
+            config_as_hash.get(&server_ip).unwrap().as_str().unwrap().to_owned();
+        self.gateway.max_events_chunk_size = yaml_param_to_usize(
+            config_as_hash.get(&max_events_chunk_size).unwrap(),
             "gateway",
             "max_events_chunk_size",
         )?;
-        self.max_events_keys = yaml_param_to_usize(
-            config.get(&max_events_keys).unwrap(),
+        self.gateway.max_events_keys = yaml_param_to_usize(
+            config_as_hash.get(&max_events_keys).unwrap(),
             "gateway",
             "max_events_keys",
         )?;
 
         Ok(())
     }
-
-    fn build(self, chain_id: &ChainId) -> GatewayConfig {
-        GatewayConfig {
-            chain_id: chain_id.clone(),
-            server_ip: self.server_ip,
-            max_events_chunk_size: self.max_events_chunk_size,
-            max_events_keys: self.max_events_keys,
-        }
-    }
 }
 
+// Gets the preconfigured params of a section in a &mut Has, and the parameters of this section from
+// the Yaml file, and updates the configuration with the parameters from the file, while running
+// checks on the validity of the configuration.
 fn parse_yaml(section: &str, configuration: &mut Hash, input: &Hash) -> Result<(), ConfigError> {
     for (k, v) in input {
         let param = configuration
             .get_mut(k)
+            // Invalid key in the config file.
             .ok_or(ConfigError::YamlKey { section: section.to_owned(), key: k.clone() })?;
 
-        // Check that the variant of the input is as expected.
+        // Invalid value type of the configuration.
         if discriminant(param) != discriminant(v) {
             let key = k.as_str().expect("Error while parsing configuration").to_owned();
             return Err(ConfigError::YamlParam {
