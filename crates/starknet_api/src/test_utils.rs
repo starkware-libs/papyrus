@@ -1,5 +1,8 @@
 use std::collections::HashMap;
+use std::env;
+use std::fs::read_to_string;
 use std::hash::Hash;
+use std::path::Path;
 
 use indexmap::IndexMap;
 
@@ -23,6 +26,13 @@ use crate::transaction::{
     TransactionReceipt, TransactionSignature, TransactionVersion,
 };
 use crate::{patky, shash};
+
+// Reads from the directory containing the manifest at run time.
+pub fn read_json_file(path_in_current_dir: &str) -> serde_json::Value {
+    let path = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap()).join(path_in_current_dir);
+    let json_str = read_to_string(path.to_str().unwrap()).unwrap();
+    serde_json::from_str(&json_str).unwrap()
+}
 
 // Returns a test block with a variable number of transactions.
 pub fn get_test_block_with_many_txs(transaction_count: usize) -> Block {

@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 
 use indexmap::IndexMap;
 use jsonrpsee::http_server::RpcModule;
-use papyrus_storage::test_utils::{get_test_storage, read_json_file};
+use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{HeaderStorageWriter, StateStorageWriter, StorageWriter};
 use reqwest::Client;
 use starknet_api::block::{
@@ -14,7 +14,7 @@ use starknet_api::core::{
 use starknet_api::hash::StarkHash;
 use starknet_api::serde_utils::bytes_from_hex_str;
 use starknet_api::state::{ContractClass, StateDiff, StateUpdate, StorageKey};
-use starknet_api::test_utils::GetTestInstance;
+use starknet_api::test_utils::{read_json_file, GetTestInstance};
 use starknet_api::transaction::{
     CallData, ContractAddressSalt, DeployTransaction, DeployTransactionOutput, EthAddress, Fee,
     InvokeTransaction, InvokeTransactionOutput, L2ToL1Payload, MessageToL1, Transaction,

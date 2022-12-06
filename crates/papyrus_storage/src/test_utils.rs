@@ -1,7 +1,3 @@
-use std::env;
-use std::fs::read_to_string;
-use std::path::Path;
-
 use starknet_api::block::{Block, BlockBody, BlockHash, BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, GlobalRoot, PatriciaKey};
 use starknet_api::hash::StarkHash;
@@ -26,13 +22,6 @@ pub fn get_test_config() -> DbConfig {
 pub fn get_test_storage() -> (StorageReader, StorageWriter) {
     let config = get_test_config();
     open_storage(config).unwrap()
-}
-
-// Reads from the directory containing the manifest at run time.
-pub fn read_json_file(path_in_current_dir: &str) -> serde_json::Value {
-    let path = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap()).join(path_in_current_dir);
-    let json_str = read_to_string(path.to_str().unwrap()).unwrap();
-    serde_json::from_str(&json_str).unwrap()
 }
 
 /// Returns a test block body with a variable number of transactions.

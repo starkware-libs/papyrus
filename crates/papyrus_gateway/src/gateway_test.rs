@@ -8,7 +8,7 @@ use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
-use papyrus_storage::test_utils::{get_test_block, get_test_storage, read_json_file};
+use papyrus_storage::test_utils::{get_test_block, get_test_storage};
 use papyrus_storage::{
     BodyStorageWriter, EventIndex, HeaderStorageWriter, StateStorageWriter, TransactionIndex,
 };
@@ -16,7 +16,7 @@ use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::StateDiff;
-use starknet_api::test_utils::{get_test_block_with_many_txs, GetTestInstance};
+use starknet_api::test_utils::{get_test_block_with_many_txs, read_json_file, GetTestInstance};
 use starknet_api::transaction::{
     EventIndexInTransactionOutput, EventKey, TransactionHash, TransactionOffsetInBlock,
 };
