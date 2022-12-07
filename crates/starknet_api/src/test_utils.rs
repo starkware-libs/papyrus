@@ -41,6 +41,7 @@ pub fn get_test_block_with_many_txs_and_events(
     transaction_count: usize,
     events_per_tx: usize,
     from_addresses: Option<Vec<ContractAddress>>,
+    keys: Option<Vec<Vec<EventKey>>>,
 ) -> Block {
     Block {
         header: BlockHeader::get_test_instance(),
@@ -48,6 +49,7 @@ pub fn get_test_block_with_many_txs_and_events(
             transaction_count,
             events_per_tx,
             from_addresses,
+            keys,
         ),
     }
 }
@@ -57,18 +59,32 @@ pub fn get_test_block_body_with_many_txs_and_events(
     transaction_count: usize,
     events_per_tx: usize,
     from_addresses: Option<Vec<ContractAddress>>,
+    keys: Option<Vec<Vec<EventKey>>>,
 ) -> BlockBody {
     let mut body = get_test_block_body_with_many_txs(transaction_count);
     let mut rng = rand::thread_rng();
     for tx_output in &mut body.transaction_outputs {
         let mut events = vec![];
         for _ in 0..events_per_tx {
-            let from_address = if let Some(ref addresses) = from_addresses {
-                *addresses.index(rng.gen_range(0..addresses.len()))
+            let from_address = if let Some(ref options) = from_addresses {
+                *options.index(rng.gen_range(0..options.len()))
             } else {
                 ContractAddress::get_test_instance()
             };
-            events.push(Event { from_address, content: EventContent::get_test_instance() });
+            let final_keys = if let Some(ref options) = keys {
+                let mut chosen_keys = vec![];
+                for options_per_i in options {
+                    let key = options_per_i.index(rng.gen_range(0..options_per_i.len())).clone();
+                    chosen_keys.push(key);
+                }
+                chosen_keys
+            } else {
+                vec![EventKey::get_test_instance()]
+            };
+            events.push(Event {
+                from_address,
+                content: EventContent { keys: final_keys, data: EventData::get_test_instance() },
+            });
         }
         tx_output.set_events(events);
     }

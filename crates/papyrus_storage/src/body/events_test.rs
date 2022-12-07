@@ -14,7 +14,7 @@ use crate::{EventIndex, TransactionIndex};
 async fn iter_events_by_key() {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let from_addresses = vec![ContractAddress(patky!("0x22")), ContractAddress(patky!("0x23"))];
-    let block = get_test_block_with_many_txs_and_events(2, 5, Some(from_addresses));
+    let block = get_test_block_with_many_txs_and_events(2, 5, Some(from_addresses), None);
     let block_number = block.header.block_number;
     storage_writer
         .begin_rw_txn()
@@ -59,7 +59,7 @@ async fn iter_events_by_key() {
 #[tokio::test]
 async fn iter_events_by_index() {
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let block = get_test_block_with_many_txs_and_events(2, 5, None);
+    let block = get_test_block_with_many_txs_and_events(2, 5, None, None);
     let block_number = block.header.block_number;
     storage_writer
         .begin_rw_txn()
