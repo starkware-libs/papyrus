@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::env;
 use std::fs::read_to_string;
 use std::hash::Hash;
+use std::ops::Index;
 use std::path::Path;
 
 use indexmap::IndexMap;
@@ -33,6 +34,45 @@ pub fn read_json_file(path_in_current_dir: &str) -> serde_json::Value {
     let path = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap()).join(path_in_current_dir);
     let json_str = read_to_string(path.to_str().unwrap()).unwrap();
     serde_json::from_str(&json_str).unwrap()
+}
+
+// Returns a test block with a variable number of transactions and events.
+pub fn get_test_block_with_many_txs_and_events(
+    transaction_count: usize,
+    events_per_tx: usize,
+    from_addresses: Option<Vec<ContractAddress>>,
+) -> Block {
+    Block {
+        header: BlockHeader::get_test_instance(),
+        body: get_test_block_body_with_many_txs_and_events(
+            transaction_count,
+            events_per_tx,
+            from_addresses,
+        ),
+    }
+}
+
+// Returns a test block body with a variable number of transactions and events.
+pub fn get_test_block_body_with_many_txs_and_events(
+    transaction_count: usize,
+    events_per_tx: usize,
+    from_addresses: Option<Vec<ContractAddress>>,
+) -> BlockBody {
+    let mut body = get_test_block_body_with_many_txs(transaction_count);
+    let mut rng = rand::thread_rng();
+    for tx_output in &mut body.transaction_outputs {
+        let mut events = vec![];
+        for _ in 0..events_per_tx {
+            let from_address = if let Some(ref addresses) = from_addresses {
+                *addresses.index(rng.gen_range(0..addresses.len()))
+            } else {
+                ContractAddress::get_test_instance()
+            };
+            events.push(Event { from_address, content: EventContent::get_test_instance() });
+        }
+        tx_output.set_events(events);
+    }
+    body
 }
 
 // Returns a test block with a variable number of transactions.

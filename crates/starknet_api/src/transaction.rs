@@ -83,6 +83,17 @@ impl TransactionOutput {
             TransactionOutput::L1Handler(output) => &output.events,
         }
     }
+
+    #[cfg(any(feature = "testing", test))]
+    pub fn set_events(&mut self, events: Vec<Event>) {
+        match self {
+            TransactionOutput::Declare(tx) => tx.events = events,
+            TransactionOutput::Deploy(tx) => tx.events = events,
+            TransactionOutput::DeployAccount(tx) => tx.events = events,
+            TransactionOutput::Invoke(tx) => tx.events = events,
+            TransactionOutput::L1Handler(tx) => tx.events = events,
+        }
+    }
 }
 
 /// A declare transaction.
