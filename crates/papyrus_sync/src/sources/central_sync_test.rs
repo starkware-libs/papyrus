@@ -233,6 +233,10 @@ async fn sync_with_revert() {
             let block_marker = reader.begin_ro_txn().unwrap().get_header_marker().unwrap();
             debug!("After revert, block marker currently at {}", block_marker);
 
+            if block_marker > BlockNumber(N_BLOCKS_AFTER_REVERT) {
+                return CheckStoragePredicateResult::Error;
+            }
+
             // We can't check the storage data until the marker reaches N_BLOCKS_AFTER_REVERT
             // because we can't know if the revert was already detected in the sync or not.
             if block_marker != BlockNumber(N_BLOCKS_AFTER_REVERT) {
@@ -243,6 +247,11 @@ async fn sync_with_revert() {
             // N_BLOCKS_AFTER_REVERT.
             let state_marker = reader.begin_ro_txn().unwrap().get_state_marker().unwrap();
             debug!("After revert, state marker currently at {}", state_marker);
+
+            if state_marker > BlockNumber(N_BLOCKS_AFTER_REVERT) {
+                return CheckStoragePredicateResult::Error;
+            }
+
             if state_marker != BlockNumber(N_BLOCKS_AFTER_REVERT) {
                 return CheckStoragePredicateResult::InProgress;
             }
@@ -259,7 +268,7 @@ async fn sync_with_revert() {
                     return CheckStoragePredicateResult::Error;
                 }
                 let block_hash = block_header.unwrap().block_hash;
-                let expected_block_hash = reverted_block_hash(bn);
+                let expected_block_hash = create_block_hash(bn, true);
                 if block_hash != expected_block_hash {
                     error!(
                         "Wrong hash for block {}. Got {:?}, Expected {:?}.",
@@ -300,10 +309,6 @@ async fn sync_with_revert() {
         }
     }
 
-    fn reverted_block_hash(bn: BlockNumber) -> BlockHash {
-        BlockHash(shash!(format!("0x{}10", bn.0).as_str()))
-    }
-
     #[async_trait]
     impl CentralSourceTrait for MockedCentralWithRevert {
         async fn get_block_marker(&self) -> Result<BlockNumber, ClientError> {
@@ -319,28 +324,25 @@ async fn sync_with_revert() {
             initial_block_number: BlockNumber,
             up_to_block_number: BlockNumber,
         ) -> BlocksStream<'_> {
-            if !self.revert_happend() {
-                let blocks_stream_before_revert: BlocksStream<'_> = stream! {
+            match self.revert_happend() {
+                false => stream! {
                     for i in initial_block_number.iter_up_to(up_to_block_number) {
                         if i.0 >= N_BLOCKS_BEFORE_REVERT {
                             yield Err(CentralError::BlockNotFound { block_number: i })
                         }
-                        let header = BlockHeader{block_number: i, block_hash: BlockHash(shash!(format!("0x{}",i.0).as_str())), ..BlockHeader::default()};
+                        let header = BlockHeader{block_number: i, block_hash: create_block_hash(i, false), ..BlockHeader::default()};
                         yield Ok((i,Block{header, body: BlockBody::default()}));
                     }
-                }.boxed();
-                blocks_stream_before_revert
-            } else {
-                let blocks_stream_after_revert: BlocksStream<'_> = stream! {
+                }.boxed(),
+            true => stream! {
                     for i in initial_block_number.iter_up_to(up_to_block_number) {
                         if i.0 >= N_BLOCKS_AFTER_REVERT {
                             yield Err(CentralError::BlockNotFound { block_number: i })
                         }
-                        let header = BlockHeader{block_number: i, block_hash: reverted_block_hash(i), ..BlockHeader::default()};
+                        let header = BlockHeader{block_number: i, block_hash: create_block_hash(i, true), ..BlockHeader::default()};
                         yield Ok((i,Block{header, body: BlockBody::default()}));
                     }
-                }.boxed();
-                blocks_stream_after_revert
+                }.boxed(),
             }
         }
 
@@ -349,8 +351,8 @@ async fn sync_with_revert() {
             initial_block_number: BlockNumber,
             up_to_block_number: BlockNumber,
         ) -> StateUpdatesStream<'_> {
-            if !self.revert_happend() {
-                let state_stream_before_revert: StateUpdatesStream<'_> = stream! {
+            match self.revert_happend() {
+                false => stream! {
                     for i in initial_block_number.iter_up_to(up_to_block_number) {
                         if i.0 >= N_BLOCKS_BEFORE_REVERT {
                             yield Err(CentralError::BlockNotFound { block_number: i })
@@ -358,10 +360,8 @@ async fn sync_with_revert() {
                         yield Ok((i, StateDiff::default(), vec![]));
                     }
                 }
-                .boxed();
-                state_stream_before_revert
-            } else {
-                let state_stream_after_revert: StateUpdatesStream<'_> = stream! {
+                .boxed(),
+                true => stream! {
                     for i in initial_block_number.iter_up_to(up_to_block_number) {
                         if i.0 >= N_BLOCKS_AFTER_REVERT {
                             yield Err(CentralError::BlockNotFound { block_number: i })
@@ -369,9 +369,16 @@ async fn sync_with_revert() {
                         yield Ok((i, StateDiff::default(), vec![]));
                     }
                 }
-                .boxed();
-                state_stream_after_revert
+                .boxed(),
             }
+        }
+    }
+
+    fn create_block_hash(bn: BlockNumber, is_reverted_block: bool) -> BlockHash {
+        if is_reverted_block {
+            BlockHash(shash!(format!("0x{}10", bn.0).as_str()))
+        } else {
+            BlockHash(shash!(format!("0x{}", bn.0).as_str()))
         }
     }
 }
