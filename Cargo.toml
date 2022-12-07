@@ -9,6 +9,5 @@ members = [
     "crates/papyrus_node",
     "crates/papyrus_storage",
     "crates/papyrus_sync",
-    "crates/starknet_api",
     "crates/starknet_client",
 ]
