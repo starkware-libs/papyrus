@@ -17,7 +17,7 @@ log = { version = "0.4" }
 reqwest = { version = "0.11", features = ["json", "blocking"] }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" }
-starknet_api = { path = "../starknet_api" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "b28d885" }
 tempfile = { version = "3.3.0", optional = true }
 thiserror = { version = "1.0.31" }
 tokio = { version = "1.18.2", features = ["full","sync"] }
@@ -28,4 +28,4 @@ url = { version = "2.2.2" }
 assert_matches = { version = "1.5.0" }
 logtest = { version = "2.0.0" }
 paste = { version = "1.0.9" }
-starknet_api = { path = "../starknet_api", features = ["testing"] }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", features = ["testing"], rev = "b28d885" }
