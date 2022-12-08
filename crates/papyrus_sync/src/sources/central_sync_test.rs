@@ -208,13 +208,15 @@ async fn sync_with_revert() {
         |reader| {
             let marker = reader.begin_ro_txn().unwrap().get_header_marker().unwrap();
             debug!("Before revert, block marker currently at {}", marker);
-            if marker.0 < N_BLOCKS_BEFORE_REVERT {
-                return CheckStoragePredicateResult::InProgress;
+            match marker {
+                BlockNumber(bn) if bn < N_BLOCKS_BEFORE_REVERT => {
+                    CheckStoragePredicateResult::InProgress
+                }
+                BlockNumber(bn) if bn == N_BLOCKS_BEFORE_REVERT => {
+                    CheckStoragePredicateResult::Passed
+                }
+                _ => CheckStoragePredicateResult::Error,
             }
-            if marker.0 == N_BLOCKS_BEFORE_REVERT {
-                return CheckStoragePredicateResult::Passed;
-            }
-            CheckStoragePredicateResult::Error
         },
     );
 
@@ -231,56 +233,59 @@ async fn sync_with_revert() {
         Duration::from_millis(MAX_TIME_TO_SYNC_AFTER_REVERT_MS),
         |reader| {
             let block_marker = reader.begin_ro_txn().unwrap().get_header_marker().unwrap();
-            debug!("After revert, block marker currently at {}", block_marker);
-
-            if block_marker > BlockNumber(N_BLOCKS_AFTER_REVERT) {
-                return CheckStoragePredicateResult::Error;
-            }
+            let state_marker = reader.begin_ro_txn().unwrap().get_state_marker().unwrap();
+            debug!(
+                "Block marker currently at {}, state marker currently at {}.",
+                block_marker, state_marker
+            );
 
             // We can't check the storage data until the marker reaches N_BLOCKS_AFTER_REVERT
             // because we can't know if the revert was already detected in the sync or not.
-            if block_marker != BlockNumber(N_BLOCKS_AFTER_REVERT) {
-                return CheckStoragePredicateResult::InProgress;
-            }
-
-            // We reached N_BLOCKS_AFTER_REVERT blocks, check if the state marker also reached
-            // N_BLOCKS_AFTER_REVERT.
-            let state_marker = reader.begin_ro_txn().unwrap().get_state_marker().unwrap();
-            debug!("After revert, state marker currently at {}", state_marker);
-
-            if state_marker > BlockNumber(N_BLOCKS_AFTER_REVERT) {
-                return CheckStoragePredicateResult::Error;
-            }
-
-            if state_marker != BlockNumber(N_BLOCKS_AFTER_REVERT) {
-                return CheckStoragePredicateResult::InProgress;
-            }
-
-            // Both blocks and state updates are fully synced, check the data validity.
-            for bn in
-                BlockNumber(CHAIN_FORK_BLOCK_NUMBER).iter_up_to(BlockNumber(N_BLOCKS_AFTER_REVERT))
-            {
-                debug!("checking hash for block {}", bn);
-                let block_header = reader.begin_ro_txn().unwrap().get_block_header(bn).unwrap();
-
-                if block_header.is_none() {
-                    error!("Block {} doesn't exist", bn);
-                    return CheckStoragePredicateResult::Error;
-                }
-                let block_hash = block_header.unwrap().block_hash;
-                let expected_block_hash = create_block_hash(bn, true);
-                if block_hash != expected_block_hash {
-                    error!(
-                        "Wrong hash for block {}. Got {:?}, Expected {:?}.",
-                        bn, block_hash, expected_block_hash
-                    );
-                    return CheckStoragePredicateResult::Error;
+            // Check both markers.
+            match (block_marker, state_marker) {
+                (BlockNumber(bm), BlockNumber(sm))
+                    if bm > N_BLOCKS_AFTER_REVERT || sm > N_BLOCKS_AFTER_REVERT =>
+                {
+                    CheckStoragePredicateResult::Error
                 }
 
-                // TODO: add checks to the state diff.
-            }
+                (BlockNumber(bm), BlockNumber(sm))
+                    if bm < N_BLOCKS_AFTER_REVERT || sm < N_BLOCKS_AFTER_REVERT =>
+                {
+                    CheckStoragePredicateResult::InProgress
+                }
+                (BlockNumber(bm), BlockNumber(sm))
+                    if bm == N_BLOCKS_AFTER_REVERT && sm == N_BLOCKS_AFTER_REVERT =>
+                {
+                    // Both blocks and state updates are fully synced, check the data validity.
+                    for bn in BlockNumber(CHAIN_FORK_BLOCK_NUMBER)
+                        .iter_up_to(BlockNumber(N_BLOCKS_AFTER_REVERT))
+                    {
+                        debug!("checking hash for block {}", bn);
+                        let block_header =
+                            reader.begin_ro_txn().unwrap().get_block_header(bn).unwrap();
 
-            CheckStoragePredicateResult::Passed
+                        if block_header.is_none() {
+                            error!("Block {} doesn't exist", bn);
+                            return CheckStoragePredicateResult::Error;
+                        }
+                        let block_hash = block_header.unwrap().block_hash;
+                        let expected_block_hash = create_block_hash(bn, true);
+                        if block_hash != expected_block_hash {
+                            error!(
+                                "Wrong hash for block {}. Got {:?}, Expected {:?}.",
+                                bn, block_hash, expected_block_hash
+                            );
+                            return CheckStoragePredicateResult::Error;
+                        }
+
+                        // TODO: add checks to the state diff.
+                    }
+
+                    CheckStoragePredicateResult::Passed
+                }
+                _ => unreachable!("Should never happen."),
+            }
         },
     );
 
