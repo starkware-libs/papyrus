@@ -35,7 +35,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4.1.1
         with:
-          images: ${{ secrets.DOCKERHUB_IMAGE }}
+          images: danbr12345678/papyrus-test
           tags: |
             type=semver,pattern={{version}}
             type=ref,event=branch
@@ -51,9 +51,8 @@ jobs:
         uses: docker/build-push-action@v3.2.0
         with:
           context: .
-          # push: ${{ github.event_name != 'pull_request' }}
-          push: false
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
-          # labels: ${{ steps.meta.outputs.labels }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
