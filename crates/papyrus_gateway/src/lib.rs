@@ -312,12 +312,15 @@ impl JsonRpcServer for JsonRpcServerImpl {
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::TransactionHashNotFound))?;
 
+        let output = TransactionOutput::from_thin_transaction_output(thin_tx_output, events);
+
         Ok(TransactionReceiptWithStatus {
             receipt: TransactionReceipt {
                 transaction_hash,
+                r#type: output.r#type(),
                 block_hash: header.block_hash,
                 block_number,
-                output: TransactionOutput::from_thin_transaction_output(thin_tx_output, events),
+                output,
             },
             status: TransactionStatus::default(),
         })

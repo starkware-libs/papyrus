@@ -8,6 +8,8 @@ use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
+use jsonschema::error::ValidationErrorKind;
+use jsonschema::{is_valid, JSONSchema};
 use papyrus_storage::test_utils::{
     get_test_block, get_test_state_diff, get_test_storage, read_json_file,
 };
@@ -34,7 +36,7 @@ use crate::test_utils::{
     get_test_rpc_server_and_storage_writer, send_request,
 };
 use crate::transaction::{
-    Event, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
+    Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
     TransactionWithType, Transactions,
 };
 use crate::{run_server, ContinuationTokenAsStruct};
@@ -817,12 +819,14 @@ async fn get_transaction_receipt() {
         .unwrap();
 
     let transaction_hash = block.body.transactions.index(0).transaction_hash();
+    let output = TransactionOutput::from(block.body.transaction_outputs.index(0).clone());
     let expected_receipt = TransactionReceiptWithStatus {
         receipt: TransactionReceipt {
             transaction_hash,
+            r#type: output.r#type(),
             block_hash: block.header.block_hash,
             block_number: block.header.block_number,
-            output: block.body.transaction_outputs.index(0).clone().into(),
+            output,
         },
         status: TransactionStatus::default(),
     };
@@ -1483,10 +1487,12 @@ async fn run_server_scneario() {
     ));
 }
 
+// TODO(anatg): Check if possible to put all schemas in one file.
+// TODO(anatg): Check if possible to get schemas from starknet_spec repo.
+// TODO(anatg): Add version / commit to schemas.
+// TODO(anatg): Fix FELT in schemas to the new format.
 #[tokio::test]
-async fn serialize_returns_expcted_json() {
-    // TODO(anatg): Use the papyrus_node/main.rs, when it has configuration for running different
-    // components, for openning the storage and running the server.
+async fn serialize_returns_valid_json() {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let block0 = get_test_block(0);
     let block1 = get_block_to_match_json_file();
@@ -1517,15 +1523,16 @@ async fn serialize_returns_expcted_json() {
     let (server_address, _handle) =
         run_server(gateway_config, chain_id, storage_reader).await.unwrap();
 
-    serde_state(server_address).await;
-    serde_block(server_address).await;
-    serde_transaction(server_address).await;
+    validate_state(server_address).await;
+    validate_block(server_address).await;
+    validate_transaction(server_address).await;
 }
 
-async fn serde_state(server_address: SocketAddr) {
+async fn validate_state(server_address: SocketAddr) {
     let res =
         send_request(server_address, "starknet_getStateUpdate", r#"{"block_number": 1}"#).await;
-    assert_eq!(res, read_json_file("state_update.json"));
+    let schema = read_json_file("starknet_api_openrpc_schemas/state_update.json");
+    assert!(is_valid(&schema, &res["result"]));
 
     let res = send_request(
         server_address,
@@ -1533,13 +1540,21 @@ async fn serde_state(server_address: SocketAddr) {
         r#"{"block_number": 1}, "0x543e54f26ae33686f57da2ceebed98b340c3a78e9390931bd84fb711d5caabc""#,
     )
     .await;
-    assert_eq!(res, read_json_file("contract_class.json"));
+    let schema = read_json_file("starknet_api_openrpc_schemas/contract_class.json");
+    assert!(is_valid(&schema, &res["result"]));
 }
 
-async fn serde_block(server_address: SocketAddr) {
+async fn validate_block(server_address: SocketAddr) {
     let res =
         send_request(server_address, "starknet_getBlockWithTxs", r#"{"block_number": 1}"#).await;
-    assert_eq!(res, read_json_file("block_with_transactions.json"));
+    let schema = read_json_file("starknet_api_openrpc_schemas/block_with_txs.json");
+    let compiled_schema = JSONSchema::compile(&schema).unwrap();
+    let result = compiled_schema.validate(&res["result"]);
+    if let Err(errors) = result {
+        for error in errors {
+            assert_matches!(error.kind, ValidationErrorKind::OneOfMultipleValid);
+        }
+    }
 
     let res = send_request(
         server_address,
@@ -1547,24 +1562,26 @@ async fn serde_block(server_address: SocketAddr) {
         r#"{"block_hash": "0x75e00250d4343326f322e370df4c9c73c7be105ad9f532eeb97891a34d9e4a5"}"#,
     )
     .await;
-    assert_eq!(res, read_json_file("block_with_transaction_hashes.json"));
-
-    let res =
-        send_request(server_address, "starknet_getBlockTransactionCount", r#"{"block_number": 1}"#)
-            .await;
-    let expeced: serde_json::Value =
-        serde_json::from_str(r#"{"jsonrpc":"2.0","result":4,"id":"1"}"#).unwrap();
-    assert_eq!(res, expeced);
+    let schema = read_json_file("starknet_api_openrpc_schemas/block_with_tx_hashes.json");
+    assert!(is_valid(&schema, &res["result"]));
 }
 
-async fn serde_transaction(server_address: SocketAddr) {
+async fn validate_transaction(server_address: SocketAddr) {
+    let schema = read_json_file("starknet_api_openrpc_schemas/txn.json");
+    let compiled_schema = JSONSchema::compile(&schema).unwrap();
+
     let res = send_request(
         server_address,
         "starknet_getTransactionByBlockIdAndIndex",
         r#"{"block_number": 1}, 0"#,
     )
     .await;
-    assert_eq!(res, read_json_file("deploy_transaction.json"));
+    let result = compiled_schema.validate(&res["result"]);
+    if let Err(errors) = result {
+        for error in errors {
+            assert_matches!(error.kind, ValidationErrorKind::OneOfMultipleValid);
+        }
+    }
 
     let res = send_request(
         server_address,
@@ -1572,7 +1589,12 @@ async fn serde_transaction(server_address: SocketAddr) {
         r#""0x4dd12d3b82c3d0b216503c6abf63f1ccad222461582eac82057d46c327331d2""#,
     )
     .await;
-    assert_eq!(res, read_json_file("deploy_transaction.json"));
+    let result = compiled_schema.validate(&res["result"]);
+    if let Err(errors) = result {
+        for error in errors {
+            assert_matches!(error.kind, ValidationErrorKind::OneOfMultipleValid);
+        }
+    }
 
     let res = send_request(
         server_address,
@@ -1580,5 +1602,12 @@ async fn serde_transaction(server_address: SocketAddr) {
         r#""0x6525d9aa309e5c80abbdafcc434d53202e06866597cd6dbbc91e5894fad7155""#,
     )
     .await;
-    assert_eq!(res, read_json_file("invoke_transaction_receipt.json"));
+    let schema = read_json_file("starknet_api_openrpc_schemas/txn_receipt.json");
+    let compiled_schema = JSONSchema::compile(&schema).unwrap();
+    let result = compiled_schema.validate(&res["result"]);
+    if let Err(errors) = result {
+        for error in errors {
+            assert_matches!(error.kind, ValidationErrorKind::OneOfMultipleValid);
+        }
+    }
 }
