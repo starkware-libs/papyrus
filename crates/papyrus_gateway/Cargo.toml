@@ -22,6 +22,7 @@ url = { version = "2.2.2" }
 
 [dev-dependencies]
 assert_matches = { version = "1.5.0" }
+jsonschema = { version = "0.16.1" }
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 starknet_api = { git = "https://github.com/starkware-libs/starknet-api", features = ["testing"] , rev = "f75c4e2" }
 web3 = { version = "0.18.0" }
