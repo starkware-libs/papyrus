@@ -222,6 +222,7 @@ pub struct TransactionReceiptWithStatus {
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct TransactionReceipt {
     pub transaction_hash: TransactionHash,
+    pub r#type: TransactionType,
     pub block_hash: BlockHash,
     pub block_number: BlockNumber,
     #[serde(flatten)]
@@ -279,6 +280,16 @@ impl TransactionOutput {
                     events,
                 })
             }
+        }
+    }
+
+    pub fn r#type(&self) -> TransactionType {
+        match self {
+            TransactionOutput::Declare(_) => TransactionType::Declare,
+            TransactionOutput::Deploy(_) => TransactionType::Deploy,
+            TransactionOutput::DeployAccount(_) => TransactionType::DeployAccount,
+            TransactionOutput::Invoke(_) => TransactionType::Invoke,
+            TransactionOutput::L1Handler(_) => TransactionType::L1Handler,
         }
     }
 }
