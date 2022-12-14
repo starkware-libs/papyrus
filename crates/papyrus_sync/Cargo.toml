@@ -29,6 +29,7 @@ url = { version = "2.2.2" }
 simple_logger = { version = "4.0.0" }
 assert_matches = { version = "1.5.0" }
 mockall = { version = "0.11.2" }
+papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 tempfile = { version = "3.3.0" }
 starknet_client = { path = "../starknet_client", features = ["testing"] }
 starknet_api = { git = "https://github.com/starkware-libs/starknet-api", features = ["testing"], rev = "b28d885" }

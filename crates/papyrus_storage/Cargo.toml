@@ -29,3 +29,4 @@ assert_matches = { version = "1.5.0" }
 logtest = { version = "2.0.0" }
 paste = { version = "1.0.9" }
 starknet_api = { git = "https://github.com/starkware-libs/starknet-api", features = ["testing"], rev = "b28d885" }
+tempfile = { version = "3.3.0" }
