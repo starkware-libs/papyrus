@@ -4,12 +4,13 @@ mod body_test;
 pub mod events;
 
 use starknet_api::block::{BlockBody, BlockNumber};
+use starknet_api::core::ContractAddress;
 use starknet_api::transaction::{
-    Event, EventIndexInTransactionOutput, Transaction, TransactionHash, TransactionOffsetInBlock,
-    TransactionOutput,
+    Event, EventContent, EventIndexInTransactionOutput, Transaction, TransactionHash,
+    TransactionOffsetInBlock, TransactionOutput,
 };
 
-use crate::body::events::{EventsTable, ThinTransactionOutput};
+use crate::body::events::ThinTransactionOutput;
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::{
     EventIndex, MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn, TransactionIndex,
@@ -18,6 +19,8 @@ use crate::{
 pub type TransactionsTable<'env> = TableHandle<'env, TransactionIndex, Transaction>;
 pub type TransactionOutputsTable<'env> = TableHandle<'env, TransactionIndex, ThinTransactionOutput>;
 pub type TransactionHashToIdxTable<'env> = TableHandle<'env, TransactionHash, TransactionIndex>;
+pub type EventsTableKey = (ContractAddress, EventIndex);
+pub type EventsTable<'env> = TableHandle<'env, EventsTableKey, EventContent>;
 
 pub trait BodyStorageReader {
     // The block number marker is the first block number that doesn't exist yet.

@@ -73,11 +73,6 @@ pub struct StorageReader {
     tables: Arc<Tables>,
 }
 
-pub struct StorageWriter {
-    db_writer: DbWriter,
-    tables: Arc<Tables>,
-}
-
 impl StorageReader {
     pub fn begin_ro_txn(&self) -> StorageResult<StorageTxn<'_, RO>> {
         Ok(StorageTxn { txn: self.db_reader.begin_ro_txn()?, tables: self.tables.clone() })
@@ -90,6 +85,11 @@ impl StorageReader {
         }
         Ok(DbTablesStats { stats })
     }
+}
+
+pub struct StorageWriter {
+    db_writer: DbWriter,
+    tables: Arc<Tables>,
 }
 
 impl StorageWriter {

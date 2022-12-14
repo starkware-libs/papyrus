@@ -141,18 +141,6 @@ pub trait TransactionKind {
     type Internal: libmdbx::TransactionKind;
 }
 
-pub struct RO {}
-
-impl TransactionKind for RO {
-    type Internal = libmdbx::RO;
-}
-
-pub struct RW {}
-
-impl TransactionKind for RW {
-    type Internal = libmdbx::RW;
-}
-
 pub struct DbTransaction<'env, Mode: TransactionKind> {
     txn: libmdbx::Transaction<'env, Mode::Internal, EnvironmentKind>,
 }
@@ -277,4 +265,16 @@ impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'tx
             }
         }
     }
+}
+
+pub struct RO {}
+
+impl TransactionKind for RO {
+    type Internal = libmdbx::RO;
+}
+
+pub struct RW {}
+
+impl TransactionKind for RW {
+    type Internal = libmdbx::RW;
 }
