@@ -105,3 +105,15 @@ jobs:
       - run: >
           cargo clippy --all-targets --all-features -- -D warnings -D future-incompatible
           -D nonstandard-style -D rust-2018-idioms -D unused
+
+  doc:
+    runs-on: ubuntu-latest
+    env:
+      RUSTDOCFLAGS: "-D warnings"
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo doc --document-private-items --no-deps

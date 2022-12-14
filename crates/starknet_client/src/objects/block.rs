@@ -3,15 +3,21 @@ use std::ops::Index;
 
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
+#[cfg(doc)]
+use starknet_api::block::Block as starknet_api_block;
 use starknet_api::block::{BlockHash, BlockNumber, BlockTimestamp, GasPrice};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::serde_utils::NonPrefixedBytesAsHex;
 use starknet_api::state::{EntryPoint, EntryPointType, Program, StorageKey};
+#[cfg(doc)]
+use starknet_api::transaction::TransactionOutput as starknet_api_transaction_output;
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 use starknet_api::StarknetApiError;
 
-use super::transaction::{L1ToL2Message, Transaction, TransactionReceipt, TransactionType};
+use crate::objects::transaction::{
+    L1ToL2Message, Transaction, TransactionReceipt, TransactionType,
+};
 use crate::{ClientError, ClientResult};
 
 #[derive(
@@ -53,9 +59,10 @@ pub struct Block {
     pub transaction_receipts: Vec<TransactionReceipt>,
 }
 
-/// Errors that might be encountered while converting the client representation of [`Block`] to a
-/// [`starknet_api`][`Block`], specifically when converting a list of [`TransactionReceipt`] to a
-/// list of [`starknet_api`][`TransactionOutput`].
+/// Errors that might be encountered while converting the client representation of a [`Block`] to a
+/// starknet_api [Block](`starknet_api_block`), specifically when converting a list of
+/// [`TransactionReceipt`] to a list of starknet_api
+/// [TransactionOutput](`starknet_api_transaction_output`).
 #[derive(thiserror::Error, Debug)]
 pub enum TransactionReceiptsError {
     #[error(
