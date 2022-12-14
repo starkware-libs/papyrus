@@ -27,6 +27,8 @@ pub use self::objects::block::{
 };
 use self::retry::Retry;
 pub use self::retry::RetryConfig;
+#[cfg(doc)]
+pub use crate::objects::transaction::TransactionReceipt;
 
 /// A [`Result`] in which the error is a [`ClientError`].
 pub type ClientResult<T> = Result<T, ClientError>;
