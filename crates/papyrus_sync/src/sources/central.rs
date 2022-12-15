@@ -94,6 +94,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                         Ok((state_update, classes)) => {
                             let (declared_classes, deployed_contract_class_definitions) =
                                 classes.split_at(state_update.state_diff.declared_contracts.len());
+                            info!("Received new state diff: {}.", current_block_number);
                             let state_diff = StateDiff {
                                 deployed_contracts: IndexMap::from_iter(
                                     state_update
