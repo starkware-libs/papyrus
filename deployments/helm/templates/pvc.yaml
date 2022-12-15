@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ template "papyrus.name" . }}-data
+spec:
+  storageClassName: "{{ .Values.pvc.storageClass }}"
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  resources:
+    requests:
+      storage: "{{ .Values.pvc.size }}"

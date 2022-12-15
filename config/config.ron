@@ -9,12 +9,12 @@ Config(
         ),
     ),
     gateway: GatewayConfig(
-        server_ip: "localhost:8080",
+        server_ip: "0.0.0.0:8080",
         max_events_chunk_size: 1000,
         max_events_keys: 100,
     ),
     monitoring_gateway: MonitoringGatewayConfig(
-        server_ip: "localhost:8081",
+        server_ip: "0.0.0.0:8081",
     ),
     storage: StorageConfig(
         db_config: DbConfig(
