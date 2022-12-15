@@ -194,7 +194,7 @@ impl ConfigBuilder {
         }
     }
 
-    // Parse the command-line args and update the relevant config builders.
+    // Reads the command-line args and updates the relevant configurations.
     fn args(mut self) -> Result<Self, ConfigError> {
         match self.args {
             None => unreachable!(),
