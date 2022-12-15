@@ -2,10 +2,10 @@
 mod config_test;
 
 use std::collections::HashMap;
-use std::fs;
 use std::mem::discriminant;
 use std::path::PathBuf;
 use std::time::Duration;
+use std::{env, fs, io};
 
 use clap::{value_parser, Arg, ArgMatches, Command};
 use papyrus_gateway::GatewayConfig;
@@ -53,9 +53,13 @@ pub enum ConfigError {
     YamlParam { section: String, key: String, param: Yaml },
     #[error("Bad value in {section}::{key}. {error}")]
     ConfigValue { section: String, key: String, error: String },
+    #[error(transparent)]
+    ConfigFile(#[from] io::Error),
 }
 
 struct ConfigBuilder {
+    args: Option<ArgMatches>,
+    config_file: String,
     chain_id: ChainId,
     gateway: GatewayConfig,
     central: CentralSourceConfig,
@@ -71,6 +75,8 @@ impl Default for ConfigBuilder {
         let chain_id = ChainId(String::from("SN_MAIN"));
 
         ConfigBuilder {
+            args: None,
+            config_file: String::from(CONFIG_FILE),
             chain_id: chain_id.clone(),
             central: CentralSourceConfig {
                 url: String::from("https://alpha4.starknet.io/"),
@@ -100,7 +106,7 @@ impl Default for ConfigBuilder {
 impl ConfigBuilder {
     fn build() -> Result<Config, ConfigError> {
         // TODO: add configuration from env variables.
-        let builder = Self::default().yaml()?.args()?.propagate_chain_id();
+        let builder = Self::default().prepare()?.yaml()?.args()?.propagate_chain_id();
         Ok(Config {
             gateway: builder.gateway,
             central: builder.central,
@@ -109,12 +115,38 @@ impl ConfigBuilder {
             sync: builder.sync,
         })
     }
+    fn prepare(mut self) -> Result<Self, ConfigError> {
+        self.args = Some(
+            Command::new("Papyrus")
+                .arg(Arg::new("config_file").help("Path to a config file"))
+                .arg(Arg::new("chain_id").help("Set the network chain ID"))
+                .arg(
+                    Arg::new("storage_path")
+                        .help("Set the path of the node's storage")
+                        .value_parser(value_parser!(PathBuf)),
+                )
+                .arg(
+                    Arg::new("no_sync")
+                        .help("Run the node without syncing")
+                        .default_missing_value("true"),
+                )
+                .try_get_matches()?,
+        );
+        self.config_file = match self.args {
+            None => unreachable!(),
+            Some(ref args) => match args.try_get_one::<String>("config_file") {
+                Err(err) => return Err(ConfigError::ArgParseMatch(err)),
+                Ok(None) => String::from(CONFIG_FILE),
+                Ok(Some(config_file)) => config_file.clone(),
+            },
+        };
+        Ok(self)
+    }
 
     // Parses a yaml config file and updates the relevant configurations.
     // Absence of a section or a parameter means keeping the current value of the configuration.
     fn yaml(mut self) -> Result<Self, ConfigError> {
-        let config_contents =
-            fs::read_to_string(CONFIG_FILE).expect("Something went wrong reading the file");
+        let config_contents = fs::read_to_string(self.config_file.clone())?;
         let config = YamlLoader::load_from_str(config_contents.as_str())?.remove(0);
 
         if let Yaml::String(chain_id_str) = &config["chain_id"] {
@@ -158,35 +190,26 @@ impl ConfigBuilder {
 
     // Parse the command-line args and update the relevant config builders.
     fn args(mut self) -> Result<Self, ConfigError> {
-        let args = Command::new("Papyrus")
-            .arg(Arg::new("chain_id").help("Set the network chain ID"))
-            .arg(
-                Arg::new("storage_path")
-                    .help("Set the path of the node's storage")
-                    .value_parser(value_parser!(PathBuf)),
-            )
-            .arg(
-                Arg::new("no_sync")
-                    .help("Run the node without syncing")
-                    .default_missing_value("true"),
-            )
-            .try_get_matches()?;
+        match self.args {
+            None => unreachable!(),
+            Some(ref args) => {
+                if let Some(chain_id) = args.try_get_one::<String>("chain_id")? {
+                    self.chain_id = ChainId(chain_id.clone());
+                }
 
-        if let Some(chain_id) = args.try_get_one::<String>("chain_id")? {
-            self.chain_id = ChainId(chain_id.clone());
-        }
+                if let Some(storage_path) = args.try_get_one::<String>("storage_path")? {
+                    self.storage.db_config.path = storage_path.clone();
+                }
 
-        if let Some(storage_path) = args.try_get_one::<String>("storage_path")? {
-            self.storage.db_config.path = storage_path.clone();
-        }
+                if let Some(no_sync) = args.try_get_one::<bool>("no_sync")? {
+                    if *no_sync {
+                        self.sync = None;
+                    }
+                }
 
-        if let Some(no_sync) = args.try_get_one::<bool>("no_sync")? {
-            if *no_sync {
-                self.sync = None;
+                Ok(self)
             }
         }
-
-        Ok(self)
     }
 
     // Propagates the chain id into all the of configurations that use it.
