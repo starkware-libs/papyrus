@@ -18,6 +18,7 @@ use starknet_client::RetryConfig;
 use yaml_rust::yaml::Hash;
 use yaml_rust::{Yaml, YamlLoader};
 
+// The path of the default configuration file, provided as part of the crate.
 const CONFIG_FILE: &str = "config/config.yaml";
 
 /// The configurations of the various components of the node.
