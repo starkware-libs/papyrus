@@ -60,7 +60,6 @@ pub enum ConfigError {
 
 struct ConfigBuilder {
     args: Option<ArgMatches>,
-    config_file: String,
     chain_id: ChainId,
     gateway: GatewayConfig,
     central: CentralSourceConfig,
@@ -77,7 +76,6 @@ impl Default for ConfigBuilder {
 
         ConfigBuilder {
             args: None,
-            config_file: String::from(CONFIG_FILE),
             chain_id: chain_id.clone(),
             central: CentralSourceConfig {
                 url: String::from("https://alpha4.starknet.io/"),
@@ -107,7 +105,7 @@ impl Default for ConfigBuilder {
 impl ConfigBuilder {
     fn build() -> Result<Config, ConfigError> {
         // TODO: add configuration from env variables.
-        let builder = Self::default().prepare()?.yaml()?.args()?.propagate_chain_id();
+        let builder = Self::default().prepare_command()?.yaml()?.args()?.propagate_chain_id();
         Ok(Config {
             gateway: builder.gateway,
             central: builder.central,
@@ -116,7 +114,9 @@ impl ConfigBuilder {
             sync: builder.sync,
         })
     }
-    fn prepare(mut self) -> Result<Self, ConfigError> {
+
+    // Builds the applications command-line interface.
+    fn prepare_command(mut self) -> Result<Self, ConfigError> {
         self.args = Some(
             Command::new("Papyrus")
                 .arg(Arg::new("config_file").help("Path to a config file"))
@@ -133,22 +133,13 @@ impl ConfigBuilder {
                 )
                 .try_get_matches()?,
         );
-        self.config_file = match self.args {
-            None => unreachable!(),
-            Some(ref args) => match args.try_get_one::<String>("config_file") {
-                Err(err) => return Err(ConfigError::ArgParseMatch(err)),
-                Ok(None) => String::from(CONFIG_FILE),
-                Ok(Some(config_file)) => config_file.clone(),
-            },
-        };
         Ok(self)
     }
 
     // Parses a yaml config file and updates the relevant configurations.
     // Absence of a section or a parameter means keeping the current value of the configuration.
     fn yaml(mut self) -> Result<Self, ConfigError> {
-        let config_contents = fs::read_to_string(self.config_file.clone())?;
-        let config = YamlLoader::load_from_str(config_contents.as_str())?.remove(0);
+        let config = get_yaml_content(&self)?;
 
         if let Yaml::String(chain_id_str) = &config["chain_id"] {
             self.chain_id = ChainId(chain_id_str.clone());
@@ -186,6 +177,20 @@ impl ConfigBuilder {
                 Yaml::Hash(hash) => Ok(Some(hash)),
                 _ => Err(ConfigError::YamlSection { section: section.to_owned() }),
             }
+        }
+
+        fn get_yaml_content(instance: &ConfigBuilder) -> Result<Yaml, ConfigError> {
+            let config_file = match instance.args {
+                None => unreachable!(),
+                Some(ref args) => match args.try_get_one::<String>("config_file") {
+                    Err(err) => return Err(ConfigError::ArgParseMatch(err)),
+                    Ok(None) => String::from(CONFIG_FILE),
+                    Ok(Some(config_file)) => config_file.clone(),
+                },
+            };
+
+            let config_contents = fs::read_to_string(config_file)?;
+            Ok(YamlLoader::load_from_str(config_contents.as_str())?.remove(0))
         }
     }
 
