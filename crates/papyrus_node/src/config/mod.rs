@@ -146,23 +146,23 @@ impl ConfigBuilder {
         }
 
         if let Some(central_yaml) = parse_section(&config, "central")? {
-            self.central_yaml(central_yaml)?;
+            self.parse_central_yaml(central_yaml)?;
         }
 
         if let Some(gateway_yaml) = parse_section(&config, "gateway")? {
-            self.gateway_yaml(gateway_yaml)?;
+            self.parse_gateway_yaml(gateway_yaml)?;
         }
 
         if let Some(monitoring_gateway_yaml) = parse_section(&config, "monitoring_gateway")? {
-            self.monitoring_gateway_yaml(monitoring_gateway_yaml)?;
+            self.parse_monitoring_gateway_yaml(monitoring_gateway_yaml)?;
         }
 
         if let Some(storage_yaml) = parse_section(&config, "storage_yaml")? {
-            self.storage_yaml(storage_yaml)?;
+            self.parse_storage_yaml(storage_yaml)?;
         }
 
         if let Some(sync_yaml) = parse_section(&config, "sync_yaml")? {
-            self.sync_yaml(sync_yaml)?;
+            self.parse_sync_yaml(sync_yaml)?;
         }
 
         return Ok(self);
@@ -226,7 +226,7 @@ impl ConfigBuilder {
         self
     }
 
-    fn central_yaml(&mut self, central_yaml: &Hash) -> Result<(), ConfigError> {
+    fn parse_central_yaml(&mut self, central_yaml: &Hash) -> Result<(), ConfigError> {
         let mut config_as_hash = Hash::new();
         let url = Yaml::String("url".to_owned());
         let retry = Yaml::String("retry".to_owned());
@@ -242,7 +242,7 @@ impl ConfigBuilder {
         Ok(())
     }
 
-    fn gateway_yaml(&mut self, gateway_yaml: &Hash) -> Result<(), ConfigError> {
+    fn parse_gateway_yaml(&mut self, gateway_yaml: &Hash) -> Result<(), ConfigError> {
         let mut config_as_hash = Hash::new();
         let server_ip = Yaml::String("server_ip".to_owned());
         let max_events_chunk_size = Yaml::String("max_events_chunk_size".to_owned());
@@ -280,7 +280,7 @@ impl ConfigBuilder {
         Ok(())
     }
 
-    fn monitoring_gateway_yaml(
+    fn parse_monitoring_gateway_yaml(
         &mut self,
         monitoring_gateway_yaml: &Hash,
     ) -> Result<(), ConfigError> {
@@ -298,7 +298,7 @@ impl ConfigBuilder {
         Ok(())
     }
 
-    fn storage_yaml(&mut self, storage_yaml: &Hash) -> Result<(), ConfigError> {
+    fn parse_storage_yaml(&mut self, storage_yaml: &Hash) -> Result<(), ConfigError> {
         let mut config_as_hash = Hash::new();
         let db = Yaml::String("db".to_owned());
 
@@ -311,7 +311,7 @@ impl ConfigBuilder {
         Ok(())
     }
 
-    fn sync_yaml(&mut self, sync_yaml: &Hash) -> Result<(), ConfigError> {
+    fn parse_sync_yaml(&mut self, sync_yaml: &Hash) -> Result<(), ConfigError> {
         if self.sync.is_none() {
             return Ok(());
         }
