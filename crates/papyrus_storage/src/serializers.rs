@@ -535,7 +535,7 @@ impl<T: StorageSerde> StorageSerde for Vec<T> {
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         let n: usize = bytes.read_varint().ok()?;
-        let mut res = Vec::with_capacity(n as usize);
+        let mut res = Vec::with_capacity(n);
         for _i in 0..n {
             res.push(T::deserialize_from(bytes)?);
         }
@@ -554,7 +554,7 @@ impl<K: StorageSerde + Eq + Hash, V: StorageSerde> StorageSerde for HashMap<K, V
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         let n: usize = bytes.read_varint().ok()?;
-        let mut res = HashMap::with_capacity(n as usize);
+        let mut res = HashMap::with_capacity(n);
         for _i in 0..n {
             let k = K::deserialize_from(bytes)?;
             let v = V::deserialize_from(bytes)?;
@@ -578,7 +578,7 @@ impl<K: StorageSerde + Eq + Hash, V: StorageSerde> StorageSerde for IndexMap<K, 
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         let n: usize = bytes.read_varint().ok()?;
-        let mut res = IndexMap::with_capacity(n as usize);
+        let mut res = IndexMap::with_capacity(n);
         for _i in 0..n {
             let k = K::deserialize_from(bytes)?;
             let v = V::deserialize_from(bytes)?;
