@@ -26,15 +26,13 @@ use starknet_api::transaction::{
     TransactionVersion,
 };
 
-#[cfg(test)]
-use self::serializers_test::{
-    auto_storage_serde_test, create_test, impl_get_test_instance, GetTestInstance, StorageSerdeTest,
-};
 use crate::body::events::{
     ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput, ThinDeployTransactionOutput,
     ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
 };
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
+#[cfg(test)]
+use crate::serializers::serializers_test::{storage_serde_test, StorageSerdeTest};
 use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
 use crate::{EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey, TransactionIndex};
 
@@ -295,7 +293,7 @@ macro_rules! auto_storage_serde {
             }
         }
         #[cfg(test)]
-        auto_storage_serde_test!($name, struct $name ($ty));
+        storage_serde_test!($name);
         auto_storage_serde!($($rest)*);
     };
     // Tuple structs (no names associated with fields) - two fields.
@@ -310,7 +308,7 @@ macro_rules! auto_storage_serde {
             }
         }
         #[cfg(test)]
-        auto_storage_serde_test!($name, struct $name ($ty0, $ty1));
+        storage_serde_test!($name);
         auto_storage_serde!($($rest)*);
     };
     // Structs with public fields.
@@ -331,7 +329,7 @@ macro_rules! auto_storage_serde {
             }
         }
         #[cfg(test)]
-        auto_storage_serde_test!($name, struct $name { $(pub $field : $ty ,)* });
+        storage_serde_test!($name);
         auto_storage_serde!($($rest)*);
     };
     // Tuples - two elements.
@@ -348,8 +346,6 @@ macro_rules! auto_storage_serde {
                 ))
             }
         }
-        #[cfg(test)]
-        auto_storage_serde_test!(($ty0, $ty1));
         auto_storage_serde!($($rest)*);
     };
     // Tuples - three elements.
@@ -368,8 +364,6 @@ macro_rules! auto_storage_serde {
                 ))
             }
         }
-        #[cfg(test)]
-        auto_storage_serde_test!(($ty0, $ty1, $ty2));
         auto_storage_serde!($($rest)*);
     };
     // enums.
@@ -401,7 +395,7 @@ macro_rules! auto_storage_serde {
             }
         }
         #[cfg(test)]
-        auto_storage_serde_test!($name, enum $name { $($variant $( ($ty) )? = $num ,)* });
+        storage_serde_test!($name);
         auto_storage_serde!($($rest)*);
     };
     // Binary.
@@ -417,7 +411,7 @@ macro_rules! auto_storage_serde {
             }
         }
         #[cfg(test)]
-        auto_storage_serde_test!($name, bincode($name));
+        storage_serde_test!($name);
         auto_storage_serde!($($rest)*);
     }
 }

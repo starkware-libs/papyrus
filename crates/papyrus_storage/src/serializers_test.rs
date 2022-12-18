@@ -1,14 +1,23 @@
-use std::collections::HashMap;
 use std::fmt::Debug;
-use std::hash::Hash;
 
 use indexmap::IndexMap;
-use starknet_api::core::{ContractAddress, PatriciaKey};
-use starknet_api::hash::StarkHash;
-use starknet_api::state::StorageKey;
-use starknet_api::{patky, shash};
+use rand::Rng;
+use starknet_api::block::{BlockHash, BlockNumber};
+use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::state::{ContractClass, StorageKey};
+use starknet_api::transaction::{
+    EventIndexInTransactionOutput, Fee, MessageToL1, TransactionOffsetInBlock,
+};
+use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
 
-use crate::StorageSerde;
+use crate::body::events::{
+    ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput, ThinDeployTransactionOutput,
+    ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
+};
+use crate::db::serialization::StorageSerde;
+use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
+use crate::{EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey, TransactionIndex};
 
 pub trait StorageSerdeTest: StorageSerde {
     fn storage_serde_test();
@@ -27,30 +36,9 @@ impl<T: StorageSerde + GetTestInstance + Eq + Debug> StorageSerdeTest for T {
     }
 }
 
-pub trait GetTestInstance: Sized {
-    fn get_test_instance() -> Self;
-}
-
 // Tests all types that implement the [`StorageSerde`] trait
 // via the [`auto_storage_serde`] macro.
-macro_rules! auto_storage_serde_test {
-    ($name:ident, $($full_exp:tt)*) => {
-        impl_get_test_instance!($($full_exp)*);
-        create_test!($name);
-    };
-    (($ty0:ty, $ty1:ty)) => {
-        impl_get_test_instance!(($ty0, $ty1));
-        create_test!(($ty0, $ty1));
-    };
-    (($ty0:ty, $ty1:ty, $ty2:ty)) => {
-        impl_get_test_instance!(($ty0, $ty1, $ty2));
-        create_test!(($ty0, $ty1, $ty2));
-    };
-}
-pub(crate) use auto_storage_serde_test;
-
-// Creates tests that call the [`storage_serde_test`] function.
-macro_rules! create_test {
+macro_rules! storage_serde_test {
     ($name:ident) => {
         paste::paste! {
             #[test]
@@ -59,177 +47,77 @@ macro_rules! create_test {
             }
         }
     };
-    (($ty0:ty, $ty1:ty)) => {
-        paste::paste! {
-            #[test]
-            fn [<"storage_serde_test" _$ty0:snake _$ty1:snake>]() {
-                <($ty0, $ty1)>::storage_serde_test()
-            }
-        }
-    };
-    (($ty0:ty, $ty1:ty, $ty2:ty)) => {
-        paste::paste! {
-            #[test]
-            fn [<"storage_serde_test" _$ty0:snake _$ty1:snake _$ty2:snake>]() {
-                <($ty0, $ty1, $ty2)>::storage_serde_test()
-            }
-        }
-    };
 }
-pub(crate) use create_test;
+pub(crate) use storage_serde_test;
 
 ////////////////////////////////////////////////////////////////////////
-// Implements the [`GetTestInstance`] trait for primitive types.
+// Calls the [`storage_serde_test`] macro to create the tests for
+// types of starknet_api that are not supported by the macro
+// [`auto_storage_serde`].
 ////////////////////////////////////////////////////////////////////////
-impl GetTestInstance for serde_json::Value {
-    fn get_test_instance() -> Self {
-        serde_json::from_str(r#""0x1""#).unwrap()
-    }
-}
-impl GetTestInstance for String {
-    fn get_test_instance() -> Self {
-        "a".to_string()
-    }
-}
-impl<T: GetTestInstance> GetTestInstance for Option<T> {
-    fn get_test_instance() -> Self {
-        Some(T::get_test_instance())
-    }
-}
-impl<T: GetTestInstance> GetTestInstance for Vec<T> {
-    fn get_test_instance() -> Self {
-        vec![T::get_test_instance()]
-    }
-}
-impl<K: GetTestInstance + Eq + Hash, V: GetTestInstance> GetTestInstance for HashMap<K, V> {
-    fn get_test_instance() -> Self {
-        let mut res = HashMap::with_capacity(1);
-        let k = K::get_test_instance();
-        let v = V::get_test_instance();
-        res.insert(k, v);
-        res
-    }
-}
-impl<K: GetTestInstance + Eq + Hash, V: GetTestInstance> GetTestInstance for IndexMap<K, V> {
-    fn get_test_instance() -> Self {
-        let mut res = IndexMap::with_capacity(1);
-        let k = K::get_test_instance();
-        let v = V::get_test_instance();
-        res.insert(k, v);
-        res
-    }
-}
-impl<T: GetTestInstance + Default + Copy, const N: usize> GetTestInstance for [T; N] {
-    fn get_test_instance() -> Self {
-        [T::get_test_instance(); N]
-    }
-}
+storage_serde_test!(StarkHash);
+storage_serde_test!(ContractAddress);
+storage_serde_test!(StorageKey);
 
 ////////////////////////////////////////////////////////////////////////
-// Implements the [`GetTestInstance`] trait for the types that the
-// [`auto_storage_serde`] macro is called with.
+// Implements the [`GetTestInstance`] trait for types defined in this
+// crate.
 ////////////////////////////////////////////////////////////////////////
-macro_rules! impl_get_test_instance {
-    // Tuple structs (no names associated with fields) - one field.
-    (struct $name:ident($ty:ty)) => {
-        impl GetTestInstance for $name {
-            fn get_test_instance() -> Self {
-                Self(<$ty>::get_test_instance())
-            }
-        }
-    };
-    // Tuple structs (no names associated with fields) - two fields.
-    (struct $name:ident($ty0:ty, $ty1:ty)) => {
-        impl GetTestInstance for $name {
-            fn get_test_instance() -> Self {
-                Self(<$ty0>::get_test_instance(), <$ty1>::get_test_instance())
-            }
-        }
-    };
-    // Structs with public fields.
-    (struct $name:ident { $(pub $field:ident : $ty:ty ,)* }) => {
-        impl GetTestInstance for $name {
-            fn get_test_instance() -> Self {
-                Self {
-                    $(
-                        $field: <$ty>::get_test_instance(),
-                    )*
-                }
-            }
-        }
-    };
-    // Tuples - two elements.
-    (($ty0:ty, $ty1:ty)) => {
-        impl GetTestInstance for ($ty0, $ty1) {
-            fn get_test_instance() -> Self {
-                (
-                    <$ty0>::get_test_instance(),
-                    <$ty1>::get_test_instance(),
-                )
-            }
-        }
-    };
-    // Tuples - three elements.
-    (($ty0:ty, $ty1:ty, $ty2:ty)) => {
-        impl GetTestInstance for ($ty0, $ty1, $ty2) {
-            fn get_test_instance() -> Self {
-                (
-                    <$ty0>::get_test_instance(),
-                    <$ty1>::get_test_instance(),
-                    <$ty2>::get_test_instance(),
-                )
-            }
-        }
-    };
-    // Enums with no inner struct.
-    (enum $name:ident { $variant:ident = $num:expr , $($rest:tt)* }) => {
-        impl GetTestInstance for $name {
-            fn get_test_instance() -> Self {
-                Self::$variant
-            }
-        }
-    };
-    // Enums with inner struct.
-    (enum $name:ident { $variant:ident ($ty:ty) = $num:expr , $($rest:tt)* }) => {
-        impl GetTestInstance for $name {
-            fn get_test_instance() -> Self {
-                Self::$variant(<$ty>::get_test_instance())
-            }
-        }
-    };
-    // Binary.
-    (bincode($name:ident)) => {
-        impl GetTestInstance for $name {
-            fn get_test_instance() -> Self {
-                Self::default()
-            }
-        }
-    }
-}
-pub(crate) use impl_get_test_instance;
+auto_impl_get_test_instance! {
+    struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
+    pub struct IndexedDeclaredContract {
+        pub block_number: BlockNumber,
+        pub contract_class: ContractClass,
 
-////////////////////////////////////////////////////////////////////////
-// Implements the [`GetTestInstance`] trait for types not supported
-// by the macro [`impl_get_test_instance`] and calls the [`create_test`]
-// macro to create the tests for them.
-////////////////////////////////////////////////////////////////////////
-impl GetTestInstance for StarkHash {
-    fn get_test_instance() -> Self {
-        shash!("0x1")
     }
-}
-create_test!(StarkHash);
-
-impl GetTestInstance for ContractAddress {
-    fn get_test_instance() -> Self {
-        Self(patky!("0x1"))
+    pub struct IndexedDeployedContract {
+        pub block_number: BlockNumber,
+        pub class_hash: ClassHash,
     }
-}
-create_test!(ContractAddress);
-
-impl GetTestInstance for StorageKey {
-    fn get_test_instance() -> Self {
-        Self(patky!("0x1"))
+    enum MarkerKind {
+        Header = 0,
+        Body = 1,
+        State = 2,
     }
+    struct OmmerEventKey(pub OmmerTransactionKey, pub EventIndexInTransactionOutput);
+    struct OmmerTransactionKey(pub BlockHash, pub TransactionOffsetInBlock);
+    pub struct ThinDeclareTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events_contract_addresses: Vec<ContractAddress>,
+    }
+    pub struct ThinDeployTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events_contract_addresses: Vec<ContractAddress>,
+    }
+    pub struct ThinDeployAccountTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events_contract_addresses: Vec<ContractAddress>,
+    }
+    pub struct ThinInvokeTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events_contract_addresses: Vec<ContractAddress>,
+    }
+    pub struct ThinL1HandlerTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events_contract_addresses: Vec<ContractAddress>,
+    }
+    pub struct ThinStateDiff {
+        pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
+        pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
+        pub declared_contract_hashes: Vec<ClassHash>,
+        pub nonces: IndexMap<ContractAddress, Nonce>,
+    }
+    pub enum ThinTransactionOutput {
+        Declare(ThinDeclareTransactionOutput) = 0,
+        Deploy(ThinDeployTransactionOutput) = 1,
+        DeployAccount(ThinDeployAccountTransactionOutput) = 2,
+        Invoke(ThinInvokeTransactionOutput) = 3,
+        L1Handler(ThinL1HandlerTransactionOutput) = 4,
+    }
+    struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
 }
-create_test!(StorageKey);
