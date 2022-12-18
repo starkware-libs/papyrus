@@ -82,39 +82,91 @@ pub fn open_env(config: DbConfig) -> Result<(DbReader, DbWriter)> {
 pub struct DbReader {
     env: Arc<Environment>,
 }
+
 pub struct DbWriter {
     env: Arc<Environment>,
+}
+
+impl DbReader {
+    pub fn begin_ro_txn(&self) -> Result<DbReadTransaction<'_>> {
+        Ok(DbReadTransaction { txn: self.env.begin_ro_txn()? })
+    }
+
+    /// Returns statistics about a specific table in the database.
+    pub fn get_table_stats(&self, name: &str) -> Result<DbTableStats> {
+        let db_txn = self.begin_ro_txn()?;
+        let database = db_txn.txn.open_db(Some(name))?;
+        let stat = db_txn.txn.db_stat(&database)?;
+        Ok(DbTableStats {
+            database: format!("{:?}", database),
+            branch_pages: stat.branch_pages(),
+            depth: stat.depth(),
+            entries: stat.entries(),
+            leaf_pages: stat.leaf_pages(),
+            overflow_pages: stat.overflow_pages(),
+            page_size: stat.page_size(),
+        })
+    }
+}
+
+pub type DbReadTransaction<'env> = DbTransaction<'env, RO>;
+
+impl DbWriter {
+    pub fn begin_rw_txn(&mut self) -> Result<DbWriteTransaction<'_>> {
+        Ok(DbWriteTransaction { txn: self.env.begin_rw_txn()? })
+    }
+
+    pub fn create_table<K: StorageSerde, V: StorageSerde>(
+        &mut self,
+        name: &'static str,
+    ) -> Result<TableIdentifier<K, V>> {
+        let txn = self.env.begin_rw_txn()?;
+        txn.create_db(Some(name), DatabaseFlags::empty())?;
+        txn.commit()?;
+        Ok(TableIdentifier { name, _key_type: PhantomData {}, _value_type: PhantomData {} })
+    }
+}
+
+pub type DbWriteTransaction<'env> = DbTransaction<'env, RW>;
+
+impl<'a> DbWriteTransaction<'a> {
+    pub fn commit(self) -> Result<()> {
+        self.txn.commit()?;
+        Ok(())
+    }
 }
 
 // Transaction wrappers.
 pub trait TransactionKind {
     type Internal: libmdbx::TransactionKind;
 }
-pub struct RO {}
-pub struct RW {}
 
-impl TransactionKind for RO {
-    type Internal = libmdbx::RO;
-}
-impl TransactionKind for RW {
-    type Internal = libmdbx::RW;
-}
 pub struct DbTransaction<'env, Mode: TransactionKind> {
     txn: libmdbx::Transaction<'env, Mode::Internal, EnvironmentKind>,
 }
-pub type DbReadTransaction<'env> = DbTransaction<'env, RO>;
-pub type DbWriteTransaction<'env> = DbTransaction<'env, RW>;
+
+impl<'a, Mode: TransactionKind> DbTransaction<'a, Mode> {
+    pub fn open_table<'env, K: StorageSerde, V: StorageSerde>(
+        &'env self,
+        table_id: &TableIdentifier<K, V>,
+    ) -> Result<TableHandle<'env, K, V>> {
+        let database = self.txn.open_db(Some(table_id.name))?;
+        Ok(TableHandle { database, _key_type: PhantomData {}, _value_type: PhantomData {} })
+    }
+}
 
 pub struct TableIdentifier<K: StorageSerde, V: StorageSerde> {
     name: &'static str,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
 }
+
 pub struct TableHandle<'env, K: StorageSerde, V: StorageSerde> {
     database: libmdbx::Database<'env>,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
 }
+
 impl<'env, 'txn, K: StorageSerde, V: StorageSerde> TableHandle<'env, K, V> {
     pub fn cursor<Mode: TransactionKind>(
         &'env self,
@@ -123,6 +175,7 @@ impl<'env, 'txn, K: StorageSerde, V: StorageSerde> TableHandle<'env, K, V> {
         let cursor = txn.txn.cursor(&self.database)?;
         Ok(DbCursor { cursor, _key_type: PhantomData {}, _value_type: PhantomData {} })
     }
+
     pub fn get<Mode: TransactionKind>(
         &'env self,
         txn: &'env DbTransaction<'env, Mode>,
@@ -144,67 +197,18 @@ impl<'env, 'txn, K: StorageSerde, V: StorageSerde> TableHandle<'env, K, V> {
         txn.txn.put(&self.database, &bin_key, &data, WriteFlags::UPSERT)?;
         Ok(())
     }
+
     pub fn insert(&'env self, txn: &DbTransaction<'env, RW>, key: &K, value: &V) -> Result<()> {
         let data = value.serialize()?;
         let bin_key = key.serialize()?;
         txn.txn.put(&self.database, &bin_key, &data, WriteFlags::NO_OVERWRITE)?;
         Ok(())
     }
+
     #[allow(dead_code)]
     pub fn delete(&'env self, txn: &DbTransaction<'env, RW>, key: &K) -> Result<()> {
         let bin_key = key.serialize()?;
         txn.txn.del(&self.database, &bin_key, None)?;
-        Ok(())
-    }
-}
-
-impl DbReader {
-    pub fn begin_ro_txn(&self) -> Result<DbReadTransaction<'_>> {
-        Ok(DbReadTransaction { txn: self.env.begin_ro_txn()? })
-    }
-    /// Returns statistics about a specific table in the database.
-    pub fn get_table_stats(&self, name: &str) -> Result<DbTableStats> {
-        let db_txn = self.begin_ro_txn()?;
-        let database = db_txn.txn.open_db(Some(name))?;
-        let stat = db_txn.txn.db_stat(&database)?;
-        Ok(DbTableStats {
-            database: format!("{:?}", database),
-            branch_pages: stat.branch_pages(),
-            depth: stat.depth(),
-            entries: stat.entries(),
-            leaf_pages: stat.leaf_pages(),
-            overflow_pages: stat.overflow_pages(),
-            page_size: stat.page_size(),
-        })
-    }
-}
-impl DbWriter {
-    pub fn begin_rw_txn(&mut self) -> Result<DbWriteTransaction<'_>> {
-        Ok(DbWriteTransaction { txn: self.env.begin_rw_txn()? })
-    }
-    pub fn create_table<K: StorageSerde, V: StorageSerde>(
-        &mut self,
-        name: &'static str,
-    ) -> Result<TableIdentifier<K, V>> {
-        let txn = self.env.begin_rw_txn()?;
-        txn.create_db(Some(name), DatabaseFlags::empty())?;
-        txn.commit()?;
-        Ok(TableIdentifier { name, _key_type: PhantomData {}, _value_type: PhantomData {} })
-    }
-}
-
-impl<'a, Mode: TransactionKind> DbTransaction<'a, Mode> {
-    pub fn open_table<'env, K: StorageSerde, V: StorageSerde>(
-        &'env self,
-        table_id: &TableIdentifier<K, V>,
-    ) -> Result<TableHandle<'env, K, V>> {
-        let database = self.txn.open_db(Some(table_id.name))?;
-        Ok(TableHandle { database, _key_type: PhantomData {}, _value_type: PhantomData {} })
-    }
-}
-impl<'a> DbWriteTransaction<'a> {
-    pub fn commit(self) -> Result<()> {
-        self.txn.commit()?;
         Ok(())
     }
 }
@@ -229,6 +233,7 @@ impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'tx
             }
         }
     }
+
     #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Result<Option<(K, V)>> {
         let prev_cursor_res = self.cursor.next::<DbKeyType<'_>, DbValueType<'_>>()?;
@@ -243,6 +248,7 @@ impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'tx
             }
         }
     }
+
     /// Position at first key greater than or equal to specified key.
     pub fn lower_bound(&mut self, key: &K) -> Result<Option<(K, V)>> {
         let key_bytes = key.serialize()?;
@@ -259,4 +265,16 @@ impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'tx
             }
         }
     }
+}
+
+pub struct RO {}
+
+impl TransactionKind for RO {
+    type Internal = libmdbx::RO;
+}
+
+pub struct RW {}
+
+impl TransactionKind for RW {
+    type Internal = libmdbx::RW;
 }

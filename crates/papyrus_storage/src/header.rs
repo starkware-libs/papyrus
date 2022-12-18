@@ -12,12 +12,15 @@ pub type BlockHashToNumberTable<'env> = TableHandle<'env, BlockHash, BlockNumber
 pub trait HeaderStorageReader {
     // The block number marker is the first block number that doesn't exist yet.
     fn get_header_marker(&self) -> StorageResult<BlockNumber>;
+
     fn get_block_header(&self, block_number: BlockNumber) -> StorageResult<Option<BlockHeader>>;
+
     fn get_block_number_by_hash(
         &self,
         block_hash: &BlockHash,
     ) -> StorageResult<Option<BlockNumber>>;
 }
+
 pub trait HeaderStorageWriter
 where
     Self: Sized,
@@ -31,16 +34,19 @@ where
 
     fn revert_header(self, block_number: BlockNumber) -> StorageResult<Self>;
 }
+
 impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode> {
     fn get_header_marker(&self) -> StorageResult<BlockNumber> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         Ok(markers_table.get(&self.txn, &MarkerKind::Header)?.unwrap_or_default())
     }
+
     fn get_block_header(&self, block_number: BlockNumber) -> StorageResult<Option<BlockHeader>> {
         let headers_table = self.txn.open_table(&self.tables.headers)?;
         let block_header = headers_table.get(&self.txn, &block_number)?;
         Ok(block_header)
     }
+
     fn get_block_number_by_hash(
         &self,
         block_hash: &BlockHash,
@@ -50,6 +56,7 @@ impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode>
         Ok(block_number)
     }
 }
+
 impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
     fn append_header(
         self,

@@ -75,6 +75,115 @@ impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for StorageTxn<'env, 
     }
 }
 
+/// A single coherent state at a single point in time,
+pub struct StateReader<'env, Mode: TransactionKind> {
+    txn: &'env DbTransaction<'env, Mode>,
+    declared_classes_table: DeclaredClassesTable<'env>,
+    deployed_contracts_table: DeployedContractsTable<'env>,
+    nonces_table: NoncesTable<'env>,
+    storage_table: ContractStorageTable<'env>,
+}
+
+#[allow(dead_code)]
+impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
+    pub fn new(txn: &'env StorageTxn<'env, Mode>) -> StorageResult<Self> {
+        let declared_classes_table = txn.txn.open_table(&txn.tables.declared_classes)?;
+        let deployed_contracts_table = txn.txn.open_table(&txn.tables.deployed_contracts)?;
+        let nonces_table = txn.txn.open_table(&txn.tables.nonces)?;
+        let storage_table = txn.txn.open_table(&txn.tables.contract_storage)?;
+        Ok(StateReader {
+            txn: &txn.txn,
+            declared_classes_table,
+            deployed_contracts_table,
+            nonces_table,
+            storage_table,
+        })
+    }
+
+    pub fn get_class_hash_at(
+        &self,
+        state_number: StateNumber,
+        address: &ContractAddress,
+    ) -> StorageResult<Option<ClassHash>> {
+        let value = self.deployed_contracts_table.get(self.txn, address)?;
+        if let Some(value) = value {
+            if state_number.is_after(value.block_number) {
+                return Ok(Some(value.class_hash));
+            }
+        }
+        Ok(None)
+    }
+
+    pub fn get_nonce_at(
+        &self,
+        state_number: StateNumber,
+        address: &ContractAddress,
+    ) -> StorageResult<Option<Nonce>> {
+        // State diff updates are indexed by the block_number at which they occurred.
+        let first_irrelevant_block: BlockNumber = state_number.block_after();
+        // The relevant update is the last update strictly before `first_irrelevant_block`.
+        let db_key = (*address, first_irrelevant_block);
+        // Find the previous db item.
+        let mut cursor = self.nonces_table.cursor(self.txn)?;
+        cursor.lower_bound(&db_key)?;
+        let res = cursor.prev()?;
+        match res {
+            None => Ok(None),
+            Some(((got_address, _got_block_number), value)) => {
+                if got_address != *address {
+                    // The previous item belongs to different address, which means there is no
+                    // previous state diff for this item.
+                    return Ok(None);
+                };
+                // The previous db item indeed belongs to this address and key.
+                Ok(Some(value))
+            }
+        }
+    }
+
+    pub fn get_storage_at(
+        &self,
+        state_number: StateNumber,
+        address: &ContractAddress,
+        key: &StorageKey,
+    ) -> StorageResult<StarkFelt> {
+        // The updates to the storage key are indexed by the block_number at which they occurred.
+        let first_irrelevant_block: BlockNumber = state_number.block_after();
+        // The relevant update is the last update strictly before `first_irrelevant_block`.
+        let db_key = (*address, *key, first_irrelevant_block);
+        // Find the previous db item.
+        let mut cursor = self.storage_table.cursor(self.txn)?;
+        cursor.lower_bound(&db_key)?;
+        let res = cursor.prev()?;
+        match res {
+            None => Ok(StarkFelt::default()),
+            Some(((got_address, got_key, _got_block_number), value)) => {
+                if got_address != *address || got_key != *key {
+                    // The previous item belongs to different key, which means there is no
+                    // previous state diff for this item.
+                    return Ok(StarkFelt::default());
+                };
+                // The previous db item indeed belongs to this address and key.
+                Ok(value)
+            }
+        }
+    }
+
+    pub fn get_class_definition_at(
+        &self,
+        state_number: StateNumber,
+        class_hash: &ClassHash,
+    ) -> StorageResult<Option<ContractClass>> {
+        let value = self.declared_classes_table.get(self.txn, class_hash)?;
+        if let Some(value) = value {
+            if state_number.is_after(value.block_number) {
+                return Ok(Some(value.contract_class));
+            }
+        }
+        Ok(None)
+    }
+}
+
 impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
     fn append_state_diff(
         self,
@@ -349,111 +458,4 @@ fn delete_nonces<'env>(
         contracts_table.delete(txn, &(*contract_address, block_number))?;
     }
     Ok(())
-}
-
-/// A single coherent state at a single point in time,
-pub struct StateReader<'env, Mode: TransactionKind> {
-    txn: &'env DbTransaction<'env, Mode>,
-    declared_classes_table: DeclaredClassesTable<'env>,
-    deployed_contracts_table: DeployedContractsTable<'env>,
-    nonces_table: NoncesTable<'env>,
-    storage_table: ContractStorageTable<'env>,
-}
-#[allow(dead_code)]
-impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
-    pub fn new(txn: &'env StorageTxn<'env, Mode>) -> StorageResult<Self> {
-        let declared_classes_table = txn.txn.open_table(&txn.tables.declared_classes)?;
-        let deployed_contracts_table = txn.txn.open_table(&txn.tables.deployed_contracts)?;
-        let nonces_table = txn.txn.open_table(&txn.tables.nonces)?;
-        let storage_table = txn.txn.open_table(&txn.tables.contract_storage)?;
-        Ok(StateReader {
-            txn: &txn.txn,
-            declared_classes_table,
-            deployed_contracts_table,
-            nonces_table,
-            storage_table,
-        })
-    }
-    pub fn get_class_hash_at(
-        &self,
-        state_number: StateNumber,
-        address: &ContractAddress,
-    ) -> StorageResult<Option<ClassHash>> {
-        let value = self.deployed_contracts_table.get(self.txn, address)?;
-        if let Some(value) = value {
-            if state_number.is_after(value.block_number) {
-                return Ok(Some(value.class_hash));
-            }
-        }
-        Ok(None)
-    }
-
-    pub fn get_nonce_at(
-        &self,
-        state_number: StateNumber,
-        address: &ContractAddress,
-    ) -> StorageResult<Option<Nonce>> {
-        // State diff updates are indexed by the block_number at which they occurred.
-        let first_irrelevant_block: BlockNumber = state_number.block_after();
-        // The relevant update is the last update strictly before `first_irrelevant_block`.
-        let db_key = (*address, first_irrelevant_block);
-        // Find the previous db item.
-        let mut cursor = self.nonces_table.cursor(self.txn)?;
-        cursor.lower_bound(&db_key)?;
-        let res = cursor.prev()?;
-        match res {
-            None => Ok(None),
-            Some(((got_address, _got_block_number), value)) => {
-                if got_address != *address {
-                    // The previous item belongs to different address, which means there is no
-                    // previous state diff for this item.
-                    return Ok(None);
-                };
-                // The previous db item indeed belongs to this address and key.
-                Ok(Some(value))
-            }
-        }
-    }
-
-    pub fn get_storage_at(
-        &self,
-        state_number: StateNumber,
-        address: &ContractAddress,
-        key: &StorageKey,
-    ) -> StorageResult<StarkFelt> {
-        // The updates to the storage key are indexed by the block_number at which they occurred.
-        let first_irrelevant_block: BlockNumber = state_number.block_after();
-        // The relevant update is the last update strictly before `first_irrelevant_block`.
-        let db_key = (*address, *key, first_irrelevant_block);
-        // Find the previous db item.
-        let mut cursor = self.storage_table.cursor(self.txn)?;
-        cursor.lower_bound(&db_key)?;
-        let res = cursor.prev()?;
-        match res {
-            None => Ok(StarkFelt::default()),
-            Some(((got_address, got_key, _got_block_number), value)) => {
-                if got_address != *address || got_key != *key {
-                    // The previous item belongs to different key, which means there is no
-                    // previous state diff for this item.
-                    return Ok(StarkFelt::default());
-                };
-                // The previous db item indeed belongs to this address and key.
-                Ok(value)
-            }
-        }
-    }
-
-    pub fn get_class_definition_at(
-        &self,
-        state_number: StateNumber,
-        class_hash: &ClassHash,
-    ) -> StorageResult<Option<ContractClass>> {
-        let value = self.declared_classes_table.get(self.txn, class_hash)?;
-        if let Some(value) = value {
-            if state_number.is_after(value.block_number) {
-                return Ok(Some(value.contract_class));
-            }
-        }
-        Ok(None)
-    }
 }
