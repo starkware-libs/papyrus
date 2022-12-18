@@ -194,21 +194,21 @@ impl<'env, 'txn, K: StorageSerde, V: StorageSerde> TableHandle<'env, K, V> {
     pub fn upsert(&'env self, txn: &DbTransaction<'env, RW>, key: &K, value: &V) -> Result<()> {
         let data = value.serialize()?;
         let bin_key = key.serialize()?;
-        txn.txn.put(&self.database, &bin_key, &data, WriteFlags::UPSERT)?;
+        txn.txn.put(&self.database, bin_key, data, WriteFlags::UPSERT)?;
         Ok(())
     }
 
     pub fn insert(&'env self, txn: &DbTransaction<'env, RW>, key: &K, value: &V) -> Result<()> {
         let data = value.serialize()?;
         let bin_key = key.serialize()?;
-        txn.txn.put(&self.database, &bin_key, &data, WriteFlags::NO_OVERWRITE)?;
+        txn.txn.put(&self.database, bin_key, data, WriteFlags::NO_OVERWRITE)?;
         Ok(())
     }
 
     #[allow(dead_code)]
     pub fn delete(&'env self, txn: &DbTransaction<'env, RW>, key: &K) -> Result<()> {
         let bin_key = key.serialize()?;
-        txn.txn.del(&self.database, &bin_key, None)?;
+        txn.txn.del(&self.database, bin_key, None)?;
         Ok(())
     }
 }
