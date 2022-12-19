@@ -4,6 +4,10 @@ RUN apt update && apt install -y clang vim
 
 COPY . /app/
 
+WORKDIR /app/load_test
+
+RUN cargo build --release
+
 WORKDIR /app/
 
 RUN cargo build --release --package papyrus_node --bin papyrus_node

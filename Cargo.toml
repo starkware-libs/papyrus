@@ -11,3 +11,6 @@ members = [
     "crates/papyrus_sync",
     "crates/starknet_client",
 ]
+exclude = [
+    "load_test"
+    ]
