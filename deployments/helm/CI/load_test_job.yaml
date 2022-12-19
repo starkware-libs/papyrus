@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+
+kind: Job
+
+metadata:
+  name: papyrus-load-test
+
+spec:
+  template:
+    spec:
+      containers:
+        - name: papyrus-load-test
+          image: danbr12345678/papyrus-test:ip-load
+          # image: ghcr.io/starkware-libs/papyrus:latest
+          imagePullPolicy: Always
+          command: ["/app/load_test/target/release/papyrus_load_test"]
+          env:
+            - name: NODE_ENDPOINT
+              # value: "https://papyrus.starkware.co"
+              value: "http://papyrus-rpc.papyrus.svc.cluster.local:8080"
+      imagePullSecrets:
+        - name: regcred
+      restartPolicy: Never
+  backoffLimit: 0
