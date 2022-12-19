@@ -1,13 +1,12 @@
-name: Deploy
+name: Benchmarks
 
 on:
   workflow_dispatch:
   push:
     branches: [main, dan/main/helm]
-    tags: ["v*.*.*"]
 
 env:
-  FULL_NAME: papyris-${{ github.run_id }}
+  NAMESPACE: papyris-${{ github.run_id }}
 
 jobs:
   deploy:
@@ -36,13 +35,22 @@ jobs:
       - id: "helm-install"
         name: Deploy to Kubernetes using helm
         run: |
-          helm upgrade --install $FULL_NAME deployments/helm/ \
-          --namespace $FULL_NAME --create-namespace \
+          helm upgrade --install papyrus deployments/helm/ \
+          --namespace $NAMESPACE \
+          --create-namespace \
           --values deployments/helm/CI/default_values.yaml \
           --set ingress.host=${{ secrets.GKE_CI_HOST }}
 
-      # - name: Run load test
-      #   kubectl apply -f deployments/helm/CI/load_test_job.yaml
+      # TODO: remove when public.
+      - name: Add k8s secret to access container registry
+        run: |
+          kubectl --namespace=$NAMESPACE create secret docker-registry regcred \
+          --docker-server=ghcr.io \
+          --docker-username=${{ secrets.GHCR_USERNAME }} \
+          --docker-password=${{ secrets.GHCR_TOKEN }}
+
+      - name: Run load test
+        run: kubectl -namespace=$NAMESPACE apply -f deployments/helm/CI/load_test_job.yaml
 
       # - name: Clean deployment
-      #   run: helm uninstall $FULL_NAME
+      #   run: helm uninstall $NAMESPACE
