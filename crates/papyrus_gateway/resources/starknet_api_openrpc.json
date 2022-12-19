@@ -1,25 +1,15 @@
 {
-    "title": "Transaction",
-    "description": "The transaction schema, as it appears inside a block",
-    "oneOf": [
-        {
-            "$ref": "#/$components/$schemas/INVOKE_TXN"
-        },
-        {
-            "$ref": "#/$components/$schemas/L1_HANDLER_TXN"
-        },
-        {
-            "$ref": "#/$components/$schemas/DECLARE_TXN"
-        },
-        {
-            "$ref": "#/$components/$schemas/DEPLOY_TXN"
-        },
-        {
-            "ref": "#/$components/$schemas/DEPLOY_ACCOUNT_TXN"
-        }
+    "anyOf": [
+        {"result": {"$ref": "#/components/schemas/BLOCK_WITH_TXS"}},
+        {"result": {"$ref": "#/components/schemas/BLOCK_WITH_TX_HASHES"}},
+        {"result": {"$ref": "#/components/schemas/STATE_UPDATE"}},
+        {"result": {"$ref": "#/components/schemas/CONTRACT_CLASS"}},
+        {"result": {"$ref": "#/components/schemas/TXN"}},
+        {"result": {"$ref": "#/components/schemas/TXN_RECEIPT"}}
     ],
-    "$components": {
-        "$schemas": {
+    "components": {
+        "contentDescriptors": {},
+        "schemas": {
             "RESULT_PAGE_REQUEST": {
                 "type": "object",
                 "properties": {
@@ -42,7 +32,7 @@
                 "allOf": [
                     {
                         "title": "The event information",
-                        "$ref": "#/$components/$schemas/EVENT"
+                        "$ref": "#/components/schemas/EVENT"
                     },
                     {
                         "title": "The event emission information",
@@ -50,15 +40,15 @@
                         "properties": {
                             "block_hash": {
                                 "title": "The hash of the block in which the event was emitted",
-                                "$ref": "#/$components/$schemas/BLOCK_HASH"
+                                "$ref": "#/components/schemas/BLOCK_HASH"
                             },
                             "block_number": {
                                 "title": "The number of the block in which the event was emitted",
-                                "$ref": "#/$components/$schemas/BLOCK_NUMBER"
+                                "$ref": "#/components/schemas/BLOCK_NUMBER"
                             },
                             "transaction_hash": {
                                 "title": "The transaction that emitted the event",
-                                "$ref": "#/$components/$schemas/TXN_HASH"
+                                "$ref": "#/components/schemas/TXN_HASH"
                             }
                         }
                     }
@@ -71,12 +61,12 @@
                         "type": "object",
                         "properties": {
                             "from_address": {
-                                "$ref": "#/$components/$schemas/ADDRESS"
+                                "$ref": "#/components/schemas/ADDRESS"
                             }
                         }
                     },
                     {
-                        "$ref": "#/$components/$schemas/EVENT_CONTENT"
+                        "$ref": "#/components/schemas/EVENT_CONTENT"
                     }
                 ]
             },
@@ -88,13 +78,13 @@
                     "keys": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/$components/$schemas/FELT"
+                            "$ref": "#/components/schemas/FELT"
                         }
                     },
                     "data": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/$components/$schemas/FELT"
+                            "$ref": "#/components/schemas/FELT"
                         }
                     }
                 }
@@ -105,15 +95,15 @@
                 "properties": {
                     "from_block": {
                         "title": "from block",
-                        "$ref": "#/$components/$schemas/BLOCK_ID"
+                        "$ref": "#/components/schemas/BLOCK_ID"
                     },
                     "to_block": {
                         "title": "to block",
-                        "$ref": "#/$components/$schemas/BLOCK_ID"
+                        "$ref": "#/components/schemas/BLOCK_ID"
                     },
                     "address": {
                         "title": "from contract",
-                        "$ref": "#/$components/$schemas/ADDRESS"
+                        "$ref": "#/components/schemas/ADDRESS"
                     },
                     "keys": {
                         "title": "filter key values",
@@ -124,7 +114,7 @@
                             "description": "Per key (by position), designate the possible values to be matched for events to be returned. Empty array designates 'any' value",
                             "type": "array",
                             "items": {
-                                "$ref": "#/$components/$schemas/FELT"
+                                "$ref": "#/components/schemas/FELT"
                             }
                         }
                     }
@@ -137,7 +127,7 @@
                         "type": "object",
                         "properties": {
                             "block_hash": {
-                                "$ref": "#/$components/$schemas/BLOCK_HASH"
+                                "$ref": "#/components/schemas/BLOCK_HASH"
                             }
                         }
                     },
@@ -145,12 +135,12 @@
                         "type": "object",
                         "properties": {
                             "block_number": {
-                                "$ref": "#/$components/$schemas/BLOCK_NUMBER"
+                                "$ref": "#/components/schemas/BLOCK_NUMBER"
                             }
                         }
                     },
                     {
-                        "$ref": "#/$components/$schemas/BLOCK_TAG"
+                        "$ref": "#/components/schemas/BLOCK_TAG"
                     }
                 ]
             },
@@ -162,13 +152,109 @@
                     "pending"
                 ]
             },
+            "SYNC_STATUS": {
+                "type": "object",
+                "description": "An object describing the node synchronization status",
+                "properties": {
+                    "starting_block_hash": {
+                        "description": "The hash of the block from which the sync started",
+                        "$ref": "#/components/schemas/BLOCK_HASH"
+                    },
+                    "starting_block_num": {
+                        "description": "The number (height) of the block from which the sync started",
+                        "$ref": "#/components/schemas/NUM_AS_HEX"
+                    },
+                    "current_block_hash": {
+                        "description": "The hash of the current block being synchronized",
+                        "$ref": "#/components/schemas/BLOCK_HASH"
+                    },
+                    "current_block_num": {
+                        "description": "The number (height) of the current block being synchronized",
+                        "$ref": "#/components/schemas/NUM_AS_HEX"
+                    },
+                    "highest_block_hash": {
+                        "description": "The hash of the estimated highest block to be synchronized",
+                        "$ref": "#/components/schemas/BLOCK_HASH"
+                    },
+                    "highest_block_num": {
+                        "description": "The number (height) of the estimated highest block to be synchronized",
+                        "$ref": "#/components/schemas/NUM_AS_HEX"
+                    }
+                }
+            },
             "NUM_AS_HEX": {
                 "title": "An integer number in hex format (0x...)",
                 "type": "string",
                 "pattern": "^0x[a-fA-F0-9]+$"
             },
+            "CHAIN_ID": {
+                "title": "chainId",
+                "description": "StarkNet chain id, given in hex representation.",
+                "type": "string",
+                "pattern": "^0x[a-fA-F0-9]+$"
+            },
+            "STATE_UPDATE": {
+                "type": "object",
+                "properties": {
+                    "block_hash": {
+                        "$ref": "#/components/schemas/BLOCK_HASH"
+                    },
+                    "new_root": {
+                        "description": "The new global state root",
+                        "$ref": "#/components/schemas/FELT"
+                    },
+                    "old_root": {
+                        "description": "The previous global state root",
+                        "$ref": "#/components/schemas/FELT"
+                    },
+                    "state_diff": {
+                        "description": "The change in state applied in this block, given as a mapping of addresses to the new values and/or new contracts",
+                        "type": "object",
+                        "properties": {
+                            "storage_diffs": {
+                                "type": "array",
+                                "items": {
+                                    "description": "The changes in the storage per contract address",
+                                    "$ref": "#/components/schemas/CONTRACT_STORAGE_DIFF_ITEM"
+                                }
+                            },
+                            "declared_contract_hashes": {
+                                "type": "array",
+                                "items": {
+                                    "description": "The hash of a new contract declared as part of the new state",
+                                    "$ref": "#/components/schemas/FELT"
+                                }
+                            },
+                            "deployed_contracts": {
+                                "type": "array",
+                                "items": {
+                                    "description": "A new contract deployed as part of the new state",
+                                    "$ref": "#/components/schemas/DEPLOYED_CONTRACT_ITEM"
+                                }
+                            },
+                            "nonces": {
+                                "type": "array",
+                                "items": {
+                                    "description": "The updated nonce per contract address",
+                                    "type": "object",
+                                    "properties": {
+                                        "contract_address": {
+                                            "description": "The address of the contract",
+                                            "$ref": "#/components/schemas/ADDRESS"
+                                        },
+                                        "nonce": {
+                                            "description": "The nonce for the given address at the end of the block",
+                                            "$ref": "#/components/schemas/FELT"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             "ADDRESS": {
-                "$ref": "#/$components/$schemas/FELT"
+                "$ref": "#/components/schemas/FELT"
             },
             "STORAGE_KEY": {
                 "type": "string",
@@ -184,7 +270,7 @@
                 "pattern": "^0x[a-fA-F0-9]{40}$"
             },
             "TXN_HASH": {
-                "$ref": "#/$components/$schemas/FELT",
+                "$ref": "#/components/schemas/FELT",
                 "description": "The transaction hash, as assigned in StarkNet",
                 "title": "A transaction's hash"
             },
@@ -201,7 +287,7 @@
                 "minimum": 0
             },
             "BLOCK_HASH": {
-                "$ref": "#/$components/$schemas/FELT"
+                "$ref": "#/components/schemas/FELT"
             },
             "BLOCK_BODY_WITH_TX_HASHES": {
                 "type": "object",
@@ -211,7 +297,7 @@
                         "type": "array",
                         "items": {
                             "description": "The hash of a single transaction",
-                            "$ref": "#/$components/$schemas/TXN_HASH"
+                            "$ref": "#/components/schemas/TXN_HASH"
                         }
                     }
                 }
@@ -223,35 +309,37 @@
                         "description": "The transactions in this block",
                         "type": "array",
                         "items": {
-                            "$ref": "#/$components/$schemas/TXN"
+                            "$ref": "#/components/schemas/TXN"
                         }
                     }
                 }
             },
             "BLOCK_HEADER": {
-                "block_hash": {
-                    "$ref": "#/$components/$schemas/BLOCK_HASH"
-                },
-                "parent_hash": {
-                    "description": "The hash of this block's parent",
-                    "$ref": "#/$components/$schemas/BLOCK_HASH"
-                },
-                "block_number": {
-                    "description": "The block number (its height)",
-                    "$ref": "#/$components/$schemas/BLOCK_NUMBER"
-                },
-                "new_root": {
-                    "description": "The new global state root",
-                    "$ref": "#/$components/$schemas/FELT"
-                },
-                "timestamp": {
-                    "description": "The time in which the block was created, encoded in Unix time",
-                    "type": "integer",
-                    "minimum": 0
-                },
-                "sequencer_address": {
-                    "description": "The StarkNet identity of the sequencer submitting this block",
-                    "$ref": "#/$components/$schemas/FELT"
+                "properties": {
+                    "block_hash": {
+                        "$ref": "#/components/schemas/BLOCK_HASH"
+                    },
+                    "parent_hash": {
+                        "description": "The hash of this block's parent",
+                        "$ref": "#/components/schemas/BLOCK_HASH"
+                    },
+                    "block_number": {
+                        "description": "The block number (its height)",
+                        "$ref": "#/components/schemas/BLOCK_NUMBER"
+                    },
+                    "new_root": {
+                        "description": "The new global state root",
+                        "$ref": "#/components/schemas/FELT"
+                    },
+                    "timestamp": {
+                        "description": "The time in which the block was created, encoded in Unix time",
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "sequencer_address": {
+                        "description": "The StarkNet identity of the sequencer submitting this block",
+                        "$ref": "#/components/schemas/FELT"
+                    }
                 }
             },
             "BLOCK_WITH_TX_HASHES": {
@@ -261,15 +349,15 @@
                         "type": "object",
                         "properties": {
                             "status": {
-                                "$ref": "#/$components/$schemas/BLOCK_STATUS"
+                                "$ref": "#/components/schemas/BLOCK_STATUS"
                             }
                         }
                     },
                     {
-                        "$ref": "#/$components/$schemas/BLOCK_HEADER"
+                        "$ref": "#/components/schemas/BLOCK_HEADER"
                     },
                     {
-                        "$ref": "#/$components/$schemas/BLOCK_BODY_WITH_TX_HASHES"
+                        "$ref": "#/components/schemas/BLOCK_BODY_WITH_TX_HASHES"
                     }
                 ]
             },
@@ -277,15 +365,69 @@
                 "title": "The block object",
                 "allOf": [
                     {
-                        "status": {
-                            "$ref": "#/$components/$schemas/BLOCK_STATUS"
+                        "properties": {
+                            "status": {
+                                "$ref": "#/components/schemas/BLOCK_STATUS"
+                            }
                         }
                     },
                     {
-                        "$ref": "#/$components/$schemas/BLOCK_HEADER"
+                        "$ref": "#/components/schemas/BLOCK_HEADER"
                     },
                     {
-                        "$ref": "#/$components/$schemas/BLOCK_BODY_WITH_TXS"
+                        "$ref": "#/components/schemas/BLOCK_BODY_WITH_TXS"
+                    }
+                ]
+            },
+            "PENDING_BLOCK_WITH_TX_HASHES": {
+                "description": "The dynamic block being constructed by the sequencer. Note that this object will be deprecated upon decentralization.",
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/BLOCK_BODY_WITH_TX_HASHES"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "timestamp": {
+                                "description": "The time in which the block was created, encoded in Unix time",
+                                "type": "integer",
+                                "minimum": 0
+                            },
+                            "sequencer_address": {
+                                "description": "The StarkNet identity of the sequencer submitting this block",
+                                "$ref": "#/components/schemas/FELT"
+                            },
+                            "parent_hash": {
+                                "description": "The hash of this block's parent",
+                                "$ref": "#/components/schemas/BLOCK_HASH"
+                            }
+                        }
+                    }
+                ]
+            },
+            "PENDING_BLOCK_WITH_TXS": {
+                "description": "The dynamic block being constructed by the sequencer. Note that this object will be deprecated upon decentralization.",
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/BLOCK_BODY_WITH_TXS"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "timestamp": {
+                                "description": "The time in which the block was created, encoded in Unix time",
+                                "type": "integer",
+                                "minimum": 0
+                            },
+                            "sequencer_address": {
+                                "description": "The StarkNet identity of the sequencer submitting this block",
+                                "$ref": "#/components/schemas/FELT"
+                            },
+                            "parent_hash": {
+                                "description": "The hash of this block's parent",
+                                "$ref": "#/components/schemas/BLOCK_HASH"
+                            }
+                        }
                     }
                 ]
             },
@@ -294,11 +436,11 @@
                 "properties": {
                     "address": {
                         "description": "The address of the contract",
-                        "$ref": "#/$components/$schemas/FELT"
+                        "$ref": "#/components/schemas/FELT"
                     },
                     "class_hash": {
                         "description": "The hash of the contract code",
-                        "$ref": "#/$components/$schemas/FELT"
+                        "$ref": "#/components/schemas/FELT"
                     }
                 }
             },
@@ -307,7 +449,7 @@
                 "properties": {
                     "address": {
                         "description": "The contract address for which the storage changed",
-                        "$ref": "#/$components/$schemas/FELT"
+                        "$ref": "#/components/schemas/FELT"
                     },
                     "storage_entries": {
                         "description": "The changes in the storage of the contract",
@@ -317,11 +459,11 @@
                             "properties": {
                                 "key": {
                                     "description": "The key of the changed value",
-                                    "$ref": "#/$components/$schemas/FELT"
+                                    "$ref": "#/components/schemas/FELT"
                                 },
                                 "value": {
                                     "description": "The new value applied to the given address",
-                                    "$ref": "#/$components/$schemas/FELT"
+                                    "$ref": "#/components/schemas/FELT"
                                 }
                             }
                         }
@@ -333,19 +475,19 @@
                 "description": "The transaction schema, as it appears inside a block",
                 "oneOf": [
                     {
-                        "$ref": "#/$components/$schemas/INVOKE_TXN"
+                        "$ref": "#/components/schemas/INVOKE_TXN"
                     },
                     {
-                        "$ref": "#/$components/$schemas/L1_HANDLER_TXN"
+                        "$ref": "#/components/schemas/L1_HANDLER_TXN"
                     },
                     {
-                        "$ref": "#/$components/$schemas/DECLARE_TXN"
+                        "$ref": "#/components/schemas/DECLARE_TXN"
                     },
                     {
-                        "$ref": "#/$components/$schemas/DEPLOY_TXN"
+                        "$ref": "#/components/schemas/DEPLOY_TXN"
                     },
                     {
-                        "ref": "#/$components/$schemas/DEPLOY_ACCOUNT_TXN"
+                        "ref": "#/components/schemas/DEPLOY_ACCOUNT_TXN"
                     }
                 ]
             },
@@ -354,16 +496,16 @@
                 "title": "Transaction",
                 "oneOf": [
                     {
-                        "$ref": "#/$components/$schemas/BROADCASTED_INVOKE_TXN"
+                        "$ref": "#/components/schemas/BROADCASTED_INVOKE_TXN"
                     },
                     {
-                        "$ref": "#/$components/$schemas/BROADCASTED_DECLARE_TXN"
+                        "$ref": "#/components/schemas/BROADCASTED_DECLARE_TXN"
                     },
                     {
-                        "$ref": "#/$components/$schemas/BROADCASTED_DEPLOY_TXN"
+                        "$ref": "#/components/schemas/BROADCASTED_DEPLOY_TXN"
                     },
                     {
-                        "$ref": "#/$components/$schemas/BROADCASTED_DEPLOY_ACCOUNT_TXN"
+                        "$ref": "#/components/schemas/BROADCASTED_DEPLOY_ACCOUNT_TXN"
                     }
                 ]
             },
@@ -371,7 +513,7 @@
                 "title": "A transaction signature",
                 "type": "array",
                 "items": {
-                    "$ref": "#/$components/$schemas/FELT"
+                    "$ref": "#/components/schemas/FELT"
                 }
             },
             "BROADCASTED_TXN_COMMON_PROPERTIES": {
@@ -379,21 +521,21 @@
                 "description": "common properties of a transaction that is sent to the sequencer (but is not yet in a block)",
                 "properties": {
                     "type": {
-                        "$ref": "#/$components/$schemas/TXN_TYPE"
+                        "$ref": "#/components/schemas/TXN_TYPE"
                     },
                     "max_fee": {
-                        "$ref": "#/$components/$schemas/FELT",
+                        "$ref": "#/components/schemas/FELT",
                         "description": "The maximal fee that can be charged for including the transaction"
                     },
                     "version": {
                         "description": "Version of the transaction scheme",
-                        "$ref": "#/$components/$schemas/NUM_AS_HEX"
+                        "$ref": "#/components/schemas/NUM_AS_HEX"
                     },
                     "signature": {
-                        "$ref": "#/$components/$schemas/SIGNATURE"
+                        "$ref": "#/components/schemas/SIGNATURE"
                     },
                     "nonce": {
-                        "$ref": "#/$components/$schemas/FELT"
+                        "$ref": "#/components/schemas/FELT"
                     }
                 }
             },
@@ -403,13 +545,13 @@
                         "type": "object",
                         "properties": {
                             "transaction_hash": {
-                                "$ref": "#/$components/$schemas/TXN_HASH",
+                                "$ref": "#/components/schemas/TXN_HASH",
                                 "description": "The hash identifying the transaction"
                             }
                         }
                     },
                     {
-                        "$ref": "#/$components/$schemas/BROADCASTED_TXN_COMMON_PROPERTIES"
+                        "$ref": "#/components/schemas/BROADCASTED_TXN_COMMON_PROPERTIES"
                     }
                 ]
             },
@@ -417,18 +559,18 @@
                 "title": "Declare Contract Transaction",
                 "allOf": [
                     {
-                        "$ref": "#/$components/$schemas/COMMON_TXN_PROPERTIES"
+                        "$ref": "#/components/schemas/COMMON_TXN_PROPERTIES"
                     },
                     {
                         "type": "object",
                         "properties": {
                             "class_hash": {
                                 "description": "The hash of the declared class",
-                                "$ref": "#/$components/$schemas/FELT"
+                                "$ref": "#/components/schemas/FELT"
                             },
                             "sender_address": {
                                 "description": "The address of the account contract sending the declaration transaction",
-                                "$ref": "#/$components/$schemas/ADDRESS"
+                                "$ref": "#/components/schemas/ADDRESS"
                             }
                         }
                     }
@@ -438,7 +580,7 @@
                 "title": "mempool representation of a declare transaction",
                 "allOf": [
                     {
-                        "$ref": "#/$components/$schemas/BROADCASTED_TXN_COMMON_PROPERTIES"
+                        "$ref": "#/components/schemas/BROADCASTED_TXN_COMMON_PROPERTIES"
                     },
                     {
                         "type": "object",
@@ -446,12 +588,12 @@
                             "contract_class": {
                                 "description": "The class to be declared",
                                 "schema": {
-                                    "$ref": "#/$components/$schemas/CONTRACT_CLASS"
+                                    "$ref": "#/components/schemas/CONTRACT_CLASS"
                                 }
                             },
                             "sender_address": {
                                 "description": "The address of the account contract sending the declaration transaction",
-                                "$ref": "#/$components/$schemas/ADDRESS"
+                                "$ref": "#/components/schemas/ADDRESS"
                             }
                         }
                     }
@@ -462,10 +604,10 @@
                 "description": "Deploys an account contract, charges fee from the pre-funded account addresses",
                 "allOf": [
                     {
-                        "$ref": "#/$components/$schemas/COMMON_TXN_PROPERTIES"
+                        "$ref": "#/components/schemas/COMMON_TXN_PROPERTIES"
                     },
                     {
-                        "$ref": "#/$components/$schemas/DEPLOY_ACCOUNT_TXN_PROPERTIES"
+                        "$ref": "#/components/schemas/DEPLOY_ACCOUNT_TXN_PROPERTIES"
                     }
                 ]
             },
@@ -473,10 +615,10 @@
                 "description": "Mempool representation of a deploy account transaction",
                 "allOf": [
                     {
-                        "$ref": "#/$components/$schemas/BROADCASTED_TXN_COMMON_PROPERTIES"
+                        "$ref": "#/components/schemas/BROADCASTED_TXN_COMMON_PROPERTIES"
                     },
                     {
-                        "$ref": "#/$components/$schemas/DEPLOY_ACCOUNT_TXN_PROPERTIES"
+                        "$ref": "#/components/schemas/DEPLOY_ACCOUNT_TXN_PROPERTIES"
                     }
                 ]
             },
@@ -485,18 +627,18 @@
                 "properties": {
                     "contract_address_salt": {
                         "description": "The salt for the address of the deployed contract",
-                        "$ref": "#/$components/$schemas/FELT"
+                        "$ref": "#/components/schemas/FELT"
                     },
                     "constructor_calldata": {
                         "type": "array",
                         "description": "The parameters passed to the constructor",
                         "items": {
-                            "$ref": "#/$components/$schemas/FELT"
+                            "$ref": "#/components/schemas/FELT"
                         }
                     },
                     "class_hash": {
                         "description": "The hash of the deployed contract's class",
-                        "$ref": "#/$components/$schemas/FELT"
+                        "$ref": "#/components/schemas/FELT"
                     }
                 }
             },
@@ -508,17 +650,17 @@
                         "type": "object",
                         "properties": {
                             "transaction_hash": {
-                                "$ref": "#/$components/$schemas/TXN_HASH",
+                                "$ref": "#/components/schemas/TXN_HASH",
                                 "description": "The hash identifying the transaction"
                             },
                             "class_hash": {
                                 "description": "The hash of the deployed contract's class",
-                                "$ref": "#/$components/$schemas/FELT"
+                                "$ref": "#/components/schemas/FELT"
                             }
                         }
                     },
                     {
-                        "$ref": "#/$components/$schemas/DEPLOY_TXN_PROPERTIES"
+                        "$ref": "#/components/schemas/DEPLOY_TXN_PROPERTIES"
                     }
                 ]
             },
@@ -532,13 +674,13 @@
                             "contract_class": {
                                 "description": "The class of the contract that will be deployed",
                                 "schema": {
-                                    "$ref": "#/$components/$schemas/CONTRACT_CLASS"
+                                    "$ref": "#/components/schemas/CONTRACT_CLASS"
                                 }
                             }
                         }
                     },
                     {
-                        "$ref": "#/$components/$schemas/DEPLOY_TXN_PROPERTIES"
+                        "$ref": "#/components/schemas/DEPLOY_TXN_PROPERTIES"
                     }
                 ]
             },
@@ -547,20 +689,20 @@
                 "properties": {
                     "version": {
                         "description": "Version of the transaction scheme",
-                        "$ref": "#/$components/$schemas/NUM_AS_HEX"
+                        "$ref": "#/components/schemas/NUM_AS_HEX"
                     },
                     "type": {
-                        "$ref": "#/$components/$schemas/TXN_TYPE"
+                        "$ref": "#/components/schemas/TXN_TYPE"
                     },
                     "contract_address_salt": {
                         "description": "The salt for the address of the deployed contract",
-                        "$ref": "#/$components/$schemas/FELT"
+                        "$ref": "#/components/schemas/FELT"
                     },
                     "constructor_calldata": {
                         "type": "array",
                         "description": "The parameters passed to the constructor",
                         "items": {
-                            "$ref": "#/$components/$schemas/FELT"
+                            "$ref": "#/components/schemas/FELT"
                         }
                     }
                 }
@@ -568,7 +710,7 @@
             "INVOKE_TXN_V0": {
                 "title": "version 0 invoke transaction",
                 "description": "invokes a specific function in the desired contract (not necessarily an account)",
-                "$ref": "#/$components/$schemas/FUNCTION_CALL"
+                "$ref": "#/components/schemas/FUNCTION_CALL"
             },
             "INVOKE_TXN_V1": {
                 "title": "version 1 invoke transaction",
@@ -576,13 +718,13 @@
                 "type": "object",
                 "properties": {
                     "sender_address": {
-                        "$ref": "#/$components/$schemas/ADDRESS"
+                        "$ref": "#/components/schemas/ADDRESS"
                     },
                     "calldata": {
                         "type": "array",
                         "description": "The data expected by the account's `execute` function (in most usecases, this includes the called contract address and a function selector)",
                         "items": {
-                            "$ref": "#/$components/$schemas/FELT"
+                            "$ref": "#/components/schemas/FELT"
                         }
                     }
                 }
@@ -591,15 +733,15 @@
                 "title": "Initiate a transaction from an account",
                 "allOf": [
                     {
-                        "$ref": "#/$components/$schemas/COMMON_TXN_PROPERTIES"
+                        "$ref": "#/components/schemas/COMMON_TXN_PROPERTIES"
                     },
                     {
                         "oneOf": [
                             {
-                                "$ref": "#/$components/$schemas/INVOKE_TXN_V0"
+                                "$ref": "#/components/schemas/INVOKE_TXN_V0"
                             },
                             {
-                                "$ref": "#/$components/$schemas/INVOKE_TXN_V1"
+                                "$ref": "#/components/schemas/INVOKE_TXN_V1"
                             }
                         ]
                     }
@@ -609,15 +751,15 @@
                 "description": "mempool representation of an invoke transaction",
                 "allOf": [
                     {
-                        "$ref": "#/$components/$schemas/BROADCASTED_TXN_COMMON_PROPERTIES"
+                        "$ref": "#/components/schemas/BROADCASTED_TXN_COMMON_PROPERTIES"
                     },
                     {
                         "oneOf": [
                             {
-                                "$ref": "#/$components/$schemas/INVOKE_TXN_V0"
+                                "$ref": "#/components/schemas/INVOKE_TXN_V0"
                             },
                             {
-                                "$ref": "#/$components/$schemas/INVOKE_TXN_V1"
+                                "$ref": "#/components/schemas/INVOKE_TXN_V1"
                             }
                         ]
                     }
@@ -631,12 +773,12 @@
                         "description": "a call to an l1_handler on an L2 contract induced by a message from L1",
                         "properties": {
                             "transaction_hash": {
-                                "$ref": "#/$components/$schemas/TXN_HASH",
+                                "$ref": "#/components/schemas/TXN_HASH",
                                 "description": "The hash identifying the transaction"
                             },
                             "version": {
                                 "description": "Version of the transaction scheme",
-                                "$ref": "#/$components/$schemas/NUM_AS_HEX"
+                                "$ref": "#/components/schemas/NUM_AS_HEX"
                             },
                             "type": {
                                 "type": "string",
@@ -646,12 +788,12 @@
                             },
                             "nonce": {
                                 "description": "The L1->L2 message nonce field of the SN Core L1 contract at the time the transaction was sent",
-                                "$ref": "#/$components/$schemas/NUM_AS_HEX"
+                                "$ref": "#/components/schemas/NUM_AS_HEX"
                             }
                         }
                     },
                     {
-                        "$ref": "#/$components/$schemas/FUNCTION_CALL"
+                        "$ref": "#/components/schemas/FUNCTION_CALL"
                     }
                 ]
             },
@@ -660,36 +802,36 @@
                 "type": "object",
                 "properties": {
                     "transaction_hash": {
-                        "$ref": "#/$components/$schemas/TXN_HASH",
+                        "$ref": "#/components/schemas/TXN_HASH",
                         "description": "The hash identifying the transaction"
                     },
                     "actual_fee": {
-                        "$ref": "#/$components/$schemas/FELT",
+                        "$ref": "#/components/schemas/FELT",
                         "description": "The fee that was charged by the sequencer"
                     },
                     "status": {
-                        "$ref": "#/$components/$schemas/TXN_STATUS"
+                        "$ref": "#/components/schemas/TXN_STATUS"
                     },
                     "block_hash": {
-                        "$ref": "#/$components/$schemas/BLOCK_HASH"
+                        "$ref": "#/components/schemas/BLOCK_HASH"
                     },
                     "block_number": {
-                        "$ref": "#/$components/$schemas/BLOCK_NUMBER"
+                        "$ref": "#/components/schemas/BLOCK_NUMBER"
                     },
                     "type": {
-                        "$ref": "#/$components/$schemas/TXN_TYPE"
+                        "$ref": "#/components/schemas/TXN_TYPE"
                     },
                     "messages_sent": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/$components/$schemas/MSG_TO_L1"
+                            "$ref": "#/components/schemas/MSG_TO_L1"
                         }
                     },
                     "events": {
                         "description": "The events emitted as part of this transaction",
                         "type": "array",
                         "items": {
-                            "$ref": "#/$components/$schemas/EVENT"
+                            "$ref": "#/components/schemas/EVENT"
                         }
                     }
                 },
@@ -706,28 +848,28 @@
             },
             "INVOKE_TXN_RECEIPT": {
                 "title": "Invoke Transaction Receipt",
-                "$ref": "#/$components/$schemas/COMMON_RECEIPT_PROPERTIES"
+                "$ref": "#/components/schemas/COMMON_RECEIPT_PROPERTIES"
             },
             "DECLARE_TXN_RECEIPT": {
                 "title": "Declare Transaction Receipt",
-                "$ref": "#/$components/$schemas/COMMON_RECEIPT_PROPERTIES"
+                "$ref": "#/components/schemas/COMMON_RECEIPT_PROPERTIES"
             },
             "DEPLOY_ACCOUNT_TXN_RECEIPT": {
                 "title": "Deploy Account Transaction Receipt",
-                "$ref": "#/$components/$schemas/DEPLOY_TXN_RECEIPT"
+                "$ref": "#/components/schemas/DEPLOY_TXN_RECEIPT"
             },
             "DEPLOY_TXN_RECEIPT": {
                 "title": "Deploy Transaction Receipt",
                 "allOf": [
                     {
-                        "$ref": "#/$components/$schemas/COMMON_RECEIPT_PROPERTIES"
+                        "$ref": "#/components/schemas/COMMON_RECEIPT_PROPERTIES"
                     },
                     {
                         "type": "object",
                         "properties": {
                             "contract_address": {
                                 "description": "The address of the deployed contract",
-                                "$ref": "#/$components/$schemas/FELT"
+                                "$ref": "#/components/schemas/FELT"
                             }
                         }
                     }
@@ -735,24 +877,91 @@
             },
             "L1_HANDLER_TXN_RECEIPT": {
                 "title": "receipt for l1 handler transaction",
-                "$ref": "#/$components/$schemas/COMMON_RECEIPT_PROPERTIES"
+                "$ref": "#/components/schemas/COMMON_RECEIPT_PROPERTIES"
             },
             "TXN_RECEIPT": {
                 "oneOf": [
                     {
-                        "$ref": "#/$components/$schemas/INVOKE_TXN_RECEIPT"
+                        "$ref": "#/components/schemas/INVOKE_TXN_RECEIPT"
                     },
                     {
-                        "$ref": "#/$components/$schemas/L1_HANDLER_TXN_RECEIPT"
+                        "$ref": "#/components/schemas/L1_HANDLER_TXN_RECEIPT"
                     },
                     {
-                        "$ref": "#/$components/$schemas/DECLARE_TXN_RECEIPT"
+                        "$ref": "#/components/schemas/DECLARE_TXN_RECEIPT"
                     },
                     {
-                        "$ref": "#/$components/$schemas/DEPLOY_TXN_RECEIPT"
+                        "$ref": "#/components/schemas/DEPLOY_TXN_RECEIPT"
                     },
                     {
-                        "$ref": "#/$components/$schemas/DEPLOY_ACCOUNT_TXN_RECEIPT"
+                        "$ref": "#/components/schemas/DEPLOY_ACCOUNT_TXN_RECEIPT"
+                    },
+                    {
+                        "$ref": "#/components/schemas/PENDING_TXN_RECEIPT"
+                    }
+                ]
+            },
+            "PENDING_COMMON_RECEIPT_PROPERTIES": {
+                "title": "Common properties for a pending transaction receipt",
+                "type": "object",
+                "properties": {
+                    "transaction_hash": {
+                        "$ref": "#/components/schemas/TXN_HASH",
+                        "description": "The hash identifying the transaction"
+                    },
+                    "actual_fee": {
+                        "$ref": "#/components/schemas/FELT",
+                        "description": "The fee that was charged by the sequencer"
+                    },
+                    "type": {
+                        "$ref": "#/components/schemas/TXN_TYPE"
+                    },
+                    "messages_sent": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/MSG_TO_L1"
+                        }
+                    },
+                    "events": {
+                        "description": "The events emitted as part of this transaction",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/EVENT"
+                        }
+                    }
+                },
+                "required": [
+                    "transaction_hash",
+                    "actual_fee",
+                    "messages_sent",
+                    "events"
+                ]
+            },
+            "PENDING_DEPLOY_TXN_RECEIPT": {
+                "title": "Pending deploy Transaction Receipt",
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/PENDING_COMMON_RECEIPT_PROPERTIES"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "contract_address": {
+                                "description": "The address of the deployed contract",
+                                "$ref": "#/components/schemas/FELT"
+                            }
+                        }
+                    }
+                ]
+            },
+            "PENDING_TXN_RECEIPT": {
+                "oneOf": [
+                    {
+                        "$ref": "#/components/schemas/PENDING_DEPLOY_TXN_RECEIPT"
+                    },
+                    {
+                        "$comment": "Used for pending invoke and declare transaction receipts",
+                        "$ref": "#/components/schemas/PENDING_COMMON_RECEIPT_PROPERTIES"
                     }
                 ]
             },
@@ -761,13 +970,13 @@
                 "properties": {
                     "to_address": {
                         "description": "The target L1 address the message is sent to",
-                        "$ref": "#/$components/$schemas/FELT"
+                        "$ref": "#/components/schemas/FELT"
                     },
                     "payload": {
                         "description": "The payload of the message",
                         "type": "array",
                         "items": {
-                            "$ref": "#/$components/$schemas/FELT"
+                            "$ref": "#/components/schemas/FELT"
                         }
                     }
                 }
@@ -808,16 +1017,16 @@
                 "title": "Function call information",
                 "properties": {
                     "contract_address": {
-                        "$ref": "#/$components/$schemas/ADDRESS"
+                        "$ref": "#/components/schemas/ADDRESS"
                     },
                     "entry_point_selector": {
-                        "$ref": "#/$components/$schemas/FELT"
+                        "$ref": "#/components/schemas/FELT"
                     },
                     "calldata": {
                         "type": "array",
                         "description": "The parameters passed to the function",
                         "items": {
-                            "$ref": "#/$components/$schemas/FELT"
+                            "$ref": "#/components/schemas/FELT"
                         }
                     }
                 }
@@ -836,24 +1045,24 @@
                         "properties": {
                             "CONSTRUCTOR": {
                                 "schema": {
-                                    "$ref": "#/$components/$schemas/CONTRACT_ENTRY_POINT_LIST"
+                                    "$ref": "#/components/schemas/CONTRACT_ENTRY_POINT_LIST"
                                 }
                             },
                             "EXTERNAL": {
                                 "schema": {
-                                    "$ref": "#/$components/$schemas/CONTRACT_ENTRY_POINT_LIST"
+                                    "$ref": "#/components/schemas/CONTRACT_ENTRY_POINT_LIST"
                                 }
                             },
                             "L1_HANDLER": {
                                 "schema": {
-                                    "$ref": "#/$components/$schemas/CONTRACT_ENTRY_POINT_LIST"
+                                    "$ref": "#/components/schemas/CONTRACT_ENTRY_POINT_LIST"
                                 }
                             }
                         }
                     },
                     "abi": {
                         "schema": {
-                            "$ref": "#/$components/$schemas/CONTRACT_ABI"
+                            "$ref": "#/components/schemas/CONTRACT_ABI"
                         }
                     }
                 },
@@ -865,7 +1074,7 @@
             "CONTRACT_ENTRY_POINT_LIST": {
                 "type": "array",
                 "items": {
-                    "$ref": "#/$components/$schemas/CONTRACT_ENTRY_POINT"
+                    "$ref": "#/components/schemas/CONTRACT_ENTRY_POINT"
                 }
             },
             "CONTRACT_ENTRY_POINT": {
@@ -874,13 +1083,13 @@
                     "offset": {
                         "description": "The offset of the entry point in the program",
                         "schema": {
-                            "$ref": "#/$components/$schemas/NUM_AS_HEX"
+                            "$ref": "#/components/schemas/NUM_AS_HEX"
                         }
                     },
                     "selector": {
                         "description": "A unique identifier of the entry point (function) in the program",
                         "schema": {
-                            "$ref": "#/$components/$schemas/FELT"
+                            "$ref": "#/components/schemas/FELT"
                         }
                     }
                 }
@@ -888,20 +1097,20 @@
             "CONTRACT_ABI": {
                 "type": "array",
                 "items": {
-                    "$ref": "#/$components/$schemas/CONTRACT_ABI_ENTRY"
+                    "$ref": "#/components/schemas/CONTRACT_ABI_ENTRY"
                 }
             },
             "CONTRACT_ABI_ENTRY": {
                 "type": "object",
                 "oneOf": [
                     {
-                        "$ref": "#/$components/$schemas/FUNCTION_ABI_ENTRY"
+                        "$ref": "#/components/schemas/FUNCTION_ABI_ENTRY"
                     },
                     {
-                        "$ref": "#/$components/$schemas/EVENT_ABI_ENTRY"
+                        "$ref": "#/components/schemas/EVENT_ABI_ENTRY"
                     },
                     {
-                        "$ref": "#/$components/$schemas/STRUCT_ABI_ENTRY"
+                        "$ref": "#/components/schemas/STRUCT_ABI_ENTRY"
                     }
                 ]
             },
@@ -929,7 +1138,7 @@
                 "properties": {
                     "type": {
                         "schema": {
-                            "$ref": "#/$components/$schemas/STRUCT_ABI_TYPE"
+                            "$ref": "#/components/schemas/STRUCT_ABI_TYPE"
                         }
                     },
                     "name": {
@@ -943,7 +1152,7 @@
                     "members": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/$components/$schemas/STRUCT_MEMBER"
+                            "$ref": "#/components/schemas/STRUCT_MEMBER"
                         }
                     }
                 }
@@ -952,7 +1161,7 @@
                 "type": "object",
                 "allOf": [
                     {
-                        "$ref": "#/$components/$schemas/TYPED_PARAMETER"
+                        "$ref": "#/components/schemas/TYPED_PARAMETER"
                     },
                     {
                         "type": "object",
@@ -970,7 +1179,7 @@
                 "properties": {
                     "type": {
                         "schema": {
-                            "$ref": "#/$components/$schemas/EVENT_ABI_TYPE"
+                            "$ref": "#/components/schemas/EVENT_ABI_TYPE"
                         }
                     },
                     "name": {
@@ -980,13 +1189,13 @@
                     "keys": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/$components/$schemas/TYPED_PARAMETER"
+                            "$ref": "#/components/schemas/TYPED_PARAMETER"
                         }
                     },
                     "data": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/$components/$schemas/TYPED_PARAMETER"
+                            "$ref": "#/components/schemas/TYPED_PARAMETER"
                         }
                     }
                 }
@@ -996,7 +1205,7 @@
                 "properties": {
                     "type": {
                         "schema": {
-                            "$ref": "#/$components/$schemas/FUNCTION_ABI_TYPE"
+                            "$ref": "#/components/schemas/FUNCTION_ABI_TYPE"
                         }
                     },
                     "name": {
@@ -1006,13 +1215,13 @@
                     "inputs": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/$components/$schemas/TYPED_PARAMETER"
+                            "$ref": "#/components/schemas/TYPED_PARAMETER"
                         }
                     },
                     "outputs": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/$components/$schemas/TYPED_PARAMETER"
+                            "$ref": "#/components/schemas/TYPED_PARAMETER"
                         }
                     }
                 }
@@ -1036,22 +1245,76 @@
                     "gas_consumed": {
                         "description": "The Ethereum gas cost of the transaction (see https://docs.starknet.io/docs/Fees/fee-mechanism for more info)",
                         "schema": {
-                            "$ref": "#/$components/$schemas/NUM_AS_HEX"
+                            "$ref": "#/components/schemas/NUM_AS_HEX"
                         }
                     },
                     "gas_price": {
                         "description": "The gas price (in gwei) that was used in the cost estimation",
                         "schema": {
-                            "$ref": "#/$components/$schemas/NUM_AS_HEX"
+                            "$ref": "#/components/schemas/NUM_AS_HEX"
                         }
                     },
                     "overall_fee": {
                         "description": "The estimated fee for the transaction (in gwei), product of gas_consumed and gas_price",
                         "schema": {
-                            "$ref": "#/$components/$schemas/NUM_AS_HEX"
+                            "$ref": "#/components/schemas/NUM_AS_HEX"
                         }
                     }
                 }
+            }
+        },
+        "errors": {
+            "FAILED_TO_RECEIVE_TXN": {
+                "code": 1,
+                "message": "Failed to write transaction"
+            },
+            "CONTRACT_NOT_FOUND": {
+                "code": 20,
+                "message": "Contract not found"
+            },
+            "INVALID_MESSAGE_SELECTOR": {
+                "code": 21,
+                "message": "Invalid message selector"
+            },
+            "INVALID_CALL_DATA": {
+                "code": 22,
+                "message": "Invalid call data"
+            },
+            "BLOCK_NOT_FOUND": {
+                "code": 24,
+                "message": "Block not found"
+            },
+            "TXN_HASH_NOT_FOUND": {
+                "code": 25,
+                "message": "Transaction hash not found"
+            },
+            "INVALID_TXN_INDEX": {
+                "code": 27,
+                "message": "Invalid transaction index in a block"
+            },
+            "CLASS_HASH_NOT_FOUND": {
+                "code": 28,
+                "message": "Class hash not found"
+            },
+            "PAGE_SIZE_TOO_BIG": {
+                "code": 31,
+                "message": "Requested page size is too big"
+            },
+            "NO_BLOCKS": {
+                "code": 32,
+                "message": "There are no blocks"
+            },
+            "INVALID_CONTINUATION_TOKEN": {
+                "code": 33,
+                "message": "The supplied continuation token is invalid or unknown"
+            },
+            "TOO_MANY_KEYS_IN_FILTER": {
+                "code": 34,
+                "message": "Too many keys provided in a filter"
+            },
+            "CONTRACT_ERROR": {
+                "code": 40,
+                "message": "Contract error"
             }
         }
     }
