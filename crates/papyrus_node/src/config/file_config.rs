@@ -23,6 +23,9 @@ pub(crate) fn apply_yaml_config(
     Ok(builder)
 }
 
+// Defines the expected structure of the configuration file. All the fields are optional so the user
+// doesn't have to specify parameters that he doesn't wish to override (in that case the previous
+// value remains).
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 struct YamlConfig {
     chain_id: Option<ChainId>,
@@ -55,6 +58,7 @@ impl YamlConfig {
             storage.update_storage(&mut config.storage);
         }
 
+        // Sync is optional, override it only if it is Some in the builder.
         if let (Some(builder_config), Some(file_config)) = (config.sync.as_mut(), self.sync) {
             file_config.update_sync(builder_config)
         }
