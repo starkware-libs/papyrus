@@ -17,7 +17,7 @@ pub(crate) fn apply_yaml_config(
     yaml_path: &str,
 ) -> Result<ConfigBuilder, ConfigError> {
     let config_contents = fs::read_to_string(yaml_path)?;
-    let from_yaml: YamlConfig = serde_yaml::from_str(&config_contents)?;
+    let from_yaml: FileConfigFormat = serde_yaml::from_str(&config_contents)?;
     from_yaml.update_config(&mut builder);
 
     Ok(builder)
@@ -27,7 +27,7 @@ pub(crate) fn apply_yaml_config(
 // doesn't have to specify parameters that he doesn't wish to override (in that case the previous
 // value remains).
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
-struct YamlConfig {
+struct FileConfigFormat {
     chain_id: Option<ChainId>,
     central: Option<Central>,
     gateway: Option<Gateway>,
@@ -36,7 +36,7 @@ struct YamlConfig {
     sync: Option<Sync>,
 }
 
-impl YamlConfig {
+impl FileConfigFormat {
     fn update_config(self, builder: &mut ConfigBuilder) {
         if let Some(chain_id) = self.chain_id {
             builder.chain_id = chain_id;

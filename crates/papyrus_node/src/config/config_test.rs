@@ -40,8 +40,8 @@ fn prepare_command() {
     let builder_args = builder.args.expect("Expected to have args");
 
     assert_eq!(
-        *builder_args.get_one::<String>("config").expect("Expected to have config arg"),
-        "conf.yaml".to_owned()
+        *builder_args.get_one::<PathBuf>("config").expect("Expected to have config arg"),
+        PathBuf::from("conf.yaml")
     );
     assert_eq!(
         *builder_args.get_one::<String>("chain_id").expect("Expected to have chain_id arg"),

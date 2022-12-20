@@ -45,6 +45,8 @@ impl Config {
 
 #[derive(thiserror::Error, Debug)]
 pub enum ConfigError {
+    #[error("Unable to parse path: {path}")]
+    BadPath { path: PathBuf },
     #[error(transparent)]
     Clap(#[from] clap::Error),
     #[error(transparent)]
@@ -75,7 +77,7 @@ impl Default for ConfigBuilder {
             chain_id: chain_id.clone(),
             config: Config {
                 central: CentralSourceConfig {
-                    url: String::from("https://alpha4.starknet.io/"),
+                    url: String::from("https://alpha-mainnet.starknet.io/"),
                     retry_config: RetryConfig {
                         retry_base_millis: 30,
                         retry_max_delay_millis: 30000,
@@ -117,10 +119,10 @@ impl ConfigBuilder {
     fn prepare_command(mut self, args: Vec<String>) -> Result<Self, ConfigError> {
         self.args = Some(
             Command::new("Papyrus").args(&[
-                arg!(-f --config [FILE] "Optionally sets a config file to use"),
-                arg!(-c --chain_id [CHAIN_ID] "Optionally sets chain id to use"),
-                arg!(-s --storage [PATH] "Optionally sets storage path to use (automatically extended with chain id").value_parser(value_parser!(PathBuf)),
-                arg!(-n --no_sync [BOOL] "Optionally run without sync").value_parser(value_parser!(bool)).default_missing_value("true"),
+                arg!(-f --config <path> "Optionally sets a config file to use").value_parser(value_parser!(PathBuf)),
+                arg!(-c --chain_id <name> "Optionally sets chain id to use"),
+                arg!(-s --storage <path> "Optionally sets storage path to use (automatically extended with chain id").value_parser(value_parser!(PathBuf)),
+                arg!(-n --no_sync [bool] "Optionally run without sync").value_parser(value_parser!(bool)).default_missing_value("true"),
             ])
             .try_get_matches_from(args)?,
         );
@@ -134,10 +136,13 @@ impl ConfigBuilder {
             .args
             .clone()
             .expect("Config builder should have args.")
-            .try_get_one::<String>("config")?
+            .try_get_one::<PathBuf>("config")?
         {
             None => String::from(CONFIG_FILE),
-            Some(config_file) => config_file.clone(),
+            Some(config_file) => config_file
+                .to_str()
+                .ok_or(ConfigError::BadPath { path: config_file.clone() })?
+                .to_owned(),
         };
 
         apply_yaml_config(self, config.as_str())
@@ -152,8 +157,11 @@ impl ConfigBuilder {
                     self.chain_id = ChainId(chain_id.clone());
                 }
 
-                if let Some(storage_path) = args.try_get_one::<String>("storage")? {
-                    self.config.storage.db_config.path = storage_path.clone();
+                if let Some(storage_path) = args.try_get_one::<PathBuf>("storage")? {
+                    self.config.storage.db_config.path = storage_path
+                        .to_str()
+                        .ok_or(ConfigError::BadPath { path: storage_path.clone() })?
+                        .to_owned();
                 }
 
                 if let Some(no_sync) = args.try_get_one::<bool>("no_sync")? {
