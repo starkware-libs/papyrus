@@ -23,8 +23,8 @@ fn load_default_config() {
 #[test]
 fn default_builder() {
     let builder = ConfigBuilder::default();
-    assert_eq!(builder.gateway.chain_id, ChainId("SN_MAIN".to_owned()));
-    assert!(builder.sync.is_some())
+    assert_eq!(builder.config.gateway.chain_id, ChainId("SN_MAIN".to_owned()));
+    assert!(builder.config.sync.is_some())
 }
 
 #[test]
@@ -69,5 +69,5 @@ gateway:
     let builder = apply_yaml_config(builder, f.path().to_str().unwrap()).unwrap();
 
     assert_eq!(builder.chain_id, ChainId("TEST".to_owned()));
-    assert_eq!(builder.gateway.max_events_keys, 100);
+    assert_eq!(builder.config.gateway.max_events_keys, 100);
 }
