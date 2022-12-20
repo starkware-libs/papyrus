@@ -127,8 +127,8 @@ impl ConfigBuilder {
         Ok(self)
     }
 
-    // Parses a yaml configuration file given by the command-line args, and applies it on the
-    // configuration.
+    // Parses a yaml configuration file given by the command-line args (or default), and applies it
+    // on the configuration.
     fn yaml(self) -> Result<Self, ConfigError> {
         let config = match self
             .args
