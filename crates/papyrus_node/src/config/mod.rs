@@ -55,6 +55,9 @@ pub enum ConfigError {
     Serde(#[from] serde_yaml::Error),
 }
 
+// Builds the configuration for the node based on default values, yaml configuration file and
+// command-line arguments.
+// TODO: add configuration from env variables.
 pub(crate) struct ConfigBuilder {
     args: Option<ArgMatches>,
     chain_id: ChainId,
@@ -100,8 +103,8 @@ impl Default for ConfigBuilder {
 }
 
 impl ConfigBuilder {
+    // Creates the configuration struct.
     fn build() -> Result<Config, ConfigError> {
-        // TODO: add configuration from env variables.
         let builder =
             Self::default().prepare_command(args().collect())?.yaml()?.args()?.propagate_chain_id();
         Ok(Config {
@@ -127,8 +130,8 @@ impl ConfigBuilder {
         Ok(self)
     }
 
-    // Parses a yaml config file and updates the relevant configurations.
-    // Absence of a section or a parameter means keeping the current value of the configuration.
+    // Parses a yaml configuration file given by the command-line args, and applies it on the
+    // configuration.
     fn yaml(self) -> Result<Self, ConfigError> {
         let config = match self
             .args
