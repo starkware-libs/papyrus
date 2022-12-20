@@ -19,5 +19,4 @@ tokio-stream = { version = "0.1.8" }
 url = { version = "2.2.2" }
 
 [dev-dependencies]
-tempfile = { version = "3.3.0" }
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }

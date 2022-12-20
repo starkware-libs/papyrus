@@ -3,7 +3,7 @@ mod block;
 #[cfg(test)]
 mod gateway_test;
 mod state;
-#[cfg(any(feature = "testing", test))]
+#[cfg(test)]
 mod test_utils;
 mod transaction;
 
