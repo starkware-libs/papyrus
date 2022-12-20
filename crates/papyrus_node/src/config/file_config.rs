@@ -37,29 +37,30 @@ struct YamlConfig {
 }
 
 impl YamlConfig {
-    fn update_config(self, config: &mut ConfigBuilder) {
+    fn update_config(self, builder: &mut ConfigBuilder) {
         if let Some(chain_id) = self.chain_id {
-            config.chain_id = chain_id;
+            builder.chain_id = chain_id;
         }
 
         if let Some(central) = self.central {
-            central.update_central(&mut config.central);
+            central.update_central(&mut builder.config.central);
         }
 
         if let Some(gateway) = self.gateway {
-            gateway.update_gateway(&mut config.gateway);
+            gateway.update_gateway(&mut builder.config.gateway);
         }
 
         if let Some(monitoring_gateway) = self.monitoring_gateway {
-            monitoring_gateway.update_monitoring_gateway(&mut config.monitoring_gateway);
+            monitoring_gateway.update_monitoring_gateway(&mut builder.config.monitoring_gateway);
         }
 
         if let Some(storage) = self.storage {
-            storage.update_storage(&mut config.storage);
+            storage.update_storage(&mut builder.config.storage);
         }
 
         // Sync is optional, override it only if it is Some in the builder.
-        if let (Some(builder_config), Some(file_config)) = (config.sync.as_mut(), self.sync) {
+        if let (Some(builder_config), Some(file_config)) = (builder.config.sync.as_mut(), self.sync)
+        {
             file_config.update_sync(builder_config)
         }
     }

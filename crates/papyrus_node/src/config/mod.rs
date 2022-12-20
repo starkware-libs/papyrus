@@ -61,11 +61,7 @@ pub enum ConfigError {
 pub(crate) struct ConfigBuilder {
     args: Option<ArgMatches>,
     chain_id: ChainId,
-    gateway: GatewayConfig,
-    central: CentralSourceConfig,
-    monitoring_gateway: MonitoringGatewayConfig,
-    storage: StorageConfig,
-    sync: Option<SyncConfig>,
+    config: Config,
 }
 
 // Default configuration values.
@@ -77,27 +73,31 @@ impl Default for ConfigBuilder {
         ConfigBuilder {
             args: None,
             chain_id: chain_id.clone(),
-            central: CentralSourceConfig {
-                url: String::from("https://alpha4.starknet.io/"),
-                retry_config: RetryConfig {
-                    retry_base_millis: 30,
-                    retry_max_delay_millis: 30000,
-                    max_retries: 10,
+            config: Config {
+                central: CentralSourceConfig {
+                    url: String::from("https://alpha4.starknet.io/"),
+                    retry_config: RetryConfig {
+                        retry_base_millis: 30,
+                        retry_max_delay_millis: 30000,
+                        max_retries: 10,
+                    },
                 },
+                gateway: GatewayConfig {
+                    chain_id,
+                    server_ip: String::from("localhost:8080"),
+                    max_events_chunk_size: 1000,
+                    max_events_keys: 100,
+                },
+                monitoring_gateway: MonitoringGatewayConfig {
+                    server_ip: String::from("localhost:8081"),
+                },
+                storage: StorageConfig {
+                    db_config: DbConfig { path: String::from("./data"), max_size: 1099511627776 },
+                },
+                sync: Some(SyncConfig {
+                    block_propagation_sleep_duration: Duration::from_secs(10),
+                }),
             },
-            gateway: GatewayConfig {
-                chain_id,
-                server_ip: String::from("localhost:8080"),
-                max_events_chunk_size: 1000,
-                max_events_keys: 100,
-            },
-            monitoring_gateway: MonitoringGatewayConfig {
-                server_ip: String::from("localhost:8081"),
-            },
-            storage: StorageConfig {
-                db_config: DbConfig { path: String::from("./data"), max_size: 1099511627776 },
-            },
-            sync: Some(SyncConfig { block_propagation_sleep_duration: Duration::from_secs(10) }),
         }
     }
 }
@@ -105,15 +105,12 @@ impl Default for ConfigBuilder {
 impl ConfigBuilder {
     // Creates the configuration struct.
     fn build() -> Result<Config, ConfigError> {
-        let builder =
-            Self::default().prepare_command(args().collect())?.yaml()?.args()?.propagate_chain_id();
-        Ok(Config {
-            gateway: builder.gateway,
-            central: builder.central,
-            monitoring_gateway: builder.monitoring_gateway,
-            storage: builder.storage,
-            sync: builder.sync,
-        })
+        Ok(Self::default()
+            .prepare_command(args().collect())?
+            .yaml()?
+            .args()?
+            .propagate_chain_id()
+            .config)
     }
 
     // Builds the applications command-line interface.
@@ -156,12 +153,12 @@ impl ConfigBuilder {
                 }
 
                 if let Some(storage_path) = args.try_get_one::<String>("storage")? {
-                    self.storage.db_config.path = storage_path.clone();
+                    self.config.storage.db_config.path = storage_path.clone();
                 }
 
                 if let Some(no_sync) = args.try_get_one::<bool>("no_sync")? {
                     if *no_sync {
-                        self.sync = None;
+                        self.config.sync = None;
                     }
                 }
 
@@ -172,9 +169,9 @@ impl ConfigBuilder {
 
     // Propagates the chain id into all the of configurations that use it.
     fn propagate_chain_id(mut self) -> Self {
-        self.gateway.chain_id = self.chain_id.clone();
+        self.config.gateway.chain_id = self.chain_id.clone();
         // Assuming a valid path.
-        self.storage.db_config.path.push_str(format!("/{}", self.chain_id.0).as_str());
+        self.config.storage.db_config.path.push_str(format!("/{}", self.chain_id.0).as_str());
         self
     }
 }
