@@ -2,15 +2,11 @@ use std::env::{self, args};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use assert_matches::assert_matches;
-use clap::builder;
 use starknet_api::core::ChainId;
-use tempfile::{tempfile, NamedTempFile};
-use yaml_rust::yaml::Hash;
-use yaml_rust::{Yaml, YamlLoader};
+use tempfile::NamedTempFile;
 
-use super::file_config::apply_yaml_config;
-use crate::config::{Config, ConfigBuilder, ConfigError};
+use crate::config::file_config::apply_yaml_config;
+use crate::config::{Config, ConfigBuilder};
 
 #[test]
 fn load_default_config() {

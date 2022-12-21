@@ -3,7 +3,6 @@ mod config_test;
 
 mod file_config;
 
-use std::collections::HashMap;
 use std::env::{args, ArgsOs};
 use std::mem::discriminant;
 use std::path::PathBuf;
@@ -11,6 +10,7 @@ use std::time::Duration;
 use std::{env, fs, io};
 
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
+use file_config::apply_yaml_config;
 use papyrus_gateway::GatewayConfig;
 use papyrus_monitoring_gateway::MonitoringGatewayConfig;
 use papyrus_storage::{DbConfig, StorageConfig};
@@ -18,10 +18,6 @@ use papyrus_sync::{CentralSourceConfig, SyncConfig};
 use serde::{Deserialize, Serialize};
 use starknet_api::core::ChainId;
 use starknet_client::RetryConfig;
-use yaml_rust::yaml::Hash;
-use yaml_rust::{Yaml, YamlLoader};
-
-use crate::config::file_config::apply_yaml_config;
 
 // The path of the default configuration file, provided as part of the crate.
 const CONFIG_FILE: &str = "config/config.yaml";
