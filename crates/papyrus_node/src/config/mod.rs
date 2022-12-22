@@ -1,27 +1,180 @@
 #[cfg(test)]
 mod config_test;
 
-use std::fs;
+mod file_config;
 
+use std::env::{args, ArgsOs};
+use std::mem::discriminant;
+use std::path::PathBuf;
+use std::time::Duration;
+use std::{env, fs, io};
+
+use clap::{arg, value_parser, Arg, ArgMatches, Command};
+use file_config::FileConfigFormat;
 use papyrus_gateway::GatewayConfig;
 use papyrus_monitoring_gateway::MonitoringGatewayConfig;
-use papyrus_storage::StorageConfig;
+use papyrus_storage::{DbConfig, StorageConfig};
 use papyrus_sync::{CentralSourceConfig, SyncConfig};
 use serde::{Deserialize, Serialize};
 use starknet_api::core::ChainId;
+use starknet_client::RetryConfig;
 
+// The path of the default configuration file, provided as part of the crate.
+const CONFIG_FILE: &str = "config/config.yaml";
+
+/// The configurations of the various components of the node.
 #[derive(Deserialize, Serialize)]
 pub struct Config {
-    pub chain_id: ChainId,
     pub gateway: GatewayConfig,
     pub central: CentralSourceConfig,
     pub monitoring_gateway: MonitoringGatewayConfig,
     pub storage: StorageConfig,
-    pub sync: SyncConfig,
+    /// None if the syncing should be disabled.
+    pub sync: Option<SyncConfig>,
 }
 
-pub fn load_config(path: &'static str) -> anyhow::Result<Config> {
-    let config_contents = fs::read_to_string(path).expect("Something went wrong reading the file");
-    let config: Config = ron::from_str(&config_contents)?;
-    Ok(config)
+impl Config {
+    pub fn load() -> Result<Self, ConfigError> {
+        ConfigBuilder::build()
+    }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum ConfigError {
+    #[error("Unable to parse path: {path}")]
+    BadPath { path: PathBuf },
+    #[error(transparent)]
+    Clap(#[from] clap::Error),
+    #[error(transparent)]
+    Matches(#[from] clap::parser::MatchesError),
+    #[error(transparent)]
+    Read(#[from] io::Error),
+    #[error(transparent)]
+    Serde(#[from] serde_yaml::Error),
+}
+
+// Builds the configuration for the node based on default values, yaml configuration file and
+// command-line arguments.
+// TODO: add configuration from env variables.
+pub(crate) struct ConfigBuilder {
+    args: Option<ArgMatches>,
+    chain_id: ChainId,
+    config: Config,
+}
+
+// Default configuration values.
+// TODO: Consider implementing Default for each component individually.
+impl Default for ConfigBuilder {
+    fn default() -> Self {
+        let chain_id = ChainId(String::from("SN_MAIN"));
+
+        ConfigBuilder {
+            args: None,
+            chain_id: chain_id.clone(),
+            config: Config {
+                central: CentralSourceConfig {
+                    url: String::from("https://alpha-mainnet.starknet.io/"),
+                    retry_config: RetryConfig {
+                        retry_base_millis: 30,
+                        retry_max_delay_millis: 30000,
+                        max_retries: 10,
+                    },
+                },
+                gateway: GatewayConfig {
+                    chain_id,
+                    server_ip: String::from("localhost:8080"),
+                    max_events_chunk_size: 1000,
+                    max_events_keys: 100,
+                },
+                monitoring_gateway: MonitoringGatewayConfig {
+                    server_ip: String::from("localhost:8081"),
+                },
+                storage: StorageConfig {
+                    db_config: DbConfig { path: String::from("./data"), max_size: 1099511627776 },
+                },
+                sync: Some(SyncConfig {
+                    block_propagation_sleep_duration: Duration::from_secs(10),
+                }),
+            },
+        }
+    }
+}
+
+impl ConfigBuilder {
+    // Creates the configuration struct.
+    fn build() -> Result<Config, ConfigError> {
+        Ok(Self::default()
+            .prepare_command(args().collect())?
+            .yaml()?
+            .args()?
+            .propagate_chain_id()
+            .config)
+    }
+
+    // Builds the applications command-line interface.
+    fn prepare_command(mut self, args: Vec<String>) -> Result<Self, ConfigError> {
+        self.args = Some(
+            Command::new("Papyrus").args(&[
+                arg!(-f --config [path] "Optionally sets a config file to use").value_parser(value_parser!(PathBuf)),
+                arg!(-c --chain_id [name] "Optionally sets chain id to use"),
+                arg!(-s --storage [path] "Optionally sets storage path to use (automatically extended with chain id").value_parser(value_parser!(PathBuf)),
+                arg!(-n --no_sync [bool] "Optionally run without sync").value_parser(value_parser!(bool)).default_missing_value("true"),
+            ])
+            .try_get_matches_from(args)?,
+        );
+        Ok(self)
+    }
+
+    // Parses a yaml configuration file given by the command-line args (or default), and applies it
+    // on the configuration.
+    fn yaml(mut self) -> Result<Self, ConfigError> {
+        let mut yaml_path = CONFIG_FILE;
+
+        let args = self.args.clone().expect("Config builder should have args.");
+        if let Some(config_file) = args.try_get_one::<PathBuf>("config")? {
+            yaml_path =
+                config_file.to_str().ok_or(ConfigError::BadPath { path: config_file.clone() })?;
+        }
+
+        let yaml_contents = fs::read_to_string(yaml_path)?;
+        let from_yaml: FileConfigFormat = serde_yaml::from_str(&yaml_contents)?;
+        from_yaml.update_config(&mut self);
+
+        Ok(self)
+    }
+
+    // Reads the command-line args and updates the relevant configurations.
+    fn args(mut self) -> Result<Self, ConfigError> {
+        match self.args {
+            None => unreachable!(),
+            Some(ref args) => {
+                if let Some(chain_id) = args.try_get_one::<String>("chain_id")? {
+                    self.chain_id = ChainId(chain_id.clone());
+                }
+
+                if let Some(storage_path) = args.try_get_one::<PathBuf>("storage")? {
+                    self.config.storage.db_config.path = storage_path
+                        .to_str()
+                        .ok_or(ConfigError::BadPath { path: storage_path.clone() })?
+                        .to_owned();
+                }
+
+                if let Some(no_sync) = args.try_get_one::<bool>("no_sync")? {
+                    if *no_sync {
+                        self.config.sync = None;
+                    }
+                }
+
+                Ok(self)
+            }
+        }
+    }
+
+    // Propagates the chain id into all the of configurations that use it.
+    fn propagate_chain_id(mut self) -> Self {
+        self.config.gateway.chain_id = self.chain_id.clone();
+        // Assuming a valid path.
+        self.config.storage.db_config.path.push_str(format!("/{}", self.chain_id.0).as_str());
+        self
+    }
 }
