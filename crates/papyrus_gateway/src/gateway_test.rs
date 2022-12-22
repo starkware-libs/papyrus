@@ -8,14 +8,11 @@ use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
-use jsonschema::is_valid;
-use papyrus_storage::test_utils::{
-    get_test_block, get_test_state_diff, get_test_storage, read_json_file,
-};
+use jsonschema::JSONSchema;
+use papyrus_storage::test_utils::{get_test_block, get_test_state_diff, get_test_storage};
 use papyrus_storage::{
     BodyStorageWriter, EventIndex, HeaderStorageWriter, StateStorageWriter, TransactionIndex,
 };
-use serde_json::Value;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
@@ -32,8 +29,8 @@ use crate::api::{
 use crate::block::Block;
 use crate::state::{ContractClass, StateUpdate, ThinStateDiff};
 use crate::test_utils::{
-    get_block_to_match_json_file, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
-    send_request,
+    get_block_to_match_json_file, get_starknet_spec_api_schema, get_test_gateway_config,
+    get_test_rpc_server_and_storage_writer, send_request,
 };
 use crate::transaction::{
     Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
@@ -1487,11 +1484,10 @@ async fn run_server_scneario() {
     ));
 }
 
-// TODO(anatg): Check if possible to get schemas from starknet_spec repo.
-// TODO(anatg): Add version / commit to schemas.
-// TODO(anatg): Fix FELT in schemas to the new format.
 #[tokio::test]
 async fn serialize_returns_valid_json() {
+    // TODO(anatg): Use the papyrus_node/main.rs, when it has configuration for running different
+    // components, for openning the storage and running the server.
     let (storage_reader, mut storage_writer) = get_test_storage();
     let block0 = get_test_block(0);
     let block1 = get_block_to_match_json_file();
@@ -1521,16 +1517,24 @@ async fn serialize_returns_valid_json() {
     let gateway_config = get_test_gateway_config();
     let (server_address, _handle) = run_server(&gateway_config, storage_reader).await.unwrap();
 
-    let schema = read_json_file("starknet_api_openrpc.json");
+    let schema = get_starknet_spec_api_schema(&[
+        "BLOCK_WITH_TXS",
+        "BLOCK_WITH_TX_HASHES",
+        "STATE_UPDATE",
+        "CONTRACT_CLASS",
+        "TXN",
+        "TXN_RECEIPT",
+    ])
+    .await;
     validate_state(server_address, &schema).await;
     validate_block(server_address, &schema).await;
     validate_transaction(server_address, &schema).await;
 }
 
-async fn validate_state(server_address: SocketAddr, schema: &Value) {
+async fn validate_state(server_address: SocketAddr, schema: &JSONSchema) {
     let res =
         send_request(server_address, "starknet_getStateUpdate", r#"{"block_number": 1}"#).await;
-    assert!(is_valid(schema, &res["result"]));
+    assert!(schema.validate(&res["result"]).is_ok());
 
     let res = send_request(
         server_address,
@@ -1538,13 +1542,13 @@ async fn validate_state(server_address: SocketAddr, schema: &Value) {
         r#"{"block_number": 1}, "0x543e54f26ae33686f57da2ceebed98b340c3a78e9390931bd84fb711d5caabc""#,
     )
     .await;
-    assert!(is_valid(schema, &res["result"]));
+    assert!(schema.validate(&res["result"]).is_ok());
 }
 
-async fn validate_block(server_address: SocketAddr, schema: &Value) {
+async fn validate_block(server_address: SocketAddr, schema: &JSONSchema) {
     let res =
         send_request(server_address, "starknet_getBlockWithTxs", r#"{"block_number": 1}"#).await;
-    assert!(is_valid(schema, &res["result"]));
+    assert!(schema.validate(&res["result"]).is_ok());
 
     let res = send_request(
         server_address,
@@ -1552,17 +1556,17 @@ async fn validate_block(server_address: SocketAddr, schema: &Value) {
         r#"{"block_hash": "0x75e00250d4343326f322e370df4c9c73c7be105ad9f532eeb97891a34d9e4a5"}"#,
     )
     .await;
-    assert!(is_valid(schema, &res["result"]));
+    assert!(schema.validate(&res["result"]).is_ok());
 }
 
-async fn validate_transaction(server_address: SocketAddr, schema: &Value) {
+async fn validate_transaction(server_address: SocketAddr, schema: &JSONSchema) {
     let res = send_request(
         server_address,
         "starknet_getTransactionByBlockIdAndIndex",
         r#"{"block_number": 1}, 0"#,
     )
     .await;
-    assert!(is_valid(schema, &res["result"]));
+    assert!(schema.validate(&res["result"]).is_ok());
 
     let res = send_request(
         server_address,
@@ -1570,7 +1574,7 @@ async fn validate_transaction(server_address: SocketAddr, schema: &Value) {
         r#""0x4dd12d3b82c3d0b216503c6abf63f1ccad222461582eac82057d46c327331d2""#,
     )
     .await;
-    assert!(is_valid(schema, &res["result"]));
+    assert!(schema.validate(&res["result"]).is_ok());
 
     let res = send_request(
         server_address,
@@ -1578,5 +1582,5 @@ async fn validate_transaction(server_address: SocketAddr, schema: &Value) {
         r#""0x6525d9aa309e5c80abbdafcc434d53202e06866597cd6dbbc91e5894fad7155""#,
     )
     .await;
-    assert!(is_valid(schema, &res["result"]));
+    assert!(schema.validate(&res["result"]).is_ok());
 }
