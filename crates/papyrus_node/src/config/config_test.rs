@@ -28,6 +28,7 @@ fn prepare_command() {
         "Papyrus".to_owned(),
         "--config=conf.yaml".to_owned(),
         "--chain_id=CHAIN_ID".to_owned(),
+        "--server_address=IP:PORT".to_owned(),
         "--storage=path".to_owned(),
         "--no_sync=true".to_owned(),
     ];
@@ -41,6 +42,12 @@ fn prepare_command() {
     assert_eq!(
         *builder_args.get_one::<String>("chain_id").expect("Expected to have chain_id arg"),
         "CHAIN_ID".to_owned()
+    );
+    assert_eq!(
+        *builder_args
+            .get_one::<String>("server_address")
+            .expect("Expected to have server_address arg"),
+        "IP:PORT".to_owned()
     );
     assert_eq!(
         *builder_args.get_one::<PathBuf>("storage").expect("Expected to have storage arg"),
