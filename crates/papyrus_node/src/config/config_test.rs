@@ -5,7 +5,6 @@ use std::path::{Path, PathBuf};
 use starknet_api::core::ChainId;
 use tempfile::NamedTempFile;
 
-use crate::config::file_config::apply_yaml_config;
 use crate::config::{Config, ConfigBuilder};
 
 #[test]
@@ -60,9 +59,8 @@ gateway:
     max_events_keys: 100
 ";
     f.write_all(yaml.as_bytes()).unwrap();
-
-    let builder = ConfigBuilder::default();
-    let builder = apply_yaml_config(builder, f.path().to_str().unwrap()).unwrap();
+    let args = vec!["Papyrus".to_owned(), format!("--config={}", f.path().to_str().unwrap())];
+    let builder = ConfigBuilder::default().prepare_command(args).unwrap().yaml().unwrap();
 
     assert_eq!(builder.chain_id, ChainId("TEST".to_owned()));
     assert_eq!(builder.config.gateway.max_events_keys, 100);

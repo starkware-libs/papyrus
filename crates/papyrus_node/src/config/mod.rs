@@ -10,7 +10,7 @@ use std::time::Duration;
 use std::{env, fs, io};
 
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
-use file_config::apply_yaml_config;
+use file_config::FileConfigFormat;
 use papyrus_gateway::GatewayConfig;
 use papyrus_monitoring_gateway::MonitoringGatewayConfig;
 use papyrus_storage::{DbConfig, StorageConfig};
@@ -127,21 +127,20 @@ impl ConfigBuilder {
 
     // Parses a yaml configuration file given by the command-line args (or default), and applies it
     // on the configuration.
-    fn yaml(self) -> Result<Self, ConfigError> {
-        let config = match self
-            .args
-            .clone()
-            .expect("Config builder should have args.")
-            .try_get_one::<PathBuf>("config")?
-        {
-            None => String::from(CONFIG_FILE),
-            Some(config_file) => config_file
-                .to_str()
-                .ok_or(ConfigError::BadPath { path: config_file.clone() })?
-                .to_owned(),
-        };
+    fn yaml(mut self) -> Result<Self, ConfigError> {
+        let mut yaml_path = CONFIG_FILE;
 
-        apply_yaml_config(self, config.as_str())
+        let args = self.args.clone().expect("Config builder should have args.");
+        if let Some(config_file) = args.try_get_one::<PathBuf>("config")? {
+            yaml_path =
+                config_file.to_str().ok_or(ConfigError::BadPath { path: config_file.clone() })?;
+        }
+
+        let yaml_contents = fs::read_to_string(yaml_path)?;
+        let from_yaml: FileConfigFormat = serde_yaml::from_str(&yaml_contents)?;
+        from_yaml.update_config(&mut self);
+
+        Ok(self)
     }
 
     // Reads the command-line args and updates the relevant configurations.

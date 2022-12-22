@@ -10,24 +10,13 @@ use serde::{Deserialize, Serialize};
 use starknet_api::core::ChainId;
 use starknet_client::RetryConfig;
 
-use crate::config::{ConfigBuilder, ConfigError, CONFIG_FILE};
-
-pub(crate) fn apply_yaml_config(
-    mut builder: ConfigBuilder,
-    yaml_path: &str,
-) -> Result<ConfigBuilder, ConfigError> {
-    let config_contents = fs::read_to_string(yaml_path)?;
-    let from_yaml: FileConfigFormat = serde_yaml::from_str(&config_contents)?;
-    from_yaml.update_config(&mut builder);
-
-    Ok(builder)
-}
+use crate::config::ConfigBuilder;
 
 // Defines the expected structure of the configuration file. All the fields are optional so the user
 // doesn't have to specify parameters that he doesn't wish to override (in that case the previous
 // value remains).
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
-struct FileConfigFormat {
+pub struct FileConfigFormat {
     chain_id: Option<ChainId>,
     central: Option<Central>,
     gateway: Option<Gateway>,
@@ -37,7 +26,8 @@ struct FileConfigFormat {
 }
 
 impl FileConfigFormat {
-    fn update_config(self, builder: &mut ConfigBuilder) {
+    // Apply the configuration as given by the file on the configuration builder.
+    pub(crate) fn update_config(self, builder: &mut ConfigBuilder) {
         if let Some(chain_id) = self.chain_id {
             builder.chain_id = chain_id;
         }
