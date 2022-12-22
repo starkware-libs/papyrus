@@ -2,22 +2,22 @@ chain_id: SN_GOERLI
 central:
     url: https://alpha4.starknet.io/
     retry:
-      retry_base_millis: 30
-      retry_max_delay_millis: 30000
-      max_retries: 10
+        retry_base_millis: 30
+        retry_max_delay_millis: 30000
+        max_retries: 10
 
 gateway:
-    server_ip: localhost:8080
+    server_address: localhost:8080
     max_events_chunk_size: 1000
     max_events_keys: 100
 
 monitoring_gateway:
-    server_ip: localhost:8081
+    server_address: localhost:8081
 
 storage:
     db:
-      path: ./data
-      max_size: 1099511627776 # 1TB.
+        path: ./data
+        max_size: 1099511627776 # 1TB.
 
 sync:
     block_propagation_sleep_duration:

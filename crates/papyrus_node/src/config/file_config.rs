@@ -96,15 +96,15 @@ impl Retry {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 struct Gateway {
-    server_ip: Option<String>,
+    server_address: Option<String>,
     max_events_chunk_size: Option<usize>,
     max_events_keys: Option<usize>,
 }
 
 impl Gateway {
     fn update_gateway(self, config: &mut GatewayConfig) {
-        if let Some(server_ip) = self.server_ip {
-            config.server_ip = server_ip;
+        if let Some(server_address) = self.server_address {
+            config.server_address = server_address;
         }
         if let Some(max_events_chunk_size) = self.max_events_chunk_size {
             config.max_events_chunk_size = max_events_chunk_size;
@@ -117,13 +117,13 @@ impl Gateway {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 struct MonitoringGateway {
-    server_ip: Option<String>,
+    server_address: Option<String>,
 }
 
 impl MonitoringGateway {
     fn update_monitoring_gateway(self, config: &mut MonitoringGatewayConfig) {
-        if let Some(server_ip) = self.server_ip {
-            config.server_ip = server_ip;
+        if let Some(server_address) = self.server_address {
+            config.server_address = server_address;
         }
     }
 }
