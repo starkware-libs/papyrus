@@ -118,10 +118,10 @@ impl ConfigBuilder {
             .version("Pre-release")
             .about("Papyrus is a StarkNet full node written in Rust.")
             .args(&[
-                arg!(-f --config [path] "Optionally sets a config file to use").value_parser(value_parser!(PathBuf)),
+                arg!(-f --config_file [path] "Optionally sets a config file to use").value_parser(value_parser!(PathBuf)),
                 arg!(-c --chain_id [name] "Optionally sets chain id to use"),
                 arg!(--server_address ["IP:PORT"] "Optionally sets the RPC listening address"),
-                arg!(-s --storage [path] "Optionally sets storage path to use (automatically extended with chain id").value_parser(value_parser!(PathBuf)),
+                arg!(-s --storage [path] "Optionally sets storage path to use (automatically extended with chain ID)").value_parser(value_parser!(PathBuf)),
                 arg!(-n --no_sync [bool] "Optionally run without sync").value_parser(value_parser!(bool)).default_missing_value("true"),
             ])
             .try_get_matches_from(args).unwrap_or_else(|e| e.exit()),
@@ -135,7 +135,7 @@ impl ConfigBuilder {
         let mut yaml_path = CONFIG_FILE;
 
         let args = self.args.clone().expect("Config builder should have args.");
-        if let Some(config_file) = args.try_get_one::<PathBuf>("config")? {
+        if let Some(config_file) = args.try_get_one::<PathBuf>("config_file")? {
             yaml_path =
                 config_file.to_str().ok_or(ConfigError::BadPath { path: config_file.clone() })?;
         }

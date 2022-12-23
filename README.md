@@ -43,21 +43,53 @@
 
 ## Getting Started
 
-### Prerequisites
 
+### Compiling and running `papyrus`
+
+Prerequisites
 - [Rust](https://www.rust-lang.org/tools/install)
 
-### Installation
+You can build and run a `papyrus` node with the default configuration by running:
 
-> **[TODO]**
+```bash
+cargo run --release --package papyrus_node --bin papyrus_node
+```
 
 ### Configuration
 
-> **[TODO]**
+`Papyrus` supports configuration from command-line arguments and a configuration yaml file.
+In case both are provided, the command-line arguments take precedence.
+The default path for the configuration file is `config/config.yaml`. You can override this path
+using the `--config_file` command-line argument.
+See the default [configuration file](config/config.yaml) for available options.
+Note that the configuration file can be partial or even empty.
+You can check the available command-line arguments by running:
+```bash
+cargo run --release --package papyrus_node --bin papyrus_node -- --help
+```
 
-## Usage
+## Running `papyrus` with Docker
 
-> **[TODO]**
+Prerequisites
+- [Docker](https://docs.docker.com/get-docker/)
+
+You can run a `papyrus` node with the default configuration by running:
+
+[//]: # (TODO: remove server_address once using INADDR_ANY for server address by default.)
+
+```bash
+docker run --rm --name papyrus\
+  -p 8080-8081:8080-8081 \
+  -v <local-host-data-path>:/app/data \
+  ghcr.io/starkware-libs/papyrus:latest \
+  --server_address 0.0.0.0:8080
+```
+
+Note:
+* If you wish to run the most up-to-date code,
+you can use the `ghcr.io/starkware-libs/papyrus:stable` image.
+* Currently, there is no automatic upgrade mechanism.
+Make sure to periodically pull the latest image and re-run the node.
 
 ## Roadmap
 
