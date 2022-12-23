@@ -43,21 +43,41 @@
 
 ## Getting Started
 
-### Prerequisites
 
+### Compiling and running `papyrus`
+
+Prerequisites
 - [Rust](https://www.rust-lang.org/tools/install)
 
-### Installation
+You can build and run a `papyrus` node with the default configuration by running:
 
-> **[TODO]**
+```bash
+cargo run --release --package papyrus_node --bin papyrus_node
+```
 
 ### Configuration
 
-> **[TODO]**
+`Papyrus` supports configuration from command-line arguments and a configuration yaml file.
+In case both are provided, the command-line argument take precedence.
+The default path for the configuration file is `config/config.yaml`. You can override this path
+using the command-line argument `--config_file`.
+See the default [configuration file](config/config.yaml) for available options.
+Note that the configuration file can be partial or even empty.
+You can check the available command-line arguments by running:
+```bash
+cargo run --release --package papyrus_node --bin papyrus_node -- --help
+```
 
-## Usage
+## Running `papyrus` with Docker
 
-> **[TODO]**
+Prerequisites
+- [Docker](https://docs.docker.com/get-docker/)
+
+You can run a `papyrus` node with the default configuration by running:
+
+```bash
+docker run -p 8080:8080 -p 8081:8081 ghcr.io/starkware-libs/papyrus
+```
 
 ## Roadmap
 
