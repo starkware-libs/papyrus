@@ -13,3 +13,4 @@ RUN mkdir data
 EXPOSE 8080 8081
 
 ENTRYPOINT ["/app/target/release/papyrus_node"]
+CMD ["--server_address", "0.0.0.0:8080"]
