@@ -7,12 +7,12 @@ central:
         max_retries: 10
 
 gateway:
-    server_address: localhost:8080
+    server_address: 0.0.0.0:8080
     max_events_chunk_size: 1000
     max_events_keys: 100
 
 monitoring_gateway:
-    server_address: localhost:8081
+    server_address: 0.0.0.0:8081
 
 storage:
     db:
