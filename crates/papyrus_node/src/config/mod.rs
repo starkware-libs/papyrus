@@ -82,12 +82,12 @@ impl Default for ConfigBuilder {
                 },
                 gateway: GatewayConfig {
                     chain_id,
-                    server_address: String::from("localhost:8080"),
+                    server_address: String::from("0.0.0.0:8080"),
                     max_events_chunk_size: 1000,
                     max_events_keys: 100,
                 },
                 monitoring_gateway: MonitoringGatewayConfig {
-                    server_address: String::from("localhost:8081"),
+                    server_address: String::from("0.0.0.0:8081"),
                 },
                 storage: StorageConfig {
                     db_config: DbConfig { path: String::from("./data"), max_size: 1099511627776 },
