@@ -14,7 +14,7 @@ log = { version = "0.4" }
 reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "b28d885" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "f75c4e2" }
 thiserror = { version = "1.0.31" }
 tokio = { version = "1.18.2", features = ["full","sync"] }
 tokio-stream = { version = "0.1.8" }
@@ -23,5 +23,5 @@ url = { version = "2.2.2" }
 [dev-dependencies]
 assert_matches = { version = "1.5.0" }
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", features = ["testing"], rev = "b28d885" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", features = ["testing"] , rev = "f75c4e2" }
 web3 = { version = "0.18.0" }

@@ -21,8 +21,8 @@ use papyrus_storage::{
     StorageReader, StorageTxn, TransactionIndex, TransactionKind,
 };
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockNumber, BlockStatus, GlobalRoot};
-use starknet_api::core::{ChainId, ClassHash, ContractAddress, Nonce};
+use starknet_api::block::{BlockNumber, BlockStatus};
+use starknet_api::core::{ChainId, ClassHash, ContractAddress, GlobalRoot, Nonce};
 use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{

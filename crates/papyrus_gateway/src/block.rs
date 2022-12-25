@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockHash, BlockNumber, BlockStatus, BlockTimestamp, GlobalRoot};
-use starknet_api::core::ContractAddress;
+use starknet_api::block::{BlockHash, BlockNumber, BlockStatus, BlockTimestamp};
+use starknet_api::core::{ContractAddress, GlobalRoot};
 
 use crate::transaction::Transactions;
 

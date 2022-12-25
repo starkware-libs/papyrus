@@ -36,7 +36,7 @@ impl From<starknet_api::transaction::InvokeTransaction> for InvokeTransactionV0 
             version: tx.version,
             signature: tx.signature,
             nonce: tx.nonce,
-            contract_address: tx.contract_address,
+            contract_address: tx.sender_address,
             entry_point_selector: tx.entry_point_selector.unwrap_or_default(),
             calldata: tx.calldata,
         }
@@ -62,7 +62,7 @@ impl From<starknet_api::transaction::InvokeTransaction> for InvokeTransactionV1 
             version: tx.version,
             signature: tx.signature,
             nonce: tx.nonce,
-            sender_address: tx.contract_address,
+            sender_address: tx.sender_address,
             calldata: tx.calldata,
         }
     }

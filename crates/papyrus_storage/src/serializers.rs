@@ -9,9 +9,11 @@ use std::hash::Hash;
 use indexmap::IndexMap;
 use integer_encoding::*;
 use starknet_api::block::{
-    BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice, GlobalRoot,
+    BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
 };
-use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
+use starknet_api::core::{
+    ClassHash, ContractAddress, EntryPointSelector, GlobalRoot, Nonce, PatriciaKey,
+};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{
     ContractClass, ContractClassAbiEntry, EntryPoint, EntryPointOffset, EntryPointType,
@@ -154,7 +156,7 @@ auto_storage_serde! {
         pub version: TransactionVersion,
         pub signature: TransactionSignature,
         pub nonce: Nonce,
-        pub contract_address: ContractAddress,
+        pub sender_address: ContractAddress,
         pub entry_point_selector: Option<EntryPointSelector>,
         pub calldata: CallData,
     }

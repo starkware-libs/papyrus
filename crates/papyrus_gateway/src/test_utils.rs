@@ -5,10 +5,10 @@ use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
 use reqwest::Client;
 use starknet_api::block::{
-    Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockTimestamp, GasPrice, GlobalRoot,
+    Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockTimestamp, GasPrice,
 };
 use starknet_api::core::{
-    ChainId, ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey,
+    ChainId, ClassHash, ContractAddress, EntryPointSelector, GlobalRoot, Nonce, PatriciaKey,
 };
 use starknet_api::hash::StarkHash;
 use starknet_api::serde_utils::bytes_from_hex_str;
@@ -132,7 +132,7 @@ pub fn get_body_to_match_json_file() -> BlockBody {
             version: TransactionVersion::default(),
             signature: TransactionSignature::default(),
             nonce: Nonce::default(),
-            contract_address: ContractAddress(patky!(
+            sender_address: ContractAddress(patky!(
                 "0x2fb7ff5b1b474e8e691f5bebad9aa7aa3009f6ef22ccc2816f96cdfe217604d"
             )),
             entry_point_selector: Some(EntryPointSelector(shash!(

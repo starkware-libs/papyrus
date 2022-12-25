@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use papyrus_storage::compression_utils::{CompressionError, GzEncoded};
 use papyrus_storage::{StorageSerde, StorageSerdeError};
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockHash, GlobalRoot};
-use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::block::BlockHash;
+use starknet_api::core::{ClassHash, ContractAddress, GlobalRoot, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{
     EntryPoint, EntryPointType, EventAbiEntry, FunctionAbiEntry, FunctionAbiEntryType, StorageKey,
