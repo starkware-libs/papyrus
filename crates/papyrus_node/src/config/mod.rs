@@ -117,6 +117,7 @@ impl ConfigBuilder {
             Command::new("Papyrus").args(&[
                 arg!(-f --config [path] "Optionally sets a config file to use").value_parser(value_parser!(PathBuf)),
                 arg!(-c --chain_id [name] "Optionally sets chain id to use"),
+                arg!(--server_address ["IP:PORT"] "Optionally sets the RPC listening address"),
                 arg!(-s --storage [path] "Optionally sets storage path to use (automatically extended with chain id").value_parser(value_parser!(PathBuf)),
                 arg!(-n --no_sync [bool] "Optionally run without sync").value_parser(value_parser!(bool)).default_missing_value("true"),
             ])
@@ -150,6 +151,10 @@ impl ConfigBuilder {
             Some(ref args) => {
                 if let Some(chain_id) = args.try_get_one::<String>("chain_id")? {
                     self.chain_id = ChainId(chain_id.clone());
+                }
+
+                if let Some(server_address) = args.try_get_one::<String>("server_address")? {
+                    self.config.gateway.server_address = server_address.to_string()
                 }
 
                 if let Some(storage_path) = args.try_get_one::<PathBuf>("storage")? {
