@@ -19,7 +19,7 @@ use self::api::JsonRpcServer;
 
 #[derive(Serialize, Deserialize)]
 pub struct MonitoringGatewayConfig {
-    pub server_ip: String,
+    pub server_address: String,
 }
 
 /// Rpc server.
@@ -48,7 +48,7 @@ pub async fn run_server(
     storage_reader: StorageReader,
 ) -> anyhow::Result<(SocketAddr, HttpServerHandle)> {
     info!("Starting monitoring gateway.");
-    let server = HttpServerBuilder::default().build(&config.server_ip).await?;
+    let server = HttpServerBuilder::default().build(&config.server_address).await?;
     let addr = server.local_addr()?;
     let handle = server.start(JsonRpcServerImpl { storage_reader }.into_rpc())?;
     info!("Monitoring gateway is running - {}.", addr);

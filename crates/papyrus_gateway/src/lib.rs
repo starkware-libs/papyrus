@@ -43,7 +43,7 @@ use crate::transaction::{
 #[derive(Clone, Serialize, Deserialize)]
 pub struct GatewayConfig {
     pub chain_id: ChainId,
-    pub server_ip: String,
+    pub server_address: String,
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
 }
@@ -496,7 +496,7 @@ pub async fn run_server(
     storage_reader: StorageReader,
 ) -> anyhow::Result<(SocketAddr, HttpServerHandle)> {
     info!("Starting gateway.");
-    let server = HttpServerBuilder::default().build(&config.server_ip).await?;
+    let server = HttpServerBuilder::default().build(&config.server_address).await?;
     let addr = server.local_addr()?;
     let handle = server.start(
         JsonRpcServerImpl {
