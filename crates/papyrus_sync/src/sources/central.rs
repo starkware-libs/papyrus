@@ -10,7 +10,7 @@ use log::{debug, error, info};
 #[cfg(test)]
 use mockall::automock;
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{Block, BlockNumber};
+use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, StateDiff};
 use starknet_api::StarknetApiError;
@@ -62,11 +62,18 @@ pub trait CentralSourceTrait {
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
     ) -> StateUpdatesStream<'_>;
+
+    async fn get_block_hash(
+        &self,
+        block_number: BlockNumber,
+    ) -> Result<Option<BlockHash>, ClientError>;
 }
 
 pub(crate) type BlocksStream<'a> = BoxStream<'a, Result<(BlockNumber, Block), CentralError>>;
-pub(crate) type StateUpdatesStream<'a> =
-    BoxStream<'a, CentralResult<(BlockNumber, StateDiff, Vec<(ClassHash, ContractClass)>)>>;
+pub(crate) type StateUpdatesStream<'a> = BoxStream<
+    'a,
+    CentralResult<(BlockNumber, BlockHash, StateDiff, Vec<(ClassHash, ContractClass)>)>,
+>;
 
 #[async_trait]
 impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSourceTrait
@@ -77,6 +84,16 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
             .block_number()
             .await?
             .map_or(Ok(BlockNumber::default()), |block_number| Ok(block_number.next()))
+    }
+
+    async fn get_block_hash(
+        &self,
+        block_number: BlockNumber,
+    ) -> Result<Option<BlockHash>, ClientError> {
+        self.starknet_client
+            .block(block_number)
+            .await?
+            .map_or(Ok(None), |block| Ok(Some(block.block_hash)))
     }
 
     fn stream_state_updates(
@@ -94,6 +111,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                 while let Some(maybe_state_update) = state_update_stream.next().await {
                     match maybe_state_update {
                         Ok((state_update, classes)) => {
+                            let block_hash = state_update.block_hash;
                             let (declared_classes, deployed_contract_class_definitions) =
                                 classes.split_at(state_update.state_diff.declared_contracts.len());
                             let state_diff = StateDiff {
@@ -124,6 +142,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                             };
                             yield Ok((
                                 current_block_number,
+                                block_hash,
                                 state_diff,
                                 deployed_contract_class_definitions.to_vec(),
                             ));
