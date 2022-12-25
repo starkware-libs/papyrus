@@ -226,13 +226,14 @@ async fn stream_state_updates() {
         central_source.stream_state_updates(initial_block_num, BlockNumber(END_BLOCK_NUMBER));
     pin_mut!(stream);
 
-    let (current_block_num, state_diff, deployed_contract_class_definitions) =
+    let (current_block_num, current_block_hash, state_diff, deployed_contract_class_definitions) =
         if let Some(Ok(state_diff_tuple)) = stream.next().await {
             state_diff_tuple
         } else {
             panic!("Match of streamed state_update failed!");
         };
     assert_eq!(initial_block_num, current_block_num);
+    assert_eq!(block_hash1, current_block_hash);
     assert_eq!(vec![(class_hash2, contract_class2.into())], deployed_contract_class_definitions);
 
     assert_eq!(
@@ -252,13 +253,14 @@ async fn stream_state_updates() {
     );
     assert_eq!(IndexMap::from([(contract_address1, nonce1)]), state_diff.nonces);
 
-    let (current_block_num, state_diff, _deployed_classes) =
+    let (current_block_num, current_block_hash, state_diff, _deployed_classes) =
         if let Some(Ok(state_diff_tuple)) = stream.next().await {
             state_diff_tuple
         } else {
             panic!("Match of streamed state_update failed!");
         };
     assert_eq!(initial_block_num.next(), current_block_num);
+    assert_eq!(block_hash2, current_block_hash);
     assert_eq!(state_diff, starknet_api::state::StateDiff::default());
 
     assert!(stream.next().await.is_none());
