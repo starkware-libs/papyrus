@@ -194,7 +194,7 @@ impl From<InvokeTransaction> for starknet_api::transaction::InvokeTransaction {
             version: invoke_tx.version,
             signature: invoke_tx.signature,
             nonce: invoke_tx.nonce.unwrap_or_default(),
-            contract_address: invoke_tx.contract_address,
+            sender_address: invoke_tx.contract_address,
             entry_point_selector: invoke_tx.entry_point_selector,
             calldata: invoke_tx.calldata,
         }
