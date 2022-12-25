@@ -52,6 +52,7 @@ pub enum SyncEvent {
     },
     StateDiffAvailable {
         block_number: BlockNumber,
+        block_hash: BlockHash,
         state_diff: StateDiff,
         // TODO(anatg): Remove once there are no more deployed contracts with undeclared classes.
         // Class definitions of deployed contracts with classes that were not declared in this
@@ -180,10 +181,11 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
             pin_mut!(state_diff_stream);
             while let Some(maybe_state_diff) = state_diff_stream.next().await {
                 match maybe_state_diff {
-                    Ok((block_number, mut state_diff, deployed_contract_class_definitions)) => {
+                    Ok((block_number, block_hash, mut state_diff, deployed_contract_class_definitions)) => {
                         sort_state_diff(&mut state_diff);
                         yield SyncEvent::StateDiffAvailable {
                             block_number,
+                            block_hash,
                             state_diff,
                             deployed_contract_class_definitions,
                         }
