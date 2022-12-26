@@ -12,7 +12,7 @@ use tokio_retry::strategy::ExponentialBackoff;
 use tokio_retry::{Action, Condition, RetryIf};
 
 /// A configuration for the retry mechanism.
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct RetryConfig {
     /// The initial waiting time in milliseconds.
     pub retry_base_millis: u64,

@@ -25,7 +25,7 @@ use super::stream_utils::MyStreamExt;
 const CONCURRENT_REQUESTS: usize = 300;
 
 pub type CentralResult<T> = Result<T, CentralError>;
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct CentralSourceConfig {
     pub url: String,
     pub retry_config: RetryConfig,
