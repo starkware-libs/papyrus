@@ -181,19 +181,22 @@ macro_rules! impl_get_test_instance {
             }
         }
     };
-    // Enums with no inner struct.
-    (enum $name:ident { $variant:ident = $num:expr , $($rest:tt)* }) => {
+    // Enums.
+    ($(pub)? enum $name:ident { $($variant:ident $( ($ty:ty) )? = $num:expr ,)* } $($rest:tt)*) => {
         impl GetTestInstance for $name {
             fn get_test_instance() -> Self {
-                Self::$variant
-            }
-        }
-    };
-    // Enums with inner struct.
-    (enum $name:ident { $variant:ident ($ty:ty) = $num:expr , $($rest:tt)* }) => {
-        impl GetTestInstance for $name {
-            fn get_test_instance() -> Self {
-                Self::$variant(<$ty>::get_test_instance())
+                let mut rng = rand::thread_rng();
+                let variant = rng.gen_range(0..get_number_of_variants!(enum $name { $($variant $( ($ty) )? = $num ,)* }));
+                match variant {
+                    $(
+                        $num => {
+                            Self::$variant$((<$ty>::get_test_instance()))?
+                        }
+                    )*
+                    _ => {
+                        panic!("Variant {:?} should match one of the enum {:?} variants.", variant, stringify!($name));
+                    }
+                }
             }
         }
     };
@@ -207,6 +210,16 @@ macro_rules! impl_get_test_instance {
     }
 }
 pub(crate) use impl_get_test_instance;
+
+// Counts the number of variants of an enum.
+macro_rules! get_number_of_variants {
+    (enum $name:ident { $($variant:ident $( ($ty:ty) )? = $num:expr ,)* }) => {
+        get_number_of_variants!(@count $($variant),+)
+    };
+    (@count $t1:tt, $($t:tt),+) => { 1 + get_number_of_variants!(@count $($t),+) };
+    (@count $t:tt) => { 1 };
+}
+pub(crate) use get_number_of_variants;
 
 ////////////////////////////////////////////////////////////////////////
 // Implements the [`GetTestInstance`] trait for types not supported

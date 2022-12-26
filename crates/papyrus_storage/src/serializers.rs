@@ -8,6 +8,8 @@ use std::hash::Hash;
 
 use indexmap::IndexMap;
 use integer_encoding::*;
+#[cfg(test)]
+use rand::Rng;
 use starknet_api::block::{
     BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
 };
@@ -28,15 +30,16 @@ use starknet_api::transaction::{
     TransactionVersion,
 };
 
-#[cfg(test)]
-use self::serializers_test::{
-    auto_storage_serde_test, create_test, impl_get_test_instance, GetTestInstance, StorageSerdeTest,
-};
 use crate::body::events::{
     ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput, ThinDeployTransactionOutput,
     ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
 };
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
+#[cfg(test)]
+use crate::serializers::serializers_test::{
+    auto_storage_serde_test, create_test, get_number_of_variants, impl_get_test_instance,
+    GetTestInstance, StorageSerdeTest,
+};
 use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
 use crate::{EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey, TransactionIndex};
 
