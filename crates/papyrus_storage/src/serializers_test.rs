@@ -3,10 +3,10 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 use indexmap::IndexMap;
-use starknet_api::core::{ContractAddress, PatriciaKey};
+use serde_json::Value;
+use starknet_api::core::ContractAddress;
 use starknet_api::hash::StarkHash;
 use starknet_api::state::StorageKey;
-use starknet_api::{patky, shash};
 
 use crate::StorageSerde;
 
@@ -30,6 +30,17 @@ impl<T: StorageSerde + GetTestInstance + Eq + Debug> StorageSerdeTest for T {
 pub trait GetTestInstance: Sized {
     fn get_test_instance() -> Self;
 }
+
+macro_rules! default_impl_get_test_instance {
+    ($name:ident) => {
+        impl GetTestInstance for $name {
+            fn get_test_instance() -> Self {
+                Self::default()
+            }
+        }
+    };
+}
+pub(crate) use default_impl_get_test_instance;
 
 // Tests all types that implement the [`StorageSerde`] trait
 // via the [`auto_storage_serde`] macro.
@@ -81,16 +92,8 @@ pub(crate) use create_test;
 ////////////////////////////////////////////////////////////////////////
 // Implements the [`GetTestInstance`] trait for primitive types.
 ////////////////////////////////////////////////////////////////////////
-impl GetTestInstance for serde_json::Value {
-    fn get_test_instance() -> Self {
-        serde_json::from_str(r#""0x1""#).unwrap()
-    }
-}
-impl GetTestInstance for String {
-    fn get_test_instance() -> Self {
-        "a".to_string()
-    }
-}
+default_impl_get_test_instance!(Value);
+default_impl_get_test_instance!(String);
 impl<T: GetTestInstance> GetTestInstance for Option<T> {
     fn get_test_instance() -> Self {
         Some(T::get_test_instance())
@@ -117,11 +120,6 @@ impl<K: GetTestInstance + Eq + Hash, V: GetTestInstance> GetTestInstance for Ind
         let v = V::get_test_instance();
         res.insert(k, v);
         res
-    }
-}
-impl<T: GetTestInstance + Default + Copy, const N: usize> GetTestInstance for [T; N] {
-    fn get_test_instance() -> Self {
-        [T::get_test_instance(); N]
     }
 }
 
@@ -202,11 +200,7 @@ macro_rules! impl_get_test_instance {
     };
     // Binary.
     (bincode($name:ident)) => {
-        impl GetTestInstance for $name {
-            fn get_test_instance() -> Self {
-                Self::default()
-            }
-        }
+        default_impl_get_test_instance!($name);
     }
 }
 pub(crate) use impl_get_test_instance;
@@ -226,23 +220,11 @@ pub(crate) use get_number_of_variants;
 // by the macro [`impl_get_test_instance`] and calls the [`create_test`]
 // macro to create the tests for them.
 ////////////////////////////////////////////////////////////////////////
-impl GetTestInstance for StarkHash {
-    fn get_test_instance() -> Self {
-        shash!("0x1")
-    }
-}
+default_impl_get_test_instance!(StarkHash);
 create_test!(StarkHash);
 
-impl GetTestInstance for ContractAddress {
-    fn get_test_instance() -> Self {
-        Self(patky!("0x1"))
-    }
-}
+default_impl_get_test_instance!(ContractAddress);
 create_test!(ContractAddress);
 
-impl GetTestInstance for StorageKey {
-    fn get_test_instance() -> Self {
-        Self(patky!("0x1"))
-    }
-}
+default_impl_get_test_instance!(StorageKey);
 create_test!(StorageKey);

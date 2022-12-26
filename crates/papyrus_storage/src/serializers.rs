@@ -37,8 +37,8 @@ use crate::body::events::{
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
 #[cfg(test)]
 use crate::serializers::serializers_test::{
-    auto_storage_serde_test, create_test, get_number_of_variants, impl_get_test_instance,
-    GetTestInstance, StorageSerdeTest,
+    auto_storage_serde_test, create_test, default_impl_get_test_instance, get_number_of_variants,
+    impl_get_test_instance, GetTestInstance, StorageSerdeTest,
 };
 use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
 use crate::{EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey, TransactionIndex};
