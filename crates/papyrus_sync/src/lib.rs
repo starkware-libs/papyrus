@@ -18,11 +18,11 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockNumber};
 use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, StateDiff};
-use starknet_client::ClientError;
+use starknet_client::{ClientCreationError, ClientError};
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct SyncConfig {
     pub block_propagation_sleep_duration: Duration,
 }
@@ -39,6 +39,8 @@ pub struct GenericStateSync<TCentralSource: CentralSourceTrait + Sync + Send> {
 pub enum StateSyncError {
     #[error(transparent)]
     StorageError(#[from] StorageError),
+    #[error(transparent)]
+    ClientCreation(#[from] ClientCreationError),
     #[error(transparent)]
     CentralSourceError(#[from] ClientError),
     #[error("Sync error: {message:?}.")]

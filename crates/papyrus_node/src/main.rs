@@ -2,9 +2,30 @@ use log::info;
 use papyrus_gateway::run_server;
 use papyrus_monitoring_gateway::run_server as monitoring_run_server;
 use papyrus_node::config::Config;
-use papyrus_storage::open_storage;
+use papyrus_storage::{open_storage, StorageReader, StorageWriter};
 use papyrus_sync::{CentralSource, StateSync, StateSyncError};
-use tokio::task::JoinHandle;
+
+async fn run_sync(
+    config: Config,
+    storage_reader: StorageReader,
+    storage_writer: StorageWriter,
+) -> Result<(), StateSyncError> {
+    match config.sync {
+        None => Ok(()),
+        Some(sync_config) => match CentralSource::new(config.central.clone()) {
+            Ok(central_source) => {
+                let mut sync = StateSync::new(
+                    sync_config,
+                    central_source,
+                    storage_reader.clone(),
+                    storage_writer,
+                );
+                sync.run().await
+            }
+            Err(err) => Err(StateSyncError::ClientCreation(err)),
+        },
+    }
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -12,30 +33,18 @@ async fn main() -> anyhow::Result<()> {
     info!("Booting up.");
     let config = Config::load()?;
 
-    let (storage_reader, storage_writer) = open_storage(config.storage.db_config)?;
+    let (storage_reader, storage_writer) = open_storage(config.storage.db_config.clone())?;
 
-    // Network interface.
-    let central_source = CentralSource::new(config.central)?;
+    let (_, server_future) = run_server(&config.gateway, storage_reader.clone()).await?;
+    let (_, monitoring_server_future) =
+        monitoring_run_server(config.monitoring_gateway.clone(), storage_reader.clone()).await?;
+    let sync_future = run_sync(config, storage_reader.clone(), storage_writer);
 
-    // Sync.
-    let mut sync_thread_opt: Option<JoinHandle<anyhow::Result<(), StateSyncError>>> = None;
-    if let Some(sync_config) = config.sync {
-        let mut sync =
-            StateSync::new(sync_config, central_source, storage_reader.clone(), storage_writer);
-        sync_thread_opt = Some(tokio::spawn(async move { sync.run().await }));
-    }
-
-    // Pass a storage reader to the gateways.
-    let (_, server_handle) = run_server(&config.gateway, storage_reader.clone()).await?;
-    let (_, monitoring_server_handle) =
-        monitoring_run_server(config.monitoring_gateway, storage_reader.clone()).await?;
-    if let Some(sync_thread) = sync_thread_opt {
-        let (_, _, sync_thread_res) =
-            tokio::join!(server_handle, monitoring_server_handle, sync_thread);
-        sync_thread_res??;
-    } else {
-        tokio::join!(server_handle, monitoring_server_handle);
-    }
-
+    let server_handle = tokio::spawn(server_future);
+    let monitoring_server_handle = tokio::spawn(monitoring_server_future);
+    let sync_handle = tokio::spawn(sync_future);
+    let (_, _, sync_result) =
+        tokio::try_join!(server_handle, monitoring_server_handle, sync_handle)?;
+    sync_result?;
     Ok(())
 }
