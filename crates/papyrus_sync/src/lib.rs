@@ -95,11 +95,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                         if revert_happend {
                             break;
                         }
-                        self.writer
-                            .begin_rw_txn()?
-                            .append_header(block_number, &block.header)?
-                            .append_body(block_number, block.body)?
-                            .commit()?;
+                        self.store_block(block_number, block).await?;
                     }
                     SyncEvent::StateDiffAvailable {
                         block_number,
@@ -130,6 +126,19 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 }
             }
         }
+    }
+
+    async fn store_block(
+        &mut self,
+        block_number: BlockNumber,
+        block: Block,
+    ) -> Result<(), StateSyncError> {
+        self.writer
+            .begin_rw_txn()?
+            .append_header(block_number, &block.header)?
+            .append_body(block_number, block.body)?
+            .commit()?;
+        Ok(())
     }
 
     // Reverts data if needed, returns whether a revert happend.
