@@ -98,49 +98,56 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                   res = state_diff_stream.next() => res,
                   complete => break,
                 } else {unreachable!("Should not get None.");} ;
-                match sync_event {
-                    SyncEvent::BlockAvailable { block_number, block } => {
-                        match self.store_block(block_number, block).await {
-                            Ok(_) => {}
-                            Err(StateSyncError::ParentBlockHashMismatch {
-                                block_number,
-                                expected_parent_block_hash: _,
-                                stored_parent_block_hash: _,
-                            }) => {
-                                info!("Detected revert while processing block {}", block_number);
-                                break;
-                            }
-                            // Unrecoverable errors.
-                            Err(err) => return Err(err),
-                        }
-                    }
-                    SyncEvent::StateDiffAvailable {
+
+                match self.process_sync_event(sync_event).await {
+                    Ok(_) => {}
+                    Err(StateSyncError::ParentBlockHashMismatch {
                         block_number,
-                        block_hash,
-                        state_diff,
-                        deployed_contract_class_definitions,
-                    } => {
-                        if !self.is_reverted_state_diff(block_number, block_hash).await {
-                            self.writer
-                                .begin_rw_txn()?
-                                .append_state_diff(
-                                    block_number,
-                                    state_diff,
-                                    deployed_contract_class_definitions,
-                                )?
-                                .commit()?;
-                        } else {
-                            self.writer
-                                .begin_rw_txn()?
-                                .insert_ommer_state_diff(
-                                    block_hash,
-                                    &state_diff.into(),
-                                    &deployed_contract_class_definitions,
-                                )?
-                                .commit()?;
-                        }
+                        expected_parent_block_hash: _,
+                        stored_parent_block_hash: _,
+                    }) => {
+                        info!("Detected revert while processing block {}", block_number);
+                        break;
                     }
+                    // Unrecoverable errors.
+                    Err(err) => return Err(err),
                 }
+            }
+        }
+    }
+
+    // Tries to store the incoming data.
+    async fn process_sync_event(&mut self, sync_event: SyncEvent) -> Result<(), StateSyncError> {
+        match sync_event {
+            SyncEvent::BlockAvailable { block_number, block } => {
+                self.store_block(block_number, block).await
+            }
+            SyncEvent::StateDiffAvailable {
+                block_number,
+                block_hash,
+                state_diff,
+                deployed_contract_class_definitions,
+            } => {
+                if !self.is_reverted_state_diff(block_number, block_hash).await {
+                    self.writer
+                        .begin_rw_txn()?
+                        .append_state_diff(
+                            block_number,
+                            state_diff,
+                            deployed_contract_class_definitions,
+                        )?
+                        .commit()?;
+                } else {
+                    self.writer
+                        .begin_rw_txn()?
+                        .insert_ommer_state_diff(
+                            block_hash,
+                            &state_diff.into(),
+                            &deployed_contract_class_definitions,
+                        )?
+                        .commit()?;
+                }
+                Ok(())
             }
         }
     }
