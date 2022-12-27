@@ -84,13 +84,13 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             pin_mut!(block_stream, state_diff_stream);
 
             loop {
-                let sync_event: Option<SyncEvent> = select! {
+                let Some(sync_event) = select! {
                   res = block_stream.next() => res,
                   res = state_diff_stream.next() => res,
                   complete => break,
-                };
+                } else {unreachable!("Should not get None.");} ;
                 match sync_event {
-                    Some(SyncEvent::BlockAvailable { block_number, block }) => {
+                    SyncEvent::BlockAvailable { block_number, block } => {
                         let revert_happend = self.handle_block_reverts().await?;
                         if revert_happend {
                             break;
@@ -101,12 +101,12 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                             .append_body(block_number, block.body)?
                             .commit()?;
                     }
-                    Some(SyncEvent::StateDiffAvailable {
+                    SyncEvent::StateDiffAvailable {
                         block_number,
                         block_hash,
                         state_diff,
                         deployed_contract_class_definitions,
-                    }) => {
+                    } => {
                         if !self.is_reverted_state_diff(block_number, block_hash).await {
                             self.writer
                                 .begin_rw_txn()?
@@ -126,11 +126,6 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                                 )?
                                 .commit()?;
                         }
-                    }
-                    None => {
-                        return Err(StateSyncError::SyncError {
-                            message: "Got an empty event.".to_string(),
-                        });
                     }
                 }
             }
