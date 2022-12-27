@@ -13,3 +13,6 @@ members = [
     "crates/starknet_client",
     "crates/test_utils",
 ]
+exclude = [
+    "load_test"
+    ]

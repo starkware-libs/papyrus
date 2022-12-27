@@ -1,0 +1,64 @@
+name: Benchmarks
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, dan/main/helm]
+
+jobs:
+  deploy-benchmark-teardown:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: "read"
+      id-token: "write"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set short git commit SHA and namespace envs
+        run: echo "NAMESPACE=papyrus-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v1"
+        with:
+          credentials_json: "${{ secrets.GOOGLE_CI_SA_CREDENTIALS }}"
+
+      - id: "get-credentials"
+        name: Get GKE credentials
+        uses: "google-github-actions/get-gke-credentials@v1"
+        with:
+          cluster_name: "${{ secrets.GKE_CI_CLUSTER_NAME }}"
+          location: "${{ secrets.GKE_CI_CLUSTER_REGION }}"
+
+      # TODO: remove when public and let helm install create the namespace
+      - name: Create namespace
+        run: kubectl create namespace $NAMESPACE
+
+      # TODO: remove when public and let helm install create the namespace
+      - name: Add k8s secret to access container registry
+        run: |
+          kubectl create secret docker-registry regcred \
+          --namespace=$NAMESPACE \
+          --docker-server=ghcr.io \
+          --docker-username=${{ secrets.GHCR_USERNAME }} \
+          --docker-password=${{ secrets.GHCR_TOKEN }}
+
+      - id: "helm-install"
+        name: Deploy to Kubernetes using helm
+        run: |
+          helm upgrade --install papyrus deployments/helm/ \
+          --namespace $NAMESPACE \
+          --values deployments/helm/CI/default_values.yaml \
+          --set ingress.host=${{ secrets.GKE_CI_HOST }}
+
+      - name: Run load test
+        run: kubectl --namespace=$NAMESPACE apply -f deployments/helm/CI/load_test_job.yaml --wait=true
+
+      - name: Wait for BM to finish
+        run: kubectl wait --namespace=$NAMESPACE --for=condition=complete --timeout=30s job/papyrus-load-test
+
+      # - name: Clean the deployment
+      #   if: always()
+      #   run: kubectl delete ns $NAMESPACE
