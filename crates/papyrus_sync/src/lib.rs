@@ -45,6 +45,15 @@ pub enum StateSyncError {
     CentralSourceError(#[from] ClientError),
     #[error("Sync error: {message:?}.")]
     SyncError { message: String },
+    #[error(
+        "Parent block hash of block {block_number:?} is not consistent with the stored block. \
+         Expected {expected_parent_block_hash:?}, found {stored_parent_block_hash:?}."
+    )]
+    ParentBlockHashMismatch {
+        block_number: BlockNumber,
+        expected_parent_block_hash: BlockHash,
+        stored_parent_block_hash: BlockHash,
+    },
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -69,6 +78,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     pub async fn run(&mut self) -> anyhow::Result<(), StateSyncError> {
         info!("State sync started.");
         loop {
+            self.handle_block_reverts().await?;
             let block_stream = stream_new_blocks(
                 self.reader.clone(),
                 self.central_source.clone(),
@@ -91,11 +101,19 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 } else {unreachable!("Should not get None.");} ;
                 match sync_event {
                     SyncEvent::BlockAvailable { block_number, block } => {
-                        let revert_happend = self.handle_block_reverts().await?;
-                        if revert_happend {
-                            break;
+                        match self.store_block(block_number, block).await {
+                            Ok(_) => {}
+                            Err(StateSyncError::ParentBlockHashMismatch {
+                                block_number,
+                                expected_parent_block_hash: _,
+                                stored_parent_block_hash: _,
+                            }) => {
+                                info!("Detected revert while processing block {}", block_number);
+                                break;
+                            }
+                            // Unrecoverable errors.
+                            Err(err) => return Err(err),
                         }
-                        self.store_block(block_number, block).await?;
                     }
                     SyncEvent::StateDiffAvailable {
                         block_number,
@@ -133,6 +151,10 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         block_number: BlockNumber,
         block: Block,
     ) -> Result<(), StateSyncError> {
+        // Assuming the central source is trusted, detect reverts by comparing the incoming block's
+        // parent hash to the current hash.
+        self.verify_parent_block_hash(block_number, &block).await?;
+
         self.writer
             .begin_rw_txn()?
             .append_header(block_number, &block.header)?
@@ -141,15 +163,44 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         Ok(())
     }
 
-    // Reverts data if needed, returns whether a revert happend.
-    async fn handle_block_reverts(&mut self) -> StorageResult<bool> {
+    // Compares the block's parent hash to the stored block.
+    async fn verify_parent_block_hash(
+        &self,
+        block_number: BlockNumber,
+        block: &Block,
+    ) -> Result<(), StateSyncError> {
+        let Some(prev_block_number) = block_number.prev() else { return Ok(()); };
+        let prev_hash = self
+            .reader
+            .begin_ro_txn()?
+            .get_block_header(prev_block_number)?
+            .ok_or(StorageError::DBInconsistency {
+                msg: format!(
+                    "Missing block {} in the storage (for verifing block {}).",
+                    prev_block_number, block_number
+                ),
+            })?
+            .block_hash;
+
+        if prev_hash != block.header.parent_hash {
+            return Err(StateSyncError::ParentBlockHashMismatch {
+                block_number,
+                expected_parent_block_hash: block.header.parent_hash,
+                stored_parent_block_hash: prev_hash,
+            });
+        }
+
+        Ok(())
+    }
+
+    // Reverts data if needed.
+    async fn handle_block_reverts(&mut self) -> StorageResult<()> {
         let header_marker = self
             .reader
             .begin_ro_txn()
             .expect("Cannot read from block storage.")
             .get_header_marker()
             .expect("Cannot read from block storage.");
-        let mut revert_happend = false;
 
         // Revert last blocks if needed.
         let mut last_block_in_storage = header_marker.prev();
@@ -157,12 +208,11 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             if self.should_revert_block(block_number).await {
                 self.revert_block(block_number)?;
                 last_block_in_storage = block_number.prev();
-                revert_happend = true;
             } else {
                 break;
             }
         }
-        Ok(revert_happend)
+        Ok(())
     }
 
     // Deletes the block data from the storage, moving it to the ommer tables.
