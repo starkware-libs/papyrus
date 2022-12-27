@@ -8,9 +8,9 @@ use tokio::task::JoinHandle;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let config = Config::load()?;
     log4rs::init_file("config/log4rs.yaml", Default::default())?;
     info!("Booting up.");
-    let config = Config::load()?;
 
     let (storage_reader, storage_writer) = open_storage(config.storage.db_config)?;
 

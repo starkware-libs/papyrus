@@ -114,14 +114,17 @@ impl ConfigBuilder {
     // Builds the applications command-line interface.
     fn prepare_command(mut self, args: Vec<String>) -> Result<Self, ConfigError> {
         self.args = Some(
-            Command::new("Papyrus").args(&[
+            Command::new("Papyrus",)
+            .version("Pre-release")
+            .about("Papyrus is a StarkNet full node written in Rust.")
+            .args(&[
                 arg!(-f --config [path] "Optionally sets a config file to use").value_parser(value_parser!(PathBuf)),
                 arg!(-c --chain_id [name] "Optionally sets chain id to use"),
                 arg!(--server_address ["IP:PORT"] "Optionally sets the RPC listening address"),
                 arg!(-s --storage [path] "Optionally sets storage path to use (automatically extended with chain id").value_parser(value_parser!(PathBuf)),
                 arg!(-n --no_sync [bool] "Optionally run without sync").value_parser(value_parser!(bool)).default_missing_value("true"),
             ])
-            .try_get_matches_from(args)?,
+            .try_get_matches_from(args).unwrap_or_else(|e| e.exit()),
         );
         Ok(self)
     }
