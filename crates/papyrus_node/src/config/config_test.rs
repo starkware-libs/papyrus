@@ -29,7 +29,7 @@ fn default_builder() {
 fn prepare_command() {
     let args = vec![
         "Papyrus".to_owned(),
-        "--config=conf.yaml".to_owned(),
+        "--config_file=conf.yaml".to_owned(),
         "--chain_id=CHAIN_ID".to_owned(),
         "--server_address=IP:PORT".to_owned(),
         "--storage=path".to_owned(),
@@ -39,7 +39,7 @@ fn prepare_command() {
     let builder_args = builder.args.expect("Expected to have args");
 
     assert_eq!(
-        *builder_args.get_one::<PathBuf>("config").expect("Expected to have config arg"),
+        *builder_args.get_one::<PathBuf>("config_file").expect("Expected to have config arg"),
         PathBuf::from("conf.yaml")
     );
     assert_eq!(
@@ -69,7 +69,7 @@ gateway:
     max_events_keys: 100
 ";
     f.write_all(yaml.as_bytes()).unwrap();
-    let args = vec!["Papyrus".to_owned(), format!("--config={}", f.path().to_str().unwrap())];
+    let args = vec!["Papyrus".to_owned(), format!("--config_file={}", f.path().to_str().unwrap())];
     let builder = ConfigBuilder::default().prepare_command(args).unwrap().yaml().unwrap();
 
     assert_eq!(builder.chain_id, ChainId("TEST".to_owned()));
