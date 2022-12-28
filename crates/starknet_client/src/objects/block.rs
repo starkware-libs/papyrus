@@ -43,8 +43,6 @@ impl From<GlobalRoot> for starknet_api::core::GlobalRoot {
 /// A block as returned by the starknet gateway.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct Block {
-    // TODO(dan): Currently should be Option<BlockHash> (due to pending blocks).
-    // Figure out if we want this in the internal representation as well.
     pub block_hash: BlockHash,
     pub block_number: BlockNumber,
     pub gas_price: GasPrice,

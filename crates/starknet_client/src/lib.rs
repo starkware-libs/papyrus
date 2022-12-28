@@ -227,7 +227,6 @@ impl StarknetClient {
                 Err(ClientError::StarknetError(starknet_error))
             }
             _ => {
-                // TODO(dan): consider logging as info instead.
                 error!("Bad response status code: {:?}, message: {:?}.", code, message);
                 Err(ClientError::BadResponseStatus { code, message })
             }
