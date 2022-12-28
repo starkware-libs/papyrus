@@ -84,7 +84,7 @@ docker run --rm --name papyrus\
 
 Note:
 * If you wish to run the most up-to-date code,
-you can use the `ghcr.io/starkware-libs/papyrus:stable` image.
+you can use the `ghcr.io/starkware-libs/papyrus:dev` image.
 * Currently, there is no automatic upgrade mechanism.
 Make sure to periodically pull the latest image and re-run the node.
 
