@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 
 use self::api::JsonRpcServer;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct MonitoringGatewayConfig {
     pub server_address: String,
 }
