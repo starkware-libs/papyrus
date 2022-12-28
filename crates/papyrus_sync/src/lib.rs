@@ -246,10 +246,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
 
     // Reverts data if needed.
     async fn handle_block_reverts(&mut self) -> Result<(), StateSyncError> {
-        let header_marker = self
-            .reader
-            .begin_ro_txn()?
-            .get_header_marker()?;
+        let header_marker = self.reader.begin_ro_txn()?.get_header_marker()?;
 
         // Revert last blocks if needed.
         let mut last_block_in_storage = header_marker.prev();
@@ -266,19 +263,13 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
 
     // Deletes the block data from the storage, moving it to the ommer tables.
     fn revert_block(&mut self, block_number: BlockNumber) -> Result<(), StateSyncError> {
-        let header = self
-            .reader
-            .begin_ro_txn()?
-            .get_block_header(block_number)?
-            .ok_or(
-                StateSyncError::SyncError {
-                    message: format!("Tried to revert a missing header of block {}", block_number),
-                },
-            )?;
-        let transactions = self
-            .reader
-            .begin_ro_txn()?
-            .get_block_transactions(block_number)?.ok_or(
+        let header = self.reader.begin_ro_txn()?.get_block_header(block_number)?.ok_or(
+            StateSyncError::SyncError {
+                message: format!("Tried to revert a missing header of block {}", block_number),
+            },
+        )?;
+        let transactions =
+            self.reader.begin_ro_txn()?.get_block_transactions(block_number)?.ok_or(
                 StateSyncError::SyncError {
                     message: format!(
                         "Tried to revert a missing transactions of block {}",
@@ -286,11 +277,8 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                     ),
                 },
             )?;
-        let transaction_outputs = self
-            .reader
-            .begin_ro_txn()?
-            .get_block_transaction_outputs(block_number)?
-            .ok_or(
+        let transaction_outputs =
+            self.reader.begin_ro_txn()?.get_block_transaction_outputs(block_number)?.ok_or(
                 StateSyncError::SyncError {
                     message: format!(
                         "Tried to revert a missing transaction outputs of block {}",
@@ -336,14 +324,9 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     /// Checks if centrals block hash at the block number is different from ours (or doesn't exist).
     /// If so, a revert is required.
     async fn should_revert_block(&self, block_number: BlockNumber) -> Result<bool, StateSyncError> {
-        if let Some(central_block_hash) = self.central_source
-            .get_block_hash(block_number)
-            .await?
-        {
-            let storage_block_header = self
-                .reader
-                .begin_ro_txn()?
-                .get_block_header(block_number)?;
+        if let Some(central_block_hash) = self.central_source.get_block_hash(block_number).await? {
+            let storage_block_header =
+                self.reader.begin_ro_txn()?.get_block_header(block_number)?;
 
             match storage_block_header {
                 Some(block_header) => Ok(block_header.block_hash != central_block_hash),
@@ -360,10 +343,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         block_number: BlockNumber,
         block_hash: BlockHash,
     ) -> Result<bool, StateSyncError> {
-        let storage_header = self
-            .reader
-            .begin_ro_txn()?
-            .get_block_header(block_number)?;
+        let storage_header = self.reader.begin_ro_txn()?.get_block_header(block_number)?;
 
         match storage_header {
             None => Ok(true),
