@@ -13,7 +13,7 @@ use log::{error, info};
 use papyrus_storage::{
     BodyStorageReader, BodyStorageWriter, HeaderStorageReader, HeaderStorageWriter,
     OmmerStorageWriter, StateStorageReader, StateStorageWriter, StorageError, StorageReader,
-    StorageResult, StorageWriter, TransactionIndex,
+    StorageWriter, TransactionIndex,
 };
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockHash, BlockNumber};
@@ -77,7 +77,15 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     pub async fn run(&mut self) -> anyhow::Result<(), StateSyncError> {
         info!("State sync started.");
         loop {
-            self.handle_block_reverts().await?;
+            match self.handle_block_reverts().await {
+                Ok(_) => {}
+                Err(err) if is_recoverable(&err) => {
+                    error!("{}", err);
+                    continue;
+                }
+                Err(err) => return Err(err),
+            }
+
             let block_stream = stream_new_blocks(
                 self.reader.clone(),
                 self.central_source.clone(),
@@ -93,12 +101,27 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             pin_mut!(block_stream, state_diff_stream);
 
             loop {
-                let sync_event = select! {
+                let sync_event = match select! {
                   res = block_stream.next() => res,
                   res = state_diff_stream.next() => res,
                   complete => break,
-                }
-                .expect("Sync event should not be None.");
+                } {
+                    Some(Ok(sync_event)) => sync_event,
+                    Some(Err(err)) if is_recoverable(&err) => {
+                        error!("{}", err);
+                        break;
+                    }
+                    Some(Err(err)) => {
+                        error!("{}", err);
+                        return Err(err);
+                    }
+                    None => {
+                        // Shouldn't happen but maybe recoverable.
+                        // TODO: consider changing to 'unreachable!'.
+                        error!("Received None as a sync event.");
+                        break;
+                    }
+                };
 
                 match self.process_sync_event(sync_event).await {
                     Ok(_) => {}
@@ -110,9 +133,27 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                         info!("Detected revert while processing block {}", block_number);
                         break;
                     }
+                    // A recoverable error occured, break the loop and create new streams.
+                    Err(err) if is_recoverable(&err) => {
+                        error!("{}", err);
+                        break;
+                    }
                     // Unrecoverable errors.
                     Err(err) => return Err(err),
                 }
+            }
+        }
+
+        fn is_recoverable(err: &StateSyncError) -> bool {
+            match err {
+                StateSyncError::CentralSourceError(_) => true,
+                StateSyncError::SyncError { message: _ } => true,
+                StateSyncError::StorageError(storage_err)
+                    if matches!(storage_err, StorageError::InnerError(_)) =>
+                {
+                    true
+                }
+                _ => false,
             }
         }
     }
@@ -129,7 +170,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 state_diff,
                 deployed_contract_class_definitions,
             } => {
-                if !self.is_reverted_state_diff(block_number, block_hash).await {
+                if !self.is_reverted_state_diff(block_number, block_hash).await? {
                     self.writer
                         .begin_rw_txn()?
                         .append_state_diff(
@@ -204,18 +245,16 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     }
 
     // Reverts data if needed.
-    async fn handle_block_reverts(&mut self) -> StorageResult<()> {
+    async fn handle_block_reverts(&mut self) -> Result<(), StateSyncError> {
         let header_marker = self
             .reader
-            .begin_ro_txn()
-            .expect("Cannot read from block storage.")
-            .get_header_marker()
-            .expect("Cannot read from block storage.");
+            .begin_ro_txn()?
+            .get_header_marker()?;
 
         // Revert last blocks if needed.
         let mut last_block_in_storage = header_marker.prev();
         while let Some(block_number) = last_block_in_storage {
-            if self.should_revert_block(block_number).await {
+            if self.should_revert_block(block_number).await? {
                 self.revert_block(block_number)?;
                 last_block_in_storage = block_number.prev();
             } else {
@@ -226,22 +265,39 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     }
 
     // Deletes the block data from the storage, moving it to the ommer tables.
-    fn revert_block(&mut self, block_number: BlockNumber) -> StorageResult<()> {
+    fn revert_block(&mut self, block_number: BlockNumber) -> Result<(), StateSyncError> {
         let header = self
             .reader
             .begin_ro_txn()?
             .get_block_header(block_number)?
-            .expect("Error reading header from storage");
+            .ok_or(
+                StateSyncError::SyncError {
+                    message: format!("Tried to revert a missing header of block {}", block_number),
+                },
+            )?;
         let transactions = self
             .reader
             .begin_ro_txn()?
-            .get_block_transactions(block_number)?
-            .expect("Error reading transactions from storage");
+            .get_block_transactions(block_number)?.ok_or(
+                StateSyncError::SyncError {
+                    message: format!(
+                        "Tried to revert a missing transactions of block {}",
+                        block_number
+                    ),
+                },
+            )?;
         let transaction_outputs = self
             .reader
             .begin_ro_txn()?
             .get_block_transaction_outputs(block_number)?
-            .expect("Error reading transaction outputs from storage");
+            .ok_or(
+                StateSyncError::SyncError {
+                    message: format!(
+                        "Tried to revert a missing transaction outputs of block {}",
+                        block_number
+                    ),
+                },
+            )?;
         let mut events: Vec<_> = vec![];
         for idx in 0..transactions.len() {
             let tx_idx = TransactionIndex(block_number, TransactionOffsetInBlock(idx));
@@ -273,33 +329,29 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 &[],
             )?;
         }
-
-        txn.commit()
+        txn.commit()?;
+        Ok(())
     }
 
     /// Checks if centrals block hash at the block number is different from ours (or doesn't exist).
     /// If so, a revert is required.
-    async fn should_revert_block(&self, block_number: BlockNumber) -> bool {
-        if let Some(central_block_hash) = self
-            .central_source
+    async fn should_revert_block(&self, block_number: BlockNumber) -> Result<bool, StateSyncError> {
+        if let Some(central_block_hash) = self.central_source
             .get_block_hash(block_number)
-            .await
-            .expect("Cannot read from central.")
+            .await?
         {
             let storage_block_header = self
                 .reader
-                .begin_ro_txn()
-                .expect("Cannot read from block storage.")
-                .get_block_header(block_number)
-                .expect("Cannot read from block storage.");
+                .begin_ro_txn()?
+                .get_block_header(block_number)?;
 
             match storage_block_header {
-                Some(block_header) => block_header.block_hash != central_block_hash,
-                None => false,
+                Some(block_header) => Ok(block_header.block_hash != central_block_hash),
+                None => Ok(false),
             }
         } else {
             // Block number doesn't exist in central, revert.
-            true
+            Ok(true)
         }
     }
 
@@ -307,17 +359,15 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         &self,
         block_number: BlockNumber,
         block_hash: BlockHash,
-    ) -> bool {
+    ) -> Result<bool, StateSyncError> {
         let storage_header = self
             .reader
-            .begin_ro_txn()
-            .expect("Cannot read from block storage.")
-            .get_block_header(block_number)
-            .expect("Cannot read from block storage.");
+            .begin_ro_txn()?
+            .get_block_header(block_number)?;
 
         match storage_header {
-            None => true,
-            Some(header) => header.block_hash != block_hash,
+            None => Ok(true),
+            Some(header) => Ok(header.block_hash != block_hash),
         }
     }
 }
@@ -326,17 +376,15 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
     block_propation_sleep_duration: Duration,
-) -> impl Stream<Item = SyncEvent> {
+) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     stream! {
         loop {
-            let header_marker = reader.begin_ro_txn().expect("Cannot read from block storage.")
-                .get_header_marker()
-                .expect("Cannot read from block storage.");
+            let header_marker = reader.begin_ro_txn()?
+            .get_header_marker()?;
 
             let last_block_number = central_source
                 .get_block_marker()
-                .await
-                .expect("Cannot read from central.");
+                .await?;
 
             info!(
                 "Downloading blocks [{} - {}).",
@@ -351,7 +399,7 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
                 .fuse();
             pin_mut!(block_stream);
             while let Some(Ok((block_number, block))) = block_stream.next().await {
-                yield SyncEvent::BlockAvailable { block_number, block };
+                yield Ok(SyncEvent::BlockAvailable { block_number, block });
             }
         }
     }
@@ -361,16 +409,12 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
     block_propation_sleep_duration: Duration,
-) -> impl Stream<Item = SyncEvent> {
+) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     stream! {
         loop {
-            let txn = reader.begin_ro_txn().expect("Cannot read from block storage.");
-            let state_marker = txn
-                .get_state_marker()
-                .expect("Cannot read from block storage.");
-            let last_block_number = txn
-                .get_header_marker()
-                .expect("Cannot read from block storage.");
+            let txn = reader.begin_ro_txn()?;
+            let state_marker = txn.get_state_marker()?;
+            let last_block_number = txn.get_header_marker()?;
             drop(txn);
             info!(
                 "Downloading state diffs [{} - {}).",
@@ -388,12 +432,12 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
                 match maybe_state_diff {
                     Ok((block_number, block_hash, mut state_diff, deployed_contract_class_definitions)) => {
                         sort_state_diff(&mut state_diff);
-                        yield SyncEvent::StateDiffAvailable {
+                        yield Ok(SyncEvent::StateDiffAvailable {
                             block_number,
                             block_hash,
                             state_diff,
                             deployed_contract_class_definitions,
-                        }
+                        })
                     }
                     Err(err) => {
                         error!("{}", err);
