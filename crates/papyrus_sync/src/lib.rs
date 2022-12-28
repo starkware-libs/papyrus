@@ -94,11 +94,12 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             pin_mut!(block_stream, state_diff_stream);
 
             loop {
-                let Some(sync_event) = select! {
+                let sync_event = select! {
                   res = block_stream.next() => res,
                   res = state_diff_stream.next() => res,
                   complete => break,
-                } else {unreachable!("Should not get None.");} ;
+                }
+                .expect("Sync event should not be None.");
 
                 match self.process_sync_event(sync_event).await {
                     Ok(_) => {}
