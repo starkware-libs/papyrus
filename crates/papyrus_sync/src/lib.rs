@@ -94,11 +94,12 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             pin_mut!(block_stream, state_diff_stream);
 
             loop {
-                let Some(sync_event) = select! {
+                let sync_event = select! {
                   res = block_stream.next() => res,
                   res = state_diff_stream.next() => res,
                   complete => break,
-                } else {unreachable!("Should not get None.");} ;
+                }
+                .expect("Sync event should not be None.");
 
                 match self.process_sync_event(sync_event).await {
                     Ok(_) => {}
@@ -176,7 +177,10 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         block_number: BlockNumber,
         block: &Block,
     ) -> Result<(), StateSyncError> {
-        let Some(prev_block_number) = block_number.prev() else { return Ok(()); };
+        let prev_block_number = match block_number.prev() {
+            None => return Ok(()),
+            Some(bn) => bn,
+        };
         let prev_hash = self
             .reader
             .begin_ro_txn()?
