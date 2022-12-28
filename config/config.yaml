@@ -1,6 +1,6 @@
-chain_id: SN_GOERLI
+chain_id: SN_MAIN
 central:
-    url: https://alpha4.starknet.io/
+    url: https://alpha-mainnet.starknet.io/
     retry:
         retry_base_millis: 30
         retry_max_delay_millis: 30000
