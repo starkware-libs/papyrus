@@ -51,7 +51,7 @@ pub enum CentralError {
 #[cfg_attr(test, automock)]
 #[async_trait]
 pub trait CentralSourceTrait {
-    async fn get_block_marker(&self) -> Result<BlockNumber, ClientError>;
+    async fn get_block_marker(&self) -> Result<BlockNumber, CentralError>;
     fn stream_new_blocks(
         &self,
         initial_block_number: BlockNumber,
@@ -66,7 +66,7 @@ pub trait CentralSourceTrait {
     async fn get_block_hash(
         &self,
         block_number: BlockNumber,
-    ) -> Result<Option<BlockHash>, ClientError>;
+    ) -> Result<Option<BlockHash>, CentralError>;
 }
 
 pub(crate) type BlocksStream<'a> = BoxStream<'a, Result<(BlockNumber, Block), CentralError>>;
@@ -79,20 +79,22 @@ pub(crate) type StateUpdatesStream<'a> = BoxStream<
 impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSourceTrait
     for GenericCentralSource<TStarknetClient>
 {
-    async fn get_block_marker(&self) -> Result<BlockNumber, ClientError> {
+    async fn get_block_marker(&self) -> Result<BlockNumber, CentralError> {
         self.starknet_client
             .block_number()
-            .await?
+            .await
+            .map_err(|err| CentralError::ClientError(Arc::new(err)))?
             .map_or(Ok(BlockNumber::default()), |block_number| Ok(block_number.next()))
     }
 
     async fn get_block_hash(
         &self,
         block_number: BlockNumber,
-    ) -> Result<Option<BlockHash>, ClientError> {
+    ) -> Result<Option<BlockHash>, CentralError> {
         self.starknet_client
             .block(block_number)
-            .await?
+            .await
+            .map_err(|err| CentralError::ClientError(Arc::new(err)))?
             .map_or(Ok(None), |block| Ok(Some(block.block_hash)))
     }
 

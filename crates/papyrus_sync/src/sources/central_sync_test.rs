@@ -11,7 +11,6 @@ use starknet_api::block::{Block, BlockBody, BlockHash, BlockHeader, BlockNumber}
 use starknet_api::hash::StarkHash;
 use starknet_api::shash;
 use starknet_api::state::StateDiff;
-use starknet_client::ClientError;
 use tokio::sync::Mutex;
 
 use super::central::BlocksStream;
@@ -322,7 +321,7 @@ async fn sync_with_revert() {
 
     #[async_trait]
     impl CentralSourceTrait for MockedCentralWithRevert {
-        async fn get_block_marker(&self) -> Result<BlockNumber, ClientError> {
+        async fn get_block_marker(&self) -> Result<BlockNumber, CentralError> {
             let already_reverted = self.revert_happend();
             match already_reverted {
                 false => Ok(BlockNumber(N_BLOCKS_BEFORE_REVERT)),
@@ -333,7 +332,7 @@ async fn sync_with_revert() {
         async fn get_block_hash(
             &self,
             block_number: BlockNumber,
-        ) -> Result<Option<BlockHash>, ClientError> {
+        ) -> Result<Option<BlockHash>, CentralError> {
             match (self.revert_happend(), block_number) {
                 (false, BlockNumber(bn)) if bn >= N_BLOCKS_BEFORE_REVERT => Ok(None),
                 (false, BlockNumber(bn)) if bn < N_BLOCKS_BEFORE_REVERT => {
