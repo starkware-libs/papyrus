@@ -39,7 +39,12 @@ pvc:
   # Recommended size is at least 512Gi.
   size:
   # Is is recommended to use an SSD volume (such as GKE premium-rwo).
-  storageClass:
+  storageClass: ""
+  # Use an existing snapshot for the node's data. The kubernetes volumesnapshot object should
+  # exist in the same namespace as the rest of the resources.
+  restoreFromSnapshot:
+    enabled: false
+    snapshotName: my-snapshot
 
 # Configure Ingress.
 ingress:
