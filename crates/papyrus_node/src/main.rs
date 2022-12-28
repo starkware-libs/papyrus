@@ -4,6 +4,7 @@ use papyrus_monitoring_gateway::run_server as monitoring_run_server;
 use papyrus_node::config::Config;
 use papyrus_storage::{open_storage, StorageReader, StorageWriter};
 use papyrus_sync::{CentralSource, StateSync, StateSyncError};
+use starknet_client::ClientError;
 
 async fn run_threads(config: Config) -> anyhow::Result<()> {
     let (storage_reader, storage_writer) = open_storage(config.storage.db_config.clone())?;
@@ -28,7 +29,7 @@ async fn run_threads(config: Config) -> anyhow::Result<()> {
     ) -> Result<(), StateSyncError> {
         if let Some(sync_config) = config.sync {
             let central_source = CentralSource::new(config.central.clone())
-                .map_err(StateSyncError::ClientCreation)?;
+                .map_err(|e| StateSyncError::CentralSourceError(ClientError::ClientCreation(e)))?;
             let mut sync =
                 StateSync::new(sync_config, central_source, storage_reader.clone(), storage_writer);
             return sync.run().await;

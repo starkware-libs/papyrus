@@ -108,6 +108,8 @@ pub enum ClientError {
     /// A client error representing bad status http responses.
     #[error("Bad response status code: {:?} message: {:?}.", code, message)]
     BadResponseStatus { code: StatusCode, message: String },
+    #[error(transparent)]
+    ClientCreation(#[from] ClientCreationError),
     /// A client error representing http request errors.
     #[error(transparent)]
     RequestError(#[from] reqwest::Error),
