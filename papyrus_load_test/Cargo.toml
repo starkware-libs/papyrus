@@ -1,6 +1,3 @@
-# This is a separate workspace because Goose can't work with the Tokio version we have.
-[workspace]
-
 [package]
 name = "papyrus_load_test"
 version = "0.1.0"
