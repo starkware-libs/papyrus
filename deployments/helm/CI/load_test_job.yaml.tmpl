@@ -3,7 +3,7 @@ apiVersion: batch/v1
 kind: Job
 
 metadata:
-  name: papyrus-load-test
+  name: papyrus-XXX-load-test
 
 spec:
   template:
@@ -17,7 +17,7 @@ spec:
           env:
             - name: NODE_ENDPOINT
               # value: "https://papyrus.starkware.co"
-              value: "http://papyrus-rpc.papyrus.svc.cluster.local:8080"
+              value: "http://papyrus-XXX-rpc.papyrus.svc.cluster.local:8080"
       imagePullSecrets:
         - name: regcred
       restartPolicy: Never

@@ -16,8 +16,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set short git commit SHA and namespace envs
-        run: echo "NAMESPACE=papyrus-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+      # - name: Set short git commit SHA and namespace envs
+      #   run: echo "NAMESPACE=papyrus-$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+      - name: Set a unique run identifier
+        run: echo "UNIQE_ID=${{ github.run_number }}-${{ github.run_attempt }}" >> $GITHUB_ENV
 
       - id: "auth"
         name: "Authenticate to Google Cloud"
@@ -32,33 +34,33 @@ jobs:
           cluster_name: "${{ secrets.GKE_CI_CLUSTER_NAME }}"
           location: "${{ secrets.GKE_CI_CLUSTER_REGION }}"
 
-      # TODO: remove when public and let helm install create the namespace
-      - name: Create namespace
-        run: kubectl create namespace $NAMESPACE
+      # # TODO: remove when public and let helm install create the namespace
+      # - name: Create namespace
+      #   run: kubectl create namespace $NAMESPACE
 
-      # TODO: remove when public and let helm install create the namespace
-      - name: Add k8s secret to access container registry
-        run: |
-          kubectl create secret docker-registry regcred \
-          --namespace=$NAMESPACE \
-          --docker-server=ghcr.io \
-          --docker-username=${{ secrets.GHCR_USERNAME }} \
-          --docker-password=${{ secrets.GHCR_TOKEN }}
+      # # TODO: remove when public and let helm install create the namespace
+      # - name: Add k8s secret to access container registry
+      #   run: |
+      #     kubectl create secret docker-registry regcred \
+      #     --namespace=$NAMESPACE \
+      #     --docker-server=ghcr.io \
+      #     --docker-username=${{ secrets.GHCR_USERNAME }} \
+      #     --docker-password=${{ secrets.GHCR_TOKEN }}
 
       - id: "helm-install"
         name: Deploy to Kubernetes using helm
         run: |
-          helm upgrade --install papyrus deployments/helm/ \
-          --namespace $NAMESPACE \
+          helm upgrade --install papyrus-${UNIQE_ID} deployments/helm/ \
+          --namespace papyrus \
           --values deployments/helm/CI/default_values.yaml \
-          --set ingress.host=${{ secrets.GKE_CI_HOST }}
+          --set ingress.host=${{ secrets.GKE_CI_HOST }}-${UNIQE_ID}
 
       - name: Run load test
-        run: kubectl --namespace=$NAMESPACE apply -f deployments/helm/CI/load_test_job.yaml --wait=true
+        run: sh -c "deployments/helm/CI/run_benchmark.sh ${UNIQE_ID}"
 
       - name: Wait for BM to finish
-        run: kubectl wait --namespace=$NAMESPACE --for=condition=complete --timeout=30s job/papyrus-load-test
+        run: kubectl wait --namespace=papyrus --for=condition=complete --timeout=30s job/papyrus-${UNIQE_ID}-load-test
 
       # - name: Clean the deployment
       #   if: always()
-      #   run: kubectl delete ns $NAMESPACE
+      #   run: helm delete papyrus-${UNIQE_ID}
