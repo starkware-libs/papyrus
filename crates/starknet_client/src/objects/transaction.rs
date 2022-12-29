@@ -70,6 +70,7 @@ impl Transaction {
 pub struct L1HandlerTransaction {
     pub transaction_hash: TransactionHash,
     pub version: TransactionVersion,
+    #[serde(default)]
     pub nonce: Nonce,
     pub contract_address: ContractAddress,
     pub entry_point_selector: EntryPointSelector,
