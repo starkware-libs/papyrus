@@ -28,10 +28,10 @@ use crate::api::{
     JsonRpcError, Tag,
 };
 use crate::block::Block;
-use crate::state::{ContractClass, StateUpdate, ThinStateDiff};
+use crate::state::{ContractClass, StateUpdate};
 use crate::test_utils::{
-    get_block_to_match_json_file, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
-    send_request,
+    get_block_to_match_json_file, get_state_diff_to_match_json_file, get_test_gateway_config,
+    get_test_rpc_server_and_storage_writer, send_request, write_state_diff_for_second_block,
 };
 use crate::transaction::{
     Event, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
@@ -267,13 +267,14 @@ async fn get_block_w_full_transactions() {
 #[tokio::test]
 async fn get_storage_at() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let (header, _, diff, deployed_contract_class_definitions) = get_test_state_diff();
+    let header = BlockHeader::default();
+    let diff = get_test_state_diff();
     storage_writer
         .begin_rw_txn()
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)
+        .append_state_diff(header.block_number, diff.clone(), vec![])
         .unwrap()
         .commit()
         .unwrap();
@@ -357,13 +358,14 @@ async fn get_storage_at() {
 #[tokio::test]
 async fn get_class_hash_at() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let (header, _, diff, deployed_contract_class_definitions) = get_test_state_diff();
+    let header = BlockHeader::default();
+    let diff = get_test_state_diff();
     storage_writer
         .begin_rw_txn()
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)
+        .append_state_diff(header.block_number, diff.clone(), vec![])
         .unwrap()
         .commit()
         .unwrap();
@@ -444,13 +446,14 @@ async fn get_class_hash_at() {
 #[tokio::test]
 async fn get_nonce() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let (header, _, diff, deployed_contract_class_definitions) = get_test_state_diff();
+    let header = BlockHeader::default();
+    let diff = get_test_state_diff();
     storage_writer
         .begin_rw_txn()
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)
+        .append_state_diff(header.block_number, diff.clone(), vec![])
         .unwrap()
         .commit()
         .unwrap();
@@ -725,37 +728,14 @@ async fn get_block_transaction_count() {
 #[tokio::test]
 async fn get_state_update() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let (parent_header, header, diff, deployed_contract_class_definitions) = get_test_state_diff();
-    storage_writer
-        .begin_rw_txn()
-        .unwrap()
-        .append_header(parent_header.block_number, &parent_header)
-        .unwrap()
-        .append_state_diff(
-            parent_header.block_number,
-            starknet_api::state::StateDiff::default(),
-            vec![],
-        )
-        .unwrap()
-        .append_header(header.block_number, &header)
-        .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)
-        .unwrap()
-        .commit()
-        .unwrap();
-
-    let expected_update = StateUpdate {
-        block_hash: header.block_hash,
-        new_root: header.state_root,
-        old_root: parent_header.state_root,
-        state_diff: ThinStateDiff::from(papyrus_storage::ThinStateDiff::from(diff)),
-    };
+    let state_update = write_state_diff_for_second_block(&mut storage_writer);
+    let expected_update = StateUpdate::from(state_update);
 
     // Get state update by block hash.
     let res = module
         .call::<_, StateUpdate>(
             "starknet_getStateUpdate",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_update.block_hash))],
         )
         .await
         .unwrap();
@@ -765,7 +745,7 @@ async fn get_state_update() {
     let res = module
         .call::<_, StateUpdate>(
             "starknet_getStateUpdate",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))],
         )
         .await
         .unwrap();
@@ -859,33 +839,16 @@ async fn get_transaction_receipt() {
 #[tokio::test]
 async fn get_class() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let (parent_header, header, diff, deployed_contract_class_definitions) = get_test_state_diff();
-    storage_writer
-        .begin_rw_txn()
-        .unwrap()
-        .append_header(parent_header.block_number, &parent_header)
-        .unwrap()
-        .append_state_diff(
-            parent_header.block_number,
-            starknet_api::state::StateDiff::default(),
-            vec![],
-        )
-        .unwrap()
-        .append_header(header.block_number, &header)
-        .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)
-        .unwrap()
-        .commit()
-        .unwrap();
-
-    let (class_hash, contract_class) = diff.declared_classes.get_index(1).unwrap();
+    let state_update = write_state_diff_for_second_block(&mut storage_writer);
+    let (class_hash, contract_class) =
+        state_update.state_diff.declared_classes.get_index(0).unwrap();
     let expected_contract_class = contract_class.clone().try_into().unwrap();
 
     // Get class by block hash.
     let res = module
         .call::<_, ContractClass>(
             "starknet_getClass",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *class_hash),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(state_update.block_hash)), *class_hash),
         )
         .await
         .unwrap();
@@ -895,7 +858,7 @@ async fn get_class() {
     let res = module
         .call::<_, ContractClass>(
             "starknet_getClass",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *class_hash),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), *class_hash),
         )
         .await
         .unwrap();
@@ -906,7 +869,7 @@ async fn get_class() {
         .call::<_, ContractClass>(
             "starknet_getClass",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))),
                 ClassHash(shash!("0x7")),
             ),
         )
@@ -922,10 +885,7 @@ async fn get_class() {
     let err = module
         .call::<_, ContractClass>(
             "starknet_getClass",
-            (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_header.block_number)),
-                *class_hash,
-            ),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))), *class_hash),
         )
         .await
         .unwrap_err();
@@ -972,44 +932,18 @@ async fn get_class() {
 #[tokio::test]
 async fn get_class_at() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let (parent_header, header, diff, deployed_contract_class_definitions) = get_test_state_diff();
-    storage_writer
-        .begin_rw_txn()
-        .unwrap()
-        .append_header(parent_header.block_number, &parent_header)
-        .unwrap()
-        .append_state_diff(
-            parent_header.block_number,
-            starknet_api::state::StateDiff::default(),
-            vec![],
-        )
-        .unwrap()
-        .append_header(header.block_number, &header)
-        .unwrap()
-        .append_state_diff(
-            header.block_number,
-            diff.clone(),
-            deployed_contract_class_definitions.clone(),
-        )
-        .unwrap()
-        .commit()
-        .unwrap();
-
-    let (address, hash) = diff.deployed_contracts.get_index(1).unwrap();
-    let expected_contract_class = deployed_contract_class_definitions
-        .iter()
-        .find(|(h, _)| h == hash)
-        .unwrap()
-        .1
-        .clone()
-        .try_into()
-        .unwrap();
+    let state_update = write_state_diff_for_second_block(&mut storage_writer);
+    let (class_hash, contract_class) =
+        state_update.state_diff.declared_classes.get_index(0).unwrap();
+    let expected_contract_class = contract_class.clone().try_into().unwrap();
+    assert_eq!(state_update.state_diff.deployed_contracts.get_index(0).unwrap().1, class_hash);
+    let address = *state_update.state_diff.deployed_contracts.get_index(0).unwrap().0;
 
     // Get class by block hash.
     let res = module
         .call::<_, ContractClass>(
             "starknet_getClassAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(state_update.block_hash)), address),
         )
         .await
         .unwrap();
@@ -1019,7 +953,7 @@ async fn get_class_at() {
     let res = module
         .call::<_, ContractClass>(
             "starknet_getClassAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), address),
         )
         .await
         .unwrap();
@@ -1030,7 +964,7 @@ async fn get_class_at() {
         .call::<_, ContractClass>(
             "starknet_getClassAt",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))),
                 ContractAddress(patky!("0x12")),
             ),
         )
@@ -1046,10 +980,7 @@ async fn get_class_at() {
     let err = module
         .call::<_, ContractClass>(
             "starknet_getClassAt",
-            (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_header.block_number)),
-                *address,
-            ),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))), address),
         )
         .await
         .unwrap_err();
@@ -1067,7 +998,7 @@ async fn get_class_at() {
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
-                *address,
+                address,
             ),
         )
         .await
@@ -1082,7 +1013,7 @@ async fn get_class_at() {
     let err = module
         .call::<_, ContractClass>(
             "starknet_getClassAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))), *address),
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))), address),
         )
         .await
         .unwrap_err();
@@ -1490,7 +1421,7 @@ async fn serialize_returns_expcted_json() {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let block0 = get_test_block(0);
     let block1 = get_block_to_match_json_file();
-    let (_, _, state_diff, deployed_contract_class_definitions) = get_test_state_diff();
+    let state_diff = get_state_diff_to_match_json_file();
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -1504,11 +1435,7 @@ async fn serialize_returns_expcted_json() {
         .unwrap()
         .append_body(block1.header.block_number, block1.body)
         .unwrap()
-        .append_state_diff(
-            block1.header.block_number,
-            state_diff,
-            deployed_contract_class_definitions,
-        )
+        .append_state_diff(block1.header.block_number, state_diff, vec![])
         .unwrap()
         .commit()
         .unwrap();

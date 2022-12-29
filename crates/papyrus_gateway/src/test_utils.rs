@@ -1,8 +1,9 @@
 use std::net::SocketAddr;
 
+use indexmap::IndexMap;
 use jsonrpsee::http_server::RpcModule;
-use papyrus_storage::test_utils::get_test_storage;
-use papyrus_storage::StorageWriter;
+use papyrus_storage::test_utils::{get_test_state_diff, get_test_storage, read_json_file};
+use papyrus_storage::{HeaderStorageWriter, StateStorageWriter, StorageWriter};
 use reqwest::Client;
 use starknet_api::block::{
     Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockTimestamp, GasPrice,
@@ -12,6 +13,7 @@ use starknet_api::core::{
 };
 use starknet_api::hash::StarkHash;
 use starknet_api::serde_utils::bytes_from_hex_str;
+use starknet_api::state::{ContractClass, StateDiff, StateUpdate, StorageKey};
 use starknet_api::transaction::{
     CallData, ContractAddressSalt, DeployTransaction, DeployTransactionOutput, EthAddress, Fee,
     InvokeTransaction, InvokeTransactionOutput, L2ToL1Payload, MessageToL1, Transaction,
@@ -68,6 +70,38 @@ pub(crate) fn get_test_rpc_server_and_storage_writer()
         .into_rpc(),
         storage_writer,
     )
+}
+
+pub fn write_state_diff_for_second_block(storage_writer: &mut StorageWriter) -> StateUpdate {
+    let parent_header = BlockHeader::default();
+    let header = BlockHeader {
+        block_hash: BlockHash(shash!("0x1")),
+        block_number: BlockNumber(1),
+        parent_hash: parent_header.block_hash,
+        ..BlockHeader::default()
+    };
+    let state_diff = get_test_state_diff();
+
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(parent_header.block_number, &parent_header)
+        .unwrap()
+        .append_state_diff(parent_header.block_number, StateDiff::default(), vec![])
+        .unwrap()
+        .append_header(header.block_number, &header)
+        .unwrap()
+        .append_state_diff(header.block_number, state_diff.clone(), vec![])
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    StateUpdate {
+        block_hash: header.block_hash,
+        new_root: header.state_root,
+        old_root: parent_header.state_root,
+        state_diff,
+    }
 }
 
 pub fn get_body_to_match_json_file() -> BlockBody {
@@ -192,4 +226,36 @@ pub fn get_block_to_match_json_file() -> Block {
     };
 
     Block { header, body: get_body_to_match_json_file() }
+}
+
+pub fn get_state_diff_to_match_json_file() -> StateDiff {
+    let address0 = ContractAddress(patky!(
+        "0x543e54f26ae33686f57da2ceebed98b340c3a78e9390931bd84fb711d5caabc"
+    ));
+    let hash0 =
+        ClassHash(shash!("0x10455c752b86932ce552f2b0fe81a880746649b9aee7e0d842bf3f52378f9f8"));
+    let class_value = read_json_file("storage_contract_class.json");
+    let class0 = serde_json::from_value(class_value).unwrap();
+    let address1 = ContractAddress(patky!("0x21"));
+    let hash1 = ClassHash(shash!("0x5"));
+    let class1 = ContractClass::default();
+    let hash2 = ClassHash(shash!("0x6"));
+    let class2 = ContractClass::default();
+
+    let key0 =
+        StorageKey(patky!("0x70be09c520814c13480a220ad31eb94bf37f0259e002b0275e55f3c309ee823"));
+    let value0 = shash!("0x1dc19dce5326f42f2b319d78b237148d1e582efbf700efd6eb2c9fcbc451327");
+    let key1 =
+        StorageKey(patky!("0x420eefdc029d53134b57551d676c9a450e5f75f9f017ca75f6fb28350f60d54"));
+    let value1 = shash!("0x7c7139d51f4642ec66088959e69eb890e2e6e87c08dad2a223da9161c99c939");
+
+    StateDiff {
+        deployed_contracts: IndexMap::from([(address0, hash0), (address1, hash1)]),
+        storage_diffs: IndexMap::from([(
+            address0,
+            IndexMap::from([(key0, value0), (key1, value1)]),
+        )]),
+        declared_classes: IndexMap::from([(hash0, class0), (hash1, class1), (hash2, class2)]),
+        nonces: IndexMap::from([(address0, Nonce(StarkHash::from(1)))]),
+    }
 }

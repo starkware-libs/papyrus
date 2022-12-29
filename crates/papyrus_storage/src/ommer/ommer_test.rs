@@ -1,4 +1,4 @@
-use starknet_api::block::BlockNumber;
+use starknet_api::block::{BlockHeader, BlockNumber};
 use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, StateNumber};
 use starknet_api::transaction::{Event, Transaction, TransactionOffsetInBlock, TransactionOutput};
@@ -135,14 +135,15 @@ fn insert_body_to_ommer() {
 #[test]
 fn move_state_diff_to_ommer() {
     let (reader, mut writer) = get_test_storage();
-    let (header, _, state_diff, declared_classes) = get_test_state_diff();
+    let header = BlockHeader::default();
+    let state_diff = get_test_state_diff();
     let block_number = header.block_number;
 
     // Add state diff to cannonical tables.
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_state_diff(block_number, state_diff, declared_classes)
+        .append_state_diff(block_number, state_diff, vec![])
         .unwrap()
         .commit()
         .unwrap();
@@ -163,7 +164,8 @@ fn move_state_diff_to_ommer() {
 #[test]
 fn insert_raw_state_diff_to_ommer() {
     let (_, mut writer) = get_test_storage();
-    let (header, _, state_diff, declared_classes) = get_test_state_diff();
+    let header = BlockHeader::default();
+    let state_diff = get_test_state_diff();
 
     let thin_state_diff = ThinStateDiff::from(state_diff);
 
@@ -171,7 +173,7 @@ fn insert_raw_state_diff_to_ommer() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .insert_ommer_state_diff(header.block_hash, &thin_state_diff, &declared_classes)
+        .insert_ommer_state_diff(header.block_hash, &thin_state_diff, &[])
         .unwrap()
         .commit()
         .unwrap();

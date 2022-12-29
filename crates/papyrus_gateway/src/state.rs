@@ -117,6 +117,19 @@ pub struct StateUpdate {
     pub state_diff: ThinStateDiff,
 }
 
+impl From<starknet_api::state::StateUpdate> for StateUpdate {
+    fn from(update: starknet_api::state::StateUpdate) -> Self {
+        Self {
+            block_hash: update.block_hash,
+            new_root: update.new_root,
+            old_root: update.old_root,
+            state_diff: ThinStateDiff::from(papyrus_storage::ThinStateDiff::from(
+                update.state_diff,
+            )),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ThinStateDiff {
     pub deployed_contracts: Vec<DeployedContract>,
