@@ -6,7 +6,7 @@ use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde_json::json;
 
-type MethodResult<T> = Result<T, TransactionError>;
+type MethodResult<T> = Result<T, Box<TransactionError>>;
 
 async fn post_jsonrpc_request<T: DeserializeOwned>(
     user: &mut GooseUser,
@@ -14,12 +14,13 @@ async fn post_jsonrpc_request<T: DeserializeOwned>(
     params: serde_json::Value,
 ) -> MethodResult<T> {
     let request = jsonrpc_request(method, params);
-    let response = user.post_json("", &request).await?.response?;
+    let response = user.post_json("", &request).await?.response.map_err(|e| Box::new(e.into()))?;
     #[derive(Deserialize)]
     struct TransactionReceiptResponse<T> {
         result: T,
     }
-    let response: TransactionReceiptResponse<T> = response.json().await?;
+    let response: TransactionReceiptResponse<T> =
+        response.json().await.map_err(|e| Box::new(e.into()))?;
 
     Ok(response.result)
 }
@@ -38,12 +39,16 @@ fn jsonrpc_request(method: &str, params: serde_json::Value) -> serde_json::Value
 /// getBlockWithTxHashes
 /// ```
 async fn loadtest_get_block_with_tx_hashes_by_number(user: &mut GooseUser) -> TransactionResult {
-    post_jsonrpc_request(
-        user,
-        "starknet_getBlockWithTxHashes",
-        json!({ "block_id": { "block_number": 1 } }),
-    )
-    .await
+    let _: serde_json::Value = get_block_with_tx_hashes_by_number(user, 1).await?;
+    Ok(())
+}
+
+pub async fn get_block_with_tx_hashes_by_number<T: DeserializeOwned>(
+    user: &mut GooseUser,
+    number: u64,
+) -> MethodResult<T> {
+    post_jsonrpc_request(user, "starknet_getBlockWithTxHashes", json!([{ "block_number": number }]))
+        .await
 }
 
 /// Tests the rpc:
@@ -52,14 +57,20 @@ async fn loadtest_get_block_with_tx_hashes_by_number(user: &mut GooseUser) -> Tr
 /// ```
 async fn loadtest_get_block_with_tx_hashes_by_hash(user: &mut GooseUser) -> TransactionResult {
     // TODO(shahak): Get a hash by getting a block instead of relying on that this hash exists.
-    post_jsonrpc_request(
+    let _: serde_json::Value = get_block_with_tx_hashes_by_hash(
         user,
-        "starknet_getBlockWithTxHashes",
-        json!({ "block_id": {
-            "block_number": "0x58d8604f22510af5b120d1204ebf25292a79bfb09c4882c2e456abc2763d4a"
-        }}),
+        "0x2a70fb03fe363a2d6be843343a1d81ce6abeda1e9bd5cc6ad8fa9f45e30fdeb",
     )
-    .await
+    .await?;
+    Ok(())
+}
+
+pub async fn get_block_with_tx_hashes_by_hash<T: DeserializeOwned>(
+    user: &mut GooseUser,
+    hash_str: &str,
+) -> MethodResult<T> {
+    post_jsonrpc_request(user, "starknet_getBlockWithTxHashes", json!([{ "block_hash": hash_str }]))
+        .await
 }
 
 #[tokio::main]
