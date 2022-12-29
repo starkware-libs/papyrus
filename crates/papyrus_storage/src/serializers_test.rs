@@ -3,7 +3,6 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 use indexmap::IndexMap;
-use serde_json::Value;
 use starknet_api::core::ContractAddress;
 use starknet_api::hash::StarkHash;
 use starknet_api::state::StorageKey;
@@ -92,7 +91,11 @@ pub(crate) use create_test;
 ////////////////////////////////////////////////////////////////////////
 // Implements the [`GetTestInstance`] trait for primitive types.
 ////////////////////////////////////////////////////////////////////////
-default_impl_get_test_instance!(Value);
+impl GetTestInstance for serde_json::Value {
+    fn get_test_instance() -> Self {
+        serde_json::from_str(r#""0x0""#).unwrap()
+    }
+}
 default_impl_get_test_instance!(String);
 impl<T: GetTestInstance> GetTestInstance for Option<T> {
     fn get_test_instance() -> Self {
