@@ -227,32 +227,22 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
 
     // Deletes the block data from the storage, moving it to the ommer tables.
     fn revert_block(&mut self, block_number: BlockNumber) -> StorageResult<()> {
-        let header = self
-            .reader
-            .begin_ro_txn()?
-            .get_block_header(block_number)?
-            .expect("Error reading header from storage");
-        let transactions = self
-            .reader
-            .begin_ro_txn()?
+        let mut txn = self.writer.begin_rw_txn()?;
+        let header =
+            txn.get_block_header(block_number)?.expect("Error reading header from storage");
+        let transactions = txn
             .get_block_transactions(block_number)?
             .expect("Error reading transactions from storage");
-        let transaction_outputs = self
-            .reader
-            .begin_ro_txn()?
+        let transaction_outputs = txn
             .get_block_transaction_outputs(block_number)?
             .expect("Error reading transaction outputs from storage");
         let mut events: Vec<_> = vec![];
         for idx in 0..transactions.len() {
             let tx_idx = TransactionIndex(block_number, TransactionOffsetInBlock(idx));
-            events.push(
-                self.reader.begin_ro_txn()?.get_transaction_events(tx_idx)?.unwrap_or_default(),
-            );
+            events.push(txn.get_transaction_events(tx_idx)?.unwrap_or_default());
         }
 
-        let mut txn = self
-            .writer
-            .begin_rw_txn()?
+        txn = txn
             .revert_header(block_number)?
             .insert_ommer_header(header.block_hash, &header)?
             .revert_body(block_number)?
