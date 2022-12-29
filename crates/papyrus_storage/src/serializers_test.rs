@@ -3,7 +3,6 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 use indexmap::IndexMap;
-use serde_json::Value;
 use starknet_api::core::ContractAddress;
 use starknet_api::hash::StarkHash;
 use starknet_api::state::StorageKey;
@@ -32,7 +31,7 @@ pub trait GetTestInstance: Sized {
 }
 
 macro_rules! default_impl_get_test_instance {
-    ($name:ident) => {
+    ($name:path) => {
         impl GetTestInstance for $name {
             fn get_test_instance() -> Self {
                 Self::default()
@@ -92,7 +91,7 @@ pub(crate) use create_test;
 ////////////////////////////////////////////////////////////////////////
 // Implements the [`GetTestInstance`] trait for primitive types.
 ////////////////////////////////////////////////////////////////////////
-default_impl_get_test_instance!(Value);
+default_impl_get_test_instance!(serde_json::Value);
 default_impl_get_test_instance!(String);
 impl<T: GetTestInstance> GetTestInstance for Option<T> {
     fn get_test_instance() -> Self {

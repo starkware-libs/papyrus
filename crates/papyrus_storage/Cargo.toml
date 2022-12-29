@@ -15,7 +15,6 @@ indexmap = { version = "1.9.2", features = ["serde"] }
 integer-encoding = { version = "3.0.4" }
 libmdbx = { version = ">=0.1.5,<0.1.8", features = ["lifetimed-bytes"] }
 log = { version = "0.4" }
-rand = { version = "0.8.5" }
 reqwest = { version = "0.11", features = ["json", "blocking"] }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" }
@@ -30,3 +29,4 @@ url = { version = "2.2.2" }
 assert_matches = { version = "1.5.0" }
 logtest = { version = "2.0.0" }
 paste = { version = "1.0.9" }
+rand = { version = "0.8.5" }
