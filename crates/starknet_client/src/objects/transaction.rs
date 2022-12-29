@@ -13,10 +13,11 @@ use starknet_api::transaction::{
 // TODO(dan): consider extracting common fields out (version, hash, type).
 #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(untagged)]
+// Note: When deserializing an untagged enum, no variant can be a prefix of variants to follow.
 pub enum Transaction {
     Declare(DeclareTransaction),
-    Deploy(DeployTransaction),
     DeployAccount(DeployAccountTransaction),
+    Deploy(DeployTransaction),
     Invoke(InvokeTransaction),
     L1Handler(L1HandlerTransaction),
 }
