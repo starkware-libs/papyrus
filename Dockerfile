@@ -51,12 +51,20 @@ RUN touch crates/*/src/lib.rs; \
 
 # Starting a new stage so that the final image will contain only the executable.
 FROM rust:1.63-slim-buster
+ENV ID=1000
+
 WORKDIR /app
 COPY --from=builder /app/target/release/papyrus_node /app/target/release/papyrus_node
 COPY config/ /app/config
 
 RUN mkdir data
+RUN set -ex; \
+    addgroup --gid ${ID} papyrus; \
+    adduser --gid ${ID} --uid ${ID} --gecos "" --disabled-password --home /app papyrus; \
+    chown -R papyrus:papyrus /app
 
 EXPOSE 8080 8081
+
+USER ${ID}
 
 ENTRYPOINT ["/app/target/release/papyrus_node"]
