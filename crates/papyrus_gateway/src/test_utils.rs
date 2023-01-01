@@ -72,9 +72,6 @@ pub(crate) fn get_test_rpc_server_and_storage_writer()
 }
 
 pub async fn get_starknet_spec_api_schema(component_names: &[&str]) -> JSONSchema {
-    // TODO(anatg): Use this instead once the schema on starknet-specs is fixed:
-    // let target = "https://raw.githubusercontent.com/starkware-libs/starknet-specs/master/api/starknet_api_openrpc.json";
-    // let text = reqwest::get(target).await.unwrap().text().await.unwrap();
     let target = "./resources/starknet_api_openrpc.json";
     let text = std::fs::read_to_string(target).unwrap();
     let spec: serde_json::Value = serde_json::from_str(&text).unwrap();
