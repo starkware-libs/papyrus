@@ -12,7 +12,22 @@ use starknet_api::transaction::{
 use crate::body::events::ThinTransactionOutput;
 use crate::db::RW;
 use crate::state::data::ThinStateDiff;
-use crate::{OmmerEventKey, OmmerTransactionKey, StorageResult, StorageTxn};
+use crate::{
+    OmmerEventKey, OmmerTransactionKey, StorageError, StorageResult, StorageTxn, TransactionKind,
+};
+
+pub trait OmmerStorageReader {
+    fn get_ommer_header(&self, block_hash: BlockHash) -> StorageResult<Option<BlockHeader>>;
+}
+
+impl<'env, Mode: TransactionKind> OmmerStorageReader for StorageTxn<'env, Mode> {
+    fn get_ommer_header(&self, block_hash: BlockHash) -> StorageResult<Option<BlockHeader>> {
+        self.txn
+            .open_table(&self.tables.ommer_headers)?
+            .get(&self.txn, &block_hash)
+            .map_err(StorageError::InnerError)
+    }
+}
 
 /// Writer for ommer blocks data.
 /// To enforce that no commit happen after a failure, we consume and return Self on success.
