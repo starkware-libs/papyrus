@@ -11,7 +11,7 @@ mod test_utils;
 use std::fmt::{self, Display, Formatter};
 
 use async_trait::async_trait;
-use log::error;
+use log::{debug, error};
 #[cfg(any(feature = "testing", test))]
 use mockall::automock;
 use reqwest::{Client, StatusCode};
@@ -77,7 +77,7 @@ pub enum StarknetErrorCode {
 }
 
 /// A client error wrapping error codes returned by the starknet gateway.
-#[derive(thiserror::Error, Debug, Deserialize, Serialize)]
+#[derive(thiserror::Error, Debug, Clone, Deserialize, Serialize)]
 pub struct StarknetError {
     pub code: StarknetErrorCode,
     pub message: String,
@@ -216,22 +216,34 @@ impl StarknetClient {
                 (err.status().ok_or(err)?, msg)
             }
         };
-        match code {
-            StatusCode::OK => Ok(message),
+
+        if code == StatusCode::OK {
+            return Ok(message);
+        }
+
+        let (error, msg) = match code {
             StatusCode::INTERNAL_SERVER_ERROR => {
                 let starknet_error: StarknetError = serde_json::from_str(&message)?;
-                error!(
-                    "Starknet server responded with an internal server error: {}.",
-                    starknet_error
-                );
-                Err(ClientError::StarknetError(starknet_error))
+                (
+                    ClientError::StarknetError(starknet_error.clone()),
+                    format!(
+                        "Starknet server responded with an internal server error: {}.",
+                        starknet_error
+                    ),
+                )
             }
-            _ => {
-                // TODO(dan): consider logging as info instead.
-                error!("Bad response status code: {:?}, message: {:?}.", code, message);
-                Err(ClientError::BadResponseStatus { code, message })
-            }
+            _ => (
+                ClientError::BadResponseStatus { code, message: message.clone() },
+                format!("Bad response status code: {:?}, message: {:?}.", code, message),
+            ),
+        };
+
+        if Self::should_retry(&error) {
+            debug!("{}", msg);
+        } else {
+            error!("{}", msg);
         }
+        Err(error)
     }
 
     async fn request_block(
@@ -253,7 +265,10 @@ impl StarknetClient {
                 code: StarknetErrorCode::BlockNotFound,
                 message: _,
             })) => Ok(None),
-            Err(err) => Err(err),
+            Err(err) => {
+                error!("Failed to get block number {:?} from starknet server.", block_number);
+                Err(err)
+            }
         }
     }
 }
@@ -280,7 +295,10 @@ impl StarknetClientTrait for StarknetClient {
                 code: StarknetErrorCode::UndeclaredClass,
                 message: _,
             })) => Ok(None),
-            Err(err) => Err(err),
+            Err(err) => {
+                error!("Failed to get class with hash {:?} from starknet server.", class_hash);
+                Err(err)
+            }
         }
     }
 
@@ -293,17 +311,17 @@ impl StarknetClientTrait for StarknetClient {
                 let state_update: StateUpdate = serde_json::from_str(&raw_state_update)?;
                 Ok(Some(state_update))
             }
-            Err(err) => match err {
-                ClientError::StarknetError(sn_err) => {
-                    let StarknetError { code, message } = sn_err;
-                    if code == StarknetErrorCode::BlockNotFound {
-                        Ok(None)
-                    } else {
-                        Err(ClientError::StarknetError(StarknetError { code, message }))
-                    }
-                }
-                _ => Err(err),
-            },
+            Err(ClientError::StarknetError(StarknetError {
+                code: StarknetErrorCode::BlockNotFound,
+                message: _,
+            })) => Ok(None),
+            Err(err) => {
+                error!(
+                    "Failed to get state update for block number {:?} from starknet server.",
+                    block_number
+                );
+                Err(err)
+            }
         }
     }
 }
