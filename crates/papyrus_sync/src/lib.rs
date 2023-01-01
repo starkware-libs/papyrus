@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use async_stream::stream;
 use futures_util::{pin_mut, select, Stream, StreamExt};
-use log::{error, info};
+use log::{debug, error, info};
 use papyrus_storage::{
     BodyStorageReader, BodyStorageWriter, HeaderStorageReader, HeaderStorageWriter,
     OmmerStorageWriter, StateStorageReader, StateStorageWriter, StorageError, StorageReader,
@@ -77,6 +77,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     pub async fn run(&mut self) -> anyhow::Result<(), StateSyncError> {
         info!("State sync started.");
         loop {
+            debug!("Creating streams");
             self.handle_block_reverts().await?;
             let block_stream = stream_new_blocks(
                 self.reader.clone(),
@@ -93,6 +94,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             pin_mut!(block_stream, state_diff_stream);
 
             loop {
+                debug!("Getting next sync event");
                 let sync_event = select! {
                   res = block_stream.next() => res,
                   res = state_diff_stream.next() => res,
@@ -119,9 +121,14 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
 
     // Tries to store the incoming data.
     async fn process_sync_event(&mut self, sync_event: SyncEvent) -> Result<(), StateSyncError> {
+        debug!("Processing sync event");
         match sync_event {
             SyncEvent::BlockAvailable { block_number, block } => {
-                self.store_block(block_number, block).await
+                let bh = block.header.block_hash;
+                debug!("store_block {}, block hash: {:?}", block_number, bh);
+                let r = self.store_block(block_number, block).await;
+                debug!("finished store_block {}, block hash: {:?}", block_number, bh);
+                r
             }
             SyncEvent::StateDiffAvailable {
                 block_number,
@@ -129,7 +136,12 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 state_diff,
                 deployed_contract_class_definitions,
             } => {
+                debug!(
+                    "process_sync_event: beginning state diff {}, block hash {:?}",
+                    block_number, block_hash
+                );
                 if !self.is_reverted_state_diff(block_number, block_hash).await {
+                    debug!("not reverted");
                     self.writer
                         .begin_rw_txn()?
                         .append_state_diff(
@@ -139,6 +151,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                         )?
                         .commit()?;
                 } else {
+                    debug!("reverted");
                     self.writer
                         .begin_rw_txn()?
                         .insert_ommer_state_diff(
@@ -148,6 +161,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                         )?
                         .commit()?;
                 }
+                debug!("finished state diff {}, block hash {:?}", block_number, block_hash);
                 Ok(())
             }
         }
@@ -317,6 +331,7 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
     central_source: Arc<TCentralSource>,
     block_propation_sleep_duration: Duration,
 ) -> impl Stream<Item = SyncEvent> {
+    debug!("Creating sync blocks stream (of SyncEvent)");
     stream! {
         loop {
             let header_marker = reader.begin_ro_txn().expect("Cannot read from block storage.")
@@ -336,11 +351,13 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
                 tokio::time::sleep(block_propation_sleep_duration).await;
                 continue;
             }
+            debug!("Creating central block stream (of blocks) from {} to {}", header_marker, last_block_number);
             let block_stream = central_source
                 .stream_new_blocks(header_marker, last_block_number)
                 .fuse();
             pin_mut!(block_stream);
             while let Some(Ok((block_number, block))) = block_stream.next().await {
+                debug!("Central stream yieling block {} with hash {:?}", block_number, block.header.block_hash);
                 yield SyncEvent::BlockAvailable { block_number, block };
             }
         }
@@ -352,6 +369,7 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
     central_source: Arc<TCentralSource>,
     block_propation_sleep_duration: Duration,
 ) -> impl Stream<Item = SyncEvent> {
+    debug!("Creating sync state diff stream (of SyncEvent)");
     stream! {
         loop {
             let txn = reader.begin_ro_txn().expect("Cannot read from block storage.");
@@ -370,6 +388,7 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
                 tokio::time::sleep(block_propation_sleep_duration).await;
                 continue;
             }
+            debug!("Creating central state update stream (of state diffs) from {} to {}", state_marker, last_block_number);
             let state_diff_stream = central_source
                 .stream_state_updates(state_marker, last_block_number)
                 .fuse();
@@ -377,6 +396,7 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
             while let Some(maybe_state_diff) = state_diff_stream.next().await {
                 match maybe_state_diff {
                     Ok((block_number, block_hash, mut state_diff, deployed_contract_class_definitions)) => {
+                        debug!("Central stream yieling state diff {} with hash {:?}", block_number, block_hash);
                         sort_state_diff(&mut state_diff);
                         yield SyncEvent::StateDiffAvailable {
                             block_number,
