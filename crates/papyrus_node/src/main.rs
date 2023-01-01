@@ -3,7 +3,7 @@ use papyrus_gateway::run_server;
 use papyrus_monitoring_gateway::run_server as monitoring_run_server;
 use papyrus_node::config::Config;
 use papyrus_storage::{open_storage, StorageReader, StorageWriter};
-use papyrus_sync::{CentralError, CentralSource, StateSync, StateSyncError};
+use papyrus_sync::{CentralError, CentralSource, StateSync, StateSyncResult};
 
 async fn run_threads(config: Config) -> anyhow::Result<()> {
     let (storage_reader, storage_writer) = open_storage(config.storage.db_config.clone())?;
@@ -25,7 +25,7 @@ async fn run_threads(config: Config) -> anyhow::Result<()> {
         config: Config,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
-    ) -> Result<(), StateSyncError> {
+    ) -> StateSyncResult {
         if let Some(sync_config) = config.sync {
             let central_source =
                 CentralSource::new(config.central.clone()).map_err(CentralError::ClientCreation)?;

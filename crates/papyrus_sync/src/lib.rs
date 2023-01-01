@@ -36,6 +36,8 @@ pub struct GenericStateSync<TCentralSource: CentralSourceTrait + Sync + Send> {
     writer: StorageWriter,
 }
 
+pub type StateSyncResult = Result<(), StateSyncError>;
+
 #[derive(thiserror::Error, Debug)]
 pub enum StateSyncError {
     #[error(transparent)]
@@ -79,7 +81,7 @@ pub enum SyncEvent {
 
 #[allow(clippy::new_without_default)]
 impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSync<TCentralSource> {
-    pub async fn run(&mut self) -> anyhow::Result<(), StateSyncError> {
+    pub async fn run(&mut self) -> StateSyncResult {
         info!("State sync started.");
         loop {
             self.handle_block_reverts().await?;
@@ -123,7 +125,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     }
 
     // Tries to store the incoming data.
-    async fn process_sync_event(&mut self, sync_event: SyncEvent) -> Result<(), StateSyncError> {
+    async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult {
         match sync_event {
             SyncEvent::BlockAvailable { block_number, block } => {
                 self.store_block(block_number, block).await
@@ -158,11 +160,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         }
     }
 
-    async fn store_block(
-        &mut self,
-        block_number: BlockNumber,
-        block: Block,
-    ) -> Result<(), StateSyncError> {
+    async fn store_block(&mut self, block_number: BlockNumber, block: Block) -> StateSyncResult {
         // Assuming the central source is trusted, detect reverts by comparing the incoming block's
         // parent hash to the current hash.
         self.verify_parent_block_hash(block_number, &block).await?;
@@ -180,7 +178,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         &self,
         block_number: BlockNumber,
         block: &Block,
-    ) -> Result<(), StateSyncError> {
+    ) -> StateSyncResult {
         let prev_block_number = match block_number.prev() {
             None => return Ok(()),
             Some(bn) => bn,
