@@ -32,7 +32,7 @@ use crate::db::{
 };
 pub use crate::db::{DbConfig, TransactionKind};
 pub use crate::header::{HeaderStorageReader, HeaderStorageWriter};
-pub use crate::ommer::OmmerStorageWriter;
+pub use crate::ommer::{OmmerStorageReader, OmmerStorageWriter};
 pub use crate::state::data::ThinStateDiff;
 use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract};
 pub use crate::state::{StateStorageReader, StateStorageWriter};
