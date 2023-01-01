@@ -21,16 +21,15 @@ use tokio_stream::Stream;
 
 use super::stream_utils::MyStreamExt;
 
-// TODO(dan): move to config.
-const CONCURRENT_REQUESTS: usize = 300;
-
 pub type CentralResult<T> = Result<T, CentralError>;
 #[derive(Clone, Serialize, Deserialize)]
 pub struct CentralSourceConfig {
+    pub concurrent_requests: usize,
     pub url: String,
     pub retry_config: RetryConfig,
 }
 pub struct GenericCentralSource<TStarknetClient: StarknetClientTrait + Send + Sync> {
+    pub concurrent_requests: usize,
     pub starknet_client: Arc<TStarknetClient>,
 }
 
@@ -153,7 +152,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                 let mut res =
                     futures_util::stream::iter(current_block_number.iter_up_to(up_to_block_number))
                         .map(|bn| async move { self.starknet_client.block(bn).await })
-                        .buffered(CONCURRENT_REQUESTS);
+                        .buffered(self.concurrent_requests);
                 while let Some(maybe_block) = res.next().await {
                     let res = match maybe_block {
                         Ok(Some(block)) => {
@@ -201,10 +200,10 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                 let starknet_client = starknet_client.clone();
                 async move { starknet_client.state_update(block_number).await }
             })
-            .buffered(CONCURRENT_REQUESTS)
+            .buffered(self.concurrent_requests)
             // Client error is not cloneable.
             .map_err(Arc::new)
-            .fanout(CONCURRENT_REQUESTS);
+            .fanout(self.concurrent_requests);
 
         // Stream the declared and deployed classes.
         let starknet_client = self.starknet_client.clone();
@@ -219,7 +218,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                 let starknet_client = starknet_client.clone();
                 async move { (class_hash, starknet_client.class_by_hash(class_hash).await) }
             })
-            .buffered(CONCURRENT_REQUESTS)
+            .buffered(self.concurrent_requests)
             .map(|(class_hash, class)| (class_hash, class.map_err(Arc::new)));
 
         let res_stream = stream! {
@@ -270,6 +269,9 @@ impl CentralSource {
     pub fn new(config: CentralSourceConfig) -> Result<CentralSource, ClientCreationError> {
         let starknet_client = StarknetClient::new(&config.url, config.retry_config)?;
         info!("Central source is configured with {}.", config.url);
-        Ok(CentralSource { starknet_client: Arc::new(starknet_client) })
+        Ok(CentralSource {
+            starknet_client: Arc::new(starknet_client),
+            concurrent_requests: config.concurrent_requests,
+        })
     }
 }

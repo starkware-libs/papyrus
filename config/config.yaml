@@ -1,6 +1,11 @@
 chain_id: SN_MAIN
 central:
+    concurrent_requests: 300
+<<<<<<< HEAD
     url: https://alpha-mainnet.starknet.io/
+=======
+    url: https://alpha4.starknet.io/
+>>>>>>> move_CONCURRENT_REQUESTS_to_config
     retry:
         retry_base_millis: 30
         retry_max_delay_millis: 30000
