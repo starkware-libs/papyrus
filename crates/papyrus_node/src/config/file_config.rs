@@ -58,12 +58,16 @@ impl FileConfigFormat {
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 struct Central {
+    concurrent_requests: Option<usize>,
     url: Option<String>,
     retry: Option<Retry>,
 }
 
 impl Central {
     fn update_central(self, config: &mut CentralSourceConfig) {
+        if let Some(concurrent_requests) = self.concurrent_requests {
+            config.concurrent_requests = concurrent_requests;
+        }
         if let Some(url) = self.url {
             config.url = url;
         }

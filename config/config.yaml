@@ -1,5 +1,6 @@
 chain_id: SN_GOERLI
 central:
+    concurrent_requests: 300
     url: https://alpha4.starknet.io/
     retry:
         retry_base_millis: 30
