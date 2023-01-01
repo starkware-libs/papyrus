@@ -2,14 +2,14 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
     types:
       - opened
       - reopened
       - synchronize
       - auto_merge_enabled
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   test:
@@ -37,9 +37,7 @@ jobs:
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@v2
-      - run: >
-          cd load_test;
-          cargo build
+      - run: cargo build -p papyrus_load_test
 
   integration-test:
     runs-on: ${{ matrix.os }}

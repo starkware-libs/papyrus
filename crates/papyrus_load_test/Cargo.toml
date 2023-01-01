@@ -1,14 +1,11 @@
-# This is a separate workspace because Goose can't work with the Tokio version we have.
-[workspace]
-
 [package]
 name = "papyrus_load_test"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-goose = { version = "0.16.3" }
+goose = { version = "0.17.0" }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" }
 # Goose doesn't work with a higher version of tokio
-tokio = { version = "1.15.0" }
+tokio = { version = "1.18.2" }
