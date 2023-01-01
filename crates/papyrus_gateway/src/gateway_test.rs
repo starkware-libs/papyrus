@@ -266,13 +266,14 @@ async fn get_block_w_full_transactions() {
 #[tokio::test]
 async fn get_storage_at() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let (header, _, diff, deployed_contract_class_definitions) = get_test_state_diff();
+    let header = BlockHeader::default();
+    let diff = get_test_state_diff();
     storage_writer
         .begin_rw_txn()
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)
+        .append_state_diff(header.block_number, diff.clone(), vec![])
         .unwrap()
         .commit()
         .unwrap();
@@ -356,13 +357,14 @@ async fn get_storage_at() {
 #[tokio::test]
 async fn get_class_hash_at() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let (header, _, diff, deployed_contract_class_definitions) = get_test_state_diff();
+    let header = BlockHeader::default();
+    let diff = get_test_state_diff();
     storage_writer
         .begin_rw_txn()
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)
+        .append_state_diff(header.block_number, diff.clone(), vec![])
         .unwrap()
         .commit()
         .unwrap();
@@ -443,13 +445,14 @@ async fn get_class_hash_at() {
 #[tokio::test]
 async fn get_nonce() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let (header, _, diff, deployed_contract_class_definitions) = get_test_state_diff();
+    let header = BlockHeader::default();
+    let diff = get_test_state_diff();
     storage_writer
         .begin_rw_txn()
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)
+        .append_state_diff(header.block_number, diff.clone(), vec![])
         .unwrap()
         .commit()
         .unwrap();
@@ -724,7 +727,14 @@ async fn get_block_transaction_count() {
 #[tokio::test]
 async fn get_state_update() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let (parent_header, header, diff, deployed_contract_class_definitions) = get_test_state_diff();
+    let parent_header = BlockHeader::default();
+    let header = BlockHeader {
+        block_hash: BlockHash(shash!("0x1")),
+        block_number: BlockNumber(1),
+        parent_hash: parent_header.block_hash,
+        ..BlockHeader::default()
+    };
+    let diff = get_test_state_diff();
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -738,7 +748,7 @@ async fn get_state_update() {
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)
+        .append_state_diff(header.block_number, diff.clone(), vec![])
         .unwrap()
         .commit()
         .unwrap();
@@ -860,7 +870,14 @@ async fn get_transaction_receipt() {
 #[tokio::test]
 async fn get_class() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let (parent_header, header, diff, deployed_contract_class_definitions) = get_test_state_diff();
+    let parent_header = BlockHeader::default();
+    let header = BlockHeader {
+        block_hash: BlockHash(shash!("0x1")),
+        block_number: BlockNumber(1),
+        parent_hash: parent_header.block_hash,
+        ..BlockHeader::default()
+    };
+    let diff = get_test_state_diff();
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -874,12 +891,12 @@ async fn get_class() {
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), deployed_contract_class_definitions)
+        .append_state_diff(header.block_number, diff.clone(), vec![])
         .unwrap()
         .commit()
         .unwrap();
 
-    let (class_hash, contract_class) = diff.declared_classes.get_index(1).unwrap();
+    let (class_hash, contract_class) = diff.declared_classes.get_index(0).unwrap();
     let expected_contract_class = contract_class.clone().try_into().unwrap();
 
     // Get class by block hash.
@@ -973,7 +990,14 @@ async fn get_class() {
 #[tokio::test]
 async fn get_class_at() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let (parent_header, header, diff, deployed_contract_class_definitions) = get_test_state_diff();
+    let parent_header = BlockHeader::default();
+    let header = BlockHeader {
+        block_hash: BlockHash(shash!("0x1")),
+        block_number: BlockNumber(1),
+        parent_hash: parent_header.block_hash,
+        ..BlockHeader::default()
+    };
+    let diff = get_test_state_diff();
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -987,24 +1011,15 @@ async fn get_class_at() {
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(
-            header.block_number,
-            diff.clone(),
-            deployed_contract_class_definitions.clone(),
-        )
+        .append_state_diff(header.block_number, diff.clone(), vec![])
         .unwrap()
         .commit()
         .unwrap();
 
-    let (address, hash) = diff.deployed_contracts.get_index(1).unwrap();
-    let expected_contract_class = deployed_contract_class_definitions
-        .iter()
-        .find(|(h, _)| h == hash)
-        .unwrap()
-        .1
-        .clone()
-        .try_into()
-        .unwrap();
+    let (class_hash, contract_class) = diff.declared_classes.get_index(0).unwrap();
+    let expected_contract_class = contract_class.clone().try_into().unwrap();
+    assert_eq!(diff.deployed_contracts.get_index(0).unwrap().1, class_hash);
+    let address = diff.deployed_contracts.get_index(0).unwrap().0;
 
     // Get class by block hash.
     let res = module
@@ -1491,7 +1506,7 @@ async fn serialize_returns_valid_json() {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let block0 = get_test_block(0);
     let block1 = get_block_to_match_json_file();
-    let (_, _, state_diff, deployed_contract_class_definitions) = get_test_state_diff();
+    let state_diff = get_test_state_diff();
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -1505,11 +1520,7 @@ async fn serialize_returns_valid_json() {
         .unwrap()
         .append_body(block1.header.block_number, block1.body)
         .unwrap()
-        .append_state_diff(
-            block1.header.block_number,
-            state_diff,
-            deployed_contract_class_definitions,
-        )
+        .append_state_diff(block1.header.block_number, state_diff, vec![])
         .unwrap()
         .commit()
         .unwrap();
@@ -1536,12 +1547,8 @@ async fn validate_state(server_address: SocketAddr, schema: &JSONSchema) {
         send_request(server_address, "starknet_getStateUpdate", r#"{"block_number": 1}"#).await;
     assert!(schema.validate(&res["result"]).is_ok());
 
-    let res = send_request(
-        server_address,
-        "starknet_getClassAt",
-        r#"{"block_number": 1}, "0x543e54f26ae33686f57da2ceebed98b340c3a78e9390931bd84fb711d5caabc""#,
-    )
-    .await;
+    let res =
+        send_request(server_address, "starknet_getClassAt", r#"{"block_number": 1}, "0x0""#).await;
     assert!(schema.validate(&res["result"]).is_ok());
 }
 
