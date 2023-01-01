@@ -3,6 +3,7 @@ use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, StateNumber};
 use starknet_api::transaction::{Event, Transaction, TransactionOffsetInBlock, TransactionOutput};
 
+use super::OmmerStorageReader;
 use crate::body::events::ThinTransactionOutput;
 use crate::body::{BodyStorageReader, BodyStorageWriter};
 use crate::ommer::OmmerStorageWriter;
@@ -175,4 +176,26 @@ fn insert_raw_state_diff_to_ommer() {
         .unwrap()
         .commit()
         .unwrap();
+}
+
+#[test]
+fn get_ommer_header() {
+    let (reader, mut writer) = get_test_storage();
+    let block = get_test_block(7);
+    let block_hash = block.header.block_hash;
+
+    assert!(reader.begin_ro_txn().unwrap().get_ommer_header(block_hash).unwrap().is_none());
+
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .insert_ommer_header(block_hash, &block.header)
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    assert_eq!(
+        reader.begin_ro_txn().unwrap().get_ommer_header(block_hash).unwrap().unwrap(),
+        block.header
+    );
 }
