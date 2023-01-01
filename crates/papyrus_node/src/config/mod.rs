@@ -73,6 +73,7 @@ impl Default for ConfigBuilder {
             chain_id: chain_id.clone(),
             config: Config {
                 central: CentralSourceConfig {
+                    concurrent_requests: 300,
                     url: String::from("https://alpha-mainnet.starknet.io/"),
                     retry_config: RetryConfig {
                         retry_base_millis: 30,
