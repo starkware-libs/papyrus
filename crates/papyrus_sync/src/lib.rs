@@ -12,8 +12,8 @@ use futures_util::{pin_mut, select, Stream, StreamExt};
 use log::{error, info};
 use papyrus_storage::{
     BodyStorageReader, BodyStorageWriter, HeaderStorageReader, HeaderStorageWriter,
-    OmmerStorageWriter, StateStorageReader, StateStorageWriter, StorageError, StorageReader,
-    StorageResult, StorageWriter, TransactionIndex,
+    OmmerStorageReader, OmmerStorageWriter, StateStorageReader, StateStorageWriter, StorageError,
+    StorageReader, StorageResult, StorageWriter, TransactionIndex,
 };
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockHash, BlockNumber};
@@ -53,6 +53,11 @@ pub enum StateSyncError {
         expected_parent_block_hash: BlockHash,
         stored_parent_block_hash: BlockHash,
     },
+    #[error(
+        "Received state diff of block {block_number:?} and block hash {block_hash:?}, didn't find \
+         a matching header (neither in the ommer headers)."
+    )]
+    StateDiffWithoutMatchingHeader { block_number: BlockNumber, block_hash: BlockHash },
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -129,7 +134,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 state_diff,
                 deployed_contract_class_definitions,
             } => {
-                if !self.is_reverted_state_diff(block_number, block_hash).await {
+                if !self.is_reverted_state_diff(block_number, block_hash).await? {
                     self.writer
                         .begin_rw_txn()?
                         .append_state_diff(
@@ -297,17 +302,24 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         &self,
         block_number: BlockNumber,
         block_hash: BlockHash,
-    ) -> bool {
-        let storage_header = self
-            .reader
-            .begin_ro_txn()
-            .expect("Cannot read from block storage.")
-            .get_block_header(block_number)
-            .expect("Cannot read from block storage.");
+    ) -> Result<bool, StateSyncError> {
+        let txn = self.reader.begin_ro_txn().expect("Cannot read from block storage.");
+
+        let storage_header =
+            txn.get_block_header(block_number).expect("Cannot read from block storage.");
 
         match storage_header {
-            None => true,
-            Some(header) => header.block_hash != block_hash,
+            Some(storage_header) if storage_header.block_hash == block_hash => Ok(false),
+            _ => {
+                // No matching header, check in the ommer headers.
+                match txn.get_ommer_header(block_hash)? {
+                    Some(_) => Ok(true),
+                    None => Err(StateSyncError::StateDiffWithoutMatchingHeader {
+                        block_number,
+                        block_hash,
+                    }),
+                }
+            }
         }
     }
 }
