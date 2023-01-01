@@ -239,6 +239,8 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         let transaction_outputs = txn
             .get_block_transaction_outputs(block_number)?
             .expect("Error reading transaction outputs from storage");
+
+        // TODO: use iter_events of EventsReader once it supports RW transactions.
         let mut events: Vec<_> = vec![];
         for idx in 0..transactions.len() {
             let tx_idx = TransactionIndex(block_number, TransactionOffsetInBlock(idx));

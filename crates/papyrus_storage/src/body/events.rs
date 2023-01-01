@@ -25,6 +25,7 @@ pub trait EventsReader<'txn, 'env> {
     ) -> StorageResult<EventIter<'txn, 'env>>;
 }
 
+// TODO: support all read transactions (including RW).
 impl<'txn, 'env> EventsReader<'txn, 'env> for StorageTxn<'env, RO> {
     fn iter_events(
         &'env self,
