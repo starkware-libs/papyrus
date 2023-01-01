@@ -51,8 +51,8 @@ async fn stream_block_headers() {
             .returning(|_block_number| Ok(Some(Block::default())));
     }
     let central_source = GenericCentralSource {
-        starknet_client: Arc::new(mock),
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
+        starknet_client: Arc::new(mock),
     };
 
     let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
@@ -85,8 +85,8 @@ async fn stream_block_headers_some_are_missing() {
         .times(1)
         .returning(|_| Ok(None));
     let central_source = GenericCentralSource {
-        starknet_client: Arc::new(mock),
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
+        starknet_client: Arc::new(mock),
     };
 
     let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
@@ -131,8 +131,8 @@ async fn stream_block_headers_error() {
         },
     );
     let central_source = GenericCentralSource {
-        starknet_client: Arc::new(mock),
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
+        starknet_client: Arc::new(mock),
     };
 
     let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
@@ -234,8 +234,8 @@ async fn stream_state_updates() {
         .returning(move |_x| Ok(Some(contract_class3_clone.clone())));
 
     let central_source = GenericCentralSource {
-        starknet_client: Arc::new(mock),
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
+        starknet_client: Arc::new(mock),
     };
     let initial_block_num = BlockNumber(START_BLOCK_NUMBER);
 

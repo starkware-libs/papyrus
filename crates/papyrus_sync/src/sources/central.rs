@@ -270,8 +270,8 @@ impl CentralSource {
         let starknet_client = StarknetClient::new(&config.url, config.retry_config)?;
         info!("Central source is configured with {}.", config.url);
         Ok(CentralSource {
-            starknet_client: Arc::new(starknet_client),
             concurrent_requests: config.concurrent_requests,
+            starknet_client: Arc::new(starknet_client),
         })
     }
 }
