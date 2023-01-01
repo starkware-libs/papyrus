@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 
 use jsonrpsee::http_server::RpcModule;
+use jsonschema::JSONSchema;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
 use reqwest::Client;
@@ -68,6 +69,28 @@ pub(crate) fn get_test_rpc_server_and_storage_writer()
         .into_rpc(),
         storage_writer,
     )
+}
+
+pub async fn get_starknet_spec_api_schema(component_names: &[&str]) -> JSONSchema {
+    let target = "./resources/starknet_api_openrpc.json";
+    let text = std::fs::read_to_string(target).unwrap();
+    let spec: serde_json::Value = serde_json::from_str(&text).unwrap();
+
+    let mut components = String::from(r#"{"oneOf": ["#);
+    for component in component_names {
+        components +=
+            &format!(r##"{{"$ref": "file:///spec.json#/components/schemas/{}"}}"##, component);
+        if Some(component) != component_names.last() {
+            components += ", ";
+        }
+    }
+    components += r#"], "unevaluatedProperties": false}"#;
+    let schema = serde_json::from_str(&components).unwrap();
+
+    JSONSchema::options()
+        .with_document("file:///spec.json".to_owned(), spec)
+        .compile(&schema)
+        .unwrap()
 }
 
 pub fn get_body_to_match_json_file() -> BlockBody {

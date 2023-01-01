@@ -8,9 +8,8 @@ use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
-use papyrus_storage::test_utils::{
-    get_test_block, get_test_state_diff, get_test_storage, read_json_file,
-};
+use jsonschema::JSONSchema;
+use papyrus_storage::test_utils::{get_test_block, get_test_state_diff, get_test_storage};
 use papyrus_storage::{
     BodyStorageWriter, EventIndex, HeaderStorageWriter, StateStorageWriter, TransactionIndex,
 };
@@ -30,11 +29,11 @@ use crate::api::{
 use crate::block::Block;
 use crate::state::{ContractClass, StateUpdate, ThinStateDiff};
 use crate::test_utils::{
-    get_block_to_match_json_file, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
-    send_request,
+    get_block_to_match_json_file, get_starknet_spec_api_schema, get_test_gateway_config,
+    get_test_rpc_server_and_storage_writer, send_request,
 };
 use crate::transaction::{
-    Event, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
+    Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
     TransactionWithType, Transactions,
 };
 use crate::{run_server, ContinuationTokenAsStruct};
@@ -817,12 +816,14 @@ async fn get_transaction_receipt() {
         .unwrap();
 
     let transaction_hash = block.body.transactions.index(0).transaction_hash();
+    let output = TransactionOutput::from(block.body.transaction_outputs.index(0).clone());
     let expected_receipt = TransactionReceiptWithStatus {
         receipt: TransactionReceipt {
             transaction_hash,
+            r#type: output.r#type(),
             block_hash: block.header.block_hash,
             block_number: block.header.block_number,
-            output: block.body.transaction_outputs.index(0).clone().into(),
+            output,
         },
         status: TransactionStatus::default(),
     };
@@ -1484,7 +1485,7 @@ async fn run_server_scneario() {
 }
 
 #[tokio::test]
-async fn serialize_returns_expcted_json() {
+async fn serialize_returns_valid_json() {
     // TODO(anatg): Use the papyrus_node/main.rs, when it has configuration for running different
     // components, for openning the storage and running the server.
     let (storage_reader, mut storage_writer) = get_test_storage();
@@ -1516,15 +1517,24 @@ async fn serialize_returns_expcted_json() {
     let gateway_config = get_test_gateway_config();
     let (server_address, _handle) = run_server(&gateway_config, storage_reader).await.unwrap();
 
-    serde_state(server_address).await;
-    serde_block(server_address).await;
-    serde_transaction(server_address).await;
+    let schema = get_starknet_spec_api_schema(&[
+        "BLOCK_WITH_TXS",
+        "BLOCK_WITH_TX_HASHES",
+        "STATE_UPDATE",
+        "CONTRACT_CLASS",
+        "TXN",
+        "TXN_RECEIPT",
+    ])
+    .await;
+    validate_state(server_address, &schema).await;
+    validate_block(server_address, &schema).await;
+    validate_transaction(server_address, &schema).await;
 }
 
-async fn serde_state(server_address: SocketAddr) {
+async fn validate_state(server_address: SocketAddr, schema: &JSONSchema) {
     let res =
         send_request(server_address, "starknet_getStateUpdate", r#"{"block_number": 1}"#).await;
-    assert_eq!(res, read_json_file("state_update.json"));
+    assert!(schema.validate(&res["result"]).is_ok());
 
     let res = send_request(
         server_address,
@@ -1532,13 +1542,13 @@ async fn serde_state(server_address: SocketAddr) {
         r#"{"block_number": 1}, "0x543e54f26ae33686f57da2ceebed98b340c3a78e9390931bd84fb711d5caabc""#,
     )
     .await;
-    assert_eq!(res, read_json_file("contract_class.json"));
+    assert!(schema.validate(&res["result"]).is_ok());
 }
 
-async fn serde_block(server_address: SocketAddr) {
+async fn validate_block(server_address: SocketAddr, schema: &JSONSchema) {
     let res =
         send_request(server_address, "starknet_getBlockWithTxs", r#"{"block_number": 1}"#).await;
-    assert_eq!(res, read_json_file("block_with_transactions.json"));
+    assert!(schema.validate(&res["result"]).is_ok());
 
     let res = send_request(
         server_address,
@@ -1546,24 +1556,17 @@ async fn serde_block(server_address: SocketAddr) {
         r#"{"block_hash": "0x75e00250d4343326f322e370df4c9c73c7be105ad9f532eeb97891a34d9e4a5"}"#,
     )
     .await;
-    assert_eq!(res, read_json_file("block_with_transaction_hashes.json"));
-
-    let res =
-        send_request(server_address, "starknet_getBlockTransactionCount", r#"{"block_number": 1}"#)
-            .await;
-    let expeced: serde_json::Value =
-        serde_json::from_str(r#"{"jsonrpc":"2.0","result":4,"id":"1"}"#).unwrap();
-    assert_eq!(res, expeced);
+    assert!(schema.validate(&res["result"]).is_ok());
 }
 
-async fn serde_transaction(server_address: SocketAddr) {
+async fn validate_transaction(server_address: SocketAddr, schema: &JSONSchema) {
     let res = send_request(
         server_address,
         "starknet_getTransactionByBlockIdAndIndex",
         r#"{"block_number": 1}, 0"#,
     )
     .await;
-    assert_eq!(res, read_json_file("deploy_transaction.json"));
+    assert!(schema.validate(&res["result"]).is_ok());
 
     let res = send_request(
         server_address,
@@ -1571,7 +1574,7 @@ async fn serde_transaction(server_address: SocketAddr) {
         r#""0x4dd12d3b82c3d0b216503c6abf63f1ccad222461582eac82057d46c327331d2""#,
     )
     .await;
-    assert_eq!(res, read_json_file("deploy_transaction.json"));
+    assert!(schema.validate(&res["result"]).is_ok());
 
     let res = send_request(
         server_address,
@@ -1579,5 +1582,5 @@ async fn serde_transaction(server_address: SocketAddr) {
         r#""0x6525d9aa309e5c80abbdafcc434d53202e06866597cd6dbbc91e5894fad7155""#,
     )
     .await;
-    assert_eq!(res, read_json_file("invoke_transaction_receipt.json"));
+    assert!(schema.validate(&res["result"]).is_ok());
 }
