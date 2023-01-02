@@ -3,6 +3,8 @@ mod config_test;
 
 mod file_config;
 
+use std::collections::HashMap;
+use std::env::{args, ArgsOs};
 use std::mem::discriminant;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -74,6 +76,7 @@ impl Default for ConfigBuilder {
                 central: CentralSourceConfig {
                     concurrent_requests: 300,
                     url: String::from("https://alpha-mainnet.starknet.io/"),
+                    http_headers: HashMap::new(),
                     retry_config: RetryConfig {
                         retry_base_millis: 30,
                         retry_max_delay_millis: 30000,
@@ -117,6 +120,7 @@ impl ConfigBuilder {
                 arg!(-f --config_file [path] "Optionally sets a config file to use").value_parser(value_parser!(PathBuf)),
                 arg!(-c --chain_id [name] "Optionally sets chain id to use"),
                 arg!(--server_address ["IP:PORT"] "Optionally sets the RPC listening address"),
+                arg!(--http_headers ["KEY:VALUE"] ... "Optionally adds headers to the http requests"),
                 arg!(-s --storage [path] "Optionally sets storage path to use (automatically extended with chain ID)").value_parser(value_parser!(PathBuf)),
                 arg!(-n --no_sync [bool] "Optionally run without sync").value_parser(value_parser!(bool)).default_missing_value("true"),
             ])
@@ -161,6 +165,16 @@ impl ConfigBuilder {
                         .to_str()
                         .ok_or(ConfigError::BadPath { path: storage_path.clone() })?
                         .to_owned();
+                }
+
+                if let Some(http_headers) = args.try_get_one::<String>("http_headers")? {
+                    for header in http_headers.split(' ') {
+                        let split: Vec<&str> = header.split(':').collect();
+                        self.config
+                            .central
+                            .http_headers
+                            .insert(split[0].to_string(), split[1].to_string());
+                    }
                 }
 
                 if let Some(no_sync) = args.try_get_one::<bool>("no_sync")? {
