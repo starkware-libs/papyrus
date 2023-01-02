@@ -44,8 +44,6 @@ pub enum StateSyncError {
     StorageError(#[from] StorageError),
     #[error(transparent)]
     CentralSourceError(#[from] CentralError),
-    #[error("Sync error: {message:?}.")]
-    SyncError { message: String },
     #[error(
         "Parent block hash of block {block_number:?} is not consistent with the stored block. \
          Expected {expected_parent_block_hash:?}, found {stored_parent_block_hash:?}."
@@ -88,6 +86,8 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 Ok(_) => {}
                 Err(err) if is_recoverable(&err) => {
                     error!("{}", err);
+                    // TODO: change sleep duration.
+                    tokio::time::sleep(self.config.block_propagation_sleep_duration).await;
                     continue;
                 }
                 Err(err) => return Err(err),
@@ -116,6 +116,8 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                     Some(Ok(sync_event)) => sync_event,
                     Some(Err(err)) if is_recoverable(&err) => {
                         error!("{}", err);
+                        // TODO: change sleep duration.
+                        tokio::time::sleep(self.config.block_propagation_sleep_duration).await;
                         break;
                     }
                     Some(Err(err)) => {
@@ -123,10 +125,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                         return Err(err);
                     }
                     None => {
-                        // Shouldn't happen but maybe recoverable.
-                        // TODO: consider changing to 'unreachable!'.
-                        error!("Received None as a sync event.");
-                        break;
+                        unreachable!("Received None as a sync event.");
                     }
                 };
 
@@ -151,10 +150,10 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             }
         }
 
+        // Whitelisting of errors from which we might be able to recover.
         fn is_recoverable(err: &StateSyncError) -> bool {
             match err {
                 StateSyncError::CentralSourceError(_) => true,
-                StateSyncError::SyncError { message: _ } => true,
                 StateSyncError::StorageError(storage_err)
                     if matches!(storage_err, StorageError::InnerError(_)) =>
                 {
@@ -269,25 +268,19 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     }
 
     // Deletes the block data from the storage, moving it to the ommer tables.
+    #[allow(clippy::expect_fun_call)]
     fn revert_block(&mut self, block_number: BlockNumber) -> Result<(), StateSyncError> {
         let mut txn = self.writer.begin_rw_txn()?;
-        let header = txn.get_block_header(block_number)?.ok_or(StateSyncError::SyncError {
-            message: format!("Tried to revert a missing header of block {}", block_number),
-        })?;
-        let transactions =
-            txn.get_block_transactions(block_number)?.ok_or(StateSyncError::SyncError {
-                message: format!(
-                    "Tried to revert a missing transactions of block {}",
-                    block_number
-                ),
-            })?;
-        let transaction_outputs =
-            txn.get_block_transaction_outputs(block_number)?.ok_or(StateSyncError::SyncError {
-                message: format!(
-                    "Tried to revert a missing transaction outputs of block {}",
-                    block_number
-                ),
-            })?;
+        let header = txn
+            .get_block_header(block_number)?
+            .expect(format!("Tried to revert a missing header of block {block_number}").as_str());
+        let transactions = txn.get_block_transactions(block_number)?.expect(
+            format!("Tried to revert a missing transactions of block {block_number}").as_str(),
+        );
+        let transaction_outputs = txn.get_block_transaction_outputs(block_number)?.expect(
+            format!("Tried to revert a missing transaction outputs of block {}", block_number)
+                .as_str(),
+        );
 
         // TODO: use iter_events of EventsReader once it supports RW transactions.
         let mut events: Vec<_> = vec![];
