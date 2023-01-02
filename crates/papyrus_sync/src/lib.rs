@@ -136,6 +136,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                         expected_parent_block_hash: _,
                         stored_parent_block_hash: _,
                     }) => {
+                        // A revert detected, log and restart main sync loop.
                         info!("Detected revert while processing block {}", block_number);
                         break;
                     }
@@ -172,7 +173,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult {
         match sync_event {
             SyncEvent::BlockAvailable { block_number, block } => {
-                self.store_block(block_number, block).await
+                self.store_block(block_number, block)
             }
             SyncEvent::StateDiffAvailable {
                 block_number,
@@ -180,7 +181,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 state_diff,
                 deployed_contract_class_definitions,
             } => {
-                if !self.is_reverted_state_diff(block_number, block_hash).await? {
+                if !self.is_reverted_state_diff(block_number, block_hash)? {
                     self.writer
                         .begin_rw_txn()?
                         .append_state_diff(
@@ -204,10 +205,10 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         }
     }
 
-    async fn store_block(&mut self, block_number: BlockNumber, block: Block) -> StateSyncResult {
+    fn store_block(&mut self, block_number: BlockNumber, block: Block) -> StateSyncResult {
         // Assuming the central source is trusted, detect reverts by comparing the incoming block's
         // parent hash to the current hash.
-        self.verify_parent_block_hash(block_number, &block).await?;
+        self.verify_parent_block_hash(block_number, &block)?;
 
         self.writer
             .begin_rw_txn()?
@@ -218,7 +219,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     }
 
     // Compares the block's parent hash to the stored block.
-    async fn verify_parent_block_hash(
+    fn verify_parent_block_hash(
         &self,
         block_number: BlockNumber,
         block: &Block,
@@ -269,7 +270,9 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
 
     // Deletes the block data from the storage, moving it to the ommer tables.
     #[allow(clippy::expect_fun_call)]
-    fn revert_block(&mut self, block_number: BlockNumber) -> Result<(), StateSyncError> {
+    fn revert_block(&mut self, block_number: BlockNumber) -> StateSyncResult {
+        // TODO: Modify revert functions so they return the deleted data, and use it for inserting
+        // to the ommer tables.
         let mut txn = self.writer.begin_rw_txn()?;
         let header = txn
             .get_block_header(block_number)?
@@ -300,17 +303,13 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 events.as_slice(),
             )?;
 
-        // State diff might not yet written to the storage. In that case, it will be handled in a
-        // separate function.
-        if let Some(state_diff) = self.reader.begin_ro_txn()?.get_state_diff(block_number)? {
-            // TODO: fill the declared classes.
-            txn = txn.revert_state_diff(block_number)?.insert_ommer_state_diff(
-                header.block_hash,
-                &state_diff,
-                &[],
-            )?;
+        let (txn, maybe_deleted_data) = txn.revert_state_diff(block_number)?;
+        if let Some((thin_state_diff, declared_classes)) = maybe_deleted_data {
+            txn.insert_ommer_state_diff(header.block_hash, &thin_state_diff, &declared_classes)?
+                .commit()?;
+        } else {
+            txn.commit()?;
         }
-        txn.commit()?;
         Ok(())
     }
 
@@ -331,7 +330,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         }
     }
 
-    async fn is_reverted_state_diff(
+    fn is_reverted_state_diff(
         &self,
         block_number: BlockNumber,
         block_hash: BlockHash,
