@@ -10,7 +10,8 @@ use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
 use jsonschema::JSONSchema;
 use papyrus_storage::test_utils::{
-    get_test_block, get_test_block_with_events, get_test_state_diff, get_test_storage,
+    get_test_block, get_test_block_with_events, get_test_body, get_test_state_diff,
+    get_test_storage,
 };
 use papyrus_storage::{
     BodyStorageWriter, EventIndex, HeaderStorageWriter, StateStorageWriter, TransactionIndex,
@@ -20,7 +21,7 @@ use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::StateDiff;
 use starknet_api::transaction::{
-    EventIndexInTransactionOutput, EventKey, TransactionHash, TransactionOffsetInBlock,
+    EventIndexInTransactionOutput, EventKey, Transaction, TransactionHash, TransactionOffsetInBlock,
 };
 use starknet_api::{patky, shash};
 
@@ -31,8 +32,8 @@ use crate::api::{
 use crate::block::Block;
 use crate::state::{ContractClass, StateUpdate, ThinStateDiff};
 use crate::test_utils::{
-    get_block_to_match_json_file, get_starknet_spec_api_schema, get_test_gateway_config,
-    get_test_rpc_server_and_storage_writer, send_request,
+    get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
+    send_request,
 };
 use crate::transaction::{
     Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
@@ -1310,23 +1311,31 @@ async fn serialize_returns_valid_json() {
     // TODO(anatg): Use the papyrus_node/main.rs, when it has configuration for running different
     // components, for openning the storage and running the server.
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let block0 = get_test_block(0);
-    let block1 = get_block_to_match_json_file();
+    let parent_block = starknet_api::block::Block::default();
+    let block = starknet_api::block::Block {
+        header: BlockHeader {
+            parent_hash: parent_block.header.block_hash,
+            block_hash: BlockHash(shash!("0x1")),
+            block_number: BlockNumber(1),
+            ..BlockHeader::default()
+        },
+        body: get_test_body(5),
+    };
     let state_diff = get_test_state_diff();
     storage_writer
         .begin_rw_txn()
         .unwrap()
-        .append_header(block0.header.block_number, &block0.header)
+        .append_header(parent_block.header.block_number, &parent_block.header)
         .unwrap()
-        .append_body(block0.header.block_number, block0.body)
+        .append_body(parent_block.header.block_number, parent_block.body)
         .unwrap()
-        .append_state_diff(block0.header.block_number, StateDiff::default(), vec![])
+        .append_state_diff(parent_block.header.block_number, StateDiff::default(), vec![])
         .unwrap()
-        .append_header(block1.header.block_number, &block1.header)
+        .append_header(block.header.block_number, &block.header)
         .unwrap()
-        .append_body(block1.header.block_number, block1.body)
+        .append_body(block.header.block_number, block.body.clone())
         .unwrap()
-        .append_state_diff(block1.header.block_number, state_diff.clone(), vec![])
+        .append_state_diff(block.header.block_number, state_diff.clone(), vec![])
         .unwrap()
         .commit()
         .unwrap();
@@ -1344,8 +1353,8 @@ async fn serialize_returns_valid_json() {
     ])
     .await;
     validate_state(&state_diff, server_address, &schema).await;
-    validate_block(server_address, &schema).await;
-    validate_transaction(server_address, &schema).await;
+    validate_block(&block.header, server_address, &schema).await;
+    validate_transaction(block.body.transactions.index(0), server_address, &schema).await;
 }
 
 async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, schema: &JSONSchema) {
@@ -1363,7 +1372,7 @@ async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, sche
     assert!(schema.validate(&res["result"]).is_ok());
 }
 
-async fn validate_block(server_address: SocketAddr, schema: &JSONSchema) {
+async fn validate_block(header: &BlockHeader, server_address: SocketAddr, schema: &JSONSchema) {
     let res =
         send_request(server_address, "starknet_getBlockWithTxs", r#"{"block_number": 1}"#).await;
     assert!(schema.validate(&res["result"]).is_ok());
@@ -1371,13 +1380,13 @@ async fn validate_block(server_address: SocketAddr, schema: &JSONSchema) {
     let res = send_request(
         server_address,
         "starknet_getBlockWithTxHashes",
-        r#"{"block_hash": "0x75e00250d4343326f322e370df4c9c73c7be105ad9f532eeb97891a34d9e4a5"}"#,
+        format!(r#"{{"block_hash": "0x{}"}}"#, hex::encode(header.block_hash.0.bytes())).as_str(),
     )
     .await;
     assert!(schema.validate(&res["result"]).is_ok());
 }
 
-async fn validate_transaction(server_address: SocketAddr, schema: &JSONSchema) {
+async fn validate_transaction(tx: &Transaction, server_address: SocketAddr, schema: &JSONSchema) {
     let res = send_request(
         server_address,
         "starknet_getTransactionByBlockIdAndIndex",
@@ -1389,7 +1398,7 @@ async fn validate_transaction(server_address: SocketAddr, schema: &JSONSchema) {
     let res = send_request(
         server_address,
         "starknet_getTransactionByHash",
-        r#""0x4dd12d3b82c3d0b216503c6abf63f1ccad222461582eac82057d46c327331d2""#,
+        format!(r#""0x{}""#, hex::encode(tx.transaction_hash().0.bytes())).as_str(),
     )
     .await;
     assert!(schema.validate(&res["result"]).is_ok());
@@ -1397,7 +1406,7 @@ async fn validate_transaction(server_address: SocketAddr, schema: &JSONSchema) {
     let res = send_request(
         server_address,
         "starknet_getTransactionReceipt",
-        r#""0x6525d9aa309e5c80abbdafcc434d53202e06866597cd6dbbc91e5894fad7155""#,
+        format!(r#""0x{}""#, hex::encode(tx.transaction_hash().0.bytes())).as_str(),
     )
     .await;
     assert!(schema.validate(&res["result"]).is_ok());
