@@ -83,6 +83,9 @@ docker run --rm --name papyrus\
 ```
 
 Note:
+* The container must have write access to `<local-host-data-path>`.
+A possible way to assure this is to create the `<local-host-data-path>` directory (only the first
+time you run `papyrus`) and add `--user "$(id -u):$(id -g)"` to the docker run command.
 * If you wish to run the most up-to-date code,
 you can use the `ghcr.io/starkware-libs/papyrus:dev` image.
 * Currently, there is no automatic upgrade mechanism.
