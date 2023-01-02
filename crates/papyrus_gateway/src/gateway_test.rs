@@ -9,7 +9,9 @@ use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
 use jsonschema::JSONSchema;
-use papyrus_storage::test_utils::{get_test_block, get_test_state_diff, get_test_storage};
+use papyrus_storage::test_utils::{
+    get_test_block, get_test_block_with_events, get_test_state_diff, get_test_storage,
+};
 use papyrus_storage::{
     BodyStorageWriter, EventIndex, HeaderStorageWriter, StateStorageWriter, TransactionIndex,
 };
@@ -1121,9 +1123,17 @@ async fn chain_id() {
 }
 
 #[tokio::test]
-async fn get_6_events_chunk_size_2_with_address() {
+async fn get_events_chunk_size_2_with_address() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let block = get_test_block(2);
+    let address = ContractAddress(patky!("0x22"));
+    let key0 = EventKey(shash!("0x6"));
+    let key1 = EventKey(shash!("0x7"));
+    let block = get_test_block_with_events(
+        2,
+        5,
+        Some(vec![address, ContractAddress(patky!("0x23"))]),
+        Some(vec![vec![key0.clone(), key1.clone(), EventKey(shash!("0x8"))]]),
+    );
     let block_number = block.header.block_number;
     storage_writer
         .begin_rw_txn()
@@ -1135,8 +1145,8 @@ async fn get_6_events_chunk_size_2_with_address() {
         .commit()
         .unwrap();
 
-    // Create the filter. The allowed keys at index 0 are 0x7 or 0x6.
-    let filter_keys = HashSet::from([EventKey(shash!("0x7")), EventKey(shash!("0x6"))]);
+    // Create the filter: the allowed keys at index 0 are 0x6 or 0x7.
+    let filter_keys = HashSet::from([key0, key1]);
     let block_id = BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number));
     let chunk_size = 2;
     let mut filter = EventFilter {
@@ -1144,74 +1154,71 @@ async fn get_6_events_chunk_size_2_with_address() {
         to_block: Some(block_id),
         continuation_token: None,
         chunk_size,
-        address: Some(ContractAddress(patky!("0x22"))),
-        keys: vec![filter_keys],
+        address: Some(address),
+        keys: vec![filter_keys.clone()],
     };
 
     // Create the events emitted from contract address 0x22 that have at least one of the allowed
     // keys at index 0.
-    let event0 = block.body.transaction_outputs.index(0).events().index(0);
-    let event1 = block.body.transaction_outputs.index(0).events().index(1);
-    let event4 = block.body.transaction_outputs.index(0).events().index(4);
     let block_hash = block.header.block_hash;
-    let block_number = BlockNumber(0);
-    let tx_hash1 = TransactionHash(StarkHash::from(0));
-    let tx_hash3 = TransactionHash(StarkHash::from(1));
-    let emitted_events = vec![
-        Event { block_hash, block_number, transaction_hash: tx_hash1, event: event0.clone() },
-        Event { block_hash, block_number, transaction_hash: tx_hash1, event: event1.clone() },
-        Event { block_hash, block_number, transaction_hash: tx_hash1, event: event4.clone() },
-        Event { block_hash, block_number, transaction_hash: tx_hash3, event: event0.clone() },
-        Event { block_hash, block_number, transaction_hash: tx_hash3, event: event1.clone() },
-        Event { block_hash, block_number, transaction_hash: tx_hash3, event: event4.clone() },
-    ];
-    let mut emitted_events_iter = emitted_events.chunks(chunk_size);
+    let mut emitted_events = vec![];
+    let mut emitted_event_indices = vec![];
+    for (tx_i, tx_output) in block.body.transaction_outputs.iter().enumerate() {
+        let transaction_hash = block.body.transactions.index(tx_i).transaction_hash();
+        for (event_i, event) in tx_output.events().iter().enumerate() {
+            if let Some(key) = event.content.keys.get(0) {
+                if filter_keys.get(key).is_some() && event.from_address == address {
+                    emitted_events.push(Event {
+                        block_hash,
+                        block_number,
+                        transaction_hash,
+                        event: event.clone(),
+                    });
+                    emitted_event_indices.push(EventIndex(
+                        TransactionIndex(block_number, TransactionOffsetInBlock(tx_i)),
+                        EventIndexInTransactionOutput(event_i),
+                    ));
+                }
+            }
+        }
+    }
 
-    // Create the expected continuation token.
-    let expected_continuation_token0 =
-        ContinuationToken::new(ContinuationTokenAsStruct(EventIndex(
-            TransactionIndex(block_number, TransactionOffsetInBlock(0)),
-            EventIndexInTransactionOutput(4),
-        )))
-        .unwrap();
-    let expected_continuation_token1 =
-        ContinuationToken::new(ContinuationTokenAsStruct(EventIndex(
-            TransactionIndex(block_number, TransactionOffsetInBlock(1)),
-            EventIndexInTransactionOutput(1),
-        )))
-        .unwrap();
-
-    // Get first chunk of filtered events.
-    let (res, continuation_token) = module
-        .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter.clone()])
-        .await
-        .unwrap();
-    assert_eq!(res, emitted_events_iter.next().unwrap());
-    assert_eq!(continuation_token, Some(expected_continuation_token0));
-
-    // Get second chunk of filtered events.
-    filter.continuation_token = continuation_token;
-    let (res, continuation_token) = module
-        .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter.clone()])
-        .await
-        .unwrap();
-    assert_eq!(res, emitted_events_iter.next().unwrap());
-    assert_eq!(continuation_token, Some(expected_continuation_token1));
-
-    // Get third chunk of filtered events.
-    filter.continuation_token = continuation_token;
-    let (res, continuation_token) = module
-        .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter])
-        .await
-        .unwrap();
-    assert_eq!(res, emitted_events_iter.next().unwrap());
-    assert_eq!(continuation_token, None);
+    for (i, chunk) in emitted_events.chunks(chunk_size).into_iter().enumerate() {
+        let (res, continuation_token) = module
+            .call::<_, (Vec<Event>, Option<ContinuationToken>)>(
+                "starknet_getEvents",
+                [filter.clone()],
+            )
+            .await
+            .unwrap();
+        assert_eq!(res, chunk);
+        let index = (i + 1) * chunk_size;
+        let expected_continuation_token = if index < emitted_event_indices.len() {
+            Some(
+                ContinuationToken::new(ContinuationTokenAsStruct(
+                    *emitted_event_indices.index(index),
+                ))
+                .unwrap(),
+            )
+        } else {
+            None
+        };
+        assert_eq!(continuation_token, expected_continuation_token);
+        filter.continuation_token = continuation_token;
+    }
 }
 
 #[tokio::test]
-async fn get_2_events_chunk_size_2_with_address() {
+async fn get_events_chunk_size_2_without_address() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let block = get_test_block(2);
+    let key0 = EventKey(shash!("0x6"));
+    let key1 = EventKey(shash!("0x7"));
+    let block = get_test_block_with_events(
+        2,
+        5,
+        None,
+        Some(vec![vec![key0.clone(), key1.clone(), EventKey(shash!("0x8"))]]),
+    );
     let block_number = block.header.block_number;
     storage_writer
         .begin_rw_txn()
@@ -1223,127 +1230,8 @@ async fn get_2_events_chunk_size_2_with_address() {
         .commit()
         .unwrap();
 
-    // Create the filter. The allowed key at index 1 is 0x6.
-    let filter_keys = HashSet::from([EventKey(shash!("0x6"))]);
-    let chunk_size = 2;
-    let filter = EventFilter {
-        from_block: None,
-        to_block: None,
-        continuation_token: None,
-        chunk_size,
-        address: Some(ContractAddress(patky!("0x22"))),
-        keys: vec![HashSet::new(), filter_keys],
-    };
-
-    // Create the events emitted from contract address 0x22 that have at least one of the allowed
-    // keys at index 0.
-    let event0 = block.body.transaction_outputs.index(0).events().index(0);
-    let block_hash = block.header.block_hash;
-    let block_number = BlockNumber(0);
-    let tx_hash1 = TransactionHash(StarkHash::from(0));
-    let tx_hash3 = TransactionHash(StarkHash::from(1));
-    let emitted_events = vec![
-        Event { block_hash, block_number, transaction_hash: tx_hash1, event: event0.clone() },
-        Event { block_hash, block_number, transaction_hash: tx_hash3, event: event0.clone() },
-    ];
-    let mut emitted_events_iter = emitted_events.chunks(chunk_size);
-
-    // Get the only chunk of filtered events.
-    let (res, continuation_token) = module
-        .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter.clone()])
-        .await
-        .unwrap();
-    assert_eq!(res, emitted_events_iter.next().unwrap());
-    assert_eq!(continuation_token, None);
-}
-
-#[tokio::test]
-async fn get_4_events_chunk_size_3_with_address() {
-    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let block = get_test_block(2);
-    let block_number = block.header.block_number;
-    storage_writer
-        .begin_rw_txn()
-        .unwrap()
-        .append_header(block_number, &block.header)
-        .unwrap()
-        .append_body(block_number, block.body.clone())
-        .unwrap()
-        .commit()
-        .unwrap();
-
-    // Create the filter. The allowed keys at index 0 are 0x7 or 0x9.
-    let filter_keys = HashSet::from([EventKey(shash!("0x7")), EventKey(shash!("0x9"))]);
-    let block_id = BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number));
-    let chunk_size = 3;
-    let mut filter = EventFilter {
-        from_block: Some(block_id),
-        to_block: None,
-        continuation_token: None,
-        chunk_size,
-        address: Some(ContractAddress(patky!("0x22"))),
-        keys: vec![filter_keys],
-    };
-
-    // Create the events emitted from contract address 0x22 that have at least one of the allowed
-    // keys at index 0.
-    let event0 = block.body.transaction_outputs.index(0).events().index(0);
-    let event3 = block.body.transaction_outputs.index(0).events().index(3);
-    let block_hash = block.header.block_hash;
-    let block_number = BlockNumber(0);
-    let tx_hash1 = TransactionHash(StarkHash::from(0));
-    let tx_hash3 = TransactionHash(StarkHash::from(1));
-    let emitted_events = vec![
-        Event { block_hash, block_number, transaction_hash: tx_hash1, event: event0.clone() },
-        Event { block_hash, block_number, transaction_hash: tx_hash1, event: event3.clone() },
-        Event { block_hash, block_number, transaction_hash: tx_hash3, event: event0.clone() },
-        Event { block_hash, block_number, transaction_hash: tx_hash3, event: event3.clone() },
-    ];
-    let mut emitted_events_iter = emitted_events.chunks(chunk_size);
-
-    // Create the expected continuation token.
-    let expected_continuation_token0 =
-        ContinuationToken::new(ContinuationTokenAsStruct(EventIndex(
-            TransactionIndex(block_number, TransactionOffsetInBlock(1)),
-            EventIndexInTransactionOutput(3),
-        )))
-        .unwrap();
-
-    // Get first chunk of filtered events.
-    let (res, continuation_token) = module
-        .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter.clone()])
-        .await
-        .unwrap();
-    assert_eq!(res, emitted_events_iter.next().unwrap());
-    assert_eq!(continuation_token, Some(expected_continuation_token0));
-
-    // Get second chunk of filtered events.
-    filter.continuation_token = continuation_token;
-    let (res, continuation_token) = module
-        .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter])
-        .await
-        .unwrap();
-    assert_eq!(res, emitted_events_iter.next().unwrap());
-    assert_eq!(continuation_token, None);
-}
-
-#[tokio::test]
-async fn get_6_events_chunk_size_2_without_address() {
-    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let block = get_test_block(2);
-    let block_number = block.header.block_number;
-    storage_writer
-        .begin_rw_txn()
-        .unwrap()
-        .append_header(block_number, &block.header)
-        .unwrap()
-        .append_body(block_number, block.body.clone())
-        .unwrap()
-        .commit()
-        .unwrap();
-
-    // Create the filter. The allowed keys at index 0 are 0x7 or 0x9.
-    let filter_keys = HashSet::from([EventKey(shash!("0x7")), EventKey(shash!("0x9"))]);
+    // Create the filter: the allowed keys at index 0 are 0x6 or 0x7.
+    let filter_keys = HashSet::from([key0, key1]);
     let chunk_size = 2;
     let mut filter = EventFilter {
         from_block: None,
@@ -1351,137 +1239,56 @@ async fn get_6_events_chunk_size_2_without_address() {
         continuation_token: None,
         chunk_size,
         address: None,
-        keys: vec![filter_keys],
+        keys: vec![filter_keys.clone()],
     };
 
     // Create the events that have at least one of the allowed keys at index 0.
-    let event0 = block.body.transaction_outputs.index(0).events().index(0);
-    let event2 = block.body.transaction_outputs.index(0).events().index(2);
-    let event3 = block.body.transaction_outputs.index(0).events().index(3);
     let block_hash = block.header.block_hash;
-    let block_number = BlockNumber(0);
-    let tx_hash1 = TransactionHash(StarkHash::from(0));
-    let tx_hash3 = TransactionHash(StarkHash::from(1));
-    let emitted_events = vec![
-        Event { block_hash, block_number, transaction_hash: tx_hash1, event: event0.clone() },
-        Event { block_hash, block_number, transaction_hash: tx_hash1, event: event2.clone() },
-        Event { block_hash, block_number, transaction_hash: tx_hash1, event: event3.clone() },
-        Event { block_hash, block_number, transaction_hash: tx_hash3, event: event0.clone() },
-        Event { block_hash, block_number, transaction_hash: tx_hash3, event: event2.clone() },
-        Event { block_hash, block_number, transaction_hash: tx_hash3, event: event3.clone() },
-    ];
-    let mut emitted_events_iter = emitted_events.chunks(chunk_size);
+    let mut emitted_events = vec![];
+    let mut emitted_event_indices = vec![];
+    for (tx_i, tx_output) in block.body.transaction_outputs.iter().enumerate() {
+        let transaction_hash = block.body.transactions.index(tx_i).transaction_hash();
+        for (event_i, event) in tx_output.events().iter().enumerate() {
+            if let Some(key) = event.content.keys.get(0) {
+                if filter_keys.get(key).is_some() {
+                    emitted_events.push(Event {
+                        block_hash,
+                        block_number,
+                        transaction_hash,
+                        event: event.clone(),
+                    });
+                    emitted_event_indices.push(EventIndex(
+                        TransactionIndex(block_number, TransactionOffsetInBlock(tx_i)),
+                        EventIndexInTransactionOutput(event_i),
+                    ));
+                }
+            }
+        }
+    }
 
-    // Create the expected continuation token.
-    let expected_continuation_token0 =
-        ContinuationToken::new(ContinuationTokenAsStruct(EventIndex(
-            TransactionIndex(block_number, TransactionOffsetInBlock(0)),
-            EventIndexInTransactionOutput(3),
-        )))
-        .unwrap();
-    let expected_continuation_token1 =
-        ContinuationToken::new(ContinuationTokenAsStruct(EventIndex(
-            TransactionIndex(block_number, TransactionOffsetInBlock(1)),
-            EventIndexInTransactionOutput(2),
-        )))
-        .unwrap();
-
-    // Get first chunk of filtered events.
-    let (res, continuation_token) = module
-        .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter.clone()])
-        .await
-        .unwrap();
-    assert_eq!(res, emitted_events_iter.next().unwrap());
-    assert_eq!(continuation_token, Some(expected_continuation_token0));
-
-    // Get second chunk of filtered events.
-    filter.continuation_token = continuation_token;
-    let (res, continuation_token) = module
-        .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter.clone()])
-        .await
-        .unwrap();
-    assert_eq!(res, emitted_events_iter.next().unwrap());
-    assert_eq!(continuation_token, Some(expected_continuation_token1));
-
-    // Get third chunk of filtered events.
-    filter.continuation_token = continuation_token;
-    let (res, continuation_token) = module
-        .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter])
-        .await
-        .unwrap();
-    assert_eq!(res, emitted_events_iter.next().unwrap());
-    assert_eq!(continuation_token, None);
-}
-
-#[tokio::test]
-async fn get_6_events_chunk_size_4_without_address() {
-    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let block = get_test_block(2);
-    let block_number = block.header.block_number;
-    storage_writer
-        .begin_rw_txn()
-        .unwrap()
-        .append_header(block_number, &block.header)
-        .unwrap()
-        .append_body(block_number, block.body.clone())
-        .unwrap()
-        .commit()
-        .unwrap();
-
-    // Create the filter. The allowed keys at index 0 are 0x7 or 0x9.
-    let filter_keys = HashSet::from([EventKey(shash!("0x7")), EventKey(shash!("0x9"))]);
-    let chunk_size = 4;
-    let mut filter = EventFilter {
-        from_block: None,
-        to_block: None,
-        continuation_token: None,
-        chunk_size,
-        address: None,
-        keys: vec![filter_keys],
-    };
-
-    // Create the events that have at least one of the allowed keys at index 0.
-    let event0 = block.body.transaction_outputs.index(0).events().index(0);
-    let event2 = block.body.transaction_outputs.index(0).events().index(2);
-    let event3 = block.body.transaction_outputs.index(0).events().index(3);
-    let block_hash = block.header.block_hash;
-    let block_number = BlockNumber(0);
-    let tx_hash1 = TransactionHash(StarkHash::from(0));
-    let tx_hash3 = TransactionHash(StarkHash::from(1));
-    let emitted_events = vec![
-        Event { block_hash, block_number, transaction_hash: tx_hash1, event: event0.clone() },
-        Event { block_hash, block_number, transaction_hash: tx_hash1, event: event2.clone() },
-        Event { block_hash, block_number, transaction_hash: tx_hash1, event: event3.clone() },
-        Event { block_hash, block_number, transaction_hash: tx_hash3, event: event0.clone() },
-        Event { block_hash, block_number, transaction_hash: tx_hash3, event: event2.clone() },
-        Event { block_hash, block_number, transaction_hash: tx_hash3, event: event3.clone() },
-    ];
-    let mut emitted_events_iter = emitted_events.chunks(chunk_size);
-
-    // Create the expected continuation token.
-    let expected_continuation_token0 =
-        ContinuationToken::new(ContinuationTokenAsStruct(EventIndex(
-            TransactionIndex(block_number, TransactionOffsetInBlock(1)),
-            EventIndexInTransactionOutput(2),
-        )))
-        .unwrap();
-
-    // Get first chunk of filtered events.
-    let (res, continuation_token) = module
-        .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter.clone()])
-        .await
-        .unwrap();
-    assert_eq!(res, emitted_events_iter.next().unwrap());
-    assert_eq!(continuation_token, Some(expected_continuation_token0));
-
-    // Get second chunk of filtered events.
-    filter.continuation_token = continuation_token;
-    let (res, continuation_token) = module
-        .call::<_, (Vec<Event>, Option<ContinuationToken>)>("starknet_getEvents", [filter])
-        .await
-        .unwrap();
-    assert_eq!(res, emitted_events_iter.next().unwrap());
-    assert_eq!(continuation_token, None);
+    for (i, chunk) in emitted_events.chunks(chunk_size).into_iter().enumerate() {
+        let (res, continuation_token) = module
+            .call::<_, (Vec<Event>, Option<ContinuationToken>)>(
+                "starknet_getEvents",
+                [filter.clone()],
+            )
+            .await
+            .unwrap();
+        assert_eq!(res, chunk);
+        let index = (i + 1) * chunk_size;
+        let expected_continuation_token = if index < emitted_event_indices.len() {
+            Some(
+                ContinuationToken::new(ContinuationTokenAsStruct(
+                    *emitted_event_indices.index(index),
+                ))
+                .unwrap(),
+            )
+        } else {
+            None
+        };
+        assert_eq!(continuation_token, expected_continuation_token);
+        filter.continuation_token = continuation_token;
+    }
 }
 
 #[tokio::test]
