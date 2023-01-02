@@ -1,6 +1,7 @@
 use std::env::{self, args};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::collections::HashMap;
 
 use starknet_api::core::ChainId;
 use tempfile::NamedTempFile;
@@ -32,6 +33,7 @@ fn prepare_command() {
         "--config_file=conf.yaml".to_owned(),
         "--chain_id=CHAIN_ID".to_owned(),
         "--server_address=IP:PORT".to_owned(),
+        "--http_headers=KEY_1:VALUE_1 KEY_2:VALUE_2".to_owned(),
         "--storage=path".to_owned(),
         "--no_sync=true".to_owned(),
     ];
@@ -52,6 +54,16 @@ fn prepare_command() {
             .expect("Expected to have server_address arg"),
         "IP:PORT".to_owned()
     );
+
+    let headers_list: Vec<&str> = builder_args
+        .get_one::<String>("http_headers")
+        .expect("Expected to have http_headers args")
+        .split(' ')
+        .collect();
+    assert_eq!(headers_list.len(), 2);
+    assert_eq!(headers_list[0].to_owned(), "KEY_1:VALUE_1".to_owned());
+    assert_eq!(headers_list[1].to_owned(), "KEY_2:VALUE_2".to_owned());
+
     assert_eq!(
         *builder_args.get_one::<PathBuf>("storage").expect("Expected to have storage arg"),
         PathBuf::from("path")
@@ -74,4 +86,26 @@ gateway:
 
     assert_eq!(builder.chain_id, ChainId("TEST".to_owned()));
     assert_eq!(builder.config.gateway.max_events_keys, 100);
+}
+
+#[test]
+fn load_http_headers() {
+    let mut f = NamedTempFile::new().unwrap();
+    let yaml = r"  
+central:
+    http_headers:
+        KEY_1: VALUE_1
+        KEY_2: VALUE_2 
+";
+    f.write_all(yaml.as_bytes()).unwrap();
+    let args = vec!["Papyrus".to_owned(), format!("--config_file={}", f.path().to_str().unwrap()),
+    "--http_headers=KEY_2:NEW_VALUE_2 KEY_3:VALUE_3".to_owned()];
+    let builder = ConfigBuilder::default().prepare_command(args).unwrap().yaml().unwrap().args().unwrap();
+
+    let target_http_headers=HashMap::from([
+        ("KEY_1".to_string(), "VALUE_1".to_string()),
+        ("KEY_2".to_string(), "NEW_VALUE_2".to_string()),
+        ("KEY_3".to_string(), "VALUE_3".to_string()),
+    ]);
+    assert_eq!(builder.config.central.http_headers, target_http_headers);
 }
