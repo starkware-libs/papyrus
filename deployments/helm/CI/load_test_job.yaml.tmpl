@@ -8,10 +8,11 @@ metadata:
 spec:
   template:
     spec:
+      securityContext:
+        fsGroup: 1000
       containers:
         - name: papyrus-load-test
-          # image: danbr12345678/papyrus-test:ip-load
-          image: ghcr.io/starkware-libs/papyrus:latest
+          image: ghcr.io/starkware-libs/papyrus:dev
           imagePullPolicy: Always
           command: ["/app/load_test/target/release/papyrus_load_test"]
           env:
