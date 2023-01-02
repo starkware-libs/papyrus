@@ -191,6 +191,38 @@ pub enum StorageError {
     EventNotFound { event_index: EventIndex, from_address: ContractAddress },
     #[error("DB in inconsistent state: {msg:?}.")]
     DBInconsistency { msg: String },
+    #[error("Header of block with hash {block_hash:?} already exists in ommer table.")]
+    OmmerHeaderAlreadyExists { block_hash: BlockHash },
+    #[error("Ommer transaction key {tx_key:?} already exists.")]
+    OmmerTransactionKeyAlreadyExists { tx_key: OmmerTransactionKey },
+    #[error("Ommer transaction output key {tx_key:?} already exists.")]
+    OmmerTransactionOutputKeyAlreadyExists { tx_key: OmmerTransactionKey },
+    #[error(
+        "Ommer event {event_key:?} emitted from contract address {contract_address:?} already \
+         exists."
+    )]
+    OmmerEventAlreadyExists { contract_address: ContractAddress, event_key: OmmerEventKey },
+    #[error("Ommer state diff of block {block_hash:?} already exists.")]
+    OmmerStateDiffAlreadyExists { block_hash: BlockHash },
+    #[error("Ommer class {class_hash:?} of block {block_hash:?} already exists.")]
+    OmmerClassAlreadyExists { block_hash: BlockHash, class_hash: ClassHash },
+    #[error(
+        "Ommer deployed contract {contract_address:?} of block {block_hash:?} already exists."
+    )]
+    OmmerDeployedContractAlreadyExists { block_hash: BlockHash, contract_address: ContractAddress },
+    #[error(
+        "Ommer storage key {key:?} of contract {contract_address:?} of block {block_hash:?} \
+         already exists."
+    )]
+    OmmerStorageKeyAlreadyExists {
+        block_hash: BlockHash,
+        contract_address: ContractAddress,
+        key: StorageKey,
+    },
+    #[error(
+        "Ommer nonce of contract {contract_address:?} of block {block_hash:?} already exists."
+    )]
+    OmmerNonceAlreadyExists { block_hash: BlockHash, contract_address: ContractAddress },
 }
 
 pub type StorageResult<V> = std::result::Result<V, StorageError>;
