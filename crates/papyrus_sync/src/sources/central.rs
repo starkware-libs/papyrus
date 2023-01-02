@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_stream::stream;
@@ -26,6 +27,7 @@ pub type CentralResult<T> = Result<T, CentralError>;
 pub struct CentralSourceConfig {
     pub concurrent_requests: usize,
     pub url: String,
+    pub http_headers: HashMap<String, String>,
     pub retry_config: RetryConfig,
 }
 pub struct GenericCentralSource<TStarknetClient: StarknetClientTrait + Send + Sync> {
@@ -288,7 +290,13 @@ pub type CentralSource = GenericCentralSource<StarknetClient>;
 
 impl CentralSource {
     pub fn new(config: CentralSourceConfig) -> Result<CentralSource, ClientCreationError> {
+<<<<<<< HEAD
         let starknet_client = StarknetClient::new(&config.url, config.retry_config)?;
+=======
+        let starknet_client =
+            StarknetClient::new(&config.url, Some(config.http_headers), config.retry_config)?;
+        info!("Central source is configured with {}.", config.url);
+>>>>>>> Add throttling bypass.
         Ok(CentralSource {
             concurrent_requests: config.concurrent_requests,
             starknet_client: Arc::new(starknet_client),
