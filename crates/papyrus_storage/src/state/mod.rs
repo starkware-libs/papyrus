@@ -41,6 +41,8 @@ pub trait StateStorageReader<Mode: TransactionKind> {
     fn get_state_reader(&self) -> StorageResult<StateReader<'_, Mode>>;
 }
 
+pub type RevertedStateDiff = (ThinStateDiff, Vec<(ClassHash, ContractClass)>);
+
 pub trait StateStorageWriter
 where
     Self: Sized,
@@ -59,7 +61,7 @@ where
     fn revert_state_diff(
         self,
         block_number: BlockNumber,
-    ) -> StorageResult<(Self, Option<(ThinStateDiff, Vec<(ClassHash, ContractClass)>)>)>;
+    ) -> StorageResult<(Self, Option<RevertedStateDiff>)>;
 }
 
 impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for StorageTxn<'env, Mode> {
