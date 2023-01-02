@@ -1148,7 +1148,7 @@
             "TXN": {
                 "title": "Transaction",
                 "description": "The transaction schema, as it appears inside a block",
-                "oneOf": [
+                "anyOf": [
                     {
                         "$ref": "#/components/schemas/INVOKE_TXN"
                     },
