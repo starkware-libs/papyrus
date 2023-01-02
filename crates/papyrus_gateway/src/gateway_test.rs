@@ -1520,7 +1520,7 @@ async fn serialize_returns_valid_json() {
         .unwrap()
         .append_body(block1.header.block_number, block1.body)
         .unwrap()
-        .append_state_diff(block1.header.block_number, state_diff, vec![])
+        .append_state_diff(block1.header.block_number, state_diff.clone(), vec![])
         .unwrap()
         .commit()
         .unwrap();
@@ -1537,18 +1537,23 @@ async fn serialize_returns_valid_json() {
         "TXN_RECEIPT",
     ])
     .await;
-    validate_state(server_address, &schema).await;
+    validate_state(&state_diff, server_address, &schema).await;
     validate_block(server_address, &schema).await;
     validate_transaction(server_address, &schema).await;
 }
 
-async fn validate_state(server_address: SocketAddr, schema: &JSONSchema) {
+async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, schema: &JSONSchema) {
     let res =
         send_request(server_address, "starknet_getStateUpdate", r#"{"block_number": 1}"#).await;
     assert!(schema.validate(&res["result"]).is_ok());
 
-    let res =
-        send_request(server_address, "starknet_getClassAt", r#"{"block_number": 1}, "0x0""#).await;
+    let (address, _) = state_diff.deployed_contracts.get_index(0).unwrap();
+    let res = send_request(
+        server_address,
+        "starknet_getClassAt",
+        format!(r#"{{"block_number": 1}}, "0x{}""#, hex::encode(address.0.key().bytes())).as_str(),
+    )
+    .await;
     assert!(schema.validate(&res["result"]).is_ok());
 }
 
