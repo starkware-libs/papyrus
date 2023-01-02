@@ -3,6 +3,7 @@ mod config_test;
 
 mod file_config;
 
+use std::collections::HashMap;
 use std::env::{args, ArgsOs};
 use std::mem::discriminant;
 use std::path::PathBuf;
@@ -75,6 +76,7 @@ impl Default for ConfigBuilder {
                 central: CentralSourceConfig {
                     concurrent_requests: 300,
                     url: String::from("https://alpha-mainnet.starknet.io/"),
+                    http_headers: HashMap::new(),
                     retry_config: RetryConfig {
                         retry_base_millis: 30,
                         retry_max_delay_millis: 30000,

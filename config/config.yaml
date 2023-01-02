@@ -2,6 +2,8 @@ chain_id: SN_MAIN
 central:
     concurrent_requests: 300
     url: https://alpha-mainnet.starknet.io/
+    http_headers:
+        X-Throttling-Bypass: 7559cf8255094addfae700e9c7fb6071831c5243e44
     retry:
         retry_base_millis: 30
         retry_max_delay_millis: 30000
