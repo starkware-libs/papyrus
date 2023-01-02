@@ -1,6 +1,3 @@
-use std::ops::Index;
-
-use starknet_api::block::BlockNumber;
 use starknet_api::core::{ContractAddress, PatriciaKey};
 use starknet_api::hash::StarkHash;
 use starknet_api::patky;
@@ -9,14 +6,14 @@ use starknet_api::transaction::{EventIndexInTransactionOutput, TransactionOffset
 use crate::body::events::EventsReader;
 use crate::body::BodyStorageWriter;
 use crate::header::HeaderStorageWriter;
-use crate::test_utils::{get_test_block, get_test_storage};
+use crate::test_utils::{get_test_block_with_events, get_test_storage};
 use crate::{EventIndex, TransactionIndex};
 
 #[tokio::test]
 async fn iter_events_by_key() {
     let (storage_reader, mut storage_writer) = get_test_storage();
-
-    let block = get_test_block(2);
+    let from_addresses = vec![ContractAddress(patky!("0x22")), ContractAddress(patky!("0x23"))];
+    let block = get_test_block_with_events(2, 5, Some(from_addresses), None);
     let block_number = block.header.block_number;
     storage_writer
         .begin_rw_txn()
@@ -28,58 +25,25 @@ async fn iter_events_by_key() {
         .commit()
         .unwrap();
 
-    // Create the events emitted starting from contract address 0x22.
+    // Create the events emitted from contract address 0x22.
     let address = ContractAddress(patky!("0x22"));
-    let event0 = block.body.transaction_outputs.index(0).events().index(0);
-    let event1 = block.body.transaction_outputs.index(0).events().index(1);
-    let event2 = block.body.transaction_outputs.index(0).events().index(2);
-    let event3 = block.body.transaction_outputs.index(0).events().index(3);
-    let event4 = block.body.transaction_outputs.index(0).events().index(4);
-    let block_number = BlockNumber(0);
-    let tx_index0 = TransactionIndex(block_number, TransactionOffsetInBlock(0));
-    let tx_index1 = TransactionIndex(block_number, TransactionOffsetInBlock(1));
-    let emitted_events = vec![
-        (
-            (event0.from_address, EventIndex(tx_index0, EventIndexInTransactionOutput(0))),
-            event0.content.clone(),
-        ),
-        (
-            (event1.from_address, EventIndex(tx_index0, EventIndexInTransactionOutput(1))),
-            event1.content.clone(),
-        ),
-        (
-            (event3.from_address, EventIndex(tx_index0, EventIndexInTransactionOutput(3))),
-            event3.content.clone(),
-        ),
-        (
-            (event4.from_address, EventIndex(tx_index0, EventIndexInTransactionOutput(4))),
-            event4.content.clone(),
-        ),
-        (
-            (event0.from_address, EventIndex(tx_index1, EventIndexInTransactionOutput(0))),
-            event0.content.clone(),
-        ),
-        (
-            (event1.from_address, EventIndex(tx_index1, EventIndexInTransactionOutput(1))),
-            event1.content.clone(),
-        ),
-        (
-            (event3.from_address, EventIndex(tx_index1, EventIndexInTransactionOutput(3))),
-            event3.content.clone(),
-        ),
-        (
-            (event4.from_address, EventIndex(tx_index1, EventIndexInTransactionOutput(4))),
-            event4.content.clone(),
-        ),
-        (
-            (event2.from_address, EventIndex(tx_index0, EventIndexInTransactionOutput(2))),
-            event2.content.clone(),
-        ),
-        (
-            (event2.from_address, EventIndex(tx_index1, EventIndexInTransactionOutput(2))),
-            event2.content.clone(),
-        ),
-    ];
+    let mut emitted_events = vec![];
+    let mut events_not_from_address = vec![];
+    for (tx_i, tx_output) in block.body.transaction_outputs.iter().enumerate() {
+        for (event_i, event) in tx_output.events().iter().enumerate() {
+            let event_index = EventIndex(
+                TransactionIndex(block_number, TransactionOffsetInBlock(tx_i)),
+                EventIndexInTransactionOutput(event_i),
+            );
+            if event.from_address == address {
+                emitted_events.push(((event.from_address, event_index), event.content.clone()))
+            } else {
+                events_not_from_address
+                    .push(((event.from_address, event_index), event.content.clone()))
+            }
+        }
+    }
+    emitted_events.append(&mut events_not_from_address);
 
     let event_index = EventIndex(
         TransactionIndex(block_number, TransactionOffsetInBlock(0)),
@@ -94,8 +58,7 @@ async fn iter_events_by_key() {
 #[tokio::test]
 async fn iter_events_by_index() {
     let (storage_reader, mut storage_writer) = get_test_storage();
-
-    let block = get_test_block(2);
+    let block = get_test_block_with_events(2, 5, None, None);
     let block_number = block.header.block_number;
     storage_writer
         .begin_rw_txn()
@@ -108,48 +71,19 @@ async fn iter_events_by_index() {
         .unwrap();
 
     // Create the events emitted starting from event index (0,0,2).
-    let event0 = block.body.transaction_outputs.index(0).events().index(0);
-    let event1 = block.body.transaction_outputs.index(0).events().index(1);
-    let event2 = block.body.transaction_outputs.index(0).events().index(2);
-    let event3 = block.body.transaction_outputs.index(0).events().index(3);
-    let event4 = block.body.transaction_outputs.index(0).events().index(4);
-    let block_number = BlockNumber(0);
-    let tx_index0 = TransactionIndex(block_number, TransactionOffsetInBlock(0));
-    let tx_index1 = TransactionIndex(block_number, TransactionOffsetInBlock(1));
-    let emitted_events = vec![
-        (
-            (event2.from_address, EventIndex(tx_index0, EventIndexInTransactionOutput(2))),
-            event2.content.clone(),
-        ),
-        (
-            (event3.from_address, EventIndex(tx_index0, EventIndexInTransactionOutput(3))),
-            event3.content.clone(),
-        ),
-        (
-            (event4.from_address, EventIndex(tx_index0, EventIndexInTransactionOutput(4))),
-            event4.content.clone(),
-        ),
-        (
-            (event0.from_address, EventIndex(tx_index1, EventIndexInTransactionOutput(0))),
-            event0.content.clone(),
-        ),
-        (
-            (event1.from_address, EventIndex(tx_index1, EventIndexInTransactionOutput(1))),
-            event1.content.clone(),
-        ),
-        (
-            (event2.from_address, EventIndex(tx_index1, EventIndexInTransactionOutput(2))),
-            event2.content.clone(),
-        ),
-        (
-            (event3.from_address, EventIndex(tx_index1, EventIndexInTransactionOutput(3))),
-            event3.content.clone(),
-        ),
-        (
-            (event4.from_address, EventIndex(tx_index1, EventIndexInTransactionOutput(4))),
-            event4.content.clone(),
-        ),
-    ];
+    let mut emitted_events = vec![];
+    for (tx_i, tx_output) in block.body.transaction_outputs.iter().enumerate() {
+        for (event_i, event) in tx_output.events().iter().enumerate() {
+            if tx_i == 0 && event_i < 2 {
+                continue;
+            }
+            let event_index = EventIndex(
+                TransactionIndex(block_number, TransactionOffsetInBlock(tx_i)),
+                EventIndexInTransactionOutput(event_i),
+            );
+            emitted_events.push(((event.from_address, event_index), event.content.clone()))
+        }
+    }
 
     let event_index = EventIndex(
         TransactionIndex(block_number, TransactionOffsetInBlock(0)),
