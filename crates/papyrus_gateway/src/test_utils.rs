@@ -42,13 +42,9 @@ pub async fn send_request(address: SocketAddr, method: &str, params: &str) -> se
     serde_json::from_str(&res_str).unwrap()
 }
 
-pub fn get_test_chain_id() -> ChainId {
-    ChainId("SN_GOERLI".to_string())
-}
-
 pub fn get_test_gateway_config() -> GatewayConfig {
     GatewayConfig {
-        chain_id: get_test_chain_id(),
+        chain_id: ChainId("SN_GOERLI".to_string()),
         server_address: String::from("127.0.0.1:0"),
         max_events_chunk_size: 10,
         max_events_keys: 10,

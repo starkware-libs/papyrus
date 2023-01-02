@@ -90,8 +90,8 @@ pub struct ContractClass {
 impl TryFrom<starknet_api::state::ContractClass> for ContractClass {
     type Error = CompressionError;
     fn try_from(class: starknet_api::state::ContractClass) -> Result<Self, Self::Error> {
-        // TODO(anatg): Deal with serde_json error.
-        let mut program_value = serde_json::to_value(&class.program).unwrap();
+        let mut program_value = serde_json::to_value(&class.program)
+            .map_err(|err| CompressionError::StorageSerde(StorageSerdeError::Serde(err)))?;
         // Remove the 'attributes' key if it is null.
         if class.program.attributes == serde_json::value::Value::Null {
             program_value.as_object_mut().unwrap().remove("attributes");
