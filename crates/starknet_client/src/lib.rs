@@ -8,12 +8,14 @@ pub mod retry;
 mod starknet_client_test;
 #[cfg(test)]
 mod test_utils;
+use std::collections::HashMap;
 use std::fmt::{self, Display, Formatter};
 
 use async_trait::async_trait;
 use log::error;
 #[cfg(any(feature = "testing", test))]
 use mockall::automock;
+use reqwest::header::HeaderMap;
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
@@ -52,6 +54,7 @@ pub trait StarknetClientTrait {
 /// A starknet client.
 pub struct StarknetClient {
     urls: StarknetUrls,
+    http_headers: HeaderMap,
     internal_client: Client,
     retry_config: RetryConfig,
 }
@@ -155,10 +158,12 @@ impl StarknetClient {
     /// Creates a new client for a starknet gateway at `url_str` with retry_config [`RetryConfig`].
     pub fn new(
         url_str: &str,
+        http_headers: HashMap<String, String>,
         retry_config: RetryConfig,
     ) -> Result<StarknetClient, ClientCreationError> {
         Ok(StarknetClient {
             urls: StarknetUrls::new(url_str)?,
+            http_headers: (&http_headers).try_into().expect("failed to create HeaderMap :("),
             internal_client: Client::builder().build()?,
             retry_config,
         })
@@ -208,7 +213,7 @@ impl StarknetClient {
     }
 
     async fn request(&self, url: Url) -> ClientResult<String> {
-        let res = self.internal_client.get(url).send().await;
+        let res = self.internal_client.get(url).headers(self.http_headers.clone()).send().await;
         let (code, message) = match res {
             Ok(response) => (response.status(), response.text().await?),
             Err(err) => {
