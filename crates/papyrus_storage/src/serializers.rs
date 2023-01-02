@@ -8,8 +8,6 @@ use std::hash::Hash;
 
 use indexmap::IndexMap;
 use integer_encoding::*;
-#[cfg(test)]
-use rand::Rng;
 use starknet_api::block::{
     BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
 };
@@ -36,10 +34,7 @@ use crate::body::events::{
 };
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
 #[cfg(test)]
-use crate::serializers::serializers_test::{
-    auto_storage_serde_test, create_test, default_impl_get_test_instance, get_number_of_variants,
-    impl_get_test_instance, GetTestInstance, StorageSerdeTest,
-};
+use crate::serializers::serializers_test::{create_storage_serde_test, StorageSerdeTest};
 use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
 use crate::{EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey, TransactionIndex};
 
@@ -300,7 +295,7 @@ macro_rules! auto_storage_serde {
             }
         }
         #[cfg(test)]
-        auto_storage_serde_test!($name, struct $name ($ty));
+        create_storage_serde_test!($name);
         auto_storage_serde!($($rest)*);
     };
     // Tuple structs (no names associated with fields) - two fields.
@@ -315,7 +310,7 @@ macro_rules! auto_storage_serde {
             }
         }
         #[cfg(test)]
-        auto_storage_serde_test!($name, struct $name ($ty0, $ty1));
+        create_storage_serde_test!($name);
         auto_storage_serde!($($rest)*);
     };
     // Structs with public fields.
@@ -336,7 +331,7 @@ macro_rules! auto_storage_serde {
             }
         }
         #[cfg(test)]
-        auto_storage_serde_test!($name, struct $name { $(pub $field : $ty ,)* });
+        create_storage_serde_test!($name);
         auto_storage_serde!($($rest)*);
     };
     // Tuples - two elements.
@@ -354,7 +349,7 @@ macro_rules! auto_storage_serde {
             }
         }
         #[cfg(test)]
-        auto_storage_serde_test!(($ty0, $ty1));
+        create_storage_serde_test!(($ty0, $ty1));
         auto_storage_serde!($($rest)*);
     };
     // Tuples - three elements.
@@ -374,7 +369,7 @@ macro_rules! auto_storage_serde {
             }
         }
         #[cfg(test)]
-        auto_storage_serde_test!(($ty0, $ty1, $ty2));
+        create_storage_serde_test!(($ty0, $ty1, $ty2));
         auto_storage_serde!($($rest)*);
     };
     // enums.
@@ -406,7 +401,7 @@ macro_rules! auto_storage_serde {
             }
         }
         #[cfg(test)]
-        auto_storage_serde_test!($name, enum $name { $($variant $( ($ty) )? = $num ,)* });
+        create_storage_serde_test!($name);
         auto_storage_serde!($($rest)*);
     };
     // Binary.
@@ -422,7 +417,7 @@ macro_rules! auto_storage_serde {
             }
         }
         #[cfg(test)]
-        auto_storage_serde_test!($name, bincode($name));
+        create_storage_serde_test!($name);
         auto_storage_serde!($($rest)*);
     }
 }
