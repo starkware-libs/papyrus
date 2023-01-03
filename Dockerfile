@@ -14,10 +14,6 @@ FROM rust:1.63 AS copy_toml
 COPY crates/ /app/crates/
 COPY Cargo.toml /app/
 
-# Build the load test for CI, consider seperating to a different image.
-WORKDIR /app/load_test
-RUN cargo build --release -p papyrus_load_test
-
 WORKDIR /app/
 
 # Erase all non-Cargo.toml files.
@@ -33,7 +29,7 @@ RUN find /app \! -name "Cargo.toml" -type f -delete ; \
     && mv -f $dir/_Cargo.toml $dir/Cargo.toml; \
 done && mv _Cargo.toml Cargo.toml
 
-# Starting a new stage so that the next two layers will be cached if a non-Cargo.toml file was
+# Starting a new stage so that the first build layer will be cached if a non-Cargo.toml file was
 # changed.
 FROM rust:1.63 AS builder
 WORKDIR /app/
@@ -43,7 +39,9 @@ RUN apt update && apt install -y clang
 # Copy all the files from the previous stage (which are Cargo.toml and empty lib.rs files).
 COPY --from=copy_toml /app .
 
-RUN CARGO_INCREMENTAL=0 cargo build --release --package papyrus_node
+RUN CARGO_INCREMENTAL=0 cargo build --release --package papyrus_node; \
+    # TODO: Consider seperating the load test for CI to a different image.
+    CARGO_INCREMENTAL=0 cargo build --release --package papyrus_load_test
 
 # Copy the rest of the files.
 COPY crates/ /app/crates
@@ -51,7 +49,8 @@ COPY crates/ /app/crates
 # Touching the lib.rs files to mark them for re-compilation. Then re-compile now that all the source
 # code is available
 RUN touch crates/*/src/lib.rs; \
-    CARGO_INCREMENTAL=0 cargo build --release --package papyrus_node --bin papyrus_node
+    CARGO_INCREMENTAL=0 cargo build --release --package papyrus_node --bin papyrus_node; \
+    CARGO_INCREMENTAL=0 cargo build --release --package papyrus_load_test --bin papyrus_load_test
 
 # Starting a new stage so that the final image will contain only the executable.
 FROM rust:1.63-slim-buster
@@ -59,6 +58,7 @@ ENV ID=1000
 
 WORKDIR /app
 COPY --from=builder /app/target/release/papyrus_node /app/target/release/papyrus_node
+COPY --from=builder /app/target/release/papyrus_load_test /app/target/release/papyrus_load_test
 COPY config/ /app/config
 
 RUN mkdir data
