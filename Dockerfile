@@ -61,7 +61,11 @@ COPY --from=builder /app/target/release/papyrus_node /app/target/release/papyrus
 COPY --from=builder /app/target/release/papyrus_load_test /app/target/release/papyrus_load_test
 COPY config/ /app/config
 
-RUN mkdir data
+RUN set -ex; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends tini; \
+    mkdir data
+
 RUN set -ex; \
     addgroup --gid ${ID} papyrus; \
     adduser --gid ${ID} --uid ${ID} --gecos "" --disabled-password --home /app papyrus; \
@@ -71,4 +75,4 @@ EXPOSE 8080 8081
 
 USER ${ID}
 
-ENTRYPOINT ["/app/target/release/papyrus_node"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/app/target/release/papyrus_node"]
