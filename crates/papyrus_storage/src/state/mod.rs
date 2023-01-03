@@ -41,6 +41,8 @@ pub trait StateStorageReader<Mode: TransactionKind> {
     fn get_state_reader(&self) -> StorageResult<StateReader<'_, Mode>>;
 }
 
+pub type RevertedStateDiff = (ThinStateDiff, Vec<(ClassHash, ContractClass)>);
+
 pub trait StateStorageWriter
 where
     Self: Sized,
@@ -56,7 +58,10 @@ where
         deployed_contract_class_definitions: Vec<(ClassHash, ContractClass)>,
     ) -> StorageResult<Self>;
 
-    fn revert_state_diff(self, block_number: BlockNumber) -> StorageResult<Self>;
+    fn revert_state_diff(
+        self,
+        block_number: BlockNumber,
+    ) -> StorageResult<(Self, Option<RevertedStateDiff>)>;
 }
 
 impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for StorageTxn<'env, Mode> {
@@ -227,7 +232,10 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         Ok(self)
     }
 
-    fn revert_state_diff(self, block_number: BlockNumber) -> StorageResult<Self> {
+    fn revert_state_diff(
+        self,
+        block_number: BlockNumber,
+    ) -> StorageResult<(Self, Option<(ThinStateDiff, Vec<(ClassHash, ContractClass)>)>)> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let declared_classes_table = self.txn.open_table(&self.tables.declared_classes)?;
         let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
@@ -245,7 +253,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
                  action.",
                 block_number
             );
-            return Ok(self);
+            return Ok((self, None));
         }
 
         if current_state_marker != block_number.next() {
@@ -257,7 +265,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         markers_table.upsert(&self.txn, &MarkerKind::State, &block_number)?;
 
         if let Some(thin_state_diff) = self.get_state_diff(block_number)? {
-            delete_declared_classes(
+            let deleted_classes = delete_declared_classes(
                 &self.txn,
                 block_number,
                 &thin_state_diff,
@@ -274,7 +282,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             delete_nonces(&self.txn, block_number, &thin_state_diff, &nonces_table)?;
             state_diffs_table.delete(&self.txn, &block_number)?;
 
-            Ok(self)
+            Ok((self, Some((thin_state_diff, deleted_classes))))
         } else {
             Err(StorageError::DBInconsistency {
                 msg: format!("StateDiff {} doesn't exist.", block_number),
@@ -386,7 +394,7 @@ fn delete_declared_classes<'env>(
     block_number: BlockNumber,
     thin_state_diff: &ThinStateDiff,
     declared_classes_table: &'env DeclaredClassesTable<'env>,
-) -> StorageResult<()> {
+) -> StorageResult<Vec<(ClassHash, ContractClass)>> {
     // Class hashes of the contracts that were deployed in this block.
     let deployed_contracts_class_hashes = thin_state_diff.deployed_contracts.values();
 
@@ -398,6 +406,7 @@ fn delete_declared_classes<'env>(
         .chain(deployed_contracts_class_hashes)
         .collect();
 
+    let mut deleted_data = vec![];
     for class_hash in class_hashes {
         let maybe_indexed_declared_class = declared_classes_table.get(txn, class_hash)?;
         match maybe_indexed_declared_class {
@@ -406,10 +415,11 @@ fn delete_declared_classes<'env>(
             },
             Some(IndexedDeclaredContract {
                 block_number: declared_block_number,
-                contract_class: _,
+                contract_class,
             }) => {
                 // If the class was declared in a different block then we should'nt delete it.
                 if block_number == declared_block_number {
+                    deleted_data.push((*class_hash, contract_class));
                     declared_classes_table.delete(txn, class_hash)?;
                 }
                 continue;
@@ -417,7 +427,7 @@ fn delete_declared_classes<'env>(
         };
     }
 
-    Ok(())
+    Ok(deleted_data)
 }
 
 fn delete_deployed_contracts<'env>(
