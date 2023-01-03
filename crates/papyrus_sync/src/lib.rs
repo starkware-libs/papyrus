@@ -83,42 +83,58 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             pin_mut!(block_stream, state_diff_stream);
 
             loop {
-                let sync_event: Option<SyncEvent> = select! {
+                let sync_event = match select! {
                   res = block_stream.next() => res,
                   res = state_diff_stream.next() => res,
                   complete => break,
-                };
-                match sync_event {
-                    Some(SyncEvent::BlockAvailable { block_number, block }) => {
-                        self.writer
-                            .begin_rw_txn()?
-                            .append_header(block_number, &block.header)?
-                            .append_body(block_number, block.body)?
-                            .commit()?;
-                    }
-                    Some(SyncEvent::StateDiffAvailable {
-                        block_number,
-                        block_hash: _block_hash,
-                        state_diff,
-                        deployed_contract_class_definitions,
-                    }) => {
-                        self.writer
-                            .begin_rw_txn()?
-                            .append_state_diff(
-                                block_number,
-                                state_diff,
-                                deployed_contract_class_definitions,
-                            )?
-                            .commit()?;
-                    }
+                } {
+                    Some(sync_event) => sync_event,
                     None => {
-                        return Err(StateSyncError::SyncError {
-                            message: "Got an empty event.".to_string(),
-                        });
+                        unreachable!("Received None as a sync event.");
                     }
+                };
+
+                match self.process_sync_event(sync_event).await {
+                    Ok(_) => {}
+                    // Unrecoverable errors.
+                    Err(err) => return Err(err),
                 }
             }
         }
+    }
+
+    // Tries to store the incoming data.
+    async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult {
+        match sync_event {
+            SyncEvent::BlockAvailable { block_number, block } => {
+                self.store_block(block_number, block)
+            }
+            SyncEvent::StateDiffAvailable {
+                block_number,
+                block_hash: _block_hash,
+                state_diff,
+                deployed_contract_class_definitions,
+            } => {
+                self.writer
+                    .begin_rw_txn()?
+                    .append_state_diff(
+                        block_number,
+                        state_diff,
+                        deployed_contract_class_definitions,
+                    )?
+                    .commit()?;
+                Ok(())
+            }
+        }
+    }
+
+    fn store_block(&mut self, block_number: BlockNumber, block: Block) -> StateSyncResult {
+        self.writer
+            .begin_rw_txn()?
+            .append_header(block_number, &block.header)?
+            .append_body(block_number, block.body)?
+            .commit()?;
+        Ok(())
     }
 }
 
