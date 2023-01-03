@@ -1,4 +1,3 @@
-use std::cmp::max;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -14,30 +13,46 @@ use starknet_api::state::StateDiff;
 
 use super::central::BlocksStream;
 use crate::sources::central::{MockCentralSourceTrait, StateUpdatesStream};
-use crate::{CentralError, GenericStateSync, StateSyncError, SyncConfig};
+use crate::{CentralError, CentralSourceTrait, GenericStateSync, StateSyncResult, SyncConfig};
 
-const SYNC_SLEEP_DURATION: Duration = Duration::new(1, 0);
-const CHECK_STORAGE_INTERVAL: Duration = Duration::new(2, 0);
+const SYNC_SLEEP_DURATION: Duration = Duration::new(0, 1000 * 1000 * 100); // 100ms
+const DURATION_BEFORE_CHECKING_STORAGE: Duration = Duration::new(0, 1000 * 1000 * 100); // 100ms
+const MAX_CHECK_STORAGE_ITERATIONS: u8 = 3;
+
+enum CheckStoragePredicateResult {
+    InProgress,
+    Passed,
+    Error,
+}
 
 // Checks periodically if the storage reached a certain state defined by f.
 async fn check_storage(
     reader: StorageReader,
     timeout: Duration,
-    predicate: impl Fn(&StorageReader) -> bool,
+    predicate: impl Fn(&StorageReader) -> CheckStoragePredicateResult,
 ) -> bool {
-    let interval_time = CHECK_STORAGE_INTERVAL;
+    // Let the other thread opportunity to run before starting the check.
+    tokio::time::sleep(DURATION_BEFORE_CHECKING_STORAGE).await;
+    let interval_time = timeout.div_f32(MAX_CHECK_STORAGE_ITERATIONS.into());
     let mut interval = tokio::time::interval(interval_time);
-    let num_repeats = timeout.as_secs() / interval_time.as_secs();
-    for i in 0..max(1, num_repeats) {
-        debug!("Checking storage {}/{}", i, num_repeats);
-        if predicate(&reader) {
-            return true;
+    for i in 0..MAX_CHECK_STORAGE_ITERATIONS {
+        debug!("== Checking predicate on storage ({}/{}). ==", i + 1, MAX_CHECK_STORAGE_ITERATIONS);
+        match predicate(&reader) {
+            CheckStoragePredicateResult::InProgress => {
+                debug!("== Cechk finished, test still in progress. ==");
+                interval.tick().await;
+            }
+            CheckStoragePredicateResult::Passed => {
+                debug!("== Check passed. ==");
+                return true;
+            }
+            CheckStoragePredicateResult::Error => {
+                debug!("== Check failed. ==");
+                return false;
+            }
         }
-
-        interval.tick().await;
     }
     error!("Check storage timed out.");
-
     false
 }
 
@@ -45,8 +60,8 @@ async fn check_storage(
 async fn run_sync(
     reader: StorageReader,
     writer: StorageWriter,
-    central: MockCentralSourceTrait,
-) -> Result<(), StateSyncError> {
+    central: impl CentralSourceTrait + Send + Sync + 'static,
+) -> StateSyncResult {
     let mut state_sync = GenericStateSync {
         config: SyncConfig { block_propagation_sleep_duration: SYNC_SLEEP_DURATION },
         central_source: Arc::new(central),
@@ -69,9 +84,12 @@ async fn sync_empty_chain() -> Result<(), anyhow::Error> {
     let sync_future = run_sync(reader.clone(), writer, mock);
 
     // Check that the header marker is 0.
-    let check_storage_future = check_storage(reader.clone(), Duration::from_secs(5), |reader| {
+    let check_storage_future = check_storage(reader.clone(), Duration::from_millis(50), |reader| {
         let marker = reader.begin_ro_txn().unwrap().get_header_marker().unwrap();
-        marker == BlockNumber(0)
+        if marker == BlockNumber(0) {
+            return CheckStoragePredicateResult::Passed;
+        }
+        CheckStoragePredicateResult::Error
     });
 
     tokio::select! {
@@ -85,7 +103,7 @@ async fn sync_empty_chain() -> Result<(), anyhow::Error> {
 #[tokio::test]
 async fn sync_happy_flow() -> Result<(), anyhow::Error> {
     const N_BLOCKS: u64 = 5;
-    const MAX_TIME_TO_SYNC: u64 = 60;
+    const MAX_TIME_TO_SYNC_MS: u64 = 60;
     let _ = simple_logger::init();
 
     // Mock having N_BLOCKS chain in central.
@@ -99,7 +117,7 @@ async fn sync_happy_flow() -> Result<(), anyhow::Error> {
                 }
                 let header = BlockHeader{
                     block_number,
-                    block_hash: BlockHash(shash!(format!("0x{}",block_number.0).as_str())),
+                    block_hash: create_block_hash(block_number, false),
                     ..BlockHeader::default()
                 };
                 yield Ok((block_number, Block{header, body: BlockBody::default()}));
@@ -114,28 +132,43 @@ async fn sync_happy_flow() -> Result<(), anyhow::Error> {
                 if block_number.0 >= N_BLOCKS {
                     yield Err(CentralError::BlockNotFound { block_number })
                 }
-                let block_hash = BlockHash(shash!(format!("0x{}",block_number.0).as_str()));
-                yield Ok((block_number, block_hash, StateDiff::default(), vec![]));
+                yield Ok((
+                    block_number,
+                    create_block_hash(block_number, false),
+                    StateDiff::default(),
+                    vec![])
+                );
             }
         }
         .boxed();
         state_stream
     });
+    mock.expect_get_block_hash().returning(|bn| Ok(Some(create_block_hash(bn, false))));
     let (reader, writer) = get_test_storage();
     let sync_future = run_sync(reader.clone(), writer, mock);
 
-    // Check that the storage reached N_BLOCKS within MAX_TIME_TO_SYNC.
+    // Check that the storage reached N_BLOCKS within MAX_TIME_TO_SYNC_MS.
     let check_storage_future =
-        check_storage(reader, Duration::from_secs(MAX_TIME_TO_SYNC), |reader| {
+        check_storage(reader, Duration::from_millis(MAX_TIME_TO_SYNC_MS), |reader| {
             let header_marker = reader.begin_ro_txn().unwrap().get_header_marker().unwrap();
             debug!("Header marker currently at {}", header_marker);
-            if header_marker != BlockNumber(N_BLOCKS) {
-                return false;
+            if header_marker < BlockNumber(N_BLOCKS) {
+                return CheckStoragePredicateResult::InProgress;
+            }
+            if header_marker > BlockNumber(N_BLOCKS) {
+                return CheckStoragePredicateResult::Error;
             }
 
             let state_marker = reader.begin_ro_txn().unwrap().get_state_marker().unwrap();
             debug!("State marker currently at {}", state_marker);
-            state_marker == BlockNumber(N_BLOCKS)
+
+            if state_marker < BlockNumber(N_BLOCKS) {
+                return CheckStoragePredicateResult::InProgress;
+            }
+            if state_marker > BlockNumber(N_BLOCKS) {
+                return CheckStoragePredicateResult::Error;
+            }
+            CheckStoragePredicateResult::Passed
         });
 
     tokio::select! {
@@ -144,4 +177,12 @@ async fn sync_happy_flow() -> Result<(), anyhow::Error> {
     }
 
     Ok(())
+}
+
+fn create_block_hash(bn: BlockNumber, is_reverted_block: bool) -> BlockHash {
+    if is_reverted_block {
+        BlockHash(shash!(format!("0x{}10", bn.0).as_str()))
+    } else {
+        BlockHash(shash!(format!("0x{}", bn.0).as_str()))
+    }
 }
