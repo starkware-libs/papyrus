@@ -39,7 +39,7 @@
 
 ## About
 
-> Papyrus is a StarkNet full node written in Rust.
+`Papyrus` is a StarkNet full node written in Rust.
 
 ## Getting Started
 
