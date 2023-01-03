@@ -88,6 +88,12 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                   complete => break,
                 } {
                     Some(Ok(sync_event)) => sync_event,
+                    Some(Err(err)) if is_recoverable(&err) => {
+                        error!("{}", err);
+                        // TODO: change sleep duration.
+                        tokio::time::sleep(self.config.block_propagation_sleep_duration).await;
+                        break;
+                    }
                     Some(Err(err)) => {
                         error!("{}", err);
                         return Err(err);
@@ -99,9 +105,27 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
 
                 match self.process_sync_event(sync_event).await {
                     Ok(_) => {}
+                    // A recoverable error occured, break the loop and create new streams.
+                    Err(err) if is_recoverable(&err) => {
+                        error!("{}", err);
+                        break;
+                    }
                     // Unrecoverable errors.
                     Err(err) => return Err(err),
                 }
+            }
+        }
+
+        // Whitelisting of errors from which we might be able to recover.
+        fn is_recoverable(err: &StateSyncError) -> bool {
+            match err {
+                StateSyncError::CentralSourceError(_) => true,
+                StateSyncError::StorageError(storage_err)
+                    if matches!(storage_err, StorageError::InnerError(_)) =>
+                {
+                    true
+                }
+                _ => false,
             }
         }
     }
