@@ -182,7 +182,8 @@ async fn revert_last_state_diff_success() {
         .commit()
         .unwrap();
 
-    writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(0)).unwrap().commit().unwrap();
+    let (txn, _) = writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(0)).unwrap();
+    txn.commit().unwrap();
 }
 
 #[tokio::test]
@@ -212,7 +213,8 @@ async fn revert_state_diff_updates_marker() {
     // Verify that the state marker before revert is 2.
     assert_eq!(reader.begin_ro_txn().unwrap().get_state_marker().unwrap(), BlockNumber(2));
 
-    writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(1)).unwrap().commit().unwrap();
+    let (txn, _) = writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(1)).unwrap();
+    txn.commit().unwrap();
     assert_eq!(reader.begin_ro_txn().unwrap().get_state_marker().unwrap(), BlockNumber(1));
 }
 
@@ -224,7 +226,8 @@ async fn get_reverted_state_diff_returns_none() {
     // Verify that we can get block 1's state before the revert.
     assert!(reader.begin_ro_txn().unwrap().get_state_diff(BlockNumber(1)).unwrap().is_some());
 
-    writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(1)).unwrap().commit().unwrap();
+    let (txn, _) = writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(1)).unwrap();
+    txn.commit().unwrap();
     assert!(reader.begin_ro_txn().unwrap().get_state_diff(BlockNumber(1)).unwrap().is_none());
 }
 
@@ -273,7 +276,8 @@ fn revert_doesnt_delete_previously_declared_classes() {
         .unwrap();
 
     // Assert that reverting diff 1 doesn't delete declared class from diff 0.
-    writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(1)).unwrap().commit().unwrap();
+    let (txn, _) = writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(1)).unwrap();
+    txn.commit().unwrap();
     let declared_class = reader
         .begin_ro_txn()
         .unwrap()
@@ -284,7 +288,8 @@ fn revert_doesnt_delete_previously_declared_classes() {
     assert!(declared_class.is_some());
 
     // Assert that reverting diff 0 deletes the declared class.
-    writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(0)).unwrap().commit().unwrap();
+    let (txn, _) = writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(0)).unwrap();
+    txn.commit().unwrap();
     let declared_class = reader
         .begin_ro_txn()
         .unwrap()
