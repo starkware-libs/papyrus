@@ -34,6 +34,7 @@ pub struct GenericStateSync<TCentralSource: CentralSourceTrait + Sync + Send> {
     writer: StorageWriter,
 }
 
+pub type StateSyncResult = Result<(), StateSyncError>;
 #[derive(thiserror::Error, Debug)]
 pub enum StateSyncError {
     #[error(transparent)]
@@ -63,7 +64,7 @@ pub enum SyncEvent {
 
 #[allow(clippy::new_without_default)]
 impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSync<TCentralSource> {
-    pub async fn run(&mut self) -> anyhow::Result<(), StateSyncError> {
+    pub async fn run(&mut self) -> StateSyncResult {
         info!("State sync started.");
         loop {
             let block_stream = stream_new_blocks(
@@ -81,25 +82,25 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             pin_mut!(block_stream, state_diff_stream);
 
             loop {
-                let sync_event: Option<SyncEvent> = select! {
+                let maybe_sync_event: Option<Result<SyncEvent, StateSyncError>> = select! {
                   res = block_stream.next() => res,
                   res = state_diff_stream.next() => res,
                   complete => break,
                 };
-                match sync_event {
-                    Some(SyncEvent::BlockAvailable { block_number, block }) => {
+                match maybe_sync_event {
+                    Some(Ok(SyncEvent::BlockAvailable { block_number, block })) => {
                         self.writer
                             .begin_rw_txn()?
                             .append_header(block_number, &block.header)?
                             .append_body(block_number, block.body)?
                             .commit()?;
                     }
-                    Some(SyncEvent::StateDiffAvailable {
+                    Some(Ok(SyncEvent::StateDiffAvailable {
                         block_number,
                         block_hash: _block_hash,
                         state_diff,
                         deployed_contract_class_definitions,
-                    }) => {
+                    })) => {
                         self.writer
                             .begin_rw_txn()?
                             .append_state_diff(
@@ -114,6 +115,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                             message: "Got an empty event.".to_string(),
                         });
                     }
+                    Some(Err(err)) => return Err(err),
                 }
             }
         }
@@ -124,16 +126,16 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
     block_propation_sleep_duration: Duration,
-) -> impl Stream<Item = SyncEvent> {
+) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     stream! {
         loop {
-            let header_marker = reader.begin_ro_txn().expect("Cannot read from block storage.")
-                .get_header_marker()
-                .expect("Cannot read from block storage.");
+            let header_marker = reader.begin_ro_txn()?
+            .get_header_marker()?;
+
             let last_block_number = central_source
                 .get_block_marker()
-                .await
-                .expect("Cannot read from block storage.");
+                .await?;
+
             info!(
                 "Downloading blocks [{} - {}).",
                 header_marker, last_block_number
@@ -147,7 +149,7 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
                 .fuse();
             pin_mut!(block_stream);
             while let Some(Ok((block_number, block))) = block_stream.next().await {
-                yield SyncEvent::BlockAvailable { block_number, block };
+                yield Ok(SyncEvent::BlockAvailable { block_number, block });
             }
         }
     }
@@ -157,16 +159,12 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
     block_propation_sleep_duration: Duration,
-) -> impl Stream<Item = SyncEvent> {
+) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     stream! {
         loop {
-            let txn = reader.begin_ro_txn().expect("Cannot read from block storage.");
-            let state_marker = txn
-                .get_state_marker()
-                .expect("Cannot read from block storage.");
-            let last_block_number = txn
-                .get_header_marker()
-                .expect("Cannot read from block storage.");
+            let txn = reader.begin_ro_txn()?;
+            let state_marker = txn.get_state_marker()?;
+            let last_block_number = txn.get_header_marker()?;
             drop(txn);
             info!(
                 "Downloading state diffs [{} - {}).",
@@ -184,12 +182,12 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
                 match maybe_state_diff {
                     Ok((block_number, block_hash, mut state_diff, deployed_contract_class_definitions)) => {
                         sort_state_diff(&mut state_diff);
-                        yield SyncEvent::StateDiffAvailable {
+                        yield Ok(SyncEvent::StateDiffAvailable {
                             block_number,
                             block_hash,
                             state_diff,
                             deployed_contract_class_definitions,
-                        }
+                        })
                     }
                     Err(err) => {
                         error!("{}", err);
