@@ -15,7 +15,7 @@ use papyrus_storage::{
     StateStorageWriter, StorageError, StorageReader, StorageWriter,
 };
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{Block, BlockNumber};
+use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, StateDiff};
 
@@ -33,6 +33,8 @@ pub struct GenericStateSync<TCentralSource: CentralSourceTrait + Sync + Send> {
     reader: StorageReader,
     writer: StorageWriter,
 }
+
+pub type StateSyncResult = Result<(), StateSyncError>;
 
 #[derive(thiserror::Error, Debug)]
 pub enum StateSyncError {
@@ -52,6 +54,7 @@ pub enum SyncEvent {
     },
     StateDiffAvailable {
         block_number: BlockNumber,
+        block_hash: BlockHash,
         state_diff: StateDiff,
         // TODO(anatg): Remove once there are no more deployed contracts with undeclared classes.
         // Class definitions of deployed contracts with classes that were not declared in this
@@ -62,7 +65,7 @@ pub enum SyncEvent {
 
 #[allow(clippy::new_without_default)]
 impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSync<TCentralSource> {
-    pub async fn run(&mut self) -> anyhow::Result<(), StateSyncError> {
+    pub async fn run(&mut self) -> StateSyncResult {
         info!("State sync started.");
         loop {
             let block_stream = stream_new_blocks(
@@ -95,6 +98,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                     }
                     Some(SyncEvent::StateDiffAvailable {
                         block_number,
+                        block_hash: _block_hash,
                         state_diff,
                         deployed_contract_class_definitions,
                     }) => {
@@ -180,10 +184,11 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
             pin_mut!(state_diff_stream);
             while let Some(maybe_state_diff) = state_diff_stream.next().await {
                 match maybe_state_diff {
-                    Ok((block_number, mut state_diff, deployed_contract_class_definitions)) => {
+                    Ok((block_number, block_hash, mut state_diff, deployed_contract_class_definitions)) => {
                         sort_state_diff(&mut state_diff);
                         yield SyncEvent::StateDiffAvailable {
                             block_number,
+                            block_hash,
                             state_diff,
                             deployed_contract_class_definitions,
                         }
