@@ -11,13 +11,15 @@ use async_stream::stream;
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use log::{error, info};
 use papyrus_storage::{
-    BodyStorageWriter, HeaderStorageReader, HeaderStorageWriter, StateStorageReader,
-    StateStorageWriter, StorageError, StorageReader, StorageWriter,
+    BodyStorageReader, BodyStorageWriter, HeaderStorageReader, HeaderStorageWriter,
+    OmmerStorageReader, OmmerStorageWriter, StateStorageReader, StateStorageWriter, StorageError,
+    StorageReader, StorageWriter, TransactionIndex,
 };
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, StateDiff};
+use starknet_api::transaction::TransactionOffsetInBlock;
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
 
@@ -42,8 +44,20 @@ pub enum StateSyncError {
     StorageError(#[from] StorageError),
     #[error(transparent)]
     CentralSourceError(#[from] CentralError),
-    #[error("Sync error: {message:?}.")]
-    SyncError { message: String },
+    #[error(
+        "Parent block hash of block {block_number:?} is not consistent with the stored block. \
+         Expected {expected_parent_block_hash:?}, found {stored_parent_block_hash:?}."
+    )]
+    ParentBlockHashMismatch {
+        block_number: BlockNumber,
+        expected_parent_block_hash: BlockHash,
+        stored_parent_block_hash: BlockHash,
+    },
+    #[error(
+        "Received state diff of block {block_number:?} and block hash {block_hash:?}, didn't find \
+         a matching header (neither in the ommer headers)."
+    )]
+    StateDiffWithoutMatchingHeader { block_number: BlockNumber, block_hash: BlockHash },
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -68,6 +82,16 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     pub async fn run(&mut self) -> StateSyncResult {
         info!("State sync started.");
         loop {
+            match self.handle_block_reverts().await {
+                Ok(_) => {}
+                Err(err) if is_recoverable(&err) => {
+                    error!("{}", err);
+                    // TODO: change sleep duration.
+                    tokio::time::sleep(self.config.block_propagation_sleep_duration).await;
+                    continue;
+                }
+                Err(err) => return Err(err),
+            }
             let block_stream = stream_new_blocks(
                 self.reader.clone(),
                 self.central_source.clone(),
@@ -105,6 +129,15 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
 
                 match self.process_sync_event(sync_event).await {
                     Ok(_) => {}
+                    Err(StateSyncError::ParentBlockHashMismatch {
+                        block_number,
+                        expected_parent_block_hash: _,
+                        stored_parent_block_hash: _,
+                    }) => {
+                        // A revert detected, log and restart main sync loop.
+                        info!("Detected revert while processing block {}", block_number);
+                        break;
+                    }
                     // A recoverable error occured, break the loop and create new streams.
                     Err(err) if is_recoverable(&err) => {
                         error!("{}", err);
@@ -125,6 +158,10 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 {
                     true
                 }
+                StateSyncError::StateDiffWithoutMatchingHeader {
+                    block_number: _,
+                    block_hash: _,
+                } => true,
                 _ => false,
             }
         }
@@ -138,30 +175,179 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             }
             SyncEvent::StateDiffAvailable {
                 block_number,
-                block_hash: _block_hash,
+                block_hash,
                 state_diff,
                 deployed_contract_class_definitions,
             } => {
-                self.writer
-                    .begin_rw_txn()?
-                    .append_state_diff(
-                        block_number,
-                        state_diff,
-                        deployed_contract_class_definitions,
-                    )?
-                    .commit()?;
+                if !self.is_reverted_state_diff(block_number, block_hash)? {
+                    self.writer
+                        .begin_rw_txn()?
+                        .append_state_diff(
+                            block_number,
+                            state_diff,
+                            deployed_contract_class_definitions,
+                        )?
+                        .commit()?;
+                } else {
+                    self.writer
+                        .begin_rw_txn()?
+                        .insert_ommer_state_diff(
+                            block_hash,
+                            &state_diff.into(),
+                            &deployed_contract_class_definitions,
+                        )?
+                        .commit()?;
+                }
                 Ok(())
             }
         }
     }
 
     fn store_block(&mut self, block_number: BlockNumber, block: Block) -> StateSyncResult {
+        // Assuming the central source is trusted, detect reverts by comparing the incoming block's
+        // parent hash to the current hash.
+        self.verify_parent_block_hash(block_number, &block)?;
+
         self.writer
             .begin_rw_txn()?
             .append_header(block_number, &block.header)?
             .append_body(block_number, block.body)?
             .commit()?;
         Ok(())
+    }
+
+    // Compares the block's parent hash to the stored block.
+    fn verify_parent_block_hash(
+        &self,
+        block_number: BlockNumber,
+        block: &Block,
+    ) -> StateSyncResult {
+        let prev_block_number = match block_number.prev() {
+            None => return Ok(()),
+            Some(bn) => bn,
+        };
+        let prev_hash = self
+            .reader
+            .begin_ro_txn()?
+            .get_block_header(prev_block_number)?
+            .ok_or(StorageError::DBInconsistency {
+                msg: format!(
+                    "Missing block {} in the storage (for verifing block {}).",
+                    prev_block_number, block_number
+                ),
+            })?
+            .block_hash;
+
+        if prev_hash != block.header.parent_hash {
+            return Err(StateSyncError::ParentBlockHashMismatch {
+                block_number,
+                expected_parent_block_hash: block.header.parent_hash,
+                stored_parent_block_hash: prev_hash,
+            });
+        }
+
+        Ok(())
+    }
+
+    // Reverts data if needed.
+    async fn handle_block_reverts(&mut self) -> Result<(), StateSyncError> {
+        let header_marker = self.reader.begin_ro_txn()?.get_header_marker()?;
+
+        // Revert last blocks if needed.
+        let mut last_block_in_storage = header_marker.prev();
+        while let Some(block_number) = last_block_in_storage {
+            if self.should_revert_block(block_number).await? {
+                self.revert_block(block_number)?;
+                last_block_in_storage = block_number.prev();
+            } else {
+                break;
+            }
+        }
+        Ok(())
+    }
+
+    // Deletes the block data from the storage, moving it to the ommer tables.
+    #[allow(clippy::expect_fun_call)]
+    fn revert_block(&mut self, block_number: BlockNumber) -> StateSyncResult {
+        // TODO: Modify revert functions so they return the deleted data, and use it for inserting
+        // to the ommer tables.
+        let mut txn = self.writer.begin_rw_txn()?;
+        let header = txn
+            .get_block_header(block_number)?
+            .expect(format!("Tried to revert a missing header of block {block_number}").as_str());
+        let transactions = txn.get_block_transactions(block_number)?.expect(
+            format!("Tried to revert a missing transactions of block {block_number}").as_str(),
+        );
+        let transaction_outputs = txn.get_block_transaction_outputs(block_number)?.expect(
+            format!("Tried to revert a missing transaction outputs of block {}", block_number)
+                .as_str(),
+        );
+
+        // TODO: use iter_events of EventsReader once it supports RW transactions.
+        let mut events: Vec<_> = vec![];
+        for idx in 0..transactions.len() {
+            let tx_idx = TransactionIndex(block_number, TransactionOffsetInBlock(idx));
+            events.push(txn.get_transaction_events(tx_idx)?.unwrap_or_default());
+        }
+
+        txn = txn
+            .revert_header(block_number)?
+            .insert_ommer_header(header.block_hash, &header)?
+            .revert_body(block_number)?
+            .insert_ommer_body(
+                header.block_hash,
+                &transactions,
+                &transaction_outputs,
+                events.as_slice(),
+            )?;
+
+        let (txn, maybe_deleted_data) = txn.revert_state_diff(block_number)?;
+        if let Some((thin_state_diff, declared_classes)) = maybe_deleted_data {
+            txn.insert_ommer_state_diff(header.block_hash, &thin_state_diff, &declared_classes)?
+                .commit()?;
+        } else {
+            txn.commit()?;
+        }
+        Ok(())
+    }
+
+    /// Checks if centrals block hash at the block number is different from ours (or doesn't exist).
+    /// If so, a revert is required.
+    async fn should_revert_block(&self, block_number: BlockNumber) -> Result<bool, StateSyncError> {
+        if let Some(central_block_hash) = self.central_source.get_block_hash(block_number).await? {
+            let storage_block_header =
+                self.reader.begin_ro_txn()?.get_block_header(block_number)?;
+
+            match storage_block_header {
+                Some(block_header) => Ok(block_header.block_hash != central_block_hash),
+                None => Ok(false),
+            }
+        } else {
+            // Block number doesn't exist in central, revert.
+            Ok(true)
+        }
+    }
+
+    fn is_reverted_state_diff(
+        &self,
+        block_number: BlockNumber,
+        block_hash: BlockHash,
+    ) -> Result<bool, StateSyncError> {
+        let txn = self.reader.begin_ro_txn()?;
+        let storage_header = txn.get_block_header(block_number)?;
+        match storage_header {
+            Some(storage_header) if storage_header.block_hash == block_hash => Ok(false),
+            _ => {
+                // No matching header, check in the ommer headers.
+                match txn.get_ommer_header(block_hash)? {
+                    Some(_) => Ok(true),
+                    None => Err(StateSyncError::StateDiffWithoutMatchingHeader {
+                        block_number,
+                        block_hash,
+                    }),
+                }
+            }
+        }
     }
 }
 
