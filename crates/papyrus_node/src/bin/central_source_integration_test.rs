@@ -27,7 +27,8 @@ async fn main() {
     let mut state_marker = BlockNumber(200);
     let header_stream = central_source.stream_state_updates(state_marker, last_block_number).fuse();
     pin_mut!(header_stream);
-    while let Some(Ok((block_number, _state_difff, _deployed_classes))) = header_stream.next().await
+    while let Some(Ok((block_number, _block_hash, _state_difff, _deployed_classes))) =
+        header_stream.next().await
     {
         assert!(
             state_marker == block_number,

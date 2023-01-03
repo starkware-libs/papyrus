@@ -114,7 +114,8 @@ async fn sync_happy_flow() -> Result<(), anyhow::Error> {
                 if block_number.0 >= N_BLOCKS {
                     yield Err(CentralError::BlockNotFound { block_number })
                 }
-                yield Ok((block_number, StateDiff::default(), vec![]));
+                let block_hash = BlockHash(shash!(format!("0x{}",block_number.0).as_str()));
+                yield Ok((block_number, block_hash, StateDiff::default(), vec![]));
             }
         }
         .boxed();
