@@ -70,7 +70,7 @@ async fn iter_events_by_index() {
         .commit()
         .unwrap();
 
-    // Create the events emitted starting from event index (0,0,2).
+    // Create the events emitted starting from event index ((0,0),2).
     let mut emitted_events = vec![];
     for (tx_i, tx_output) in block.body.transaction_outputs.iter().enumerate() {
         for (event_i, event) in tx_output.events().iter().enumerate() {
