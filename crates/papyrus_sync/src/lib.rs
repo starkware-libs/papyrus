@@ -34,6 +34,8 @@ pub struct GenericStateSync<TCentralSource: CentralSourceTrait + Sync + Send> {
     writer: StorageWriter,
 }
 
+pub type StateSyncResult = Result<(), StateSyncError>;
+
 #[derive(thiserror::Error, Debug)]
 pub enum StateSyncError {
     #[error(transparent)]
@@ -63,7 +65,7 @@ pub enum SyncEvent {
 
 #[allow(clippy::new_without_default)]
 impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSync<TCentralSource> {
-    pub async fn run(&mut self) -> anyhow::Result<(), StateSyncError> {
+    pub async fn run(&mut self) -> StateSyncResult {
         info!("State sync started.");
         loop {
             let block_stream = stream_new_blocks(
