@@ -4,13 +4,14 @@
   <a href="https://github.com/starkware-libs/papyrus/issues/new?assignees=&labels=bug&template=01_BUG_REPORT.md&title=bug%3A+">Report a Bug</a>
   ·
   <a href="https://github.com/starkware-libs/papyrus/issues/new?assignees=&labels=enhancement&template=02_FEATURE_REQUEST.md&title=feat%3A+">Request a Feature</a>
-  .<a href="https://github.com/starkware-libs/papyrus/discussions">Ask a Question</a>
+  ·
+  <a href="https://github.com/starkware-libs/papyrus/discussions">Ask a Question</a>
 </div>
 
 <div align="center">
 <br />
 
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/starkware-libs/papyrus/ci?style=flat-square&logo=github)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/starkware-libs/papyrus/ci.yml?branch=main)
 [![Project license](https://img.shields.io/github/license/starkware-libs/papyrus.svg?style=flat-square)](LICENSE)
 [![Pull Requests welcome](https://img.shields.io/badge/PRs-welcome-ff69b4.svg?style=flat-square)](https://github.com/starkware-libs/papyrus/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)
 
@@ -19,23 +20,28 @@
 <details open="open">
 <summary>Table of Contents</summary>
 
+- [:warning: Disclaimer](#warning-disclaimer)
 - [About](#about)
 - [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-- [Usage](#usage)
+  - [Compiling and running `papyrus`](#compiling-and-running-papyrus)
+  - [Configuration](#configuration)
+- [Running `papyrus` with Docker](#running-papyrus-with-docker)
+- [Endpoints](#endpoints)
 - [Roadmap](#roadmap)
 - [Support](#support)
 - [Project assistance](#project-assistance)
 - [Contributing](#contributing)
-- [Authors & contributors](#authors--contributors)
+- [Authors \& contributors](#authors--contributors)
 - [Security](#security)
 - [License](#license)
-- [Acknowledgements](#acknowledgements)
 
 </details>
 
 ---
+
+## :warning: Disclaimer
+
+:warning: :construction: Papyrus is still being built therefore breaking changes might happen often so use it at your own risks.:construction: :warning:
 
 ## About
 
@@ -43,10 +49,10 @@
 
 ## Getting Started
 
-
 ### Compiling and running `papyrus`
 
 Prerequisites
+
 - [Rust](https://www.rust-lang.org/tools/install)
 
 You can build and run a `papyrus` node with the default configuration by running:
@@ -64,6 +70,7 @@ using the `--config_file` command-line argument.
 See the default [configuration file](config/config.yaml) for available options.
 Note that the configuration file can be partial or even empty.
 You can check the available command-line arguments by running:
+
 ```bash
 cargo run --release --package papyrus_node --bin papyrus_node -- --help
 ```
@@ -71,6 +78,7 @@ cargo run --release --package papyrus_node --bin papyrus_node -- --help
 ## Running `papyrus` with Docker
 
 Prerequisites
+
 - [Docker](https://docs.docker.com/get-docker/)
 
 You can run a `papyrus` node with the default configuration by running:
@@ -83,13 +91,42 @@ docker run --rm --name papyrus\
 ```
 
 Note:
-* The container must have write access to `<local-host-data-path>`.
+
+- The container must have write access to `<local-host-data-path>`.
 A possible way to assure this is to create the `<local-host-data-path>` directory (only the first
 time you run `papyrus`) and add `--user "$(id -u):$(id -g)"` to the docker run command.
-* If you wish to run the most up-to-date code,
+- If you wish to run the most up-to-date code,
 you can use the `ghcr.io/starkware-libs/papyrus:dev` image.
-* Currently, there is no automatic upgrade mechanism.
+- Currently, there is no automatic upgrade mechanism.
 Make sure to periodically pull the latest image and re-run the node.
+
+## Endpoints
+
+| Endpoint                                   | Supported          |
+| :----------------------------------------- | :----------------- |
+| `starknet_addDeclareTransaction`           | :x:                |
+| `starknet_addDeployAccountTransaction`     | :x:                |
+| `starknet_addInvokeTransaction`            | :x:                |
+| `starknet_blockHashAndNumber`              | :heavy_check_mark: |
+| `starknet_blockNumber`                     | :heavy_check_mark: |
+| `starknet_call`                            | :x:                |
+| `starknet_chainId`                         | :heavy_check_mark: |
+| `starknet_estimateFee`                     | :x:                |
+| `starknet_getBlockTransactionCount`        | :heavy_check_mark: |
+| `starknet_getBlockWithTxHashes`            | :heavy_check_mark: |
+| `starknet_getBlockWithTxs`                 | :heavy_check_mark: |
+| `starknet_getClass`                        | :heavy_check_mark: |
+| `starknet_getClassAt`                      | :heavy_check_mark: |
+| `starknet_getClassHashAt`                  | :heavy_check_mark: |
+| `starknet_getEvents`                       | :heavy_check_mark: |
+| `starknet_getNonce`                        | :heavy_check_mark: |
+| `starknet_getStateUpdate`                  | :heavy_check_mark: |
+| `starknet_getStorageAt`                    | :heavy_check_mark: |
+| `starknet_getTransactionByBlockIdAndIndex` | :heavy_check_mark: |
+| `starknet_getTransactionByHash`            | :heavy_check_mark: |
+| `starknet_getTransactionReceipt`           | :heavy_check_mark: |
+| `starknet_pendingTransactions`             | :x:                |
+| `starknet_syncing`                         | :x:                |
 
 ## Roadmap
 
@@ -138,5 +175,3 @@ _For more information and to report security issues, please refer to our [securi
 This project is licensed under the **MIT license**.
 
 See [LICENSE](LICENSE) for more information.
-
-## Acknowledgements
