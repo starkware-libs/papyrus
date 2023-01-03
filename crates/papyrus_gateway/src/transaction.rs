@@ -220,7 +220,46 @@ pub struct TransactionReceiptWithStatus {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct TransactionReceipt {
+#[serde(untagged)]
+pub enum TransactionReceipt {
+    Deploy(DeployTransactionReceipt),
+    Common(CommonTransactionReceipt),
+}
+
+impl TransactionReceipt {
+    pub fn from_transaction_output(
+        output: TransactionOutput,
+        transaction_hash: TransactionHash,
+        block_hash: BlockHash,
+        block_number: BlockNumber,
+    ) -> Self {
+        let r#type = output.r#type();
+        let common =
+            CommonTransactionReceipt { transaction_hash, r#type, block_hash, block_number, output };
+
+        match r#type {
+            TransactionType::DeployAccount | TransactionType::Deploy => {
+                Self::Deploy(DeployTransactionReceipt {
+                    common,
+                    // TODO(anatg): Calculate the address using the function
+                    // calculate_contract_address from starknet_api.
+                    contract_address: ContractAddress::default(),
+                })
+            }
+            _ => Self::Common(common),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct DeployTransactionReceipt {
+    #[serde(flatten)]
+    pub common: CommonTransactionReceipt,
+    pub contract_address: ContractAddress,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct CommonTransactionReceipt {
     pub transaction_hash: TransactionHash,
     pub r#type: TransactionType,
     pub block_hash: BlockHash,

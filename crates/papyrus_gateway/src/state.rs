@@ -80,7 +80,7 @@ impl From<starknet_api::state::ContractClassAbiEntry> for ContractClassAbiEntryW
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ContractClass {
-    pub abi: Option<Vec<ContractClassAbiEntryWithType>>,
+    pub abi: Vec<ContractClassAbiEntryWithType>,
     /// A base64 encoding of the gzip-compressed JSON representation of program.
     pub program: String,
     /// The selector of each entry point is a unique identifier in the program.
@@ -101,8 +101,14 @@ impl TryFrom<starknet_api::state::ContractClass> for ContractClass {
             program_value.as_object_mut().unwrap().remove("compiler_version");
         }
 
+        let abi = if class.abi.is_none() {
+            vec![]
+        } else {
+            class.abi.unwrap().into_iter().map(|entry| entry.into()).collect()
+        };
+
         Ok(Self {
-            abi: class.abi.map(|entries| entries.into_iter().map(|entry| entry.into()).collect()),
+            abi,
             program: base64::encode(GzEncoded::encode(Program(program_value))?),
             entry_points_by_type: class.entry_points_by_type,
         })

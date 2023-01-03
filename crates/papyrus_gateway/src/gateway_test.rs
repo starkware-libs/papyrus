@@ -828,13 +828,12 @@ async fn get_transaction_receipt() {
     let transaction_hash = block.body.transactions.index(0).transaction_hash();
     let output = TransactionOutput::from(block.body.transaction_outputs.index(0).clone());
     let expected_receipt = TransactionReceiptWithStatus {
-        receipt: TransactionReceipt {
-            transaction_hash,
-            r#type: output.r#type(),
-            block_hash: block.header.block_hash,
-            block_number: block.header.block_number,
+        receipt: TransactionReceipt::from_transaction_output(
             output,
-        },
+            transaction_hash,
+            block.header.block_hash,
+            block.header.block_number,
+        ),
         status: TransactionStatus::default(),
     };
     let res = module
