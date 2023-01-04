@@ -1,10 +1,8 @@
 apiVersion: batch/v1
-
 kind: Job
-
 metadata:
   name: papyrus-XXX-load-test
-
+  namespace: papyrus
 spec:
   template:
     spec:
@@ -15,11 +13,11 @@ spec:
           image: ghcr.io/starkware-libs/papyrus:dev
           imagePullPolicy: Always
           command:
-            - "/app/target/release/papyrus_load_test"
-          env:
-            - name: NODE_ENDPOINT
-              # value: "https://papyrus.starkware.co"
-              value: "http://papyrus-XXX-rpc.papyrus.svc.cluster.local:8080"
+            - /app/target/release/papyrus_load_test
+            - --host
+            - http://papyrus-XXX-rpc.papyrus.svc.cluster.local:8080
+            - --run-time
+            - DURRATION
       imagePullSecrets:
         - name: regcred
       restartPolicy: Never

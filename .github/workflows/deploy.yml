@@ -58,11 +58,18 @@ jobs:
       - name: Wait for papyrus pods to be ready
         run: kubectl --namespace papyrus rollout status deployment papyrus-${UNIQE_ID}
 
+      - name: Set load_test durration
+        run: |
+          # The amount of time we want the load test to run
+          echo "DURRATION=1m" >> $GITHUB_ENV
+          # The max amount of time we are willing to wait for the load test to complete (must be greater then DURRATION)
+          echo "DURRATION_TIMEOUT=5m" >> $GITHUB_ENV
+
       - name: Run load test
-        run: sh -c "deployments/helm/CI/run_benchmark.sh ${UNIQE_ID}"
+        run: sh -c "deployments/helm/CI/run_benchmark.sh ${UNIQE_ID} ${DURRATION}"
 
       - name: Wait for BM to finish
-        run: kubectl wait --namespace=papyrus --for=condition=complete --timeout=30s job/papyrus-${UNIQE_ID}-load-test
+        run: kubectl wait --namespace=papyrus --for=condition=complete --timeout=${DURRATION_TIMEOUT} job/papyrus-${UNIQE_ID}-load-test
 
       # - name: Clean the deployment
       #   if: always()
