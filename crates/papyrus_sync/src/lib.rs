@@ -81,75 +81,31 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     pub async fn run(&mut self) -> StateSyncResult {
         info!("State sync started.");
         loop {
-            match self.handle_block_reverts().await {
-                Ok(_) => {}
+            match self.sync_while_ok().await {
+                Err(StateSyncError::ParentBlockHashMismatch {
+                    block_number,
+                    expected_parent_block_hash,
+                    stored_parent_block_hash,
+                }) => {
+                    // A revert detected, log and restart sync loop.
+                    info!(
+                        "Detected revert while processing block {}. Parent hash of the incoming \
+                         block is {:?}, current block hash is {:?}.",
+                        block_number, expected_parent_block_hash, stored_parent_block_hash
+                    );
+                    continue;
+                }
+                // A recoverable error occurred. Sleep and try syncing again.
                 Err(err) if is_recoverable(&err) => {
                     error!("{}", err);
                     // TODO: change sleep duration.
                     tokio::time::sleep(self.config.block_propagation_sleep_duration).await;
                     continue;
                 }
+                // Unrecoverable errors.
                 Err(err) => return Err(err),
-            }
-            let block_stream = stream_new_blocks(
-                self.reader.clone(),
-                self.central_source.clone(),
-                self.config.block_propagation_sleep_duration,
-            )
-            .fuse();
-            let state_diff_stream = stream_new_state_diffs(
-                self.reader.clone(),
-                self.central_source.clone(),
-                self.config.block_propagation_sleep_duration,
-            )
-            .fuse();
-            pin_mut!(block_stream, state_diff_stream);
-
-            loop {
-                let sync_event = match select! {
-                  res = block_stream.next() => res,
-                  res = state_diff_stream.next() => res,
-                  complete => break,
-                } {
-                    Some(Ok(sync_event)) => sync_event,
-                    Some(Err(err)) if is_recoverable(&err) => {
-                        error!("{}", err);
-                        // TODO: change sleep duration.
-                        tokio::time::sleep(self.config.block_propagation_sleep_duration).await;
-                        break;
-                    }
-                    Some(Err(err)) => {
-                        return Err(err);
-                    }
-                    None => {
-                        unreachable!("Received None as a sync event.");
-                    }
-                };
-
-                match self.process_sync_event(sync_event).await {
-                    Ok(_) => {}
-                    Err(StateSyncError::ParentBlockHashMismatch {
-                        block_number,
-                        expected_parent_block_hash,
-                        stored_parent_block_hash,
-                    }) => {
-                        // A revert detected, log and restart main sync loop.
-                        info!(
-                            "Detected revert while processing block {}. Parent hash of the \
-                             incoming block is {:?}, current block hash is {:?}.",
-                            block_number, expected_parent_block_hash, stored_parent_block_hash
-                        );
-                        break;
-                    }
-                    // A recoverable error occurred, break the loop and create new streams.
-                    Err(err) if is_recoverable(&err) => {
-                        error!("{}", err);
-                        // TODO: change sleep duration.
-                        tokio::time::sleep(self.config.block_propagation_sleep_duration).await;
-                        break;
-                    }
-                    // Unrecoverable errors.
-                    Err(err) => return Err(err),
+                Ok(_) => {
+                    unreachable!("Sync should either return with an error or continue for ever")
                 }
             }
         }
@@ -170,6 +126,35 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 _ => false,
             }
         }
+    }
+
+    // Sync untill encounting an error.
+    async fn sync_while_ok(&mut self) -> StateSyncResult {
+        self.handle_block_reverts().await?;
+        let block_stream = stream_new_blocks(
+            self.reader.clone(),
+            self.central_source.clone(),
+            self.config.block_propagation_sleep_duration,
+        )
+        .fuse();
+        let state_diff_stream = stream_new_state_diffs(
+            self.reader.clone(),
+            self.central_source.clone(),
+            self.config.block_propagation_sleep_duration,
+        )
+        .fuse();
+        pin_mut!(block_stream, state_diff_stream);
+
+        loop {
+            let sync_event = select! {
+              res = block_stream.next() => res,
+              res = state_diff_stream.next() => res,
+              complete => break,
+            }
+            .expect("Received None as a sync event.")?;
+            self.process_sync_event(sync_event).await?;
+        }
+        unreachable!("");
     }
 
     // Tries to store the incoming data.
