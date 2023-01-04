@@ -19,19 +19,20 @@ WORKDIR /app/
 # Erase all non-Cargo.toml files.
 RUN find /app \! -name "Cargo.toml" -type f -delete ; \
     find /app -empty -type d -delete; \
-# Create empty lib.rs files.
-# In order for cargo init to work, we need to not have a Cargo.toml file. In each crate, we rename
-# Cargo.toml to another name and after running `cargo init` we override the auto-generated
-# Cargo.toml with the original.
+    # Create empty lib.rs files.
+    # In order for cargo init to work, we need to not have a Cargo.toml file. In each crate, we rename
+    # Cargo.toml to another name and after running `cargo init` we override the auto-generated
+    # Cargo.toml with the original.
     mv Cargo.toml _Cargo.toml && for dir in crates/*; do \
     mv $dir/Cargo.toml $dir/_Cargo.toml \
     && cargo init --lib --vcs none $dir \
     && mv -f $dir/_Cargo.toml $dir/Cargo.toml; \
-done && mv _Cargo.toml Cargo.toml
+    done && mv _Cargo.toml Cargo.toml
 
 # Starting a new stage so that the first build layer will be cached if a non-Cargo.toml file was
 # changed.
-FROM rust:1.63 AS builder
+# Use this image to compile the project to an alpine compatible binary.
+FROM clux/muslrust:1.63.0-stable AS builder
 WORKDIR /app/
 
 RUN apt update && apt install -y clang
@@ -39,9 +40,10 @@ RUN apt update && apt install -y clang
 # Copy all the files from the previous stage (which are Cargo.toml and empty lib.rs files).
 COPY --from=copy_toml /app .
 
-RUN CARGO_INCREMENTAL=0 cargo build --release --package papyrus_node; \
+RUN rustup target add x86_64-unknown-linux-musl && \
+    CARGO_INCREMENTAL=0 cargo build  --target x86_64-unknown-linux-musl --release --package papyrus_node && \
     # TODO: Consider seperating the load test for CI to a different image.
-    CARGO_INCREMENTAL=0 cargo build --release --package papyrus_load_test
+    CARGO_INCREMENTAL=0 cargo build   --target x86_64-unknown-linux-musl --release --package papyrus_load_test
 
 # Copy the rest of the files.
 COPY crates/ /app/crates
@@ -53,26 +55,26 @@ RUN touch crates/*/src/lib.rs; \
     CARGO_INCREMENTAL=0 cargo build --release --package papyrus_load_test --bin papyrus_load_test
 
 # Starting a new stage so that the final image will contain only the executable.
-FROM rust:1.63-slim-buster
+FROM alpine:3.17.0
 ENV ID=1000
 
 WORKDIR /app
-COPY --from=builder /app/target/release/papyrus_node /app/target/release/papyrus_node
-COPY --from=builder /app/target/release/papyrus_load_test /app/target/release/papyrus_load_test
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/papyrus_node /app/target/release/papyrus_node
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/papyrus_load_test /app/target/release/papyrus_load_test
 COPY config/ /app/config
 
 RUN set -ex; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends tini; \
+    apk update; \
+    apk add --no-cache tini; \
     mkdir data
 
 RUN set -ex; \
     addgroup --gid ${ID} papyrus; \
-    adduser --gid ${ID} --uid ${ID} --gecos "" --disabled-password --home /app papyrus; \
+    adduser --ingroup $(getent group ${ID} | cut -d: -f1) --uid ${ID} --gecos "" --disabled-password --home /app papyrus; \
     chown -R papyrus:papyrus /app
 
 EXPOSE 8080 8081
 
 USER ${ID}
 
-ENTRYPOINT ["/usr/bin/tini", "--", "/app/target/release/papyrus_node"]
+ENTRYPOINT ["/sbin/tini", "--", "/app/target/release/papyrus_node"]
