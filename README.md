@@ -58,6 +58,7 @@ Prerequisites
 You can build and run a `papyrus` node with the default configuration by running:
 
 ```bash
+mkdir -p data/SN_MAIN
 cargo run --release --package papyrus_node --bin papyrus_node
 ```
 
@@ -72,7 +73,6 @@ Note that the configuration file can be partial or even empty.
 You can check the available command-line arguments by running:
 
 ```bash
-mkdir -p data/SN_MAIN
 cargo run --release --package papyrus_node --bin papyrus_node -- --help
 ```
 
