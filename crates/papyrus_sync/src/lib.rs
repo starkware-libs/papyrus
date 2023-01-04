@@ -184,28 +184,12 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 block_hash,
                 state_diff,
                 deployed_contract_class_definitions,
-            } => {
-                if !self.is_reverted_state_diff(block_number, block_hash)? {
-                    self.writer
-                        .begin_rw_txn()?
-                        .append_state_diff(
-                            block_number,
-                            state_diff,
-                            deployed_contract_class_definitions,
-                        )?
-                        .commit()?;
-                } else {
-                    self.writer
-                        .begin_rw_txn()?
-                        .insert_ommer_state_diff(
-                            block_hash,
-                            &state_diff.into(),
-                            &deployed_contract_class_definitions,
-                        )?
-                        .commit()?;
-                }
-                Ok(())
-            }
+            } => self.store_state_diff(
+                block_number,
+                block_hash,
+                state_diff,
+                deployed_contract_class_definitions,
+            ),
         }
     }
 
@@ -219,6 +203,31 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             .append_header(block_number, &block.header)?
             .append_body(block_number, block.body)?
             .commit()?;
+        Ok(())
+    }
+
+    fn store_state_diff(
+        &mut self,
+        block_number: BlockNumber,
+        block_hash: BlockHash,
+        state_diff: StateDiff,
+        deployed_contract_class_definitions: Vec<(ClassHash, ContractClass)>,
+    ) -> StateSyncResult {
+        if !self.is_reverted_state_diff(block_number, block_hash)? {
+            self.writer
+                .begin_rw_txn()?
+                .append_state_diff(block_number, state_diff, deployed_contract_class_definitions)?
+                .commit()?;
+        } else {
+            self.writer
+                .begin_rw_txn()?
+                .insert_ommer_state_diff(
+                    block_hash,
+                    &state_diff.into(),
+                    &deployed_contract_class_definitions,
+                )?
+                .commit()?;
+        }
         Ok(())
     }
 
