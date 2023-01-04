@@ -25,7 +25,9 @@ async fn iter_events_by_key() {
         .commit()
         .unwrap();
 
-    // Create the events emitted from contract address 0x22.
+    // Create the events emitted, starting from contract address 0x22 onwards.
+    // In our case, after the events emitted from address 0x22, come the events
+    // emitted from address 0x23, which are all the remaining events.
     let address = ContractAddress(patky!("0x22"));
     let mut emitted_events = vec![];
     let mut events_not_from_address = vec![];

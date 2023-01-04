@@ -81,7 +81,16 @@ pub fn get_test_body_with_events(
     from_addresses: Option<Vec<ContractAddress>>,
     keys: Option<Vec<Vec<EventKey>>>,
 ) -> BlockBody {
-    let mut body = get_test_body(transaction_count);
+    let mut transactions = vec![];
+    let mut transaction_outputs = vec![];
+    for i in 0..transaction_count {
+        let mut transaction = get_test_transaction();
+        set_transaction_hash(&mut transaction, TransactionHash(StarkHash::from(i as u64)));
+        let transaction_output = get_test_transaction_output(&transaction);
+        transactions.push(transaction);
+        transaction_outputs.push(transaction_output);
+    }
+    let mut body = BlockBody { transactions, transaction_outputs };
     let mut rng = rand::thread_rng();
     for tx_output in &mut body.transaction_outputs {
         let mut events = vec![];
@@ -113,22 +122,12 @@ pub fn get_test_body_with_events(
 
 // Returns a test block with a variable number of transactions.
 pub fn get_test_block(transaction_count: usize) -> Block {
-    Block { header: BlockHeader::default(), body: get_test_body(transaction_count) }
+    get_test_block_with_events(transaction_count, 0, None, None)
 }
 
 // Returns a test block body with a variable number of transactions.
 pub fn get_test_body(transaction_count: usize) -> BlockBody {
-    let mut transactions = vec![];
-    let mut transaction_outputs = vec![];
-    for i in 0..transaction_count {
-        let mut transaction = get_test_transaction();
-        set_transaction_hash(&mut transaction, TransactionHash(StarkHash::from(i as u64)));
-        let transaction_output = get_test_transaction_output(&transaction);
-        transactions.push(transaction);
-        transaction_outputs.push(transaction_output);
-    }
-
-    BlockBody { transactions, transaction_outputs }
+    get_test_body_with_events(transaction_count, 0, None, None)
 }
 
 // TODO(anatg): Consider moving GetTestInstance and auto_impl_get_test_instance
