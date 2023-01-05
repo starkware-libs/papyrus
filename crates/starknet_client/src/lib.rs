@@ -220,17 +220,9 @@ impl StarknetClient {
             StatusCode::OK => Ok(message),
             StatusCode::INTERNAL_SERVER_ERROR => {
                 let starknet_error: StarknetError = serde_json::from_str(&message)?;
-                error!(
-                    "Starknet server responded with an internal server error: {}.",
-                    starknet_error
-                );
                 Err(ClientError::StarknetError(starknet_error))
             }
-            _ => {
-                // TODO(dan): consider logging as info instead.
-                error!("Bad response status code: {:?}, message: {:?}.", code, message);
-                Err(ClientError::BadResponseStatus { code, message })
-            }
+            _ => Err(ClientError::BadResponseStatus { code, message }),
         }
     }
 
@@ -253,7 +245,10 @@ impl StarknetClient {
                 code: StarknetErrorCode::BlockNotFound,
                 message: _,
             })) => Ok(None),
-            Err(err) => Err(err),
+            Err(err) => {
+                error!("Failed to get block number {:?} from starknet server.", block_number);
+                Err(err)
+            }
         }
     }
 }
@@ -280,7 +275,10 @@ impl StarknetClientTrait for StarknetClient {
                 code: StarknetErrorCode::UndeclaredClass,
                 message: _,
             })) => Ok(None),
-            Err(err) => Err(err),
+            Err(err) => {
+                error!("Failed to get class with hash {:?} from starknet server.", class_hash);
+                Err(err)
+            }
         }
     }
 
@@ -293,17 +291,16 @@ impl StarknetClientTrait for StarknetClient {
                 let state_update: StateUpdate = serde_json::from_str(&raw_state_update)?;
                 Ok(Some(state_update))
             }
-            Err(err) => match err {
-                ClientError::StarknetError(sn_err) => {
-                    let StarknetError { code, message } = sn_err;
-                    if code == StarknetErrorCode::BlockNotFound {
-                        Ok(None)
-                    } else {
-                        Err(ClientError::StarknetError(StarknetError { code, message }))
-                    }
-                }
-                _ => Err(err),
-            },
+            Err(ClientError::StarknetError(err)) if matches!(err, StarknetError { code, message: _ } if code == StarknetErrorCode::BlockNotFound) => {
+                Ok(None)
+            }
+            Err(err) => {
+                error!(
+                    "Failed to get state update for block number {:?} from starknet server.",
+                    block_number
+                );
+                Err(err)
+            }
         }
     }
 }
