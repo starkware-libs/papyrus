@@ -63,7 +63,6 @@ pub enum SyncEvent {
     },
 }
 
-#[allow(clippy::new_without_default)]
 impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSync<TCentralSource> {
     pub async fn run(&mut self) -> StateSyncResult {
         info!("State sync started.");
