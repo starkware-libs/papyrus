@@ -115,15 +115,15 @@ async fn sync_happy_flow() -> Result<(), anyhow::Error> {
         let blocks_stream: BlocksStream<'_> = stream! {
             for block_number in initial.iter_up_to(up_to) {
                 if block_number.0 >= N_BLOCKS {
-                    yield Err(CentralError::BlockNotFound { block_number })
+                    yield Err(CentralError::BlockNotFound { block_number });
                 }
-                let header = BlockHeader{
+                let header = BlockHeader {
                     block_number,
                     block_hash: create_block_hash(block_number, false),
                     parent_hash: create_block_hash(block_number.prev().unwrap_or_default(), false),
                     ..BlockHeader::default()
                 };
-                yield Ok((block_number, Block{header, body: BlockBody::default()}));
+                yield Ok((block_number, Block { header, body: BlockBody::default() }));
             }
         }
         .boxed();
@@ -139,8 +139,8 @@ async fn sync_happy_flow() -> Result<(), anyhow::Error> {
                     block_number,
                     create_block_hash(block_number, false),
                     StateDiff::default(),
-                    vec![])
-                );
+                    vec![],
+                ));
             }
         }
         .boxed();
@@ -361,7 +361,7 @@ async fn sync_with_revert() {
                 false => stream! {
                     for i in initial_block_number.iter_up_to(up_to_block_number) {
                         if i.0 >= N_BLOCKS_BEFORE_REVERT {
-                            yield Err(CentralError::BlockNotFound { block_number: i })
+                            yield Err(CentralError::BlockNotFound { block_number: i });
                         }
                         let header = BlockHeader{
                             block_number: i,
@@ -375,7 +375,7 @@ async fn sync_with_revert() {
                 true => stream! {
                     for i in initial_block_number.iter_up_to(up_to_block_number) {
                         if i.0 >= N_BLOCKS_AFTER_REVERT {
-                            yield Err(CentralError::BlockNotFound { block_number: i })
+                            yield Err(CentralError::BlockNotFound { block_number: i });
                         }
                         let header = BlockHeader{
                             block_number: i,
@@ -398,7 +398,7 @@ async fn sync_with_revert() {
                 false => stream! {
                     for i in initial_block_number.iter_up_to(up_to_block_number) {
                         if i.0 >= N_BLOCKS_BEFORE_REVERT {
-                            yield Err(CentralError::BlockNotFound { block_number: i })
+                            yield Err(CentralError::BlockNotFound { block_number: i });
                         }
                         yield Ok((i, create_block_hash(i, false), StateDiff::default(), vec![]));
                     }
@@ -407,14 +407,14 @@ async fn sync_with_revert() {
                 true => stream! {
                     for i in initial_block_number.iter_up_to(up_to_block_number) {
                         if i.0 >= N_BLOCKS_AFTER_REVERT {
-                            yield Err(CentralError::BlockNotFound { block_number: i })
+                            yield Err(CentralError::BlockNotFound { block_number: i });
                         }
                         let is_reverted_state_diff = i.0 >= CHAIN_FORK_BLOCK_NUMBER;
                         yield Ok((
                             i,
                             create_block_hash(i, is_reverted_state_diff),
                             StateDiff::default(),
-                            vec![]
+                            vec![],
                         ));
                     }
                 }

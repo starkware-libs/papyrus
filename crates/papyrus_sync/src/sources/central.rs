@@ -192,10 +192,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                             current_block_number = current_block_number.next();
                         }
                         Err(err) => {
-                            debug!(
-                                "Received error for block {}: {:?}.",
-                                current_block_number, err
-                            );
+                            debug!("Received error for block {}: {:?}.", current_block_number, err);
                             yield (Err(err));
                             return;
                         }
