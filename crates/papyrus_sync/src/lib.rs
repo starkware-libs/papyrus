@@ -373,8 +373,14 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
             let block_stream =
                 central_source.stream_new_blocks(header_marker, last_block_number).fuse();
             pin_mut!(block_stream);
-            while let Some(Ok((block_number, block))) = block_stream.next().await {
-                yield Ok(SyncEvent::BlockAvailable { block_number, block });
+            while let Some(maybe_block) = block_stream.next().await {
+                match maybe_block {
+                    Ok((block_number, block)) => yield Ok(SyncEvent::BlockAvailable { block_number, block }),
+                    Err(err) => {
+                        yield Err(StateSyncError::CentralSourceError(err));
+                        break;
+                    }
+                }
             }
         }
     }
@@ -416,7 +422,7 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
                         });
                     }
                     Err(err) => {
-                        error!("{}", err);
+                        yield Err(StateSyncError::CentralSourceError(err));
                         break;
                     }
                 }
