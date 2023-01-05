@@ -117,13 +117,13 @@ async fn sync_happy_flow() -> Result<(), anyhow::Error> {
                 if block_number.0 >= N_BLOCKS {
                     yield Err(CentralError::BlockNotFound { block_number })
                 }
-                let header = BlockHeader{
+                let header = BlockHeader {
                     block_number,
                     block_hash: create_block_hash(block_number, false),
                     parent_hash: create_block_hash(block_number.prev().unwrap_or_default(), false),
                     ..BlockHeader::default()
                 };
-                yield Ok((block_number, Block{header, body: BlockBody::default()}));
+                yield Ok((block_number, Block { header, body: BlockBody::default() }));
             }
         }
         .boxed();
@@ -139,8 +139,8 @@ async fn sync_happy_flow() -> Result<(), anyhow::Error> {
                     block_number,
                     create_block_hash(block_number, false),
                     StateDiff::default(),
-                    vec![])
-                );
+                    vec![],
+                ));
             }
         }
         .boxed();
@@ -414,7 +414,7 @@ async fn sync_with_revert() {
                             i,
                             create_block_hash(i, is_reverted_state_diff),
                             StateDiff::default(),
-                            vec![]
+                            vec![],
                         ));
                     }
                 }
