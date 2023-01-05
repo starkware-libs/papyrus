@@ -1,6 +1,6 @@
 chain_id: SN_MAIN
 central:
-    concurrent_requests: 300
+    concurrent_requests: 10
     url: https://alpha-mainnet.starknet.io/
     retry:
         retry_base_millis: 30
