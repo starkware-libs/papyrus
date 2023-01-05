@@ -105,7 +105,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 // Unrecoverable errors.
                 Err(err) => return Err(err),
                 Ok(_) => {
-                    unreachable!("Sync should either return with an error or continue for ever")
+                    unreachable!("Sync should either return with an error or continue forever")
                 }
             }
         }
@@ -128,7 +128,11 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         }
     }
 
-    // Sync untill encounting an error.
+    // Sync until encountering an error:
+    //  1. If needed, revert blocks from the end of the chain.
+    //  2. Create streams to fetch data from the central source. Streams will continue to wait for
+    //     more data indefinitely.
+    //  3. fetch data from the streams with unblocking wait while there is no new data.
     async fn sync_while_ok(&mut self) -> StateSyncResult {
         self.handle_block_reverts().await?;
         let block_stream = stream_new_blocks(
@@ -154,7 +158,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             .expect("Received None as a sync event.")?;
             self.process_sync_event(sync_event).await?;
         }
-        unreachable!("");
+        unreachable!("Fetching data loop should never return.");
     }
 
     // Tries to store the incoming data.
@@ -256,6 +260,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         let mut last_block_in_storage = header_marker.prev();
         while let Some(block_number) = last_block_in_storage {
             if self.should_revert_block(block_number).await? {
+                info!("Reverting block {}.", block_number);
                 self.revert_block(block_number)?;
                 last_block_in_storage = block_number.prev();
             } else {
