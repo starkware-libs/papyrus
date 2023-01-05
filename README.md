@@ -88,7 +88,7 @@ You can run a `papyrus` node with the default configuration by running:
 docker run --rm --name papyrus\
   -p 8080-8081:8080-8081 \
   -v <local-host-data-path>:/app/data \
-  ghcr.io/starkware-libs/papyrus:latest
+  ghcr.io/starkware-libs/papyrus:dev
 ```
 
 Note:
@@ -96,8 +96,8 @@ Note:
 - The container must have write access to `<local-host-data-path>`.
 A possible way to assure this is to create the `<local-host-data-path>` directory (only the first
 time you run `papyrus`) and add `--user "$(id -u):$(id -g)"` to the docker run command.
-- If you wish to run the most up-to-date code,
-you can use the `ghcr.io/starkware-libs/papyrus:dev` image.
+- You must include the `dev` tag which keeps track of our development branch and contains the most
+up-to-date code. Once we have official releases we will add a `latest` tag for the latest release.
 - Currently, there is no automatic upgrade mechanism.
 Make sure to periodically pull the latest image and re-run the node.
 
