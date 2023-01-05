@@ -11,4 +11,5 @@ members = [
     "crates/papyrus_storage",
     "crates/papyrus_sync",
     "crates/starknet_client",
+    "crates/test_utils",
 ]

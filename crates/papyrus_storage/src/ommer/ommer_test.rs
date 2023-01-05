@@ -2,6 +2,7 @@ use starknet_api::block::{BlockHeader, BlockNumber};
 use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, StateNumber};
 use starknet_api::transaction::{Event, Transaction, TransactionOffsetInBlock, TransactionOutput};
+use test_utils::{get_test_block, get_test_state_diff};
 
 use super::OmmerStorageReader;
 use crate::body::events::ThinTransactionOutput;
@@ -9,7 +10,7 @@ use crate::body::{BodyStorageReader, BodyStorageWriter};
 use crate::ommer::OmmerStorageWriter;
 use crate::state::data::ThinStateDiff;
 use crate::state::{StateStorageReader, StateStorageWriter};
-use crate::test_utils::{get_test_block, get_test_state_diff, get_test_storage};
+use crate::test_utils::get_test_storage;
 use crate::{StorageReader, TransactionIndex};
 
 // TODO(yair): These functions were written and used in order to experience writing ommer blocks in

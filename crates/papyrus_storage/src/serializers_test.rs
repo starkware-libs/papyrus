@@ -3,9 +3,9 @@ use std::fmt::Debug;
 use starknet_api::core::ContractAddress;
 use starknet_api::hash::StarkHash;
 use starknet_api::state::StorageKey;
+use test_utils::GetTestInstance;
 
 use crate::db::serialization::StorageSerde;
-use crate::test_utils::GetTestInstance;
 
 pub trait StorageSerdeTest: StorageSerde {
     fn storage_serde_test();
@@ -32,22 +32,6 @@ macro_rules! create_storage_serde_test {
             #[test]
             fn [<"storage_serde_test" _$name:snake>]() {
                 $name::storage_serde_test()
-            }
-        }
-    };
-    (($ty0:ty, $ty1:ty)) => {
-        paste::paste! {
-            #[test]
-            fn [<"storage_serde_test" _$ty0:snake _$ty1:snake>]() {
-                <($ty0, $ty1)>::storage_serde_test()
-            }
-        }
-    };
-    (($ty0:ty, $ty1:ty, $ty2:ty)) => {
-        paste::paste! {
-            #[test]
-            fn [<"storage_serde_test" _$ty0:snake _$ty1:snake _$ty2:snake>]() {
-                <($ty0, $ty1, $ty2)>::storage_serde_test()
             }
         }
     };

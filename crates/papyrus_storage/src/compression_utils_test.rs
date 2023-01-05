@@ -1,7 +1,7 @@
 use starknet_api::state::Program;
+use test_utils::read_json_file;
 
 use crate::compression_utils::GzEncoded;
-use crate::test_utils::read_json_file;
 
 #[test]
 fn gzip_encode_decode_contract_program() {
