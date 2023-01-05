@@ -81,75 +81,31 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     pub async fn run(&mut self) -> StateSyncResult {
         info!("State sync started.");
         loop {
-            match self.handle_block_reverts().await {
-                Ok(_) => {}
+            match self.sync_while_ok().await {
+                Err(StateSyncError::ParentBlockHashMismatch {
+                    block_number,
+                    expected_parent_block_hash,
+                    stored_parent_block_hash,
+                }) => {
+                    // A revert detected, log and restart sync loop.
+                    info!(
+                        "Detected revert while processing block {}. Parent hash of the incoming \
+                         block is {:?}, current block hash is {:?}.",
+                        block_number, expected_parent_block_hash, stored_parent_block_hash
+                    );
+                    continue;
+                }
+                // A recoverable error occurred. Sleep and try syncing again.
                 Err(err) if is_recoverable(&err) => {
                     error!("{}", err);
                     // TODO: change sleep duration.
                     tokio::time::sleep(self.config.block_propagation_sleep_duration).await;
                     continue;
                 }
+                // Unrecoverable errors.
                 Err(err) => return Err(err),
-            }
-            let block_stream = stream_new_blocks(
-                self.reader.clone(),
-                self.central_source.clone(),
-                self.config.block_propagation_sleep_duration,
-            )
-            .fuse();
-            let state_diff_stream = stream_new_state_diffs(
-                self.reader.clone(),
-                self.central_source.clone(),
-                self.config.block_propagation_sleep_duration,
-            )
-            .fuse();
-            pin_mut!(block_stream, state_diff_stream);
-
-            loop {
-                let sync_event = match select! {
-                  res = block_stream.next() => res,
-                  res = state_diff_stream.next() => res,
-                  complete => break,
-                } {
-                    Some(Ok(sync_event)) => sync_event,
-                    Some(Err(err)) if is_recoverable(&err) => {
-                        error!("{}", err);
-                        // TODO: change sleep duration.
-                        tokio::time::sleep(self.config.block_propagation_sleep_duration).await;
-                        break;
-                    }
-                    Some(Err(err)) => {
-                        return Err(err);
-                    }
-                    None => {
-                        unreachable!("Received None as a sync event.");
-                    }
-                };
-
-                match self.process_sync_event(sync_event).await {
-                    Ok(_) => {}
-                    Err(StateSyncError::ParentBlockHashMismatch {
-                        block_number,
-                        expected_parent_block_hash,
-                        stored_parent_block_hash,
-                    }) => {
-                        // A revert detected, log and restart main sync loop.
-                        info!(
-                            "Detected revert while processing block {}. Parent hash of the \
-                             incoming block is {:?}, current block hash is {:?}.",
-                            block_number, expected_parent_block_hash, stored_parent_block_hash
-                        );
-                        break;
-                    }
-                    // A recoverable error occurred, break the loop and create new streams.
-                    Err(err) if is_recoverable(&err) => {
-                        error!("{}", err);
-                        // TODO: change sleep duration.
-                        tokio::time::sleep(self.config.block_propagation_sleep_duration).await;
-                        break;
-                    }
-                    // Unrecoverable errors.
-                    Err(err) => return Err(err),
+                Ok(_) => {
+                    unreachable!("Sync should either return with an error or continue forever")
                 }
             }
         }
@@ -172,6 +128,38 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         }
     }
 
+    // Sync until encountering an error:
+    //  1. If needed, revert blocks from the end of the chain.
+    //  2. Create infinite block and state diff streams to fetch data from the central source.
+    //  3. Fetch data from the streams with unblocking wait while there is no new data.
+    async fn sync_while_ok(&mut self) -> StateSyncResult {
+        self.handle_block_reverts().await?;
+        let block_stream = stream_new_blocks(
+            self.reader.clone(),
+            self.central_source.clone(),
+            self.config.block_propagation_sleep_duration,
+        )
+        .fuse();
+        let state_diff_stream = stream_new_state_diffs(
+            self.reader.clone(),
+            self.central_source.clone(),
+            self.config.block_propagation_sleep_duration,
+        )
+        .fuse();
+        pin_mut!(block_stream, state_diff_stream);
+
+        loop {
+            let sync_event = select! {
+              res = block_stream.next() => res,
+              res = state_diff_stream.next() => res,
+              complete => break,
+            }
+            .expect("Received None as a sync event.")?;
+            self.process_sync_event(sync_event).await?;
+        }
+        unreachable!("Fetching data loop should never return.");
+    }
+
     // Tries to store the incoming data.
     async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult {
         match sync_event {
@@ -183,28 +171,12 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 block_hash,
                 state_diff,
                 deployed_contract_class_definitions,
-            } => {
-                if !self.is_reverted_state_diff(block_number, block_hash)? {
-                    self.writer
-                        .begin_rw_txn()?
-                        .append_state_diff(
-                            block_number,
-                            state_diff,
-                            deployed_contract_class_definitions,
-                        )?
-                        .commit()?;
-                } else {
-                    self.writer
-                        .begin_rw_txn()?
-                        .insert_ommer_state_diff(
-                            block_hash,
-                            &state_diff.into(),
-                            &deployed_contract_class_definitions,
-                        )?
-                        .commit()?;
-                }
-                Ok(())
-            }
+            } => self.store_state_diff(
+                block_number,
+                block_hash,
+                state_diff,
+                deployed_contract_class_definitions,
+            ),
         }
     }
 
@@ -218,6 +190,31 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             .append_header(block_number, &block.header)?
             .append_body(block_number, block.body)?
             .commit()?;
+        Ok(())
+    }
+
+    fn store_state_diff(
+        &mut self,
+        block_number: BlockNumber,
+        block_hash: BlockHash,
+        state_diff: StateDiff,
+        deployed_contract_class_definitions: Vec<(ClassHash, ContractClass)>,
+    ) -> StateSyncResult {
+        if !self.is_reverted_state_diff(block_number, block_hash)? {
+            self.writer
+                .begin_rw_txn()?
+                .append_state_diff(block_number, state_diff, deployed_contract_class_definitions)?
+                .commit()?;
+        } else {
+            self.writer
+                .begin_rw_txn()?
+                .insert_ommer_state_diff(
+                    block_hash,
+                    &state_diff.into(),
+                    &deployed_contract_class_definitions,
+                )?
+                .commit()?;
+        }
         Ok(())
     }
 
@@ -262,6 +259,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         let mut last_block_in_storage = header_marker.prev();
         while let Some(block_number) = last_block_in_storage {
             if self.should_revert_block(block_number).await? {
+                info!("Reverting block {}.", block_number);
                 self.revert_block(block_number)?;
                 last_block_in_storage = block_number.prev();
             } else {
