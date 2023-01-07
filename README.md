@@ -41,7 +41,7 @@
 
 ## :warning: Disclaimer
 
-:warning: :construction: Papyrus is still being built therefore breaking changes might happen often so use it at your own risks.:construction: :warning:
+:warning: :construction: `Papyrus` is still being built therefore breaking changes might happen often so use it at your own risks.:construction: :warning:
 
 ## About
 
@@ -58,7 +58,7 @@ Prerequisites
 You can build and run a `papyrus` node with the default configuration by running:
 
 ```bash
-mkdir -p data/SN_MAIN
+mkdir data
 cargo run --release --package papyrus_node --bin papyrus_node
 ```
 
