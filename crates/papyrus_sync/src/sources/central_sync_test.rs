@@ -76,7 +76,7 @@ async fn run_sync(
 }
 
 #[tokio::test]
-async fn sync_empty_chain() -> Result<(), anyhow::Error> {
+async fn sync_empty_chain() {
     let _ = simple_logger::init();
 
     // Mock central without any block.
@@ -98,12 +98,10 @@ async fn sync_empty_chain() -> Result<(), anyhow::Error> {
         sync_result = sync_future => sync_result.unwrap(),
         storage_check_result = check_storage_future => assert!(storage_check_result),
     }
-
-    Ok(())
 }
 
 #[tokio::test]
-async fn sync_happy_flow() -> Result<(), anyhow::Error> {
+async fn sync_happy_flow() {
     const N_BLOCKS: u64 = 5;
     const MAX_TIME_TO_SYNC_MS: u64 = 60;
     let _ = simple_logger::init();
@@ -178,8 +176,6 @@ async fn sync_happy_flow() -> Result<(), anyhow::Error> {
         sync_result = sync_future => sync_result.unwrap(),
         storage_check_result = check_storage_future => assert!(storage_check_result),
     }
-
-    Ok(())
 }
 
 #[tokio::test]
