@@ -271,10 +271,11 @@ auto_impl_get_test_instance! {
         pub prime: serde_json::Value,
         pub reference_manager: serde_json::Value,
     }
-    pub struct StructAbiEntry {
-        pub name: String,
-        pub size: usize,
-        pub members: Vec<StructMember>,
+    pub struct StateDiff {
+        pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
+        pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
+        pub declared_classes: IndexMap<ClassHash, ContractClass>,
+        pub nonces: IndexMap<ContractAddress, Nonce>,
     }
     pub struct StructMember {
         pub param: TypedParameter,
@@ -468,6 +469,15 @@ macro_rules! get_number_of_variants {
 default_impl_get_test_instance!(StarkHash);
 default_impl_get_test_instance!(ContractAddress);
 default_impl_get_test_instance!(StorageKey);
+impl GetTestInstance for StructAbiEntry {
+    fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+        Self {
+            name: String::default(),
+            size: 1, // Should be minimum 1.
+            members: Vec::<StructMember>::get_test_instance(rng),
+        }
+    }
+}
 
 fn get_test_transaction_output(transaction: &Transaction) -> TransactionOutput {
     match transaction {
@@ -503,19 +513,7 @@ pub fn set_transaction_hash(tx: &mut Transaction, hash: TransactionHash) {
     }
 }
 
-// TODO(anatg): Use impl_get_test_instance macro to implement GetTestInstance
-// for StateDiff instead of this function.
 pub fn get_test_state_diff() -> StateDiff {
-    let address = ContractAddress::default();
-    let hash = ClassHash::default();
-
-    StateDiff {
-        deployed_contracts: IndexMap::from([(address, hash)]),
-        storage_diffs: IndexMap::from([(
-            address,
-            IndexMap::from([(StorageKey::default(), StarkFelt::default())]),
-        )]),
-        declared_classes: IndexMap::from([(hash, ContractClass::default())]),
-        nonces: IndexMap::from([(address, Nonce::default())]),
-    }
+    let mut rng = get_rng();
+    StateDiff::get_test_instance(&mut rng)
 }
