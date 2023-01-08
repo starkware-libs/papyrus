@@ -11,7 +11,7 @@ mod test_utils;
 use std::fmt::{self, Display, Formatter};
 
 use async_trait::async_trait;
-use log::error;
+use log::warn;
 #[cfg(any(feature = "testing", test))]
 use mockall::automock;
 use reqwest::{Client, StatusCode};
@@ -246,7 +246,7 @@ impl StarknetClient {
                 message: _,
             })) => Ok(None),
             Err(err) => {
-                error!("Failed to get block number {:?} from starknet server.", block_number);
+                warn!("Failed to get block number {:?} from starknet server.", block_number);
                 Err(err)
             }
         }
@@ -276,7 +276,7 @@ impl StarknetClientTrait for StarknetClient {
                 message: _,
             })) => Ok(None),
             Err(err) => {
-                error!("Failed to get class with hash {:?} from starknet server.", class_hash);
+                warn!("Failed to get class with hash {:?} from starknet server.", class_hash);
                 Err(err)
             }
         }
@@ -295,7 +295,7 @@ impl StarknetClientTrait for StarknetClient {
                 Ok(None)
             }
             Err(err) => {
-                error!(
+                warn!(
                     "Failed to get state update for block number {:?} from starknet server.",
                     block_number
                 );
