@@ -9,10 +9,7 @@ use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
 use jsonschema::JSONSchema;
-use papyrus_storage::test_utils::{
-    get_test_block, get_test_block_with_events, get_test_body, get_test_state_diff,
-    get_test_storage,
-};
+use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{
     BodyStorageWriter, EventIndex, HeaderStorageWriter, StateStorageWriter, TransactionIndex,
 };
@@ -24,6 +21,7 @@ use starknet_api::transaction::{
     EventIndexInTransactionOutput, EventKey, Transaction, TransactionHash, TransactionOffsetInBlock,
 };
 use starknet_api::{patky, shash};
+use test_utils::{get_test_block, get_test_block_with_events, get_test_body, get_test_state_diff};
 
 use crate::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcClient,

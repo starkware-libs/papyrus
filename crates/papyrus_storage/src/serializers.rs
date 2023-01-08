@@ -348,8 +348,6 @@ macro_rules! auto_storage_serde {
                 ))
             }
         }
-        #[cfg(test)]
-        create_storage_serde_test!(($ty0, $ty1));
         auto_storage_serde!($($rest)*);
     };
     // Tuples - three elements.
@@ -368,8 +366,6 @@ macro_rules! auto_storage_serde {
                 ))
             }
         }
-        #[cfg(test)]
-        create_storage_serde_test!(($ty0, $ty1, $ty2));
         auto_storage_serde!($($rest)*);
     };
     // enums.

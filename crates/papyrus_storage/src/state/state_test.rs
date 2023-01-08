@@ -9,9 +9,10 @@ use starknet_api::state::{
     FunctionAbiEntryWithType, StateDiff, StateNumber, StorageKey,
 };
 use starknet_api::{patky, shash};
+use test_utils::get_test_state_diff;
 
 use crate::state::{StateStorageReader, StateStorageWriter, StorageError};
-use crate::test_utils::{get_test_state_diff, get_test_storage};
+use crate::test_utils::get_test_storage;
 use crate::StorageWriter;
 
 #[test]
