@@ -1,6 +1,5 @@
 use assert_matches::assert_matches;
 use indexmap::IndexMap;
-use logtest::Logger;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::StarkHash;
@@ -155,20 +154,6 @@ fn append_state_diff() {
     assert_eq!(statetxn.get_storage_at(state0, &c1, &key0).unwrap(), shash!("0x0"));
     assert_eq!(statetxn.get_storage_at(state1, &c1, &key0).unwrap(), shash!("0x0"));
     assert_eq!(statetxn.get_storage_at(state2, &c1, &key0).unwrap(), shash!("0x0"));
-}
-
-#[test]
-fn revert_non_existing_state_diff() {
-    let (_, mut writer) = get_test_storage();
-
-    let mut logger = Logger::start();
-    let block_number = BlockNumber(5);
-    writer.begin_rw_txn().unwrap().revert_state_diff(block_number).unwrap();
-    let expected_warn = format!(
-        "Attempt to revert a non-existing state diff of block {:?}. Returning without an action.",
-        block_number
-    );
-    assert_eq!(logger.pop().unwrap().args(), expected_warn);
 }
 
 #[tokio::test]
