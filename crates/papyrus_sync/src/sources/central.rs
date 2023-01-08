@@ -45,6 +45,8 @@ pub enum CentralError {
     BlockNotFound { block_number: BlockNumber },
     #[error(transparent)]
     StarknetApiError(#[from] Arc<StarknetApiError>),
+    #[error("Failed to download state update.")]
+    StateDiffDownloadFailed,
 }
 
 #[cfg_attr(test, automock)]
@@ -258,22 +260,21 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
 
                 // Get the next state declared and deployed classes.
                 let len = state_update.state_diff.class_hashes().len();
-                let classes: Result<Vec<(ClassHash, ContractClass)>, _> = flat_classes
-                    .take_n(len)
-                    .await
-                    .expect("Failed to download state update")
-                    .into_iter()
-                    .map(|(class_hash, class)| {
-                        match class{
+                if let Some(maybe_classes) = flat_classes.take_n(len).await {
+                    let classes = maybe_classes
+                        .into_iter()
+                        .map(|(class_hash, class)| match class {
                             Ok(Some(class)) => Ok((class_hash, class.into())),
                             Ok(None) => Err(CentralError::StateUpdateNotFound),
                             Err(err) => Err(CentralError::ClientError(err)),
-                        }
-                    })
-                    .collect();
-                match classes {
-                    Ok(classes) => yield (Ok((state_update, classes))),
-                    Err(err) => yield (Err(err)),
+                        })
+                        .collect();
+                    match classes {
+                        Ok(classes) => yield (Ok((state_update, classes))),
+                        Err(err) => yield (Err(err)),
+                    }
+                } else {
+                    yield Err(CentralError::StateDiffDownloadFailed);
                 }
             }
         };
