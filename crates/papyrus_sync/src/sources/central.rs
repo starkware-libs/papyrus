@@ -41,6 +41,8 @@ pub enum CentralError {
     ClientError(#[from] Arc<ClientError>),
     #[error("Could not find a state update.")]
     StateUpdateNotFound,
+    #[error("Could not find a class definitions.")]
+    ClassNotFound,
     #[error("Could not find a block with block number {:?}.", block_number)]
     BlockNotFound { block_number: BlockNumber },
     #[error(transparent)]
@@ -258,22 +260,20 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
 
                 // Get the next state declared and deployed classes.
                 let len = state_update.state_diff.class_hashes().len();
-                let classes: Result<Vec<(ClassHash, ContractClass)>, _> = flat_classes
-                    .take_n(len)
-                    .await
-                    .expect("Failed to download state update")
-                    .into_iter()
-                    .map(|(class_hash, class)| {
-                        match class{
-                            Ok(Some(class)) => Ok((class_hash, class.into())),
-                            Ok(None) => Err(CentralError::StateUpdateNotFound),
-                            Err(err) => Err(CentralError::ClientError(err)),
-                        }
-                    })
-                    .collect();
+                let classes: Option<Result<Vec<(ClassHash, ContractClass)>, _>> =
+                    flat_classes.take_n(len).await.map(|v| {
+                        v.into_iter()
+                            .map(|(class_hash, class)| match class {
+                                Ok(Some(class)) => Ok((class_hash, class.into())),
+                                Ok(None) => Err(CentralError::StateUpdateNotFound),
+                                Err(err) => Err(CentralError::ClientError(err)),
+                            })
+                            .collect()
+                    });
                 match classes {
-                    Ok(classes) => yield (Ok((state_update, classes))),
-                    Err(err) => yield (Err(err)),
+                    Some(Ok(classes)) => yield (Ok((state_update, classes))),
+                    Some(Err(err)) => yield (Err(err)),
+                    None => yield (Err(CentralError::ClassNotFound)),
                 }
             }
         };
