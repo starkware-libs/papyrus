@@ -245,7 +245,13 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
             while let Some(maybe_state_update) = state_updates1.next().await {
                 // Get the next state update.
                 let state_update = match maybe_state_update {
-                    Ok(Some(state_update)) => state_update,
+                    Ok(Some(state_update)) => {
+                        debug!(
+                            "Received new state update of block with hash {:?}.",
+                            state_update.block_hash
+                        );
+                        state_update
+                    }
                     Ok(None) => {
                         yield (Err(CentralError::StateUpdateNotFound));
                         break;
