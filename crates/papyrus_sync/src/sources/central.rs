@@ -6,7 +6,7 @@ use futures::stream::BoxStream;
 use futures::{future, pin_mut, TryStreamExt};
 use futures_util::StreamExt;
 use indexmap::IndexMap;
-use log::{debug, error, info};
+use log::{debug, warn};
 #[cfg(test)]
 use mockall::automock;
 use serde::{Deserialize, Serialize};
@@ -152,7 +152,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                             current_block_number = current_block_number.next();
                         }
                         Err(err) => {
-                            debug!("Block number {}: {:#?}", current_block_number, err);
+                            warn!("Received error for block {}: {:?}.", current_block_number, err);
                             yield Err(err);
                             return;
                         }
@@ -179,7 +179,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                 while let Some(maybe_block) = res.next().await {
                     let res = match maybe_block {
                         Ok(Some(block)) => {
-                            info!("Received new block: {}.", block.block_number);
+                            debug!("Received new block: {}.", block.block_number);
                             Block::try_from(block)
                                 .map_err(|err| CentralError::ClientError(Arc::new(err)))
                         }
@@ -194,7 +194,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                             current_block_number = current_block_number.next();
                         }
                         Err(err) => {
-                            debug!("Received error for block {}: {:?}.", current_block_number, err);
+                            warn!("Block number {}: {:#?}.", current_block_number, err);
                             yield (Err(err));
                             return;
                         }
@@ -251,9 +251,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
                         break;
                     }
                     Err(err) => {
-                        match err {
-                            _ => yield (Err(CentralError::ClientError(err))),
-                        }
+                        yield (Err(CentralError::ClientError(err)));
                         break;
                     }
                 };
@@ -286,7 +284,6 @@ pub type CentralSource = GenericCentralSource<StarknetClient>;
 impl CentralSource {
     pub fn new(config: CentralSourceConfig) -> Result<CentralSource, ClientCreationError> {
         let starknet_client = StarknetClient::new(&config.url, config.retry_config)?;
-        info!("Central source is configured with {}.", config.url);
         Ok(CentralSource {
             concurrent_requests: config.concurrent_requests,
             starknet_client: Arc::new(starknet_client),
