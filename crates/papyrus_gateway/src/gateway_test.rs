@@ -21,7 +21,10 @@ use starknet_api::transaction::{
     EventIndexInTransactionOutput, EventKey, Transaction, TransactionHash, TransactionOffsetInBlock,
 };
 use starknet_api::{patky, shash};
-use test_utils::{get_test_block, get_test_block_with_events, get_test_body, get_test_state_diff};
+use test_utils::{
+    get_rand_test_block_with_events, get_rand_test_body, get_rng, get_test_block,
+    get_test_state_diff, GetTestInstance,
+};
 
 use crate::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcClient,
@@ -1127,7 +1130,9 @@ async fn get_events_chunk_size_2_with_address() {
     let address = ContractAddress(patky!("0x22"));
     let key0 = EventKey(shash!("0x6"));
     let key1 = EventKey(shash!("0x7"));
-    let block = get_test_block_with_events(
+    let mut rng = get_rng();
+    let block = get_rand_test_block_with_events(
+        &mut rng,
         2,
         5,
         Some(vec![address, ContractAddress(patky!("0x23"))]),
@@ -1212,7 +1217,9 @@ async fn get_events_chunk_size_2_without_address() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
     let key0 = EventKey(shash!("0x6"));
     let key1 = EventKey(shash!("0x7"));
-    let block = get_test_block_with_events(
+    let mut rng = get_rng();
+    let block = get_rand_test_block_with_events(
+        &mut rng,
         2,
         5,
         None,
@@ -1309,6 +1316,7 @@ async fn serialize_returns_valid_json() {
     // TODO(anatg): Use the papyrus_node/main.rs, when it has configuration for running different
     // components, for openning the storage and running the server.
     let (storage_reader, mut storage_writer) = get_test_storage();
+    let mut rng = get_rng();
     let parent_block = starknet_api::block::Block::default();
     let block = starknet_api::block::Block {
         header: BlockHeader {
@@ -1317,9 +1325,9 @@ async fn serialize_returns_valid_json() {
             block_number: BlockNumber(1),
             ..BlockHeader::default()
         },
-        body: get_test_body(5),
+        body: get_rand_test_body(&mut rng, 5),
     };
-    let state_diff = get_test_state_diff();
+    let state_diff = StateDiff::get_test_instance(&mut rng);
     storage_writer
         .begin_rw_txn()
         .unwrap()

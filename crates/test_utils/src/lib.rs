@@ -39,7 +39,8 @@ pub fn read_json_file(path_in_resource_dir: &str) -> serde_json::Value {
 }
 
 // Returns a test block with a variable number of transactions and events.
-pub fn get_test_block_with_events(
+pub fn get_rand_test_block_with_events(
+    rng: &mut ChaCha8Rng,
     transaction_count: usize,
     events_per_tx: usize,
     from_addresses: Option<Vec<ContractAddress>>,
@@ -47,23 +48,28 @@ pub fn get_test_block_with_events(
 ) -> Block {
     Block {
         header: BlockHeader::default(),
-        body: get_test_body_with_events(transaction_count, events_per_tx, from_addresses, keys),
+        body: get_rand_test_body_with_events(
+            rng,
+            transaction_count,
+            events_per_tx,
+            from_addresses,
+            keys,
+        ),
     }
 }
 
 // Returns a test block body with a variable number of transactions and events.
-pub fn get_test_body_with_events(
+pub fn get_rand_test_body_with_events(
+    rng: &mut ChaCha8Rng,
     transaction_count: usize,
     events_per_tx: usize,
     from_addresses: Option<Vec<ContractAddress>>,
     keys: Option<Vec<Vec<EventKey>>>,
 ) -> BlockBody {
-    let mut rng = get_rng();
-
     let mut transactions = vec![];
     let mut transaction_outputs = vec![];
     for i in 0..transaction_count {
-        let mut transaction = Transaction::get_test_instance(&mut rng);
+        let mut transaction = Transaction::get_test_instance(rng);
         set_transaction_hash(&mut transaction, TransactionHash(StarkHash::from(i as u64)));
         let transaction_output = get_test_transaction_output(&transaction);
         transactions.push(transaction);
@@ -98,23 +104,48 @@ pub fn get_test_body_with_events(
     body
 }
 
+// Returns a test block with a variable number of transactions and events.
+pub fn get_test_block_with_events(transaction_count: usize, events_per_tx: usize) -> Block {
+    let mut rng = ChaCha8Rng::seed_from_u64(0);
+    get_rand_test_block_with_events(&mut rng, transaction_count, events_per_tx, None, None)
+}
+
+// Returns a test block body with a variable number of transactions and events.
+pub fn get_test_body_with_events(transaction_count: usize, events_per_tx: usize) -> BlockBody {
+    let mut rng = ChaCha8Rng::seed_from_u64(0);
+    get_rand_test_body_with_events(&mut rng, transaction_count, events_per_tx, None, None)
+}
+
+// Returns a test block with a variable number of transactions.
+pub fn get_rand_test_block(rng: &mut ChaCha8Rng, transaction_count: usize) -> Block {
+    get_rand_test_block_with_events(rng, transaction_count, 0, None, None)
+}
+
+// Returns a test block body with a variable number of transactions.
+pub fn get_rand_test_body(rng: &mut ChaCha8Rng, transaction_count: usize) -> BlockBody {
+    get_rand_test_body_with_events(rng, transaction_count, 0, None, None)
+}
+
 // Returns a test block with a variable number of transactions.
 pub fn get_test_block(transaction_count: usize) -> Block {
-    get_test_block_with_events(transaction_count, 0, None, None)
+    let mut rng = ChaCha8Rng::seed_from_u64(0);
+    get_rand_test_block(&mut rng, transaction_count)
 }
 
 // Returns a test block body with a variable number of transactions.
 pub fn get_test_body(transaction_count: usize) -> BlockBody {
-    get_test_body_with_events(transaction_count, 0, None, None)
+    let mut rng = ChaCha8Rng::seed_from_u64(0);
+    get_rand_test_body(&mut rng, transaction_count)
 }
 
+// Returns a state diff with one item in each IndexMap.
+// For a random test state diff call StateDiff::get_test_instance.
 pub fn get_test_state_diff() -> StateDiff {
-    let mut rng = get_rng();
+    let mut rng = ChaCha8Rng::seed_from_u64(0);
     StateDiff::get_test_instance(&mut rng)
 }
 
-// Used in random test to create a random generator, see for example storage_serde_test
-// and get_test_body_with_events.
+// Used in random test to create a random generator, see for example storage_serde_test.
 pub fn get_rng() -> ChaCha8Rng {
     let seed = if let Ok(seed_str) = env::var("SEED") {
         seed_str.parse().unwrap()
