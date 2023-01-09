@@ -60,7 +60,7 @@ pub fn get_test_body_with_events(
     let mut transactions = vec![];
     let mut transaction_outputs = vec![];
     for i in 0..transaction_count {
-        let mut transaction = get_test_transaction();
+        let mut transaction = Transaction::get_test_instance();
         set_transaction_hash(&mut transaction, TransactionHash(StarkHash::from(i as u64)));
         let transaction_output = get_test_transaction_output(&transaction);
         transactions.push(transaction);
@@ -444,22 +444,6 @@ macro_rules! get_number_of_variants {
 default_impl_get_test_instance!(StarkHash);
 default_impl_get_test_instance!(ContractAddress);
 default_impl_get_test_instance!(StorageKey);
-
-// TODO(anatg): Use get_test_instance for Transaction instead of this function.
-fn get_test_transaction() -> Transaction {
-    let mut rng = rand::thread_rng();
-    let variant = rng.gen_range(0..5);
-    match variant {
-        0 => Transaction::Declare(DeclareTransaction::default()),
-        1 => Transaction::Deploy(DeployTransaction::default()),
-        2 => Transaction::DeployAccount(DeployAccountTransaction::default()),
-        3 => Transaction::Invoke(InvokeTransaction::default()),
-        4 => Transaction::L1Handler(L1HandlerTransaction::default()),
-        _ => {
-            panic!("Variant {:?} should match one of the enum Transaction variants.", variant);
-        }
-    }
-}
 
 fn get_test_transaction_output(transaction: &Transaction) -> TransactionOutput {
     match transaction {
