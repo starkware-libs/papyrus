@@ -106,6 +106,10 @@ pub fn get_test_body(transaction_count: usize) -> BlockBody {
     get_test_body_with_events(transaction_count, 0, None, None)
 }
 
+pub fn get_test_state_diff() -> StateDiff {
+    StateDiff::get_test_instance()
+}
+
 // TODO(anatg): Consider moving GetTestInstance and auto_impl_get_test_instance
 // to a test utils crate.
 pub trait GetTestInstance: Sized {
@@ -223,6 +227,14 @@ auto_impl_get_test_instance! {
         pub entry_point_selector: Option<EntryPointSelector>,
         pub calldata: CallData,
     }
+    pub struct L1HandlerTransaction {
+        pub transaction_hash: TransactionHash,
+        pub version: TransactionVersion,
+        pub nonce: Nonce,
+        pub contract_address: ContractAddress,
+        pub entry_point_selector: EntryPointSelector,
+        pub calldata: CallData,
+    }
     pub struct L1ToL2Payload(pub Vec<StarkFelt>);
     pub struct L2ToL1Payload(pub Vec<StarkFelt>);
     pub struct MessageToL1 {
@@ -255,14 +267,6 @@ auto_impl_get_test_instance! {
     pub struct StructMember {
         pub param: TypedParameter,
         pub offset: usize,
-    }
-    pub struct L1HandlerTransaction {
-        pub transaction_hash: TransactionHash,
-        pub version: TransactionVersion,
-        pub nonce: Nonce,
-        pub contract_address: ContractAddress,
-        pub entry_point_selector: EntryPointSelector,
-        pub calldata: CallData,
     }
     pub enum Transaction {
         Declare(DeclareTransaction) = 0,
@@ -480,7 +484,7 @@ fn set_events(tx: &mut TransactionOutput, events: Vec<Event>) {
     }
 }
 
-pub fn set_transaction_hash(tx: &mut Transaction, hash: TransactionHash) {
+fn set_transaction_hash(tx: &mut Transaction, hash: TransactionHash) {
     match tx {
         Transaction::Declare(tx) => tx.transaction_hash = hash,
         Transaction::Deploy(tx) => tx.transaction_hash = hash,
@@ -488,8 +492,4 @@ pub fn set_transaction_hash(tx: &mut Transaction, hash: TransactionHash) {
         Transaction::Invoke(tx) => tx.transaction_hash = hash,
         Transaction::L1Handler(tx) => tx.transaction_hash = hash,
     }
-}
-
-pub fn get_test_state_diff() -> StateDiff {
-    StateDiff::get_test_instance()
 }
