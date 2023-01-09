@@ -120,7 +120,7 @@ impl ConfigBuilder {
                 arg!(-f --config_file [path] "Optionally sets a config file to use").value_parser(value_parser!(PathBuf)),
                 arg!(-c --chain_id [name] "Optionally sets chain id to use"),
                 arg!(--server_address ["IP:PORT"] "Optionally sets the RPC listening address"),
-                arg!(--http_headers ["KEY:VALUE"] ... "Optionally adds headers to the http requests"),
+                arg!(--http_headers ["NAME:VALUE"] ... "Optionally adds headers to the http requests"),
                 arg!(-s --storage [path] "Optionally sets storage path to use (automatically extended with chain ID)").value_parser(value_parser!(PathBuf)),
                 arg!(-n --no_sync [bool] "Optionally run without sync").value_parser(value_parser!(bool)).default_missing_value("true"),
             ])
