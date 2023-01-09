@@ -1,3 +1,5 @@
+use std::env::args;
+
 use log::info;
 use papyrus_gateway::run_server;
 use papyrus_monitoring_gateway::run_server as monitoring_run_server;
@@ -40,7 +42,7 @@ async fn run_threads(config: Config) -> anyhow::Result<()> {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let config = Config::load()?;
+    let config = Config::load(args().collect())?;
     log4rs::init_file("config/log4rs.yaml", Default::default())?;
     info!("Booting up.");
     run_threads(config).await

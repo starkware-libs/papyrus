@@ -6,7 +6,7 @@ use tokio_stream::StreamExt;
 
 #[tokio::main]
 async fn main() {
-    let config = Config::load().expect("Load config");
+    let config = Config::load(vec![]).expect("Load config");
     let central_source = CentralSource::new(config.central).expect("Create new client");
     let last_block_number = BlockNumber(203);
 
