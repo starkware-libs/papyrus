@@ -7,15 +7,12 @@ use tempfile::NamedTempFile;
 
 use crate::config::{Config, ConfigBuilder};
 
-// TODO: Decide what should be tested and fix the problem of passing flags to the cargo test cmd
-// (such as --nocapture).
 #[test]
-#[ignore = "Fails when adding flags to the cargo test cmd."]
 fn load_default_config() {
     let workspace_root = Path::new("../../");
     env::set_current_dir(workspace_root).expect("Couldn't set working dir.");
     // TODO(spapini): Move the config closer.
-    Config::load().expect("Failed to load the config.");
+    Config::load(vec![]).expect("Failed to load the config.");
 }
 
 #[test]
