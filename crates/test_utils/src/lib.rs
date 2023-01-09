@@ -28,11 +28,6 @@ use starknet_api::transaction::{
     TransactionSignature, TransactionVersion,
 };
 
-const BASE_SEED: [u8; 32] = [
-    22, 95, 10, 14, 202, 198, 56, 101, 158, 194, 148, 30, 7, 24, 163, 191, 141, 173, 58, 104, 63,
-    2, 73, 237, 77, 153, 99, 43, 123, 195, 228, 62,
-];
-
 pub fn read_json_file(path_in_resource_dir: &str) -> serde_json::Value {
     // Reads from the directory containing the manifest at run time, same as current working
     // directory.
@@ -121,19 +116,19 @@ pub fn get_test_state_diff() -> StateDiff {
 // Used in random test to create a random generator, see for example storage_serde_test
 // and get_test_body_with_events.
 pub fn get_rng() -> ChaCha8Rng {
-    let stream = if let Ok(stream_str) = env::var("SEED") {
-        stream_str.parse().unwrap()
+    let seed = if let Ok(seed_str) = env::var("SEED") {
+        seed_str.parse().unwrap()
     } else {
         let mut rng = rand::thread_rng();
         rng.gen()
     };
     // Will be printed if the test failed.
-    println!("Testing with seed stream number: {:?}", stream);
-
-    let mut rng = ChaCha8Rng::from_seed(BASE_SEED);
-    rng.set_stream(stream);
-    rng.set_word_pos(0);
-    rng
+    println!("Testing with seed: {:?}", seed);
+    // Create a new PRNG using a u64 seed. This is a convenience-wrapper around from_seed.
+    // It is designed such that low Hamming Weight numbers like 0 and 1 can be used and
+    // should still result in good, independent seeds to the returned PRNG.
+    // This is not suitable for cryptography purposes.
+    ChaCha8Rng::seed_from_u64(seed)
 }
 
 // TODO(anatg): Consider moving GetTestInstance and auto_impl_get_test_instance
