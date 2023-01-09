@@ -20,7 +20,7 @@ pub type DeployedContractsTable<'env> = TableHandle<'env, ContractAddress, Index
 pub type ContractStorageTable<'env> =
     TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), StarkFelt>;
 pub type NoncesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumber), Nonce>;
-use log::warn;
+use log::debug;
 
 // Structure of state data:
 // * declared_classes: (class_hash) -> (block_num, contract_class). Each entry specifies at which
@@ -248,7 +248,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         // State diffs are synced after the blocks, so it might happen that we try to revert a state
         // diff that wasn't synced yet.
         if current_state_marker <= block_number {
-            warn!(
+            debug!(
                 "Attempt to revert a non-existing state diff of block {:?}. Returning without an \
                  action.",
                 block_number

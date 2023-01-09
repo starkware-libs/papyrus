@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use async_stream::stream;
 use futures_util::{pin_mut, select, Stream, StreamExt};
-use log::{error, info};
+use log::{debug, error, info, warn};
 use papyrus_storage::{
     BodyStorageReader, BodyStorageWriter, HeaderStorageReader, HeaderStorageWriter,
     OmmerStorageReader, OmmerStorageWriter, StateStorageReader, StateStorageWriter, StorageError,
@@ -91,21 +91,26 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                     // A revert detected, log and restart sync loop.
                     info!(
                         "Detected revert while processing block {}. Parent hash of the incoming \
-                         block is {:?}, current block hash is {:?}.",
-                        block_number, expected_parent_block_hash, stored_parent_block_hash
+                         block is {}, current block hash is {}.",
+                        block_number,
+                        block_hash_to_string(&expected_parent_block_hash),
+                        block_hash_to_string(&stored_parent_block_hash)
                     );
                     continue;
                 }
                 // A recoverable error occurred. Sleep and try syncing again.
                 Err(err) if is_recoverable(&err) => {
-                    error!("{}", err);
+                    warn!("{}", err);
                     tokio::time::sleep(self.config.recoverable_error_sleep_duration).await;
                     continue;
                 }
                 // Unrecoverable errors.
-                Err(err) => return Err(err),
+                Err(err) => {
+                    error!("{}", err);
+                    return Err(err);
+                }
                 Ok(_) => {
-                    unreachable!("Sync should either return with an error or continue forever")
+                    unreachable!("Sync should either return with an error or continue forever.")
                 }
             }
         }
@@ -185,6 +190,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         // parent hash to the current hash.
         self.verify_parent_block_hash(block_number, &block)?;
 
+        debug!("Storing block: {:#?}.", block);
         self.writer
             .begin_rw_txn()?
             .append_header(block_number, &block.header)?
@@ -201,11 +207,22 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         deployed_contract_class_definitions: Vec<(ClassHash, ContractClass)>,
     ) -> StateSyncResult {
         if !self.is_reverted_state_diff(block_number, block_hash)? {
+            debug!(
+                "Storing state diff of block {} with hash {:?}: {:#?}.",
+                block_number, block_hash, state_diff
+            );
             self.writer
                 .begin_rw_txn()?
                 .append_state_diff(block_number, state_diff, deployed_contract_class_definitions)?
                 .commit()?;
+
+            // Info the user on syncing the block once all the data is stored.
+            info!("Added block {} with hash {}.", block_number, block_hash_to_string(&block_hash));
         } else {
+            debug!(
+                "Storing ommer state diff of block {} with hash {:?}.",
+                block_number, block_hash
+            );
             self.writer
                 .begin_rw_txn()?
                 .insert_ommer_state_diff(
@@ -362,10 +379,8 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
     stream! {
         loop {
             let header_marker = reader.begin_ro_txn()?.get_header_marker()?;
-
             let last_block_number = central_source.get_block_marker().await?;
-
-            info!("Downloading blocks [{} - {}).", header_marker, last_block_number);
+            debug!("Downloading blocks [{} - {}).", header_marker, last_block_number);
             if header_marker == last_block_number {
                 tokio::time::sleep(block_propation_sleep_duration).await;
                 continue;
@@ -397,7 +412,7 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
             let state_marker = txn.get_state_marker()?;
             let last_block_number = txn.get_header_marker()?;
             drop(txn);
-            info!("Downloading state diffs [{} - {}).", state_marker, last_block_number);
+            debug!("Downloading state diffs [{} - {}).", state_marker, last_block_number);
             if state_marker == last_block_number {
                 tokio::time::sleep(block_propation_sleep_duration).await;
                 continue;
@@ -405,6 +420,7 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
             let state_diff_stream =
                 central_source.stream_state_updates(state_marker, last_block_number).fuse();
             pin_mut!(state_diff_stream);
+
             while let Some(maybe_state_diff) = state_diff_stream.next().await {
                 match maybe_state_diff {
                     Ok((
@@ -452,4 +468,9 @@ impl StateSync {
     ) -> Self {
         Self { config, central_source: Arc::new(central_source), reader, writer }
     }
+}
+
+// TODO: Delete this function and implement Display for BlockHash in StarknetApi.
+fn block_hash_to_string(block_hash: &BlockHash) -> String {
+    format!("0x{}", hex::encode(block_hash.0.bytes()))
 }
