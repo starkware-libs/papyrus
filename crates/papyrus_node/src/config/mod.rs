@@ -3,7 +3,6 @@ mod config_test;
 
 mod file_config;
 
-use std::env::{args, ArgsOs};
 use std::mem::discriminant;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -34,8 +33,8 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn load() -> Result<Self, ConfigError> {
-        ConfigBuilder::build()
+    pub fn load(args: Vec<String>) -> Result<Self, ConfigError> {
+        ConfigBuilder::build(args)
     }
 }
 
@@ -104,9 +103,9 @@ impl Default for ConfigBuilder {
 
 impl ConfigBuilder {
     // Creates the configuration struct.
-    fn build() -> Result<Config, ConfigError> {
+    fn build(args: Vec<String>) -> Result<Config, ConfigError> {
         Ok(Self::default()
-            .prepare_command(args().collect())?
+            .prepare_command(args)?
             .yaml()?
             .args()?
             .propagate_chain_id()
