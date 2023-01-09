@@ -60,7 +60,7 @@ pub fn get_test_body_with_events(
     let mut transactions = vec![];
     let mut transaction_outputs = vec![];
     for i in 0..transaction_count {
-        let mut transaction = get_test_transaction();
+        let mut transaction = Transaction::get_test_instance();
         set_transaction_hash(&mut transaction, TransactionHash(StarkHash::from(i as u64)));
         let transaction_output = get_test_transaction_output(&transaction);
         transactions.push(transaction);
@@ -104,6 +104,10 @@ pub fn get_test_block(transaction_count: usize) -> Block {
 // Returns a test block body with a variable number of transactions.
 pub fn get_test_body(transaction_count: usize) -> BlockBody {
     get_test_body_with_events(transaction_count, 0, None, None)
+}
+
+pub fn get_test_state_diff() -> StateDiff {
+    StateDiff::get_test_instance()
 }
 
 // TODO(anatg): Consider moving GetTestInstance and auto_impl_get_test_instance
@@ -223,6 +227,14 @@ auto_impl_get_test_instance! {
         pub entry_point_selector: Option<EntryPointSelector>,
         pub calldata: CallData,
     }
+    pub struct L1HandlerTransaction {
+        pub transaction_hash: TransactionHash,
+        pub version: TransactionVersion,
+        pub nonce: Nonce,
+        pub contract_address: ContractAddress,
+        pub entry_point_selector: EntryPointSelector,
+        pub calldata: CallData,
+    }
     pub struct L1ToL2Payload(pub Vec<StarkFelt>);
     pub struct L2ToL1Payload(pub Vec<StarkFelt>);
     pub struct MessageToL1 {
@@ -246,22 +258,15 @@ auto_impl_get_test_instance! {
         pub prime: serde_json::Value,
         pub reference_manager: serde_json::Value,
     }
-    pub struct StructAbiEntry {
-        pub name: String,
-        pub size: usize,
-        pub members: Vec<StructMember>,
+    pub struct StateDiff {
+        pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
+        pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
+        pub declared_classes: IndexMap<ClassHash, ContractClass>,
+        pub nonces: IndexMap<ContractAddress, Nonce>,
     }
     pub struct StructMember {
         pub param: TypedParameter,
         pub offset: usize,
-    }
-    pub struct L1HandlerTransaction {
-        pub transaction_hash: TransactionHash,
-        pub version: TransactionVersion,
-        pub nonce: Nonce,
-        pub contract_address: ContractAddress,
-        pub entry_point_selector: EntryPointSelector,
-        pub calldata: CallData,
     }
     pub enum Transaction {
         Declare(DeclareTransaction) = 0,
@@ -445,18 +450,12 @@ default_impl_get_test_instance!(StarkHash);
 default_impl_get_test_instance!(ContractAddress);
 default_impl_get_test_instance!(StorageKey);
 
-// TODO(anatg): Use get_test_instance for Transaction instead of this function.
-fn get_test_transaction() -> Transaction {
-    let mut rng = rand::thread_rng();
-    let variant = rng.gen_range(0..5);
-    match variant {
-        0 => Transaction::Declare(DeclareTransaction::default()),
-        1 => Transaction::Deploy(DeployTransaction::default()),
-        2 => Transaction::DeployAccount(DeployAccountTransaction::default()),
-        3 => Transaction::Invoke(InvokeTransaction::default()),
-        4 => Transaction::L1Handler(L1HandlerTransaction::default()),
-        _ => {
-            panic!("Variant {:?} should match one of the enum Transaction variants.", variant);
+impl GetTestInstance for StructAbiEntry {
+    fn get_test_instance() -> Self {
+        Self {
+            name: String::default(),
+            size: 1, // Should be minimum 1.
+            members: Vec::<StructMember>::get_test_instance(),
         }
     }
 }
@@ -485,29 +484,12 @@ fn set_events(tx: &mut TransactionOutput, events: Vec<Event>) {
     }
 }
 
-pub fn set_transaction_hash(tx: &mut Transaction, hash: TransactionHash) {
+fn set_transaction_hash(tx: &mut Transaction, hash: TransactionHash) {
     match tx {
         Transaction::Declare(tx) => tx.transaction_hash = hash,
         Transaction::Deploy(tx) => tx.transaction_hash = hash,
         Transaction::DeployAccount(tx) => tx.transaction_hash = hash,
         Transaction::Invoke(tx) => tx.transaction_hash = hash,
         Transaction::L1Handler(tx) => tx.transaction_hash = hash,
-    }
-}
-
-// TODO(anatg): Use impl_get_test_instance macro to implement GetTestInstance
-// for StateDiff instead of this function.
-pub fn get_test_state_diff() -> StateDiff {
-    let address = ContractAddress::default();
-    let hash = ClassHash::default();
-
-    StateDiff {
-        deployed_contracts: IndexMap::from([(address, hash)]),
-        storage_diffs: IndexMap::from([(
-            address,
-            IndexMap::from([(StorageKey::default(), StarkFelt::default())]),
-        )]),
-        declared_classes: IndexMap::from([(hash, ContractClass::default())]),
-        nonces: IndexMap::from([(address, Nonce::default())]),
     }
 }
