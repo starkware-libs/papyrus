@@ -65,7 +65,10 @@ async fn run_sync(
     central: impl CentralSourceTrait + Send + Sync + 'static,
 ) -> StateSyncResult {
     let mut state_sync = GenericStateSync {
-        config: SyncConfig { block_propagation_sleep_duration: SYNC_SLEEP_DURATION },
+        config: SyncConfig {
+            block_propagation_sleep_duration: SYNC_SLEEP_DURATION,
+            recoverable_error_sleep_duration: SYNC_SLEEP_DURATION,
+        },
         central_source: Arc::new(central),
         reader,
         writer,

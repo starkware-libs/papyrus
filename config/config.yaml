@@ -24,3 +24,6 @@ sync:
     block_propagation_sleep_duration:
         secs: 10
         nanos: 0
+    recoverable_error_sleep_duration:
+        secs: 10
+        nanos: 0

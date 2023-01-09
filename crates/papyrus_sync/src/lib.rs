@@ -26,6 +26,7 @@ pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, Centra
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct SyncConfig {
     pub block_propagation_sleep_duration: Duration,
+    pub recoverable_error_sleep_duration: Duration,
 }
 
 // Orchestrates specific network interfaces (e.g. central, p2p, l1) and writes to Storage.
@@ -98,8 +99,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 // A recoverable error occurred. Sleep and try syncing again.
                 Err(err) if is_recoverable(&err) => {
                     error!("{}", err);
-                    // TODO: change sleep duration.
-                    tokio::time::sleep(self.config.block_propagation_sleep_duration).await;
+                    tokio::time::sleep(self.config.recoverable_error_sleep_duration).await;
                     continue;
                 }
                 // Unrecoverable errors.
