@@ -165,12 +165,16 @@ impl Db {
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 struct Sync {
     block_propagation_sleep_duration: Option<Duration>,
+    recoverable_error_sleep_duration: Option<Duration>,
 }
 
 impl Sync {
     fn update_sync(self, config: &mut SyncConfig) {
         if let Some(block_propagation_sleep_duration) = self.block_propagation_sleep_duration {
             config.block_propagation_sleep_duration = block_propagation_sleep_duration;
+        }
+        if let Some(recoverable_error_sleep_duration) = self.recoverable_error_sleep_duration {
+            config.recoverable_error_sleep_duration = recoverable_error_sleep_duration;
         }
     }
 }

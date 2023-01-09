@@ -95,6 +95,7 @@ impl Default for ConfigBuilder {
                 },
                 sync: Some(SyncConfig {
                     block_propagation_sleep_duration: Duration::from_secs(10),
+                    recoverable_error_sleep_duration: Duration::from_secs(10),
                 }),
             },
         }
