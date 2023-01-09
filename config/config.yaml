@@ -6,6 +6,9 @@ central:
         retry_base_millis: 30
         retry_max_delay_millis: 30000
         max_retries: 10
+#   Optional headers for SN-client.
+#   http_headers:
+#       header_name: header_value
 
 gateway:
     server_address: 0.0.0.0:8080
