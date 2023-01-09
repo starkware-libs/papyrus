@@ -52,6 +52,8 @@ pub enum ConfigError {
     Read(#[from] io::Error),
     #[error(transparent)]
     Serde(#[from] serde_yaml::Error),
+    #[error("Cml http_header \"{illegal_header}\" is not a valid format")]
+    CmlHttpHeaderFormat { illegal_header: String },
 }
 
 // Builds the configuration for the node based on default values, yaml configuration file and
@@ -76,7 +78,7 @@ impl Default for ConfigBuilder {
                 central: CentralSourceConfig {
                     concurrent_requests: 300,
                     url: String::from("https://alpha-mainnet.starknet.io/"),
-                    http_headers: HashMap::new(),
+                    http_headers: None,
                     retry_config: RetryConfig {
                         retry_base_millis: 30,
                         retry_max_delay_millis: 30000,
@@ -120,7 +122,7 @@ impl ConfigBuilder {
                 arg!(-f --config_file [path] "Optionally sets a config file to use").value_parser(value_parser!(PathBuf)),
                 arg!(-c --chain_id [name] "Optionally sets chain id to use"),
                 arg!(--server_address ["IP:PORT"] "Optionally sets the RPC listening address"),
-                arg!(--http_headers ["KEY:VALUE"] ... "Optionally adds headers to the http requests"),
+                arg!(--http_headers ["NAME:VALUE"] ... "Optionally adds headers to the http requests"),
                 arg!(-s --storage [path] "Optionally sets storage path to use (automatically extended with chain ID)").value_parser(value_parser!(PathBuf)),
                 arg!(-n --no_sync [bool] "Optionally run without sync").value_parser(value_parser!(bool)).default_missing_value("true"),
             ])
@@ -168,13 +170,20 @@ impl ConfigBuilder {
                 }
 
                 if let Some(http_headers) = args.try_get_one::<String>("http_headers")? {
+                    let mut headers_map = match self.config.central.http_headers {
+                        Some(map) => map,
+                        None => HashMap::new(),
+                    };
                     for header in http_headers.split(' ') {
                         let split: Vec<&str> = header.split(':').collect();
-                        self.config
-                            .central
-                            .http_headers
-                            .insert(split[0].to_string(), split[1].to_string());
+                        if split.len() != 2 {
+                            return Err(ConfigError::CmlHttpHeaderFormat {
+                                illegal_header: header.to_string(),
+                            });
+                        }
+                        headers_map.insert(split[0].to_string(), split[1].to_string());
                     }
+                    self.config.central.http_headers = Some(headers_map);
                 }
 
                 if let Some(no_sync) = args.try_get_one::<bool>("no_sync")? {
