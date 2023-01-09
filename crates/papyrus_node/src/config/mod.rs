@@ -104,12 +104,7 @@ impl Default for ConfigBuilder {
 impl ConfigBuilder {
     // Creates the configuration struct.
     fn build(args: Vec<String>) -> Result<Config, ConfigError> {
-        Ok(Self::default()
-            .prepare_command(args)?
-            .yaml()?
-            .args()?
-            .propagate_chain_id()
-            .config)
+        Ok(Self::default().prepare_command(args)?.yaml()?.args()?.propagate_chain_id().config)
     }
 
     // Builds the applications command-line interface.
