@@ -66,12 +66,12 @@ fn load_yaml_config() {
     let yaml = r"
 chain_id: TEST
 gateway:
-    max_events_keys: 100
+    max_events_keys: 1234
 ";
     f.write_all(yaml.as_bytes()).unwrap();
     let args = vec!["Papyrus".to_owned(), format!("--config_file={}", f.path().to_str().unwrap())];
     let builder = ConfigBuilder::default().prepare_command(args).unwrap().yaml().unwrap();
 
     assert_eq!(builder.chain_id, ChainId("TEST".to_owned()));
-    assert_eq!(builder.config.gateway.max_events_keys, 100);
+    assert_eq!(builder.config.gateway.max_events_keys, 1234);
 }
