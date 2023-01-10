@@ -10,7 +10,6 @@ use starknet_api::state::{EntryPoint, EntryPointOffset, EntryPointType, Program}
 use starknet_api::transaction::{Fee, TransactionHash, TransactionSignature, TransactionVersion};
 use starknet_api::{patky, shash};
 
-// TODO(dan): use SN structs once available & sort.
 use super::objects::block::{ContractClass, StateUpdate};
 use super::objects::transaction::{DeclareTransaction, TransactionType};
 use super::test_utils::read_resource::read_resource_file;
