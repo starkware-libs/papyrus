@@ -1,7 +1,7 @@
 mod body;
 pub mod compression_utils;
 mod db;
-mod header;
+pub mod header;
 pub mod ommer;
 mod serializers;
 mod state;
@@ -31,7 +31,6 @@ use crate::db::{
     open_env, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier, RO, RW,
 };
 pub use crate::db::{DbConfig, TransactionKind};
-pub use crate::header::{HeaderStorageReader, HeaderStorageWriter};
 pub use crate::state::data::ThinStateDiff;
 use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract};
 pub use crate::state::{StateStorageReader, StateStorageWriter};
