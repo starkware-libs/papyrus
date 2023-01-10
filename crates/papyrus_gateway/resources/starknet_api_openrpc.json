@@ -665,6 +665,26 @@
     "components": {
         "contentDescriptors": {},
         "schemas": {
+            "EVENTS": {
+                "type": "object",
+                "properties": {
+                    "events": {
+                        "type": "array",
+                        "title": "Matching Events",
+                        "items": {
+                            "$ref": "#/components/schemas/EMITTED_EVENT"
+                        }
+                    },
+                    "continuation_token": {
+                        "description": "Use this token in a subsequent query to obtain the next page. Should not appear if there are no more pages.",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "events",
+                    "continuation_token"
+                ]
+            },
             "RESULT_PAGE_REQUEST": {
                 "type": "object",
                 "properties": {

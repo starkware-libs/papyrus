@@ -21,11 +21,13 @@ use starknet_api::transaction::{
     EventIndexInTransactionOutput, EventKey, Transaction, TransactionHash, TransactionOffsetInBlock,
 };
 use starknet_api::{patky, shash};
-use test_utils::{get_test_block, get_test_block_with_events, get_test_body, get_test_state_diff};
+use test_utils::{
+    get_test_block, get_test_block_with_events, get_test_body_with_events, get_test_state_diff,
+};
 
 use crate::api::{
-    BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcClient,
-    JsonRpcError, Tag,
+    BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, EventsChunk,
+    JsonRpcClient, JsonRpcError, Tag,
 };
 use crate::block::Block;
 use crate::state::{ContractClass, StateUpdate, ThinStateDiff};
@@ -1183,14 +1185,9 @@ async fn get_events_chunk_size_2_with_address() {
     }
 
     for (i, chunk) in emitted_events.chunks(chunk_size).into_iter().enumerate() {
-        let (res, continuation_token) = module
-            .call::<_, (Vec<Event>, Option<ContinuationToken>)>(
-                "starknet_getEvents",
-                [filter.clone()],
-            )
-            .await
-            .unwrap();
-        assert_eq!(res, chunk);
+        let res =
+            module.call::<_, EventsChunk>("starknet_getEvents", [filter.clone()]).await.unwrap();
+        assert_eq!(res.events, chunk);
         let index = (i + 1) * chunk_size;
         let expected_continuation_token = if index < emitted_event_indices.len() {
             Some(
@@ -1202,8 +1199,8 @@ async fn get_events_chunk_size_2_with_address() {
         } else {
             None
         };
-        assert_eq!(continuation_token, expected_continuation_token);
-        filter.continuation_token = continuation_token;
+        assert_eq!(res.continuation_token, expected_continuation_token);
+        filter.continuation_token = res.continuation_token;
     }
 }
 
@@ -1266,14 +1263,9 @@ async fn get_events_chunk_size_2_without_address() {
     }
 
     for (i, chunk) in emitted_events.chunks(chunk_size).into_iter().enumerate() {
-        let (res, continuation_token) = module
-            .call::<_, (Vec<Event>, Option<ContinuationToken>)>(
-                "starknet_getEvents",
-                [filter.clone()],
-            )
-            .await
-            .unwrap();
-        assert_eq!(res, chunk);
+        let res =
+            module.call::<_, EventsChunk>("starknet_getEvents", [filter.clone()]).await.unwrap();
+        assert_eq!(res.events, chunk);
         let index = (i + 1) * chunk_size;
         let expected_continuation_token = if index < emitted_event_indices.len() {
             Some(
@@ -1285,8 +1277,8 @@ async fn get_events_chunk_size_2_without_address() {
         } else {
             None
         };
-        assert_eq!(continuation_token, expected_continuation_token);
-        filter.continuation_token = continuation_token;
+        assert_eq!(res.continuation_token, expected_continuation_token);
+        filter.continuation_token = res.continuation_token;
     }
 }
 
@@ -1317,7 +1309,7 @@ async fn serialize_returns_valid_json() {
             block_number: BlockNumber(1),
             ..BlockHeader::default()
         },
-        body: get_test_body(5),
+        body: get_test_body_with_events(5, 5, None, None),
     };
     let state_diff = get_test_state_diff();
     storage_writer
@@ -1348,6 +1340,7 @@ async fn serialize_returns_valid_json() {
         "CONTRACT_CLASS",
         "TXN",
         "TXN_RECEIPT",
+        "EVENTS",
     ])
     .await;
     validate_state(&state_diff, server_address, &schema).await;
@@ -1408,4 +1401,7 @@ async fn validate_transaction(tx: &Transaction, server_address: SocketAddr, sche
     )
     .await;
     assert!(schema.validate(&res["result"]).is_ok(), "Transaction receipt is not valid.");
+
+    let res = send_request(server_address, "starknet_getEvents", r#"{"chunk_size": 2}"#).await;
+    assert!(schema.validate(&res["result"]).is_ok(), "Events are not valid.");
 }
