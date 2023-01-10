@@ -1,5 +1,6 @@
 <div align="center">
   <h1>Papyrus</h1>
+  <img src="./resources/img/papyrus-logo-square.png" height="200" width="200">
   <br />
   <a href="https://github.com/starkware-libs/papyrus/issues/new?assignees=&labels=bug&template=01_BUG_REPORT.md&title=bug%3A+">Report a Bug</a>
   ·
