@@ -2,7 +2,7 @@ mod body;
 pub mod compression_utils;
 mod db;
 mod header;
-mod ommer;
+pub mod ommer;
 mod serializers;
 mod state;
 
@@ -32,7 +32,6 @@ use crate::db::{
 };
 pub use crate::db::{DbConfig, TransactionKind};
 pub use crate::header::{HeaderStorageReader, HeaderStorageWriter};
-pub use crate::ommer::{OmmerStorageReader, OmmerStorageWriter};
 pub use crate::state::data::ThinStateDiff;
 use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract};
 pub use crate::state::{StateStorageReader, StateStorageWriter};
