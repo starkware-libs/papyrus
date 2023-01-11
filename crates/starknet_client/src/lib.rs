@@ -74,6 +74,8 @@ pub enum StarknetErrorCode {
     MalformedRequest = 32,
     #[serde(rename = "StarknetErrorCode.UNDECLARED_CLASS")]
     UndeclaredClass = 44,
+    #[serde(rename = "StarknetErrorCode.CONNECTION_RESET")]
+    ConnectionReset = 104,
 }
 
 /// A client error wrapping error codes returned by the starknet gateway.
