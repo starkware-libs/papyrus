@@ -16,10 +16,11 @@ use jsonrpsee::http_server::{HttpServerBuilder, HttpServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::{ErrorObject, INTERNAL_ERROR_MSG};
 use log::{error, info};
+use papyrus_storage::body::events::EventsReader;
+use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{
-    BodyStorageReader, EventIndex, EventsReader, StateStorageReader, StorageReader, StorageTxn,
-    TransactionIndex, TransactionKind,
+    EventIndex, StateStorageReader, StorageReader, StorageTxn, TransactionIndex, TransactionKind,
 };
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockStatus};

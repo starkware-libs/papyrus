@@ -1,4 +1,4 @@
-mod body;
+pub mod body;
 pub mod compression_utils;
 mod db;
 pub mod header;
@@ -24,8 +24,7 @@ use starknet_api::transaction::{
     TransactionOffsetInBlock,
 };
 
-pub use crate::body::events::{EventsReader, ThinTransactionOutput};
-pub use crate::body::{BodyStorageReader, BodyStorageWriter};
+use crate::body::events::ThinTransactionOutput;
 pub use crate::db::serialization::{StorageSerde, StorageSerdeError};
 use crate::db::{
     open_env, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier, RO, RW,
