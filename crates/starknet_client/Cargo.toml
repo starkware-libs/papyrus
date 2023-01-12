@@ -14,7 +14,7 @@ mockall = { version = "0.11.2" , optional = true }
 reqwest = { version = "0.11", features = ["json", "blocking"] }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" , features = ["arbitrary_precision"]}
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "f75c4e2" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "0a11ad3" }
 thiserror = { version = "1.0.31" }
 tokio = { version = "1.18.2", features = ["full","sync"] }
 tokio-retry = { version = "0.3" }
@@ -26,5 +26,5 @@ assert = { version = "0.0.4" }
 assert_matches = { version = "1.5.0" }
 mockall = { version = "0.11.2" }
 mockito = { version = "0.31.0" }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", features = ["testing"] , rev = "f75c4e2"}
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", features = ["testing"] , rev = "0a11ad3"}
 
