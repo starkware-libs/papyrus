@@ -590,23 +590,7 @@
                 "name": "events",
                 "description": "All the event objects matching the filter",
                 "schema": {
-                    "type": "object",
-                    "properties": {
-                        "events": {
-                            "type": "array",
-                            "title": "Matching Events",
-                            "items": {
-                                "$ref": "#/components/schemas/EMITTED_EVENT"
-                            }
-                        },
-                        "continuation_token": {
-                            "description": "Use this token in a subsequent query to obtain the next page. Should not appear if there are no more pages.",
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "events"
-                    ]
+                    "$ref": "#/components/schemas/EVENTS_CHUNK"
                 }
             },
             "errors": [
@@ -665,7 +649,7 @@
     "components": {
         "contentDescriptors": {},
         "schemas": {
-            "EVENTS": {
+            "EVENTS_CHUNK": {
                 "type": "object",
                 "properties": {
                     "events": {
@@ -681,8 +665,7 @@
                     }
                 },
                 "required": [
-                    "events",
-                    "continuation_token"
+                    "events"
                 ]
             },
             "RESULT_PAGE_REQUEST": {
