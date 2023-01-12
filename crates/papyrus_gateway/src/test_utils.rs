@@ -58,7 +58,7 @@ pub async fn get_starknet_spec_api_schema(component_names: &[&str]) -> JSONSchem
     let text = std::fs::read_to_string(target).unwrap();
     let spec: serde_json::Value = serde_json::from_str(&text).unwrap();
 
-    let mut components = String::from(r#"{"oneOf": ["#);
+    let mut components = String::from(r#"{"anyOf": ["#);
     for component in component_names {
         components +=
             &format!(r##"{{"$ref": "file:///spec.json#/components/schemas/{}"}}"##, component);

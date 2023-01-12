@@ -80,6 +80,12 @@ pub struct EventFilter {
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ContinuationToken(pub String);
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct EventsChunk {
+    pub events: Vec<Event>,
+    pub continuation_token: Option<ContinuationToken>,
+}
+
 #[rpc(server, client, namespace = "starknet")]
 pub trait JsonRpc {
     /// Gets the most recent accepted block number.
@@ -172,8 +178,5 @@ pub trait JsonRpc {
 
     /// Returns all events matching the given filter.
     #[method(name = "getEvents")]
-    fn get_events(
-        &self,
-        filter: EventFilter,
-    ) -> Result<(Vec<Event>, Option<ContinuationToken>), Error>;
+    fn get_events(&self, filter: EventFilter) -> Result<EventsChunk, Error>;
 }

@@ -1,5 +1,6 @@
 use indexmap::IndexMap;
 use rand::Rng;
+use rand_chacha::ChaCha8Rng;
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
