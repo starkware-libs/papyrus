@@ -1345,7 +1345,7 @@ async fn serialize_returns_valid_json() {
         "CONTRACT_CLASS",
         "TXN",
         "TXN_RECEIPT",
-        "EVENTS",
+        "EVENTS_CHUNK",
     ])
     .await;
     validate_state(&state_diff, server_address, &schema).await;
