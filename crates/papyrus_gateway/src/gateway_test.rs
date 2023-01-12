@@ -761,7 +761,7 @@ async fn get_state_update() {
         block_hash: header.block_hash,
         new_root: header.state_root,
         old_root: parent_header.state_root,
-        state_diff: ThinStateDiff::from(papyrus_storage::ThinStateDiff::from(diff)),
+        state_diff: ThinStateDiff::from(papyrus_storage::state::data::ThinStateDiff::from(diff)),
     };
 
     // Get state update by block hash.

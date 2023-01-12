@@ -15,11 +15,11 @@ use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
-pub type DeclaredClassesTable<'env> = TableHandle<'env, ClassHash, IndexedDeclaredContract>;
-pub type DeployedContractsTable<'env> = TableHandle<'env, ContractAddress, IndexedDeployedContract>;
-pub type ContractStorageTable<'env> =
+type DeclaredClassesTable<'env> = TableHandle<'env, ClassHash, IndexedDeclaredContract>;
+type DeployedContractsTable<'env> = TableHandle<'env, ContractAddress, IndexedDeployedContract>;
+type ContractStorageTable<'env> =
     TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), StarkFelt>;
-pub type NoncesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumber), Nonce>;
+type NoncesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumber), Nonce>;
 use log::debug;
 
 // Structure of state data:
@@ -41,7 +41,7 @@ pub trait StateStorageReader<Mode: TransactionKind> {
     fn get_state_reader(&self) -> StorageResult<StateReader<'_, Mode>>;
 }
 
-pub type RevertedStateDiff = (ThinStateDiff, Vec<(ClassHash, ContractClass)>);
+type RevertedStateDiff = (ThinStateDiff, Vec<(ClassHash, ContractClass)>);
 
 pub trait StateStorageWriter
 where
@@ -91,7 +91,7 @@ pub struct StateReader<'env, Mode: TransactionKind> {
 
 #[allow(dead_code)]
 impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
-    pub fn new(txn: &'env StorageTxn<'env, Mode>) -> StorageResult<Self> {
+    fn new(txn: &'env StorageTxn<'env, Mode>) -> StorageResult<Self> {
         let declared_classes_table = txn.txn.open_table(&txn.tables.declared_classes)?;
         let deployed_contracts_table = txn.txn.open_table(&txn.tables.deployed_contracts)?;
         let nonces_table = txn.txn.open_table(&txn.tables.nonces)?;
