@@ -9,8 +9,8 @@ use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{StateStorageReader, StorageReader, StorageWriter};
 use starknet_api::block::{Block, BlockBody, BlockHash, BlockHeader, BlockNumber};
-use starknet_api::hash::StarkHash;
-use starknet_api::shash;
+use starknet_api::hash::StarkFelt;
+use starknet_api::stark_felt;
 use starknet_api::state::StateDiff;
 use tokio::sync::Mutex;
 
@@ -426,8 +426,8 @@ async fn sync_with_revert() {
 
 fn create_block_hash(bn: BlockNumber, is_reverted_block: bool) -> BlockHash {
     if is_reverted_block {
-        BlockHash(shash!(format!("0x{}10", bn.0).as_str()))
+        BlockHash(stark_felt!(format!("0x{}10", bn.0).as_str()))
     } else {
-        BlockHash(shash!(format!("0x{}", bn.0).as_str()))
+        BlockHash(stark_felt!(format!("0x{}", bn.0).as_str()))
     }
 }

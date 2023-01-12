@@ -5,10 +5,10 @@ use mockito::mock;
 use reqwest::StatusCode;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
-use starknet_api::hash::StarkHash;
+use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{EntryPoint, EntryPointOffset, EntryPointType, Program};
 use starknet_api::transaction::{Fee, TransactionHash, TransactionSignature, TransactionVersion};
-use starknet_api::{patky, shash};
+use starknet_api::{patricia_key, stark_felt};
 
 use super::objects::block::{ContractClass, StateUpdate};
 use super::objects::transaction::{DeclareTransaction, TransactionType};
@@ -59,14 +59,14 @@ async fn get_block_number() {
 #[tokio::test]
 async fn declare_tx_serde() {
     let declare_tx = DeclareTransaction {
-        class_hash: ClassHash(shash!(
+        class_hash: ClassHash(stark_felt!(
             "0x7319e2f01b0947afd86c0bb0e95029551b32f6dc192c47b2e8b08415eebbc25"
         )),
-        sender_address: ContractAddress(patky!("0x1")),
-        nonce: Nonce(shash!("0x0")),
+        sender_address: ContractAddress(patricia_key!("0x1")),
+        nonce: Nonce(stark_felt!("0x0")),
         max_fee: Fee(0),
-        version: TransactionVersion(shash!("0x1")),
-        transaction_hash: TransactionHash(shash!(
+        version: TransactionVersion(stark_felt!("0x1")),
+        transaction_hash: TransactionHash(stark_felt!(
             "0x2f2ef64daffdc72bf33b34ad024891691b8eb1d0ab70cc7f8fb71f6fd5e1f22"
         )),
         signature: TransactionSignature(vec![]),
@@ -143,7 +143,7 @@ async fn contract_class() {
             (
                 EntryPointType::Constructor,
                 vec![EntryPoint {
-                    selector: EntryPointSelector(shash!(
+                    selector: EntryPointSelector(stark_felt!(
                         "0x028ffe4ff0f226a9107253e17a904099aa4f63a02a5621de0576e5aa71bc5194"
                     )),
                     offset: EntryPointOffset(62),
@@ -152,7 +152,7 @@ async fn contract_class() {
             (
                 EntryPointType::External,
                 vec![EntryPoint {
-                    selector: EntryPointSelector(shash!(
+                    selector: EntryPointSelector(stark_felt!(
                         "0x0000000000000000000000000000000000000000000000000000000000000000"
                     )),
                     offset: EntryPointOffset(86),
@@ -170,7 +170,7 @@ async fn contract_class() {
         .with_body(read_resource_file("contract_class.json"))
         .create();
     let contract_class = starknet_client
-        .class_by_hash(ClassHash(shash!(
+        .class_by_hash(ClassHash(stark_felt!(
             "0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17"
         )))
         .await
@@ -185,7 +185,7 @@ async fn contract_class() {
             .with_status(500)
             .with_body(body)
             .create();
-    let class = starknet_client.class_by_hash(ClassHash(shash!("0x7"))).await.unwrap();
+    let class = starknet_client.class_by_hash(ClassHash(stark_felt!("0x7"))).await.unwrap();
     mock_by_hash.assert();
     assert!(class.is_none());
 }

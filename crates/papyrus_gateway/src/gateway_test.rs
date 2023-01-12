@@ -19,7 +19,7 @@ use starknet_api::state::StateDiff;
 use starknet_api::transaction::{
     EventIndexInTransactionOutput, EventKey, Transaction, TransactionHash, TransactionOffsetInBlock,
 };
-use starknet_api::{patky, shash};
+use starknet_api::{patricia_key, stark_felt};
 use test_utils::{
     get_rand_test_block_with_events, get_rand_test_body_with_events, get_rng, get_test_block,
     get_test_state_diff, GetTestInstance,
@@ -159,7 +159,7 @@ async fn get_block_w_transaction_hashes() {
     let err = module
         .call::<_, Block>(
             "starknet_getBlockWithTxHashes",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             ))))],
         )
@@ -239,7 +239,7 @@ async fn get_block_w_full_transactions() {
     let err = module
         .call::<_, Block>(
             "starknet_getBlockWithTxs",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             ))))],
         )
@@ -309,7 +309,7 @@ async fn get_storage_at() {
         .call::<_, StarkFelt>(
             "starknet_getStorageAt",
             (
-                ContractAddress(patky!("0x12")),
+                ContractAddress(patricia_key!("0x12")),
                 key,
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)),
             ),
@@ -329,7 +329,7 @@ async fn get_storage_at() {
             (
                 *address,
                 key,
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
             ),
@@ -400,7 +400,7 @@ async fn get_class_hash_at() {
             "starknet_getClassHashAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ContractAddress(patky!("0x12")),
+                ContractAddress(patricia_key!("0x12")),
             ),
         )
         .await
@@ -416,7 +416,7 @@ async fn get_class_hash_at() {
         .call::<_, ClassHash>(
             "starknet_getClassHashAt",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
                 *address,
@@ -488,7 +488,7 @@ async fn get_nonce() {
             "starknet_getNonce",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ContractAddress(patky!("0x31")),
+                ContractAddress(patricia_key!("0x31")),
             ),
         )
         .await
@@ -504,7 +504,7 @@ async fn get_nonce() {
         .call::<_, Nonce>(
             "starknet_getNonce",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
                 *address,
@@ -611,7 +611,7 @@ async fn get_transaction_by_block_id_and_index() {
         .call::<_, TransactionWithType>(
             "starknet_getTransactionByBlockIdAndIndex",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
                 0,
@@ -700,7 +700,7 @@ async fn get_block_transaction_count() {
     let err = module
         .call::<_, usize>(
             "starknet_getBlockTransactionCount",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             ))))],
         )
@@ -732,7 +732,7 @@ async fn get_state_update() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
     let parent_header = BlockHeader::default();
     let header = BlockHeader {
-        block_hash: BlockHash(shash!("0x1")),
+        block_hash: BlockHash(stark_felt!("0x1")),
         block_number: BlockNumber(1),
         parent_hash: parent_header.block_hash,
         ..BlockHeader::default()
@@ -787,7 +787,7 @@ async fn get_state_update() {
     let err = module
         .call::<_, StateUpdate>(
             "starknet_getStateUpdate",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             ))))],
         )
@@ -874,7 +874,7 @@ async fn get_class() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
     let parent_header = BlockHeader::default();
     let header = BlockHeader {
-        block_hash: BlockHash(shash!("0x1")),
+        block_hash: BlockHash(stark_felt!("0x1")),
         block_number: BlockNumber(1),
         parent_hash: parent_header.block_hash,
         ..BlockHeader::default()
@@ -927,7 +927,7 @@ async fn get_class() {
             "starknet_getClass",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ClassHash(shash!("0x7")),
+                ClassHash(stark_felt!("0x7")),
             ),
         )
         .await
@@ -960,7 +960,7 @@ async fn get_class() {
         .call::<_, ContractClass>(
             "starknet_getClass",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
                 class_hash,
@@ -994,7 +994,7 @@ async fn get_class_at() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
     let parent_header = BlockHeader::default();
     let header = BlockHeader {
-        block_hash: BlockHash(shash!("0x1")),
+        block_hash: BlockHash(stark_felt!("0x1")),
         block_number: BlockNumber(1),
         parent_hash: parent_header.block_hash,
         ..BlockHeader::default()
@@ -1049,7 +1049,7 @@ async fn get_class_at() {
             "starknet_getClassAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ContractAddress(patky!("0x12")),
+                ContractAddress(patricia_key!("0x12")),
             ),
         )
         .await
@@ -1082,7 +1082,7 @@ async fn get_class_at() {
         .call::<_, ContractClass>(
             "starknet_getClassAt",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(shash!(
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
                 )))),
                 *address,
@@ -1126,16 +1126,16 @@ async fn chain_id() {
 #[tokio::test]
 async fn get_events_chunk_size_2_with_address() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let address = ContractAddress(patky!("0x22"));
-    let key0 = EventKey(shash!("0x6"));
-    let key1 = EventKey(shash!("0x7"));
+    let address = ContractAddress(patricia_key!("0x22"));
+    let key0 = EventKey(stark_felt!("0x6"));
+    let key1 = EventKey(stark_felt!("0x7"));
     let mut rng = get_rng();
     let block = get_rand_test_block_with_events(
         &mut rng,
         2,
         5,
-        Some(vec![address, ContractAddress(patky!("0x23"))]),
-        Some(vec![vec![key0.clone(), key1.clone(), EventKey(shash!("0x8"))]]),
+        Some(vec![address, ContractAddress(patricia_key!("0x23"))]),
+        Some(vec![vec![key0.clone(), key1.clone(), EventKey(stark_felt!("0x8"))]]),
     );
     let block_number = block.header.block_number;
     storage_writer
@@ -1209,15 +1209,15 @@ async fn get_events_chunk_size_2_with_address() {
 #[tokio::test]
 async fn get_events_chunk_size_2_without_address() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let key0 = EventKey(shash!("0x6"));
-    let key1 = EventKey(shash!("0x7"));
+    let key0 = EventKey(stark_felt!("0x6"));
+    let key1 = EventKey(stark_felt!("0x7"));
     let mut rng = get_rng();
     let block = get_rand_test_block_with_events(
         &mut rng,
         2,
         5,
         None,
-        Some(vec![vec![key0.clone(), key1.clone(), EventKey(shash!("0x8"))]]),
+        Some(vec![vec![key0.clone(), key1.clone(), EventKey(stark_felt!("0x8"))]]),
     );
     let block_number = block.header.block_number;
     storage_writer
@@ -1310,7 +1310,7 @@ async fn serialize_returns_valid_json() {
     let block = starknet_api::block::Block {
         header: BlockHeader {
             parent_hash: parent_block.header.block_hash,
-            block_hash: BlockHash(shash!("0x1")),
+            block_hash: BlockHash(stark_felt!("0x1")),
             block_number: BlockNumber(1),
             ..BlockHeader::default()
         },

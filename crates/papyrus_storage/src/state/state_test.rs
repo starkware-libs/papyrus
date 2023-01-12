@@ -2,12 +2,12 @@ use assert_matches::assert_matches;
 use indexmap::IndexMap;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
-use starknet_api::hash::StarkHash;
+use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{
     ContractClass, ContractClassAbiEntry, FunctionAbiEntry, FunctionAbiEntryType,
     FunctionAbiEntryWithType, StateDiff, StateNumber, StorageKey,
 };
-use starknet_api::{patky, shash};
+use starknet_api::{patricia_key, stark_felt};
 use test_utils::get_test_state_diff;
 
 use crate::state::{StateStorageReader, StateStorageWriter, StorageError};
@@ -16,21 +16,21 @@ use crate::StorageWriter;
 
 #[test]
 fn append_state_diff() {
-    let c0 = ContractAddress(patky!("0x11"));
-    let c1 = ContractAddress(patky!("0x12"));
-    let c2 = ContractAddress(patky!("0x13"));
-    let c3 = ContractAddress(patky!("0x14"));
-    let cl0 = ClassHash(shash!("0x4"));
-    let cl1 = ClassHash(shash!("0x5"));
-    let cl2 = ClassHash(shash!("0x6"));
+    let c0 = ContractAddress(patricia_key!("0x11"));
+    let c1 = ContractAddress(patricia_key!("0x12"));
+    let c2 = ContractAddress(patricia_key!("0x13"));
+    let c3 = ContractAddress(patricia_key!("0x14"));
+    let cl0 = ClassHash(stark_felt!("0x4"));
+    let cl1 = ClassHash(stark_felt!("0x5"));
+    let cl2 = ClassHash(stark_felt!("0x6"));
     let c_cls0 = ContractClass::default();
     let c_cls1 = ContractClass::default();
-    let key0 = StorageKey(patky!("0x1001"));
-    let key1 = StorageKey(patky!("0x101"));
+    let key0 = StorageKey(patricia_key!("0x1001"));
+    let key1 = StorageKey(patricia_key!("0x101"));
     let mut diff0 = StateDiff {
         deployed_contracts: IndexMap::from([(c0, cl0), (c1, cl1)]),
         storage_diffs: IndexMap::from([
-            (c0, IndexMap::from([(key0, shash!("0x200")), (key1, shash!("0x201"))])),
+            (c0, IndexMap::from([(key0, stark_felt!("0x200")), (key1, stark_felt!("0x201"))])),
             (c1, IndexMap::new()),
         ]),
         declared_classes: IndexMap::from([(cl0, c_cls0.clone()), (cl1, c_cls1)]),
@@ -39,8 +39,8 @@ fn append_state_diff() {
     let mut diff1 = StateDiff {
         deployed_contracts: IndexMap::from([(c2, cl0)]),
         storage_diffs: IndexMap::from([
-            (c0, IndexMap::from([(key0, shash!("0x300")), (key1, shash!("0x0"))])),
-            (c1, IndexMap::from([(key0, shash!("0x0"))])),
+            (c0, IndexMap::from([(key0, stark_felt!("0x300")), (key1, stark_felt!("0x0"))])),
+            (c1, IndexMap::from([(key0, stark_felt!("0x0"))])),
         ]),
         declared_classes: IndexMap::from([(cl0, c_cls0.clone())]),
         nonces: IndexMap::from([
@@ -141,19 +141,19 @@ fn append_state_diff() {
     assert_eq!(statetxn.get_nonce_at(state2, &c3).unwrap(), None);
 
     // Storage at key0.
-    assert_eq!(statetxn.get_storage_at(state0, &c0, &key0).unwrap(), shash!("0x0"));
-    assert_eq!(statetxn.get_storage_at(state1, &c0, &key0).unwrap(), shash!("0x200"));
-    assert_eq!(statetxn.get_storage_at(state2, &c0, &key0).unwrap(), shash!("0x300"));
+    assert_eq!(statetxn.get_storage_at(state0, &c0, &key0).unwrap(), stark_felt!("0x0"));
+    assert_eq!(statetxn.get_storage_at(state1, &c0, &key0).unwrap(), stark_felt!("0x200"));
+    assert_eq!(statetxn.get_storage_at(state2, &c0, &key0).unwrap(), stark_felt!("0x300"));
 
     // Storage at key1.
-    assert_eq!(statetxn.get_storage_at(state0, &c0, &key1).unwrap(), shash!("0x0"));
-    assert_eq!(statetxn.get_storage_at(state1, &c0, &key1).unwrap(), shash!("0x201"));
-    assert_eq!(statetxn.get_storage_at(state2, &c0, &key1).unwrap(), shash!("0x0"));
+    assert_eq!(statetxn.get_storage_at(state0, &c0, &key1).unwrap(), stark_felt!("0x0"));
+    assert_eq!(statetxn.get_storage_at(state1, &c0, &key1).unwrap(), stark_felt!("0x201"));
+    assert_eq!(statetxn.get_storage_at(state2, &c0, &key1).unwrap(), stark_felt!("0x0"));
 
     // Storage at key2.
-    assert_eq!(statetxn.get_storage_at(state0, &c1, &key0).unwrap(), shash!("0x0"));
-    assert_eq!(statetxn.get_storage_at(state1, &c1, &key0).unwrap(), shash!("0x0"));
-    assert_eq!(statetxn.get_storage_at(state2, &c1, &key0).unwrap(), shash!("0x0"));
+    assert_eq!(statetxn.get_storage_at(state0, &c1, &key0).unwrap(), stark_felt!("0x0"));
+    assert_eq!(statetxn.get_storage_at(state1, &c1, &key0).unwrap(), stark_felt!("0x0"));
+    assert_eq!(statetxn.get_storage_at(state2, &c1, &key0).unwrap(), stark_felt!("0x0"));
 }
 
 #[test]
@@ -241,8 +241,8 @@ fn append_2_state_diffs(writer: &mut StorageWriter) {
 #[test]
 fn revert_doesnt_delete_previously_declared_classes() {
     // Append 2 state diffs that use the same declared class.
-    let c0 = ContractAddress(patky!("0x11"));
-    let cl0 = ClassHash(shash!("0x4"));
+    let c0 = ContractAddress(patricia_key!("0x11"));
+    let cl0 = ClassHash(stark_felt!("0x4"));
     let c_cls0 = ContractClass::default();
     let diff0 = StateDiff {
         deployed_contracts: IndexMap::from([(c0, cl0)]),
@@ -251,7 +251,7 @@ fn revert_doesnt_delete_previously_declared_classes() {
         nonces: IndexMap::from([(c0, Nonce(StarkHash::from(1)))]),
     };
 
-    let c1 = ContractAddress(patky!("0x12"));
+    let c1 = ContractAddress(patricia_key!("0x12"));
     let diff1 = StateDiff {
         deployed_contracts: IndexMap::from([(c1, cl0)]),
         storage_diffs: IndexMap::new(),

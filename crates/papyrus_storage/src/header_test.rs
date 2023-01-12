@@ -1,7 +1,7 @@
 use assert_matches::assert_matches;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
-use starknet_api::hash::StarkHash;
-use starknet_api::shash;
+use starknet_api::hash::StarkFelt;
+use starknet_api::stark_felt;
 
 use crate::header::{HeaderStorageReader, HeaderStorageWriter};
 use crate::test_utils::get_test_storage;
@@ -128,7 +128,7 @@ async fn get_reverted_block_number_by_hash_returns_none() {
     let (reader, mut writer) = get_test_storage();
     append_2_headers(&mut writer);
 
-    let block_hash = BlockHash(shash!("0x1"));
+    let block_hash = BlockHash(stark_felt!("0x1"));
 
     // Verify that we can get block 1 by hash before the revert.
     assert!(
@@ -147,12 +147,12 @@ fn append_2_headers(writer: &mut StorageWriter) {
         .unwrap()
         .append_header(
             BlockNumber(0),
-            &BlockHeader { block_hash: BlockHash(shash!("0x0")), ..BlockHeader::default() },
+            &BlockHeader { block_hash: BlockHash(stark_felt!("0x0")), ..BlockHeader::default() },
         )
         .unwrap()
         .append_header(
             BlockNumber(1),
-            &BlockHeader { block_hash: BlockHash(shash!("0x1")), ..BlockHeader::default() },
+            &BlockHeader { block_hash: BlockHash(stark_felt!("0x1")), ..BlockHeader::default() },
         )
         .unwrap()
         .commit()
