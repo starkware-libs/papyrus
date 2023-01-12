@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use starknet_api::core::ContractAddress;
 use starknet_api::hash::StarkHash;
 use starknet_api::state::StorageKey;
-use test_utils::GetTestInstance;
+use test_utils::{get_rng, GetTestInstance};
 
 use crate::db::serialization::StorageSerde;
 
@@ -15,7 +15,8 @@ pub trait StorageSerdeTest: StorageSerde {
 // implements the [`StorageSerde`] and [`GetTestInstance`] traits.
 impl<T: StorageSerde + GetTestInstance + Eq + Debug> StorageSerdeTest for T {
     fn storage_serde_test() {
-        let item = T::get_test_instance();
+        let mut rng = get_rng();
+        let item = T::get_test_instance(&mut rng);
         let mut serialized: Vec<u8> = Vec::new();
         item.serialize_into(&mut serialized).unwrap();
         let bytes = serialized.into_boxed_slice();

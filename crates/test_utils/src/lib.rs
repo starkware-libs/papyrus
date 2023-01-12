@@ -6,7 +6,8 @@ use std::ops::Index;
 use std::path::Path;
 
 use indexmap::IndexMap;
-use rand::Rng;
+use rand::{Rng, SeedableRng};
+use rand_chacha::ChaCha8Rng;
 use starknet_api::block::{
     Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
 };
@@ -38,7 +39,8 @@ pub fn read_json_file(path_in_resource_dir: &str) -> serde_json::Value {
 }
 
 // Returns a test block with a variable number of transactions and events.
-pub fn get_test_block_with_events(
+pub fn get_rand_test_block_with_events(
+    rng: &mut ChaCha8Rng,
     transaction_count: usize,
     events_per_tx: usize,
     from_addresses: Option<Vec<ContractAddress>>,
@@ -46,12 +48,19 @@ pub fn get_test_block_with_events(
 ) -> Block {
     Block {
         header: BlockHeader::default(),
-        body: get_test_body_with_events(transaction_count, events_per_tx, from_addresses, keys),
+        body: get_rand_test_body_with_events(
+            rng,
+            transaction_count,
+            events_per_tx,
+            from_addresses,
+            keys,
+        ),
     }
 }
 
 // Returns a test block body with a variable number of transactions and events.
-pub fn get_test_body_with_events(
+pub fn get_rand_test_body_with_events(
+    rng: &mut ChaCha8Rng,
     transaction_count: usize,
     events_per_tx: usize,
     from_addresses: Option<Vec<ContractAddress>>,
@@ -60,14 +69,13 @@ pub fn get_test_body_with_events(
     let mut transactions = vec![];
     let mut transaction_outputs = vec![];
     for i in 0..transaction_count {
-        let mut transaction = Transaction::get_test_instance();
+        let mut transaction = Transaction::get_test_instance(rng);
         set_transaction_hash(&mut transaction, TransactionHash(StarkHash::from(i as u64)));
         let transaction_output = get_test_transaction_output(&transaction);
         transactions.push(transaction);
         transaction_outputs.push(transaction_output);
     }
     let mut body = BlockBody { transactions, transaction_outputs };
-    let mut rng = rand::thread_rng();
     for tx_output in &mut body.transaction_outputs {
         let mut events = vec![];
         for _ in 0..events_per_tx {
@@ -96,24 +104,66 @@ pub fn get_test_body_with_events(
     body
 }
 
+// Returns a test block with a variable number of transactions and events.
+pub fn get_test_block_with_events(transaction_count: usize, events_per_tx: usize) -> Block {
+    let mut rng = ChaCha8Rng::seed_from_u64(0);
+    get_rand_test_block_with_events(&mut rng, transaction_count, events_per_tx, None, None)
+}
+
+// Returns a test block body with a variable number of transactions and events.
+pub fn get_test_body_with_events(transaction_count: usize, events_per_tx: usize) -> BlockBody {
+    let mut rng = ChaCha8Rng::seed_from_u64(0);
+    get_rand_test_body_with_events(&mut rng, transaction_count, events_per_tx, None, None)
+}
+
+// Returns a test block with a variable number of transactions.
+pub fn get_rand_test_block(rng: &mut ChaCha8Rng, transaction_count: usize) -> Block {
+    get_rand_test_block_with_events(rng, transaction_count, 0, None, None)
+}
+
+// Returns a test block body with a variable number of transactions.
+pub fn get_rand_test_body(rng: &mut ChaCha8Rng, transaction_count: usize) -> BlockBody {
+    get_rand_test_body_with_events(rng, transaction_count, 0, None, None)
+}
+
 // Returns a test block with a variable number of transactions.
 pub fn get_test_block(transaction_count: usize) -> Block {
-    get_test_block_with_events(transaction_count, 0, None, None)
+    let mut rng = ChaCha8Rng::seed_from_u64(0);
+    get_rand_test_block(&mut rng, transaction_count)
 }
 
 // Returns a test block body with a variable number of transactions.
 pub fn get_test_body(transaction_count: usize) -> BlockBody {
-    get_test_body_with_events(transaction_count, 0, None, None)
+    let mut rng = ChaCha8Rng::seed_from_u64(0);
+    get_rand_test_body(&mut rng, transaction_count)
 }
 
+// Returns a state diff with one item in each IndexMap.
+// For a random test state diff call StateDiff::get_test_instance.
 pub fn get_test_state_diff() -> StateDiff {
-    StateDiff::get_test_instance()
+    let mut rng = ChaCha8Rng::seed_from_u64(0);
+    StateDiff::get_test_instance(&mut rng)
 }
 
-// TODO(anatg): Consider moving GetTestInstance and auto_impl_get_test_instance
-// to a test utils crate.
+// Used in random test to create a random generator, see for example storage_serde_test.
+pub fn get_rng() -> ChaCha8Rng {
+    let seed = if let Ok(seed_str) = env::var("SEED") {
+        seed_str.parse().unwrap()
+    } else {
+        let mut rng = rand::thread_rng();
+        rng.gen()
+    };
+    // Will be printed if the test failed.
+    println!("Testing with seed: {:?}", seed);
+    // Create a new PRNG using a u64 seed. This is a convenience-wrapper around from_seed.
+    // It is designed such that low Hamming Weight numbers like 0 and 1 can be used and
+    // should still result in good, independent seeds to the returned PRNG.
+    // This is not suitable for cryptography purposes.
+    ChaCha8Rng::seed_from_u64(seed)
+}
+
 pub trait GetTestInstance: Sized {
-    fn get_test_instance() -> Self;
+    fn get_test_instance(rng: &mut ChaCha8Rng) -> Self;
 }
 
 auto_impl_get_test_instance! {
@@ -307,8 +357,8 @@ macro_rules! auto_impl_get_test_instance {
     // Tuple structs (no names associated with fields) - one field.
     ($(pub)? struct $name:ident($(pub)? $ty:ty); $($rest:tt)*) => {
         impl GetTestInstance for $name {
-            fn get_test_instance() -> Self {
-                Self(<$ty>::get_test_instance())
+            fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+                Self(<$ty>::get_test_instance(rng))
             }
         }
         auto_impl_get_test_instance!($($rest)*);
@@ -316,8 +366,8 @@ macro_rules! auto_impl_get_test_instance {
     // Tuple structs (no names associated with fields) - two fields.
     ($(pub)? struct $name:ident($(pub)? $ty0:ty, $(pub)? $ty1:ty) ; $($rest:tt)*) => {
         impl GetTestInstance for $name {
-            fn get_test_instance() -> Self {
-                Self(<$ty0>::get_test_instance(), <$ty1>::get_test_instance())
+            fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+                Self(<$ty0>::get_test_instance(rng), <$ty1>::get_test_instance(rng))
             }
         }
         auto_impl_get_test_instance!($($rest)*);
@@ -325,10 +375,10 @@ macro_rules! auto_impl_get_test_instance {
     // Structs with public fields.
     ($(pub)? struct $name:ident { $(pub $field:ident : $ty:ty ,)* } $($rest:tt)*) => {
         impl GetTestInstance for $name {
-            fn get_test_instance() -> Self {
+            fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
                 Self {
                     $(
-                        $field: <$ty>::get_test_instance(),
+                        $field: <$ty>::get_test_instance(rng),
                     )*
                 }
             }
@@ -338,10 +388,10 @@ macro_rules! auto_impl_get_test_instance {
     // Tuples - two elements.
     (($ty0:ty, $ty1:ty) ; $($rest:tt)*) => {
         impl GetTestInstance for ($ty0, $ty1) {
-            fn get_test_instance() -> Self {
+            fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
                 (
-                    <$ty0>::get_test_instance(),
-                    <$ty1>::get_test_instance(),
+                    <$ty0>::get_test_instance(rng),
+                    <$ty1>::get_test_instance(rng),
                 )
             }
         }
@@ -350,11 +400,11 @@ macro_rules! auto_impl_get_test_instance {
     // Tuples - three elements.
     (($ty0:ty, $ty1:ty, $ty2:ty) ; $($rest:tt)*) => {
         impl GetTestInstance for ($ty0, $ty1, $ty2) {
-            fn get_test_instance() -> Self {
+            fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
                 (
-                    <$ty0>::get_test_instance(),
-                    <$ty1>::get_test_instance(),
-                    <$ty2>::get_test_instance(),
+                    <$ty0>::get_test_instance(rng),
+                    <$ty1>::get_test_instance(rng),
+                    <$ty2>::get_test_instance(rng),
                 )
             }
         }
@@ -363,13 +413,12 @@ macro_rules! auto_impl_get_test_instance {
     // enums.
     ($(pub)? enum $name:ident { $($variant:ident $( ($ty:ty) )? = $num:expr ,)* } $($rest:tt)*) => {
         impl GetTestInstance for $name {
-            fn get_test_instance() -> Self {
-                let mut rng = rand::thread_rng();
+            fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
                 let variant = rng.gen_range(0..get_number_of_variants!(enum $name { $($variant $( ($ty) )? = $num ,)* }));
                 match variant {
                     $(
                         $num => {
-                            Self::$variant$((<$ty>::get_test_instance()))?
+                            Self::$variant$((<$ty>::get_test_instance(rng)))?
                         }
                     )*
                     _ => {
@@ -391,7 +440,7 @@ macro_rules! auto_impl_get_test_instance {
 macro_rules! default_impl_get_test_instance {
     ($name:path) => {
         impl GetTestInstance for $name {
-            fn get_test_instance() -> Self {
+            fn get_test_instance(_rng: &mut ChaCha8Rng) -> Self {
                 Self::default()
             }
         }
@@ -404,29 +453,29 @@ macro_rules! default_impl_get_test_instance {
 default_impl_get_test_instance!(serde_json::Value);
 default_impl_get_test_instance!(String);
 impl<T: GetTestInstance> GetTestInstance for Option<T> {
-    fn get_test_instance() -> Self {
-        Some(T::get_test_instance())
+    fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+        Some(T::get_test_instance(rng))
     }
 }
 impl<T: GetTestInstance> GetTestInstance for Vec<T> {
-    fn get_test_instance() -> Self {
-        vec![T::get_test_instance()]
+    fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+        vec![T::get_test_instance(rng)]
     }
 }
 impl<K: GetTestInstance + Eq + Hash, V: GetTestInstance> GetTestInstance for HashMap<K, V> {
-    fn get_test_instance() -> Self {
+    fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
         let mut res = HashMap::with_capacity(1);
-        let k = K::get_test_instance();
-        let v = V::get_test_instance();
+        let k = K::get_test_instance(rng);
+        let v = V::get_test_instance(rng);
         res.insert(k, v);
         res
     }
 }
 impl<K: GetTestInstance + Eq + Hash, V: GetTestInstance> GetTestInstance for IndexMap<K, V> {
-    fn get_test_instance() -> Self {
+    fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
         let mut res = IndexMap::with_capacity(1);
-        let k = K::get_test_instance();
-        let v = V::get_test_instance();
+        let k = K::get_test_instance(rng);
+        let v = V::get_test_instance(rng);
         res.insert(k, v);
         res
     }
@@ -451,11 +500,11 @@ default_impl_get_test_instance!(ContractAddress);
 default_impl_get_test_instance!(StorageKey);
 
 impl GetTestInstance for StructAbiEntry {
-    fn get_test_instance() -> Self {
+    fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
         Self {
             name: String::default(),
             size: 1, // Should be minimum 1.
-            members: Vec::<StructMember>::get_test_instance(),
+            members: Vec::<StructMember>::get_test_instance(rng),
         }
     }
 }
