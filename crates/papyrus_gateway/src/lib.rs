@@ -31,8 +31,8 @@ use starknet_api::transaction::{
 };
 
 use crate::api::{
-    BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcError,
-    JsonRpcServer, Tag,
+    BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, EventsChunk,
+    JsonRpcError, JsonRpcServer, Tag,
 };
 use crate::block::{Block, BlockHeader};
 use crate::state::{ContractClass, StateUpdate};
@@ -402,10 +402,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         Ok(self.chain_id.as_hex())
     }
 
-    fn get_events(
-        &self,
-        filter: EventFilter,
-    ) -> Result<(Vec<Event>, Option<ContinuationToken>), Error> {
+    fn get_events(&self, filter: EventFilter) -> Result<EventsChunk, Error> {
         // Check the chunk size.
         if filter.chunk_size > self.max_events_chunk_size {
             // TODO(anatg): Add a test for this case.
@@ -429,12 +426,12 @@ impl JsonRpcServer for JsonRpcServerImpl {
         if maybe_to_block_number.is_none() {
             // TODO(anatg): Add a test for this case.
             // There are no blocks.
-            return Ok((vec![], None));
+            return Ok(EventsChunk { events: vec![], continuation_token: None });
         }
         let to_block_number = maybe_to_block_number.unwrap();
         if from_block_number > to_block_number {
             // TODO(anatg): Add a test for this case.
-            return Ok((vec![], None));
+            return Ok(EventsChunk { events: vec![], continuation_token: None });
         }
 
         // Get the event index. If there's a continuation token we take the event index from there.
@@ -469,10 +466,12 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 content.keys.len() > i && (keys.is_empty() || keys.contains(&content.keys[i]))
             }) {
                 if filtered_events.len() == filter.chunk_size {
-                    return Ok((
-                        filtered_events,
-                        Some(ContinuationToken::new(ContinuationTokenAsStruct(event_index))?),
-                    ));
+                    return Ok(EventsChunk {
+                        events: filtered_events,
+                        continuation_token: Some(ContinuationToken::new(
+                            ContinuationTokenAsStruct(event_index),
+                        )?),
+                    });
                 }
                 let header = get_block_header_by_number(&txn, block_number)
                     .map_err(internal_server_error)?;
@@ -490,7 +489,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
             }
         }
 
-        Ok((filtered_events, None))
+        Ok(EventsChunk { events: filtered_events, continuation_token: None })
     }
 }
 
