@@ -162,8 +162,6 @@ pub fn get_rng() -> ChaCha8Rng {
     ChaCha8Rng::seed_from_u64(seed)
 }
 
-// TODO(anatg): Consider moving GetTestInstance and auto_impl_get_test_instance
-// to a test utils crate.
 pub trait GetTestInstance: Sized {
     fn get_test_instance(rng: &mut ChaCha8Rng) -> Self;
 }
