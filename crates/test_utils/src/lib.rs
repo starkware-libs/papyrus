@@ -19,7 +19,7 @@ use starknet_api::state::{
     StateDiff, StorageKey, StructAbiEntry, StructMember, TypedParameter,
 };
 use starknet_api::transaction::{
-    CallData, ContractAddressSalt, DeclareTransaction, DeclareTransactionOutput,
+    Calldata, ContractAddressSalt, DeclareTransaction, DeclareTransactionOutput,
     DeployAccountTransaction, DeployAccountTransactionOutput, DeployTransaction,
     DeployTransactionOutput, EthAddress, Event, EventContent, EventData,
     EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction, InvokeTransactionOutput,
@@ -185,7 +185,7 @@ auto_impl_get_test_instance! {
         Rejected = 3,
     }
     pub struct BlockTimestamp(pub u64);
-    pub struct CallData(pub Vec<StarkFelt>);
+    pub struct Calldata(pub Vec<StarkFelt>);
     pub struct ClassHash(pub StarkHash);
     pub struct ContractAddressSalt(pub StarkHash);
     // TODO(anatg): Consider using the compression utils.
@@ -217,7 +217,7 @@ auto_impl_get_test_instance! {
         pub class_hash: ClassHash,
         pub contract_address: ContractAddress,
         pub contract_address_salt: ContractAddressSalt,
-        pub constructor_calldata: CallData,
+        pub constructor_calldata: Calldata,
     }
     pub struct DeployTransaction {
         pub transaction_hash: TransactionHash,
@@ -225,7 +225,7 @@ auto_impl_get_test_instance! {
         pub class_hash: ClassHash,
         pub contract_address: ContractAddress,
         pub contract_address_salt: ContractAddressSalt,
-        pub constructor_calldata: CallData,
+        pub constructor_calldata: Calldata,
     }
     pub struct EntryPoint {
         pub selector: EntryPointSelector,
@@ -275,7 +275,7 @@ auto_impl_get_test_instance! {
         pub nonce: Nonce,
         pub sender_address: ContractAddress,
         pub entry_point_selector: Option<EntryPointSelector>,
-        pub calldata: CallData,
+        pub calldata: Calldata,
     }
     pub struct L1HandlerTransaction {
         pub transaction_hash: TransactionHash,
@@ -283,7 +283,7 @@ auto_impl_get_test_instance! {
         pub nonce: Nonce,
         pub contract_address: ContractAddress,
         pub entry_point_selector: EntryPointSelector,
-        pub calldata: CallData,
+        pub calldata: Calldata,
     }
     pub struct L1ToL2Payload(pub Vec<StarkFelt>);
     pub struct L2ToL1Payload(pub Vec<StarkFelt>);
