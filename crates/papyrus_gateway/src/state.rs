@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use papyrus_storage::compression_utils::{CompressionError, GzEncoded};
+use papyrus_storage::state::data::ThinStateDiff as papyrus_storage_ThinStateDiff;
 use papyrus_storage::{StorageSerde, StorageSerdeError};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockHash;
@@ -131,8 +132,8 @@ pub struct ThinStateDiff {
     pub nonces: Vec<ContractNonce>,
 }
 
-impl From<papyrus_storage::ThinStateDiff> for ThinStateDiff {
-    fn from(diff: papyrus_storage::ThinStateDiff) -> Self {
+impl From<papyrus_storage_ThinStateDiff> for ThinStateDiff {
+    fn from(diff: papyrus_storage_ThinStateDiff) -> Self {
         Self {
             deployed_contracts: Vec::from_iter(
                 diff.deployed_contracts

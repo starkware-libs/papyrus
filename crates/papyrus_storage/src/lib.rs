@@ -4,7 +4,7 @@ mod db;
 pub mod header;
 pub mod ommer;
 mod serializers;
-mod state;
+pub mod state;
 
 #[cfg(any(feature = "testing", test))]
 #[path = "test_utils.rs"]
@@ -30,8 +30,7 @@ use crate::db::{
     open_env, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier, RO, RW,
 };
 pub use crate::db::{DbConfig, TransactionKind};
-pub use crate::state::data::ThinStateDiff;
-use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract};
+use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
 pub use crate::state::{StateStorageReader, StateStorageWriter};
 
 pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, StorageWriter)> {
