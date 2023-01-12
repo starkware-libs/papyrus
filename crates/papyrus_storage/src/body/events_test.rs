@@ -98,3 +98,52 @@ async fn iter_events_by_index() {
         assert_eq!(emitted_events[i], e);
     }
 }
+
+#[tokio::test]
+async fn revert_events() {
+    let (storage_reader, mut storage_writer) = get_test_storage();
+    let block = get_test_block_with_events(2, 5);
+    let block_number = block.header.block_number;
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(block_number, &block.header)
+        .unwrap()
+        .append_body(block_number, block.body.clone())
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    let event_index = EventIndex(
+        TransactionIndex(block_number, TransactionOffsetInBlock(0)),
+        EventIndexInTransactionOutput(2),
+    );
+    assert!(
+        storage_reader
+            .begin_ro_txn()
+            .unwrap()
+            .iter_events(None, event_index, block_number)
+            .unwrap()
+            .last()
+            .is_some()
+    );
+
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .revert_header(block_number)
+        .unwrap()
+        .revert_body(block_number)
+        .unwrap()
+        .commit()
+        .unwrap();
+    assert!(
+        storage_reader
+            .begin_ro_txn()
+            .unwrap()
+            .iter_events(None, event_index, block_number)
+            .unwrap()
+            .last()
+            .is_none()
+    );
+}
