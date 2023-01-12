@@ -7,7 +7,7 @@ use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
-pub type BlockHashToNumberTable<'env> = TableHandle<'env, BlockHash, BlockNumber>;
+type BlockHashToNumberTable<'env> = TableHandle<'env, BlockHash, BlockNumber>;
 
 pub trait HeaderStorageReader {
     // The block number marker is the first block number that doesn't exist yet.

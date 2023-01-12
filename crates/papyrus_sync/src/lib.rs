@@ -10,9 +10,10 @@ use std::time::Duration;
 use async_stream::stream;
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use log::{debug, error, info, warn};
+use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
+use papyrus_storage::ommer::{OmmerStorageReader, OmmerStorageWriter};
 use papyrus_storage::{
-    BodyStorageReader, BodyStorageWriter, HeaderStorageReader, HeaderStorageWriter,
-    OmmerStorageReader, OmmerStorageWriter, StateStorageReader, StateStorageWriter, StorageError,
+    BodyStorageReader, BodyStorageWriter, StateStorageReader, StateStorageWriter, StorageError,
     StorageReader, StorageWriter, TransactionIndex,
 };
 use serde::{Deserialize, Serialize};
