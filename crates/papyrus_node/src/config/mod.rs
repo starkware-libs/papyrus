@@ -52,8 +52,10 @@ pub enum ConfigError {
     Read(#[from] io::Error),
     #[error(transparent)]
     Serde(#[from] serde_yaml::Error),
-    #[error("Cml http_header \"{illegal_header}\" is not a valid format")]
-    CmlHttpHeaderFormat { illegal_header: String },
+    #[error(
+        "CLA http_header \"{illegal_header}\" is not valid. The Expected format is name:value"
+    )]
+    CLAHttpHeader { illegal_header: String },
 }
 
 // Builds the configuration for the node based on default values, yaml configuration file and
@@ -177,7 +179,7 @@ impl ConfigBuilder {
                     for header in http_headers.split(' ') {
                         let split: Vec<&str> = header.split(':').collect();
                         if split.len() != 2 {
-                            return Err(ConfigError::CmlHttpHeaderFormat {
+                            return Err(ConfigError::CLAHttpHeader {
                                 illegal_header: header.to_string(),
                             });
                         }
