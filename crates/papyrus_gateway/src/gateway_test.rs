@@ -123,7 +123,7 @@ async fn get_block_w_transaction_hashes() {
 
     let expected_transaction = block.body.transactions.index(0);
     let expected_block = Block {
-        status: BlockStatus::default(),
+        status: BlockStatus::AcceptedOnL2,
         header: block.header.into(),
         transactions: Transactions::Hashes(vec![expected_transaction.transaction_hash()]),
     };
@@ -203,7 +203,7 @@ async fn get_block_w_full_transactions() {
 
     let expected_transaction = block.body.transactions.index(0);
     let expected_block = Block {
-        status: BlockStatus::default(),
+        status: BlockStatus::AcceptedOnL2,
         header: block.header.into(),
         transactions: Transactions::Full(vec![expected_transaction.clone().into()]),
     };
