@@ -7,7 +7,6 @@ use futures::stream::BoxStream;
 use futures::{future, pin_mut, TryStreamExt};
 use futures_util::StreamExt;
 use indexmap::IndexMap;
-use log::{debug, warn};
 #[cfg(test)]
 use mockall::automock;
 use serde::{Deserialize, Serialize};
@@ -19,6 +18,7 @@ use starknet_client::{
     ClientCreationError, ClientError, RetryConfig, StarknetClient, StarknetClientTrait, StateUpdate,
 };
 use tokio_stream::Stream;
+use tracing::{debug, warn};
 
 use super::stream_utils::MyStreamExt;
 

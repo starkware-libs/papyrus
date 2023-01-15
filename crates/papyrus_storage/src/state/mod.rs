@@ -20,7 +20,7 @@ type DeployedContractsTable<'env> = TableHandle<'env, ContractAddress, IndexedDe
 type ContractStorageTable<'env> =
     TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), StarkFelt>;
 type NoncesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumber), Nonce>;
-use log::debug;
+use tracing::debug;
 
 // Structure of state data:
 // * declared_classes: (class_hash) -> (block_num, contract_class). Each entry specifies at which
