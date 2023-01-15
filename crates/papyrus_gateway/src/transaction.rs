@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
 use starknet_api::core::{ContractAddress, EntryPointSelector, Nonce};
 use starknet_api::transaction::{
-    CallData, DeclareTransaction, DeclareTransactionOutput, DeployAccountTransaction,
+    Calldata, DeclareTransaction, DeclareTransactionOutput, DeployAccountTransaction,
     DeployAccountTransactionOutput, DeployTransaction, DeployTransactionOutput, Fee,
     InvokeTransactionOutput, L1HandlerTransaction, L1HandlerTransactionOutput, TransactionHash,
     TransactionSignature, TransactionVersion,
@@ -25,7 +25,7 @@ pub struct InvokeTransactionV0 {
     pub nonce: Nonce,
     pub contract_address: ContractAddress,
     pub entry_point_selector: EntryPointSelector,
-    pub calldata: CallData,
+    pub calldata: Calldata,
 }
 
 impl From<starknet_api::transaction::InvokeTransaction> for InvokeTransactionV0 {
@@ -51,7 +51,7 @@ pub struct InvokeTransactionV1 {
     pub signature: TransactionSignature,
     pub nonce: Nonce,
     pub sender_address: ContractAddress,
-    pub calldata: CallData,
+    pub calldata: Calldata,
 }
 
 impl From<starknet_api::transaction::InvokeTransaction> for InvokeTransactionV1 {
