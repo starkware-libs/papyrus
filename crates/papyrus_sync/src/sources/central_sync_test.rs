@@ -4,7 +4,6 @@ use std::time::Duration;
 use async_stream::stream;
 use async_trait::async_trait;
 use futures::StreamExt;
-use log::{debug, error};
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
@@ -14,6 +13,7 @@ use starknet_api::hash::StarkFelt;
 use starknet_api::stark_felt;
 use starknet_api::state::StateDiff;
 use tokio::sync::Mutex;
+use tracing::{debug, error};
 
 use super::central::BlocksStream;
 use crate::sources::central::{MockCentralSourceTrait, StateUpdatesStream};

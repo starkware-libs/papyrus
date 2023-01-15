@@ -11,9 +11,9 @@ use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::http_server::{HttpServerBuilder, HttpServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::{ErrorObject, INTERNAL_ERROR_MSG};
-use log::{error, info};
 use papyrus_storage::{DbTablesStats, StorageReader};
 use serde::{Deserialize, Serialize};
+use tracing::{error, info};
 
 use self::api::JsonRpcServer;
 

@@ -12,7 +12,6 @@ use std::collections::HashMap;
 use std::fmt::{self, Display, Formatter};
 
 use async_trait::async_trait;
-use log::debug;
 #[cfg(any(feature = "testing", test))]
 use mockall::automock;
 use reqwest::header::HeaderMap;
@@ -21,6 +20,7 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 use starknet_api::StarknetApiError;
+use tracing::debug;
 use url::Url;
 
 pub use self::objects::block::{
