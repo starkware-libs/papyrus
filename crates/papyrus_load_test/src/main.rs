@@ -1,11 +1,13 @@
 // This code is inspired by the pathfinder load test.
 
-use goose::goose::{GooseUser, Scenario, Transaction, TransactionError, TransactionResult};
-use goose::{scenario, transaction, GooseAttack, GooseError};
-use serde::de::DeserializeOwned;
-use serde::Deserialize;
-use serde_json::json;
+use std::env;
+use std::fs::File;
 
+use goose::goose::{GooseUser, Scenario, Transaction, TransactionError, TransactionResult};
+use goose::{scenario, transaction, util, GooseAttack};
+use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 type MethodResult<T> = Result<T, Box<TransactionError>>;
 
 async fn post_jsonrpc_request<T: DeserializeOwned>(
@@ -51,7 +53,7 @@ async fn loadtest_get_block_with_tx_hashes_by_hash(user: &mut GooseUser) -> Tran
     // TODO(shahak): Get a hash by getting a block instead of relying on that this hash exists.
     let _: serde_json::Value = get_block_with_tx_hashes_by_hash(
         user,
-        "0x21d419ca19117002954f58f1fdf879791973107ccdb2004c5d635411bb90c0e",
+        "0x1d997fd79d81bb4c30c78d7cb32fb8a59112eeb86347446235cead6194aed07",
     )
     .await?;
     Ok(())
@@ -66,8 +68,23 @@ pub async fn get_block_with_tx_hashes_by_hash<T: DeserializeOwned>(
 }
 
 #[tokio::main]
-async fn main() -> Result<(), GooseError> {
-    GooseAttack::initialize()?
+async fn main() -> anyhow::Result<()> {
+    // The OUTPUT_FILE env is expected to be a valid path in the os.
+    // If exists, aggregated results will be written to that path in the following json format:
+    // [
+    //     {
+    //         "name": <scenario name>,
+    //         "units": "Milliseconds",
+    //         "value": <scenario median time>,
+    //     },
+    // ]
+
+    let output_file = match env::var("OUTPUT_FILE") {
+        Ok(path) => Some(path),
+        Err(_) => None,
+    };
+
+    let metrics = GooseAttack::initialize()?
         .register_scenario(
             scenario!("block_by_number")
                 .register_transaction(transaction!(loadtest_get_block_with_tx_hashes_by_number)),
@@ -78,5 +95,33 @@ async fn main() -> Result<(), GooseError> {
         )
         .execute()
         .await?;
+
+    // Optionally write results to the given path.
+    if let Some(path) = output_file {
+        let file = File::create(path)?;
+        let mut data: Vec<Entry> = vec![];
+        for scenario in metrics.scenarios {
+            let median = util::median(
+                &scenario.times,
+                scenario.counter,
+                scenario.min_time,
+                scenario.max_time,
+            );
+            data.push(Entry {
+                name: scenario.name,
+                units: "Milliseconds".to_string(),
+                value: median,
+            });
+        }
+        serde_json::to_writer(file, &data)?
+    }
+
     Ok(())
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct Entry {
+    name: String,
+    units: String, // "Milliseconds"
+    value: usize,
 }

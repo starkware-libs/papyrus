@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+anyhow = { version = "1.0.44" }
 goose = { version = "0.17.0" }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" }
