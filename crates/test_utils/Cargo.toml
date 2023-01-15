@@ -7,11 +7,11 @@ edition = "2021"
 
 [dependencies]
 indexmap = { version = "1.9.2", features = ["serde"] }
-log = { version = "0.4" }
 rand = { version = "0.8.5" }
 rand_chacha = { version = "0.3.1" }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" }
 starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "0a11ad3" }
+tracing = { version = "0.1", features = ["log"] }
 
 [dev-dependencies]
