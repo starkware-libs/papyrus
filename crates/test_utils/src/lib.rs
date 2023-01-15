@@ -4,6 +4,7 @@ use std::fs::read_to_string;
 use std::hash::Hash;
 use std::ops::Index;
 use std::path::Path;
+use std::sync::Arc;
 
 use indexmap::IndexMap;
 use rand::{Rng, SeedableRng};
@@ -185,7 +186,7 @@ auto_impl_get_test_instance! {
         Rejected = 3,
     }
     pub struct BlockTimestamp(pub u64);
-    pub struct Calldata(pub Vec<StarkFelt>);
+    pub struct Calldata(pub Arc<Vec<StarkFelt>>);
     pub struct ClassHash(pub StarkHash);
     pub struct ContractAddressSalt(pub StarkHash);
     // TODO(anatg): Consider using the compression utils.
@@ -452,6 +453,11 @@ macro_rules! default_impl_get_test_instance {
 ////////////////////////////////////////////////////////////////////////
 default_impl_get_test_instance!(serde_json::Value);
 default_impl_get_test_instance!(String);
+impl<T: GetTestInstance> GetTestInstance for Arc<T> {
+    fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+        Arc::new(T::get_test_instance(rng))
+    }
+}
 impl<T: GetTestInstance> GetTestInstance for Option<T> {
     fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
         Some(T::get_test_instance(rng))

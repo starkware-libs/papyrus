@@ -5,6 +5,8 @@ mod serializers_test;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::hash::Hash;
+use std::ops::Deref;
+use std::sync::Arc;
 
 use indexmap::IndexMap;
 use integer_encoding::*;
@@ -57,7 +59,7 @@ auto_storage_serde! {
         Rejected = 3,
     }
     pub struct BlockTimestamp(pub u64);
-    pub struct Calldata(pub Vec<StarkFelt>);
+    pub struct Calldata(pub Arc<Vec<StarkFelt>>);
     pub struct ClassHash(pub StarkHash);
     pub struct ContractAddressSalt(pub StarkHash);
     // TODO(anatg): Consider using the compression utils.
@@ -599,5 +601,16 @@ impl<T: StorageSerde + Default + Copy, const N: usize> StorageSerde for [T; N] {
             *elm = T::deserialize_from(bytes)?;
         }
         Some(res)
+    }
+}
+impl<T: StorageSerde> StorageSerde for Arc<T> {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        self.deref().serialize_into(res)?;
+        Ok(())
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        let res = T::deserialize_from(bytes)?;
+        Some(Arc::new(res))
     }
 }
