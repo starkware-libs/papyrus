@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::Path;
 use std::time::Duration;
 use std::{env, fs};
@@ -60,6 +61,7 @@ impl FileConfigFormat {
 struct Central {
     concurrent_requests: Option<usize>,
     url: Option<String>,
+    http_headers: Option<HashMap<String, String>>,
     retry: Option<Retry>,
 }
 
@@ -70,6 +72,16 @@ impl Central {
         }
         if let Some(url) = self.url {
             config.url = url;
+        }
+        if let Some(new_headers) = self.http_headers {
+            match &mut config.http_headers {
+                Some(current_headers) => {
+                    current_headers.extend(new_headers);
+                }
+                None => {
+                    config.http_headers = Some(new_headers);
+                }
+            };
         }
         if let Some(retry) = self.retry {
             retry.update_retry_config(&mut config.retry_config);

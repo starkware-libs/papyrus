@@ -8,12 +8,14 @@ pub mod retry;
 mod starknet_client_test;
 #[cfg(test)]
 mod test_utils;
+use std::collections::HashMap;
 use std::fmt::{self, Display, Formatter};
 
 use async_trait::async_trait;
 use log::warn;
 #[cfg(any(feature = "testing", test))]
 use mockall::automock;
+use reqwest::header::HeaderMap;
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
@@ -52,6 +54,7 @@ pub trait StarknetClientTrait {
 /// A starknet client.
 pub struct StarknetClient {
     urls: StarknetUrls,
+    http_headers: HeaderMap,
     internal_client: Client,
     retry_config: RetryConfig,
 }
@@ -90,6 +93,8 @@ pub enum ClientCreationError {
     BadUrl(#[from] url::ParseError),
     #[error(transparent)]
     BuildError(#[from] reqwest::Error),
+    #[error(transparent)]
+    HttpHeaderError(#[from] http::Error),
 }
 
 /// Errors that might be solved by retrying mechanism.
@@ -155,10 +160,16 @@ impl StarknetClient {
     /// Creates a new client for a starknet gateway at `url_str` with retry_config [`RetryConfig`].
     pub fn new(
         url_str: &str,
+        http_headers: Option<HashMap<String, String>>,
         retry_config: RetryConfig,
     ) -> Result<StarknetClient, ClientCreationError> {
+        let header_map = match http_headers {
+            Some(inner) => (&inner).try_into()?,
+            None => HeaderMap::new(),
+        };
         Ok(StarknetClient {
             urls: StarknetUrls::new(url_str)?,
+            http_headers: header_map,
             internal_client: Client::builder().build()?,
             retry_config,
         })
@@ -208,7 +219,7 @@ impl StarknetClient {
     }
 
     async fn request(&self, url: Url) -> ClientResult<String> {
-        let res = self.internal_client.get(url).send().await;
+        let res = self.internal_client.get(url).headers(self.http_headers.clone()).send().await;
         let (code, message) = match res {
             Ok(response) => (response.status(), response.text().await?),
             Err(err) => {
