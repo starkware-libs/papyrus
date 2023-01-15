@@ -17,7 +17,7 @@ use papyrus_storage::{
     StorageReader, StorageWriter, TransactionIndex,
 };
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{Block, BlockHash, BlockHeader, BlockNumber};
+use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, StateDiff};
 use starknet_api::transaction::TransactionOffsetInBlock;
@@ -169,6 +169,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult {
         match sync_event {
             SyncEvent::BlockAvailable { block_number, block } => {
+                self.verify_parent_block_hash(block_number, &block)?;
                 self.store_block(block_number, block)
             }
             SyncEvent::StateDiffAvailable {
@@ -186,19 +187,6 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     }
 
     fn store_block(&mut self, block_number: BlockNumber, block: Block) -> StateSyncResult {
-        // Assuming the central source is trusted, detect reverts by comparing the incoming block's
-        // parent hash to the current hash.
-        if let Some(prev_header) = self.verify_parent_block_hash(block_number, &block)? {
-            info!("Reverting block {}.", prev_header.block_number);
-            self.revert_block(prev_header.block_number)?;
-
-            return Err(StateSyncError::ParentBlockHashMismatch {
-                block_number,
-                expected_parent_block_hash: block.header.parent_hash,
-                stored_parent_block_hash: prev_header.block_hash,
-            });
-        }
-
         debug!("Storing block: {:#?}.", block);
         self.writer
             .begin_rw_txn()?
@@ -244,14 +232,17 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         Ok(())
     }
 
-    // Compares the block's parent hash to the stored block.
+    // Compares the block's parent hash to the stored block and reverts the previous block if
+    // there's a discrepancy.
+    // Assuming the central source is trusted, detect reverts by comparing the incoming block's
+    // parent hash to the current hash.
     fn verify_parent_block_hash(
-        &self,
+        &mut self,
         block_number: BlockNumber,
         block: &Block,
-    ) -> Result<Option<BlockHeader>, StateSyncError> {
+    ) -> StateSyncResult {
         let prev_block_number = match block_number.prev() {
-            None => return Ok(None),
+            None => return Ok(()),
             Some(bn) => bn,
         };
         let prev_header = self.reader.begin_ro_txn()?.get_block_header(prev_block_number)?.ok_or(
@@ -264,10 +255,17 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         )?;
 
         if prev_header.block_hash != block.header.parent_hash {
-            return Ok(Some(prev_header));
+            info!("Reverting block {}.", prev_header.block_number);
+            self.revert_block(prev_header.block_number)?;
+
+            return Err(StateSyncError::ParentBlockHashMismatch {
+                block_number,
+                expected_parent_block_hash: block.header.parent_hash,
+                stored_parent_block_hash: prev_header.block_hash,
+            });
         }
 
-        Ok(None)
+        Ok(())
     }
 
     // Deletes the block data from the storage, moving it to the ommer tables.
