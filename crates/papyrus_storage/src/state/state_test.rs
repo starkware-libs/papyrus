@@ -2,7 +2,7 @@ use assert_matches::assert_matches;
 use indexmap::IndexMap;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
-use starknet_api::hash::StarkHash;
+use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{
     ContractClass, ContractClassAbiEntry, FunctionAbiEntry, FunctionAbiEntryType,
     FunctionAbiEntryWithType, StateDiff, StateNumber, StorageKey,
@@ -12,7 +12,7 @@ use test_utils::get_test_state_diff;
 
 use crate::state::{StateStorageReader, StateStorageWriter, StorageError};
 use crate::test_utils::get_test_storage;
-use crate::StorageWriter;
+use crate::{StorageWriter, ThinStateDiff};
 
 #[test]
 fn append_state_diff() {
@@ -293,4 +293,80 @@ fn revert_doesnt_delete_previously_declared_classes() {
         .get_class_definition_at(StateNumber::right_after_block(BlockNumber(0)), &cl0)
         .unwrap();
     assert!(declared_class.is_none());
+}
+
+#[test]
+fn revert_state() {
+    let state_diff0 = get_test_state_diff();
+    let (contract0, class0) = state_diff0.deployed_contracts.first().unwrap();
+    let (_contract0, nonce0) = state_diff0.nonces.first().unwrap();
+
+    // Create another state diff, deploying new contracts and changing the state of the contract
+    // deployed in state0.
+    let contract1 = ContractAddress(patky!("0x1"));
+    let class1 = ClassHash(shash!("0x1"));
+    let updated_storage_key = StorageKey(patky!("0x1"));
+    let new_data = StarkFelt::from(1);
+    let updated_storage = IndexMap::from([(updated_storage_key, new_data)]);
+    let nonce1 = Nonce(StarkFelt::from(1));
+    let state_diff1 = StateDiff {
+        deployed_contracts: IndexMap::from([(contract1, class1)]),
+        storage_diffs: IndexMap::from([(*contract0, updated_storage)]),
+        declared_classes: IndexMap::from([(class1, ContractClass::default())]),
+        nonces: IndexMap::from([(contract1, nonce1)]),
+    };
+
+    let (reader, mut writer) = get_test_storage();
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_state_diff(BlockNumber(0), state_diff0.clone(), vec![])
+        .unwrap()
+        .append_state_diff(BlockNumber(1), state_diff1.clone(), vec![])
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    let txn = reader.begin_ro_txn().unwrap();
+    assert_eq!(txn.get_state_marker().unwrap(), BlockNumber(2));
+    assert!(txn.get_state_diff(BlockNumber(1)).unwrap().is_some());
+
+    let state_reader = txn.get_state_reader().unwrap();
+    let state_number = StateNumber::right_after_block(BlockNumber(1));
+    assert_eq!(state_reader.get_class_hash_at(state_number, contract0).unwrap().unwrap(), *class0);
+    assert_eq!(state_reader.get_class_hash_at(state_number, &contract1).unwrap().unwrap(), class1);
+    assert_eq!(state_reader.get_nonce_at(state_number, contract0).unwrap().unwrap(), *nonce0);
+    assert_eq!(state_reader.get_nonce_at(state_number, &contract1).unwrap().unwrap(), nonce1);
+    assert_eq!(
+        state_reader.get_storage_at(state_number, contract0, &updated_storage_key).unwrap(),
+        new_data
+    );
+
+    let (txn, deleted_data) =
+        writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(1)).unwrap();
+    txn.commit().unwrap();
+
+    let expected_deleted_state_diff = ThinStateDiff::from(state_diff1);
+    let expected_deleted_classes = vec![(class1, ContractClass::default())];
+    assert_matches!(
+        deleted_data,
+        Some((thin_state_diff, class_definitions))
+        if thin_state_diff == expected_deleted_state_diff
+        && class_definitions == expected_deleted_classes
+    );
+
+    let txn = reader.begin_ro_txn().unwrap();
+    assert_eq!(txn.get_state_marker().unwrap(), BlockNumber(1));
+    assert!(txn.get_state_diff(BlockNumber(1)).unwrap().is_none());
+
+    let state_reader = txn.get_state_reader().unwrap();
+    let state_number = StateNumber::right_after_block(BlockNumber(0));
+    assert_eq!(state_reader.get_class_hash_at(state_number, contract0).unwrap().unwrap(), *class0);
+    assert!(state_reader.get_class_hash_at(state_number, &contract1).unwrap().is_none());
+    assert_eq!(state_reader.get_nonce_at(state_number, contract0).unwrap().unwrap(), *nonce0);
+    assert!(state_reader.get_nonce_at(state_number, &contract1).unwrap().is_none());
+    assert_eq!(
+        state_reader.get_storage_at(state_number, contract0, &updated_storage_key).unwrap(),
+        StarkFelt::from(0)
+    );
 }

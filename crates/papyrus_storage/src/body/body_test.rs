@@ -243,6 +243,7 @@ async fn revert_transactions() {
         .commit()
         .unwrap();
 
+    // Verify the data exists before revert.
     for (offset, tx_hash) in body.transactions.iter().map(|tx| tx.transaction_hash()).enumerate() {
         let tx_index = TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(offset));
 
@@ -253,18 +254,42 @@ async fn revert_transactions() {
             tx_index
         );
     }
+    assert!(
+        reader.begin_ro_txn().unwrap().get_block_transactions(BlockNumber(0)).unwrap().is_some()
+    );
+    assert!(
+        reader
+            .begin_ro_txn()
+            .unwrap()
+            .get_block_transaction_outputs(BlockNumber(0))
+            .unwrap()
+            .is_some()
+    );
 
     writer.begin_rw_txn().unwrap().revert_body(BlockNumber(0)).unwrap().commit().unwrap();
 
+    // Check that all the transactions were deleted.
     for (offset, tx_hash) in body.transactions.iter().map(|tx| tx.transaction_hash()).enumerate() {
         let tx_index = TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(offset));
 
         assert!(reader.begin_ro_txn().unwrap().get_transaction(tx_index).unwrap().is_none());
         assert!(reader.begin_ro_txn().unwrap().get_transaction_output(tx_index).unwrap().is_none());
+        assert!(reader.begin_ro_txn().unwrap().get_transaction_events(tx_index).unwrap().is_none());
         assert!(
             reader.begin_ro_txn().unwrap().get_transaction_idx_by_hash(&tx_hash).unwrap().is_none()
         );
     }
+    assert!(
+        reader.begin_ro_txn().unwrap().get_block_transactions(BlockNumber(0)).unwrap().is_none()
+    );
+    assert!(
+        reader
+            .begin_ro_txn()
+            .unwrap()
+            .get_block_transaction_outputs(BlockNumber(0))
+            .unwrap()
+            .is_none()
+    );
 }
 
 fn append_2_bodies(writer: &mut StorageWriter) {
