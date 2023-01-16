@@ -1,6 +1,6 @@
 use starknet_api::core::{ContractAddress, PatriciaKey};
 use starknet_api::hash::StarkHash;
-use starknet_api::patky;
+use starknet_api::patricia_key;
 use starknet_api::transaction::{EventIndexInTransactionOutput, TransactionOffsetInBlock};
 use test_utils::{get_rand_test_block_with_events, get_rng, get_test_block_with_events};
 
@@ -13,7 +13,8 @@ use crate::{EventIndex, TransactionIndex};
 #[tokio::test]
 async fn iter_events_by_key() {
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let from_addresses = vec![ContractAddress(patky!("0x22")), ContractAddress(patky!("0x23"))];
+    let from_addresses =
+        vec![ContractAddress(patricia_key!("0x22")), ContractAddress(patricia_key!("0x23"))];
     let mut rng = get_rng();
     let block = get_rand_test_block_with_events(&mut rng, 2, 5, Some(from_addresses), None);
     let block_number = block.header.block_number;
@@ -30,7 +31,7 @@ async fn iter_events_by_key() {
     // Create the events emitted, starting from contract address 0x22 onwards.
     // In our case, after the events emitted from address 0x22, come the events
     // emitted from address 0x23, which are all the remaining events.
-    let address = ContractAddress(patky!("0x22"));
+    let address = ContractAddress(patricia_key!("0x22"));
     let mut emitted_events = vec![];
     let mut events_not_from_address = vec![];
     for (tx_i, tx_output) in block.body.transaction_outputs.iter().enumerate() {

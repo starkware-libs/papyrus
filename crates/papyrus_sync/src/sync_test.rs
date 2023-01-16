@@ -1,8 +1,8 @@
 use indexmap::IndexMap;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
-use starknet_api::hash::StarkHash;
+use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass, StateDiff, StorageKey};
-use starknet_api::{patky, shash};
+use starknet_api::{patricia_key, stark_felt};
 
 use crate::sort_state_diff;
 
@@ -10,15 +10,15 @@ use crate::sort_state_diff;
 // before writing to the storage.
 #[test]
 fn state_sorted() {
-    let hash0 = shash!("0x0");
-    let patricia_key0 = patky!("0x0");
-    let hash1 = shash!("0x1");
-    let patricia_key1 = patky!("0x1");
+    let hash0 = stark_felt!("0x0");
+    let patricia_key0 = patricia_key!("0x0");
+    let hash1 = stark_felt!("0x1");
+    let patricia_key1 = patricia_key!("0x1");
 
     let dep_contract_0 = (ContractAddress(patricia_key0), ClassHash(hash0));
     let dep_contract_1 = (ContractAddress(patricia_key1), ClassHash(hash1));
-    let storage_key_0 = StorageKey(patky!("0x0"));
-    let storage_key_1 = StorageKey(patky!("0x1"));
+    let storage_key_0 = StorageKey(patricia_key!("0x0"));
+    let storage_key_1 = StorageKey(patricia_key!("0x1"));
     let dec_contract_0 = (ClassHash(hash0), ContractClass::default());
     let dec_contract_1 = (ClassHash(hash1), ContractClass::default());
     let nonce_0 = (ContractAddress(patricia_key0), Nonce(hash0));

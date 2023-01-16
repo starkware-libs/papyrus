@@ -5,6 +5,8 @@ mod serializers_test;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::hash::Hash;
+use std::ops::Deref;
+use std::sync::Arc;
 
 use indexmap::IndexMap;
 use integer_encoding::*;
@@ -21,7 +23,7 @@ use starknet_api::state::{
     StorageKey, StructAbiEntry, StructMember, TypedParameter,
 };
 use starknet_api::transaction::{
-    CallData, ContractAddressSalt, DeclareTransaction, DeployAccountTransaction, DeployTransaction,
+    Calldata, ContractAddressSalt, DeclareTransaction, DeployAccountTransaction, DeployTransaction,
     EthAddress, EventContent, EventData, EventIndexInTransactionOutput, EventKey, Fee,
     InvokeTransaction, L1HandlerTransaction, L1ToL2Payload, L2ToL1Payload, MessageToL1,
     MessageToL2, Transaction, TransactionHash, TransactionOffsetInBlock, TransactionSignature,
@@ -57,7 +59,7 @@ auto_storage_serde! {
         Rejected = 3,
     }
     pub struct BlockTimestamp(pub u64);
-    pub struct CallData(pub Vec<StarkFelt>);
+    pub struct Calldata(pub Arc<Vec<StarkFelt>>);
     pub struct ClassHash(pub StarkHash);
     pub struct ContractAddressSalt(pub StarkHash);
     // TODO(anatg): Consider using the compression utils.
@@ -89,7 +91,7 @@ auto_storage_serde! {
         pub class_hash: ClassHash,
         pub contract_address: ContractAddress,
         pub contract_address_salt: ContractAddressSalt,
-        pub constructor_calldata: CallData,
+        pub constructor_calldata: Calldata,
     }
     pub struct DeployTransaction {
         pub transaction_hash: TransactionHash,
@@ -97,7 +99,7 @@ auto_storage_serde! {
         pub class_hash: ClassHash,
         pub contract_address: ContractAddress,
         pub contract_address_salt: ContractAddressSalt,
-        pub constructor_calldata: CallData,
+        pub constructor_calldata: Calldata,
     }
     pub struct EntryPoint {
         pub selector: EntryPointSelector,
@@ -156,7 +158,7 @@ auto_storage_serde! {
         pub nonce: Nonce,
         pub sender_address: ContractAddress,
         pub entry_point_selector: Option<EntryPointSelector>,
-        pub calldata: CallData,
+        pub calldata: Calldata,
     }
     pub struct L1ToL2Payload(pub Vec<StarkFelt>);
     pub struct L2ToL1Payload(pub Vec<StarkFelt>);
@@ -227,7 +229,7 @@ auto_storage_serde! {
         pub nonce: Nonce,
         pub contract_address: ContractAddress,
         pub entry_point_selector: EntryPointSelector,
-        pub calldata: CallData,
+        pub calldata: Calldata,
     }
     pub struct ThinL1HandlerTransactionOutput {
         pub actual_fee: Fee,
@@ -599,5 +601,16 @@ impl<T: StorageSerde + Default + Copy, const N: usize> StorageSerde for [T; N] {
             *elm = T::deserialize_from(bytes)?;
         }
         Some(res)
+    }
+}
+impl<T: StorageSerde> StorageSerde for Arc<T> {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        self.deref().serialize_into(res)?;
+        Ok(())
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        let res = T::deserialize_from(bytes)?;
+        Some(Arc::new(res))
     }
 }
