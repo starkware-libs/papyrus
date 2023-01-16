@@ -13,10 +13,8 @@ use log::{debug, error, info, warn};
 use papyrus_storage::body::{BodyStorageReader, BodyStorageWriter};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::ommer::{OmmerStorageReader, OmmerStorageWriter};
-use papyrus_storage::{
-    StateStorageReader, StateStorageWriter, StorageError, StorageReader, StorageWriter,
-    TransactionIndex,
-};
+use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
+use papyrus_storage::{StorageError, StorageReader, StorageWriter, TransactionIndex};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;

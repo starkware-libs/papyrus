@@ -31,7 +31,6 @@ use crate::db::{
 };
 pub use crate::db::{DbConfig, TransactionKind};
 use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
-pub use crate::state::{StateStorageReader, StateStorageWriter};
 
 pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, StorageWriter)> {
     let (db_reader, mut db_writer) = open_env(db_config)?;

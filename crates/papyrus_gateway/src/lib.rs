@@ -19,9 +19,8 @@ use log::{error, info};
 use papyrus_storage::body::events::EventsReader;
 use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::header::HeaderStorageReader;
-use papyrus_storage::{
-    EventIndex, StateStorageReader, StorageReader, StorageTxn, TransactionIndex, TransactionKind,
-};
+use papyrus_storage::state::StateStorageReader;
+use papyrus_storage::{EventIndex, StorageReader, StorageTxn, TransactionIndex, TransactionKind};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockStatus};
 use starknet_api::core::{ChainId, ClassHash, ContractAddress, GlobalRoot, Nonce};
