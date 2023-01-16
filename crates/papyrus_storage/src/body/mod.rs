@@ -16,11 +16,11 @@ use crate::{
     EventIndex, MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn, TransactionIndex,
 };
 
-pub type TransactionsTable<'env> = TableHandle<'env, TransactionIndex, Transaction>;
-pub type TransactionOutputsTable<'env> = TableHandle<'env, TransactionIndex, ThinTransactionOutput>;
-pub type TransactionHashToIdxTable<'env> = TableHandle<'env, TransactionHash, TransactionIndex>;
-pub type EventsTableKey = (ContractAddress, EventIndex);
-pub type EventsTable<'env> = TableHandle<'env, EventsTableKey, EventContent>;
+type TransactionsTable<'env> = TableHandle<'env, TransactionIndex, Transaction>;
+type TransactionOutputsTable<'env> = TableHandle<'env, TransactionIndex, ThinTransactionOutput>;
+type TransactionHashToIdxTable<'env> = TableHandle<'env, TransactionHash, TransactionIndex>;
+type EventsTableKey = (ContractAddress, EventIndex);
+type EventsTable<'env> = TableHandle<'env, EventsTableKey, EventContent>;
 
 pub trait BodyStorageReader {
     // The block number marker is the first block number that doesn't exist yet.

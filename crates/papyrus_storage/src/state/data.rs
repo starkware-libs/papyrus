@@ -30,13 +30,13 @@ impl From<StateDiff> for ThinStateDiff {
 }
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct IndexedDeployedContract {
+pub(crate) struct IndexedDeployedContract {
     pub block_number: BlockNumber,
     pub class_hash: ClassHash,
 }
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
-pub struct IndexedDeclaredContract {
+pub(crate) struct IndexedDeclaredContract {
     pub block_number: BlockNumber,
     pub contract_class: ContractClass,
 }

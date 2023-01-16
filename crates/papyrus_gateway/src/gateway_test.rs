@@ -9,9 +9,11 @@ use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
 use jsonschema::JSONSchema;
+use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::header::HeaderStorageWriter;
+use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
-use papyrus_storage::{BodyStorageWriter, EventIndex, StateStorageWriter, TransactionIndex};
+use papyrus_storage::{EventIndex, TransactionIndex};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
@@ -760,7 +762,7 @@ async fn get_state_update() {
         block_hash: header.block_hash,
         new_root: header.state_root,
         old_root: parent_header.state_root,
-        state_diff: ThinStateDiff::from(papyrus_storage::ThinStateDiff::from(diff)),
+        state_diff: ThinStateDiff::from(papyrus_storage::state::data::ThinStateDiff::from(diff)),
     };
 
     // Get state update by block hash.

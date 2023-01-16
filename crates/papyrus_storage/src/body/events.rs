@@ -75,7 +75,7 @@ pub struct EventIterByContractAddress<'txn> {
 }
 
 impl EventIterByContractAddress<'_> {
-    pub fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
+    fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
         let res = self.current.take();
         self.current = self.cursor.next()?;
         Ok(res)
@@ -96,7 +96,7 @@ pub struct EventIterByEventIndex<'txn, 'env> {
 }
 
 impl EventIterByEventIndex<'_, '_> {
-    pub fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
+    fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
         if let Some((tx_index, tx_output)) = &self.tx_current {
             if let Some(address) =
                 tx_output.events_contract_addresses_as_ref().get(self.event_index_in_tx_current.0)
@@ -193,7 +193,7 @@ pub enum ThinTransactionOutput {
 }
 
 impl ThinTransactionOutput {
-    pub fn events_contract_addresses(self) -> Vec<ContractAddress> {
+    pub(crate) fn events_contract_addresses(self) -> Vec<ContractAddress> {
         match self {
             ThinTransactionOutput::Declare(tx_output) => tx_output.events_contract_addresses,
             ThinTransactionOutput::Deploy(tx_output) => tx_output.events_contract_addresses,
@@ -202,7 +202,7 @@ impl ThinTransactionOutput {
             ThinTransactionOutput::L1Handler(tx_output) => tx_output.events_contract_addresses,
         }
     }
-    pub fn events_contract_addresses_as_ref(&self) -> &Vec<ContractAddress> {
+    fn events_contract_addresses_as_ref(&self) -> &Vec<ContractAddress> {
         match self {
             ThinTransactionOutput::Declare(tx_output) => &tx_output.events_contract_addresses,
             ThinTransactionOutput::Deploy(tx_output) => &tx_output.events_contract_addresses,
