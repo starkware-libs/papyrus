@@ -1,6 +1,6 @@
 use crate::db::DbError;
 
-pub trait StorageSerdeEx: StorageSerde {
+pub(crate) trait StorageSerdeEx: StorageSerde {
     fn serialize(&self) -> Result<Vec<u8>, DbError>;
 
     fn deserialize(bytes: &mut impl std::io::Read) -> Option<Self>;

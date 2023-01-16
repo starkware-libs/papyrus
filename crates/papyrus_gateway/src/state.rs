@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use papyrus_storage::compression_utils::{CompressionError, GzEncoded};
+use papyrus_storage::db::serialization::{StorageSerde, StorageSerdeError};
 use papyrus_storage::state::data::ThinStateDiff as papyrus_storage_ThinStateDiff;
-use papyrus_storage::{StorageSerde, StorageSerdeError};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockHash;
 use starknet_api::core::{ClassHash, ContractAddress, GlobalRoot, Nonce};
