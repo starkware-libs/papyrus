@@ -1,4 +1,4 @@
-use papyrus_storage::ThinTransactionOutput;
+use papyrus_storage::body::events::ThinTransactionOutput;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
 use starknet_api::core::{ContractAddress, EntryPointSelector, Nonce};
