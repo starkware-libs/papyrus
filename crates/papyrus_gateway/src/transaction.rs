@@ -229,21 +229,29 @@ pub enum TransactionReceipt {
 impl TransactionReceipt {
     pub fn from_transaction_output(
         output: TransactionOutput,
-        transaction_hash: TransactionHash,
+        transaction: &starknet_api::transaction::Transaction,
         block_hash: BlockHash,
         block_number: BlockNumber,
     ) -> Self {
-        let r#type = output.r#type();
-        let common =
-            CommonTransactionReceipt { transaction_hash, r#type, block_hash, block_number, output };
+        let common = CommonTransactionReceipt {
+            transaction_hash: transaction.transaction_hash(),
+            r#type: output.r#type(),
+            block_hash,
+            block_number,
+            output,
+        };
 
-        match r#type {
-            TransactionType::DeployAccount | TransactionType::Deploy => {
+        match transaction {
+            starknet_api::transaction::Transaction::DeployAccount(tx) => {
                 Self::Deploy(DeployTransactionReceipt {
                     common,
-                    // TODO(anatg): Calculate the address using the function
-                    // calculate_contract_address from starknet_api.
-                    contract_address: ContractAddress::default(),
+                    contract_address: tx.contract_address,
+                })
+            }
+            starknet_api::transaction::Transaction::Deploy(tx) => {
+                Self::Deploy(DeployTransactionReceipt {
+                    common,
+                    contract_address: tx.contract_address,
                 })
             }
             _ => Self::Common(common),
