@@ -92,9 +92,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                     info!(
                         "Detected revert while processing block {}. Parent hash of the incoming \
                          block is {}, current block hash is {}.",
-                        block_number,
-                        block_hash_to_string(&expected_parent_block_hash),
-                        block_hash_to_string(&stored_parent_block_hash)
+                        block_number, expected_parent_block_hash, stored_parent_block_hash
                     );
                     continue;
                 }
@@ -217,7 +215,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 .commit()?;
 
             // Info the user on syncing the block once all the data is stored.
-            info!("Added block {} with hash {}.", block_number, block_hash_to_string(&block_hash));
+            info!("Added block {} with hash {}.", block_number, block_hash);
         } else {
             debug!(
                 "Storing ommer state diff of block {} with hash {:?}.",
@@ -468,9 +466,4 @@ impl StateSync {
     ) -> Self {
         Self { config, central_source: Arc::new(central_source), reader, writer }
     }
-}
-
-// TODO: Delete this function and implement Display for BlockHash in StarknetApi.
-fn block_hash_to_string(block_hash: &BlockHash) -> String {
-    format!("0x{}", hex::encode(block_hash.0.bytes()))
 }
