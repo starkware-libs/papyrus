@@ -37,6 +37,10 @@ impl Config {
     pub fn load(args: Vec<String>) -> Result<Self, ConfigError> {
         ConfigBuilder::build(args)
     }
+
+    pub fn get_config_representation(&self) -> Result<String, ConfigError> {
+        Ok(serde_yaml::to_string(self)?)
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
