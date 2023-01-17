@@ -1,28 +1,45 @@
+# The chain to follow.
+# More information: https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id
 chain_id: SN_MAIN
 central:
+    # Maximum number of concurrent requests to the central for getting a type of data (for example, blocks). 
     concurrent_requests: 10
+    # The central URL. It should match chain_id.  
     url: https://alpha-mainnet.starknet.io/
+    # In case of failed requests to the central.
     retry:
+        # Base waiting time after a failed request. After that, the time increases exponentially.
         retry_base_millis: 30
+        # Max waiting time after a failed request.
         retry_max_delay_millis: 30000
+        # Maximum number of retries before the node crashes.
         max_retries: 10
-#   Optional headers for SN-client.
-#   http_headers:
-#       header_name: header_value
+    # Optional headers for SN-client.
+    # http_headers:
+    #   header_name_1: header_value_1
+    #   header_name_2: header_value_2
 
 gateway:
+    # IP:PORT of the node to query its storage.
     server_address: 0.0.0.0:8080
+    # Maximum chunk size supported by the node in get_events requests.
     max_events_chunk_size: 1000
+    # Maximum number of keys supported by the node in get_events requests.
     max_events_keys: 100
 
 monitoring_gateway:
+    # IP:PORT of the node to query its status. 
     server_address: 0.0.0.0:8081
 
 storage:
     db:
+        # Path of the node's storage. The path does not create automatically.
         path: ./data
+        # Max size for the node's storage.
         max_size: 1099511627776 # 1TB.
 
 sync:
+    # Time between queries for an update after the node is synchronized.
     block_propagation_sleep_duration_secs: 10
+    # Waiting time after a non panic error.
     recoverable_error_sleep_duration_secs: 10
