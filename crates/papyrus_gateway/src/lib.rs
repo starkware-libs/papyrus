@@ -304,6 +304,11 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let header =
             get_block_header_by_number(&txn, block_number).map_err(internal_server_error)?;
 
+        let transaction = txn
+            .get_transaction(transaction_index)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| Error::from(JsonRpcError::TransactionHashNotFound))?;
+
         let thin_tx_output = txn
             .get_transaction_output(transaction_index)
             .map_err(internal_server_error)?
@@ -319,7 +324,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         Ok(TransactionReceiptWithStatus {
             receipt: TransactionReceipt::from_transaction_output(
                 output,
-                transaction_hash,
+                &transaction,
                 header.block_hash,
                 block_number,
             ),
