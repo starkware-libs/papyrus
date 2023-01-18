@@ -7,7 +7,7 @@ use futures::stream::BoxStream;
 use futures::{future, pin_mut, TryStreamExt};
 use futures_util::StreamExt;
 use indexmap::IndexMap;
-use log::{debug, warn};
+use log::debug;
 #[cfg(test)]
 use mockall::automock;
 use serde::{Deserialize, Serialize};
@@ -159,7 +159,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                             current_block_number = current_block_number.next();
                         }
                         Err(err) => {
-                            warn!("Received error for state diff {}: {:?}.", current_block_number, err);
+                            debug!("Received error for state diff {}: {:?}.", current_block_number, err);
                             yield Err(err);
                             return;
                         }

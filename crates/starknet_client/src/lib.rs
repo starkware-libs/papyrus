@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::fmt::{self, Display, Formatter};
 
 use async_trait::async_trait;
-use log::warn;
+use log::debug;
 #[cfg(any(feature = "testing", test))]
 use mockall::automock;
 use reqwest::header::HeaderMap;
@@ -257,7 +257,7 @@ impl StarknetClient {
                 message: _,
             })) => Ok(None),
             Err(err) => {
-                warn!("Failed to get block number {:?} from starknet server.", block_number);
+                debug!("Failed to get block number {:?} from starknet server.", block_number);
                 Err(err)
             }
         }
@@ -287,7 +287,7 @@ impl StarknetClientTrait for StarknetClient {
                 message: _,
             })) => Ok(None),
             Err(err) => {
-                warn!("Failed to get class with hash {:?} from starknet server.", class_hash);
+                debug!("Failed to get class with hash {:?} from starknet server.", class_hash);
                 Err(err)
             }
         }
@@ -306,7 +306,7 @@ impl StarknetClientTrait for StarknetClient {
                 Ok(None)
             }
             Err(err) => {
-                warn!(
+                debug!(
                     "Failed to get state update for block number {:?} from starknet server.",
                     block_number
                 );
