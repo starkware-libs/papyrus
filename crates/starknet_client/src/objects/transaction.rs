@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
 use starknet_api::hash::StarkHash;
 use starknet_api::transaction::{
-    CallData, ContractAddressSalt, DeclareTransactionOutput, DeployAccountTransactionOutput,
+    Calldata, ContractAddressSalt, DeclareTransactionOutput, DeployAccountTransactionOutput,
     DeployTransactionOutput, EthAddress, Event, Fee, InvokeTransactionOutput,
     L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, MessageToL1, TransactionHash,
     TransactionOffsetInBlock, TransactionOutput, TransactionSignature, TransactionVersion,
@@ -74,7 +74,7 @@ pub struct L1HandlerTransaction {
     pub nonce: Nonce,
     pub contract_address: ContractAddress,
     pub entry_point_selector: EntryPointSelector,
-    pub calldata: CallData,
+    pub calldata: Calldata,
     pub r#type: TransactionType,
 }
 
@@ -123,7 +123,7 @@ pub struct DeployTransaction {
     pub contract_address: ContractAddress,
     pub contract_address_salt: ContractAddressSalt,
     pub class_hash: ClassHash,
-    pub constructor_calldata: CallData,
+    pub constructor_calldata: Calldata,
     pub transaction_hash: TransactionHash,
     #[serde(default)]
     pub version: TransactionVersion,
@@ -148,7 +148,7 @@ pub struct DeployAccountTransaction {
     pub contract_address: ContractAddress,
     pub contract_address_salt: ContractAddressSalt,
     pub class_hash: ClassHash,
-    pub constructor_calldata: CallData,
+    pub constructor_calldata: Calldata,
     pub nonce: Nonce,
     pub max_fee: Fee,
     pub signature: TransactionSignature,
@@ -176,7 +176,7 @@ impl From<DeployAccountTransaction> for starknet_api::transaction::DeployAccount
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct InvokeTransaction {
-    pub calldata: CallData,
+    pub calldata: Calldata,
     pub contract_address: ContractAddress,
     pub entry_point_selector: Option<EntryPointSelector>,
     pub nonce: Option<Nonce>,

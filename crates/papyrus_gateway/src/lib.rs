@@ -171,7 +171,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
             transactions.iter().map(|transaction| transaction.transaction_hash()).collect();
 
         Ok(Block {
-            status: BlockStatus::default(),
+            status: BlockStatus::AcceptedOnL2,
             header,
             transactions: Transactions::Hashes(transaction_hashes),
         })
@@ -184,7 +184,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let transactions = get_block_txs_by_number(&txn, block_number)?;
 
         Ok(Block {
-            status: BlockStatus::default(),
+            status: BlockStatus::AcceptedOnL2,
             header,
             transactions: Transactions::Full(
                 transactions.into_iter().map(TransactionWithType::from).collect(),
