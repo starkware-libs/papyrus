@@ -46,8 +46,8 @@ pub enum StateSyncError {
     #[error(transparent)]
     CentralSourceError(#[from] CentralError),
     #[error(
-        "Parent block hash of block {block_number:?} is not consistent with the stored block. \
-         Expected {expected_parent_block_hash:?}, found {stored_parent_block_hash:?}."
+        "Parent block hash of block {block_number} is not consistent with the stored block. \
+         Expected {expected_parent_block_hash}, found {stored_parent_block_hash}."
     )]
     ParentBlockHashMismatch {
         block_number: BlockNumber,
@@ -55,8 +55,8 @@ pub enum StateSyncError {
         stored_parent_block_hash: BlockHash,
     },
     #[error(
-        "Received state diff of block {block_number:?} and block hash {block_hash:?}, didn't find \
-         a matching header (neither in the ommer headers)."
+        "Received state diff of block {block_number} and block hash {block_hash}, didn't find a \
+         matching header (neither in the ommer headers)."
     )]
     StateDiffWithoutMatchingHeader { block_number: BlockNumber, block_hash: BlockHash },
 }
@@ -206,7 +206,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     ) -> StateSyncResult {
         if !self.is_reverted_state_diff(block_number, block_hash)? {
             debug!(
-                "Storing state diff of block {} with hash {:?}: {:#?}.",
+                "Storing state diff of block {} with hash {}: {:#?}.",
                 block_number, block_hash, state_diff
             );
             self.writer

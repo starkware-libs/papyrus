@@ -307,7 +307,7 @@ impl StarknetClientTrait for StarknetClient {
             }
             Err(err) => {
                 warn!(
-                    "Failed to get state update for block number {:?} from starknet server.",
+                    "Failed to get state update for block number {} from starknet server.",
                     block_number
                 );
                 Err(err)
