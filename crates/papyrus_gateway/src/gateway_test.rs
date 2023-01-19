@@ -830,12 +830,12 @@ async fn get_transaction_receipt() {
         .commit()
         .unwrap();
 
-    let transaction_hash = block.body.transactions.index(0).transaction_hash();
+    let transaction = block.body.transactions.index(0);
     let output = TransactionOutput::from(block.body.transaction_outputs.index(0).clone());
     let expected_receipt = TransactionReceiptWithStatus {
         receipt: TransactionReceipt::from_transaction_output(
             output,
-            transaction_hash,
+            transaction,
             block.header.block_hash,
             block.header.block_number,
         ),
@@ -844,7 +844,7 @@ async fn get_transaction_receipt() {
     let res = module
         .call::<_, TransactionReceiptWithStatus>(
             "starknet_getTransactionReceipt",
-            [transaction_hash],
+            [transaction.transaction_hash()],
         )
         .await
         .unwrap();
