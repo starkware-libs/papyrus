@@ -1,6 +1,6 @@
 pub mod body;
 pub mod compression_utils;
-mod db;
+pub mod db;
 pub mod header;
 pub mod ommer;
 mod serializers;
@@ -25,11 +25,10 @@ use starknet_api::transaction::{
 };
 
 use crate::body::events::ThinTransactionOutput;
-pub use crate::db::serialization::{StorageSerde, StorageSerdeError};
 use crate::db::{
-    open_env, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier, RO, RW,
+    open_env, DbConfig, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier,
+    TransactionKind, RO, RW,
 };
-pub use crate::db::{DbConfig, TransactionKind};
 use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
 
 pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, StorageWriter)> {
