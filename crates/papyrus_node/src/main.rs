@@ -6,11 +6,12 @@ use papyrus_node::config::Config;
 use papyrus_storage::{open_storage, StorageReader, StorageWriter};
 use papyrus_sync::{CentralError, CentralSource, StateSync, StateSyncError};
 use tracing::info;
+use tracing::metadata::LevelFilter;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
 // TODO: Add to config.
-const DEFAULT_LEVEL: &str = "info";
+const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
 
 async fn run_threads(config: Config) -> anyhow::Result<()> {
     let (storage_reader, storage_writer) = open_storage(config.storage.db_config.clone())?;
@@ -45,16 +46,17 @@ async fn run_threads(config: Config) -> anyhow::Result<()> {
     }
 }
 
-// TODO: add dynamic level filtering.
-// TODO: filter out logs from dependencies (happens when RUST_LOG=DEBUG)
-// TODO: define and implement configurable filtering.
+// TODO(yair): add dynamic level filtering.
+// TODO(dan): filter out logs from dependencies (happens when RUST_LOG=DEBUG)
+// TODO(yair): define and implement configurable filtering.
 fn configure_tracing() {
     let fmt_layer = fmt::layer().compact().with_target(false);
     let level_filter_layer =
-        EnvFilter::try_from_default_env().or_else(|_| EnvFilter::try_new(DEFAULT_LEVEL)).unwrap();
+        EnvFilter::builder().with_default_directive(DEFAULT_LEVEL.into()).from_env_lossy();
 
-    let subscriber = tracing_subscriber::registry().with(fmt_layer).with(level_filter_layer);
-    tracing::subscriber::set_global_default(subscriber).unwrap();
+    // This sets a single subscriber to all of the threads. We may want to implement different
+    // subscriber for some threads and use set_global_default instead of init.
+    tracing_subscriber::registry().with(fmt_layer).with(level_filter_layer).init();
 }
 
 #[tokio::main]
