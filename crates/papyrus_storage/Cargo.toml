@@ -25,7 +25,7 @@ test_utils = { path = "../test_utils", optional = true }
 thiserror = { version = "1.0.31" }
 tokio = { version = "1.18.2", features = ["full","sync"] }
 tokio-stream = { version = "0.1.8" }
-tracing = { version = "0.1", features = ["log"] }
+tracing = { version = "0.1.37", features = ["log"] }
 url = { version = "2.2.2" }
 
 [dev-dependencies]

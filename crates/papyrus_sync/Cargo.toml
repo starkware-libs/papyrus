@@ -22,7 +22,7 @@ papyrus_storage = { path = "../papyrus_storage" }
 thiserror = { version = "1.0.31" }
 tokio = { version = "1.18.2", features = ["full","sync"] }
 tokio-stream = { version = "0.1.8" }
-tracing = { version = "0.1", features = ["log"] }
+tracing = { version = "0.1.37" }
 url = { version = "2.2.2" }
 
 [dev-dependencies]
