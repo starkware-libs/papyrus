@@ -153,11 +153,9 @@ use struct_field_names;
 pub enum StorageError {
     #[error(transparent)]
     InnerError(#[from] DbError),
-    #[error("Marker mismatch (expected {expected:?}, found {found:?}).")]
+    #[error("Marker mismatch (expected {expected}, found {found}).")]
     MarkerMismatch { expected: BlockNumber, found: BlockNumber },
-    #[error(
-        "Block hash {block_hash:?} already exists, when adding block number {block_number:?}."
-    )]
+    #[error("Block hash {block_hash} already exists, when adding block number {block_number}.")]
     BlockHashAlreadyExists { block_hash: BlockHash, block_number: BlockNumber },
     #[error(
         "Transaction hash {tx_hash:?} already exists, when adding transaction \
@@ -172,12 +170,10 @@ pub enum StorageError {
     ClassAlreadyExists { class_hash: ClassHash },
     #[error(
         "State diff redefined a nonce {nonce:?} for contract {contract_address:?} at block \
-         {block_number:?}."
+         {block_number}."
     )]
     NonceReWrite { nonce: Nonce, block_number: BlockNumber, contract_address: ContractAddress },
-    #[error(
-        "Cannot revert block {revert_block_number:?}, current marker is {block_number_marker:?}."
-    )]
+    #[error("Cannot revert block {revert_block_number}, current marker is {block_number_marker}.")]
     InvalidRevert { revert_block_number: BlockNumber, block_number_marker: BlockNumber },
     #[error(
         "Event with index {event_index:?} emitted from contract address {from_address:?} was not \
@@ -186,7 +182,7 @@ pub enum StorageError {
     EventNotFound { event_index: EventIndex, from_address: ContractAddress },
     #[error("DB in inconsistent state: {msg:?}.")]
     DBInconsistency { msg: String },
-    #[error("Header of block with hash {block_hash:?} already exists in ommer table.")]
+    #[error("Header of block with hash {block_hash} already exists in ommer table.")]
     OmmerHeaderAlreadyExists { block_hash: BlockHash },
     #[error("Ommer transaction key {tx_key:?} already exists.")]
     OmmerTransactionKeyAlreadyExists { tx_key: OmmerTransactionKey },
@@ -197,26 +193,22 @@ pub enum StorageError {
          exists."
     )]
     OmmerEventAlreadyExists { contract_address: ContractAddress, event_key: OmmerEventKey },
-    #[error("Ommer state diff of block {block_hash:?} already exists.")]
+    #[error("Ommer state diff of block {block_hash} already exists.")]
     OmmerStateDiffAlreadyExists { block_hash: BlockHash },
-    #[error("Ommer class {class_hash:?} of block {block_hash:?} already exists.")]
+    #[error("Ommer class {class_hash:?} of block {block_hash} already exists.")]
     OmmerClassAlreadyExists { block_hash: BlockHash, class_hash: ClassHash },
-    #[error(
-        "Ommer deployed contract {contract_address:?} of block {block_hash:?} already exists."
-    )]
+    #[error("Ommer deployed contract {contract_address:?} of block {block_hash} already exists.")]
     OmmerDeployedContractAlreadyExists { block_hash: BlockHash, contract_address: ContractAddress },
     #[error(
-        "Ommer storage key {key:?} of contract {contract_address:?} of block {block_hash:?} \
-         already exists."
+        "Ommer storage key {key:?} of contract {contract_address:?} of block {block_hash} already \
+         exists."
     )]
     OmmerStorageKeyAlreadyExists {
         block_hash: BlockHash,
         contract_address: ContractAddress,
         key: StorageKey,
     },
-    #[error(
-        "Ommer nonce of contract {contract_address:?} of block {block_hash:?} already exists."
-    )]
+    #[error("Ommer nonce of contract {contract_address:?} of block {block_hash} already exists.")]
     OmmerNonceAlreadyExists { block_hash: BlockHash, contract_address: ContractAddress },
 }
 

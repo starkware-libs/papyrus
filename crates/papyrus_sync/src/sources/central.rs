@@ -45,7 +45,7 @@ pub enum CentralError {
     StateUpdateNotFound,
     #[error("Could not find a class definitions.")]
     ClassNotFound,
-    #[error("Could not find a block with block number {:?}.", block_number)]
+    #[error("Could not find a block with block number {}.", block_number)]
     BlockNotFound { block_number: BlockNumber },
     #[error(transparent)]
     StarknetApiError(#[from] Arc<StarknetApiError>),
@@ -147,7 +147,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                             };
                             debug!(
                                 "Received new state update of block {current_block_number} with \
-                                 hash {block_hash:?}. State diff: {state_diff:?}, \
+                                 hash {block_hash}. State diff: {state_diff:?}, \
                                  deployed_contract_class_definitions: {deployed_contract_class_definitions:?}."
                             );
                             yield Ok((
