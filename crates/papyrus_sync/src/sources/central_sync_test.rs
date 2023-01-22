@@ -278,7 +278,7 @@ async fn sync_with_revert() {
                         let expected_block_hash = create_block_hash(bn, true);
                         if block_hash != expected_block_hash {
                             error!(
-                                "Wrong hash for block {}. Got {:?}, Expected {:?}.",
+                                "Wrong hash for block {}. Got {}, Expected {}.",
                                 bn, block_hash, expected_block_hash
                             );
                             return CheckStoragePredicateResult::Error;

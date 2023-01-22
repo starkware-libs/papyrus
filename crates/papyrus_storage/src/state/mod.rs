@@ -249,7 +249,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         // diff that wasn't synced yet.
         if current_state_marker <= block_number {
             debug!(
-                "Attempt to revert a non-existing state diff of block {:?}. Returning without an \
+                "Attempt to revert a non-existing state diff of block {}. Returning without an \
                  action.",
                 block_number
             );

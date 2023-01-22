@@ -64,15 +64,15 @@ pub struct Block {
 #[derive(thiserror::Error, Debug)]
 pub enum TransactionReceiptsError {
     #[error(
-        "In block number {:?} there are {:?} transactions and {:?} transaction receipts.",
+        "In block number {} there are {} transactions and {} transaction receipts.",
         block_number,
         num_of_txs,
         num_of_receipts
     )]
     WrongNumberOfReceipts { block_number: BlockNumber, num_of_txs: usize, num_of_receipts: usize },
     #[error(
-        "In block number {:?}, transaction in index {:?} with hash {:?} and type {:?} has a \
-         receipt with mismatched fields.",
+        "In block number {}, transaction in index {:?} with hash {:?} and type {:?} has a receipt \
+         with mismatched fields.",
         block_number,
         tx_index,
         tx_hash,
@@ -85,7 +85,7 @@ pub enum TransactionReceiptsError {
         tx_type: TransactionType,
     },
     #[error(
-        "In block number {:?}, transaction in index {:?} with hash {:?} has a receipt with \
+        "In block number {}, transaction in index {:?} with hash {:?} has a receipt with \
          transaction hash {:?}.",
         block_number,
         tx_index,
@@ -99,7 +99,7 @@ pub enum TransactionReceiptsError {
         receipt_tx_hash: TransactionHash,
     },
     #[error(
-        "In block number {:?}, transaction in index {:?} with hash {:?} has a receipt with \
+        "In block number {}, transaction in index {:?} with hash {:?} has a receipt with \
          transaction index {:?}.",
         block_number,
         tx_index,
