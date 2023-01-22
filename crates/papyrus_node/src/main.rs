@@ -10,7 +10,7 @@ use tracing::metadata::LevelFilter;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
-// TODO: Add to config.
+// TODO(yair): Add to config.
 const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
 
 async fn run_threads(config: Config) -> anyhow::Result<()> {
