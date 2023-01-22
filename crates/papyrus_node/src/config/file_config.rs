@@ -18,6 +18,7 @@ use crate::config::ConfigBuilder;
 // doesn't have to specify parameters that he doesn't wish to override (in that case the previous
 // value remains).
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct FileConfigFormat {
     chain_id: Option<ChainId>,
     central: Option<Central>,
@@ -59,6 +60,7 @@ impl FileConfigFormat {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[serde(deny_unknown_fields)]
 struct Central {
     concurrent_requests: Option<usize>,
     url: Option<String>,
@@ -91,6 +93,7 @@ impl Central {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[serde(deny_unknown_fields)]
 struct Retry {
     retry_base_millis: Option<u64>,
     retry_max_delay_millis: Option<u64>,
@@ -112,6 +115,7 @@ impl Retry {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[serde(deny_unknown_fields)]
 struct Gateway {
     server_address: Option<String>,
     max_events_chunk_size: Option<usize>,
@@ -133,6 +137,7 @@ impl Gateway {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[serde(deny_unknown_fields)]
 struct MonitoringGateway {
     server_address: Option<String>,
 }
@@ -146,6 +151,7 @@ impl MonitoringGateway {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[serde(deny_unknown_fields)]
 struct Storage {
     db: Option<Db>,
 }
@@ -159,6 +165,7 @@ impl Storage {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[serde(deny_unknown_fields)]
 struct Db {
     path: Option<String>,
     max_size: Option<usize>,
@@ -176,6 +183,7 @@ impl Db {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[serde(deny_unknown_fields)]
 struct Sync {
     block_propagation_sleep_duration_secs: Option<u64>,
     recoverable_error_sleep_duration_secs: Option<u64>,
