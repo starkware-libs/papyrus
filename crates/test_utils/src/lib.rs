@@ -29,6 +29,13 @@ use starknet_api::transaction::{
     TransactionSignature, TransactionVersion,
 };
 
+// Sets the workspace root to be path from the project root.
+pub fn set_workspace_root(path: &str) {
+    let workspace_root =
+        Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap()).join("../..").join(path);
+    env::set_current_dir(workspace_root).expect("Couldn't set working dir.");
+}
+
 pub fn read_json_file(path_in_resource_dir: &str) -> serde_json::Value {
     // Reads from the directory containing the manifest at run time, same as current working
     // directory.
