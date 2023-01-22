@@ -19,7 +19,7 @@ use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, StateDiff};
 use starknet_api::transaction::TransactionOffsetInBlock;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, debug_span, error, info, info_span, warn};
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
 
@@ -76,6 +76,44 @@ pub enum SyncEvent {
         // state diff.
         deployed_contract_class_definitions: Vec<(ClassHash, ContractClass)>,
     },
+}
+
+impl SyncEvent {
+    fn block_number(&self) -> BlockNumber {
+        match self {
+            SyncEvent::BlockAvailable { block_number, block: _ } => *block_number,
+            SyncEvent::StateDiffAvailable {
+                block_number,
+                block_hash: _,
+                state_diff: _,
+                deployed_contract_class_definitions: _,
+            } => *block_number,
+        }
+    }
+
+    fn block_hash(&self) -> BlockHash {
+        match &self {
+            SyncEvent::BlockAvailable { block_number: _, block } => block.header.block_hash,
+            SyncEvent::StateDiffAvailable {
+                block_number: _,
+                block_hash,
+                state_diff: _,
+                deployed_contract_class_definitions: _,
+            } => *block_hash,
+        }
+    }
+
+    fn event_type(&self) -> &str {
+        match &self {
+            SyncEvent::BlockAvailable { block_number: _, block: _ } => "Block",
+            SyncEvent::StateDiffAvailable {
+                block_number: _,
+                block_hash: _,
+                state_diff: _,
+                deployed_contract_class_definitions: _,
+            } => "StateDiff",
+        }
+    }
 }
 
 impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSync<TCentralSource> {
@@ -165,6 +203,14 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
 
     // Tries to store the incoming data.
     async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult {
+        let span = info_span!(
+            "process_sync_event",
+            block_number = %sync_event.block_number(),
+            block_hash = %sync_event.block_hash(),
+            event_type = sync_event.event_type()
+        );
+        let _enter = span.enter();
+
         match sync_event {
             SyncEvent::BlockAvailable { block_number, block } => {
                 self.store_block(block_number, block)
@@ -188,7 +234,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         // parent hash to the current hash.
         self.verify_parent_block_hash(block_number, &block)?;
 
-        debug!("Storing block: {:#?}.", block);
+        debug!("Storing block.");
         self.writer
             .begin_rw_txn()?
             .append_header(block_number, &block.header)?
@@ -205,22 +251,15 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         deployed_contract_class_definitions: Vec<(ClassHash, ContractClass)>,
     ) -> StateSyncResult {
         if !self.is_reverted_state_diff(block_number, block_hash)? {
-            debug!(
-                "Storing state diff of block {} with hash {}: {:#?}.",
-                block_number, block_hash, state_diff
-            );
+            debug!("Storing state diff.");
             self.writer
                 .begin_rw_txn()?
                 .append_state_diff(block_number, state_diff, deployed_contract_class_definitions)?
                 .commit()?;
-
             // Info the user on syncing the block once all the data is stored.
-            info!("Added block {} with hash {}.", block_number, block_hash);
+            info!("Added block.");
         } else {
-            debug!(
-                "Storing ommer state diff of block {} with hash {:?}.",
-                block_number, block_hash
-            );
+            debug!("Storing ommer state diff.");
             self.writer
                 .begin_rw_txn()?
                 .insert_ommer_state_diff(
@@ -272,10 +311,15 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
 
         // Revert last blocks if needed.
         let mut last_block_in_storage = header_marker.prev();
+        let span = debug_span!("handle_block_reverts", last_block_in_storage = %header_marker);
+        let _enter = span.enter();
         while let Some(block_number) = last_block_in_storage {
+            let span = info_span!("handle_single_block_revert", %block_number);
+            let _enter = span.enter();
             if self.should_revert_block(block_number).await? {
-                info!("Reverting block {}.", block_number);
+                debug!("Reverting block.");
                 self.revert_block(block_number)?;
+                info!("Reverted block.");
                 last_block_in_storage = block_number.prev();
             } else {
                 break;

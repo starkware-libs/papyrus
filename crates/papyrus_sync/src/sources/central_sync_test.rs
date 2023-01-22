@@ -13,7 +13,7 @@ use starknet_api::hash::StarkFelt;
 use starknet_api::stark_felt;
 use starknet_api::state::StateDiff;
 use tokio::sync::Mutex;
-use tracing::{debug, error};
+use tracing::{debug, debug_span, error};
 
 use super::central::BlocksStream;
 use crate::sources::central::{MockCentralSourceTrait, StateUpdatesStream};
@@ -40,10 +40,12 @@ async fn check_storage(
     let interval_time = timeout.div_f32(MAX_CHECK_STORAGE_ITERATIONS.into());
     let mut interval = tokio::time::interval(interval_time);
     for i in 0..MAX_CHECK_STORAGE_ITERATIONS {
-        debug!("== Checking predicate on storage ({}/{}). ==", i + 1, MAX_CHECK_STORAGE_ITERATIONS);
+        let span = debug_span!("check_storage", i, MAX_CHECK_STORAGE_ITERATIONS);
+        let _g = span.enter();
+        debug!("== Checking predicate on storage. ==");
         match predicate(&reader) {
             CheckStoragePredicateResult::InProgress => {
-                debug!("== Cechk finished, test still in progress. ==");
+                debug!("== Check finished, test still in progress. ==");
                 interval.tick().await;
             }
             CheckStoragePredicateResult::Passed => {
