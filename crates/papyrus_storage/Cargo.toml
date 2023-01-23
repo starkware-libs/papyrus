@@ -14,7 +14,6 @@ futures-util = { version = "0.3.21" }
 indexmap = { version = "1.9.2", features = ["serde"] }
 integer-encoding = { version = "3.0.4" }
 libmdbx = { version = ">=0.1.5,<0.1.8", features = ["lifetimed-bytes"] }
-log = { version = "0.4" }
 rand = { version = "0.8.5", optional = true }
 rand_chacha = { version = "0.3.1", optional = true }
 reqwest = { version = "0.11", features = ["json", "blocking"] }
@@ -26,6 +25,7 @@ test_utils = { path = "../test_utils", optional = true }
 thiserror = { version = "1.0.31" }
 tokio = { version = "1.18.2", features = ["full","sync"] }
 tokio-stream = { version = "0.1.8" }
+tracing = { version = "0.1.37", features = ["log"] }
 url = { version = "2.2.2" }
 
 [dev-dependencies]

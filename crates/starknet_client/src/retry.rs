@@ -6,10 +6,10 @@ use std::fmt::Debug;
 use std::iter::Take;
 use std::time::Duration;
 
-use log::debug;
 use serde::{Deserialize, Serialize};
 use tokio_retry::strategy::ExponentialBackoff;
 use tokio_retry::{Action, Condition, RetryIf};
+use tracing::debug;
 
 /// A configuration for the retry mechanism.
 #[derive(Clone, Copy, Serialize, Deserialize)]
