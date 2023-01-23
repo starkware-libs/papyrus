@@ -20,7 +20,7 @@ log = { version = "0.4" }
 log4rs = { version =  "1.1.1" }
 reqwest = { version = "0.11", features = ["json", "blocking"] }
 serde = { version = "1.0.130", features = ["derive"] }
-serde_json = { version = "1.0.81" }
+serde_json = { version = "1.0.81", features = ["preserve_order"] }
 serde_yaml = { version = "0.9.16" }
 starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "0a11ad3" }
 starknet_client = { path = "../starknet_client" }

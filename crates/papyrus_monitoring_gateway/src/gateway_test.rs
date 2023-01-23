@@ -30,7 +30,7 @@ async fn test_config() -> Result<(), anyhow::Error> {
         general_config_representation: serde_json::to_value(TEST_CONFIG_REPRESENTATION)?,
     }
     .into_rpc();
-    let rep = module.call::<_, String>("starknet_nodeCofig", EmptyParams::new()).await?;
+    let rep = module.call::<_, String>("starknet_nodeConfig", EmptyParams::new()).await?;
     assert_eq!(rep, TEST_CONFIG_REPRESENTATION);
     Ok(())
 }

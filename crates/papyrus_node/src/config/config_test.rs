@@ -5,13 +5,13 @@ use std::path::{Path, PathBuf};
 
 use starknet_api::core::ChainId;
 use tempfile::NamedTempFile;
-use test_utils::set_workspace_root;
 
 use crate::config::{Config, ConfigBuilder};
 
 #[test]
 fn load_default_config() {
-    set_workspace_root("");
+    let workspace_root = Path::new("../../");
+    env::set_current_dir(workspace_root).expect("Couldn't set working dir.");
     // TODO(spapini): Move the config closer.
     Config::load(vec![]).expect("Failed to load the config.");
 }

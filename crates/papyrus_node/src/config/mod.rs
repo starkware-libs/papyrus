@@ -25,7 +25,7 @@ use starknet_client::RetryConfig;
 const CONFIG_FILE: &str = "config/config.yaml";
 
 /// The configurations of the various components of the node.
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct Config {
     pub gateway: GatewayConfig,
     pub central: CentralSourceConfig,
@@ -41,7 +41,7 @@ impl Config {
     }
 
     pub fn get_config_representation(&self) -> Result<Value, ConfigError> {
-        Ok(serde_json::to_value(self)?)
+        Ok(serde_json::to_value(FileConfigFormat::from(self.clone()))?)
     }
 }
 
