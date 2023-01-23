@@ -4,6 +4,7 @@ mod sync_test;
 
 mod sources;
 
+use std::fmt::{Debug, Display};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -19,11 +20,11 @@ use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, StateDiff};
 use starknet_api::transaction::TransactionOffsetInBlock;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, debug_span, error, info, instrument, warn, Instrument};
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub struct SyncConfig {
     pub block_propagation_sleep_duration: Duration,
     pub recoverable_error_sleep_duration: Duration,
@@ -78,7 +79,24 @@ pub enum SyncEvent {
     },
 }
 
+impl Display for SyncEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SyncEvent::BlockAvailable { block_number, block } => {
+                write!(f, "BlockAvailable({block_number}, {})", block.header.block_hash)
+            }
+            SyncEvent::StateDiffAvailable {
+                block_number,
+                block_hash,
+                state_diff: _,
+                deployed_contract_class_definitions: _,
+            } => write!(f, "StateDiffAvailable({block_number}, {block_hash})"),
+        }
+    }
+}
+
 impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSync<TCentralSource> {
+    #[instrument(skip(self), level = "trace", err, fields(?config=self.config))]
     pub async fn run(&mut self) -> StateSyncResult {
         info!("State sync started.");
         loop {
@@ -135,6 +153,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     //  1. If needed, revert blocks from the end of the chain.
     //  2. Create infinite block and state diff streams to fetch data from the central source.
     //  3. Fetch data from the streams with unblocking wait while there is no new data.
+    #[instrument(skip(self), level = "debug", err)]
     async fn sync_while_ok(&mut self) -> StateSyncResult {
         self.handle_block_reverts().await?;
         let block_stream = stream_new_blocks(
@@ -164,6 +183,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     }
 
     // Tries to store the incoming data.
+    #[instrument(skip_all, level = "info", err, fields(%sync_event))]
     async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult {
         match sync_event {
             SyncEvent::BlockAvailable { block_number, block } => {
@@ -183,12 +203,13 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         }
     }
 
+    #[instrument(skip_all, level = "info", err)]
     fn store_block(&mut self, block_number: BlockNumber, block: Block) -> StateSyncResult {
         // Assuming the central source is trusted, detect reverts by comparing the incoming block's
         // parent hash to the current hash.
         self.verify_parent_block_hash(block_number, &block)?;
 
-        debug!("Storing block: {:#?}.", block);
+        debug!("Storing block.");
         self.writer
             .begin_rw_txn()?
             .append_header(block_number, &block.header)?
@@ -197,6 +218,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         Ok(())
     }
 
+    #[instrument(skip_all, level = "info", err)]
     fn store_state_diff(
         &mut self,
         block_number: BlockNumber,
@@ -205,22 +227,15 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         deployed_contract_class_definitions: Vec<(ClassHash, ContractClass)>,
     ) -> StateSyncResult {
         if !self.is_reverted_state_diff(block_number, block_hash)? {
-            debug!(
-                "Storing state diff of block {} with hash {}: {:#?}.",
-                block_number, block_hash, state_diff
-            );
+            debug!("Storing state diff.");
             self.writer
                 .begin_rw_txn()?
                 .append_state_diff(block_number, state_diff, deployed_contract_class_definitions)?
                 .commit()?;
-
             // Info the user on syncing the block once all the data is stored.
-            info!("Added block {} with hash {}.", block_number, block_hash);
+            info!("Added block.");
         } else {
-            debug!(
-                "Storing ommer state diff of block {} with hash {:?}.",
-                block_number, block_hash
-            );
+            debug!("Storing ommer state diff.");
             self.writer
                 .begin_rw_txn()?
                 .insert_ommer_state_diff(
@@ -234,6 +249,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     }
 
     // Compares the block's parent hash to the stored block.
+    #[instrument(skip(self, block), level = "debug", err, fields(block_hash=%block.header.block_hash, prev_hash))]
     fn verify_parent_block_hash(
         &self,
         block_number: BlockNumber,
@@ -267,6 +283,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     }
 
     // Reverts data if needed.
+    #[instrument(skip(self), level = "debug", err, fields(last_block_in_storage))]
     async fn handle_block_reverts(&mut self) -> Result<(), StateSyncError> {
         let header_marker = self.reader.begin_ro_txn()?.get_header_marker()?;
 
@@ -274,7 +291,6 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         let mut last_block_in_storage = header_marker.prev();
         while let Some(block_number) = last_block_in_storage {
             if self.should_revert_block(block_number).await? {
-                info!("Reverting block {}.", block_number);
                 self.revert_block(block_number)?;
                 last_block_in_storage = block_number.prev();
             } else {
@@ -285,8 +301,10 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     }
 
     // Deletes the block data from the storage, moving it to the ommer tables.
+    #[instrument(skip(self), level = "info", err)]
     #[allow(clippy::expect_fun_call)]
     fn revert_block(&mut self, block_number: BlockNumber) -> StateSyncResult {
+        debug!("Reverting block.");
         // TODO: Modify revert functions so they return the deleted data, and use it for inserting
         // to the ommer tables.
         let mut txn = self.writer.begin_rw_txn()?;
@@ -326,11 +344,13 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         } else {
             txn.commit()?;
         }
+        info!("Reverted block.");
         Ok(())
     }
 
     /// Checks if centrals block hash at the block number is different from ours (or doesn't exist).
     /// If so, a revert is required.
+    #[instrument(skip(self), level = "debug", ret, err)]
     async fn should_revert_block(&self, block_number: BlockNumber) -> Result<bool, StateSyncError> {
         if let Some(central_block_hash) = self.central_source.get_block_hash(block_number).await? {
             let storage_block_header =
@@ -346,6 +366,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         }
     }
 
+    #[instrument(skip(self), level = "debug", ret, err)]
     fn is_reverted_state_diff(
         &self,
         block_number: BlockNumber,
@@ -369,6 +390,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     }
 }
 
+#[instrument(skip(reader, central_source), level = "debug")]
 fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
@@ -378,7 +400,6 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
         loop {
             let header_marker = reader.begin_ro_txn()?.get_header_marker()?;
             let last_block_number = central_source.get_block_marker().await?;
-            debug!("Downloading blocks [{} - {}).", header_marker, last_block_number);
             if header_marker == last_block_number {
                 tokio::time::sleep(block_propation_sleep_duration).await;
                 continue;
@@ -386,9 +407,17 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
             let block_stream =
                 central_source.stream_new_blocks(header_marker, last_block_number).fuse();
             pin_mut!(block_stream);
-            while let Some(maybe_block) = block_stream.next().await {
+            while let Some(maybe_block) = block_stream
+                .next()
+                .instrument(
+                    debug_span!("next_block", from = %header_marker, up_to = %last_block_number),
+                )
+                .await
+            {
                 match maybe_block {
-                    Ok((block_number, block)) => yield Ok(SyncEvent::BlockAvailable { block_number, block }),
+                    Ok((block_number, block)) => {
+                        yield Ok(SyncEvent::BlockAvailable { block_number, block })
+                    }
                     Err(err) => {
                         yield Err(StateSyncError::CentralSourceError(err));
                         break;
@@ -399,6 +428,7 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
     }
 }
 
+#[instrument(skip(reader, central_source), level = "debug")]
 fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
@@ -410,7 +440,6 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
             let state_marker = txn.get_state_marker()?;
             let last_block_number = txn.get_header_marker()?;
             drop(txn);
-            debug!("Downloading state diffs [{} - {}).", state_marker, last_block_number);
             if state_marker == last_block_number {
                 tokio::time::sleep(block_propation_sleep_duration).await;
                 continue;
@@ -419,7 +448,14 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
                 central_source.stream_state_updates(state_marker, last_block_number).fuse();
             pin_mut!(state_diff_stream);
 
-            while let Some(maybe_state_diff) = state_diff_stream.next().await {
+            while let Some(maybe_state_diff) = state_diff_stream
+                .next()
+                .instrument(debug_span!(
+                    "next_state_diff",
+                    from = %state_marker,
+                    up_to = %last_block_number
+                ))
+                .await {
                 match maybe_state_diff {
                     Ok((
                         block_number,
@@ -458,6 +494,7 @@ pub fn sort_state_diff(diff: &mut StateDiff) {
 pub type StateSync = GenericStateSync<CentralSource>;
 
 impl StateSync {
+    #[instrument(skip(central_source, reader, writer), level = "trace")]
     pub fn new(
         config: SyncConfig,
         central_source: CentralSource,

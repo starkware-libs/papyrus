@@ -12,7 +12,7 @@ use tokio_retry::{Action, Condition, RetryIf};
 use tracing::debug;
 
 /// A configuration for the retry mechanism.
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub struct RetryConfig {
     /// The initial waiting time in milliseconds.
     pub retry_base_millis: u64,

@@ -18,12 +18,12 @@ use starknet_client::{
     ClientCreationError, ClientError, RetryConfig, StarknetClient, StarknetClientTrait, StateUpdate,
 };
 use tokio_stream::Stream;
-use tracing::debug;
+use tracing::{debug, instrument, trace};
 
 use super::stream_utils::MyStreamExt;
 
 pub type CentralResult<T> = Result<T, CentralError>;
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct CentralSourceConfig {
     pub concurrent_requests: usize,
     pub url: String,
@@ -82,6 +82,7 @@ pub(crate) type StateUpdatesStream<'a> = BoxStream<
 impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSourceTrait
     for GenericCentralSource<TStarknetClient>
 {
+    #[instrument(skip(self), level = "debug", err)]
     async fn get_block_marker(&self) -> Result<BlockNumber, CentralError> {
         self.starknet_client
             .block_number()
@@ -90,6 +91,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
             .map_or(Ok(BlockNumber::default()), |block_number| Ok(block_number.next()))
     }
 
+    #[instrument(skip(self), level = "debug", err)]
     async fn get_block_hash(
         &self,
         block_number: BlockNumber,
@@ -101,6 +103,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
             .map_or(Ok(None), |block| Ok(Some(block.block_hash)))
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn stream_state_updates(
         &self,
         initial_block_number: BlockNumber,
@@ -108,6 +111,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
     ) -> StateUpdatesStream<'_> {
         let mut current_block_number = initial_block_number;
         let stream = stream! {
+            debug!("Downloading state updates.");
             while current_block_number < up_to_block_number {
                 let state_update_stream = self.state_update_stream(futures_util::stream::iter(
                     current_block_number.iter_up_to(up_to_block_number),
@@ -147,9 +151,9 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                             };
                             debug!(
                                 "Received new state update of block {current_block_number} with \
-                                 hash {block_hash}. State diff: {state_diff:?}, \
-                                 deployed_contract_class_definitions: {deployed_contract_class_definitions:?}."
+                                 hash {block_hash}."
                             );
+                            trace!("State diff: {state_diff:#?}, deployed_contract_class_definitions: {deployed_contract_class_definitions:#?}.");
                             yield Ok((
                                 current_block_number,
                                 block_hash,
@@ -171,6 +175,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
     }
 
     // TODO(shahak): rename.
+    #[instrument(skip(self), level = "debug")]
     fn stream_new_blocks(
         &self,
         initial_block_number: BlockNumber,
@@ -178,6 +183,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
     ) -> BlocksStream<'_> {
         let mut current_block_number = initial_block_number;
         let stream = stream! {
+            debug!("Downloading blocks.");
             while current_block_number < up_to_block_number {
                 let mut res =
                     futures_util::stream::iter(current_block_number.iter_up_to(up_to_block_number))
@@ -186,7 +192,8 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                 while let Some(maybe_block) = res.next().await {
                     let res = match maybe_block {
                         Ok(Some(block)) => {
-                            debug!("Received new block: {:#?}.", block);
+                            debug!("Received new block: {}.", current_block_number);
+                            trace!("Block: {:#?}.", block);
                             Block::try_from(block)
                                 .map_err(|err| CentralError::ClientError(Arc::new(err)))
                         }
@@ -216,6 +223,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
 impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
     GenericCentralSource<TStarknetClient>
 {
+    #[instrument(skip_all, level = "debug")]
     fn state_update_stream(
         &self,
         block_number_stream: impl Stream<Item = BlockNumber> + Send + Sync + 'static,
@@ -289,6 +297,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
 pub type CentralSource = GenericCentralSource<StarknetClient>;
 
 impl CentralSource {
+    #[instrument(level = "trace", err)]
     pub fn new(config: CentralSourceConfig) -> Result<CentralSource, ClientCreationError> {
         let starknet_client =
             StarknetClient::new(&config.url, config.http_headers, config.retry_config)?;

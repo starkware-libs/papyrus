@@ -13,7 +13,7 @@ use starknet_api::hash::StarkFelt;
 use starknet_api::stark_felt;
 use starknet_api::state::StateDiff;
 use tokio::sync::Mutex;
-use tracing::{debug, error};
+use tracing::{debug, debug_span, error, instrument, Instrument};
 
 use super::central::BlocksStream;
 use crate::sources::central::{MockCentralSourceTrait, StateUpdatesStream};
@@ -29,7 +29,10 @@ enum CheckStoragePredicateResult {
     Error,
 }
 
+// TODO(yair): switch from simple_logger to something suitable with tracing.
+
 // Checks periodically if the storage reached a certain state defined by f.
+#[instrument(skip(reader, predicate), level = "debug")]
 async fn check_storage(
     reader: StorageReader,
     timeout: Duration,
@@ -40,10 +43,12 @@ async fn check_storage(
     let interval_time = timeout.div_f32(MAX_CHECK_STORAGE_ITERATIONS.into());
     let mut interval = tokio::time::interval(interval_time);
     for i in 0..MAX_CHECK_STORAGE_ITERATIONS {
-        debug!("== Checking predicate on storage ({}/{}). ==", i + 1, MAX_CHECK_STORAGE_ITERATIONS);
+        let span = debug_span!("check_storage", i, MAX_CHECK_STORAGE_ITERATIONS);
+        let _g = span.enter();
+        debug!("== Checking predicate on storage. ==");
         match predicate(&reader) {
             CheckStoragePredicateResult::InProgress => {
-                debug!("== Cechk finished, test still in progress. ==");
+                debug!("== Check finished, test still in progress. ==");
                 interval.tick().await;
             }
             CheckStoragePredicateResult::Passed => {
@@ -61,6 +66,7 @@ async fn check_storage(
 }
 
 // Runs sync loop with a mocked central - infinite loop unless panicking.
+#[instrument(skip(reader, writer, central), level = "debug")]
 async fn run_sync(
     reader: StorageReader,
     writer: StorageWriter,
@@ -296,9 +302,17 @@ async fn sync_with_revert() {
 
     // Assemble the pieces for the revert flow test.
     let check_flow = async {
-        assert!(check_storage_before_revert_future.await);
-        signal_revert.await;
-        assert!(check_storage_after_revert_future.await);
+        assert!(
+            check_storage_before_revert_future
+                .instrument(debug_span!("check_storage_before_revert"))
+                .await
+        );
+        signal_revert.instrument(debug_span!("signal_revert")).await;
+        assert!(
+            check_storage_after_revert_future
+                .instrument(debug_span!("check_storage_after_revert_future"))
+                .await
+        );
     };
 
     tokio::select! {
