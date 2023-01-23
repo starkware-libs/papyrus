@@ -161,9 +161,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                                 },
                             ),
                         ),
-                        declared_classes: IndexMap::from_iter(
-                            declared_classes.to_vec().into_iter(),
-                        ),
+                        declared_classes: IndexMap::from_iter(declared_classes.iter().cloned()),
                         nonces: state_update.state_diff.nonces,
                     };
                     debug!(
