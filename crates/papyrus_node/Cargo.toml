@@ -15,8 +15,6 @@ papyrus_gateway = { path = "../papyrus_gateway" }
 papyrus_monitoring_gateway = { path = "../papyrus_monitoring_gateway" }
 jsonrpsee = { version = "0.13.1", features = ["full"] }
 libmdbx = { version = "0.1.5", features = ["lifetimed-bytes"] }
-log = { version = "0.4" }
-log4rs = { version =  "1.1.1" }
 reqwest = { version = "0.11", features = ["json", "blocking"] }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" }
@@ -26,6 +24,8 @@ starknet_client = { path = "../starknet_client" }
 thiserror = { version = "1.0.31" }
 tokio = { version = "1.18.2", features = ["full","sync"] }
 tokio-stream = { version = "0.1.8" }
+tracing = { version = "0.1.37" }
+tracing-subscriber = {version = "0.3.16", features = ["env-filter"]}
 url = { version = "2.2.2" }
 
 [dev-dependencies]

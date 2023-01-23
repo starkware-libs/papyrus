@@ -9,7 +9,6 @@ use std::time::Duration;
 
 use async_stream::stream;
 use futures_util::{pin_mut, select, Stream, StreamExt};
-use log::{debug, error, info, warn};
 use papyrus_storage::body::{BodyStorageReader, BodyStorageWriter};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::ommer::{OmmerStorageReader, OmmerStorageWriter};
@@ -20,6 +19,7 @@ use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, StateDiff};
 use starknet_api::transaction::TransactionOffsetInBlock;
+use tracing::{debug, error, info, warn};
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
 

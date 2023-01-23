@@ -15,7 +15,6 @@ use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::http_server::{HttpServerBuilder, HttpServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::{ErrorObject, INTERNAL_ERROR_MSG};
-use log::{error, info};
 use papyrus_storage::body::events::EventsReader;
 use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::db::TransactionKind;
@@ -30,6 +29,7 @@ use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
     EventIndexInTransactionOutput, TransactionHash, TransactionOffsetInBlock,
 };
+use tracing::{error, info};
 
 use crate::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, EventsChunk,

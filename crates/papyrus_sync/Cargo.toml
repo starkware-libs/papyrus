@@ -13,7 +13,6 @@ futures-util = { version = "0.3.21" }
 hex = { version = "0.4.3" }
 indexmap = { version = "1.9.2", features = ["serde"] }
 libmdbx = { version = "0.1.5", features = ["lifetimed-bytes"] }
-log = { version = "0.4" }
 reqwest = { version = "0.11", features = ["json", "blocking"] }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" }
@@ -23,6 +22,7 @@ papyrus_storage = { path = "../papyrus_storage" }
 thiserror = { version = "1.0.31" }
 tokio = { version = "1.18.2", features = ["full","sync"] }
 tokio-stream = { version = "0.1.8" }
+tracing = { version = "0.1.37" }
 url = { version = "2.2.2" }
 
 [dev-dependencies]

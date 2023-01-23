@@ -1,11 +1,17 @@
 use std::env::args;
 
-use log::info;
 use papyrus_gateway::run_server;
 use papyrus_monitoring_gateway::run_server as monitoring_run_server;
 use papyrus_node::config::Config;
 use papyrus_storage::{open_storage, StorageReader, StorageWriter};
 use papyrus_sync::{CentralError, CentralSource, StateSync, StateSyncError};
+use tracing::info;
+use tracing::metadata::LevelFilter;
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::{fmt, EnvFilter};
+
+// TODO(yair): Add to config.
+const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
 
 async fn run_threads(config: Config) -> anyhow::Result<()> {
     let (storage_reader, storage_writer) = open_storage(config.storage.db_config.clone())?;
@@ -40,10 +46,23 @@ async fn run_threads(config: Config) -> anyhow::Result<()> {
     }
 }
 
+// TODO(yair): add dynamic level filtering.
+// TODO(dan): filter out logs from dependencies (happens when RUST_LOG=DEBUG)
+// TODO(yair): define and implement configurable filtering.
+fn configure_tracing() {
+    let fmt_layer = fmt::layer().compact().with_target(false);
+    let level_filter_layer =
+        EnvFilter::builder().with_default_directive(DEFAULT_LEVEL.into()).from_env_lossy();
+
+    // This sets a single subscriber to all of the threads. We may want to implement different
+    // subscriber for some threads and use set_global_default instead of init.
+    tracing_subscriber::registry().with(fmt_layer).with(level_filter_layer).init();
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let config = Config::load(args().collect())?;
-    log4rs::init_file("config/log4rs.yaml", Default::default())?;
+    configure_tracing();
     info!("Booting up.");
     run_threads(config).await
 }
