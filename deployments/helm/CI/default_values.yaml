@@ -37,6 +37,10 @@ services:
 pvc:
   size: 1000Gi
   storageClass: premium-rwo
+  restoreFromSnapshot:
+    enabled: true
+    volumeSnapshotClassName: papyrus
+    snapshotName: papyrus-benchmark
 
 # Configure Ingress.
 ingress:

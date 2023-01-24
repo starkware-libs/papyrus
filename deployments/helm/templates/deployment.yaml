@@ -22,10 +22,9 @@ spec:
         app: papyrus
         {{- include "papyrus.selectorLabels" . | nindent 8 }}
     spec:
-      # TODO:
-      # securityContext:
-      #   runAsUser: 1000
-      #   fsGroup: 1000
+      TODO:
+      securityContext:
+        fsGroup: 1000
       volumes:
         - name: data
           persistentVolumeClaim:

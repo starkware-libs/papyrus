@@ -10,3 +10,9 @@ spec:
   resources:
     requests:
       storage: "{{ .Values.pvc.size }}"
+  {{- if .Values.pvc.restoreFromSnapshot.enabled }}
+  dataSource:
+    name: {{ .Values.pvc.restoreFromSnapshot.snapshotName }}
+    kind: VolumeSnapshot
+    apiGroup: snapshot.storage.k8s.io
+  {{- end }}
