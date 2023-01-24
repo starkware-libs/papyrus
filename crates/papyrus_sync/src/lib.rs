@@ -9,6 +9,7 @@ use std::time::Duration;
 
 use async_stream::stream;
 use futures_util::{pin_mut, select, Stream, StreamExt};
+use indexmap::IndexMap;
 use papyrus_storage::body::{BodyStorageReader, BodyStorageWriter};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::ommer::{OmmerStorageReader, OmmerStorageWriter};
@@ -74,7 +75,7 @@ pub enum SyncEvent {
         // TODO(anatg): Remove once there are no more deployed contracts with undeclared classes.
         // Class definitions of deployed contracts with classes that were not declared in this
         // state diff.
-        deployed_contract_class_definitions: Vec<(ClassHash, ContractClass)>,
+        deployed_contract_class_definitions: IndexMap<ClassHash, ContractClass>,
     },
 }
 
@@ -202,7 +203,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         block_number: BlockNumber,
         block_hash: BlockHash,
         state_diff: StateDiff,
-        deployed_contract_class_definitions: Vec<(ClassHash, ContractClass)>,
+        deployed_contract_class_definitions: IndexMap<ClassHash, ContractClass>,
     ) -> StateSyncResult {
         if !self.is_reverted_state_diff(block_number, block_hash)? {
             debug!(

@@ -75,7 +75,7 @@ pub trait CentralSourceTrait {
 pub(crate) type BlocksStream<'a> = BoxStream<'a, Result<(BlockNumber, Block), CentralError>>;
 pub(crate) type StateUpdatesStream<'a> = BoxStream<
     'a,
-    CentralResult<(BlockNumber, BlockHash, StateDiff, Vec<(ClassHash, ContractClass)>)>,
+    CentralResult<(BlockNumber, BlockHash, StateDiff, IndexMap<ClassHash, ContractClass>)>,
 >;
 
 #[async_trait]
@@ -115,10 +115,10 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                 pin_mut!(state_update_stream);
                 while let Some(maybe_state_update) = state_update_stream.next().await {
                     match maybe_state_update {
-                        Ok((state_update, classes)) => {
+                        Ok((state_update, mut classes)) => {
                             let block_hash = state_update.block_hash;
-                            let (declared_classes, deployed_contract_class_definitions) =
-                                classes.split_at(state_update.state_diff.declared_contracts.len());
+                            let deployed_contract_class_definitions =
+                                classes.split_off(state_update.state_diff.declared_contracts.len());
                             let state_diff = StateDiff {
                                 deployed_contracts: IndexMap::from_iter(
                                     state_update
@@ -140,9 +140,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                                         },
                                     ),
                                 ),
-                                declared_classes: IndexMap::from_iter(
-                                    declared_classes.to_vec().into_iter(),
-                                ),
+                                declared_classes: classes,
                                 nonces: state_update.state_diff.nonces,
                             };
                             debug!(
@@ -154,7 +152,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                                 current_block_number,
                                 block_hash,
                                 state_diff,
-                                deployed_contract_class_definitions.to_vec(),
+                                deployed_contract_class_definitions,
                             ));
                             current_block_number = current_block_number.next();
                         }
@@ -219,7 +217,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
     fn state_update_stream(
         &self,
         block_number_stream: impl Stream<Item = BlockNumber> + Send + Sync + 'static,
-    ) -> impl Stream<Item = CentralResult<(StateUpdate, Vec<(ClassHash, ContractClass)>)>> {
+    ) -> impl Stream<Item = CentralResult<(StateUpdate, IndexMap<ClassHash, ContractClass>)>> {
         // Stream the state updates.
         let starknet_client = self.starknet_client.clone();
         let (state_updates0, mut state_updates1) = block_number_stream
@@ -265,7 +263,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
 
                 // Get the next state declared and deployed classes.
                 let len = state_update.state_diff.class_hashes().len();
-                let classes: Option<Result<Vec<(ClassHash, ContractClass)>, _>> =
+                let classes: Option<Result<IndexMap<ClassHash, ContractClass>, _>> =
                     flat_classes.take_n(len).await.map(|v| {
                         v.into_iter()
                             .map(|(class_hash, class)| match class {

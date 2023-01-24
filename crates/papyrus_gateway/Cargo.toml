@@ -28,3 +28,4 @@ papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 test_utils = { path = "../test_utils" }
 starknet_api = { git = "https://github.com/starkware-libs/starknet-api", features = ["testing"] , rev = "0a11ad3" }
 web3 = { version = "0.18.0" }
+indexmap = { version = "1.9.2", features = ["serde"] }

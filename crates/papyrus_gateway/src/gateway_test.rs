@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 use std::ops::Index;
 
 use assert_matches::assert_matches;
+use indexmap::IndexMap;
 use jsonrpsee::core::Error;
 use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::http_server::types::error::CallError;
@@ -278,7 +279,7 @@ async fn get_storage_at() {
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), vec![])
+        .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
         .unwrap()
         .commit()
         .unwrap();
@@ -369,7 +370,7 @@ async fn get_class_hash_at() {
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), vec![])
+        .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
         .unwrap()
         .commit()
         .unwrap();
@@ -457,7 +458,7 @@ async fn get_nonce() {
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), vec![])
+        .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
         .unwrap()
         .commit()
         .unwrap();
@@ -748,12 +749,12 @@ async fn get_state_update() {
         .append_state_diff(
             parent_header.block_number,
             starknet_api::state::StateDiff::default(),
-            vec![],
+            IndexMap::new(),
         )
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), vec![])
+        .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
         .unwrap()
         .commit()
         .unwrap();
@@ -890,12 +891,12 @@ async fn get_class() {
         .append_state_diff(
             parent_header.block_number,
             starknet_api::state::StateDiff::default(),
-            vec![],
+            IndexMap::new(),
         )
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), vec![])
+        .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
         .unwrap()
         .commit()
         .unwrap();
@@ -1010,12 +1011,12 @@ async fn get_class_at() {
         .append_state_diff(
             parent_header.block_number,
             starknet_api::state::StateDiff::default(),
-            vec![],
+            IndexMap::new(),
         )
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), vec![])
+        .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
         .unwrap()
         .commit()
         .unwrap();
@@ -1326,13 +1327,13 @@ async fn serialize_returns_valid_json() {
         .unwrap()
         .append_body(parent_block.header.block_number, parent_block.body)
         .unwrap()
-        .append_state_diff(parent_block.header.block_number, StateDiff::default(), vec![])
+        .append_state_diff(parent_block.header.block_number, StateDiff::default(), IndexMap::new())
         .unwrap()
         .append_header(block.header.block_number, &block.header)
         .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
-        .append_state_diff(block.header.block_number, state_diff.clone(), vec![])
+        .append_state_diff(block.header.block_number, state_diff.clone(), IndexMap::new())
         .unwrap()
         .commit()
         .unwrap();
