@@ -121,7 +121,6 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                             current_block_number = current_block_number.next();
                         },
                         Err(err) => {
-                            debug!("Received error for state diff {}: {:?}.", current_block_number, err);
                             yield Err(err);
                             return;
                         }
@@ -204,7 +203,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                         Ok(block) => {
                             yield Ok((current_block_number, block));
                             current_block_number = current_block_number.next();
-                        },
+                        }
                         Err(err) => {
                             yield (Err(err));
                             return;
