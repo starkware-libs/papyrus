@@ -9,7 +9,7 @@ rustLogLevel:
 # The Docker image (including any tag and repository name)
 image:
   repository: ghcr.io/starkware-libs/papyrus
-  tag: latest
+  tag: dev
   pullPolicy: Always
 
 # The default resources for the pod.
