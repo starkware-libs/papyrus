@@ -1,4 +1,6 @@
 // This code is inspired by the pathfinder load test.
+// To run this load test, run locally a node and then run:
+//      cargo run -r -p papyrus_load_test -- -t 10s -H http://127.0.0.1:8080
 
 use std::env;
 use std::fs::File;
@@ -69,21 +71,6 @@ pub async fn get_block_with_tx_hashes_by_hash<T: DeserializeOwned>(
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // The OUTPUT_FILE env is expected to be a valid path in the os.
-    // If exists, aggregated results will be written to that path in the following json format:
-    // [
-    //     {
-    //         "name": <scenario name>,
-    //         "units": "Milliseconds",
-    //         "value": <scenario median time>,
-    //     },
-    // ]
-
-    let output_file = match env::var("OUTPUT_FILE") {
-        Ok(path) => Some(path),
-        Err(_) => None,
-    };
-
     let metrics = GooseAttack::initialize()?
         .register_scenario(
             scenario!("block_by_number")
@@ -96,8 +83,16 @@ async fn main() -> anyhow::Result<()> {
         .execute()
         .await?;
 
-    // Optionally write results to the given path.
-    if let Some(path) = output_file {
+    // The OUTPUT_FILE env is expected to be a valid path in the os.
+    // If exists, aggregated results will be written to that path in the following json format:
+    // [
+    //     {
+    //         "name": <scenario name>,
+    //         "units": "Milliseconds",
+    //         "value": <scenario median time>,
+    //     },
+    // ]
+    if let Ok(path) = env::var("OUTPUT_FILE") {
         let file = File::create(path)?;
         let mut data: Vec<Entry> = vec![];
         for scenario in metrics.scenarios {
