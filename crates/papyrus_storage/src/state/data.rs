@@ -35,12 +35,7 @@ impl ThinStateDiff {
 
 impl From<StateDiff> for ThinStateDiff {
     fn from(diff: StateDiff) -> Self {
-        Self {
-            deployed_contracts: diff.deployed_contracts,
-            storage_diffs: diff.storage_diffs,
-            declared_contract_hashes: diff.declared_classes.into_keys().collect(),
-            nonces: diff.nonces,
-        }
+        Self::from_state_diff(diff).0
     }
 }
 
