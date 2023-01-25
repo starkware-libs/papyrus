@@ -73,10 +73,8 @@ pub trait CentralSourceTrait {
 }
 
 pub(crate) type BlocksStream<'a> = BoxStream<'a, Result<(BlockNumber, Block), CentralError>>;
-pub(crate) type StateUpdatesStream<'a> = BoxStream<
-    'a,
-    CentralResult<(BlockNumber, BlockHash, StateDiff, Vec<(ClassHash, ContractClass)>)>,
->;
+type CentralStateUpdate = (BlockNumber, BlockHash, StateDiff, Vec<(ClassHash, ContractClass)>);
+pub(crate) type StateUpdatesStream<'a> = BoxStream<'a, CentralResult<CentralStateUpdate>>;
 
 #[async_trait]
 impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSourceTrait
@@ -107,67 +105,30 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
         up_to_block_number: BlockNumber,
     ) -> StateUpdatesStream<'_> {
         let mut current_block_number = initial_block_number;
-        let stream = stream! {
+        stream! {
             while current_block_number < up_to_block_number {
                 let state_update_stream = self.state_update_stream(futures_util::stream::iter(
                     current_block_number.iter_up_to(up_to_block_number),
                 ));
                 pin_mut!(state_update_stream);
-                while let Some(maybe_state_update) = state_update_stream.next().await {
-                    match maybe_state_update {
-                        Ok((state_update, classes)) => {
-                            let block_hash = state_update.block_hash;
-                            let (declared_classes, deployed_contract_class_definitions) =
-                                classes.split_at(state_update.state_diff.declared_contracts.len());
-                            let state_diff = StateDiff {
-                                deployed_contracts: IndexMap::from_iter(
-                                    state_update
-                                        .state_diff
-                                        .deployed_contracts
-                                        .iter()
-                                        .map(|dc| (dc.address, dc.class_hash)),
-                                ),
-                                storage_diffs: IndexMap::from_iter(
-                                    state_update.state_diff.storage_diffs.into_iter().map(
-                                        |(address, entries)| {
-                                            (
-                                                address,
-                                                entries
-                                                    .into_iter()
-                                                    .map(|se| (se.key, se.value))
-                                                    .collect(),
-                                            )
-                                        },
-                                    ),
-                                ),
-                                declared_classes: IndexMap::from_iter(
-                                    declared_classes.to_vec().into_iter(),
-                                ),
-                                nonces: state_update.state_diff.nonces,
-                            };
-                            debug!(
-                                "Received new state update of block {current_block_number} with \
-                                 hash {block_hash}. State diff: {state_diff:?}, \
-                                 deployed_contract_class_definitions: {deployed_contract_class_definitions:?}."
-                            );
-                            yield Ok((
-                                current_block_number,
-                                block_hash,
-                                state_diff,
-                                deployed_contract_class_definitions.to_vec(),
-                            ));
+                while let Some(maybe_client_state_update) = state_update_stream.next().await {
+                    let maybe_central_state_update = client_to_central_state_update(
+                        current_block_number, maybe_client_state_update
+                    );
+                    match maybe_central_state_update {
+                        Ok(central_state_update) => {
+                            yield Ok(central_state_update);
                             current_block_number = current_block_number.next();
-                        }
+                        },
                         Err(err) => {
-                            debug!("Received error for state diff {}: {:?}.", current_block_number, err);
                             yield Err(err);
                             return;
                         }
                     }
                 }
             }
-        };
-        stream.boxed()
+        }
+        .boxed()
     }
 
     // TODO(shahak): rename.
@@ -177,39 +138,92 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
         up_to_block_number: BlockNumber,
     ) -> BlocksStream<'_> {
         let mut current_block_number = initial_block_number;
-        let stream = stream! {
+        stream! {
             while current_block_number < up_to_block_number {
                 let mut res =
                     futures_util::stream::iter(current_block_number.iter_up_to(up_to_block_number))
                         .map(|bn| async move { self.starknet_client.block(bn).await })
                         .buffered(self.concurrent_requests);
-                while let Some(maybe_block) = res.next().await {
-                    let res = match maybe_block {
-                        Ok(Some(block)) => {
-                            debug!("Received new block: {:#?}.", block);
-                            Block::try_from(block)
-                                .map_err(|err| CentralError::ClientError(Arc::new(err)))
-                        }
-                        Ok(None) => {
-                            Err(CentralError::BlockNotFound { block_number: current_block_number })
-                        }
-                        Err(err) => Err(CentralError::ClientError(Arc::new(err))),
-                    };
-                    match res {
+                while let Some(maybe_client_block) = res.next().await {
+                    let maybe_central_block = client_to_central_block(current_block_number, maybe_client_block);
+                    match maybe_central_block {
                         Ok(block) => {
                             yield Ok((current_block_number, block));
                             current_block_number = current_block_number.next();
                         }
                         Err(err) => {
-                            debug!("Received error for block {}: {:?}.", current_block_number, err);
                             yield (Err(err));
                             return;
                         }
                     }
                 }
             }
-        };
-        stream.boxed()
+        }.boxed()
+    }
+}
+
+fn client_to_central_state_update(
+    current_block_number: BlockNumber,
+    maybe_client_state_update: CentralResult<(StateUpdate, Vec<(ClassHash, ContractClass)>)>,
+) -> CentralResult<CentralStateUpdate> {
+    match maybe_client_state_update {
+        Ok((state_update, classes)) => {
+            let block_hash = state_update.block_hash;
+            let (declared_classes, deployed_contract_class_definitions) =
+                classes.split_at(state_update.state_diff.declared_contracts.len());
+            let state_diff = StateDiff {
+                deployed_contracts: IndexMap::from_iter(
+                    state_update
+                        .state_diff
+                        .deployed_contracts
+                        .iter()
+                        .map(|dc| (dc.address, dc.class_hash)),
+                ),
+                storage_diffs: IndexMap::from_iter(
+                    state_update.state_diff.storage_diffs.into_iter().map(|(address, entries)| {
+                        (address, entries.into_iter().map(|se| (se.key, se.value)).collect())
+                    }),
+                ),
+                declared_classes: IndexMap::from_iter(declared_classes.iter().cloned()),
+                nonces: state_update.state_diff.nonces,
+            };
+            debug!(
+                "Received new state update of block {current_block_number} with hash \
+                 {block_hash}. State diff: {state_diff:?}, deployed_contract_class_definitions: \
+                 {deployed_contract_class_definitions:?}."
+            );
+            Ok((
+                current_block_number,
+                block_hash,
+                state_diff,
+                deployed_contract_class_definitions.to_vec(),
+            ))
+        }
+        Err(err) => {
+            debug!("Received error for state diff {}: {:?}.", current_block_number, err);
+            Err(err)
+        }
+    }
+}
+
+fn client_to_central_block(
+    current_block_number: BlockNumber,
+    maybe_client_block: Result<Option<starknet_client::Block>, ClientError>,
+) -> CentralResult<Block> {
+    let res = match maybe_client_block {
+        Ok(Some(block)) => {
+            debug!("Received new block: {:#?}.", block);
+            Block::try_from(block).map_err(|err| CentralError::ClientError(Arc::new(err)))
+        }
+        Ok(None) => Err(CentralError::BlockNotFound { block_number: current_block_number }),
+        Err(err) => Err(CentralError::ClientError(Arc::new(err))),
+    };
+    match res {
+        Ok(block) => Ok(block),
+        Err(err) => {
+            debug!("Received error for block {}: {:?}.", current_block_number, err);
+            Err(err)
+        }
     }
 }
 
