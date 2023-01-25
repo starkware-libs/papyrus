@@ -30,6 +30,7 @@ pub struct CentralSourceConfig {
     pub http_headers: Option<HashMap<String, String>>,
     pub retry_config: RetryConfig,
 }
+
 pub struct GenericCentralSource<TStarknetClient: StarknetClientTrait + Send + Sync> {
     pub concurrent_requests: usize,
     pub starknet_client: Arc<TStarknetClient>,

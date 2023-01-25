@@ -24,5 +24,5 @@ storage:
         max_size: 1099511627776 # 1TB.
 
 sync:
-    block_propagation_sleep_duration_secs: 10
-    recoverable_error_sleep_duration_secs: 10
+    block_propagation_sleep_duration_secs: 100
+    recoverable_error_sleep_duration_secs: 1

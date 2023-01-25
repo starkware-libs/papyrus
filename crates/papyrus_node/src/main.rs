@@ -39,7 +39,7 @@ async fn run_threads(config: Config) -> anyhow::Result<()> {
                 CentralSource::new(config.central.clone()).map_err(CentralError::ClientCreation)?;
             let mut sync =
                 StateSync::new(sync_config, central_source, storage_reader.clone(), storage_writer);
-            return sync.run().await;
+            sync.run().await;
         }
 
         Ok(())
