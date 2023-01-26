@@ -137,25 +137,22 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
     ) -> BlocksStream<'_> {
-        let mut current_block_number = initial_block_number;
         stream! {
+            // TODO(dan): add explanation.
             let mut res =
-                futures_util::stream::iter(current_block_number.iter_up_to(up_to_block_number))
-                    .map(|bn| async move { self.starknet_client.block(bn).await })
+                futures_util::stream::iter(initial_block_number.iter_up_to(up_to_block_number))
+                    .map(|bn| async move { (bn, self.starknet_client.block(bn).await) })
                     .buffered(self.concurrent_requests);
-            while current_block_number < up_to_block_number {
-                while let Some(maybe_client_block) = res.next().await {
-                    let maybe_central_block =
-                        client_to_central_block(current_block_number, maybe_client_block);
-                    match maybe_central_block {
-                        Ok(block) => {
-                            yield Ok((current_block_number, block));
-                            current_block_number = current_block_number.next();
-                        }
-                        Err(err) => {
-                            yield (Err(err));
-                            return;
-                        }
+            while let Some((current_block_number, maybe_client_block)) = res.next().await {
+                let maybe_central_block =
+                    client_to_central_block(current_block_number, maybe_client_block);
+                match maybe_central_block {
+                    Ok(block) => {
+                        yield Ok((current_block_number, block));
+                    }
+                    Err(err) => {
+                        yield (Err(err));
+                        return;
                     }
                 }
             }
