@@ -13,12 +13,9 @@ use crate::{GatewayConfig, JsonRpcServer, JsonRpcServerImpl};
 pub async fn send_request(address: SocketAddr, method: &str, params: &str) -> serde_json::Value {
     let client = Client::new();
     let res_str = client
-        .post(format!("http://{:?}", address))
+        .post(format!("http://{address:?}"))
         .header("Content-Type", "application/json")
-        .body(format!(
-            r#"{{"jsonrpc":"2.0","id":"1","method":"{}","params":[{}]}}"#,
-            method, params
-        ))
+        .body(format!(r#"{{"jsonrpc":"2.0","id":"1","method":"{method}","params":[{params}]}}"#))
         .send()
         .await
         .unwrap()
@@ -61,7 +58,7 @@ pub async fn get_starknet_spec_api_schema(component_names: &[&str]) -> JSONSchem
     let mut components = String::from(r#"{"anyOf": ["#);
     for component in component_names {
         components +=
-            &format!(r##"{{"$ref": "file:///spec.json#/components/schemas/{}"}}"##, component);
+            &format!(r##"{{"$ref": "file:///spec.json#/components/schemas/{component}"}}"##);
         if Some(component) != component_names.last() {
             components += ", ";
         }

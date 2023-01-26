@@ -152,7 +152,7 @@ impl StarknetUrls {
 
 impl Display for StarknetError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 

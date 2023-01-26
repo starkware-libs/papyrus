@@ -250,8 +250,8 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             .get_block_header(prev_block_number)?
             .ok_or(StorageError::DBInconsistency {
                 msg: format!(
-                    "Missing block {} in the storage (for verifying block {}).",
-                    prev_block_number, block_number
+                    "Missing block {prev_block_number} in the storage (for verifying block \
+                     {block_number}).",
                 ),
             })?
             .block_hash;
@@ -298,7 +298,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             format!("Tried to revert a missing transactions of block {block_number}").as_str(),
         );
         let transaction_outputs = txn.get_block_transaction_outputs(block_number)?.expect(
-            format!("Tried to revert a missing transaction outputs of block {}", block_number)
+            format!("Tried to revert a missing transaction outputs of block {block_number}")
                 .as_str(),
         );
 
