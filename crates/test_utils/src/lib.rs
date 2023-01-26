@@ -3,7 +3,7 @@ use std::env;
 use std::fs::read_to_string;
 use std::hash::Hash;
 use std::ops::Index;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use indexmap::IndexMap;
@@ -29,11 +29,9 @@ use starknet_api::transaction::{
     TransactionSignature, TransactionVersion,
 };
 
-// Sets the workspace root to be path from the project root.
-pub fn set_workspace_root(path: &str) {
-    let workspace_root =
-        Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap()).join("../..").join(path);
-    env::set_current_dir(workspace_root).expect("Couldn't set working dir.");
+// Return the absolute  path from the project root.
+pub fn get_absolute_path(relative_path: &str) -> PathBuf {
+    Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap()).join("../..").join(relative_path)
 }
 
 pub fn read_json_file(path_in_resource_dir: &str) -> serde_json::Value {
