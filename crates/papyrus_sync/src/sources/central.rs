@@ -156,7 +156,8 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                     }
                 }
             }
-        }.boxed()
+        }
+        .boxed()
     }
 }
 
