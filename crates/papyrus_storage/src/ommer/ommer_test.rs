@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, StateNumber};
@@ -45,13 +46,13 @@ fn extract_body_data_from_storage(
 fn extract_state_diff_data_from_storage(
     reader: &StorageReader,
     block_number: BlockNumber,
-) -> (ThinStateDiff, Vec<(ClassHash, ContractClass)>) {
+) -> (ThinStateDiff, IndexMap<ClassHash, ContractClass>) {
     let state_number = StateNumber::right_after_block(block_number);
     let txn = reader.begin_ro_txn().unwrap();
     let thin_state_diff = txn.get_state_diff(block_number).unwrap().unwrap();
     let state_reader = txn.get_state_reader().unwrap();
     let class_hashes = &thin_state_diff.declared_contract_hashes;
-    let declared_classes: Vec<(ClassHash, ContractClass)> = class_hashes
+    let declared_classes: IndexMap<ClassHash, ContractClass> = class_hashes
         .iter()
         .map(|class_hash| {
             (
@@ -145,7 +146,7 @@ fn move_state_diff_to_ommer() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_state_diff(block_number, state_diff, vec![])
+        .append_state_diff(block_number, state_diff, IndexMap::new())
         .unwrap()
         .commit()
         .unwrap();
@@ -175,7 +176,7 @@ fn insert_raw_state_diff_to_ommer() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .insert_ommer_state_diff(header.block_hash, &thin_state_diff, &[])
+        .insert_ommer_state_diff(header.block_hash, &thin_state_diff, &IndexMap::new())
         .unwrap()
         .commit()
         .unwrap();

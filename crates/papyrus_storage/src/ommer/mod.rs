@@ -2,6 +2,7 @@
 #[path = "ommer_test.rs"]
 mod ommer_test;
 
+use indexmap::IndexMap;
 use starknet_api::block::{BlockHash, BlockHeader};
 use starknet_api::core::ClassHash;
 use starknet_api::state::ContractClass;
@@ -53,7 +54,7 @@ where
         self,
         block_hash: BlockHash,
         thin_state_diff: &ThinStateDiff,
-        declared_classes: &[(ClassHash, ContractClass)],
+        declared_classes: &IndexMap<ClassHash, ContractClass>,
     ) -> StorageResult<Self>;
 }
 
@@ -132,7 +133,7 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
         self,
         block_hash: BlockHash,
         thin_state_diff: &ThinStateDiff,
-        declared_classes: &[(ClassHash, ContractClass)],
+        declared_classes: &IndexMap<ClassHash, ContractClass>,
     ) -> StorageResult<Self> {
         let ommer_state_diffs_table = self.txn.open_table(&self.tables.ommer_state_diffs)?;
         let ommer_declared_classes_table =
