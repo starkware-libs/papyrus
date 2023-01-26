@@ -139,13 +139,14 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
     ) -> BlocksStream<'_> {
         let mut current_block_number = initial_block_number;
         stream! {
+            let mut res =
+                futures_util::stream::iter(current_block_number.iter_up_to(up_to_block_number))
+                    .map(|bn| async move { self.starknet_client.block(bn).await })
+                    .buffered(self.concurrent_requests);
             while current_block_number < up_to_block_number {
-                let mut res =
-                    futures_util::stream::iter(current_block_number.iter_up_to(up_to_block_number))
-                        .map(|bn| async move { self.starknet_client.block(bn).await })
-                        .buffered(self.concurrent_requests);
                 while let Some(maybe_client_block) = res.next().await {
-                    let maybe_central_block = client_to_central_block(current_block_number, maybe_client_block);
+                    let maybe_central_block =
+                        client_to_central_block(current_block_number, maybe_client_block);
                     match maybe_central_block {
                         Ok(block) => {
                             yield Ok((current_block_number, block));
