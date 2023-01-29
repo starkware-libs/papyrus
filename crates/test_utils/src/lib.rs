@@ -3,7 +3,7 @@ use std::env;
 use std::fs::read_to_string;
 use std::hash::Hash;
 use std::ops::Index;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use indexmap::IndexMap;
@@ -28,6 +28,11 @@ use starknet_api::transaction::{
     MessageToL2, Transaction, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
     TransactionSignature, TransactionVersion,
 };
+
+// Returns the absolute  path from the project root.
+pub fn get_absolute_path(relative_path: &str) -> PathBuf {
+    Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap()).join("../..").join(relative_path)
+}
 
 pub fn read_json_file(path_in_resource_dir: &str) -> serde_json::Value {
     // Reads from the directory containing the manifest at run time, same as current working
