@@ -13,7 +13,6 @@ papyrus_sync = { path = "../papyrus_sync" }
 futures-util = { version = "0.3.21" }
 papyrus_gateway = { path = "../papyrus_gateway" }
 papyrus_monitoring_gateway = { path = "../papyrus_monitoring_gateway" }
-test_utils={path="../test_utils"}
 jsonrpsee = { version = "0.13.1", features = ["full"] }
 libmdbx = { version = "0.1.5", features = ["lifetimed-bytes"] }
 reqwest = { version = "0.11", features = ["json", "blocking"] }
@@ -31,3 +30,4 @@ url = { version = "2.2.2" }
 
 [dev-dependencies]
 tempfile = { version = "3.3.0" }
+test_utils = { path = "../test_utils" }
