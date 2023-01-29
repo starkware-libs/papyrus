@@ -4,6 +4,7 @@ use std::time::Duration;
 use async_stream::stream;
 use async_trait::async_trait;
 use futures::StreamExt;
+use indexmap::IndexMap;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
@@ -142,7 +143,7 @@ async fn sync_happy_flow() {
                     block_number,
                     create_block_hash(block_number, false),
                     StateDiff::default(),
-                    vec![],
+                    IndexMap::new(),
                 ));
             }
         }
@@ -401,7 +402,7 @@ async fn sync_with_revert() {
                         if i.0 >= N_BLOCKS_BEFORE_REVERT {
                             yield Err(CentralError::BlockNotFound { block_number: i });
                         }
-                        yield Ok((i, create_block_hash(i, false), StateDiff::default(), vec![]));
+                        yield Ok((i, create_block_hash(i, false), StateDiff::default(), IndexMap::new()));
                     }
                 }
                 .boxed(),
@@ -415,7 +416,7 @@ async fn sync_with_revert() {
                             i,
                             create_block_hash(i, is_reverted_state_diff),
                             StateDiff::default(),
-                            vec![],
+                            IndexMap::new(),
                         ));
                     }
                 }

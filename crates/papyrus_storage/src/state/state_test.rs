@@ -27,7 +27,7 @@ fn append_state_diff() {
     let c_cls1 = ContractClass::default();
     let key0 = StorageKey(patricia_key!("0x1001"));
     let key1 = StorageKey(patricia_key!("0x101"));
-    let mut diff0 = StateDiff {
+    let diff0 = StateDiff {
         deployed_contracts: IndexMap::from([(c0, cl0), (c1, cl1)]),
         storage_diffs: IndexMap::from([
             (c0, IndexMap::from([(key0, stark_felt!("0x200")), (key1, stark_felt!("0x201"))])),
@@ -36,7 +36,7 @@ fn append_state_diff() {
         declared_classes: IndexMap::from([(cl0, c_cls0.clone()), (cl1, c_cls1)]),
         nonces: IndexMap::from([(c0, Nonce(StarkHash::from(1)))]),
     };
-    let mut diff1 = StateDiff {
+    let diff1 = StateDiff {
         deployed_contracts: IndexMap::from([(c2, cl0)]),
         storage_diffs: IndexMap::from([
             (c0, IndexMap::from([(key0, stark_felt!("0x300")), (key1, stark_felt!("0x0"))])),
@@ -54,11 +54,11 @@ fn append_state_diff() {
     let mut txn = writer.begin_rw_txn().unwrap();
     assert_eq!(txn.get_state_diff(BlockNumber(0)).unwrap(), None);
     assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap(), None);
-    txn = txn.append_state_diff(BlockNumber(0), diff0.clone(), vec![]).unwrap();
+    txn = txn.append_state_diff(BlockNumber(0), diff0.clone(), IndexMap::new()).unwrap();
     let thin_state_diff_0 = diff0.clone().into();
     assert_eq!(txn.get_state_diff(BlockNumber(0)).unwrap().unwrap(), thin_state_diff_0);
     assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap(), None);
-    txn = txn.append_state_diff(BlockNumber(1), diff1.clone(), vec![]).unwrap();
+    txn = txn.append_state_diff(BlockNumber(1), diff1.clone(), IndexMap::new()).unwrap();
     let thin_state_diff_1 = diff1.clone().into();
 
     txn.commit().unwrap();
@@ -66,12 +66,13 @@ fn append_state_diff() {
     // Check for ClassAlreadyExists error when trying to declare a different class to an existing
     // class hash.
     let txn = writer.begin_rw_txn().unwrap();
-    let (_, class) = diff1.declared_classes.iter_mut().next().unwrap();
+    let mut diff2 = StateDiff { declared_classes: diff1.declared_classes, ..StateDiff::default() };
+    let (_, class) = diff2.declared_classes.iter_mut().next().unwrap();
     class.abi = Some(vec![ContractClassAbiEntry::Function(FunctionAbiEntryWithType {
         r#type: FunctionAbiEntryType::Regular,
         entry: FunctionAbiEntry { name: String::from("junk"), inputs: vec![], outputs: vec![] },
     })]);
-    if let Err(err) = txn.append_state_diff(BlockNumber(2), diff1, vec![]) {
+    if let Err(err) = txn.append_state_diff(BlockNumber(2), diff2, IndexMap::new()) {
         assert_matches!(err, StorageError::ClassAlreadyExists { class_hash: _ });
     } else {
         panic!("Unexpected Ok.");
@@ -80,9 +81,11 @@ fn append_state_diff() {
     // Check for ContractAlreadyExists error when trying to deploy a different class hash to an
     // existing contract address.
     let txn = writer.begin_rw_txn().unwrap();
-    let (_, hash) = diff0.deployed_contracts.iter_mut().next().unwrap();
+    let mut diff2 =
+        StateDiff { deployed_contracts: diff0.deployed_contracts, ..StateDiff::default() };
+    let (_, hash) = diff2.deployed_contracts.iter_mut().next().unwrap();
     *hash = cl2;
-    if let Err(err) = txn.append_state_diff(BlockNumber(2), diff0, vec![]) {
+    if let Err(err) = txn.append_state_diff(BlockNumber(2), diff2, IndexMap::new()) {
         assert_matches!(err, StorageError::ContractAlreadyExists { address: _ });
     } else {
         panic!("Unexpected Ok.");
@@ -172,7 +175,7 @@ async fn revert_last_state_diff_success() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_state_diff(BlockNumber(0), state_diff, vec![])
+        .append_state_diff(BlockNumber(0), state_diff, IndexMap::new())
         .unwrap()
         .commit()
         .unwrap();
@@ -230,9 +233,9 @@ fn append_2_state_diffs(writer: &mut StorageWriter) {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_state_diff(BlockNumber(0), StateDiff::default(), vec![])
+        .append_state_diff(BlockNumber(0), StateDiff::default(), IndexMap::new())
         .unwrap()
-        .append_state_diff(BlockNumber(1), StateDiff::default(), vec![])
+        .append_state_diff(BlockNumber(1), StateDiff::default(), IndexMap::new())
         .unwrap()
         .commit()
         .unwrap();
@@ -263,9 +266,9 @@ fn revert_doesnt_delete_previously_declared_classes() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_state_diff(BlockNumber(0), diff0, vec![])
+        .append_state_diff(BlockNumber(0), diff0, IndexMap::new())
         .unwrap()
-        .append_state_diff(BlockNumber(1), diff1, vec![])
+        .append_state_diff(BlockNumber(1), diff1, IndexMap::new())
         .unwrap()
         .commit()
         .unwrap();
@@ -320,9 +323,9 @@ fn revert_state() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_state_diff(BlockNumber(0), state_diff0.clone(), vec![])
+        .append_state_diff(BlockNumber(0), state_diff0.clone(), IndexMap::new())
         .unwrap()
-        .append_state_diff(BlockNumber(1), state_diff1.clone(), vec![])
+        .append_state_diff(BlockNumber(1), state_diff1.clone(), IndexMap::new())
         .unwrap()
         .commit()
         .unwrap();
@@ -347,7 +350,7 @@ fn revert_state() {
     txn.commit().unwrap();
 
     let expected_deleted_state_diff = ThinStateDiff::from(state_diff1);
-    let expected_deleted_classes = vec![(class1, ContractClass::default())];
+    let expected_deleted_classes = IndexMap::from([(class1, ContractClass::default())]);
     assert_matches!(
         deleted_data,
         Some((thin_state_diff, class_definitions))

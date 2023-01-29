@@ -82,7 +82,7 @@ async fn state_update() {
         StarknetClient::new(&mockito::server_url(), None, get_test_config()).unwrap();
     let raw_state_update = read_resource_file("block_state_update.json");
     let mock =
-        mock("GET", &format!("/feeder_gateway/get_state_update?{}=123456", BLOCK_NUMBER_QUERY)[..])
+        mock("GET", &format!("/feeder_gateway/get_state_update?{BLOCK_NUMBER_QUERY}=123456")[..])
             .with_status(200)
             .with_body(&raw_state_update)
             .create();
@@ -195,11 +195,10 @@ async fn get_block() {
     let starknet_client =
         StarknetClient::new(&mockito::server_url(), None, get_test_config()).unwrap();
     let raw_block = read_resource_file("block.json");
-    let mock_block =
-        mock("GET", &format!("/feeder_gateway/get_block?{}=20", BLOCK_NUMBER_QUERY)[..])
-            .with_status(200)
-            .with_body(&raw_block)
-            .create();
+    let mock_block = mock("GET", &format!("/feeder_gateway/get_block?{BLOCK_NUMBER_QUERY}=20")[..])
+        .with_status(200)
+        .with_body(&raw_block)
+        .create();
     let block = starknet_client.block(BlockNumber(20)).await.unwrap().unwrap();
     mock_block.assert();
     let expected_block: Block = serde_json::from_str(&raw_block).unwrap();
@@ -208,7 +207,7 @@ async fn get_block() {
     // Non-existing block.
     let body = r#"{"code": "StarknetErrorCode.BLOCK_NOT_FOUND", "message": "Block 9999999999 was not found."}"#;
     let mock_no_block =
-        mock("GET", &format!("/feeder_gateway/get_block?{}=9999999999", BLOCK_NUMBER_QUERY)[..])
+        mock("GET", &format!("/feeder_gateway/get_block?{BLOCK_NUMBER_QUERY}=9999999999")[..])
             .with_status(500)
             .with_body(body)
             .create();
