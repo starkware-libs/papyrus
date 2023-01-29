@@ -17,6 +17,7 @@ use papyrus_storage::db::DbConfig;
 use papyrus_storage::StorageConfig;
 use papyrus_sync::{CentralSourceConfig, SyncConfig};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use starknet_api::core::ChainId;
 use starknet_client::RetryConfig;
 
@@ -24,7 +25,7 @@ use starknet_client::RetryConfig;
 const CONFIG_FILE: &str = "config/config.yaml";
 
 /// The configurations of the various components of the node.
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct Config {
     pub gateway: GatewayConfig,
     pub central: CentralSourceConfig,
@@ -37,6 +38,10 @@ pub struct Config {
 impl Config {
     pub fn load(args: Vec<String>) -> Result<Self, ConfigError> {
         ConfigBuilder::build(args)
+    }
+
+    pub fn get_config_representation(&self) -> Result<Value, ConfigError> {
+        Ok(serde_json::to_value(FileConfigFormat::from(self.clone()))?)
     }
 }
 
@@ -51,7 +56,9 @@ pub enum ConfigError {
     #[error(transparent)]
     Read(#[from] io::Error),
     #[error(transparent)]
-    Serde(#[from] serde_yaml::Error),
+    SerdeYaml(#[from] serde_yaml::Error),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
     #[error(
         "CLA http_header \"{illegal_header}\" is not valid. The Expected format is name:value"
     )]

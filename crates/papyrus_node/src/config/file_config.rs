@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use starknet_api::core::ChainId;
 use starknet_client::RetryConfig;
 
-use crate::config::ConfigBuilder;
+use crate::config::{Config, ConfigBuilder};
 
 // Defines the expected structure of the configuration file. All the fields are optional so the user
 // doesn't have to specify parameters that he doesn't wish to override (in that case the previous
@@ -55,6 +55,81 @@ impl FileConfigFormat {
         if let (Some(builder_config), Some(file_config)) = (builder.config.sync.as_mut(), self.sync)
         {
             file_config.update_sync(builder_config)
+        }
+    }
+}
+
+impl From<Config> for FileConfigFormat {
+    fn from(config: Config) -> Self {
+        FileConfigFormat {
+            chain_id: Some(config.gateway.chain_id.clone()),
+            central: Some(Central::from(config.central)),
+            gateway: Some(Gateway::from(config.gateway)),
+            monitoring_gateway: Some(MonitoringGateway::from(config.monitoring_gateway)),
+            storage: Some(Storage::from(config.storage)),
+            sync: config.sync.map(Sync::from),
+        }
+    }
+}
+
+impl From<GatewayConfig> for Gateway {
+    fn from(config: GatewayConfig) -> Self {
+        Gateway {
+            server_address: Some(config.server_address),
+            max_events_chunk_size: Some(config.max_events_chunk_size),
+            max_events_keys: Some(config.max_events_keys),
+        }
+    }
+}
+
+impl From<CentralSourceConfig> for Central {
+    fn from(config: CentralSourceConfig) -> Self {
+        Central {
+            concurrent_requests: Some(config.concurrent_requests),
+            url: Some(config.url),
+            http_headers: config.http_headers,
+            retry: Some(Retry::from(config.retry_config)),
+        }
+    }
+}
+
+impl From<RetryConfig> for Retry {
+    fn from(config: RetryConfig) -> Self {
+        Retry {
+            retry_base_millis: Some(config.retry_base_millis),
+            retry_max_delay_millis: Some(config.retry_max_delay_millis),
+            max_retries: Some(config.max_retries),
+        }
+    }
+}
+
+impl From<MonitoringGatewayConfig> for MonitoringGateway {
+    fn from(config: MonitoringGatewayConfig) -> Self {
+        MonitoringGateway { server_address: Some(config.server_address) }
+    }
+}
+
+impl From<StorageConfig> for Storage {
+    fn from(config: StorageConfig) -> Self {
+        Storage { db: Some(Db::from(config.db_config)) }
+    }
+}
+
+impl From<DbConfig> for Db {
+    fn from(config: DbConfig) -> Self {
+        Db { path: Some(config.path), max_size: Some(config.max_size) }
+    }
+}
+
+impl From<SyncConfig> for Sync {
+    fn from(config: SyncConfig) -> Self {
+        Sync {
+            block_propagation_sleep_duration_secs: Some(
+                config.block_propagation_sleep_duration.as_secs(),
+            ),
+            recoverable_error_sleep_duration_secs: Some(
+                config.recoverable_error_sleep_duration.as_secs(),
+            ),
         }
     }
 }
