@@ -299,7 +299,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             Ok((self, Some((thin_state_diff, deleted_classes))))
         } else {
             Err(StorageError::DBInconsistency {
-                msg: format!("StateDiff {} doesn't exist.", block_number),
+                msg: format!("StateDiff {block_number} doesn't exist."),
             })
         }
     }
@@ -425,7 +425,7 @@ fn delete_declared_classes<'env>(
         let maybe_indexed_declared_class = declared_classes_table.get(txn, class_hash)?;
         match maybe_indexed_declared_class {
             None => StorageError::DBInconsistency {
-                msg: format!("Missing declared class {:#?}", class_hash),
+                msg: format!("Missing declared class {class_hash:#?}"),
             },
             Some(IndexedDeclaredContract {
                 block_number: declared_block_number,

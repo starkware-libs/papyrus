@@ -155,7 +155,7 @@ pub fn get_rng() -> ChaCha8Rng {
         rng.gen()
     };
     // Will be printed if the test failed.
-    println!("Testing with seed: {:?}", seed);
+    println!("Testing with seed: {seed:?}");
     // Create a new PRNG using a u64 seed. This is a convenience-wrapper around from_seed.
     // It is designed such that low Hamming Weight numbers like 0 and 1 can be used and
     // should still result in good, independent seeds to the returned PRNG.
