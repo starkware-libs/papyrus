@@ -95,7 +95,6 @@ fn get_block_number<Mode: TransactionKind>(
             get_latest_block_number(txn)?.ok_or_else(|| Error::from(JsonRpcError::BlockNotFound))?
         }
         BlockId::Tag(Tag::Pending) => {
-            // TODO(anatg): Support pending block.
             todo!("Pending tag is not supported yet.")
         }
     })
@@ -411,12 +410,10 @@ impl JsonRpcServer for JsonRpcServerImpl {
     fn get_events(&self, filter: EventFilter) -> Result<EventsChunk, Error> {
         // Check the chunk size.
         if filter.chunk_size > self.max_events_chunk_size {
-            // TODO(anatg): Add a test for this case.
             return Err(Error::from(JsonRpcError::PageSizeTooBig));
         }
         // Check the number of keys.
         if filter.keys.len() > self.max_events_keys {
-            // TODO(anatg): Add a test for this case.
             return Err(Error::from(JsonRpcError::TooManyKeysInFilter));
         }
 
@@ -430,20 +427,17 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 get_block_number(&txn, block_id).map(Some)
             })?;
         if maybe_to_block_number.is_none() {
-            // TODO(anatg): Add a test for this case.
             // There are no blocks.
             return Ok(EventsChunk { events: vec![], continuation_token: None });
         }
         let to_block_number = maybe_to_block_number.unwrap();
         if from_block_number > to_block_number {
-            // TODO(anatg): Add a test for this case.
             return Ok(EventsChunk { events: vec![], continuation_token: None });
         }
 
         // Get the event index. If there's a continuation token we take the event index from there.
         // Otherwise, we take the first index in the from_block_number.
         let event_index = match filter.continuation_token {
-            // TODO(anatg): Add a test for InvalidContinuationToken.
             Some(token) => token.parse()?.0,
             None => EventIndex(
                 TransactionIndex(from_block_number, TransactionOffsetInBlock(0)),
