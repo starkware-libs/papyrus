@@ -18,7 +18,7 @@ use starknet_client::{
     ClientCreationError, ClientError, RetryConfig, StarknetClient, StarknetClientTrait, StateUpdate,
 };
 use tokio_stream::Stream;
-use tracing::debug;
+use tracing::{debug, trace};
 
 use super::stream_utils::MyStreamExt;
 
@@ -187,8 +187,10 @@ fn client_to_central_state_update(
                 nonces: state_update.state_diff.nonces,
             };
             debug!(
-                "Received new state update of block {current_block_number} with hash \
-                 {block_hash}. State diff: {state_diff:?}, deployed_contract_class_definitions: \
+                "Received new state update of block {current_block_number} with hash {block_hash}."
+            );
+            trace!(
+                "State diff: {state_diff:?}, deployed_contract_class_definitions: \
                  {deployed_contract_class_definitions:?}."
             );
             Ok((current_block_number, block_hash, state_diff, deployed_contract_class_definitions))
@@ -206,7 +208,8 @@ fn client_to_central_block(
 ) -> CentralResult<Block> {
     let res = match maybe_client_block {
         Ok(Some(block)) => {
-            debug!("Received new block: {:#?}.", block);
+            debug!("Received new block {current_block_number} with hash {}.", block.block_hash);
+            trace!("Block: {block:#?}.");
             Block::try_from(block).map_err(|err| CentralError::ClientError(Arc::new(err)))
         }
         Ok(None) => Err(CentralError::BlockNotFound { block_number: current_block_number }),
