@@ -7,27 +7,10 @@
 use std::env;
 use std::fs::File;
 
-use goose::goose::{GooseUser, Scenario, Transaction, TransactionResult};
+use goose::goose::{Scenario, Transaction};
 use goose::{scenario, transaction, util, GooseAttack};
-use papyrus_load_test::gateway_functions::{
-    get_block_w_tx_hashes_by_hash, get_block_w_tx_hashes_by_number,
-};
+use papyrus_load_test::transaction_functions::*;
 use serde::Serialize;
-
-async fn loadtest_get_block_with_tx_hashes_by_number(user: &mut GooseUser) -> TransactionResult {
-    let _: serde_json::Value = get_block_w_tx_hashes_by_number(user, 1).await?;
-    Ok(())
-}
-
-async fn loadtest_get_block_with_tx_hashes_by_hash(user: &mut GooseUser) -> TransactionResult {
-    // TODO(shahak): Get a hash by getting a block instead of relying on that this hash exists.
-    let _: serde_json::Value = get_block_w_tx_hashes_by_hash(
-        user,
-        "0x1d997fd79d81bb4c30c78d7cb32fb8a59112eeb86347446235cead6194aed07",
-    )
-    .await?;
-    Ok(())
-}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

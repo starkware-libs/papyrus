@@ -1,38 +1,8 @@
 use goose::goose::{GooseUser, TransactionError};
 use serde::de::DeserializeOwned;
-use serde::Deserialize;
 use serde_json::json;
 type MethodResult<T> = Result<T, Box<TransactionError>>;
-
-async fn post_jsonrpc_request<T: DeserializeOwned>(
-    user: &mut GooseUser,
-    method: &str,
-    params: serde_json::Value,
-) -> MethodResult<T> {
-    let request = jsonrpc_request(method, params);
-    let response = user.post_json("", &request).await?.response.map_err(|e| Box::new(e.into()))?;
-    #[derive(Deserialize)]
-    struct TransactionReceiptResponse<T> {
-        result: T,
-    }
-    let response: TransactionReceiptResponse<T> =
-        response.json().await.map_err(|e| Box::new(e.into()))?;
-
-    Ok(response.result)
-}
-
-fn jsonrpc_request(method: &str, params: serde_json::Value) -> serde_json::Value {
-    json!({
-        "jsonrpc": "2.0",
-        "id": "0",
-        "method": method,
-        "params": params,
-    })
-}
-
-/////////////////////////////////////////////////////////////
-// gateway functions
-////////////////////////////////////////////////////////////
+use crate::post_jsonrpc_request;
 
 // block_number
 pub async fn get_block_number<T: DeserializeOwned>(user: &mut GooseUser) -> MethodResult<T> {
@@ -47,7 +17,7 @@ pub async fn get_block_hash_and_number<T: DeserializeOwned>(
 }
 
 // get_block_w_transaction_hashes
-pub async fn get_block_w_tx_hashes_by_number<T: DeserializeOwned>(
+pub async fn get_block_with_tx_hashes_by_number<T: DeserializeOwned>(
     user: &mut GooseUser,
     block_number: u64,
 ) -> MethodResult<T> {
@@ -58,7 +28,7 @@ pub async fn get_block_w_tx_hashes_by_number<T: DeserializeOwned>(
     )
     .await
 }
-pub async fn get_block_w_tx_hashes_by_hash<T: DeserializeOwned>(
+pub async fn get_block_with_tx_hashes_by_hash<T: DeserializeOwned>(
     user: &mut GooseUser,
     block_hash: &str,
 ) -> MethodResult<T> {
@@ -71,7 +41,7 @@ pub async fn get_block_w_tx_hashes_by_hash<T: DeserializeOwned>(
 }
 
 // get_block_w_full_transactions
-pub async fn get_block_w_full_transactions_by_number<T: DeserializeOwned>(
+pub async fn get_block_with_full_transactions_by_number<T: DeserializeOwned>(
     user: &mut GooseUser,
     block_number: u64,
 ) -> MethodResult<T> {
@@ -83,7 +53,7 @@ pub async fn get_block_w_full_transactions_by_number<T: DeserializeOwned>(
     .await
 }
 
-pub async fn get_block_w_full_transactions_by_hash<T: DeserializeOwned>(
+pub async fn get_block_with_full_transactions_by_hash<T: DeserializeOwned>(
     user: &mut GooseUser,
     block_hash: &str,
 ) -> MethodResult<T> {
@@ -137,7 +107,7 @@ pub async fn get_transaction_by_hash<T: DeserializeOwned>(
 pub async fn get_transaction_by_block_id_and_index_by_number<T: DeserializeOwned>(
     user: &mut GooseUser,
     block_number: u64,
-    index: &str,
+    index: usize,
 ) -> MethodResult<T> {
     post_jsonrpc_request(
         user,
@@ -150,7 +120,7 @@ pub async fn get_transaction_by_block_id_and_index_by_number<T: DeserializeOwned
 pub async fn get_transaction_by_block_id_and_index_by_hash<T: DeserializeOwned>(
     user: &mut GooseUser,
     block_hash: &str,
-    index: &str,
+    index: usize,
 ) -> MethodResult<T> {
     post_jsonrpc_request(
         user,
@@ -320,4 +290,12 @@ pub async fn get_nonce_by_hash<T: DeserializeOwned>(
 // chain_id
 pub async fn chain_id<T: DeserializeOwned>(user: &mut GooseUser) -> MethodResult<T> {
     post_jsonrpc_request(user, "starknet_blockNumber", json!([])).await
+}
+
+// get_events
+pub async fn get_events_with_just_chunk_size<T: DeserializeOwned>(
+    user: &mut GooseUser,
+    chunk_size: usize,
+) -> MethodResult<T> {
+    post_jsonrpc_request(user, "starknet_getEvents", json!([{ "filter": chunk_size }])).await
 }
