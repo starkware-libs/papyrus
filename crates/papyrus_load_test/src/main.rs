@@ -1,6 +1,8 @@
 // This code is inspired by the pathfinder load test.
 // To run this load test, run locally a node and then run:
-//      cargo run -r -p papyrus_load_test -- -t 10s -H http://127.0.0.1:8080
+//      cargo run -r -p papyrus_load_test -- -t 5m -H http://127.0.0.1:8080
+// For more options run:
+//      cargo run -r -p papyrus_load_test -- --help
 
 use std::env;
 use std::fs::File;
