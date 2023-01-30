@@ -20,7 +20,7 @@ use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, StateDiff};
 use starknet_api::transaction::TransactionOffsetInBlock;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info, trace, warn};
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
 
@@ -189,7 +189,8 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         // parent hash to the current hash.
         self.verify_parent_block_hash(block_number, &block)?;
 
-        debug!("Storing block: {:#?}.", block);
+        debug!("Storing block {block_number} with hash {}.", block.header.block_hash);
+        trace!("Block data: {block:#?}");
         self.writer
             .begin_rw_txn()?
             .append_header(block_number, &block.header)?
@@ -206,10 +207,8 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         deployed_contract_class_definitions: IndexMap<ClassHash, ContractClass>,
     ) -> StateSyncResult {
         if !self.is_reverted_state_diff(block_number, block_hash)? {
-            debug!(
-                "Storing state diff of block {} with hash {}: {:#?}.",
-                block_number, block_hash, state_diff
-            );
+            debug!("Storing state diff of block {block_number} with hash {block_hash}.");
+            trace!("StateDiff data: {state_diff:#?}");
             self.writer
                 .begin_rw_txn()?
                 .append_state_diff(block_number, state_diff, deployed_contract_class_definitions)?
