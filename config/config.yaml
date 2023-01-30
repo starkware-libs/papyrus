@@ -1,8 +1,10 @@
 # The chain to follow.
 # More information: https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id
 chain_id: SN_MAIN
+
+# Connection with Starknet feeder-gateway.
 central:
-    # Maximum number of concurrent requests to Starknet feeder-gateway for getting a type of data (for example, blocks). 
+    # Maximum number of concurrent requests to Starknet feeder-gateway for getting a type of data (for example, blocks).
     concurrent_requests: 10
     # Starknet feeder-gateway URL. It should match chain_id.  
     url: https://alpha-mainnet.starknet.io/
@@ -19,6 +21,7 @@ central:
     #   header_name_1: header_value_1
     #   header_name_2: header_value_2
 
+# Request the node about Starknet status.
 gateway:
     # IP:PORT of the node to query its storage.
     server_address: 0.0.0.0:8080
@@ -27,17 +30,21 @@ gateway:
     # Maximum number of keys supported by the node in get_events requests.
     max_events_keys: 100
 
+# Request the node about its status.
 monitoring_gateway:
-    # IP:PORT of the node to query its status. 
+    # IP:PORT of the node to query its status.
     server_address: 0.0.0.0:8081
 
+# Node's storage configuration.
 storage:
     db:
-        # Path of the node's storage. The path is not created automatically.
+        # Path of the node's storage directory, the storage file path will be <path>/<chain_id>. 
+        # The path is not created automatically.
         path: ./data
         # Max size of the node's storage.
         max_size: 1099511627776 # 1TB.
 
+# Synchronization with Starknet.
 sync:
     # Time before checking for a new block after the node is synchronized.
     block_propagation_sleep_duration_secs: 10
