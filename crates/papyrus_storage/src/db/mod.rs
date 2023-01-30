@@ -98,7 +98,7 @@ impl DbReader {
         let database = db_txn.txn.open_db(Some(name))?;
         let stat = db_txn.txn.db_stat(&database)?;
         Ok(DbTableStats {
-            database: format!("{:?}", database),
+            database: format!("{database:?}"),
             branch_pages: stat.branch_pages(),
             depth: stat.depth(),
             entries: stat.entries(),

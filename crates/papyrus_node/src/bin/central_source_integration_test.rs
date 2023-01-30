@@ -16,9 +16,7 @@ async fn main() {
     while let Some(Ok((block_number, _block))) = block_stream.next().await {
         assert!(
             block_marker == block_number,
-            "Expected block number ({}) does not match the result ({}).",
-            block_marker,
-            block_number
+            "Expected block number ({block_marker}) does not match the result ({block_number}).",
         );
         block_marker = block_marker.next();
     }
@@ -32,9 +30,7 @@ async fn main() {
     {
         assert!(
             state_marker == block_number,
-            "Expected block number ({}) does not match the result ({}).",
-            state_marker,
-            block_number
+            "Expected block number ({state_marker}) does not match the result ({block_number}).",
         );
         state_marker = state_marker.next();
     }

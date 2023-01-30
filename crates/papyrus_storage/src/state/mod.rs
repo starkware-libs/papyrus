@@ -41,7 +41,7 @@ pub trait StateStorageReader<Mode: TransactionKind> {
     fn get_state_reader(&self) -> StorageResult<StateReader<'_, Mode>>;
 }
 
-type RevertedStateDiff = (ThinStateDiff, Vec<(ClassHash, ContractClass)>);
+type RevertedStateDiff = (ThinStateDiff, IndexMap<ClassHash, ContractClass>);
 
 pub trait StateStorageWriter
 where
@@ -55,7 +55,7 @@ where
         // TODO(anatg): Remove once there are no more deployed contracts with undeclared classes.
         // Class definitions of deployed contracts with classes that were not declared in this
         // state diff.
-        deployed_contract_class_definitions: Vec<(ClassHash, ContractClass)>,
+        deployed_contract_class_definitions: IndexMap<ClassHash, ContractClass>,
     ) -> StorageResult<Self>;
 
     fn revert_state_diff(
@@ -194,7 +194,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         self,
         block_number: BlockNumber,
         state_diff: StateDiff,
-        deployed_contract_class_definitions: Vec<(ClassHash, ContractClass)>,
+        mut deployed_contract_class_definitions: IndexMap<ClassHash, ContractClass>,
     ) -> StorageResult<Self> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let nonces_table = self.txn.open_table(&self.tables.nonces)?;
@@ -205,16 +205,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
 
         update_marker(&self.txn, &markers_table, block_number)?;
 
-        // TODO(anatg): Remove once there are no more deployed contracts with undeclared classes.
-        let declared_classes_as_vec =
-            Vec::from_iter(state_diff.declared_classes.clone().into_iter());
-        let mut declared_classes =
-            [declared_classes_as_vec, deployed_contract_class_definitions].concat();
-        //  TODO(anatg): Add a test for this (should fail if not sorted here).
-        declared_classes.sort_unstable_by_key(|(hash, _)| *hash);
-
-        // Write state.
-        write_declared_classes(declared_classes, &self.txn, block_number, &declared_classes_table)?;
+        // Write state except declared classes.
         write_deployed_contracts(
             &state_diff.deployed_contracts,
             &self.txn,
@@ -226,8 +217,31 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         write_nonces(&state_diff.nonces, &self.txn, block_number, &nonces_table)?;
 
         // Write state diff.
-        let thin_state_diff = ThinStateDiff::from(state_diff);
+        let (thin_state_diff, declared_classes) = ThinStateDiff::from_state_diff(state_diff);
         state_diffs_table.insert(&self.txn, &block_number, &thin_state_diff)?;
+
+        // Write declared classes.
+        if !deployed_contract_class_definitions.is_empty() {
+            // TODO(anatg): Remove this after regenesis.
+            if !declared_classes.is_empty() {
+                deployed_contract_class_definitions.extend(declared_classes);
+                //  TODO(anatg): Add a test for this (should fail if not sorted here).
+                deployed_contract_class_definitions.sort_unstable_keys();
+            }
+            write_declared_classes(
+                deployed_contract_class_definitions,
+                &self.txn,
+                block_number,
+                &declared_classes_table,
+            )?;
+        } else {
+            write_declared_classes(
+                declared_classes,
+                &self.txn,
+                block_number,
+                &declared_classes_table,
+            )?;
+        }
 
         Ok(self)
     }
@@ -235,7 +249,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
     fn revert_state_diff(
         self,
         block_number: BlockNumber,
-    ) -> StorageResult<(Self, Option<(ThinStateDiff, Vec<(ClassHash, ContractClass)>)>)> {
+    ) -> StorageResult<(Self, Option<(ThinStateDiff, IndexMap<ClassHash, ContractClass>)>)> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let declared_classes_table = self.txn.open_table(&self.tables.declared_classes)?;
         let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
@@ -285,7 +299,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             Ok((self, Some((thin_state_diff, deleted_classes))))
         } else {
             Err(StorageError::DBInconsistency {
-                msg: format!("StateDiff {} doesn't exist.", block_number),
+                msg: format!("StateDiff {block_number} doesn't exist."),
             })
         }
     }
@@ -308,7 +322,7 @@ fn update_marker<'env>(
 }
 
 fn write_declared_classes<'env>(
-    declared_classes: Vec<(ClassHash, ContractClass)>,
+    declared_classes: IndexMap<ClassHash, ContractClass>,
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     declared_classes_table: &'env DeclaredClassesTable<'env>,
@@ -394,7 +408,7 @@ fn delete_declared_classes<'env>(
     block_number: BlockNumber,
     thin_state_diff: &ThinStateDiff,
     declared_classes_table: &'env DeclaredClassesTable<'env>,
-) -> StorageResult<Vec<(ClassHash, ContractClass)>> {
+) -> StorageResult<IndexMap<ClassHash, ContractClass>> {
     // Class hashes of the contracts that were deployed in this block.
     let deployed_contracts_class_hashes = thin_state_diff.deployed_contracts.values();
 
@@ -406,12 +420,12 @@ fn delete_declared_classes<'env>(
         .chain(deployed_contracts_class_hashes)
         .collect();
 
-    let mut deleted_data = vec![];
+    let mut deleted_data = IndexMap::new();
     for class_hash in class_hashes {
         let maybe_indexed_declared_class = declared_classes_table.get(txn, class_hash)?;
         match maybe_indexed_declared_class {
             None => StorageError::DBInconsistency {
-                msg: format!("Missing declared class {:#?}", class_hash),
+                msg: format!("Missing declared class {class_hash:#?}"),
             },
             Some(IndexedDeclaredContract {
                 block_number: declared_block_number,
@@ -419,7 +433,7 @@ fn delete_declared_classes<'env>(
             }) => {
                 // If the class was declared in a different block then we should'nt delete it.
                 if block_number == declared_block_number {
-                    deleted_data.push((*class_hash, contract_class));
+                    deleted_data.insert(*class_hash, contract_class);
                     declared_classes_table.delete(txn, class_hash)?;
                 }
                 continue;

@@ -18,14 +18,24 @@ pub struct ThinStateDiff {
     pub nonces: IndexMap<ContractAddress, Nonce>,
 }
 
+impl ThinStateDiff {
+    // Returns also the declared classes without cloning them.
+    pub(crate) fn from_state_diff(diff: StateDiff) -> (Self, IndexMap<ClassHash, ContractClass>) {
+        (
+            Self {
+                deployed_contracts: diff.deployed_contracts,
+                storage_diffs: diff.storage_diffs,
+                declared_contract_hashes: diff.declared_classes.keys().copied().collect(),
+                nonces: diff.nonces,
+            },
+            diff.declared_classes,
+        )
+    }
+}
+
 impl From<StateDiff> for ThinStateDiff {
     fn from(diff: StateDiff) -> Self {
-        Self {
-            deployed_contracts: diff.deployed_contracts,
-            storage_diffs: diff.storage_diffs,
-            declared_contract_hashes: diff.declared_classes.into_keys().collect(),
-            nonces: diff.nonces,
-        }
+        Self::from_state_diff(diff).0
     }
 }
 

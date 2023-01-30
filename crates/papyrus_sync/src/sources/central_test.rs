@@ -251,7 +251,10 @@ async fn stream_state_updates() {
         };
     assert_eq!(initial_block_num, current_block_num);
     assert_eq!(block_hash1, current_block_hash);
-    assert_eq!(vec![(class_hash2, contract_class2.into())], deployed_contract_class_definitions);
+    assert_eq!(
+        IndexMap::from([(class_hash2, starknet_api::state::ContractClass::from(contract_class2))]),
+        deployed_contract_class_definitions,
+    );
 
     assert_eq!(
         IndexMap::from([(contract_address1, class_hash2), (contract_address2, class_hash3)]),

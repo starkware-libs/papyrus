@@ -18,7 +18,7 @@ use starknet_client::{
     ClientCreationError, ClientError, RetryConfig, StarknetClient, StarknetClientTrait, StateUpdate,
 };
 use tokio_stream::Stream;
-use tracing::debug;
+use tracing::{debug, trace};
 
 use super::stream_utils::MyStreamExt;
 
@@ -73,7 +73,7 @@ pub trait CentralSourceTrait {
 }
 
 pub(crate) type BlocksStream<'a> = BoxStream<'a, Result<(BlockNumber, Block), CentralError>>;
-type CentralStateUpdate = (BlockNumber, BlockHash, StateDiff, Vec<(ClassHash, ContractClass)>);
+type CentralStateUpdate = (BlockNumber, BlockHash, StateDiff, IndexMap<ClassHash, ContractClass>);
 pub(crate) type StateUpdatesStream<'a> = BoxStream<'a, CentralResult<CentralStateUpdate>>;
 
 #[async_trait]
@@ -137,40 +137,39 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
     ) -> BlocksStream<'_> {
-        let mut current_block_number = initial_block_number;
         stream! {
-            while current_block_number < up_to_block_number {
-                let mut res =
-                    futures_util::stream::iter(current_block_number.iter_up_to(up_to_block_number))
-                        .map(|bn| async move { self.starknet_client.block(bn).await })
-                        .buffered(self.concurrent_requests);
-                while let Some(maybe_client_block) = res.next().await {
-                    let maybe_central_block = client_to_central_block(current_block_number, maybe_client_block);
-                    match maybe_central_block {
-                        Ok(block) => {
-                            yield Ok((current_block_number, block));
-                            current_block_number = current_block_number.next();
-                        }
-                        Err(err) => {
-                            yield (Err(err));
-                            return;
-                        }
+            // TODO(dan): add explanation.
+            let mut res =
+                futures_util::stream::iter(initial_block_number.iter_up_to(up_to_block_number))
+                    .map(|bn| async move { (bn, self.starknet_client.block(bn).await) })
+                    .buffered(self.concurrent_requests);
+            while let Some((current_block_number, maybe_client_block)) = res.next().await {
+                let maybe_central_block =
+                    client_to_central_block(current_block_number, maybe_client_block);
+                match maybe_central_block {
+                    Ok(block) => {
+                        yield Ok((current_block_number, block));
+                    }
+                    Err(err) => {
+                        yield (Err(err));
+                        return;
                     }
                 }
             }
-        }.boxed()
+        }
+        .boxed()
     }
 }
 
 fn client_to_central_state_update(
     current_block_number: BlockNumber,
-    maybe_client_state_update: CentralResult<(StateUpdate, Vec<(ClassHash, ContractClass)>)>,
+    maybe_client_state_update: CentralResult<(StateUpdate, IndexMap<ClassHash, ContractClass>)>,
 ) -> CentralResult<CentralStateUpdate> {
     match maybe_client_state_update {
-        Ok((state_update, classes)) => {
+        Ok((state_update, mut classes)) => {
             let block_hash = state_update.block_hash;
-            let (declared_classes, deployed_contract_class_definitions) =
-                classes.split_at(state_update.state_diff.declared_contracts.len());
+            let deployed_contract_class_definitions =
+                classes.split_off(state_update.state_diff.declared_contracts.len());
             let state_diff = StateDiff {
                 deployed_contracts: IndexMap::from_iter(
                     state_update
@@ -184,20 +183,17 @@ fn client_to_central_state_update(
                         (address, entries.into_iter().map(|se| (se.key, se.value)).collect())
                     }),
                 ),
-                declared_classes: IndexMap::from_iter(declared_classes.iter().cloned()),
+                declared_classes: classes,
                 nonces: state_update.state_diff.nonces,
             };
             debug!(
-                "Received new state update of block {current_block_number} with hash \
-                 {block_hash}. State diff: {state_diff:?}, deployed_contract_class_definitions: \
+                "Received new state update of block {current_block_number} with hash {block_hash}."
+            );
+            trace!(
+                "State diff: {state_diff:?}, deployed_contract_class_definitions: \
                  {deployed_contract_class_definitions:?}."
             );
-            Ok((
-                current_block_number,
-                block_hash,
-                state_diff,
-                deployed_contract_class_definitions.to_vec(),
-            ))
+            Ok((current_block_number, block_hash, state_diff, deployed_contract_class_definitions))
         }
         Err(err) => {
             debug!("Received error for state diff {}: {:?}.", current_block_number, err);
@@ -212,7 +208,8 @@ fn client_to_central_block(
 ) -> CentralResult<Block> {
     let res = match maybe_client_block {
         Ok(Some(block)) => {
-            debug!("Received new block: {:#?}.", block);
+            debug!("Received new block {current_block_number} with hash {}.", block.block_hash);
+            trace!("Block: {block:#?}.");
             Block::try_from(block).map_err(|err| CentralError::ClientError(Arc::new(err)))
         }
         Ok(None) => Err(CentralError::BlockNotFound { block_number: current_block_number }),
@@ -233,7 +230,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
     fn state_update_stream(
         &self,
         block_number_stream: impl Stream<Item = BlockNumber> + Send + Sync + 'static,
-    ) -> impl Stream<Item = CentralResult<(StateUpdate, Vec<(ClassHash, ContractClass)>)>> {
+    ) -> impl Stream<Item = CentralResult<(StateUpdate, IndexMap<ClassHash, ContractClass>)>> {
         // Stream the state updates.
         let starknet_client = self.starknet_client.clone();
         let (state_updates0, mut state_updates1) = block_number_stream
@@ -279,7 +276,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
 
                 // Get the next state declared and deployed classes.
                 let len = state_update.state_diff.class_hashes().len();
-                let classes: Option<Result<Vec<(ClassHash, ContractClass)>, _>> =
+                let classes: Option<Result<IndexMap<ClassHash, ContractClass>, _>> =
                     flat_classes.take_n(len).await.map(|v| {
                         v.into_iter()
                             .map(|(class_hash, class)| match class {
