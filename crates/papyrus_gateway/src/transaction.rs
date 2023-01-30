@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use papyrus_storage::body::events::ThinTransactionOutput;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
@@ -144,6 +146,19 @@ impl Default for TransactionType {
     }
 }
 
+impl Display for TransactionType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            TransactionType::Declare => "Declare",
+            TransactionType::Deploy => "Deploy",
+            TransactionType::DeployAccount => "DeployAccount",
+            TransactionType::Invoke => "Invoke",
+            TransactionType::L1Handler => "L1Handler",
+        };
+        write!(f, "{s}")
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct TransactionWithType {
     pub r#type: TransactionType,
@@ -198,6 +213,18 @@ pub enum TransactionStatus {
 impl Default for TransactionStatus {
     fn default() -> Self {
         TransactionStatus::AcceptedOnL2
+    }
+}
+
+impl Display for TransactionStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            TransactionStatus::Pending => "Pending",
+            TransactionStatus::AcceptedOnL2 => "AcceptedOnL2",
+            TransactionStatus::AcceptedOnL1 => "AcceptedOnL1",
+            TransactionStatus::Rejected => "Rejected",
+        };
+        write!(f, "{s}")
     }
 }
 
