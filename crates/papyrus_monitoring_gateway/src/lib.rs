@@ -13,7 +13,6 @@ use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::{ErrorObject, INTERNAL_ERROR_MSG};
 use papyrus_storage::{DbTablesStats, StorageReader};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use tracing::{error, info};
 
 use self::api::JsonRpcServer;
@@ -26,7 +25,7 @@ pub struct MonitoringGatewayConfig {
 /// Rpc server.
 struct JsonRpcServerImpl {
     storage_reader: StorageReader,
-    general_config_representation: Value,
+    general_config_representation: serde_yaml::Value,
 }
 
 fn internal_server_error(err: impl Display) -> Error {
@@ -44,13 +43,13 @@ impl JsonRpcServer for JsonRpcServerImpl {
         self.storage_reader.db_tables_stats().map_err(internal_server_error)
     }
 
-    fn node_config(&self) -> Result<Value, Error> {
+    fn node_config(&self) -> Result<serde_yaml::Value, Error> {
         Ok(self.general_config_representation.clone())
     }
 }
 
 pub async fn run_server(
-    general_config_representation: Value,
+    general_config_representation: serde_yaml::Value,
     config: MonitoringGatewayConfig,
     storage_reader: StorageReader,
 ) -> anyhow::Result<(SocketAddr, HttpServerHandle)> {

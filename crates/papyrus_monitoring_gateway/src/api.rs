@@ -1,7 +1,6 @@
 use jsonrpsee::core::Error;
 use jsonrpsee::proc_macros::rpc;
 use papyrus_storage::DbTablesStats;
-use serde_json::Value;
 
 #[rpc(server, client, namespace = "starknet")]
 pub trait JsonRpc {
@@ -11,5 +10,5 @@ pub trait JsonRpc {
 
     /// Gets the node config.
     #[method(name = "nodeConfig")]
-    fn node_config(&self) -> Result<Value, Error>;
+    fn node_config(&self) -> Result<serde_yaml::Value, Error>;
 }

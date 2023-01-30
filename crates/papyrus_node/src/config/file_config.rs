@@ -117,7 +117,12 @@ impl From<StorageConfig> for Storage {
 
 impl From<DbConfig> for Db {
     fn from(config: DbConfig) -> Self {
-        Db { path: Some(config.path), max_size: Some(config.max_size) }
+        // Remove the chain_id from the path.
+        let mut path = config.path;
+        let last_slash_index =
+            path.rfind('/').expect("Remove chain_id from the storage file path failed");
+        path.truncate(last_slash_index);
+        Db { path: Some(path), max_size: Some(config.max_size) }
     }
 }
 

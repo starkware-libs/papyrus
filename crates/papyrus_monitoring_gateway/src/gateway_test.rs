@@ -11,7 +11,7 @@ async fn test_stats() -> Result<(), anyhow::Error> {
     let (storage_reader, mut _storage_writer) = test_utils::get_test_storage();
     let module = JsonRpcServerImpl {
         storage_reader,
-        general_config_representation: serde_json::to_value(TEST_CONFIG_REPRESENTATION)?,
+        general_config_representation: serde_yaml::to_value(TEST_CONFIG_REPRESENTATION)?,
     }
     .into_rpc();
     let stats =
@@ -27,7 +27,7 @@ async fn test_config() -> Result<(), anyhow::Error> {
     let (storage_reader, mut _storage_writer) = test_utils::get_test_storage();
     let module = JsonRpcServerImpl {
         storage_reader,
-        general_config_representation: serde_json::to_value(TEST_CONFIG_REPRESENTATION)?,
+        general_config_representation: serde_yaml::to_value(TEST_CONFIG_REPRESENTATION)?,
     }
     .into_rpc();
     let rep = module.call::<_, String>("starknet_nodeConfig", EmptyParams::new()).await?;
