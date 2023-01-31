@@ -49,7 +49,7 @@ pub async fn run_server(
     config: MonitoringGatewayConfig,
     storage_reader: StorageReader,
 ) -> anyhow::Result<(SocketAddr, HttpServerHandle)> {
-    info!("Starting monitoring gateway.");
+    debug!("Starting monitoring gateway.");
     let server = HttpServerBuilder::default().build(&config.server_address).await?;
     let addr = server.local_addr()?;
     let handle = server.start(JsonRpcServerImpl { storage_reader }.into_rpc())?;
