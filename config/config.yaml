@@ -1,28 +1,53 @@
+# The chain to follow.
+# For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.
 chain_id: SN_MAIN
-central:
-    concurrent_requests: 10
-    url: https://alpha-mainnet.starknet.io/
-    retry:
-        retry_base_millis: 30
-        retry_max_delay_millis: 30000
-        max_retries: 10
-#   Optional headers for SN-client.
-#   http_headers:
-#       header_name: header_value
 
+# Connection with Starknet feeder-gateway.
+central:
+    # Maximum number of concurrent requests to Starknet feeder-gateway for getting a type of data (for example, blocks).
+    concurrent_requests: 10
+    # Starknet feeder-gateway URL. It should match chain_id.
+    url: https://alpha-mainnet.starknet.io/
+    # In case of failed requests to the central.
+    retry:
+        # Base waiting time after a failed request. After that, the time increases exponentially.
+        retry_base_millis: 30
+        # Max waiting time after a failed request.
+        retry_max_delay_millis: 30000
+        # Maximum number of retries before the node stops retrying.
+        max_retries: 10
+    # Optional headers for SN-client.
+    # http_headers:
+    #   header_name_1: header_value_1
+    #   header_name_2: header_value_2
+
+# JSON-RPC server. 
+# For more details see https://github.com/starkware-libs/starknet-specs/blob/master/api/starknet_api_openrpc.json.
 gateway:
+    # IP:PORT of the node's JSON-RPC server.
     server_address: 0.0.0.0:8080
+    # Maximum chunk size supported by the node in get_events requests.
     max_events_chunk_size: 1000
+    # Maximum number of keys supported by the node in get_events requests.
     max_events_keys: 100
 
+# Monitoring server.
 monitoring_gateway:
+    # node's monitoring server.
     server_address: 0.0.0.0:8081
 
+# Node's storage configuration.
 storage:
     db:
+        # Path of the node's storage directory, the storage file path will be <path>/<chain_id>.
+        # The path is not created automatically.
         path: ./data
+        # Max size of the node's storage.
         max_size: 1099511627776 # 1TB.
 
+# Synchronization with Starknet.
 sync:
+    # Time before checking for a new block after the node is synchronized.
     block_propagation_sleep_duration_secs: 10
+    # Waiting time before restarting synchronization after a recoverable error.
     recoverable_error_sleep_duration_secs: 10
