@@ -53,6 +53,6 @@ pub async fn run_server(
     let server = HttpServerBuilder::default().build(&config.server_address).await?;
     let addr = server.local_addr()?;
     let handle = server.start(JsonRpcServerImpl { storage_reader }.into_rpc())?;
-    info!("Monitoring gateway is running - {}.", addr);
+    info!(local_address = %addr, "Monitoring gateway is running.");
     Ok((addr, handle))
 }
