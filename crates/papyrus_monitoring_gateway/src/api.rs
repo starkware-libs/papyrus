@@ -7,4 +7,8 @@ pub trait JsonRpc {
     /// Gets DB statistics.
     #[method(name = "dbTablesStats")]
     fn db_tables_stats(&self) -> Result<DbTablesStats, Error>;
+
+    /// Gets the node config.
+    #[method(name = "nodeConfig")]
+    fn node_config(&self) -> Result<serde_yaml::Value, Error>;
 }

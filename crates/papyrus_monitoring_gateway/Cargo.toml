@@ -11,6 +11,7 @@ futures-util = { version = "0.3.21" }
 jsonrpsee = { version = "0.13.1", features = ["full"] }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" }
+serde_yaml = { version = "0.9.16" }
 starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "0a11ad3" }
 thiserror = { version = "1.0.31" }
 tokio = { version = "1.18.2", features = ["full","sync"] }
