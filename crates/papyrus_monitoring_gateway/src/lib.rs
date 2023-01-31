@@ -13,7 +13,7 @@ use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::{ErrorObject, INTERNAL_ERROR_MSG};
 use papyrus_storage::{DbTablesStats, StorageReader};
 use serde::{Deserialize, Serialize};
-use tracing::{error, info, instrument};
+use tracing::{debug, debug_span, error, info, instrument, Span};
 
 use self::api::JsonRpcServer;
 
@@ -25,6 +25,7 @@ pub struct MonitoringGatewayConfig {
 /// Rpc server.
 struct JsonRpcServerImpl {
     storage_reader: StorageReader,
+    server_span: Span,
 }
 
 fn internal_server_error(err: impl Display) -> Error {
@@ -38,13 +39,12 @@ fn internal_server_error(err: impl Display) -> Error {
 
 #[async_trait]
 impl JsonRpcServer for JsonRpcServerImpl {
-    #[instrument(skip(self), level = "debug", err(Display), ret)]
+    #[instrument(skip(self), parent = &self.server_span, level = "debug", err(Display), ret)]
     fn db_tables_stats(&self) -> Result<DbTablesStats, Error> {
         self.storage_reader.db_tables_stats().map_err(internal_server_error)
     }
 }
 
-#[instrument(skip(storage_reader), level = "debug", err)]
 pub async fn run_server(
     config: MonitoringGatewayConfig,
     storage_reader: StorageReader,
@@ -52,7 +52,10 @@ pub async fn run_server(
     debug!("Starting monitoring gateway.");
     let server = HttpServerBuilder::default().build(&config.server_address).await?;
     let addr = server.local_addr()?;
-    let handle = server.start(JsonRpcServerImpl { storage_reader }.into_rpc())?;
+    let handle = server.start(
+        JsonRpcServerImpl { storage_reader, server_span: debug_span!("monitoring_gateway_run", ?config) }
+            .into_rpc(),
+    )?;
     info!(local_address = %addr, "Monitoring gateway is running.");
     Ok((addr, handle))
 }
