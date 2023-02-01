@@ -44,12 +44,13 @@ impl JsonRpcServer for JsonRpcServerImpl {
         self.storage_reader.db_tables_stats().map_err(internal_server_error)
     }
 
+    #[instrument(skip(self), level = "debug", err(Display), ret)]
     fn node_config(&self) -> Result<serde_yaml::Value, Error> {
         Ok(self.general_config_representation.clone())
     }
 }
 
-#[instrument(skip(storage_reader), level = "debug", err)]
+#[instrument(skip(storage_reader, general_config_representation), level = "debug", err)]
 pub async fn run_server(
     general_config_representation: serde_yaml::Value,
     config: MonitoringGatewayConfig,
