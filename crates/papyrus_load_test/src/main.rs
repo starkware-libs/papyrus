@@ -15,12 +15,108 @@ use serde::Serialize;
 fn register_scenarios(goose: GooseAttack) -> GooseAttack {
     goose
         .register_scenario(
-            scenario!("block_by_number")
+            scenario!("block_number").register_transaction(transaction!(loadtest_block_number)),
+        )
+        .register_scenario(
+            scenario!("block_hash_and_number")
+                .register_transaction(transaction!(loadtest_block_hash_and_number)),
+        )
+        .register_scenario(
+            scenario!("get_block_with_tx_hashes_by_number")
                 .register_transaction(transaction!(loadtest_get_block_with_tx_hashes_by_number)),
         )
         .register_scenario(
-            scenario!("block_by_hash")
+            scenario!("loadtest_get_block_with_tx_hashes_by_hash")
                 .register_transaction(transaction!(loadtest_get_block_with_tx_hashes_by_hash)),
+        )
+        .register_scenario(
+            scenario!("loadtest_get_block_with_full_transactions_by_number").register_transaction(
+                transaction!(loadtest_get_block_with_full_transactions_by_number),
+            ),
+        )
+        .register_scenario(
+            scenario!("loadtest_get_block_with_full_transactions_by_hash").register_transaction(
+                transaction!(loadtest_get_block_with_full_transactions_by_hash),
+            ),
+        )
+        .register_scenario(
+            scenario!("loadtest_get_storage_at_by_number")
+                .register_transaction(transaction!(loadtest_get_storage_at_by_number)),
+        )
+        .register_scenario(
+            scenario!("loadtest_get_storage_at_by_hash")
+                .register_transaction(transaction!(loadtest_get_storage_at_by_hash)),
+        )
+        .register_scenario(
+            scenario!("loadtest_get_transaction_by_hash")
+                .register_transaction(transaction!(loadtest_get_transaction_by_hash)),
+        )
+        .register_scenario(
+            scenario!("loadtest_get_transaction_by_block_id_and_index_by_number")
+                .register_transaction(transaction!(
+                    loadtest_get_transaction_by_block_id_and_index_by_number
+                )),
+        )
+        .register_scenario(
+            scenario!("loadtest_get_transaction_by_block_id_and_index_by_hash")
+                .register_transaction(transaction!(
+                    loadtest_get_transaction_by_block_id_and_index_by_hash
+                )),
+        )
+        .register_scenario(
+            scenario!("loadtest_get_block_transaction_count_by_number")
+                .register_transaction(transaction!(loadtest_get_block_transaction_count_by_number)),
+        )
+        .register_scenario(
+            scenario!("loadtest_get_block_transaction_count_by_hash")
+                .register_transaction(transaction!(loadtest_get_block_transaction_count_by_hash)),
+        )
+        .register_scenario(
+            scenario!("loadtest_get_state_update_by_number")
+                .register_transaction(transaction!(loadtest_get_state_update_by_number)),
+        )
+        .register_scenario(
+            scenario!("loadtest_get_state_update_by_hash")
+                .register_transaction(transaction!(loadtest_get_state_update_by_hash)),
+        )
+        .register_scenario(
+            scenario!("loadtest_get_transaction_receipt")
+                .register_transaction(transaction!(loadtest_get_transaction_receipt)),
+        )
+        .register_scenario(
+            scenario!("loadtest_get_class_by_number")
+                .register_transaction(transaction!(loadtest_get_class_by_number)),
+        )
+        .register_scenario(
+            scenario!("loadtest_get_class_by_hash")
+                .register_transaction(transaction!(loadtest_get_class_by_hash)),
+        )
+        .register_scenario(
+            scenario!("loadtest_get_class_at_by_number")
+                .register_transaction(transaction!(loadtest_get_class_at_by_number)),
+        )
+        .register_scenario(
+            scenario!("loadtest_get_class_at_by_hash")
+                .register_transaction(transaction!(loadtest_get_class_at_by_hash)),
+        )
+        .register_scenario(
+            scenario!("loadtest_get_class_hash_at_by_number")
+                .register_transaction(transaction!(loadtest_get_class_hash_at_by_number)),
+        )
+        .register_scenario(
+            scenario!("loadtest_get_class_hash_at_by_hash")
+                .register_transaction(transaction!(loadtest_get_class_hash_at_by_hash)),
+        )
+        .register_scenario(
+            scenario!("loadtest_get_nonce_by_number")
+                .register_transaction(transaction!(loadtest_get_nonce_by_number)),
+        )
+        .register_scenario(
+            scenario!("loadtest_get_nonce_by_hash")
+                .register_transaction(transaction!(loadtest_get_nonce_by_hash)),
+        )
+        .register_scenario(
+            scenario!("loadtest_chain_id").register_transaction(transaction!(loadtest_chain_id)),
         )
 }
 
