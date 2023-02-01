@@ -1,3 +1,4 @@
+use assert_matches::assert_matches;
 use starknet_api::core::{ContractAddress, PatriciaKey};
 use starknet_api::hash::StarkHash;
 use starknet_api::patricia_key;
@@ -119,6 +120,8 @@ async fn revert_events() {
         TransactionIndex(block_number, TransactionOffsetInBlock(0)),
         EventIndexInTransactionOutput(0),
     );
+
+    // Test iter events using the storage reader.
     assert!(
         storage_reader
             .begin_ro_txn()
@@ -128,6 +131,20 @@ async fn revert_events() {
             .last()
             .is_some()
     );
+
+    // Test events raw table.
+    let txn = storage_reader.begin_ro_txn().unwrap();
+    let events_table = txn.txn.open_table(&txn.tables.events).unwrap();
+    for (tx_idx, tx_output) in block.body.transaction_outputs.iter().enumerate() {
+        let transaction_index = TransactionIndex(block_number, TransactionOffsetInBlock(tx_idx));
+        for (event_idx, event) in tx_output.events().iter().enumerate() {
+            let event_key = EventIndex(transaction_index, EventIndexInTransactionOutput(event_idx));
+            assert_matches!(
+                events_table.get(&txn.txn, &(event.from_address, event_key)),
+                Ok(Some(_))
+            );
+        }
+    }
 
     storage_writer
         .begin_rw_txn()
@@ -147,4 +164,14 @@ async fn revert_events() {
             .last()
             .is_none()
     );
+
+    let txn = storage_reader.begin_ro_txn().unwrap();
+    let events_table = txn.txn.open_table(&txn.tables.events).unwrap();
+    for (tx_idx, tx_output) in block.body.transaction_outputs.iter().enumerate() {
+        let transaction_index = TransactionIndex(block_number, TransactionOffsetInBlock(tx_idx));
+        for (event_idx, event) in tx_output.events().iter().enumerate() {
+            let event_key = EventIndex(transaction_index, EventIndexInTransactionOutput(event_idx));
+            assert_matches!(events_table.get(&txn.txn, &(event.from_address, event_key)), Ok(None));
+        }
+    }
 }
