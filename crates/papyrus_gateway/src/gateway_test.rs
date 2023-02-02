@@ -25,7 +25,7 @@ use starknet_api::transaction::{
 use starknet_api::{patricia_key, stark_felt};
 use test_utils::{
     get_rand_test_block_with_events, get_rand_test_body_with_events, get_rng, get_test_block,
-    get_test_state_diff, GetTestInstance,
+    get_test_body, get_test_state_diff, GetTestInstance,
 };
 
 use crate::api::{
@@ -1290,7 +1290,145 @@ async fn get_events_chunk_size_2_without_address() {
 }
 
 #[tokio::test]
-async fn run_server_scneario() {
+async fn get_events_page_size_too_big() {
+    let (module, _) = get_test_rpc_server_and_storage_writer();
+
+    // Create the filter.
+    let filter = EventFilter {
+        from_block: None,
+        to_block: None,
+        continuation_token: None,
+        chunk_size: get_test_gateway_config().max_events_chunk_size + 1,
+        address: None,
+        keys: vec![],
+    };
+
+    let err = module.call::<_, EventsChunk>("starknet_getEvents", [filter]).await.unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::PageSizeTooBig as i32,
+        JsonRpcError::PageSizeTooBig.to_string(),
+        None::<()>,
+    ));
+}
+
+#[tokio::test]
+async fn get_events_too_many_keys() {
+    let (module, _) = get_test_rpc_server_and_storage_writer();
+    let keys = (0..get_test_gateway_config().max_events_keys + 1)
+        .map(|i| HashSet::from([EventKey(StarkFelt::from(i as u64))]))
+        .collect();
+
+    // Create the filter.
+    let filter = EventFilter {
+        from_block: None,
+        to_block: None,
+        continuation_token: None,
+        chunk_size: 2,
+        address: None,
+        keys,
+    };
+
+    let err = module.call::<_, EventsChunk>("starknet_getEvents", [filter]).await.unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::TooManyKeysInFilter as i32,
+        JsonRpcError::TooManyKeysInFilter.to_string(),
+        None::<()>,
+    ));
+}
+
+#[tokio::test]
+async fn get_events_no_blocks() {
+    let (module, _) = get_test_rpc_server_and_storage_writer();
+
+    // Create the filter.
+    let filter = EventFilter {
+        from_block: None,
+        to_block: None,
+        continuation_token: None,
+        chunk_size: 2,
+        address: None,
+        keys: vec![],
+    };
+
+    let res = module.call::<_, EventsChunk>("starknet_getEvents", [filter]).await.unwrap();
+    assert_eq!(res, EventsChunk { events: vec![], continuation_token: None });
+}
+
+#[tokio::test]
+async fn get_events_no_blocks_in_filter() {
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
+    let parent_block = starknet_api::block::Block::default();
+    let block = starknet_api::block::Block {
+        header: BlockHeader {
+            parent_hash: parent_block.header.block_hash,
+            block_hash: BlockHash(stark_felt!("0x1")),
+            block_number: BlockNumber(1),
+            ..BlockHeader::default()
+        },
+        body: get_test_body(1),
+    };
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(parent_block.header.block_number, &parent_block.header)
+        .unwrap()
+        .append_body(parent_block.header.block_number, parent_block.body)
+        .unwrap()
+        .append_header(block.header.block_number, &block.header)
+        .unwrap()
+        .append_body(block.header.block_number, block.body.clone())
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    // Create the filter.
+    let filter = EventFilter {
+        from_block: Some(BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))),
+        to_block: Some(BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0)))),
+        continuation_token: None,
+        chunk_size: 2,
+        address: None,
+        keys: vec![],
+    };
+
+    let res = module.call::<_, EventsChunk>("starknet_getEvents", [filter]).await.unwrap();
+    assert_eq!(res, EventsChunk { events: vec![], continuation_token: None });
+}
+
+#[tokio::test]
+async fn get_events_invalid_ct() {
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
+    let block = starknet_api::block::Block::default();
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(block.header.block_number, &block.header)
+        .unwrap()
+        .append_body(block.header.block_number, block.body)
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    // Create the filter.
+    let filter = EventFilter {
+        from_block: None,
+        to_block: None,
+        continuation_token: Some(ContinuationToken("junk".to_owned())),
+        chunk_size: 2,
+        address: None,
+        keys: vec![],
+    };
+
+    let err = module.call::<_, EventsChunk>("starknet_getEvents", [filter]).await.unwrap_err();
+    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+        JsonRpcError::InvalidContinuationToken as i32,
+        JsonRpcError::InvalidContinuationToken.to_string(),
+        None::<()>,
+    ));
+}
+
+#[tokio::test]
+async fn run_server_no_blocks() {
     let (storage_reader, _) = get_test_storage();
     let gateway_config = get_test_gateway_config();
     let (addr, _handle) = run_server(&gateway_config, storage_reader).await.unwrap();
@@ -1305,8 +1443,6 @@ async fn run_server_scneario() {
 
 #[tokio::test]
 async fn serialize_returns_valid_json() {
-    // TODO(anatg): Use the papyrus_node/main.rs, when it has configuration for running different
-    // components, for openning the storage and running the server.
     let (storage_reader, mut storage_writer) = get_test_storage();
     let mut rng = get_rng();
     let parent_block = starknet_api::block::Block::default();
