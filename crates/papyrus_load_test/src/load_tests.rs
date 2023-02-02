@@ -1,6 +1,6 @@
 use goose::goose::{GooseUser, TransactionResult};
 
-use crate::gateway_functions::*;
+use crate::gateway_endpoints::*;
 
 pub async fn loadtest_get_block_with_tx_hashes_by_number(
     user: &mut GooseUser,

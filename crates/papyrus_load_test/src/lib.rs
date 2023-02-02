@@ -1,4 +1,4 @@
-pub mod gateway_functions;
+pub mod gateway_endpoints;
 pub mod load_tests;
 
 use goose::goose::{GooseUser, TransactionError};
