@@ -223,11 +223,12 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
         // Delete the transactions data.
         for (offset, tx_hash) in tx_hashes_iter.enumerate() {
             let tx_index = TransactionIndex(block_number, TransactionOffsetInBlock(offset));
-            if let Some(events) = self.get_transaction_events(tx_index)? {
-                let event_keys = events.iter().enumerate().map(|(idx, event)| {
-                    (event.from_address, EventIndex(tx_index, EventIndexInTransactionOutput(idx)))
-                });
-                for key in event_keys {
+            if let Some(tx_output) = self.get_transaction_output(tx_index)? {
+                for (index, from_address) in
+                    tx_output.events_contract_addresses().into_iter().enumerate()
+                {
+                    let key =
+                        (from_address, EventIndex(tx_index, EventIndexInTransactionOutput(index)));
                     events_table.delete(&self.txn, &key)?;
                 }
             }
