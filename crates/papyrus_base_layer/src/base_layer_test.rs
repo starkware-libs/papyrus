@@ -1,8 +1,12 @@
 use std::convert::TryFrom;
 
-use ethers::abi::Abi;
+use ethers::abi::{Abi, AbiEncode};
 use ethers::contract::Contract;
 use ethers::prelude::*;
+use starknet_api::block::BlockNumber;
+use starknet_api::core::GlobalRoot;
+use starknet_api::hash::StarkFelt;
+use starknet_api::stark_felt;
 const SN_CONTRACT_ADDR_MAINNET: &str = "0xc662c410C0ECf747543f5bA90660f6ABeBD9C8c4";
 const INFURA_ADDR: &str = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
 
@@ -65,4 +69,41 @@ async fn base_layer_state_root() {
     let state_root = contract.method::<_, U256>("stateRoot", ()).unwrap().await.unwrap();
 
     assert!(!state_root.is_zero());
+}
+
+#[tokio::test]
+async fn data_at_block() {
+    let contract = get_starknet_contract();
+    let eth_block_number = U64::from(16576509);
+
+    let state_block_number = BlockNumber(
+        contract
+            .method::<_, I256>("stateBlockNumber", ())
+            .unwrap()
+            .block(eth_block_number)
+            .await
+            .unwrap()
+            .as_u64(),
+    );
+
+    assert_eq!(state_block_number, BlockNumber(19883));
+    let state_root = GlobalRoot(
+        StarkFelt::try_from(
+            contract
+                .method::<_, U256>("stateRoot", ())
+                .unwrap()
+                .block(eth_block_number)
+                .await
+                .unwrap()
+                .encode_hex()
+                .as_str(),
+        )
+        .unwrap(),
+    );
+    assert_eq!(
+        state_root,
+        GlobalRoot(stark_felt!(
+            "0x0052d5a46c28465f849e08c510be9024ac484aa4383bbb0745a9da5ef6a2d631"
+        ))
+    );
 }
