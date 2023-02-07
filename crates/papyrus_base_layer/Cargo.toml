@@ -6,3 +6,6 @@ edition = "2021"
 [dependencies]
 
 [dev-dependencies]
+ethers = {version = "1.0.2"}
+serde_json = { version = "1.0.81" }
+tokio = { version = "1.18.2", features = ["full","sync"] }
