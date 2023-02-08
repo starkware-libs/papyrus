@@ -10,10 +10,10 @@ use starknet_api::transaction::{
 };
 
 use crate::body::{EventsTable, EventsTableKey};
-use crate::db::{DbCursor, DbTransaction, RO};
+use crate::db::{DbCursor, DbTransaction, TransactionKind};
 use crate::{EventIndex, StorageResult, StorageTxn, TransactionIndex};
 
-pub trait EventsReader<'txn, 'env> {
+pub trait EventsReader<'txn, 'env, Mode: TransactionKind> {
     /// Returns an itrator over events, which is a wrapper of two iterators.
     /// If the address is none it iterates the events by the order of the event index,
     /// else, it iterated the events by the order of the contract addresses.
@@ -22,17 +22,16 @@ pub trait EventsReader<'txn, 'env> {
         address: Option<ContractAddress>,
         event_index: EventIndex,
         to_block_number: BlockNumber,
-    ) -> StorageResult<EventIter<'txn, 'env>>;
+    ) -> StorageResult<EventIter<'txn, 'env, Mode>>;
 }
 
-// TODO: support all read transactions (including RW).
-impl<'txn, 'env> EventsReader<'txn, 'env> for StorageTxn<'env, RO> {
+impl<'txn, 'env, Mode: TransactionKind> EventsReader<'txn, 'env, Mode> for StorageTxn<'env, Mode> {
     fn iter_events(
         &'env self,
         address: Option<ContractAddress>,
         event_index: EventIndex,
         to_block_number: BlockNumber,
-    ) -> StorageResult<EventIter<'txn, 'env>> {
+    ) -> StorageResult<EventIter<'txn, 'env, Mode>> {
         if address.is_some() {
             return Ok(EventIter::ByContractAddress(
                 self.iter_events_by_contract_address((address.unwrap(), event_index))?,
@@ -43,16 +42,16 @@ impl<'txn, 'env> EventsReader<'txn, 'env> for StorageTxn<'env, RO> {
     }
 }
 
-pub enum EventIter<'txn, 'env> {
-    ByContractAddress(EventIterByContractAddress<'txn>),
-    ByEventIndex(EventIterByEventIndex<'txn, 'env>),
+pub enum EventIter<'txn, 'env, Mode: TransactionKind> {
+    ByContractAddress(EventIterByContractAddress<'txn, Mode>),
+    ByEventIndex(EventIterByEventIndex<'txn, 'env, Mode>),
 }
 
 /// This iterator is a wrapper of two iterators [`EventIterByContractAddress`]
 /// and [`EventIterByEventIndex`].
 /// With this wrapper we can execute the same code, regardless the
 /// type of iteration used.
-impl Iterator for EventIter<'_, '_> {
+impl<Mode: TransactionKind> Iterator for EventIter<'_, '_, Mode> {
     type Item = EventsTableKeyValue;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -69,12 +68,12 @@ impl Iterator for EventIter<'_, '_> {
 
 /// This iterator goes over the events in the order of the events table key.
 /// That is, the events iterated first by the contract address and then by the event index.
-pub struct EventIterByContractAddress<'txn> {
+pub struct EventIterByContractAddress<'txn, Mode: TransactionKind> {
     current: Option<EventsTableKeyValue>,
-    cursor: EventsTableCursor<'txn>,
+    cursor: EventsTableCursor<'txn, Mode>,
 }
 
-impl EventIterByContractAddress<'_> {
+impl<Mode: TransactionKind> EventIterByContractAddress<'_, Mode> {
     fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
         let res = self.current.take();
         self.current = self.cursor.next()?;
@@ -86,16 +85,16 @@ impl EventIterByContractAddress<'_> {
 /// That is, the events are iterated by the order they are emitted.
 /// First by the block number, then by the transaction offset in the block,
 /// and finally, by the event index in the transaction output.
-pub struct EventIterByEventIndex<'txn, 'env> {
-    txn: &'txn DbTransaction<'env, RO>,
+pub struct EventIterByEventIndex<'txn, 'env, Mode: TransactionKind> {
+    txn: &'txn DbTransaction<'env, Mode>,
     tx_current: Option<TransactionOutputsKeyValue>,
-    tx_cursor: TransactionOutputsTableCursor<'txn>,
+    tx_cursor: TransactionOutputsTableCursor<'txn, Mode>,
     events_table: EventsTable<'env>,
     event_index_in_tx_current: EventIndexInTransactionOutput,
     to_block_number: BlockNumber,
 }
 
-impl EventIterByEventIndex<'_, '_> {
+impl<Mode: TransactionKind> EventIterByEventIndex<'_, '_, Mode> {
     fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
         if let Some((tx_index, tx_output)) = &self.tx_current {
             if let Some(address) =
@@ -139,13 +138,13 @@ impl EventIterByEventIndex<'_, '_> {
     }
 }
 
-impl<'txn, 'env> StorageTxn<'env, RO> {
+impl<'txn, 'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
     // Returns an events iterator that iterates events by the events table key,
     // starting from the first event with a key greater or equals to the given key.
     fn iter_events_by_contract_address(
         &'env self,
         key: EventsTableKey,
-    ) -> StorageResult<EventIterByContractAddress<'txn>> {
+    ) -> StorageResult<EventIterByContractAddress<'txn, Mode>> {
         let events_table = self.txn.open_table(&self.tables.events)?;
         let mut cursor = events_table.cursor(&self.txn)?;
         let current = cursor.lower_bound(&key)?;
@@ -159,7 +158,7 @@ impl<'txn, 'env> StorageTxn<'env, RO> {
         &'env self,
         event_index: EventIndex,
         to_block_number: BlockNumber,
-    ) -> StorageResult<EventIterByEventIndex<'txn, 'env>> {
+    ) -> StorageResult<EventIterByEventIndex<'txn, 'env, Mode>> {
         let transaction_outputs_table = self.txn.open_table(&self.tables.transaction_outputs)?;
         let mut tx_cursor = transaction_outputs_table.cursor(&self.txn)?;
         let tx_current = tx_cursor.lower_bound(&event_index.0)?;
@@ -293,7 +292,7 @@ impl From<TransactionOutput> for ThinTransactionOutput {
 }
 
 type EventsTableKeyValue = (EventsTableKey, EventContent);
-type EventsTableCursor<'txn> = DbCursor<'txn, RO, EventsTableKey, EventContent>;
+type EventsTableCursor<'txn, Mode> = DbCursor<'txn, Mode, EventsTableKey, EventContent>;
 type TransactionOutputsKeyValue = (TransactionIndex, ThinTransactionOutput);
-type TransactionOutputsTableCursor<'txn> =
-    DbCursor<'txn, RO, TransactionIndex, ThinTransactionOutput>;
+type TransactionOutputsTableCursor<'txn, Mode> =
+    DbCursor<'txn, Mode, TransactionIndex, ThinTransactionOutput>;
