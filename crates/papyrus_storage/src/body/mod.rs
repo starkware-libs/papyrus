@@ -206,6 +206,7 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
         let transaction_outputs_table = self.txn.open_table(&self.tables.transaction_outputs)?;
         let transaction_hash_to_idx_table =
             self.txn.open_table(&self.tables.transaction_hash_to_idx)?;
+        let events_table = self.txn.open_table(&self.tables.events)?;
 
         // Assert that body marker equals the reverted block number + 1
         let current_header_marker = self.get_body_marker()?;
@@ -222,10 +223,20 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
         // Delete the transactions data.
         for (offset, tx_hash) in tx_hashes_iter.enumerate() {
             let tx_index = TransactionIndex(block_number, TransactionOffsetInBlock(offset));
+            if let Some(tx_output) = self.get_transaction_output(tx_index)? {
+                for (index, from_address) in
+                    tx_output.events_contract_addresses().into_iter().enumerate()
+                {
+                    let key =
+                        (from_address, EventIndex(tx_index, EventIndexInTransactionOutput(index)));
+                    events_table.delete(&self.txn, &key)?;
+                }
+            }
             transactions_table.delete(&self.txn, &tx_index)?;
             transaction_outputs_table.delete(&self.txn, &tx_index)?;
             transaction_hash_to_idx_table.delete(&self.txn, &tx_hash)?;
         }
+
         markers_table.upsert(&self.txn, &MarkerKind::Body, &block_number)?;
         Ok(self)
     }
