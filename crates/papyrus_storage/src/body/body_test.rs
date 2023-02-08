@@ -140,19 +140,8 @@ async fn append_body() {
 #[tokio::test]
 async fn revert_non_existing_body_fails() {
     let (_, mut writer) = get_test_storage();
-    let res = writer.begin_rw_txn().unwrap().revert_body(BlockNumber(5));
-    if let Err(err) = res {
-        assert_matches!(
-            err,
-            StorageError::InvalidRevert {
-                revert_block_number,
-                block_number_marker
-            }
-            if revert_block_number == BlockNumber(5) && block_number_marker == BlockNumber(0)
-        )
-    } else {
-        panic!("Unexpected Ok.");
-    }
+    let res = writer.begin_rw_txn().unwrap().revert_body(BlockNumber(5)).unwrap().1;
+    assert!(res.is_none());
 }
 
 #[tokio::test]
@@ -165,7 +154,7 @@ async fn revert_last_body_success() {
         .unwrap()
         .commit()
         .unwrap();
-    writer.begin_rw_txn().unwrap().revert_body(BlockNumber(0)).unwrap().commit().unwrap();
+    writer.begin_rw_txn().unwrap().revert_body(BlockNumber(0)).unwrap().0.commit().unwrap();
 }
 
 #[tokio::test]
@@ -195,7 +184,7 @@ async fn revert_body_updates_marker() {
     // Verify that the body marker before revert is 2.
     assert_eq!(reader.begin_ro_txn().unwrap().get_body_marker().unwrap(), BlockNumber(2));
 
-    writer.begin_rw_txn().unwrap().revert_body(BlockNumber(1)).unwrap().commit().unwrap();
+    writer.begin_rw_txn().unwrap().revert_body(BlockNumber(1)).unwrap().0.commit().unwrap();
     assert_eq!(reader.begin_ro_txn().unwrap().get_body_marker().unwrap(), BlockNumber(1));
 }
 
@@ -217,7 +206,7 @@ async fn get_reverted_body_returns_none() {
             .is_some()
     );
 
-    writer.begin_rw_txn().unwrap().revert_body(BlockNumber(1)).unwrap().commit().unwrap();
+    writer.begin_rw_txn().unwrap().revert_body(BlockNumber(1)).unwrap().0.commit().unwrap();
     assert!(
         reader.begin_ro_txn().unwrap().get_block_transactions(BlockNumber(1)).unwrap().is_none()
     );
@@ -266,7 +255,7 @@ async fn revert_transactions() {
             .is_some()
     );
 
-    writer.begin_rw_txn().unwrap().revert_body(BlockNumber(0)).unwrap().commit().unwrap();
+    writer.begin_rw_txn().unwrap().revert_body(BlockNumber(0)).unwrap().0.commit().unwrap();
 
     // Check that all the transactions were deleted.
     for (offset, tx_hash) in body.transactions.iter().map(|tx| tx.transaction_hash()).enumerate() {

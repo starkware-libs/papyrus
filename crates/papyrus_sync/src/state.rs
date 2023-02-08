@@ -11,7 +11,7 @@ use papyrus_storage::{StorageReader, StorageWriter};
 use starknet_api::state::StateDiff;
 use tokio::sync::Mutex;
 use tokio_stream::StreamExt;
-use tracing::info;
+use tracing::{info, trace};
 
 use crate::sources::CentralSourceTrait;
 use crate::StateSyncResult;
@@ -45,7 +45,8 @@ pub async fn sync_state_while_ok<TCentralSource: CentralSourceTrait + Sync + Sen
 
             let storage_header = txn.get_block_header(block_number)?;
             if storage_header.is_some() && storage_header.unwrap().block_hash == block_hash {
-                info!("Storing state diff of block {block_number}.");
+                info!("Storing state diff of block {block_number} with hash {block_hash}.");
+                trace!("StateDiff data: {state_diff:#?}");
                 txn.append_state_diff(
                     block_number,
                     state_diff,

@@ -9,6 +9,7 @@ use starknet_api::transaction::{
     Event, EventContent, EventIndexInTransactionOutput, Transaction, TransactionHash,
     TransactionOffsetInBlock, TransactionOutput,
 };
+use tracing::debug;
 
 use crate::body::events::ThinTransactionOutput;
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
@@ -21,6 +22,7 @@ type TransactionOutputsTable<'env> = TableHandle<'env, TransactionIndex, ThinTra
 type TransactionHashToIdxTable<'env> = TableHandle<'env, TransactionHash, TransactionIndex>;
 type EventsTableKey = (ContractAddress, EventIndex);
 type EventsTable<'env> = TableHandle<'env, EventsTableKey, EventContent>;
+type RevertedBlockBody = (Vec<Transaction>, Vec<ThinTransactionOutput>, Vec<Vec<Event>>);
 
 pub trait BodyStorageReader {
     // The block number marker is the first block number that doesn't exist yet.
@@ -65,7 +67,10 @@ where
     // To enforce that no commit happen after a failure, we consume and return Self on success.
     fn append_body(self, block_number: BlockNumber, block_body: BlockBody) -> StorageResult<Self>;
 
-    fn revert_body(self, block_number: BlockNumber) -> StorageResult<Self>;
+    fn revert_body(
+        self,
+        block_number: BlockNumber,
+    ) -> StorageResult<(Self, Option<RevertedBlockBody>)>;
 }
 
 impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
@@ -200,7 +205,10 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
         Ok(self)
     }
 
-    fn revert_body(self, block_number: BlockNumber) -> StorageResult<Self> {
+    fn revert_body(
+        self,
+        block_number: BlockNumber,
+    ) -> StorageResult<(Self, Option<RevertedBlockBody>)> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let transactions_table = self.txn.open_table(&self.tables.transactions)?;
         let transaction_outputs_table = self.txn.open_table(&self.tables.transaction_outputs)?;
@@ -209,11 +217,19 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
         let events_table = self.txn.open_table(&self.tables.events)?;
 
         // Assert that body marker equals the reverted block number + 1
-        let current_header_marker = self.get_body_marker()?;
-        if current_header_marker != block_number.next() {
+        let current_body_marker = self.get_body_marker()?;
+        if current_body_marker <= block_number {
+            debug!(
+                "Attempt to revert a non-existing body of block {}. Returning without an action.",
+                block_number
+            );
+            return Ok((self, None));
+        }
+
+        if current_body_marker != block_number.next() {
             return Err(StorageError::InvalidRevert {
                 revert_block_number: block_number,
-                block_number_marker: current_header_marker,
+                block_number_marker: current_body_marker,
             });
         }
 
@@ -221,16 +237,22 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
         let tx_hashes_iter = transactions.iter().map(|tx| tx.transaction_hash());
 
         // Delete the transactions data.
+        let mut transactions = vec![];
+        let mut transaction_outputs = vec![];
         for (offset, tx_hash) in tx_hashes_iter.enumerate() {
             let tx_index = TransactionIndex(block_number, TransactionOffsetInBlock(offset));
             if let Some(tx_output) = self.get_transaction_output(tx_index)? {
                 for (index, from_address) in
-                    tx_output.events_contract_addresses().into_iter().enumerate()
+                    tx_output.events_contract_addresses_as_ref().iter().enumerate()
                 {
                     let key =
-                        (from_address, EventIndex(tx_index, EventIndexInTransactionOutput(index)));
+                        (*from_address, EventIndex(tx_index, EventIndexInTransactionOutput(index)));
                     events_table.delete(&self.txn, &key)?;
                 }
+                transaction_outputs.push(tx_output);
+            }
+            if let Some(tx) = transactions_table.get(&self.txn, &tx_index)? {
+                transactions.push(tx);
             }
             transactions_table.delete(&self.txn, &tx_index)?;
             transaction_outputs_table.delete(&self.txn, &tx_index)?;
@@ -238,7 +260,7 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
         }
 
         markers_table.upsert(&self.txn, &MarkerKind::Body, &block_number)?;
-        Ok(self)
+        Ok((self, Some((transactions, transaction_outputs, vec![]))))
     }
 }
 

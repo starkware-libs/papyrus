@@ -10,6 +10,7 @@ use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey};
+use tracing::debug;
 
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
@@ -20,7 +21,6 @@ type DeployedContractsTable<'env> = TableHandle<'env, ContractAddress, IndexedDe
 type ContractStorageTable<'env> =
     TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), StarkFelt>;
 type NoncesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumber), Nonce>;
-use tracing::debug;
 
 // Structure of state data:
 // * declared_classes: (class_hash) -> (block_num, contract_class). Each entry specifies at which
@@ -249,7 +249,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
     fn revert_state_diff(
         self,
         block_number: BlockNumber,
-    ) -> StorageResult<(Self, Option<(ThinStateDiff, IndexMap<ClassHash, ContractClass>)>)> {
+    ) -> StorageResult<(Self, Option<RevertedStateDiff>)> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let declared_classes_table = self.txn.open_table(&self.tables.declared_classes)?;
         let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
