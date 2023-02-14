@@ -1,5 +1,5 @@
-pub mod gateway_endpoints;
-pub mod load_tests;
+pub mod scenarios;
+pub mod transactions;
 
 use goose::goose::{GooseUser, TransactionError};
 use serde_json::{json, Value as jsonVal};
