@@ -4,7 +4,7 @@ use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass, StateDiff, StorageKey};
 use starknet_api::{patricia_key, stark_felt};
 
-use crate::sort_state_diff;
+use crate::state::sort_state_diff;
 
 // TODO(anatg): Add a test to check that the sync calls the sort_state_diff function
 // before writing to the storage.
