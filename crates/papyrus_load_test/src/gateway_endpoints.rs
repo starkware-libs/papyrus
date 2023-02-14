@@ -1,29 +1,29 @@
 use goose::goose::GooseUser;
-use serde::de::DeserializeOwned;
 use serde_json::json;
 
-use crate::{post_jsonrpc_request, MethodResult};
+use crate::{jsonrpc_request, post_jsonrpc_request, PostResult};
 
-pub async fn get_block_with_tx_hashes_by_number<T: DeserializeOwned>(
+pub async fn get_block_with_tx_hashes_by_number(
     user: &mut GooseUser,
     block_number: u64,
-) -> MethodResult<T> {
+) -> PostResult {
     post_jsonrpc_request(
         user,
-        "starknet_getBlockWithTxHashes",
-        json!([{ "block_number": block_number }]),
+        &jsonrpc_request(
+            "starknet_getBlockWithTxHashes",
+            json!([{ "block_number": block_number }]),
+        ),
     )
     .await
 }
 
-pub async fn get_block_with_tx_hashes_by_hash<T: DeserializeOwned>(
+pub async fn get_block_with_tx_hashes_by_hash(
     user: &mut GooseUser,
     block_hash: &str,
-) -> MethodResult<T> {
+) -> PostResult {
     post_jsonrpc_request(
         user,
-        "starknet_getBlockWithTxHashes",
-        json!([{ "block_hash": block_hash }]),
+        &jsonrpc_request("starknet_getBlockWithTxHashes", json!([{ "block_hash": block_hash }])),
     )
     .await
 }

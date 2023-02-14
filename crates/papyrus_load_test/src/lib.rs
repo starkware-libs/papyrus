@@ -2,26 +2,13 @@ pub mod gateway_endpoints;
 pub mod load_tests;
 
 use goose::goose::{GooseUser, TransactionError};
-use serde::de::DeserializeOwned;
-use serde::Deserialize;
 use serde_json::json;
-type MethodResult<T> = Result<T, Box<TransactionError>>;
+type PostResult = Result<serde_json::Value, Box<TransactionError>>;
 
-pub async fn post_jsonrpc_request<T: DeserializeOwned>(
-    user: &mut GooseUser,
-    method: &str,
-    params: serde_json::Value,
-) -> MethodResult<T> {
-    let request = jsonrpc_request(method, params);
-    let response = user.post_json("", &request).await?.response.map_err(|e| Box::new(e.into()))?;
-    #[derive(Deserialize)]
-    struct TransactionReceiptResponse<T> {
-        result: T,
-    }
-    let response: TransactionReceiptResponse<T> =
-        response.json().await.map_err(|e| Box::new(e.into()))?;
-
-    Ok(response.result)
+pub async fn post_jsonrpc_request(user: &mut GooseUser, request: &serde_json::Value) -> PostResult {
+    let response = user.post_json("", request).await?.response.map_err(|e| Box::new(e.into()))?;
+    let response = response.json::<serde_json::Value>().await.map_err(|e| Box::new(e.into()))?;
+    Ok(response)
 }
 
 pub fn jsonrpc_request(method: &str, params: serde_json::Value) -> serde_json::Value {
