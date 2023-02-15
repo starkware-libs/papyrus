@@ -47,15 +47,6 @@ pub enum StateSyncError {
     #[error(transparent)]
     CentralSourceError(#[from] CentralError),
     #[error(
-        "Parent block hash of block {block_number} is not consistent with the stored block. \
-         Expected {expected_parent_block_hash}, found {stored_parent_block_hash}."
-    )]
-    ParentBlockHashMismatch {
-        block_number: BlockNumber,
-        expected_parent_block_hash: BlockHash,
-        stored_parent_block_hash: BlockHash,
-    },
-    #[error(
         "Received state diff of block {block_number} and block hash {block_hash}, didn't find a \
          matching header (neither in the ommer headers)."
     )]
@@ -84,19 +75,6 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         info!("State sync started.");
         loop {
             match self.sync_while_ok().await {
-                Err(StateSyncError::ParentBlockHashMismatch {
-                    block_number,
-                    expected_parent_block_hash,
-                    stored_parent_block_hash,
-                }) => {
-                    // A revert detected, log and restart sync loop.
-                    info!(
-                        "Detected revert while processing block {}. Parent hash of the incoming \
-                         block is {}, current block hash is {}.",
-                        block_number, expected_parent_block_hash, stored_parent_block_hash
-                    );
-                    continue;
-                }
                 // A recoverable error occurred. Sleep and try syncing again.
                 Err(err) if is_recoverable(&err) => {
                     warn!("{}", err);
@@ -108,9 +86,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                     error!("{}", err);
                     return Err(err);
                 }
-                Ok(_) => {
-                    unreachable!("Sync should either return with an error or continue forever.")
-                }
+                Ok(()) => continue,
             }
         }
 
@@ -132,7 +108,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         }
     }
 
-    // Sync until encountering an error:
+    // Sync until encountering an error or a revert:
     //  1. If needed, revert blocks from the end of the chain.
     //  2. Create infinite block and state diff streams to fetch data from the central source.
     //  3. Fetch data from the streams with unblocking wait while there is no new data.
@@ -160,18 +136,21 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
               complete => break,
             }
             .expect("Received None as a sync event.")?;
-            self.process_sync_event(sync_event).await?;
+            let detected_revert = self.process_sync_event(sync_event).await?;
             debug!("Finished processing sync event.");
+            if detected_revert {
+                break;
+            }
         }
-        unreachable!("Fetching data loop should never return.");
+        Ok(())
     }
 
     // Tries to store the incoming data.
-    async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult {
+    async fn process_sync_event(&mut self, sync_event: SyncEvent) -> Result<bool, StateSyncError> {
         match sync_event {
             SyncEvent::BlockAvailable { block_number, block } => {
                 debug!("Got block sync event.");
-                self.store_block(block_number, block)
+                Ok(self.store_block(block_number, block)?)
             }
             SyncEvent::StateDiffAvailable {
                 block_number,
@@ -185,15 +164,22 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                     block_hash,
                     state_diff,
                     deployed_contract_class_definitions,
-                )
+                )?;
+                Ok(false)
             }
         }
     }
 
-    fn store_block(&mut self, block_number: BlockNumber, block: Block) -> StateSyncResult {
+    fn store_block(
+        &mut self,
+        block_number: BlockNumber,
+        block: Block,
+    ) -> Result<bool, StateSyncError> {
         // Assuming the central source is trusted, detect reverts by comparing the incoming block's
         // parent hash to the current hash.
-        self.verify_parent_block_hash(block_number, &block)?;
+        if self.verify_parent_block_hash(block_number, &block)? {
+            return Ok(true);
+        }
 
         debug!("Storing block {block_number} with hash {}.", block.header.block_hash);
         trace!("Block data: {block:#?}");
@@ -202,7 +188,8 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             .append_header(block_number, &block.header)?
             .append_body(block_number, block.body)?
             .commit()?;
-        Ok(())
+
+        Ok(false)
     }
 
     fn store_state_diff(
@@ -240,13 +227,14 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     }
 
     // Compares the block's parent hash to the stored block.
+    // Returns true if detected revert.
     fn verify_parent_block_hash(
         &self,
         block_number: BlockNumber,
         block: &Block,
-    ) -> StateSyncResult {
+    ) -> Result<bool, StateSyncError> {
         let prev_block_number = match block_number.prev() {
-            None => return Ok(()),
+            None => return Ok(false),
             Some(bn) => bn,
         };
         let prev_hash = self
@@ -262,14 +250,15 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             .block_hash;
 
         if prev_hash != block.header.parent_hash {
-            return Err(StateSyncError::ParentBlockHashMismatch {
-                block_number,
-                expected_parent_block_hash: block.header.parent_hash,
-                stored_parent_block_hash: prev_hash,
-            });
+            info!(
+                "Detected revert while processing block {block_number}. Parent hash of the \
+                 incoming block is {prev_hash}, current block hash is {}.",
+                block.header.parent_hash
+            );
+            return Ok(true);
         }
 
-        Ok(())
+        Ok(false)
     }
 
     // Reverts data if needed.
