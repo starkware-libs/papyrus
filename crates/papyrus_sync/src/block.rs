@@ -163,7 +163,6 @@ pub(crate) fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send
         loop {
             let header_marker = reader.begin_ro_txn()?.get_header_marker()?;
             let last_block_number = central_source.get_block_marker().await?;
-            debug!("Downloading blocks [{} - {}).", header_marker, last_block_number);
             if header_marker == last_block_number {
                 debug!("Waiting for more blocks.");
                 tokio::time::sleep(block_propation_sleep_duration).await;
