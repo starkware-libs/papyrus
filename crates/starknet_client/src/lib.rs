@@ -208,6 +208,7 @@ impl StarknetClient {
     }
 
     async fn request_with_retry(&self, url: Url) -> Result<String, ClientError> {
+        debug!("Sending a request to starknet server: {url}");
         Retry::new(&self.retry_config)
             .start_with_condition(|| self.request(url.clone()), Self::should_retry)
             .await

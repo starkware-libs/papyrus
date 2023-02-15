@@ -1,19 +1,20 @@
 # The chain to follow.
 # For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.
-chain_id: SN_MAIN
+chain_id: SN_MAIN3
 
 # Connection with Starknet feeder-gateway.
 central:
     # Maximum number of concurrent requests to Starknet feeder-gateway for getting a type of data (for example, blocks).
-    concurrent_requests: 10
+    concurrent_requests: 100
     # Starknet feeder-gateway URL. It should match chain_id.
+    # url: https://external.integration.starknet.io/
     url: https://alpha-mainnet.starknet.io/
     # In case of failed requests to the central.
     retry:
         # Base waiting time after a failed request. After that, the time increases exponentially.
         retry_base_millis: 30
         # Max waiting time after a failed request.
-        retry_max_delay_millis: 30000
+        retry_max_delay_millis: 5000
         # Maximum number of retries before the node stops retrying.
         max_retries: 10
     # Optional headers for SN-client.
@@ -50,4 +51,4 @@ sync:
     # Time before checking for a new block after the node is synchronized.
     block_propagation_sleep_duration_secs: 10
     # Waiting time before restarting synchronization after a recoverable error.
-    recoverable_error_sleep_duration_secs: 10
+    recoverable_error_sleep_duration_secs: 1

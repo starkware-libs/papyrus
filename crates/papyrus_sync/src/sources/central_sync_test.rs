@@ -18,7 +18,7 @@ use tracing::{debug, error};
 
 use super::central::BlocksStream;
 use crate::sources::central::{MockCentralSourceTrait, StateUpdatesStream};
-use crate::{CentralError, CentralSourceTrait, GenericStateSync, StateSyncResult, SyncConfig};
+use crate::{CentralError, CentralSourceTrait, GenericStateSync, SyncConfig};
 
 const SYNC_SLEEP_DURATION: Duration = Duration::new(0, 1000 * 1000 * 100); // 100ms
 const DURATION_BEFORE_CHECKING_STORAGE: Duration = Duration::new(0, 1000 * 1000 * 100); // 100ms
@@ -44,7 +44,7 @@ async fn check_storage(
         debug!("== Checking predicate on storage ({}/{}). ==", i + 1, MAX_CHECK_STORAGE_ITERATIONS);
         match predicate(&reader) {
             CheckStoragePredicateResult::InProgress => {
-                debug!("== Cechk finished, test still in progress. ==");
+                debug!("== Check finished, test still in progress. ==");
                 interval.tick().await;
             }
             CheckStoragePredicateResult::Passed => {
@@ -66,7 +66,7 @@ async fn run_sync(
     reader: StorageReader,
     writer: StorageWriter,
     central: impl CentralSourceTrait + Send + Sync + 'static,
-) -> StateSyncResult {
+) {
     let mut state_sync = GenericStateSync {
         config: SyncConfig {
             block_propagation_sleep_duration: SYNC_SLEEP_DURATION,
@@ -77,8 +77,7 @@ async fn run_sync(
         writer,
     };
 
-    state_sync.run().await?;
-    Ok(())
+    state_sync.run().await;
 }
 
 #[tokio::test]
@@ -101,7 +100,7 @@ async fn sync_empty_chain() {
     });
 
     tokio::select! {
-        sync_result = sync_future => sync_result.unwrap(),
+        _ = sync_future => {},
         storage_check_result = check_storage_future => assert!(storage_check_result),
     }
 }
@@ -179,7 +178,7 @@ async fn sync_happy_flow() {
         });
 
     tokio::select! {
-        sync_result = sync_future => sync_result.unwrap(),
+        _ = sync_future => {},
         storage_check_result = check_storage_future => assert!(storage_check_result),
     }
 }
@@ -303,7 +302,7 @@ async fn sync_with_revert() {
     };
 
     tokio::select! {
-        sync_result = sync_future => sync_result.unwrap(),
+        _ = sync_future => {},
         _ = check_flow => {},
     }
 
