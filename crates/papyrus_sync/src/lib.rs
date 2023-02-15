@@ -7,7 +7,7 @@ mod sources;
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_stream::stream;
+use async_stream::try_stream;
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use indexmap::IndexMap;
 use papyrus_storage::body::{BodyStorageReader, BodyStorageWriter};
@@ -381,7 +381,7 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
     central_source: Arc<TCentralSource>,
     block_propation_sleep_duration: Duration,
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
-    stream! {
+    try_stream! {
         loop {
             let header_marker = reader.begin_ro_txn()?.get_header_marker()?;
             let last_block_number = central_source.get_block_marker().await?;
@@ -395,13 +395,8 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
                 central_source.stream_new_blocks(header_marker, last_block_number).fuse();
             pin_mut!(block_stream);
             while let Some(maybe_block) = block_stream.next().await {
-                match maybe_block {
-                    Ok((block_number, block)) => yield Ok(SyncEvent::BlockAvailable { block_number, block }),
-                    Err(err) => {
-                        yield Err(StateSyncError::CentralSourceError(err));
-                        break;
-                    }
-                }
+                let (block_number, block) = maybe_block?;
+                yield SyncEvent::BlockAvailable { block_number, block };
             }
         }
     }
@@ -412,7 +407,7 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
     central_source: Arc<TCentralSource>,
     block_propation_sleep_duration: Duration,
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
-    stream! {
+    try_stream! {
         loop {
             let txn = reader.begin_ro_txn()?;
             let state_marker = txn.get_state_marker()?;
@@ -429,26 +424,19 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
             pin_mut!(state_diff_stream);
 
             while let Some(maybe_state_diff) = state_diff_stream.next().await {
-                match maybe_state_diff {
-                    Ok((
-                        block_number,
-                        block_hash,
-                        mut state_diff,
-                        deployed_contract_class_definitions,
-                    )) => {
-                        sort_state_diff(&mut state_diff);
-                        yield Ok(SyncEvent::StateDiffAvailable {
-                            block_number,
-                            block_hash,
-                            state_diff,
-                            deployed_contract_class_definitions,
-                        });
-                    }
-                    Err(err) => {
-                        yield Err(StateSyncError::CentralSourceError(err));
-                        break;
-                    }
-                }
+                let (
+                    block_number,
+                    block_hash,
+                    mut state_diff,
+                    deployed_contract_class_definitions,
+                ) = maybe_state_diff?;
+                sort_state_diff(&mut state_diff);
+                yield SyncEvent::StateDiffAvailable {
+                    block_number,
+                    block_hash,
+                    state_diff,
+                    deployed_contract_class_definitions,
+                };
             }
         }
     }
