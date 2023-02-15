@@ -153,6 +153,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         pin_mut!(block_stream, state_diff_stream);
 
         loop {
+            debug!("Selecting between block sync and state diff sync.");
             let sync_event = select! {
               res = block_stream.next() => res,
               res = state_diff_stream.next() => res,
@@ -160,6 +161,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             }
             .expect("Received None as a sync event.")?;
             self.process_sync_event(sync_event).await?;
+            debug!("Finished processing sync event.");
         }
         unreachable!("Fetching data loop should never return.");
     }
@@ -168,6 +170,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult {
         match sync_event {
             SyncEvent::BlockAvailable { block_number, block } => {
+                debug!("Got block sync event.");
                 self.store_block(block_number, block)
             }
             SyncEvent::StateDiffAvailable {
@@ -175,12 +178,15 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 block_hash,
                 state_diff,
                 deployed_contract_class_definitions,
-            } => self.store_state_diff(
-                block_number,
-                block_hash,
-                state_diff,
-                deployed_contract_class_definitions,
-            ),
+            } => {
+                debug!("Got state diff sync event.");
+                self.store_state_diff(
+                    block_number,
+                    block_hash,
+                    state_diff,
+                    deployed_contract_class_definitions,
+                )
+            }
         }
     }
 
@@ -268,6 +274,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
 
     // Reverts data if needed.
     async fn handle_block_reverts(&mut self) -> Result<(), StateSyncError> {
+        debug!("Handling block reverts.");
         let header_marker = self.reader.begin_ro_txn()?.get_header_marker()?;
 
         // Revert last blocks if needed.
@@ -378,11 +385,12 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
         loop {
             let header_marker = reader.begin_ro_txn()?.get_header_marker()?;
             let last_block_number = central_source.get_block_marker().await?;
-            debug!("Downloading blocks [{} - {}).", header_marker, last_block_number);
             if header_marker == last_block_number {
+                debug!("Waiting for more blocks.");
                 tokio::time::sleep(block_propation_sleep_duration).await;
                 continue;
             }
+            debug!("Downloading blocks [{} - {}).", header_marker, last_block_number);
             let block_stream =
                 central_source.stream_new_blocks(header_marker, last_block_number).fuse();
             pin_mut!(block_stream);
@@ -410,11 +418,12 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
             let state_marker = txn.get_state_marker()?;
             let last_block_number = txn.get_header_marker()?;
             drop(txn);
-            debug!("Downloading state diffs [{} - {}).", state_marker, last_block_number);
             if state_marker == last_block_number {
+                debug!("Waiting for the block chain to advance.");
                 tokio::time::sleep(block_propation_sleep_duration).await;
                 continue;
             }
+            debug!("Downloading state diffs [{} - {}).", state_marker, last_block_number);
             let state_diff_stream =
                 central_source.stream_state_updates(state_marker, last_block_number).fuse();
             pin_mut!(state_diff_stream);
