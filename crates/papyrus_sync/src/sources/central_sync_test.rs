@@ -83,7 +83,7 @@ async fn run_sync(
 
 #[tokio::test]
 async fn sync_empty_chain() {
-    let _ = simple_logger::init();
+    let _ = simple_logger::init_with_env();
 
     // Mock central without any block.
     let mut mock = MockCentralSourceTrait::new();
@@ -110,7 +110,7 @@ async fn sync_empty_chain() {
 async fn sync_happy_flow() {
     const N_BLOCKS: u64 = 5;
     const MAX_TIME_TO_SYNC_MS: u64 = 60;
-    let _ = simple_logger::init();
+    let _ = simple_logger::init_with_env();
 
     // Mock having N_BLOCKS chain in central.
     let mut mock = MockCentralSourceTrait::new();
@@ -186,7 +186,7 @@ async fn sync_happy_flow() {
 
 #[tokio::test]
 async fn sync_with_revert() {
-    let _ = simple_logger::init();
+    let _ = simple_logger::init_with_env();
     let (reader, writer) = get_test_storage();
 
     // Once the sync reaches N_BLOCKS_BEFORE_REVERT, the check_storage thread will set this flag to
