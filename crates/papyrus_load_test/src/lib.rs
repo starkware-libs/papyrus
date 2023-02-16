@@ -1,5 +1,4 @@
 pub mod gateway_endpoints;
-pub mod load_tests;
 pub mod scenarios;
 pub mod transactions;
 
