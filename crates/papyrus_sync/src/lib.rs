@@ -5,13 +5,13 @@ mod state;
 use std::sync::Arc;
 use std::time::Duration;
 
-use futures_util::{pin_mut, select, StreamExt};
 use indexmap::IndexMap;
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, StateDiff};
+use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
@@ -37,6 +37,8 @@ pub type StateSyncResult = Result<(), StateSyncError>;
 #[derive(thiserror::Error, Debug)]
 pub enum StateSyncError {
     #[error(transparent)]
+    SenderError(#[from] mpsc::error::SendError<SyncEvent>),
+    #[error(transparent)]
     StorageError(#[from] StorageError),
     #[error(transparent)]
     CentralSourceError(#[from] CentralError),
@@ -57,6 +59,7 @@ pub enum StateSyncError {
 }
 
 #[allow(clippy::large_enum_variant)]
+#[derive(Debug)]
 pub enum SyncEvent {
     BlockAvailable {
         block_number: BlockNumber,
@@ -102,9 +105,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                     error!("{}", err);
                     return Err(err);
                 }
-                Ok(_) => {
-                    unreachable!("Sync should either return with an error or continue forever.")
-                }
+                Ok(()) => continue,
             }
         }
 
@@ -133,32 +134,31 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     async fn sync_while_ok(&mut self) -> StateSyncResult {
         let txn = self.writer.begin_rw_txn()?;
         handle_block_reverts(self.reader.clone(), txn, self.central_source.clone()).await?;
+
+        let (block_sender, mut sync_event_receiver) = mpsc::channel(100);
+        let state_sender = block_sender.clone();
+
         let block_stream = stream_new_blocks(
             self.reader.clone(),
             self.central_source.clone(),
             self.config.block_propagation_sleep_duration,
-        )
-        .fuse();
+            block_sender,
+        );
+        tokio::spawn(block_stream);
         let state_diff_stream = stream_new_state_diffs(
             self.reader.clone(),
             self.central_source.clone(),
             self.config.block_propagation_sleep_duration,
-        )
-        .fuse();
-        pin_mut!(block_stream, state_diff_stream);
+            state_sender,
+        );
+        tokio::spawn(state_diff_stream);
 
-        loop {
-            debug!("Selecting between block sync and state diff sync.");
-            let sync_event = select! {
-              res = block_stream.next() => res,
-              res = state_diff_stream.next() => res,
-              complete => break,
-            }
-            .expect("Received None as a sync event.")?;
+        while let Some(sync_event) = sync_event_receiver.recv().await {
             self.process_sync_event(sync_event).await?;
             debug!("Finished processing sync event.");
         }
-        unreachable!("Fetching data loop should never return.");
+
+        Ok(())
     }
 
     // Tries to store the incoming data.

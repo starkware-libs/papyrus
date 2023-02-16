@@ -5,8 +5,7 @@ mod state_test;
 use std::sync::Arc;
 use std::time::Duration;
 
-use async_stream::try_stream;
-use futures_util::{pin_mut, Stream, StreamExt};
+use futures_util::{pin_mut, StreamExt};
 use indexmap::IndexMap;
 use papyrus_storage::db::RW;
 use papyrus_storage::header::HeaderStorageReader;
@@ -16,6 +15,7 @@ use papyrus_storage::{StorageReader, StorageTxn};
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, StateDiff};
+use tokio::sync::mpsc;
 use tracing::{debug, info, trace};
 
 use crate::sources::CentralSourceTrait;
@@ -70,45 +70,42 @@ fn is_reverted_state_diff(
     }
 }
 
-pub(crate) fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
+pub(crate) async fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
     block_propation_sleep_duration: Duration,
-) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
-    try_stream! {
-        loop {
-            let txn = reader.begin_ro_txn()?;
-            let state_marker = txn.get_state_marker()?;
-            let last_block_number = txn.get_header_marker()?;
-            drop(txn);
-            if state_marker == last_block_number {
-                debug!("Waiting for the block chain to advance.");
-                tokio::time::sleep(block_propation_sleep_duration).await;
-                continue;
-            }
-            debug!("Downloading state diffs [{} - {}).", state_marker, last_block_number);
-            let state_diff_stream =
-                central_source.stream_state_updates(state_marker, last_block_number).fuse();
-            pin_mut!(state_diff_stream);
-
-            while let Some(maybe_state_diff) = state_diff_stream.next().await {
-                let (
-
-                    block_number,
-                    block_hash,
-                    mut state_diff,
-                    deployed_contract_class_definitions,
-                ) = maybe_state_diff?;
-                sort_state_diff(&mut state_diff);
-                yield SyncEvent::StateDiffAvailable {
-                    block_number,
-                    block_hash,
-                    state_diff,
-                    deployed_contract_class_definitions,
-                };
-            }
-        }
+    sender: mpsc::Sender<SyncEvent>,
+) -> StateSyncResult {
+    let txn = reader.begin_ro_txn()?;
+    let state_marker = txn.get_state_marker()?;
+    let last_block_number = txn.get_header_marker()?;
+    drop(txn);
+    if state_marker == last_block_number {
+        debug!("Waiting for the block chain to advance.");
+        tokio::time::sleep(block_propation_sleep_duration).await;
+        return Ok(());
     }
+
+    debug!("Downloading state diffs [{} - {}).", state_marker, last_block_number);
+    let state_diff_stream =
+        central_source.stream_state_updates(state_marker, last_block_number).fuse();
+    pin_mut!(state_diff_stream);
+
+    while let Some(maybe_state_diff) = state_diff_stream.next().await {
+        let (block_number, block_hash, mut state_diff, deployed_contract_class_definitions) =
+            maybe_state_diff?;
+        sort_state_diff(&mut state_diff);
+        sender
+            .send(SyncEvent::StateDiffAvailable {
+                block_number,
+                block_hash,
+                state_diff,
+                deployed_contract_class_definitions,
+            })
+            .await?;
+    }
+
+    Ok(())
 }
 
 pub(crate) fn sort_state_diff(diff: &mut StateDiff) {
