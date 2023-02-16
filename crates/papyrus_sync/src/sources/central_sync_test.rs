@@ -77,7 +77,7 @@ async fn run_sync(
         writer,
     };
 
-    state_sync.run().await?;
+    state_sync.run().await;
     Ok(())
 }
 

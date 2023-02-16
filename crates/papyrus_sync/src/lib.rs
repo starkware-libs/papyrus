@@ -71,51 +71,54 @@ pub enum SyncEvent {
 }
 
 impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSync<TCentralSource> {
-    pub async fn run(&mut self) -> StateSyncResult {
+    pub async fn run(&mut self) {
         info!("State sync started.");
         loop {
-            if let Err(err) = self.sync_while_ok().await {
+            if let Err(err) = self.handle_block_reverts().await {
                 warn!("{}", err);
                 tokio::time::sleep(self.config.recoverable_error_sleep_duration).await;
+                continue;
+            }
+            let block_stream = stream_new_blocks(
+                self.reader.clone(),
+                self.central_source.clone(),
+                self.config.block_propagation_sleep_duration,
+            )
+            .fuse();
+            let state_diff_stream = stream_new_state_diffs(
+                self.reader.clone(),
+                self.central_source.clone(),
+                self.config.block_propagation_sleep_duration,
+            )
+            .fuse();
+            pin_mut!(block_stream, state_diff_stream);
+
+            loop {
+                debug!("Selecting between block sync and state diff sync.");
+                let res = select! {
+                  res = block_stream.next() => res,
+                  res = state_diff_stream.next() => res,
+                  complete => break,
+                }
+                .expect("Received None as a sync event.");
+                if let Err(err) = res {
+                    warn!("{}", err);
+                    tokio::time::sleep(self.config.recoverable_error_sleep_duration).await;
+                    break;
+                }
+
+                let res = self.process_sync_event(res.unwrap()).await;
+                if let Err(err) = res {
+                    warn!("{}", err);
+                    tokio::time::sleep(self.config.recoverable_error_sleep_duration).await;
+                    break;
+                }
+                debug!("Finished processing sync event.");
+                if res.unwrap() {
+                    break;
+                }
             }
         }
-    }
-
-    // Sync until encountering an error:
-    //  1. If needed, revert blocks from the end of the chain.
-    //  2. Create infinite block and state diff streams to fetch data from the central source.
-    //  3. Fetch data from the streams with unblocking wait while there is no new data.
-    async fn sync_while_ok(&mut self) -> StateSyncResult {
-        self.handle_block_reverts().await?;
-        let block_stream = stream_new_blocks(
-            self.reader.clone(),
-            self.central_source.clone(),
-            self.config.block_propagation_sleep_duration,
-        )
-        .fuse();
-        let state_diff_stream = stream_new_state_diffs(
-            self.reader.clone(),
-            self.central_source.clone(),
-            self.config.block_propagation_sleep_duration,
-        )
-        .fuse();
-        pin_mut!(block_stream, state_diff_stream);
-
-        loop {
-            debug!("Selecting between block sync and state diff sync.");
-            let sync_event = select! {
-              res = block_stream.next() => res,
-              res = state_diff_stream.next() => res,
-              complete => break,
-            }
-            .expect("Received None as a sync event.")?;
-            let detected_revert = self.process_sync_event(sync_event).await?;
-            debug!("Finished processing sync event.");
-            if detected_revert {
-                break;
-            }
-        }
-        Ok(())
     }
 
     // Tries to store the incoming data.
