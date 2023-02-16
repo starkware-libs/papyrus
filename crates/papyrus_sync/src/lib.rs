@@ -114,7 +114,6 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     //  2. Create infinite block and state diff streams to fetch data from the central source.
     //  3. Fetch data from the streams with unblocking wait while there is no new data.
     async fn sync_until_revert(&mut self) -> StateSyncResult {
-        self.handle_block_reverts().await?;
         let block_stream = stream_new_blocks(
             self.reader.clone(),
             self.central_source.clone(),
@@ -154,7 +153,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         match sync_event {
             SyncEvent::BlockAvailable { block_number, block } => {
                 debug!("Got block sync event.");
-                Ok(self.store_block(block_number, block)?)
+                Ok(self.store_block(block_number, block).await?)
             }
             SyncEvent::StateDiffAvailable {
                 block_number,
@@ -174,7 +173,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         }
     }
 
-    fn store_block(
+    async fn store_block(
         &mut self,
         block_number: BlockNumber,
         block: Block,
@@ -182,6 +181,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         // Assuming the central source is trusted, detect reverts by comparing the incoming block's
         // parent hash to the current hash.
         if self.verify_parent_block_hash(block_number, &block)? {
+            self.handle_block_reverts().await?;
             return Ok(true);
         }
 
