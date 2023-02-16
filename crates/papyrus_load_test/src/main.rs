@@ -7,21 +7,17 @@
 use std::env;
 use std::fs::File;
 
-use goose::goose::Scenario;
-use goose::{scenario, util, GooseAttack};
-use papyrus_load_test::transactions::*;
+use goose::{util, GooseAttack};
+use papyrus_load_test::scenarios::*;
 use serde::Serialize;
-
-fn register_scenarios(goose: GooseAttack) -> GooseAttack {
-    goose
-        .register_scenario(scenario!("block_by_number").register_transaction(block_by_number()))
-        .register_scenario(scenario!("block_by_hash").register_transaction(block_by_hash()))
-}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let goose = register_scenarios(GooseAttack::initialize()?);
-    let metrics = goose.execute().await?;
+    let metrics = GooseAttack::initialize()?
+        .register_scenario(block_by_number())
+        .register_scenario(block_by_hash())
+        .execute()
+        .await?;
 
     // The OUTPUT_FILE env is expected to be a valid path in the os.
     // If exists, aggregated results will be written to that path in the following json format:
