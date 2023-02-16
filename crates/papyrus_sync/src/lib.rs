@@ -39,6 +39,7 @@ pub struct GenericStateSync<TCentralSource: CentralSourceTrait + Sync + Send> {
 }
 
 pub type StateSyncResult = Result<(), StateSyncError>;
+pub type DetectedRevert = bool;
 
 #[derive(thiserror::Error, Debug)]
 pub enum StateSyncError {
@@ -74,7 +75,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     pub async fn run(&mut self) -> StateSyncResult {
         info!("State sync started.");
         loop {
-            match self.sync_while_ok().await {
+            match self.sync_until_revert().await {
                 // A recoverable error occurred. Sleep and try syncing again.
                 Err(err) if is_recoverable(&err) => {
                     warn!("{}", err);
@@ -112,7 +113,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     //  1. If needed, revert blocks from the end of the chain.
     //  2. Create infinite block and state diff streams to fetch data from the central source.
     //  3. Fetch data from the streams with unblocking wait while there is no new data.
-    async fn sync_while_ok(&mut self) -> StateSyncResult {
+    async fn sync_until_revert(&mut self) -> StateSyncResult {
         self.handle_block_reverts().await?;
         let block_stream = stream_new_blocks(
             self.reader.clone(),
@@ -146,7 +147,10 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     }
 
     // Tries to store the incoming data.
-    async fn process_sync_event(&mut self, sync_event: SyncEvent) -> Result<bool, StateSyncError> {
+    async fn process_sync_event(
+        &mut self,
+        sync_event: SyncEvent,
+    ) -> Result<DetectedRevert, StateSyncError> {
         match sync_event {
             SyncEvent::BlockAvailable { block_number, block } => {
                 debug!("Got block sync event.");
@@ -174,7 +178,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         &mut self,
         block_number: BlockNumber,
         block: Block,
-    ) -> Result<bool, StateSyncError> {
+    ) -> Result<DetectedRevert, StateSyncError> {
         // Assuming the central source is trusted, detect reverts by comparing the incoming block's
         // parent hash to the current hash.
         if self.verify_parent_block_hash(block_number, &block)? {
