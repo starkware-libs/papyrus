@@ -1,4 +1,5 @@
-pub mod scenarios;
+pub mod gateway_endpoints;
+pub mod load_tests;
 pub mod transactions;
 
 use goose::goose::{GooseUser, TransactionError};
