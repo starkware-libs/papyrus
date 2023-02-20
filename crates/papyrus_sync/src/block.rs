@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::time::Duration;
 
 use futures_util::{pin_mut, StreamExt};
 use papyrus_storage::body::{BodyStorageReader, BodyStorageWriter};
@@ -14,7 +13,24 @@ use tokio::sync::mpsc;
 use tracing::{debug, info, trace};
 
 use crate::sources::CentralSourceTrait;
-use crate::{StateSyncError, StateSyncResult, SyncEvent};
+use crate::{StateSyncError, StateSyncResult, SyncConfig, SyncEvent};
+
+pub struct BlockSync<TCentralSource: CentralSourceTrait + Sync + Send> {
+    pub config: SyncConfig,
+    pub central_source: Arc<TCentralSource>,
+    pub reader: StorageReader,
+    pub sender: mpsc::Sender<SyncEvent>,
+}
+
+pub async fn run_block_sync<TCentralSource: CentralSourceTrait + Sync + Send>(
+    config: SyncConfig,
+    central_source: Arc<TCentralSource>,
+    reader: StorageReader,
+    sender: mpsc::Sender<SyncEvent>,
+) -> StateSyncResult {
+    let block_sync = BlockSync { config, central_source, reader, sender };
+    block_sync.stream_new_blocks().await
+}
 
 pub(crate) fn store_block(
     reader: StorageReader,
@@ -154,28 +170,28 @@ async fn should_revert_block<TCentralSource: CentralSourceTrait + Sync + Send>(
     }
 }
 
-pub(crate) async fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
-    reader: StorageReader,
-    central_source: Arc<TCentralSource>,
-    block_propation_sleep_duration: Duration,
-    sender: mpsc::Sender<SyncEvent>,
-) -> StateSyncResult {
-    let header_marker = reader.begin_ro_txn()?.get_header_marker()?;
-    let last_block_number = central_source.get_block_marker().await?;
-    if header_marker == last_block_number {
-        debug!("Waiting for more blocks.");
-        tokio::time::sleep(block_propation_sleep_duration).await;
-        return Ok(());
+impl<TCentralSource: CentralSourceTrait + Sync + Send> BlockSync<TCentralSource> {
+    async fn stream_new_blocks(&self) -> StateSyncResult {
+        let header_marker = self.reader.begin_ro_txn()?.get_header_marker()?;
+        let last_block_number = self.central_source.get_block_marker().await?;
+        if header_marker == last_block_number {
+            debug!("Waiting for more blocks.");
+            tokio::time::sleep(self.config.block_propagation_sleep_duration).await;
+            return Ok(());
+        }
+
+        debug!("Downloading blocks [{} - {}).", header_marker, last_block_number);
+        let block_stream =
+            self.central_source.stream_new_blocks(header_marker, last_block_number).fuse();
+        pin_mut!(block_stream);
+
+        while let Some(maybe_block) = block_stream.next().await {
+            let (block_number, block) = maybe_block?;
+            self.sender
+                .send(SyncEvent::BlockAvailable { block_number, block: block.clone() })
+                .await?;
+        }
+
+        Ok(())
     }
-
-    debug!("Downloading blocks [{} - {}).", header_marker, last_block_number);
-    let block_stream = central_source.stream_new_blocks(header_marker, last_block_number).fuse();
-    pin_mut!(block_stream);
-
-    while let Some(maybe_block) = block_stream.next().await {
-        let (block_number, block) = maybe_block?;
-        sender.send(SyncEvent::BlockAvailable { block_number, block }).await?;
-    }
-
-    Ok(())
 }

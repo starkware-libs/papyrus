@@ -15,8 +15,8 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
-use crate::block::{handle_block_reverts, store_block, stream_new_blocks};
-use crate::state::{store_state_diff, stream_new_state_diffs};
+use crate::block::{handle_block_reverts, run_block_sync, store_block};
+use crate::state::{run_state_diff_sync, store_state_diff};
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct SyncConfig {
@@ -138,17 +138,17 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         let (block_sender, mut sync_event_receiver) = mpsc::channel(100);
         let state_sender = block_sender.clone();
 
-        let block_stream = stream_new_blocks(
-            self.reader.clone(),
+        let block_stream = run_block_sync(
+            self.config,
             self.central_source.clone(),
-            self.config.block_propagation_sleep_duration,
+            self.reader.clone(),
             block_sender,
         );
         tokio::spawn(block_stream);
-        let state_diff_stream = stream_new_state_diffs(
-            self.reader.clone(),
+        let state_diff_stream = run_state_diff_sync(
+            self.config,
             self.central_source.clone(),
-            self.config.block_propagation_sleep_duration,
+            self.reader.clone(),
             state_sender,
         );
         tokio::spawn(state_diff_stream);
