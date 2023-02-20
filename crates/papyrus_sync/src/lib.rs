@@ -42,11 +42,6 @@ pub enum StateSyncError {
     StorageError(#[from] StorageError),
     #[error(transparent)]
     CentralSourceError(#[from] CentralError),
-    #[error(
-        "Received state diff of block {block_number} and block hash {block_hash}, didn't find a \
-         matching header (neither in the ommer headers)."
-    )]
-    StateDiffWithoutMatchingHeader { block_number: BlockNumber, block_hash: BlockHash },
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -96,10 +91,6 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 {
                     true
                 }
-                StateSyncError::StateDiffWithoutMatchingHeader {
-                    block_number: _,
-                    block_hash: _,
-                } => true,
                 _ => false,
             }
         }

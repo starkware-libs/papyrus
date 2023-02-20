@@ -6,7 +6,7 @@ use papyrus_storage::db::RW;
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::ommer::OmmerStorageWriter;
 use papyrus_storage::state::StateStorageWriter;
-use papyrus_storage::{StorageError, StorageReader, StorageTxn, TransactionIndex};
+use papyrus_storage::{StorageReader, StorageTxn, TransactionIndex};
 use starknet_api::block::{Block, BlockNumber};
 use starknet_api::transaction::TransactionOffsetInBlock;
 use tokio::sync::mpsc;
@@ -39,18 +39,16 @@ pub(crate) async fn store_block<TCentralSource: CentralSourceTrait + Sync + Send
     block: Block,
     central_source: Arc<TCentralSource>,
 ) -> StateSyncResult {
-    // Assuming the central source is trusted, detect reverts by comparing the incoming block's
-    // parent hash to the current hash.
+    trace!("Block data: {block:#?}");
     if verify_parent_block_hash(reader.clone(), block_number, &block)? {
         handle_block_reverts(reader, txn, central_source).await?;
         return Ok(());
     }
 
-    debug!("Storing block {block_number} with hash {}.", block.header.block_hash);
-    trace!("Block data: {block:#?}");
-    txn.append_header(block_number, &block.header)?
-        .append_body(block_number, block.body)?
-        .commit()?;
+    if let Ok(txn) = txn.append_header(block_number, &block.header) {
+        debug!("Storing block {block_number} with hash {}.", block.header.block_hash);
+        txn.append_body(block_number, block.body)?.commit()?;
+    }
     Ok(())
 }
 
@@ -64,22 +62,11 @@ fn verify_parent_block_hash(
         None => return Ok(false),
         Some(bn) => bn,
     };
-    let prev_hash = reader
-        .begin_ro_txn()?
-        .get_block_header(prev_block_number)?
-        .ok_or(StorageError::DBInconsistency {
-            msg: format!(
-                "Missing block {prev_block_number} in the storage (for verifying block \
-                 {block_number}).",
-            ),
-        })?
-        .block_hash;
-
-    if prev_hash != block.header.parent_hash {
-        return Ok(true);
+    let prev_header = reader.begin_ro_txn()?.get_block_header(prev_block_number)?;
+    match prev_header {
+        Some(prev_header) if prev_header.block_hash == block.header.parent_hash => Ok(false),
+        _ => Ok(true),
     }
-
-    Ok(false)
 }
 
 // Reverts data if needed.
