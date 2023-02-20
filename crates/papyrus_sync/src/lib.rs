@@ -15,7 +15,7 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
-use crate::block::{handle_block_reverts, run_block_sync, store_block};
+use crate::block::{run_block_sync, store_block};
 use crate::state::{run_state_diff_sync, store_state_diff};
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
@@ -42,15 +42,6 @@ pub enum StateSyncError {
     StorageError(#[from] StorageError),
     #[error(transparent)]
     CentralSourceError(#[from] CentralError),
-    #[error(
-        "Parent block hash of block {block_number} is not consistent with the stored block. \
-         Expected {expected_parent_block_hash}, found {stored_parent_block_hash}."
-    )]
-    ParentBlockHashMismatch {
-        block_number: BlockNumber,
-        expected_parent_block_hash: BlockHash,
-        stored_parent_block_hash: BlockHash,
-    },
     #[error(
         "Received state diff of block {block_number} and block hash {block_hash}, didn't find a \
          matching header (neither in the ommer headers)."
@@ -81,19 +72,6 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         info!("State sync started.");
         loop {
             match self.sync_while_ok().await {
-                Err(StateSyncError::ParentBlockHashMismatch {
-                    block_number,
-                    expected_parent_block_hash,
-                    stored_parent_block_hash,
-                }) => {
-                    // A revert detected, log and restart sync loop.
-                    info!(
-                        "Detected revert while processing block {}. Parent hash of the incoming \
-                         block is {}, current block hash is {}.",
-                        block_number, expected_parent_block_hash, stored_parent_block_hash
-                    );
-                    continue;
-                }
                 // A recoverable error occurred. Sleep and try syncing again.
                 Err(err) if is_recoverable(&err) => {
                     warn!("{}", err);
@@ -132,9 +110,6 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     //  2. Create infinite block and state diff streams to fetch data from the central source.
     //  3. Fetch data from the streams with unblocking wait while there is no new data.
     async fn sync_while_ok(&mut self) -> StateSyncResult {
-        let txn = self.writer.begin_rw_txn()?;
-        handle_block_reverts(self.reader.clone(), txn, self.central_source.clone()).await?;
-
         let (block_sender, mut sync_event_receiver) = mpsc::channel(100);
         let state_sender = block_sender.clone();
 
@@ -167,7 +142,14 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         match sync_event {
             SyncEvent::BlockAvailable { block_number, block } => {
                 debug!("Got block sync event.");
-                store_block(self.reader.clone(), txn, block_number, block)
+                store_block(
+                    self.reader.clone(),
+                    txn,
+                    block_number,
+                    block,
+                    self.central_source.clone(),
+                )
+                .await
             }
             SyncEvent::StateDiffAvailable {
                 block_number,

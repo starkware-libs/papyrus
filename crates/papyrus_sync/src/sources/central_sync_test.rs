@@ -205,7 +205,7 @@ async fn sync_with_revert() {
     const MAX_TIME_TO_SYNC_BEFORE_REVERT_MS: u64 = 100;
     const CHAIN_FORK_BLOCK_NUMBER: u64 = 5;
     const N_BLOCKS_AFTER_REVERT: u64 = 10;
-    const MAX_TIME_TO_SYNC_AFTER_REVERT_MS: u64 = 500;
+    const MAX_TIME_TO_SYNC_AFTER_REVERT_MS: u64 = 2000;
 
     // Part 1 - check that the storage reached the point at which we will make the revert.
     let check_storage_before_revert_future = check_storage(

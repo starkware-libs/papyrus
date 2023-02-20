@@ -32,15 +32,19 @@ pub async fn run_block_sync<TCentralSource: CentralSourceTrait + Sync + Send>(
     block_sync.stream_new_blocks().await
 }
 
-pub(crate) fn store_block(
+pub(crate) async fn store_block<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
     txn: StorageTxn<'_, RW>,
     block_number: BlockNumber,
     block: Block,
+    central_source: Arc<TCentralSource>,
 ) -> StateSyncResult {
     // Assuming the central source is trusted, detect reverts by comparing the incoming block's
     // parent hash to the current hash.
-    verify_parent_block_hash(reader, block_number, &block)?;
+    if verify_parent_block_hash(reader.clone(), block_number, &block)? {
+        handle_block_reverts(reader, txn, central_source).await?;
+        return Ok(());
+    }
 
     debug!("Storing block {block_number} with hash {}.", block.header.block_hash);
     trace!("Block data: {block:#?}");
@@ -55,9 +59,9 @@ fn verify_parent_block_hash(
     reader: StorageReader,
     block_number: BlockNumber,
     block: &Block,
-) -> StateSyncResult {
+) -> Result<bool, StateSyncError> {
     let prev_block_number = match block_number.prev() {
-        None => return Ok(()),
+        None => return Ok(false),
         Some(bn) => bn,
     };
     let prev_hash = reader
@@ -72,14 +76,10 @@ fn verify_parent_block_hash(
         .block_hash;
 
     if prev_hash != block.header.parent_hash {
-        return Err(StateSyncError::ParentBlockHashMismatch {
-            block_number,
-            expected_parent_block_hash: block.header.parent_hash,
-            stored_parent_block_hash: prev_hash,
-        });
+        return Ok(true);
     }
 
-    Ok(())
+    Ok(false)
 }
 
 // Reverts data if needed.
