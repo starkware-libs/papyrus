@@ -115,6 +115,11 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send> StateDiffSync<TCentralSou
                     deployed_contract_class_definitions,
                 })
                 .await?;
+            if is_reverted_state_diff_if_exists(self.reader.clone(), block_number, block_hash)? {
+                debug!("Waiting for blocks to revert.");
+                tokio::time::sleep(self.config.recoverable_error_sleep_duration).await;
+                break;
+            }
         }
 
         Ok(())
@@ -128,5 +133,23 @@ pub(crate) fn sort_state_diff(diff: &mut StateDiff) {
     diff.storage_diffs.sort_unstable_keys();
     for storage_entries in diff.storage_diffs.values_mut() {
         storage_entries.sort_unstable_keys();
+    }
+}
+
+fn is_reverted_state_diff_if_exists(
+    reader: StorageReader,
+    block_number: BlockNumber,
+    block_hash: BlockHash,
+) -> Result<bool, StateSyncError> {
+    let txn = reader.begin_ro_txn()?;
+    let storage_header = txn.get_block_header(block_number)?;
+    match storage_header {
+        Some(storage_header) if storage_header.block_hash != block_hash => {
+            debug!(
+                "Detected a possible revert while processing state diff of block {block_number}."
+            );
+            Ok(true)
+        }
+        _ => Ok(false),
     }
 }

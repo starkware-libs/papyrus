@@ -190,8 +190,32 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send> BlockSync<TCentralSource>
             self.sender
                 .send(SyncEvent::BlockAvailable { block_number, block: block.clone() })
                 .await?;
+            if verify_parent_block_hash_if_exists(self.reader.clone(), block_number, &block)? {
+                debug!("Waiting for blocks to revert.");
+                tokio::time::sleep(self.config.recoverable_error_sleep_duration).await;
+                break;
+            }
         }
 
         Ok(())
+    }
+}
+
+fn verify_parent_block_hash_if_exists(
+    reader: StorageReader,
+    block_number: BlockNumber,
+    block: &Block,
+) -> Result<bool, StateSyncError> {
+    let prev_block_number = match block_number.prev() {
+        None => return Ok(false),
+        Some(bn) => bn,
+    };
+    let prev_header = reader.begin_ro_txn()?.get_block_header(prev_block_number)?;
+    match prev_header {
+        Some(prev_header) if prev_header.block_hash != block.header.parent_hash => {
+            debug!("Detected a possible revert while processing block {block_number}.");
+            Ok(true)
+        }
+        _ => Ok(false),
     }
 }
