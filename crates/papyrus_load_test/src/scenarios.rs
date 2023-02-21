@@ -15,5 +15,6 @@ pub enum ScenariosError {
 pub fn general_request() -> ScenariosResult {
     Ok(scenario!("general_request")
         .register_transaction(transactions::get_block_with_tx_hashes_by_number()?.set_weight(1)?)
-        .register_transaction(transactions::get_block_with_tx_hashes_by_hash()?.set_weight(1)?))
+        .register_transaction(transactions::get_block_with_tx_hashes_by_hash()?.set_weight(1)?)
+        .register_transaction(transactions::serial_get_block(0, 1000).set_weight(1)?))
 }

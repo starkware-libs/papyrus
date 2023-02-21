@@ -64,3 +64,17 @@ create_read_from_file_transaction! {
     get_block_with_tx_hashes_by_number, "crates/papyrus_load_test/src/resources/block_number.txt";
     get_block_with_tx_hashes_by_hash,   "crates/papyrus_load_test/src/resources/block_hash.txt";
 }
+
+pub fn serial_get_block(start: u32, end: u32) -> Transaction {
+    let func: TransactionFunction = Arc::new(move |user| {
+        Box::pin(async move {
+            for block_number in start..end {
+                let request =
+                    create_request::get_block_with_tx_hashes_by_number(block_number.to_string());
+                post_jsonrpc_request(user, &request).await?;
+            }
+            Ok(())
+        })
+    });
+    Transaction::new(func).set_name("serial_get_block")
+}
