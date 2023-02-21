@@ -10,7 +10,7 @@ use papyrus_storage::{StorageReader, StorageTxn, TransactionIndex};
 use starknet_api::block::{Block, BlockNumber};
 use starknet_api::transaction::TransactionOffsetInBlock;
 use tokio::sync::mpsc;
-use tracing::{debug, info, trace};
+use tracing::{debug, info, trace, warn};
 
 use crate::sources::CentralSourceTrait;
 use crate::{StateSyncError, StateSyncResult, SyncConfig, SyncEvent};
@@ -27,9 +27,19 @@ pub async fn run_block_sync<TCentralSource: CentralSourceTrait + Sync + Send>(
     central_source: Arc<TCentralSource>,
     reader: StorageReader,
     sender: mpsc::Sender<SyncEvent>,
-) -> StateSyncResult {
+) {
     let block_sync = BlockSync { config, central_source, reader, sender };
-    block_sync.stream_new_blocks().await
+    info!("Block sync started.");
+    loop {
+        match block_sync.stream_new_blocks().await {
+            Err(err) => {
+                warn!("{}", err);
+                tokio::time::sleep(block_sync.config.recoverable_error_sleep_duration).await;
+                continue;
+            }
+            Ok(()) => continue,
+        }
+    }
 }
 
 pub(crate) async fn store_block<TCentralSource: CentralSourceTrait + Sync + Send>(

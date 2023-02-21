@@ -15,7 +15,7 @@ use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, StateDiff};
 use tokio::sync::mpsc;
-use tracing::{debug, info, trace};
+use tracing::{debug, info, trace, warn};
 
 use crate::sources::CentralSourceTrait;
 use crate::{StateSyncError, StateSyncResult, SyncConfig, SyncEvent};
@@ -32,9 +32,19 @@ pub async fn run_state_diff_sync<TCentralSource: CentralSourceTrait + Sync + Sen
     central_source: Arc<TCentralSource>,
     reader: StorageReader,
     sender: mpsc::Sender<SyncEvent>,
-) -> StateSyncResult {
+) {
     let state_sync = StateDiffSync { config, central_source, reader, sender };
-    state_sync.stream_new_state_diffs().await
+    info!("State diff sync started.");
+    loop {
+        match state_sync.stream_new_state_diffs().await {
+            Err(err) => {
+                warn!("{}", err);
+                tokio::time::sleep(state_sync.config.recoverable_error_sleep_duration).await;
+                continue;
+            }
+            Ok(()) => continue,
+        }
+    }
 }
 
 pub(crate) fn store_state_diff(
