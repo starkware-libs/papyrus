@@ -84,15 +84,13 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
 
         // Whitelisting of errors from which we might be able to recover.
         fn is_recoverable(err: &StateSyncError) -> bool {
-            match err {
-                StateSyncError::CentralSourceError(_) => true,
-                StateSyncError::StorageError(storage_err)
-                    if matches!(storage_err, StorageError::InnerError(_)) =>
-                {
-                    true
+            if let StateSyncError::StorageError(storage_err) = err {
+                if !matches!(storage_err, StorageError::InnerError(_)) {
+                    return false;
                 }
-                _ => false,
             }
+
+            true
         }
     }
 

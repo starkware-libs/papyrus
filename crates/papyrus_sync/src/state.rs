@@ -50,10 +50,8 @@ pub(crate) fn store_state_diff(
         if let Ok(txn) =
             txn.append_state_diff(block_number, state_diff, deployed_contract_class_definitions)
         {
-            debug!("Storing state diff of block {block_number} with hash {block_hash}.");
+            info!("Storing state diff of block {block_number} with hash {block_hash}.");
             txn.commit()?;
-            // Info the user on syncing the block once all the data is stored.
-            info!("Added block {} with hash {}.", block_number, block_hash);
         }
     } else if let Ok(txn) = txn.insert_ommer_state_diff(
         block_hash,

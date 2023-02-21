@@ -46,7 +46,7 @@ pub(crate) async fn store_block<TCentralSource: CentralSourceTrait + Sync + Send
     }
 
     if let Ok(txn) = txn.append_header(block_number, &block.header) {
-        debug!("Storing block {block_number} with hash {}.", block.header.block_hash);
+        info!("Storing block {block_number} with hash {}.", block.header.block_hash);
         txn.append_body(block_number, block.body)?.commit()?;
     }
     Ok(())
