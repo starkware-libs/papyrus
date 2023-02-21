@@ -5,17 +5,9 @@ use std::sync::Arc;
 
 use goose::goose::{Transaction, TransactionFunction};
 use rand::Rng;
-use serde_json::{json, Value as jsonVal};
+use serde_json::Value as jsonVal;
 
-use crate::{create_request, jsonrpc_request, post_jsonrpc_request};
-
-pub fn get_block_with_tx_hashes_by_number() -> Transaction {
-    let requests = vec![
-        jsonrpc_request("starknet_getBlockWithTxHashes", json!([{ "block_number": 0 }])),
-        jsonrpc_request("starknet_getBlockWithTxHashes", json!([{ "block_number": 1 }])),
-    ];
-    random_request_transaction(requests)
-}
+use crate::{create_request, post_jsonrpc_request};
 
 // Returns a Transaction that each call choose a random request from the requests vector
 // and sends it to the node.
@@ -42,7 +34,7 @@ fn create_requests_vector(path: &str, convert_to_request: fn(String) -> jsonVal)
     requests
 }
 
-// Given [Name; "Path"] write the function:
+// Given [Name, "Path";] write the function:
 // pub fn Name() -> Transaction {
 //     let requests = create_requests_vector("Path", create_request::Name);
 //     random_request_transaction(requests)
@@ -59,5 +51,6 @@ macro_rules! create_read_from_file_transaction {
 }
 
 create_read_from_file_transaction! {
-    get_block_with_tx_hashes_by_hash, "crates/papyrus_load_test/src/resources/block_hash.txt";
+    get_block_with_tx_hashes_by_number, "crates/papyrus_load_test/src/resources/block_number.txt";
+    get_block_with_tx_hashes_by_hash,   "crates/papyrus_load_test/src/resources/block_hash.txt";
 }
