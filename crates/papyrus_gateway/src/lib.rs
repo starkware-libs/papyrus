@@ -29,7 +29,7 @@ use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
     EventIndexInTransactionOutput, TransactionHash, TransactionOffsetInBlock,
 };
-use tracing::{error, info};
+use tracing::{debug, error, info, instrument};
 
 use crate::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, EventsChunk,
@@ -42,7 +42,7 @@ use crate::transaction::{
     TransactionStatus, TransactionWithType, Transactions,
 };
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct GatewayConfig {
     pub chain_id: ChainId,
     pub server_address: String,
@@ -147,11 +147,13 @@ impl ContinuationToken {
 
 #[async_trait]
 impl JsonRpcServer for JsonRpcServerImpl {
+    #[instrument(skip(self), level = "debug", err, ret)]
     fn block_number(&self) -> Result<BlockNumber, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         get_latest_block_number(&txn)?.ok_or_else(|| Error::from(JsonRpcError::NoBlocks))
     }
 
+    #[instrument(skip(self), level = "debug", err, ret)]
     fn block_hash_and_number(&self) -> Result<BlockHashAndNumber, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number =
@@ -161,6 +163,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         Ok(BlockHashAndNumber { block_hash: header.block_hash, block_number })
     }
 
+    #[instrument(skip(self), level = "debug", err, ret)]
     fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> Result<Block, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
@@ -176,6 +179,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         })
     }
 
+    #[instrument(skip(self), level = "debug", err, ret)]
     fn get_block_w_full_transactions(&self, block_id: BlockId) -> Result<Block, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
@@ -191,6 +195,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         })
     }
 
+    #[instrument(skip(self), level = "debug", err, ret)]
     fn get_storage_at(
         &self,
         contract_address: ContractAddress,
@@ -213,6 +218,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         state_reader.get_storage_at(state, &contract_address, &key).map_err(internal_server_error)
     }
 
+    #[instrument(skip(self), level = "debug", err, ret)]
     fn get_transaction_by_hash(
         &self,
         transaction_hash: TransactionHash,
@@ -232,6 +238,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         Ok(TransactionWithType::from(transaction))
     }
 
+    #[instrument(skip(self), level = "debug", err, ret)]
     fn get_transaction_by_block_id_and_index(
         &self,
         block_id: BlockId,
@@ -248,6 +255,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         Ok(TransactionWithType::from(transaction))
     }
 
+    #[instrument(skip(self), level = "debug", err, ret)]
     fn get_block_transaction_count(&self, block_id: BlockId) -> Result<usize, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
@@ -256,6 +264,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         Ok(transactions.len())
     }
 
+    #[instrument(skip(self), level = "debug", err, ret)]
     fn get_state_update(&self, block_id: BlockId) -> Result<StateUpdate, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
@@ -289,6 +298,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         })
     }
 
+    #[instrument(skip(self), level = "debug", err, ret)]
     fn get_transaction_receipt(
         &self,
         transaction_hash: TransactionHash,
@@ -332,6 +342,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         })
     }
 
+    #[instrument(skip(self), level = "debug", err, ret)]
     fn get_class(&self, block_id: BlockId, class_hash: ClassHash) -> Result<ContractClass, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
@@ -346,6 +357,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         class.try_into().map_err(internal_server_error)
     }
 
+    #[instrument(skip(self), level = "debug", err, ret)]
     fn get_class_at(
         &self,
         block_id: BlockId,
@@ -369,6 +381,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         class.try_into().map_err(internal_server_error)
     }
 
+    #[instrument(skip(self), level = "debug", err, ret)]
     fn get_class_hash_at(
         &self,
         block_id: BlockId,
@@ -386,6 +399,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
             .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))
     }
 
+    #[instrument(skip(self), level = "debug", err, ret)]
     fn get_nonce(
         &self,
         block_id: BlockId,
@@ -403,10 +417,12 @@ impl JsonRpcServer for JsonRpcServerImpl {
             .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))
     }
 
+    #[instrument(skip(self), level = "debug", err, ret)]
     fn chain_id(&self) -> Result<String, Error> {
         Ok(self.chain_id.as_hex())
     }
 
+    #[instrument(skip(self), level = "debug", err, ret)]
     fn get_events(&self, filter: EventFilter) -> Result<EventsChunk, Error> {
         // Check the chunk size.
         if filter.chunk_size > self.max_events_chunk_size {
@@ -493,11 +509,12 @@ impl JsonRpcServer for JsonRpcServerImpl {
     }
 }
 
+#[instrument(skip(storage_reader), level = "debug", err)]
 pub async fn run_server(
     config: &GatewayConfig,
     storage_reader: StorageReader,
 ) -> anyhow::Result<(SocketAddr, HttpServerHandle)> {
-    info!("Starting gateway.");
+    debug!("Starting gateway.");
     let server = HttpServerBuilder::default().build(&config.server_address).await?;
     let addr = server.local_addr()?;
     let handle = server.start(
@@ -509,6 +526,6 @@ pub async fn run_server(
         }
         .into_rpc(),
     )?;
-    info!("Gateway is running - {}.", addr);
+    info!(local_address = %addr, "Gateway is running.");
     Ok((addr, handle))
 }
