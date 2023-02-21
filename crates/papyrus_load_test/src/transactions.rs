@@ -44,7 +44,7 @@ macro_rules! create_read_from_file_transaction {
     ($name:tt, $file_name:literal; $($rest:tt)*) => {
         pub fn $name() -> Transaction {
             let requests = create_requests_vector($file_name, create_request::$name);
-            random_request_transaction(requests)
+            random_request_transaction(requests).set_name(stringify!($name))
         }
         create_read_from_file_transaction!($($rest)*);
     };
