@@ -7,21 +7,15 @@
 use std::env;
 use std::fs::File;
 
-use goose::goose::{Scenario, Transaction};
-use goose::{scenario, transaction, util, GooseAttack};
-use papyrus_load_test::load_tests::*;
+use goose::goose::Scenario;
+use goose::{scenario, util, GooseAttack};
+use papyrus_load_test::transactions::*;
 use serde::Serialize;
 
 fn register_scenarios(goose: GooseAttack) -> GooseAttack {
     goose
-        .register_scenario(
-            scenario!("block_by_number")
-                .register_transaction(transaction!(loadtest_get_block_with_tx_hashes_by_number)),
-        )
-        .register_scenario(
-            scenario!("block_by_hash")
-                .register_transaction(transaction!(loadtest_get_block_with_tx_hashes_by_hash)),
-        )
+        .register_scenario(scenario!("block_by_number").register_transaction(block_by_number()))
+        .register_scenario(scenario!("block_by_hash").register_transaction(block_by_hash()))
 }
 
 #[tokio::main]
