@@ -56,7 +56,8 @@ pub(crate) fn store_state_diff(
     deployed_contract_class_definitions: IndexMap<ClassHash, ContractClass>,
 ) -> StateSyncResult {
     trace!("StateDiff data: {state_diff:#?}");
-    if !is_reverted_state_diff(reader, block_number, block_hash)? {
+
+    if let Some(false) = is_reverted(reader, block_number, block_hash)? {
         if let Ok(txn) =
             txn.append_state_diff(block_number, state_diff, deployed_contract_class_definitions)
         {
@@ -71,20 +72,8 @@ pub(crate) fn store_state_diff(
         debug!("Storing ommer state diff of block {} with hash {:?}.", block_number, block_hash);
         txn.commit()?;
     }
-    Ok(())
-}
 
-fn is_reverted_state_diff(
-    reader: StorageReader,
-    block_number: BlockNumber,
-    block_hash: BlockHash,
-) -> Result<bool, StateSyncError> {
-    let txn = reader.begin_ro_txn()?;
-    let storage_header = txn.get_block_header(block_number)?;
-    match storage_header {
-        Some(storage_header) if storage_header.block_hash == block_hash => Ok(false),
-        _ => Ok(true),
-    }
+    Ok(())
 }
 
 impl<TCentralSource: CentralSourceTrait + Sync + Send> StateDiffSync<TCentralSource> {
@@ -116,7 +105,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send> StateDiffSync<TCentralSou
                     deployed_contract_class_definitions,
                 })
                 .await?;
-            if is_reverted_state_diff_if_exists(self.reader.clone(), block_number, block_hash)? {
+            if let Some(true) = is_reverted(self.reader.clone(), block_number, block_hash)? {
                 debug!("Waiting for blocks to revert.");
                 tokio::time::sleep(self.config.recoverable_error_sleep_duration).await;
                 break;
@@ -137,20 +126,19 @@ pub(crate) fn sort_state_diff(diff: &mut StateDiff) {
     }
 }
 
-fn is_reverted_state_diff_if_exists(
+// Returns:
+// Some(true) - if the header exists in storage with different hash.
+// Some(false) - if the header exists in storage with the same hash.
+// None - if the header is not in storage yet.
+fn is_reverted(
     reader: StorageReader,
     block_number: BlockNumber,
     block_hash: BlockHash,
-) -> Result<bool, StateSyncError> {
+) -> Result<Option<bool>, StateSyncError> {
     let txn = reader.begin_ro_txn()?;
     let storage_header = txn.get_block_header(block_number)?;
     match storage_header {
-        Some(storage_header) if storage_header.block_hash != block_hash => {
-            debug!(
-                "Detected a possible revert while processing state diff of block {block_number}."
-            );
-            Ok(true)
-        }
-        _ => Ok(false),
+        Some(storage_header) => Ok(Some(storage_header.block_hash != block_hash)),
+        _ => Ok(None),
     }
 }

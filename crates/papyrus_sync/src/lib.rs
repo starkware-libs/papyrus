@@ -120,14 +120,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         match sync_event {
             SyncEvent::BlockAvailable { block_number, block } => {
                 debug!("Got block sync event.");
-                store_block(
-                    self.reader.clone(),
-                    txn,
-                    block_number,
-                    block,
-                    self.central_source.clone(),
-                )
-                .await
+                store_block(self.reader.clone(), txn, block_number, block)
             }
             SyncEvent::StateDiffAvailable {
                 block_number,
