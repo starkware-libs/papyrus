@@ -65,36 +65,10 @@ pub enum SyncEvent {
 impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSync<TCentralSource> {
     pub async fn run(&mut self) -> StateSyncResult {
         info!("State sync started.");
-        loop {
-            match self.sync_while_ok().await {
-                // A recoverable error occurred. Sleep and try syncing again.
-                Err(err) if is_recoverable(&err) => {
-                    warn!("{}", err);
-                    tokio::time::sleep(self.config.recoverable_error_sleep_duration).await;
-                    continue;
-                }
-                // Unrecoverable errors.
-                Err(err) => {
-                    error!("{}", err);
-                    return Err(err);
-                }
-                Ok(()) => continue,
-            }
-        }
-
-        // Whitelisting of errors from which we might be able to recover.
-        fn is_recoverable(err: &StateSyncError) -> bool {
-            if let StateSyncError::StorageError(storage_err) = err {
-                if !matches!(storage_err, StorageError::InnerError(_)) {
-                    return false;
-                }
-            }
-
-            true
-        }
+        self.sync_while_ok().await
     }
 
-    // Sync until encountering an error:
+    // Sync until encountering an unrecoverable error.
     //  1. If needed, revert blocks from the end of the chain.
     //  2. Create infinite block and state diff streams to fetch data from the central source.
     //  3. Fetch data from the streams with unblocking wait while there is no new data.
@@ -118,11 +92,26 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         tokio::spawn(state_diff_stream);
 
         while let Some(sync_event) = sync_event_receiver.recv().await {
-            self.process_sync_event(sync_event).await?;
-            debug!("Finished processing sync event.");
+            match self.process_sync_event(sync_event).await {
+                // A recoverable error occurred. Sleep and try syncing again.
+                Err(err) if is_recoverable(&err) => {
+                    warn!("{}", err);
+                    tokio::time::sleep(self.config.recoverable_error_sleep_duration).await;
+                    continue;
+                }
+                // Unrecoverable errors.
+                Err(err) => {
+                    error!("{}", err);
+                    return Err(err);
+                }
+                Ok(()) => {
+                    debug!("Finished processing sync event.");
+                    continue;
+                }
+            }
         }
 
-        Ok(())
+        unreachable!("Sync should return only with unrecoverable errors.");
     }
 
     // Tries to store the incoming data.
@@ -171,4 +160,15 @@ impl StateSync {
     ) -> Self {
         Self { config, central_source: Arc::new(central_source), reader, writer }
     }
+}
+
+// Whitelisting of errors from which we might be able to recover.
+fn is_recoverable(err: &StateSyncError) -> bool {
+    if let StateSyncError::StorageError(storage_err) = err {
+        if !matches!(storage_err, StorageError::InnerError(_)) {
+            return false;
+        }
+    }
+
+    true
 }
