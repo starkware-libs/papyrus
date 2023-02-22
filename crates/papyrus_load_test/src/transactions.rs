@@ -7,7 +7,7 @@ use goose::goose::{Transaction, TransactionFunction};
 use rand::Rng;
 use serde_json::Value as jsonVal;
 
-use crate::{create_request, post_jsonrpc_request};
+use crate::{create_request, get_last_block_number, post_jsonrpc_request};
 pub type TransactionsResult = Result<Transaction, TransactionsError>;
 
 #[derive(thiserror::Error, Debug)]
@@ -63,4 +63,20 @@ macro_rules! create_read_from_file_transaction {
 create_read_from_file_transaction! {
     get_block_with_tx_hashes_by_number, "crates/papyrus_load_test/src/resources/block_number.txt";
     get_block_with_tx_hashes_by_hash,   "crates/papyrus_load_test/src/resources/block_hash.txt";
+}
+
+pub fn serial_get_block(length: u64) -> Transaction {
+    let last_block = get_last_block_number();
+    let func: TransactionFunction = Arc::new(move |user| {
+        let start = rand::thread_rng().gen_range(0..=(last_block - length));
+        Box::pin(async move {
+            for block_number in start..start + length {
+                let request =
+                    create_request::get_block_with_tx_hashes_by_number(block_number.to_string());
+                post_jsonrpc_request(user, &request).await?;
+            }
+            Ok(())
+        })
+    });
+    Transaction::new(func).set_name("serial_get_block")
 }
