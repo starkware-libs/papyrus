@@ -9,7 +9,7 @@
 # The reason we split it into two stages is to first copy all the files and then erase all
 # non-Cargo.toml files. This way, non-Cargo.toml files won't affect the cache of the second stage
 # (For more on docker stages, read https://docs.docker.com/build/building/multi-stage/).
-FROM rust:1.63 AS copy_toml
+FROM rust:1.67 AS copy_toml
 
 COPY crates/ /app/crates/
 COPY Cargo.toml /app/
