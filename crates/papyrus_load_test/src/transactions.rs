@@ -42,17 +42,17 @@ fn create_requests_vector(path: &str, convert_to_request: fn(&str) -> jsonVal) -
     requests
 }
 
-// Given [Name; "Path"] write the function:
-// pub fn Name() -> Transaction {
-//     let requests = create_requests_vector("Path", create_request::Name);
-//     random_request_transaction(requests)
-// }
+// Given [Name, "Path";] write the function:
+//      pub fn Name() -> Transaction {
+//          let requests = create_requests_vector("Path", create_request::Name);
+//          random_request_transaction(requests).set_name(Name)
+//      }
 macro_rules! create_read_from_file_transaction {
     () => {};
     ($name:tt, $file_name:literal; $($rest:tt)*) => {
         pub fn $name() -> Transaction {
             let requests = create_requests_vector($file_name, create_request::$name);
-            random_request_transaction(requests)
+            random_request_transaction(requests).set_name(stringify!($name))
         }
         create_read_from_file_transaction!($($rest)*);
     };
