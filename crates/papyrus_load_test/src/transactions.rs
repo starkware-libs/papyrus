@@ -17,10 +17,10 @@ pub fn block_by_number() -> Transaction {
 pub fn block_by_hash() -> Transaction {
     let requests = vec![
         create_request::get_block_with_tx_hashes_by_hash(
-            "0x47c3637b57c2b079b93c61539950c17e868a28f46cdef28f88521067f21e943".to_string(),
+            "0x47c3637b57c2b079b93c61539950c17e868a28f46cdef28f88521067f21e943",
         ),
         create_request::get_block_with_tx_hashes_by_hash(
-            "0x2a70fb03fe363a2d6be843343a1d81ce6abeda1e9bd5cc6ad8fa9f45e30fdeb".to_string(),
+            "0x2a70fb03fe363a2d6be843343a1d81ce6abeda1e9bd5cc6ad8fa9f45e30fdeb",
         ),
     ];
     random_request_transaction(requests)
