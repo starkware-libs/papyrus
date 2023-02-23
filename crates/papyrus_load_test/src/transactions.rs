@@ -32,12 +32,12 @@ fn random_request_transaction(requests: Vec<jsonVal>) -> Transaction {
     Transaction::new(func)
 }
 
-fn create_requests_vector(path: &str, convert_to_request: fn(String) -> jsonVal) -> Vec<jsonVal> {
+fn create_requests_vector(path: &str, convert_to_request: fn(&str) -> jsonVal) -> Vec<jsonVal> {
     let file = File::open(path).unwrap();
     let reader = BufReader::new(file);
     let mut requests = Vec::<jsonVal>::new();
     for line in reader.lines() {
-        requests.push(convert_to_request(line.unwrap()));
+        requests.push(convert_to_request(&line.unwrap()));
     }
     requests
 }
