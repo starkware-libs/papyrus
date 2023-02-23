@@ -9,6 +9,10 @@ use serde_json::Value as jsonVal;
 
 use crate::{create_request, post_jsonrpc_request};
 
+create_get_transaction_function_with_requests_from_file! {
+    get_block_with_tx_hashes_by_hash, "crates/papyrus_load_test/src/resources/block_hash.txt";
+}
+
 pub fn get_block_with_tx_hashes_by_number() -> Transaction {
     let requests = vec![
         create_request::get_block_with_tx_hashes_by_number(0),
@@ -62,7 +66,4 @@ macro_rules! create_get_transaction_function_with_requests_from_file {
         create_get_transaction_function_with_requests_from_file!($($rest)*);
     };
 }
-
-create_get_transaction_function_with_requests_from_file! {
-    get_block_with_tx_hashes_by_hash, "crates/papyrus_load_test/src/resources/block_hash.txt";
-}
+pub(crate) use create_get_transaction_function_with_requests_from_file;
