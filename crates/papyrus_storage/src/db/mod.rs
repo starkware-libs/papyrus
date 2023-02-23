@@ -32,7 +32,7 @@ type Environment = libmdbx::Environment<EnvironmentKind>;
 type DbKeyType<'env> = Cow<'env, [u8]>;
 type DbValueType<'env> = Cow<'env, [u8]>;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DbConfig {
     pub path: String,
     pub max_size: usize,

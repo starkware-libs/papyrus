@@ -24,7 +24,7 @@ use tracing::{debug, error, info, trace, warn};
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct SyncConfig {
     pub block_propagation_sleep_duration: Duration,
     pub recoverable_error_sleep_duration: Duration,

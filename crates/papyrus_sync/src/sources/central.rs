@@ -23,7 +23,7 @@ use tracing::{debug, trace};
 use super::stream_utils::MyStreamExt;
 
 pub type CentralResult<T> = Result<T, CentralError>;
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CentralSourceConfig {
     pub concurrent_requests: usize,
     pub url: String,

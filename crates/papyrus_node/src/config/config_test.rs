@@ -34,6 +34,7 @@ fn prepare_command() {
         "--storage=path".to_owned(),
         "--no_sync=true".to_owned(),
     ];
+
     let builder = ConfigBuilder::default().prepare_command(args).unwrap();
     let builder_args = builder.args.expect("Expected to have args");
 
@@ -74,15 +75,58 @@ fn load_yaml_config() {
     let mut f = NamedTempFile::new().unwrap();
     let yaml = r"
 chain_id: TEST
+central:
+    concurrent_requests: 50
+    retry:
+        max_retries: 30
 gateway:
+    server_address: 0.0.0.0:5000
     max_events_keys: 1234
+
+monitoring_gateway:
+    server_address: 0.0.0.0:5001
+
+storage:
+    db:
+        path: ./path/to/db 
 ";
     f.write_all(yaml.as_bytes()).unwrap();
     let args = vec!["Papyrus".to_owned(), format!("--config_file={}", f.path().to_str().unwrap())];
-    let builder = ConfigBuilder::default().prepare_command(args).unwrap().yaml().unwrap();
+    let config = Config::load(args).unwrap();
 
-    assert_eq!(builder.chain_id, ChainId("TEST".to_owned()));
-    assert_eq!(builder.config.gateway.max_events_keys, 1234);
+    // Gateway configuration tests
+    assert_eq!(config.gateway.chain_id, ChainId("TEST".to_owned()));
+    assert_eq!(config.gateway.max_events_keys, 1234);
+
+    // Central configuration tests
+    assert_eq!(config.central.concurrent_requests, 50);
+    assert_eq!(config.central.retry_config.max_retries, 30);
+
+    // Db configuration tests
+    assert_eq!(config.storage.db_config.path, String::from("./path/to/db"))
+}
+
+#[test]
+fn env_over_yaml_precedence() {
+    let mut f = NamedTempFile::new().unwrap();
+    let yaml = r"
+chain_id: TEST
+gateway:
+    server_address: 0.0.0.0:8080
+storage:
+    db:
+        path: ./path-must-be-overriden-by-env 
+";
+    f.write_all(yaml.as_bytes()).unwrap();
+    let args = vec!["Papyrus".to_owned(), format!("--config_file={}", f.path().to_str().unwrap())];
+    std::env::set_var("PAPYRUS_GATEWAY_SERVER_ADDRESS", "0.0.0.0:5000");
+    std::env::set_var("PAPYRUS_STORAGE_DB_PATH", "./path-to-db");
+    let config = Config::load(args).unwrap();
+
+    // Gateway configuration tests
+    assert_eq!(config.gateway.chain_id, ChainId("TEST".to_owned()));
+    assert_eq!(config.gateway.server_address, String::from("0.0.0.0:5000"));
+    assert_eq!(config.storage.db_config.path, String::from("./path-to-db"));
 }
 
 #[test]
@@ -100,13 +144,12 @@ central:
         format!("--config_file={}", f.path().to_str().unwrap()),
         "--http_headers=NAME_2:NEW_VALUE_2 NAME_3:VALUE_3".to_owned(),
     ];
-    let builder =
-        ConfigBuilder::default().prepare_command(args).unwrap().yaml().unwrap().args().unwrap();
+    let config = Config::load(args).unwrap();
 
     let target_http_headers = HashMap::from([
         ("NAME_1".to_string(), "VALUE_1".to_string()),
         ("NAME_2".to_string(), "NEW_VALUE_2".to_string()),
         ("NAME_3".to_string(), "VALUE_3".to_string()),
     ]);
-    assert_eq!(builder.config.central.http_headers.unwrap(), target_http_headers);
+    assert_eq!(config.central.http_headers.unwrap(), target_http_headers);
 }
