@@ -19,28 +19,25 @@ async fn main() -> anyhow::Result<()> {
     // If exists, aggregated results will be written to that path in the following json format:
     // [
     //     {
-    //         "name": <scenario name>,
+    //         "name": <request name>,
     //         "units": "Milliseconds",
-    //         "value": <scenario median time>,
+    //         "value": <request median time>,
     //     },
     // ]
     if let Ok(path) = env::var("OUTPUT_FILE") {
         let file = File::create(path)?;
-        let mut data: Vec<Entry> = vec![];
-        for scenario in metrics.scenarios {
+        let mut performance: Vec<Entry> = vec![];
+        for (name, data) in metrics.requests {
+            let raw_data = data.raw_data;
             let median = util::median(
-                &scenario.times,
-                scenario.counter,
-                scenario.min_time,
-                scenario.max_time,
+                &raw_data.times,
+                raw_data.counter,
+                raw_data.minimum_time,
+                raw_data.maximum_time,
             );
-            data.push(Entry {
-                name: scenario.name,
-                units: "Milliseconds".to_string(),
-                value: median,
-            });
+            performance.push(Entry { name, units: "Milliseconds".to_string(), value: median });
         }
-        serde_json::to_writer(file, &data)?
+        serde_json::to_writer(file, &performance)?
     }
 
     Ok(())
