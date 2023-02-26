@@ -13,7 +13,8 @@ use serde::Serialize;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let metrics = GooseAttack::initialize()?.register_scenario(general_request()).execute().await?;
+    let metrics =
+        GooseAttack::initialize()?.register_scenario(general_request()?).execute().await?;
 
     // The OUTPUT_FILE env is expected to be a valid path in the os.
     // If exists, aggregated results will be written to that path in the following json format:

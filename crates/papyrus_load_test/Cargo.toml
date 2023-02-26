@@ -11,3 +11,4 @@ serde_json = { version = "1.0.81" }
 # Goose doesn't work with a higher version of tokio
 tokio = { version = "1.18.2" }
 rand = { version = "0.8.5" }
+thiserror = { version = "1.0.31" }
