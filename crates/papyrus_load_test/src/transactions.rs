@@ -11,14 +11,7 @@ use crate::{create_request, post_jsonrpc_request};
 
 create_get_transaction_function_with_requests_from_file! {
     get_block_with_tx_hashes_by_hash, "crates/papyrus_load_test/src/resources/block_hash.txt";
-}
-
-pub fn get_block_with_tx_hashes_by_number() -> Transaction {
-    let requests = vec![
-        create_request::get_block_with_tx_hashes_by_number(0),
-        create_request::get_block_with_tx_hashes_by_number(1),
-    ];
-    random_request_transaction(requests)
+    get_block_with_tx_hashes_by_number, "crates/papyrus_load_test/src/resources/block_number.txt";
 }
 
 // Returns a Transaction that each call choose a random request from the requests vector
@@ -52,19 +45,11 @@ fn create_requests_vector_from_file(
 }
 
 // Given [Name, "Path";] write the function:
-<<<<<<< HEAD
 //      pub fn Name() -> Transaction {
 //          let requests = create_requests_vector("Path", create_request::Name);
 //          random_request_transaction(requests).set_name(Name)
 //      }
 macro_rules! create_get_transaction_function_with_requests_from_file {
-=======
-// pub fn Name() -> Transaction {
-//     let requests = create_requests_vector("Path", create_request::Name);
-//     random_request_transaction(requests)
-// }
-macro_rules! create_read_from_file_transaction {
->>>>>>> Make get_block_by_number in the general form.
     () => {};
     ($name:tt, $file_name:literal; $($rest:tt)*) => {
         pub fn $name() -> Transaction {
@@ -74,12 +59,4 @@ macro_rules! create_read_from_file_transaction {
         create_get_transaction_function_with_requests_from_file!($($rest)*);
     };
 }
-<<<<<<< HEAD
 pub(crate) use create_get_transaction_function_with_requests_from_file;
-=======
-
-create_read_from_file_transaction! {
-    get_block_with_tx_hashes_by_number, "crates/papyrus_load_test/src/resources/block_number.txt";
-    get_block_with_tx_hashes_by_hash,   "crates/papyrus_load_test/src/resources/block_hash.txt";
-}
->>>>>>> Make get_block_by_number in the general form.
