@@ -10,39 +10,6 @@ use starknet_api::StarknetApiError;
 use url::ParseError;
 
 use crate::BaseLayerContract;
-const STARKNET_ABI: &str = r#"[
-  {
-    "inputs": [
-
-    ],
-    "name": "stateBlockNumber",
-    "outputs": [
-      {
-        "internalType": "int256",
-        "name": "",
-        "type": "int256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-
-    ],
-    "name": "stateBlockHash",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  }
-]
-"#;
 
 #[derive(thiserror::Error, Debug)]
 pub enum EthereumBaseLayerError {
@@ -76,7 +43,8 @@ impl EthereumBaseLayerContract {
     pub fn new(config: EthereumBaseLayerConfig) -> Result<Self, EthereumBaseLayerError> {
         let address = config.starknet_contract_address.parse::<Address>()?;
         let client: Provider<Http> = Provider::<Http>::try_from(config.node_url)?;
-        let abi: Abi = serde_json::from_str::<Abi>(STARKNET_ABI)?;
+        // The solidity contract was pre-compiled, and only the relevant functions were kept.
+        let abi: Abi = serde_json::from_str::<Abi>(include_str!("core_contract_latest_block.abi"))?;
         Ok(Self { contract: Contract::new(address, abi, client) })
     }
 }
@@ -84,6 +52,7 @@ impl EthereumBaseLayerContract {
 #[async_trait]
 impl BaseLayerContract for EthereumBaseLayerContract {
     type Error = EthereumBaseLayerError;
+
     async fn latest_proved_block(
         &self,
         min_confirmations: Option<u64>,
@@ -94,17 +63,18 @@ impl BaseLayerContract for EthereumBaseLayerContract {
             .get_block_number()
             .await?
             .checked_sub(min_confirmations.unwrap_or(0).into());
-
         if ethereum_block_number.is_none() {
             return Ok(None);
         }
         let ethereum_block_number = ethereum_block_number.unwrap();
+
         let call_state_block_number =
             self.contract.method::<_, I256>("stateBlockNumber", ())?.block(ethereum_block_number);
         let call_state_block_hash =
             self.contract.method::<_, U256>("stateBlockHash", ())?.block(ethereum_block_number);
         let (state_block_number, state_block_hash) =
             tokio::try_join!(call_state_block_number.call(), call_state_block_hash.call())?;
+
         Ok(Some((
             BlockNumber(state_block_number.as_u64()),
             BlockHash(StarkHash::try_from(state_block_hash.encode_hex().as_str())?),

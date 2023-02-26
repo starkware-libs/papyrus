@@ -11,7 +11,9 @@ pub mod ethereum_base_layer_contract;
 #[async_trait]
 pub trait BaseLayerContract {
     type Error;
+
     /// Get the latest Starknet block that is proved on the base layer.
+    /// Optionally, require minimum confirmations.
     async fn latest_proved_block(
         &self,
         min_confirmations: Option<u64>,
