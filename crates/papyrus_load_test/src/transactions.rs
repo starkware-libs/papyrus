@@ -8,6 +8,13 @@ use rand::Rng;
 use serde_json::Value as jsonVal;
 
 use crate::{create_request, post_jsonrpc_request};
+pub type TransactionsResult = Result<Transaction, TransactionsError>;
+
+#[derive(thiserror::Error, Debug)]
+pub enum TransactionsError {
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+}
 
 create_get_transaction_function_with_requests_from_file! {
     get_block_with_tx_hashes_by_hash, "crates/papyrus_load_test/src/resources/block_hash.txt";
@@ -32,29 +39,29 @@ fn random_request_transaction(requests: Vec<jsonVal>) -> Transaction {
 // For each line in path creates a request using convert_to_request and returns vector of the
 // requests.
 fn create_requests_vector_from_file(
-    file_path: &str,
+    path: &str,
     convert_to_request: fn(&str) -> jsonVal,
-) -> Vec<jsonVal> {
-    let file = File::open(file_path).unwrap();
+) -> Result<Vec<jsonVal>, TransactionsError> {
+    let file = File::open(path)?;
     let reader = BufReader::new(file);
     let mut requests = Vec::<jsonVal>::new();
     for line in reader.lines() {
-        requests.push(convert_to_request(&line.unwrap()));
+        requests.push(convert_to_request(&line?));
     }
-    requests
+    Ok(requests)
 }
 
 // Given [Name, "Path";] write the function:
-//      pub fn Name() -> Transaction {
+//      pub fn Name() -> TransactionsResult {
 //          let requests = create_requests_vector("Path", create_request::Name);
-//          random_request_transaction(requests).set_name(Name)
+//          random_request_transaction(requests).set_name(Name)?
 //      }
 macro_rules! create_get_transaction_function_with_requests_from_file {
     () => {};
     ($name:tt, $file_name:literal; $($rest:tt)*) => {
-        pub fn $name() -> Transaction {
-            let requests = create_requests_vector_from_file($file_name, create_request::$name);
-            random_request_transaction(requests).set_name(stringify!($name))
+        pub fn $name() -> TransactionsResult {
+            let requests = create_requests_vector_from_file($file_name, create_request::$name)?;
+            Ok(random_request_transaction(requests).set_name(stringify!($name)))
         }
         create_get_transaction_function_with_requests_from_file!($($rest)*);
     };
