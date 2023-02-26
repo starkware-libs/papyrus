@@ -4,14 +4,46 @@ use std::io::BufReader;
 use std::sync::Arc;
 
 use goose::goose::{Transaction, TransactionFunction};
+use goose::prelude::*;
 use rand::Rng;
-use serde_json::Value as jsonVal;
+use serde_json::{json, Value as jsonVal};
 
-use crate::{create_request, post_jsonrpc_request};
+use crate::{create_request, jsonrpc_request, post_jsonrpc_request};
 
 create_get_transaction_function_with_requests_from_file! {
     get_block_with_tx_hashes_by_hash, "crates/papyrus_load_test/src/resources/block_hash.txt";
     get_block_with_tx_hashes_by_number, "crates/papyrus_load_test/src/resources/block_number.txt";
+}
+
+pub fn block_number() -> Transaction {
+    transaction_with_constant_request("blockNumber", "block_number")
+}
+
+pub fn block_hash_and_number() -> Transaction {
+    transaction_with_constant_request("blockHashAndNumber", "block_hash_and_number")
+}
+
+pub fn chain_id() -> Transaction {
+    transaction_with_constant_request("chainId", "chain_id")
+}
+
+fn transaction_with_constant_request(method_name: &str, transaction_name: &str) -> Transaction {
+    let method = String::from("starknet_") + method_name;
+    let request = jsonrpc_request(&method, json!([]));
+    let func: TransactionFunction = Arc::new(move |user| {
+        let request = request.clone();
+        Box::pin(async move {
+            post_jsonrpc_request(user, &request).await?;
+
+            Ok(())
+        })
+    });
+    Transaction::new(func).set_name(transaction_name)
+}
+
+pub async fn name(user: &mut GooseUser) -> TransactionResult {
+    post_jsonrpc_request(user, &jsonrpc_request("starknet_blockNumber", json!([]))).await?;
+    Ok(())
 }
 
 // Returns a Transaction that each call choose a random request from the requests vector
