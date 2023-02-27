@@ -1,8 +1,9 @@
-#!/usr/bin/env sh
-set -x
+#!/usr/bin/env bash
+set -euxo pipefail
 
 BUILD_ID=$1
 DURRATION=$2
+DURRATION_TIMEOUT=$3
 BASE_PATH="deployments/helm/CI"
 TMP_FILE="${BASE_PATH}/load_test_job-${BUILD_ID}.yaml"
 
@@ -14,9 +15,7 @@ kubectl --namespace papyrus apply -f "${TMP_FILE}" --wait=true
 #wait for load-test pod to start
 kubectl wait --namespace=papyrus --for=condition=ready pod -l job-name=papyrus-"$BUILD_ID"-load-test
 
-# wait additional 10 seconds in order to let the actual load-test application to start
-sleep 10s
+# wait $DURRATION_TIMEOUT for the load-test application to finish
+kubectl wait --namespace=papyrus --for=condition=complete job/papyrus-"${BUILD_ID}"-load-test --timeout "$DURRATION_TIMEOUT"
 
-# wait $DURRATION for the load-test application to finish
-kubectl wait --namespace=papyrus --for=condition=complete job/papyrus-"${BUILD_ID}"-load-test --timeout "$DURRATION"
 rm "${TMP_FILE}"
