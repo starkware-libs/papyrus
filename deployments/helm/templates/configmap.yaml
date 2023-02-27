@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "papyrus.name" . }}-config
+data:
+  PAPYRUS_ETHEREUM_API_URL: "{{ .Values.ethereumApiUrl }}"
+  RUST_LOG: "{{ .Values.rustLogLevel }}"
