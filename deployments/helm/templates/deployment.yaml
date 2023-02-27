@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "papyrus.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: papyrus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: papyrus
+      {{- include "papyrus.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: papyrus
+        {{- include "papyrus.selectorLabels" . | nindent 8 }}
+    spec:
+      TODO:
+      securityContext:
+        fsGroup: 1000
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ template "papyrus.name" . }}-data
+      containers:
+      - name: {{ template "papyrus.name" . }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default "latest" }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.services.rpc.port }}
+        - containerPort: {{ .Values.services.monitoring.port }}
+        volumeMounts:
+        - name: data
+          mountPath: /app/data
+        envFrom:
+          - configMapRef:
+              name: {{ template "papyrus.name" . }}-config
+      imagePullSecrets:
+      - name: regcred
+
+      # TODO: New pod only after former one is deleted.
