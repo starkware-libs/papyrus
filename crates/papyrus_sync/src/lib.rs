@@ -10,16 +10,15 @@ use std::time::Duration;
 use async_stream::try_stream;
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use indexmap::IndexMap;
-use papyrus_storage::body::{BodyStorageReader, BodyStorageWriter};
+use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::ommer::{OmmerStorageReader, OmmerStorageWriter};
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
-use papyrus_storage::{StorageError, StorageReader, StorageWriter, TransactionIndex};
+use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, StateDiff};
-use starknet_api::transaction::TransactionOffsetInBlock;
 use tracing::{debug, error, info, trace, warn};
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
@@ -294,45 +293,36 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     // Deletes the block data from the storage, moving it to the ommer tables.
     #[allow(clippy::expect_fun_call)]
     fn revert_block(&mut self, block_number: BlockNumber) -> StateSyncResult {
-        // TODO: Modify revert functions so they return the deleted data, and use it for inserting
-        // to the ommer tables.
         let mut txn = self.writer.begin_rw_txn()?;
-        let header = txn
-            .get_block_header(block_number)?
-            .expect(format!("Tried to revert a missing header of block {block_number}").as_str());
-        let transactions = txn.get_block_transactions(block_number)?.expect(
-            format!("Tried to revert a missing transactions of block {block_number}").as_str(),
-        );
-        let transaction_outputs = txn.get_block_transaction_outputs(block_number)?.expect(
-            format!("Tried to revert a missing transaction outputs of block {block_number}")
-                .as_str(),
-        );
 
-        // TODO: use iter_events of EventsReader once it supports RW transactions.
-        let mut events: Vec<_> = vec![];
-        for idx in 0..transactions.len() {
-            let tx_idx = TransactionIndex(block_number, TransactionOffsetInBlock(idx));
-            events.push(txn.get_transaction_events(tx_idx)?.unwrap_or_default());
+        let res = txn.revert_header(block_number)?;
+        txn = res.0;
+        if let Some(header) = res.1 {
+            txn = txn.insert_ommer_header(header.block_hash, &header)?;
+
+            let res = txn.revert_body(block_number)?;
+            txn = res.0;
+            if let Some((transactions, transaction_outputs, events)) = res.1 {
+                txn = txn.insert_ommer_body(
+                    header.block_hash,
+                    &transactions,
+                    &transaction_outputs,
+                    events.as_slice(),
+                )?;
+            }
+
+            let res = txn.revert_state_diff(block_number)?;
+            txn = res.0;
+            if let Some((thin_state_diff, declared_classes)) = res.1 {
+                txn = txn.insert_ommer_state_diff(
+                    header.block_hash,
+                    &thin_state_diff,
+                    &declared_classes,
+                )?;
+            }
         }
 
-        txn = txn
-            .revert_header(block_number)?
-            .insert_ommer_header(header.block_hash, &header)?
-            .revert_body(block_number)?
-            .insert_ommer_body(
-                header.block_hash,
-                &transactions,
-                &transaction_outputs,
-                events.as_slice(),
-            )?;
-
-        let (txn, maybe_deleted_data) = txn.revert_state_diff(block_number)?;
-        if let Some((thin_state_diff, declared_classes)) = maybe_deleted_data {
-            txn.insert_ommer_state_diff(header.block_hash, &thin_state_diff, &declared_classes)?
-                .commit()?;
-        } else {
-            txn.commit()?;
-        }
+        txn.commit()?;
         Ok(())
     }
 

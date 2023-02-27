@@ -3,6 +3,7 @@
 mod header_test;
 
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
+use tracing::debug;
 
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
@@ -32,7 +33,8 @@ where
         block_header: &BlockHeader,
     ) -> StorageResult<Self>;
 
-    fn revert_header(self, block_number: BlockNumber) -> StorageResult<Self>;
+    fn revert_header(self, block_number: BlockNumber)
+    -> StorageResult<(Self, Option<BlockHeader>)>;
 }
 
 impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode> {
@@ -77,26 +79,32 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
         Ok(self)
     }
 
-    fn revert_header(self, block_number: BlockNumber) -> StorageResult<Self> {
+    fn revert_header(
+        self,
+        block_number: BlockNumber,
+    ) -> StorageResult<(Self, Option<BlockHeader>)> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let headers_table = self.txn.open_table(&self.tables.headers)?;
         let block_hash_to_number_table = self.txn.open_table(&self.tables.block_hash_to_number)?;
 
         // Assert that header marker equals the reverted block number + 1
         let current_header_marker = self.get_header_marker()?;
+
+        // Reverts only the last header.
         if current_header_marker != block_number.next() {
-            return Err(StorageError::InvalidRevert {
-                revert_block_number: block_number,
-                block_number_marker: current_header_marker,
-            });
+            debug!(
+                "Attempt to revert a non-existing / old header of block {}. Returning without an \
+                 action.",
+                block_number
+            );
+            return Ok((self, None));
         }
 
-        let reverted_block_hash = headers_table.get(&self.txn, &block_number)?.unwrap().block_hash;
-
+        let reverted_header = headers_table.get(&self.txn, &block_number)?.unwrap();
         markers_table.upsert(&self.txn, &MarkerKind::Header, &block_number)?;
         headers_table.delete(&self.txn, &block_number)?;
-        block_hash_to_number_table.delete(&self.txn, &reverted_block_hash)?;
-        Ok(self)
+        block_hash_to_number_table.delete(&self.txn, &reverted_header.block_hash)?;
+        Ok((self, Some(reverted_header)))
     }
 }
 

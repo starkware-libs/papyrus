@@ -188,19 +188,9 @@ async fn revert_last_state_diff_success() {
 async fn revert_old_state_diff_fails() {
     let (_, mut writer) = get_test_storage();
     append_2_state_diffs(&mut writer);
-    let res = writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(0));
-    if let Err(err) = res {
-        assert_matches!(
-            err,
-            StorageError::InvalidRevert {
-                revert_block_number,
-                block_number_marker
-            }
-            if revert_block_number == BlockNumber(0) && block_number_marker == BlockNumber(2)
-        );
-    } else {
-        panic!("Unexpected Ok.");
-    }
+    let (_, deleted_data) =
+        writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(0)).unwrap();
+    assert!(deleted_data.is_none());
 }
 
 #[tokio::test]

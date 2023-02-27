@@ -9,6 +9,7 @@ use starknet_api::transaction::{
     Event, EventContent, EventIndexInTransactionOutput, Transaction, TransactionHash,
     TransactionOffsetInBlock, TransactionOutput,
 };
+use tracing::debug;
 
 use crate::body::events::ThinTransactionOutput;
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
@@ -58,6 +59,8 @@ pub trait BodyStorageReader {
     ) -> StorageResult<Option<Vec<ThinTransactionOutput>>>;
 }
 
+type RevertedBlockBody = (Vec<Transaction>, Vec<ThinTransactionOutput>, Vec<Vec<EventContent>>);
+
 pub trait BodyStorageWriter
 where
     Self: Sized,
@@ -65,7 +68,10 @@ where
     // To enforce that no commit happen after a failure, we consume and return Self on success.
     fn append_body(self, block_number: BlockNumber, block_body: BlockBody) -> StorageResult<Self>;
 
-    fn revert_body(self, block_number: BlockNumber) -> StorageResult<Self>;
+    fn revert_body(
+        self,
+        block_number: BlockNumber,
+    ) -> StorageResult<(Self, Option<RevertedBlockBody>)>;
 }
 
 impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
@@ -200,7 +206,10 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
         Ok(self)
     }
 
-    fn revert_body(self, block_number: BlockNumber) -> StorageResult<Self> {
+    fn revert_body(
+        self,
+        block_number: BlockNumber,
+    ) -> StorageResult<(Self, Option<RevertedBlockBody>)> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let transactions_table = self.txn.open_table(&self.tables.transactions)?;
         let transaction_outputs_table = self.txn.open_table(&self.tables.transaction_outputs)?;
@@ -211,34 +220,38 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
         // Assert that body marker equals the reverted block number + 1
         let current_header_marker = self.get_body_marker()?;
         if current_header_marker != block_number.next() {
-            return Err(StorageError::InvalidRevert {
-                revert_block_number: block_number,
-                block_number_marker: current_header_marker,
-            });
+            debug!(
+                "Attempt to revert a non-existing / old block {}. Returning without an action.",
+                block_number
+            );
+            return Ok((self, None));
         }
 
         let transactions = self.get_block_transactions(block_number)?.unwrap();
-        let tx_hashes_iter = transactions.iter().map(|tx| tx.transaction_hash());
+        let transaction_outputs = self.get_block_transaction_outputs(block_number)?.unwrap();
 
         // Delete the transactions data.
-        for (offset, tx_hash) in tx_hashes_iter.enumerate() {
+        let mut events = vec![];
+        for (offset, tx_output) in transaction_outputs.iter().enumerate() {
             let tx_index = TransactionIndex(block_number, TransactionOffsetInBlock(offset));
-            if let Some(tx_output) = self.get_transaction_output(tx_index)? {
-                for (index, from_address) in
-                    tx_output.events_contract_addresses().into_iter().enumerate()
-                {
-                    let key =
-                        (from_address, EventIndex(tx_index, EventIndexInTransactionOutput(index)));
-                    events_table.delete(&self.txn, &key)?;
-                }
+            let tx_hash = transactions[offset].transaction_hash();
+            let mut tx_events = vec![];
+            for (index, from_address) in
+                tx_output.events_contract_addresses_as_ref().iter().enumerate()
+            {
+                let key =
+                    (*from_address, EventIndex(tx_index, EventIndexInTransactionOutput(index)));
+                tx_events.push(events_table.get(&self.txn, &key)?.unwrap());
+                events_table.delete(&self.txn, &key)?;
             }
+            events.push(tx_events);
             transactions_table.delete(&self.txn, &tx_index)?;
             transaction_outputs_table.delete(&self.txn, &tx_index)?;
             transaction_hash_to_idx_table.delete(&self.txn, &tx_hash)?;
         }
 
         markers_table.upsert(&self.txn, &MarkerKind::Body, &block_number)?;
-        Ok(self)
+        Ok((self, Some((transactions, transaction_outputs, events))))
     }
 }
 

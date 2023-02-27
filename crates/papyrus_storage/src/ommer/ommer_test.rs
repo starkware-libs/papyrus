@@ -2,7 +2,9 @@ use indexmap::IndexMap;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, StateNumber};
-use starknet_api::transaction::{Event, Transaction, TransactionOffsetInBlock, TransactionOutput};
+use starknet_api::transaction::{
+    EventContent, Transaction, TransactionOffsetInBlock, TransactionOutput,
+};
 use test_utils::{get_test_block, get_test_state_diff};
 
 use super::OmmerStorageReader;
@@ -18,11 +20,10 @@ use crate::{StorageReader, TransactionIndex};
 // a revert scenario (vs. scenario of raw blocks that need to be written directly to the ommer
 // tables). Need to move them to the sync crate and use them in the revert flow (+ moving the
 // tests).
-type ExtractedBodyData = (Vec<Transaction>, Vec<ThinTransactionOutput>, Vec<Vec<Event>>);
 fn extract_body_data_from_storage(
     reader: &StorageReader,
     block_number: BlockNumber,
-) -> ExtractedBodyData {
+) -> (Vec<Transaction>, Vec<ThinTransactionOutput>, Vec<Vec<EventContent>>) {
     let transactions =
         reader.begin_ro_txn().unwrap().get_block_transactions(block_number).unwrap().unwrap();
     let thin_transaction_outputs = reader
@@ -35,11 +36,21 @@ fn extract_body_data_from_storage(
     // Collect the events into vector of vectors.
     let tx_indices = (0..transactions.len())
         .map(|idx| TransactionIndex(block_number, TransactionOffsetInBlock(idx)));
-    let transaction_outputs_events: Vec<Vec<Event>> = tx_indices
+
+    let transaction_outputs_events: Vec<Vec<EventContent>> = tx_indices
         .map(|tx_idx| {
-            reader.begin_ro_txn().unwrap().get_transaction_events(tx_idx).unwrap().unwrap()
+            reader
+                .begin_ro_txn()
+                .unwrap()
+                .get_transaction_events(tx_idx)
+                .unwrap()
+                .unwrap()
+                .into_iter()
+                .map(|e| e.content)
+                .collect()
         })
         .collect();
+
     (transactions, thin_transaction_outputs, transaction_outputs_events)
 }
 
@@ -112,8 +123,8 @@ fn insert_body_to_ommer() {
     let (_, mut writer) = get_test_storage();
     let block = get_test_block(7);
 
-    fn split_tx_output(tx_output: TransactionOutput) -> (ThinTransactionOutput, Vec<Event>) {
-        let events = tx_output.events().to_owned();
+    fn split_tx_output(tx_output: TransactionOutput) -> (ThinTransactionOutput, Vec<EventContent>) {
+        let events = tx_output.events().iter().map(|e| e.content.clone()).collect();
         let thin_tx_output = ThinTransactionOutput::from(tx_output);
         (thin_tx_output, events)
     }

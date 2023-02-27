@@ -151,8 +151,10 @@ async fn revert_events() {
         .unwrap()
         .revert_header(block_number)
         .unwrap()
+        .0
         .revert_body(block_number)
         .unwrap()
+        .0
         .commit()
         .unwrap();
     assert!(

@@ -7,7 +7,7 @@ use starknet_api::block::{BlockHash, BlockHeader};
 use starknet_api::core::ClassHash;
 use starknet_api::state::ContractClass;
 use starknet_api::transaction::{
-    Event, EventIndexInTransactionOutput, Transaction, TransactionOffsetInBlock,
+    EventContent, EventIndexInTransactionOutput, Transaction, TransactionOffsetInBlock,
 };
 
 use crate::body::events::ThinTransactionOutput;
@@ -47,7 +47,7 @@ where
         block_hash: BlockHash,
         transactions: &[Transaction],
         thin_transaction_outputs: &[ThinTransactionOutput],
-        transaction_outputs_events: &[Vec<Event>],
+        transaction_outputs_events: &[Vec<EventContent>],
     ) -> StorageResult<Self>;
 
     fn insert_ommer_state_diff(
@@ -80,7 +80,7 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
         block_hash: BlockHash,
         transactions: &[Transaction],
         thin_transaction_outputs: &[ThinTransactionOutput],
-        transaction_outputs_events: &[Vec<Event>],
+        transaction_outputs_events: &[Vec<EventContent>],
     ) -> StorageResult<Self> {
         assert!(transactions.len() == thin_transaction_outputs.len());
         assert!(transactions.len() == transaction_outputs_events.len());
@@ -109,20 +109,22 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
                     err => err.into(),
                 })?;
             let events = &transaction_outputs_events[idx];
+            let addresses = thin_transaction_outputs[idx].events_contract_addresses_as_ref();
             for (event_offset, event) in events.iter().enumerate() {
                 let event_key =
                     OmmerEventKey(tx_index, EventIndexInTransactionOutput(event_offset));
-                ommer_events_table
-                    .insert(&self.txn, &(event.from_address, event_key), &event.content)
-                    .map_err(|err| match err {
+                let event_address = addresses[event_offset];
+                ommer_events_table.insert(&self.txn, &(event_address, event_key), event).map_err(
+                    |err| match err {
                         DbError::Inner(libmdbx::Error::KeyExist) => {
                             StorageError::OmmerEventAlreadyExists {
-                                contract_address: event.from_address,
+                                contract_address: event_address,
                                 event_key,
                             }
                         }
                         err => err.into(),
-                    })?;
+                    },
+                )?;
             }
         }
 

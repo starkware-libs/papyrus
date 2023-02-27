@@ -10,6 +10,7 @@ use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey};
+use tracing::debug;
 
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
@@ -20,7 +21,6 @@ type DeployedContractsTable<'env> = TableHandle<'env, ContractAddress, IndexedDe
 type ContractStorageTable<'env> =
     TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), StarkFelt>;
 type NoncesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumber), Nonce>;
-use tracing::debug;
 
 // Structure of state data:
 // * declared_classes: (class_hash) -> (block_num, contract_class). Each entry specifies at which
@@ -249,7 +249,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
     fn revert_state_diff(
         self,
         block_number: BlockNumber,
-    ) -> StorageResult<(Self, Option<(ThinStateDiff, IndexMap<ClassHash, ContractClass>)>)> {
+    ) -> StorageResult<(Self, Option<RevertedStateDiff>)> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let declared_classes_table = self.txn.open_table(&self.tables.declared_classes)?;
         let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
@@ -259,49 +259,36 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
 
         let current_state_marker = self.get_state_marker()?;
 
-        // State diffs are synced after the blocks, so it might happen that we try to revert a state
-        // diff that wasn't synced yet.
-        if current_state_marker <= block_number {
+        // Reverts only the last state diff.
+        if current_state_marker != block_number.next() {
             debug!(
-                "Attempt to revert a non-existing state diff of block {}. Returning without an \
-                 action.",
+                "Attempt to revert a non-existing / old state diff of block {}. Returning without \
+                 an action.",
                 block_number
             );
             return Ok((self, None));
         }
 
-        if current_state_marker != block_number.next() {
-            return Err(StorageError::InvalidRevert {
-                revert_block_number: block_number,
-                block_number_marker: current_state_marker,
-            });
-        }
+        let thin_state_diff = self.get_state_diff(block_number)?.unwrap();
         markers_table.upsert(&self.txn, &MarkerKind::State, &block_number)?;
+        let deleted_classes = delete_declared_classes(
+            &self.txn,
+            block_number,
+            &thin_state_diff,
+            &declared_classes_table,
+        )?;
+        delete_deployed_contracts(
+            &self.txn,
+            block_number,
+            &thin_state_diff,
+            &deployed_contracts_table,
+            &nonces_table,
+        )?;
+        delete_storage_diffs(&self.txn, block_number, &thin_state_diff, &storage_table)?;
+        delete_nonces(&self.txn, block_number, &thin_state_diff, &nonces_table)?;
+        state_diffs_table.delete(&self.txn, &block_number)?;
 
-        if let Some(thin_state_diff) = self.get_state_diff(block_number)? {
-            let deleted_classes = delete_declared_classes(
-                &self.txn,
-                block_number,
-                &thin_state_diff,
-                &declared_classes_table,
-            )?;
-            delete_deployed_contracts(
-                &self.txn,
-                block_number,
-                &thin_state_diff,
-                &deployed_contracts_table,
-                &nonces_table,
-            )?;
-            delete_storage_diffs(&self.txn, block_number, &thin_state_diff, &storage_table)?;
-            delete_nonces(&self.txn, block_number, &thin_state_diff, &nonces_table)?;
-            state_diffs_table.delete(&self.txn, &block_number)?;
-
-            Ok((self, Some((thin_state_diff, deleted_classes))))
-        } else {
-            Err(StorageError::DBInconsistency {
-                msg: format!("StateDiff {block_number} doesn't exist."),
-            })
-        }
+        Ok((self, Some((thin_state_diff, deleted_classes))))
     }
 }
 
