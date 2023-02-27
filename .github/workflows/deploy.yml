@@ -53,6 +53,11 @@ jobs:
       - name: Run load test
         run: sh -c "deployments/helm/CI/run_benchmark.bash ${UNIQE_ID} ${DURRATION} ${DURRATION_TIMEOUT}"
 
+      - name: Parse load test results
+        run: |
+          pwd
+          ls -al
+
       # - name: Clean the deployment
       #   if: always()
       #   run: helm delete --namespace papyrus papyrus-${UNIQE_ID}
