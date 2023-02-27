@@ -8,7 +8,7 @@ spec:
     spec:
       securityContext:
         fsGroup: 1000
-      containers:
+      initContainers:
         - name: papyrus-load-test
           image: ghcr.io/starkware-libs/papyrus:dev
           imagePullPolicy: Always
@@ -20,6 +20,24 @@ spec:
             #- DURRATION
             - sh
             - -c
-            - "sleep DURRATION && echo BUILD_ID-done."
+            - "sleep DURRATION && echo BUILD_ID-done. > /tmp/results/load-test.out"
+          volumeMounts:
+            - mountPath: /tmp/results
+              name: results
+      containers:
+        - name: result-export
+          image: ghcr.io/starkware-libs/papyrus:dev
+          imagePullPolicy: Always
+          command:
+            - sh
+            - -c
+            - "sleep 1h"
+          volumeMounts:
+            - mountPath: /tmp/results
+              name: results
+      volumes:
+        - name: results
+          emptyDir: {}
+
       restartPolicy: Never
   backoffLimit: 0
