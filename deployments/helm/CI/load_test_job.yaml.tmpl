@@ -13,11 +13,14 @@ spec:
           image: ghcr.io/starkware-libs/papyrus:dev
           imagePullPolicy: Always
           command:
-            - /app/target/release/papyrus_load_test
-            - --host
-            - http://papyrus-XXX-rpc.papyrus.svc.cluster.local:8080
-            - --run-time
-            - DURRATION
+            #- /app/target/release/papyrus_load_test
+            #- --host
+            #- http://papyrus-XXX-rpc.papyrus.svc.cluster.local:8080
+            #- --run-time
+            #- DURRATION
+            - sh
+            - -c
+            - "sleep DURRATION"
       imagePullSecrets:
         - name: regcred
       restartPolicy: Never
