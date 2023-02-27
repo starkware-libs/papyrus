@@ -42,7 +42,3 @@ spec:
         envFrom:
           - configMapRef:
               name: {{ template "papyrus.name" . }}-config
-      imagePullSecrets:
-      - name: regcred
-
-      # TODO: New pod only after former one is deleted.
