@@ -14,6 +14,5 @@ pub fn general_request() -> Scenario {
 }
 
 pub fn serial_get_block() -> Scenario {
-    scenario!("general_request")
-        .register_transaction(transactions::serial_get_block(1000))
+    scenario!("serial_get_block").register_transaction(transactions::serial_get_block(1000))
 }

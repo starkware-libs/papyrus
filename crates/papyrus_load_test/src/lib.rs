@@ -28,7 +28,5 @@ pub fn jsonrpc_request(method: &str, params: jsonVal) -> jsonVal {
 
 pub fn get_last_block_number() -> u64 {
     let file_content = include_str!("./resources/last_block_number.txt");
-    file_content.parse::<u64>().unwrap_or_else(|_| {
-        panic!("\"{}\" is not a legal format for last_block_number", file_content)
-    })
+    file_content.parse::<u64>().unwrap()
 }
