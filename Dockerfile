@@ -59,9 +59,12 @@ FROM alpine:3.17.0
 ENV ID=1000
 
 WORKDIR /app
+# Copy the node executable and its config.
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/papyrus_node /app/target/release/papyrus_node
-COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/papyrus_load_test /app/target/release/papyrus_load_test
 COPY config/ /app/config
+
+# Copy the load test executable and its resources.
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/papyrus_load_test /app/target/release/papyrus_load_test
 COPY crates/papyrus_load_test/src/resources/ /app/crates/papyrus_load_test/src/resources
 
 RUN set -ex; \
