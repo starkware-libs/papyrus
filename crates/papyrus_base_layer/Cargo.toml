@@ -1,0 +1,21 @@
+[package]
+name = "papyrus_base_layer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-trait = { version = "0.1.56" }
+ethers = { version = "1.0.2"}
+rustc-hex = { version = "2.1.0" }
+serde_json = { version = "1.0.81" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "9a1fca8" }
+thiserror = { version = "1.0.31" }
+tokio = { version = "1.18.2", features = ["full","sync"] }
+url = { version = "2.3.1" }
+
+[dev-dependencies]
+ethers-core = { version = "1.0.2"}
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", features = ["testing"], rev = "9a1fca8" }
+tar = { version = "0.4.38" }
+tempfile = { version = "3.3.0" }
+test-with = { version = "0.9.3", default-features = false, features = ["executable"] }
