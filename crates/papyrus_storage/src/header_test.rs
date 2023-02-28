@@ -52,19 +52,8 @@ async fn append_header() {
 #[tokio::test]
 async fn revert_non_existing_header_fails() {
     let (_, mut writer) = get_test_storage();
-    let res = writer.begin_rw_txn().unwrap().revert_header(BlockNumber(5));
-    if let Err(err) = res {
-        assert_matches!(
-            err,
-            StorageError::InvalidRevert {
-                revert_block_number,
-                block_number_marker
-            }
-            if revert_block_number == BlockNumber(5) && block_number_marker == BlockNumber(0)
-        )
-    } else {
-        panic!("Unexpected Ok.");
-    }
+    let (_, deleted_data) = writer.begin_rw_txn().unwrap().revert_header(BlockNumber(5)).unwrap();
+    assert!(deleted_data.is_none());
 }
 
 #[tokio::test]
@@ -77,26 +66,15 @@ async fn revert_last_header_success() {
         .unwrap()
         .commit()
         .unwrap();
-    writer.begin_rw_txn().unwrap().revert_header(BlockNumber(0)).unwrap().commit().unwrap();
+    writer.begin_rw_txn().unwrap().revert_header(BlockNumber(0)).unwrap().0.commit().unwrap();
 }
 
 #[tokio::test]
 async fn revert_old_header_fails() {
     let (_, mut writer) = get_test_storage();
     append_2_headers(&mut writer);
-    let res = writer.begin_rw_txn().unwrap().revert_header(BlockNumber(0));
-    if let Err(err) = res {
-        assert_matches!(
-            err,
-            StorageError::InvalidRevert {
-                revert_block_number,
-                block_number_marker
-            }
-            if revert_block_number == BlockNumber(0) && block_number_marker == BlockNumber(2)
-        );
-    } else {
-        panic!("Unexpected Ok.");
-    }
+    let (_, deleted_data) = writer.begin_rw_txn().unwrap().revert_header(BlockNumber(0)).unwrap();
+    assert!(deleted_data.is_none());
 }
 
 #[tokio::test]
@@ -107,7 +85,7 @@ async fn revert_header_updates_marker() {
     // Verify that the header marker before revert is 2.
     assert_eq!(reader.begin_ro_txn().unwrap().get_header_marker().unwrap(), BlockNumber(2));
 
-    writer.begin_rw_txn().unwrap().revert_header(BlockNumber(1)).unwrap().commit().unwrap();
+    writer.begin_rw_txn().unwrap().revert_header(BlockNumber(1)).unwrap().0.commit().unwrap();
     assert_eq!(reader.begin_ro_txn().unwrap().get_header_marker().unwrap(), BlockNumber(1));
 }
 
@@ -119,7 +97,7 @@ async fn get_reverted_header_returns_none() {
     // Verify that we can get block 1's header before the revert.
     assert!(reader.begin_ro_txn().unwrap().get_block_header(BlockNumber(1)).unwrap().is_some());
 
-    writer.begin_rw_txn().unwrap().revert_header(BlockNumber(1)).unwrap().commit().unwrap();
+    writer.begin_rw_txn().unwrap().revert_header(BlockNumber(1)).unwrap().0.commit().unwrap();
     assert!(reader.begin_ro_txn().unwrap().get_block_header(BlockNumber(1)).unwrap().is_none());
 }
 
@@ -135,7 +113,7 @@ async fn get_reverted_block_number_by_hash_returns_none() {
         reader.begin_ro_txn().unwrap().get_block_number_by_hash(&block_hash).unwrap().is_some()
     );
 
-    writer.begin_rw_txn().unwrap().revert_header(BlockNumber(1)).unwrap().commit().unwrap();
+    writer.begin_rw_txn().unwrap().revert_header(BlockNumber(1)).unwrap().0.commit().unwrap();
     assert!(
         reader.begin_ro_txn().unwrap().get_block_number_by_hash(&block_hash).unwrap().is_none()
     );
