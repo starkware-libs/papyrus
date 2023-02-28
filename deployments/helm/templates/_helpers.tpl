@@ -35,6 +35,7 @@ Common labels
 */}}
 {{- define "papyrus.labels" -}}
 helm.sh/chart: {{ include "papyrus.chart" . }}
+app: {{ include "papyrus.name" . }}
 {{ include "papyrus.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
@@ -47,7 +48,6 @@ Selector labels
 */}}
 {{- define "papyrus.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "papyrus.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
