@@ -48,6 +48,8 @@ pvc:
 
 # Configure Ingress.
 ingress:
+  # Should an ingress object be created
+  enabled: false
   # Ingress class type.
   type:
   # Ingress object name in Kubernetes.
