@@ -4,7 +4,7 @@
 # An HTTP RPC endpoint of the Ethereum entry-point (A local Ethereum client, Infura, etc.).
 ethereumApiUrl:
 # The verbosity level of logs ("debug", "info", "error", etc.)
-rustLogLevel:
+rustLogLevel: "info"
 
 # The Docker image (including any tag and repository name)
 image:
