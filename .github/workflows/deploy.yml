@@ -38,7 +38,7 @@ jobs:
           helm upgrade --install papyrus-${UNIQE_ID} deployments/helm/ \
           --namespace papyrus \
           --values deployments/helm/CI/default_values.yaml \
-          --set ingress.host=${{ secrets.GKE_CI_HOST }}-${UNIQE_ID}
+          --set ingress.host=papyrus-${UNIQE_ID}.${{ secrets.GKE_CI_HOST }}
 
       - name: Wait for papyrus pods to be ready
         run: kubectl --namespace papyrus rollout status deployment papyrus-${UNIQE_ID}
