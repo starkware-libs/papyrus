@@ -227,21 +227,32 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
             return Ok((self, None));
         }
 
-        let transactions = self.get_block_transactions(block_number)?.unwrap();
-        let transaction_outputs = self.get_block_transaction_outputs(block_number)?.unwrap();
+        let transactions = self
+            .get_block_transactions(block_number)?
+            .expect("Missing transactions for block {block_number}.");
+        let transaction_outputs = self
+            .get_block_transaction_outputs(block_number)?
+            .expect("Missing transaction outputs for block {block_number}.");
 
         // Delete the transactions data.
         let mut events = vec![];
-        for (offset, tx_output) in transaction_outputs.iter().enumerate() {
+        for (offset, (tx_output, tx_hash)) in transaction_outputs
+            .iter()
+            .zip(transactions.iter().map(|t| t.transaction_hash()))
+            .enumerate()
+        {
             let tx_index = TransactionIndex(block_number, TransactionOffsetInBlock(offset));
-            let tx_hash = transactions[offset].transaction_hash();
             let mut tx_events = vec![];
             for (index, from_address) in
                 tx_output.events_contract_addresses_as_ref().iter().enumerate()
             {
                 let key =
                     (*from_address, EventIndex(tx_index, EventIndexInTransactionOutput(index)));
-                tx_events.push(events_table.get(&self.txn, &key)?.unwrap());
+                tx_events.push(
+                    events_table
+                        .get(&self.txn, &key)?
+                        .expect("Missing events for transaction output {tx_index}."),
+                );
                 events_table.delete(&self.txn, &key)?;
             }
             events.push(tx_events);

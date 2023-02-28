@@ -269,7 +269,9 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             return Ok((self, None));
         }
 
-        let thin_state_diff = self.get_state_diff(block_number)?.unwrap();
+        let thin_state_diff = self
+            .get_state_diff(block_number)?
+            .expect("Missing state diff for block {block_number}.");
         markers_table.upsert(&self.txn, &MarkerKind::State, &block_number)?;
         let deleted_classes = delete_declared_classes(
             &self.txn,
@@ -409,23 +411,15 @@ fn delete_declared_classes<'env>(
 
     let mut deleted_data = IndexMap::new();
     for class_hash in class_hashes {
-        let maybe_indexed_declared_class = declared_classes_table.get(txn, class_hash)?;
-        match maybe_indexed_declared_class {
-            None => StorageError::DBInconsistency {
-                msg: format!("Missing declared class {class_hash:#?}"),
-            },
-            Some(IndexedDeclaredContract {
-                block_number: declared_block_number,
-                contract_class,
-            }) => {
-                // If the class was declared in a different block then we should'nt delete it.
-                if block_number == declared_block_number {
-                    deleted_data.insert(*class_hash, contract_class);
-                    declared_classes_table.delete(txn, class_hash)?;
-                }
-                continue;
-            }
-        };
+        let IndexedDeclaredContract { block_number: declared_block_number, contract_class } =
+            declared_classes_table
+                .get(txn, class_hash)?
+                .expect("Missing declared class {class_hash:#?}.");
+        // If the class was declared in a different block then we should'nt delete it.
+        if block_number == declared_block_number {
+            deleted_data.insert(*class_hash, contract_class);
+            declared_classes_table.delete(txn, class_hash)?;
+        }
     }
 
     Ok(deleted_data)

@@ -109,16 +109,18 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
                     err => err.into(),
                 })?;
             let events = &transaction_outputs_events[idx];
-            let addresses = thin_transaction_outputs[idx].events_contract_addresses_as_ref();
-            for (event_offset, event) in events.iter().enumerate() {
+            for (event_offset, (event, address)) in events
+                .iter()
+                .zip(thin_transaction_outputs[idx].events_contract_addresses_as_ref().iter())
+                .enumerate()
+            {
                 let event_key =
                     OmmerEventKey(tx_index, EventIndexInTransactionOutput(event_offset));
-                let event_address = addresses[event_offset];
-                ommer_events_table.insert(&self.txn, &(event_address, event_key), event).map_err(
+                ommer_events_table.insert(&self.txn, &(*address, event_key), event).map_err(
                     |err| match err {
                         DbError::Inner(libmdbx::Error::KeyExist) => {
                             StorageError::OmmerEventAlreadyExists {
-                                contract_address: event_address,
+                                contract_address: *address,
                                 event_key,
                             }
                         }
