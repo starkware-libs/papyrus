@@ -1,0 +1,14 @@
+// This file is used for:
+// 1. default configuration for the node
+// 2. reference for the users
+
+// The user should not edit this file.
+// A config file should be in a different file and contain only the parameters that the user wish to override.
+
+// The plan is to use the 'dump' function of the components to create this file, and we are OK with editing it manually afterwards.
+
+
+/// Description for param 1
+component.param1 = default_param1
+/// Description for param 2
+component.param2 = default_param2

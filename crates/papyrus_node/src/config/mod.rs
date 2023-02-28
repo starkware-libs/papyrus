@@ -2,6 +2,7 @@
 mod config_test;
 
 mod file_config;
+pub mod configuration_builder;
 
 use std::collections::HashMap;
 use std::mem::discriminant;
