@@ -38,16 +38,16 @@ fn get_test_ethereum_node() -> (TestEthereumNodeHandle, EthereumContractAddress)
         ganache_version.starts_with("ganache v7.4.3"),
         "Wrong Ganache version, please install v7.4.3"
     );
-    const GANACHE_DB_TAR_PATH: &str = "resources/ganache-db.tar";
-    const REL_DB_PATH: &str = "hathat";
+    const DB_NAME: &str = "ganache-db";
+    let db_archive_path = format!("resources/{DB_NAME}.tar");
 
     // Unpack the Ganache db tar file into a temporary dir.
-    let mut ar = Archive::new(File::open(GANACHE_DB_TAR_PATH).unwrap());
+    let mut archive = Archive::new(File::open(db_archive_path).expect("Ganache db not found."));
     let ganache_db = tempdir().unwrap();
-    ar.unpack(ganache_db.path()).unwrap();
+    archive.unpack(ganache_db.path()).unwrap();
 
     // Start Ganache instance. This will panic if Ganache is not installed.
-    let db_path = ganache_db.path().join(REL_DB_PATH);
+    let db_path = ganache_db.path().join(DB_NAME);
     let ganache = Ganache::new().args(["--db", db_path.to_str().unwrap()]).spawn();
 
     ((ganache, ganache_db), SN_CONTRACT_ADDR.to_owned())
