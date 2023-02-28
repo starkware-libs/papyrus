@@ -4,12 +4,11 @@ metadata:
   name: {{ template "papyrus.name" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    app: papyrus
+    {{- include "papyrus.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: papyrus
       {{- include "papyrus.selectorLabels" . | nindent 6 }}
   strategy:
     type: RollingUpdate
@@ -22,7 +21,6 @@ spec:
         app: papyrus
         {{- include "papyrus.selectorLabels" . | nindent 8 }}
     spec:
-      TODO:
       securityContext:
         fsGroup: 1000
       volumes:
