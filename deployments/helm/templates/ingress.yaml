@@ -3,6 +3,8 @@ kind: Ingress
 metadata:
   name: "{{ .Values.ingress.name }}-{{ template "papyrus.name" . }}"
   namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "papyrus.labels" . | nindent 4 }}
   {{- if .Values.ingress.annotations }}
   annotations:
     {{ tpl .Values.ingress.annotations . | nindent 4 | trim }}
