@@ -72,10 +72,12 @@ fn create_requests_vector_from_file(
 }
 
 // Given [Name, "Path";] write the function:
-//      pub fn Name() -> Transaction {
-//          let requests = create_requests_vector("Path", create_request::Name);
-//          random_request_transaction(requests).set_name(Name)
-//      }
+///```
+///     pub fn Name() -> Transaction {
+///         let requests = create_requests_vector("Path", create_request::Name);
+///         random_request_transaction(requests).set_name(Name)
+///     }
+///```
 macro_rules! create_get_transaction_function_with_requests_from_file {
     () => {};
     ($name:tt, $file_name:literal; $($rest:tt)*) => {
