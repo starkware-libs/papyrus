@@ -6,9 +6,9 @@ use crate::transactions;
 pub fn general_request() -> Scenario {
     scenario!("general_request")
         .register_transaction(
-            transactions::get_block_with_tx_hashes_by_number().set_weight(1).unwrap(),
+            transactions::get_block_with_transaction_hashes_by_number().set_weight(1).unwrap(),
         )
         .register_transaction(
-            transactions::get_block_with_tx_hashes_by_hash().set_weight(1).unwrap(),
+            transactions::get_block_with_transaction_hashes_by_hash().set_weight(1).unwrap(),
         )
 }
