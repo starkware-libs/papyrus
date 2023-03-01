@@ -5,5 +5,4 @@ metadata:
   labels:
     {{- include "papyrus.labels" . | nindent 4 }}
 data:
-  PAPYRUS_ETHEREUM_API_URL: "{{ .Values.ethereumApiUrl }}"
   RUST_LOG: "{{ .Values.rustLogLevel }}"

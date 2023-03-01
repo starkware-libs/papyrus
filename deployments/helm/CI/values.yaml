@@ -1,6 +1,5 @@
 # Default values for a papyrus deployment.
 
-ethereumApiUrl: ETHEREUM_API_URL
 rustLogLevel: "debug"
 
 pvc:

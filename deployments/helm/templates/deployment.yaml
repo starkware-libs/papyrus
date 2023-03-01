@@ -31,6 +31,13 @@ spec:
       - name: {{ template "papyrus.name" . }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default "latest" }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
+        resources:
+          limits:
+            cpu: {{ .Values.resources.limits.cpu | quote }}
+            memory: {{ .Values.resources.limits.memory }}
+          requests:
+            cpu: {{ .Values.resources.requests.cpu | quote}}
+            memory: {{ .Values.resources.requests.memory }}
         ports:
         - containerPort: {{ .Values.services.rpc.port }}
         - containerPort: {{ .Values.services.monitoring.port }}
