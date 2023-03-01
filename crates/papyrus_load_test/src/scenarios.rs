@@ -11,6 +11,7 @@ pub fn general_request() -> Scenario {
         (block_number(), 1),
         (block_hash_and_number(), 1),
         (chain_id(), 1),
+        (get_transaction_by_block_id_and_index_by_hash(), 1),
     ];
     for (transaction, weight) in trans_and_weights.into_iter() {
         scenario = scenario.register_transaction(transaction.set_weight(weight).unwrap());
