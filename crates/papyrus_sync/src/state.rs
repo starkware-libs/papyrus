@@ -8,7 +8,6 @@ use futures_util::{pin_mut, StreamExt};
 use indexmap::IndexMap;
 use papyrus_storage::db::RW;
 use papyrus_storage::header::HeaderStorageReader;
-use papyrus_storage::ommer::{OmmerStorageReader, OmmerStorageWriter};
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageReader, StorageTxn};
 use starknet_api::block::{BlockHash, BlockNumber};
@@ -103,62 +102,33 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> StateDiffSync<T
         state_diff: StateDiff,
         deployed_contract_class_definitions: IndexMap<ClassHash, ContractClass>,
     ) -> StateSyncResult {
-        match self.is_reverted_state_diff(block_number, block_hash) {
-            Ok(false) => {
-                info!("Storing state diff of block {block_number} with hash {block_hash}.");
-                trace!("StateDiff data: {state_diff:#?}");
-                txn.append_state_diff(
-                    block_number,
-                    state_diff,
-                    deployed_contract_class_definitions,
-                )?
-                .commit()?;
-            }
-            Ok(true) => {
-                debug!(
-                    "Storing ommer state diff of block {} with hash {:?}.",
-                    block_number, block_hash
-                );
-                txn.insert_ommer_state_diff(
-                    block_hash,
-                    &state_diff.into(),
-                    &deployed_contract_class_definitions,
-                )?
-                .commit()?;
+        trace!("StateDiff data: {state_diff:#?}");
 
-                debug!("Restart current task because of block {block_number}.");
-                self.restart_task();
-            }
-            Err(StateSyncError::StateDiffWithoutMatchingHeader { block_number, block_hash: _ }) => {
-                debug!("Restart current task because of block {block_number}.");
-                self.restart_task();
-            }
-            Err(err) => return Err(err),
+        if self.should_store(block_number, block_hash)? {
+            info!("Storing state diff of block {block_number} with hash {block_hash}.");
+            txn.append_state_diff(block_number, state_diff, deployed_contract_class_definitions)?
+                .commit()?;
+        } else {
+            debug!("Restart current task because of block {block_number}.");
+            self.restart_task();
         }
 
         Ok(())
     }
 
-    fn is_reverted_state_diff(
+    fn should_store(
         &self,
         block_number: BlockNumber,
         block_hash: BlockHash,
     ) -> Result<bool, StateSyncError> {
         let txn = self.reader.begin_ro_txn()?;
-        let storage_header = txn.get_block_header(block_number)?;
-        match storage_header {
-            Some(storage_header) if storage_header.block_hash == block_hash => Ok(false),
-            _ => {
-                // No matching header, check in the ommer headers.
-                match txn.get_ommer_header(block_hash)? {
-                    Some(_) => Ok(true),
-                    None => Err(StateSyncError::StateDiffWithoutMatchingHeader {
-                        block_number,
-                        block_hash,
-                    }),
-                }
+        if let Some(storage_header) = txn.get_block_header(block_number)? {
+            if storage_header.block_hash == block_hash {
+                return Ok(true);
             }
         }
+
+        Ok(false)
     }
 }
 
