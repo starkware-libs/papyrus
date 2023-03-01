@@ -6,7 +6,7 @@ use papyrus_storage::db::RW;
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::ommer::OmmerStorageWriter;
 use papyrus_storage::state::StateStorageWriter;
-use papyrus_storage::{StorageError, StorageReader, StorageTxn};
+use papyrus_storage::{StorageReader, StorageTxn};
 use starknet_api::block::{Block, BlockNumber};
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TryRecvError;
@@ -78,63 +78,42 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> BlockSync<TCent
         block_number: BlockNumber,
         block: Block,
     ) -> StateSyncResult {
-        match self.verify_parent_block_hash(block_number, &block) {
-            Ok(()) => {
-                info!("Storing block {block_number} with hash {}.", block.header.block_hash);
-                trace!("Block data: {block:#?}");
-                txn.append_header(block_number, &block.header)?
-                    .append_body(block_number, block.body)?
-                    .commit()?;
-            }
-            Err(StateSyncError::ParentBlockHashMismatch {
-                block_number: _,
-                expected_parent_block_hash: _,
-                stored_parent_block_hash: _,
-            }) => {
-                info!("Reverting block {}.", block_number.prev().unwrap());
-                revert_block(txn, block_number.prev().unwrap())?;
-                self.restart_task();
-            }
-            Err(StateSyncError::StorageError(err))
-                if matches!(err, StorageError::DBInconsistency { msg: _ }) =>
-            {
-                debug!("Cannot find the parent of block {block_number}");
-                self.restart_task();
-            }
-            Err(err) => return Err(err),
+        trace!("Block data: {block:#?}");
+
+        if self.should_store(block_number, &block)? {
+            info!("Storing block {block_number} with hash {}.", block.header.block_hash);
+            txn.append_header(block_number, &block.header)?
+                .append_body(block_number, block.body)?
+                .commit()?;
+        } else {
+            info!("Reverting block {}.", block_number.prev().unwrap());
+            revert_block(txn, block_number.prev().unwrap())?;
+            self.restart_task();
         }
 
         Ok(())
     }
 
-    fn verify_parent_block_hash(
+    fn should_store(
         &self,
         block_number: BlockNumber,
         block: &Block,
-    ) -> Result<(), StateSyncError> {
+    ) -> Result<bool, StateSyncError> {
         let prev_block_number = match block_number.prev() {
-            None => return Ok(()),
+            None => return Ok(true),
             Some(bn) => bn,
         };
-        let prev_header = self.reader.begin_ro_txn()?.get_block_header(prev_block_number)?.ok_or(
-            StorageError::DBInconsistency {
-                msg: format!(
-                    "Missing block {prev_block_number} in the storage (for verifying block \
-                     {block_number}).",
-                ),
-            },
-        )?;
 
-        // Compares the block's parent hash to the stored block.
-        if prev_header.block_hash != block.header.parent_hash {
-            return Err(StateSyncError::ParentBlockHashMismatch {
-                block_number,
-                expected_parent_block_hash: block.header.parent_hash,
-                stored_parent_block_hash: prev_header.block_hash,
-            });
+        if let Some(prev_header) =
+            self.reader.begin_ro_txn()?.get_block_header(prev_block_number)?
+        {
+            // Compares the block's parent hash to the stored block.
+            if prev_header.block_hash == block.header.parent_hash {
+                return Ok(true);
+            }
         }
 
-        Ok(())
+        Ok(false)
     }
 }
 
