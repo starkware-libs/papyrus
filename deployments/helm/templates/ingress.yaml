@@ -1,0 +1,36 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: "{{ .Values.ingress.name }}-{{ template "papyrus.name" . }}"
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "papyrus.labels" . | nindent 4 }}
+  {{- if .Values.ingress.annotations }}
+  annotations:
+    {{ tpl .Values.ingress.annotations . | nindent 4 | trim }}
+  {{- end }}
+spec:
+  rules:
+  - host: {{ .Values.ingress.host }}
+    http:
+      paths:
+      - backend:
+          service:
+            name: {{ template "papyrus.name" . }}-rpc
+            port:
+              number: {{ .Values.services.rpc.port }}
+        path: /
+        pathType: {{ .Values.ingress.pathType }}
+      - backend:
+          service:
+            name: {{ template "papyrus.name" . }}-monitoring
+            port:
+              number: {{ .Values.services.monitoring.port }}
+        path: /monitoring
+        pathType: {{ .Values.ingress.pathType }}
+  tls:
+  - hosts:
+    - {{ .Values.ingress.host }}
+    secretName: {{ .Values.ingress.host }}-ssl-secret
+{{- end }}

@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "papyrus.name" . }}-config
+  labels:
+    {{- include "papyrus.labels" . | nindent 4 }}
+data:
+  RUST_LOG: "{{ .Values.rustLogLevel }}"
