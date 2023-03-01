@@ -7,7 +7,6 @@ use std::time::Duration;
 
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockHash, BlockNumber};
 use tracing::{error, info, warn};
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
@@ -38,20 +37,6 @@ pub enum StateSyncError {
     CentralSourceError(#[from] CentralError),
     #[error("Sync internal error - {msg}")]
     SyncInternalError { msg: String },
-    #[error(
-        "Parent block hash of block {block_number} is not consistent with the stored block. \
-         Expected {expected_parent_block_hash}, found {stored_parent_block_hash}."
-    )]
-    ParentBlockHashMismatch {
-        block_number: BlockNumber,
-        expected_parent_block_hash: BlockHash,
-        stored_parent_block_hash: BlockHash,
-    },
-    #[error(
-        "Received state diff of block {block_number} and block hash {block_hash}, didn't find a \
-         matching header (neither in the ommer headers)."
-    )]
-    StateDiffWithoutMatchingHeader { block_number: BlockNumber, block_hash: BlockHash },
 }
 
 impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSync<TCentralSource> {

@@ -178,8 +178,6 @@ pub enum StorageError {
          found."
     )]
     EventNotFound { event_index: EventIndex, from_address: ContractAddress },
-    #[error("DB in inconsistent state: {msg:?}.")]
-    DBInconsistency { msg: String },
     #[error("Header of block with hash {block_hash} already exists in ommer table.")]
     OmmerHeaderAlreadyExists { block_hash: BlockHash },
     #[error("Ommer transaction key {tx_key:?} already exists.")]
