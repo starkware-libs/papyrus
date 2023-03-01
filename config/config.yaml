@@ -7,7 +7,7 @@ central:
     # Maximum number of concurrent requests to Starknet feeder-gateway for getting a type of data (for example, blocks).
     concurrent_requests: 10
     # Starknet feeder-gateway URL. It should match chain_id.
-    url: https://alpha-mainnet.starknet.io/
+    url: https://alpha-mainnet.starknet.io/ 
     # In case of failed requests to the central.
     retry:
         # Base waiting time after a failed request. After that, the time increases exponentially.
