@@ -12,6 +12,7 @@ use crate::{create_request, jsonrpc_request, post_jsonrpc_request};
 create_get_transaction_function_with_requests_from_file! {
     get_block_with_transaction_hashes_by_number, "crates/papyrus_load_test/src/resources/block_number.txt";
     get_block_with_transaction_hashes_by_hash, "crates/papyrus_load_test/src/resources/block_hash.txt";
+    get_transaction_by_block_id_and_index_by_hash, "crates/papyrus_load_test/src/resources/block_hash_&_transaction_index.txt";
 }
 
 pub fn block_number() -> Transaction {
