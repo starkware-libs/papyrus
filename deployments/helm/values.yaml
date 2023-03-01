@@ -1,8 +1,5 @@
 # Default values for a papyrus deployment.
 
-# Values that configure running a papyrus deployment on Kubernetes.
-# An HTTP RPC endpoint of the Ethereum entry-point (A local Ethereum client, Infura, etc.).
-ethereumApiUrl:
 # The verbosity level of logs ("debug", "info", "error", etc.)
 rustLogLevel: "info"
 
@@ -13,13 +10,13 @@ image:
   pullPolicy: Always
 
 # The default resources for the pod.
-# resources:
-#   limits:
-#     cpu: 100m
-#     memory: 500Mi
-#   requests:
-#     cpu: 100m
-#     memory: 500Mi
+resources:
+  limits:
+    cpu: "1"
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
 
 # Service variables for a papyrus pod.
 services:
