@@ -4,7 +4,6 @@ use std::io::BufReader;
 use std::sync::Arc;
 
 use goose::goose::{Transaction, TransactionFunction};
-use goose::prelude::*;
 use rand::Rng;
 use serde_json::{json, Value as jsonVal};
 
@@ -39,11 +38,6 @@ fn transaction_with_constant_request(method_name: &str, transaction_name: &str) 
         })
     });
     Transaction::new(func).set_name(transaction_name)
-}
-
-pub async fn name(user: &mut GooseUser) -> TransactionResult {
-    post_jsonrpc_request(user, &jsonrpc_request("starknet_blockNumber", json!([]))).await?;
-    Ok(())
 }
 
 // Returns a Transaction that each call choose a random request from the requests vector
