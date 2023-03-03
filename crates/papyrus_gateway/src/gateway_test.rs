@@ -36,7 +36,7 @@ use crate::block::Block;
 use crate::state::{ContractClass, StateUpdate, ThinStateDiff};
 use crate::test_utils::{
     get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
-    send_request,
+    send_request, get_test_starknet_source_config,
 };
 use crate::transaction::{
     Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
@@ -1431,7 +1431,8 @@ async fn get_events_invalid_ct() {
 async fn run_server_no_blocks() {
     let (storage_reader, _) = get_test_storage();
     let gateway_config = get_test_gateway_config();
-    let (addr, _handle) = run_server(&gateway_config, storage_reader).await.unwrap();
+    let starknet_source_config = get_test_starknet_source_config();
+    let (addr, _handle) = run_server(&gateway_config, storage_reader, &starknet_source_config).await.unwrap();
     let client = HttpClientBuilder::default().build(format!("http://{addr:?}")).unwrap();
     let err = client.block_number().await.unwrap_err();
     assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
@@ -1475,7 +1476,8 @@ async fn serialize_returns_valid_json() {
         .unwrap();
 
     let gateway_config = get_test_gateway_config();
-    let (server_address, _handle) = run_server(&gateway_config, storage_reader).await.unwrap();
+    let starknet_source_config = get_test_starknet_source_config();
+    let (server_address, _handle) = run_server(&gateway_config, storage_reader, &starknet_source_config).await.unwrap();
 
     let schema = get_starknet_spec_api_schema(&[
         "BLOCK_WITH_TXS",

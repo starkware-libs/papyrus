@@ -2,7 +2,7 @@
 //!
 //! [`starknet`]: https://starknet.io/
 
-mod objects;
+pub mod objects;
 pub mod retry;
 #[cfg(test)]
 mod starknet_client_test;
@@ -14,6 +14,7 @@ use std::fmt::{self, Display, Formatter};
 use async_trait::async_trait;
 #[cfg(any(feature = "testing", test))]
 use mockall::automock;
+use objects::output::transaction::FeeEstimate;
 use reqwest::header::HeaderMap;
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -49,6 +50,8 @@ pub trait StarknetClientTrait {
     async fn class_by_hash(&self, class_hash: ClassHash) -> ClientResult<Option<ContractClass>>;
     /// Returns a [`starknet_clinet`][`StateUpdate`] corresponding to `block_number`.
     async fn state_update(&self, block_number: BlockNumber) -> ClientResult<Option<StateUpdate>>;
+    /// 
+    async fn simulate_transaction(&self, block_number: objects::input::block::BlockId, request: objects::input::transaction::Transaction) -> ClientResult<Option<FeeEstimate>>;
 }
 
 /// A starknet client.
@@ -64,6 +67,7 @@ struct StarknetUrls {
     get_block: Url,
     get_contract_by_hash: Url,
     get_state_update: Url,
+    simulate_transaction: Url,
 }
 
 /// Error codes returned by the starknet gateway.
@@ -77,6 +81,40 @@ pub enum StarknetErrorCode {
     MalformedRequest = 32,
     #[serde(rename = "StarknetErrorCode.UNDECLARED_CLASS")]
     UndeclaredClass = 44,
+
+    #[serde(rename = "StarknetErrorCode.ENTRY_POINT_NOT_FOUND_IN_CONTRACT")]
+    EntryPointNotFound,
+    #[serde(rename = "StarknetErrorCode.OUT_OF_RANGE_CONTRACT_ADDRESS")]
+    OutOfRangeContractAddress,
+    #[serde(rename = "StarkErrorCode.SCHEMA_VALIDATION_ERROR")]
+    SchemaValidationError,
+    #[serde(rename = "StarknetErrorCode.TRANSACTION_FAILED")]
+    TransactionFailed,
+    #[serde(rename = "StarknetErrorCode.UNINITIALIZED_CONTRACT")]
+    UninitializedContract,
+    #[serde(rename = "StarknetErrorCode.OUT_OF_RANGE_BLOCK_HASH")]
+    OutOfRangeBlockHash,
+    #[serde(rename = "StarknetErrorCode.OUT_OF_RANGE_TRANSACTION_HASH")]
+    OutOfRangeTransactionHash,
+    #[serde(rename = "StarknetErrorCode.UNSUPPORTED_SELECTOR_FOR_FEE")]
+    UnsupportedSelectorForFee,
+    #[serde(rename = "StarknetErrorCode.INVALID_CONTRACT_DEFINITION")]
+    InvalidContractDefinition,
+    #[serde(rename = "StarknetErrorCode.NON_PERMITTED_CONTRACT")]
+    NotPermittedContract,
+    /// May be returned by the transaction write api.
+    #[serde(rename = "StarknetErrorCode.TRANSACTION_LIMIT_EXCEEDED")]
+    TransactionLimitExceeded,
+    #[serde(rename = "StarknetErrorCode.INVALID_TRANSACTION_NONCE")]
+    InvalidTransactionNonce,
+    #[serde(rename = "StarknetErrorCode.OUT_OF_RANGE_FEE")]
+    OutOfRangeFee,
+    #[serde(rename = "StarknetErrorCode.INVALID_TRANSACTION_VERSION")]
+    InvalidTransactionVersion,
+    #[serde(rename = "StarknetErrorCode.INVALID_PROGRAM")]
+    InvalidProgram,
+    #[serde(rename = "StarknetErrorCode.DEPRECATED_TRANSACTION")]
+    DeprecatedTransaction,
 }
 
 /// A client error wrapping error codes returned by the starknet gateway.
@@ -138,6 +176,7 @@ const GET_CONTRACT_BY_HASH_URL: &str = "feeder_gateway/get_class_by_hash";
 const GET_STATE_UPDATE_URL: &str = "feeder_gateway/get_state_update";
 const BLOCK_NUMBER_QUERY: &str = "blockNumber";
 const CLASS_HASH_QUERY: &str = "classHash";
+const SIMULATE_TRANSACTION: &str = "feeder_gateway/simulate_transaction";
 
 impl StarknetUrls {
     fn new(url_str: &str) -> Result<Self, ClientCreationError> {
@@ -146,6 +185,7 @@ impl StarknetUrls {
             get_block: base_url.join(GET_BLOCK_URL)?,
             get_contract_by_hash: base_url.join(GET_CONTRACT_BY_HASH_URL)?,
             get_state_update: base_url.join(GET_STATE_UPDATE_URL)?,
+            simulate_transaction: base_url.join(SIMULATE_TRANSACTION)?,
         })
     }
 }
@@ -312,6 +352,40 @@ impl StarknetClientTrait for StarknetClient {
                 );
                 Err(err)
             }
+        }
+    }
+
+    async fn simulate_transaction(&self, block_number: objects::input::block::BlockId, request: objects::input::transaction::Transaction) -> ClientResult<Option<FeeEstimate>>{
+        let mut url = self.urls.simulate_transaction.clone();
+        url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.to_string());
+
+        let result = self.internal_client
+            .post(url)
+            .headers(self.http_headers.clone())
+            .json(&request)
+            .send()
+            .await;
+
+        let (code, message) = match result {
+            Ok(response) => (response.status(), response.text().await?),
+            Err(err) => {
+                let msg = err.to_string();
+                (err.status().ok_or(err)?, msg)
+            }
+        };
+        
+        match code {
+            StatusCode::OK => {
+                let data: HashMap<String, serde_json::Value> = serde_json::from_str(&message)?;
+                let fee: FeeEstimate = serde_json::from_str(&data["fee_estimation"].to_string())?;
+                return Ok(Some(fee));
+            },
+            StatusCode::INTERNAL_SERVER_ERROR => {
+                let starknet_error: StarknetError = serde_json::from_str(&message)?;
+                println!("ERROR##: {:?}", starknet_error);
+                Err(ClientError::StarknetError(starknet_error))
+            }
+            _ => Err(ClientError::BadResponseStatus { code, message }),
         }
     }
 }

@@ -15,8 +15,7 @@ const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
 
 async fn run_threads(config: Config) -> anyhow::Result<()> {
     let (storage_reader, storage_writer) = open_storage(config.storage.db_config.clone())?;
-
-    let (_, server_future) = run_server(&config.gateway, storage_reader.clone()).await?;
+    let (_, server_future) = run_server(&config.gateway, storage_reader.clone(), &(config.clone().into())).await?;
     let (_, monitoring_server_future) = monitoring_run_server(
         config.get_config_representation()?,
         config.monitoring_gateway.clone(),

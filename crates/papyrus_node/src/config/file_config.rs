@@ -281,3 +281,13 @@ impl Sync {
         }
     }
 }
+
+impl Into<papyrus_gateway::CentralSourceConfig> for Config{
+    fn into(self) -> papyrus_gateway::CentralSourceConfig {
+        papyrus_gateway::CentralSourceConfig{
+            url: self.central.url,
+            http_headers: self.central.http_headers,
+            retry_config: self.central.retry_config
+        }
+    }
+}

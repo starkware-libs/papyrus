@@ -7,8 +7,10 @@ mod state;
 mod test_utils;
 mod transaction;
 
+use std::collections::HashMap;
 use std::fmt::Display;
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 use jsonrpsee::core::{async_trait, Error};
 use jsonrpsee::http_server::types::error::CallError;
@@ -29,6 +31,7 @@ use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
     EventIndexInTransactionOutput, TransactionHash, TransactionOffsetInBlock,
 };
+use starknet_client::{StarknetClient, RetryConfig, StarknetClientTrait, ClientError, StarknetErrorCode};
 use tracing::{debug, error, info, instrument};
 
 use crate::api::{
@@ -42,6 +45,8 @@ use crate::transaction::{
     TransactionStatus, TransactionWithType, Transactions,
 };
 
+extern crate starknet_client;
+
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct GatewayConfig {
     pub chain_id: ChainId,
@@ -50,12 +55,20 @@ pub struct GatewayConfig {
     pub max_events_keys: usize,
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct CentralSourceConfig{
+    pub url: String,
+    pub http_headers: Option<HashMap<String, String>>,
+    pub retry_config: RetryConfig,
+}
+
 /// Rpc server.
 struct JsonRpcServerImpl {
     chain_id: ChainId,
     storage_reader: StorageReader,
     max_events_chunk_size: usize,
     max_events_keys: usize,
+    starknet_source: Arc<StarknetClient>,
 }
 
 impl From<JsonRpcError> for Error {
@@ -71,6 +84,37 @@ fn internal_server_error(err: impl Display) -> Error {
         INTERNAL_ERROR_MSG,
         None::<()>,
     )))
+}
+
+fn starknet_client_error(err: ClientError) -> Error{
+    match err {
+        ClientError::StarknetError(e) => {
+            return match e.code {
+                StarknetErrorCode::BlockNotFound => Error::from(JsonRpcError::BlockNotFound),
+                StarknetErrorCode::InvalidProgram |
+                StarknetErrorCode::InvalidTransactionNonce |
+                StarknetErrorCode::InvalidTransactionVersion |
+                StarknetErrorCode::UndeclaredClass |
+                StarknetErrorCode::EntryPointNotFound => Error::from(JsonRpcError::InvalidCalldata),
+                StarknetErrorCode::InvalidContractDefinition => Error::from(JsonRpcError::ContractNotFound),
+                StarknetErrorCode::UninitializedContract => Error::from(JsonRpcError::ContractError),
+
+                StarknetErrorCode::MalformedRequest |
+                StarknetErrorCode::DeprecatedTransaction | 
+                StarknetErrorCode::NotPermittedContract |
+                StarknetErrorCode::OutOfRangeBlockHash |
+                StarknetErrorCode::OutOfRangeClassHash |
+                StarknetErrorCode::OutOfRangeContractAddress |
+                StarknetErrorCode::OutOfRangeFee |
+                StarknetErrorCode::OutOfRangeTransactionHash |
+                StarknetErrorCode::SchemaValidationError |
+                StarknetErrorCode::TransactionFailed |
+                StarknetErrorCode::TransactionLimitExceeded |
+                StarknetErrorCode::UnsupportedSelectorForFee => Error::from(JsonRpcError::FailedToReceiveTxn),
+            };
+        },
+        _ => internal_server_error(err)
+    }
 }
 
 fn get_block_number<Mode: TransactionKind>(
@@ -507,12 +551,27 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
         Ok(EventsChunk { events: filtered_events, continuation_token: None })
     }
+
+    #[instrument(skip(self), level = "debug", err, ret)]
+    async fn estimate_fee(
+        &self, 
+        block_id: BlockId, 
+        request: crate::transaction::input::Transaction
+    ) -> Result<crate::transaction::output::FeeEstimate, Error>{
+        let res = self.starknet_source
+            .simulate_transaction(block_id.into(), request.into())
+            .await
+            .map_err(starknet_client_error)?;
+
+        return Result::Ok(crate::transaction::output::FeeEstimate::from(res.unwrap()));
+    }
 }
 
 #[instrument(skip(storage_reader), level = "debug", err)]
 pub async fn run_server(
     config: &GatewayConfig,
     storage_reader: StorageReader,
+    central_source: &CentralSourceConfig
 ) -> anyhow::Result<(SocketAddr, HttpServerHandle)> {
     debug!("Starting gateway.");
     let server = HttpServerBuilder::default().build(&config.server_address).await?;
@@ -523,6 +582,7 @@ pub async fn run_server(
             storage_reader,
             max_events_chunk_size: config.max_events_chunk_size,
             max_events_keys: config.max_events_keys,
+            starknet_source: Arc::new(StarknetClient::new(&central_source.url, central_source.http_headers.clone(), central_source.retry_config)?)
         }
         .into_rpc(),
     )?;
