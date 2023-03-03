@@ -6,7 +6,7 @@ use starknet_api::transaction::{
     Calldata, DeclareTransaction, DeclareTransactionOutput, DeployAccountTransaction,
     DeployAccountTransactionOutput, DeployTransaction, DeployTransactionOutput, Fee,
     InvokeTransactionOutput, L1HandlerTransaction, L1HandlerTransactionOutput, TransactionHash,
-    TransactionSignature, TransactionVersion,
+    TransactionSignature, TransactionVersion
 };
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -370,4 +370,221 @@ pub struct Event {
     pub transaction_hash: TransactionHash,
     #[serde(flatten)]
     pub event: starknet_api::transaction::Event,
+}
+
+
+pub mod input{
+    use serde::{Serialize, Deserialize};
+    use crate::api::{BlockId, Tag};
+    use crate::transaction::TransactionType;
+    use starknet_api::transaction::{Fee, TransactionVersion, TransactionSignature, ContractAddressSalt, Calldata};
+    use starknet_api::core::{Nonce, ClassHash, ContractAddress, EntryPointSelector};
+
+    #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
+    pub struct CommonTransactionFields{
+        pub r#type: TransactionType,
+        pub max_fee: Fee,
+        pub version: TransactionVersion,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce
+    }
+
+    #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+    pub struct DeclareTransaction{
+        #[serde(flatten)]
+        pub common_fields: CommonTransactionFields,
+        pub contract_class: starknet_api::state::ContractClass,
+        pub sender_address: ContractAddress,
+    }
+
+    #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+    pub struct DeployAccountTransaction{
+        #[serde(flatten)]
+        pub common_fields: CommonTransactionFields,
+        pub contract_address_salt: ContractAddressSalt,
+        pub constructor_calldata: Calldata,
+        pub class_hash: ClassHash,
+    }
+
+    #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+    pub struct DeployTransaction{
+        pub contract_class: starknet_api::state::ContractClass,
+        pub r#type: TransactionType,
+        pub version: TransactionVersion,
+        pub contract_address_salt: ContractAddressSalt,
+        pub constructor_calldata: Calldata
+    }
+
+    #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+    pub struct InvokeTransactionV0{
+        #[serde(flatten)]
+        pub common_fields: CommonTransactionFields,
+        pub contract_address: ContractAddress,
+        pub entry_point_selector: EntryPointSelector,
+        pub calldata: Calldata
+    }
+
+    #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+    pub struct InvokeTransactionV1{
+        #[serde(flatten)]
+        pub common_fields: CommonTransactionFields,
+        pub sender_address: ContractAddress,
+        pub calldata: Calldata
+    }
+
+    #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+    #[serde(untagged)]
+    pub enum InvokeTransaction{
+        V0(InvokeTransactionV0),
+        V1(InvokeTransactionV1)
+    }
+
+    #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+    #[serde(untagged)]
+    pub enum Transaction{
+        Declare(DeclareTransaction),
+        DeployAccount(DeployAccountTransaction),
+        Deploy(DeployTransaction),
+        Invoke(InvokeTransaction)
+    }
+
+    impl Into<starknet_client::objects::transaction::TransactionType> for TransactionType{
+        fn into(self) -> starknet_client::objects::transaction::TransactionType {
+            match self {
+                TransactionType::Declare =>         starknet_client::objects::transaction::TransactionType::Declare,
+                TransactionType::Deploy =>          starknet_client::objects::transaction::TransactionType::Deploy,
+                TransactionType::DeployAccount =>   starknet_client::objects::transaction::TransactionType::DeployAccount,
+                TransactionType::Invoke =>          starknet_client::objects::transaction::TransactionType::InvokeFunction,
+                TransactionType::L1Handler =>       starknet_client::objects::transaction::TransactionType::L1Handler
+            }
+        }
+    }
+
+    impl Into<starknet_client::objects::input::transaction::CommonTransactionFields> for CommonTransactionFields{
+        fn into(self) -> starknet_client::objects::input::transaction::CommonTransactionFields {
+            starknet_client::objects::input::transaction::CommonTransactionFields {
+                r#type: self.r#type.into(),
+                max_fee: self.max_fee,
+                version: self.version,
+                signature: starknet_client::objects::input::transaction::TransactionSignature::from(self.signature),
+                nonce: self.nonce
+            }
+        }
+    }
+
+    impl Into<starknet_client::objects::input::block::BlockId> for BlockId{
+        fn into(self) -> starknet_client::objects::input::block::BlockId {
+            match self {
+                BlockId::Tag(t) => {
+                    match t{
+                        Tag::Latest => starknet_client::objects::input::block::BlockId::Tag(starknet_client::objects::input::block::Tag::Latest),
+                        Tag::Pending => starknet_client::objects::input::block::BlockId::Tag(starknet_client::objects::input::block::Tag::Pending)
+                    }
+                },
+                BlockId::HashOrNumber(h) => {
+                    match h{
+                        crate::api::BlockHashOrNumber::Hash(hash) => starknet_client::objects::input::block::BlockId::HashOrNumber(starknet_client::objects::input::block::BlockHashOrNumber::Hash(hash)),
+                        crate::api::BlockHashOrNumber::Number(number) => starknet_client::objects::input::block::BlockId::HashOrNumber(starknet_client::objects::input::block::BlockHashOrNumber::Number(number))
+                    }
+                }
+            }
+        }
+    }
+
+    impl Into<starknet_client::objects::input::transaction::DeployAccountTransaction> for DeployAccountTransaction{
+        fn into(self) -> starknet_client::objects::input::transaction::DeployAccountTransaction {
+            starknet_client::objects::input::transaction::DeployAccountTransaction{
+                common_fields: self.common_fields.into(),
+                class_hash: self.class_hash,
+                constructor_calldata: starknet_client::objects::input::transaction::Calldata::from(self.constructor_calldata),
+                contract_address_salt: self.contract_address_salt
+            }
+        }
+    }
+
+    impl Into<starknet_client::objects::input::transaction::DeclareTransaction> for DeclareTransaction{
+        fn into(self) -> starknet_client::objects::input::transaction::DeclareTransaction {
+            starknet_client::objects::input::transaction::DeclareTransaction{
+                common_fields: self.common_fields.into(),
+                contract_class: self.contract_class,
+                sender_address: self.sender_address
+            }
+        }
+    }
+
+    impl Into<starknet_client::objects::input::transaction::DeployTransaction> for DeployTransaction{
+        fn into(self) -> starknet_client::objects::input::transaction::DeployTransaction {
+            starknet_client::objects::input::transaction::DeployTransaction{
+                r#type: self.r#type.into(),
+                contract_class: self.contract_class,
+                version: self.version,
+                contract_address_salt: self.contract_address_salt,
+                constructor_calldata: starknet_client::objects::input::transaction::Calldata::from(self.constructor_calldata)
+            }
+        }
+    }
+
+    impl Into<starknet_client::objects::input::transaction::InvokeTransactionV0> for InvokeTransactionV0{
+        fn into(self) -> starknet_client::objects::input::transaction::InvokeTransactionV0 {
+            starknet_client::objects::input::transaction::InvokeTransactionV0{
+                common_fields: self.common_fields.into(),
+                contract_address: self.contract_address,
+                entry_point_selector: self.entry_point_selector,
+                calldata: starknet_client::objects::input::transaction::Calldata::from(self.calldata)
+            }
+        }
+    }
+
+    impl Into<starknet_client::objects::input::transaction::InvokeTransactionV1> for InvokeTransactionV1{
+        fn into(self) -> starknet_client::objects::input::transaction::InvokeTransactionV1 {
+            starknet_client::objects::input::transaction::InvokeTransactionV1{
+                common_fields: self.common_fields.into(),
+                sender_address: self.sender_address,
+                calldata: starknet_client::objects::input::transaction::Calldata::from(self.calldata)
+            }
+        }
+    }
+
+    impl Into<starknet_client::objects::input::transaction::InvokeTransaction> for InvokeTransaction{
+        fn into(self) -> starknet_client::objects::input::transaction::InvokeTransaction {
+            match self {
+                InvokeTransaction::V0(t) => starknet_client::objects::input::transaction::InvokeTransaction::V0(t.into()),
+                InvokeTransaction::V1(t) => starknet_client::objects::input::transaction::InvokeTransaction::V1(t.into()),
+            }
+        }
+    }
+
+    impl Into<starknet_client::objects::input::transaction::Transaction> for Transaction{
+        fn into(self) -> starknet_client::objects::input::transaction::Transaction {
+            match self{
+                Transaction::Declare(t) => starknet_client::objects::input::transaction::Transaction::Declare(t.into()),
+                Transaction::DeployAccount(t) => starknet_client::objects::input::transaction::Transaction::DeployAccount(t.into()),
+                Transaction::Deploy(t) => starknet_client::objects::input::transaction::Transaction::Deploy(t.into()),
+                Transaction::Invoke(t) => starknet_client::objects::input::transaction::Transaction::Invoke(t.into()),
+            }
+        }
+    }
+}
+
+pub mod output{
+    use serde::{Serialize, Deserialize};
+
+
+    #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
+    pub struct FeeEstimate {
+        pub gas_consumed: u128,
+        pub gas_price: u128,
+        pub overall_fee: u128,
+    }
+
+    impl From<starknet_client::objects::output::transaction::FeeEstimate> for FeeEstimate{
+        fn from(fee: starknet_client::objects::output::transaction::FeeEstimate) -> Self {
+            Self { 
+                gas_consumed: fee.gas_usage, 
+                gas_price: fee.gas_price, 
+                overall_fee: fee.overall_fee 
+            }
+        }
+    }
+    
 }
