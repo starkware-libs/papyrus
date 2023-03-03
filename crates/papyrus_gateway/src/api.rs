@@ -40,10 +40,14 @@ pub enum BlockId {
 
 #[derive(thiserror::Error, Clone, Copy, Debug)]
 pub enum JsonRpcError {
-    #[error("There are no blocks.")]
-    NoBlocks,
+    #[error("Failed to write transaction")]
+    FailedToReceiveTxn = 1,
     #[error("Contract not found.")]
     ContractNotFound = 20,
+    #[error("Invalid message selector")]
+    InvalidMessageSelector = 21,
+    #[error("Invalid call data")]
+    InvalidCalldata = 22,
     #[error("Block not found.")]
     BlockNotFound = 24,
     #[error("Transaction hash not found.")]
@@ -54,10 +58,14 @@ pub enum JsonRpcError {
     ClassHashNotFound = 28,
     #[error("Requested page size is too big.")]
     PageSizeTooBig = 31,
+    #[error("There are no blocks.")]
+    NoBlocks = 32,
     #[error("The supplied continuation token is invalid or unknown.")]
     InvalidContinuationToken = 33,
     #[error("Too many keys provided in a filter.")]
     TooManyKeysInFilter = 34,
+    #[error("Contract error.")]
+    ContractError = 40,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -179,4 +187,10 @@ pub trait JsonRpc {
     /// Returns all events matching the given filter.
     #[method(name = "getEvents")]
     fn get_events(&self, filter: EventFilter) -> Result<EventsChunk, Error>;
+
+    /// Returns the fee that will be charged, if the transaction is executed
+    #[method(name="estimateFee")]
+    async fn estimate_fee(&self,
+        block_id: BlockId,
+        request: crate::transaction::input::Transaction) -> Result<crate::transaction::output::FeeEstimate, Error>;
 }
