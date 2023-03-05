@@ -56,8 +56,8 @@ fn random_request_transaction(requests: Vec<jsonVal>) -> Transaction {
     Transaction::new(func)
 }
 
-// For each line in path creates a request using convert_to_request and returns vector of the
-// requests.
+// Given file_path reads the file line by line and, for each line, creates request to the node using
+// convert_to_request function. Returns a vector with all the requests were created from the file.
 fn create_requests_vector_from_file(
     file_path: &str,
     convert_to_request: fn(&str) -> jsonVal,
