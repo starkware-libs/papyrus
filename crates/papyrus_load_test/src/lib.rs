@@ -1,9 +1,14 @@
+pub mod create_files;
 pub mod create_request;
 pub mod scenarios;
 pub mod transactions;
+
+use std::fs;
+
 use goose::goose::{GooseUser, TransactionError};
 use serde::Deserialize;
 use serde_json::{json, Value as jsonVal};
+
 type PostResult = Result<jsonVal, Box<TransactionError>>;
 
 pub async fn post_jsonrpc_request(user: &mut GooseUser, request: &jsonVal) -> PostResult {
@@ -28,4 +33,12 @@ pub fn jsonrpc_request(method: &str, params: jsonVal) -> jsonVal {
         "method": method,
         "params": params,
     })
+}
+
+// Returns the last block number for which this load test is relevant.
+pub fn get_last_block_number() -> u64 {
+    fs::read_to_string("crates/papyrus_load_test/src/resources/last_block_number.txt")
+        .unwrap()
+        .parse::<u64>()
+        .unwrap()
 }
