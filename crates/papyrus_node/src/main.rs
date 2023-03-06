@@ -54,7 +54,7 @@ async fn run_threads(config: Config) -> anyhow::Result<()> {
 // TODO(dan): filter out logs from dependencies (happens when RUST_LOG=DEBUG)
 // TODO(yair): define and implement configurable filtering.
 fn configure_tracing() {
-    let fmt_layer = fmt::layer().compact().with_target(false);
+    let fmt_layer = fmt::layer().compact().with_target(true);
     let level_filter_layer =
         EnvFilter::builder().with_default_directive(DEFAULT_LEVEL.into()).from_env_lossy();
 

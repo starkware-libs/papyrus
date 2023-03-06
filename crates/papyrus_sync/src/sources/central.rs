@@ -109,7 +109,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
             while current_block_number < up_to_block_number {
                 let state_update_stream = self.state_update_stream(futures_util::stream::iter(
                     current_block_number.iter_up_to(up_to_block_number),
-                ));
+                ), (up_to_block_number.0 - current_block_number.0).try_into().unwrap());
                 pin_mut!(state_update_stream);
                 while let Some(maybe_client_state_update) = state_update_stream.next().await {
                     let maybe_central_state_update = client_to_central_state_update(
@@ -230,6 +230,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
     fn state_update_stream(
         &self,
         block_number_stream: impl Stream<Item = BlockNumber> + Send + Sync + 'static,
+        n_elements: usize,
     ) -> impl Stream<Item = CentralResult<(StateUpdate, IndexMap<ClassHash, ContractClass>)>> {
         // Stream the state updates.
         let starknet_client = self.starknet_client.clone();
@@ -241,7 +242,8 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
             .buffered(self.concurrent_requests)
             // Client error is not cloneable.
             .map_err(Arc::new)
-            .fanout(self.concurrent_requests);
+            .fanout(n_elements);
+        // .fanout(self.concurrent_requests);
 
         // Stream the declared and deployed classes.
         let starknet_client = self.starknet_client.clone();
