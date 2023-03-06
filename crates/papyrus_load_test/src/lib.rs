@@ -8,6 +8,10 @@ type PostResult = Result<jsonVal, Box<TransactionError>>;
 
 pub async fn post_jsonrpc_request(user: &mut GooseUser, request: &jsonVal) -> PostResult {
     let response = user.post_json("", request).await?.response.map_err(|e| Box::new(e.into()))?;
+    // The purpose of this struct and the line afterward is to report on failed requests.
+    // The "response.json::<TransactionReceiptResponse>" deserialize the body of response to
+    // TransactionReceiptResponse. If the response is an error, the result field doesn't exist in
+    // the body, the deserialization will fail, and the function will return an error.
     #[derive(Deserialize)]
     struct TransactionReceiptResponse {
         result: jsonVal,
