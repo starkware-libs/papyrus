@@ -1,12 +1,14 @@
 use std::fs::File;
 use std::io::{BufWriter, Write};
+use std::net::SocketAddr;
 
 use test_utils::send_request;
 
 use crate::get_random_block_number;
 
 pub async fn create_files(node_address: &str) {
-    last_block_number(node_address).await;
+    let node_socket = node_address.parse::<SocketAddr>().unwrap();
+    last_block_number(node_socket).await;
     block_number(5);
 }
 
@@ -25,7 +27,7 @@ fn block_number(lines_num: u32) {
 
 // Creates the file last_block_number.txt. Write to the file the last block number for the load
 // test.
-async fn last_block_number(node_address: &str) {
+async fn last_block_number(node_address: SocketAddr) {
     let last_block_answer = &send_request(node_address, "starknet_blockNumber", "").await["result"];
     let mut file =
         File::create("crates/papyrus_load_test/src/resources/last_block_number.txt").unwrap();
