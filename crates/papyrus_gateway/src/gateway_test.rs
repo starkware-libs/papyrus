@@ -25,7 +25,7 @@ use starknet_api::transaction::{
 use starknet_api::{patricia_key, stark_felt};
 use test_utils::{
     get_rand_test_block_with_events, get_rand_test_body_with_events, get_rng, get_test_block,
-    get_test_body, get_test_state_diff, GetTestInstance,
+    get_test_body, get_test_state_diff, send_request, GetTestInstance,
 };
 
 use crate::api::{
@@ -36,7 +36,6 @@ use crate::block::Block;
 use crate::state::{ContractClass, StateUpdate, ThinStateDiff};
 use crate::test_utils::{
     get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
-    send_request,
 };
 use crate::transaction::{
     Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
