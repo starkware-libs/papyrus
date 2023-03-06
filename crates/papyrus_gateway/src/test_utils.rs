@@ -1,29 +1,10 @@
-use std::net::SocketAddr;
-
 use jsonrpsee::http_server::RpcModule;
 use jsonschema::JSONSchema;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
-use reqwest::Client;
 use starknet_api::core::ChainId;
 
 use crate::{GatewayConfig, JsonRpcServer, JsonRpcServerImpl};
-
-// TODO(anatg): See if this can be usefull for the benchmark testing as well.
-pub async fn send_request(address: SocketAddr, method: &str, params: &str) -> serde_json::Value {
-    let client = Client::new();
-    let res_str = client
-        .post(format!("http://{address:?}"))
-        .header("Content-Type", "application/json")
-        .body(format!(r#"{{"jsonrpc":"2.0","id":"1","method":"{method}","params":[{params}]}}"#))
-        .send()
-        .await
-        .unwrap()
-        .text()
-        .await
-        .unwrap();
-    serde_json::from_str(&res_str).unwrap()
-}
 
 pub fn get_test_gateway_config() -> GatewayConfig {
     GatewayConfig {
