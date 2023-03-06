@@ -13,6 +13,7 @@ use tracing_subscriber::{fmt, EnvFilter};
 // TODO(yair): Add to config.
 const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
 
+// TODO(yair): pass to open_storage whether we need a writer or not (in case of no_sync).
 async fn run_threads(config: Config) -> anyhow::Result<()> {
     let (storage_reader, storage_writer) = open_storage(config.storage.db_config.clone())?;
 
