@@ -2,7 +2,7 @@
 // To run this load test, run locally a node and then run:
 //      cargo run -r -p papyrus_load_test -- -t 5m -H http://127.0.0.1:8080
 // To create the files of requests run:
-//      cargo run -r -p papyrus_load_test -- --create_files http://127.0.0.1:8080
+//      cargo run -r -p papyrus_load_test -- --create_files 127.0.0.1:8080
 // For more options run:
 //      cargo run -r -p papyrus_load_test -- --help
 
