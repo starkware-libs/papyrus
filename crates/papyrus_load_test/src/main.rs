@@ -1,6 +1,8 @@
 // This code is inspired by the pathfinder load test.
 // To run this load test, run locally a node and then run:
 //      cargo run -r -p papyrus_load_test -- -t 5m -H http://127.0.0.1:8080
+// To create the files of requests run:
+//      cargo run -r -p papyrus_load_test -- --create_files http://127.0.0.1:8080
 // For more options run:
 //      cargo run -r -p papyrus_load_test -- --help
 
@@ -8,11 +10,18 @@ use std::env;
 use std::fs::File;
 
 use goose::{util, GooseAttack};
+use papyrus_load_test::create_files::create_files;
 use papyrus_load_test::scenarios::*;
 use serde::Serialize;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let args: Vec<String> = env::args().collect();
+    if args.len() > 1 && args[1].eq("--create_files") {
+        create_files(&args[2]).await;
+        return Ok(());
+    }
+
     let metrics = GooseAttack::initialize()?.register_scenario(general_request()).execute().await?;
 
     // The OUTPUT_FILE env is expected to be a valid path in the os.
