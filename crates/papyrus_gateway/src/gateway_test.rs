@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::net::SocketAddr;
 use std::ops::Index;
 
 use assert_matches::assert_matches;
@@ -25,7 +24,7 @@ use starknet_api::transaction::{
 use starknet_api::{patricia_key, stark_felt};
 use test_utils::{
     get_rand_test_block_with_events, get_rand_test_body_with_events, get_rng, get_test_block,
-    get_test_body, get_test_state_diff, GetTestInstance,
+    get_test_body, get_test_state_diff, send_request, GetTestInstance,
 };
 
 use crate::api::{
@@ -36,7 +35,6 @@ use crate::block::Block;
 use crate::state::{ContractClass, StateUpdate, ThinStateDiff};
 use crate::test_utils::{
     get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
-    send_request,
 };
 use crate::transaction::{
     Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
@@ -1475,7 +1473,8 @@ async fn serialize_returns_valid_json() {
         .unwrap();
 
     let gateway_config = get_test_gateway_config();
-    let (server_address, _handle) = run_server(&gateway_config, storage_reader).await.unwrap();
+    let (socket_address, _handle) = run_server(&gateway_config, storage_reader).await.unwrap();
+    let server_address = format!("http://{socket_address:?}");
 
     let schema = get_starknet_spec_api_schema(&[
         "BLOCK_WITH_TXS",
@@ -1487,12 +1486,12 @@ async fn serialize_returns_valid_json() {
         "EVENTS_CHUNK",
     ])
     .await;
-    validate_state(&state_diff, server_address, &schema).await;
-    validate_block(&block.header, server_address, &schema).await;
-    validate_transaction(block.body.transactions.index(0), server_address, &schema).await;
+    validate_state(&state_diff, &server_address, &schema).await;
+    validate_block(&block.header, &server_address, &schema).await;
+    validate_transaction(block.body.transactions.index(0), &server_address, &schema).await;
 }
 
-async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, schema: &JSONSchema) {
+async fn validate_state(state_diff: &StateDiff, server_address: &str, schema: &JSONSchema) {
     let res =
         send_request(server_address, "starknet_getStateUpdate", r#"{"block_number": 1}"#).await;
     assert!(schema.validate(&res["result"]).is_ok(), "State update is not valid.");
@@ -1507,7 +1506,7 @@ async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, sche
     assert!(schema.validate(&res["result"]).is_ok(), "Class is not valid.");
 }
 
-async fn validate_block(header: &BlockHeader, server_address: SocketAddr, schema: &JSONSchema) {
+async fn validate_block(header: &BlockHeader, server_address: &str, schema: &JSONSchema) {
     let res =
         send_request(server_address, "starknet_getBlockWithTxs", r#"{"block_number": 1}"#).await;
     assert!(schema.validate(&res["result"]).is_ok(), "Block with transactions is not valid.");
@@ -1521,7 +1520,7 @@ async fn validate_block(header: &BlockHeader, server_address: SocketAddr, schema
     assert!(schema.validate(&res["result"]).is_ok(), "Block with transaction hashes is not valid.");
 }
 
-async fn validate_transaction(tx: &Transaction, server_address: SocketAddr, schema: &JSONSchema) {
+async fn validate_transaction(tx: &Transaction, server_address: &str, schema: &JSONSchema) {
     let res = send_request(
         server_address,
         "starknet_getTransactionByBlockIdAndIndex",

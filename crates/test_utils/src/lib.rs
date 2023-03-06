@@ -9,6 +9,7 @@ use std::sync::Arc;
 use indexmap::IndexMap;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
+use reqwest::Client;
 use starknet_api::block::{
     Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
 };
@@ -28,6 +29,21 @@ use starknet_api::transaction::{
     MessageToL2, Transaction, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
     TransactionSignature, TransactionVersion,
 };
+
+pub async fn send_request(address: &str, method: &str, params: &str) -> serde_json::Value {
+    let client = Client::new();
+    let res_str = client
+        .post(address)
+        .header("Content-Type", "application/json")
+        .body(format!(r#"{{"jsonrpc":"2.0","id":"1","method":"{method}","params":[{params}]}}"#))
+        .send()
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap();
+    serde_json::from_str(&res_str).unwrap()
+}
 
 // Returns the absolute  path from the project root.
 pub fn get_absolute_path(relative_path: &str) -> PathBuf {
