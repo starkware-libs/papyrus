@@ -1,10 +1,26 @@
 use std::fs::File;
-use std::io::{Write};
+use std::io::{BufWriter, Write};
 
 use test_utils::send_request;
 
+use crate::get_random_block_number;
+
 pub async fn create_files(node_address: &str) {
     last_block_number(node_address).await;
+    block_number(5);
+}
+
+// Creates the block_number.txt file. Write to the file lines_num blocks number.
+fn block_number(lines_num: u32) {
+    let file = File::create("crates/papyrus_load_test/src/resources/block_number.txt").unwrap();
+    let mut writer = BufWriter::new(file);
+
+    for _ in 0..lines_num - 1 {
+        writer.write_all(get_random_block_number().to_string().as_bytes()).unwrap();
+        writer.write_all("\n".as_bytes()).unwrap();
+    }
+    writer.write_all(get_random_block_number().to_string().as_bytes()).unwrap();
+    writer.flush().unwrap();
 }
 
 // Creates the file last_block_number.txt. Write to the file the last block number for the load
