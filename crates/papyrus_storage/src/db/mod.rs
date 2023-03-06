@@ -8,7 +8,7 @@ use std::path::Path;
 use std::result;
 use std::sync::Arc;
 
-use libmdbx::{Cursor, DatabaseFlags, Geometry, WriteFlags, WriteMap};
+use libmdbx::{Cursor, DatabaseFlags, Geometry, PageSize, WriteFlags, WriteMap};
 use serde::{Deserialize, Serialize};
 
 use crate::db::serialization::{StorageSerde, StorageSerdeEx};
@@ -70,6 +70,7 @@ pub(crate) fn open_env(config: DbConfig) -> Result<(DbReader, DbWriter)> {
             .set_geometry(Geometry {
                 size: Some(MIN_SIZE..config.max_size),
                 growth_step: Some(GROWTH_STEP),
+                page_size: Some(PageSize::Set(65536)),
                 ..Default::default()
             })
             .set_max_dbs(MAX_DBS)
