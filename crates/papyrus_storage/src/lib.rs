@@ -36,7 +36,7 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
     let tables = Arc::new(Tables {
         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
         contract_storage: db_writer.create_table("contract_storage")?,
-        declared_classes: db_writer.create_table("declared_classes")?,
+        deprecated_declared_classes: db_writer.create_table("deprecated_declared_classes")?,
         deployed_contracts: db_writer.create_table("deployed_contracts")?,
         events: db_writer.create_table("events")?,
         headers: db_writer.create_table("headers")?,
@@ -111,7 +111,7 @@ struct_field_names! {
     struct Tables {
         block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
         contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
-        declared_classes: TableIdentifier<ClassHash, IndexedDeclaredContract>,
+        deprecated_declared_classes: TableIdentifier<ClassHash, IndexedDeclaredContract>,
         deployed_contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
         events: TableIdentifier<(ContractAddress, EventIndex), EventContent>,
         headers: TableIdentifier<BlockNumber, BlockHeader>,
