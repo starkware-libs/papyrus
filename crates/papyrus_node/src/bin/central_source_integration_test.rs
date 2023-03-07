@@ -6,7 +6,13 @@ use tokio_stream::StreamExt;
 
 #[tokio::main]
 async fn main() {
-    let config = Config::load(vec![]).expect("Load config");
+    // TODO(yair): the chain changed to integration for the 0.11 development. Change it back to the
+    // default once 0.11 is on mainnet.
+    let config = Config::load(vec![
+        "--chain_id=integration".to_owned(),
+        "--central_url=https://external.integration.starknet.io/".to_owned(),
+    ])
+    .expect("Load config");
     let central_source = CentralSource::new(config.central).expect("Create new client");
     let last_block_number = BlockNumber(203);
 
