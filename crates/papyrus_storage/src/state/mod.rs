@@ -8,9 +8,9 @@ use std::collections::HashSet;
 use indexmap::IndexMap;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::deprecated_contract_class::ContractClass;
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{StateDiff, StateNumber, StorageKey};
-use starknet_api::deprecated_contract_class::ContractClass;
 use tracing::debug;
 
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
