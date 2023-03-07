@@ -11,8 +11,8 @@ use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::StorageKey;
 use starknet_api::{patricia_key, stark_felt};
 use starknet_client::{
-    Block, ClientError, ContractClass, DeployedContract, GlobalRoot, MockStarknetClientTrait,
-    StateUpdate, StorageEntry,
+    Block, ClientError, DeployedContract, DeprecatedContractClass, GlobalRoot,
+    MockStarknetClientTrait, StateUpdate, StorageEntry,
 };
 use tokio_stream::StreamExt;
 
@@ -178,9 +178,9 @@ async fn stream_state_updates() {
     let value = stark_felt!("0x666");
 
     // TODO(shahak): Fill these contract classes with non-empty data.
-    let contract_class1 = ContractClass::default();
-    let contract_class2 = ContractClass::default();
-    let contract_class3 = ContractClass::default();
+    let contract_class1 = DeprecatedContractClass::default();
+    let contract_class2 = DeprecatedContractClass::default();
+    let contract_class3 = DeprecatedContractClass::default();
 
     let client_state_diff1 = starknet_client::StateDiff {
         storage_diffs: IndexMap::from([(contract_address1, vec![StorageEntry { key, value }])]),

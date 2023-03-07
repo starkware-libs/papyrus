@@ -10,7 +10,7 @@ use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 use starknet_api::{patricia_key, stark_felt};
 
 use super::block::{
-    Block, ContractClass, ContractClassAbiEntry, DeployedContract, GlobalRoot, StateDiff,
+    Block, ContractClassAbiEntry, DeployedContract, DeprecatedContractClass, GlobalRoot, StateDiff,
     StateUpdate, StorageEntry, TransactionReceiptsError,
 };
 use super::transaction::TransactionReceipt;
@@ -161,7 +161,7 @@ async fn abi_into_starknet_api_full() {
     let abi = serde_json::from_value::<Vec<ContractClassAbiEntry>>(raw_abi.clone()).unwrap();
     let expected_num_of_entries = abi.len();
 
-    let class = ContractClass { abi: raw_abi, ..ContractClass::default() };
+    let class = DeprecatedContractClass { abi: raw_abi, ..DeprecatedContractClass::default() };
     let starknet_api_class = starknet_api::deprecated_contract_class::ContractClass::from(class);
     assert_eq!(expected_num_of_entries, starknet_api_class.abi.unwrap().len());
 }
@@ -169,7 +169,7 @@ async fn abi_into_starknet_api_full() {
 #[tokio::test]
 async fn abi_into_starknet_api_none() {
     let raw_abi = serde_json::to_value("junk").unwrap();
-    let class = ContractClass { abi: raw_abi, ..ContractClass::default() };
+    let class = DeprecatedContractClass { abi: raw_abi, ..DeprecatedContractClass::default() };
     let starknet_api_class = starknet_api::deprecated_contract_class::ContractClass::from(class);
     assert!(starknet_api_class.abi.is_none())
 }
