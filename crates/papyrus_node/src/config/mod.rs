@@ -131,6 +131,7 @@ impl ConfigBuilder {
                 arg!(--http_headers ["NAME:VALUE"] ... "Optionally adds headers to the http requests"),
                 arg!(-s --storage [path] "Optionally sets storage path to use (automatically extended with chain ID)").value_parser(value_parser!(PathBuf)),
                 arg!(-n --no_sync [bool] "Optionally run without sync").value_parser(value_parser!(bool)).default_missing_value("true"),
+                arg!(--central_url ["URL"] "Central URL. It should match chain_id."),
             ])
             .try_get_matches_from(args).unwrap_or_else(|e| e.exit()),
         );
@@ -196,6 +197,9 @@ impl ConfigBuilder {
                     if *no_sync {
                         self.config.sync = None;
                     }
+                }
+                if let Some(central_url) = args.try_get_one::<String>("central_url")? {
+                    self.config.central.url = central_url.to_string()
                 }
 
                 Ok(self)
