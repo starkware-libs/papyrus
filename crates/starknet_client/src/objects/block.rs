@@ -289,15 +289,15 @@ pub struct StorageEntry {
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct ContractClass {
+pub struct DeprecatedContractClass {
     pub abi: serde_json::Value,
     pub program: Program,
     /// The selector of each entry point is a unique identifier in the program.
     pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
 }
 
-impl From<ContractClass> for starknet_api::deprecated_contract_class::ContractClass {
-    fn from(class: ContractClass) -> Self {
+impl From<DeprecatedContractClass> for starknet_api::deprecated_contract_class::ContractClass {
+    fn from(class: DeprecatedContractClass) -> Self {
         // Starknet does not verify the abi. If we can't parse it, we set it to None.
         let abi = serde_json::from_value::<Vec<ContractClassAbiEntry>>(class.abi)
             .ok()

@@ -12,7 +12,7 @@ use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::{Fee, TransactionHash, TransactionSignature, TransactionVersion};
 use starknet_api::{patricia_key, stark_felt};
 
-use super::objects::block::{ContractClass, StateUpdate};
+use super::objects::block::{DeprecatedContractClass, StateUpdate};
 use super::objects::transaction::{DeclareTransaction, TransactionType};
 use super::test_utils::read_resource::read_resource_file;
 use super::test_utils::retry::get_test_config;
@@ -107,7 +107,7 @@ async fn serialization_precision() {
 async fn contract_class() {
     let starknet_client =
         StarknetClient::new(&mockito::server_url(), None, get_test_config()).unwrap();
-    let expected_contract_class = ContractClass {
+    let expected_contract_class = DeprecatedContractClass {
         abi: serde_json::to_value(vec![HashMap::from([
             (
                 "inputs".to_string(),
