@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use starknet_api::core::ContractAddress;
 use starknet_api::hash::StarkHash;
-use starknet_api::state::StorageKey;
+use starknet_api::state::{Program, StorageKey};
 use test_utils::{get_rng, GetTestInstance};
 
 use crate::db::serialization::StorageSerde;
@@ -11,6 +11,7 @@ pub trait StorageSerdeTest: StorageSerde {
     fn storage_serde_test();
 }
 
+// TODO(anatg): Consider change the test so it tests StorageSerdeEx instead of StorageSerde.
 // Implements the [`storage_serde_test`] function for every type that
 // implements the [`StorageSerde`] and [`GetTestInstance`] traits.
 impl<T: StorageSerde + GetTestInstance + Eq + Debug> StorageSerdeTest for T {
@@ -47,3 +48,4 @@ pub(crate) use create_storage_serde_test;
 create_storage_serde_test!(StarkHash);
 create_storage_serde_test!(ContractAddress);
 create_storage_serde_test!(StorageKey);
+create_storage_serde_test!(Program);

@@ -29,5 +29,6 @@ tracing = { version = "0.1.37", features = ["log"] }
 url = { version = "2.2.2" }
 
 [dev-dependencies]
+simple_logger = { version = "4.0.0" }
 assert_matches = { version = "1.5.0" }
 paste = { version = "1.0.9" }

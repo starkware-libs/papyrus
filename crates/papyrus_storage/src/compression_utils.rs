@@ -29,14 +29,14 @@ pub enum CompressionError {
 /// An object that was encoded with [`GzEncoder`].
 /// The phantom data represents the type of the object that was encoded.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct GzEncoded<I>(Vec<u8>, PhantomData<I>);
+pub struct GzEncoded<I>(pub(crate) Vec<u8>, PhantomData<I>);
 
 impl<I> GzEncoded<I>
 where
     I: StorageSerde,
 {
     /// Returns a gzip compression of a given item.
-    pub fn encode(item: I) -> Result<Self, CompressionError> {
+    pub fn encode(item: &I) -> Result<Self, CompressionError> {
         let mut encoder = GzEncoder::new(Vec::new(), Compression::fast());
         item.serialize_into(&mut encoder)?;
         let bytes = encoder.finish()?;
@@ -45,10 +45,17 @@ where
 
     /// Returns a decompressed item.
     pub fn decode(&self, buff: &mut Vec<u8>) -> Result<I, CompressionError> {
-        let mut decoder = GzDecoder::new(self.0.as_slice());
-        decoder.read_to_end(buff)?;
-        I::deserialize_from(&mut buff.as_slice()).ok_or(CompressionError::InnerDeserialization)
+        decode_buffer(self.0.as_slice(), buff)
     }
+}
+
+pub(crate) fn decode_buffer<I: StorageSerde>(
+    input: &[u8],
+    buff: &mut Vec<u8>,
+) -> Result<I, CompressionError> {
+    let mut decoder = GzDecoder::new(input);
+    decoder.read_to_end(buff)?;
+    I::deserialize_from(&mut buff.as_slice()).ok_or(CompressionError::InnerDeserialization)
 }
 
 impl<I> AsRef<[u8]> for GzEncoded<I> {
