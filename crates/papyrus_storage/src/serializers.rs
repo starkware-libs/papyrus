@@ -236,18 +236,6 @@ auto_storage_serde! {
     pub struct Nonce(pub StarkFelt);
     struct OmmerTransactionKey(pub BlockHash, pub TransactionOffsetInBlock);
     struct OmmerEventKey(pub OmmerTransactionKey, pub EventIndexInTransactionOutput);
-    pub struct Program {
-        pub attributes: serde_json::Value,
-        pub builtins: serde_json::Value,
-        pub compiler_version: serde_json::Value,
-        pub data: serde_json::Value,
-        pub debug_info: serde_json::Value,
-        pub hints: serde_json::Value,
-        pub identifiers: serde_json::Value,
-        pub main_scope: serde_json::Value,
-        pub prime: serde_json::Value,
-        pub reference_manager: serde_json::Value,
-    }
     pub struct StructAbiEntry {
         pub name: String,
         pub size: usize,
@@ -353,6 +341,9 @@ macro_rules! auto_storage_serde {
             fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
                 Some(Self (<$ty>::deserialize_from(bytes)?))
             }
+            fn should_compress() -> bool {
+                <$ty>::should_compress()
+            }
         }
         #[cfg(test)]
         create_storage_serde_test!($name);
@@ -367,6 +358,12 @@ macro_rules! auto_storage_serde {
             }
             fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
                 Some($name(<$ty0>::deserialize_from(bytes)?, <$ty1>::deserialize_from(bytes)?))
+            }
+            fn should_compress() -> bool {
+                if <$ty0>::should_compress() || <$ty1>::should_compress() {
+                    return true;
+                }
+                false
             }
         }
         #[cfg(test)]
@@ -388,6 +385,14 @@ macro_rules! auto_storage_serde {
                         $field: <$ty>::deserialize_from(bytes)?,
                     )*
                 })
+            }
+            fn should_compress() -> bool {
+                $(
+                    if <$ty>::should_compress() {
+                        return true;
+                    }
+                )*
+                false
             }
         }
         #[cfg(test)]
@@ -529,6 +534,22 @@ impl StorageSerde for StorageKey {
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         StorageKey::try_from(StarkHash::deserialize(bytes)?).ok()
+    }
+}
+
+impl StorageSerde for Program {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        let program_value = serde_json::to_value(self)?;
+        program_value.serialize_into(res)
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        let program_value = serde_json::Value::deserialize_from(bytes)?;
+        serde_json::from_value(program_value).ok()
+    }
+
+    fn should_compress() -> bool {
+        true
     }
 }
 
