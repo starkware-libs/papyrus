@@ -2,11 +2,12 @@ use assert_matches::assert_matches;
 use indexmap::IndexMap;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
-use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::{
+use starknet_api::deprecated_contract_class::{
     ContractClass, ContractClassAbiEntry, FunctionAbiEntry, FunctionAbiEntryType,
-    FunctionAbiEntryWithType, StateDiff, StateNumber, StorageKey,
+    FunctionAbiEntryWithType,
 };
+use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::state::{StateDiff, StateNumber, StorageKey};
 use starknet_api::{patricia_key, stark_felt};
 use test_utils::get_test_state_diff;
 
@@ -66,7 +67,10 @@ fn append_state_diff() {
     // Check for ClassAlreadyExists error when trying to declare a different class to an existing
     // class hash.
     let txn = writer.begin_rw_txn().unwrap();
-    let mut diff2 = StateDiff { deprecated_declared_classes: diff1.deprecated_declared_classes, ..StateDiff::default() };
+    let mut diff2 = StateDiff {
+        deprecated_declared_classes: diff1.deprecated_declared_classes,
+        ..StateDiff::default()
+    };
     let (_, class) = diff2.deprecated_declared_classes.iter_mut().next().unwrap();
     class.abi = Some(vec![ContractClassAbiEntry::Function(FunctionAbiEntryWithType {
         r#type: FunctionAbiEntryType::Regular,

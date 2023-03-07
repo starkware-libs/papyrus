@@ -6,7 +6,7 @@ use reqwest::StatusCode;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::{EntryPoint, EntryPointOffset, EntryPointType, Program};
+use starknet_api::deprecated_contract_class::{EntryPoint, EntryPointOffset, EntryPointType, Program};
 use starknet_api::transaction::{Fee, TransactionHash, TransactionSignature, TransactionVersion};
 use starknet_api::{patricia_key, stark_felt};
 

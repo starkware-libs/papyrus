@@ -2,8 +2,9 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::deprecated_contract_class::ContractClass;
 use starknet_api::hash::StarkFelt;
-use starknet_api::state::{ContractClass, StateDiff, StorageKey};
+use starknet_api::state::{StateDiff, StorageKey};
 
 /// Data structs that are serialized into the database.
 
@@ -25,7 +26,11 @@ impl ThinStateDiff {
             Self {
                 deployed_contracts: diff.deployed_contracts,
                 storage_diffs: diff.storage_diffs,
-                deprecated_declared_contract_hashes: diff.deprecated_declared_classes.keys().copied().collect(),
+                deprecated_declared_contract_hashes: diff
+                    .deprecated_declared_classes
+                    .keys()
+                    .copied()
+                    .collect(),
                 nonces: diff.nonces,
             },
             diff.deprecated_declared_classes,

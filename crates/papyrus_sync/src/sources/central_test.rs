@@ -252,7 +252,7 @@ async fn stream_state_updates() {
     assert_eq!(initial_block_num, current_block_num);
     assert_eq!(block_hash1, current_block_hash);
     assert_eq!(
-        IndexMap::from([(class_hash2, starknet_api::state::ContractClass::from(contract_class2))]),
+        IndexMap::from([(class_hash2, starknet_api::deprecated_contract_class::ContractClass::from(contract_class2))]),
         deployed_contract_class_definitions,
     );
 
@@ -266,8 +266,8 @@ async fn stream_state_updates() {
     );
     assert_eq!(
         IndexMap::from([
-            (class_hash1, starknet_api::state::ContractClass::from(contract_class1)),
-            (class_hash3, starknet_api::state::ContractClass::from(contract_class3)),
+            (class_hash1, starknet_api::deprecated_contract_class::ContractClass::from(contract_class1)),
+            (class_hash3, starknet_api::deprecated_contract_class::ContractClass::from(contract_class3)),
         ]),
         state_diff.deprecated_declared_classes,
     );

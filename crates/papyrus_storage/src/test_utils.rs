@@ -4,7 +4,8 @@ use rand_chacha::ChaCha8Rng;
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
-use starknet_api::state::{ContractClass, StorageKey};
+use starknet_api::state::{StorageKey};
+use starknet_api::deprecated_contract_class::ContractClass;
 use starknet_api::transaction::{
     EventIndexInTransactionOutput, Fee, MessageToL1, TransactionOffsetInBlock,
 };

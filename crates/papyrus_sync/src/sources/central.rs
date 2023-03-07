@@ -12,7 +12,8 @@ use mockall::automock;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;
-use starknet_api::state::{ContractClass, StateDiff};
+use starknet_api::deprecated_contract_class::ContractClass;
+use starknet_api::state::StateDiff;
 use starknet_api::StarknetApiError;
 use starknet_client::{
     ClientCreationError, ClientError, RetryConfig, StarknetClient, StarknetClientTrait, StateUpdate,

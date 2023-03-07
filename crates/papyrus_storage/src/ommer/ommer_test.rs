@@ -1,7 +1,8 @@
 use indexmap::IndexMap;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use starknet_api::core::ClassHash;
-use starknet_api::state::{ContractClass, StateNumber};
+use starknet_api::deprecated_contract_class::ContractClass;
+use starknet_api::state::StateNumber;
 use starknet_api::transaction::{
     EventContent, Transaction, TransactionOffsetInBlock, TransactionOutput,
 };
