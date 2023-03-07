@@ -108,7 +108,7 @@ impl TryFrom<starknet_api::state::ContractClass> for ContractClass {
 
         Ok(Self {
             abi,
-            program: base64::encode(GzEncoded::encode(Program(program_value))?),
+            program: base64::encode(GzEncoded::encode(&Program(program_value))?),
             entry_points_by_type: class.entry_points_by_type,
         })
     }
