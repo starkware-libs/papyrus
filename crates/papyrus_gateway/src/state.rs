@@ -59,17 +59,21 @@ pub struct ContractClassAbiEntryWithType {
     pub entry: ContractClassAbiEntry,
 }
 
-impl From<starknet_api::deprecated_contract_class::ContractClassAbiEntry> for ContractClassAbiEntryWithType {
+impl From<starknet_api::deprecated_contract_class::ContractClassAbiEntry>
+    for ContractClassAbiEntryWithType
+{
     fn from(entry: starknet_api::deprecated_contract_class::ContractClassAbiEntry) -> Self {
         match entry {
             starknet_api::deprecated_contract_class::ContractClassAbiEntry::Event(entry) => Self {
                 r#type: ContractClassAbiEntryType::Event,
                 entry: ContractClassAbiEntry::Event(entry),
             },
-            starknet_api::deprecated_contract_class::ContractClassAbiEntry::Function(entry) => Self {
-                r#type: entry.r#type.clone().into(),
-                entry: ContractClassAbiEntry::Function(entry.entry),
-            },
+            starknet_api::deprecated_contract_class::ContractClassAbiEntry::Function(entry) => {
+                Self {
+                    r#type: entry.r#type.clone().into(),
+                    entry: ContractClassAbiEntry::Function(entry.entry),
+                }
+            }
             starknet_api::deprecated_contract_class::ContractClassAbiEntry::Struct(entry) => Self {
                 r#type: ContractClassAbiEntryType::Struct,
                 entry: ContractClassAbiEntry::Struct(entry),
@@ -89,7 +93,9 @@ pub struct ContractClass {
 
 impl TryFrom<starknet_api::deprecated_contract_class::ContractClass> for ContractClass {
     type Error = CompressionError;
-    fn try_from(class: starknet_api::deprecated_contract_class::ContractClass) -> Result<Self, Self::Error> {
+    fn try_from(
+        class: starknet_api::deprecated_contract_class::ContractClass,
+    ) -> Result<Self, Self::Error> {
         let mut program_value = serde_json::to_value(&class.program)
             .map_err(|err| CompressionError::StorageSerde(StorageSerdeError::Serde(err)))?;
         // Remove the 'attributes' key if it is null.
