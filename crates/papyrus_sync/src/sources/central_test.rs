@@ -188,7 +188,7 @@ async fn stream_state_updates() {
             DeployedContract { address: contract_address1, class_hash: class_hash2 },
             DeployedContract { address: contract_address2, class_hash: class_hash3 },
         ],
-        declared_contracts: vec![class_hash1, class_hash3],
+        old_declared_contracts: vec![class_hash1, class_hash3],
         nonces: IndexMap::from([(contract_address1, nonce1)]),
     };
     let client_state_diff2 = starknet_client::StateDiff::default();
@@ -269,7 +269,7 @@ async fn stream_state_updates() {
             (class_hash1, starknet_api::state::ContractClass::from(contract_class1)),
             (class_hash3, starknet_api::state::ContractClass::from(contract_class3)),
         ]),
-        state_diff.declared_classes,
+        state_diff.deprecated_declared_classes,
     );
     assert_eq!(IndexMap::from([(contract_address1, nonce1)]), state_diff.nonces);
 

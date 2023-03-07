@@ -148,7 +148,7 @@ impl From<papyrus_storage_ThinStateDiff> for ThinStateDiff {
                     StorageDiff { address, storage_entries }
                 },
             )),
-            declared_contract_hashes: diff.declared_contract_hashes,
+            declared_contract_hashes: diff.deprecated_declared_contract_hashes,
             nonces: Vec::from_iter(
                 diff.nonces
                     .into_iter()

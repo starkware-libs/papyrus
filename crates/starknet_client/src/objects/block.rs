@@ -256,7 +256,7 @@ pub struct StateDiff {
     pub storage_diffs: IndexMap<ContractAddress, Vec<StorageEntry>>,
     pub deployed_contracts: Vec<DeployedContract>,
     #[serde(default)]
-    pub declared_contracts: Vec<ClassHash>,
+    pub old_declared_contracts: Vec<ClassHash>,
     pub nonces: IndexMap<ContractAddress, Nonce>,
 }
 impl StateDiff {
@@ -267,9 +267,9 @@ impl StateDiff {
             .deployed_contracts
             .iter()
             .map(|contract| contract.class_hash)
-            .filter(|hash| !self.declared_contracts.contains(hash))
+            .filter(|hash| !self.old_declared_contracts.contains(hash))
             .collect();
-        let mut declared_class_hashes = self.declared_contracts.clone();
+        let mut declared_class_hashes = self.old_declared_contracts.clone();
         declared_class_hashes.append(&mut deployed_class_hashes);
         declared_class_hashes
     }
