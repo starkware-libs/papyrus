@@ -1,7 +1,8 @@
 use indexmap::IndexMap;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
+use starknet_api::deprecated_contract_class::ContractClass;
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::{ContractClass, StateDiff, StorageKey};
+use starknet_api::state::{StateDiff, StorageKey};
 use starknet_api::{patricia_key, stark_felt};
 
 use crate::sort_state_diff;

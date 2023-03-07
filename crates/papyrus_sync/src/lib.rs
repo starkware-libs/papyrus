@@ -18,7 +18,8 @@ use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;
-use starknet_api::state::{ContractClass, StateDiff};
+use starknet_api::deprecated_contract_class::ContractClass;
+use starknet_api::state::StateDiff;
 use tracing::{debug, error, info, trace, warn};
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};

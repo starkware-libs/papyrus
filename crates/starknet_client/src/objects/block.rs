@@ -9,7 +9,8 @@ use starknet_api::block::{BlockHash, BlockNumber, BlockTimestamp, GasPrice};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::serde_utils::NonPrefixedBytesAsHex;
-use starknet_api::state::{EntryPoint, EntryPointType, Program, StorageKey};
+use starknet_api::state::StorageKey;
+use starknet_api::deprecated_contract_class::{EntryPoint, EntryPointType, Program};
 #[cfg(doc)]
 use starknet_api::transaction::TransactionOutput as starknet_api_transaction_output;
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
@@ -295,7 +296,7 @@ pub struct ContractClass {
     pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
 }
 
-impl From<ContractClass> for starknet_api::state::ContractClass {
+impl From<ContractClass> for starknet_api::deprecated_contract_class::ContractClass {
     fn from(class: ContractClass) -> Self {
         // Starknet does not verify the abi. If we can't parse it, we set it to None.
         let abi = serde_json::from_value::<Vec<ContractClassAbiEntry>>(class.abi)
@@ -315,16 +316,16 @@ pub enum ContractClassAbiEntry {
 }
 
 impl ContractClassAbiEntry {
-    fn try_into(self) -> Result<starknet_api::state::ContractClassAbiEntry, ()> {
+    fn try_into(self) -> Result<starknet_api::deprecated_contract_class::ContractClassAbiEntry, ()> {
         match self {
             ContractClassAbiEntry::Event(entry) => {
-                Ok(starknet_api::state::ContractClassAbiEntry::Event(entry.entry))
+                Ok(starknet_api::deprecated_contract_class::ContractClassAbiEntry::Event(entry.entry))
             }
             ContractClassAbiEntry::Function(entry) => {
-                Ok(starknet_api::state::ContractClassAbiEntry::Function(entry.try_into()?))
+                Ok(starknet_api::deprecated_contract_class::ContractClassAbiEntry::Function(entry.try_into()?))
             }
             ContractClassAbiEntry::Struct(entry) => {
-                Ok(starknet_api::state::ContractClassAbiEntry::Struct(entry.entry))
+                Ok(starknet_api::deprecated_contract_class::ContractClassAbiEntry::Struct(entry.entry))
             }
         }
     }
@@ -334,25 +335,25 @@ impl ContractClassAbiEntry {
 pub struct EventAbiEntry {
     pub r#type: String,
     #[serde(flatten)]
-    pub entry: starknet_api::state::EventAbiEntry,
+    pub entry: starknet_api::deprecated_contract_class::EventAbiEntry,
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct FunctionAbiEntry {
     pub r#type: String,
     #[serde(flatten)]
-    pub entry: starknet_api::state::FunctionAbiEntry,
+    pub entry: starknet_api::deprecated_contract_class::FunctionAbiEntry,
 }
 
 impl FunctionAbiEntry {
-    fn try_into(self) -> Result<starknet_api::state::FunctionAbiEntryWithType, ()> {
+    fn try_into(self) -> Result<starknet_api::deprecated_contract_class::FunctionAbiEntryWithType, ()> {
         match self.r#type.as_str() {
-            "constructor" => Ok(starknet_api::state::FunctionAbiEntryType::Constructor),
-            "function" => Ok(starknet_api::state::FunctionAbiEntryType::Regular),
-            "l1_handler" => Ok(starknet_api::state::FunctionAbiEntryType::L1Handler),
+            "constructor" => Ok(starknet_api::deprecated_contract_class::FunctionAbiEntryType::Constructor),
+            "function" => Ok(starknet_api::deprecated_contract_class::FunctionAbiEntryType::Regular),
+            "l1_handler" => Ok(starknet_api::deprecated_contract_class::FunctionAbiEntryType::L1Handler),
             _ => Err(()),
         }
-        .map(|t| starknet_api::state::FunctionAbiEntryWithType { r#type: t, entry: self.entry })
+        .map(|t| starknet_api::deprecated_contract_class::FunctionAbiEntryWithType { r#type: t, entry: self.entry })
     }
 }
 
@@ -360,5 +361,5 @@ impl FunctionAbiEntry {
 pub struct StructAbiEntry {
     pub r#type: String,
     #[serde(flatten)]
-    pub entry: starknet_api::state::StructAbiEntry,
+    pub entry: starknet_api::deprecated_contract_class::StructAbiEntry,
 }

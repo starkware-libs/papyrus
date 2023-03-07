@@ -162,7 +162,7 @@ async fn abi_into_starknet_api_full() {
     let expected_num_of_entries = abi.len();
 
     let class = ContractClass { abi: raw_abi, ..ContractClass::default() };
-    let starknet_api_class = starknet_api::state::ContractClass::from(class);
+    let starknet_api_class = starknet_api::deprecated_contract_class::ContractClass::from(class);
     assert_eq!(expected_num_of_entries, starknet_api_class.abi.unwrap().len());
 }
 
@@ -170,6 +170,6 @@ async fn abi_into_starknet_api_full() {
 async fn abi_into_starknet_api_none() {
     let raw_abi = serde_json::to_value("junk").unwrap();
     let class = ContractClass { abi: raw_abi, ..ContractClass::default() };
-    let starknet_api_class = starknet_api::state::ContractClass::from(class);
+    let starknet_api_class = starknet_api::deprecated_contract_class::ContractClass::from(class);
     assert!(starknet_api_class.abi.is_none())
 }

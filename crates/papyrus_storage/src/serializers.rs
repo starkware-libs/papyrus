@@ -17,10 +17,11 @@ use starknet_api::core::{
     ClassHash, ContractAddress, EntryPointSelector, GlobalRoot, Nonce, PatriciaKey,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::{
+use starknet_api::state::StorageKey;
+use starknet_api::deprecated_contract_class::{
     ContractClass, ContractClassAbiEntry, EntryPoint, EntryPointOffset, EntryPointType,
     EventAbiEntry, FunctionAbiEntry, FunctionAbiEntryType, FunctionAbiEntryWithType, Program,
-    StorageKey, StructAbiEntry, StructMember, TypedParameter,
+    StructAbiEntry, StructMember, TypedParameter,
 };
 use starknet_api::transaction::{
     Calldata, ContractAddressSalt, DeclareTransaction, DeployAccountTransaction, DeployTransaction,
