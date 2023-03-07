@@ -92,7 +92,7 @@ pub struct StateReader<'env, Mode: TransactionKind> {
 #[allow(dead_code)]
 impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
     fn new(txn: &'env StorageTxn<'env, Mode>) -> StorageResult<Self> {
-        let declared_classes_table = txn.txn.open_table(&txn.tables.declared_classes)?;
+        let declared_classes_table = txn.txn.open_table(&txn.tables.deprecated_declared_classes)?;
         let deployed_contracts_table = txn.txn.open_table(&txn.tables.deployed_contracts)?;
         let nonces_table = txn.txn.open_table(&txn.tables.nonces)?;
         let storage_table = txn.txn.open_table(&txn.tables.contract_storage)?;
@@ -199,7 +199,8 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let nonces_table = self.txn.open_table(&self.tables.nonces)?;
         let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
-        let declared_classes_table = self.txn.open_table(&self.tables.declared_classes)?;
+        let declared_classes_table =
+            self.txn.open_table(&self.tables.deprecated_declared_classes)?;
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
         let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
 
@@ -251,7 +252,8 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         block_number: BlockNumber,
     ) -> StorageResult<(Self, Option<RevertedStateDiff>)> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
-        let declared_classes_table = self.txn.open_table(&self.tables.declared_classes)?;
+        let declared_classes_table =
+            self.txn.open_table(&self.tables.deprecated_declared_classes)?;
         let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
         let nonces_table = self.txn.open_table(&self.tables.nonces)?;
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
