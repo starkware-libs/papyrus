@@ -433,7 +433,7 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
 }
 
 pub fn sort_state_diff(diff: &mut StateDiff) {
-    diff.declared_classes.sort_unstable_keys();
+    diff.deprecated_declared_classes.sort_unstable_keys();
     diff.deployed_contracts.sort_unstable_keys();
     diff.nonces.sort_unstable_keys();
     diff.storage_diffs.sort_unstable_keys();

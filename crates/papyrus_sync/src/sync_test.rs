@@ -37,7 +37,7 @@ fn state_sorted() {
     let mut state_diff = StateDiff {
         deployed_contracts: unsorted_deployed_contracts,
         storage_diffs: unsorted_storage_diffs,
-        declared_classes: unsorted_declared_contracts,
+        deprecated_declared_classes: unsorted_declared_contracts,
         nonces: unsorted_nonces,
     };
 
@@ -56,7 +56,7 @@ fn state_sorted() {
         sorted_deployed_contracts.get_index(0).unwrap(),
     );
     assert_eq!(
-        state_diff.declared_classes.get_index(0).unwrap(),
+        state_diff.deprecated_declared_classes.get_index(0).unwrap(),
         sorted_declared_contracts.get_index(0).unwrap(),
     );
     assert_eq!(

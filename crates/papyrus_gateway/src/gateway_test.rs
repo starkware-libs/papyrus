@@ -900,7 +900,7 @@ async fn get_class() {
         .commit()
         .unwrap();
 
-    let (class_hash, contract_class) = diff.declared_classes.get_index(0).unwrap();
+    let (class_hash, contract_class) = diff.deprecated_declared_classes.get_index(0).unwrap();
     let expected_contract_class = contract_class.clone().try_into().unwrap();
 
     // Get class by block hash.
@@ -1020,7 +1020,7 @@ async fn get_class_at() {
         .commit()
         .unwrap();
 
-    let (class_hash, contract_class) = diff.declared_classes.get_index(0).unwrap();
+    let (class_hash, contract_class) = diff.deprecated_declared_classes.get_index(0).unwrap();
     let expected_contract_class = contract_class.clone().try_into().unwrap();
     assert_eq!(diff.deployed_contracts.get_index(0).unwrap().1, class_hash);
     let address = diff.deployed_contracts.get_index(0).unwrap().0;
