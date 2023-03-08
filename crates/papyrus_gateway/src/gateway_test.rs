@@ -33,7 +33,8 @@ use crate::api::{
     JsonRpcClient, JsonRpcError, Tag,
 };
 use crate::block::Block;
-use crate::state::{ContractClass, StateUpdate, ThinStateDiff};
+use crate::deprecated_contract_class::ContractClass;
+use crate::state::{StateUpdate, ThinStateDiff};
 use crate::test_utils::{
     get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
 };
