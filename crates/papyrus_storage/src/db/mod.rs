@@ -8,7 +8,7 @@ use std::path::Path;
 use std::result;
 use std::sync::Arc;
 
-use libmdbx::{Cursor, DatabaseFlags, Geometry, WriteFlags, WriteMap};
+use libmdbx::{Cursor, DatabaseFlags, EnvironmentFlags, Geometry, WriteFlags, WriteMap};
 use serde::{Deserialize, Serialize};
 
 use crate::db::serialization::{StorageSerde, StorageSerdeEx};
@@ -67,6 +67,7 @@ type Result<V> = result::Result<V, DbError>;
 pub(crate) fn open_env(config: DbConfig) -> Result<(DbReader, DbWriter)> {
     let env = Arc::new(
         Environment::new()
+            .set_flags(EnvironmentFlags { accede: true, ..Default::default() })
             .set_geometry(Geometry {
                 size: Some(MIN_SIZE..config.max_size),
                 growth_step: Some(GROWTH_STEP),
