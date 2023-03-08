@@ -1,5 +1,6 @@
 mod api;
 mod block;
+mod deprecated_contract_class;
 #[cfg(test)]
 mod gateway_test;
 mod state;
@@ -36,7 +37,8 @@ use crate::api::{
     JsonRpcError, JsonRpcServer, Tag,
 };
 use crate::block::{Block, BlockHeader};
-use crate::state::{ContractClass, StateUpdate};
+use crate::deprecated_contract_class::ContractClass;
+use crate::state::StateUpdate;
 use crate::transaction::{
     Event, Transaction, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus,
     TransactionStatus, TransactionWithType, Transactions,
