@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
-use papyrus_storage::db::serialization::{StorageSerde, StorageSerdeError};
 use papyrus_storage::compression_utils::{CompressionError, GzEncoded};
+use papyrus_storage::db::serialization::{StorageSerde, StorageSerdeError};
 use serde::{Deserialize, Serialize};
-
 use starknet_api::deprecated_contract_class::{
     EntryPoint, EntryPointType, EventAbiEntry, FunctionAbiEntry, FunctionAbiEntryType,
     StructAbiEntry,
@@ -118,8 +117,6 @@ impl TryFrom<starknet_api::deprecated_contract_class::ContractClass> for Contrac
         })
     }
 }
-
-
 
 // The StorageSerde implementation for serde_json::Value writes the length (in bytes)
 // of the value. Here we serialize the whole program as one value so no need to write
