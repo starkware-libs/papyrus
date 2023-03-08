@@ -407,7 +407,7 @@ fn delete_declared_classes<'env>(
     // Merge the class hashes from the state diff and from the deployed contracts into a single
     // unique set.
     let class_hashes: HashSet<&ClassHash> = thin_state_diff
-        .deprecated_declared_contract_hashes
+        .deprecated_declared_classes
         .iter()
         .chain(deployed_contracts_class_hashes)
         .collect();
