@@ -63,7 +63,7 @@ fn extract_state_diff_data_from_storage(
     let txn = reader.begin_ro_txn().unwrap();
     let thin_state_diff = txn.get_state_diff(block_number).unwrap().unwrap();
     let state_reader = txn.get_state_reader().unwrap();
-    let class_hashes = &thin_state_diff.deprecated_declared_contract_hashes;
+    let class_hashes = &thin_state_diff.deprecated_declared_classes;
     let declared_classes: IndexMap<ClassHash, ContractClass> = class_hashes
         .iter()
         .map(|class_hash| {

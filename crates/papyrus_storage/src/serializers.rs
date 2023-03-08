@@ -240,7 +240,7 @@ auto_storage_serde! {
     pub struct ThinStateDiff {
         pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
         pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
-        pub deprecated_declared_contract_hashes: Vec<ClassHash>,
+        pub deprecated_declared_classes: Vec<ClassHash>,
         pub nonces: IndexMap<ContractAddress, Nonce>,
     }
     pub enum ThinTransactionOutput {
