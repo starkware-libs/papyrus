@@ -24,9 +24,10 @@ use tracing::debug;
 use url::Url;
 
 pub use self::objects::block::{
-    Block, DeployedContract, DeprecatedContractClass, GlobalRoot, StateDiff, StateUpdate,
-    StorageEntry, TransactionReceiptsError,
+    Block, DeployedContract, GlobalRoot, StateDiff, StateUpdate, StorageEntry,
+    TransactionReceiptsError,
 };
+pub use self::objects::deprecated_contract_class::DeprecatedContractClass;
 use self::retry::Retry;
 pub use self::retry::RetryConfig;
 #[cfg(doc)]

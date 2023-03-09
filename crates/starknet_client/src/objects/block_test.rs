@@ -10,9 +10,10 @@ use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 use starknet_api::{patricia_key, stark_felt};
 
 use super::block::{
-    Block, ContractClassAbiEntry, DeployedContract, DeprecatedContractClass, GlobalRoot, StateDiff,
-    StateUpdate, StorageEntry, TransactionReceiptsError,
+    Block, DeployedContract, GlobalRoot, StateDiff, StateUpdate, StorageEntry,
+    TransactionReceiptsError,
 };
+use super::deprecated_contract_class::{ContractClassAbiEntry, DeprecatedContractClass};
 use super::transaction::TransactionReceipt;
 use crate::test_utils::read_resource::read_resource_file;
 use crate::ClientError;
