@@ -3,7 +3,7 @@ pub mod create_request;
 pub mod scenarios;
 pub mod transactions;
 
-use std::fs;
+use std::{env, fs};
 
 use goose::goose::{GooseUser, TransactionError};
 use rand::Rng;
@@ -49,4 +49,9 @@ pub fn get_random_block_number() -> u64 {
     let last_block = get_last_block_number();
     let mut rng = rand::thread_rng();
     rng.gen_range(0..=last_block)
+}
+
+// Returns the path to the file_name inside the resources folder in payprus_loadtest module.
+pub fn path_to_resources(file_name: &str) -> String {
+    env::var("CARGO_MANIFEST_DIR").unwrap() + "/src/resources/" + file_name
 }
