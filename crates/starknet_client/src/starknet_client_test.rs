@@ -12,7 +12,8 @@ use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::{Fee, TransactionHash, TransactionSignature, TransactionVersion};
 use starknet_api::{patricia_key, stark_felt};
 
-use super::objects::block::{DeprecatedContractClass, StateUpdate};
+use super::objects::block::StateUpdate;
+use super::objects::deprecated_contract_class::DeprecatedContractClass;
 use super::objects::transaction::{DeclareTransaction, TransactionType};
 use super::test_utils::read_resource::read_resource_file;
 use super::test_utils::retry::get_test_config;
