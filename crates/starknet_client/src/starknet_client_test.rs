@@ -173,7 +173,7 @@ async fn contract_class() {
         .with_body(read_resource_file("contract_class.json"))
         .create();
     let contract_class = starknet_client
-        .class_by_hash(ClassHash(stark_felt!(
+        .deprecated_class_by_hash(ClassHash(stark_felt!(
             "0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17"
         )))
         .await
@@ -188,7 +188,7 @@ async fn contract_class() {
             .with_status(500)
             .with_body(body)
             .create();
-    let class = starknet_client.class_by_hash(ClassHash(stark_felt!("0x7"))).await.unwrap();
+    let class = starknet_client.deprecated_class_by_hash(ClassHash(stark_felt!("0x7"))).await.unwrap();
     mock_by_hash.assert();
     assert!(class.is_none());
 }

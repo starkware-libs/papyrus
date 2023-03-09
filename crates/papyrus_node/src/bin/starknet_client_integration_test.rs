@@ -25,5 +25,5 @@ async fn main() {
             .unwrap(),
     );
     let _contract_class_by_hash =
-        starknet_client.class_by_hash(class_hash).await.expect("Get class by hash");
+        starknet_client.deprecated_class_by_hash(class_hash).await.expect("Get class by hash");
 }

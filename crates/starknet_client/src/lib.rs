@@ -47,7 +47,7 @@ pub trait StarknetClientTrait {
     /// block exists in the system.
     async fn block(&self, block_number: BlockNumber) -> ClientResult<Option<Block>>;
     /// Returns a [`DeprecatedContractClass`] corresponding to `class_hash`.
-    async fn class_by_hash(
+    async fn deprecated_class_by_hash(
         &self,
         class_hash: ClassHash,
     ) -> ClientResult<Option<DeprecatedContractClass>>;
@@ -278,7 +278,7 @@ impl StarknetClientTrait for StarknetClient {
         self.request_block(Some(block_number)).await
     }
 
-    async fn class_by_hash(
+    async fn deprecated_class_by_hash(
         &self,
         class_hash: ClassHash,
     ) -> ClientResult<Option<DeprecatedContractClass>> {

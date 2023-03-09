@@ -218,17 +218,17 @@ async fn stream_state_updates() {
         .times(1)
         .returning(move |_x| Ok(Some(block_state_update2_clone.clone())));
     let contract_class1_clone = contract_class1.clone();
-    mock.expect_class_by_hash()
+    mock.expect_deprecated_class_by_hash()
         .with(predicate::eq(class_hash1))
         .times(1)
         .returning(move |_x| Ok(Some(contract_class1_clone.clone())));
     let contract_class2_clone = contract_class2.clone();
-    mock.expect_class_by_hash()
+    mock.expect_deprecated_class_by_hash()
         .with(predicate::eq(class_hash2))
         .times(1)
         .returning(move |_x| Ok(Some(contract_class2_clone.clone())));
     let contract_class3_clone = contract_class3.clone();
-    mock.expect_class_by_hash()
+    mock.expect_deprecated_class_by_hash()
         .with(predicate::eq(class_hash3))
         .times(1)
         .returning(move |_x| Ok(Some(contract_class3_clone.clone())));

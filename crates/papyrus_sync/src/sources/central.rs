@@ -255,7 +255,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
             .flat_map(futures::stream::iter)
             .map(move |class_hash| {
                 let starknet_client = starknet_client.clone();
-                async move { (class_hash, starknet_client.class_by_hash(class_hash).await) }
+                async move { (class_hash, starknet_client.deprecated_class_by_hash(class_hash).await) }
             })
             .buffered(self.concurrent_requests)
             .map(|(class_hash, class)| (class_hash, class.map_err(Arc::new)));
