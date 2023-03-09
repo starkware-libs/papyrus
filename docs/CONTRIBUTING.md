@@ -5,13 +5,6 @@ email, or any other method with the owners of this repository before making a ch
 Please note we have a [code of conduct](CODE_OF_CONDUCT.md),
 please follow it in all your interactions with the project.
 
-## Development environment setup
-
-Setting up a development environment is as simple as cloning the repository:
-```sh
-git clone https://github.com/starkware-libs/papyrus
-```
-
 ## Issues and feature requests
 
 You've found a bug in the source code, a mistake in the documentation or maybe you'd like a new
@@ -29,7 +22,7 @@ Please try to create bug reports that are:
 
 **Even better: Submit a pull request with a fix or new feature!**
 
-### How to submit a Pull Request
+## How to submit a Pull Request
 
 1. Search our repository for open or closed
    [Pull Requests](https://github.com/starkware-libs/papyrus/pulls)
@@ -39,3 +32,23 @@ Please try to create bug reports that are:
 4. Commit your changes (`git commit -m 'feat: add amazing_feature'`)
 5. Push to the branch (`git push origin feat/amazing_feature`)
 6. [Open a Pull Request](https://github.com/starkware-libs/papyrus/compare?expand=1)
+
+
+## Development environment setup
+
+In order to set up a development environment, First clone the repository:
+```sh
+git clone https://github.com/starkware-libs/papyrus
+```
+
+Then, you will need to install
+- [Rust 1.67](https://www.rust-lang.org/tools/install)
+- [Rust nightly toolchain 2022-07-27](https://rust-lang.github.io/rustup/installation/index.html#installing-nightly)
+- [Ganache 7.4.3](https://www.npmjs.com/package/ganache) (Note that you'll need to install 7.4.3 and not a version above it)
+
+### CI
+Your code will need to pass [CI](.github/workflows/ci.yml) before it can be merged. This means your code will need to:
+- Pass all local tests and all integration tests.
+- Be formatted according to [rustfmt](https://github.com/rust-lang/rustfmt).
+- Be linted according to [clippy](https://github.com/rust-lang/rust-clippy)
+- Not include unused dependencies.
