@@ -41,7 +41,7 @@ static LAST_BLOCK_NUMBER: OnceCell<u64> = OnceCell::new();
 // Returns the last block number for which this load test is relevant.
 pub fn get_last_block_number() -> u64 {
     *LAST_BLOCK_NUMBER.get_or_init(|| {
-        fs::read_to_string(path_to_resources("last_block_number.txt"))
+        fs::read_to_string(path_in_resources("last_block_number.txt"))
             .unwrap()
             .parse::<u64>()
             .unwrap()
@@ -56,6 +56,6 @@ pub fn get_random_block_number() -> u64 {
 }
 
 // Returns the path to the file_name inside the resources folder in payprus_loadtest module.
-pub fn path_to_resources(file_name: &str) -> String {
+pub fn path_in_resources(file_name: &str) -> String {
     env::var("CARGO_MANIFEST_DIR").unwrap() + "/src/resources/" + file_name
 }
