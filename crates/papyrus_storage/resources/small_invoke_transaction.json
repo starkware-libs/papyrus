@@ -1,0 +1,16 @@
+{
+    "transaction_hash": "0x4b047a552bd9ae688b83fce944c85e5bf87564bf51155b99849ba160ae6130f",
+    "max_fee": "0x0",
+    "version": "0x0",
+    "signature": [],
+    "nonce": "0x0",
+    "sender_address": "0x6dd2bdc97b37b7997ce9353580d6050ae2a9d2649ad2f4cbf8356bf0ddfd65d",
+    "entry_point_selector": "0x27c3334165536f239cfd400ed956eabff55fc60de4fb56728b6a4f6b87db01c",
+    "calldata": [
+      "0x584906edd7acaa6427e1110ddce75ed2b312277b1eda37d7e39f6d8a2f19ba2",
+      "0x3d7905601c217734671143d457f0db37f7f8883112abd34b92c4abfeafde0c3",
+      "0x2",
+      "0x5ccf5eaaf42499268e37d78bbe971308261f812accf6e295d1bc31f3c3678b",
+      "0x59d8606864a90339344d61653b9a3f9d0e0f0de202a93e4d959ca5b03549d69"
+    ]
+}

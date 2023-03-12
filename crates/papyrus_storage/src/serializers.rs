@@ -41,7 +41,7 @@ use crate::body::events::{
     ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput, ThinDeployTransactionOutput,
     ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
 };
-use crate::db::serialization::{StorageSerde, StorageSerdeError};
+use crate::db::serialization::{ShouldCompressOptions, StorageSerde, StorageSerdeError};
 #[cfg(test)]
 use crate::serializers::serializers_test::{create_storage_serde_test, StorageSerdeTest};
 use crate::state::data::{
@@ -341,8 +341,11 @@ macro_rules! auto_storage_serde {
             fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
                 Some(Self (<$ty>::deserialize_from(bytes)?))
             }
-            fn should_compress() -> bool {
+            fn should_compress() -> ShouldCompressOptions {
                 <$ty>::should_compress()
+            }
+            fn is_big(&self) -> bool {
+                self.0.is_big()
             }
         }
         #[cfg(test)]
@@ -359,8 +362,19 @@ macro_rules! auto_storage_serde {
             fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
                 Some($name(<$ty0>::deserialize_from(bytes)?, <$ty1>::deserialize_from(bytes)?))
             }
-            fn should_compress() -> bool {
-                if <$ty0>::should_compress() || <$ty1>::should_compress() {
+            fn should_compress() -> ShouldCompressOptions {
+                if <$ty0>::should_compress() == ShouldCompressOptions::Yes
+                    || <$ty1>::should_compress() == ShouldCompressOptions::Yes {
+                    return ShouldCompressOptions::Yes;
+                }
+                if <$ty0>::should_compress() == ShouldCompressOptions::Maybe
+                    || <$ty1>::should_compress() == ShouldCompressOptions::Maybe {
+                    return ShouldCompressOptions::Maybe;
+                }
+                ShouldCompressOptions::No
+            }
+            fn is_big(&self) -> bool {
+                if self.0.is_big() || self.1.is_big() {
                     return true;
                 }
                 false
@@ -386,9 +400,22 @@ macro_rules! auto_storage_serde {
                     )*
                 })
             }
-            fn should_compress() -> bool {
+            fn should_compress() -> ShouldCompressOptions {
                 $(
-                    if <$ty>::should_compress() {
+                    if <$ty>::should_compress() == ShouldCompressOptions::Yes {
+                        return ShouldCompressOptions::Yes;
+                    }
+                )*
+                $(
+                    if <$ty>::should_compress() == ShouldCompressOptions::Maybe {
+                        return ShouldCompressOptions::Maybe;
+                    }
+                )*
+                ShouldCompressOptions::No
+            }
+            fn is_big(&self) -> bool {
+                $(
+                    if self.$field.is_big() {
                         return true;
                     }
                 )*
@@ -548,8 +575,8 @@ impl StorageSerde for Program {
         serde_json::from_value(program_value).ok()
     }
 
-    fn should_compress() -> bool {
-        true
+    fn should_compress() -> ShouldCompressOptions {
+        ShouldCompressOptions::Yes
     }
 }
 
@@ -577,6 +604,10 @@ impl StorageSerde for serde_json::Value {
         let buf = Vec::deserialize_from(bytes)?;
         serde_json::from_slice(buf.as_slice()).ok()
     }
+
+    fn should_compress() -> ShouldCompressOptions {
+        ShouldCompressOptions::Maybe
+    }
 }
 
 impl StorageSerde for String {
@@ -586,6 +617,10 @@ impl StorageSerde for String {
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         Self::from_utf8(Vec::deserialize_from(bytes)?).ok()
+    }
+
+    fn should_compress() -> ShouldCompressOptions {
+        ShouldCompressOptions::Maybe
     }
 }
 
@@ -608,6 +643,17 @@ impl<T: StorageSerde> StorageSerde for Option<T> {
             1 => Some(Some(T::deserialize_from(bytes)?)),
             _ => None,
         }
+    }
+
+    fn should_compress() -> ShouldCompressOptions {
+        T::should_compress()
+    }
+
+    fn is_big(&self) -> bool {
+        if self.is_none() {
+            return false;
+        }
+        self.as_ref().unwrap().is_big()
     }
 }
 
@@ -649,6 +695,10 @@ impl<T: StorageSerde> StorageSerde for Vec<T> {
         }
         Some(res)
     }
+
+    fn should_compress() -> ShouldCompressOptions {
+        ShouldCompressOptions::Maybe
+    }
 }
 impl<K: StorageSerde + Eq + Hash, V: StorageSerde> StorageSerde for HashMap<K, V> {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
@@ -671,6 +721,10 @@ impl<K: StorageSerde + Eq + Hash, V: StorageSerde> StorageSerde for HashMap<K, V
             }
         }
         Some(res)
+    }
+
+    fn should_compress() -> ShouldCompressOptions {
+        ShouldCompressOptions::Yes
     }
 }
 // TODO(anatg): Find a way to share code with StorageSerde for HashMap.
@@ -696,6 +750,10 @@ impl<K: StorageSerde + Eq + Hash, V: StorageSerde> StorageSerde for IndexMap<K, 
         }
         Some(res)
     }
+
+    fn should_compress() -> ShouldCompressOptions {
+        ShouldCompressOptions::Yes
+    }
 }
 impl<T: StorageSerde + Default + Copy, const N: usize> StorageSerde for [T; N] {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
@@ -712,6 +770,10 @@ impl<T: StorageSerde + Default + Copy, const N: usize> StorageSerde for [T; N] {
         }
         Some(res)
     }
+
+    fn should_compress() -> ShouldCompressOptions {
+        ShouldCompressOptions::Maybe
+    }
 }
 impl<T: StorageSerde> StorageSerde for Arc<T> {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
@@ -722,5 +784,13 @@ impl<T: StorageSerde> StorageSerde for Arc<T> {
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         let res = T::deserialize_from(bytes)?;
         Some(Arc::new(res))
+    }
+
+    fn should_compress() -> ShouldCompressOptions {
+        T::should_compress()
+    }
+
+    fn is_big(&self) -> bool {
+        self.deref().is_big()
     }
 }
