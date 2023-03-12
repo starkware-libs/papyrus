@@ -6,11 +6,11 @@ edition = "2021"
 [dependencies]
 anyhow = { version = "1.0.44" }
 goose = { version = "0.17.0" }
+once_cell = { version = "1.17.1" }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" }
+test_utils = { path = "../test_utils" }
 # Goose doesn't work with a higher version of tokio
 tokio = { version = "1.18.2" }
 rand = { version = "0.8.5" }
 reqwest = { version = "0.11" }
-test_utils = { path = "../test_utils" }
-once_cell = { version = "1.17.1" }
