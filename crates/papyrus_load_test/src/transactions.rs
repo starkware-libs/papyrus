@@ -7,12 +7,12 @@ use goose::goose::{Transaction, TransactionFunction};
 use rand::Rng;
 use serde_json::{json, Value as jsonVal};
 
-use crate::{create_request, jsonrpc_request, post_jsonrpc_request};
+use crate::{create_request, jsonrpc_request, path_in_resources, post_jsonrpc_request};
 
 create_get_transaction_function_with_requests_from_file! {
-    get_block_with_transaction_hashes_by_number, "crates/papyrus_load_test/src/resources/block_number.txt";
-    get_block_with_transaction_hashes_by_hash, "crates/papyrus_load_test/src/resources/block_hash.txt";
-    get_transaction_by_block_id_and_index_by_hash, "crates/papyrus_load_test/src/resources/block_hash_and_transaction_index.txt";
+    get_block_with_transaction_hashes_by_number, "block_number.txt";
+    get_block_with_transaction_hashes_by_hash, "block_hash.txt";
+    get_transaction_by_block_id_and_index_by_hash, "block_hash_and_transaction_index.txt";
 }
 
 pub fn block_number() -> Transaction {
@@ -56,13 +56,13 @@ fn random_request_transaction(requests: Vec<jsonVal>) -> Transaction {
     Transaction::new(func)
 }
 
-// Given file_path reads the file line by line and, for each line, creates request to the node using
+// Given file_name reads the file line by line and, for each line, creates request to the node using
 // convert_to_request function. Returns a vector with all the requests were created from the file.
 fn create_requests_vector_from_file(
-    file_path: &str,
+    file_name: &str,
     convert_to_request: fn(&str) -> jsonVal,
 ) -> Vec<jsonVal> {
-    let file = File::open(file_path).unwrap();
+    let file = File::open(path_in_resources(file_name)).unwrap();
     let reader = BufReader::new(file);
     let mut requests = Vec::<jsonVal>::new();
     for line in reader.lines() {
