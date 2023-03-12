@@ -11,7 +11,7 @@ use std::fs::File;
 
 use goose::{util, GooseAttack};
 use papyrus_load_test::create_files::create_files;
-use papyrus_load_test::scenarios::*;
+use papyrus_load_test::scenarios;
 use serde::Serialize;
 
 #[tokio::main]
@@ -22,7 +22,10 @@ async fn main() -> anyhow::Result<()> {
         return Ok(());
     }
 
-    let metrics = GooseAttack::initialize()?.register_scenario(general_request()).execute().await?;
+    let metrics = GooseAttack::initialize()?
+        .register_scenario(scenarios::general_request())
+        .execute()
+        .await?;
 
     // The OUTPUT_FILE env is expected to be a valid path in the os.
     // If exists, aggregated results will be written to that path in the following json format:
