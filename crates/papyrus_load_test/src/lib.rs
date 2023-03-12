@@ -57,5 +57,5 @@ pub fn get_random_block_number() -> u64 {
 
 // Returns the path to the file_name inside the resources folder in payprus_loadtest module.
 pub fn path_in_resources(file_name: &str) -> String {
-    env::var("CARGO_MANIFEST_DIR").unwrap() + "/src/resources/" + file_name
+    env::var("CARGO_MANIFEST_DIR").unwrap() + "/resources/" + file_name
 }
