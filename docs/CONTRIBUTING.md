@@ -42,13 +42,15 @@ git clone https://github.com/starkware-libs/papyrus
 ```
 
 Then, you will need to install
-- [Rust 1.67](https://www.rust-lang.org/tools/install)
+- [Rust](https://www.rust-lang.org/tools/install) (1.67 or higher)
 - [Rust nightly toolchain 2022-07-27](https://rust-lang.github.io/rustup/installation/index.html#installing-nightly)
-- [Ganache 7.4.3](https://www.npmjs.com/package/ganache) (Note that you'll need to install 7.4.3 and not a version above it)
+- [Ganache 7.4.3](https://www.npmjs.com/package/ganache)
+  - You'll need to install 7.4.3 and not a version above it. We'll relax this in the future.
+  - You'll need Ganache only for the [papyrus_base_layer](crates/papyrus_base_layer/Cargo.toml) crate.
 
 ### CI
 Your code will need to pass [CI](.github/workflows/ci.yml) before it can be merged. This means your code will need to:
 - Pass all local tests and all integration tests.
 - Be formatted according to [rustfmt](https://github.com/rust-lang/rustfmt).
 - Be linted according to [clippy](https://github.com/rust-lang/rust-clippy)
-- Not include unused dependencies.
+- Not include unused dependencies (Checked by [udeps](https://github.com/est31/cargo-udeps)).
