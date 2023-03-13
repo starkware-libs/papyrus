@@ -1188,7 +1188,7 @@ async fn get_events_chunk_size_2_with_address() {
         }
     }
 
-    for (i, chunk) in emitted_events.chunks(chunk_size).into_iter().enumerate() {
+    for (i, chunk) in emitted_events.chunks(chunk_size).enumerate() {
         let res =
             module.call::<_, EventsChunk>("starknet_getEvents", [filter.clone()]).await.unwrap();
         assert_eq!(res.events, chunk);
@@ -1268,7 +1268,7 @@ async fn get_events_chunk_size_2_without_address() {
         }
     }
 
-    for (i, chunk) in emitted_events.chunks(chunk_size).into_iter().enumerate() {
+    for (i, chunk) in emitted_events.chunks(chunk_size).enumerate() {
         let res =
             module.call::<_, EventsChunk>("starknet_getEvents", [filter.clone()]).await.unwrap();
         assert_eq!(res.events, chunk);
