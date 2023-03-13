@@ -5,4 +5,12 @@ metadata:
   labels:
     {{- include "papyrus.labels" . | nindent 4 }}
 data:
-  RUST_LOG: "{{ .Values.rustLogLevel }}"
+  RUST_LOG: {{ .Values.rustLogLevel }}
+  CHAIN_ID: {{ .Values.starknet.chain_id }}
+  CENTRAL_URL: {{ .Values.starknet.central_url }}
+  ADDITIONAL_HEADER: {{ .Values.starknet.additional_headers }}
+  {{- if .Values.backup.enabled }}
+  SLEEP_INTERVAL: {{ .Values.backup.sleep_interval }}
+  S3_BUCKET_NAME: {{ .Values.backup.aws.s3_bucket_name }}
+  PAPYRUS_VERSION: {{ .Values.image.tag | quote }}
+  {{- end }}

@@ -27,9 +27,15 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: {{ template "papyrus.name" . }}-data
+        {{- if .Values.backup.enabled }}
+        - name: run
+          configMap:
+            name: {{ template "papyrus.name" . }}-run
+            defaultMode: 0777
+        {{- end }}
       containers:
       - name: {{ template "papyrus.name" . }}
-        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default "latest" }}"
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         resources:
           limits:
@@ -38,6 +44,7 @@ spec:
           requests:
             cpu: {{ .Values.resources.requests.cpu | quote}}
             memory: {{ .Values.resources.requests.memory }}
+        {{- if not .Values.backup.enabled }}
         ports:
         - containerPort: {{ .Values.services.rpc.port }}
         - containerPort: {{ .Values.services.monitoring.port }}
@@ -45,5 +52,21 @@ spec:
         - name: data
           mountPath: /app/data
         envFrom:
-          - configMapRef:
-              name: {{ template "papyrus.name" . }}-config
+        - configMapRef:
+            name: {{ template "papyrus.name" . }}-config
+        {{- else }}
+        command:
+        - sh
+        - -c
+        - /app/run/backup.sh
+        volumeMounts:
+        - name: data
+          mountPath: /app/data
+        - name: run
+          mountPath: /app/run
+        envFrom:
+        - configMapRef:
+            name: {{ template "papyrus.name" . }}-config
+        - secretRef:
+            name: {{ template "papyrus.name" . }}-aws-creds
+        {{- end }}

@@ -1,0 +1,39 @@
+# Default values for a papyrus-backup deployment.
+
+# The verbosity level of logs ("debug", "info", "error", etc.)
+rustLogLevel: "papyrus=DEBUG"
+
+# The Docker image (including any tag and repository name)
+image:
+  repository: us.gcr.io/starkware-dev/papyrus-backup
+  tag: dev
+  pullPolicy: Always
+
+starknet:
+  chain_id: SN_GOERLI # possible values: SN_MAIN, SN_GOERLI
+  # feeder-gateway url
+  # SN_MAIN: https://alpha-mainnet.starknet.io
+  # SN_GOERLI: https://alpha4.starknet.io
+  central_url: https://alpha4.starknet.io
+  additional_headers: # optional addtional headers for SN communication
+
+sleep_interval: 6h
+s3_bucket_name: papyrus-backup
+aws_access_key_id: dummy access_key
+aws_secret_access_key: dummy secret_key
+
+# The default resources for the pod.
+resources:
+  limits:
+    cpu: "1"
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+# Persistent volume claim variables for a papyrus pod.
+pvc:
+  size: 1000Gi
+  storageClass: premium-rwo
+  restoreFromSnapshot:
+    enabled: false

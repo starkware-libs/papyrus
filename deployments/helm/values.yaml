@@ -9,6 +9,14 @@ image:
   tag: dev
   pullPolicy: Always
 
+starknet:
+  chain_id: SN_GOERLI # possible values: SN_MAIN, SN_GOERLI
+  # feeder-gateway url
+  # SN_MAIN: https://alpha-mainnet.starknet.io
+  # SN_GOERLI: https://alpha4.starknet.io
+  central_url: https://alpha4.starknet.io
+  additional_headers: # optional addtional headers for SN communication
+
 # The default resources for the pod.
 resources:
   limits:
@@ -57,3 +65,12 @@ ingress:
   pathType:
   # Annotations to apply to the node ingress.
   annotations:
+
+# Backup mode
+backup:
+  enabled: false
+  sleep_interval: 6h
+  aws:
+    s3_bucket_name: my-backup-bucket-name
+    access_key_id: my aws_access_key_id
+    secret_access_key: my aws_secret_access_key
