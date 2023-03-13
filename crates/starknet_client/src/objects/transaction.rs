@@ -317,7 +317,9 @@ impl From<L2ToL1Message> for starknet_api::transaction::MessageToL1 {
     }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(
+    Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord, Default,
+)]
 pub enum TransactionType {
     #[serde(rename(deserialize = "DECLARE", serialize = "DECLARE"))]
     Declare,
@@ -326,12 +328,8 @@ pub enum TransactionType {
     #[serde(rename(deserialize = "DEPLOY_ACCOUNT", serialize = "DEPLOY_ACCOUNT"))]
     DeployAccount,
     #[serde(rename(deserialize = "INVOKE_FUNCTION", serialize = "INVOKE_FUNCTION"))]
+    #[default]
     InvokeFunction,
     #[serde(rename(deserialize = "L1_HANDLER", serialize = "L1_HANDLER"))]
     L1Handler,
-}
-impl Default for TransactionType {
-    fn default() -> Self {
-        TransactionType::InvokeFunction
-    }
 }
