@@ -5,6 +5,9 @@ if [ -z "${ADDITIONAL_HEADER}" ]; then
 else
     ADDITIONAL_ARGS="--http_headers=${ADDITIONAL_HEADER}"
 fi
+
+sed -i "s/concurrent_requests: 10/concurrent_requests: $CONCURRENT_REQUESTS/g" /app/config/config.yaml
+
 RUN_CMD="/app/target/release/papyrus_node --chain_id=${CHAIN_ID} --central_url=${CENTRAL_URL} ${ADDITIONAL_ARGS}"
 
 while true; do
