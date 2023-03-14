@@ -36,11 +36,6 @@ pub enum ContractClassAbiEntryType {
     #[serde(rename(deserialize = "struct", serialize = "struct"))]
     Struct,
 }
-impl Default for ContractClassAbiEntryType {
-    fn default() -> Self {
-        ContractClassAbiEntryType::Function
-    }
-}
 
 impl From<FunctionAbiEntryType> for ContractClassAbiEntryType {
     fn from(t: FunctionAbiEntryType) -> Self {
