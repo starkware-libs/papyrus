@@ -1,3 +1,4 @@
+{{- if not .Values.backup.enabled }}
 {{- range $k, $v := .Values.services }}
 ---
 apiVersion: v1
@@ -15,4 +16,5 @@ spec:
     protocol: "{{ $v.protocol }}"
     port: {{ $v.port }}
     targetPort: {{ $v.port }}
+{{- end }}
 {{- end }}

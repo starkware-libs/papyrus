@@ -5,13 +5,13 @@ metadata:
   labels:
     {{- include "papyrus.labels" . | nindent 4 }}
 spec:
-  storageClassName: "{{ .Values.pvc.storageClass }}"
+  storageClassName: {{ .Values.pvc.storageClass }}
   accessModes:
     - ReadWriteOnce
   volumeMode: Filesystem
   resources:
     requests:
-      storage: "{{ .Values.pvc.size }}"
+      storage: {{ .Values.pvc.size | quote }}
   {{- if .Values.pvc.restoreFromSnapshot.enabled }}
   dataSource:
     name: {{ .Values.pvc.restoreFromSnapshot.snapshotName }}
