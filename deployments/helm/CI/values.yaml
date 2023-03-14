@@ -1,23 +1,7 @@
-# Default values for a papyrus deployment.
+# Default values for a papyrus ci deployment.
 
 rustLogLevel: "debug"
 
 pvc:
-  size: 1000Gi
-  storageClass: premium-rwo
-  restoreFromSnapshot:
-    enabled: true
-    volumeSnapshotClassName: papyrus
-    snapshotName: papyrus-benchmark
-
-# Configure Ingress.
-ingress:
-  enabled: true
-  type: gce
-  name: ssl-proxy
-  pathType: ImplementationSpecific
-  annotations: |
-    kubernetes.io/ingress.class: nginx
-    kubernetes.io/tls-acme: "true"
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  size: 1Gi
+  storageClass: standard-rwo
