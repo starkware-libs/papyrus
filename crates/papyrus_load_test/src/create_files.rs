@@ -19,7 +19,7 @@ const BLOCK_HASH_COUNT: u32 = 5;
 pub async fn create_files(node_address: &str) {
     let node_socket = node_address.parse::<SocketAddr>().unwrap();
     last_block_number(node_socket).await;
-    block_number(BLOCK_NUMBER_COUNT);
+    create_file("block_number.txt", BLOCK_NUMBER_COUNT, get_block_number_args).await;
     create_file("block_hash.txt", BLOCK_HASH_COUNT, || get_block_hash_args(node_socket)).await;
 }
 
@@ -44,18 +44,9 @@ where
     file.write_all(to_write.as_bytes()).unwrap();
 }
 
-// Creates the block_number.txt file. Write to the file block_number_count random block numbers.
-fn block_number(block_number_count: u32) {
-    let mut to_write = String::new();
-    for _ in 0..block_number_count {
-        let block_number = get_random_block_number().to_string();
-        to_write = to_write + &block_number + "\n";
-    }
-    // Remove the last '\n'.
-    to_write.pop().expect("to_write String is empty, the block_number_nums is zero.");
-    let mut file = File::create(path_in_resources("block_number.txt"))
-        .expect("Create file \"block_number.txt\" failed.");
-    file.write_all(to_write.as_bytes()).unwrap();
+// Returns a vector with a random block number.
+pub async fn get_block_number_args() -> Vec<String> {
+    vec![get_random_block_number().to_string()]
 }
 
 pub async fn get_block_with_tx_hashes(node_address: SocketAddr, block_number: u64) -> jsonVal {
