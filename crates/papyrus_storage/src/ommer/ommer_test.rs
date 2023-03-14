@@ -1,8 +1,6 @@
 use indexmap::IndexMap;
 use starknet_api::block::BlockHeader;
-use starknet_api::transaction::{
-    EventContent, TransactionOutput,
-};
+use starknet_api::transaction::{EventContent, TransactionOutput};
 use test_utils::{get_test_block, get_test_state_diff};
 
 use super::OmmerStorageReader;
