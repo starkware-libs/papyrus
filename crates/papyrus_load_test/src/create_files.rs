@@ -19,8 +19,12 @@ const BLOCK_HASH_COUNT: u32 = 5;
 pub async fn create_files(node_address: &str) {
     let node_socket = node_address.parse::<SocketAddr>().unwrap();
     last_block_number(node_socket).await;
-    create_file("block_number.txt", BLOCK_NUMBER_COUNT, get_block_number_args).await;
-    create_file("block_hash.txt", BLOCK_HASH_COUNT, || get_block_hash_args(node_socket)).await;
+    let block_number =
+        tokio::spawn(create_file("block_number.txt", BLOCK_NUMBER_COUNT, get_block_number_args));
+    let block_hash = tokio::spawn(create_file("block_hash.txt", BLOCK_HASH_COUNT, move || {
+        get_block_hash_args(node_socket)
+    }));
+    tokio::try_join!(block_number, block_hash).unwrap();
 }
 
 // Write to file_name, param_sets of parameter sets that return from get_args function.
