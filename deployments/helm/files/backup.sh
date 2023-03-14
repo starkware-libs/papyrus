@@ -15,9 +15,9 @@ while true; do
     sleep "$SLEEP_INTERVAL"
 
     # stop papyrus
-    kill -9 "$PAPYRUS_PID"
+    kill -15 "$PAPYRUS_PID"
     sleep 5s
 
     # upload db file to s3
-    aws s3 cp "/app/data/$CHAIN_ID/mdbx.dat" "s3://$S3_BUCKET_NAME/$CHAIN_ID/$PAPYRUS_VERSION/$(date +%s).dat"
+    aws s3 cp "/app/data/$CHAIN_ID/mdbx.dat" "s3://$S3_BUCKET_NAME/$CHAIN_ID/$PAPYRUS_VERSION/$(date +%s).dat --region ${S3_BUCKET_REGION}"
 done

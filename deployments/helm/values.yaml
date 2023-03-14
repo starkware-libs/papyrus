@@ -72,5 +72,6 @@ backup:
   sleep_interval: 6h
   aws:
     s3_bucket_name: my-backup-bucket-name
+    s3_bucket_region: my-backup-bucket-region
     access_key_id: my aws_access_key_id
     secret_access_key: my aws_secret_access_key

@@ -14,5 +14,6 @@ data:
   {{- if .Values.backup.enabled }}
   SLEEP_INTERVAL: {{ .Values.backup.sleep_interval }}
   S3_BUCKET_NAME: {{ .Values.backup.aws.s3_bucket_name }}
+  S3_BUCKET_REGION: {{ .Values.backup.aws.s3_bucket_region }}
   PAPYRUS_VERSION: {{ .Values.image.tag | quote }}
   {{- end }}
