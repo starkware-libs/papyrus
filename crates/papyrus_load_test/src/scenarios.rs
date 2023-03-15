@@ -8,6 +8,12 @@ pub fn general_request() -> Scenario {
     let trans_and_weights = vec![
         (txs::get_block_with_transaction_hashes_by_number(), 1),
         (txs::get_block_with_transaction_hashes_by_hash(), 1),
+        (txs::get_block_with_full_transactions_by_number(), 1),
+        (txs::get_block_with_full_transactions_by_hash(), 1),
+        (txs::get_block_transaction_count_by_number(), 1),
+        (txs::get_block_transaction_count_by_hash(), 1),
+        (txs::get_state_update_by_number(), 1),
+        (txs::get_state_update_by_hash(), 1),
         (txs::block_number(), 1),
         (txs::block_hash_and_number(), 1),
         (txs::chain_id(), 1),

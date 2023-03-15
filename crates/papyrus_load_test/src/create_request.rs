@@ -25,6 +25,39 @@ pub fn get_block_with_transaction_hashes_by_hash(block_hash: &str) -> jsonVal {
     jsonrpc_request("starknet_getBlockWithTxHashes", json!([{ "block_hash": block_hash }]))
 }
 
+pub fn get_block_with_full_transactions_by_number(block_number: &str) -> jsonVal {
+    jsonrpc_request(
+        "starknet_getBlockWithTxs",
+        json!([{ "block_number": block_number.parse::<u64>().unwrap() }]),
+    )
+}
+
+pub fn get_block_with_full_transactions_by_hash(block_hash: &str) -> jsonVal {
+    jsonrpc_request("starknet_getBlockWithTxs", json!([{ "block_hash": block_hash }]))
+}
+
+pub fn get_block_transaction_count_by_number(block_number: &str) -> jsonVal {
+    jsonrpc_request(
+        "starknet_getBlockTransactionCount",
+        json!([{ "block_number": block_number.parse::<u64>().unwrap() }]),
+    )
+}
+
+pub fn get_block_transaction_count_by_hash(block_hash: &str) -> jsonVal {
+    jsonrpc_request("starknet_getBlockTransactionCount", json!([{ "block_hash": block_hash }]))
+}
+
+pub fn get_state_update_by_number(block_number: &str) -> jsonVal {
+    jsonrpc_request(
+        "starknet_getStateUpdate",
+        json!([{ "block_number": block_number.parse::<u64>().unwrap() }]),
+    )
+}
+
+pub fn get_state_update_by_hash(block_hash: &str) -> jsonVal {
+    jsonrpc_request("starknet_getStateUpdate", json!([{ "block_hash": block_hash }]))
+}
+
 // This struct is for iterating over the args string.
 struct ArgsIter<'a> {
     iter: SplitWhitespace<'a>,
