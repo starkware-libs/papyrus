@@ -20,6 +20,8 @@ use serde::{Deserialize, Serialize};
 use starknet_api::core::ChainId;
 use starknet_client::RetryConfig;
 
+use crate::version::Version;
+
 // The path of the default configuration file, provided as part of the crate.
 const CONFIG_FILE: &str = "config/config.yaml";
 
@@ -122,7 +124,7 @@ impl ConfigBuilder {
     fn prepare_command(mut self, args: Vec<String>) -> Result<Self, ConfigError> {
         self.args = Some(
             Command::new("Papyrus",)
-            .version("Pre-release")
+            .version(&*Version::default().version_with_metadata())
             .about("Papyrus is a StarkNet full node written in Rust.")
             .args(&[
                 arg!(-f --config_file [path] "Optionally sets a config file to use").value_parser(value_parser!(PathBuf)),
