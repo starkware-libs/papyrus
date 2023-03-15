@@ -26,6 +26,7 @@ pub struct MonitoringGatewayConfig {
 struct JsonRpcServerImpl {
     storage_reader: StorageReader,
     general_config_representation: serde_yaml::Value,
+    version: String,
 }
 
 fn internal_server_error(err: impl Display) -> Error {
@@ -48,6 +49,11 @@ impl JsonRpcServer for JsonRpcServerImpl {
     fn node_config(&self) -> Result<serde_yaml::Value, Error> {
         Ok(self.general_config_representation.clone())
     }
+
+    #[instrument(skip(self), level = "debug", err(Display), ret)]
+    fn node_version(&self) -> Result<String, Error> {
+        Ok(self.version.to_owned())
+    }
 }
 
 #[instrument(skip(storage_reader, general_config_representation), level = "debug", err)]
@@ -55,12 +61,14 @@ pub async fn run_server(
     general_config_representation: serde_yaml::Value,
     config: MonitoringGatewayConfig,
     storage_reader: StorageReader,
+    version: String,
 ) -> anyhow::Result<(SocketAddr, HttpServerHandle)> {
     debug!("Starting monitoring gateway.");
     let server = HttpServerBuilder::default().build(&config.server_address).await?;
     let addr = server.local_addr()?;
-    let handle = server
-        .start(JsonRpcServerImpl { storage_reader, general_config_representation }.into_rpc())?;
+    let handle = server.start(
+        JsonRpcServerImpl { storage_reader, general_config_representation, version }.into_rpc(),
+    )?;
     info!(local_address = %addr, "Monitoring gateway is running.");
     Ok((addr, handle))
 }

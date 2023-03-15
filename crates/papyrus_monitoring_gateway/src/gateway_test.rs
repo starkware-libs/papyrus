@@ -5,6 +5,7 @@ use super::api::JsonRpcServer;
 use super::JsonRpcServerImpl;
 
 const TEST_CONFIG_REPRESENTATION: &str = "general_config_representation";
+const TEST_VERSION: &str = "1.2.3-dev";
 
 #[tokio::test]
 async fn test_stats() -> Result<(), anyhow::Error> {
@@ -12,6 +13,7 @@ async fn test_stats() -> Result<(), anyhow::Error> {
     let module = JsonRpcServerImpl {
         storage_reader,
         general_config_representation: serde_yaml::to_value(TEST_CONFIG_REPRESENTATION)?,
+        version: TEST_VERSION.to_string(),
     }
     .into_rpc();
     let stats =
@@ -28,9 +30,24 @@ async fn test_config() -> Result<(), anyhow::Error> {
     let module = JsonRpcServerImpl {
         storage_reader,
         general_config_representation: serde_yaml::to_value(TEST_CONFIG_REPRESENTATION)?,
+        version: TEST_VERSION.to_string(),
     }
     .into_rpc();
     let rep = module.call::<_, String>("starknet_nodeConfig", EmptyParams::new()).await?;
     assert_eq!(rep, TEST_CONFIG_REPRESENTATION);
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_version() -> Result<(), anyhow::Error> {
+    let (storage_reader, mut _storage_writer) = test_utils::get_test_storage();
+    let module = JsonRpcServerImpl {
+        storage_reader,
+        general_config_representation: serde_yaml::to_value(TEST_CONFIG_REPRESENTATION)?,
+        version: TEST_VERSION.to_string(),
+    }
+    .into_rpc();
+    let rep = module.call::<_, String>("starknet_nodeVersion", EmptyParams::new()).await?;
+    assert_eq!(rep, TEST_VERSION);
     Ok(())
 }
