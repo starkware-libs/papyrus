@@ -65,7 +65,7 @@ COPY config/ /app/config
 
 # Copy the load test executable and its resources.
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/papyrus_load_test /app/target/release/papyrus_load_test
-COPY crates/papyrus_load_test/src/resources/ /app/crates/papyrus_load_test/src/resources
+COPY crates/papyrus_load_test/resources/ /app/crates/papyrus_load_test/resources
 
 RUN set -ex; \
     apk update; \

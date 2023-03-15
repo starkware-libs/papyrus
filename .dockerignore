@@ -5,4 +5,4 @@
 /Cargo.lock
 .git
 **/resources
-!crates/papyrus_load_test/src/resources
+!crates/papyrus_load_test/resources
