@@ -1,7 +1,7 @@
 {
     "openrpc": "1.0.0-rc1",
     "info": {
-        "version": "0.49.0",
+        "version": "0.50.0",
         "title": "StarkNet Node API",
         "license": {}
     },
@@ -90,7 +90,14 @@
                 "name": "result",
                 "description": "The information about the state update of the requested block",
                 "schema": {
-                    "$ref": "#/components/schemas/STATE_UPDATE"
+                    "oneOf": [
+                        {
+                            "$ref": "#/components/schemas/STATE_UPDATE"
+                        },
+                        {
+                            "$ref": "#/components/schemas/PENDING_STATE_UPDATE"
+                        }
+                    ]
                 }
             },
             "errors": [
@@ -262,7 +269,14 @@
                 "name": "result",
                 "description": "The contract class, if found",
                 "schema": {
-                    "$ref": "#/components/schemas/CONTRACT_CLASS"
+                    "oneOf": [
+                        {
+                            "$ref": "#/components/schemas/DEPRECATED_CONTRACT_CLASS"
+                        },
+                        {
+                            "$ref": "#/components/schemas/CONTRACT_CLASS"
+                        }
+                    ]
                 }
             },
             "errors": [
@@ -336,7 +350,14 @@
                 "name": "result",
                 "description": "The contract class",
                 "schema": {
-                    "$ref": "#/components/schemas/CONTRACT_CLASS"
+                    "oneOf": [
+                        {
+                            "$ref": "#/components/schemas/DEPRECATED_CONTRACT_CLASS"
+                        },
+                        {
+                            "$ref": "#/components/schemas/CONTRACT_CLASS"
+                        }
+                    ]
                 }
             },
             "errors": [
@@ -799,7 +820,10 @@
                             "block_hash": {
                                 "$ref": "#/components/schemas/BLOCK_HASH"
                             }
-                        }
+                        },
+                        "required": [
+                            "block_hash"
+                        ]
                     },
                     {
                         "type": "object",
@@ -807,7 +831,10 @@
                             "block_number": {
                                 "$ref": "#/components/schemas/BLOCK_NUMBER"
                             }
-                        }
+                        },
+                        "required": [
+                            "block_number"
+                        ]
                     },
                     {
                         "$ref": "#/components/schemas/BLOCK_TAG"
@@ -873,14 +900,31 @@
             },
             "STATE_UPDATE": {
                 "type": "object",
+                "allOf": [
+                    {
+                        "type": "object",
+                        "properties": {
+                            "block_hash": {
+                                "$ref": "#/components/schemas/BLOCK_HASH"
+                            },
+                            "new_root": {
+                                "description": "The new global state root",
+                                "$ref": "#/components/schemas/FELT"
+                            }
+                        },
+                        "required": [
+                            "block_hash",
+                            "new_root"
+                        ]
+                    },
+                    {
+                        "$ref": "#/components/schemas/PENDING_STATE_UPDATE"
+                    }
+                ]
+            },
+            "PENDING_STATE_UPDATE": {
+                "type": "object",
                 "properties": {
-                    "block_hash": {
-                        "$ref": "#/components/schemas/BLOCK_HASH"
-                    },
-                    "new_root": {
-                        "description": "The new global state root",
-                        "$ref": "#/components/schemas/FELT"
-                    },
                     "old_root": {
                         "description": "The previous global state root",
                         "$ref": "#/components/schemas/FELT"
@@ -899,14 +943,31 @@
                             "deprecated_declared_classes": {
                                 "type": "array",
                                 "items": {
-                                    "description": "The hash of a new contract declared as part of the new state",
+                                    "description": "The hash of the declared class",
                                     "$ref": "#/components/schemas/FELT"
+                                }
+                            },
+                            "declared_classes": {
+                                "type": "array",
+                                "items": {
+                                    "description": "The declared class hash and compiled class hash",
+                                    "type": "object",
+                                    "properties": {
+                                        "class_hash": {
+                                            "description": "The hash of the declared class",
+                                            "$ref": "#/components/schemas/FELT"
+                                        },
+                                        "compiled_class_hash": {
+                                            "description": "The Cairo assembly hash corresponding to the declared class",
+                                            "$ref": "#/components/schemas/FELT"
+                                        }
+                                    }
                                 }
                             },
                             "deployed_contracts": {
                                 "type": "array",
                                 "items": {
-                                    "description": "A new contract deployed as part of the new state",
+                                    "description": "A new contract deployed as part of the state update",
                                     "$ref": "#/components/schemas/DEPLOYED_CONTRACT_ITEM"
                                 }
                             },
@@ -931,14 +992,13 @@
                         "required": [
                             "storage_diffs",
                             "deprecated_declared_classes",
+                            "declared_classes",
                             "deployed_contracts",
                             "nonces"
                         ]
                     }
                 },
                 "required": [
-                    "block_hash",
-                    "new_root",
                     "old_root",
                     "state_diff"
                 ]
@@ -967,9 +1027,8 @@
             "FELT": {
                 "type": "string",
                 "title": "Field element",
-                "$comment": "A field element, represented as a string of hex digits",
-                "description": "A field element. Represented as 4 leading zero bits followed by 63 hex digits",
-                "pattern": "^0x[a-fA-F0-9]{1,63}$"
+                "description": "A field element. represented by at most 63 hex digits",
+                "pattern": "^0x(0|[a-fA-F1-9]{1}[a-fA-F0-9]{0,62})$"
             },
             "BLOCK_NUMBER": {
                 "description": "The block's number (its height)",
@@ -1934,6 +1993,54 @@
                 ]
             },
             "CONTRACT_CLASS": {
+                "type": "object",
+                "properties": {
+                    "sierra_program": {
+                        "type": "array",
+                        "description": "The list of Sierra instructions of which the program consists",
+                        "items": {
+                            "$ref": "#/components/schemas/FELT"
+                        }
+                    },
+                    "contract_class_version": {
+                        "type": "string",
+                        "description": "The version of the contract class object. Currently, the Starknet OS supports version 0.1.0"
+                    },
+                    "entry_points_by_type": {
+                        "type": "object",
+                        "properties": {
+                            "CONSTRUCTOR": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/SIERRA_ENTRY_POINT"
+                                }
+                            },
+                            "EXTERNAL": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/SIERRA_ENTRY_POINT"
+                                }
+                            },
+                            "L1_HANDLER": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/SIERRA_ENTRY_POINT"
+                                }
+                            }
+                        }
+                    },
+                    "abi": {
+                        "type": "string",
+                        "descripition": "The class ABI, as supplied by the user declaring the class"
+                    }
+                },
+                "required": [
+                    "sierra_program",
+                    "contract_class_version",
+                    "entry_points_by_type"
+                ]
+            },
+            "DEPRECATED_CONTRACT_CLASS": {
                 "title": "The definition of a StarkNet contract class",
                 "type": "object",
                 "properties": {
@@ -1946,13 +2053,22 @@
                         "type": "object",
                         "properties": {
                             "CONSTRUCTOR": {
-                                "$ref": "#/components/schemas/CONTRACT_ENTRY_POINT_LIST"
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/DEPRECATED_CAIRO_ENTRY_POINT"
+                                }
                             },
                             "EXTERNAL": {
-                                "$ref": "#/components/schemas/CONTRACT_ENTRY_POINT_LIST"
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/DEPRECATED_CAIRO_ENTRY_POINT"
+                                }
                             },
                             "L1_HANDLER": {
-                                "$ref": "#/components/schemas/CONTRACT_ENTRY_POINT_LIST"
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/DEPRECATED_CAIRO_ENTRY_POINT"
+                                }
                             }
                         }
                     },
@@ -1965,13 +2081,7 @@
                     "entry_points_by_type"
                 ]
             },
-            "CONTRACT_ENTRY_POINT_LIST": {
-                "type": "array",
-                "items": {
-                    "$ref": "#/components/schemas/CONTRACT_ENTRY_POINT"
-                }
-            },
-            "CONTRACT_ENTRY_POINT": {
+            "DEPRECATED_CAIRO_ENTRY_POINT": {
                 "type": "object",
                 "properties": {
                     "offset": {
@@ -1981,6 +2091,19 @@
                     "selector": {
                         "description": "A unique identifier of the entry point (function) in the program",
                         "$ref": "#/components/schemas/FELT"
+                    }
+                }
+            },
+            "SIERRA_ENTRY_POINT": {
+                "type": "object",
+                "properties": {
+                    "selector": {
+                        "description": "A unique identifier of the entry point (function) in the program",
+                        "$ref": "#/components/schemas/FELT"
+                    },
+                    "function_idx": {
+                        "description": "The index of the function in the program",
+                        "type": "integer"
                     }
                 }
             },

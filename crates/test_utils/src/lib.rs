@@ -14,14 +14,21 @@ use reqwest::Client;
 use starknet_api::block::{
     Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
 };
-use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, GlobalRoot, Nonce};
+use starknet_api::core::{
+    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, GlobalRoot, Nonce,
+};
 use starknet_api::deprecated_contract_class::{
-    ContractClass, ContractClassAbiEntry, EntryPoint, EntryPointOffset, EntryPointType,
-    EventAbiEntry, FunctionAbiEntry, FunctionAbiEntryType, FunctionAbiEntryWithType, Program,
-    StructAbiEntry, StructMember, TypedParameter,
+    ContractClass as DeprecatedContractClass, ContractClassAbiEntry,
+    EntryPoint as DeprecatedEntryPoint, EntryPointOffset,
+    EntryPointType as DeprecatedEntryPointType, EventAbiEntry, FunctionAbiEntry,
+    FunctionAbiEntryType, FunctionAbiEntryWithType, Program, StructAbiEntry, StructMember,
+    TypedParameter,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::{StateDiff, StorageKey};
+use starknet_api::stark_felt;
+use starknet_api::state::{
+    ContractClass, EntryPoint, EntryPointType, FunctionIndex, StateDiff, StorageKey,
+};
 use starknet_api::transaction::{
     Calldata, ContractAddressSalt, DeclareTransaction, DeclareTransactionOutput,
     DeployAccountTransaction, DeployAccountTransactionOutput, DeployTransaction,
@@ -166,7 +173,12 @@ pub fn get_test_body(transaction_count: usize) -> BlockBody {
 // For a random test state diff call StateDiff::get_test_instance.
 pub fn get_test_state_diff() -> StateDiff {
     let mut rng = ChaCha8Rng::seed_from_u64(0);
-    StateDiff::get_test_instance(&mut rng)
+    let mut res = StateDiff::get_test_instance(&mut rng);
+    // TODO(anatg): fix StateDiff::get_test_instance so the declared_classes will have different
+    // hashes than the deprecated_contract_classes.
+    let (_, data) = res.declared_classes.pop().unwrap();
+    res.declared_classes.insert(ClassHash(stark_felt!("0x001")), data);
+    res
 }
 
 // Used in random test to create a random generator, see for example storage_serde_test.
@@ -211,12 +223,18 @@ auto_impl_get_test_instance! {
     pub struct BlockTimestamp(pub u64);
     pub struct Calldata(pub Arc<Vec<StarkFelt>>);
     pub struct ClassHash(pub StarkHash);
+    pub struct CompiledClassHash(pub StarkHash);
     pub struct ContractAddressSalt(pub StarkHash);
-    // TODO(anatg): Consider using the compression utils.
     pub struct ContractClass {
+        pub sierra_program: Vec<StarkFelt>,
+        pub entry_point_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
+        pub abi: String,
+    }
+    // TODO(anatg): Consider using the compression utils.
+    pub struct DeprecatedContractClass {
         pub abi: Option<Vec<ContractClassAbiEntry>>,
         pub program: Program,
-        pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
+        pub entry_points_by_type: HashMap<DeprecatedEntryPointType, Vec<DeprecatedEntryPoint>>,
     }
     pub enum ContractClassAbiEntry {
         Event(EventAbiEntry) = 0,
@@ -251,13 +269,23 @@ auto_impl_get_test_instance! {
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
     }
-    pub struct EntryPoint {
+    pub struct DeprecatedEntryPoint {
         pub selector: EntryPointSelector,
         pub offset: EntryPointOffset,
     }
+    pub struct EntryPoint {
+        pub function_idx: FunctionIndex,
+        pub selector: EntryPointSelector,
+    }
+    pub struct FunctionIndex(pub usize);
     pub struct EntryPointOffset(pub usize);
     pub struct EntryPointSelector(pub StarkHash);
     pub enum EntryPointType {
+        Constructor = 0,
+        External = 1,
+        L1Handler = 2,
+    }
+    pub enum DeprecatedEntryPointType {
         Constructor = 0,
         External = 1,
         L1Handler = 2,
@@ -335,7 +363,8 @@ auto_impl_get_test_instance! {
     pub struct StateDiff {
         pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
         pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
-        pub deprecated_declared_classes: IndexMap<ClassHash, ContractClass>,
+        pub declared_classes: IndexMap<ClassHash, (CompiledClassHash, ContractClass)>,
+        pub deprecated_declared_classes: IndexMap<ClassHash, DeprecatedContractClass>,
         pub nonces: IndexMap<ContractAddress, Nonce>,
     }
     pub struct StructMember {
@@ -373,6 +402,7 @@ auto_impl_get_test_instance! {
     (ContractAddress, Nonce);
     (ContractAddress, StorageKey, BlockHash);
     (ContractAddress, StorageKey, BlockNumber);
+    (CompiledClassHash, ContractClass);
 }
 
 #[macro_export]
