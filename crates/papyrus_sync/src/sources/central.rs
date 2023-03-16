@@ -12,11 +12,12 @@ use mockall::automock;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;
-use starknet_api::deprecated_contract_class::ContractClass;
+use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::StateDiff;
 use starknet_api::StarknetApiError;
 use starknet_client::{
-    ClientCreationError, ClientError, RetryConfig, StarknetClient, StarknetClientTrait, StateUpdate,
+    ClientCreationError, ClientError, GenericContractClass, RetryConfig, StarknetClient,
+    StarknetClientTrait, StateUpdate,
 };
 use tokio_stream::Stream;
 use tracing::{debug, trace};
@@ -74,7 +75,8 @@ pub trait CentralSourceTrait {
 }
 
 pub(crate) type BlocksStream<'a> = BoxStream<'a, Result<(BlockNumber, Block), CentralError>>;
-type CentralStateUpdate = (BlockNumber, BlockHash, StateDiff, IndexMap<ClassHash, ContractClass>);
+type CentralStateUpdate =
+    (BlockNumber, BlockHash, StateDiff, IndexMap<ClassHash, DeprecatedContractClass>);
 pub(crate) type StateUpdatesStream<'a> = BoxStream<'a, CentralResult<CentralStateUpdate>>;
 
 #[async_trait]
@@ -164,29 +166,74 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
 
 fn client_to_central_state_update(
     current_block_number: BlockNumber,
-    maybe_client_state_update: CentralResult<(StateUpdate, IndexMap<ClassHash, ContractClass>)>,
+    maybe_client_state_update: CentralResult<(
+        StateUpdate,
+        IndexMap<ClassHash, GenericContractClass>,
+    )>,
 ) -> CentralResult<CentralStateUpdate> {
     match maybe_client_state_update {
-        Ok((state_update, mut classes)) => {
-            let block_hash = state_update.block_hash;
+        Ok((state_update, mut declared_classes)) => {
+            // Destruct the state diff to avoid partial move.
+            let starknet_client::StateDiff {
+                storage_diffs,
+                deployed_contracts,
+                declared_classes: declared_class_hashes,
+                old_declared_contracts: old_declared_contract_hashes,
+                nonces,
+            } = state_update.state_diff;
+
+            // Seperate the declared classes to new classes, old classes and implicit declare by
+            // deployment.
+            let n_declared_classes = declared_class_hashes.len();
+            let mut deprecated_classes = declared_classes.split_off(n_declared_classes);
+            let n_deprecated_declared_classes = old_declared_contract_hashes.len();
             let deployed_contract_class_definitions =
-                classes.split_off(state_update.state_diff.old_declared_contracts.len());
+                deprecated_classes.split_off(n_deprecated_declared_classes);
+
             let state_diff = StateDiff {
                 deployed_contracts: IndexMap::from_iter(
-                    state_update
-                        .state_diff
-                        .deployed_contracts
-                        .iter()
-                        .map(|dc| (dc.address, dc.class_hash)),
+                    deployed_contracts.iter().map(|dc| (dc.address, dc.class_hash)),
                 ),
-                storage_diffs: IndexMap::from_iter(
-                    state_update.state_diff.storage_diffs.into_iter().map(|(address, entries)| {
+                storage_diffs: IndexMap::from_iter(storage_diffs.into_iter().map(
+                    |(address, entries)| {
                         (address, entries.into_iter().map(|se| (se.key, se.value)).collect())
-                    }),
-                ),
-                deprecated_declared_classes: classes,
-                nonces: state_update.state_diff.nonces,
+                    },
+                )),
+                declared_classes: declared_classes
+                    .into_iter()
+                    .map(|(class_hash, generic_class)| {
+                        (
+                            class_hash,
+                            generic_class.to_cairo1().expect("Expected Cairo1 class.").into(),
+                        )
+                    })
+                    .zip(
+                        declared_class_hashes
+                            .into_iter()
+                            .map(|hash_entry| hash_entry.compiled_class_hash),
+                    )
+                    .map(|((class_hash, class), compiled_class_hash)| {
+                        (class_hash, (compiled_class_hash, class))
+                    })
+                    .collect(),
+                deprecated_declared_classes: deprecated_classes
+                    .into_iter()
+                    .map(|(class_hash, generic_class)| {
+                        (
+                            class_hash,
+                            generic_class.to_cairo0().expect("Expected Cairo0 class.").into(),
+                        )
+                    })
+                    .collect(),
+                nonces,
             };
+            let deployed_contract_class_definitions = deployed_contract_class_definitions
+                .into_iter()
+                .map(|(class_hash, generic_class)| {
+                    (class_hash, generic_class.to_cairo0().expect("Expected Cairo 0 class.").into())
+                })
+                .collect();
+            let block_hash = state_update.block_hash;
             debug!(
                 "Received new state update of block {current_block_number} with hash {block_hash}."
             );
@@ -231,7 +278,8 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
     fn state_update_stream(
         &self,
         block_number_stream: impl Stream<Item = BlockNumber> + Send + Sync + 'static,
-    ) -> impl Stream<Item = CentralResult<(StateUpdate, IndexMap<ClassHash, ContractClass>)>> {
+    ) -> impl Stream<Item = CentralResult<(StateUpdate, IndexMap<ClassHash, GenericContractClass>)>>
+    {
         // Stream the state updates.
         let starknet_client = self.starknet_client.clone();
         let (state_updates0, mut state_updates1) = block_number_stream
@@ -277,11 +325,11 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
 
                 // Get the next state declared and deployed classes.
                 let len = state_update.state_diff.class_hashes().len();
-                let classes: Option<Result<IndexMap<ClassHash, ContractClass>, _>> =
+                let classes: Option<Result<IndexMap<ClassHash, GenericContractClass>, _>> =
                     flat_classes.take_n(len).await.map(|v| {
                         v.into_iter()
                             .map(|(class_hash, class)| match class {
-                                Ok(Some(class)) => Ok((class_hash, class.into())),
+                                Ok(Some(class)) => Ok((class_hash, class)),
                                 Ok(None) => Err(CentralError::StateUpdateNotFound),
                                 Err(err) => Err(CentralError::ClientError(err)),
                             })

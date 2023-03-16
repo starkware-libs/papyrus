@@ -1,4 +1,4 @@
-use indexmap::IndexMap;
+use indexmap::{indexmap, IndexMap};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::ContractClass;
 use starknet_api::hash::{StarkFelt, StarkHash};
@@ -35,10 +35,12 @@ fn state_sorted() {
         (ContractAddress(patricia_key0), unsorted_storage_entries),
     ]);
 
+    // TODO(yair): Add declared_classes.
     let mut state_diff = StateDiff {
         deployed_contracts: unsorted_deployed_contracts,
         storage_diffs: unsorted_storage_diffs,
         deprecated_declared_classes: unsorted_declared_contracts,
+        declared_classes: indexmap! {},
         nonces: unsorted_nonces,
     };
 
