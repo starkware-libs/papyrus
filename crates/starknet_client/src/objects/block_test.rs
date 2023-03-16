@@ -2,7 +2,7 @@ use assert::assert_ok;
 use assert_matches::assert_matches;
 use indexmap::IndexMap;
 use starknet_api::block::BlockHash;
-use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
+use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::serde_utils::bytes_from_hex_str;
 use starknet_api::state::StorageKey;
@@ -11,7 +11,9 @@ use starknet_api::{patricia_key, stark_felt};
 
 use super::block::{Block, GlobalRoot, TransactionReceiptsError};
 use super::deprecated_contract_class::{ContractClassAbiEntry, DeprecatedContractClass};
-use super::state::{DeployedContract, StateDiff, StateUpdate, StorageEntry};
+use super::state::{
+    DeclaredClassHashEntry, DeployedContract, StateDiff, StateUpdate, StorageEntry,
+};
 use super::transaction::TransactionReceipt;
 use crate::test_utils::read_resource::read_resource_file;
 use crate::ClientError;
@@ -72,6 +74,10 @@ fn load_block_state_update_succeeds() {
                 class_hash: ClassHash(stark_felt!(
                     "0x071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64"
                 )),
+            }],
+            declared_classes: vec![DeclaredClassHashEntry {
+                class_hash: ClassHash(stark_felt!("0x10")),
+                compiled_class_hash: CompiledClassHash(stark_felt!("0x1000")),
             }],
             old_declared_contracts: vec![ClassHash(stark_felt!("0x100"))],
             nonces: IndexMap::from([(
