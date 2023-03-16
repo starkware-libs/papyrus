@@ -14,15 +14,18 @@ use starknet_api::block::{
     BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
 };
 use starknet_api::core::{
-    ClassHash, ContractAddress, EntryPointSelector, GlobalRoot, Nonce, PatriciaKey,
+    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, GlobalRoot, Nonce,
+    PatriciaKey,
 };
 use starknet_api::deprecated_contract_class::{
-    ContractClass, ContractClassAbiEntry, EntryPoint, EntryPointOffset, EntryPointType,
-    EventAbiEntry, FunctionAbiEntry, FunctionAbiEntryType, FunctionAbiEntryWithType, Program,
-    StructAbiEntry, StructMember, TypedParameter,
+    ContractClass as DeprecatedContractClass, ContractClassAbiEntry,
+    EntryPoint as DeprecatedEntryPoint, EntryPointOffset,
+    EntryPointType as DeprecatedEntryPointType, EventAbiEntry, FunctionAbiEntry,
+    FunctionAbiEntryType, FunctionAbiEntryWithType, Program, StructAbiEntry, StructMember,
+    TypedParameter,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::StorageKey;
+use starknet_api::state::{ContractClass, EntryPoint, EntryPointType, FunctionIndex, StorageKey};
 use starknet_api::transaction::{
     Calldata, ContractAddressSalt, DeclareTransaction, DeployAccountTransaction, DeployTransaction,
     EthAddress, EventContent, EventData, EventIndexInTransactionOutput, EventKey, Fee,
@@ -38,7 +41,10 @@ use crate::body::events::{
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
 #[cfg(test)]
 use crate::serializers::serializers_test::{create_storage_serde_test, StorageSerdeTest};
-use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
+use crate::state::data::{
+    IndexedDeclaredContract, IndexedDeployedContract, IndexedDeprecatedDeclaredContract,
+    ThinStateDiff,
+};
 use crate::{EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey, TransactionIndex};
 
 auto_storage_serde! {
@@ -61,13 +67,19 @@ auto_storage_serde! {
     }
     pub struct BlockTimestamp(pub u64);
     pub struct Calldata(pub Arc<Vec<StarkFelt>>);
+    pub struct CompiledClassHash(pub StarkHash);
     pub struct ClassHash(pub StarkHash);
     pub struct ContractAddressSalt(pub StarkHash);
     // TODO(anatg): Consider using the compression utils.
     pub struct ContractClass {
+        pub sierra_program: Vec<StarkFelt>,
+        pub entry_point_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
+        pub abi: String,
+    }
+    pub struct DeprecatedContractClass {
         pub abi: Option<Vec<ContractClassAbiEntry>>,
         pub program: Program,
-        pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
+        pub entry_points_by_type: HashMap<DeprecatedEntryPointType, Vec<DeprecatedEntryPoint>>,
     }
     pub enum ContractClassAbiEntry {
         Event(EventAbiEntry) = 0,
@@ -102,12 +114,22 @@ auto_storage_serde! {
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
     }
-    pub struct EntryPoint {
+    pub struct DeprecatedEntryPoint {
         pub selector: EntryPointSelector,
         pub offset: EntryPointOffset,
     }
+    pub struct EntryPoint {
+        pub function_idx: FunctionIndex,
+        pub selector: EntryPointSelector,
+    }
+    pub struct FunctionIndex(pub usize);
     pub struct EntryPointOffset(pub usize);
     pub struct EntryPointSelector(pub StarkHash);
+    pub enum DeprecatedEntryPointType {
+        Constructor = 0,
+        External = 1,
+        L1Handler = 2,
+    }
     pub enum EntryPointType {
         Constructor = 0,
         External = 1,
@@ -143,8 +165,13 @@ auto_storage_serde! {
     }
     pub struct GasPrice(pub u128);
     pub struct GlobalRoot(pub StarkHash);
+    pub struct IndexedDeprecatedDeclaredContract {
+        pub block_number: BlockNumber,
+        pub contract_class: DeprecatedContractClass,
+    }
     pub struct IndexedDeclaredContract {
         pub block_number: BlockNumber,
+        pub compiled_class_hash: CompiledClassHash,
         pub contract_class: ContractClass,
     }
     pub struct IndexedDeployedContract {
@@ -240,6 +267,7 @@ auto_storage_serde! {
     pub struct ThinStateDiff {
         pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
         pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
+        pub declared_classes: IndexMap<ClassHash, CompiledClassHash>,
         pub deprecated_declared_classes: Vec<ClassHash>,
         pub nonces: IndexMap<ContractAddress, Nonce>,
     }

@@ -1,10 +1,13 @@
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
-use starknet_api::core::{ClassHash, ContractAddress, Nonce};
-use starknet_api::deprecated_contract_class::ContractClass;
+use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
+use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::StarkFelt;
-use starknet_api::state::{StateDiff, StorageKey};
+use starknet_api::state::{ContractClass, StateDiff, StorageKey};
+
+pub type DeclaredClasses = IndexMap<ClassHash, (CompiledClassHash, ContractClass)>;
+pub type DeprecatedDeclaredClasses = IndexMap<ClassHash, DeprecatedContractClass>;
 
 /// Data structs that are serialized into the database.
 
@@ -15,17 +18,25 @@ use starknet_api::state::{StateDiff, StorageKey};
 pub struct ThinStateDiff {
     pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
     pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
+    pub declared_classes: IndexMap<ClassHash, CompiledClassHash>,
     pub deprecated_declared_classes: Vec<ClassHash>,
     pub nonces: IndexMap<ContractAddress, Nonce>,
 }
 
 impl ThinStateDiff {
     // Returns also the declared classes without cloning them.
-    pub(crate) fn from_state_diff(diff: StateDiff) -> (Self, IndexMap<ClassHash, ContractClass>) {
+    pub(crate) fn from_state_diff(
+        diff: StateDiff,
+    ) -> (Self, DeclaredClasses, DeprecatedDeclaredClasses) {
         (
             Self {
                 deployed_contracts: diff.deployed_contracts,
                 storage_diffs: diff.storage_diffs,
+                declared_classes: diff
+                    .declared_classes
+                    .iter()
+                    .map(|(class_hash, (compiled_hash, _class))| (*class_hash, *compiled_hash))
+                    .collect(),
                 deprecated_declared_classes: diff
                     .deprecated_declared_classes
                     .keys()
@@ -33,6 +44,7 @@ impl ThinStateDiff {
                     .collect(),
                 nonces: diff.nonces,
             },
+            diff.declared_classes,
             diff.deprecated_declared_classes,
         )
     }
@@ -53,5 +65,12 @@ pub(crate) struct IndexedDeployedContract {
 #[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub(crate) struct IndexedDeclaredContract {
     pub block_number: BlockNumber,
+    pub compiled_class_hash: CompiledClassHash,
     pub contract_class: ContractClass,
+}
+
+#[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
+pub(crate) struct IndexedDeprecatedDeclaredContract {
+    pub block_number: BlockNumber,
+    pub contract_class: DeprecatedContractClass,
 }
