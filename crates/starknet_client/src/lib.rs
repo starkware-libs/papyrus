@@ -167,10 +167,19 @@ impl StarknetClient {
             Some(inner) => (&inner).try_into()?,
             None => HeaderMap::new(),
         };
+        let info = os_info::get();
+        let system_information =
+            format!("{}; {}; {}", info.os_type(), info.version(), info.bitness());
+        let app_user_agent = format!(
+            "{product_name}/{product_version} ({system_information})",
+            product_name = "papyrus",
+            product_version = "pre-release",
+            system_information = system_information
+        );
         Ok(StarknetClient {
             urls: StarknetUrls::new(url_str)?,
             http_headers: header_map,
-            internal_client: Client::builder().build()?,
+            internal_client: Client::builder().user_agent(app_user_agent).build()?,
             retry_config,
         })
     }

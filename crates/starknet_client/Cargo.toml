@@ -20,6 +20,7 @@ tokio-retry = { version = "0.3" }
 tracing = { version = "0.1.37" }
 url = { version = "2.2.2" }
 http = {version= "0.2.8"}
+os_info = { version = "3.6.0" }
 
 [dev-dependencies]
 assert = { version = "0.0.4" }
