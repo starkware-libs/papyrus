@@ -11,8 +11,8 @@ use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::StorageKey;
 use starknet_api::{patricia_key, stark_felt};
 use starknet_client::{
-    Block, ClientError, ContractClass, DeployedContract, GlobalRoot, MockStarknetClientTrait,
-    StateUpdate, StorageEntry,
+    Block, ClientError, DeployedContract, DeprecatedContractClass, GlobalRoot,
+    MockStarknetClientTrait, StateUpdate, StorageEntry,
 };
 use tokio_stream::StreamExt;
 
@@ -178,9 +178,9 @@ async fn stream_state_updates() {
     let value = stark_felt!("0x666");
 
     // TODO(shahak): Fill these contract classes with non-empty data.
-    let contract_class1 = ContractClass::default();
-    let contract_class2 = ContractClass::default();
-    let contract_class3 = ContractClass::default();
+    let contract_class1 = DeprecatedContractClass::default();
+    let contract_class2 = DeprecatedContractClass::default();
+    let contract_class3 = DeprecatedContractClass::default();
 
     let client_state_diff1 = starknet_client::StateDiff {
         storage_diffs: IndexMap::from([(contract_address1, vec![StorageEntry { key, value }])]),
@@ -188,7 +188,7 @@ async fn stream_state_updates() {
             DeployedContract { address: contract_address1, class_hash: class_hash2 },
             DeployedContract { address: contract_address2, class_hash: class_hash3 },
         ],
-        declared_contracts: vec![class_hash1, class_hash3],
+        old_declared_contracts: vec![class_hash1, class_hash3],
         nonces: IndexMap::from([(contract_address1, nonce1)]),
     };
     let client_state_diff2 = starknet_client::StateDiff::default();
@@ -252,7 +252,10 @@ async fn stream_state_updates() {
     assert_eq!(initial_block_num, current_block_num);
     assert_eq!(block_hash1, current_block_hash);
     assert_eq!(
-        IndexMap::from([(class_hash2, starknet_api::state::ContractClass::from(contract_class2))]),
+        IndexMap::from([(
+            class_hash2,
+            starknet_api::deprecated_contract_class::ContractClass::from(contract_class2)
+        )]),
         deployed_contract_class_definitions,
     );
 
@@ -266,10 +269,16 @@ async fn stream_state_updates() {
     );
     assert_eq!(
         IndexMap::from([
-            (class_hash1, starknet_api::state::ContractClass::from(contract_class1)),
-            (class_hash3, starknet_api::state::ContractClass::from(contract_class3)),
+            (
+                class_hash1,
+                starknet_api::deprecated_contract_class::ContractClass::from(contract_class1)
+            ),
+            (
+                class_hash3,
+                starknet_api::deprecated_contract_class::ContractClass::from(contract_class3)
+            ),
         ]),
-        state_diff.declared_classes,
+        state_diff.deprecated_declared_classes,
     );
     assert_eq!(IndexMap::from([(contract_address1, nonce1)]), state_diff.nonces);
 

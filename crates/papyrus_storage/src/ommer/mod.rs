@@ -5,7 +5,7 @@ mod ommer_test;
 use indexmap::IndexMap;
 use starknet_api::block::{BlockHash, BlockHeader};
 use starknet_api::core::ClassHash;
-use starknet_api::state::ContractClass;
+use starknet_api::deprecated_contract_class::ContractClass;
 use starknet_api::transaction::{
     EventContent, EventIndexInTransactionOutput, Transaction, TransactionOffsetInBlock,
 };

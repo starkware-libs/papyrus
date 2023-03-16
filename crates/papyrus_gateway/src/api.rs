@@ -10,7 +10,8 @@ use starknet_api::state::StorageKey;
 use starknet_api::transaction::{EventKey, TransactionHash, TransactionOffsetInBlock};
 
 use crate::block::Block;
-use crate::state::{ContractClass, StateUpdate};
+use crate::deprecated_contract_class::ContractClass;
+use crate::state::StateUpdate;
 use crate::transaction::{Event, TransactionReceiptWithStatus, TransactionWithType};
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]

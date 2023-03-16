@@ -1,4 +1,4 @@
-use starknet_api::state::Program;
+use starknet_api::deprecated_contract_class::Program;
 use test_utils::read_json_file;
 
 use crate::compression_utils::GzEncoded;
