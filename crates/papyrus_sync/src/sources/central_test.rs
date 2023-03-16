@@ -6,13 +6,14 @@ use indexmap::IndexMap;
 use mockall::predicate;
 use reqwest::StatusCode;
 use starknet_api::block::{BlockHash, BlockNumber};
-use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
+use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::StorageKey;
 use starknet_api::{patricia_key, stark_felt};
 use starknet_client::{
-    Block, ClientError, DeployedContract, DeprecatedContractClass, GlobalRoot,
-    MockStarknetClientTrait, StateUpdate, StorageEntry,
+    Block, ClientError, ContractClass, DeclaredClassHashEntry, DeployedContract,
+    DeprecatedContractClass, GenericContractClass, GlobalRoot, MockStarknetClientTrait,
+    StateUpdate, StorageEntry,
 };
 use tokio_stream::StreamExt;
 
@@ -178,9 +179,24 @@ async fn stream_state_updates() {
     let value = stark_felt!("0x666");
 
     // TODO(shahak): Fill these contract classes with non-empty data.
-    let contract_class1 = DeprecatedContractClass::default();
-    let contract_class2 = DeprecatedContractClass::default();
-    let contract_class3 = DeprecatedContractClass::default();
+    let deprecated_contract_class1 = DeprecatedContractClass::default();
+    let deprecated_contract_class2 = DeprecatedContractClass::default();
+    let deprecated_contract_class3 = DeprecatedContractClass::default();
+
+    let contract_class1 = ContractClass::default();
+    let contract_class2 = ContractClass::default();
+    let new_class_hash1 = ClassHash(stark_felt!("0x111"));
+    let new_class_hash2 = ClassHash(stark_felt!("0x222"));
+    let compiled_class_hash1 = CompiledClassHash(stark_felt!("0x00111"));
+    let compiled_class_hash2 = CompiledClassHash(stark_felt!("0x00222"));
+    let class_hash_entry1 = DeclaredClassHashEntry {
+        class_hash: new_class_hash1,
+        compiled_class_hash: compiled_class_hash1,
+    };
+    let class_hash_entry2 = DeclaredClassHashEntry {
+        class_hash: new_class_hash2,
+        compiled_class_hash: compiled_class_hash2,
+    };
 
     let client_state_diff1 = starknet_client::StateDiff {
         storage_diffs: IndexMap::from([(contract_address1, vec![StorageEntry { key, value }])]),
@@ -189,6 +205,7 @@ async fn stream_state_updates() {
             DeployedContract { address: contract_address2, class_hash: class_hash3 },
         ],
         old_declared_contracts: vec![class_hash1, class_hash3],
+        declared_classes: vec![class_hash_entry1, class_hash_entry2],
         nonces: IndexMap::from([(contract_address1, nonce1)]),
     };
     let client_state_diff2 = starknet_client::StateDiff::default();
@@ -217,21 +234,30 @@ async fn stream_state_updates() {
         .with(predicate::eq(BlockNumber(START_BLOCK_NUMBER + 1)))
         .times(1)
         .returning(move |_x| Ok(Some(block_state_update2_clone.clone())));
-    let contract_class1_clone = contract_class1.clone();
-    mock.expect_class_by_hash()
-        .with(predicate::eq(class_hash1))
-        .times(1)
-        .returning(move |_x| Ok(Some(contract_class1_clone.clone())));
-    let contract_class2_clone = contract_class2.clone();
-    mock.expect_class_by_hash()
-        .with(predicate::eq(class_hash2))
-        .times(1)
-        .returning(move |_x| Ok(Some(contract_class2_clone.clone())));
-    let contract_class3_clone = contract_class3.clone();
-    mock.expect_class_by_hash()
-        .with(predicate::eq(class_hash3))
-        .times(1)
-        .returning(move |_x| Ok(Some(contract_class3_clone.clone())));
+    let new_contract_class1_clone = contract_class1.clone();
+    mock.expect_class_by_hash().with(predicate::eq(new_class_hash1)).times(1).returning(
+        move |_x| {
+            Ok(Some(GenericContractClass::Cairo1ContractClass(new_contract_class1_clone.clone())))
+        },
+    );
+    let new_contract_class2_clone = contract_class2.clone();
+    mock.expect_class_by_hash().with(predicate::eq(new_class_hash2)).times(1).returning(
+        move |_x| {
+            Ok(Some(GenericContractClass::Cairo1ContractClass(new_contract_class2_clone.clone())))
+        },
+    );
+    let contract_class1_clone = deprecated_contract_class1.clone();
+    mock.expect_class_by_hash().with(predicate::eq(class_hash1)).times(1).returning(move |_x| {
+        Ok(Some(GenericContractClass::Cairo0ContractClass(contract_class1_clone.clone())))
+    });
+    let contract_class2_clone = deprecated_contract_class2.clone();
+    mock.expect_class_by_hash().with(predicate::eq(class_hash2)).times(1).returning(move |_x| {
+        Ok(Some(GenericContractClass::Cairo0ContractClass(contract_class2_clone.clone())))
+    });
+    let contract_class3_clone = deprecated_contract_class3.clone();
+    mock.expect_class_by_hash().with(predicate::eq(class_hash3)).times(1).returning(move |_x| {
+        Ok(Some(GenericContractClass::Cairo0ContractClass(contract_class3_clone.clone())))
+    });
 
     let central_source = GenericCentralSource {
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
@@ -254,7 +280,9 @@ async fn stream_state_updates() {
     assert_eq!(
         IndexMap::from([(
             class_hash2,
-            starknet_api::deprecated_contract_class::ContractClass::from(contract_class2)
+            starknet_api::deprecated_contract_class::ContractClass::from(
+                deprecated_contract_class2
+            )
         )]),
         deployed_contract_class_definitions,
     );
@@ -271,14 +299,31 @@ async fn stream_state_updates() {
         IndexMap::from([
             (
                 class_hash1,
-                starknet_api::deprecated_contract_class::ContractClass::from(contract_class1)
+                starknet_api::deprecated_contract_class::ContractClass::from(
+                    deprecated_contract_class1
+                )
             ),
             (
                 class_hash3,
-                starknet_api::deprecated_contract_class::ContractClass::from(contract_class3)
+                starknet_api::deprecated_contract_class::ContractClass::from(
+                    deprecated_contract_class3
+                )
             ),
         ]),
         state_diff.deprecated_declared_classes,
+    );
+    assert_eq!(
+        IndexMap::from([
+            (
+                new_class_hash1,
+                (compiled_class_hash1, starknet_api::state::ContractClass::from(contract_class1))
+            ),
+            (
+                new_class_hash2,
+                (compiled_class_hash2, starknet_api::state::ContractClass::from(contract_class2))
+            ),
+        ]),
+        state_diff.declared_classes,
     );
     assert_eq!(IndexMap::from([(contract_address1, nonce1)]), state_diff.nonces);
 
