@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::ops::Index;
 
 use indexmap::IndexMap;
@@ -9,7 +8,7 @@ use starknet_api::block::{BlockHash, BlockNumber, BlockTimestamp, GasPrice};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::serde_utils::NonPrefixedBytesAsHex;
-use starknet_api::state::{EntryPoint, EntryPointType, Program, StorageKey};
+use starknet_api::state::StorageKey;
 #[cfg(doc)]
 use starknet_api::transaction::TransactionOutput as starknet_api_transaction_output;
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
@@ -247,14 +246,14 @@ impl From<BlockStatus> for starknet_api::block::BlockStatus {
     }
 }
 
+// TODO(yair): add #[serde(deny_unknown_fields)] once 0.11 is fully supported.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
-#[serde(deny_unknown_fields)]
 pub struct StateDiff {
     // IndexMap is serialized as a mapping in json, keeps ordering and is efficiently iterable.
     pub storage_diffs: IndexMap<ContractAddress, Vec<StorageEntry>>,
     pub deployed_contracts: Vec<DeployedContract>,
     #[serde(default)]
-    pub declared_contracts: Vec<ClassHash>,
+    pub old_declared_contracts: Vec<ClassHash>,
     pub nonces: IndexMap<ContractAddress, Nonce>,
 }
 impl StateDiff {
@@ -265,9 +264,9 @@ impl StateDiff {
             .deployed_contracts
             .iter()
             .map(|contract| contract.class_hash)
-            .filter(|hash| !self.declared_contracts.contains(hash))
+            .filter(|hash| !self.old_declared_contracts.contains(hash))
             .collect();
-        let mut declared_class_hashes = self.declared_contracts.clone();
+        let mut declared_class_hashes = self.old_declared_contracts.clone();
         declared_class_hashes.append(&mut deployed_class_hashes);
         declared_class_hashes
     }
@@ -285,80 +284,4 @@ pub struct DeployedContract {
 pub struct StorageEntry {
     pub key: StorageKey,
     pub value: StarkFelt,
-}
-
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct ContractClass {
-    pub abi: serde_json::Value,
-    pub program: Program,
-    /// The selector of each entry point is a unique identifier in the program.
-    pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
-}
-
-impl From<ContractClass> for starknet_api::state::ContractClass {
-    fn from(class: ContractClass) -> Self {
-        // Starknet does not verify the abi. If we can't parse it, we set it to None.
-        let abi = serde_json::from_value::<Vec<ContractClassAbiEntry>>(class.abi)
-            .ok()
-            .map(|entries| entries.into_iter().map(ContractClassAbiEntry::try_into).collect())
-            .and_then(Result::ok);
-        Self { abi, program: class.program, entry_points_by_type: class.entry_points_by_type }
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
-#[serde(untagged)]
-pub enum ContractClassAbiEntry {
-    Event(EventAbiEntry),
-    Function(FunctionAbiEntry),
-    Struct(StructAbiEntry),
-}
-
-impl ContractClassAbiEntry {
-    fn try_into(self) -> Result<starknet_api::state::ContractClassAbiEntry, ()> {
-        match self {
-            ContractClassAbiEntry::Event(entry) => {
-                Ok(starknet_api::state::ContractClassAbiEntry::Event(entry.entry))
-            }
-            ContractClassAbiEntry::Function(entry) => {
-                Ok(starknet_api::state::ContractClassAbiEntry::Function(entry.try_into()?))
-            }
-            ContractClassAbiEntry::Struct(entry) => {
-                Ok(starknet_api::state::ContractClassAbiEntry::Struct(entry.entry))
-            }
-        }
-    }
-}
-
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct EventAbiEntry {
-    pub r#type: String,
-    #[serde(flatten)]
-    pub entry: starknet_api::state::EventAbiEntry,
-}
-
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct FunctionAbiEntry {
-    pub r#type: String,
-    #[serde(flatten)]
-    pub entry: starknet_api::state::FunctionAbiEntry,
-}
-
-impl FunctionAbiEntry {
-    fn try_into(self) -> Result<starknet_api::state::FunctionAbiEntryWithType, ()> {
-        match self.r#type.as_str() {
-            "constructor" => Ok(starknet_api::state::FunctionAbiEntryType::Constructor),
-            "function" => Ok(starknet_api::state::FunctionAbiEntryType::Regular),
-            "l1_handler" => Ok(starknet_api::state::FunctionAbiEntryType::L1Handler),
-            _ => Err(()),
-        }
-        .map(|t| starknet_api::state::FunctionAbiEntryWithType { r#type: t, entry: self.entry })
-    }
-}
-
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct StructAbiEntry {
-    pub r#type: String,
-    #[serde(flatten)]
-    pub entry: starknet_api::state::StructAbiEntry,
 }

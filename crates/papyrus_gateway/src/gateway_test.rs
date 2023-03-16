@@ -33,7 +33,8 @@ use crate::api::{
     JsonRpcClient, JsonRpcError, Tag,
 };
 use crate::block::Block;
-use crate::state::{ContractClass, StateUpdate, ThinStateDiff};
+use crate::deprecated_contract_class::ContractClass;
+use crate::state::{StateUpdate, ThinStateDiff};
 use crate::test_utils::{
     get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
 };
@@ -900,7 +901,7 @@ async fn get_class() {
         .commit()
         .unwrap();
 
-    let (class_hash, contract_class) = diff.declared_classes.get_index(0).unwrap();
+    let (class_hash, contract_class) = diff.deprecated_declared_classes.get_index(0).unwrap();
     let expected_contract_class = contract_class.clone().try_into().unwrap();
 
     // Get class by block hash.
@@ -1020,7 +1021,7 @@ async fn get_class_at() {
         .commit()
         .unwrap();
 
-    let (class_hash, contract_class) = diff.declared_classes.get_index(0).unwrap();
+    let (class_hash, contract_class) = diff.deprecated_declared_classes.get_index(0).unwrap();
     let expected_contract_class = contract_class.clone().try_into().unwrap();
     assert_eq!(diff.deployed_contracts.get_index(0).unwrap().1, class_hash);
     let address = diff.deployed_contracts.get_index(0).unwrap().0;

@@ -22,7 +22,7 @@ reqwest = { version = "0.11", features = ["json", "blocking"] }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" }
 serde_yaml = { version = "0.9.16" }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "9a1fca8" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "b4efbda" }
 starknet_client = { path = "../starknet_client" }
 thiserror = { version = "1.0.31" }
 tokio = { version = "1.18.2", features = ["full","sync"] }

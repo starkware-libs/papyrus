@@ -2,11 +2,12 @@ use assert_matches::assert_matches;
 use indexmap::IndexMap;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
-use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::{
+use starknet_api::deprecated_contract_class::{
     ContractClass, ContractClassAbiEntry, FunctionAbiEntry, FunctionAbiEntryType,
-    FunctionAbiEntryWithType, StateDiff, StateNumber, StorageKey,
+    FunctionAbiEntryWithType,
 };
+use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::state::{StateDiff, StateNumber, StorageKey};
 use starknet_api::{patricia_key, stark_felt};
 use test_utils::get_test_state_diff;
 
@@ -33,7 +34,7 @@ fn append_state_diff() {
             (c0, IndexMap::from([(key0, stark_felt!("0x200")), (key1, stark_felt!("0x201"))])),
             (c1, IndexMap::new()),
         ]),
-        declared_classes: IndexMap::from([(cl0, c_cls0.clone()), (cl1, c_cls1)]),
+        deprecated_declared_classes: IndexMap::from([(cl0, c_cls0.clone()), (cl1, c_cls1)]),
         nonces: IndexMap::from([(c0, Nonce(StarkHash::from(1)))]),
     };
     let diff1 = StateDiff {
@@ -42,7 +43,7 @@ fn append_state_diff() {
             (c0, IndexMap::from([(key0, stark_felt!("0x300")), (key1, stark_felt!("0x0"))])),
             (c1, IndexMap::from([(key0, stark_felt!("0x0"))])),
         ]),
-        declared_classes: IndexMap::from([(cl0, c_cls0.clone())]),
+        deprecated_declared_classes: IndexMap::from([(cl0, c_cls0.clone())]),
         nonces: IndexMap::from([
             (c0, Nonce(StarkHash::from(2))),
             (c1, Nonce(StarkHash::from(1))),
@@ -66,8 +67,11 @@ fn append_state_diff() {
     // Check for ClassAlreadyExists error when trying to declare a different class to an existing
     // class hash.
     let txn = writer.begin_rw_txn().unwrap();
-    let mut diff2 = StateDiff { declared_classes: diff1.declared_classes, ..StateDiff::default() };
-    let (_, class) = diff2.declared_classes.iter_mut().next().unwrap();
+    let mut diff2 = StateDiff {
+        deprecated_declared_classes: diff1.deprecated_declared_classes,
+        ..StateDiff::default()
+    };
+    let (_, class) = diff2.deprecated_declared_classes.iter_mut().next().unwrap();
     class.abi = Some(vec![ContractClassAbiEntry::Function(FunctionAbiEntryWithType {
         r#type: FunctionAbiEntryType::Regular,
         entry: FunctionAbiEntry { name: String::from("junk"), inputs: vec![], outputs: vec![] },
@@ -240,7 +244,7 @@ fn revert_doesnt_delete_previously_declared_classes() {
     let diff0 = StateDiff {
         deployed_contracts: IndexMap::from([(c0, cl0)]),
         storage_diffs: IndexMap::new(),
-        declared_classes: IndexMap::from([(cl0, c_cls0.clone())]),
+        deprecated_declared_classes: IndexMap::from([(cl0, c_cls0.clone())]),
         nonces: IndexMap::from([(c0, Nonce(StarkHash::from(1)))]),
     };
 
@@ -248,7 +252,7 @@ fn revert_doesnt_delete_previously_declared_classes() {
     let diff1 = StateDiff {
         deployed_contracts: IndexMap::from([(c1, cl0)]),
         storage_diffs: IndexMap::new(),
-        declared_classes: IndexMap::from([(cl0, c_cls0)]),
+        deprecated_declared_classes: IndexMap::from([(cl0, c_cls0)]),
         nonces: IndexMap::from([(c1, Nonce(StarkHash::from(2)))]),
     };
 
@@ -305,7 +309,7 @@ fn revert_state() {
     let state_diff1 = StateDiff {
         deployed_contracts: IndexMap::from([(contract1, class1)]),
         storage_diffs: IndexMap::from([(*contract0, updated_storage)]),
-        declared_classes: IndexMap::from([(class1, ContractClass::default())]),
+        deprecated_declared_classes: IndexMap::from([(class1, ContractClass::default())]),
         nonces: IndexMap::from([(contract1, nonce1)]),
     };
 
