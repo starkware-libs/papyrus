@@ -896,7 +896,7 @@
                                     "$ref": "#/components/schemas/CONTRACT_STORAGE_DIFF_ITEM"
                                 }
                             },
-                            "declared_contract_hashes": {
+                            "deprecated_declared_classes": {
                                 "type": "array",
                                 "items": {
                                     "description": "The hash of a new contract declared as part of the new state",
@@ -930,7 +930,7 @@
                         },
                         "required": [
                             "storage_diffs",
-                            "declared_contract_hashes",
+                            "deprecated_declared_classes",
                             "deployed_contracts",
                             "nonces"
                         ]

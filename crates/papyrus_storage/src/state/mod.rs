@@ -8,8 +8,9 @@ use std::collections::HashSet;
 use indexmap::IndexMap;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::deprecated_contract_class::ContractClass;
 use starknet_api::hash::StarkFelt;
-use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey};
+use starknet_api::state::{StateDiff, StateNumber, StorageKey};
 use tracing::debug;
 
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
@@ -92,7 +93,7 @@ pub struct StateReader<'env, Mode: TransactionKind> {
 #[allow(dead_code)]
 impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
     fn new(txn: &'env StorageTxn<'env, Mode>) -> StorageResult<Self> {
-        let declared_classes_table = txn.txn.open_table(&txn.tables.declared_classes)?;
+        let declared_classes_table = txn.txn.open_table(&txn.tables.deprecated_declared_classes)?;
         let deployed_contracts_table = txn.txn.open_table(&txn.tables.deployed_contracts)?;
         let nonces_table = txn.txn.open_table(&txn.tables.nonces)?;
         let storage_table = txn.txn.open_table(&txn.tables.contract_storage)?;
@@ -199,7 +200,8 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let nonces_table = self.txn.open_table(&self.tables.nonces)?;
         let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
-        let declared_classes_table = self.txn.open_table(&self.tables.declared_classes)?;
+        let declared_classes_table =
+            self.txn.open_table(&self.tables.deprecated_declared_classes)?;
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
         let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
 
@@ -251,7 +253,8 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         block_number: BlockNumber,
     ) -> StorageResult<(Self, Option<RevertedStateDiff>)> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
-        let declared_classes_table = self.txn.open_table(&self.tables.declared_classes)?;
+        let declared_classes_table =
+            self.txn.open_table(&self.tables.deprecated_declared_classes)?;
         let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
         let nonces_table = self.txn.open_table(&self.tables.nonces)?;
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
@@ -404,7 +407,7 @@ fn delete_declared_classes<'env>(
     // Merge the class hashes from the state diff and from the deployed contracts into a single
     // unique set.
     let class_hashes: HashSet<&ClassHash> = thin_state_diff
-        .declared_contract_hashes
+        .deprecated_declared_classes
         .iter()
         .chain(deployed_contracts_class_hashes)
         .collect();
