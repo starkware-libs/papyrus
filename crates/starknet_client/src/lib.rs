@@ -24,9 +24,10 @@ use tracing::debug;
 use url::Url;
 
 pub use self::objects::block::{
-    Block, ContractClass, DeployedContract, GlobalRoot, StateDiff, StateUpdate, StorageEntry,
+    Block, DeployedContract, GlobalRoot, StateDiff, StateUpdate, StorageEntry,
     TransactionReceiptsError,
 };
+pub use self::objects::deprecated_contract_class::DeprecatedContractClass;
 use self::retry::Retry;
 pub use self::retry::RetryConfig;
 #[cfg(doc)]
@@ -45,8 +46,11 @@ pub trait StarknetClientTrait {
     /// Returns a [`Block`] corresponding to `block_number`, returning [`None`] in case no such
     /// block exists in the system.
     async fn block(&self, block_number: BlockNumber) -> ClientResult<Option<Block>>;
-    /// Returns a [`ContractClass`] corresponding to `class_hash`.
-    async fn class_by_hash(&self, class_hash: ClassHash) -> ClientResult<Option<ContractClass>>;
+    /// Returns a [`DeprecatedContractClass`] corresponding to `class_hash`.
+    async fn class_by_hash(
+        &self,
+        class_hash: ClassHash,
+    ) -> ClientResult<Option<DeprecatedContractClass>>;
     /// Returns a [`starknet_clinet`][`StateUpdate`] corresponding to `block_number`.
     async fn state_update(&self, block_number: BlockNumber) -> ClientResult<Option<StateUpdate>>;
 }
@@ -283,7 +287,10 @@ impl StarknetClientTrait for StarknetClient {
         self.request_block(Some(block_number)).await
     }
 
-    async fn class_by_hash(&self, class_hash: ClassHash) -> ClientResult<Option<ContractClass>> {
+    async fn class_by_hash(
+        &self,
+        class_hash: ClassHash,
+    ) -> ClientResult<Option<DeprecatedContractClass>> {
         let mut url = self.urls.get_contract_by_hash.clone();
         let class_hash = serde_json::to_string(&class_hash)?;
         url.query_pairs_mut()

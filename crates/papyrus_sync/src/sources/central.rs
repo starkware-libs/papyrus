@@ -12,7 +12,8 @@ use mockall::automock;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;
-use starknet_api::state::{ContractClass, StateDiff};
+use starknet_api::deprecated_contract_class::ContractClass;
+use starknet_api::state::StateDiff;
 use starknet_api::StarknetApiError;
 use starknet_client::{
     ClientCreationError, ClientError, RetryConfig, StarknetClient, StarknetClientTrait, StateUpdate,
@@ -169,7 +170,7 @@ fn client_to_central_state_update(
         Ok((state_update, mut classes)) => {
             let block_hash = state_update.block_hash;
             let deployed_contract_class_definitions =
-                classes.split_off(state_update.state_diff.declared_contracts.len());
+                classes.split_off(state_update.state_diff.old_declared_contracts.len());
             let state_diff = StateDiff {
                 deployed_contracts: IndexMap::from_iter(
                     state_update
@@ -183,7 +184,7 @@ fn client_to_central_state_update(
                         (address, entries.into_iter().map(|se| (se.key, se.value)).collect())
                     }),
                 ),
-                declared_classes: classes,
+                deprecated_declared_classes: classes,
                 nonces: state_update.state_diff.nonces,
             };
             debug!(
