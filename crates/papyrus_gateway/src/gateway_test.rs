@@ -1491,60 +1491,61 @@ async fn serialize_returns_valid_json() {
     validate_transaction(block.body.transactions.index(0), server_address, &schema).await;
 }
 
-async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, schema: &JSONSchema) {
-    let res =
-        send_request(server_address, "starknet_getStateUpdate", r#"{"block_number": 1}"#).await;
-    assert!(schema.validate(&res["result"]).is_ok(), "State update is not valid.");
+async fn validate_schema(
+    method: &str,
+    params: &str,
+    server_address: SocketAddr,
+    schema: &JSONSchema,
+) {
+    if let Err(errors_iter) =
+        schema.validate(&(send_request(server_address, method, params).await)["result"])
+    {
+        let errors: Vec<_> = errors_iter.collect();
+        panic!("Errors in response for {method} with {params}: {errors:#?}");
+    }
+}
 
+async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, schema: &JSONSchema) {
+    validate_schema("starknet_getStateUpdate", r#"{"block_number": 1}"#, server_address, schema)
+        .await;
     let (address, _) = state_diff.deployed_contracts.get_index(0).unwrap();
-    let res = send_request(
-        server_address,
+    validate_schema(
         "starknet_getClassAt",
         format!(r#"{{"block_number": 1}}, "0x{}""#, hex::encode(address.0.key().bytes())).as_str(),
+        server_address,
+        schema,
     )
     .await;
-    assert!(schema.validate(&res["result"]).is_ok(), "Class is not valid.");
 }
 
 async fn validate_block(header: &BlockHeader, server_address: SocketAddr, schema: &JSONSchema) {
-    let res =
-        send_request(server_address, "starknet_getBlockWithTxs", r#"{"block_number": 1}"#).await;
-    assert!(schema.validate(&res["result"]).is_ok(), "Block with transactions is not valid.");
-
-    let res = send_request(
-        server_address,
+    validate_schema("starknet_getBlockWithTxs", r#"{"block_number": 1}"#, server_address, schema)
+        .await;
+    validate_schema(
         "starknet_getBlockWithTxHashes",
         format!(r#"{{"block_hash": "0x{}"}}"#, hex::encode(header.block_hash.0.bytes())).as_str(),
+        server_address,
+        schema,
     )
     .await;
-    assert!(schema.validate(&res["result"]).is_ok(), "Block with transaction hashes is not valid.");
 }
 
 async fn validate_transaction(tx: &Transaction, server_address: SocketAddr, schema: &JSONSchema) {
-    let res = send_request(
-        server_address,
+    validate_schema(
         "starknet_getTransactionByBlockIdAndIndex",
         r#"{"block_number": 1}, 0"#,
+        server_address,
+        schema,
     )
     .await;
-    assert!(schema.validate(&res["result"]).is_ok(), "Transaction is not valid.");
 
-    let res = send_request(
-        server_address,
-        "starknet_getTransactionByHash",
-        format!(r#""0x{}""#, hex::encode(tx.transaction_hash().0.bytes())).as_str(),
-    )
-    .await;
-    assert!(schema.validate(&res["result"]).is_ok(), "Transaction is not valid.");
-
-    let res = send_request(
-        server_address,
+    validate_schema(
         "starknet_getTransactionReceipt",
         format!(r#""0x{}""#, hex::encode(tx.transaction_hash().0.bytes())).as_str(),
+        server_address,
+        schema,
     )
     .await;
-    assert!(schema.validate(&res["result"]).is_ok(), "Transaction receipt is not valid.");
 
-    let res = send_request(server_address, "starknet_getEvents", r#"{"chunk_size": 2}"#).await;
-    assert!(schema.validate(&res["result"]).is_ok(), "Events are not valid.");
+    validate_schema("starknet_getEvents", r#"{"chunk_size": 2}"#, server_address, schema).await;
 }
