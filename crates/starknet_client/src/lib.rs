@@ -23,11 +23,9 @@ use starknet_api::StarknetApiError;
 use tracing::debug;
 use url::Url;
 
-pub use self::objects::block::{
-    Block, DeployedContract, GlobalRoot, StateDiff, StateUpdate, StorageEntry,
-    TransactionReceiptsError,
-};
+pub use self::objects::block::{Block, GlobalRoot, TransactionReceiptsError};
 pub use self::objects::deprecated_contract_class::DeprecatedContractClass;
+pub use self::objects::state::{DeployedContract, StateDiff, StateUpdate, StorageEntry};
 use self::retry::Retry;
 pub use self::retry::RetryConfig;
 #[cfg(doc)]
