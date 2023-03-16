@@ -6,9 +6,11 @@ use reqwest::StatusCode;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
-    EntryPoint, EntryPointOffset, EntryPointType, Program,
+    EntryPoint as DeprecatedEntryPoint, EntryPointOffset,
+    EntryPointType as DeprecatedEntryPointType, Program,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::state::{EntryPoint, EntryPointType, FunctionIndex};
 use starknet_api::transaction::{Fee, TransactionHash, TransactionSignature, TransactionVersion};
 use starknet_api::{patricia_key, stark_felt};
 
@@ -21,6 +23,7 @@ use super::{
     Block, ClientError, RetryErrorCode, StarknetClient, StarknetClientTrait, BLOCK_NUMBER_QUERY,
     CLASS_HASH_QUERY, GET_BLOCK_URL, GET_STATE_UPDATE_URL,
 };
+use crate::ContractClass;
 
 #[test]
 fn new_urls() {
@@ -108,6 +111,54 @@ async fn serialization_precision() {
 async fn contract_class() {
     let starknet_client =
         StarknetClient::new(&mockito::server_url(), None, get_test_config()).unwrap();
+    let expected_contract_class = ContractClass {
+        sierra_program: vec![
+            stark_felt!("0x302e312e30"),
+            stark_felt!("0x1c"),
+            stark_felt!("0x52616e6765436865636b"),
+        ],
+        entry_points_by_type: HashMap::from([(
+            EntryPointType::External,
+            vec! [EntryPoint {
+                function_idx: FunctionIndex(0),
+                selector: EntryPointSelector(stark_felt!(
+                    "0x22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658"
+                )),
+            }],
+        ),
+        (EntryPointType::Constructor, vec![]),
+        (EntryPointType::L1Handler, vec![]),
+        ]),
+        contract_class_version: String::from("0.1.0"),
+        abi: String::from("[\n  {\n    \"type\": \"function\",\n    \"name\": \"test\",\n    \"inputs\": [\n      {\n        \"name\": \"arg\",\n        \"ty\": \"core::felt\"\n      },\n      {\n        \"name\": \"arg1\",\n        \"ty\": \"core::felt\"\n      },\n      {\n        \"name\": \"arg2\",\n        \"ty\": \"core::felt\"\n      }\n    ],\n    \"output_ty\": \"core::felt\",\n    \"state_mutability\": \"external\"\n  },\n  {\n    \"type\": \"function\",\n    \"name\": \"empty\",\n    \"inputs\": [],\n    \"output_ty\": \"()\",\n    \"state_mutability\": \"external\"\n  },\n  {\n    \"type\": \"function\",\n    \"name\": \"call_foo\",\n    \"inputs\": [\n      {\n        \"name\": \"a\",\n        \"ty\": \"core::integer::u128\"\n      }\n    ],\n    \"output_ty\": \"core::integer::u128\",\n    \"state_mutability\": \"external\"\n  }\n]"),
+    };
+
+    let mock_by_hash =
+        mock(
+            "GET",
+            &format!("/feeder_gateway/get_class_by_hash?\
+         {CLASS_HASH_QUERY}=0x4e70b19333ae94bd958625f7b61ce9eec631653597e68645e13780061b2136c")[..],
+        )
+        .with_status(200)
+        .with_body(read_resource_file("contract_class.json"))
+        .create();
+    let contract_class = starknet_client
+        .class_by_hash(ClassHash(stark_felt!(
+            "0x4e70b19333ae94bd958625f7b61ce9eec631653597e68645e13780061b2136c"
+        )))
+        .await
+        .unwrap()
+        .unwrap()
+        .to_cairo1()
+        .unwrap();
+    mock_by_hash.assert();
+    assert_eq!(contract_class, expected_contract_class);
+}
+
+#[tokio::test]
+async fn deprecated_contract_class() {
+    let starknet_client =
+        StarknetClient::new(&mockito::server_url(), None, get_test_config()).unwrap();
     let expected_contract_class = DeprecatedContractClass {
         abi: serde_json::to_value(vec![HashMap::from([
             (
@@ -142,10 +193,10 @@ async fn contract_class() {
             reference_manager: serde_json::Value::Object(serde_json::Map::new()),
         },
         entry_points_by_type: HashMap::from([
-            (EntryPointType::L1Handler, vec![]),
+            (DeprecatedEntryPointType::L1Handler, vec![]),
             (
-                EntryPointType::Constructor,
-                vec![EntryPoint {
+                DeprecatedEntryPointType::Constructor,
+                vec![DeprecatedEntryPoint {
                     selector: EntryPointSelector(stark_felt!(
                         "0x028ffe4ff0f226a9107253e17a904099aa4f63a02a5621de0576e5aa71bc5194"
                     )),
@@ -153,8 +204,8 @@ async fn contract_class() {
                 }],
             ),
             (
-                EntryPointType::External,
-                vec![EntryPoint {
+                DeprecatedEntryPointType::External,
+                vec![DeprecatedEntryPoint {
                     selector: EntryPointSelector(stark_felt!(
                         "0x0000000000000000000000000000000000000000000000000000000000000000"
                     )),
@@ -170,16 +221,19 @@ async fn contract_class() {
          {CLASS_HASH_QUERY}=0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17")[..],
         )
         .with_status(200)
-        .with_body(read_resource_file("contract_class.json"))
+        .with_body(read_resource_file("deprecated_contract_class.json"))
         .create();
     let contract_class = starknet_client
         .class_by_hash(ClassHash(stark_felt!(
             "0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17"
         )))
         .await
+        .unwrap()
+        .unwrap()
+        .to_cairo0()
         .unwrap();
     mock_by_hash.assert();
-    assert_eq!(contract_class.unwrap(), expected_contract_class);
+    assert_eq!(contract_class, expected_contract_class);
 
     // Undeclared class.
     let body = r#"{"code": "StarknetErrorCode.UNDECLARED_CLASS", "message": "Class with hash 0x7 is not declared."}"#;
