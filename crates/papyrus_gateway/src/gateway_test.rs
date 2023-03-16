@@ -33,8 +33,8 @@ use crate::api::{
     JsonRpcClient, JsonRpcError, Tag,
 };
 use crate::block::Block;
-use crate::deprecated_contract_class::ContractClass;
-use crate::state::{StateUpdate, ThinStateDiff};
+use crate::deprecated_contract_class::ContractClass as DeprecatedContractClass;
+use crate::state::{ContractClass, StateUpdate, ThinStateDiff};
 use crate::test_utils::{
     get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
 };
@@ -906,7 +906,7 @@ async fn get_class() {
 
     // Get class by block hash.
     let res = module
-        .call::<_, ContractClass>(
+        .call::<_, DeprecatedContractClass>(
             "starknet_getClass",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *class_hash),
         )
@@ -916,7 +916,7 @@ async fn get_class() {
 
     // Get class by block number.
     let res = module
-        .call::<_, ContractClass>(
+        .call::<_, DeprecatedContractClass>(
             "starknet_getClass",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *class_hash),
         )
@@ -926,7 +926,7 @@ async fn get_class() {
 
     // Ask for an invalid class hash.
     let err = module
-        .call::<_, ContractClass>(
+        .call::<_, DeprecatedContractClass>(
             "starknet_getClass",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
@@ -943,7 +943,7 @@ async fn get_class() {
 
     // Ask for an invalid class hash in the given block.
     let err = module
-        .call::<_, ContractClass>(
+        .call::<_, DeprecatedContractClass>(
             "starknet_getClass",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_header.block_number)),
@@ -960,7 +960,7 @@ async fn get_class() {
 
     // Ask for an invalid block hash.
     let err = module
-        .call::<_, ContractClass>(
+        .call::<_, DeprecatedContractClass>(
             "starknet_getClass",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
@@ -979,7 +979,7 @@ async fn get_class() {
 
     // Ask for an invalid block number.
     let err = module
-        .call::<_, ContractClass>(
+        .call::<_, DeprecatedContractClass>(
             "starknet_getClass",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))), *class_hash),
         )
@@ -990,6 +990,51 @@ async fn get_class() {
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
+}
+
+// TODO(yair): Add this scenario to get_class test.
+#[tokio::test]
+async fn get_new_class() {
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
+    let parent_header = BlockHeader::default();
+    let header = BlockHeader {
+        block_hash: BlockHash(stark_felt!("0x1")),
+        block_number: BlockNumber(1),
+        parent_hash: parent_header.block_hash,
+        ..BlockHeader::default()
+    };
+    let diff = get_test_state_diff();
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(parent_header.block_number, &parent_header)
+        .unwrap()
+        .append_state_diff(
+            parent_header.block_number,
+            starknet_api::state::StateDiff::default(),
+            IndexMap::new(),
+        )
+        .unwrap()
+        .append_header(header.block_number, &header)
+        .unwrap()
+        .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    let (class_hash, (_compiled_class_hash, contract_class)) =
+        diff.declared_classes.get_index(0).unwrap();
+    let expected_contract_class = contract_class.clone().into();
+
+    // Get class by block hash.
+    let res = module
+        .call::<_, ContractClass>(
+            "starknet_getClass",
+            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *class_hash),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res, expected_contract_class);
 }
 
 #[tokio::test]
@@ -1028,7 +1073,7 @@ async fn get_class_at() {
 
     // Get class by block hash.
     let res = module
-        .call::<_, ContractClass>(
+        .call::<_, DeprecatedContractClass>(
             "starknet_getClassAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address),
         )
@@ -1038,7 +1083,7 @@ async fn get_class_at() {
 
     // Get class by block number.
     let res = module
-        .call::<_, ContractClass>(
+        .call::<_, DeprecatedContractClass>(
             "starknet_getClassAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *address),
         )
@@ -1048,7 +1093,7 @@ async fn get_class_at() {
 
     // Ask for an invalid contract.
     let err = module
-        .call::<_, ContractClass>(
+        .call::<_, DeprecatedContractClass>(
             "starknet_getClassAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
@@ -1065,7 +1110,7 @@ async fn get_class_at() {
 
     // Ask for an invalid contract in the given block.
     let err = module
-        .call::<_, ContractClass>(
+        .call::<_, DeprecatedContractClass>(
             "starknet_getClassAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_header.block_number)),
@@ -1082,7 +1127,7 @@ async fn get_class_at() {
 
     // Ask for an invalid block hash.
     let err = module
-        .call::<_, ContractClass>(
+        .call::<_, DeprecatedContractClass>(
             "starknet_getClassAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
@@ -1101,7 +1146,7 @@ async fn get_class_at() {
 
     // Ask for an invalid block number.
     let err = module
-        .call::<_, ContractClass>(
+        .call::<_, DeprecatedContractClass>(
             "starknet_getClassAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))), *address),
         )
