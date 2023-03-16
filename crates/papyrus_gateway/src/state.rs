@@ -1,9 +1,11 @@
+use std::collections::HashMap;
+
 use papyrus_storage::state::data::ThinStateDiff as papyrus_storage_ThinStateDiff;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockHash;
-use starknet_api::core::{ClassHash, ContractAddress, GlobalRoot, Nonce};
+use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, GlobalRoot, Nonce};
 use starknet_api::hash::StarkFelt;
-use starknet_api::state::StorageKey;
+use starknet_api::state::{EntryPoint, EntryPointType, StorageKey};
 
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct StateUpdate {
@@ -17,6 +19,7 @@ pub struct StateUpdate {
 pub struct ThinStateDiff {
     pub deployed_contracts: Vec<DeployedContract>,
     pub storage_diffs: Vec<StorageDiff>,
+    pub declared_classes: Vec<ClassHashes>,
     pub deprecated_declared_classes: Vec<ClassHash>,
     pub nonces: Vec<ContractNonce>,
 }
@@ -37,6 +40,14 @@ impl From<papyrus_storage_ThinStateDiff> for ThinStateDiff {
                     StorageDiff { address, storage_entries }
                 },
             )),
+            declared_classes: diff
+                .declared_classes
+                .into_iter()
+                .map(|(class_hash, compiled_class_hash)| ClassHashes {
+                    class_hash,
+                    compiled_class_hash,
+                })
+                .collect(),
             deprecated_declared_classes: diff.deprecated_declared_classes,
             nonces: Vec::from_iter(
                 diff.nonces
@@ -74,4 +85,29 @@ pub struct StorageDiff {
 pub struct StorageEntry {
     pub key: StorageKey,
     pub value: StarkFelt,
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct ContractClass {
+    pub sierra_program: Vec<StarkFelt>,
+    pub contract_class_version: String,
+    pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
+    pub abi: String,
+}
+
+impl From<starknet_api::state::ContractClass> for ContractClass {
+    fn from(class: starknet_api::state::ContractClass) -> Self {
+        Self {
+            sierra_program: class.sierra_program,
+            contract_class_version: "0.1.0".to_owned(),
+            entry_points_by_type: class.entry_point_by_type,
+            abi: class.abi,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct ClassHashes {
+    pub class_hash: ClassHash,
+    pub compiled_class_hash: CompiledClassHash,
 }
