@@ -7,3 +7,5 @@ mod transaction_test;
 
 pub mod input;
 pub mod output;
+
+pub mod state;

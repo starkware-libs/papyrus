@@ -374,9 +374,16 @@ pub struct Event {
 
 
 pub mod input{
+    use std::collections::HashMap;
+
+    use flate2::Compression;
+    use flate2::write::GzEncoder;
     use serde::{Serialize, Deserialize};
+    use starknet_api::state::{Program, EntryPointType, EntryPoint};
     use crate::api::{BlockId, Tag};
+    use crate::state::{ContractClassAbiEntryWithType};
     use crate::transaction::TransactionType;
+    use crate::utils;
     use starknet_api::transaction::{Fee, TransactionVersion, TransactionSignature, ContractAddressSalt, Calldata};
     use starknet_api::core::{Nonce, ClassHash, ContractAddress, EntryPointSelector};
 
@@ -393,8 +400,15 @@ pub mod input{
     pub struct DeclareTransaction{
         #[serde(flatten)]
         pub common_fields: CommonTransactionFields,
-        pub contract_class: starknet_api::state::ContractClass,
+        pub contract_class: ContractClass,
         pub sender_address: ContractAddress,
+    }
+
+    #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+    pub struct ContractClass{
+        pub abi: Option<Vec<ContractClassAbiEntryWithType>>,
+        pub program: Program,
+        pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
     }
 
     #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
@@ -408,7 +422,7 @@ pub mod input{
 
     #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
     pub struct DeployTransaction{
-        pub contract_class: starknet_api::state::ContractClass,
+        pub contract_class: ContractClass,
         pub r#type: TransactionType,
         pub version: TransactionVersion,
         pub contract_address_salt: ContractAddressSalt,
@@ -440,12 +454,20 @@ pub mod input{
     }
 
     #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+    pub struct Test{
+        #[serde(flatten)]
+        pub common_fields: CommonTransactionFields,
+        pub sender_address: ContractAddress,
+        pub calldata: Calldata
+    }
+
+    #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
     #[serde(untagged)]
     pub enum Transaction{
         Declare(DeclareTransaction),
         DeployAccount(DeployAccountTransaction),
         Deploy(DeployTransaction),
-        Invoke(InvokeTransaction)
+        Invoke(InvokeTransaction),
     }
 
     impl Into<starknet_client::objects::transaction::TransactionType> for TransactionType{
@@ -506,7 +528,7 @@ pub mod input{
         fn into(self) -> starknet_client::objects::input::transaction::DeclareTransaction {
             starknet_client::objects::input::transaction::DeclareTransaction{
                 common_fields: self.common_fields.into(),
-                contract_class: self.contract_class,
+                contract_class: self.contract_class.into(),
                 sender_address: self.sender_address
             }
         }
@@ -514,9 +536,16 @@ pub mod input{
 
     impl Into<starknet_client::objects::input::transaction::DeployTransaction> for DeployTransaction{
         fn into(self) -> starknet_client::objects::input::transaction::DeployTransaction {
+
+            let class_hash = starknet_api::core::calculate_contract_address(
+                self.contract_address_salt, 
+                utils::compute_contract_class_hash(&self.contract_class), 
+                &self.constructor_calldata, 
+                ContractAddress::default()).unwrap();
+
             starknet_client::objects::input::transaction::DeployTransaction{
                 r#type: self.r#type.into(),
-                contract_class: self.contract_class,
+                contract_class: self.contract_class.into(),
                 version: self.version,
                 contract_address_salt: self.contract_address_salt,
                 constructor_calldata: starknet_client::objects::input::transaction::Calldata::from(self.constructor_calldata)
@@ -539,7 +568,7 @@ pub mod input{
         fn into(self) -> starknet_client::objects::input::transaction::InvokeTransactionV1 {
             starknet_client::objects::input::transaction::InvokeTransactionV1{
                 common_fields: self.common_fields.into(),
-                sender_address: self.sender_address,
+                contract_address: self.sender_address,
                 calldata: starknet_client::objects::input::transaction::Calldata::from(self.calldata)
             }
         }
@@ -561,6 +590,42 @@ pub mod input{
                 Transaction::DeployAccount(t) => starknet_client::objects::input::transaction::Transaction::DeployAccount(t.into()),
                 Transaction::Deploy(t) => starknet_client::objects::input::transaction::Transaction::Deploy(t.into()),
                 Transaction::Invoke(t) => starknet_client::objects::input::transaction::Transaction::Invoke(t.into()),
+            }
+        }
+    }
+
+    impl Into<starknet_client::objects::input::transaction::ContractClass> for ContractClass{
+        fn into(self) -> starknet_client::objects::input::transaction::ContractClass {
+            let program_value = serde_json::to_value(&self.program).unwrap();
+            let program_value = utils::traverse_and_exclude_top_level_keys(
+                &program_value, 
+                &|key, val|{
+                    return (key == "attributes" || key == "compiler_version") && val.is_null();
+            });
+            // // Remove the 'attributes' key if it is null.
+            // if self.program.attributes == serde_json::value::Value::Null {
+            //     program_value.as_object_mut().unwrap().remove("attributes");
+            // }
+            // // Remove the 'compiler_version' key if it is null.
+            // if self.program.compiler_version == serde_json::value::Value::Null {
+            //     program_value.as_object_mut().unwrap().remove("compiler_version");
+            // }
+
+            let abi = if self.abi.is_none() {
+                vec![]
+            } else {
+                self.abi.unwrap().into_iter().map(|entry| entry.into()).collect()
+            };
+
+            let mut en = GzEncoder::new(Vec::new(), Compression::fast());
+            serde_json::to_writer(&mut en, &program_value).unwrap();
+            let gzip_compressed = en.finish().unwrap();
+            let encoded_json = base64::encode(&gzip_compressed);
+
+            starknet_client::objects::input::transaction::ContractClass{
+                abi: Some(abi),
+                entry_points_by_type: self.entry_points_by_type,
+                program: encoded_json
             }
         }
     }

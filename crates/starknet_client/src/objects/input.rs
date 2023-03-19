@@ -1,8 +1,11 @@
 pub mod transaction{
+    use std::collections::HashMap;
+
     use serde::{Serialize, Deserialize};
-    use starknet_api::state::ContractClass;
+    use starknet_api::state::{EntryPointType, EntryPoint};
     use starknet_api::transaction::{Fee, TransactionVersion, ContractAddressSalt};
     use starknet_api::core::{Nonce, ClassHash, ContractAddress, EntryPointSelector};
+    use crate::objects::state::{ContractClassAbiEntry};
     use crate::objects::transaction::TransactionType;
 
     #[derive(Debug, Clone, Eq, PartialEq, Deserialize)]
@@ -23,6 +26,13 @@ pub mod transaction{
         pub nonce: Nonce
     }
 
+    #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+    pub struct ContractClass {
+        pub abi: Option<Vec<ContractClassAbiEntry>>,
+        pub program: String,
+        /// The selector of each entry point is a unique identifier in the program.
+        pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
+    }
     #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
     pub struct DeclareTransaction{
         #[serde(flatten)]
@@ -62,7 +72,7 @@ pub mod transaction{
     pub struct InvokeTransactionV1{
         #[serde(flatten)]
         pub common_fields: CommonTransactionFields,
-        pub sender_address: ContractAddress,
+        pub contract_address: ContractAddress,
         pub calldata: Calldata
     }
 

@@ -1,5 +1,6 @@
 mod api;
 mod block;
+mod utils;
 #[cfg(test)]
 mod gateway_test;
 mod state;
@@ -558,10 +559,14 @@ impl JsonRpcServer for JsonRpcServerImpl {
         block_id: BlockId, 
         request: crate::transaction::input::Transaction
     ) -> Result<crate::transaction::output::FeeEstimate, Error>{
-        let res = self.starknet_source
+        
+        let res = match request {
+            crate::transaction::input::Transaction::Deploy(_) => Option::Some(starknet_client::objects::output::transaction::FeeEstimate::default()),
+            _ => self.starknet_source
             .simulate_transaction(block_id.into(), request.into())
             .await
-            .map_err(starknet_client_error)?;
+            .map_err(starknet_client_error)?
+        };
 
         return Result::Ok(crate::transaction::output::FeeEstimate::from(res.unwrap()));
     }
