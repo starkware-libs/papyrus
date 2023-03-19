@@ -79,10 +79,11 @@ cargo run --release --package papyrus_node --bin papyrus_node -- --help
 
 ## Running `papyrus` with Docker
 
-Prerequisites
+### Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/)
 
+### Command line
 You can run a `papyrus` node with the default configuration by running:
 
 ```bash
@@ -92,7 +93,7 @@ docker run --rm --name papyrus\
   ghcr.io/starkware-libs/papyrus:dev
 ```
 
-Note:
+### Notes
 
 - The container must have write access to `<local-host-data-path>`.
 A possible way to assure this is to create the `<local-host-data-path>` directory (only the first
@@ -101,6 +102,27 @@ time you run `papyrus`) and add `--user "$(id -u):$(id -g)"` to the docker run c
 up-to-date code. Once we have official releases we will add a `latest` tag for the latest release.
 - Currently, there is no automatic upgrade mechanism.
 Make sure to periodically pull the latest image and re-run the node.
+
+### Memory usage
+By default, the node will use all the RAM memory it can in order to cache the storage.
+
+If you're not running any other applications on your machine, this is the recommended behavior.
+
+Otherwise, you can limit the node's memory usage by running it in a container with limited memory.
+
+This can be done by adding the flag `--memory 1g` (For 1GB limitation) to the command above.
+The full command should be
+
+```bash
+docker run --rm --name papyrus\
+  -p 8080-8081:8080-8081 \
+  -v <local-host-data-path>:/app/data \
+  --memory <memory-limit>
+  ghcr.io/starkware-libs/papyrus:dev
+```
+
+For more information, look at [Docker's documentation](https://docs.docker.com/config/containers/resource_constraints/#limit-a-containers-access-to-memory)
+
 
 ## Endpoints
 
