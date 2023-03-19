@@ -47,14 +47,22 @@ where
     file.write_all(to_write.as_bytes()).unwrap();
 }
 
-// Returns a vector with a random block number.
-pub async fn get_block_number_args() -> Vec<String> {
-    vec![get_random_block_number().to_string()]
-}
-
 pub async fn get_block_with_tx_hashes(node_address: SocketAddr, block_number: u64) -> jsonVal {
     let params = format!("{{ \"block_number\": {block_number} }}");
     send_request(node_address, "starknet_getBlockWithTxHashes", &params).await
+}
+
+// Creates the file last_block_number.txt. Write to the file the last block number for the load
+// test.
+async fn last_block_number(node_address: SocketAddr) {
+    let last_block_number = &send_request(node_address, "starknet_blockNumber", "").await["result"];
+    let mut file = File::create(path_in_resources("last_block_number.txt")).unwrap();
+    file.write_all(last_block_number.to_string().as_bytes()).unwrap();
+}
+
+// Returns a vector with a random block number.
+pub async fn get_block_number_args() -> Vec<String> {
+    vec![get_random_block_number().to_string()]
 }
 
 // Returns a vector with a random block hash.
@@ -69,12 +77,4 @@ pub async fn get_block_hash_args(node_address: SocketAddr) -> Vec<String> {
         }
     };
     vec![block_hash.to_string()]
-}
-
-// Creates the file last_block_number.txt. Write to the file the last block number for the load
-// test.
-async fn last_block_number(node_address: SocketAddr) {
-    let last_block_number = &send_request(node_address, "starknet_blockNumber", "").await["result"];
-    let mut file = File::create(path_in_resources("last_block_number.txt")).unwrap();
-    file.write_all(last_block_number.to_string().as_bytes()).unwrap();
 }
