@@ -11,4 +11,8 @@ pub trait JsonRpc {
     /// Gets the node config.
     #[method(name = "nodeConfig")]
     fn node_config(&self) -> Result<serde_yaml::Value, Error>;
+
+    /// Gets the node version.
+    #[method(name = "nodeVersion")]
+    fn node_version(&self) -> Result<String, Error>;
 }
