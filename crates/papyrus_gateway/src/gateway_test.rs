@@ -1,6 +1,7 @@
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 use std::net::SocketAddr;
 use std::ops::Index;
+use std::sync::Arc;
 
 use assert_matches::assert_matches;
 use indexmap::IndexMap;
@@ -15,12 +16,13 @@ use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{EventIndex, TransactionIndex};
+use serde_json::Value;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::StateDiff;
+use starknet_api::state::{StateDiff, Program};
 use starknet_api::transaction::{
-    EventIndexInTransactionOutput, EventKey, Transaction, TransactionHash, TransactionOffsetInBlock,
+    EventIndexInTransactionOutput, EventKey, Transaction, TransactionHash, TransactionOffsetInBlock, Calldata, Fee,
 };
 use starknet_api::{patricia_key, stark_felt};
 use test_utils::{
@@ -38,11 +40,12 @@ use crate::test_utils::{
     get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
     send_request, get_test_starknet_source_config,
 };
+use crate::transaction::output::FeeEstimate;
 use crate::transaction::{
     Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
     TransactionWithType, Transactions,
 };
-use crate::{run_server, ContinuationTokenAsStruct};
+use crate::{run_server, ContinuationTokenAsStruct, utils};
 
 #[tokio::test]
 async fn block_number() {
@@ -1492,6 +1495,98 @@ async fn serialize_returns_valid_json() {
     validate_state(&state_diff, server_address, &schema).await;
     validate_block(&block.header, server_address, &schema).await;
     validate_transaction(block.body.transactions.index(0), server_address, &schema).await;
+}
+
+#[tokio::test]
+async fn estimate_fee_deploy_transaction(){
+    let (rpc_server, _) = get_test_rpc_server_and_storage_writer();
+    let input = crate::transaction::input::DeployTransaction { 
+        r#type: crate::transaction::TransactionType::Deploy,
+        version: starknet_api::transaction::TransactionVersion(StarkFelt::from(0)),
+        contract_class: serde_json::Value::Null,
+        contract_address_salt: starknet_api::transaction::ContractAddressSalt(StarkHash::from(0)),
+        constructor_calldata: Calldata(Arc::new(Vec::<StarkFelt>::new()))
+    };
+
+    let res = rpc_server.call::<_, FeeEstimate>("starknet_estimateFee", (BlockId::Tag(Tag::Pending), input) ).await.unwrap();
+    assert_eq!(res, FeeEstimate::default());
+}
+
+#[tokio::test]
+async fn serde_remove_elements_from_json(){
+    let input = r#"
+        {
+            "name": "John Doe",
+            "isStudent": true,
+            "age":30,
+            "address": {
+                "street": "Vlvo",
+                "city": "Anytown",
+                "state": "Any"
+            },
+            "should_be_removed": [],
+            "scores": 
+            [
+                {
+                    "street": "AAA",
+                    "age": 5,
+                    "should_be_removed": []
+                },
+                {
+                    "age": 5
+                }
+            ],
+            "arr": [90, 85, 95]
+        }
+    "#;
+
+    let expected_output = r#"
+        {
+            "name": "John Doe",
+            "isStudent": true,
+            "age":30,
+            "address": {
+                "street": "Vlvo",
+                "city": "Anytown",
+                "state": "Any"
+            },
+            "scores": 
+            [
+                {
+                    "street": "AAA",
+                    "age": 5
+                },
+                {
+                    "age": 5
+                }
+            ],
+            "arr": [90, 85, 95]
+        }
+    "#;
+    
+    let value: Value = serde_json::from_str(input).unwrap();
+    let mut new_object: serde_json::Map<String, Value> = serde_json::Map::new();
+
+    let res = crate::utils::traverse_and_exclude_recursively(
+        &value, 
+        &mut new_object, 
+        &|key, val| {
+            return key=="should_be_removed" && 
+            val.is_array() && 
+            val.as_array().unwrap().is_empty()
+        });
+
+    assert_eq!(res, serde_json::from_str::<serde_json::Value>(expected_output).unwrap());
+}
+
+#[tokio::test]
+async fn test_contract_class_hash_generation(){
+    let data: serde_json::Value= serde_json::from_str(&std::fs::read_to_string("./resources/contract_compiled.json").unwrap()).unwrap();
+    
+    let expected_class_hash = ClassHash(StarkHash::try_from("0x399998c787e0a063c3ac1d2abac084dcbe09954e3b156d53a8c43a02aa27d35").unwrap());
+
+    let resulted_class_hash = utils::compute_contract_class_hash_v0(&data);
+    assert_eq!(resulted_class_hash, expected_class_hash);
 }
 
 async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, schema: &JSONSchema) {
