@@ -1,4 +1,5 @@
 mod block;
+mod downloads_manager;
 mod sources;
 mod state;
 
@@ -35,23 +36,31 @@ pub enum StateSyncError {
     StorageError(#[from] StorageError),
     #[error(transparent)]
     CentralSourceError(#[from] CentralError),
-    #[error("Sync internal error - {msg}")]
-    SyncInternalError { msg: String },
+    #[error("Channel error - {msg}")]
+    Channel { msg: String },
 }
 
 impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSync<TCentralSource> {
     pub async fn run(&mut self) -> StateSyncResult {
         info!("State sync started.");
         let mut block_sync =
-            BlockSync::new(self.config, self.central_source.clone(), self.reader.clone());
+            BlockSync::new(self.config, self.central_source.clone(), self.reader.clone())?;
         let mut state_diff_sync =
-            StateDiffSync::new(self.config, self.central_source.clone(), self.reader.clone());
+            StateDiffSync::new(self.config, self.central_source.clone(), self.reader.clone())?;
 
         loop {
             match self.sync_while_ok(&mut block_sync, &mut state_diff_sync).await {
                 // A recoverable error occurred. Sleep and try syncing again.
                 Err(err) if is_recoverable(&err) => {
                     warn!("{}", err);
+                    if let Err(err) = block_sync.restart() {
+                        error!("{}", err);
+                        return Err(err);
+                    }
+                    if let Err(err) = state_diff_sync.restart() {
+                        error!("{}", err);
+                        return Err(err);
+                    }
                     tokio::time::sleep(self.config.recoverable_error_sleep_duration).await;
                     continue;
                 }
@@ -60,7 +69,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                     error!("{}", err);
                     return Err(err);
                 }
-                Ok(_) => continue,
+                Ok(()) => continue,
             }
         }
 
@@ -68,6 +77,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         fn is_recoverable(err: &StateSyncError) -> bool {
             match err {
                 StateSyncError::CentralSourceError(_) => true,
+                StateSyncError::Channel { msg: _ } => true,
                 StateSyncError::StorageError(storage_err)
                     if matches!(storage_err, StorageError::InnerError(_)) =>
                 {
@@ -89,7 +99,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         let txn2 = self.writer.begin_rw_txn()?;
         state_diff_sync.step(txn2)?;
 
-        tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+        tokio::time::sleep(Duration::from_millis(1)).await;
         Ok(())
     }
 }

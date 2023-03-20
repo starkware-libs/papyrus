@@ -186,7 +186,7 @@ fn client_to_central_state_update(
                 declared_classes: classes,
                 nonces: state_update.state_diff.nonces,
             };
-            debug!(
+            trace!(
                 "Received new state update of block {current_block_number} with hash {block_hash}."
             );
             trace!(
@@ -208,7 +208,7 @@ fn client_to_central_block(
 ) -> CentralResult<Block> {
     let res = match maybe_client_block {
         Ok(Some(block)) => {
-            debug!("Received new block {current_block_number} with hash {}.", block.block_hash);
+            trace!("Received new block {current_block_number} with hash {}.", block.block_hash);
             trace!("Block: {block:#?}.");
             Block::try_from(block).map_err(|err| CentralError::ClientError(Arc::new(err)))
         }
