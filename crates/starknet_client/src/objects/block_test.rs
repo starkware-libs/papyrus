@@ -15,6 +15,7 @@ use super::state::{
     DeclaredClassHashEntry, DeployedContract, StateDiff, StateUpdate, StorageEntry,
 };
 use super::transaction::TransactionReceipt;
+use crate::objects::state::ReplacedClass;
 use crate::test_utils::read_resource::read_resource_file;
 use crate::ClientError;
 
@@ -86,6 +87,14 @@ fn load_block_state_update_succeeds() {
                 )),
                 Nonce(stark_felt!("0x12")),
             )]),
+            replaced_classes: vec![ReplacedClass {
+                address: ContractAddress(patricia_key!(
+                    "0x56b0efe9d91fcda0f341af928404056c5220ee0ccc66be15d20611a172dbd52"
+                )),
+                class_hash: ClassHash(stark_felt!(
+                    "0x2248aff260e5837317641ff4f861495dd71e78b9dae98a31113e569b336bd26"
+                )),
+            }],
         },
     };
     assert_eq!(
