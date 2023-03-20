@@ -422,7 +422,7 @@ pub mod input{
 
     #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
     pub struct DeployTransaction{
-        pub contract_class: ContractClass,
+        pub contract_class: serde_json::Value,
         pub r#type: TransactionType,
         pub version: TransactionVersion,
         pub contract_address_salt: ContractAddressSalt,
@@ -526,25 +526,6 @@ pub mod input{
         }
     }
 
-    impl Into<starknet_client::objects::input::transaction::DeployTransaction> for DeployTransaction{
-        fn into(self) -> starknet_client::objects::input::transaction::DeployTransaction {
-
-            let class_hash = starknet_api::core::calculate_contract_address(
-                self.contract_address_salt, 
-                utils::compute_contract_class_hash(&self.contract_class), 
-                &self.constructor_calldata, 
-                ContractAddress::default()).unwrap();
-
-            starknet_client::objects::input::transaction::DeployTransaction{
-                r#type: self.r#type.into(),
-                contract_class: self.contract_class.into(),
-                version: self.version,
-                contract_address_salt: self.contract_address_salt,
-                constructor_calldata: starknet_client::objects::input::transaction::Calldata::from(self.constructor_calldata)
-            }
-        }
-    }
-
     impl Into<starknet_client::objects::input::transaction::InvokeTransactionV0> for InvokeTransactionV0{
         fn into(self) -> starknet_client::objects::input::transaction::InvokeTransactionV0 {
             starknet_client::objects::input::transaction::InvokeTransactionV0{
@@ -580,8 +561,8 @@ pub mod input{
             match self{
                 Transaction::Declare(t) => starknet_client::objects::input::transaction::Transaction::Declare(t.into()),
                 Transaction::DeployAccount(t) => starknet_client::objects::input::transaction::Transaction::DeployAccount(t.into()),
-                Transaction::Deploy(t) => starknet_client::objects::input::transaction::Transaction::Deploy(t.into()),
                 Transaction::Invoke(t) => starknet_client::objects::input::transaction::Transaction::Invoke(t.into()),
+                _ => unreachable!("Should not fall in this case")
             }
         }
     }
@@ -594,14 +575,6 @@ pub mod input{
                 &|key, val|{
                     return (key == "attributes" || key == "compiler_version") && val.is_null();
             });
-            // // Remove the 'attributes' key if it is null.
-            // if self.program.attributes == serde_json::value::Value::Null {
-            //     program_value.as_object_mut().unwrap().remove("attributes");
-            // }
-            // // Remove the 'compiler_version' key if it is null.
-            // if self.program.compiler_version == serde_json::value::Value::Null {
-            //     program_value.as_object_mut().unwrap().remove("compiler_version");
-            // }
 
             let abi = if self.abi.is_none() {
                 vec![]

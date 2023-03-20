@@ -88,7 +88,6 @@ pub mod transaction{
     pub enum Transaction{
         Declare(DeclareTransaction),
         DeployAccount(DeployAccountTransaction),
-        Deploy(DeployTransaction),
         Invoke(InvokeTransaction)
     }
 
