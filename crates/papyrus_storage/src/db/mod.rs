@@ -19,12 +19,6 @@ use crate::db::serialization::{StorageSerde, StorageSerdeEx};
 // Assumptions:
 // The serialization is consistent across code versions (though, not necessarily across machines).
 
-// Maximum number of Sub-Databases.
-// TODO(spapini): Get these from configuration, and have a separate test configuration.
-const MAX_DBS: usize = 21;
-const MIN_SIZE: usize = 1 << 20; // Minimum db size 1MB;
-const GROWTH_STEP: isize = 1 << 26; // Growth step 64MB;
-
 // Note that NO_TLS mode is used by default.
 type EnvironmentKind = WriteMap;
 type Environment = libmdbx::Environment<EnvironmentKind>;
@@ -35,7 +29,10 @@ type DbValueType<'env> = Cow<'env, [u8]>;
 #[derive(Clone, Serialize, Deserialize)]
 pub struct DbConfig {
     pub path: String,
+    pub min_size: usize,
     pub max_size: usize,
+    pub growth_step: isize,
+    pub max_dbs: usize,
 }
 
 /// A single table statistics.
@@ -68,11 +65,11 @@ pub(crate) fn open_env(config: DbConfig) -> Result<(DbReader, DbWriter)> {
     let env = Arc::new(
         Environment::new()
             .set_geometry(Geometry {
-                size: Some(MIN_SIZE..config.max_size),
-                growth_step: Some(GROWTH_STEP),
+                size: Some(config.min_size..config.max_size),
+                growth_step: Some(config.growth_step),
                 ..Default::default()
             })
-            .set_max_dbs(MAX_DBS)
+            .set_max_dbs(config.max_dbs)
             .open(Path::new(&config.path))?,
     );
     Ok((DbReader { env: env.clone() }, DbWriter { env }))
