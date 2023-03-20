@@ -137,6 +137,8 @@ pub enum ClientError {
     TransactionReceiptsError(#[from] TransactionReceiptsError),
     #[error("Wrong type of contract class")]
     BadContractClassType,
+    #[error("Declare version doesn't match transaction structure.")]
+    BadDeclareTransaction,
 }
 
 const GET_BLOCK_URL: &str = "feeder_gateway/get_block";

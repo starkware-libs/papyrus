@@ -1,14 +1,26 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
-use starknet_api::hash::StarkHash;
+use starknet_api::core::{
+    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, Nonce,
+};
+use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::{
     Calldata, ContractAddressSalt, DeclareTransactionOutput, DeployAccountTransactionOutput,
     DeployTransactionOutput, EthAddress, Event, Fee, InvokeTransactionOutput,
     L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, MessageToL1, TransactionHash,
     TransactionOffsetInBlock, TransactionOutput, TransactionSignature, TransactionVersion,
 };
+
+use crate::ClientError;
+
+// TODO(yair): Make these functions regular consts.
+fn tx_v1() -> TransactionVersion {
+    TransactionVersion(StarkFelt::try_from("0x1").expect("Unable to convert 0x1 to StarkFelt."))
+}
+fn tx_v2() -> TransactionVersion {
+    TransactionVersion(StarkFelt::try_from("0x2").expect("Unable to convert 0x2 to StarkFelt."))
+}
 
 // TODO(dan): consider extracting common fields out (version, hash, type).
 #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
@@ -25,9 +37,15 @@ pub enum Transaction {
 impl From<Transaction> for starknet_api::transaction::Transaction {
     fn from(tx: Transaction) -> Self {
         match tx {
-            Transaction::Declare(declare_tx) => {
-                starknet_api::transaction::Transaction::Declare(declare_tx.into())
-            }
+            Transaction::Declare(declare_tx) => match declare_tx.version {
+                v1 if v1 == tx_v1() => starknet_api::transaction::Transaction::DeclareV1(
+                    declare_tx.try_into().expect("Unable to convert Declare V1."),
+                ),
+                v2 if v2 == tx_v2() => starknet_api::transaction::Transaction::DeclareV2(
+                    declare_tx.try_into().expect("Unable to convert Declare V2."),
+                ),
+                _ => unreachable!("Unsupported declare tx version."),
+            },
             Transaction::Deploy(deploy_tx) => {
                 starknet_api::transaction::Transaction::Deploy(deploy_tx.into())
             }
@@ -94,6 +112,7 @@ impl From<L1HandlerTransaction> for starknet_api::transaction::L1HandlerTransact
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct DeclareTransaction {
     pub class_hash: ClassHash,
+    pub compiled_class_hash: Option<CompiledClassHash>,
     pub sender_address: ContractAddress,
     pub nonce: Nonce,
     pub max_fee: Fee,
@@ -104,9 +123,12 @@ pub struct DeclareTransaction {
     pub r#type: TransactionType,
 }
 
-impl From<DeclareTransaction> for starknet_api::transaction::DeclareTransaction {
-    fn from(declare_tx: DeclareTransaction) -> Self {
-        starknet_api::transaction::DeclareTransaction {
+impl TryFrom<DeclareTransaction> for starknet_api::transaction::DeclareV1Transaction {
+    fn try_from(declare_tx: DeclareTransaction) -> Result<Self, Self::Error> {
+        if declare_tx.version != tx_v1() || declare_tx.compiled_class_hash.is_some() {
+            return Err(ClientError::BadDeclareTransaction);
+        }
+        Ok(starknet_api::transaction::DeclareV1Transaction {
             transaction_hash: declare_tx.transaction_hash,
             max_fee: declare_tx.max_fee,
             version: declare_tx.version,
@@ -114,8 +136,32 @@ impl From<DeclareTransaction> for starknet_api::transaction::DeclareTransaction 
             class_hash: declare_tx.class_hash,
             sender_address: declare_tx.sender_address,
             nonce: declare_tx.nonce,
-        }
+        })
     }
+
+    type Error = ClientError;
+}
+
+impl TryFrom<DeclareTransaction> for starknet_api::transaction::DeclareV2Transaction {
+    fn try_from(declare_tx: DeclareTransaction) -> Result<Self, Self::Error> {
+        if declare_tx.version != tx_v2() || declare_tx.compiled_class_hash.is_none() {
+            return Err(ClientError::BadDeclareTransaction);
+        }
+        Ok(starknet_api::transaction::DeclareV2Transaction {
+            transaction_hash: declare_tx.transaction_hash,
+            max_fee: declare_tx.max_fee,
+            version: declare_tx.version,
+            signature: declare_tx.signature,
+            class_hash: declare_tx.class_hash,
+            compiled_class_hash: declare_tx
+                .compiled_class_hash
+                .expect("Expected some compiled_class_hash."),
+            sender_address: declare_tx.sender_address,
+            nonce: declare_tx.nonce,
+        })
+    }
+
+    type Error = ClientError;
 }
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]

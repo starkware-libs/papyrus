@@ -3,10 +3,10 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
 use starknet_api::core::{ContractAddress, EntryPointSelector, Nonce};
 use starknet_api::transaction::{
-    Calldata, DeclareTransaction, DeclareTransactionOutput, DeployAccountTransaction,
-    DeployAccountTransactionOutput, DeployTransaction, DeployTransactionOutput, Fee,
-    InvokeTransactionOutput, L1HandlerTransaction, L1HandlerTransactionOutput, TransactionHash,
-    TransactionSignature, TransactionVersion,
+    Calldata, DeclareTransactionOutput, DeclareV1Transaction, DeclareV2Transaction,
+    DeployAccountTransaction, DeployAccountTransactionOutput, DeployTransaction,
+    DeployTransactionOutput, Fee, InvokeTransactionOutput, L1HandlerTransaction,
+    L1HandlerTransactionOutput, TransactionHash, TransactionSignature, TransactionVersion,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -79,7 +79,8 @@ pub enum InvokeTransaction {
 #[serde(untagged)]
 // Note: When deserializing an untagged enum, no variant can be a prefix of variants to follow.
 pub enum Transaction {
-    Declare(DeclareTransaction),
+    DeclareV2(DeclareV2Transaction),
+    DeclareV1(DeclareV1Transaction),
     DeployAccount(DeployAccountTransaction),
     Deploy(DeployTransaction),
     Invoke(InvokeTransaction),
@@ -89,7 +90,8 @@ pub enum Transaction {
 impl Transaction {
     pub fn transaction_hash(&self) -> TransactionHash {
         match self {
-            Transaction::Declare(tx) => tx.transaction_hash,
+            Transaction::DeclareV1(tx) => tx.transaction_hash,
+            Transaction::DeclareV2(tx) => tx.transaction_hash,
             Transaction::Deploy(tx) => tx.transaction_hash,
             Transaction::DeployAccount(tx) => tx.transaction_hash,
             Transaction::Invoke(InvokeTransaction::Version0(tx)) => tx.transaction_hash,
@@ -102,8 +104,11 @@ impl Transaction {
 impl From<starknet_api::transaction::Transaction> for Transaction {
     fn from(tx: starknet_api::transaction::Transaction) -> Self {
         match tx {
-            starknet_api::transaction::Transaction::Declare(declare_tx) => {
-                Transaction::Declare(declare_tx)
+            starknet_api::transaction::Transaction::DeclareV2(declare_tx) => {
+                Transaction::DeclareV2(declare_tx)
+            }
+            starknet_api::transaction::Transaction::DeclareV1(declare_tx) => {
+                Transaction::DeclareV1(declare_tx)
             }
             starknet_api::transaction::Transaction::Deploy(deploy_tx) => {
                 Transaction::Deploy(deploy_tx)
@@ -152,7 +157,7 @@ pub struct TransactionWithType {
 impl From<Transaction> for TransactionWithType {
     fn from(transaction: Transaction) -> Self {
         match transaction {
-            Transaction::Declare(_) => {
+            Transaction::DeclareV1(_) | Transaction::DeclareV2(_) => {
                 TransactionWithType { r#type: TransactionType::Declare, transaction }
             }
             Transaction::Deploy(_) => {

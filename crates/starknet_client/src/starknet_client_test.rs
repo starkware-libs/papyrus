@@ -4,7 +4,7 @@ use assert_matches::assert_matches;
 use mockito::mock;
 use reqwest::StatusCode;
 use starknet_api::block::BlockNumber;
-use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
+use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey, CompiledClassHash};
 use starknet_api::deprecated_contract_class::{
     EntryPoint as DeprecatedEntryPoint, EntryPointOffset,
     EntryPointType as DeprecatedEntryPointType, Program,
@@ -63,15 +63,37 @@ async fn get_block_number() {
 }
 
 #[tokio::test]
-async fn declare_tx_serde() {
+async fn declare_v1_tx_serde() {
     let declare_tx = DeclareTransaction {
         class_hash: ClassHash(stark_felt!(
             "0x7319e2f01b0947afd86c0bb0e95029551b32f6dc192c47b2e8b08415eebbc25"
         )),
+        compiled_class_hash: None,
         sender_address: ContractAddress(patricia_key!("0x1")),
         nonce: Nonce(stark_felt!("0x0")),
         max_fee: Fee(0),
         version: TransactionVersion(stark_felt!("0x1")),
+        transaction_hash: TransactionHash(stark_felt!(
+            "0x2f2ef64daffdc72bf33b34ad024891691b8eb1d0ab70cc7f8fb71f6fd5e1f22"
+        )),
+        signature: TransactionSignature(vec![]),
+        r#type: TransactionType::Declare,
+    };
+    let raw_declare_tx = serde_json::to_string(&declare_tx).unwrap();
+    assert_eq!(declare_tx, serde_json::from_str(&raw_declare_tx).unwrap());
+}
+
+#[tokio::test]
+async fn declare_v2_tx_serde() {
+    let declare_tx = DeclareTransaction {
+        class_hash: ClassHash(stark_felt!(
+            "0x7319e2f01b0947afd86c0bb0e95029551b32f6dc192c47b2e8b08415eebbc25"
+        )),
+        compiled_class_hash: Some(CompiledClassHash(stark_felt!("0x7"))),
+        sender_address: ContractAddress(patricia_key!("0x1")),
+        nonce: Nonce(stark_felt!("0x0")),
+        max_fee: Fee(0),
+        version: TransactionVersion(stark_felt!("0x2")),
         transaction_hash: TransactionHash(stark_felt!(
             "0x2f2ef64daffdc72bf33b34ad024891691b8eb1d0ab70cc7f8fb71f6fd5e1f22"
         )),

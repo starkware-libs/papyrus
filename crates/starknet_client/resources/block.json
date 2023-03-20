@@ -42,8 +42,19 @@
             "sender_address": "0x1",
             "nonce": "0x0",
             "max_fee": "0x0",
-            "version": "0x0",
+            "version": "0x1",
             "transaction_hash": "0x3ff2070e6723bb9b6414977324f916eb53b51f9691e5d9a4fb67160d048958b",
+            "signature": [],
+            "type": "DECLARE"
+        },
+        {
+            "class_hash": "0x5abf9436be774a4d4af00528296700d0181b8cf3cf85ccc556b441ef5876ffe",
+            "compiled_class_hash": "0x5abf9436be774a4d4af00528296700d0181b8cf3cf85ccc556b441ef5876ffe",
+            "sender_address": "0x1",
+            "nonce": "0x0",
+            "max_fee": "0x0",
+            "version": "0x2",
+            "transaction_hash": "0x3ff2070e346",
             "signature": [],
             "type": "DECLARE"
         },
@@ -115,6 +126,18 @@
         },
         {
             "transaction_index": 3,
+            "transaction_hash": "0x3ff2070e346",
+            "l2_to_l1_messages": [],
+            "events": [],
+            "execution_resources": {
+                "n_steps": 0,
+                "builtin_instance_counter": {},
+                "n_memory_holes": 0
+            },
+            "actual_fee": "0x0"
+        },
+        {
+            "transaction_index": 4,
             "transaction_hash": "0xfb118dc1d4a4141b7718da4b7fa98980b11caf5aa5d6e1e35e9b050aae788b",
             "l1_to_l2_consumed_message": {
                 "from_address": "0x2Db8c2615db39a5eD8750B87aC8F217485BE11EC",

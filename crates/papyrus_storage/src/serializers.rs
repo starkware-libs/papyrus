@@ -27,7 +27,7 @@ use starknet_api::deprecated_contract_class::{
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass, EntryPoint, EntryPointType, FunctionIndex, StorageKey};
 use starknet_api::transaction::{
-    Calldata, ContractAddressSalt, DeclareTransaction, DeployAccountTransaction, DeployTransaction,
+    Calldata, ContractAddressSalt, DeclareV1Transaction, DeclareV2Transaction, DeployAccountTransaction, DeployTransaction,
     EthAddress, EventContent, EventData, EventIndexInTransactionOutput, EventKey, Fee,
     InvokeTransaction, L1HandlerTransaction, L1ToL2Payload, L2ToL1Payload, MessageToL1,
     MessageToL2, Transaction, TransactionHash, TransactionOffsetInBlock, TransactionSignature,
@@ -86,13 +86,23 @@ auto_storage_serde! {
         Function(FunctionAbiEntryWithType) = 1,
         Struct(StructAbiEntry) = 2,
     }
-    pub struct DeclareTransaction {
+    pub struct DeclareV1Transaction {
         pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
         pub version: TransactionVersion,
         pub signature: TransactionSignature,
         pub nonce: Nonce,
         pub class_hash: ClassHash,
+        pub sender_address: ContractAddress,
+    }
+    pub struct DeclareV2Transaction {
+        pub transaction_hash: TransactionHash,
+        pub max_fee: Fee,
+        pub version: TransactionVersion,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub class_hash: ClassHash,
+        pub compiled_class_hash: CompiledClassHash,
         pub sender_address: ContractAddress,
     }
     pub struct DeployAccountTransaction {
@@ -279,11 +289,12 @@ auto_storage_serde! {
         L1Handler(ThinL1HandlerTransactionOutput) = 4,
     }
     pub enum Transaction {
-        Declare(DeclareTransaction) = 0,
-        Deploy(DeployTransaction) = 1,
-        DeployAccount(DeployAccountTransaction) = 2,
-        Invoke(InvokeTransaction) = 3,
-        L1Handler(L1HandlerTransaction) = 4,
+        DeclareV1(DeclareV1Transaction) = 0,
+        DeclareV2(DeclareV2Transaction) = 1,
+        Deploy(DeployTransaction) = 2,
+        DeployAccount(DeployAccountTransaction) = 3,
+        Invoke(InvokeTransaction) = 4,
+        L1Handler(L1HandlerTransaction) = 5,
     }
     pub struct TransactionHash(pub StarkHash);
     struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);

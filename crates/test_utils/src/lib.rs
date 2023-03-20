@@ -30,7 +30,7 @@ use starknet_api::state::{
     ContractClass, EntryPoint, EntryPointType, FunctionIndex, StateDiff, StorageKey,
 };
 use starknet_api::transaction::{
-    Calldata, ContractAddressSalt, DeclareTransaction, DeclareTransactionOutput,
+    Calldata, ContractAddressSalt, DeclareV1Transaction, DeclareV2Transaction, DeclareTransactionOutput,
     DeployAccountTransaction, DeployAccountTransactionOutput, DeployTransaction,
     DeployTransactionOutput, EthAddress, Event, EventContent, EventData,
     EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction, InvokeTransactionOutput,
@@ -241,13 +241,23 @@ auto_impl_get_test_instance! {
         Function(FunctionAbiEntryWithType) = 1,
         Struct(StructAbiEntry) = 2,
     }
-    pub struct DeclareTransaction {
+    pub struct DeclareV1Transaction {
         pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
         pub version: TransactionVersion,
         pub signature: TransactionSignature,
         pub nonce: Nonce,
         pub class_hash: ClassHash,
+        pub sender_address: ContractAddress,
+    }
+    pub struct DeclareV2Transaction {
+        pub transaction_hash: TransactionHash,
+        pub max_fee: Fee,
+        pub version: TransactionVersion,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub class_hash: ClassHash,
+        pub compiled_class_hash: CompiledClassHash,
         pub sender_address: ContractAddress,
     }
     pub struct DeployAccountTransaction {
@@ -372,11 +382,12 @@ auto_impl_get_test_instance! {
         pub offset: usize,
     }
     pub enum Transaction {
-        Declare(DeclareTransaction) = 0,
-        Deploy(DeployTransaction) = 1,
-        DeployAccount(DeployAccountTransaction) = 2,
-        Invoke(InvokeTransaction) = 3,
-        L1Handler(L1HandlerTransaction) = 4,
+        DeclareV1(DeclareV1Transaction) = 0,
+        DeclareV2(DeclareV2Transaction) = 1,
+        Deploy(DeployTransaction) = 2,
+        DeployAccount(DeployAccountTransaction) = 3,
+        Invoke(InvokeTransaction) = 4,
+        L1Handler(L1HandlerTransaction) = 5,
     }
     pub struct TransactionHash(pub StarkHash);
     pub struct TransactionOffsetInBlock(pub usize);
@@ -570,7 +581,8 @@ impl GetTestInstance for StructAbiEntry {
 
 fn get_test_transaction_output(transaction: &Transaction) -> TransactionOutput {
     match transaction {
-        Transaction::Declare(_) => TransactionOutput::Declare(DeclareTransactionOutput::default()),
+        Transaction::DeclareV1(_) => TransactionOutput::Declare(DeclareTransactionOutput::default()),
+        Transaction::DeclareV2(_) => TransactionOutput::Declare(DeclareTransactionOutput::default()),
         Transaction::Deploy(_) => TransactionOutput::Deploy(DeployTransactionOutput::default()),
         Transaction::DeployAccount(_) => {
             TransactionOutput::DeployAccount(DeployAccountTransactionOutput::default())
@@ -594,7 +606,8 @@ fn set_events(tx: &mut TransactionOutput, events: Vec<Event>) {
 
 fn set_transaction_hash(tx: &mut Transaction, hash: TransactionHash) {
     match tx {
-        Transaction::Declare(tx) => tx.transaction_hash = hash,
+        Transaction::DeclareV1(tx) => tx.transaction_hash = hash,
+        Transaction::DeclareV2(tx) => tx.transaction_hash = hash,
         Transaction::Deploy(tx) => tx.transaction_hash = hash,
         Transaction::DeployAccount(tx) => tx.transaction_hash = hash,
         Transaction::Invoke(tx) => tx.transaction_hash = hash,
