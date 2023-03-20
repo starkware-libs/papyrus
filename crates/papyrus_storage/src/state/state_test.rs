@@ -18,6 +18,7 @@ use crate::{StorageWriter, ThinStateDiff};
 #[test]
 fn append_state_diff() {
     // TODO(yair): Add declared_classes.
+    // TODO(yair): Add replaced_classes.
     let c0 = ContractAddress(patricia_key!("0x11"));
     let c1 = ContractAddress(patricia_key!("0x12"));
     let c2 = ContractAddress(patricia_key!("0x13"));
@@ -38,6 +39,7 @@ fn append_state_diff() {
         deprecated_declared_classes: IndexMap::from([(cl0, c_cls0.clone()), (cl1, c_cls1)]),
         declared_classes: indexmap! {},
         nonces: IndexMap::from([(c0, Nonce(StarkHash::from(1)))]),
+        replaced_classes: indexmap! {},
     };
     let diff1 = StateDiff {
         deployed_contracts: IndexMap::from([(c2, cl0)]),
@@ -52,6 +54,7 @@ fn append_state_diff() {
             (c1, Nonce(StarkHash::from(1))),
             (c2, Nonce(StarkHash::from(1))),
         ]),
+        replaced_classes: indexmap! {},
     };
 
     let (_, mut writer) = get_test_storage();
@@ -251,6 +254,7 @@ fn append_2_state_diffs(writer: &mut StorageWriter) {
 fn revert_doesnt_delete_previously_declared_classes() {
     // Append 2 state diffs that use the same declared class.
     // TODO(yair): Add declared_classes.
+    // TODO(yair): Add replaced_classes.
     let c0 = ContractAddress(patricia_key!("0x11"));
     let cl0 = ClassHash(stark_felt!("0x4"));
     let c_cls0 = ContractClass::default();
@@ -260,6 +264,7 @@ fn revert_doesnt_delete_previously_declared_classes() {
         deprecated_declared_classes: IndexMap::from([(cl0, c_cls0.clone())]),
         declared_classes: indexmap! {},
         nonces: IndexMap::from([(c0, Nonce(StarkHash::from(1)))]),
+        replaced_classes: indexmap! {},
     };
 
     let c1 = ContractAddress(patricia_key!("0x12"));
@@ -269,6 +274,7 @@ fn revert_doesnt_delete_previously_declared_classes() {
         deprecated_declared_classes: IndexMap::from([(cl0, c_cls0)]),
         declared_classes: indexmap! {},
         nonces: IndexMap::from([(c1, Nonce(StarkHash::from(2)))]),
+        replaced_classes: indexmap! {},
     };
 
     let (reader, mut writer) = get_test_storage();
@@ -314,6 +320,7 @@ fn revert_state() {
     let (_contract0, nonce0) = state_diff0.nonces.first().unwrap();
 
     // TODO(yair): Add declared_classes.
+    // TODO(yair): Add replaced_classes.
     // Create another state diff, deploying new contracts and changing the state of the contract
     // deployed in state0.
     let contract1 = ContractAddress(patricia_key!("0x1"));
@@ -328,6 +335,7 @@ fn revert_state() {
         deprecated_declared_classes: IndexMap::from([(class1, ContractClass::default())]),
         declared_classes: indexmap! {},
         nonces: IndexMap::from([(contract1, nonce1)]),
+        replaced_classes: indexmap! {},
     };
 
     let (reader, mut writer) = get_test_storage();

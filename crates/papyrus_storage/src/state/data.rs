@@ -21,6 +21,7 @@ pub struct ThinStateDiff {
     pub declared_classes: IndexMap<ClassHash, CompiledClassHash>,
     pub deprecated_declared_classes: Vec<ClassHash>,
     pub nonces: IndexMap<ContractAddress, Nonce>,
+    pub replaced_classes: IndexMap<ContractAddress, ClassHash>,
 }
 
 impl ThinStateDiff {
@@ -43,6 +44,7 @@ impl ThinStateDiff {
                     .copied()
                     .collect(),
                 nonces: diff.nonces,
+                replaced_classes: diff.replaced_classes,
             },
             diff.declared_classes,
             diff.deprecated_declared_classes,
