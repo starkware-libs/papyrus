@@ -218,23 +218,21 @@ pub struct StateUpdate {
     pub state_diff: StateDiff,
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(
+    Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord, Default,
+)]
 pub enum BlockStatus {
     #[serde(rename(deserialize = "ABORTED", serialize = "ABORTED"))]
     Aborted,
     #[serde(rename(deserialize = "ACCEPTED_ON_L1", serialize = "ACCEPTED_ON_L1"))]
     AcceptedOnL1,
     #[serde(rename(deserialize = "ACCEPTED_ON_L2", serialize = "ACCEPTED_ON_L2"))]
+    #[default]
     AcceptedOnL2,
     #[serde(rename(deserialize = "PENDING", serialize = "PENDING"))]
     Pending,
     #[serde(rename(deserialize = "REVERTED", serialize = "REVERTED"))]
     Reverted,
-}
-impl Default for BlockStatus {
-    fn default() -> Self {
-        BlockStatus::AcceptedOnL2
-    }
 }
 
 impl From<BlockStatus> for starknet_api::block::BlockStatus {

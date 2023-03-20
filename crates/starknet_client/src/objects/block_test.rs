@@ -74,7 +74,7 @@ fn load_block_state_update_succeeds() {
                     "0x071c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64"
                 )),
             }],
-            declared_contracts: vec![],
+            declared_contracts: vec![ClassHash(stark_felt!("0x100"))],
             nonces: IndexMap::from([(
                 ContractAddress(patricia_key!(
                     "0x51c62af8919b31499b36bd1f1f702c8ef5a6309554427186c7bd456b862c115"

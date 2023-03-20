@@ -1,0 +1,54 @@
+# A simple workflow which deploys the papyrus helm chart to a gke cluster, waits for the pod to be
+# ready and then deletes the release.
+name: helm-install
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - deployments/**
+
+jobs:
+  deploy-teardown:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: "read"
+      id-token: "write"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set a unique run identifier
+        run: echo "UNIQE_ID=${{ github.run_number }}-${{ github.run_attempt }}" >> $GITHUB_ENV
+
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v1"
+        with:
+          credentials_json: "${{ secrets.GOOGLE_CI_SA_CREDENTIALS }}"
+
+      - id: "get-credentials"
+        name: Get GKE credentials
+        uses: "google-github-actions/get-gke-credentials@v1"
+        with:
+          cluster_name: "${{ secrets.GKE_CI_CLUSTER_NAME }}"
+          location: "${{ secrets.GKE_CI_CLUSTER_REGION }}"
+
+      - id: "helm-install"
+        name: Deploy to Kubernetes using helm
+        run: |
+          helm upgrade --install papyrus-${UNIQE_ID} deployments/helm/ \
+          --namespace papyrus \
+          --values deployments/helm/CI/values.yaml
+
+      - name: Wait for papyrus pods to be ready
+        run: kubectl --namespace papyrus rollout status deployment papyrus-${UNIQE_ID}
+
+      - name: Clean the deployment
+        if: always()
+        run: |
+          chmod 600 "$KUBECONFIG"
+          helm uninstall --namespace papyrus papyrus-${UNIQE_ID}

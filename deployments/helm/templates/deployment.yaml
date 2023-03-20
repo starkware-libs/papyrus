@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "papyrus.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "papyrus.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "papyrus.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: papyrus
+        {{- include "papyrus.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        fsGroup: 1000
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ template "papyrus.name" . }}-data
+        {{- if .Values.backup.enabled }}
+        - name: run
+          configMap:
+            name: {{ template "papyrus.name" . }}-run
+            defaultMode: 0777
+        {{- end }}
+      containers:
+      - name: {{ template "papyrus.name" . }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        resources:
+          limits:
+            cpu: {{ .Values.resources.limits.cpu | quote }}
+            memory: {{ .Values.resources.limits.memory }}
+          requests:
+            cpu: {{ .Values.resources.requests.cpu | quote}}
+            memory: {{ .Values.resources.requests.memory }}
+        {{- if not .Values.backup.enabled }}
+        ports:
+        - containerPort: {{ .Values.services.rpc.port }}
+        - containerPort: {{ .Values.services.monitoring.port }}
+        volumeMounts:
+        - name: data
+          mountPath: /app/data
+        envFrom:
+        - configMapRef:
+            name: {{ template "papyrus.name" . }}-config
+        {{- else }}
+        command:
+        - sh
+        - -c
+        - /app/run/backup.sh
+        volumeMounts:
+        - name: data
+          mountPath: /app/data
+        - name: run
+          mountPath: /app/run
+        envFrom:
+        - configMapRef:
+            name: {{ template "papyrus.name" . }}-config
+        - secretRef:
+            name: {{ template "papyrus.name" . }}-aws-creds
+        {{- end }}

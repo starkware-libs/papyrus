@@ -202,7 +202,7 @@ impl ThinTransactionOutput {
             ThinTransactionOutput::L1Handler(tx_output) => tx_output.events_contract_addresses,
         }
     }
-    fn events_contract_addresses_as_ref(&self) -> &Vec<ContractAddress> {
+    pub(crate) fn events_contract_addresses_as_ref(&self) -> &Vec<ContractAddress> {
         match self {
             ThinTransactionOutput::Declare(tx_output) => &tx_output.events_contract_addresses,
             ThinTransactionOutput::Deploy(tx_output) => &tx_output.events_contract_addresses,

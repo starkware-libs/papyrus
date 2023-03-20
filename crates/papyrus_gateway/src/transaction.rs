@@ -125,7 +125,9 @@ impl From<starknet_api::transaction::Transaction> for Transaction {
     }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(
+    Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord, Default,
+)]
 pub enum TransactionType {
     #[serde(rename(deserialize = "DECLARE", serialize = "DECLARE"))]
     Declare,
@@ -134,14 +136,10 @@ pub enum TransactionType {
     #[serde(rename(deserialize = "DEPLOY_ACCOUNT", serialize = "DEPLOY_ACCOUNT"))]
     DeployAccount,
     #[serde(rename(deserialize = "INVOKE", serialize = "INVOKE"))]
+    #[default]
     Invoke,
     #[serde(rename(deserialize = "L1_HANDLER", serialize = "L1_HANDLER"))]
     L1Handler,
-}
-impl Default for TransactionType {
-    fn default() -> Self {
-        TransactionType::Invoke
-    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -180,13 +178,16 @@ impl From<starknet_api::transaction::Transaction> for TransactionWithType {
 }
 
 /// A transaction status in StarkNet.
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(
+    Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord, Default,
+)]
 pub enum TransactionStatus {
     /// The transaction passed the validation and entered the pending block.
     #[serde(rename = "PENDING")]
     Pending,
     /// The transaction passed the validation and entered an actual created block.
     #[serde(rename = "ACCEPTED_ON_L2")]
+    #[default]
     AcceptedOnL2,
     /// The transaction was accepted on-chain.
     #[serde(rename = "ACCEPTED_ON_L1")]
@@ -194,11 +195,6 @@ pub enum TransactionStatus {
     /// The transaction failed validation.
     #[serde(rename = "REJECTED")]
     Rejected,
-}
-impl Default for TransactionStatus {
-    fn default() -> Self {
-        TransactionStatus::AcceptedOnL2
-    }
 }
 
 impl From<BlockStatus> for TransactionStatus {

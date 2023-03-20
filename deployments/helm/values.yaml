@@ -1,0 +1,77 @@
+# Default values for a papyrus deployment.
+
+# The verbosity level of logs ("debug", "info", "error", etc.)
+rustLogLevel: "info"
+
+# The Docker image (including any tag and repository name)
+image:
+  repository: ghcr.io/starkware-libs/papyrus
+  tag: dev
+  pullPolicy: Always
+
+starknet:
+  chain_id: SN_GOERLI # possible values: SN_MAIN, SN_GOERLI
+  # feeder-gateway url
+  # SN_MAIN: https://alpha-mainnet.starknet.io
+  # SN_GOERLI: https://alpha4.starknet.io
+  central_url: https://alpha4.starknet.io
+  additional_headers: # optional addtional headers for SN communication
+
+# The default resources for the pod.
+resources:
+  limits:
+    cpu: "1"
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+# Service variables for a papyrus pod.
+services:
+  # RPC API.
+  rpc:
+    type: ClusterIP
+    port: 8080
+    protocol: TCP
+  # Monitoring API.
+  monitoring:
+    type: ClusterIP
+    port: 8081
+    protocol: TCP
+
+# Persistent volume claim variables for a papyrus pod.
+pvc:
+  # Recommended size is at least 512Gi.
+  size:
+  # Is is recommended to use an SSD volume (such as GKE premium-rwo).
+  storageClass: ""
+  # Use an existing snapshot for the node's data. The kubernetes volumesnapshot object should
+  # exist in the same namespace as the rest of the resources.
+  restoreFromSnapshot:
+    enabled: false
+    snapshotName: my-snapshot
+
+# Configure Ingress.
+ingress:
+  # Should an ingress object be created
+  enabled: false
+  # Ingress class type.
+  type:
+  # Ingress object name in Kubernetes.
+  name:
+  # Host name to create Ingress rules.
+  host:
+  # Ingress path type.
+  pathType:
+  # Annotations to apply to the node ingress.
+  annotations:
+
+# Backup mode
+backup:
+  enabled: false
+  sleep_interval: 6h
+  aws:
+    s3_bucket_name: my-backup-bucket-name
+    s3_bucket_region: my-backup-bucket-region
+    access_key_id: my aws_access_key_id
+    secret_access_key: my aws_secret_access_key

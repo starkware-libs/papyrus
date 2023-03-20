@@ -27,7 +27,7 @@ use starknet_api::transaction::{
 use starknet_api::{patricia_key, stark_felt};
 use test_utils::{
     get_rand_test_block_with_events, get_rand_test_body_with_events, get_rng, get_test_block,
-    get_test_body, get_test_state_diff, GetTestInstance,
+    get_test_body, get_test_state_diff, send_request, GetTestInstance,
 };
 
 use crate::api::{
@@ -37,8 +37,7 @@ use crate::api::{
 use crate::block::Block;
 use crate::state::{ContractClass, StateUpdate, ThinStateDiff};
 use crate::test_utils::{
-    get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
-    send_request, get_test_starknet_source_config,
+    get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer, get_test_starknet_source_config,
 };
 use crate::transaction::output::FeeEstimate;
 use crate::transaction::{
@@ -1192,7 +1191,7 @@ async fn get_events_chunk_size_2_with_address() {
         }
     }
 
-    for (i, chunk) in emitted_events.chunks(chunk_size).into_iter().enumerate() {
+    for (i, chunk) in emitted_events.chunks(chunk_size).enumerate() {
         let res =
             module.call::<_, EventsChunk>("starknet_getEvents", [filter.clone()]).await.unwrap();
         assert_eq!(res.events, chunk);
@@ -1272,7 +1271,7 @@ async fn get_events_chunk_size_2_without_address() {
         }
     }
 
-    for (i, chunk) in emitted_events.chunks(chunk_size).into_iter().enumerate() {
+    for (i, chunk) in emitted_events.chunks(chunk_size).enumerate() {
         let res =
             module.call::<_, EventsChunk>("starknet_getEvents", [filter.clone()]).await.unwrap();
         assert_eq!(res.events, chunk);

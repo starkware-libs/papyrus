@@ -1,0 +1,11 @@
+{{- if .Values.backup.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "papyrus.name" . }}-run
+  labels:
+    {{- include "papyrus.labels" . | nindent 4 }}
+data:
+  backup.sh: |
+    {{- tpl (.Files.Get "files/backup.sh") . | nindent 4 }}
+{{- end }}

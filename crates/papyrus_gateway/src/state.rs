@@ -25,23 +25,21 @@ pub enum ContractClassAbiEntry {
     Struct(StructAbiEntry),
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(
+    Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord, Default,
+)]
 pub enum ContractClassAbiEntryType {
     #[serde(rename(deserialize = "constructor", serialize = "constructor"))]
     Constructor,
     #[serde(rename(deserialize = "event", serialize = "event"))]
     Event,
     #[serde(rename(deserialize = "function", serialize = "function"))]
+    #[default]
     Function,
     #[serde(rename(deserialize = "l1_handler", serialize = "l1_handler"))]
     L1Handler,
     #[serde(rename(deserialize = "struct", serialize = "struct"))]
     Struct,
-}
-impl Default for ContractClassAbiEntryType {
-    fn default() -> Self {
-        ContractClassAbiEntryType::Function
-    }
 }
 
 impl From<FunctionAbiEntryType> for ContractClassAbiEntryType {

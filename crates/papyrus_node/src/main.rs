@@ -3,6 +3,7 @@ use std::env::args;
 use papyrus_gateway::run_server;
 use papyrus_monitoring_gateway::run_server as monitoring_run_server;
 use papyrus_node::config::Config;
+use papyrus_node::version::VERSION_FULL;
 use papyrus_storage::{open_storage, StorageReader, StorageWriter};
 use papyrus_sync::{CentralError, CentralSource, StateSync, StateSyncError};
 use tracing::info;
@@ -20,6 +21,7 @@ async fn run_threads(config: Config) -> anyhow::Result<()> {
         config.get_config_representation()?,
         config.monitoring_gateway.clone(),
         storage_reader.clone(),
+        VERSION_FULL,
     )
     .await?;
     let sync_future = run_sync(config, storage_reader.clone(), storage_writer);

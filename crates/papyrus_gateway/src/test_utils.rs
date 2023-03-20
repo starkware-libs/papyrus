@@ -4,9 +4,9 @@ use jsonrpsee::http_server::RpcModule;
 use jsonschema::JSONSchema;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
-use reqwest::Client;
 use starknet_api::core::ChainId;
 use starknet_client::{RetryConfig, StarknetClient};
+use reqwest::Client;
 
 use crate::{GatewayConfig, JsonRpcServer, JsonRpcServerImpl, CentralSourceConfig};
 

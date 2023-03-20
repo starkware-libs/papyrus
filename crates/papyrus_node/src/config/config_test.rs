@@ -33,6 +33,7 @@ fn prepare_command() {
         "--http_headers=NAME_1:VALUE_1 NAME_2:VALUE_2".to_owned(),
         "--storage=path".to_owned(),
         "--no_sync=true".to_owned(),
+        "--central_url=URL".to_owned(),
     ];
     let builder = ConfigBuilder::default().prepare_command(args).unwrap();
     let builder_args = builder.args.expect("Expected to have args");
@@ -67,6 +68,10 @@ fn prepare_command() {
     );
     let no_sync = *builder_args.get_one::<bool>("no_sync").expect("Expected to have no_sync arg");
     assert!(no_sync);
+    assert_eq!(
+        *builder_args.get_one::<String>("central_url").expect("Expected to have central_url arg"),
+        "URL".to_owned()
+    );
 }
 
 #[test]

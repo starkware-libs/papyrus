@@ -20,6 +20,8 @@ use serde::{Deserialize, Serialize};
 use starknet_api::core::ChainId;
 use starknet_client::RetryConfig;
 
+use crate::version::VERSION_FULL;
+
 // The path of the default configuration file, provided as part of the crate.
 const CONFIG_FILE: &str = "config/config.yaml";
 
@@ -122,7 +124,7 @@ impl ConfigBuilder {
     fn prepare_command(mut self, args: Vec<String>) -> Result<Self, ConfigError> {
         self.args = Some(
             Command::new("Papyrus",)
-            .version("Pre-release")
+            .version(VERSION_FULL)
             .about("Papyrus is a StarkNet full node written in Rust.")
             .args(&[
                 arg!(-f --config_file [path] "Optionally sets a config file to use").value_parser(value_parser!(PathBuf)),
@@ -131,6 +133,7 @@ impl ConfigBuilder {
                 arg!(--http_headers ["NAME:VALUE"] ... "Optionally adds headers to the http requests"),
                 arg!(-s --storage [path] "Optionally sets storage path to use (automatically extended with chain ID)").value_parser(value_parser!(PathBuf)),
                 arg!(-n --no_sync [bool] "Optionally run without sync").value_parser(value_parser!(bool)).default_missing_value("true"),
+                arg!(--central_url ["URL"] "Central URL. It should match chain_id."),
             ])
             .try_get_matches_from(args).unwrap_or_else(|e| e.exit()),
         );
@@ -196,6 +199,9 @@ impl ConfigBuilder {
                     if *no_sync {
                         self.config.sync = None;
                     }
+                }
+                if let Some(central_url) = args.try_get_one::<String>("central_url")? {
+                    self.config.central.url = central_url.to_string()
                 }
 
                 Ok(self)

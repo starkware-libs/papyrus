@@ -1,0 +1,7 @@
+# Default values for a papyrus ci deployment.
+
+rustLogLevel: "debug"
+
+pvc:
+  size: 1Gi
+  storageClass: standard-rwo

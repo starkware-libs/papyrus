@@ -1,0 +1,20 @@
+# Default values for a papyrus-backup deployment.
+
+# The verbosity level of logs ("debug", "info", "error", etc.)
+rustLogLevel: "papyrus=DEBUG"
+
+# The Docker image (including any tag and repository name)
+image:
+  repository: us.gcr.io/starkware-dev/papyrus-backup
+  tag: dev
+services: []
+# Persistent volume claim variables for a papyrus pod.
+pvc:
+  size: 1000Gi
+  storageClass: premium-rwo
+
+backup:
+  enabled: true
+  aws:
+    s3_bucket_name: papyrus-backup
+    s3_bucket_region: us-east-2
