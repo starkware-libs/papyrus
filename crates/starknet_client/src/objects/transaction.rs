@@ -223,7 +223,7 @@ impl From<DeployAccountTransaction> for starknet_api::transaction::DeployAccount
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct InvokeTransaction {
     pub calldata: Calldata,
-    pub contract_address: ContractAddress,
+    pub sender_address: ContractAddress,
     pub entry_point_selector: Option<EntryPointSelector>,
     pub nonce: Option<Nonce>,
     pub max_fee: Fee,
@@ -242,7 +242,7 @@ impl From<InvokeTransaction> for starknet_api::transaction::InvokeTransaction {
             version: invoke_tx.version,
             signature: invoke_tx.signature,
             nonce: invoke_tx.nonce.unwrap_or_default(),
-            sender_address: invoke_tx.contract_address,
+            sender_address: invoke_tx.sender_address,
             entry_point_selector: invoke_tx.entry_point_selector,
             calldata: invoke_tx.calldata,
         }
