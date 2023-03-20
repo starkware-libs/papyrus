@@ -376,6 +376,7 @@ auto_impl_get_test_instance! {
         pub declared_classes: IndexMap<ClassHash, (CompiledClassHash, ContractClass)>,
         pub deprecated_declared_classes: IndexMap<ClassHash, DeprecatedContractClass>,
         pub nonces: IndexMap<ContractAddress, Nonce>,
+        pub replaced_classes: IndexMap<ContractAddress, ClassHash>,
     }
     pub struct StructMember {
         pub param: TypedParameter,
