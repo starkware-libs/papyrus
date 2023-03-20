@@ -8,8 +8,10 @@ testing = ["mockall"]
 
 [dependencies]
 async-trait = { version = "0.1.56" }
+http = {version= "0.2.8"}
 indexmap = { version = "1.9.2", features = ["serde"] }
 mockall = { version = "0.11.2" , optional = true }
+os_info = { version = "3.6.0" }
 reqwest = { version = "0.11", features = ["json", "blocking"] }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" , features = ["arbitrary_precision"]}
@@ -19,8 +21,6 @@ tokio = { version = "1.18.2", features = ["full","sync"] }
 tokio-retry = { version = "0.3" }
 tracing = { version = "0.1.37" }
 url = { version = "2.2.2" }
-http = {version= "0.2.8"}
-os_info = { version = "3.6.0" }
 
 [dev-dependencies]
 assert = { version = "0.0.4" }
