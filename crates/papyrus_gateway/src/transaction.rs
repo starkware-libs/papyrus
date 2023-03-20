@@ -454,14 +454,6 @@ pub mod input{
     }
 
     #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
-    pub struct Test{
-        #[serde(flatten)]
-        pub common_fields: CommonTransactionFields,
-        pub sender_address: ContractAddress,
-        pub calldata: Calldata
-    }
-
-    #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
     #[serde(untagged)]
     pub enum Transaction{
         Declare(DeclareTransaction),
