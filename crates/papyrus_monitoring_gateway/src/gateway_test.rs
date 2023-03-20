@@ -5,6 +5,7 @@ use super::api::JsonRpcServer;
 use super::JsonRpcServerImpl;
 
 const TEST_CONFIG_REPRESENTATION: &str = "general_config_representation";
+const TEST_VERSION: &str = "1.2.3-dev";
 
 #[tokio::test]
 async fn test_stats() {
@@ -12,6 +13,7 @@ async fn test_stats() {
     let module = JsonRpcServerImpl {
         storage_reader,
         general_config_representation: serde_yaml::to_value(TEST_CONFIG_REPRESENTATION).unwrap(),
+        version: TEST_VERSION,
     }
     .into_rpc();
     let stats = module
@@ -29,6 +31,7 @@ async fn test_config() {
     let module = JsonRpcServerImpl {
         storage_reader,
         general_config_representation: serde_yaml::to_value(TEST_CONFIG_REPRESENTATION).unwrap(),
+        version: TEST_VERSION,
     }
     .into_rpc();
     let rep = module
@@ -36,4 +39,20 @@ async fn test_config() {
         .await
         .expect("Monitoring gateway should respond the node configuration");
     assert_eq!(rep, TEST_CONFIG_REPRESENTATION);
+}
+
+#[tokio::test]
+async fn test_version() {
+    let (storage_reader, mut _storage_writer) = test_utils::get_test_storage();
+    let module = JsonRpcServerImpl {
+        storage_reader,
+        general_config_representation: serde_yaml::to_value(TEST_CONFIG_REPRESENTATION).unwrap(),
+        version: TEST_VERSION,
+    }
+    .into_rpc();
+    let rep = module
+        .call::<_, String>("starknet_nodeVersion", EmptyParams::new())
+        .await
+        .expect("Monitoring gateway should respond with the node's version");
+    assert_eq!(rep, TEST_VERSION);
 }
