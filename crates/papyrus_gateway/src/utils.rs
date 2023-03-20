@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap};
 
 use primitive_types::U256;
 use serde::Serialize;
@@ -29,9 +29,118 @@ fn entry_points_hash_by_type(entry_points: &HashMap<EntryPointType,Vec<EntryPoin
     return starknet_api::hash::pedersen_hash_array(&felts);
 }
 
+fn compute_class_hash_from_json(contract_class: &Value) -> String{
+    let mut abi_json = json!({
+        "abi": contract_class.get("abi").unwrap_or(&Value::Null),
+        "program": contract_class.get("program").unwrap_or(&Value::Null)
+    });
+
+    let program_json = abi_json.get_mut("program").expect("msg");
+    let debug_info_json = program_json.get_mut("debug_info");
+    if debug_info_json.is_some(){
+        program_json.as_object_mut().unwrap().insert("debug_info".to_owned(), serde_json::Value::Null);
+    }
+
+    let mut new_object = serde_json::Map::<String, Value>::new();
+    let res = traverse_and_exclude_recursively(&abi_json, &mut new_object, &|key, value| {
+        return 
+            (key == "attributes" || key == "accessible_scopes") 
+            && value.is_array() 
+            && value.as_array().unwrap().is_empty();
+    });
+
+    let mut writer = Vec::with_capacity(128);
+    let mut serializer = Serializer::with_formatter(&mut writer, json_formatter::StarknetFormatter);
+    res.serialize(&mut serializer).unwrap();
+    let str_json = unsafe{
+        String::from_utf8_unchecked(writer)
+    };
+
+    let keccak_result = sn_keccak(str_json.as_bytes());
+    return keccak_result;
+}
+
+fn entry_points_hash_by_type_from_json(contract_class: &Value, entry_point_type: &str) -> StarkFelt{
+    let felts = contract_class
+        .get("entry_points_by_type")
+        .unwrap_or(&serde_json::Value::Null)
+        .get(entry_point_type)
+        .unwrap_or(&serde_json::Value::Null)
+        .as_array()
+        .unwrap_or(&Vec::<serde_json::Value>::new())
+        .iter()
+        .flat_map(|entry|{
+            let selector = get_starkfelt_from_json_unsafe(&entry, "selector");
+            let offset = get_starkfelt_from_json_unsafe(&entry, "offset");
+
+            return vec![selector, offset];
+        }).collect::<Vec<StarkFelt>>();
+
+    return starknet_api::hash::pedersen_hash_array(&felts);
+}
+
+fn get_starkfelt_from_json_unsafe(json: &Value, key: &str) -> StarkFelt{
+    StarkFelt::try_from(json.get(key).unwrap().as_str().unwrap()).unwrap()
+}
+
+pub fn compute_contract_class_hash_v0(contract_class: &serde_json::Value) -> ClassHash{
+    // api version
+    let api_version = StarkFelt::try_from(format!("0x{}", hex::encode([0u8])).as_str()).unwrap();
+
+    // external entry points hash
+    let external_entry_points_hash = entry_points_hash_by_type_from_json(&contract_class, "EXTERNAL");
+
+    // l1 handler entry points hash
+    let l1_entry_points_hash = entry_points_hash_by_type_from_json(&contract_class, "L1_HANDLER");
+
+    // constructor handler entry points hash
+    let constructor_entry_points_hash = entry_points_hash_by_type_from_json(&contract_class, "CONSTRUCTOR");
+
+    // builtins hash
+    let builtins_encoded = contract_class
+        .get("program").unwrap_or(&serde_json::Value::Null)
+        .get("builtins").unwrap_or(&serde_json::Value::Null)
+        .as_array().unwrap_or(&Vec::<serde_json::Value>::new()).iter().map(|str| {
+        let hex_str = str.as_str().unwrap().as_bytes().iter().map(|b| format!("{:02x}", b))
+            .collect::<Vec<String>>().join("");
+        return format!("0x{}", hex_str);
+    }).collect::<Vec<String>>();
+
+    let builtins_encoded_as_felts = builtins_encoded.iter().map(|s| {
+        return StarkFelt::try_from(s.as_str()).unwrap();      
+    }).collect::<Vec<StarkFelt>>();
+
+    let builtins_hash = starknet_api::hash::pedersen_hash_array(&builtins_encoded_as_felts);
+
+    //hinted class hash
+    let hinted_class_hash = compute_class_hash_from_json(&contract_class);
+
+    //program data hash
+    let program_data_felts = contract_class
+        .get("program").unwrap_or(&Value::Null)
+        .get("data").unwrap_or(&Value::Null)
+        .as_array().unwrap_or(&Vec::<Value>::new())
+        .iter()
+        .map(|str| {
+            return StarkFelt::try_from(str.as_str().unwrap()).unwrap();
+    }).collect::<Vec<StarkFelt>>();
+
+    let program_data_hash = starknet_api::hash::pedersen_hash_array(&program_data_felts);
+
+    return ClassHash(starknet_api::hash::pedersen_hash_array(&vec![
+        api_version,
+        external_entry_points_hash,
+        l1_entry_points_hash,
+        constructor_entry_points_hash,
+        builtins_hash,
+        StarkFelt::try_from(hinted_class_hash.as_str()).unwrap(),
+        program_data_hash
+    ]));
+}
+
 pub fn compute_contract_class_hash(contract_class: &crate::transaction::input::ContractClass) -> ClassHash{
     // api version
-    let api_version = StarkFelt::try_from(hex::encode("0").as_str()).unwrap();
+    let api_version = StarkFelt::try_from(format!("0x{}", hex::encode([0u8])).as_str()).unwrap();
 
     // external entry points hash
     let external_entry_points_hash = entry_points_hash_by_type(&contract_class.entry_points_by_type, EntryPointType::External);
@@ -57,7 +166,7 @@ pub fn compute_contract_class_hash(contract_class: &crate::transaction::input::C
 
     //hinted class hash
     let hinted_class_hash = compute_class_hash(&contract_class);
-
+    println!("{}", hinted_class_hash);
     // program data hash
     let program_data_felts = contract_class.program.data.as_array().unwrap_or(&Vec::<Value>::new()).iter().map(|str| {
         return StarkFelt::try_from(str.as_str().unwrap()).unwrap();
@@ -107,10 +216,15 @@ fn compute_class_hash(contract_class: &crate::transaction::input::ContractClass)
     return keccak_result;
 }
 
+/// because of the preserve_order feature enabled in the serde_json crate
+/// removing a key from the object changes the order of the keys
+/// When serde_json is not being used with the preserver order feature 
+/// deserializing to a serde_json::Value changes the order of the keys
+///
 /// go through the object by visiting every key and value recursively,
 /// and not including them into a new json obj if the condition is met
 /// Empty objects are not included
-fn traverse_and_exclude_recursively<F>(
+pub fn traverse_and_exclude_recursively<F>(
     value: &Value, 
     new_object: &mut serde_json::Map<String, Value>, 
     condition: &F
@@ -153,6 +267,11 @@ fn traverse_and_exclude_recursively<F>(
     }
 }
 
+/// because of the preserve_order feature enabled in the serde_json crate
+/// removing a key from the object changes the order of the keys
+/// When serde_json is not being used with the preserver order feature 
+/// deserializing to a serde_json::Value changes the order of the keys
+/// Go through object's top level keys and remove those that pass the condition
 pub fn traverse_and_exclude_top_level_keys<F>(
     value: &Value,
     condition: &F
@@ -174,7 +293,7 @@ pub fn traverse_and_exclude_top_level_keys<F>(
     return Value::Object(new_obj);
 }
 
-mod json_formatter{
+pub mod json_formatter{
     use std::io;
 
     use serde_json::ser::Formatter;
