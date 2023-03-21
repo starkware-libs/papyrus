@@ -104,11 +104,12 @@ up-to-date code. Once we have official releases we will add a `latest` tag for t
 Make sure to periodically pull the latest image and re-run the node.
 
 #### Memory usage
-The papyrus node will use all the RAM it can in order to cache the storage.
+The Papyrus node will use all the RAM it can in order to cache the storage.
 
 If you're not running any other applications on your machine, this is the recommended behavior.
 
 Otherwise, you can limit the node's memory usage by running it in a container with a limited memory.
+Note that it might make the node less efficient as it will decrease the caching of the storage.
 
 This can be done by adding the flag `--memory 1g` (For a 1GB limitation) to the command above.
 The full command should be
