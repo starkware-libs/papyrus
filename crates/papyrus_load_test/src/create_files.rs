@@ -23,11 +23,11 @@ pub async fn create_files(node_address: &str) {
     create_file("block_hash.txt", BLOCK_HASH_COUNT, || get_block_hash_args(node_socket)).await;
 }
 
-// Write to a file lines with parameters to a request.
+// Write to a file lines with parameters to requests.
 // - file_name: the file to write to.
-// - params_set_count: the number of lines with parameters to write to the file
+// - params_set_count: the number of lines with parameters to write to the file.
 // - get_params: a function that returns a vector with parameters to a request. The use of Fn is to
-//   enable closure, and the reason get_args is async is that creating
+//   enable closure, and the reason get_args is async is that creating the parameters is IO bound.
 pub async fn create_file<Fut>(file_name: &str, param_set_count: u32, get_params: impl Fn() -> Fut)
 where
     Fut: Future<Output = Vec<String>>,
