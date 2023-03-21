@@ -9,6 +9,10 @@ image:
   tag: dev
   pullPolicy: Always
 
+node:
+  # Number of concurrent requests to the SN feeder gateway
+  concurrent_fg_requests: 50
+
 starknet:
   chain_id: SN_GOERLI # possible values: SN_MAIN, SN_GOERLI
   # feeder-gateway url
