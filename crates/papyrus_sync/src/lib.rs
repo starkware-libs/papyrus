@@ -1,4 +1,5 @@
 mod block;
+mod data;
 mod downloads_manager;
 mod sources;
 mod state;

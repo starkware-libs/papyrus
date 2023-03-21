@@ -17,7 +17,8 @@ use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tracing::{debug, info, trace, warn};
 
-use crate::downloads_manager::{DownloadsManager, StateDiffSyncData};
+use crate::data::StateDiffSyncData;
+use crate::downloads_manager::DownloadsManager;
 use crate::sources::CentralSourceTrait;
 use crate::{StateSyncError, StateSyncResult, SyncConfig};
 
