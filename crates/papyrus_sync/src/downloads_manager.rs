@@ -3,18 +3,14 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-use futures::pin_mut;
-use futures::stream::StreamExt;
-use indexmap::IndexMap;
-use starknet_api::block::{Block, BlockHash, BlockNumber};
-use starknet_api::core::ClassHash;
-use starknet_api::state::{ContractClass, StateDiff};
+use starknet_api::block::BlockNumber;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::error::TryRecvError;
 use tokio::task::JoinHandle;
 use tracing::{debug, trace, warn};
 
-use crate::sources::{CentralError, CentralSourceTrait};
+use crate::data::{SyncData, SyncDataError, SyncDataTrait};
+use crate::sources::CentralSourceTrait;
 
 // Orchestrates specific network interfaces (e.g. central, p2p, l1) and sends data to the sync.
 pub struct DownloadsManager<T, D>
@@ -201,12 +197,8 @@ struct Task<T: CentralSourceTrait + Sync + Send, D: SyncDataTrait> {
 impl<T: CentralSourceTrait + Sync + Send + 'static, D: SyncDataTrait> Task<T, D> {
     fn new(source: Arc<T>, from: BlockNumber, upto: BlockNumber) -> Self {
         let (sender, receiver) = mpsc::channel(200);
-        let data_type = D::r#type();
         let download = async move {
-            if let Err(err) = match data_type {
-                SyncDataType::Block => download_blocks(source, sender, from, upto).await,
-                SyncDataType::StateDiff => download_state_diffs(source, sender, from, upto).await,
-            } {
+            if let Err(err) = D::download(source, sender, from, upto).await {
                 warn!("{}", err);
             }
         };
@@ -225,73 +217,10 @@ impl<T: CentralSourceTrait + Sync + Send + 'static, D: SyncDataTrait> Task<T, D>
     }
 }
 
-async fn download_blocks<T: CentralSourceTrait + Sync + Send>(
-    source: Arc<T>,
-    sender: mpsc::Sender<SyncData>,
-    from: BlockNumber,
-    upto: BlockNumber,
-) -> Result<(), DownloadsManagerError> {
-    debug!("Downloading blocks [{}, {}).", from, upto);
-    let block_stream = source.stream_new_blocks(from, upto).fuse();
-    pin_mut!(block_stream);
-
-    while let Some(maybe_block) = block_stream.next().await {
-        let (block_number, block) = maybe_block?;
-        sender.send(SyncData::Block(BlockSyncData { block_number, block })).await.map_err(|e| {
-            DownloadsManagerError::Channel {
-                msg: format!(
-                    "Problem with sending block {block_number} on the channel of the task \
-                     [{from}, {upto}): {e}."
-                ),
-            }
-        })?;
-        trace!("Downloaded block {block_number}.");
-    }
-
-    Ok(())
-}
-
-async fn download_state_diffs<T: CentralSourceTrait + Sync + Send>(
-    source: Arc<T>,
-    sender: mpsc::Sender<SyncData>,
-    from: BlockNumber,
-    upto: BlockNumber,
-) -> Result<(), DownloadsManagerError> {
-    debug!("Downloading state diffs [{}, {}).", from, upto);
-    let state_diff_stream = source.stream_state_updates(from, upto).fuse();
-    pin_mut!(state_diff_stream);
-
-    while let Some(maybe_state_diff) = state_diff_stream.next().await {
-        let (block_number, block_hash, state_diff, deployed_contract_class_definitions) =
-            maybe_state_diff?;
-        sender
-            .send(SyncData::StateDiff(StateDiffSyncData {
-                block_number,
-                block_hash,
-                state_diff,
-                deployed_contract_class_definitions,
-            }))
-            .await
-            .map_err(|e| DownloadsManagerError::Channel {
-                msg: format!(
-                    "Problem with sending state diff of block {block_number} on the channel of \
-                     the task [{from}, {upto}): {e}."
-                ),
-            })?;
-        trace!("Downloaded state diff of block {block_number}.");
-    }
-
-    Ok(())
-}
-
 #[derive(thiserror::Error, Debug)]
 pub enum DownloadsManagerError {
     #[error(transparent)]
-    CentralSource(#[from] CentralError),
-    #[error("Channel error - {msg}")]
-    Channel { msg: String },
-    #[error("Data conversion error - {msg}")]
-    DataConversion { msg: String },
+    Data(#[from] SyncDataError),
     #[error("No task.")]
     NoTask,
     #[error("Task failed.")]
@@ -303,78 +232,4 @@ pub enum DownloadsManagerError {
         curr_from: BlockNumber,
         curr_upto: BlockNumber,
     },
-}
-
-#[derive(Debug, Clone)]
-pub struct BlockSyncData {
-    pub block_number: BlockNumber,
-    pub block: Block,
-}
-
-#[derive(Debug, Clone)]
-pub struct StateDiffSyncData {
-    pub block_number: BlockNumber,
-    pub block_hash: BlockHash,
-    pub state_diff: StateDiff,
-    // TODO(anatg): Remove once there are no more deployed contracts with undeclared classes.
-    // Class definitions of deployed contracts with classes that were not declared in this
-    // state diff.
-    pub deployed_contract_class_definitions: IndexMap<ClassHash, ContractClass>,
-}
-
-#[derive(Debug, Clone)]
-#[allow(clippy::large_enum_variant)]
-pub enum SyncData {
-    Block(BlockSyncData),
-    StateDiff(StateDiffSyncData),
-}
-
-pub trait SyncDataTrait: Sized + Sync + Send + Debug {
-    fn r#type() -> SyncDataType;
-    fn block_number(&self) -> BlockNumber;
-    fn try_from(data: SyncData) -> Result<Self, DownloadsManagerError>;
-}
-
-impl SyncDataTrait for BlockSyncData {
-    fn r#type() -> SyncDataType {
-        SyncDataType::Block
-    }
-
-    fn block_number(&self) -> BlockNumber {
-        self.block_number
-    }
-
-    fn try_from(data: SyncData) -> Result<Self, DownloadsManagerError> {
-        if let SyncData::Block(block_sync_data) = data {
-            return Ok(block_sync_data);
-        }
-        Err(DownloadsManagerError::DataConversion {
-            msg: String::from("Expected block sync data type."),
-        })
-    }
-}
-
-impl SyncDataTrait for StateDiffSyncData {
-    fn r#type() -> SyncDataType {
-        SyncDataType::StateDiff
-    }
-
-    fn block_number(&self) -> BlockNumber {
-        self.block_number
-    }
-
-    fn try_from(data: SyncData) -> Result<Self, DownloadsManagerError> {
-        if let SyncData::StateDiff(state_diff_sync_data) = data {
-            return Ok(state_diff_sync_data);
-        }
-        Err(DownloadsManagerError::DataConversion {
-            msg: String::from("Expected state diff sync data type."),
-        })
-    }
-}
-
-#[derive(Debug)]
-pub enum SyncDataType {
-    Block,
-    StateDiff,
 }
