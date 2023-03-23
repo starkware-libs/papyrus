@@ -52,9 +52,6 @@ create_storage_serde_test!(StorageKey);
 create_storage_serde_test!(u8);
 create_storage_serde_test!(usize);
 
-// TODO(dan): replace with/add a test that creates 257 blocks with different nonces for a contract
-// in blocks 255 and 256.
-// Make sure retrieving the nonce from th storage yields the right ones (POTC bug).
 #[test]
 fn block_number_endianness() {
     let bn_255 = BlockNumber(255);
