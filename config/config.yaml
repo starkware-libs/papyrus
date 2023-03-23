@@ -21,7 +21,7 @@ central:
     #   header_name_1: header_value_1
     #   header_name_2: header_value_2
 
-# JSON-RPC server. 
+# JSON-RPC server.
 # For more details see https://github.com/starkware-libs/starknet-specs/blob/master/api/starknet_api_openrpc.json.
 gateway:
     # IP:PORT of the node's JSON-RPC server.

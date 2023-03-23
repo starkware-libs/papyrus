@@ -8,6 +8,7 @@ use std::hash::Hash;
 use std::ops::Deref;
 use std::sync::Arc;
 
+use byteorder::BigEndian;
 use indexmap::IndexMap;
 use integer_encoding::*;
 use starknet_api::block::{
@@ -29,6 +30,7 @@ use starknet_api::transaction::{
     MessageToL2, Transaction, TransactionHash, TransactionOffsetInBlock, TransactionSignature,
     TransactionVersion,
 };
+use web3::types::H160;
 
 use crate::body::events::{
     ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput, ThinDeployTransactionOutput,
@@ -112,6 +114,7 @@ auto_storage_serde! {
         External = 1,
         L1Handler = 2,
     }
+    pub struct EthAddress(pub H160);
     pub struct EventAbiEntry {
         pub name: String,
         pub keys: Vec<TypedParameter>,
@@ -142,6 +145,7 @@ auto_storage_serde! {
     }
     pub struct GasPrice(pub u128);
     pub struct GlobalRoot(pub StarkHash);
+    pub struct H160(pub [u8; 20]);
     pub struct IndexedDeclaredContract {
         pub block_number: BlockNumber,
         pub contract_class: ContractClass,
@@ -262,13 +266,10 @@ auto_storage_serde! {
     pub struct TransactionSignature(pub Vec<StarkFelt>);
     pub struct TransactionVersion(pub StarkFelt);
 
-    bincode(bool);
-    bincode(EthAddress);
-    bincode(u8);
-    bincode(u32);
-    bincode(u64);
-    bincode(u128);
-    bincode(usize);
+    binary(u32, read_u32, write_u32);
+    binary(u64, read_u64, write_u64);
+    binary(u128, read_u128, write_u128);
+
 
     (BlockNumber, TransactionOffsetInBlock);
     (BlockHash, ClassHash);
@@ -403,15 +404,14 @@ macro_rules! auto_storage_serde {
         auto_storage_serde!($($rest)*);
     };
     // Binary.
-    (bincode($name:ident); $($rest:tt)*) => {
+    (binary($name:ident, $read:ident, $write:ident); $($rest:tt)*) => {
         impl StorageSerde for $name {
             fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
-                bincode::serialize_into(res, self)?;
-                Ok(())
+                Ok(byteorder::WriteBytesExt::$write::<BigEndian>(res, *self)?)
             }
 
             fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-                bincode::deserialize_from(bytes).ok()
+                byteorder::ReadBytesExt::$read::<BigEndian>(bytes).ok()
             }
         }
         #[cfg(test)]
@@ -478,6 +478,16 @@ impl StorageSerde for StorageKey {
 ////////////////////////////////////////////////////////////////////////
 //  Primitive types.
 ////////////////////////////////////////////////////////////////////////
+impl StorageSerde for bool {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        u8::from(*self).serialize_into(res)
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        Some((u8::deserialize_from(bytes)?) != 0)
+    }
+}
+
 // TODO(spapini): Perhaps compress this textual data.
 impl StorageSerde for serde_json::Value {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
@@ -522,6 +532,28 @@ impl<T: StorageSerde> StorageSerde for Option<T> {
         }
     }
 }
+
+impl StorageSerde for u8 {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        Ok(byteorder::WriteBytesExt::write_u8(res, *self)?)
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        byteorder::ReadBytesExt::read_u8(bytes).ok()
+    }
+}
+
+// TODO(dan): get rid of usize.
+impl StorageSerde for usize {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        (*self as u64).serialize_into(res)
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        usize::try_from(u64::deserialize_from(bytes)?).ok()
+    }
+}
+
 impl<T: StorageSerde> StorageSerde for Vec<T> {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
         res.write_varint(self.len())?;

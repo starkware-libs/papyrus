@@ -33,8 +33,6 @@ pub trait StorageSerde: Sized {
 #[derive(thiserror::Error, Debug)]
 pub enum StorageSerdeError {
     #[error(transparent)]
-    Bincode(#[from] bincode::Error),
-    #[error(transparent)]
     Io(#[from] std::io::Error),
     #[error(transparent)]
     Serde(#[from] serde_json::Error),

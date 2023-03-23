@@ -30,6 +30,7 @@ use starknet_api::transaction::{
     MessageToL2, Transaction, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
     TransactionSignature, TransactionVersion,
 };
+use web3::types::H160;
 
 pub async fn send_request(address: SocketAddr, method: &str, params: &str) -> serde_json::Value {
     let client = Client::new();
@@ -357,13 +358,13 @@ auto_impl_get_test_instance! {
         pub r#type: String,
     }
 
-    bincode(bool);
-    bincode(EthAddress);
-    bincode(u8);
-    bincode(u32);
-    bincode(u64);
-    bincode(u128);
-    bincode(usize);
+    binary(bool);
+    binary(EthAddress);
+    binary(u8);
+    binary(u32);
+    binary(u64);
+    binary(u128);
+    binary(usize);
 
     (BlockNumber, TransactionOffsetInBlock);
     (BlockHash, ClassHash);
@@ -453,7 +454,7 @@ macro_rules! auto_impl_get_test_instance {
         auto_impl_get_test_instance!($($rest)*);
     };
     // Binary.
-    (bincode($name:ident); $($rest:tt)*) => {
+    (binary($name:ident); $($rest:tt)*) => {
         default_impl_get_test_instance!($name);
         auto_impl_get_test_instance!($($rest)*);
     }
@@ -523,8 +524,9 @@ macro_rules! get_number_of_variants {
 // Implements the [`GetTestInstance`] trait for types not supported
 // by the macro [`impl_get_test_instance`].
 ////////////////////////////////////////////////////////////////////////
-default_impl_get_test_instance!(StarkHash);
+default_impl_get_test_instance!(H160);
 default_impl_get_test_instance!(ContractAddress);
+default_impl_get_test_instance!(StarkHash);
 default_impl_get_test_instance!(StorageKey);
 
 impl GetTestInstance for StructAbiEntry {
