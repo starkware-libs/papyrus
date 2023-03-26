@@ -4,7 +4,7 @@ mod ommer_test;
 
 use indexmap::IndexMap;
 use starknet_api::block::{BlockHash, BlockHeader};
-use starknet_api::core::{ClassHash, CompiledClassHash};
+use starknet_api::core::ClassHash;
 use starknet_api::state::ContractClass;
 use starknet_api::transaction::{
     EventContent, EventIndexInTransactionOutput, Transaction, TransactionOffsetInBlock,
@@ -54,7 +54,7 @@ where
         self,
         block_hash: BlockHash,
         thin_state_diff: &ThinStateDiff,
-        declared_classes: &IndexMap<ClassHash, (CompiledClassHash, ContractClass)>,
+        declared_classes: &IndexMap<ClassHash, ContractClass>,
     ) -> StorageResult<Self>;
 }
 
@@ -138,7 +138,7 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
         self,
         block_hash: BlockHash,
         thin_state_diff: &ThinStateDiff,
-        declared_classes: &IndexMap<ClassHash, (CompiledClassHash, ContractClass)>,
+        declared_classes: &IndexMap<ClassHash, ContractClass>,
     ) -> StorageResult<Self> {
         let ommer_state_diffs_table = self.txn.open_table(&self.tables.ommer_state_diffs)?;
         let ommer_declared_classes_table =
@@ -157,7 +157,7 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
             }
         })?;
 
-        for (class_hash, (_compiled_class_hash, contract_class)) in declared_classes {
+        for (class_hash, contract_class) in declared_classes {
             let key = (block_hash, *class_hash);
             let value = contract_class;
             ommer_declared_classes_table.insert(&self.txn, &key, value).map_err(

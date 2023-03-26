@@ -356,6 +356,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let state_number = StateNumber::right_after_block(block_number);
         let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
 
+        // The class might be a deprecated class. Search it first in the declared classes and if not
+        // found, search in the deprecated classes.
         if let Some(class) = state_reader
             .get_class_definition_at(state_number, &class_hash)
             .map_err(internal_server_error)?

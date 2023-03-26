@@ -34,8 +34,9 @@ pub struct StateDiff {
 }
 
 impl StateDiff {
-    // Returns the declared class hashes and after them the deployed class hashes that weren't in
-    // the declared.
+    // Returns the declared class hashes in the following order:
+    // [declared classes, deprecated declared class, deprecated classes that were implicitly
+    // declared by contract deployment].
     pub fn class_hashes(&self) -> Vec<ClassHash> {
         let mut declared_class_hashes: Vec<ClassHash> = self
             .declared_classes
@@ -68,7 +69,6 @@ pub struct StorageEntry {
     pub value: StarkFelt,
 }
 
-// TODO(yair): fill the struct.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ContractClass {
     pub sierra_program: Vec<StarkFelt>,
@@ -87,6 +87,7 @@ impl From<ContractClass> for starknet_api::state::ContractClass {
     }
 }
 
+/// A mapping from class hash to the compiled class hash.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct DeclaredClassHashEntry {
     pub class_hash: ClassHash,

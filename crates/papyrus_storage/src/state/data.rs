@@ -62,13 +62,14 @@ pub(crate) struct IndexedDeployedContract {
     pub class_hash: ClassHash,
 }
 
+// TODO(yair): rename to class.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub(crate) struct IndexedDeclaredContract {
     pub block_number: BlockNumber,
-    pub compiled_class_hash: CompiledClassHash,
     pub contract_class: ContractClass,
 }
 
+// TODO(yair): rename to class.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub(crate) struct IndexedDeprecatedDeclaredContract {
     pub block_number: BlockNumber,

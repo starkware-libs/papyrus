@@ -49,7 +49,7 @@ pub trait StateStorageReader<Mode: TransactionKind> {
 
 type RevertedStateDiff = (
     ThinStateDiff,
-    IndexMap<ClassHash, (CompiledClassHash, ContractClass)>,
+    IndexMap<ClassHash, ContractClass>,
     IndexMap<ClassHash, DeprecatedContractClass>,
 );
 
@@ -358,10 +358,9 @@ fn write_declared_classes<'env>(
     block_number: BlockNumber,
     declared_classes_table: &'env DeclaredClassesTable<'env>,
 ) -> StorageResult<()> {
-    for (class_hash, (compiled_class_hash, contract_class)) in declared_classes {
-        let value = IndexedDeclaredContract { block_number, compiled_class_hash, contract_class };
+    for (class_hash, (_, contract_class)) in declared_classes {
+        let value = IndexedDeclaredContract { block_number, contract_class };
         let res = declared_classes_table.insert(txn, &class_hash, &value);
-        // TODO(yair): write compiled_class_hash to a seperate table.
         match res {
             Ok(()) => continue,
             Err(err) => return Err(err.into()),
@@ -371,21 +370,24 @@ fn write_declared_classes<'env>(
 }
 
 fn write_deprecated_declared_classes<'env>(
-    declared_classes: IndexMap<ClassHash, DeprecatedContractClass>,
+    deprecated_declared_classes: IndexMap<ClassHash, DeprecatedContractClass>,
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
-    declared_classes_table: &'env DeprecatedDeclaredClassesTable<'env>,
+    deprecated_declared_classes_table: &'env DeprecatedDeclaredClassesTable<'env>,
 ) -> StorageResult<()> {
-    for (class_hash, contract_class) in declared_classes {
+    for (class_hash, deprecated_contract_class) in deprecated_declared_classes {
         // TODO(dan): remove this check after regenesis, in favor of insert().
-        if let Some(value) = declared_classes_table.get(txn, &class_hash)? {
-            if value.contract_class != contract_class {
+        if let Some(value) = deprecated_declared_classes_table.get(txn, &class_hash)? {
+            if value.contract_class != deprecated_contract_class {
                 return Err(StorageError::ClassAlreadyExists { class_hash });
             }
             continue;
         }
-        let value = IndexedDeprecatedDeclaredContract { block_number, contract_class };
-        let res = declared_classes_table.insert(txn, &class_hash, &value);
+        let value = IndexedDeprecatedDeclaredContract {
+            block_number,
+            contract_class: deprecated_contract_class,
+        };
+        let res = deprecated_declared_classes_table.insert(txn, &class_hash, &value);
         match res {
             Ok(()) => continue,
             Err(err) => return Err(err.into()),
@@ -457,19 +459,16 @@ fn delete_declared_classes<'env>(
     block_number: BlockNumber,
     thin_state_diff: &ThinStateDiff,
     declared_classes_table: &'env DeclaredClassesTable<'env>,
-) -> StorageResult<IndexMap<ClassHash, (CompiledClassHash, ContractClass)>> {
+) -> StorageResult<IndexMap<ClassHash, ContractClass>> {
     let mut deleted_data = IndexMap::new();
     for class_hash in thin_state_diff.declared_classes.keys() {
-        let IndexedDeclaredContract {
-            block_number: declared_block_number,
-            compiled_class_hash,
-            contract_class,
-        } = declared_classes_table
-            .get(txn, class_hash)?
-            .expect("Missing declared class {class_hash:#?}.");
+        let IndexedDeclaredContract { block_number: declared_block_number, contract_class } =
+            declared_classes_table
+                .get(txn, class_hash)?
+                .expect("Missing declared class {class_hash:#?}.");
         // If the class was declared in a different block then we should'nt delete it.
         if block_number == declared_block_number {
-            deleted_data.insert(*class_hash, (compiled_class_hash, contract_class));
+            deleted_data.insert(*class_hash, contract_class);
             declared_classes_table.delete(txn, class_hash)?;
         }
     }
