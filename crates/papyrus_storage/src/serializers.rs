@@ -114,6 +114,7 @@ auto_storage_serde! {
         External = 1,
         L1Handler = 2,
     }
+    // TODO(dan): consider implementing directly with no H160 dependency.
     pub struct EthAddress(pub H160);
     pub struct EventAbiEntry {
         pub name: String,
