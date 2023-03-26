@@ -75,18 +75,21 @@ pub async fn get_block_number_args() -> Vec<String> {
     vec![get_random_block_number().to_string()]
 }
 
-// Returns a vector with a random block hash.
-pub async fn get_block_hash_args(node_address: SocketAddr) -> Vec<String> {
-    let block_number = get_random_block_number();
+pub async fn get_block_hash_by_block_number(block_number: u64, node_address: SocketAddr) -> String {
     let response =
         &get_block_with_tx_hashes(node_address, block_number).await["result"]["block_hash"];
     let block_hash = match response {
         jsonVal::String(block_hash) => block_hash,
-        _ => {
-            panic!("No block hash in the given response")
-        }
+        _ => unreachable!(),
     };
-    vec![block_hash.to_string()]
+    block_hash.to_string()
+}
+
+// Returns a vector with a random block hash.
+pub async fn get_block_hash_args(node_address: SocketAddr) -> Vec<String> {
+    let block_number = get_random_block_number();
+    let block_hash = get_block_hash_by_block_number(block_number, node_address).await;
+    vec![block_hash]
 }
 
 // Returns a vector with a random transaction hash.
