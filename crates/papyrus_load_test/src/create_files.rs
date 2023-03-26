@@ -29,7 +29,13 @@ pub async fn create_files(node_address: &str) {
         tokio::spawn(create_file("transaction_hash.txt", BLOCK_HASH_COUNT, move || {
             get_transaction_hash_args(node_socket)
         }));
-    tokio::try_join!(block_number, block_hash, transaction_hash).unwrap();
+    let block_hash_and_transaction_index = tokio::spawn(create_file(
+        "block_hash_and_transaction_index.txt",
+        BLOCK_HASH_COUNT,
+        move || get_block_hash_and_transaction_index_args(node_socket),
+    ));
+    tokio::try_join!(block_number, block_hash, transaction_hash, block_hash_and_transaction_index)
+        .unwrap();
 }
 
 // Write to a file lines with parameters to requests.
@@ -107,4 +113,28 @@ pub async fn get_transaction_hash_args(node_address: SocketAddr) -> Vec<String> 
         _ => unreachable!("The gateway transaction hash as a String."),
     };
     vec![trans_hash.to_string()]
+}
+
+// Given block number returns the number of transactions in this block.
+pub async fn get_transaction_count_by_block_number(
+    block_number: u64,
+    node_address: SocketAddr,
+) -> u64 {
+    let params = format!("{{ \"block_number\": {block_number} }}");
+    let response =
+        &send_request(node_address, "starknet_getBlockTransactionCount", &params).await["result"];
+    let trans_count = match response {
+        jsonVal::Number(count) => count,
+        _ => unreachable!(),
+    };
+    trans_count.as_u64().unwrap()
+}
+
+// Returns a vector with a random block hash and transaction index in this block.
+pub async fn get_block_hash_and_transaction_index_args(node_address: SocketAddr) -> Vec<String> {
+    let block_number = get_random_block_number();
+    let block_hash = get_block_hash_by_block_number(block_number, node_address).await;
+    let trans_count = get_transaction_count_by_block_number(block_number, node_address).await;
+    let random_index = rand::thread_rng().gen_range(0..trans_count);
+    vec![block_hash, random_index.to_string()]
 }
