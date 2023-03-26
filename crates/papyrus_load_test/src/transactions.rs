@@ -19,6 +19,8 @@ create_get_transaction_function_with_requests_from_file! {
     get_state_update_by_number, "block_number.txt";
     get_state_update_by_hash, "block_hash.txt";
     get_transaction_by_block_id_and_index_by_hash, "block_hash_and_transaction_index.txt";
+    get_transaction_by_hash, "transaction_hash.txt";
+    get_transaction_receipt, "transaction_hash.txt";
 }
 
 pub fn block_number() -> Transaction {
