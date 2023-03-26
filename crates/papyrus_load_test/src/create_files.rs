@@ -34,8 +34,19 @@ pub async fn create_files(node_address: &str) {
         BLOCK_HASH_COUNT,
         move || get_block_hash_and_transaction_index_args(node_socket),
     ));
-    tokio::try_join!(block_number, block_hash, transaction_hash, block_hash_and_transaction_index)
-        .unwrap();
+    let block_number_and_transaction_index = tokio::spawn(create_file(
+        "block_number_and_transaction_index.txt",
+        BLOCK_HASH_COUNT,
+        move || get_block_number_and_transaction_index_args(node_socket),
+    ));
+    tokio::try_join!(
+        block_number,
+        block_hash,
+        transaction_hash,
+        block_hash_and_transaction_index,
+        block_number_and_transaction_index
+    )
+    .unwrap();
 }
 
 // Write to a file lines with parameters to requests.
@@ -137,4 +148,12 @@ pub async fn get_block_hash_and_transaction_index_args(node_address: SocketAddr)
     let trans_count = get_transaction_count_by_block_number(block_number, node_address).await;
     let random_index = rand::thread_rng().gen_range(0..trans_count);
     vec![block_hash, random_index.to_string()]
+}
+
+// Returns a vector with a random block number and transaction index in this block.
+pub async fn get_block_number_and_transaction_index_args(node_address: SocketAddr) -> Vec<String> {
+    let block_number = get_random_block_number();
+    let trans_count = get_transaction_count_by_block_number(block_number, node_address).await;
+    let random_index = rand::thread_rng().gen_range(0..trans_count);
+    vec![block_number.to_string(), random_index.to_string()]
 }
