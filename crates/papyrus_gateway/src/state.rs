@@ -7,6 +7,8 @@ use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, GlobalRo
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{EntryPoint, EntryPointType, StorageKey};
 
+const CONTRACT_CLASS_VERSION: &str = "0.1.0";
+
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct StateUpdate {
     pub block_hash: BlockHash,
@@ -99,7 +101,7 @@ impl From<starknet_api::state::ContractClass> for ContractClass {
     fn from(class: starknet_api::state::ContractClass) -> Self {
         Self {
             sierra_program: class.sierra_program,
-            contract_class_version: "0.1.0".to_owned(),
+            contract_class_version: CONTRACT_CLASS_VERSION.to_owned(),
             entry_points_by_type: class.entry_point_by_type,
             abi: class.abi,
         }

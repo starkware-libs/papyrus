@@ -46,7 +46,6 @@ auto_impl_get_test_instance! {
     }
     pub struct IndexedDeclaredContract {
         pub block_number: BlockNumber,
-        pub compiled_class_hash: CompiledClassHash,
         pub contract_class: ContractClass,
     }
     pub struct IndexedDeployedContract {
