@@ -1,0 +1,10 @@
+[package]
+name = "papyrus_discovery"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+libp2p = { version = "0.51.1" }
+either = { version = "1.8.1" }
+futures = { version = "0.3.7" }
+thiserror = { version = "1.0.31" }
