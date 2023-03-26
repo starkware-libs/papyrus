@@ -8,6 +8,7 @@ data:
   RUST_LOG: {{ .Values.rustLogLevel }}
   CHAIN_ID: {{ .Values.starknet.chain_id }}
   CENTRAL_URL: {{ .Values.starknet.central_url }}
+  CONCURRENT_REQUESTS: {{ .Values.node.concurrent_fg_requests | quote }}
   {{- if .Values.starknet.additional_headers }}
   ADDITIONAL_HEADER: {{ .Values.starknet.additional_headers }}
   {{- end }}
