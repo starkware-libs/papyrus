@@ -42,13 +42,13 @@ storage:
         # Path of the node's storage directory, the storage file path will be <path>/<chain_id>.
         # The path is not created automatically.
         path: ./data
-        # Min size of the node's storage.
+        # The minimum size of the node's storage in bytes.
         min_size: 1048576 # 1MB
-        # Max size of the node's storage.
+        # The maximum size of the node's storage in bytes.
         max_size: 1099511627776 # 1TB.
-        # The memory growth step of the node's storage.
+        # The growth step in bytes, must be greater than zero to allow the database to grow.
         growth_step: 67108864 # 64MB
-        # The maximum number of named databases of the node's storage..
+        # The maximum number of named databases of the node's storage.
         max_dbs: 21
 
 # Synchronization with Starknet.
