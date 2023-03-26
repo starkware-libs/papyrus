@@ -25,6 +25,14 @@ pub fn get_block_with_transaction_hashes_by_hash(block_hash: &str) -> jsonVal {
     jsonrpc_request("starknet_getBlockWithTxHashes", json!([{ "block_hash": block_hash }]))
 }
 
+pub fn get_transaction_by_hash(transaction_hash: &str) -> jsonVal {
+    jsonrpc_request("starknet_getTransactionByHash", json!([transaction_hash]))
+}
+
+pub fn get_transaction_receipt(transaction_hash: &str) -> jsonVal {
+    jsonrpc_request("starknet_getTransactionReceipt", json!([transaction_hash]))
+}
+
 // This struct is for iterating over the args string.
 struct ArgsIter<'a> {
     iter: SplitWhitespace<'a>,
