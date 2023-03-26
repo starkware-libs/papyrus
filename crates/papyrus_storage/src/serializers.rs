@@ -168,6 +168,7 @@ auto_storage_serde! {
         State = 2,
     }
     pub struct MessageToL1 {
+        pub from_address: ContractAddress,
         pub to_address: EthAddress,
         pub payload: L2ToL1Payload,
     }

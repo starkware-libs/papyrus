@@ -311,6 +311,7 @@ pub struct L2ToL1Message {
 impl From<L2ToL1Message> for starknet_api::transaction::MessageToL1 {
     fn from(message: L2ToL1Message) -> Self {
         starknet_api::transaction::MessageToL1 {
+            from_address: message.from_address,
             to_address: message.to_address,
             payload: message.payload,
         }

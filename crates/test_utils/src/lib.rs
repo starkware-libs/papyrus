@@ -311,6 +311,7 @@ auto_impl_get_test_instance! {
     pub struct L1ToL2Payload(pub Vec<StarkFelt>);
     pub struct L2ToL1Payload(pub Vec<StarkFelt>);
     pub struct MessageToL1 {
+        pub from_address: ContractAddress,
         pub to_address: EthAddress,
         pub payload: L2ToL1Payload,
     }
