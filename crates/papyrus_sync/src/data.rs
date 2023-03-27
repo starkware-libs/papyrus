@@ -15,7 +15,6 @@ use crate::sources::{CentralError, CentralSourceTrait};
 
 #[derive(Debug, Clone)]
 pub struct BlockSyncData {
-    pub block_number: BlockNumber,
     pub block: Block,
 }
 
@@ -41,6 +40,7 @@ pub enum SyncData {
 pub trait SyncDataTrait: Sized + Sync + Send + Debug {
     fn r#type() -> SyncDataType;
     fn block_number(&self) -> BlockNumber;
+    fn block_hash(&self) -> BlockHash;
     fn try_from(data: SyncData) -> Result<Self, SyncDataError>;
     async fn download<T: CentralSourceTrait + Sync + Send + 'static>(
         source: Arc<T>,
@@ -57,7 +57,11 @@ impl SyncDataTrait for BlockSyncData {
     }
 
     fn block_number(&self) -> BlockNumber {
-        self.block_number
+        self.block.header.block_number
+    }
+
+    fn block_hash(&self) -> BlockHash {
+        self.block.header.block_hash
     }
 
     fn try_from(data: SyncData) -> Result<Self, SyncDataError> {
@@ -78,15 +82,16 @@ impl SyncDataTrait for BlockSyncData {
         pin_mut!(block_stream);
 
         while let Some(maybe_block) = block_stream.next().await {
-            let (block_number, block) = maybe_block?;
-            sender.send(SyncData::Block(BlockSyncData { block_number, block })).await.map_err(
-                |e| SyncDataError::Channel {
+            let (_block_number, block) = maybe_block?;
+            let block_number = block.header.block_number;
+            sender.send(SyncData::Block(BlockSyncData { block })).await.map_err(|e| {
+                SyncDataError::Channel {
                     msg: format!(
                         "Problem with sending block {block_number} when downloading [{from}, \
                          {upto}): {e}."
                     ),
-                },
-            )?;
+                }
+            })?;
             trace!("Downloaded block {block_number}.");
         }
 
@@ -102,6 +107,10 @@ impl SyncDataTrait for StateDiffSyncData {
 
     fn block_number(&self) -> BlockNumber {
         self.block_number
+    }
+
+    fn block_hash(&self) -> BlockHash {
+        self.block_hash
     }
 
     fn try_from(data: SyncData) -> Result<Self, SyncDataError> {
