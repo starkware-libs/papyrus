@@ -3,6 +3,7 @@ mod data;
 mod downloads_manager;
 mod sources;
 mod state;
+mod sync;
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -13,7 +14,9 @@ use tracing::{error, info, warn};
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
 use crate::block::BlockSync;
+use crate::data::{BlockSyncData, StateDiffSyncData};
 use crate::state::StateDiffSync;
+use crate::sync::SingleDataTypeSync;
 
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct SyncConfig {
@@ -45,9 +48,9 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     pub async fn run(&mut self) -> StateSyncResult {
         info!("State sync started.");
         let mut block_sync =
-            BlockSync::new(self.config, self.central_source.clone(), self.reader.clone())?;
+            SingleDataTypeSync::new(self.config, self.central_source.clone(), self.reader.clone())?;
         let mut state_diff_sync =
-            StateDiffSync::new(self.config, self.central_source.clone(), self.reader.clone())?;
+            SingleDataTypeSync::new(self.config, self.central_source.clone(), self.reader.clone())?;
 
         loop {
             match self.sync_while_ok(&mut block_sync, &mut state_diff_sync).await {
@@ -91,8 +94,8 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
 
     async fn sync_while_ok(
         &mut self,
-        block_sync: &mut BlockSync<TCentralSource>,
-        state_diff_sync: &mut StateDiffSync<TCentralSource>,
+        block_sync: &mut SingleDataTypeSync<TCentralSource, BlockSyncData, BlockSync>,
+        state_diff_sync: &mut SingleDataTypeSync<TCentralSource, StateDiffSyncData, StateDiffSync>,
     ) -> StateSyncResult {
         let txn1 = self.writer.begin_rw_txn()?;
         block_sync.step(txn1)?;
