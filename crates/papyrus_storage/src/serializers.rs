@@ -583,7 +583,7 @@ impl StorageSerde for Program {
     }
 
     fn should_compress() -> ShouldCompressOptions {
-        ShouldCompressOptions::Yes
+        ShouldCompressOptions::No // TODO: Change to Yes?!
     }
 }
 
@@ -731,7 +731,7 @@ impl<K: StorageSerde + Eq + Hash, V: StorageSerde> StorageSerde for HashMap<K, V
     }
 
     fn should_compress() -> ShouldCompressOptions {
-        ShouldCompressOptions::Yes
+        ShouldCompressOptions::No // TODO: Change to Yes?!
     }
 }
 // TODO(anatg): Find a way to share code with StorageSerde for HashMap.
@@ -759,7 +759,7 @@ impl<K: StorageSerde + Eq + Hash, V: StorageSerde> StorageSerde for IndexMap<K, 
     }
 
     fn should_compress() -> ShouldCompressOptions {
-        ShouldCompressOptions::Yes
+        ShouldCompressOptions::No // TODO: Change to Yes?!
     }
 }
 impl<T: StorageSerde + Default + Copy, const N: usize> StorageSerde for [T; N] {
