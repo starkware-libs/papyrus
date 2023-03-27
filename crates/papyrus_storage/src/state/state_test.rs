@@ -363,3 +363,50 @@ fn revert_state() {
         StarkFelt::from(0)
     );
 }
+
+#[test]
+fn get_nonce_key_serialization() {
+    let (reader, mut writer) = get_test_storage();
+    let contract_address = ContractAddress(patricia_key!("0x11"));
+
+    for block_number in 0..(1 << 8) + 1 {
+        let state_diff = StateDiff {
+            deployed_contracts: IndexMap::new(),
+            storage_diffs: IndexMap::new(),
+            declared_classes: IndexMap::new(),
+            nonces: IndexMap::from([(contract_address, Nonce(StarkHash::from(block_number + 1)))]),
+        };
+
+        writer
+            .begin_rw_txn()
+            .unwrap()
+            .append_state_diff(BlockNumber(block_number), state_diff, IndexMap::new())
+            .unwrap()
+            .commit()
+            .unwrap();
+    }
+
+    let txn = reader.begin_ro_txn().unwrap();
+    let state_reader = txn.get_state_reader().unwrap();
+    // No nonce in genesis.
+    assert_eq!(
+        state_reader
+            .get_nonce_at(StateNumber::right_before_block(BlockNumber(0)), &contract_address)
+            .unwrap(),
+        None
+    );
+
+    for block_number in 1..(1 << 8) + 1 {
+        println!("{block_number:?}");
+        let nonce = state_reader
+            .get_nonce_at(
+                StateNumber::right_before_block(BlockNumber(block_number)),
+                &contract_address,
+            )
+            .unwrap();
+        println!("{nonce:?}");
+        let nonce = nonce.unwrap();
+
+        assert_eq!(nonce, Nonce(StarkHash::from(block_number)));
+    }
+}
