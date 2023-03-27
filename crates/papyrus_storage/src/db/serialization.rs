@@ -93,10 +93,11 @@ pub trait StorageSerde: Sized {
     }
 
     fn is_big(&self) -> bool {
-        let mut bytes = Vec::new();
-        let _res = self.serialize_into(&mut bytes);
-        // TODO(anatg): Insert 500 to the config.
-        bytes.len() > 500
+        false
+        // let mut bytes = Vec::new();
+        // let _res = self.serialize_into(&mut bytes);
+        // // TODO(anatg): Insert 500 to the config.
+        // bytes.len() > 500
     }
 }
 
