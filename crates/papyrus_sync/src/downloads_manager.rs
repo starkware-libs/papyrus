@@ -20,8 +20,8 @@ where
 {
     tasks: Vec<Task<T, D>>,
     source: Arc<T>,
-    max_active_tasks: usize, // TODO(anatg): Add to config file.
-    max_range_per_task: u64, // TODO(anatg): Add to config file.
+    max_active_tasks: u16,
+    max_range_per_task: u16,
     receiver: mpsc::Receiver<BlockNumber>,
     from: BlockNumber,
     upto: Option<BlockNumber>,
@@ -35,8 +35,8 @@ where
 {
     pub fn new(
         source: Arc<T>,
-        max_active_tasks: usize,
-        max_range_per_task: u64,
+        max_active_tasks: u16,
+        max_range_per_task: u16,
         receiver: mpsc::Receiver<BlockNumber>,
         from: BlockNumber,
     ) -> Self {
@@ -161,10 +161,10 @@ where
         );
 
         // Create new tasks.
-        for _i in 0..self.max_active_tasks - active_tasks.len() {
-            let task_upto = BlockNumber(min(from.0 + self.max_range_per_task, upto.0));
+        for _i in 0..self.max_active_tasks - (active_tasks.len() as u16) {
+            let task_upto = BlockNumber(min(from.0 + u64::from(self.max_range_per_task), upto.0));
             debug!("[{:?}]: Creating task [{}, {}).", D::r#type(), from, task_upto);
-            let task = Task::new(self.source.clone(), from, task_upto);
+            let task = Task::new(self.source.clone(), from, task_upto, self.max_range_per_task);
             self.tasks.push(task);
             if task_upto == upto {
                 break;
@@ -195,8 +195,8 @@ struct Task<T: CentralSourceTrait + Sync + Send, D: SyncDataTrait> {
 }
 
 impl<T: CentralSourceTrait + Sync + Send + 'static, D: SyncDataTrait> Task<T, D> {
-    fn new(source: Arc<T>, from: BlockNumber, upto: BlockNumber) -> Self {
-        let (sender, receiver) = mpsc::channel(200);
+    fn new(source: Arc<T>, from: BlockNumber, upto: BlockNumber, max_range_per_task: u16) -> Self {
+        let (sender, receiver) = mpsc::channel(max_range_per_task.into());
         let download = async move {
             if let Err(err) = D::download(source, sender, from, upto).await {
                 warn!("{}", err);

@@ -107,7 +107,10 @@ impl Default for ConfigBuilder {
                 },
                 sync: Some(SyncConfig {
                     block_propagation_sleep_duration: Duration::from_secs(10),
+                    block_retrieve_sleep_duration: Duration::from_millis(10),
                     recoverable_error_sleep_duration: Duration::from_secs(10),
+                    downloads_manager_max_active_tasks: 10,
+                    downloads_manager_max_range_per_task: 100,
                 }),
             },
         }

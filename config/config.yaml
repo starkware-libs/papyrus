@@ -5,7 +5,7 @@ chain_id: SN_MAIN
 # Connection with Starknet feeder-gateway.
 central:
     # Maximum number of concurrent requests to Starknet feeder-gateway for getting a type of data (for example, blocks).
-    concurrent_requests: 10
+    concurrent_requests: 100
     # Starknet feeder-gateway URL. It should match chain_id.
     url: https://alpha-mainnet.starknet.io/
     # In case of failed requests to the central.
@@ -47,7 +47,14 @@ storage:
 
 # Synchronization with Starknet.
 sync:
-    # Time before checking for a new block after the node is synchronized.
+    # Time before checking for a new block after the blocks data is synchronized.
     block_propagation_sleep_duration_secs: 10
+    # Time before checking for a new state diff after the state data is synchronized.
+    block_retrieve_sleep_duration_millis: 10
     # Waiting time before restarting synchronization after a recoverable error.
     recoverable_error_sleep_duration_secs: 10
+    # Maximum number of concurrent tasks downloading a type of data (for example, blocks).
+    downloads_manager_max_active_tasks: 10
+    # Maximum number of requests to the central source per task for downloading a type of data (for example, blocks).
+    downloads_manager_max_range_per_task: 100
+

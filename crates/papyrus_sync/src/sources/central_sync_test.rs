@@ -70,7 +70,10 @@ async fn run_sync(
     let mut state_sync = GenericStateSync {
         config: SyncConfig {
             block_propagation_sleep_duration: SYNC_SLEEP_DURATION,
+            block_retrieve_sleep_duration: Duration::from_millis(1),
             recoverable_error_sleep_duration: SYNC_SLEEP_DURATION,
+            downloads_manager_max_active_tasks: 1,
+            downloads_manager_max_range_per_task: 10,
         },
         central_source: Arc::new(central),
         reader,

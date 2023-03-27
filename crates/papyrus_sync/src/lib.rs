@@ -21,7 +21,10 @@ use crate::sync::SingleDataTypeSync;
 #[derive(Clone, Copy, Serialize, Deserialize)]
 pub struct SyncConfig {
     pub block_propagation_sleep_duration: Duration,
+    pub block_retrieve_sleep_duration: Duration,
     pub recoverable_error_sleep_duration: Duration,
+    pub downloads_manager_max_active_tasks: u16,
+    pub downloads_manager_max_range_per_task: u16,
 }
 
 // Orchestrates specific network interfaces (e.g. central, p2p, l1) and writes to Storage.

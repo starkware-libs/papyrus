@@ -34,8 +34,8 @@ impl<T: CentralSourceTrait + Sync + Send + 'static> SyncExtensionTrait<T, StateD
         Ok((txn.get_state_marker()?, txn.get_header_marker()?))
     }
 
-    fn get_sleep_duration(_config: SyncConfig) -> Duration {
-        Duration::from_millis(10)
+    fn get_sleep_duration(config: SyncConfig) -> Duration {
+        config.block_retrieve_sleep_duration
     }
 
     fn store(txn: StorageTxn<'_, RW>, mut data: StateDiffSyncData) -> StateSyncResult {

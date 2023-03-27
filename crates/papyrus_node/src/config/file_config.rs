@@ -132,9 +132,18 @@ impl From<SyncConfig> for Sync {
             block_propagation_sleep_duration_secs: Some(
                 config.block_propagation_sleep_duration.as_secs(),
             ),
+            block_retrieve_sleep_duration_millis: Some(
+                config
+                    .block_retrieve_sleep_duration
+                    .as_millis()
+                    .try_into()
+                    .expect("Problem converting block_retrieve_sleep_duration to u64."),
+            ),
             recoverable_error_sleep_duration_secs: Some(
                 config.recoverable_error_sleep_duration.as_secs(),
             ),
+            downloads_manager_max_active_tasks: Some(config.downloads_manager_max_active_tasks),
+            downloads_manager_max_range_per_task: Some(config.downloads_manager_max_range_per_task),
         }
     }
 }
@@ -266,7 +275,10 @@ impl Db {
 #[serde(deny_unknown_fields)]
 struct Sync {
     block_propagation_sleep_duration_secs: Option<u64>,
+    block_retrieve_sleep_duration_millis: Option<u64>,
     recoverable_error_sleep_duration_secs: Option<u64>,
+    downloads_manager_max_active_tasks: Option<u16>,
+    downloads_manager_max_range_per_task: Option<u16>,
 }
 
 impl Sync {
@@ -275,9 +287,21 @@ impl Sync {
             config.block_propagation_sleep_duration =
                 Duration::from_secs(block_propagation_sleep_duration);
         }
+        if let Some(block_retrieve_sleep_duration) = self.block_retrieve_sleep_duration_millis {
+            config.block_retrieve_sleep_duration =
+                Duration::from_millis(block_retrieve_sleep_duration);
+        }
         if let Some(recoverable_error_sleep_duration) = self.recoverable_error_sleep_duration_secs {
             config.recoverable_error_sleep_duration =
                 Duration::from_secs(recoverable_error_sleep_duration);
+        }
+        if let Some(downloads_manager_max_active_tasks) = self.downloads_manager_max_active_tasks {
+            config.downloads_manager_max_active_tasks = downloads_manager_max_active_tasks;
+        }
+        if let Some(downloads_manager_max_range_per_task) =
+            self.downloads_manager_max_range_per_task
+        {
+            config.downloads_manager_max_range_per_task = downloads_manager_max_range_per_task;
         }
     }
 }

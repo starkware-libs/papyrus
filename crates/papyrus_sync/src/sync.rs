@@ -41,9 +41,15 @@ where
         source: Arc<T>,
         reader: StorageReader,
     ) -> Result<Self, StateSyncError> {
-        let (sender, receiver) = mpsc::channel(200);
+        let (sender, receiver) = mpsc::channel(10);
         let marker = S::get_from(&reader)?;
-        let downloads_manager = DownloadsManager::new(source.clone(), 10, 100, receiver, marker);
+        let downloads_manager = DownloadsManager::new(
+            source.clone(),
+            config.downloads_manager_max_active_tasks,
+            config.downloads_manager_max_range_per_task,
+            receiver,
+            marker,
+        );
         let task = Self::run_update_range(config, source.clone(), reader.clone(), sender);
         Ok(Self {
             sync_ext: PhantomData::<S>,
