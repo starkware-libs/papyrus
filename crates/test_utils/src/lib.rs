@@ -314,6 +314,7 @@ auto_impl_get_test_instance! {
     pub struct MessageToL1 {
         pub to_address: EthAddress,
         pub payload: L2ToL1Payload,
+        pub from_address: ContractAddress,
     }
     pub struct MessageToL2 {
         pub from_address: EthAddress,

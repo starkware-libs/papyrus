@@ -1011,7 +1011,7 @@
                 ]
             },
             "BLOCK_HEADER": {
-                "type":"object",
+                "type": "object",
                 "properties": {
                     "block_hash": {
                         "$ref": "#/components/schemas/BLOCK_HASH"
@@ -1871,11 +1871,16 @@
                         "items": {
                             "$ref": "#/components/schemas/FELT"
                         }
+                    },
+                    "from_address": {
+                        "description": "The L2 sender address the message is sent from",
+                        "$ref": "#/components/schemas/FELT"
                     }
                 },
                 "required": [
                     "to_address",
-                    "payload"
+                    "payload",
+                    "from_address"
                 ]
             },
             "TXN_STATUS": {
@@ -1976,7 +1981,7 @@
                 "properties": {
                     "offset": {
                         "description": "The offset of the entry point in the program",
-                        "$ref": "#/components/schemas/NUM_AS_HEX"
+                        "type": "integer"
                     },
                     "selector": {
                         "description": "A unique identifier of the entry point (function) in the program",

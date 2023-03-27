@@ -313,6 +313,7 @@ impl From<L2ToL1Message> for starknet_api::transaction::MessageToL1 {
         starknet_api::transaction::MessageToL1 {
             to_address: message.to_address,
             payload: message.payload,
+            from_address: message.from_address,
         }
     }
 }
