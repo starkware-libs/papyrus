@@ -103,7 +103,12 @@ impl Default for ConfigBuilder {
                     server_address: String::from("0.0.0.0:8081"),
                 },
                 storage: StorageConfig {
-                    db_config: DbConfig { path: String::from("./data"), max_size: 1099511627776 },
+                    db_config: DbConfig {
+                        path: String::from("./data"),
+                        min_size: 1 << 20,    // 1MB
+                        max_size: 1 << 40,    // 1TB
+                        growth_step: 1 << 26, // 64MB
+                    },
                 },
                 sync: Some(SyncConfig {
                     block_propagation_sleep_duration: Duration::from_secs(10),

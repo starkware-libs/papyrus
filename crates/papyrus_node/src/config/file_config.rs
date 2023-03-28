@@ -122,7 +122,12 @@ impl From<DbConfig> for Db {
         let last_slash_index =
             path.rfind('/').expect("Remove chain_id from the storage file path failed");
         path.truncate(last_slash_index);
-        Db { path: Some(path), max_size: Some(config.max_size) }
+        Db {
+            path: Some(path),
+            min_size: Some(config.min_size),
+            max_size: Some(config.max_size),
+            growth_step: Some(config.growth_step),
+        }
     }
 }
 
@@ -248,7 +253,9 @@ impl Storage {
 #[serde(deny_unknown_fields)]
 struct Db {
     path: Option<String>,
+    min_size: Option<usize>,
     max_size: Option<usize>,
+    growth_step: Option<isize>,
 }
 
 impl Db {
@@ -256,8 +263,14 @@ impl Db {
         if let Some(path) = self.path {
             config.path = path;
         }
+        if let Some(min_size) = self.min_size {
+            config.min_size = min_size;
+        }
         if let Some(max_size) = self.max_size {
             config.max_size = max_size;
+        }
+        if let Some(growth_step) = self.growth_step {
+            config.growth_step = growth_step;
         }
     }
 }
