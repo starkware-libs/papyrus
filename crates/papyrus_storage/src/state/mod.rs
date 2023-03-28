@@ -353,12 +353,12 @@ fn update_marker<'env>(
 }
 
 fn write_declared_classes<'env>(
-    declared_classes: IndexMap<ClassHash, (CompiledClassHash, ContractClass)>,
+    declared_classes: IndexMap<ClassHash, ContractClass>,
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     declared_classes_table: &'env DeclaredClassesTable<'env>,
 ) -> StorageResult<()> {
-    for (class_hash, (_, contract_class)) in declared_classes {
+    for (class_hash, contract_class) in declared_classes {
         let value = IndexedDeclaredContract { block_number, contract_class };
         let res = declared_classes_table.insert(txn, &class_hash, &value);
         match res {

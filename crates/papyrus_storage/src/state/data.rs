@@ -6,7 +6,7 @@ use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContract
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StateDiff, StorageKey};
 
-pub type DeclaredClasses = IndexMap<ClassHash, (CompiledClassHash, ContractClass)>;
+pub type DeclaredClasses = IndexMap<ClassHash, ContractClass>;
 pub type DeprecatedDeclaredClasses = IndexMap<ClassHash, DeprecatedContractClass>;
 
 /// Data structs that are serialized into the database.
@@ -44,7 +44,10 @@ impl ThinStateDiff {
                     .collect(),
                 nonces: diff.nonces,
             },
-            diff.declared_classes,
+            diff.declared_classes
+                .into_iter()
+                .map(|(class_hash, (_compiled_class_hash, class))| (class_hash, class))
+                .collect(),
             diff.deprecated_declared_classes,
         )
     }
