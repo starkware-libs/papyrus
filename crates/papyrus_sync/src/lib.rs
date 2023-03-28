@@ -223,18 +223,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             // Info the user on syncing the block once all the data is stored.
             info!("Added block {} with hash {}.", block_number, block_hash);
         } else {
-            debug!(
-                "Storing ommer state diff of block {} with hash {:?}.",
-                block_number, block_hash
-            );
-            self.writer
-                .begin_rw_txn()?
-                .insert_ommer_state_diff(
-                    block_hash,
-                    &state_diff.into(),
-                    &deployed_contract_class_definitions,
-                )?
-                .commit()?;
+            todo!("Insert to ommer table.");
         }
         Ok(())
     }
@@ -314,7 +303,8 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
 
             let res = txn.revert_state_diff(block_number)?;
             txn = res.0;
-            if let Some((thin_state_diff, declared_classes)) = res.1 {
+            // TODO(yair): consider inserting to ommer the deprecated_declared_classes.
+            if let Some((thin_state_diff, declared_classes, _deprecated_declared_classes)) = res.1 {
                 txn = txn.insert_ommer_state_diff(
                     header.block_hash,
                     &thin_state_diff,
@@ -434,6 +424,7 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
 }
 
 pub fn sort_state_diff(diff: &mut StateDiff) {
+    diff.declared_classes.sort_unstable_keys();
     diff.deprecated_declared_classes.sort_unstable_keys();
     diff.deployed_contracts.sort_unstable_keys();
     diff.nonces.sort_unstable_keys();

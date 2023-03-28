@@ -17,9 +17,8 @@ use db::DbTableStats;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
-use starknet_api::deprecated_contract_class::ContractClass;
 use starknet_api::hash::StarkFelt;
-use starknet_api::state::StorageKey;
+use starknet_api::state::{ContractClass, StorageKey};
 use starknet_api::transaction::{
     EventContent, EventIndexInTransactionOutput, Transaction, TransactionHash,
     TransactionOffsetInBlock,
@@ -30,13 +29,17 @@ use crate::db::{
     open_env, DbConfig, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier,
     TransactionKind, RO, RW,
 };
-use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
+use crate::state::data::{
+    IndexedDeclaredContract, IndexedDeployedContract, IndexedDeprecatedDeclaredContract,
+    ThinStateDiff,
+};
 
 pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, StorageWriter)> {
     let (db_reader, mut db_writer) = open_env(db_config)?;
     let tables = Arc::new(Tables {
         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
         contract_storage: db_writer.create_table("contract_storage")?,
+        declared_classes: db_writer.create_table("declared_classes")?,
         deprecated_declared_classes: db_writer.create_table("deprecated_declared_classes")?,
         deployed_contracts: db_writer.create_table("deployed_contracts")?,
         events: db_writer.create_table("events")?,
@@ -112,13 +115,16 @@ struct_field_names! {
     struct Tables {
         block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
         contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
-        deprecated_declared_classes: TableIdentifier<ClassHash, IndexedDeclaredContract>,
+        declared_classes: TableIdentifier<ClassHash, IndexedDeclaredContract>,
+        deprecated_declared_classes: TableIdentifier<ClassHash, IndexedDeprecatedDeclaredContract>,
         deployed_contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
         events: TableIdentifier<(ContractAddress, EventIndex), EventContent>,
         headers: TableIdentifier<BlockNumber, BlockHeader>,
         markers: TableIdentifier<MarkerKind, BlockNumber>,
         nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
         ommer_contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockHash), StarkFelt>,
+        //TODO(yair): Consider whether an ommer_deprecated_declared_classes is needed.
+        // TODO(yair): Consider whether the compiled class hash should be saved in the ommer table.
         ommer_declared_classes: TableIdentifier<(BlockHash, ClassHash), ContractClass>,
         ommer_deployed_contracts: TableIdentifier<(ContractAddress, BlockHash), ClassHash>,
         ommer_events: TableIdentifier<(ContractAddress, OmmerEventKey), EventContent>,

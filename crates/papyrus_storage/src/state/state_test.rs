@@ -1,5 +1,5 @@
 use assert_matches::assert_matches;
-use indexmap::IndexMap;
+use indexmap::{indexmap, IndexMap};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
@@ -17,6 +17,7 @@ use crate::{StorageWriter, ThinStateDiff};
 
 #[test]
 fn append_state_diff() {
+    // TODO(yair): Add declared_classes.
     let c0 = ContractAddress(patricia_key!("0x11"));
     let c1 = ContractAddress(patricia_key!("0x12"));
     let c2 = ContractAddress(patricia_key!("0x13"));
@@ -35,6 +36,7 @@ fn append_state_diff() {
             (c1, IndexMap::new()),
         ]),
         deprecated_declared_classes: IndexMap::from([(cl0, c_cls0.clone()), (cl1, c_cls1)]),
+        declared_classes: indexmap! {},
         nonces: IndexMap::from([(c0, Nonce(StarkHash::from(1)))]),
     };
     let diff1 = StateDiff {
@@ -44,6 +46,7 @@ fn append_state_diff() {
             (c1, IndexMap::from([(key0, stark_felt!("0x0"))])),
         ]),
         deprecated_declared_classes: IndexMap::from([(cl0, c_cls0.clone())]),
+        declared_classes: indexmap! {},
         nonces: IndexMap::from([
             (c0, Nonce(StarkHash::from(2))),
             (c1, Nonce(StarkHash::from(1))),
@@ -106,14 +109,23 @@ fn append_state_diff() {
     let state2 = StateNumber::right_before_block(BlockNumber(2));
 
     // Class0.
-    assert_eq!(statetxn.get_class_definition_at(state0, &cl0).unwrap(), None);
-    assert_eq!(statetxn.get_class_definition_at(state1, &cl0).unwrap(), Some(c_cls0.clone()));
-    assert_eq!(statetxn.get_class_definition_at(state2, &cl0).unwrap(), Some(c_cls0.clone()));
+    assert_eq!(statetxn.get_deprecated_class_definition_at(state0, &cl0).unwrap(), None);
+    assert_eq!(
+        statetxn.get_deprecated_class_definition_at(state1, &cl0).unwrap(),
+        Some(c_cls0.clone())
+    );
+    assert_eq!(
+        statetxn.get_deprecated_class_definition_at(state2, &cl0).unwrap(),
+        Some(c_cls0.clone())
+    );
 
     // Class1.
-    assert_eq!(statetxn.get_class_definition_at(state0, &cl1).unwrap(), None);
-    assert_eq!(statetxn.get_class_definition_at(state1, &cl1).unwrap(), Some(c_cls0.clone()));
-    assert_eq!(statetxn.get_class_definition_at(state2, &cl1).unwrap(), Some(c_cls0));
+    assert_eq!(statetxn.get_deprecated_class_definition_at(state0, &cl1).unwrap(), None);
+    assert_eq!(
+        statetxn.get_deprecated_class_definition_at(state1, &cl1).unwrap(),
+        Some(c_cls0.clone())
+    );
+    assert_eq!(statetxn.get_deprecated_class_definition_at(state2, &cl1).unwrap(), Some(c_cls0));
 
     // Contract0.
     assert_eq!(statetxn.get_class_hash_at(state0, &c0).unwrap(), None);
@@ -238,6 +250,7 @@ fn append_2_state_diffs(writer: &mut StorageWriter) {
 #[test]
 fn revert_doesnt_delete_previously_declared_classes() {
     // Append 2 state diffs that use the same declared class.
+    // TODO(yair): Add declared_classes.
     let c0 = ContractAddress(patricia_key!("0x11"));
     let cl0 = ClassHash(stark_felt!("0x4"));
     let c_cls0 = ContractClass::default();
@@ -245,6 +258,7 @@ fn revert_doesnt_delete_previously_declared_classes() {
         deployed_contracts: IndexMap::from([(c0, cl0)]),
         storage_diffs: IndexMap::new(),
         deprecated_declared_classes: IndexMap::from([(cl0, c_cls0.clone())]),
+        declared_classes: indexmap! {},
         nonces: IndexMap::from([(c0, Nonce(StarkHash::from(1)))]),
     };
 
@@ -253,6 +267,7 @@ fn revert_doesnt_delete_previously_declared_classes() {
         deployed_contracts: IndexMap::from([(c1, cl0)]),
         storage_diffs: IndexMap::new(),
         deprecated_declared_classes: IndexMap::from([(cl0, c_cls0)]),
+        declared_classes: indexmap! {},
         nonces: IndexMap::from([(c1, Nonce(StarkHash::from(2)))]),
     };
 
@@ -275,7 +290,7 @@ fn revert_doesnt_delete_previously_declared_classes() {
         .unwrap()
         .get_state_reader()
         .unwrap()
-        .get_class_definition_at(StateNumber::right_after_block(BlockNumber(0)), &cl0)
+        .get_deprecated_class_definition_at(StateNumber::right_after_block(BlockNumber(0)), &cl0)
         .unwrap();
     assert!(declared_class.is_some());
 
@@ -287,7 +302,7 @@ fn revert_doesnt_delete_previously_declared_classes() {
         .unwrap()
         .get_state_reader()
         .unwrap()
-        .get_class_definition_at(StateNumber::right_after_block(BlockNumber(0)), &cl0)
+        .get_deprecated_class_definition_at(StateNumber::right_after_block(BlockNumber(0)), &cl0)
         .unwrap();
     assert!(declared_class.is_none());
 }
@@ -298,6 +313,7 @@ fn revert_state() {
     let (contract0, class0) = state_diff0.deployed_contracts.first().unwrap();
     let (_contract0, nonce0) = state_diff0.nonces.first().unwrap();
 
+    // TODO(yair): Add declared_classes.
     // Create another state diff, deploying new contracts and changing the state of the contract
     // deployed in state0.
     let contract1 = ContractAddress(patricia_key!("0x1"));
@@ -310,6 +326,7 @@ fn revert_state() {
         deployed_contracts: IndexMap::from([(contract1, class1)]),
         storage_diffs: IndexMap::from([(*contract0, updated_storage)]),
         deprecated_declared_classes: IndexMap::from([(class1, ContractClass::default())]),
+        declared_classes: indexmap! {},
         nonces: IndexMap::from([(contract1, nonce1)]),
     };
 
@@ -347,9 +364,9 @@ fn revert_state() {
     let expected_deleted_classes = IndexMap::from([(class1, ContractClass::default())]);
     assert_matches!(
         deleted_data,
-        Some((thin_state_diff, class_definitions))
+        Some((thin_state_diff, _class_definitions, deprecated_class_definitions))
         if thin_state_diff == expected_deleted_state_diff
-        && class_definitions == expected_deleted_classes
+        && deprecated_class_definitions == expected_deleted_classes
     );
 
     let txn = reader.begin_ro_txn().unwrap();
@@ -377,6 +394,7 @@ fn get_nonce_key_serialization() {
         let state_diff = StateDiff {
             deployed_contracts: IndexMap::new(),
             storage_diffs: IndexMap::new(),
+            declared_classes: IndexMap::new(),
             deprecated_declared_classes: IndexMap::new(),
             nonces: IndexMap::from([(contract_address, Nonce(StarkHash::from(block_number + 1)))]),
         };

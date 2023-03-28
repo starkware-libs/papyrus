@@ -10,8 +10,8 @@ use starknet_api::state::StorageKey;
 use starknet_api::transaction::{EventKey, TransactionHash, TransactionOffsetInBlock};
 
 use crate::block::Block;
-use crate::deprecated_contract_class::ContractClass;
-use crate::state::StateUpdate;
+use crate::deprecated_contract_class::ContractClass as DeprecatedContractClass;
+use crate::state::{ContractClass, StateUpdate};
 use crate::transaction::{Event, TransactionReceiptWithStatus, TransactionWithType};
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -87,6 +87,13 @@ pub struct EventsChunk {
     pub continuation_token: Option<ContinuationToken>,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum GatewayContractClass {
+    Cairo0(DeprecatedContractClass),
+    Sierra(ContractClass),
+}
+
 #[rpc(server, client, namespace = "starknet")]
 pub trait JsonRpc {
     /// Gets the most recent accepted block number.
@@ -146,7 +153,11 @@ pub trait JsonRpc {
 
     /// Gets the contract class definition associated with the given hash.
     #[method(name = "getClass")]
-    fn get_class(&self, block_id: BlockId, class_hash: ClassHash) -> Result<ContractClass, Error>;
+    fn get_class(
+        &self,
+        block_id: BlockId,
+        class_hash: ClassHash,
+    ) -> Result<GatewayContractClass, Error>;
 
     /// Gets the contract class definition in the given block at the given address.
     #[method(name = "getClassAt")]
@@ -154,7 +165,7 @@ pub trait JsonRpc {
         &self,
         block_id: BlockId,
         contract_address: ContractAddress,
-    ) -> Result<ContractClass, Error>;
+    ) -> Result<GatewayContractClass, Error>;
 
     /// Gets the contract class hash in the given block for the contract deployed at the given
     /// address.
