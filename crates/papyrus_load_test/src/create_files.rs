@@ -96,12 +96,12 @@ pub async fn get_transaction_hash_args(node_address: SocketAddr) -> Vec<String> 
         &get_block_with_tx_hashes(node_address, block_number).await["result"]["transactions"];
     let trans_list = match response {
         jsonVal::Array(transactions) => transactions,
-        _ => unreachable!(),
+        _ => unreachable!("The gateway returns the transaction hashes as a vector."),
     };
     let trans_index = rand::thread_rng().gen_range(0..trans_list.len());
     let trans_hash = match &trans_list[trans_index] {
         jsonVal::String(trans_hash) => trans_hash,
-        _ => unreachable!(),
+        _ => unreachable!("The gateway transaction hash as a String."),
     };
     vec![trans_hash.to_string()]
 }
