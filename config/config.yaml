@@ -48,8 +48,6 @@ storage:
         max_size: 1099511627776 # 1TB.
         # The growth step in bytes, must be greater than zero to allow the database to grow.
         growth_step: 67108864 # 64MB
-        # The maximum number of named databases of the node's storage.
-        max_dbs: 21
 
 # Synchronization with Starknet.
 sync:

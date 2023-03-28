@@ -29,7 +29,6 @@ pub fn get_test_config() -> DbConfig {
         min_size: 1 << 20,    // 1MB
         max_size: 1 << 35,    // 32GB
         growth_step: 1 << 26, // 64MB
-        max_dbs: 21,
     }
 }
 pub fn get_test_storage() -> (StorageReader, StorageWriter) {

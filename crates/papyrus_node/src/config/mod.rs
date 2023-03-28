@@ -108,7 +108,6 @@ impl Default for ConfigBuilder {
                         min_size: 1 << 20,    // 1MB
                         max_size: 1 << 40,    // 1TB
                         growth_step: 1 << 26, // 64MB
-                        max_dbs: 21,
                     },
                 },
                 sync: Some(SyncConfig {

@@ -127,7 +127,6 @@ impl From<DbConfig> for Db {
             min_size: Some(config.min_size),
             max_size: Some(config.max_size),
             growth_step: Some(config.growth_step),
-            max_dbs: Some(config.max_dbs),
         }
     }
 }
@@ -257,7 +256,6 @@ struct Db {
     min_size: Option<usize>,
     max_size: Option<usize>,
     growth_step: Option<isize>,
-    max_dbs: Option<usize>,
 }
 
 impl Db {
@@ -273,9 +271,6 @@ impl Db {
         }
         if let Some(growth_step) = self.growth_step {
             config.growth_step = growth_step;
-        }
-        if let Some(max_dbs) = self.max_dbs {
-            config.max_dbs = max_dbs;
         }
     }
 }

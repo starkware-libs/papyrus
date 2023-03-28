@@ -19,6 +19,9 @@ use crate::db::serialization::{StorageSerde, StorageSerdeEx};
 // Assumptions:
 // The serialization is consistent across code versions (though, not necessarily across machines).
 
+// Maximum number of Sub-Databases.
+const MAX_DBS: usize = 21;
+
 // Note that NO_TLS mode is used by default.
 type EnvironmentKind = WriteMap;
 type Environment = libmdbx::Environment<EnvironmentKind>;
@@ -32,7 +35,6 @@ pub struct DbConfig {
     pub min_size: usize,
     pub max_size: usize,
     pub growth_step: isize,
-    pub max_dbs: usize,
 }
 
 /// A single table statistics.
@@ -69,7 +71,7 @@ pub(crate) fn open_env(config: DbConfig) -> Result<(DbReader, DbWriter)> {
                 growth_step: Some(config.growth_step),
                 ..Default::default()
             })
-            .set_max_dbs(config.max_dbs)
+            .set_max_dbs(MAX_DBS)
             .open(Path::new(&config.path))?,
     );
     Ok((DbReader { env: env.clone() }, DbWriter { env }))
