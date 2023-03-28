@@ -1,9 +1,11 @@
+use std::collections::HashMap;
+
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockHash;
-use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
-use starknet_api::state::StorageKey;
+use starknet_api::state::{EntryPoint, EntryPointType, StorageKey};
 
 use crate::GlobalRoot;
 
@@ -22,22 +24,32 @@ pub struct StateDiff {
     // IndexMap is serialized as a mapping in json, keeps ordering and is efficiently iterable.
     pub storage_diffs: IndexMap<ContractAddress, Vec<StorageEntry>>,
     pub deployed_contracts: Vec<DeployedContract>,
+    // TODO(yair): check if old blocks contain the old_declared_contracts (/ declared_contracts)
+    // field or not, if they do - remove the default.
+    #[serde(default)]
+    pub declared_classes: Vec<DeclaredClassHashEntry>,
     #[serde(default)]
     pub old_declared_contracts: Vec<ClassHash>,
     pub nonces: IndexMap<ContractAddress, Nonce>,
 }
 
 impl StateDiff {
-    // Returns the declared class hashes and after them the deployed class hashes that weren't in
-    // the declared.
+    // Returns the declared class hashes in the following order:
+    // [declared classes, deprecated declared class, deprecated classes that were implicitly
+    // declared by contract deployment].
     pub fn class_hashes(&self) -> Vec<ClassHash> {
+        let mut declared_class_hashes: Vec<ClassHash> = self
+            .declared_classes
+            .iter()
+            .map(|DeclaredClassHashEntry { class_hash, compiled_class_hash: _ }| *class_hash)
+            .collect();
+        declared_class_hashes.append(&mut self.old_declared_contracts.clone());
         let mut deployed_class_hashes = self
             .deployed_contracts
             .iter()
             .map(|contract| contract.class_hash)
-            .filter(|hash| !self.old_declared_contracts.contains(hash))
+            .filter(|hash| !declared_class_hashes.contains(hash))
             .collect();
-        let mut declared_class_hashes = self.old_declared_contracts.clone();
         declared_class_hashes.append(&mut deployed_class_hashes);
         declared_class_hashes
     }
@@ -55,4 +67,29 @@ pub struct DeployedContract {
 pub struct StorageEntry {
     pub key: StorageKey,
     pub value: StarkFelt,
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct ContractClass {
+    pub sierra_program: Vec<StarkFelt>,
+    pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
+    pub contract_class_version: String,
+    pub abi: String,
+}
+
+impl From<ContractClass> for starknet_api::state::ContractClass {
+    fn from(class: ContractClass) -> Self {
+        Self {
+            sierra_program: class.sierra_program,
+            entry_point_by_type: class.entry_points_by_type,
+            abi: class.abi,
+        }
+    }
+}
+
+/// A mapping from class hash to the compiled class hash.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct DeclaredClassHashEntry {
+    pub class_hash: ClassHash,
+    pub compiled_class_hash: CompiledClassHash,
 }

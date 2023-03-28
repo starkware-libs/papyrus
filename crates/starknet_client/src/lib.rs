@@ -25,7 +25,9 @@ use url::Url;
 
 pub use self::objects::block::{Block, GlobalRoot, TransactionReceiptsError};
 pub use self::objects::deprecated_contract_class::DeprecatedContractClass;
-pub use self::objects::state::{DeployedContract, StateDiff, StateUpdate, StorageEntry};
+pub use self::objects::state::{
+    ContractClass, DeclaredClassHashEntry, DeployedContract, StateDiff, StateUpdate, StorageEntry,
+};
 use self::retry::Retry;
 pub use self::retry::RetryConfig;
 #[cfg(doc)]
@@ -44,11 +46,11 @@ pub trait StarknetClientTrait {
     /// Returns a [`Block`] corresponding to `block_number`, returning [`None`] in case no such
     /// block exists in the system.
     async fn block(&self, block_number: BlockNumber) -> ClientResult<Option<Block>>;
-    /// Returns a [`DeprecatedContractClass`] corresponding to `class_hash`.
+    /// Returns a [`GenericContractClass`] corresponding to `class_hash`.
     async fn class_by_hash(
         &self,
         class_hash: ClassHash,
-    ) -> ClientResult<Option<DeprecatedContractClass>>;
+    ) -> ClientResult<Option<GenericContractClass>>;
     /// Returns a [`starknet_clinet`][`StateUpdate`] corresponding to `block_number`.
     async fn state_update(&self, block_number: BlockNumber) -> ClientResult<Option<StateUpdate>>;
 }
@@ -133,6 +135,8 @@ pub enum ClientError {
     /// A client error representing transaction receipts errors.
     #[error(transparent)]
     TransactionReceiptsError(#[from] TransactionReceiptsError),
+    #[error("Wrong type of contract class")]
+    BadContractClassType,
 }
 
 const GET_BLOCK_URL: &str = "feeder_gateway/get_block";
@@ -288,7 +292,7 @@ impl StarknetClientTrait for StarknetClient {
     async fn class_by_hash(
         &self,
         class_hash: ClassHash,
-    ) -> ClientResult<Option<DeprecatedContractClass>> {
+    ) -> ClientResult<Option<GenericContractClass>> {
         let mut url = self.urls.get_contract_by_hash.clone();
         let class_hash = serde_json::to_string(&class_hash)?;
         url.query_pairs_mut()
@@ -326,6 +330,29 @@ impl StarknetClientTrait for StarknetClient {
                 );
                 Err(err)
             }
+        }
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum GenericContractClass {
+    Cairo0ContractClass(DeprecatedContractClass),
+    Cairo1ContractClass(ContractClass),
+}
+
+impl GenericContractClass {
+    pub fn to_cairo0(self) -> ClientResult<DeprecatedContractClass> {
+        match self {
+            Self::Cairo0ContractClass(class) => Ok(class),
+            _ => Err(ClientError::BadContractClassType),
+        }
+    }
+
+    pub fn to_cairo1(self) -> ClientResult<ContractClass> {
+        match self {
+            Self::Cairo1ContractClass(class) => Ok(class),
+            _ => Err(ClientError::BadContractClassType),
         }
     }
 }
