@@ -3,6 +3,7 @@ use std::future::Future;
 use std::io::Write;
 use std::net::SocketAddr;
 
+use rand::Rng;
 use serde_json::Value as jsonVal;
 use test_utils::send_request;
 
@@ -24,7 +25,11 @@ pub async fn create_files(node_address: &str) {
     let block_hash = tokio::spawn(create_file("block_hash.txt", BLOCK_HASH_COUNT, move || {
         get_block_hash_args(node_socket)
     }));
-    tokio::try_join!(block_number, block_hash).unwrap();
+    let transaction_hash =
+        tokio::spawn(create_file("transaction_hash.txt", BLOCK_HASH_COUNT, move || {
+            get_transaction_hash_args(node_socket)
+        }));
+    tokio::try_join!(block_number, block_hash, transaction_hash).unwrap();
 }
 
 // Write to a file lines with parameters to requests.
@@ -82,4 +87,21 @@ pub async fn get_block_hash_args(node_address: SocketAddr) -> Vec<String> {
         }
     };
     vec![block_hash.to_string()]
+}
+
+// Returns a vector with a random transaction hash.
+pub async fn get_transaction_hash_args(node_address: SocketAddr) -> Vec<String> {
+    let block_number = get_random_block_number();
+    let response =
+        &get_block_with_tx_hashes(node_address, block_number).await["result"]["transactions"];
+    let trans_list = match response {
+        jsonVal::Array(transactions) => transactions,
+        _ => unreachable!("The gateway returns the transaction hashes as a vector."),
+    };
+    let trans_index = rand::thread_rng().gen_range(0..trans_list.len());
+    let trans_hash = match &trans_list[trans_index] {
+        jsonVal::String(trans_hash) => trans_hash,
+        _ => unreachable!("The gateway transaction hash as a String."),
+    };
+    vec![trans_hash.to_string()]
 }
