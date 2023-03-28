@@ -377,6 +377,7 @@ fn get_nonce_key_serialization() {
         let state_diff = StateDiff {
             deployed_contracts: IndexMap::new(),
             storage_diffs: IndexMap::new(),
+            declared_classes: IndexMap::new(),
             deprecated_declared_classes: IndexMap::new(),
             nonces: IndexMap::from([(contract_address, Nonce(StarkHash::from(block_number + 1)))]),
         };
