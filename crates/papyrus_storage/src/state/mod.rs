@@ -7,17 +7,22 @@ use std::collections::HashSet;
 
 use indexmap::IndexMap;
 use starknet_api::block::BlockNumber;
-use starknet_api::core::{ClassHash, ContractAddress, Nonce};
-use starknet_api::deprecated_contract_class::ContractClass;
+use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
+use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::StarkFelt;
-use starknet_api::state::{StateDiff, StateNumber, StorageKey};
+use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey};
 use tracing::debug;
 
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
-use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
+use crate::state::data::{
+    IndexedDeclaredContract, IndexedDeployedContract, IndexedDeprecatedDeclaredContract,
+    ThinStateDiff,
+};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
 type DeclaredClassesTable<'env> = TableHandle<'env, ClassHash, IndexedDeclaredContract>;
+type DeprecatedDeclaredClassesTable<'env> =
+    TableHandle<'env, ClassHash, IndexedDeprecatedDeclaredContract>;
 type DeployedContractsTable<'env> = TableHandle<'env, ContractAddress, IndexedDeployedContract>;
 type ContractStorageTable<'env> =
     TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), StarkFelt>;
@@ -42,7 +47,11 @@ pub trait StateStorageReader<Mode: TransactionKind> {
     fn get_state_reader(&self) -> StorageResult<StateReader<'_, Mode>>;
 }
 
-type RevertedStateDiff = (ThinStateDiff, IndexMap<ClassHash, ContractClass>);
+type RevertedStateDiff = (
+    ThinStateDiff,
+    IndexMap<ClassHash, ContractClass>,
+    IndexMap<ClassHash, DeprecatedContractClass>,
+);
 
 pub trait StateStorageWriter
 where
@@ -56,7 +65,7 @@ where
         // TODO(anatg): Remove once there are no more deployed contracts with undeclared classes.
         // Class definitions of deployed contracts with classes that were not declared in this
         // state diff.
-        deployed_contract_class_definitions: IndexMap<ClassHash, ContractClass>,
+        deployed_contract_class_definitions: IndexMap<ClassHash, DeprecatedContractClass>,
     ) -> StorageResult<Self>;
 
     fn revert_state_diff(
@@ -85,6 +94,7 @@ impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for StorageTxn<'env, 
 pub struct StateReader<'env, Mode: TransactionKind> {
     txn: &'env DbTransaction<'env, Mode>,
     declared_classes_table: DeclaredClassesTable<'env>,
+    deprecated_declared_classes_table: DeprecatedDeclaredClassesTable<'env>,
     deployed_contracts_table: DeployedContractsTable<'env>,
     nonces_table: NoncesTable<'env>,
     storage_table: ContractStorageTable<'env>,
@@ -93,13 +103,16 @@ pub struct StateReader<'env, Mode: TransactionKind> {
 #[allow(dead_code)]
 impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
     fn new(txn: &'env StorageTxn<'env, Mode>) -> StorageResult<Self> {
-        let declared_classes_table = txn.txn.open_table(&txn.tables.deprecated_declared_classes)?;
+        let declared_classes_table = txn.txn.open_table(&txn.tables.declared_classes)?;
+        let deprecated_declared_classes_table =
+            txn.txn.open_table(&txn.tables.deprecated_declared_classes)?;
         let deployed_contracts_table = txn.txn.open_table(&txn.tables.deployed_contracts)?;
         let nonces_table = txn.txn.open_table(&txn.tables.nonces)?;
         let storage_table = txn.txn.open_table(&txn.tables.contract_storage)?;
         Ok(StateReader {
             txn: &txn.txn,
             declared_classes_table,
+            deprecated_declared_classes_table,
             deployed_contracts_table,
             nonces_table,
             storage_table,
@@ -188,6 +201,20 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         }
         Ok(None)
     }
+
+    pub fn get_deprecated_class_definition_at(
+        &self,
+        state_number: StateNumber,
+        class_hash: &ClassHash,
+    ) -> StorageResult<Option<DeprecatedContractClass>> {
+        let value = self.deprecated_declared_classes_table.get(self.txn, class_hash)?;
+        if let Some(value) = value {
+            if state_number.is_after(value.block_number) {
+                return Ok(Some(value.contract_class));
+            }
+        }
+        Ok(None)
+    }
 }
 
 impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
@@ -195,12 +222,13 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         self,
         block_number: BlockNumber,
         state_diff: StateDiff,
-        mut deployed_contract_class_definitions: IndexMap<ClassHash, ContractClass>,
+        mut deployed_contract_class_definitions: IndexMap<ClassHash, DeprecatedContractClass>,
     ) -> StorageResult<Self> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let nonces_table = self.txn.open_table(&self.tables.nonces)?;
         let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
-        let declared_classes_table =
+        let declared_classes_table = self.txn.open_table(&self.tables.declared_classes)?;
+        let deprecated_declared_classes_table =
             self.txn.open_table(&self.tables.deprecated_declared_classes)?;
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
         let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
@@ -219,29 +247,33 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         write_nonces(&state_diff.nonces, &self.txn, block_number, &nonces_table)?;
 
         // Write state diff.
-        let (thin_state_diff, declared_classes) = ThinStateDiff::from_state_diff(state_diff);
+        let (thin_state_diff, declared_classes, deprecated_declared_classes) =
+            ThinStateDiff::from_state_diff(state_diff);
         state_diffs_table.insert(&self.txn, &block_number, &thin_state_diff)?;
 
         // Write declared classes.
+        write_declared_classes(declared_classes, &self.txn, block_number, &declared_classes_table)?;
+
+        // Write deprecated declared classes.
         if !deployed_contract_class_definitions.is_empty() {
             // TODO(anatg): Remove this after regenesis.
-            if !declared_classes.is_empty() {
-                deployed_contract_class_definitions.extend(declared_classes);
+            if !deprecated_declared_classes.is_empty() {
+                deployed_contract_class_definitions.extend(deprecated_declared_classes);
                 //  TODO(anatg): Add a test for this (should fail if not sorted here).
                 deployed_contract_class_definitions.sort_unstable_keys();
             }
-            write_declared_classes(
+            write_deprecated_declared_classes(
                 deployed_contract_class_definitions,
                 &self.txn,
                 block_number,
-                &declared_classes_table,
+                &deprecated_declared_classes_table,
             )?;
         } else {
-            write_declared_classes(
-                declared_classes,
+            write_deprecated_declared_classes(
+                deprecated_declared_classes,
                 &self.txn,
                 block_number,
-                &declared_classes_table,
+                &deprecated_declared_classes_table,
             )?;
         }
 
@@ -253,7 +285,8 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         block_number: BlockNumber,
     ) -> StorageResult<(Self, Option<RevertedStateDiff>)> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
-        let declared_classes_table =
+        let declared_classes_table = self.txn.open_table(&self.tables.declared_classes)?;
+        let deprecated_declared_classes_table =
             self.txn.open_table(&self.tables.deprecated_declared_classes)?;
         let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
         let nonces_table = self.txn.open_table(&self.tables.nonces)?;
@@ -282,6 +315,12 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             &thin_state_diff,
             &declared_classes_table,
         )?;
+        let deleted_deprecated_classes = delete_deprecated_declared_classes(
+            &self.txn,
+            block_number,
+            &thin_state_diff,
+            &deprecated_declared_classes_table,
+        )?;
         delete_deployed_contracts(
             &self.txn,
             block_number,
@@ -293,7 +332,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         delete_nonces(&self.txn, block_number, &thin_state_diff, &nonces_table)?;
         state_diffs_table.delete(&self.txn, &block_number)?;
 
-        Ok((self, Some((thin_state_diff, deleted_classes))))
+        Ok((self, Some((thin_state_diff, deleted_classes, deleted_deprecated_classes))))
     }
 }
 
@@ -320,15 +359,35 @@ fn write_declared_classes<'env>(
     declared_classes_table: &'env DeclaredClassesTable<'env>,
 ) -> StorageResult<()> {
     for (class_hash, contract_class) in declared_classes {
+        let value = IndexedDeclaredContract { block_number, contract_class };
+        let res = declared_classes_table.insert(txn, &class_hash, &value);
+        match res {
+            Ok(()) => continue,
+            Err(err) => return Err(err.into()),
+        }
+    }
+    Ok(())
+}
+
+fn write_deprecated_declared_classes<'env>(
+    deprecated_declared_classes: IndexMap<ClassHash, DeprecatedContractClass>,
+    txn: &DbTransaction<'env, RW>,
+    block_number: BlockNumber,
+    deprecated_declared_classes_table: &'env DeprecatedDeclaredClassesTable<'env>,
+) -> StorageResult<()> {
+    for (class_hash, deprecated_contract_class) in deprecated_declared_classes {
         // TODO(dan): remove this check after regenesis, in favor of insert().
-        if let Some(value) = declared_classes_table.get(txn, &class_hash)? {
-            if value.contract_class != contract_class {
+        if let Some(value) = deprecated_declared_classes_table.get(txn, &class_hash)? {
+            if value.contract_class != deprecated_contract_class {
                 return Err(StorageError::ClassAlreadyExists { class_hash });
             }
             continue;
         }
-        let value = IndexedDeclaredContract { block_number, contract_class };
-        let res = declared_classes_table.insert(txn, &class_hash, &value);
+        let value = IndexedDeprecatedDeclaredContract {
+            block_number,
+            contract_class: deprecated_contract_class,
+        };
+        let res = deprecated_declared_classes_table.insert(txn, &class_hash, &value);
         match res {
             Ok(()) => continue,
             Err(err) => return Err(err.into()),
@@ -401,6 +460,28 @@ fn delete_declared_classes<'env>(
     thin_state_diff: &ThinStateDiff,
     declared_classes_table: &'env DeclaredClassesTable<'env>,
 ) -> StorageResult<IndexMap<ClassHash, ContractClass>> {
+    let mut deleted_data = IndexMap::new();
+    for class_hash in thin_state_diff.declared_classes.keys() {
+        let IndexedDeclaredContract { block_number: declared_block_number, contract_class } =
+            declared_classes_table
+                .get(txn, class_hash)?
+                .expect("Missing declared class {class_hash:#?}.");
+        // If the class was declared in a different block then we should'nt delete it.
+        if block_number == declared_block_number {
+            deleted_data.insert(*class_hash, contract_class);
+            declared_classes_table.delete(txn, class_hash)?;
+        }
+    }
+
+    Ok(deleted_data)
+}
+
+fn delete_deprecated_declared_classes<'env>(
+    txn: &'env DbTransaction<'env, RW>,
+    block_number: BlockNumber,
+    thin_state_diff: &ThinStateDiff,
+    declared_classes_table: &'env DeprecatedDeclaredClassesTable<'env>,
+) -> StorageResult<IndexMap<ClassHash, DeprecatedContractClass>> {
     // Class hashes of the contracts that were deployed in this block.
     let deployed_contracts_class_hashes = thin_state_diff.deployed_contracts.values();
 
@@ -414,10 +495,12 @@ fn delete_declared_classes<'env>(
 
     let mut deleted_data = IndexMap::new();
     for class_hash in class_hashes {
-        let IndexedDeclaredContract { block_number: declared_block_number, contract_class } =
-            declared_classes_table
-                .get(txn, class_hash)?
-                .expect("Missing declared class {class_hash:#?}.");
+        let IndexedDeprecatedDeclaredContract {
+            block_number: declared_block_number,
+            contract_class,
+        } = declared_classes_table
+            .get(txn, class_hash)?
+            .expect("Missing declared class {class_hash:#?}.");
         // If the class was declared in a different block then we should'nt delete it.
         if block_number == declared_block_number {
             deleted_data.insert(*class_hash, contract_class);

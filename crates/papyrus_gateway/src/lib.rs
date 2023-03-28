@@ -11,6 +11,7 @@ mod transaction;
 use std::fmt::Display;
 use std::net::SocketAddr;
 
+use api::GatewayContractClass;
 use jsonrpsee::core::{async_trait, Error};
 use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::http_server::{HttpServerBuilder, HttpServerHandle};
@@ -37,7 +38,6 @@ use crate::api::{
     JsonRpcError, JsonRpcServer, Tag,
 };
 use crate::block::{Block, BlockHeader};
-use crate::deprecated_contract_class::ContractClass;
 use crate::state::StateUpdate;
 use crate::transaction::{
     Event, Transaction, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus,
@@ -345,18 +345,31 @@ impl JsonRpcServer for JsonRpcServerImpl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_class(&self, block_id: BlockId, class_hash: ClassHash) -> Result<ContractClass, Error> {
+    fn get_class(
+        &self,
+        block_id: BlockId,
+        class_hash: ClassHash,
+    ) -> Result<GatewayContractClass, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let block_number = get_block_number(&txn, block_id)?;
         let state_number = StateNumber::right_after_block(block_number);
         let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
 
-        let class = state_reader
+        // The class might be a deprecated class. Search it first in the declared classes and if not
+        // found, search in the deprecated classes.
+        if let Some(class) = state_reader
             .get_class_definition_at(state_number, &class_hash)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::ClassHashNotFound))?;
-        class.try_into().map_err(internal_server_error)
+        {
+            Ok(GatewayContractClass::Sierra(class.try_into().map_err(internal_server_error)?))
+        } else {
+            let class = state_reader
+                .get_deprecated_class_definition_at(state_number, &class_hash)
+                .map_err(internal_server_error)?
+                .ok_or_else(|| Error::from(JsonRpcError::ClassHashNotFound))?;
+            Ok(GatewayContractClass::Cairo0(class.try_into().map_err(internal_server_error)?))
+        }
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
@@ -364,7 +377,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         &self,
         block_id: BlockId,
         contract_address: ContractAddress,
-    ) -> Result<ContractClass, Error> {
+    ) -> Result<GatewayContractClass, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let block_number = get_block_number(&txn, block_id)?;
@@ -376,11 +389,18 @@ impl JsonRpcServer for JsonRpcServerImpl {
             .map_err(internal_server_error)?
             .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))?;
 
-        let class = state_reader
+        if let Some(class) = state_reader
             .get_class_definition_at(state_number, &class_hash)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))?;
-        class.try_into().map_err(internal_server_error)
+        {
+            Ok(GatewayContractClass::Sierra(class.try_into().map_err(internal_server_error)?))
+        } else {
+            let class = state_reader
+                .get_deprecated_class_definition_at(state_number, &class_hash)
+                .map_err(internal_server_error)?
+                .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))?;
+            Ok(GatewayContractClass::Cairo0(class.try_into().map_err(internal_server_error)?))
+        }
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]

@@ -2,10 +2,10 @@ use indexmap::IndexMap;
 use rand::Rng;
 use rand_chacha::ChaCha8Rng;
 use starknet_api::block::{BlockHash, BlockNumber};
-use starknet_api::core::{ClassHash, ContractAddress, Nonce};
-use starknet_api::deprecated_contract_class::ContractClass;
+use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
+use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::StarkFelt;
-use starknet_api::state::StorageKey;
+use starknet_api::state::{ContractClass, StorageKey};
 use starknet_api::transaction::{
     EventIndexInTransactionOutput, Fee, MessageToL1, TransactionOffsetInBlock,
 };
@@ -17,7 +17,10 @@ use crate::body::events::{
     ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
 };
 use crate::db::DbConfig;
-use crate::state::data::{IndexedDeclaredContract, IndexedDeployedContract, ThinStateDiff};
+use crate::state::data::{
+    IndexedDeclaredContract, IndexedDeployedContract, IndexedDeprecatedDeclaredContract,
+    ThinStateDiff,
+};
 use crate::{
     open_storage, EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey, StorageReader,
     StorageWriter, TransactionIndex,
@@ -39,6 +42,10 @@ pub fn get_test_storage() -> (StorageReader, StorageWriter) {
 
 auto_impl_get_test_instance! {
     struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
+    pub struct IndexedDeprecatedDeclaredContract {
+        pub block_number: BlockNumber,
+        pub contract_class: DeprecatedContractClass,
+    }
     pub struct IndexedDeclaredContract {
         pub block_number: BlockNumber,
         pub contract_class: ContractClass,
@@ -82,6 +89,7 @@ auto_impl_get_test_instance! {
     pub struct ThinStateDiff {
         pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
         pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
+        pub declared_classes: IndexMap<ClassHash, CompiledClassHash>,
         pub deprecated_declared_classes: Vec<ClassHash>,
         pub nonces: IndexMap<ContractAddress, Nonce>,
     }
