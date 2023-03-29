@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::PathBuf;
 use std::time::Duration;
 use std::{env, fs};
 
@@ -119,9 +119,7 @@ impl From<DbConfig> for Db {
     fn from(config: DbConfig) -> Self {
         // Remove the chain_id from the path.
         let mut path = config.path;
-        let last_slash_index =
-            path.rfind('/').expect("Remove chain_id from the storage file path failed");
-        path.truncate(last_slash_index);
+        path.pop();
         Db {
             path: Some(path),
             min_size: Some(config.min_size),
@@ -252,7 +250,7 @@ impl Storage {
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 #[serde(deny_unknown_fields)]
 struct Db {
-    path: Option<String>,
+    path: Option<PathBuf>,
     min_size: Option<usize>,
     max_size: Option<usize>,
     growth_step: Option<isize>,

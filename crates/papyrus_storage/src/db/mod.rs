@@ -4,7 +4,7 @@ pub mod serialization;
 
 use std::borrow::Cow;
 use std::marker::PhantomData;
-use std::path::Path;
+use std::path::PathBuf;
 use std::result;
 use std::sync::Arc;
 
@@ -31,7 +31,7 @@ type DbValueType<'env> = Cow<'env, [u8]>;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct DbConfig {
-    pub path: String,
+    pub path: PathBuf,
     pub min_size: usize,
     pub max_size: usize,
     pub growth_step: isize,
@@ -72,7 +72,7 @@ pub(crate) fn open_env(config: DbConfig) -> Result<(DbReader, DbWriter)> {
                 ..Default::default()
             })
             .set_max_dbs(MAX_DBS)
-            .open(Path::new(&config.path))?,
+            .open(&config.path)?,
     );
     Ok((DbReader { env: env.clone() }, DbWriter { env }))
 }
