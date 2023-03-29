@@ -87,6 +87,7 @@ impl Default for ConfigBuilder {
                     concurrent_requests: 300,
                     url: String::from("https://alpha-mainnet.starknet.io/"),
                     http_headers: None,
+                    node_version: VERSION_FULL.to_string(),
                     retry_config: RetryConfig {
                         retry_base_millis: 30,
                         retry_max_delay_millis: 30000,
