@@ -30,7 +30,7 @@ pub enum Transactions {
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct DeclareTransactionV0Or1 {
+pub struct DeclareTransactionV0V1 {
     pub class_hash: ClassHash,
     pub sender_address: ContractAddress,
     pub nonce: Nonce,
@@ -40,7 +40,7 @@ pub struct DeclareTransactionV0Or1 {
     pub signature: TransactionSignature,
 }
 
-impl From<starknet_api::transaction::DeclareTransactionV0> for DeclareTransactionV0Or1 {
+impl From<starknet_api::transaction::DeclareTransactionV0> for DeclareTransactionV0V1 {
     fn from(tx: starknet_api::transaction::DeclareTransactionV0) -> Self {
         Self {
             class_hash: tx.class_hash,
@@ -54,7 +54,7 @@ impl From<starknet_api::transaction::DeclareTransactionV0> for DeclareTransactio
     }
 }
 
-impl From<starknet_api::transaction::DeclareTransactionV1> for DeclareTransactionV0Or1 {
+impl From<starknet_api::transaction::DeclareTransactionV1> for DeclareTransactionV0V1 {
     fn from(tx: starknet_api::transaction::DeclareTransactionV1) -> Self {
         Self {
             class_hash: tx.class_hash,
@@ -98,7 +98,8 @@ impl From<starknet_api::transaction::DeclareTransactionV2> for DeclareTransactio
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 #[serde(untagged)]
 pub enum DeclareTransaction {
-    Version0Or1(DeclareTransactionV0Or1),
+    Version0(DeclareTransactionV0V1),
+    Version1(DeclareTransactionV0V1),
     Version2(DeclareTransactionV2),
 }
 
@@ -174,7 +175,8 @@ pub enum Transaction {
 impl Transaction {
     pub fn transaction_hash(&self) -> TransactionHash {
         match self {
-            Transaction::Declare(DeclareTransaction::Version0Or1(tx)) => tx.transaction_hash,
+            Transaction::Declare(DeclareTransaction::Version0(tx)) => tx.transaction_hash,
+            Transaction::Declare(DeclareTransaction::Version1(tx)) => tx.transaction_hash,
             Transaction::Declare(DeclareTransaction::Version2(tx)) => tx.transaction_hash,
             Transaction::Deploy(tx) => tx.transaction_hash,
             Transaction::DeployAccount(tx) => tx.transaction_hash,
@@ -190,10 +192,10 @@ impl From<starknet_api::transaction::Transaction> for Transaction {
         match tx {
             starknet_api::transaction::Transaction::Declare(declare_tx) => match declare_tx {
                 starknet_api::transaction::DeclareTransaction::V0(tx) => {
-                    Self::Declare(DeclareTransaction::Version0Or1(tx.into()))
+                    Self::Declare(DeclareTransaction::Version0(tx.into()))
                 }
                 starknet_api::transaction::DeclareTransaction::V1(tx) => {
-                    Self::Declare(DeclareTransaction::Version0Or1(tx.into()))
+                    Self::Declare(DeclareTransaction::Version1(tx.into()))
                 }
                 starknet_api::transaction::DeclareTransaction::V2(tx) => {
                     Self::Declare(DeclareTransaction::Version2(tx.into()))

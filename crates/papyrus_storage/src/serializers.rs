@@ -318,10 +318,10 @@ auto_storage_serde! {
     }
     pub enum Transaction {
         Declare(DeclareTransaction) = 0,
-        Deploy(DeployTransaction) = 2,
-        DeployAccount(DeployAccountTransaction) = 3,
-        Invoke(InvokeTransaction) = 4,
-        L1Handler(L1HandlerTransaction) = 5,
+        Deploy(DeployTransaction) = 1,
+        DeployAccount(DeployAccountTransaction) = 2,
+        Invoke(InvokeTransaction) = 3,
+        L1Handler(L1HandlerTransaction) = 4,
     }
     pub struct TransactionHash(pub StarkHash);
     struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);

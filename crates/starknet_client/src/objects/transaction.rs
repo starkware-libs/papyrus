@@ -38,6 +38,7 @@ pub enum Transaction {
 }
 
 impl TryFrom<Transaction> for starknet_api::transaction::Transaction {
+    type Error = ClientError;
     fn try_from(tx: Transaction) -> Result<Self, ClientError> {
         match tx {
             Transaction::Declare(declare_tx) => {
@@ -57,8 +58,6 @@ impl TryFrom<Transaction> for starknet_api::transaction::Transaction {
             }
         }
     }
-
-    type Error = ClientError;
 }
 
 impl Transaction {
@@ -122,6 +121,8 @@ pub struct IntermediateDeclareTransaction {
 }
 
 impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransaction {
+    type Error = ClientError;
+
     fn try_from(declare_tx: IntermediateDeclareTransaction) -> Result<Self, ClientError> {
         match declare_tx.version {
             v if v == tx_v0() => Ok(Self::V0(declare_tx.into())),
@@ -130,8 +131,6 @@ impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::Decl
             _ => Err(ClientError::BadTransaction),
         }
     }
-
-    type Error = ClientError;
 }
 
 impl From<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransactionV0 {
@@ -147,7 +146,22 @@ impl From<IntermediateDeclareTransaction> for starknet_api::transaction::Declare
     }
 }
 
+impl From<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransactionV1 {
+    fn from(declare_tx: IntermediateDeclareTransaction) -> Self {
+        Self {
+            transaction_hash: declare_tx.transaction_hash,
+            max_fee: declare_tx.max_fee,
+            signature: declare_tx.signature,
+            nonce: declare_tx.nonce,
+            class_hash: declare_tx.class_hash,
+            sender_address: declare_tx.sender_address,
+        }
+    }
+}
+
 impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransactionV2 {
+    type Error = ClientError;
+
     fn try_from(declare_tx: IntermediateDeclareTransaction) -> Result<Self, ClientError> {
         Ok(Self {
             transaction_hash: declare_tx.transaction_hash,
@@ -160,21 +174,6 @@ impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::Decl
                 .ok_or(ClientError::BadTransaction)?,
             sender_address: declare_tx.sender_address,
         })
-    }
-
-    type Error = ClientError;
-}
-
-impl From<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransactionV1 {
-    fn from(declare_tx: IntermediateDeclareTransaction) -> Self {
-        Self {
-            transaction_hash: declare_tx.transaction_hash,
-            max_fee: declare_tx.max_fee,
-            signature: declare_tx.signature,
-            nonce: declare_tx.nonce,
-            class_hash: declare_tx.class_hash,
-            sender_address: declare_tx.sender_address,
-        }
     }
 }
 
@@ -249,6 +248,8 @@ pub struct IntermediateInvokeTransaction {
 }
 
 impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::InvokeTransaction {
+    type Error = ClientError;
+
     fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ClientError> {
         match invoke_tx.version {
             v if v == tx_v0() => Ok(Self::V0(invoke_tx.try_into()?)),
@@ -256,11 +257,11 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
             _ => Err(ClientError::BadTransaction),
         }
     }
-
-    type Error = ClientError;
 }
 
 impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::InvokeTransactionV0 {
+    type Error = ClientError;
+
     fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ClientError> {
         Ok(Self {
             transaction_hash: invoke_tx.transaction_hash,
@@ -274,11 +275,11 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
             calldata: invoke_tx.calldata,
         })
     }
-
-    type Error = ClientError;
 }
 
 impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::InvokeTransactionV1 {
+    type Error = ClientError;
+
     fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ClientError> {
         // TODO(yair): Consider asserting that entry_point_selector is None.
         Ok(Self {
@@ -290,8 +291,6 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
             calldata: invoke_tx.calldata,
         })
     }
-
-    type Error = ClientError;
 }
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
