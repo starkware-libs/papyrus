@@ -4,7 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-libp2p = { version = "0.51.1" }
+async-std = { version = "1.12", features = ["attributes"] }
+async-trait = { version = "0.1.56" }
 either = { version = "1.8.1" }
 futures = { version = "0.3.7" }
+libp2p = { version = "0.51.1", features = ["request-response", "tokio", "noise", "yamux"] }
 thiserror = { version = "1.0.31" }
+tokio = { version = "1.18.2" }
+rand = { version = "0.8.5" }
