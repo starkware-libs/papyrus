@@ -25,7 +25,7 @@ use crate::{
 pub fn get_test_config() -> DbConfig {
     let dir = tempdir().unwrap();
     DbConfig {
-        path: dir.path().to_str().unwrap().to_string(),
+        path: dir.path().to_path_buf(),
         min_size: 1 << 20,    // 1MB
         max_size: 1 << 35,    // 32GB
         growth_step: 1 << 26, // 64MB
