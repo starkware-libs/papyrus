@@ -28,11 +28,12 @@ use starknet_api::deprecated_contract_class::{
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass, EntryPoint, EntryPointType, FunctionIndex, StorageKey};
 use starknet_api::transaction::{
-    Calldata, ContractAddressSalt, DeclareTransaction, DeployAccountTransaction, DeployTransaction,
-    EthAddress, EventContent, EventData, EventIndexInTransactionOutput, EventKey, Fee,
-    InvokeTransaction, L1HandlerTransaction, L1ToL2Payload, L2ToL1Payload, MessageToL1,
-    MessageToL2, Transaction, TransactionHash, TransactionOffsetInBlock, TransactionSignature,
-    TransactionVersion,
+    Calldata, ContractAddressSalt, DeclareTransaction, DeclareTransactionV0, DeclareTransactionV1,
+    DeclareTransactionV2, DeployAccountTransaction, DeployTransaction, EthAddress, EventContent,
+    EventData, EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction,
+    InvokeTransactionV0, InvokeTransactionV1, L1HandlerTransaction, L1ToL2Payload, L2ToL1Payload,
+    MessageToL1, MessageToL2, Transaction, TransactionHash, TransactionOffsetInBlock,
+    TransactionSignature, TransactionVersion,
 };
 use web3::types::H160;
 
@@ -88,13 +89,34 @@ auto_storage_serde! {
         Function(FunctionAbiEntryWithType) = 1,
         Struct(StructAbiEntry) = 2,
     }
-    pub struct DeclareTransaction {
+    pub enum DeclareTransaction {
+        V0(DeclareTransactionV0) = 0,
+        V1(DeclareTransactionV1) = 1,
+        V2(DeclareTransactionV2) = 2,
+    }
+    pub struct DeclareTransactionV0 {
         pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
-        pub version: TransactionVersion,
         pub signature: TransactionSignature,
         pub nonce: Nonce,
         pub class_hash: ClassHash,
+        pub sender_address: ContractAddress,
+    }
+    pub struct DeclareTransactionV1 {
+        pub transaction_hash: TransactionHash,
+        pub max_fee: Fee,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub class_hash: ClassHash,
+        pub sender_address: ContractAddress,
+    }
+    pub struct DeclareTransactionV2 {
+        pub transaction_hash: TransactionHash,
+        pub max_fee: Fee,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub class_hash: ClassHash,
+        pub compiled_class_hash: CompiledClassHash,
         pub sender_address: ContractAddress,
     }
     pub struct DeployAccountTransaction {
@@ -182,14 +204,25 @@ auto_storage_serde! {
         pub block_number: BlockNumber,
         pub class_hash: ClassHash,
     }
-    pub struct InvokeTransaction {
+    pub enum InvokeTransaction {
+        V0(InvokeTransactionV0) = 0,
+        V1(InvokeTransactionV1) = 1,
+    }
+    pub struct InvokeTransactionV0 {
         pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
-        pub version: TransactionVersion,
         pub signature: TransactionSignature,
         pub nonce: Nonce,
         pub sender_address: ContractAddress,
-        pub entry_point_selector: Option<EntryPointSelector>,
+        pub entry_point_selector: EntryPointSelector,
+        pub calldata: Calldata,
+    }
+    pub struct InvokeTransactionV1 {
+        pub transaction_hash: TransactionHash,
+        pub max_fee: Fee,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub sender_address: ContractAddress,
         pub calldata: Calldata,
     }
     pub struct L1ToL2Payload(pub Vec<StarkFelt>);
@@ -285,10 +318,10 @@ auto_storage_serde! {
     }
     pub enum Transaction {
         Declare(DeclareTransaction) = 0,
-        Deploy(DeployTransaction) = 1,
-        DeployAccount(DeployAccountTransaction) = 2,
-        Invoke(InvokeTransaction) = 3,
-        L1Handler(L1HandlerTransaction) = 4,
+        Deploy(DeployTransaction) = 2,
+        DeployAccount(DeployAccountTransaction) = 3,
+        Invoke(InvokeTransaction) = 4,
+        L1Handler(L1HandlerTransaction) = 5,
     }
     pub struct TransactionHash(pub StarkHash);
     struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
