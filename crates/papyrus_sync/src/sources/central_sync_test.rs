@@ -30,7 +30,7 @@ enum CheckStoragePredicateResult {
     Error,
 }
 
-// Checks periodically if the storage reached a certain state defined by f.
+// Checks periodically if the storage reached a certain state defined by 777f.
 async fn check_storage(
     reader: StorageReader,
     timeout: Duration,
