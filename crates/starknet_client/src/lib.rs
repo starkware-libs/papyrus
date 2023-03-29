@@ -161,6 +161,7 @@ impl StarknetClient {
     pub fn new(
         url_str: &str,
         http_headers: Option<HashMap<String, String>>,
+        node_version: String,
         retry_config: RetryConfig,
     ) -> Result<StarknetClient, ClientCreationError> {
         let header_map = match http_headers {
@@ -173,7 +174,7 @@ impl StarknetClient {
         let app_user_agent = format!(
             "{product_name}/{product_version} ({system_information})",
             product_name = "papyrus",
-            product_version = "pre-release",
+            product_version = node_version,
             system_information = system_information
         );
         Ok(StarknetClient {
