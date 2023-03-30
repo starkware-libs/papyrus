@@ -6,7 +6,11 @@ use starknet_client::{StarknetClient, StarknetClientTrait};
 
 #[tokio::main]
 async fn main() {
-    let config = Config::load(vec![]).expect("Load config");
+    let config = Config::load(vec![
+        "--chain_id=SN_GOERLI".to_string(),
+        "--central_url=https://external.integration.starknet.io/".to_owned(),
+    ])
+    .expect("Load config");
     let starknet_client =
         StarknetClient::new(&config.central.url, None, config.central.retry_config)
             .expect("Create new client");

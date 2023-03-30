@@ -162,6 +162,7 @@ async fn stream_block_headers_error() {
 
 #[tokio::test]
 async fn stream_state_updates() {
+    // TODO(yair): add replaced_classes.
     const START_BLOCK_NUMBER: u64 = 5;
     const END_BLOCK_NUMBER: u64 = 7;
 
@@ -207,6 +208,7 @@ async fn stream_state_updates() {
         old_declared_contracts: vec![class_hash1, class_hash3],
         declared_classes: vec![class_hash_entry1, class_hash_entry2],
         nonces: IndexMap::from([(contract_address1, nonce1)]),
+        replaced_classes: vec![],
     };
     let client_state_diff2 = starknet_client::StateDiff::default();
 

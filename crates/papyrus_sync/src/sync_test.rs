@@ -36,12 +36,14 @@ fn state_sorted() {
     ]);
 
     // TODO(yair): Add declared_classes.
+    // TODO(yair): Add replaced_classes.
     let mut state_diff = StateDiff {
         deployed_contracts: unsorted_deployed_contracts,
         storage_diffs: unsorted_storage_diffs,
         deprecated_declared_classes: unsorted_declared_contracts,
         declared_classes: indexmap! {},
         nonces: unsorted_nonces,
+        replaced_classes: indexmap! {},
     };
 
     let sorted_deployed_contracts = IndexMap::from([dep_contract_0, dep_contract_1]);

@@ -31,6 +31,7 @@ pub struct StateDiff {
     #[serde(default)]
     pub old_declared_contracts: Vec<ClassHash>,
     pub nonces: IndexMap<ContractAddress, Nonce>,
+    pub replaced_classes: Vec<ReplacedClass>,
 }
 
 impl StateDiff {
@@ -92,4 +93,10 @@ impl From<ContractClass> for starknet_api::state::ContractClass {
 pub struct DeclaredClassHashEntry {
     pub class_hash: ClassHash,
     pub compiled_class_hash: CompiledClassHash,
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct ReplacedClass {
+    pub address: ContractAddress,
+    pub class_hash: ClassHash,
 }

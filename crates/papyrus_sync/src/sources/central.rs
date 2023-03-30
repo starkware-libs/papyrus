@@ -180,6 +180,7 @@ fn client_to_central_state_update(
                 declared_classes: declared_class_hashes,
                 old_declared_contracts: old_declared_contract_hashes,
                 nonces,
+                replaced_classes,
             } = state_update.state_diff;
 
             // Seperate the declared classes to new classes, old classes and implicit declare by
@@ -226,6 +227,10 @@ fn client_to_central_state_update(
                     })
                     .collect(),
                 nonces,
+                replaced_classes: replaced_classes
+                    .into_iter()
+                    .map(|replaced_class| (replaced_class.address, replaced_class.class_hash))
+                    .collect(),
             };
             let deployed_contract_class_definitions = deployed_contract_class_definitions
                 .into_iter()

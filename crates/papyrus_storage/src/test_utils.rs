@@ -92,6 +92,7 @@ auto_impl_get_test_instance! {
         pub declared_classes: IndexMap<ClassHash, CompiledClassHash>,
         pub deprecated_declared_classes: Vec<ClassHash>,
         pub nonces: IndexMap<ContractAddress, Nonce>,
+        pub replaced_classes: IndexMap<ContractAddress, ClassHash>,
     }
     pub enum ThinTransactionOutput {
         Declare(ThinDeclareTransactionOutput) = 0,

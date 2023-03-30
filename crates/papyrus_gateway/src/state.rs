@@ -24,6 +24,7 @@ pub struct ThinStateDiff {
     pub declared_classes: Vec<ClassHashes>,
     pub deprecated_declared_classes: Vec<ClassHash>,
     pub nonces: Vec<ContractNonce>,
+    pub replaced_classes: Vec<ReplacedClasses>,
 }
 
 impl From<papyrus_storage_ThinStateDiff> for ThinStateDiff {
@@ -56,6 +57,9 @@ impl From<papyrus_storage_ThinStateDiff> for ThinStateDiff {
                     .into_iter()
                     .map(|(contract_address, nonce)| ContractNonce { contract_address, nonce }),
             ),
+            replaced_classes: Vec::from_iter(diff.replaced_classes.into_iter().map(
+                |(contract_address, class_hash)| ReplacedClasses { contract_address, class_hash },
+            )),
         }
     }
 }
@@ -112,4 +116,10 @@ impl From<starknet_api::state::ContractClass> for ContractClass {
 pub struct ClassHashes {
     pub class_hash: ClassHash,
     pub compiled_class_hash: CompiledClassHash,
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct ReplacedClasses {
+    pub contract_address: ContractAddress,
+    pub class_hash: ClassHash,
 }
