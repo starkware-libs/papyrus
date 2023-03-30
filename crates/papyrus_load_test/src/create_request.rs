@@ -4,6 +4,60 @@ use serde_json::{json, Value as jsonVal};
 
 use crate::jsonrpc_request;
 
+pub fn get_nonce_by_number(args: &str) -> jsonVal {
+    let mut arg_iter = ArgsIter::new(args);
+    let block_number = arg_iter.next_u64();
+    let contract_address = arg_iter.next_str();
+    jsonrpc_request(
+        "starknet_getNonce",
+        json!([{ "block_number": block_number }, contract_address]),
+    )
+}
+
+pub fn get_nonce_by_hash(args: &str) -> jsonVal {
+    let mut arg_iter = ArgsIter::new(args);
+    let block_hash = arg_iter.next_str();
+    let contract_address = arg_iter.next_str();
+    jsonrpc_request("starknet_getNonce", json!([{ "block_hash": block_hash }, contract_address]))
+}
+
+pub fn get_class_hash_at_by_number(args: &str) -> jsonVal {
+    let mut arg_iter = ArgsIter::new(args);
+    let block_number = arg_iter.next_u64();
+    let contract_address = arg_iter.next_str();
+    jsonrpc_request(
+        "starknet_getClassHashAt",
+        json!([{ "block_number": block_number }, contract_address]),
+    )
+}
+
+pub fn get_class_hash_at_by_hash(args: &str) -> jsonVal {
+    let mut arg_iter = ArgsIter::new(args);
+    let block_hash = arg_iter.next_str();
+    let contract_address = arg_iter.next_str();
+    jsonrpc_request(
+        "starknet_getClassHashAt",
+        json!([{ "block_hash": block_hash }, contract_address]),
+    )
+}
+
+pub fn get_class_at_by_number(args: &str) -> jsonVal {
+    let mut arg_iter = ArgsIter::new(args);
+    let block_number = arg_iter.next_u64();
+    let contract_address = arg_iter.next_str();
+    jsonrpc_request(
+        "starknet_getClassAt",
+        json!([{ "block_number": block_number }, contract_address]),
+    )
+}
+
+pub fn get_class_at_by_hash(args: &str) -> jsonVal {
+    let mut arg_iter = ArgsIter::new(args);
+    let block_hash = arg_iter.next_str();
+    let contract_address = arg_iter.next_str();
+    jsonrpc_request("starknet_getClassAt", json!([{ "block_hash": block_hash }, contract_address]))
+}
+
 pub fn get_transaction_by_block_id_and_index_by_hash(args: &str) -> jsonVal {
     let mut arg_iter = ArgsIter::new(args);
     let block_hash = arg_iter.next_str();
