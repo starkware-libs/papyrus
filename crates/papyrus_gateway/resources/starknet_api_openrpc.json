@@ -979,6 +979,23 @@
                                     "$ref": "#/components/schemas/DEPLOYED_CONTRACT_ITEM"
                                 }
                             },
+                            "replaced_classes": {
+                                "type": "array",
+                                "items": {
+                                    "description": "The list of contracts whose class was replaced",
+                                    "type": "object",
+                                    "properties": {
+                                        "contract_address": {
+                                            "description": "The address of the contract whose class was replaced",
+                                            "$ref": "#/components/schemas/ADDRESS"
+                                        },
+                                        "class_hash": {
+                                            "description": "The new class hash",
+                                            "$ref": "#/components/schemas/FELT"
+                                        }
+                                    }
+                                }
+                            },
                             "nonces": {
                                 "type": "array",
                                 "items": {
@@ -1001,6 +1018,7 @@
                             "storage_diffs",
                             "deprecated_declared_classes",
                             "declared_classes",
+                            "replaced_classes",
                             "deployed_contracts",
                             "nonces"
                         ]

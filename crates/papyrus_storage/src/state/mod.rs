@@ -27,6 +27,7 @@ type DeployedContractsTable<'env> = TableHandle<'env, ContractAddress, IndexedDe
 type ContractStorageTable<'env> =
     TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), StarkFelt>;
 type NoncesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumber), Nonce>;
+type ReplacedClassesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumber), ClassHash>;
 
 // Structure of state data:
 // * declared_classes: (class_hash) -> (block_num, contract_class). Each entry specifies at which
@@ -97,6 +98,7 @@ pub struct StateReader<'env, Mode: TransactionKind> {
     deprecated_declared_classes_table: DeprecatedDeclaredClassesTable<'env>,
     deployed_contracts_table: DeployedContractsTable<'env>,
     nonces_table: NoncesTable<'env>,
+    replaced_classes_table: ReplacedClassesTable<'env>,
     storage_table: ContractStorageTable<'env>,
 }
 
@@ -109,14 +111,41 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         let deployed_contracts_table = txn.txn.open_table(&txn.tables.deployed_contracts)?;
         let nonces_table = txn.txn.open_table(&txn.tables.nonces)?;
         let storage_table = txn.txn.open_table(&txn.tables.contract_storage)?;
+        let replaced_classes_table = txn.txn.open_table(&txn.tables.replaced_classes)?;
         Ok(StateReader {
             txn: &txn.txn,
             declared_classes_table,
             deprecated_declared_classes_table,
             deployed_contracts_table,
             nonces_table,
+            replaced_classes_table,
             storage_table,
         })
+    }
+
+    // Returns the latest class hash of the contract, before state_number.
+    // If the class wasn't replaced before state_number, returns None.
+    // Note: None means that the class in deployed_contracts table was not replaced before
+    // state_number, it could still be declared before state_number - need to check against the
+    // value in deployed_contracts.
+    fn get_replaced_class_hash(
+        &self,
+        state_number: StateNumber,
+        address: &ContractAddress,
+    ) -> StorageResult<Option<ClassHash>> {
+        let first_irrelevant_block: BlockNumber = state_number.block_after();
+        let db_key = (*address, first_irrelevant_block);
+        let mut cursor = self.replaced_classes_table.cursor(self.txn)?;
+        cursor.lower_bound(&db_key)?;
+        let res = cursor.prev()?;
+
+        match res {
+            // Class was never replaced before state_number.
+            None => Ok(None),
+            Some(((got_address, _), _)) if got_address != *address => Ok(None),
+            // Class was replaced to new_class_hash.
+            Some((_, new_class_hash)) => Ok(Some(new_class_hash)),
+        }
     }
 
     pub fn get_class_hash_at(
@@ -124,6 +153,12 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         state_number: StateNumber,
         address: &ContractAddress,
     ) -> StorageResult<Option<ClassHash>> {
+        // Check if the class was replaced before state_number.
+        if let Some(class_hash) = self.get_replaced_class_hash(state_number, address)? {
+            return Ok(Some(class_hash));
+        }
+
+        // The class wasn't replaced, check in deployed_contracts.
         let value = self.deployed_contracts_table.get(self.txn, address)?;
         if let Some(value) = value {
             if state_number.is_after(value.block_number) {
@@ -231,6 +266,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         let deprecated_declared_classes_table =
             self.txn.open_table(&self.tables.deprecated_declared_classes)?;
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
+        let replaced_classes_table = self.txn.open_table(&self.tables.replaced_classes)?;
         let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
 
         update_marker(&self.txn, &markers_table, block_number)?;
@@ -245,6 +281,12 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         )?;
         write_storage_diffs(&state_diff.storage_diffs, &self.txn, block_number, &storage_table)?;
         write_nonces(&state_diff.nonces, &self.txn, block_number, &nonces_table)?;
+        write_replaced_classes(
+            &state_diff.replaced_classes,
+            &self.txn,
+            block_number,
+            &replaced_classes_table,
+        )?;
 
         // Write state diff.
         let (thin_state_diff, declared_classes, deprecated_declared_classes) =
@@ -294,6 +336,8 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
 
         let current_state_marker = self.get_state_marker()?;
+
+        // TODO(yair): delete replaced_classes.
 
         // Reverts only the last state diff.
         if current_state_marker != block_number.next() {
@@ -436,6 +480,18 @@ fn write_nonces<'env>(
 ) -> StorageResult<()> {
     for (contract_address, nonce) in nonces {
         contracts_table.upsert(txn, &(*contract_address, block_number), nonce)?;
+    }
+    Ok(())
+}
+
+fn write_replaced_classes<'env>(
+    replaced_classes: &IndexMap<ContractAddress, ClassHash>,
+    txn: &DbTransaction<'env, RW>,
+    block_number: BlockNumber,
+    replaced_classes_table: &'env ReplacedClassesTable<'env>,
+) -> StorageResult<()> {
+    for (contract_address, class_hash) in replaced_classes {
+        replaced_classes_table.insert(txn, &(*contract_address, block_number), class_hash)?;
     }
     Ok(())
 }
