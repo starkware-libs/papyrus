@@ -4,6 +4,26 @@ use serde_json::{json, Value as jsonVal};
 
 use crate::jsonrpc_request;
 
+pub fn get_storage_at_by_number(args: &str) -> jsonVal {
+    let mut arg_iter = ArgsIter::new(args);
+    let block_number = arg_iter.next_u64();
+    let contract_address = arg_iter.next_str();
+    jsonrpc_request(
+        "starknet_getStorageAt",
+        json!([contract_address, "0x0", { "block_number": block_number }]),
+    )
+}
+
+pub fn get_storage_at_by_hash(args: &str) -> jsonVal {
+    let mut arg_iter = ArgsIter::new(args);
+    let block_hash = arg_iter.next_str();
+    let contract_address = arg_iter.next_str();
+    jsonrpc_request(
+        "starknet_getStorageAt",
+        json!([contract_address, "0x0", { "block_hash": block_hash }]),
+    )
+}
+
 pub fn get_nonce_by_number(args: &str) -> jsonVal {
     let mut arg_iter = ArgsIter::new(args);
     let block_number = arg_iter.next_u64();
