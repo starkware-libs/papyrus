@@ -137,7 +137,7 @@ pub enum ClientError {
     TransactionReceiptsError(#[from] TransactionReceiptsError),
     #[error("Wrong type of contract class")]
     BadContractClassType,
-    //TODO(yair): Add more info.
+    // TODO(yair): Add more info.
     #[error("Invalid transaction.")]
     BadTransaction,
 }
