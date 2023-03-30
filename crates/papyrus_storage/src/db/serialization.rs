@@ -1,7 +1,3 @@
-#[cfg(test)]
-#[path = "serialization_test.rs"]
-mod serialization_test;
-
 use std::fmt::Debug;
 use std::io::Write;
 

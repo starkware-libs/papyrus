@@ -110,7 +110,7 @@ impl TryFrom<starknet_api::deprecated_contract_class::ContractClass> for Contrac
 
         Ok(Self {
             abi,
-            program: base64::encode(GzEncoded::encode(Program(program_value))?),
+            program: base64::encode(GzEncoded::encode(&Program(program_value))?),
             entry_points_by_type: class.entry_points_by_type,
         })
     }
