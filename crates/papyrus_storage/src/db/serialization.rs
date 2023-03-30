@@ -84,16 +84,17 @@ pub trait StorageSerde: Sized {
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self>;
 
+    // When ShouldCompressOptions::Yes is returned, the object is compressed.
+    // When ShouldCompressOptions::No is returned, the object is not compressed.
+    // When ShouldCompressOptions::Maybe is returned, the object is compressed iff it is big
+    // (see is_big).
     fn should_compress() -> ShouldCompressOptions {
         ShouldCompressOptions::No
     }
 
+    // Check if the size of the object is above some threshold.
     fn is_big(&self) -> bool {
         false
-        // let mut bytes = Vec::new();
-        // let _res = self.serialize_into(&mut bytes);
-        // // TODO(anatg): Insert 500 to the config.
-        // bytes.len() > 500
     }
 }
 

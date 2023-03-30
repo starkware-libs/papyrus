@@ -7,8 +7,6 @@ use starknet_api::{patricia_key, stark_felt};
 
 use crate::sort_state_diff;
 
-// TODO(anatg): Add a test to check that the sync calls the sort_state_diff function
-// before writing to the storage.
 #[test]
 fn state_sorted() {
     let hash0 = stark_felt!("0x0");
