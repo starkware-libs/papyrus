@@ -6,8 +6,6 @@ use tokio_stream::StreamExt;
 
 #[tokio::main]
 async fn main() {
-    // TODO(yair): the chain changed to integration for the 0.11 development. Change it back to the
-    // default once 0.11 is on mainnet.
     let config = Config::load(vec![
         "--chain_id=SN_GOERLI".to_owned(),
         "--central_url=https://external.integration.starknet.io/".to_owned(),
