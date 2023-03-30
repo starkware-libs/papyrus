@@ -7,13 +7,12 @@ use starknet_api::hash::StarkHash;
 use starknet_api::state::StorageKey;
 use test_utils::{get_rng, GetTestInstance};
 
-use crate::db::serialization::StorageSerde;
+use crate::db::serialization::{StorageSerde, StorageSerdeEx};
 
 pub trait StorageSerdeTest: StorageSerde {
     fn storage_serde_test();
 }
 
-// TODO(anatg): Consider change the test so it tests StorageSerdeEx instead of StorageSerde.
 // Implements the [`storage_serde_test`] function for every type that
 // implements the [`StorageSerde`] and [`GetTestInstance`] traits.
 impl<T: StorageSerde + GetTestInstance + Eq + Debug> StorageSerdeTest for T {
@@ -28,6 +27,23 @@ impl<T: StorageSerde + GetTestInstance + Eq + Debug> StorageSerdeTest for T {
     }
 }
 
+pub(crate) trait StorageSerdeExTest: StorageSerdeEx {
+    fn storage_serde_ex_test();
+}
+
+// Implements the [`storage_serde_test`] function for every type that
+// implements the [`StorageSerde`] and [`GetTestInstance`] traits.
+impl<T: StorageSerdeEx + GetTestInstance + Eq + Debug> StorageSerdeExTest for T {
+    fn storage_serde_ex_test() {
+        let mut rng = get_rng();
+        let item = T::get_test_instance(&mut rng);
+        let serialized = item.serialize().unwrap();
+        let bytes = serialized.into_boxed_slice();
+        let deserialized = T::deserialize(&mut bytes.as_ref());
+        assert_eq!(item, deserialized.unwrap());
+    }
+}
+
 // Tests all types that implement the [`StorageSerde`] trait
 // via the [`auto_storage_serde`] macro.
 macro_rules! create_storage_serde_test {
@@ -35,7 +51,8 @@ macro_rules! create_storage_serde_test {
         paste::paste! {
             #[test]
             fn [<"storage_serde_test" _$name:snake>]() {
-                $name::storage_serde_test()
+                $name::storage_serde_test();
+                $name::storage_serde_ex_test();
             }
         }
     };

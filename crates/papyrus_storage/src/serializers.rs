@@ -43,7 +43,9 @@ use crate::body::events::{
 };
 use crate::db::serialization::{ShouldCompressOptions, StorageSerde, StorageSerdeError};
 #[cfg(test)]
-use crate::serializers::serializers_test::{create_storage_serde_test, StorageSerdeTest};
+use crate::serializers::serializers_test::{
+    create_storage_serde_test, StorageSerdeExTest, StorageSerdeTest,
+};
 use crate::state::data::{
     IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass, ThinStateDiff,
 };
@@ -73,7 +75,6 @@ auto_storage_serde! {
     pub struct CompiledClassHash(pub StarkHash);
     pub struct ClassHash(pub StarkHash);
     pub struct ContractAddressSalt(pub StarkHash);
-    // TODO(anatg): Consider using the compression utils.
     pub struct ContractClass {
         pub sierra_program: Vec<StarkFelt>,
         pub entry_point_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,

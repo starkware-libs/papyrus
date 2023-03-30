@@ -317,7 +317,6 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             // TODO(anatg): Remove this after regenesis.
             if !deprecated_declared_classes.is_empty() {
                 deployed_contract_class_definitions.extend(deprecated_declared_classes);
-                //  TODO(anatg): Add a test for this (should fail if not sorted here).
                 deployed_contract_class_definitions.sort_unstable_keys();
             }
             write_deprecated_declared_classes(
