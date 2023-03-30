@@ -161,7 +161,7 @@ impl StarknetClient {
     pub fn new(
         url_str: &str,
         http_headers: Option<HashMap<String, String>>,
-        node_version: String,
+        node_version: &'static str,
         retry_config: RetryConfig,
     ) -> Result<StarknetClient, ClientCreationError> {
         let header_map = match http_headers {
