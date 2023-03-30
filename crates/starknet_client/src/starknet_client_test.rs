@@ -16,7 +16,7 @@ use starknet_api::{patricia_key, stark_felt};
 
 use super::objects::deprecated_contract_class::DeprecatedContractClass;
 use super::objects::state::StateUpdate;
-use super::objects::transaction::{DeclareTransaction, TransactionType};
+use super::objects::transaction::{IntermediateDeclareTransaction, TransactionType};
 use super::test_utils::read_resource::read_resource_file;
 use super::test_utils::retry::get_test_config;
 use super::{
@@ -64,10 +64,11 @@ async fn get_block_number() {
 
 #[tokio::test]
 async fn declare_tx_serde() {
-    let declare_tx = DeclareTransaction {
+    let declare_tx = IntermediateDeclareTransaction {
         class_hash: ClassHash(stark_felt!(
             "0x7319e2f01b0947afd86c0bb0e95029551b32f6dc192c47b2e8b08415eebbc25"
         )),
+        compiled_class_hash: None,
         sender_address: ContractAddress(patricia_key!("0x1")),
         nonce: Nonce(stark_felt!("0x0")),
         max_fee: Fee(0),

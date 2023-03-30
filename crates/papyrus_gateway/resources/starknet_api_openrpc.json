@@ -451,14 +451,18 @@
         },
         {
             "name": "starknet_estimateFee",
-            "summary": "estimate the fee for a given StarkNet transaction",
-            "description": "estimates the resources required by a transaction relative to a given state",
+            "summary": "estimate the fee for of StarkNet transactions",
+            "description": "estimates the resources required by transactions when applyed on a given state",
             "params": [
                 {
                     "name": "request",
                     "summary": "The transaction to estimate",
                     "schema": {
-                        "$ref": "#/components/schemas/BROADCASTED_TXN"
+                        "type": "array",
+                        "description": "a sequence of transactions to estimate, running each transaction on the state resulting from applying all the previous ones",
+                        "items": {
+                            "$ref": "#/components/schemas/BROADCASTED_TXN"
+                        }
                     },
                     "required": true
                 },
@@ -473,9 +477,13 @@
             ],
             "result": {
                 "name": "result",
-                "description": "the fee estimation",
+                "description": "the fee estimations",
                 "schema": {
-                    "$ref": "#/components/schemas/FEE_ESTIMATE"
+                    "type": "array",
+                    "description": "a sequence of fee estimatione where the i'th estimate corresponds to the i'th transaction",
+                    "items": {
+                        "$ref": "#/components/schemas/FEE_ESTIMATE"
+                    }
                 }
             },
             "errors": [
@@ -1281,9 +1289,6 @@
                         "$ref": "#/components/schemas/BROADCASTED_DECLARE_TXN"
                     },
                     {
-                        "$ref": "#/components/schemas/BROADCASTED_DEPLOY_TXN"
-                    },
-                    {
                         "$ref": "#/components/schemas/BROADCASTED_DEPLOY_ACCOUNT_TXN"
                     }
                 ]
@@ -1341,6 +1346,16 @@
                 ]
             },
             "DECLARE_TXN": {
+                "anyOf": [
+                    {
+                        "$ref": "#/components/schemas/DECLARE_TXN_V1"
+                    },
+                    {
+                        "$ref": "#/components/schemas/DECLARE_TXN_V2"
+                    }
+                ]
+            },
+            "DECLARE_TXN_V1": {
                 "title": "Declare Contract Transaction",
                 "allOf": [
                     {
@@ -1372,7 +1387,58 @@
                     }
                 ]
             },
+            "DECLARE_TXN_V2": {
+                "title": "Declare Contract Transaction",
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/DECLARE_TXN_V1"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "compiled_class_hash": {
+                                "description": "The hash of the Cairo assembly resulting from the Sierra compilation",
+                                "$ref": "#/components/schemas/FELT"
+                            }
+                        },
+                        "required": [
+                            "compiled_class_hash"
+                        ]
+                    }
+                ]
+            },
             "BROADCASTED_DECLARE_TXN": {
+                "oneOf": [
+                    {
+                        "$ref": "#/components/schemas/BROADCASTED_DECLARE_TXN_V1"
+                    },
+                    {
+                        "$ref": "#/components/schemas/BROADCASTED_DECLARE_TXN_V2"
+                    }
+                ]
+            },
+            "BROADCASTED_DECLARE_TXN_V1": {
+                "title": "mempool representation of a declare transaction",
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/BROADCASTED_TXN_COMMON_PROPERTIES"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "contract_class": {
+                                "description": "The class to be declared",
+                                "$ref": "#/components/schemas/DEPRECATED_CONTRACT_CLASS"
+                            },
+                            "sender_address": {
+                                "description": "The address of the account contract sending the declaration transaction",
+                                "$ref": "#/components/schemas/ADDRESS"
+                            }
+                        }
+                    }
+                ]
+            },
+            "BROADCASTED_DECLARE_TXN_V2": {
                 "title": "mempool representation of a declare transaction",
                 "allOf": [
                     {
@@ -1394,6 +1460,10 @@
                             "sender_address": {
                                 "description": "The address of the account contract sending the declaration transaction",
                                 "$ref": "#/components/schemas/ADDRESS"
+                            },
+                            "compiled_class_hash": {
+                                "description": "The hash of the Cairo assembly resulting from the Sierra compilation",
+                                "$ref": "#/components/schemas/FELT"
                             }
                         },
                         "required": [
@@ -1478,27 +1548,6 @@
                         "required": [
                             "transaction_hash",
                             "class_hash"
-                        ]
-                    },
-                    {
-                        "$ref": "#/components/schemas/DEPLOY_TXN_PROPERTIES"
-                    }
-                ]
-            },
-            "BROADCASTED_DEPLOY_TXN": {
-                "title": "mempool representation of a deploy transaction",
-                "description": "The structure of a deploy transaction. Note that this transaction type is deprecated and will no longer be supported in future versions",
-                "allOf": [
-                    {
-                        "type": "object",
-                        "properties": {
-                            "contract_class": {
-                                "description": "The class of the contract that will be deployed",
-                                "$ref": "#/components/schemas/CONTRACT_CLASS"
-                            }
-                        },
-                        "required": [
-                            "contract_class"
                         ]
                     },
                     {

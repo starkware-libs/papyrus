@@ -1,19 +1,106 @@
 use papyrus_storage::body::events::ThinTransactionOutput;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
-use starknet_api::core::{ContractAddress, EntryPointSelector, Nonce};
-use starknet_api::transaction::{
-    Calldata, DeclareTransaction, DeclareTransactionOutput, DeployAccountTransaction,
-    DeployAccountTransactionOutput, DeployTransaction, DeployTransactionOutput, Fee,
-    InvokeTransactionOutput, L1HandlerTransaction, L1HandlerTransactionOutput, TransactionHash,
-    TransactionSignature, TransactionVersion,
+use starknet_api::core::{
+    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, Nonce,
 };
+use starknet_api::hash::StarkFelt;
+use starknet_api::transaction::{
+    Calldata, DeclareTransactionOutput, DeployAccountTransaction, DeployAccountTransactionOutput,
+    DeployTransaction, DeployTransactionOutput, Fee, InvokeTransactionOutput, L1HandlerTransaction,
+    L1HandlerTransactionOutput, TransactionHash, TransactionSignature, TransactionVersion,
+};
+
+// TODO(yair): Make these functions regular consts.
+fn tx_v0() -> TransactionVersion {
+    TransactionVersion(StarkFelt::try_from("0x0").expect("Unable to convert 0x0 to StarkFelt."))
+}
+fn tx_v1() -> TransactionVersion {
+    TransactionVersion(StarkFelt::try_from("0x1").expect("Unable to convert 0x1 to StarkFelt."))
+}
+fn tx_v2() -> TransactionVersion {
+    TransactionVersion(StarkFelt::try_from("0x2").expect("Unable to convert 0x2 to StarkFelt."))
+}
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(untagged)]
 pub enum Transactions {
     Hashes(Vec<TransactionHash>),
     Full(Vec<TransactionWithType>),
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct DeclareTransactionV0V1 {
+    pub class_hash: ClassHash,
+    pub sender_address: ContractAddress,
+    pub nonce: Nonce,
+    pub max_fee: Fee,
+    pub version: TransactionVersion,
+    pub transaction_hash: TransactionHash,
+    pub signature: TransactionSignature,
+}
+
+impl From<starknet_api::transaction::DeclareTransactionV0> for DeclareTransactionV0V1 {
+    fn from(tx: starknet_api::transaction::DeclareTransactionV0) -> Self {
+        Self {
+            class_hash: tx.class_hash,
+            sender_address: tx.sender_address,
+            nonce: tx.nonce,
+            max_fee: tx.max_fee,
+            version: tx_v0(),
+            transaction_hash: tx.transaction_hash,
+            signature: tx.signature,
+        }
+    }
+}
+
+impl From<starknet_api::transaction::DeclareTransactionV1> for DeclareTransactionV0V1 {
+    fn from(tx: starknet_api::transaction::DeclareTransactionV1) -> Self {
+        Self {
+            class_hash: tx.class_hash,
+            sender_address: tx.sender_address,
+            nonce: tx.nonce,
+            max_fee: tx.max_fee,
+            version: tx_v1(),
+            transaction_hash: tx.transaction_hash,
+            signature: tx.signature,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct DeclareTransactionV2 {
+    pub class_hash: ClassHash,
+    pub compiled_class_hash: CompiledClassHash,
+    pub sender_address: ContractAddress,
+    pub nonce: Nonce,
+    pub max_fee: Fee,
+    pub version: TransactionVersion,
+    pub transaction_hash: TransactionHash,
+    pub signature: TransactionSignature,
+}
+
+impl From<starknet_api::transaction::DeclareTransactionV2> for DeclareTransactionV2 {
+    fn from(tx: starknet_api::transaction::DeclareTransactionV2) -> Self {
+        Self {
+            class_hash: tx.class_hash,
+            compiled_class_hash: tx.compiled_class_hash,
+            sender_address: tx.sender_address,
+            nonce: tx.nonce,
+            max_fee: tx.max_fee,
+            version: tx_v2(),
+            transaction_hash: tx.transaction_hash,
+            signature: tx.signature,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
+#[serde(untagged)]
+pub enum DeclareTransaction {
+    Version0(DeclareTransactionV0V1),
+    Version1(DeclareTransactionV0V1),
+    Version2(DeclareTransactionV2),
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -28,16 +115,16 @@ pub struct InvokeTransactionV0 {
     pub calldata: Calldata,
 }
 
-impl From<starknet_api::transaction::InvokeTransaction> for InvokeTransactionV0 {
-    fn from(tx: starknet_api::transaction::InvokeTransaction) -> Self {
+impl From<starknet_api::transaction::InvokeTransactionV0> for InvokeTransactionV0 {
+    fn from(tx: starknet_api::transaction::InvokeTransactionV0) -> Self {
         Self {
             transaction_hash: tx.transaction_hash,
             max_fee: tx.max_fee,
-            version: tx.version,
+            version: tx_v0(),
             signature: tx.signature,
             nonce: tx.nonce,
             contract_address: tx.sender_address,
-            entry_point_selector: tx.entry_point_selector.unwrap_or_default(),
+            entry_point_selector: tx.entry_point_selector,
             calldata: tx.calldata,
         }
     }
@@ -54,12 +141,12 @@ pub struct InvokeTransactionV1 {
     pub calldata: Calldata,
 }
 
-impl From<starknet_api::transaction::InvokeTransaction> for InvokeTransactionV1 {
-    fn from(tx: starknet_api::transaction::InvokeTransaction) -> Self {
+impl From<starknet_api::transaction::InvokeTransactionV1> for InvokeTransactionV1 {
+    fn from(tx: starknet_api::transaction::InvokeTransactionV1) -> Self {
         Self {
             transaction_hash: tx.transaction_hash,
             max_fee: tx.max_fee,
-            version: tx.version,
+            version: tx_v1(),
             signature: tx.signature,
             nonce: tx.nonce,
             sender_address: tx.sender_address,
@@ -75,9 +162,8 @@ pub enum InvokeTransaction {
     Version1(InvokeTransactionV1),
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 #[serde(untagged)]
-// Note: When deserializing an untagged enum, no variant can be a prefix of variants to follow.
 pub enum Transaction {
     Declare(DeclareTransaction),
     DeployAccount(DeployAccountTransaction),
@@ -89,7 +175,9 @@ pub enum Transaction {
 impl Transaction {
     pub fn transaction_hash(&self) -> TransactionHash {
         match self {
-            Transaction::Declare(tx) => tx.transaction_hash,
+            Transaction::Declare(DeclareTransaction::Version0(tx)) => tx.transaction_hash,
+            Transaction::Declare(DeclareTransaction::Version1(tx)) => tx.transaction_hash,
+            Transaction::Declare(DeclareTransaction::Version2(tx)) => tx.transaction_hash,
             Transaction::Deploy(tx) => tx.transaction_hash,
             Transaction::DeployAccount(tx) => tx.transaction_hash,
             Transaction::Invoke(InvokeTransaction::Version0(tx)) => tx.transaction_hash,
@@ -102,22 +190,31 @@ impl Transaction {
 impl From<starknet_api::transaction::Transaction> for Transaction {
     fn from(tx: starknet_api::transaction::Transaction) -> Self {
         match tx {
-            starknet_api::transaction::Transaction::Declare(declare_tx) => {
-                Transaction::Declare(declare_tx)
-            }
+            starknet_api::transaction::Transaction::Declare(declare_tx) => match declare_tx {
+                starknet_api::transaction::DeclareTransaction::V0(tx) => {
+                    Self::Declare(DeclareTransaction::Version0(tx.into()))
+                }
+                starknet_api::transaction::DeclareTransaction::V1(tx) => {
+                    Self::Declare(DeclareTransaction::Version1(tx.into()))
+                }
+                starknet_api::transaction::DeclareTransaction::V2(tx) => {
+                    Self::Declare(DeclareTransaction::Version2(tx.into()))
+                }
+            },
             starknet_api::transaction::Transaction::Deploy(deploy_tx) => {
                 Transaction::Deploy(deploy_tx)
             }
             starknet_api::transaction::Transaction::DeployAccount(deploy_tx) => {
                 Transaction::DeployAccount(deploy_tx)
             }
-            starknet_api::transaction::Transaction::Invoke(invoke_tx) => {
-                if invoke_tx.entry_point_selector.is_none() {
-                    Transaction::Invoke(InvokeTransaction::Version1(invoke_tx.into()))
-                } else {
-                    Transaction::Invoke(InvokeTransaction::Version0(invoke_tx.into()))
+            starknet_api::transaction::Transaction::Invoke(invoke_tx) => match invoke_tx {
+                starknet_api::transaction::InvokeTransaction::V0(tx) => {
+                    Self::Invoke(InvokeTransaction::Version0(tx.into()))
                 }
-            }
+                starknet_api::transaction::InvokeTransaction::V1(tx) => {
+                    Self::Invoke(InvokeTransaction::Version1(tx.into()))
+                }
+            },
             starknet_api::transaction::Transaction::L1Handler(l1_handler_tx) => {
                 Transaction::L1Handler(l1_handler_tx)
             }
