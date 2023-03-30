@@ -337,7 +337,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
 
         let current_state_marker = self.get_state_marker()?;
 
-        // TODO(yair): delete replaced_classes.
+        // TODO(dvir): delete replaced_classes.
 
         // Reverts only the last state diff.
         if current_state_marker != block_number.next() {

@@ -24,6 +24,7 @@ async fn main() {
         StarkHash::try_from("0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17")
             .unwrap(),
     );
+    // TODO(dvir): Find blocks with 0.11 features to add to the test (Declare V2, replace_class).
     let _contract_class_by_hash =
         starknet_client.class_by_hash(class_hash).await.expect("Get class by hash");
 }

@@ -35,8 +35,8 @@ fn state_sorted() {
         (ContractAddress(patricia_key0), unsorted_storage_entries),
     ]);
 
-    // TODO(yair): Add declared_classes.
-    // TODO(yair): Add replaced_classes.
+    // TODO(dvir): Add declared_classes.
+    // TODO(dvir): Add replaced_classes.
     let mut state_diff = StateDiff {
         deployed_contracts: unsorted_deployed_contracts,
         storage_diffs: unsorted_storage_diffs,

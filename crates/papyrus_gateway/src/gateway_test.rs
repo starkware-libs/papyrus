@@ -992,7 +992,7 @@ async fn get_class() {
     ));
 }
 
-// TODO(yair): Add this scenario to get_class test.
+// TODO(dvir): Add this scenario to get_class test.
 #[tokio::test]
 async fn get_new_class() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
