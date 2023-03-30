@@ -30,7 +30,6 @@ pub struct CentralSourceConfig {
     pub concurrent_requests: usize,
     pub url: String,
     pub http_headers: Option<HashMap<String, String>>,
-    pub node_version: String,
     pub retry_config: RetryConfig,
 }
 pub struct GenericCentralSource<TStarknetClient: StarknetClientTrait + Send + Sync> {
@@ -355,11 +354,14 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
 pub type CentralSource = GenericCentralSource<StarknetClient>;
 
 impl CentralSource {
-    pub fn new(config: CentralSourceConfig) -> Result<CentralSource, ClientCreationError> {
+    pub fn new(
+        config: CentralSourceConfig,
+        node_version: &'static str,
+    ) -> Result<CentralSource, ClientCreationError> {
         let starknet_client = StarknetClient::new(
             &config.url,
             config.http_headers,
-            config.node_version,
+            node_version,
             config.retry_config,
         )?;
         Ok(CentralSource {
