@@ -7,7 +7,7 @@ use std::collections::HashSet;
 
 use indexmap::IndexMap;
 use starknet_api::block::BlockNumber;
-use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
+use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey};

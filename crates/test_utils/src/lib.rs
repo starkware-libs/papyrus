@@ -31,11 +31,12 @@ use starknet_api::state::{
 };
 use starknet_api::transaction::{
     Calldata, ContractAddressSalt, DeclareTransaction, DeclareTransactionOutput,
-    DeployAccountTransaction, DeployAccountTransactionOutput, DeployTransaction,
-    DeployTransactionOutput, EthAddress, Event, EventContent, EventData,
-    EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction, InvokeTransactionOutput,
-    L1HandlerTransaction, L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, MessageToL1,
-    MessageToL2, Transaction, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
+    DeclareTransactionV0, DeclareTransactionV1, DeclareTransactionV2, DeployAccountTransaction,
+    DeployAccountTransactionOutput, DeployTransaction, DeployTransactionOutput, EthAddress, Event,
+    EventContent, EventData, EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction,
+    InvokeTransactionOutput, InvokeTransactionV0, InvokeTransactionV1, L1HandlerTransaction,
+    L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, MessageToL1, MessageToL2,
+    Transaction, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
     TransactionSignature, TransactionVersion,
 };
 use web3::types::H160;
@@ -242,13 +243,34 @@ auto_impl_get_test_instance! {
         Function(FunctionAbiEntryWithType) = 1,
         Struct(StructAbiEntry) = 2,
     }
-    pub struct DeclareTransaction {
+    pub enum DeclareTransaction {
+        V0(DeclareTransactionV0) = 0,
+        V1(DeclareTransactionV1) = 1,
+        V2(DeclareTransactionV2) = 2,
+    }
+    pub struct DeclareTransactionV0 {
         pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
-        pub version: TransactionVersion,
         pub signature: TransactionSignature,
         pub nonce: Nonce,
         pub class_hash: ClassHash,
+        pub sender_address: ContractAddress,
+    }
+    pub struct DeclareTransactionV1 {
+        pub transaction_hash: TransactionHash,
+        pub max_fee: Fee,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub class_hash: ClassHash,
+        pub sender_address: ContractAddress,
+    }
+    pub struct DeclareTransactionV2 {
+        pub transaction_hash: TransactionHash,
+        pub max_fee: Fee,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub class_hash: ClassHash,
+        pub compiled_class_hash: CompiledClassHash,
         pub sender_address: ContractAddress,
     }
     pub struct DeployAccountTransaction {
@@ -320,14 +342,25 @@ auto_impl_get_test_instance! {
     }
     pub struct GasPrice(pub u128);
     pub struct GlobalRoot(pub StarkHash);
-    pub struct InvokeTransaction {
+    pub enum InvokeTransaction {
+        V0(InvokeTransactionV0) = 0,
+        V1(InvokeTransactionV1) = 1,
+    }
+    pub struct InvokeTransactionV0 {
         pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
-        pub version: TransactionVersion,
         pub signature: TransactionSignature,
         pub nonce: Nonce,
         pub sender_address: ContractAddress,
-        pub entry_point_selector: Option<EntryPointSelector>,
+        pub entry_point_selector: EntryPointSelector,
+        pub calldata: Calldata,
+    }
+    pub struct InvokeTransactionV1 {
+        pub transaction_hash: TransactionHash,
+        pub max_fee: Fee,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub sender_address: ContractAddress,
         pub calldata: Calldata,
     }
     pub struct L1HandlerTransaction {
@@ -597,10 +630,17 @@ fn set_events(tx: &mut TransactionOutput, events: Vec<Event>) {
 
 fn set_transaction_hash(tx: &mut Transaction, hash: TransactionHash) {
     match tx {
-        Transaction::Declare(tx) => tx.transaction_hash = hash,
+        Transaction::Declare(tx) => match tx {
+            DeclareTransaction::V0(tx) => tx.transaction_hash = hash,
+            DeclareTransaction::V1(tx) => tx.transaction_hash = hash,
+            DeclareTransaction::V2(tx) => tx.transaction_hash = hash,
+        },
         Transaction::Deploy(tx) => tx.transaction_hash = hash,
         Transaction::DeployAccount(tx) => tx.transaction_hash = hash,
-        Transaction::Invoke(tx) => tx.transaction_hash = hash,
+        Transaction::Invoke(tx) => match tx {
+            InvokeTransaction::V0(tx) => tx.transaction_hash = hash,
+            InvokeTransaction::V1(tx) => tx.transaction_hash = hash,
+        },
         Transaction::L1Handler(tx) => tx.transaction_hash = hash,
     }
 }

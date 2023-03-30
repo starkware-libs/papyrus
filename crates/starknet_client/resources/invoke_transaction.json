@@ -1,5 +1,5 @@
 {
-    "contract_address": "0xef934e6c63a9acba42dd644d1a0c1af5df01eeac1b9f82320b53cfacd40890",
+    "sender_address": "0xef934e6c63a9acba42dd644d1a0c1af5df01eeac1b9f82320b53cfacd40890",
     "entry_point_selector": "0x15d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad",
     "calldata": [
         "0x2",
@@ -24,5 +24,6 @@
     ],
     "transaction_hash": "0x706deaf73bc99c4a2026a7252f21e3c8db0946ac2221e2abe12a9f3b78192e0",
     "max_fee": "0x21a3e1b5676f",
-    "type": "INVOKE_FUNCTION"
+    "type": "INVOKE_FUNCTION",
+    "version": "0x0"
 }

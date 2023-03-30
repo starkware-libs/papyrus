@@ -2,8 +2,8 @@ use assert::assert_ok;
 
 use super::super::test_utils::read_resource::read_resource_file;
 use super::transaction::{
-    DeclareTransaction, DeployTransaction, InvokeTransaction, L1HandlerTransaction, Transaction,
-    TransactionReceipt,
+    DeployTransaction, IntermediateDeclareTransaction, IntermediateInvokeTransaction,
+    L1HandlerTransaction, Transaction, TransactionReceipt,
 };
 
 #[test]
@@ -15,7 +15,7 @@ fn load_deploy_transaction_succeeds() {
 
 #[test]
 fn load_invoke_transaction_succeeds() {
-    assert_ok!(serde_json::from_str::<InvokeTransaction>(&read_resource_file(
+    assert_ok!(serde_json::from_str::<IntermediateInvokeTransaction>(&read_resource_file(
         "invoke_transaction.json"
     )));
 }
@@ -29,7 +29,7 @@ fn load_l1_handler_transaction_succeeds() {
 
 #[test]
 fn load_declare_transaction_succeeds() {
-    assert_ok!(serde_json::from_str::<DeclareTransaction>(&read_resource_file(
+    assert_ok!(serde_json::from_str::<IntermediateDeclareTransaction>(&read_resource_file(
         "declare_transaction.json"
     )));
 }
