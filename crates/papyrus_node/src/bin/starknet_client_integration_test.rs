@@ -12,14 +12,9 @@ async fn main() {
         "--central_url=https://alpha4.starknet.io/".to_owned(),
     ])
     .expect("Load config");
-    let config = Config::load(vec![]).expect("Load config");
-    let starknet_client = StarknetClient::new(
-        &config.central.url,
-        None,
-        VERSION_FULL.to_string(),
-        config.central.retry_config,
-    )
-    .expect("Create new client");
+    let starknet_client =
+        StarknetClient::new(&config.central.url, None, VERSION_FULL, config.central.retry_config)
+            .expect("Create new client");
     let _latest_block_number = starknet_client.block_number().await.expect("Get block number");
     // A block with invoke transaction version 1.
     let _block_376150 = starknet_client.block(BlockNumber(376150)).await.expect("Get block");

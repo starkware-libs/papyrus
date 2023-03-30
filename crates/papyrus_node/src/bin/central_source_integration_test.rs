@@ -1,5 +1,6 @@
 use futures_util::pin_mut;
 use papyrus_node::config::Config;
+use papyrus_node::version::VERSION_FULL;
 use papyrus_sync::{CentralSource, CentralSourceTrait};
 use starknet_api::block::BlockNumber;
 use tokio_stream::StreamExt;
@@ -11,8 +12,9 @@ async fn main() {
         "--central_url=https://external.integration.starknet.io/".to_owned(),
     ])
     .expect("Load config");
-    let central_source = CentralSource::new(config.central).expect("Create new client");
-    let last_block_number = BlockNumber(283414);
+    let central_source =
+        CentralSource::new(config.central, VERSION_FULL).expect("Create new client");
+    let last_block_number = BlockNumber(203);
 
     let mut block_marker = BlockNumber(283410);
     let block_stream = central_source.stream_new_blocks(block_marker, last_block_number).fuse();
