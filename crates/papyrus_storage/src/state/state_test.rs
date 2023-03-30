@@ -17,8 +17,8 @@ use crate::{StorageWriter, ThinStateDiff};
 
 #[test]
 fn append_state_diff() {
-    // TODO(yair): Add declared_classes.
-    // TODO(yair): Add replaced_classes.
+    // TODO(dvir): Add declared_classes.
+    // TODO(dvir): Add replaced_classes.
     let c0 = ContractAddress(patricia_key!("0x11"));
     let c1 = ContractAddress(patricia_key!("0x12"));
     let c2 = ContractAddress(patricia_key!("0x13"));
@@ -253,8 +253,7 @@ fn append_2_state_diffs(writer: &mut StorageWriter) {
 #[test]
 fn revert_doesnt_delete_previously_declared_classes() {
     // Append 2 state diffs that use the same declared class.
-    // TODO(yair): Add declared_classes.
-    // TODO(yair): Add replaced_classes.
+    // TODO(dvir): Add declared_classes.
     let c0 = ContractAddress(patricia_key!("0x11"));
     let cl0 = ClassHash(stark_felt!("0x4"));
     let c_cls0 = DeprecatedContractClass::default();
@@ -319,8 +318,8 @@ fn revert_state() {
     let (contract0, class0) = state_diff0.deployed_contracts.first().unwrap();
     let (_contract0, nonce0) = state_diff0.nonces.first().unwrap();
 
-    // TODO(yair): Add declared_classes.
-    // TODO(yair): Add replaced_classes.
+    // TODO(dvir): Add declared_classes.
+    // TODO(dvir): Add replaced_classes.
     // Create another state diff, deploying new contracts and changing the state of the contract
     // deployed in state0.
     let contract1 = ContractAddress(patricia_key!("0x1"));

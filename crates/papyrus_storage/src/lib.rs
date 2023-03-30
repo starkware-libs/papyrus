@@ -125,7 +125,6 @@ struct_field_names! {
         nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
         ommer_contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockHash), StarkFelt>,
         //TODO(yair): Consider whether an ommer_deprecated_declared_classes is needed.
-        // TODO(yair): Consider whether the compiled class hash should be saved in the ommer table.
         ommer_declared_classes: TableIdentifier<(BlockHash, ClassHash), ContractClass>,
         ommer_deployed_contracts: TableIdentifier<(ContractAddress, BlockHash), ClassHash>,
         ommer_events: TableIdentifier<(ContractAddress, OmmerEventKey), EventContent>,
