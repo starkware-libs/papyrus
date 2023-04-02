@@ -183,8 +183,8 @@ fn client_to_central_state_update(
                 replaced_classes,
             } = state_update.state_diff;
 
-            // Seperate the declared classes to new classes, old classes and implicit declare by
-            // deployment.
+            // Seperate the declared classes to new classes, old classes and classes of deployed
+            // contracts (both new and old).
             let n_declared_classes = declared_class_hashes.len();
             let mut deprecated_classes = declared_classes.split_off(n_declared_classes);
             let n_deprecated_declared_classes = old_declared_contract_hashes.len();
@@ -232,10 +232,15 @@ fn client_to_central_state_update(
                     .map(|replaced_class| (replaced_class.address, replaced_class.class_hash))
                     .collect(),
             };
+            // Filter out deployed contracts of new classes because since 0.11 new classes can not
+            // be implicitly declared by deployment.
             let deployed_contract_class_definitions = deployed_contract_class_definitions
                 .into_iter()
-                .map(|(class_hash, generic_class)| {
-                    (class_hash, generic_class.to_cairo0().expect("Expected Cairo 0 class.").into())
+                .filter_map(|(class_hash, contract_class)| match contract_class {
+                    GenericContractClass::Cairo0ContractClass(deprecated_contract_class) => {
+                        Some((class_hash, deprecated_contract_class.into()))
+                    }
+                    GenericContractClass::Cairo1ContractClass(_) => None,
                 })
                 .collect();
             let block_hash = state_update.block_hash;

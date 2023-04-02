@@ -66,6 +66,9 @@ where
         // TODO(anatg): Remove once there are no more deployed contracts with undeclared classes.
         // Class definitions of deployed contracts with classes that were not declared in this
         // state diff.
+        // Note: Since 0.11 only deprecated classes can be implicitly declared by contract
+        // deployment, so there is no need to pass the classes of deployed contracts if they are of
+        // the new version.
         deployed_contract_class_definitions: IndexMap<ClassHash, DeprecatedContractClass>,
     ) -> StorageResult<Self>;
 
