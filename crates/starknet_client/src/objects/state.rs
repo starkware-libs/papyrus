@@ -36,8 +36,7 @@ pub struct StateDiff {
 
 impl StateDiff {
     // Returns the declared class hashes in the following order:
-    // [declared classes, deprecated declared class, deprecated classes that were implicitly
-    // declared by contract deployment].
+    // [declared classes, deprecated declared class, class hashes of deployed contracts].
     pub fn class_hashes(&self) -> Vec<ClassHash> {
         let mut declared_class_hashes: Vec<ClassHash> = self
             .declared_classes
