@@ -15,6 +15,27 @@ use crate::state::{StateStorageReader, StateStorageWriter, StorageError};
 use crate::test_utils::get_test_storage;
 use crate::{StorageWriter, ThinStateDiff};
 
+// Writes diff0, diff1 to the storage using the writer.
+fn write_state_diffs(
+    writer: &mut StorageWriter,
+    diff0: &StateDiff,
+    diff1: &StateDiff,
+) -> (ThinStateDiff, ThinStateDiff) {
+    let mut txn = writer.begin_rw_txn().unwrap();
+    assert_eq!(txn.get_state_diff(BlockNumber(0)).unwrap(), None);
+    assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap(), None);
+    txn = txn.append_state_diff(BlockNumber(0), diff0.clone(), IndexMap::new()).unwrap();
+    let thin_state_diff_0 = diff0.clone().into();
+    assert_eq!(txn.get_state_diff(BlockNumber(0)).unwrap().unwrap(), thin_state_diff_0);
+    assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap(), None);
+    txn = txn.append_state_diff(BlockNumber(1), diff1.clone(), IndexMap::new()).unwrap();
+    let thin_state_diff_1 = diff1.clone().into();
+    assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap().unwrap(), thin_state_diff_1);
+    txn.commit().unwrap();
+
+    (thin_state_diff_0, thin_state_diff_1)
+}
+
 #[test]
 fn append_state_diff() {
     // TODO(dvir): Add declared_classes.
@@ -58,17 +79,7 @@ fn append_state_diff() {
     };
 
     let (_, mut writer) = get_test_storage();
-    let mut txn = writer.begin_rw_txn().unwrap();
-    assert_eq!(txn.get_state_diff(BlockNumber(0)).unwrap(), None);
-    assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap(), None);
-    txn = txn.append_state_diff(BlockNumber(0), diff0.clone(), IndexMap::new()).unwrap();
-    let thin_state_diff_0 = diff0.clone().into();
-    assert_eq!(txn.get_state_diff(BlockNumber(0)).unwrap().unwrap(), thin_state_diff_0);
-    assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap(), None);
-    txn = txn.append_state_diff(BlockNumber(1), diff1.clone(), IndexMap::new()).unwrap();
-    let thin_state_diff_1 = diff1.clone().into();
-
-    txn.commit().unwrap();
+    let (thin_state_diff_0, thin_state_diff_1) = write_state_diffs(&mut writer, &diff0, &diff1);
 
     // Check for ClassAlreadyExists error when trying to declare a different class to an existing
     // class hash.
