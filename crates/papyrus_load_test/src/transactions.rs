@@ -7,7 +7,9 @@ use goose::goose::{Transaction, TransactionFunction};
 use rand::Rng;
 use serde_json::{json, Value as jsonVal};
 
-use crate::{create_request, jsonrpc_request, path_in_resources, post_jsonrpc_request};
+use crate::{
+    create_request, get_last_block_number, jsonrpc_request, path_in_resources, post_jsonrpc_request,
+};
 
 create_get_transaction_function_with_requests_from_file! {
     get_block_with_transaction_hashes_by_number, "block_number.txt";
@@ -77,6 +79,46 @@ fn create_requests_vector_from_file(
         requests.push(convert_to_request(&line.unwrap()));
     }
     requests
+}
+
+// Simulate header requests to synchronize.
+// Choose a random block number and request sequentially "length" headers from this block forward.
+// This transaction assumes the "last block number"+1>="length".
+pub fn serial_get_block_header(length: u64) -> Transaction {
+    let last_block = get_last_block_number();
+    let func: TransactionFunction = Arc::new(move |user| {
+        // Here we use the assumption that last_block+1>=length.
+        let start = rand::thread_rng().gen_range(0..=(last_block - length + 1));
+        Box::pin(async move {
+            for block_number in start..start + length {
+                let request = create_request::get_block_with_transaction_hashes_by_number(
+                    &block_number.to_string(),
+                );
+                post_jsonrpc_request(user, &request).await?;
+            }
+            Ok(())
+        })
+    });
+    Transaction::new(func).set_name("serial_get_block_header")
+}
+
+// Simulate state update requests to synchronize.
+// Choose a random block number and request sequentially "length" state update from this block
+// forward. This transaction assumes the "last block number"+1>="length".
+pub fn serial_get_state_update(length: u64) -> Transaction {
+    let last_block = get_last_block_number();
+    let func: TransactionFunction = Arc::new(move |user| {
+        // Here we use the assumption that last_block+1>=length.
+        let start = rand::thread_rng().gen_range(0..=(last_block - length + 1));
+        Box::pin(async move {
+            for block_number in start..start + length {
+                let request = create_request::get_state_update_by_number(&block_number.to_string());
+                post_jsonrpc_request(user, &request).await?;
+            }
+            Ok(())
+        })
+    });
+    Transaction::new(func).set_name("serial_get_state_update")
 }
 
 // Given [Name, "Path";] write the function:

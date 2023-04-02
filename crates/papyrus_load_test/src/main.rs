@@ -24,6 +24,7 @@ async fn main() -> anyhow::Result<()> {
 
     let metrics = GooseAttack::initialize()?
         .register_scenario(scenarios::general_request())
+        .register_scenario(scenarios::synchronization_requests(1000))
         .execute()
         .await?;
 

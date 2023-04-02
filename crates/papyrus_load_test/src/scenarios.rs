@@ -26,3 +26,13 @@ pub fn general_request() -> Scenario {
     }
     scenario
 }
+
+pub fn synchronization_requests(length: u64) -> Scenario {
+    let mut scenario = scenario!("synchronize_requests");
+    let trans_and_weights =
+        vec![(txs::serial_get_block_header(length), 1), (txs::serial_get_state_update(length), 1)];
+    for (transaction, weight) in trans_and_weights.into_iter() {
+        scenario = scenario.register_transaction(transaction.set_weight(weight).unwrap());
+    }
+    scenario
+}
