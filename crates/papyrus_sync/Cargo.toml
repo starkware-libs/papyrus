@@ -15,7 +15,7 @@ libmdbx = { version = "0.1.5", features = ["lifetimed-bytes"] }
 reqwest = { version = "0.11", features = ["json", "blocking"] }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "faf8e9d" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "1e2f66c" }
 starknet_client = { path = "../starknet_client" }
 papyrus_storage = { path = "../papyrus_storage" }
 thiserror = { version = "1.0.31" }
@@ -30,5 +30,5 @@ assert_matches = { version = "1.5.0" }
 mockall = { version = "0.11.2" }
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 starknet_client = { path = "../starknet_client", features = ["testing"] }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", features = ["testing"], rev = "faf8e9d" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", features = ["testing"], rev = "1e2f66c" }
 
