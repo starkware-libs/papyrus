@@ -552,7 +552,7 @@ fn delete_deprecated_declared_classes<'env>(
     txn: &'env DbTransaction<'env, RW>,
     block_number: BlockNumber,
     thin_state_diff: &ThinStateDiff,
-    declared_classes_table: &'env DeprecatedDeclaredClassesTable<'env>,
+    deprecated_declared_classes_table: &'env DeprecatedDeclaredClassesTable<'env>,
 ) -> StorageResult<IndexMap<ClassHash, DeprecatedContractClass>> {
     // Class hashes of the contracts that were deployed in this block.
     let deployed_contracts_class_hashes = thin_state_diff.deployed_contracts.values();
@@ -567,16 +567,20 @@ fn delete_deprecated_declared_classes<'env>(
 
     let mut deleted_data = IndexMap::new();
     for class_hash in class_hashes {
-        let IndexedDeprecatedDeclaredContract {
+        // If the class is not in the deprecated classes table, it means that the hash is of a
+        // deployed contract of a new class type. We don't need to delete these classes because
+        // since 0.11 new classes must be explicitly declared. Therefore we can skip hashes that we
+        // don't find in the deprecated classes table.
+        if let Some(IndexedDeprecatedDeclaredContract {
             block_number: declared_block_number,
             contract_class,
-        } = declared_classes_table
-            .get(txn, class_hash)?
-            .expect("Missing declared class {class_hash:#?}.");
-        // If the class was declared in a different block then we should'nt delete it.
-        if block_number == declared_block_number {
-            deleted_data.insert(*class_hash, contract_class);
-            declared_classes_table.delete(txn, class_hash)?;
+        }) = deprecated_declared_classes_table.get(txn, class_hash)?
+        {
+            // If the class was declared in a different block then we should'nt delete it.
+            if block_number == declared_block_number {
+                deleted_data.insert(*class_hash, contract_class);
+                deprecated_declared_classes_table.delete(txn, class_hash)?;
+            }
         }
     }
 
