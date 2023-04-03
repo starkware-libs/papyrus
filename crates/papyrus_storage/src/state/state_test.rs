@@ -15,6 +15,21 @@ use crate::state::{StateStorageReader, StateStorageWriter, StorageError};
 use crate::test_utils::get_test_storage;
 use crate::{StorageWriter, ThinStateDiff};
 
+// Adds diff0, diff1 to the storage using the writer.
+fn write_two_state_diffs(writer: &mut StorageWriter, diff0: &StateDiff, diff1: &StateDiff) {
+    let mut txn = writer.begin_rw_txn().unwrap();
+    assert_eq!(txn.get_state_diff(BlockNumber(0)).unwrap(), None);
+    assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap(), None);
+    txn = txn.append_state_diff(BlockNumber(0), diff0.clone(), IndexMap::new()).unwrap();
+    let thin_state_diff_0 = diff0.clone().into();
+    assert_eq!(txn.get_state_diff(BlockNumber(0)).unwrap().unwrap(), thin_state_diff_0);
+    assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap(), None);
+    txn = txn.append_state_diff(BlockNumber(1), diff1.clone(), IndexMap::new()).unwrap();
+    let thin_state_diff_1 = diff1.clone().into();
+    assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap().unwrap(), thin_state_diff_1);
+    txn.commit().unwrap();
+}
+
 #[test]
 fn append_state_diff() {
     // TODO(dvir): Add declared_classes.
@@ -58,23 +73,13 @@ fn append_state_diff() {
     };
 
     let (_, mut writer) = get_test_storage();
-    let mut txn = writer.begin_rw_txn().unwrap();
-    assert_eq!(txn.get_state_diff(BlockNumber(0)).unwrap(), None);
-    assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap(), None);
-    txn = txn.append_state_diff(BlockNumber(0), diff0.clone(), IndexMap::new()).unwrap();
-    let thin_state_diff_0 = diff0.clone().into();
-    assert_eq!(txn.get_state_diff(BlockNumber(0)).unwrap().unwrap(), thin_state_diff_0);
-    assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap(), None);
-    txn = txn.append_state_diff(BlockNumber(1), diff1.clone(), IndexMap::new()).unwrap();
-    let thin_state_diff_1 = diff1.clone().into();
-
-    txn.commit().unwrap();
+    write_two_state_diffs(&mut writer, &diff0, &diff1);
 
     // Check for ClassAlreadyExists error when trying to declare a different class to an existing
     // class hash.
     let txn = writer.begin_rw_txn().unwrap();
     let mut diff2 = StateDiff {
-        deprecated_declared_classes: diff1.deprecated_declared_classes,
+        deprecated_declared_classes: diff1.deprecated_declared_classes.clone(),
         ..StateDiff::default()
     };
     let (_, class) = diff2.deprecated_declared_classes.iter_mut().next().unwrap();
@@ -92,7 +97,7 @@ fn append_state_diff() {
     // existing contract address.
     let txn = writer.begin_rw_txn().unwrap();
     let mut diff2 =
-        StateDiff { deployed_contracts: diff0.deployed_contracts, ..StateDiff::default() };
+        StateDiff { deployed_contracts: diff0.deployed_contracts.clone(), ..StateDiff::default() };
     let (_, hash) = diff2.deployed_contracts.iter_mut().next().unwrap();
     *hash = cl2;
     if let Err(err) = txn.append_state_diff(BlockNumber(2), diff2, IndexMap::new()) {
@@ -101,6 +106,9 @@ fn append_state_diff() {
         panic!("Unexpected Ok.");
     }
     let txn = writer.begin_rw_txn().unwrap();
+    let thin_state_diff_0 = diff0.clone().into();
+    let thin_state_diff_1 = diff1.clone().into();
+
     assert_eq!(txn.get_state_diff(BlockNumber(0)).unwrap().unwrap(), thin_state_diff_0);
     assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap().unwrap(), thin_state_diff_1);
 
