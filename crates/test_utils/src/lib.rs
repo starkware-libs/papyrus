@@ -31,7 +31,7 @@ use starknet_api::state::{
 };
 use starknet_api::transaction::{
     Calldata, ContractAddressSalt, DeclareTransaction, DeclareTransactionOutput,
-    DeclareTransactionV0, DeclareTransactionV1, DeclareTransactionV2, DeployAccountTransaction,
+    DeclareTransactionV0V1, DeclareTransactionV2, DeployAccountTransaction,
     DeployAccountTransactionOutput, DeployTransaction, DeployTransactionOutput, EthAddress, Event,
     EventContent, EventData, EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction,
     InvokeTransactionOutput, InvokeTransactionV0, InvokeTransactionV1, L1HandlerTransaction,
@@ -244,19 +244,11 @@ auto_impl_get_test_instance! {
         Struct(StructAbiEntry) = 2,
     }
     pub enum DeclareTransaction {
-        V0(DeclareTransactionV0) = 0,
-        V1(DeclareTransactionV1) = 1,
+        V0(DeclareTransactionV0V1) = 0,
+        V1(DeclareTransactionV0V1) = 1,
         V2(DeclareTransactionV2) = 2,
     }
-    pub struct DeclareTransactionV0 {
-        pub transaction_hash: TransactionHash,
-        pub max_fee: Fee,
-        pub signature: TransactionSignature,
-        pub nonce: Nonce,
-        pub class_hash: ClassHash,
-        pub sender_address: ContractAddress,
-    }
-    pub struct DeclareTransactionV1 {
+    pub struct DeclareTransactionV0V1 {
         pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
         pub signature: TransactionSignature,

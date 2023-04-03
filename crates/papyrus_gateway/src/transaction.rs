@@ -40,28 +40,14 @@ pub struct DeclareTransactionV0V1 {
     pub signature: TransactionSignature,
 }
 
-impl From<starknet_api::transaction::DeclareTransactionV0> for DeclareTransactionV0V1 {
-    fn from(tx: starknet_api::transaction::DeclareTransactionV0) -> Self {
+impl From<starknet_api::transaction::DeclareTransactionV0V1> for DeclareTransactionV0V1 {
+    fn from(tx: starknet_api::transaction::DeclareTransactionV0V1) -> Self {
         Self {
             class_hash: tx.class_hash,
             sender_address: tx.sender_address,
             nonce: tx.nonce,
             max_fee: tx.max_fee,
             version: tx_v0(),
-            transaction_hash: tx.transaction_hash,
-            signature: tx.signature,
-        }
-    }
-}
-
-impl From<starknet_api::transaction::DeclareTransactionV1> for DeclareTransactionV0V1 {
-    fn from(tx: starknet_api::transaction::DeclareTransactionV1) -> Self {
-        Self {
-            class_hash: tx.class_hash,
-            sender_address: tx.sender_address,
-            nonce: tx.nonce,
-            max_fee: tx.max_fee,
-            version: tx_v1(),
             transaction_hash: tx.transaction_hash,
             signature: tx.signature,
         }
