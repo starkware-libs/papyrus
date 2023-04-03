@@ -554,16 +554,16 @@ fn delete_deprecated_declared_classes<'env>(
 
     let mut deleted_data = IndexMap::new();
     for class_hash in class_hashes {
-        let IndexedDeprecatedDeclaredContract {
+        if let Some(IndexedDeprecatedDeclaredContract {
             block_number: declared_block_number,
             contract_class,
-        } = declared_classes_table
-            .get(txn, class_hash)?
-            .expect("Missing declared class {class_hash:#?}.");
-        // If the class was declared in a different block then we should'nt delete it.
-        if block_number == declared_block_number {
-            deleted_data.insert(*class_hash, contract_class);
-            declared_classes_table.delete(txn, class_hash)?;
+        }) = declared_classes_table.get(txn, class_hash)?
+        {
+            // If the class was declared in a different block then we should'nt delete it.
+            if block_number == declared_block_number {
+                deleted_data.insert(*class_hash, contract_class);
+                declared_classes_table.delete(txn, class_hash)?;
+            }
         }
     }
 
