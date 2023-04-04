@@ -17,18 +17,25 @@ use crate::{StorageWriter, ThinStateDiff};
 
 #[test]
 fn append_state_diff_declared_classes() {
-    let dc0 = ClassHash(stark_felt!("0x0"));
-    let dc1 = ClassHash(stark_felt!("0x1"));
+    // Deprecated classes.
+    let dc0 = ClassHash(stark_felt!("0x00"));
+    let dc1 = ClassHash(stark_felt!("0x01"));
     let dep_class = DeprecatedContractClass::default();
+    // New classes.
+    let nc0 = ClassHash(stark_felt!("0x10"));
+    let nc1 = ClassHash(stark_felt!("0x11"));
+    let new_class = (CompiledClassHash::default(), ContractClass::default());
     let diff0 = StateDiff {
         deprecated_declared_classes: IndexMap::from([
             (dc0, dep_class.clone()),
             (dc1, dep_class.clone()),
         ]),
+        declared_classes: IndexMap::from([(nc0, new_class.clone())]),
         ..Default::default()
     };
     let diff1 = StateDiff {
         deprecated_declared_classes: IndexMap::from([(dc0, dep_class)]),
+        declared_classes: IndexMap::from([(nc1, new_class)]),
         ..Default::default()
     };
 
@@ -38,6 +45,12 @@ fn append_state_diff_declared_classes() {
     txn = txn.append_state_diff(BlockNumber(1), diff1.clone(), IndexMap::new()).unwrap();
     txn.commit().unwrap();
 
+    // State numbers.
+    let state0 = StateNumber::right_before_block(BlockNumber(0));
+    let state1 = StateNumber::right_before_block(BlockNumber(1));
+    let state2 = StateNumber::right_before_block(BlockNumber(2));
+
+    // ___Deprecated Classes Test___
     // Check for ClassAlreadyExists error when trying to declare a different class to an existing
     // class hash.
     let txn = writer.begin_rw_txn().unwrap();
@@ -56,11 +69,6 @@ fn append_state_diff_declared_classes() {
         panic!("Unexpected Ok.");
     }
 
-    // State numbers.
-    let state0 = StateNumber::right_before_block(BlockNumber(0));
-    let state1 = StateNumber::right_before_block(BlockNumber(1));
-    let state2 = StateNumber::right_before_block(BlockNumber(2));
-
     let txn = writer.begin_rw_txn().unwrap();
     let statetxn = txn.get_state_reader().unwrap();
 
@@ -73,6 +81,31 @@ fn append_state_diff_declared_classes() {
     assert_matches!(statetxn.get_deprecated_class_definition_at(state0, &dc1).unwrap(), None);
     assert_matches!(statetxn.get_deprecated_class_definition_at(state1, &dc1).unwrap(), Some(_));
     assert_matches!(statetxn.get_deprecated_class_definition_at(state2, &dc1).unwrap(), Some(_));
+
+    // ___New Classes Test___
+    // Check for ClassAlreadyExists error when trying to declare a different class to an existing
+    // class hash.
+    drop(txn);
+    let txn = writer.begin_rw_txn().unwrap();
+    let diff2 = StateDiff { declared_classes: diff1.declared_classes, ..StateDiff::default() };
+    if let Err(err) = txn.append_state_diff(BlockNumber(2), diff2, IndexMap::new()) {
+        assert_matches!(err, StorageError::ClassAlreadyExists { class_hash: _ });
+    } else {
+        panic!("Unexpected Ok.");
+    }
+
+    let txn = writer.begin_rw_txn().unwrap();
+    let statetxn = txn.get_state_reader().unwrap();
+
+    // Class0.
+    assert_matches!(statetxn.get_class_definition_at(state0, &nc0).unwrap(), None);
+    assert_matches!(statetxn.get_class_definition_at(state1, &nc0).unwrap(), Some(_));
+    assert_matches!(statetxn.get_class_definition_at(state2, &nc0).unwrap(), Some(_));
+
+    // Class1.
+    assert_matches!(statetxn.get_class_definition_at(state0, &nc1).unwrap(), None);
+    assert_matches!(statetxn.get_class_definition_at(state1, &nc1).unwrap(), None);
+    assert_matches!(statetxn.get_class_definition_at(state2, &nc1).unwrap(), Some(_));
 }
 
 #[test]
