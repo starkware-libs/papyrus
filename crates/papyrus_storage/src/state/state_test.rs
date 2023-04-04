@@ -51,7 +51,7 @@ fn append_state_diff_declared_classes() {
     let state2 = StateNumber::right_before_block(BlockNumber(2));
 
     // ___Deprecated Classes Test___
-    // Check for ClassAlreadyExists error when trying to declare a different class to an existing
+    // Check for ClassAlreadyExists error when trying to declare another class to an existing
     // class hash.
     let txn = writer.begin_rw_txn().unwrap();
     let mut diff2 = StateDiff {
