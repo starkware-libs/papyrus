@@ -402,12 +402,12 @@ fn revert_state() {
     // of the contract deployed in state0.
     let contract1 = ContractAddress(patricia_key!("0x1"));
     let contract2 = ContractAddress(patricia_key!("0x2"));
-    let class1 = ClassHash(stark_felt!("0x1"));
-    let class2 = ClassHash(stark_felt!("0x2"));
+    let class1 = ClassHash(stark_felt!("0x11"));
+    let class2 = ClassHash(stark_felt!("0x22"));
     let updated_storage_key = StorageKey(patricia_key!("0x1"));
     let new_data = StarkFelt::from(1);
     let updated_storage = IndexMap::from([(updated_storage_key, new_data)]);
-    let nonce1 = Nonce(StarkFelt::from(1));
+    let nonce1 = Nonce(StarkFelt::from(111));
     let state_diff1 = StateDiff {
         deployed_contracts: IndexMap::from([(contract1, class1), (contract2, class2)]),
         storage_diffs: IndexMap::from([(*contract0, updated_storage)]),
