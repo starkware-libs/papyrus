@@ -1501,6 +1501,16 @@ async fn serialize_returns_valid_json() {
         body: get_rand_test_body_with_events(&mut rng, 5, 5, None, None),
     };
     let mut state_diff = StateDiff::get_test_instance(&mut rng);
+    // In the test instance both declared_classes and deprecated_declared_classes have an entry
+    // with class hash 0x0, which is illegal.
+    state_diff.deprecated_declared_classes = IndexMap::from([(
+        ClassHash(stark_felt!("0x2")),
+        starknet_api::deprecated_contract_class::ContractClass::get_test_instance(&mut rng),
+    )]);
+    // For checking the schema also for deprecated contract classes.
+    state_diff
+        .deployed_contracts
+        .insert(ContractAddress(patricia_key!("0x2")), ClassHash(stark_felt!("0x2")));
     // TODO(yair): handle replaced classes.
     state_diff.replaced_classes.clear();
     storage_writer
@@ -1529,6 +1539,7 @@ async fn serialize_returns_valid_json() {
         "BLOCK_WITH_TX_HASHES",
         "STATE_UPDATE",
         "CONTRACT_CLASS",
+        "DEPRECATED_CONTRACT_CLASS",
         "TXN",
         "TXN_RECEIPT",
         "EVENTS_CHUNK",
@@ -1545,6 +1556,17 @@ async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, sche
     assert!(schema.validate(&res["result"]).is_ok(), "State update is not valid.");
 
     let (address, _) = state_diff.deployed_contracts.get_index(0).unwrap();
+    let res = send_request(
+        server_address,
+        "starknet_getClassAt",
+        format!(r#"{{"block_number": 1}}, "0x{}""#, hex::encode(address.0.key().bytes())).as_str(),
+    )
+    .await;
+    assert!(schema.validate(&res["result"]).is_ok(), "Class is not valid.");
+
+    // TODO(dvir): Remove this after regenesis.
+    // This checks the deployed deprecated class.
+    let (address, _) = state_diff.deployed_contracts.get_index(1).unwrap();
     let res = send_request(
         server_address,
         "starknet_getClassAt",
