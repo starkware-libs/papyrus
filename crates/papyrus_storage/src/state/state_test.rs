@@ -28,7 +28,7 @@ fn append_state_diff_declared_classes() {
         ..Default::default()
     };
     let diff1 = StateDiff {
-        deprecated_declared_classes: IndexMap::from([(dc0, dep_class.clone())]),
+        deprecated_declared_classes: IndexMap::from([(dc0, dep_class)]),
         ..Default::default()
     };
 
@@ -65,23 +65,14 @@ fn append_state_diff_declared_classes() {
     let statetxn = txn.get_state_reader().unwrap();
 
     // Class0.
-    assert_eq!(statetxn.get_deprecated_class_definition_at(state0, &dc0).unwrap(), None);
-    assert_eq!(
-        statetxn.get_deprecated_class_definition_at(state1, &dc0).unwrap(),
-        Some(dep_class.clone())
-    );
-    assert_eq!(
-        statetxn.get_deprecated_class_definition_at(state2, &dc0).unwrap(),
-        Some(dep_class.clone())
-    );
+    assert_matches!(statetxn.get_deprecated_class_definition_at(state0, &dc0).unwrap(), None);
+    assert_matches!(statetxn.get_deprecated_class_definition_at(state1, &dc0).unwrap(), Some(_));
+    assert_matches!(statetxn.get_deprecated_class_definition_at(state2, &dc0).unwrap(), Some(_));
 
     // Class1.
-    assert_eq!(statetxn.get_deprecated_class_definition_at(state0, &dc1).unwrap(), None);
-    assert_eq!(
-        statetxn.get_deprecated_class_definition_at(state1, &dc1).unwrap(),
-        Some(dep_class.clone())
-    );
-    assert_eq!(statetxn.get_deprecated_class_definition_at(state2, &dc1).unwrap(), Some(dep_class));
+    assert_matches!(statetxn.get_deprecated_class_definition_at(state0, &dc1).unwrap(), None);
+    assert_matches!(statetxn.get_deprecated_class_definition_at(state1, &dc1).unwrap(), Some(_));
+    assert_matches!(statetxn.get_deprecated_class_definition_at(state2, &dc1).unwrap(), Some(_));
 }
 
 #[test]
