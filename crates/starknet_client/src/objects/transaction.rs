@@ -133,20 +133,7 @@ impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::Decl
     }
 }
 
-impl From<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransactionV0 {
-    fn from(declare_tx: IntermediateDeclareTransaction) -> Self {
-        Self {
-            transaction_hash: declare_tx.transaction_hash,
-            max_fee: declare_tx.max_fee,
-            signature: declare_tx.signature,
-            nonce: declare_tx.nonce,
-            class_hash: declare_tx.class_hash,
-            sender_address: declare_tx.sender_address,
-        }
-    }
-}
-
-impl From<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransactionV1 {
+impl From<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransactionV0V1 {
     fn from(declare_tx: IntermediateDeclareTransaction) -> Self {
         Self {
             transaction_hash: declare_tx.transaction_hash,

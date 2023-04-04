@@ -28,7 +28,7 @@ use starknet_api::deprecated_contract_class::{
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass, EntryPoint, EntryPointType, FunctionIndex, StorageKey};
 use starknet_api::transaction::{
-    Calldata, ContractAddressSalt, DeclareTransaction, DeclareTransactionV0, DeclareTransactionV1,
+    Calldata, ContractAddressSalt, DeclareTransaction, DeclareTransactionV0V1,
     DeclareTransactionV2, DeployAccountTransaction, DeployTransaction, EthAddress, EventContent,
     EventData, EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction,
     InvokeTransactionV0, InvokeTransactionV1, L1HandlerTransaction, L1ToL2Payload, L2ToL1Payload,
@@ -90,19 +90,11 @@ auto_storage_serde! {
         Struct(StructAbiEntry) = 2,
     }
     pub enum DeclareTransaction {
-        V0(DeclareTransactionV0) = 0,
-        V1(DeclareTransactionV1) = 1,
+        V0(DeclareTransactionV0V1) = 0,
+        V1(DeclareTransactionV0V1) = 1,
         V2(DeclareTransactionV2) = 2,
     }
-    pub struct DeclareTransactionV0 {
-        pub transaction_hash: TransactionHash,
-        pub max_fee: Fee,
-        pub signature: TransactionSignature,
-        pub nonce: Nonce,
-        pub class_hash: ClassHash,
-        pub sender_address: ContractAddress,
-    }
-    pub struct DeclareTransactionV1 {
+    pub struct DeclareTransactionV0V1 {
         pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
         pub signature: TransactionSignature,
