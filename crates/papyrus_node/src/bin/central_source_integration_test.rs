@@ -1,20 +1,26 @@
+use std::{env, fs};
+
 use futures_util::pin_mut;
 use papyrus_node::config::Config;
 use papyrus_node::version::VERSION_FULL;
+use papyrus_storage::open_storage;
 use papyrus_sync::{CentralSource, CentralSourceTrait};
 use starknet_api::block::BlockNumber;
 use tokio_stream::StreamExt;
 
 #[tokio::main]
 async fn main() {
+    let mut path = env::temp_dir();
+    path.push("data");
+    fs::create_dir_all(path.clone()).expect("Make a temporary `data` directory");
     let config = Config::load(vec![
         "--chain_id=SN_GOERLI".to_owned(),
         "--central_url=https://external.integration.starknet.io/".to_owned(),
+        format!("--storage={}", path.display()),
     ])
     .expect("Load config");
-    let central_source =
-        CentralSource::new(config.central, VERSION_FULL).expect("Create new client");
-    let last_block_number = BlockNumber(283410);
+    let (storage_reader, _) = open_storage(config.storage.db_config).expect("Open storage");
+    let central_source = CentralSource::new(config.central, VERSION_FULL, storage_reader).expect("Create new client");
 
     let mut block_marker = BlockNumber(283410);
     let block_stream = central_source.stream_new_blocks(block_marker, last_block_number).fuse();
