@@ -342,19 +342,23 @@ impl StarknetClientTrait for StarknetClient {
 pub enum GenericContractClass {
     Cairo0ContractClass(DeprecatedContractClass),
     Cairo1ContractClass(ContractClass),
+    APIContractClass(starknet_api::state::ContractClass),
+    APIDeprecatedContractClass(starknet_api::deprecated_contract_class::ContractClass),
 }
 
 impl GenericContractClass {
-    pub fn to_cairo0(self) -> ClientResult<DeprecatedContractClass> {
+    pub fn to_cairo0(self) -> ClientResult<starknet_api::deprecated_contract_class::ContractClass> {
         match self {
-            Self::Cairo0ContractClass(class) => Ok(class),
+            Self::Cairo0ContractClass(class) => Ok(class.into()),
+            GenericContractClass::APIDeprecatedContractClass(class) => Ok(class),
             _ => Err(ClientError::BadContractClassType),
         }
     }
 
-    pub fn to_cairo1(self) -> ClientResult<ContractClass> {
+    pub fn to_cairo1(self) -> ClientResult<starknet_api::state::ContractClass> {
         match self {
-            Self::Cairo1ContractClass(class) => Ok(class),
+            Self::Cairo1ContractClass(class) => Ok(class.into()),
+            GenericContractClass::APIContractClass(class) => Ok(class),
             _ => Err(ClientError::BadContractClassType),
         }
     }

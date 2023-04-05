@@ -153,7 +153,7 @@ async fn contract_class() {
         .to_cairo1()
         .unwrap();
     mock_by_hash.assert();
-    assert_eq!(contract_class, expected_contract_class);
+    assert_eq!(contract_class, expected_contract_class.into());
 }
 
 #[tokio::test]
@@ -234,7 +234,7 @@ async fn deprecated_contract_class() {
         .to_cairo0()
         .unwrap();
     mock_by_hash.assert();
-    assert_eq!(contract_class, expected_contract_class);
+    assert_eq!(contract_class, expected_contract_class.into());
 
     // Undeclared class.
     let body = r#"{"code": "StarknetErrorCode.UNDECLARED_CLASS", "message": "Class with hash 0x7 is not declared."}"#;
