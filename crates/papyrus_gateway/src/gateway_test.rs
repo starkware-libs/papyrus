@@ -901,6 +901,7 @@ async fn get_class() {
         .commit()
         .unwrap();
 
+    // ___Deprecated Class___
     let (class_hash, contract_class) = diff.deprecated_declared_classes.get_index(0).unwrap();
     let expected_contract_class = contract_class.clone().try_into().unwrap();
 
@@ -941,6 +942,32 @@ async fn get_class() {
         None::<()>,
     ));
 
+    // ___New Class___
+    let (class_hash, (_compiled_class_hash, contract_class)) =
+        diff.declared_classes.get_index(0).unwrap();
+    let expected_contract_class = contract_class.clone().into();
+
+    // Get class by block hash.
+    let res = module
+        .call::<_, ContractClass>(
+            "starknet_getClass",
+            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *class_hash),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res, expected_contract_class);
+
+    // Get class by block number.
+    let res = module
+        .call::<_, ContractClass>(
+            "starknet_getClass",
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *class_hash),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res, expected_contract_class);
+
+    // ___Invalid Call___
     // Ask for an invalid class hash in the given block.
     let err = module
         .call::<_, DeprecatedContractClass>(
