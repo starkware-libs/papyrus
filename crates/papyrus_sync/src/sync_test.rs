@@ -44,8 +44,6 @@ fn state_sorted() {
     ]);
     let unsorted_replaced_classes = IndexMap::from([replaced_class_1, replaced_class_0]);
 
-    // TODO(dvir): Add declared_classes.
-    // TODO(dvir): Add replaced_classes.
     let mut state_diff = StateDiff {
         deployed_contracts: unsorted_deployed_contracts,
         storage_diffs: unsorted_storage_diffs,
