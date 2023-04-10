@@ -14,6 +14,16 @@ pub fn get_transaction_by_block_id_and_index_by_hash(args: &str) -> jsonVal {
     )
 }
 
+pub fn get_transaction_by_block_id_and_index_by_number(args: &str) -> jsonVal {
+    let mut arg_iter = ArgsIter::new(args);
+    let block_number = arg_iter.next_u64();
+    let transaction_index = arg_iter.next_u64();
+    jsonrpc_request(
+        "starknet_getTransactionByBlockIdAndIndex",
+        json!([{ "block_number": block_number }, transaction_index]),
+    )
+}
+
 pub fn get_block_with_transaction_hashes_by_number(block_number: &str) -> jsonVal {
     jsonrpc_request(
         "starknet_getBlockWithTxHashes",
