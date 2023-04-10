@@ -291,12 +291,6 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         )?;
         write_storage_diffs(&state_diff.storage_diffs, &self.txn, block_number, &storage_table)?;
         write_nonces(&state_diff.nonces, &self.txn, block_number, &nonces_table)?;
-        write_replaced_classes(
-            &state_diff.replaced_classes,
-            &self.txn,
-            block_number,
-            &replaced_classes_table,
-        )?;
 
         // Write state diff.
         let (thin_state_diff, declared_classes, deprecated_declared_classes) =
@@ -328,6 +322,16 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
                 &deprecated_declared_classes_table,
             )?;
         }
+
+        write_replaced_classes(
+            &thin_state_diff.replaced_classes,
+            &self.txn,
+            block_number,
+            &replaced_classes_table,
+            &declared_classes_table,
+            &deprecated_declared_classes_table,
+            &deployed_contracts_table,
+        )?;
 
         Ok(self)
     }
@@ -500,8 +504,19 @@ fn write_replaced_classes<'env>(
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     replaced_classes_table: &'env ReplacedClassesTable<'env>,
+    declared_classes_table: &'env DeclaredClassesTable<'env>,
+    deprecated_declared_classes_table: &'env DeprecatedDeclaredClassesTable<'env>,
+    deployed_contracts_table: &'env DeployedContractsTable<'env>,
 ) -> StorageResult<()> {
     for (contract_address, class_hash) in replaced_classes {
+        if declared_classes_table.get(txn, class_hash)?.is_none()
+            && deprecated_declared_classes_table.get(txn, class_hash)?.is_none()
+        {
+            return Err(StorageError::ClassHashNotFound { class_hash: *class_hash });
+        }
+        if deployed_contracts_table.get(txn, contract_address)?.is_none() {
+            return Err(StorageError::ContractNotFound { contract_address: *contract_address });
+        }
         replaced_classes_table.insert(txn, &(*contract_address, block_number), class_hash)?;
     }
     Ok(())

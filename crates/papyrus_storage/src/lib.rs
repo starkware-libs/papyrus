@@ -224,6 +224,10 @@ pub enum StorageError {
          found."
     )]
     EventNotFound { event_index: EventIndex, from_address: ContractAddress },
+    #[error("Class hash {class_hash:?} was not found.")]
+    ClassHashNotFound { class_hash: ClassHash },
+    #[error("Contract address {contract_address:?} was not found.")]
+    ContractNotFound { contract_address: ContractAddress },
     #[error("DB in inconsistent state: {msg:?}.")]
     DBInconsistency { msg: String },
     #[error("Header of block with hash {block_hash} already exists in ommer table.")]
