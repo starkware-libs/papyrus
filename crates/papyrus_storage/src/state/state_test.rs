@@ -134,6 +134,85 @@ fn append_state_diff_declared_classes() {
 }
 
 #[test]
+fn append_state_diff_replaced_classes() {
+    let contract_0 = ContractAddress(patricia_key!("0x00"));
+    let contract_1 = ContractAddress(patricia_key!("0x01"));
+    let dep_class = DeprecatedContractClass::default();
+    let new_class = (CompiledClassHash::default(), ContractClass::default());
+    let hash_0 = ClassHash(stark_felt!("0x10"));
+    let hash_1 = ClassHash(stark_felt!("0x11"));
+    let diff0 = StateDiff {
+        deployed_contracts: IndexMap::from([(contract_0, hash_0), (contract_1, hash_1)]),
+        deprecated_declared_classes: IndexMap::from([(hash_0, dep_class)]),
+        declared_classes: IndexMap::from([(hash_1, new_class.clone())]),
+        ..Default::default()
+    };
+    // Replace to the same class hash.
+    // Replace twice the same contract.
+    let diff1 = StateDiff {
+        replaced_classes: IndexMap::from([
+            (contract_0, hash_0),
+            (contract_1, hash_0),
+            (contract_1, hash_1),
+        ]),
+        ..Default::default()
+    };
+    // Replacements between different class types (cairo0 and cairo1).
+    let diff2 = StateDiff {
+        replaced_classes: IndexMap::from([(contract_0, hash_1), (contract_1, hash_0)]),
+        ..Default::default()
+    };
+    // Replace contract and class that was deployed in the same block.
+    let contract_2 = ContractAddress(patricia_key!("0x02"));
+    let hash_2 = ClassHash(stark_felt!("0x12"));
+    let diff3 = StateDiff {
+        deployed_contracts: IndexMap::from([(contract_2, hash_1)]),
+        declared_classes: IndexMap::from([(hash_2, new_class)]),
+        replaced_classes: IndexMap::from([(contract_1, hash_2), (contract_2, hash_2)]),
+        ..Default::default()
+    };
+
+    let (_, mut writer) = get_test_storage();
+    let mut txn = writer.begin_rw_txn().unwrap();
+    txn = txn.append_state_diff(BlockNumber(0), diff0, IndexMap::new()).unwrap();
+    txn = txn.append_state_diff(BlockNumber(1), diff1, IndexMap::new()).unwrap();
+    txn = txn.append_state_diff(BlockNumber(2), diff2, IndexMap::new()).unwrap();
+    txn = txn.append_state_diff(BlockNumber(3), diff3, IndexMap::new()).unwrap();
+    txn.commit().unwrap();
+
+    // State numbers.
+    let state0 = StateNumber::right_before_block(BlockNumber(0));
+    let state1 = StateNumber::right_before_block(BlockNumber(1));
+    let state2 = StateNumber::right_before_block(BlockNumber(2));
+    let state3 = StateNumber::right_before_block(BlockNumber(3));
+    let state4 = StateNumber::right_before_block(BlockNumber(4));
+
+    let txn = writer.begin_rw_txn().unwrap();
+    let statetxn = txn.get_state_reader().unwrap();
+
+    // Contract_0
+    assert_eq!(statetxn.get_class_hash_at(state0, &contract_0).unwrap(), None);
+    assert_eq!(statetxn.get_class_hash_at(state1, &contract_0).unwrap(), Some(hash_0));
+    assert_eq!(statetxn.get_class_hash_at(state2, &contract_0).unwrap(), Some(hash_0));
+    assert_eq!(statetxn.get_class_hash_at(state3, &contract_0).unwrap(), Some(hash_1));
+    assert_eq!(statetxn.get_class_hash_at(state4, &contract_0).unwrap(), Some(hash_1));
+
+    // Contract_1
+    assert_eq!(statetxn.get_class_hash_at(state0, &contract_1).unwrap(), None);
+    assert_eq!(statetxn.get_class_hash_at(state1, &contract_1).unwrap(), Some(hash_1));
+    assert_eq!(statetxn.get_class_hash_at(state2, &contract_1).unwrap(), Some(hash_1));
+    assert_eq!(statetxn.get_class_hash_at(state3, &contract_1).unwrap(), Some(hash_0));
+    assert_eq!(statetxn.get_class_hash_at(state4, &contract_1).unwrap(), Some(hash_2));
+
+    // Contract_2
+    assert_eq!(statetxn.get_class_hash_at(state0, &contract_2).unwrap(), None);
+    assert_eq!(statetxn.get_class_hash_at(state1, &contract_2).unwrap(), None);
+    assert_eq!(statetxn.get_class_hash_at(state2, &contract_2).unwrap(), None);
+    assert_eq!(statetxn.get_class_hash_at(state3, &contract_2).unwrap(), None);
+    assert_eq!(statetxn.get_class_hash_at(state4, &contract_2).unwrap(), Some(hash_2));
+}
+
+#[test]
 fn append_state_diff() {
     // TODO(dvir): Add declared_classes.
     // TODO(dvir): Add replaced_classes.
