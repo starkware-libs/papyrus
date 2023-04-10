@@ -175,6 +175,33 @@ fn append_state_diff_replaced_classes() {
     assert_eq!(statetxn.get_class_hash_at(state2, &contract_2).unwrap(), None);
     assert_eq!(statetxn.get_class_hash_at(state3, &contract_2).unwrap(), None);
     assert_eq!(statetxn.get_class_hash_at(state4, &contract_2).unwrap(), Some(hash_2));
+
+    // Check for an error when trying to replace to a not existing class.
+    drop(txn);
+    let txn = writer.begin_rw_txn().unwrap();
+    let bad_hash = ClassHash(stark_felt!("0x666"));
+    let bad_diff = StateDiff {
+        replaced_classes: IndexMap::from([(contract_0, bad_hash)]),
+        ..Default::default()
+    };
+    if let Err(err) = txn.append_state_diff(BlockNumber(4), bad_diff, IndexMap::new()) {
+        assert_matches!(err, StorageError::ClassHashNotFound { class_hash: _ });
+    } else {
+        panic!("Unexpected Ok.");
+    };
+
+    // Check for an error when trying to replace not existing contract address.
+    let txn = writer.begin_rw_txn().unwrap();
+    let bad_contract = ContractAddress(patricia_key!("0x666"));
+    let bad_diff = StateDiff {
+        replaced_classes: IndexMap::from([(bad_contract, hash_0)]),
+        ..Default::default()
+    };
+    if let Err(err) = txn.append_state_diff(BlockNumber(4), bad_diff, IndexMap::new()) {
+        assert_matches!(err, StorageError::ContractNotFound { contract_address: _ });
+    } else {
+        panic!("Unexpected Ok.");
+    };
 }
 
 #[test]
