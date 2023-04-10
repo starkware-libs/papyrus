@@ -22,13 +22,13 @@ reqwest = { version = "0.11", features = ["json", "blocking"] }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" }
 serde_yaml = { version = "0.9.16" }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "783885b" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "4f1ca6327ebb9f64c9b6fec7651702bc95aa1282" }
 starknet_client = { path = "../starknet_client" }
 thiserror = { version = "1.0.31" }
-tokio = { version = "1.18.2", features = ["full","sync"] }
+tokio = { version = "1.18.2", features = ["full", "sync"] }
 tokio-stream = { version = "0.1.8" }
 tracing = { version = "0.1.37" }
-tracing-subscriber = {version = "0.3.16", features = ["env-filter"]}
+tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 url = { version = "2.2.2" }
 
 [dev-dependencies]

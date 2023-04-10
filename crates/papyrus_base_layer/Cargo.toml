@@ -5,17 +5,21 @@ edition = "2021"
 
 [dependencies]
 async-trait = { version = "0.1.56" }
-ethers = { version = "1.0.2"}
+ethers = { version = "1.0.2" }
 rustc-hex = { version = "2.1.0" }
 serde_json = { version = "1.0.81" }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "783885b" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "4f1ca6327ebb9f64c9b6fec7651702bc95aa1282" }
 thiserror = { version = "1.0.31" }
-tokio = { version = "1.18.2", features = ["full","sync"] }
+tokio = { version = "1.18.2", features = ["full", "sync"] }
 url = { version = "2.3.1" }
 
 [dev-dependencies]
-ethers-core = { version = "1.0.2"}
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", features = ["testing"], rev = "783885b" }
+ethers-core = { version = "1.0.2" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", features = [
+    "testing",
+], rev = "4f1ca6327ebb9f64c9b6fec7651702bc95aa1282" }
 tar = { version = "0.4.38" }
 tempfile = { version = "3.3.0" }
-test-with = { version = "0.9.3", default-features = false, features = ["executable"] }
+test-with = { version = "0.9.3", default-features = false, features = [
+    "executable",
+] }

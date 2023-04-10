@@ -5,7 +5,13 @@ edition = "2021"
 
 [features]
 default = ["starknet_api"]
-testing = ["tempfile", "starknet_api/testing", "rand", "test_utils", "rand_chacha"]
+testing = [
+    "tempfile",
+    "starknet_api/testing",
+    "rand",
+    "test_utils",
+    "rand_chacha",
+]
 
 [dependencies]
 byteorder = { version = "1.4.3" }
@@ -19,11 +25,11 @@ rand_chacha = { version = "0.3.1", optional = true }
 reqwest = { version = "0.11", features = ["json", "blocking"] }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "783885b", optional = true }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "4f1ca6327ebb9f64c9b6fec7651702bc95aa1282", optional = true }
 tempfile = { version = "3.3.0", optional = true }
 test_utils = { path = "../test_utils", optional = true }
 thiserror = { version = "1.0.31" }
-tokio = { version = "1.18.2", features = ["full","sync"] }
+tokio = { version = "1.18.2", features = ["full", "sync"] }
 tokio-stream = { version = "0.1.8" }
 tracing = { version = "0.1.37", features = ["log"] }
 url = { version = "2.2.2" }
