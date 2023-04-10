@@ -204,10 +204,10 @@ fn append_state_diff_replaced_classes() {
     };
 }
 
+// TODO(dvir): add replaced classes and declared classes to the state diff comparison.
+// TODO(dvir): consider dividing this test into different components.
 #[test]
 fn append_state_diff() {
-    // TODO(dvir): Add declared_classes.
-    // TODO(dvir): Add replaced_classes.
     let c0 = ContractAddress(patricia_key!("0x11"));
     let c1 = ContractAddress(patricia_key!("0x12"));
     let c2 = ContractAddress(patricia_key!("0x13"));
