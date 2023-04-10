@@ -11,7 +11,7 @@ futures-util = { version = "0.3.21" }
 jsonrpsee = { version = "0.13.1", features = ["full"] }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "faf8e9d" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "0029ffe" }
 thiserror = { version = "1.0.31" }
 tokio = { version = "1.18.2", features = ["full","sync"] }
 tokio-stream = { version = "0.1.8" }
@@ -24,6 +24,6 @@ hex = { version = "0.4.3" }
 jsonschema = { version = "0.16.1" }
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 test_utils = { path = "../test_utils" }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", features = ["testing"] , rev = "faf8e9d" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", features = ["testing"] , rev = "0029ffe" }
 web3 = { version = "0.18.0" }
 indexmap = { version = "1.9.2", features = ["serde"] }

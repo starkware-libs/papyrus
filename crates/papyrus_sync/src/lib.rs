@@ -18,7 +18,7 @@ use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;
-use starknet_api::deprecated_contract_class::ContractClass;
+use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::StateDiff;
 use tracing::{debug, error, info, trace, warn};
 
@@ -75,7 +75,8 @@ pub enum SyncEvent {
         // TODO(anatg): Remove once there are no more deployed contracts with undeclared classes.
         // Class definitions of deployed contracts with classes that were not declared in this
         // state diff.
-        deployed_contract_class_definitions: IndexMap<ClassHash, ContractClass>,
+        // Note: Since 0.11 new classes can not be implicitly declared.
+        deployed_contract_class_definitions: IndexMap<ClassHash, DeprecatedContractClass>,
     },
 }
 
@@ -210,7 +211,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         block_number: BlockNumber,
         block_hash: BlockHash,
         state_diff: StateDiff,
-        deployed_contract_class_definitions: IndexMap<ClassHash, ContractClass>,
+        deployed_contract_class_definitions: IndexMap<ClassHash, DeprecatedContractClass>,
     ) -> StateSyncResult {
         if !self.is_reverted_state_diff(block_number, block_hash)? {
             debug!("Storing state diff of block {block_number} with hash {block_hash}.");

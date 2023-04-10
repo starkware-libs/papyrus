@@ -66,6 +66,9 @@ where
         // TODO(anatg): Remove once there are no more deployed contracts with undeclared classes.
         // Class definitions of deployed contracts with classes that were not declared in this
         // state diff.
+        // Note: Since 0.11 only deprecated classes can be implicitly declared by contract
+        // deployment, so there is no need to pass the classes of deployed contracts if they are of
+        // the new version.
         deployed_contract_class_definitions: IndexMap<ClassHash, DeprecatedContractClass>,
     ) -> StorageResult<Self>;
 
@@ -334,10 +337,9 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         let nonces_table = self.txn.open_table(&self.tables.nonces)?;
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
         let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
+        let replaced_classes_table = self.txn.open_table(&self.tables.replaced_classes)?;
 
         let current_state_marker = self.get_state_marker()?;
-
-        // TODO(dvir): delete replaced_classes.
 
         // Reverts only the last state diff.
         if current_state_marker != block_number.next() {
@@ -375,6 +377,12 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         delete_storage_diffs(&self.txn, block_number, &thin_state_diff, &storage_table)?;
         delete_nonces(&self.txn, block_number, &thin_state_diff, &nonces_table)?;
         state_diffs_table.delete(&self.txn, &block_number)?;
+        delete_replaced_classes(
+            &self.txn,
+            block_number,
+            &thin_state_diff,
+            &replaced_classes_table,
+        )?;
 
         Ok((self, Some((thin_state_diff, deleted_classes, deleted_deprecated_classes))))
     }
@@ -603,6 +611,18 @@ fn delete_nonces<'env>(
 ) -> StorageResult<()> {
     for contract_address in thin_state_diff.nonces.keys() {
         contracts_table.delete(txn, &(*contract_address, block_number))?;
+    }
+    Ok(())
+}
+
+fn delete_replaced_classes<'env>(
+    txn: &'env DbTransaction<'env, RW>,
+    block_number: BlockNumber,
+    thin_state_diff: &ThinStateDiff,
+    replaced_classes_table: &'env ReplacedClassesTable<'env>,
+) -> StorageResult<()> {
+    for contract_address in thin_state_diff.replaced_classes.keys() {
+        replaced_classes_table.delete(txn, &(*contract_address, block_number))?;
     }
     Ok(())
 }
