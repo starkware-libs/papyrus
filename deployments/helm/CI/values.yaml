@@ -5,3 +5,15 @@ rustLogLevel: "debug"
 pvc:
   size: 1Gi
   storageClass: standard-rwo
+
+# Configure Ingress.
+# ingress:
+#   enabled: true
+#   type: gce
+#   name: ssl-proxy
+#   pathType: ImplementationSpecific
+#   annotations: |
+#     kubernetes.io/ingress.class: nginx
+#     kubernetes.io/tls-acme: "true"
+#     nginx.ingress.kubernetes.io/rewrite-target: /$2
+#     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
