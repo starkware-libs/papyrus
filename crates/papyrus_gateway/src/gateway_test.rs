@@ -901,7 +901,7 @@ async fn get_class() {
         .commit()
         .unwrap();
 
-    // ___Deprecated Class___
+    // Deprecated Class
     let (class_hash, contract_class) = diff.deprecated_declared_classes.get_index(0).unwrap();
     let expected_contract_class = contract_class.clone().try_into().unwrap();
 
@@ -942,7 +942,7 @@ async fn get_class() {
         None::<()>,
     ));
 
-    // ___New Class___
+    // New Class
     let (class_hash, (_compiled_class_hash, contract_class)) =
         diff.declared_classes.get_index(0).unwrap();
     let expected_contract_class = contract_class.clone().into();
@@ -967,7 +967,7 @@ async fn get_class() {
         .unwrap();
     assert_eq!(res, expected_contract_class);
 
-    // ___Invalid Call___
+    // Invalid Call
     // Ask for an invalid class hash in the given block.
     let err = module
         .call::<_, DeprecatedContractClass>(
@@ -1019,6 +1019,8 @@ async fn get_class() {
     ));
 }
 
+// TODO(dvir): Add declared_classes.
+// TODO(dvir): Add replaced_classes.
 #[tokio::test]
 async fn get_class_at() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
