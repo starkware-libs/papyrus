@@ -4,17 +4,21 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-axum = { version = "0.6.12" }
-futures-util = { version = "0.3.21" }
-hyper = { version = "0.14", features = ["full"] }
+anyhow.workspace = true
+axum.workspace = true
+futures-util.workspace = true
+hyper = { workspace = true, features = ["full"] }
+jsonrpsee = { workspace = true, features = ["full"] }
 papyrus_storage = { path = "../papyrus_storage" }
-serde = { version = "1.0.130", features = ["derive"] }
-serde_json = { version = "1.0.81" }
-thiserror = { version = "1.0.31" }
-tokio = { version = "1.18.2", features = ["full","sync"] }
-tokio-stream = { version = "0.1.8" }
-tracing = { version = "0.1.37" }
-url = { version = "2.2.2" }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+serde_yaml.workspace = true
+starknet_api.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["full", "sync"] }
+tokio-stream.workspace = true
+tracing.workspace = true
+url.workspace = true
 
 [dev-dependencies]
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
