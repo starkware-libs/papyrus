@@ -33,9 +33,9 @@ type ReplacedClassesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumbe
 // * declared_classes_table: (class_hash) -> (block_num, contract_class). Each entry specifies at
 //   which block was this class declared and with what class definition. For Cairo 1 class
 //   definitions.
-// * deprecated_declared_classes_table: (class_hash) -> (block_num, contract_class). Each entry
-//   specifies at which block was this class declared and with what class definition. For Cairo 0
-//   class definitions.
+// * deprecated_declared_classes_table: (class_hash) -> (block_num, deprecated_contract_class). Each
+//   entry specifies at which block was this class declared and with what class definition. For
+//   Cairo 0 class definitions.
 // * deployed_contracts_table: (contract_address) -> (block_num, class_hash). Each entry specifies
 //   at which block was this contract deployed and with what class hash. Note that each contract may
 //   only be deployed once, so we don't need to support multiple entries per contract address.
@@ -45,8 +45,8 @@ type ReplacedClassesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumbe
 //   the value at a specific block_number, we can search (contract_address, key, block_num), and
 //   retrieve the closest from left, which should be the latest update to the value before that
 //   block_num.
-// * nonces_table: (contract_address, block_num) -> (value). Specifies that at `block_num`, the
-//   `nonce` of `contract_address` was changed to `value`.
+// * nonces_table: (contract_address, block_num) -> (nonce). Specifies that at `block_num`, the
+//   nonce of `contract_address` was changed to `nonce`.
 // * replaced_classes_table: (contract_address, block_num) -> (class_hash). Specifies that at
 //   `block_num`, the class of `contract_address` was changed to the class with `class_hash`.
 
