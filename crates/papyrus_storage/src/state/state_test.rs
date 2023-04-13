@@ -318,23 +318,26 @@ fn revert_state() {
     let (contract0, class0) = state_diff0.deployed_contracts.first().unwrap();
     let (_contract0, nonce0) = state_diff0.nonces.first().unwrap();
 
-    // TODO(dvir): Add declared_classes.
-    // TODO(dvir): Add replaced_classes.
-    // Create another state diff, deploying new contracts and changing the state of the contract
-    // deployed in state0.
+    // Create another state diff, deploying new contracts and changing the state and the class hash
+    // of the contract deployed in state0.
     let contract1 = ContractAddress(patricia_key!("0x1"));
+    let contract2 = ContractAddress(patricia_key!("0x2"));
     let class1 = ClassHash(stark_felt!("0x1"));
+    let class2 = ClassHash(stark_felt!("0x2"));
     let updated_storage_key = StorageKey(patricia_key!("0x1"));
     let new_data = StarkFelt::from(1);
     let updated_storage = IndexMap::from([(updated_storage_key, new_data)]);
     let nonce1 = Nonce(StarkFelt::from(1));
     let state_diff1 = StateDiff {
-        deployed_contracts: IndexMap::from([(contract1, class1)]),
+        deployed_contracts: IndexMap::from([(contract1, class1), (contract2, class2)]),
         storage_diffs: IndexMap::from([(*contract0, updated_storage)]),
         deprecated_declared_classes: IndexMap::from([(class1, DeprecatedContractClass::default())]),
-        declared_classes: indexmap! {},
+        declared_classes: IndexMap::from([(
+            class2,
+            (CompiledClassHash::default(), ContractClass::default()),
+        )]),
         nonces: IndexMap::from([(contract1, nonce1)]),
-        replaced_classes: indexmap! {},
+        replaced_classes: IndexMap::from([(*contract0, class1)]),
     };
 
     let (reader, mut writer) = get_test_storage();
@@ -354,8 +357,9 @@ fn revert_state() {
 
     let state_reader = txn.get_state_reader().unwrap();
     let state_number = StateNumber::right_after_block(BlockNumber(1));
-    assert_eq!(state_reader.get_class_hash_at(state_number, contract0).unwrap().unwrap(), *class0);
+    assert_eq!(state_reader.get_class_hash_at(state_number, contract0).unwrap().unwrap(), class1);
     assert_eq!(state_reader.get_class_hash_at(state_number, &contract1).unwrap().unwrap(), class1);
+    assert_eq!(state_reader.get_class_hash_at(state_number, &contract2).unwrap().unwrap(), class2);
     assert_eq!(state_reader.get_nonce_at(state_number, contract0).unwrap().unwrap(), *nonce0);
     assert_eq!(state_reader.get_nonce_at(state_number, &contract1).unwrap().unwrap(), nonce1);
     assert_eq!(
@@ -368,12 +372,14 @@ fn revert_state() {
     txn.commit().unwrap();
 
     let expected_deleted_state_diff = ThinStateDiff::from(state_diff1);
-    let expected_deleted_classes = IndexMap::from([(class1, DeprecatedContractClass::default())]);
+    let expected_deleted_deprecated_classes =
+        IndexMap::from([(class1, DeprecatedContractClass::default())]);
+    let expected_deleted_classes = IndexMap::from([(class2, ContractClass::default())]);
     assert_matches!(
         deleted_data,
-        Some((thin_state_diff, _class_definitions, deprecated_class_definitions))
-        if thin_state_diff == expected_deleted_state_diff
-        && deprecated_class_definitions == expected_deleted_classes
+        Some((thin_state_diff, class_definitions, deprecated_class_definitions))
+        if thin_state_diff == expected_deleted_state_diff && class_definitions==expected_deleted_classes
+        && deprecated_class_definitions == expected_deleted_deprecated_classes
     );
 
     let txn = reader.begin_ro_txn().unwrap();
@@ -384,6 +390,7 @@ fn revert_state() {
     let state_number = StateNumber::right_after_block(BlockNumber(0));
     assert_eq!(state_reader.get_class_hash_at(state_number, contract0).unwrap().unwrap(), *class0);
     assert!(state_reader.get_class_hash_at(state_number, &contract1).unwrap().is_none());
+    assert!(state_reader.get_class_hash_at(state_number, &contract2).unwrap().is_none());
     assert_eq!(state_reader.get_nonce_at(state_number, contract0).unwrap().unwrap(), *nonce0);
     assert!(state_reader.get_nonce_at(state_number, &contract1).unwrap().is_none());
     assert_eq!(
