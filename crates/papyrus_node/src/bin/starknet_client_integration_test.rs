@@ -6,7 +6,11 @@ use starknet_client::{StarknetClient, StarknetClientTrait};
 
 #[tokio::main]
 async fn main() {
-    let config = Config::load(vec![]).expect("Load config");
+    let config = Config::load(vec![
+        "--chain_id=SN_GOERLI".to_owned(),
+        "--central_url=https://alpha4.starknet.io/".to_owned(),
+    ])
+    .expect("Load config");
     let starknet_client =
         StarknetClient::new(&config.central.url, None, config.central.retry_config)
             .expect("Create new client");
@@ -15,16 +19,30 @@ async fn main() {
     let _block_376150 = starknet_client.block(BlockNumber(376150)).await.expect("Get block");
     // A block with deploy account transaction.
     let _block_376051 = starknet_client.block(BlockNumber(376051)).await.expect("Get block");
+    // A block with declare transaction version 2.
+    let _block_789048 = starknet_client.block(BlockNumber(789048)).await.expect("Get block");
     // TODO(anatg): Write what's special in this block.
     let _block_1564 = starknet_client.block(BlockNumber(1564)).await.expect("Get block");
     let _block_123456 = starknet_client.block(BlockNumber(123456)).await.expect("Get block");
-    let _state_diff =
+    let _state_diff_123456 =
         starknet_client.state_update(BlockNumber(123456)).await.expect("Get state diff");
+    // State update with replaced class.
+    let _state_diff_788504 =
+        starknet_client.state_update(BlockNumber(788504)).await.expect("Get state diff");
+    // State update with declared Cairo 1 class.
+    let _state_diff_789048 =
+        starknet_client.state_update(BlockNumber(789048)).await.expect("Get state diff");
     let class_hash = ClassHash(
         StarkHash::try_from("0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17")
             .unwrap(),
     );
-    // TODO(dvir): Find blocks with 0.11 features to add to the test (Declare V2, replace_class).
+    let _contract_class_by_hash =
+        starknet_client.class_by_hash(class_hash).await.expect("Get class by hash");
+    // Cairo 1 class hash.
+    let class_hash = ClassHash(
+        StarkHash::try_from("0x702a9e80c74a214caf0e77326180e72ba3bd3f53dbd5519ede339eb3ae9eed4")
+            .unwrap(),
+    );
     let _contract_class_by_hash =
         starknet_client.class_by_hash(class_hash).await.expect("Get class by hash");
 }
