@@ -16,6 +16,66 @@ use crate::test_utils::get_test_storage;
 use crate::{StorageWriter, ThinStateDiff};
 
 #[test]
+fn append_state_diff_declared_classes() {
+    let dc0 = ClassHash(stark_felt!("0x0"));
+    let dc1 = ClassHash(stark_felt!("0x1"));
+    let dep_class = DeprecatedContractClass::default();
+    let diff0 = StateDiff {
+        deprecated_declared_classes: IndexMap::from([
+            (dc0, dep_class.clone()),
+            (dc1, dep_class.clone()),
+        ]),
+        ..Default::default()
+    };
+    let diff1 = StateDiff {
+        deprecated_declared_classes: IndexMap::from([(dc0, dep_class)]),
+        ..Default::default()
+    };
+
+    let (_, mut writer) = get_test_storage();
+    let mut txn = writer.begin_rw_txn().unwrap();
+    txn = txn.append_state_diff(BlockNumber(0), diff0, IndexMap::new()).unwrap();
+    txn = txn.append_state_diff(BlockNumber(1), diff1.clone(), IndexMap::new()).unwrap();
+    txn.commit().unwrap();
+
+    // Check for ClassAlreadyExists error when trying to declare a different class to an existing
+    // class hash.
+    let txn = writer.begin_rw_txn().unwrap();
+    let mut diff2 = StateDiff {
+        deprecated_declared_classes: diff1.deprecated_declared_classes,
+        ..StateDiff::default()
+    };
+    let (_, class) = diff2.deprecated_declared_classes.iter_mut().next().unwrap();
+    class.abi = Some(vec![ContractClassAbiEntry::Function(FunctionAbiEntryWithType {
+        r#type: FunctionAbiEntryType::Regular,
+        entry: FunctionAbiEntry { name: String::from("junk"), inputs: vec![], outputs: vec![] },
+    })]);
+    if let Err(err) = txn.append_state_diff(BlockNumber(2), diff2, IndexMap::new()) {
+        assert_matches!(err, StorageError::ClassAlreadyExists { class_hash: _ });
+    } else {
+        panic!("Unexpected Ok.");
+    }
+
+    // State numbers.
+    let state0 = StateNumber::right_before_block(BlockNumber(0));
+    let state1 = StateNumber::right_before_block(BlockNumber(1));
+    let state2 = StateNumber::right_before_block(BlockNumber(2));
+
+    let txn = writer.begin_rw_txn().unwrap();
+    let statetxn = txn.get_state_reader().unwrap();
+
+    // Class0.
+    assert_matches!(statetxn.get_deprecated_class_definition_at(state0, &dc0).unwrap(), None);
+    assert_matches!(statetxn.get_deprecated_class_definition_at(state1, &dc0).unwrap(), Some(_));
+    assert_matches!(statetxn.get_deprecated_class_definition_at(state2, &dc0).unwrap(), Some(_));
+
+    // Class1.
+    assert_matches!(statetxn.get_deprecated_class_definition_at(state0, &dc1).unwrap(), None);
+    assert_matches!(statetxn.get_deprecated_class_definition_at(state1, &dc1).unwrap(), Some(_));
+    assert_matches!(statetxn.get_deprecated_class_definition_at(state2, &dc1).unwrap(), Some(_));
+}
+
+#[test]
 fn append_state_diff() {
     // TODO(dvir): Add declared_classes.
     // TODO(dvir): Add replaced_classes.
@@ -47,7 +107,7 @@ fn append_state_diff() {
             (c0, IndexMap::from([(key0, stark_felt!("0x300")), (key1, stark_felt!("0x0"))])),
             (c1, IndexMap::from([(key0, stark_felt!("0x0"))])),
         ]),
-        deprecated_declared_classes: IndexMap::from([(cl0, c_cls0.clone())]),
+        deprecated_declared_classes: IndexMap::from([(cl0, c_cls0)]),
         declared_classes: indexmap! {},
         nonces: IndexMap::from([
             (c0, Nonce(StarkHash::from(2))),
@@ -66,27 +126,9 @@ fn append_state_diff() {
     assert_eq!(txn.get_state_diff(BlockNumber(0)).unwrap().unwrap(), thin_state_diff_0);
     assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap(), None);
     txn = txn.append_state_diff(BlockNumber(1), diff1.clone(), IndexMap::new()).unwrap();
-    let thin_state_diff_1 = diff1.clone().into();
+    let thin_state_diff_1 = diff1.into();
 
     txn.commit().unwrap();
-
-    // Check for ClassAlreadyExists error when trying to declare a different class to an existing
-    // class hash.
-    let txn = writer.begin_rw_txn().unwrap();
-    let mut diff2 = StateDiff {
-        deprecated_declared_classes: diff1.deprecated_declared_classes,
-        ..StateDiff::default()
-    };
-    let (_, class) = diff2.deprecated_declared_classes.iter_mut().next().unwrap();
-    class.abi = Some(vec![ContractClassAbiEntry::Function(FunctionAbiEntryWithType {
-        r#type: FunctionAbiEntryType::Regular,
-        entry: FunctionAbiEntry { name: String::from("junk"), inputs: vec![], outputs: vec![] },
-    })]);
-    if let Err(err) = txn.append_state_diff(BlockNumber(2), diff2, IndexMap::new()) {
-        assert_matches!(err, StorageError::ClassAlreadyExists { class_hash: _ });
-    } else {
-        panic!("Unexpected Ok.");
-    }
 
     // Check for ContractAlreadyExists error when trying to deploy a different class hash to an
     // existing contract address.
@@ -110,25 +152,6 @@ fn append_state_diff() {
     let state0 = StateNumber::right_before_block(BlockNumber(0));
     let state1 = StateNumber::right_before_block(BlockNumber(1));
     let state2 = StateNumber::right_before_block(BlockNumber(2));
-
-    // Class0.
-    assert_eq!(statetxn.get_deprecated_class_definition_at(state0, &cl0).unwrap(), None);
-    assert_eq!(
-        statetxn.get_deprecated_class_definition_at(state1, &cl0).unwrap(),
-        Some(c_cls0.clone())
-    );
-    assert_eq!(
-        statetxn.get_deprecated_class_definition_at(state2, &cl0).unwrap(),
-        Some(c_cls0.clone())
-    );
-
-    // Class1.
-    assert_eq!(statetxn.get_deprecated_class_definition_at(state0, &cl1).unwrap(), None);
-    assert_eq!(
-        statetxn.get_deprecated_class_definition_at(state1, &cl1).unwrap(),
-        Some(c_cls0.clone())
-    );
-    assert_eq!(statetxn.get_deprecated_class_definition_at(state2, &cl1).unwrap(), Some(c_cls0));
 
     // Contract0.
     assert_eq!(statetxn.get_class_hash_at(state0, &c0).unwrap(), None);
@@ -253,7 +276,6 @@ fn append_2_state_diffs(writer: &mut StorageWriter) {
 #[test]
 fn revert_doesnt_delete_previously_declared_classes() {
     // Append 2 state diffs that use the same declared class.
-    // TODO(dvir): Add declared_classes.
     let c0 = ContractAddress(patricia_key!("0x11"));
     let cl0 = ClassHash(stark_felt!("0x4"));
     let c_cls0 = DeprecatedContractClass::default();
