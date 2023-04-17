@@ -9,12 +9,12 @@ use tokio_stream::StreamExt;
 async fn main() {
     let config = Config::load(vec![
         "--chain_id=SN_GOERLI".to_owned(),
-        "--central_url=https://external.integration.starknet.io/".to_owned(),
+        "--central_url=https://alpha4.starknet.io/".to_owned(),
     ])
     .expect("Load config");
     let central_source =
         CentralSource::new(config.central, VERSION_FULL).expect("Create new client");
-    let last_block_number = BlockNumber(283410);
+    let last_block_number = BlockNumber(283414);
 
     let mut block_marker = BlockNumber(283410);
     let block_stream = central_source.stream_new_blocks(block_marker, last_block_number).fuse();
