@@ -30,6 +30,8 @@ create_get_transaction_function_with_requests_from_file! {
     get_nonce_by_hash, "block_hash_and_contract_address.txt";
     get_storage_at_by_number, "block_number_and_contract_address.txt";
     get_storage_at_by_hash, "block_hash_and_contract_address.txt";
+    get_class_by_number, "block_number_and_class_hash.txt";
+    get_class_by_hash, "block_hash_and_class_hash.txt";
 }
 
 pub fn block_number() -> Transaction {
