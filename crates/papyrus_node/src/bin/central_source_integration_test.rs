@@ -15,16 +15,15 @@ async fn main() {
     fs::create_dir_all(path.clone()).expect("Make a temporary `data` directory");
     let config = Config::load(vec![
         "--chain_id=SN_GOERLI".to_owned(),
-        "--central_url=https://external.integration.starknet.io/".to_owned(),
-        format!("--storage={}", path.display()),
+        "--central_url=https://alpha4.starknet.io/".to_owned(),
     ])
     .expect("Load config");
     let (storage_reader, _) = open_storage(config.storage.db_config).expect("Open storage");
     let central_source = CentralSource::new(config.central, VERSION_FULL, storage_reader)
         .expect("Create new client");
-    let last_block_number = BlockNumber(283410);
+    let last_block_number = BlockNumber(792004);
 
-    let mut block_marker = BlockNumber(283410);
+    let mut block_marker = BlockNumber(792000);
     let block_stream = central_source.stream_new_blocks(block_marker, last_block_number).fuse();
     pin_mut!(block_stream);
     while let Some(Ok((block_number, _block))) = block_stream.next().await {
@@ -36,7 +35,7 @@ async fn main() {
     }
     assert!(block_marker == last_block_number);
 
-    let mut state_marker = BlockNumber(283410);
+    let mut state_marker = BlockNumber(792000);
     let header_stream = central_source.stream_state_updates(state_marker, last_block_number).fuse();
     pin_mut!(header_stream);
     while let Some(Ok((block_number, _block_hash, _state_difff, _deployed_classes))) =
