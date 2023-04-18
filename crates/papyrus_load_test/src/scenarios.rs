@@ -29,6 +29,8 @@ pub fn general_request() -> Scenario {
         (txs::get_nonce_by_hash(), 1),
         (txs::get_storage_at_by_number(), 1),
         (txs::get_storage_at_by_hash(), 1),
+        (txs::get_events_with_address(), 1),
+        (txs::get_events_without_address(), 1),
     ];
     for (transaction, weight) in trans_and_weights.into_iter() {
         scenario = scenario.register_transaction(transaction.set_weight(weight).unwrap());
