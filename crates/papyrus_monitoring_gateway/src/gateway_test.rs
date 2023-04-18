@@ -1,58 +1,97 @@
-use jsonrpsee::types::EmptyParams;
-use papyrus_storage::{table_names, test_utils, DbTablesStats};
+use std::net::{SocketAddr, TcpListener};
 
-use super::api::JsonRpcServer;
-use super::JsonRpcServerImpl;
+use axum::body::Body;
+use axum::http::{Request, StatusCode};
+use axum::Router;
+use papyrus_storage::{table_names, test_utils};
+use serde_json::{json, Value};
+use tower::ServiceExt;
+
+use crate::app;
 
 const TEST_CONFIG_REPRESENTATION: &str = "general_config_representation";
 const TEST_VERSION: &str = "1.2.3-dev";
 
+// TODO(dan): consider using a proper fixture.
+fn setup_app() -> Router {
+    let (storage_reader, _) = test_utils::get_test_storage();
+    app(storage_reader, TEST_VERSION, serde_json::to_value(TEST_CONFIG_REPRESENTATION).unwrap())
+}
+
 #[tokio::test]
-async fn test_stats() {
-    let (storage_reader, mut _storage_writer) = test_utils::get_test_storage();
-    let module = JsonRpcServerImpl {
-        storage_reader,
-        general_config_representation: serde_yaml::to_value(TEST_CONFIG_REPRESENTATION).unwrap(),
-        version: TEST_VERSION,
-    }
-    .into_rpc();
-    let stats = module
-        .call::<_, DbTablesStats>("starknet_dbTablesStats", EmptyParams::new())
+async fn db_stats() {
+    let app = setup_app();
+    let response = app
+        .oneshot(Request::builder().uri("/dbTablesStats").body(Body::empty()).unwrap())
         .await
-        .expect("Monitoring gateway should respond with DB table statistics");
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let body: Value = serde_json::from_slice(&body).unwrap();
     for &name in table_names() {
-        assert!(stats.stats.contains_key(name))
+        assert!(
+            body["stats"].get(name).is_some(),
+            "{} is not found in returned DB statistics.",
+            name
+        )
     }
 }
 
 #[tokio::test]
-async fn test_config() {
-    let (storage_reader, mut _storage_writer) = test_utils::get_test_storage();
-    let module = JsonRpcServerImpl {
-        storage_reader,
-        general_config_representation: serde_yaml::to_value(TEST_CONFIG_REPRESENTATION).unwrap(),
-        version: TEST_VERSION,
-    }
-    .into_rpc();
-    let rep = module
-        .call::<_, String>("starknet_nodeConfig", EmptyParams::new())
+async fn version() {
+    let app = setup_app();
+    let response = app
+        .oneshot(Request::builder().uri("/nodeVersion").body(Body::empty()).unwrap())
         .await
-        .expect("Monitoring gateway should respond the node configuration");
-    assert_eq!(rep, TEST_CONFIG_REPRESENTATION);
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    assert_eq!(&body[..], TEST_VERSION.as_bytes());
 }
 
 #[tokio::test]
-async fn test_version() {
-    let (storage_reader, mut _storage_writer) = test_utils::get_test_storage();
-    let module = JsonRpcServerImpl {
-        storage_reader,
-        general_config_representation: serde_yaml::to_value(TEST_CONFIG_REPRESENTATION).unwrap(),
-        version: TEST_VERSION,
-    }
-    .into_rpc();
-    let rep = module
-        .call::<_, String>("starknet_nodeVersion", EmptyParams::new())
+async fn node_config() {
+    let app = setup_app();
+    let response = app
+        .oneshot(Request::builder().uri("/nodeConfig").body(Body::empty()).unwrap())
         .await
-        .expect("Monitoring gateway should respond with the node's version");
-    assert_eq!(rep, TEST_VERSION);
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let body: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(body, json!(TEST_CONFIG_REPRESENTATION));
+}
+
+#[tokio::test]
+async fn run_server() {
+    let listener = TcpListener::bind("0.0.0.0:0".parse::<SocketAddr>().unwrap()).unwrap();
+    let addr = listener.local_addr().unwrap();
+
+    tokio::spawn(async move {
+        axum::Server::from_tcp(listener)
+            .unwrap()
+            .serve(setup_app().into_make_service())
+            .await
+            .unwrap();
+    });
+
+    let client = hyper::Client::new();
+
+    let response = client
+        .request(
+            Request::builder()
+                .uri(format!("http://{}/nodeVersion", addr))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
 }
