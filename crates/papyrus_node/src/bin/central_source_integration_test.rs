@@ -6,8 +6,10 @@ use papyrus_node::version::VERSION_FULL;
 use papyrus_storage::open_storage;
 use papyrus_sync::{CentralSource, CentralSourceTrait};
 use starknet_api::block::BlockNumber;
+use starknet_client::StarknetClientTrait;
 use tokio_stream::StreamExt;
 
+const STREAM_LENGTH: u64 = 10;
 #[tokio::main]
 async fn main() {
     let mut path = env::temp_dir();
@@ -21,9 +23,15 @@ async fn main() {
     let (storage_reader, _) = open_storage(config.storage.db_config).expect("Open storage");
     let central_source = CentralSource::new(config.central, VERSION_FULL, storage_reader)
         .expect("Create new client");
-    let last_block_number = BlockNumber(792004);
+    let last_block_number = central_source
+        .starknet_client
+        .block_number()
+        .await
+        .expect("Client error when trying to get the last block number.")
+        .unwrap();
+    let initial_block_number = BlockNumber(last_block_number.0 - STREAM_LENGTH);
 
-    let mut block_marker = BlockNumber(792000);
+    let mut block_marker = initial_block_number;
     let block_stream = central_source.stream_new_blocks(block_marker, last_block_number).fuse();
     pin_mut!(block_stream);
     while let Some(Ok((block_number, _block))) = block_stream.next().await {
@@ -35,11 +43,12 @@ async fn main() {
     }
     assert!(block_marker == last_block_number);
 
-    let mut state_marker = BlockNumber(792000);
-    let header_stream = central_source.stream_state_updates(state_marker, last_block_number).fuse();
-    pin_mut!(header_stream);
-    while let Some(Ok((block_number, _block_hash, _state_difff, _deployed_classes))) =
-        header_stream.next().await
+    let mut state_marker = initial_block_number;
+    let state_update_stream =
+        central_source.stream_state_updates(state_marker, last_block_number).fuse();
+    pin_mut!(state_update_stream);
+    while let Some(Ok((block_number, _block_hash, _state_diff, _deployed_classes))) =
+        state_update_stream.next().await
     {
         assert!(
             state_marker == block_number,
