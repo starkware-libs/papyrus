@@ -1,4 +1,5 @@
 use papyrus_node::config::Config;
+use papyrus_node::version::VERSION_FULL;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 use starknet_api::hash::StarkHash;
@@ -12,7 +13,7 @@ async fn main() {
     ])
     .expect("Load config");
     let starknet_client =
-        StarknetClient::new(&config.central.url, None, config.central.retry_config)
+        StarknetClient::new(&config.central.url, None, VERSION_FULL, config.central.retry_config)
             .expect("Create new client");
     let _latest_block_number = starknet_client.block_number().await.expect("Get block number");
     // A block with invoke transaction version 1.

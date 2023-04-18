@@ -30,8 +30,12 @@ type NoncesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumber), Nonce
 type ReplacedClassesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumber), ClassHash>;
 
 // Structure of state data:
-// * declared_classes: (class_hash) -> (block_num, contract_class). Each entry specifies at which
-//   block was this class declared and with what class definition.
+// * declared_classes_table: (class_hash) -> (block_num, contract_class). Each entry specifies at
+//   which block was this class declared and with what class definition. For Cairo 1 class
+//   definitions.
+// * deprecated_declared_classes_table: (class_hash) -> (block_num, deprecated_contract_class). Each
+//   entry specifies at which block was this class declared and with what class definition. For
+//   Cairo 0 class definitions.
 // * deployed_contracts_table: (contract_address) -> (block_num, class_hash). Each entry specifies
 //   at which block was this contract deployed and with what class hash. Note that each contract may
 //   only be deployed once, so we don't need to support multiple entries per contract address.
@@ -41,6 +45,10 @@ type ReplacedClassesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumbe
 //   the value at a specific block_number, we can search (contract_address, key, block_num), and
 //   retrieve the closest from left, which should be the latest update to the value before that
 //   block_num.
+// * nonces_table: (contract_address, block_num) -> (nonce). Specifies that at `block_num`, the
+//   nonce of `contract_address` was changed to `nonce`.
+// * replaced_classes_table: (contract_address, block_num) -> (class_hash). Specifies that at
+//   `block_num`, the class of `contract_address` was changed to the class with `class_hash`.
 
 pub trait StateStorageReader<Mode: TransactionKind> {
     fn get_state_marker(&self) -> StorageResult<BlockNumber>;
@@ -544,7 +552,7 @@ fn delete_deprecated_declared_classes<'env>(
     txn: &'env DbTransaction<'env, RW>,
     block_number: BlockNumber,
     thin_state_diff: &ThinStateDiff,
-    declared_classes_table: &'env DeprecatedDeclaredClassesTable<'env>,
+    deprecated_declared_classes_table: &'env DeprecatedDeclaredClassesTable<'env>,
 ) -> StorageResult<IndexMap<ClassHash, DeprecatedContractClass>> {
     // Class hashes of the contracts that were deployed in this block.
     let deployed_contracts_class_hashes = thin_state_diff.deployed_contracts.values();
@@ -564,16 +572,20 @@ fn delete_deprecated_declared_classes<'env>(
 
     let mut deleted_data = IndexMap::new();
     for class_hash in class_hashes {
-        let IndexedDeprecatedDeclaredContract {
+        // If the class is not in the deprecated classes table, it means that the hash is of a
+        // deployed contract of a new class type. We don't need to delete these classes because
+        // since 0.11 new classes must be explicitly declared. Therefore we can skip hashes that we
+        // don't find in the deprecated classes table.
+        if let Some(IndexedDeprecatedDeclaredContract {
             block_number: declared_block_number,
             contract_class,
-        } = declared_classes_table
-            .get(txn, class_hash)?
-            .expect("Missing declared class {class_hash:#?}.");
-        // If the class was declared in a different block then we should'nt delete it.
-        if block_number == declared_block_number {
-            deleted_data.insert(*class_hash, contract_class);
-            declared_classes_table.delete(txn, class_hash)?;
+        }) = deprecated_declared_classes_table.get(txn, class_hash)?
+        {
+            // If the class was declared in a different block then we should'nt delete it.
+            if block_number == declared_block_number {
+                deleted_data.insert(*class_hash, contract_class);
+                deprecated_declared_classes_table.delete(txn, class_hash)?;
+            }
         }
     }
 

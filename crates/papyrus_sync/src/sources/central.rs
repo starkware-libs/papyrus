@@ -359,9 +359,16 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
 pub type CentralSource = GenericCentralSource<StarknetClient>;
 
 impl CentralSource {
-    pub fn new(config: CentralSourceConfig) -> Result<CentralSource, ClientCreationError> {
-        let starknet_client =
-            StarknetClient::new(&config.url, config.http_headers, config.retry_config)?;
+    pub fn new(
+        config: CentralSourceConfig,
+        node_version: &'static str,
+    ) -> Result<CentralSource, ClientCreationError> {
+        let starknet_client = StarknetClient::new(
+            &config.url,
+            config.http_headers,
+            node_version,
+            config.retry_config,
+        )?;
         Ok(CentralSource {
             concurrent_requests: config.concurrent_requests,
             starknet_client: Arc::new(starknet_client),
