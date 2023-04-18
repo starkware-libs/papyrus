@@ -51,7 +51,7 @@ pub trait StarknetClientTrait {
         &self,
         class_hash: ClassHash,
     ) -> ClientResult<Option<GenericContractClass>>;
-    /// Returns a [`starknet_clinet`][`StateUpdate`] corresponding to `block_number`.
+    /// Returns a [`starknet_client`][`StateUpdate`] corresponding to `block_number`.
     async fn state_update(&self, block_number: BlockNumber) -> ClientResult<Option<StateUpdate>>;
 }
 
@@ -123,7 +123,7 @@ pub enum ClientError {
     /// A client error representing errors that might be solved by retrying mechanism.
     #[error("Retry error code: {:?}, message: {:?}.", code, message)]
     RetryError { code: RetryErrorCode, message: String },
-    /// A client error representing deserialisation errors.
+    /// A client error representing deserialization errors.
     #[error(transparent)]
     SerdeError(#[from] serde_json::Error),
     /// A client error representing errors from [`starknet_api`].
@@ -135,8 +135,6 @@ pub enum ClientError {
     /// A client error representing transaction receipts errors.
     #[error(transparent)]
     TransactionReceiptsError(#[from] TransactionReceiptsError),
-    #[error("Wrong type of contract class")]
-    BadContractClassType,
     // TODO(yair): Add more info.
     #[error("Invalid transaction.")]
     BadTransaction,
@@ -342,24 +340,4 @@ impl StarknetClientTrait for StarknetClient {
 pub enum GenericContractClass {
     Cairo0ContractClass(DeprecatedContractClass),
     Cairo1ContractClass(ContractClass),
-    APIContractClass(starknet_api::state::ContractClass),
-    APIDeprecatedContractClass(starknet_api::deprecated_contract_class::ContractClass),
-}
-
-impl GenericContractClass {
-    pub fn to_cairo0(self) -> ClientResult<starknet_api::deprecated_contract_class::ContractClass> {
-        match self {
-            Self::Cairo0ContractClass(class) => Ok(class.into()),
-            GenericContractClass::APIDeprecatedContractClass(class) => Ok(class),
-            _ => Err(ClientError::BadContractClassType),
-        }
-    }
-
-    pub fn to_cairo1(self) -> ClientResult<starknet_api::state::ContractClass> {
-        match self {
-            Self::Cairo1ContractClass(class) => Ok(class.into()),
-            GenericContractClass::APIContractClass(class) => Ok(class),
-            _ => Err(ClientError::BadContractClassType),
-        }
-    }
 }
