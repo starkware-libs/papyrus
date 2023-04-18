@@ -1,74 +1,106 @@
-mod api;
 #[cfg(test)]
 mod gateway_test;
 
-use std::fmt::Display;
 use std::net::SocketAddr;
+use std::str::FromStr;
 
-// use api::JsonRpcError;
-use jsonrpsee::core::{async_trait, Error};
-use jsonrpsee::http_server::types::error::CallError;
-use jsonrpsee::http_server::{HttpServerBuilder, HttpServerHandle};
-use jsonrpsee::types::error::ErrorCode::InternalError;
-use jsonrpsee::types::error::{ErrorObject, INTERNAL_ERROR_MSG};
-use papyrus_storage::{DbTablesStats, StorageReader};
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
+use axum::routing::get;
+use axum::{Json, Router};
+use papyrus_storage::{DbTablesStats, StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
-use tracing::{debug, error, info, instrument};
-
-use self::api::JsonRpcServer;
+use tracing::{info, instrument};
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct MonitoringGatewayConfig {
     pub server_address: String,
 }
 
-/// Rpc server.
-struct JsonRpcServerImpl {
-    storage_reader: StorageReader,
-    general_config_representation: serde_yaml::Value,
-    version: &'static str,
+pub struct MonitoringServer {
+    pub config: MonitoringGatewayConfig,
+    pub general_config_representation: serde_json::Value,
+    pub storage_reader: StorageReader,
+    pub version: &'static str,
 }
 
-fn internal_server_error(err: impl Display) -> Error {
-    error!("{}: {}", INTERNAL_ERROR_MSG, err);
-    Error::Call(CallError::Custom(ErrorObject::owned(
-        InternalError.code(),
-        INTERNAL_ERROR_MSG,
-        None::<()>,
-    )))
+impl MonitoringServer {
+    pub fn new(
+        config: MonitoringGatewayConfig,
+        general_config_representation: serde_json::Value,
+        storage_reader: StorageReader,
+        version: &'static str,
+    ) -> Self {
+        MonitoringServer { config, storage_reader, general_config_representation, version }
+    }
+
+    pub async fn run_server(
+        &self,
+    ) -> tokio::task::JoinHandle<std::result::Result<(), hyper::Error>> {
+        let server_address = SocketAddr::from_str(&self.config.server_address)
+            .expect("Valid configuration value for monitor server address");
+        let app = app(
+            self.storage_reader.clone(),
+            self.version,
+            self.general_config_representation.clone(),
+        );
+        info!("Starting monitoring gateway, listening on {server_address:}.");
+        tokio::spawn(async move {
+            axum::Server::bind(&server_address).serve(app.into_make_service()).await
+        })
+    }
 }
 
-#[async_trait]
-impl JsonRpcServer for JsonRpcServerImpl {
-    #[instrument(skip(self), level = "debug", err(Display), ret)]
-    fn db_tables_stats(&self) -> Result<DbTablesStats, Error> {
-        self.storage_reader.db_tables_stats().map_err(internal_server_error)
-    }
-
-    #[instrument(skip(self), level = "debug", err(Display), ret)]
-    fn node_config(&self) -> Result<serde_yaml::Value, Error> {
-        Ok(self.general_config_representation.clone())
-    }
-
-    #[instrument(skip(self), level = "debug", err(Display), ret)]
-    fn node_version(&self) -> Result<String, Error> {
-        Ok(self.version.to_owned())
-    }
-}
-
-#[instrument(skip(storage_reader, general_config_representation), level = "debug", err)]
-pub async fn run_server(
-    general_config_representation: serde_yaml::Value,
-    config: MonitoringGatewayConfig,
+fn app(
     storage_reader: StorageReader,
     version: &'static str,
-) -> anyhow::Result<(SocketAddr, HttpServerHandle)> {
-    debug!("Starting monitoring gateway.");
-    let server = HttpServerBuilder::default().build(&config.server_address).await?;
-    let addr = server.local_addr()?;
-    let handle = server.start(
-        JsonRpcServerImpl { storage_reader, general_config_representation, version }.into_rpc(),
-    )?;
-    info!(local_address = %addr, "Monitoring gateway is running.");
-    Ok((addr, handle))
+    general_config_representation: serde_json::Value,
+) -> Router {
+    Router::new()
+        .route("/dbTablesStats", get(move || db_tables_stats(storage_reader)))
+        .route("/nodeConfig", get(move || node_config(general_config_representation)))
+        .route("/nodeVersion", get(move || node_version(version)))
+}
+
+/// Returns DB statistics.
+#[instrument(skip(storage_reader), level = "debug", ret)]
+async fn db_tables_stats(
+    storage_reader: StorageReader,
+) -> Result<Json<DbTablesStats>, ServerError> {
+    Ok(storage_reader.db_tables_stats()?.into())
+}
+
+/// Returns the node config.
+#[instrument(level = "debug", ret)]
+async fn node_config(
+    general_config_representation: serde_json::Value,
+) -> axum::Json<serde_json::Value> {
+    general_config_representation.into()
+}
+
+/// Returns the node version.
+#[instrument(level = "debug", ret)]
+async fn node_version(version: &'static str) -> String {
+    version.to_string()
+}
+
+#[derive(Debug)]
+enum ServerError {
+    StorageError(StorageError),
+}
+
+impl From<StorageError> for ServerError {
+    fn from(inner: StorageError) -> Self {
+        ServerError::StorageError(inner)
+    }
+}
+
+impl IntoResponse for ServerError {
+    fn into_response(self) -> Response {
+        let (status, error_message) = match self {
+            // TODO(dan): consider using a generic error message instead.
+            ServerError::StorageError(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
+        };
+        (status, error_message).into_response()
+    }
 }

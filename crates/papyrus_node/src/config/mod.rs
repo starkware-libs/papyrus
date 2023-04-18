@@ -41,8 +41,8 @@ impl Config {
         ConfigBuilder::build(args)
     }
 
-    pub fn get_config_representation(&self) -> Result<serde_yaml::Value, ConfigError> {
-        Ok(serde_yaml::to_value(FileConfigFormat::from(self.clone()))?)
+    pub fn get_config_representation(&self) -> Result<serde_json::Value, ConfigError> {
+        Ok(serde_json::to_value(FileConfigFormat::from(self.clone()))?)
     }
 }
 
@@ -58,6 +58,8 @@ pub enum ConfigError {
     Read(#[from] io::Error),
     #[error(transparent)]
     Serde(#[from] serde_yaml::Error),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
     #[error(
         "CLA http_header \"{illegal_header}\" is not valid. The Expected format is name:value"
     )]
