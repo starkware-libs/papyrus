@@ -4,6 +4,7 @@ use assert_matches::assert_matches;
 use futures_util::pin_mut;
 use indexmap::IndexMap;
 use mockall::predicate;
+use papyrus_storage::test_utils::get_test_storage;
 use reqwest::StatusCode;
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
@@ -32,6 +33,7 @@ async fn last_block_number() {
     let central_source = GenericCentralSource {
         starknet_client: Arc::new(mock),
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
+        storage_reader: get_test_storage().0,
     };
 
     let last_block_number = central_source.get_block_marker().await.unwrap().prev().unwrap();
@@ -54,6 +56,7 @@ async fn stream_block_headers() {
     let central_source = GenericCentralSource {
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
         starknet_client: Arc::new(mock),
+        storage_reader: get_test_storage().0,
     };
 
     let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
@@ -88,6 +91,7 @@ async fn stream_block_headers_some_are_missing() {
     let central_source = GenericCentralSource {
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
         starknet_client: Arc::new(mock),
+        storage_reader: get_test_storage().0,
     };
 
     let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
@@ -134,6 +138,7 @@ async fn stream_block_headers_error() {
     let central_source = GenericCentralSource {
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
         starknet_client: Arc::new(mock),
+        storage_reader: get_test_storage().0,
     };
 
     let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
@@ -264,6 +269,7 @@ async fn stream_state_updates() {
     let central_source = GenericCentralSource {
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
         starknet_client: Arc::new(mock),
+        storage_reader: get_test_storage().0,
     };
     let initial_block_num = BlockNumber(START_BLOCK_NUMBER);
 
