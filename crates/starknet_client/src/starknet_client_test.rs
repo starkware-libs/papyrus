@@ -23,7 +23,7 @@ use super::{
     Block, ClientError, RetryErrorCode, StarknetClient, StarknetClientTrait, BLOCK_NUMBER_QUERY,
     CLASS_HASH_QUERY, GET_BLOCK_URL, GET_STATE_UPDATE_URL,
 };
-use crate::ContractClass;
+use crate::{ContractClass, GenericContractClass};
 
 const NODE_VERSION: &str = "NODE VERSION";
 
@@ -152,11 +152,14 @@ async fn contract_class() {
         )))
         .await
         .unwrap()
-        .unwrap()
-        .to_cairo1()
         .unwrap();
+
+    let contract_class = match contract_class {
+        GenericContractClass::Cairo1ContractClass(class) => class,
+        _ => unreachable!("Expecting Cairo0ContractClass."),
+    };
     mock_by_hash.assert();
-    assert_eq!(contract_class, expected_contract_class.into());
+    assert_eq!(contract_class, expected_contract_class);
 }
 
 #[tokio::test]
@@ -233,11 +236,13 @@ async fn deprecated_contract_class() {
         )))
         .await
         .unwrap()
-        .unwrap()
-        .to_cairo0()
         .unwrap();
+    let contract_class = match contract_class {
+        GenericContractClass::Cairo0ContractClass(class) => class,
+        _ => unreachable!("Expecting deprecated contract class."),
+    };
     mock_by_hash.assert();
-    assert_eq!(contract_class, expected_contract_class.into());
+    assert_eq!(contract_class, expected_contract_class);
 
     // Undeclared class.
     let body = r#"{"code": "StarknetErrorCode.UNDECLARED_CLASS", "message": "Class with hash 0x7 is not declared."}"#;
