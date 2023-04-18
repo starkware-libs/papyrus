@@ -20,7 +20,9 @@ async fn main() {
     ])
     .expect("Load config");
     let (storage_reader, _) = open_storage(config.storage.db_config).expect("Open storage");
-    let central_source = CentralSource::new(config.central, VERSION_FULL, storage_reader).expect("Create new client");
+    let central_source = CentralSource::new(config.central, VERSION_FULL, storage_reader)
+        .expect("Create new client");
+    let last_block_number = BlockNumber(283410);
 
     let mut block_marker = BlockNumber(283410);
     let block_stream = central_source.stream_new_blocks(block_marker, last_block_number).fuse();
