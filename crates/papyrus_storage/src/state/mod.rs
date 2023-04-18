@@ -363,12 +363,8 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             .get_state_diff(block_number)?
             .expect("Missing state diff for block {block_number}.");
         markers_table.upsert(&self.txn, &MarkerKind::State, &block_number)?;
-        let deleted_classes = delete_declared_classes(
-            &self.txn,
-            block_number,
-            &thin_state_diff,
-            &declared_classes_table,
-        )?;
+        let deleted_classes =
+            delete_declared_classes(&self.txn, &thin_state_diff, &declared_classes_table)?;
         let deleted_deprecated_classes = delete_deprecated_declared_classes(
             &self.txn,
             block_number,
@@ -528,21 +524,16 @@ fn write_storage_diffs<'env>(
 
 fn delete_declared_classes<'env>(
     txn: &'env DbTransaction<'env, RW>,
-    block_number: BlockNumber,
     thin_state_diff: &ThinStateDiff,
     declared_classes_table: &'env DeclaredClassesTable<'env>,
 ) -> StorageResult<IndexMap<ClassHash, ContractClass>> {
     let mut deleted_data = IndexMap::new();
     for class_hash in thin_state_diff.declared_classes.keys() {
-        let IndexedDeclaredContract { block_number: declared_block_number, contract_class } =
-            declared_classes_table
-                .get(txn, class_hash)?
-                .expect("Missing declared class {class_hash:#?}.");
-        // If the class was declared in a different block then we should'nt delete it.
-        if block_number == declared_block_number {
-            deleted_data.insert(*class_hash, contract_class);
-            declared_classes_table.delete(txn, class_hash)?;
-        }
+        let IndexedDeclaredContract { block_number: _, contract_class } = declared_classes_table
+            .get(txn, class_hash)?
+            .expect("Missing declared class {class_hash:#?}.");
+        deleted_data.insert(*class_hash, contract_class);
+        declared_classes_table.delete(txn, class_hash)?;
     }
 
     Ok(deleted_data)
