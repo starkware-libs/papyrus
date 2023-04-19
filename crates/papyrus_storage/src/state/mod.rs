@@ -551,17 +551,12 @@ fn delete_deprecated_declared_classes<'env>(
     // Class hashes of the contracts that were deployed in this block.
     let deployed_contracts_class_hashes = thin_state_diff.deployed_contracts.values();
 
-    // Filter all the deployed contracts that their class also was declared in this block, and their
-    // class type is Cairo 1.
-    let deprecated_deployed_class_hashes = deployed_contracts_class_hashes
-        .filter(|class_hash| !thin_state_diff.declared_classes.contains_key(*class_hash));
-
     // Merge the class hashes from the state diff and from the deployed contracts into a single
     // unique set.
     let class_hashes: HashSet<&ClassHash> = thin_state_diff
         .deprecated_declared_classes
         .iter()
-        .chain(deprecated_deployed_class_hashes)
+        .chain(deployed_contracts_class_hashes)
         .collect();
 
     let mut deleted_data = IndexMap::new();
