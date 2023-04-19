@@ -9,11 +9,13 @@ use futures_util::StreamExt;
 use indexmap::IndexMap;
 #[cfg(test)]
 use mockall::automock;
+use papyrus_storage::state::StateStorageReader;
+use papyrus_storage::{StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::state::StateDiff;
+use starknet_api::state::{ContractClass, StateDiff, StateNumber};
 use starknet_api::StarknetApiError;
 use starknet_client::{
     ClientCreationError, ClientError, GenericContractClass, RetryConfig, StarknetClient,
@@ -35,6 +37,40 @@ pub struct CentralSourceConfig {
 pub struct GenericCentralSource<TStarknetClient: StarknetClientTrait + Send + Sync> {
     pub concurrent_requests: usize,
     pub starknet_client: Arc<TStarknetClient>,
+    pub storage_reader: StorageReader,
+}
+
+#[derive(Clone)]
+pub enum ApiContractClass {
+    DeprecatedContractClass(starknet_api::deprecated_contract_class::ContractClass),
+    ContractClass(starknet_api::state::ContractClass),
+}
+
+impl From<GenericContractClass> for ApiContractClass {
+    fn from(value: GenericContractClass) -> Self {
+        match value {
+            GenericContractClass::Cairo0ContractClass(class) => {
+                Self::DeprecatedContractClass(class.into())
+            }
+            GenericContractClass::Cairo1ContractClass(class) => Self::ContractClass(class.into()),
+        }
+    }
+}
+
+impl ApiContractClass {
+    pub fn into_cairo0(self) -> CentralResult<DeprecatedContractClass> {
+        match self {
+            Self::DeprecatedContractClass(class) => Ok(class),
+            _ => Err(CentralError::BadContractClassType),
+        }
+    }
+
+    pub fn into_cairo1(self) -> CentralResult<ContractClass> {
+        match self {
+            Self::ContractClass(class) => Ok(class),
+            _ => Err(CentralError::BadContractClassType),
+        }
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -51,6 +87,10 @@ pub enum CentralError {
     BlockNotFound { block_number: BlockNumber },
     #[error(transparent)]
     StarknetApiError(#[from] Arc<StarknetApiError>),
+    #[error(transparent)]
+    StorageError(#[from] StorageError),
+    #[error("Wrong type of contract class")]
+    BadContractClassType,
 }
 
 #[cfg_attr(test, automock)]
@@ -166,10 +206,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
 
 fn client_to_central_state_update(
     current_block_number: BlockNumber,
-    maybe_client_state_update: CentralResult<(
-        StateUpdate,
-        IndexMap<ClassHash, GenericContractClass>,
-    )>,
+    maybe_client_state_update: CentralResult<(StateUpdate, IndexMap<ClassHash, ApiContractClass>)>,
 ) -> CentralResult<CentralStateUpdate> {
     match maybe_client_state_update {
         Ok((state_update, mut declared_classes)) => {
@@ -183,7 +220,7 @@ fn client_to_central_state_update(
                 replaced_classes,
             } = state_update.state_diff;
 
-            // Seperate the declared classes to new classes, old classes and classes of deployed
+            // Separate the declared classes to new classes, old classes and classes of deployed
             // contracts (both new and old).
             let n_declared_classes = declared_class_hashes.len();
             let mut deprecated_classes = declared_classes.split_off(n_declared_classes);
@@ -202,11 +239,8 @@ fn client_to_central_state_update(
                 )),
                 declared_classes: declared_classes
                     .into_iter()
-                    .map(|(class_hash, generic_class)| {
-                        (
-                            class_hash,
-                            generic_class.to_cairo1().expect("Expected Cairo1 class.").into(),
-                        )
+                    .map(|(class_hash, class)| {
+                        (class_hash, class.into_cairo1().expect("Expected Cairo1 class."))
                     })
                     .zip(
                         declared_class_hashes
@@ -220,10 +254,7 @@ fn client_to_central_state_update(
                 deprecated_declared_classes: deprecated_classes
                     .into_iter()
                     .map(|(class_hash, generic_class)| {
-                        (
-                            class_hash,
-                            generic_class.to_cairo0().expect("Expected Cairo0 class.").into(),
-                        )
+                        (class_hash, generic_class.into_cairo0().expect("Expected Cairo0 class."))
                     })
                     .collect(),
                 nonces,
@@ -237,10 +268,10 @@ fn client_to_central_state_update(
             let deployed_contract_class_definitions = deployed_contract_class_definitions
                 .into_iter()
                 .filter_map(|(class_hash, contract_class)| match contract_class {
-                    GenericContractClass::Cairo0ContractClass(deprecated_contract_class) => {
-                        Some((class_hash, deprecated_contract_class.into()))
+                    ApiContractClass::DeprecatedContractClass(deprecated_contract_class) => {
+                        Some((class_hash, deprecated_contract_class))
                     }
-                    GenericContractClass::Cairo1ContractClass(_) => None,
+                    ApiContractClass::ContractClass(_) => None,
                 })
                 .collect();
             let block_hash = state_update.block_hash;
@@ -282,13 +313,49 @@ fn client_to_central_block(
     }
 }
 
+// Given a class hash, returns the corresponding class definition.
+// First tries to retrieve the class from the storage.
+// If not found in the storage, the class is downloaded.
+async fn download_class_if_necessary<TStarknetClient: StarknetClientTrait>(
+    class_hash: ClassHash,
+    starknet_client: Arc<TStarknetClient>,
+    storage_reader: StorageReader,
+) -> CentralResult<Option<ApiContractClass>> {
+    let txn = storage_reader.begin_ro_txn()?;
+    let state_reader = txn.get_state_reader()?;
+    let block_number = txn.get_state_marker()?;
+    let state_number = StateNumber::right_after_block(block_number);
+
+    // Check declared classes.
+    if let Ok(Some(class)) = state_reader.get_class_definition_at(state_number, &class_hash) {
+        trace!("Class {:?} retrieved from storage.", class_hash);
+        return Ok(Some(ApiContractClass::ContractClass(class)));
+    };
+
+    // Check deprecated classes.
+    if let Ok(Some(class)) =
+        state_reader.get_deprecated_class_definition_at(state_number, &class_hash)
+    {
+        trace!("Deprecated class {:?} retrieved from storage.", class_hash);
+        return Ok(Some(ApiContractClass::DeprecatedContractClass(class)));
+    }
+
+    // Class not found in storage - download.
+    trace!("Downloading class {:?}.", class_hash);
+    let client_class = starknet_client.class_by_hash(class_hash).await.map_err(Arc::new)?;
+    match client_class {
+        None => Ok(None),
+        Some(class) => Ok(Some(class.into())),
+    }
+}
+
 impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
     GenericCentralSource<TStarknetClient>
 {
     fn state_update_stream(
         &self,
         block_number_stream: impl Stream<Item = BlockNumber> + Send + Sync + 'static,
-    ) -> impl Stream<Item = CentralResult<(StateUpdate, IndexMap<ClassHash, GenericContractClass>)>>
+    ) -> impl Stream<Item = CentralResult<(StateUpdate, IndexMap<ClassHash, ApiContractClass>)>>
     {
         // Stream the state updates.
         let starknet_client = self.starknet_client.clone();
@@ -304,6 +371,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
 
         // Stream the declared and deployed classes.
         let starknet_client = self.starknet_client.clone();
+        let storage_reader = self.storage_reader.clone();
         let mut flat_classes = state_updates0
             // In case state_updates1 contains a ClientError, we yield it and break - without
             // evaluating flat_classes.
@@ -313,10 +381,10 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
             .flat_map(futures::stream::iter)
             .map(move |class_hash| {
                 let starknet_client = starknet_client.clone();
-                async move { (class_hash, starknet_client.class_by_hash(class_hash).await) }
+                let storage_reader = storage_reader.clone();
+                async move { (class_hash, download_class_if_necessary(class_hash, starknet_client, storage_reader).await) }
             })
-            .buffered(self.concurrent_requests)
-            .map(|(class_hash, class)| (class_hash, class.map_err(Arc::new)));
+            .buffered(self.concurrent_requests);
 
         let res_stream = stream! {
             while let Some(maybe_state_update) = state_updates1.next().await {
@@ -335,13 +403,13 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
 
                 // Get the next state declared and deployed classes.
                 let len = state_update.state_diff.class_hashes().len();
-                let classes: Option<Result<IndexMap<ClassHash, GenericContractClass>, _>> =
+                let classes: Option<Result<IndexMap<ClassHash, ApiContractClass>, _>> =
                     flat_classes.take_n(len).await.map(|v| {
                         v.into_iter()
                             .map(|(class_hash, class)| match class {
                                 Ok(Some(class)) => Ok((class_hash, class)),
                                 Ok(None) => Err(CentralError::StateUpdateNotFound),
-                                Err(err) => Err(CentralError::ClientError(err)),
+                                Err(err) => Err(err),
                             })
                             .collect()
                     });
@@ -362,6 +430,7 @@ impl CentralSource {
     pub fn new(
         config: CentralSourceConfig,
         node_version: &'static str,
+        storage_reader: StorageReader,
     ) -> Result<CentralSource, ClientCreationError> {
         let starknet_client = StarknetClient::new(
             &config.url,
@@ -369,9 +438,11 @@ impl CentralSource {
             node_version,
             config.retry_config,
         )?;
+
         Ok(CentralSource {
             concurrent_requests: config.concurrent_requests,
             starknet_client: Arc::new(starknet_client),
+            storage_reader,
         })
     }
 }

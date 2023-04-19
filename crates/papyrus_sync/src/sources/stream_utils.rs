@@ -17,7 +17,7 @@ pub trait MyStreamExt: StreamExt {
     async fn take_n(&mut self, n: usize) -> Option<Vec<Self::Item>>
     where
         Self: Sized + Unpin + Send + 'static,
-        Self::Item: Clone + Send + 'static;
+        Self::Item: Send + 'static;
 }
 #[async_trait]
 impl<T: StreamExt> MyStreamExt for T {
@@ -39,7 +39,7 @@ impl<T: StreamExt> MyStreamExt for T {
     async fn take_n(&mut self, n: usize) -> Option<Vec<Self::Item>>
     where
         Self: Sized + Unpin + Send + 'static,
-        Self::Item: Clone + Send + 'static,
+        Self::Item: Send + 'static,
     {
         if n == 0 {
             return Some(vec![]);

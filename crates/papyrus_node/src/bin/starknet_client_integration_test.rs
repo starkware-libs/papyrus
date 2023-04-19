@@ -15,35 +15,55 @@ async fn main() {
     let starknet_client =
         StarknetClient::new(&config.central.url, None, VERSION_FULL, config.central.retry_config)
             .expect("Create new client");
-    let _latest_block_number = starknet_client.block_number().await.expect("Get block number");
-    // A block with invoke transaction version 1.
-    let _block_376150 = starknet_client.block(BlockNumber(376150)).await.expect("Get block");
-    // A block with deploy account transaction.
-    let _block_376051 = starknet_client.block(BlockNumber(376051)).await.expect("Get block");
-    // A block with declare transaction version 2.
-    let _block_789048 = starknet_client.block(BlockNumber(789048)).await.expect("Get block");
-    // TODO(anatg): Write what's special in this block.
-    let _block_1564 = starknet_client.block(BlockNumber(1564)).await.expect("Get block");
-    let _block_123456 = starknet_client.block(BlockNumber(123456)).await.expect("Get block");
-    let _state_diff_123456 =
-        starknet_client.state_update(BlockNumber(123456)).await.expect("Get state diff");
-    // State update with replaced class.
-    let _state_diff_788504 =
-        starknet_client.state_update(BlockNumber(788504)).await.expect("Get state diff");
-    // State update with declared Cairo 1 class.
-    let _state_diff_789048 =
-        starknet_client.state_update(BlockNumber(789048)).await.expect("Get state diff");
+
+    // Get the last block.
+    // Last block.
+    starknet_client.block_number().await.expect("").unwrap();
+
+    // Get a block.
+    // First block, the original definitions.
+    starknet_client.block(BlockNumber(0)).await.expect("").unwrap();
+    // A block with declare transaction. (added in v0.9.0).
+    starknet_client.block(BlockNumber(248971)).await.expect("").unwrap();
+    // A block with starknet version. (added in v0.9.1).
+    starknet_client.block(BlockNumber(280000)).await.expect("").unwrap();
+    // A block with declare transaction version 1. (added in v0.10.0).
+    // A block with nonce field in transaction. (added in v0.10.0).
+    starknet_client.block(BlockNumber(330039)).await.expect("").unwrap();
+    // A block with invoke_function transaction version 1 (added in v0.10.0).
+    starknet_client.block(BlockNumber(330291)).await.expect("").unwrap();
+    // A block with deploy_account transaction. (added in v0.10.1).
+    starknet_client.block(BlockNumber(385429)).await.expect("").unwrap();
+    // A block with declare transaction version 2. (added in v0.11.0).
+    starknet_client.block(BlockNumber(789048)).await.expect("").unwrap();
+    // Not existing block.
+    assert!(starknet_client.block(BlockNumber(u64::MAX)).await.expect("").is_none());
+
+    // Get a state update.
+    // First block, the original definitions.
+    starknet_client.state_update(BlockNumber(0)).await.expect("").unwrap();
+    // A state update with 'old_declared_contracts'. (added in v0.9.1).
+    starknet_client.state_update(BlockNumber(248971)).await.expect("").unwrap();
+    // A state update with 'nonces'. (added in v0.10.0).
+    starknet_client.state_update(BlockNumber(330039)).await.expect("").unwrap();
+    // A state update with 'declared_classes'. (added in v0.11.0).
+    starknet_client.state_update(BlockNumber(788504)).await.expect("").unwrap();
+    // A state update with 'replaced_classes'. (added in v0.11.0).
+    starknet_client.state_update(BlockNumber(789048)).await.expect("").unwrap();
+
+    // Get a class by hash.
+    // A Cairo 0 class hash.
     let class_hash = ClassHash(
         StarkHash::try_from("0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17")
             .unwrap(),
     );
-    let _contract_class_by_hash =
-        starknet_client.class_by_hash(class_hash).await.expect("Get class by hash");
-    // Cairo 1 class hash.
+    // A class definition of Cairo 0 contract.
+    starknet_client.class_by_hash(class_hash).await.expect("").unwrap();
+    // A Cairo 1 class hash.
     let class_hash = ClassHash(
         StarkHash::try_from("0x702a9e80c74a214caf0e77326180e72ba3bd3f53dbd5519ede339eb3ae9eed4")
             .unwrap(),
     );
-    let _contract_class_by_hash =
-        starknet_client.class_by_hash(class_hash).await.expect("Get class by hash");
+    // A class definition of Cairo 1 contract. (added in v0.11.0).
+    starknet_client.class_by_hash(class_hash).await.expect("").unwrap();
 }
