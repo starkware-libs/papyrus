@@ -49,6 +49,14 @@ pub async fn create_files(node_address: &str) {
         BLOCK_HASH_COUNT,
         move || get_block_hash_and_contract_address_args(node_socket),
     ));
+    let block_number_and_class_hash =
+        tokio::spawn(create_file("block_number_and_class_hash.txt", BLOCK_HASH_COUNT, move || {
+            get_block_number_and_class_hash_args(node_socket)
+        }));
+    let block_hash_and_class_hash =
+        tokio::spawn(create_file("block_hash_and_class_hash.txt", BLOCK_HASH_COUNT, move || {
+            get_block_hash_and_class_hash_args(node_socket)
+        }));
     tokio::try_join!(
         block_number,
         block_hash,
@@ -57,6 +65,8 @@ pub async fn create_files(node_address: &str) {
         block_number_and_transaction_index,
         block_number_and_contract_address,
         block_hash_and_contract_address,
+        block_number_and_class_hash,
+        block_hash_and_class_hash,
     )
     .unwrap();
 }
@@ -236,4 +246,62 @@ pub async fn get_random_contract_address_deployed_in_block(
         _ => unreachable!("The gateway returns a deployed contracts address as a String."),
     };
     Some(contract_address.to_string())
+}
+
+// Returns a vector with a random block number and class hash of a class which was declared
+// before the block.
+pub async fn get_block_number_and_class_hash_args(node_address: SocketAddr) -> Vec<String> {
+    let (block_number, class_hash) = get_random_block_number_and_class_hash(node_address).await;
+    // A block number which in it the class was already declared.
+    let after_block_number = rand::thread_rng().gen_range(block_number..=get_last_block_number());
+    vec![after_block_number.to_string(), class_hash]
+}
+
+// Returns a vector with a random block hash and class hash of a class which was declared
+// before the block.
+pub async fn get_block_hash_and_class_hash_args(node_address: SocketAddr) -> Vec<String> {
+    let (block_number, class_hash) = get_random_block_number_and_class_hash(node_address).await;
+    // A block number which in it the class was already declared.
+    let after_block_number = rand::thread_rng().gen_range(block_number..=get_last_block_number());
+    let after_block_hash = get_block_hash_by_block_number(after_block_number, node_address).await;
+    vec![after_block_hash, class_hash]
+}
+
+// Returns a vector with a random block number and class hash of a class which was declared
+// in this block.
+pub async fn get_random_block_number_and_class_hash(node_address: SocketAddr) -> (u64, String) {
+    loop {
+        let block_number = get_random_block_number();
+        let class_hash = get_random_class_hash_declared_in_block(block_number, node_address).await;
+        if let Some(class_hash) = class_hash {
+            return (block_number, class_hash);
+        }
+    }
+}
+
+// Given a block number return a random class hash which was declared in this block.
+// Returns Option<String> because it is possible that no classes were declared in the given block.
+pub async fn get_random_class_hash_declared_in_block(
+    block_number: u64,
+    node_address: SocketAddr,
+) -> Option<String> {
+    let params = format!("{{ \"block_number\": {block_number} }}");
+    let mut declared_classes = Vec::<jsonVal>::new();
+    // Cairo 1 classes.
+    let classes = &mut send_request(node_address, "starknet_getStateUpdate", &params).await
+        ["result"]["state_diff"]["declared_classes"]
+        .take();
+    declared_classes.append(classes.as_array_mut().unwrap());
+    // Cairo 0 classes.
+    let classes = &mut send_request(node_address, "starknet_getStateUpdate", &params).await
+        ["result"]["state_diff"]["deprecated_declared_classes"]
+        .take();
+    declared_classes.append(classes.as_array_mut().unwrap());
+
+    if declared_classes.is_empty() {
+        return None;
+    }
+    let random_index = rand::thread_rng().gen_range(0..declared_classes.len());
+    let class_hash = declared_classes[random_index].as_str().unwrap().to_string();
+    Some(class_hash)
 }

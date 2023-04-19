@@ -4,6 +4,20 @@ use serde_json::{json, Value as jsonVal};
 
 use crate::jsonrpc_request;
 
+pub fn get_class_by_number(args: &str) -> jsonVal {
+    let mut arg_iter = ArgsIter::new(args);
+    let block_number = arg_iter.next_u64();
+    let class_hash = arg_iter.next_str();
+    jsonrpc_request("starknet_getClass", json!([{ "block_number": block_number }, class_hash]))
+}
+
+pub fn get_class_by_hash(args: &str) -> jsonVal {
+    let mut arg_iter = ArgsIter::new(args);
+    let block_hash = arg_iter.next_str();
+    let class_hash = arg_iter.next_str();
+    jsonrpc_request("starknet_getClass", json!([{ "block_hash": block_hash }, class_hash]))
+}
+
 pub fn get_storage_at_by_number(args: &str) -> jsonVal {
     let mut arg_iter = ArgsIter::new(args);
     let block_number = arg_iter.next_u64();
