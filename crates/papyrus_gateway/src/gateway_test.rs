@@ -1514,9 +1514,7 @@ async fn serialize_returns_valid_json() {
         },
         body: get_rand_test_body_with_events(&mut rng, 5, 5, None, None),
     };
-    let mut state_diff = StateDiff::get_test_instance(&mut rng);
-    // TODO(yair): handle replaced classes.
-    state_diff.replaced_classes.clear();
+    let state_diff = get_test_state_diff();
     storage_writer
         .begin_rw_txn()
         .unwrap()
