@@ -901,6 +901,7 @@ async fn get_class() {
         .commit()
         .unwrap();
 
+    // Deprecated Class
     let (class_hash, contract_class) = diff.deprecated_declared_classes.get_index(0).unwrap();
     let expected_contract_class = contract_class.clone().try_into().unwrap();
 
@@ -941,6 +942,32 @@ async fn get_class() {
         None::<()>,
     ));
 
+    // New Class
+    let (class_hash, (_compiled_class_hash, contract_class)) =
+        diff.declared_classes.get_index(0).unwrap();
+    let expected_contract_class = contract_class.clone().into();
+
+    // Get class by block hash.
+    let res = module
+        .call::<_, ContractClass>(
+            "starknet_getClass",
+            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *class_hash),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res, expected_contract_class);
+
+    // Get class by block number.
+    let res = module
+        .call::<_, ContractClass>(
+            "starknet_getClass",
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *class_hash),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res, expected_contract_class);
+
+    // Invalid Call
     // Ask for an invalid class hash in the given block.
     let err = module
         .call::<_, DeprecatedContractClass>(
@@ -992,51 +1019,6 @@ async fn get_class() {
     ));
 }
 
-// TODO(dvir): Add this scenario to get_class test.
-#[tokio::test]
-async fn get_new_class() {
-    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let parent_header = BlockHeader::default();
-    let header = BlockHeader {
-        block_hash: BlockHash(stark_felt!("0x1")),
-        block_number: BlockNumber(1),
-        parent_hash: parent_header.block_hash,
-        ..BlockHeader::default()
-    };
-    let diff = get_test_state_diff();
-    storage_writer
-        .begin_rw_txn()
-        .unwrap()
-        .append_header(parent_header.block_number, &parent_header)
-        .unwrap()
-        .append_state_diff(
-            parent_header.block_number,
-            starknet_api::state::StateDiff::default(),
-            IndexMap::new(),
-        )
-        .unwrap()
-        .append_header(header.block_number, &header)
-        .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
-        .unwrap()
-        .commit()
-        .unwrap();
-
-    let (class_hash, (_compiled_class_hash, contract_class)) =
-        diff.declared_classes.get_index(0).unwrap();
-    let expected_contract_class = contract_class.clone().into();
-
-    // Get class by block hash.
-    let res = module
-        .call::<_, ContractClass>(
-            "starknet_getClass",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *class_hash),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res, expected_contract_class);
-}
-
 #[tokio::test]
 async fn get_class_at() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
@@ -1047,7 +1029,10 @@ async fn get_class_at() {
         parent_hash: parent_header.block_hash,
         ..BlockHeader::default()
     };
-    let diff = get_test_state_diff();
+    let mut diff = get_test_state_diff();
+    // Add a deployed contract with Cairo 1 class.
+    let new_class_hash = diff.declared_classes.get_index(0).unwrap().0;
+    diff.deployed_contracts.insert(ContractAddress(patricia_key!("0x2")), *new_class_hash);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -1066,6 +1051,7 @@ async fn get_class_at() {
         .commit()
         .unwrap();
 
+    // Deprecated Class
     let (class_hash, contract_class) = diff.deprecated_declared_classes.get_index(0).unwrap();
     let expected_contract_class = contract_class.clone().try_into().unwrap();
     assert_eq!(diff.deployed_contracts.get_index(0).unwrap().1, class_hash);
@@ -1091,6 +1077,34 @@ async fn get_class_at() {
         .unwrap();
     assert_eq!(res, expected_contract_class);
 
+    // New Class
+    let (class_hash, (_compiled_hash, contract_class)) =
+        diff.declared_classes.get_index(0).unwrap();
+    let expected_contract_class = contract_class.clone().try_into().unwrap();
+    assert_eq!(diff.deployed_contracts.get_index(1).unwrap().1, class_hash);
+    let address = diff.deployed_contracts.get_index(1).unwrap().0;
+
+    // Get class by block hash.
+    let res = module
+        .call::<_, ContractClass>(
+            "starknet_getClassAt",
+            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res, expected_contract_class);
+
+    // Get class by block number.
+    let res = module
+        .call::<_, ContractClass>(
+            "starknet_getClassAt",
+            (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *address),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res, expected_contract_class);
+
+    // Invalid Call
     // Ask for an invalid contract.
     let err = module
         .call::<_, DeprecatedContractClass>(

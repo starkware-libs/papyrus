@@ -51,7 +51,7 @@ pub trait StarknetClientTrait {
         &self,
         class_hash: ClassHash,
     ) -> ClientResult<Option<GenericContractClass>>;
-    /// Returns a [`starknet_clinet`][`StateUpdate`] corresponding to `block_number`.
+    /// Returns a [`starknet_client`][`StateUpdate`] corresponding to `block_number`.
     async fn state_update(&self, block_number: BlockNumber) -> ClientResult<Option<StateUpdate>>;
 }
 
@@ -123,7 +123,7 @@ pub enum ClientError {
     /// A client error representing errors that might be solved by retrying mechanism.
     #[error("Retry error code: {:?}, message: {:?}.", code, message)]
     RetryError { code: RetryErrorCode, message: String },
-    /// A client error representing deserialisation errors.
+    /// A client error representing deserialization errors.
     #[error(transparent)]
     SerdeError(#[from] serde_json::Error),
     /// A client error representing errors from [`starknet_api`].
@@ -135,8 +135,6 @@ pub enum ClientError {
     /// A client error representing transaction receipts errors.
     #[error(transparent)]
     TransactionReceiptsError(#[from] TransactionReceiptsError),
-    #[error("Wrong type of contract class")]
-    BadContractClassType,
     // TODO(yair): Add more info.
     #[error("Invalid transaction.")]
     BadTransaction,
@@ -170,6 +168,7 @@ impl StarknetClient {
     pub fn new(
         url_str: &str,
         http_headers: Option<HashMap<String, String>>,
+        node_version: &'static str,
         retry_config: RetryConfig,
     ) -> Result<StarknetClient, ClientCreationError> {
         let header_map = match http_headers {
@@ -182,7 +181,7 @@ impl StarknetClient {
         let app_user_agent = format!(
             "{product_name}/{product_version} ({system_information})",
             product_name = "papyrus",
-            product_version = "pre-release",
+            product_version = node_version,
             system_information = system_information
         );
         Ok(StarknetClient {
@@ -342,20 +341,4 @@ impl StarknetClientTrait for StarknetClient {
 pub enum GenericContractClass {
     Cairo0ContractClass(DeprecatedContractClass),
     Cairo1ContractClass(ContractClass),
-}
-
-impl GenericContractClass {
-    pub fn to_cairo0(self) -> ClientResult<DeprecatedContractClass> {
-        match self {
-            Self::Cairo0ContractClass(class) => Ok(class),
-            _ => Err(ClientError::BadContractClassType),
-        }
-    }
-
-    pub fn to_cairo1(self) -> ClientResult<ContractClass> {
-        match self {
-            Self::Cairo1ContractClass(class) => Ok(class),
-            _ => Err(ClientError::BadContractClassType),
-        }
-    }
 }
