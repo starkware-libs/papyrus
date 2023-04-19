@@ -415,6 +415,9 @@ fn write_declared_classes<'env>(
     declared_classes_table: &'env DeclaredClassesTable<'env>,
 ) -> StorageResult<()> {
     for (class_hash, contract_class) in declared_classes {
+        if (declared_classes_table.get(txn, &class_hash)?).is_some() {
+            return Err(StorageError::ClassAlreadyExists { class_hash });
+        }
         let value = IndexedDeclaredContract { block_number, contract_class };
         let res = declared_classes_table.insert(txn, &class_hash, &value);
         match res {
