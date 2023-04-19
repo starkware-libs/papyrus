@@ -443,15 +443,14 @@ fn write_deprecated_declared_classes<'env>(
     declared_classes_table: &'env DeclaredClassesTable<'env>,
 ) -> StorageResult<()> {
     for (class_hash, deprecated_contract_class) in deprecated_declared_classes {
-        // TODO(dan): remove this check after regenesis, in favor of insert().
-        if let Some(value) = deprecated_declared_classes_table.get(txn, &class_hash)? {
-            if value.contract_class != deprecated_contract_class {
-                return Err(StorageError::ClassAlreadyExists { class_hash });
-            }
+        if !should_write_deprecated_class(
+            class_hash,
+            deprecated_contract_class.clone(),
+            txn,
+            deprecated_declared_classes_table,
+            declared_classes_table,
+        )? {
             continue;
-        }
-        if (declared_classes_table.get(txn, &class_hash)?).is_some() {
-            return Err(StorageError::ClassAlreadyExists { class_hash });
         }
         let value = IndexedDeprecatedDeclaredContract {
             block_number,
@@ -464,6 +463,27 @@ fn write_deprecated_declared_classes<'env>(
         }
     }
     Ok(())
+}
+
+// Returns true if we should write to the storage the given contract and false otherwise.
+fn should_write_deprecated_class<'env>(
+    class_hash: ClassHash,
+    contract: DeprecatedContractClass,
+    txn: &DbTransaction<'env, RW>,
+    deprecated_declared_classes_table: &'env DeprecatedDeclaredClassesTable<'env>,
+    declared_classes_table: &'env DeclaredClassesTable<'env>,
+) -> StorageResult<bool> {
+    // TODO(dan): remove this check after regenesis, in favor of insert().
+    if let Some(value) = deprecated_declared_classes_table.get(txn, &class_hash)? {
+        if value.contract_class != contract {
+            return Err(StorageError::ClassAlreadyExists { class_hash });
+        }
+        return Ok(false);
+    }
+    if (declared_classes_table.get(txn, &class_hash)?).is_some() {
+        return Err(StorageError::ClassAlreadyExists { class_hash });
+    }
+    Ok(true)
 }
 
 fn write_deployed_contracts<'env>(
