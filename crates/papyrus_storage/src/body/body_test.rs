@@ -212,7 +212,7 @@ async fn get_reverted_body_returns_none() {
 #[tokio::test]
 async fn revert_transactions() {
     let (reader, mut writer) = get_test_storage();
-    let body = get_test_body(10);
+    let body = get_test_body(10, None);
     writer
         .begin_rw_txn()
         .unwrap()

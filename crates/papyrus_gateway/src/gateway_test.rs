@@ -1424,7 +1424,7 @@ async fn get_events_no_blocks_in_filter() {
             block_number: BlockNumber(1),
             ..BlockHeader::default()
         },
-        body: get_test_body(1),
+        body: get_test_body(1, None),
     };
     storage_writer
         .begin_rw_txn()
