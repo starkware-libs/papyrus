@@ -1191,7 +1191,7 @@ async fn get_events_chunk_size_2_with_address() {
     let address = ContractAddress(patricia_key!("0x22"));
     let key0 = EventKey(stark_felt!("0x6"));
     let key1 = EventKey(stark_felt!("0x7"));
-    let mut rng = get_rng();
+    let mut rng = get_rng(None);
     let block = get_rand_test_block_with_events(
         &mut rng,
         2,
@@ -1273,7 +1273,7 @@ async fn get_events_chunk_size_2_without_address() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
     let key0 = EventKey(stark_felt!("0x6"));
     let key1 = EventKey(stark_felt!("0x7"));
-    let mut rng = get_rng();
+    let mut rng = get_rng(None);
     let block = get_rand_test_block_with_events(
         &mut rng,
         2,
@@ -1503,7 +1503,7 @@ async fn run_server_no_blocks() {
 #[tokio::test]
 async fn serialize_returns_valid_json() {
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let mut rng = get_rng();
+    let mut rng = get_rng(None);
     let parent_block = starknet_api::block::Block::default();
     let block = starknet_api::block::Block {
         header: BlockHeader {
