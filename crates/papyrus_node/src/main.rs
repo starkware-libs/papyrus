@@ -18,13 +18,13 @@ async fn run_threads(config: Config) -> anyhow::Result<()> {
     let (storage_reader, storage_writer) = open_storage(config.storage.db_config.clone())?;
 
     // Monitoring server.
-    let monitoring_server = MonitoringServer {
-        config: config.monitoring_gateway.clone(),
-        general_config_representation: config.get_config_representation()?,
-        storage_reader: storage_reader.clone(),
-        version: VERSION_FULL,
-    };
-    let monitoring_server_handle = monitoring_server.run_server().await;
+    let monitoring_server = MonitoringServer::new(
+        config.monitoring_gateway.clone(),
+        config.get_config_representation()?,
+        storage_reader.clone(),
+        VERSION_FULL,
+    );
+    let monitoring_server_handle = monitoring_server.spawn_server().await;
 
     // JSON-RPC server.
     let (_, server_future) = run_server(&config.gateway, storage_reader.clone()).await?;
