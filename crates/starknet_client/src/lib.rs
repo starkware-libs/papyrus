@@ -26,7 +26,8 @@ use url::Url;
 pub use self::objects::block::{Block, GlobalRoot, TransactionReceiptsError};
 pub use self::objects::deprecated_contract_class::DeprecatedContractClass;
 pub use self::objects::state::{
-    ContractClass, DeclaredClassHashEntry, DeployedContract, StateDiff, StateUpdate, StorageEntry,
+    ContractClass, DeclaredClassHashEntry, DeployedContract, ReplacedClass, StateDiff, StateUpdate,
+    StorageEntry,
 };
 use self::retry::Retry;
 pub use self::retry::RetryConfig;

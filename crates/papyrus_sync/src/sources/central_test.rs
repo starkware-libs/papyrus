@@ -14,7 +14,7 @@ use starknet_api::{patricia_key, stark_felt};
 use starknet_client::{
     Block, ClientError, ContractClass, DeclaredClassHashEntry, DeployedContract,
     DeprecatedContractClass, GenericContractClass, GlobalRoot, MockStarknetClientTrait,
-    StateUpdate, StorageEntry,
+    ReplacedClass, StateUpdate, StorageEntry,
 };
 use tokio_stream::StreamExt;
 
@@ -167,15 +167,16 @@ async fn stream_block_headers_error() {
 
 #[tokio::test]
 async fn stream_state_updates() {
-    // TODO(yair): add replaced_classes.
     const START_BLOCK_NUMBER: u64 = 5;
     const END_BLOCK_NUMBER: u64 = 7;
 
     let class_hash1 = ClassHash(stark_felt!("0x123"));
     let class_hash2 = ClassHash(stark_felt!("0x456"));
     let class_hash3 = ClassHash(stark_felt!("0x789"));
+    let class_hash4 = ClassHash(stark_felt!("0x101112"));
     let contract_address1 = ContractAddress(patricia_key!("0xabc"));
     let contract_address2 = ContractAddress(patricia_key!("0xdef"));
+    let contract_address3 = ContractAddress(patricia_key!("0x0abc"));
     let nonce1 = Nonce(stark_felt!("0x123456789abcdef"));
     let root1 = GlobalRoot(stark_felt!("0x111"));
     let root2 = GlobalRoot(stark_felt!("0x222"));
@@ -213,7 +214,10 @@ async fn stream_state_updates() {
         old_declared_contracts: vec![class_hash1, class_hash3],
         declared_classes: vec![class_hash_entry1, class_hash_entry2],
         nonces: IndexMap::from([(contract_address1, nonce1)]),
-        replaced_classes: vec![],
+        replaced_classes: vec![ReplacedClass {
+            address: contract_address3,
+            class_hash: class_hash4,
+        }],
     };
     let client_state_diff2 = starknet_client::StateDiff::default();
 
@@ -334,6 +338,7 @@ async fn stream_state_updates() {
         state_diff.declared_classes,
     );
     assert_eq!(IndexMap::from([(contract_address1, nonce1)]), state_diff.nonces);
+    assert_eq!(IndexMap::from([(contract_address3, class_hash4)]), state_diff.replaced_classes);
 
     let (current_block_num, current_block_hash, state_diff, _deployed_classes) =
         if let Some(Ok(state_diff_tuple)) = stream.next().await {
