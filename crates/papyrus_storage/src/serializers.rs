@@ -45,8 +45,7 @@ use crate::db::serialization::{StorageSerde, StorageSerdeError};
 #[cfg(test)]
 use crate::serializers::serializers_test::{create_storage_serde_test, StorageSerdeTest};
 use crate::state::data::{
-    IndexedDeclaredContract, IndexedDeployedContract, IndexedDeprecatedDeclaredContract,
-    ThinStateDiff,
+    IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass, ThinStateDiff,
 };
 use crate::{EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey, TransactionIndex};
 
@@ -184,11 +183,11 @@ auto_storage_serde! {
     pub struct GasPrice(pub u128);
     pub struct GlobalRoot(pub StarkHash);
     pub struct H160(pub [u8; 20]);
-    pub struct IndexedDeprecatedDeclaredContract {
+    pub struct IndexedDeprecatedContractClass {
         pub block_number: BlockNumber,
         pub contract_class: DeprecatedContractClass,
     }
-    pub struct IndexedDeclaredContract {
+    pub struct IndexedContractClass {
         pub block_number: BlockNumber,
         pub contract_class: ContractClass,
     }

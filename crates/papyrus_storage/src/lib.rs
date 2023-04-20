@@ -30,8 +30,7 @@ use crate::db::{
     TransactionKind, RO, RW,
 };
 use crate::state::data::{
-    IndexedDeclaredContract, IndexedDeployedContract, IndexedDeprecatedDeclaredContract,
-    ThinStateDiff,
+    IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass, ThinStateDiff,
 };
 
 pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, StorageWriter)> {
@@ -116,8 +115,8 @@ struct_field_names! {
     struct Tables {
         block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
         contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
-        declared_classes: TableIdentifier<ClassHash, IndexedDeclaredContract>,
-        deprecated_declared_classes: TableIdentifier<ClassHash, IndexedDeprecatedDeclaredContract>,
+        declared_classes: TableIdentifier<ClassHash, IndexedContractClass>,
+        deprecated_declared_classes: TableIdentifier<ClassHash, IndexedDeprecatedContractClass>,
         deployed_contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
         events: TableIdentifier<(ContractAddress, EventIndex), EventContent>,
         headers: TableIdentifier<BlockNumber, BlockHeader>,

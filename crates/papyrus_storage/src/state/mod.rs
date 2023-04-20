@@ -15,14 +15,13 @@ use tracing::debug;
 
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::state::data::{
-    IndexedDeclaredContract, IndexedDeployedContract, IndexedDeprecatedDeclaredContract,
-    ThinStateDiff,
+    IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass, ThinStateDiff,
 };
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
-type DeclaredClassesTable<'env> = TableHandle<'env, ClassHash, IndexedDeclaredContract>;
+type DeclaredClassesTable<'env> = TableHandle<'env, ClassHash, IndexedContractClass>;
 type DeprecatedDeclaredClassesTable<'env> =
-    TableHandle<'env, ClassHash, IndexedDeprecatedDeclaredContract>;
+    TableHandle<'env, ClassHash, IndexedDeprecatedContractClass>;
 type DeployedContractsTable<'env> = TableHandle<'env, ContractAddress, IndexedDeployedContract>;
 type ContractStorageTable<'env> =
     TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), StarkFelt>;
@@ -418,7 +417,7 @@ fn write_declared_classes<'env>(
         if (declared_classes_table.get(txn, &class_hash)?).is_some() {
             return Err(StorageError::ClassAlreadyExists { class_hash });
         }
-        let value = IndexedDeclaredContract { block_number, contract_class };
+        let value = IndexedContractClass { block_number, contract_class };
         let res = declared_classes_table.insert(txn, &class_hash, &value);
         match res {
             Ok(()) => continue,
@@ -442,7 +441,7 @@ fn write_deprecated_declared_classes<'env>(
             }
             continue;
         }
-        let value = IndexedDeprecatedDeclaredContract {
+        let value = IndexedDeprecatedContractClass {
             block_number,
             contract_class: deprecated_contract_class,
         };
@@ -532,7 +531,7 @@ fn delete_declared_classes<'env>(
 ) -> StorageResult<IndexMap<ClassHash, ContractClass>> {
     let mut deleted_data = IndexMap::new();
     for class_hash in thin_state_diff.declared_classes.keys() {
-        let IndexedDeclaredContract { block_number: _, contract_class } = declared_classes_table
+        let IndexedContractClass { block_number: _, contract_class } = declared_classes_table
             .get(txn, class_hash)?
             .expect("Missing declared class {class_hash:#?}.");
         deleted_data.insert(*class_hash, contract_class);
@@ -565,7 +564,7 @@ fn delete_deprecated_declared_classes<'env>(
         // deployed contract of a new class type. We don't need to delete these classes because
         // since 0.11 new classes must be explicitly declared. Therefore we can skip hashes that we
         // don't find in the deprecated classes table.
-        if let Some(IndexedDeprecatedDeclaredContract {
+        if let Some(IndexedDeprecatedContractClass {
             block_number: declared_block_number,
             contract_class,
         }) = deprecated_declared_classes_table.get(txn, class_hash)?
