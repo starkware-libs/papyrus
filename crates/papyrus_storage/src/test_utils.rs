@@ -18,8 +18,7 @@ use crate::body::events::{
 };
 use crate::db::DbConfig;
 use crate::state::data::{
-    IndexedDeclaredContract, IndexedDeployedContract, IndexedDeprecatedDeclaredContract,
-    ThinStateDiff,
+    IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass, ThinStateDiff,
 };
 use crate::{
     open_storage, EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey, StorageReader,
@@ -42,11 +41,11 @@ pub fn get_test_storage() -> (StorageReader, StorageWriter) {
 
 auto_impl_get_test_instance! {
     struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
-    pub struct IndexedDeprecatedDeclaredContract {
+    pub struct IndexedDeprecatedContractClass {
         pub block_number: BlockNumber,
         pub contract_class: DeprecatedContractClass,
     }
-    pub struct IndexedDeclaredContract {
+    pub struct IndexedContractClass {
         pub block_number: BlockNumber,
         pub contract_class: ContractClass,
     }
