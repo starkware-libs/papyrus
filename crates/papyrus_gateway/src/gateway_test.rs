@@ -24,8 +24,8 @@ use starknet_api::transaction::{
 };
 use starknet_api::{patricia_key, stark_felt};
 use test_utils::{
-    get_rand_test_block_with_events, get_rand_test_body_with_events, get_rng, get_test_block,
-    get_test_body, get_test_state_diff, send_request, GetTestInstance,
+    get_rand_test_block_with_events, get_rng, get_test_block, get_test_body, get_test_state_diff,
+    send_request, GetTestInstance,
 };
 
 use crate::api::{
@@ -1424,7 +1424,7 @@ async fn get_events_no_blocks_in_filter() {
             block_number: BlockNumber(1),
             ..BlockHeader::default()
         },
-        body: get_test_body(1, None),
+        body: get_test_body(Some(0), 1, None, None, None),
     };
     storage_writer
         .begin_rw_txn()
@@ -1512,7 +1512,7 @@ async fn serialize_returns_valid_json() {
             block_number: BlockNumber(1),
             ..BlockHeader::default()
         },
-        body: get_rand_test_body_with_events(&mut rng, 5, 5, None, None),
+        body: get_test_body(None, 5, Some(5), None, None),
     };
     let mut state_diff = StateDiff::get_test_instance(&mut rng);
     // TODO(yair): handle replaced classes.
