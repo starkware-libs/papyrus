@@ -18,8 +18,8 @@ pub struct StateUpdate {
     pub state_diff: StateDiff,
 }
 
-// TODO(yair): add #[serde(deny_unknown_fields)] once 0.11 is fully supported.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct StateDiff {
     // IndexMap is serialized as a mapping in json, keeps ordering and is efficiently iterable.
     pub storage_diffs: IndexMap<ContractAddress, Vec<StorageEntry>>,
