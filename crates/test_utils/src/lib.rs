@@ -222,11 +222,6 @@ pub fn get_test_body_with_events(transaction_count: usize, events_per_tx: usize)
     get_rand_test_body_with_events(&mut rng, transaction_count, events_per_tx, None, None)
 }
 
-// Returns a test block with a variable number of transactions.
-pub fn get_rand_test_block(rng: &mut ChaCha8Rng, transaction_count: usize) -> Block {
-    get_rand_test_block_with_events(rng, transaction_count, 0, None, None)
-}
-
 // Returns a test block body with a variable number of transactions.
 pub fn get_rand_test_body(rng: &mut ChaCha8Rng, transaction_count: usize) -> BlockBody {
     get_rand_test_body_with_events(rng, transaction_count, 0, None, None)
@@ -235,7 +230,7 @@ pub fn get_rand_test_body(rng: &mut ChaCha8Rng, transaction_count: usize) -> Blo
 // Returns a test block with a variable number of transactions.
 pub fn get_test_block(transaction_count: usize) -> Block {
     let mut rng = get_rng(Some(0));
-    get_rand_test_block(&mut rng, transaction_count)
+    get_rand_test_block_with_events(&mut rng, transaction_count, 0, None, None)
 }
 
 // Returns a test block body with a variable number of transactions.
