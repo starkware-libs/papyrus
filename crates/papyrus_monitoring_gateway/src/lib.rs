@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod gateway_test;
 
+use std::fmt::Display;
 use std::net::SocketAddr;
 use std::str::FromStr;
 
@@ -10,18 +11,24 @@ use axum::routing::get;
 use axum::{Json, Router};
 use papyrus_storage::{DbTablesStats, StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
-use tracing::{info, instrument};
+use tracing::{debug, instrument};
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MonitoringGatewayConfig {
     pub server_address: String,
 }
 
+impl Display for MonitoringGatewayConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+
 pub struct MonitoringServer {
-    pub config: MonitoringGatewayConfig,
-    pub general_config_representation: serde_json::Value,
-    pub storage_reader: StorageReader,
-    pub version: &'static str,
+    config: MonitoringGatewayConfig,
+    general_config_representation: serde_json::Value,
+    storage_reader: StorageReader,
+    version: &'static str,
 }
 
 impl MonitoringServer {
@@ -34,20 +41,30 @@ impl MonitoringServer {
         MonitoringServer { config, storage_reader, general_config_representation, version }
     }
 
-    pub async fn run_server(
-        &self,
-    ) -> tokio::task::JoinHandle<std::result::Result<(), hyper::Error>> {
+    /// Spawns a monitoring server.
+    pub async fn spawn_server(self) -> tokio::task::JoinHandle<Result<(), hyper::Error>> {
+        tokio::spawn(async move { self.run_server().await })
+    }
+
+    #[instrument(
+        name = "run monitoring server",
+        skip(self),
+        fields(
+            version = %self.version,
+            config = %self.config,
+            general_config_representation = %self.general_config_representation),
+        level = "debug")]
+    async fn run_server(&self) -> std::result::Result<(), hyper::Error> {
         let server_address = SocketAddr::from_str(&self.config.server_address)
-            .expect("Valid configuration value for monitor server address");
+            .expect("Configuration value for monitor server address should be valid");
         let app = app(
             self.storage_reader.clone(),
             self.version,
             self.general_config_representation.clone(),
         );
-        info!("Starting monitoring gateway, listening on {server_address:}.");
-        tokio::spawn(async move {
-            axum::Server::bind(&server_address).serve(app.into_make_service()).await
-        })
+        debug!("Starting monitoring gateway.");
+        let server = axum::Server::bind(&server_address).serve(app.into_make_service()).await;
+        server
     }
 }
 
@@ -84,15 +101,10 @@ async fn node_version(version: &'static str) -> String {
     version.to_string()
 }
 
-#[derive(Debug)]
+#[derive(thiserror::Error, Debug)]
 enum ServerError {
-    StorageError(StorageError),
-}
-
-impl From<StorageError> for ServerError {
-    fn from(inner: StorageError) -> Self {
-        ServerError::StorageError(inner)
-    }
+    #[error(transparent)]
+    StorageError(#[from] StorageError),
 }
 
 impl IntoResponse for ServerError {
