@@ -4,14 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = { version = "1.0.44" }
-papyrus_storage = { path = "../papyrus_storage" }
+axum = { version = "0.6.12" }
 futures-util = { version = "0.3.21" }
-jsonrpsee = { version = "0.13.1", features = ["full"] }
+hyper = { version = "0.14", features = ["full"] }
+papyrus_storage = { path = "../papyrus_storage" }
 serde = { version = "1.0.130", features = ["derive"] }
 serde_json = { version = "1.0.81" }
-serde_yaml = { version = "0.9.16" }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "0029ffe" }
 thiserror = { version = "1.0.31" }
 tokio = { version = "1.18.2", features = ["full","sync"] }
 tokio-stream = { version = "0.1.8" }
@@ -20,3 +18,4 @@ url = { version = "2.2.2" }
 
 [dev-dependencies]
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
+tower = { version = "0.4", features = ["util"] }

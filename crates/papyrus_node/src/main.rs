@@ -1,7 +1,7 @@
 use std::env::args;
 
 use papyrus_gateway::run_server;
-use papyrus_monitoring_gateway::run_server as monitoring_run_server;
+use papyrus_monitoring_gateway::MonitoringServer;
 use papyrus_node::config::Config;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_storage::{open_storage, StorageReader, StorageWriter};
@@ -17,19 +17,23 @@ const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
 async fn run_threads(config: Config) -> anyhow::Result<()> {
     let (storage_reader, storage_writer) = open_storage(config.storage.db_config.clone())?;
 
-    let (_, server_future) = run_server(&config.gateway, storage_reader.clone()).await?;
-    let (_, monitoring_server_future) = monitoring_run_server(
-        config.get_config_representation()?,
+    // Monitoring server.
+    let monitoring_server = MonitoringServer::new(
         config.monitoring_gateway.clone(),
+        config.get_config_representation()?,
         storage_reader.clone(),
         VERSION_FULL,
-    )
-    .await?;
-    let sync_future = run_sync(config, storage_reader.clone(), storage_writer);
+    );
+    let monitoring_server_handle = monitoring_server.spawn_server().await;
 
+    // JSON-RPC server.
+    let (_, server_future) = run_server(&config.gateway, storage_reader.clone()).await?;
     let server_handle = tokio::spawn(server_future);
-    let monitoring_server_handle = tokio::spawn(monitoring_server_future);
+
+    // Sync task.
+    let sync_future = run_sync(config, storage_reader.clone(), storage_writer);
     let sync_handle = tokio::spawn(sync_future);
+
     let (_, _, sync_result) =
         tokio::try_join!(server_handle, monitoring_server_handle, sync_handle)?;
     sync_result?;
