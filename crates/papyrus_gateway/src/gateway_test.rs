@@ -24,8 +24,7 @@ use starknet_api::transaction::{
 };
 use starknet_api::{patricia_key, stark_felt};
 use test_utils::{
-    get_rand_test_block_with_events, get_rng, get_test_block, get_test_body, get_test_state_diff,
-    send_request, GetTestInstance,
+    get_rng, get_test_block, get_test_body, get_test_state_diff, send_request, GetTestInstance,
 };
 
 use crate::api::{
@@ -88,7 +87,7 @@ async fn block_hash_and_number() {
     ));
 
     // Add a block and check again.
-    let block = get_test_block(1, None);
+    let block = get_test_block(Some(0), 1, None, None, None);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -113,7 +112,7 @@ async fn block_hash_and_number() {
 async fn get_block_w_transaction_hashes() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
-    let block = get_test_block(1, None);
+    let block = get_test_block(Some(0), 1, None, None, None);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -193,7 +192,7 @@ async fn get_block_w_transaction_hashes() {
 async fn get_block_w_full_transactions() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
-    let block = get_test_block(1, None);
+    let block = get_test_block(Some(0), 1, None, None, None);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -539,7 +538,7 @@ async fn get_nonce() {
 #[tokio::test]
 async fn get_transaction_by_hash() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let block = get_test_block(1, None);
+    let block = get_test_block(Some(0), 1, None, None, None);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -576,7 +575,7 @@ async fn get_transaction_by_hash() {
 #[tokio::test]
 async fn get_transaction_by_block_id_and_index() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let block = get_test_block(1, None);
+    let block = get_test_block(Some(0), 1, None, None, None);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -661,7 +660,7 @@ async fn get_transaction_by_block_id_and_index() {
 async fn get_block_transaction_count() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
     let transaction_count = 5;
-    let block = get_test_block(transaction_count, None);
+    let block = get_test_block(Some(0), transaction_count, None, None, None);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -820,7 +819,7 @@ async fn get_state_update() {
 #[tokio::test]
 async fn get_transaction_receipt() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let block = get_test_block(1, None);
+    let block = get_test_block(Some(0), 1, None, None, None);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -1191,11 +1190,10 @@ async fn get_events_chunk_size_2_with_address() {
     let address = ContractAddress(patricia_key!("0x22"));
     let key0 = EventKey(stark_felt!("0x6"));
     let key1 = EventKey(stark_felt!("0x7"));
-    let mut rng = get_rng(None);
-    let block = get_rand_test_block_with_events(
-        &mut rng,
+    let block = get_test_block(
+        None,
         2,
-        5,
+        Some(5),
         Some(vec![address, ContractAddress(patricia_key!("0x23"))]),
         Some(vec![vec![key0.clone(), key1.clone(), EventKey(stark_felt!("0x8"))]]),
     );
@@ -1273,11 +1271,10 @@ async fn get_events_chunk_size_2_without_address() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
     let key0 = EventKey(stark_felt!("0x6"));
     let key1 = EventKey(stark_felt!("0x7"));
-    let mut rng = get_rng(None);
-    let block = get_rand_test_block_with_events(
-        &mut rng,
+    let block = get_test_block(
+        None,
         2,
-        5,
+        Some(5),
         None,
         Some(vec![vec![key0.clone(), key1.clone(), EventKey(stark_felt!("0x8"))]]),
     );
