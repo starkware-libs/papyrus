@@ -19,7 +19,6 @@ pub struct StateUpdate {
 }
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
-#[serde(deny_unknown_fields)]
 pub struct StateDiff {
     // IndexMap is serialized as a mapping in json, keeps ordering and is efficiently iterable.
     pub storage_diffs: IndexMap<ContractAddress, Vec<StorageEntry>>,
