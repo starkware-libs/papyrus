@@ -128,7 +128,10 @@ impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::Decl
             v if v == tx_v0() => Ok(Self::V0(declare_tx.into())),
             v if v == tx_v1() => Ok(Self::V1(declare_tx.into())),
             v if v == tx_v2() => Ok(Self::V2(declare_tx.try_into()?)),
-            _ => Err(ClientError::BadTransaction),
+            _ => Err(ClientError::BadTransaction {
+                tx_hash: declare_tx.transaction_hash,
+                msg: format!("Declare version {:?} is not supported.", declare_tx.version),
+            }),
         }
     }
 }
@@ -156,9 +159,12 @@ impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::Decl
             signature: declare_tx.signature,
             nonce: declare_tx.nonce,
             class_hash: declare_tx.class_hash,
-            compiled_class_hash: declare_tx
-                .compiled_class_hash
-                .ok_or(ClientError::BadTransaction)?,
+            compiled_class_hash: declare_tx.compiled_class_hash.ok_or(
+                ClientError::BadTransaction {
+                    tx_hash: declare_tx.transaction_hash,
+                    msg: "Declare V2 must contain compiled_class_hash field.".to_string(),
+                },
+            )?,
             sender_address: declare_tx.sender_address,
         })
     }
@@ -241,7 +247,10 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
         match invoke_tx.version {
             v if v == tx_v0() => Ok(Self::V0(invoke_tx.try_into()?)),
             v if v == tx_v1() => Ok(Self::V1(invoke_tx.try_into()?)),
-            _ => Err(ClientError::BadTransaction),
+            _ => Err(ClientError::BadTransaction {
+                tx_hash: invoke_tx.transaction_hash,
+                msg: format!("Invoke version {:?} is not supported.", invoke_tx.version),
+            }),
         }
     }
 }
@@ -256,9 +265,12 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
             signature: invoke_tx.signature,
             nonce: invoke_tx.nonce.unwrap_or_default(),
             sender_address: invoke_tx.sender_address,
-            entry_point_selector: invoke_tx
-                .entry_point_selector
-                .ok_or(ClientError::BadTransaction)?,
+            entry_point_selector: invoke_tx.entry_point_selector.ok_or(
+                ClientError::BadTransaction {
+                    tx_hash: invoke_tx.transaction_hash,
+                    msg: "Invoke V0 must contain entry_point_selector field.".to_string(),
+                },
+            )?,
             calldata: invoke_tx.calldata,
         })
     }
@@ -273,7 +285,10 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
             transaction_hash: invoke_tx.transaction_hash,
             max_fee: invoke_tx.max_fee,
             signature: invoke_tx.signature,
-            nonce: invoke_tx.nonce.unwrap_or_default(),
+            nonce: invoke_tx.nonce.ok_or(ClientError::BadTransaction {
+                tx_hash: invoke_tx.transaction_hash,
+                msg: "Invoke V1 must contain nonce field.".to_string(),
+            })?,
             sender_address: invoke_tx.sender_address,
             calldata: invoke_tx.calldata,
         })
