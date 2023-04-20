@@ -16,7 +16,7 @@ async fn iter_events_by_key() {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let from_addresses =
         vec![ContractAddress(patricia_key!("0x22")), ContractAddress(patricia_key!("0x23"))];
-    let block = get_test_block(None, 2, Some(5), Some(from_addresses), None);
+    let block = get_test_block(2, Some(5), Some(from_addresses), None);
     let block_number = block.header.block_number;
     storage_writer
         .begin_rw_txn()
@@ -63,7 +63,7 @@ async fn iter_events_by_key() {
 #[tokio::test]
 async fn iter_events_by_index() {
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let block = get_test_block(Some(0), 2, Some(5), None, None);
+    let block = get_test_block(2, Some(5), None, None);
     let block_number = block.header.block_number;
     storage_writer
         .begin_rw_txn()
@@ -103,7 +103,7 @@ async fn iter_events_by_index() {
 #[tokio::test]
 async fn revert_events() {
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let block = get_test_block(Some(0), 2, Some(5), None, None);
+    let block = get_test_block(2, Some(5), None, None);
     let block_number = block.header.block_number;
     storage_writer
         .begin_rw_txn()
