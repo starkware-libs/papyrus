@@ -11,7 +11,7 @@ use crate::{StorageError, StorageWriter, TransactionIndex};
 #[tokio::test]
 async fn append_body() {
     let (reader, mut writer) = get_test_storage();
-    let body = get_test_block(10).body;
+    let body = get_test_block(10, None).body;
     let txs = body.transactions;
     let tx_outputs = body.transaction_outputs;
 
