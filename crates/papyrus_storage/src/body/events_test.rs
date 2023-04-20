@@ -3,7 +3,7 @@ use starknet_api::core::{ContractAddress, PatriciaKey};
 use starknet_api::hash::StarkHash;
 use starknet_api::patricia_key;
 use starknet_api::transaction::{EventIndexInTransactionOutput, TransactionOffsetInBlock};
-use test_utils::{get_rand_test_block_with_events, get_rng, get_test_block_with_events};
+use test_utils::{get_rand_test_block_with_events, get_rng, get_test_block};
 
 use crate::body::events::EventsReader;
 use crate::body::BodyStorageWriter;
@@ -64,7 +64,7 @@ async fn iter_events_by_key() {
 #[tokio::test]
 async fn iter_events_by_index() {
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let block = get_test_block_with_events(2, 5);
+    let block = get_test_block(2, Some(5));
     let block_number = block.header.block_number;
     storage_writer
         .begin_rw_txn()
@@ -104,7 +104,7 @@ async fn iter_events_by_index() {
 #[tokio::test]
 async fn revert_events() {
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let block = get_test_block_with_events(2, 5);
+    let block = get_test_block(2, Some(5));
     let block_number = block.header.block_number;
     storage_writer
         .begin_rw_txn()
