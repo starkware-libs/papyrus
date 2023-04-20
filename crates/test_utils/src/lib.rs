@@ -75,12 +75,16 @@ pub fn read_json_file(path_in_resource_dir: &str) -> serde_json::Value {
 }
 
 /// Used in random test to create a random generator, see for example storage_serde_test.
-pub fn get_rng() -> ChaCha8Rng {
-    let seed = if let Ok(seed_str) = env::var("SEED") {
-        seed_str.parse().unwrap()
+pub fn get_rng(seed: Option<u64>) -> ChaCha8Rng {
+    let seed: u64 = if let Some(seed) = seed {
+        seed
     } else {
-        let mut rng = rand::thread_rng();
-        rng.gen()
+        if let Ok(seed_str) = env::var("SEED") {
+            seed_str.parse().unwrap()
+        } else {
+            let mut rng = rand::thread_rng();
+            rng.gen()
+        }
     };
     // Will be printed if the test failed.
     println!("Testing with seed: {seed:?}");
@@ -208,13 +212,13 @@ fn set_transaction_hash(tx: &mut Transaction, hash: TransactionHash) {
 
 // Returns a test block with a variable number of transactions and events.
 pub fn get_test_block_with_events(transaction_count: usize, events_per_tx: usize) -> Block {
-    let mut rng = ChaCha8Rng::seed_from_u64(0);
+    let mut rng = get_rng(Some(0));
     get_rand_test_block_with_events(&mut rng, transaction_count, events_per_tx, None, None)
 }
 
 // Returns a test block body with a variable number of transactions and events.
 pub fn get_test_body_with_events(transaction_count: usize, events_per_tx: usize) -> BlockBody {
-    let mut rng = ChaCha8Rng::seed_from_u64(0);
+    let mut rng = get_rng(Some(0));
     get_rand_test_body_with_events(&mut rng, transaction_count, events_per_tx, None, None)
 }
 
@@ -230,13 +234,13 @@ pub fn get_rand_test_body(rng: &mut ChaCha8Rng, transaction_count: usize) -> Blo
 
 // Returns a test block with a variable number of transactions.
 pub fn get_test_block(transaction_count: usize) -> Block {
-    let mut rng = ChaCha8Rng::seed_from_u64(0);
+    let mut rng = get_rng(Some(0));
     get_rand_test_block(&mut rng, transaction_count)
 }
 
 // Returns a test block body with a variable number of transactions.
 pub fn get_test_body(transaction_count: usize) -> BlockBody {
-    let mut rng = ChaCha8Rng::seed_from_u64(0);
+    let mut rng = get_rng(Some(0));
     get_rand_test_body(&mut rng, transaction_count)
 }
 
