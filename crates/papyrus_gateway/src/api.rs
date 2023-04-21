@@ -11,7 +11,7 @@ use starknet_api::transaction::{EventKey, TransactionHash, TransactionOffsetInBl
 
 use crate::block::Block;
 use crate::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use crate::state::{ContractClass, StateUpdate};
+use crate::state::{ContractClass, StateUpdate, FunctionCall, FunctionCallResult};
 use crate::transaction::{Event, TransactionReceiptWithStatus, TransactionWithType};
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -191,4 +191,7 @@ pub trait JsonRpc {
     /// Returns all events matching the given filter.
     #[method(name = "getEvents")]
     fn get_events(&self, filter: EventFilter) -> Result<EventsChunk, Error>;
+
+    #[method(name = "call")]
+    fn call(&self, block_id: BlockId, request: FunctionCall) -> Result<FunctionCallResult, Error>;
 }

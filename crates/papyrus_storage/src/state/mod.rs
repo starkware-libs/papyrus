@@ -3,10 +3,10 @@ pub mod data;
 #[path = "state_test.rs"]
 mod state_test;
 
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 
 use indexmap::IndexMap;
-use starknet_api::block::BlockNumber;
+use starknet_api::block::{BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::StarkFelt;
@@ -252,6 +252,71 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
             }
         }
         Ok(None)
+    }
+
+    pub fn get_class_hashes_classes(&self, until_block: BlockNumber) -> StorageResult<HashMap<ClassHash, DeprecatedContractClass>> {
+        let mut cursor = self.deprecated_declared_classes_table.cursor(self.txn)?;
+        let mut result = HashMap::<ClassHash, DeprecatedContractClass>::new();
+
+        while let Some((class_hash, contract)) = cursor.next()? {
+            if contract.block_number > until_block {
+                continue;
+            }
+            result.insert(class_hash, contract.contract_class);
+        }
+
+        Ok(result)
+    }
+
+    pub fn get_adresses_class_hashes(&self, until_block: BlockNumber) -> StorageResult<HashMap<ContractAddress, ClassHash>> {
+        let mut cursor = self.deployed_contracts_table.cursor(self.txn)?;
+        let mut result = HashMap::<ContractAddress, ClassHash>::new();
+
+        while let Some((address, deployed_contract)) = cursor.next()? {
+            if deployed_contract.block_number > until_block {
+                continue;
+            }
+
+            result.insert(address, deployed_contract.class_hash);
+        }
+
+        Ok(result)
+    }
+
+    pub fn get_addresses_nonces(&self) -> StorageResult<HashMap<ContractAddress, Nonce>> {
+        let mut cursor = self.nonces_table.cursor(self.txn)?;
+        let mut result = HashMap::<ContractAddress, Nonce>::new();
+        let mut last_added_block_for_nonce = HashMap::<ContractAddress, BlockNumber>::new();
+
+        while let Some(((address, block),nonce)) = cursor.next()? {
+            let added_block_option = last_added_block_for_nonce.get(&address);
+            if added_block_option.is_none() || (Some(block) > added_block_option.copied()){
+                result.insert(address, nonce);
+                last_added_block_for_nonce.insert(address, block);
+            }
+        }
+
+        Ok(result)
+    }
+
+    pub fn get_storage_view(&self, until_block: BlockNumber) -> StorageResult<HashMap<(ContractAddress, StorageKey), StarkFelt>>{
+        let mut cursor = self.storage_table.cursor(self.txn)?;
+        let mut result = HashMap::<(ContractAddress, StorageKey), StarkFelt>::new();
+        let mut last_added_block_for_contract_storage_key = HashMap::<(ContractAddress, StorageKey), BlockNumber>::new();
+
+        while let Some(((address, key, block), storage_hash)) = cursor.next()?{
+            if block > until_block {
+                continue;
+            }
+
+            let added_block_option = last_added_block_for_contract_storage_key.get(&(address, key));
+            if added_block_option.is_none() || (Some(block) > added_block_option.copied()) {
+                result.insert((address, key), storage_hash);
+                last_added_block_for_contract_storage_key.insert((address, key), block);
+            }
+        }
+
+        return Ok(result);
     }
 }
 

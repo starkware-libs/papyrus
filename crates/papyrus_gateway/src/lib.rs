@@ -8,10 +8,16 @@ mod state;
 mod test_utils;
 mod transaction;
 
+use std::collections::HashMap;
 use std::fmt::Display;
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 use api::GatewayContractClass;
+use blockifier::execution::entry_point::{ExecutionResources, ExecutionContext, CallEntryPoint};
+use blockifier::state::state_api::StateReader;
+use blockifier::test_utils::DictStateReader;
+use blockifier::transaction::objects::AccountTransactionContext;
 use jsonrpsee::core::{async_trait, Error};
 use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::http_server::{HttpServerBuilder, HttpServerHandle};
@@ -25,12 +31,13 @@ use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{EventIndex, StorageReader, StorageTxn, TransactionIndex};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockStatus};
-use starknet_api::core::{ChainId, ClassHash, ContractAddress, GlobalRoot, Nonce};
+use starknet_api::core::{ChainId, ClassHash, ContractAddress, GlobalRoot, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
-    EventIndexInTransactionOutput, TransactionHash, TransactionOffsetInBlock,
+    EventIndexInTransactionOutput, TransactionHash, TransactionOffsetInBlock, Calldata, Fee
 };
+use state::{FunctionCall, FunctionCallResult};
 use tracing::{debug, error, info, instrument};
 
 use crate::api::{
@@ -50,6 +57,7 @@ pub struct GatewayConfig {
     pub server_address: String,
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
+    pub fee_token_address: String,
 }
 
 /// Rpc server.
@@ -58,6 +66,7 @@ struct JsonRpcServerImpl {
     storage_reader: StorageReader,
     max_events_chunk_size: usize,
     max_events_keys: usize,
+    fee_token_address: ContractAddress,
 }
 
 impl From<JsonRpcError> for Error {
@@ -130,6 +139,38 @@ fn get_block_txs_by_number<Mode: TransactionKind>(
         .ok_or_else(|| Error::from(JsonRpcError::BlockNotFound))?;
 
     Ok(transactions.into_iter().map(Transaction::from).collect())
+}
+
+fn get_state<Mode: TransactionKind>(
+    txn: &StorageTxn<'_, Mode>,
+    block_number: BlockNumber
+) -> Result<blockifier::state::cached_state::CachedState<DictStateReader>, Error> {
+    let state_reader = txn
+        .get_state_reader().unwrap();
+
+    let class_hash_classes = 
+        state_reader
+        .get_class_hashes_classes(block_number)
+        .unwrap();
+
+    let res = class_hash_classes.into_iter().fold(HashMap::new(), |mut acc:HashMap<ClassHash, blockifier::execution::contract_class::ContractClass> , (key, v)|{
+        if let Ok(contract_class) = blockifier::execution::contract_class::ContractClass::try_from(v){
+            acc.insert(key, contract_class);
+        }
+
+        acc
+    });
+
+    let state = blockifier::state::cached_state::CachedState::new(
+        DictStateReader {
+            storage_view: state_reader.get_storage_view(block_number).unwrap(),
+            address_to_nonce: state_reader.get_addresses_nonces().unwrap(),
+            address_to_class_hash: state_reader.get_adresses_class_hashes(block_number).unwrap(),
+            class_hash_to_class: res,
+        }
+    );
+
+    return Ok(state);
 }
 
 struct ContinuationTokenAsStruct(EventIndex);
@@ -529,6 +570,59 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
         Ok(EventsChunk { events: filtered_events, continuation_token: None })
     }
+
+    #[instrument(skip(self), level = "debug", err, ret)]
+    fn call(&self, block_id: BlockId, request: FunctionCall) -> Result<FunctionCallResult, Error> {
+        let txn = self.storage_reader
+            .begin_ro_txn()
+            .map_err(internal_server_error)?;
+
+        let block_number = get_block_number(&txn, block_id)?;
+        let block_header = get_block_header_by_number(&txn, block_number)?;
+
+        let mut state = get_state(&txn, block_number)?;
+
+        let block_context = blockifier::block_context::BlockContext {
+            chain_id: self.chain_id.clone(),
+            block_number: block_header.block_number,
+            block_timestamp: block_header.timestamp,
+            cairo_resource_fee_weights: HashMap::default(),
+            invoke_tx_max_n_steps: 1000000,
+            validate_max_n_steps: 1000000,
+            gas_price: 0,
+            sequencer_address: block_header.sequencer_address,
+            fee_token_address: self.fee_token_address.clone(),
+        };
+
+        let mut execution_resources = ExecutionResources::default();
+        let mut execution_context = ExecutionContext::default();
+        let account_context = AccountTransactionContext::default();
+
+        let class_hash = state
+            .get_class_hash_at(request.contract_address)
+            .map_err(internal_server_error)?;
+
+        let call_entry_point = CallEntryPoint{
+            class_hash: Option::Some(class_hash),
+            entry_point_type: starknet_api::deprecated_contract_class::EntryPointType::External,
+            entry_point_selector: request.entry_point_selector,
+            calldata: Calldata::default(),
+            call_type: blockifier::execution::entry_point::CallType::Call,
+            storage_address: request.contract_address,
+            caller_address: ContractAddress::default()
+        };
+
+        let call_result = call_entry_point
+            .execute(
+                &mut state, 
+                &mut execution_resources, 
+                &mut execution_context, 
+                &block_context, 
+                &account_context
+            ).map_err(internal_server_error)?;
+
+        Ok(FunctionCallResult(Arc::new(call_result.execution.retdata.0)))
+    }
 }
 
 #[instrument(skip(storage_reader), level = "debug", err)]
@@ -545,6 +639,7 @@ pub async fn run_server(
             storage_reader,
             max_events_chunk_size: config.max_events_chunk_size,
             max_events_keys: config.max_events_keys,
+            fee_token_address: ContractAddress::try_from(StarkFelt::try_from(config.fee_token_address.as_str())?)?
         }
         .into_rpc(),
     )?;

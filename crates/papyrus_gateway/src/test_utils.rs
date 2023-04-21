@@ -2,7 +2,7 @@ use jsonrpsee::http_server::RpcModule;
 use jsonschema::JSONSchema;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
-use starknet_api::core::ChainId;
+use starknet_api::{core::{ChainId, ContractAddress}, hash::StarkFelt};
 
 use crate::{GatewayConfig, JsonRpcServer, JsonRpcServerImpl};
 
@@ -12,6 +12,7 @@ pub fn get_test_gateway_config() -> GatewayConfig {
         server_address: String::from("127.0.0.1:0"),
         max_events_chunk_size: 10,
         max_events_keys: 10,
+        fee_token_address: String::from("0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"),
     }
 }
 
@@ -25,6 +26,7 @@ pub(crate) fn get_test_rpc_server_and_storage_writer()
             storage_reader,
             max_events_chunk_size: config.max_events_chunk_size,
             max_events_keys: config.max_events_keys,
+            fee_token_address: ContractAddress::try_from(StarkFelt::try_from(config.fee_token_address.as_str()).unwrap()).unwrap(),
         }
         .into_rpc(),
         storage_writer,

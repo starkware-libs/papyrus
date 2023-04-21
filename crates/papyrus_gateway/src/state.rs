@@ -1,11 +1,13 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use papyrus_storage::state::data::ThinStateDiff as papyrus_storage_ThinStateDiff;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockHash;
-use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, GlobalRoot, Nonce};
+use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, GlobalRoot, Nonce, EntryPointSelector};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{EntryPoint, EntryPointType, StorageKey};
+use starknet_api::transaction::Calldata;
 
 const CONTRACT_CLASS_VERSION: &str = "0.1.0";
 
@@ -123,3 +125,13 @@ pub struct ReplacedClasses {
     pub contract_address: ContractAddress,
     pub class_hash: ClassHash,
 }
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct FunctionCall{
+    pub contract_address: ContractAddress,
+    pub entry_point_selector: EntryPointSelector,
+    pub calldata: Calldata
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct FunctionCallResult(pub Arc<Vec<StarkFelt>>);

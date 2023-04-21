@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = { version = "1.0.44" }
 base64 = { version = "0.13.0" }
+blockifier = { git = "https://github.com/starkware-libs/blockifier"}
 papyrus_storage = { path = "../papyrus_storage" }
 futures-util = { version = "0.3.21" }
 jsonrpsee = { version = "0.13.1", features = ["full"] }
@@ -20,6 +21,7 @@ url = { version = "2.2.2" }
 
 [dev-dependencies]
 assert_matches = { version = "1.5.0" }
+blockifier = { git = "https://github.com/starkware-libs/blockifier"}
 hex = { version = "0.4.3" }
 jsonschema = { version = "0.16.1" }
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
