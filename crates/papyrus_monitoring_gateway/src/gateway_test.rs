@@ -31,11 +31,7 @@ async fn db_stats() {
     let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
     let body: Value = serde_json::from_slice(&body).unwrap();
     for &name in table_names() {
-        assert!(
-            body["stats"].get(name).is_some(),
-            "{} is not found in returned DB statistics.",
-            name
-        )
+        assert!(body["stats"].get(name).is_some(), "{name} is not found in returned DB statistics.")
     }
 }
 
@@ -86,7 +82,7 @@ async fn run_server() {
     let response = client
         .request(
             Request::builder()
-                .uri(format!("http://{}/nodeVersion", addr))
+                .uri(format!("http://{addr}/nodeVersion"))
                 .body(Body::empty())
                 .unwrap(),
         )
