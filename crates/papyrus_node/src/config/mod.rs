@@ -41,8 +41,8 @@ impl Config {
         ConfigBuilder::build(args)
     }
 
-    pub fn get_config_representation(&self) -> Result<serde_yaml::Value, ConfigError> {
-        Ok(serde_yaml::to_value(FileConfigFormat::from(self.clone()))?)
+    pub fn get_config_representation(&self) -> Result<serde_json::Value, ConfigError> {
+        Ok(serde_json::to_value(FileConfigFormat::from(self.clone()))?)
     }
 }
 
@@ -58,6 +58,8 @@ pub enum ConfigError {
     Read(#[from] io::Error),
     #[error(transparent)]
     Serde(#[from] serde_yaml::Error),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
     #[error(
         "CLA http_header \"{illegal_header}\" is not valid. The Expected format is name:value"
     )]
@@ -78,7 +80,6 @@ pub(crate) struct ConfigBuilder {
 impl Default for ConfigBuilder {
     fn default() -> Self {
         let chain_id = ChainId(String::from("SN_MAIN"));
-
         ConfigBuilder {
             args: None,
             chain_id: chain_id.clone(),
@@ -113,6 +114,8 @@ impl Default for ConfigBuilder {
                 sync: Some(SyncConfig {
                     block_propagation_sleep_duration: Duration::from_secs(10),
                     recoverable_error_sleep_duration: Duration::from_secs(10),
+                    blocks_max_stream_size: 1000,
+                    state_updates_max_stream_size: 1000,
                 }),
             },
         }

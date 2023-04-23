@@ -18,17 +18,12 @@ pub struct StateUpdate {
     pub state_diff: StateDiff,
 }
 
-// TODO(yair): add #[serde(deny_unknown_fields)] once 0.11 is fully supported.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct StateDiff {
     // IndexMap is serialized as a mapping in json, keeps ordering and is efficiently iterable.
     pub storage_diffs: IndexMap<ContractAddress, Vec<StorageEntry>>,
     pub deployed_contracts: Vec<DeployedContract>,
-    // TODO(yair): check if old blocks contain the old_declared_contracts (/ declared_contracts)
-    // field or not, if they do - remove the default.
-    #[serde(default)]
     pub declared_classes: Vec<DeclaredClassHashEntry>,
-    #[serde(default)]
     pub old_declared_contracts: Vec<ClassHash>,
     pub nonces: IndexMap<ContractAddress, Nonce>,
     pub replaced_classes: Vec<ReplacedClass>,

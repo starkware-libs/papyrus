@@ -4,6 +4,7 @@ mod sync_test;
 
 mod sources;
 
+use std::cmp::min;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -28,6 +29,8 @@ pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, Centra
 pub struct SyncConfig {
     pub block_propagation_sleep_duration: Duration,
     pub recoverable_error_sleep_duration: Duration,
+    pub blocks_max_stream_size: u32,
+    pub state_updates_max_stream_size: u32,
 }
 
 // Orchestrates specific network interfaces (e.g. central, p2p, l1) and writes to Storage.
@@ -143,12 +146,14 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             self.reader.clone(),
             self.central_source.clone(),
             self.config.block_propagation_sleep_duration,
+            self.config.blocks_max_stream_size,
         )
         .fuse();
         let state_diff_stream = stream_new_state_diffs(
             self.reader.clone(),
             self.central_source.clone(),
             self.config.block_propagation_sleep_duration,
+            self.config.state_updates_max_stream_size,
         )
         .fuse();
         pin_mut!(block_stream, state_diff_stream);
@@ -362,6 +367,7 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
     block_propation_sleep_duration: Duration,
+    max_stream_size: u32,
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
         loop {
@@ -372,9 +378,10 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
                 tokio::time::sleep(block_propation_sleep_duration).await;
                 continue;
             }
-            debug!("Downloading blocks [{} - {}).", header_marker, last_block_number);
+            let up_to = min(last_block_number, BlockNumber(header_marker.0 + max_stream_size as u64));
+            debug!("Downloading blocks [{} - {}).", header_marker, up_to);
             let block_stream =
-                central_source.stream_new_blocks(header_marker, last_block_number).fuse();
+                central_source.stream_new_blocks(header_marker, up_to).fuse();
             pin_mut!(block_stream);
             while let Some(maybe_block) = block_stream.next().await {
                 let (block_number, block) = maybe_block?;
@@ -388,6 +395,7 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
     block_propation_sleep_duration: Duration,
+    max_stream_size: u32,
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
         loop {
@@ -400,7 +408,8 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
                 tokio::time::sleep(block_propation_sleep_duration).await;
                 continue;
             }
-            debug!("Downloading state diffs [{} - {}).", state_marker, last_block_number);
+            let up_to = min(last_block_number, BlockNumber(state_marker.0 + max_stream_size as u64));
+            debug!("Downloading state diffs [{} - {}).", state_marker, up_to);
             let state_diff_stream =
                 central_source.stream_state_updates(state_marker, last_block_number).fuse();
             pin_mut!(state_diff_stream);

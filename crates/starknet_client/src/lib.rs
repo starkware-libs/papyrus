@@ -19,6 +19,7 @@ use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
+use starknet_api::transaction::TransactionHash;
 use starknet_api::StarknetApiError;
 use tracing::debug;
 use url::Url;
@@ -26,7 +27,8 @@ use url::Url;
 pub use self::objects::block::{Block, GlobalRoot, TransactionReceiptsError};
 pub use self::objects::deprecated_contract_class::DeprecatedContractClass;
 pub use self::objects::state::{
-    ContractClass, DeclaredClassHashEntry, DeployedContract, StateDiff, StateUpdate, StorageEntry,
+    ContractClass, DeclaredClassHashEntry, DeployedContract, ReplacedClass, StateDiff, StateUpdate,
+    StorageEntry,
 };
 use self::retry::Retry;
 pub use self::retry::RetryConfig;
@@ -136,8 +138,8 @@ pub enum ClientError {
     #[error(transparent)]
     TransactionReceiptsError(#[from] TransactionReceiptsError),
     // TODO(yair): Add more info.
-    #[error("Invalid transaction.")]
-    BadTransaction,
+    #[error("Invalid transaction: {:?}, error: {:?}.", tx_hash, msg)]
+    BadTransaction { tx_hash: TransactionHash, msg: String },
 }
 
 const GET_BLOCK_URL: &str = "feeder_gateway/get_block";

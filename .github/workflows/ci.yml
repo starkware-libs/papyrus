@@ -10,6 +10,8 @@ on:
       - synchronize
       - auto_merge_enabled
     branches: [main]
+  merge_group:
+    types: [checks_requested]
 
 jobs:
   test:
@@ -62,9 +64,9 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           components: rustfmt
-          toolchain: nightly-2022-07-27
+          toolchain: nightly-2022-11-03
       - uses: Swatinem/rust-cache@v2
-      - run: cargo +nightly-2022-07-27 fmt --all -- --check
+      - run: cargo +nightly-2022-11-03 fmt --all -- --check
 
   udeps:
     runs-on: ubuntu-latest
@@ -74,7 +76,7 @@ jobs:
         name: "Rust Toolchain Setup"
         with:
           profile: minimal
-          toolchain: nightly-2022-07-27
+          toolchain: nightly-2022-11-03
           override: true
       - uses: actions/cache@v3
         name: "Cache Setup"
@@ -86,11 +88,11 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - run:
-          wget https://github.com/est31/cargo-udeps/releases/download/v0.1.30/cargo-udeps-v0.1.30-x86_64-unknown-linux-gnu.tar.gz;
-          tar -xzf cargo-udeps-v0.1.30-x86_64-unknown-linux-gnu.tar.gz;
-          cargo-udeps-v0.1.30-x86_64-unknown-linux-gnu/cargo-udeps udeps --all-targets
+          wget https://github.com/est31/cargo-udeps/releases/download/v0.1.35/cargo-udeps-v0.1.35-x86_64-unknown-linux-gnu.tar.gz;
+          tar -xzf cargo-udeps-v0.1.35-x86_64-unknown-linux-gnu.tar.gz;
+          cargo-udeps-v0.1.35-x86_64-unknown-linux-gnu/cargo-udeps udeps --all-targets
         env:
-          RUSTUP_TOOLCHAIN: nightly-2022-07-27
+          RUSTUP_TOOLCHAIN: nightly-2022-11-03
 
   clippy:
     runs-on: ubuntu-latest

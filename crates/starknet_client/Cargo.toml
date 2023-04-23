@@ -7,25 +7,24 @@ edition = "2021"
 testing = ["mockall"]
 
 [dependencies]
-async-trait = { version = "0.1.56" }
-http = {version= "0.2.8"}
-indexmap = { version = "1.9.2", features = ["serde"] }
-mockall = { version = "0.11.2" , optional = true }
-os_info = { version = "3.6.0" }
-reqwest = { version = "0.11", features = ["json", "blocking"] }
-serde = { version = "1.0.130", features = ["derive"] }
-serde_json = { version = "1.0.81" , features = ["arbitrary_precision"]}
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "0029ffe" }
-thiserror = { version = "1.0.31" }
-tokio = { version = "1.18.2", features = ["full","sync"] }
-tokio-retry = { version = "0.3" }
-tracing = { version = "0.1.37" }
-url = { version = "2.2.2" }
+async-trait.workspace = true
+http.workspace = true
+indexmap = { workspace = true, features = ["serde"] }
+mockall = { workspace = true, optional = true }
+os_info.workspace = true
+reqwest = { workspace = true, features = ["json", "blocking"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true, features = ["arbitrary_precision"] }
+starknet_api.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["full", "sync"] }
+tokio-retry.workspace = true
+tracing.workspace = true
+url.workspace = true
 
 [dev-dependencies]
-assert = { version = "0.0.4" }
-assert_matches = { version = "1.5.0" }
-mockall = { version = "0.11.2" }
-mockito = { version = "0.31.0" }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", features = ["testing"] , rev = "0029ffe"}
-
+assert.workspace = true
+assert_matches.workspace = true
+mockall.workspace = true
+mockito.workspace = true
+starknet_api = { workspace = true, features = ["testing"] }
