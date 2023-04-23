@@ -367,7 +367,8 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
             .buffered(self.concurrent_requests)
             // Client error is not cloneable.
             .map_err(Arc::new)
-            .fanout(self.concurrent_requests);
+            // TODO: The buffer size is a hack to prevent a deadlock while syncing. Change this.
+            .fanout(1 << 20);
 
         // Stream the declared and deployed classes.
         let starknet_client = self.starknet_client.clone();

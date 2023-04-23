@@ -80,7 +80,6 @@ pub(crate) struct ConfigBuilder {
 impl Default for ConfigBuilder {
     fn default() -> Self {
         let chain_id = ChainId(String::from("SN_MAIN"));
-
         ConfigBuilder {
             args: None,
             chain_id: chain_id.clone(),
@@ -115,6 +114,8 @@ impl Default for ConfigBuilder {
                 sync: Some(SyncConfig {
                     block_propagation_sleep_duration: Duration::from_secs(10),
                     recoverable_error_sleep_duration: Duration::from_secs(10),
+                    blocks_max_stream_size: 1000,
+                    state_updates_max_stream_size: 1000,
                 }),
             },
         }
