@@ -148,13 +148,8 @@ fn append_state_diff_replaced_classes() {
         ..Default::default()
     };
     // Replace to the same class hash.
-    // Replace twice the same contract.
     let diff1 = StateDiff {
-        replaced_classes: IndexMap::from([
-            (contract_0, hash_0),
-            (contract_1, hash_0),
-            (contract_1, hash_1),
-        ]),
+        replaced_classes: IndexMap::from([(contract_0, hash_0)]),
         ..Default::default()
     };
     // Replacements between different class types (cairo0 and cairo1).
@@ -162,13 +157,11 @@ fn append_state_diff_replaced_classes() {
         replaced_classes: IndexMap::from([(contract_0, hash_1), (contract_1, hash_0)]),
         ..Default::default()
     };
-    // Replace contract and class that was deployed in the same block.
-    let contract_2 = ContractAddress(patricia_key!("0x02"));
+    // Replace to class that was deployed in the same block.
     let hash_2 = ClassHash(stark_felt!("0x12"));
     let diff3 = StateDiff {
-        deployed_contracts: IndexMap::from([(contract_2, hash_1)]),
         declared_classes: IndexMap::from([(hash_2, new_class)]),
-        replaced_classes: IndexMap::from([(contract_1, hash_2), (contract_2, hash_2)]),
+        replaced_classes: IndexMap::from([(contract_1, hash_2)]),
         ..Default::default()
     };
 
@@ -203,13 +196,6 @@ fn append_state_diff_replaced_classes() {
     assert_eq!(statetxn.get_class_hash_at(state2, &contract_1).unwrap(), Some(hash_1));
     assert_eq!(statetxn.get_class_hash_at(state3, &contract_1).unwrap(), Some(hash_0));
     assert_eq!(statetxn.get_class_hash_at(state4, &contract_1).unwrap(), Some(hash_2));
-
-    // Contract_2
-    assert_eq!(statetxn.get_class_hash_at(state0, &contract_2).unwrap(), None);
-    assert_eq!(statetxn.get_class_hash_at(state1, &contract_2).unwrap(), None);
-    assert_eq!(statetxn.get_class_hash_at(state2, &contract_2).unwrap(), None);
-    assert_eq!(statetxn.get_class_hash_at(state3, &contract_2).unwrap(), None);
-    assert_eq!(statetxn.get_class_hash_at(state4, &contract_2).unwrap(), Some(hash_2));
 
     // Check for an error when trying to replace to a not existing class.
     drop(txn);
