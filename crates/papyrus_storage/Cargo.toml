@@ -33,7 +33,6 @@ tokio = { workspace = true, features = ["full", "sync"] }
 tokio-stream.workspace = true
 tracing = { workspace = true, features = ["log"] }
 url.workspace = true
-semver = "1.0.17"
 web3.workspace = true
 
 [dev-dependencies]

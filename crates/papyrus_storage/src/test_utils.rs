@@ -20,6 +20,7 @@ use crate::db::DbConfig;
 use crate::state::data::{
     IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass, ThinStateDiff,
 };
+use crate::version::Version;
 use crate::{
     open_storage, EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey, StorageReader,
     StorageWriter, TransactionIndex,
@@ -101,4 +102,5 @@ auto_impl_get_test_instance! {
         L1Handler(ThinL1HandlerTransactionOutput) = 4,
     }
     struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
+    pub struct Version(pub u32);
 }

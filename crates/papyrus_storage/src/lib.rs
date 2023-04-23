@@ -37,6 +37,8 @@ use crate::state::data::{
 };
 use crate::version::{VersionStorageReader, VersionStorageWriter};
 
+const STORAGE_VERSION: &str = "0";
+
 pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, StorageWriter)> {
     let (db_reader, mut db_writer) = open_env(db_config)?;
     let tables = Arc::new(Tables {
@@ -74,26 +76,25 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
 }
 
 // In case storage version does not exist, set it to the crate version.
+// Expected to happen once - when the node is launched for the first time.
 fn set_initial_version_if_needed(mut writer: StorageWriter) -> StorageResult<StorageWriter> {
     let current_storage_version = writer.begin_rw_txn()?.get_version()?;
     if current_storage_version.is_none() {
-        let crate_version = get_current_crate_version()?;
-        writer.begin_rw_txn()?.set_version(crate_version)?.commit()?;
+        let crate_version = get_current_crate_version();
+        writer.begin_rw_txn()?.set_version(&crate_version)?.commit()?;
     };
     Ok(writer)
 }
 
-// Assumes storage has a version.
+// Assumes the storage has a version.
 fn verify_storage_version(reader: StorageReader) -> StorageResult<()> {
-    let crate_version = get_current_crate_version()?;
-    debug!("crate_version = {crate_version:}.");
+    let crate_version = get_current_crate_version();
+    debug!("Storage crate version = {crate_version:}.");
     let current_storage_version =
         reader.begin_ro_txn()?.get_version()?.expect("Storage should have a version");
-    debug!("current_storage_version = {current_storage_version:}.");
+    debug!("Current storage version = {current_storage_version:}.");
 
-    if crate_version.0.lt(&current_storage_version.0)
-        || !crate_version.no_breaking_changes_since(&current_storage_version)?
-    {
+    if crate_version != current_storage_version {
         return Err(StorageError::StorageVersion(
             StorageVersionError::InconsistentStorageVersion {
                 crate_version,
@@ -104,10 +105,9 @@ fn verify_storage_version(reader: StorageReader) -> StorageResult<()> {
     Ok(())
 }
 
-// Returns the compiled crate version.
-fn get_current_crate_version() -> Result<Version, StorageVersionError> {
-    const VERSION: &str = env!("CARGO_PKG_VERSION");
-    Ok(Version(semver::Version::parse(VERSION)?))
+// Returns the current crate version.
+fn get_current_crate_version() -> Version {
+    Version(STORAGE_VERSION.parse::<u32>().expect("STORAGE_VERSION should be a valid u32 version"))
 }
 
 #[derive(Clone)]
