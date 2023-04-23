@@ -151,6 +151,7 @@ jobs:
         uses: actions-rs/grcov@v0.1.5
         with:
           output-type: cobertura
+          output-path: ./coverage
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:
