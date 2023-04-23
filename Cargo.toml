@@ -13,3 +13,50 @@ members = [
     "crates/starknet_client",
     "crates/test_utils",
 ]
+
+[workspace.dependencies]
+anyhow = { version = "1.0.44" }
+assert = { version = "0.0.4" }
+assert_matches = { version = "1.5.0" }
+async-stream = { version = "0.3.3" }
+async-trait = { version = "0.1.56" }
+axum = { version = "0.6.12" }
+base64 = { version = "0.13.0" }
+byteorder = { version = "1.4.3" }
+clap = { version = "3.2.19" }
+const_format = { version = "0.2.30" }
+flate2 = { version = "1.0.24" }
+futures = { version = "0.3.21" }
+futures-channel = { version = "0.3.21" }
+futures-util = { version = "0.3.21" }
+goose = { version = "0.17.0" }
+hex = { version = "0.4.3" }
+http = { version = "0.2.8" }
+hyper = { version = "0.14", features = ["full"] }
+indexmap = { version = "1.9.2" }
+integer-encoding = { version = "3.0.4" }
+jsonrpsee = { version = "0.13.1" }
+jsonschema = { version = "0.16.1" }
+libmdbx = { version = ">=0.1.5,<0.1.8" }
+mockall = { version = "0.11.2" }
+mockito = { version = "0.31.0" }
+once_cell = { version = "1.17.1" }
+os_info = { version = "3.6.0" }
+paste = { version = "1.0.9" }
+rand = { version = "0.8.5" }
+rand_chacha = { version = "0.3.1" }
+reqwest = { version = "0.11" }
+serde = { version = "1.0.130" }
+serde_json = { version = "1.0.81" }
+serde_yaml = { version = "0.9.16" }
+simple_logger = { version = "4.0.0" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "0029ffe" }
+tempfile = { version = "3.3.0" }
+thiserror = { version = "1.0.31" }
+tokio = { version = "1.18.2" }
+tokio-retry = { version = "0.3" }
+tokio-stream = { version = "0.1.8" }
+tracing = { version = "0.1.37" }
+tracing-subscriber = { version = "0.3.16" }
+url = { version = "2.2.2" }
+web3 = { version = "0.18.0" }

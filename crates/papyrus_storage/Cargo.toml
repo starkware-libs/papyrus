@@ -5,30 +5,36 @@ edition = "2021"
 
 [features]
 default = ["starknet_api"]
-testing = ["tempfile", "starknet_api/testing", "rand", "test_utils", "rand_chacha"]
+testing = [
+    "tempfile",
+    "starknet_api/testing",
+    "rand",
+    "test_utils",
+    "rand_chacha",
+]
 
 [dependencies]
-byteorder = { version = "1.4.3" }
-flate2 = { version = "1.0.24" }
-futures-util = { version = "0.3.21" }
-indexmap = { version = "1.9.2", features = ["serde"] }
-integer-encoding = { version = "3.0.4" }
-libmdbx = { version = ">=0.1.5,<0.1.8", features = ["lifetimed-bytes"] }
-rand = { version = "0.8.5", optional = true }
-rand_chacha = { version = "0.3.1", optional = true }
-reqwest = { version = "0.11", features = ["json", "blocking"] }
-serde = { version = "1.0.130", features = ["derive"] }
-serde_json = { version = "1.0.81" }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "0029ffe", optional = true }
-tempfile = { version = "3.3.0", optional = true }
+byteorder.workspace = true
+flate2.workspace = true
+futures-util.workspace = true
+indexmap = { workspace = true, features = ["serde"] }
+integer-encoding.workspace = true
+libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
+rand = { workspace = true, optional = true }
+rand_chacha = { workspace = true, optional = true }
+reqwest = { workspace = true, features = ["json", "blocking"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+starknet_api = { workspace = true, optional = true }
+tempfile = { workspace = true, optional = true }
 test_utils = { path = "../test_utils", optional = true }
-thiserror = { version = "1.0.31" }
-tokio = { version = "1.18.2", features = ["full","sync"] }
-tokio-stream = { version = "0.1.8" }
-tracing = { version = "0.1.37", features = ["log"] }
-url = { version = "2.2.2" }
-web3 = { version = "0.18.0" }
+thiserror.workspace = true
+tokio = { workspace = true, features = ["full", "sync"] }
+tokio-stream.workspace = true
+tracing = { workspace = true, features = ["log"] }
+url.workspace = true
+web3.workspace = true
 
 [dev-dependencies]
-assert_matches = { version = "1.5.0" }
-paste = { version = "1.0.9" }
+assert_matches.workspace = true
+paste.workspace = true
