@@ -23,6 +23,7 @@ use crate::{CentralError, CentralSourceTrait, GenericStateSync, StateSyncResult,
 const SYNC_SLEEP_DURATION: Duration = Duration::new(0, 1000 * 1000 * 100); // 100ms
 const DURATION_BEFORE_CHECKING_STORAGE: Duration = Duration::new(0, 1000 * 1000 * 100); // 100ms
 const MAX_CHECK_STORAGE_ITERATIONS: u8 = 3;
+const STREAM_SIZE: usize = 1000;
 
 enum CheckStoragePredicateResult {
     InProgress,
@@ -71,6 +72,8 @@ async fn run_sync(
         config: SyncConfig {
             block_propagation_sleep_duration: SYNC_SLEEP_DURATION,
             recoverable_error_sleep_duration: SYNC_SLEEP_DURATION,
+            blocks_max_stream_size: STREAM_SIZE,
+            state_updates_max_stream_size: STREAM_SIZE,
         },
         central_source: Arc::new(central),
         reader,
