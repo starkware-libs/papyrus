@@ -1,2 +1,2 @@
 output-type: cobertura
-output-path: ./coverage.xml
+output-path: /home/runner/work/papyrus/papyrus/coverage.xml
