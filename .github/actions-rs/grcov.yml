@@ -1,2 +1,2 @@
 output-type: cobertura
-output-path: ./coverage
+output-path: ./coverage.xml
