@@ -6,10 +6,10 @@ use papyrus_node::version::VERSION_FULL;
 use papyrus_storage::open_storage;
 use papyrus_sync::{CentralSource, CentralSourceTrait};
 use starknet_api::block::BlockNumber;
-use starknet_client::StarknetClientTrait;
 use tokio_stream::StreamExt;
 
 const STREAM_LENGTH: u64 = 10;
+
 #[tokio::main]
 async fn main() {
     let mut path = env::temp_dir();
@@ -24,12 +24,8 @@ async fn main() {
     let (storage_reader, _) = open_storage(config.storage.db_config).expect("Open storage");
     let central_source = CentralSource::new(config.central, VERSION_FULL, storage_reader)
         .expect("Create new client");
-    let last_block_number = central_source
-        .starknet_client
-        .block_number()
-        .await
-        .expect("Client error when trying to get the last block number.")
-        .unwrap();
+    let last_block_number =
+        central_source.get_block_marker().await.expect("Central get block marker");
     let initial_block_number = BlockNumber(last_block_number.0 - STREAM_LENGTH);
 
     let mut block_marker = initial_block_number;
