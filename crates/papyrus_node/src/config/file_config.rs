@@ -138,6 +138,8 @@ impl From<SyncConfig> for Sync {
             recoverable_error_sleep_duration_secs: Some(
                 config.recoverable_error_sleep_duration.as_secs(),
             ),
+            blocks_max_stream_size: Some(config.blocks_max_stream_size),
+            state_updates_max_stream_size: Some(config.state_updates_max_stream_size),
         }
     }
 }
@@ -278,6 +280,8 @@ impl Db {
 struct Sync {
     block_propagation_sleep_duration_secs: Option<u64>,
     recoverable_error_sleep_duration_secs: Option<u64>,
+    blocks_max_stream_size: Option<u32>,
+    state_updates_max_stream_size: Option<u32>,
 }
 
 impl Sync {
@@ -289,6 +293,12 @@ impl Sync {
         if let Some(recoverable_error_sleep_duration) = self.recoverable_error_sleep_duration_secs {
             config.recoverable_error_sleep_duration =
                 Duration::from_secs(recoverable_error_sleep_duration);
+        }
+        if let Some(blocks_max_stream_size) = self.blocks_max_stream_size {
+            config.blocks_max_stream_size = blocks_max_stream_size;
+        }
+        if let Some(state_updates_max_stream_size) = self.state_updates_max_stream_size {
+            config.state_updates_max_stream_size = state_updates_max_stream_size;
         }
     }
 }
