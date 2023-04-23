@@ -147,6 +147,8 @@ jobs:
           RUSTDOCFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
       - name: rust-grcov
         uses: actions-rs/grcov@v0.1.5
+        with:
+          output-type: cobertura
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:
