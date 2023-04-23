@@ -6,14 +6,14 @@ edition = "2021"
 [features]
 
 [dependencies]
-indexmap = { version = "1.9.2", features = ["serde"] }
-rand = { version = "0.8.5" }
-rand_chacha = { version = "0.3.1" }
-serde = { version = "1.0.130", features = ["derive"] }
-serde_json = { version = "1.0.81" }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", features = ["testing"], rev = "0029ffe" }
-tracing = { version = "0.1.37", features = ["log"] }
-reqwest = { version = "0.11", features = ["json"] }
-web3 = { version = "0.18.0" }
+indexmap = { workspace = true, features = ["serde"] }
+rand.workspace = true
+rand_chacha.workspace = true
+reqwest = { workspace = true, features = ["json"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+starknet_api = { workspace = true, features = ["testing"] }
+tracing = { workspace = true, features = ["log"] }
+web3.workspace = true
 
 [dev-dependencies]

@@ -4,26 +4,26 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = { version = "1.0.44" }
-base64 = { version = "0.13.0" }
+anyhow.workspace = true
+base64.workspace = true
 papyrus_storage = { path = "../papyrus_storage" }
-futures-util = { version = "0.3.21" }
-jsonrpsee = { version = "0.13.1", features = ["full"] }
-serde = { version = "1.0.130", features = ["derive"] }
-serde_json = { version = "1.0.81" }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "0029ffe" }
-thiserror = { version = "1.0.31" }
-tokio = { version = "1.18.2", features = ["full","sync"] }
-tokio-stream = { version = "0.1.8" }
-tracing = { version = "0.1.37" }
-url = { version = "2.2.2" }
+futures-util.workspace = true
+jsonrpsee = { workspace = true, features = ["full"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+starknet_api.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["full", "sync"] }
+tokio-stream.workspace = true
+tracing.workspace = true
+url.workspace = true
 
 [dev-dependencies]
-assert_matches = { version = "1.5.0" }
-hex = { version = "0.4.3" }
-jsonschema = { version = "0.16.1" }
+assert_matches.workspace = true
+hex.workspace = true
+jsonschema.workspace = true
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 test_utils = { path = "../test_utils" }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", features = ["testing"] , rev = "0029ffe" }
-web3 = { version = "0.18.0" }
-indexmap = { version = "1.9.2", features = ["serde"] }
+starknet_api = { workspace = true, features = ["testing"] }
+web3.workspace = true
+indexmap = { workspace = true, features = ["serde"] }
