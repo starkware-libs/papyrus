@@ -139,11 +139,13 @@ jobs:
         with:
           toolchain: nightly
           override: true
+      - name: Install lld
+        run: sudo apt-get update && sudo apt-get install -y lld
       - name: Run Tests
         run: cargo test
         env:
           CARGO_INCREMENTAL: '0'
-          RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
+          RUSTFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests -Clink-arg=-fuse-ld=lld'
           RUSTDOCFLAGS: '-Zprofile -Ccodegen-units=1 -Cinline-threshold=0 -Clink-dead-code -Coverflow-checks=off -Cpanic=abort -Zpanic_abort_tests'
       - name: rust-grcov
         uses: actions-rs/grcov@v0.1.5        
