@@ -49,10 +49,12 @@ impl<'env> VersionStorageWriter for StorageTxn<'env, RW> {
         let version_table = self.txn.open_table(&self.tables.storage_version)?;
         if let Some(current_storage_version) = self.get_version()? {
             if current_storage_version >= *version {
-                return Err(StorageError::StorageVersion(StorageVersionError::SetLowerVersion {
-                    crate_version: version.clone(),
-                    storage_version: current_storage_version,
-                }));
+                return Err(StorageError::StorageVersionInconcistency(
+                    StorageVersionError::SetLowerVersion {
+                        crate_version: version.clone(),
+                        storage_version: current_storage_version,
+                    },
+                ));
             };
         }
         version_table.upsert(&self.txn, &VERSION_KEY.to_string(), version)?;

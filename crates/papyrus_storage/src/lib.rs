@@ -37,7 +37,7 @@ use crate::state::data::{
 };
 use crate::version::{VersionStorageReader, VersionStorageWriter};
 
-const STORAGE_VERSION: &str = "0";
+pub const STORAGE_VERSION: Version = Version(0);
 
 pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, StorageWriter)> {
     let (db_reader, mut db_writer) = open_env(db_config)?;
@@ -80,34 +80,27 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
 fn set_initial_version_if_needed(mut writer: StorageWriter) -> StorageResult<StorageWriter> {
     let current_storage_version = writer.begin_rw_txn()?.get_version()?;
     if current_storage_version.is_none() {
-        let crate_version = get_current_crate_version();
-        writer.begin_rw_txn()?.set_version(&crate_version)?.commit()?;
+        writer.begin_rw_txn()?.set_version(&STORAGE_VERSION)?.commit()?;
     };
     Ok(writer)
 }
 
 // Assumes the storage has a version.
 fn verify_storage_version(reader: StorageReader) -> StorageResult<()> {
-    let crate_version = get_current_crate_version();
-    debug!("Storage crate version = {crate_version:}.");
+    debug!("Storage crate version = {STORAGE_VERSION:}.");
     let current_storage_version =
         reader.begin_ro_txn()?.get_version()?.expect("Storage should have a version");
     debug!("Current storage version = {current_storage_version:}.");
 
-    if crate_version != current_storage_version {
-        return Err(StorageError::StorageVersion(
+    if STORAGE_VERSION != current_storage_version {
+        return Err(StorageError::StorageVersionInconcistency(
             StorageVersionError::InconsistentStorageVersion {
-                crate_version,
+                crate_version: STORAGE_VERSION,
                 storage_version: current_storage_version,
             },
         ));
     }
     Ok(())
-}
-
-// Returns the current crate version.
-fn get_current_crate_version() -> Version {
-    Version(STORAGE_VERSION.parse::<u32>().expect("STORAGE_VERSION should be a valid u32 version"))
 }
 
 #[derive(Clone)]
@@ -262,7 +255,7 @@ pub enum StorageError {
     #[error("Ommer nonce of contract {contract_address:?} of block {block_hash} already exists.")]
     OmmerNonceAlreadyExists { block_hash: BlockHash, contract_address: ContractAddress },
     #[error(transparent)]
-    StorageVersion(#[from] StorageVersionError),
+    StorageVersionInconcistency(#[from] StorageVersionError),
 }
 
 pub type StorageResult<V> = std::result::Result<V, StorageError>;
