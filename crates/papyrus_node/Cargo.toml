@@ -8,9 +8,7 @@ anyhow.workspace = true
 async-stream.workspace = true
 clap = { version = "3.2.19", features = ["derive"] }
 const_format.workspace = true
-# TODO(yair): the base layer dependency was removed because of a bug in ethers. Need to restore it
-# once the bug is solved.
-# papyrus_base_layer = { path = "../papyrus_base_layer" }
+papyrus_base_layer = { path = "../papyrus_base_layer" }
 futures-util.workspace = true
 jsonrpsee = { workspace = true, features = ["full"] }
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use ethers::abi::{Abi, AbiEncode};
 use ethers::contract::Contract;
@@ -45,7 +47,7 @@ impl EthereumBaseLayerContract {
         let client: Provider<Http> = Provider::<Http>::try_from(config.node_url)?;
         // The solidity contract was pre-compiled, and only the relevant functions were kept.
         let abi: Abi = serde_json::from_str::<Abi>(include_str!("core_contract_latest_block.abi"))?;
-        Ok(Self { contract: Contract::new(address, abi, client) })
+        Ok(Self { contract: Contract::new(address, abi, Arc::new(client)) })
     }
 }
 
