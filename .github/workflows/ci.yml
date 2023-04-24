@@ -142,7 +142,7 @@ jobs:
       - name: Build
         run: cargo build
         env:
-          RUSTFLAGS: "-Clink-arg=-fuse-ld=lld"
+          RUSTFLAGS: "-Clink-arg=-fuse-ld=mold"
       - name: Run Tests
         run: cargo test
         env:
