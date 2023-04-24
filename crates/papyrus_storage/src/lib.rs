@@ -5,6 +5,7 @@ pub mod header;
 pub mod ommer;
 mod serializers;
 pub mod state;
+mod version;
 
 #[cfg(any(feature = "testing", test))]
 #[path = "test_utils.rs"]
@@ -23,6 +24,8 @@ use starknet_api::transaction::{
     EventContent, EventIndexInTransactionOutput, Transaction, TransactionHash,
     TransactionOffsetInBlock,
 };
+use tracing::debug;
+use version::{StorageVersionError, Version};
 
 use crate::body::events::ThinTransactionOutput;
 use crate::db::{
@@ -32,6 +35,9 @@ use crate::db::{
 use crate::state::data::{
     IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass, ThinStateDiff,
 };
+use crate::version::{VersionStorageReader, VersionStorageWriter};
+
+pub const STORAGE_VERSION: Version = Version(0);
 
 pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, StorageWriter)> {
     let (db_reader, mut db_writer) = open_env(db_config)?;
@@ -59,10 +65,42 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
         transaction_outputs: db_writer.create_table("transaction_outputs")?,
         transactions: db_writer.create_table("transactions")?,
+        storage_version: db_writer.create_table("storage_version")?,
     });
     let reader = StorageReader { db_reader, tables: tables.clone() };
     let writer = StorageWriter { db_writer, tables };
+
+    let writer = set_initial_version_if_needed(writer)?;
+    verify_storage_version(reader.clone())?;
     Ok((reader, writer))
+}
+
+// In case storage version does not exist, set it to the crate version.
+// Expected to happen once - when the node is launched for the first time.
+fn set_initial_version_if_needed(mut writer: StorageWriter) -> StorageResult<StorageWriter> {
+    let current_storage_version = writer.begin_rw_txn()?.get_version()?;
+    if current_storage_version.is_none() {
+        writer.begin_rw_txn()?.set_version(&STORAGE_VERSION)?.commit()?;
+    };
+    Ok(writer)
+}
+
+// Assumes the storage has a version.
+fn verify_storage_version(reader: StorageReader) -> StorageResult<()> {
+    debug!("Storage crate version = {STORAGE_VERSION:}.");
+    let current_storage_version =
+        reader.begin_ro_txn()?.get_version()?.expect("Storage should have a version");
+    debug!("Current storage version = {current_storage_version:}.");
+
+    if STORAGE_VERSION != current_storage_version {
+        return Err(StorageError::StorageVersionInconcistency(
+            StorageVersionError::InconsistentStorageVersion {
+                crate_version: STORAGE_VERSION,
+                storage_version: current_storage_version,
+            },
+        ));
+    }
+    Ok(())
 }
 
 #[derive(Clone)]
@@ -136,7 +174,8 @@ struct_field_names! {
         state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
         transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
         transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
-        transactions: TableIdentifier<TransactionIndex, Transaction>
+        transactions: TableIdentifier<TransactionIndex, Transaction>,
+        storage_version: TableIdentifier<String, Version>
     }
 }
 
@@ -215,6 +254,8 @@ pub enum StorageError {
     },
     #[error("Ommer nonce of contract {contract_address:?} of block {block_hash} already exists.")]
     OmmerNonceAlreadyExists { block_hash: BlockHash, contract_address: ContractAddress },
+    #[error(transparent)]
+    StorageVersionInconcistency(#[from] StorageVersionError),
 }
 
 pub type StorageResult<V> = std::result::Result<V, StorageError>;

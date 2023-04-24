@@ -20,6 +20,7 @@ use crate::db::DbConfig;
 use crate::state::data::{
     IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass, ThinStateDiff,
 };
+use crate::version::Version;
 use crate::{
     open_storage, EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey, StorageReader,
     StorageWriter, TransactionIndex,
@@ -27,6 +28,7 @@ use crate::{
 
 pub fn get_test_config() -> DbConfig {
     let dir = tempdir().unwrap();
+    println!("{dir:?}");
     DbConfig {
         path: dir.path().to_path_buf(),
         min_size: 1 << 20,    // 1MB
@@ -101,4 +103,5 @@ auto_impl_get_test_instance! {
         L1Handler(ThinL1HandlerTransactionOutput) = 4,
     }
     struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
+    pub struct Version(pub u32);
 }
