@@ -2,9 +2,6 @@
 
 rustLogLevel: "debug"
 
-starknet:
-  chain_id: SN_MAIN
-  central_url: https://alpha-mainnet.starknet.io
 pvc:
   size: 1Gi
   storageClass: standard-rwo
