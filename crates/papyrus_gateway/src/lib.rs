@@ -57,7 +57,7 @@ pub struct GatewayConfig {
     pub server_address: String,
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
-    pub fee_token_address: String,
+    pub fee_address: String,
 }
 
 /// Rpc server.
@@ -606,7 +606,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
             class_hash: Option::Some(class_hash),
             entry_point_type: starknet_api::deprecated_contract_class::EntryPointType::External,
             entry_point_selector: request.entry_point_selector,
-            calldata: Calldata::default(),
+            calldata: request.calldata,
             call_type: blockifier::execution::entry_point::CallType::Call,
             storage_address: request.contract_address,
             caller_address: ContractAddress::default()
@@ -639,7 +639,7 @@ pub async fn run_server(
             storage_reader,
             max_events_chunk_size: config.max_events_chunk_size,
             max_events_keys: config.max_events_keys,
-            fee_token_address: ContractAddress::try_from(StarkFelt::try_from(config.fee_token_address.as_str())?)?
+            fee_token_address: ContractAddress::try_from(StarkFelt::try_from(config.fee_address.as_str())?)?
         }
         .into_rpc(),
     )?;
