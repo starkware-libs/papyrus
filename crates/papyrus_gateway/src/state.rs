@@ -4,7 +4,9 @@ use std::sync::Arc;
 use papyrus_storage::state::data::ThinStateDiff as papyrus_storage_ThinStateDiff;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockHash;
-use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, GlobalRoot, Nonce, EntryPointSelector};
+use starknet_api::core::{
+    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, GlobalRoot, Nonce,
+};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{EntryPoint, EntryPointType, StorageKey};
 use starknet_api::transaction::Calldata;
@@ -127,10 +129,10 @@ pub struct ReplacedClasses {
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct FunctionCall{
+pub struct FunctionCall {
     pub contract_address: ContractAddress,
     pub entry_point_selector: EntryPointSelector,
-    pub calldata: Calldata
+    pub calldata: Calldata,
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]

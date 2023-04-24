@@ -14,7 +14,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use api::GatewayContractClass;
-use blockifier::execution::entry_point::{ExecutionResources, ExecutionContext, CallEntryPoint};
+use blockifier::execution::entry_point::{CallEntryPoint, ExecutionContext, ExecutionResources};
 use blockifier::state::state_api::StateReader;
 use blockifier::test_utils::DictStateReader;
 use blockifier::transaction::objects::AccountTransactionContext;
@@ -35,7 +35,7 @@ use starknet_api::core::{ChainId, ClassHash, ContractAddress, GlobalRoot, Nonce,
 use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
-    EventIndexInTransactionOutput, TransactionHash, TransactionOffsetInBlock, Calldata, Fee
+    Calldata, EventIndexInTransactionOutput, Fee, TransactionHash, TransactionOffsetInBlock,
 };
 use state::{FunctionCall, FunctionCallResult};
 use tracing::{debug, error, info, instrument};
@@ -143,32 +143,32 @@ fn get_block_txs_by_number<Mode: TransactionKind>(
 
 fn get_state<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
-    block_number: BlockNumber
+    block_number: BlockNumber,
 ) -> Result<blockifier::state::cached_state::CachedState<DictStateReader>, Error> {
-    let state_reader = txn
-        .get_state_reader().unwrap();
+    let state_reader = txn.get_state_reader().unwrap();
 
-    let class_hash_classes = 
-        state_reader
-        .get_class_hashes_classes(block_number)
-        .unwrap();
+    let class_hash_classes = state_reader.get_class_hashes_classes(block_number).unwrap();
 
-    let res = class_hash_classes.into_iter().fold(HashMap::new(), |mut acc:HashMap<ClassHash, blockifier::execution::contract_class::ContractClass> , (key, v)|{
-        if let Ok(contract_class) = blockifier::execution::contract_class::ContractClass::try_from(v){
-            acc.insert(key, contract_class);
-        }
+    let res = class_hash_classes.into_iter().fold(
+        HashMap::new(),
+        |mut acc: HashMap<ClassHash, blockifier::execution::contract_class::ContractClass>,
+         (key, v)| {
+            if let Ok(contract_class) =
+                blockifier::execution::contract_class::ContractClass::try_from(v)
+            {
+                acc.insert(key, contract_class);
+            }
 
-        acc
-    });
-
-    let state = blockifier::state::cached_state::CachedState::new(
-        DictStateReader {
-            storage_view: state_reader.get_storage_view(block_number).unwrap(),
-            address_to_nonce: state_reader.get_addresses_nonces().unwrap(),
-            address_to_class_hash: state_reader.get_adresses_class_hashes(block_number).unwrap(),
-            class_hash_to_class: res,
-        }
+            acc
+        },
     );
+
+    let state = blockifier::state::cached_state::CachedState::new(DictStateReader {
+        storage_view: state_reader.get_storage_view(block_number).unwrap(),
+        address_to_nonce: state_reader.get_addresses_nonces().unwrap(),
+        address_to_class_hash: state_reader.get_adresses_class_hashes(block_number).unwrap(),
+        class_hash_to_class: res,
+    });
 
     return Ok(state);
 }
@@ -573,9 +573,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
     #[instrument(skip(self), level = "debug", err, ret)]
     fn call(&self, block_id: BlockId, request: FunctionCall) -> Result<FunctionCallResult, Error> {
-        let txn = self.storage_reader
-            .begin_ro_txn()
-            .map_err(internal_server_error)?;
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let block_number = get_block_number(&txn, block_id)?;
         let block_header = get_block_header_by_number(&txn, block_number)?;
@@ -598,28 +596,28 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let mut execution_context = ExecutionContext::default();
         let account_context = AccountTransactionContext::default();
 
-        let class_hash = state
-            .get_class_hash_at(request.contract_address)
-            .map_err(internal_server_error)?;
+        let class_hash =
+            state.get_class_hash_at(request.contract_address).map_err(internal_server_error)?;
 
-        let call_entry_point = CallEntryPoint{
+        let call_entry_point = CallEntryPoint {
             class_hash: Option::Some(class_hash),
             entry_point_type: starknet_api::deprecated_contract_class::EntryPointType::External,
             entry_point_selector: request.entry_point_selector,
             calldata: request.calldata,
             call_type: blockifier::execution::entry_point::CallType::Call,
             storage_address: request.contract_address,
-            caller_address: ContractAddress::default()
+            caller_address: ContractAddress::default(),
         };
 
         let call_result = call_entry_point
             .execute(
-                &mut state, 
-                &mut execution_resources, 
-                &mut execution_context, 
-                &block_context, 
-                &account_context
-            ).map_err(internal_server_error)?;
+                &mut state,
+                &mut execution_resources,
+                &mut execution_context,
+                &block_context,
+                &account_context,
+            )
+            .map_err(internal_server_error)?;
 
         Ok(FunctionCallResult(Arc::new(call_result.execution.retdata.0)))
     }
@@ -639,7 +637,9 @@ pub async fn run_server(
             storage_reader,
             max_events_chunk_size: config.max_events_chunk_size,
             max_events_keys: config.max_events_keys,
-            fee_token_address: ContractAddress::try_from(StarkFelt::try_from(config.fee_address.as_str())?)?
+            fee_token_address: ContractAddress::try_from(StarkFelt::try_from(
+                config.fee_address.as_str(),
+            )?)?,
         }
         .into_rpc(),
     )?;

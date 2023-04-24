@@ -1,13 +1,13 @@
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 use std::ops::Index;
 
 use assert_matches::assert_matches;
 use blockifier::abi::abi_utils::get_storage_var_address;
-use blockifier::execution::entry_point::{CallEntryPoint, ExecutionResources, ExecutionContext};
+use blockifier::execution::entry_point::{CallEntryPoint, ExecutionContext, ExecutionResources};
 use blockifier::state::cached_state::CachedState;
 use blockifier::state::state_api::StateReader;
-use blockifier::test_utils::{DictStateReader, get_contract_class, TEST_CONTRACT_ADDRESS};
+use blockifier::test_utils::{get_contract_class, DictStateReader, TEST_CONTRACT_ADDRESS};
 use blockifier::transaction::objects::AccountTransactionContext;
 use blockifier::transaction::transactions::ExecutableTransaction;
 use indexmap::IndexMap;
@@ -19,19 +19,20 @@ use jsonrpsee::types::EmptyParams;
 use jsonschema::JSONSchema;
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::db::DbConfig;
-use papyrus_storage::header::{HeaderStorageWriter, HeaderStorageReader};
-use papyrus_storage::state::{StateStorageWriter, StateStorageReader};
+use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
+use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::test_utils::get_test_storage;
-use papyrus_storage::{EventIndex, TransactionIndex, open_storage};
+use papyrus_storage::{open_storage, EventIndex, TransactionIndex};
 use serde::{Serialize, Serializer};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
-use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey, ChainId};
+use starknet_api::core::{ChainId, ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{StateDiff, StorageKey};
 use starknet_api::transaction::{
-    EventIndexInTransactionOutput, EventKey, Transaction, TransactionHash, TransactionOffsetInBlock, Calldata, Fee,
+    Calldata, EventIndexInTransactionOutput, EventKey, Fee, Transaction, TransactionHash,
+    TransactionOffsetInBlock,
 };
-use starknet_api::{patricia_key, stark_felt, calldata};
+use starknet_api::{calldata, patricia_key, stark_felt};
 use test_utils::{
     get_rand_test_block_with_events, get_rand_test_body_with_events, get_rng, get_test_block,
     get_test_body, get_test_state_diff, send_request, GetTestInstance,
@@ -41,9 +42,9 @@ use crate::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, EventsChunk,
     JsonRpcClient, JsonRpcError, Tag,
 };
-use crate::block::{Block, self};
+use crate::block::{self, Block};
 use crate::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use crate::state::{ContractClass, StateUpdate, ThinStateDiff, FunctionCall, FunctionCallResult};
+use crate::state::{ContractClass, FunctionCall, FunctionCallResult, StateUpdate, ThinStateDiff};
 use crate::test_utils::{
     get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
 };
@@ -51,7 +52,7 @@ use crate::transaction::{
     Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
     TransactionWithType, Transactions,
 };
-use crate::{run_server, ContinuationTokenAsStruct, get_latest_block_number};
+use crate::{get_latest_block_number, run_server, ContinuationTokenAsStruct};
 
 #[tokio::test]
 async fn block_number() {
@@ -1607,30 +1608,29 @@ async fn validate_transaction(tx: &Transaction, server_address: SocketAddr, sche
 }
 
 #[tokio::test]
-async fn call_view_function_in_contract(){
-
-    fn get_one_contract_state_diff () -> StateDiff{
+async fn call_view_function_in_contract() {
+    fn get_one_contract_state_diff() -> StateDiff {
         // Declare all the needed contracts.
-        
-        let contract_class_hash = ClassHash(stark_felt!(crate::test_utils::CONTRACT_INCREASE_CONTRACT_CLASS_HASH));
-        let contract_class = crate::test_utils::get_deprecated_contract_class(crate::test_utils::CONTRACT_INCREASE_PATH);
-        
+
+        let contract_class_hash =
+            ClassHash(stark_felt!(crate::test_utils::CONTRACT_INCREASE_CONTRACT_CLASS_HASH));
+        let contract_class = crate::test_utils::get_deprecated_contract_class(
+            crate::test_utils::CONTRACT_INCREASE_PATH,
+        );
+
         // Deploy the erc20 contract.
-        let contract_address = ContractAddress::try_from(
-            StarkHash::try_from(TEST_CONTRACT_ADDRESS)
-            .unwrap())
-            .unwrap();
+        let contract_address =
+            ContractAddress::try_from(StarkHash::try_from(TEST_CONTRACT_ADDRESS).unwrap()).unwrap();
 
         let mut state_diff = StateDiff::default();
-        
+
         state_diff.deprecated_declared_classes.insert(contract_class_hash, contract_class);
         state_diff.deployed_contracts.insert(contract_address, contract_class_hash);
         state_diff.nonces.insert(contract_address, Nonce(stark_felt!(1)));
 
-        // Update the balance of the about-to-be deployed account contract in the erc20 contract, so it
-        // can pay for the transaction execution.
-        let deployed_contract_storage_var_key =
-            get_storage_var_address("balance", &[]).unwrap();
+        // Update the balance of the about-to-be deployed account contract in the erc20 contract, so
+        // it can pay for the transaction execution.
+        let deployed_contract_storage_var_key = get_storage_var_address("balance", &[]).unwrap();
 
         let mut storage = IndexMap::<StorageKey, StarkFelt>::new();
         storage.insert(deployed_contract_storage_var_key, stark_felt!(17u64));
@@ -1668,23 +1668,18 @@ async fn call_view_function_in_contract(){
         .commit()
         .unwrap();
 
-    let contract_address = ContractAddress::try_from(
-        StarkHash::try_from(TEST_CONTRACT_ADDRESS)
-        .unwrap())
-        .unwrap();
+    let contract_address =
+        ContractAddress::try_from(StarkHash::try_from(TEST_CONTRACT_ADDRESS).unwrap()).unwrap();
 
     let request = FunctionCall {
         entry_point_selector: blockifier::abi::abi_utils::selector_from_name("get_balance"),
-        contract_address: contract_address,
-        calldata: Calldata::default()
+        contract_address,
+        calldata: Calldata::default(),
     };
 
     // Get class by block hash.
     let res = module
-        .call::<_, FunctionCallResult>(
-            "starknet_call",
-            (BlockId::Tag(Tag::Latest), request),
-        )
+        .call::<_, FunctionCallResult>("starknet_call", (BlockId::Tag(Tag::Latest), request))
         .await
         .unwrap();
 
