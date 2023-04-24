@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use jsonrpsee::http_server::RpcModule;
 use jsonschema::JSONSchema;
-use papyrus_storage::state::data::DeprecatedDeclaredClasses;
+
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
 use starknet_api::core::{ChainId, ContractAddress};

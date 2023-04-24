@@ -1,15 +1,15 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashSet};
 use std::net::SocketAddr;
 use std::ops::Index;
 
 use assert_matches::assert_matches;
 use blockifier::abi::abi_utils::get_storage_var_address;
-use blockifier::execution::entry_point::{CallEntryPoint, ExecutionContext, ExecutionResources};
-use blockifier::state::cached_state::CachedState;
-use blockifier::state::state_api::StateReader;
-use blockifier::test_utils::{get_contract_class, DictStateReader, TEST_CONTRACT_ADDRESS};
-use blockifier::transaction::objects::AccountTransactionContext;
-use blockifier::transaction::transactions::ExecutableTransaction;
+
+
+
+use blockifier::test_utils::{TEST_CONTRACT_ADDRESS};
+
+
 use indexmap::IndexMap;
 use jsonrpsee::core::Error;
 use jsonrpsee::http_client::HttpClientBuilder;
@@ -18,21 +18,21 @@ use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
 use jsonschema::JSONSchema;
 use papyrus_storage::body::BodyStorageWriter;
-use papyrus_storage::db::DbConfig;
-use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
-use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
+
+use papyrus_storage::header::{HeaderStorageWriter};
+use papyrus_storage::state::{StateStorageWriter};
 use papyrus_storage::test_utils::get_test_storage;
-use papyrus_storage::{open_storage, EventIndex, TransactionIndex};
-use serde::{Serialize, Serializer};
+use papyrus_storage::{EventIndex, TransactionIndex};
+
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
-use starknet_api::core::{ChainId, ClassHash, ContractAddress, Nonce, PatriciaKey};
+use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{StateDiff, StorageKey};
 use starknet_api::transaction::{
-    Calldata, EventIndexInTransactionOutput, EventKey, Fee, Transaction, TransactionHash,
+    Calldata, EventIndexInTransactionOutput, EventKey, Transaction, TransactionHash,
     TransactionOffsetInBlock,
 };
-use starknet_api::{calldata, patricia_key, stark_felt};
+use starknet_api::{patricia_key, stark_felt};
 use test_utils::{
     get_rand_test_block_with_events, get_rand_test_body_with_events, get_rng, get_test_block,
     get_test_body, get_test_state_diff, send_request, GetTestInstance,
@@ -42,7 +42,7 @@ use crate::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, EventsChunk,
     JsonRpcClient, JsonRpcError, Tag,
 };
-use crate::block::{self, Block};
+use crate::block::{Block};
 use crate::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use crate::state::{ContractClass, FunctionCall, FunctionCallResult, StateUpdate, ThinStateDiff};
 use crate::test_utils::{
@@ -52,7 +52,7 @@ use crate::transaction::{
     Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
     TransactionWithType, Transactions,
 };
-use crate::{get_latest_block_number, run_server, ContinuationTokenAsStruct};
+use crate::{run_server, ContinuationTokenAsStruct};
 
 #[tokio::test]
 async fn block_number() {
@@ -1641,14 +1641,14 @@ async fn call_view_function_in_contract() {
 
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
     let parent_header = BlockHeader::default();
-    let mut header = BlockHeader {
+    let header = BlockHeader {
         block_hash: BlockHash(stark_felt!("0x1")),
         block_number: BlockNumber(1),
         parent_hash: parent_header.block_hash,
         ..BlockHeader::default()
     };
 
-    let mut diff = get_one_contract_state_diff();
+    let diff = get_one_contract_state_diff();
 
     storage_writer
         .begin_rw_txn()

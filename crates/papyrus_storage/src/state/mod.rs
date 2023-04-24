@@ -316,7 +316,7 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
             }
         }
 
-        return Ok(result);
+        Ok(result)
     }
 }
 

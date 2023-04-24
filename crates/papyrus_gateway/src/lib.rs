@@ -31,11 +31,11 @@ use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{EventIndex, StorageReader, StorageTxn, TransactionIndex};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockStatus};
-use starknet_api::core::{ChainId, ClassHash, ContractAddress, GlobalRoot, Nonce, PatriciaKey};
+use starknet_api::core::{ChainId, ClassHash, ContractAddress, GlobalRoot, Nonce};
 use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
-    Calldata, EventIndexInTransactionOutput, Fee, TransactionHash, TransactionOffsetInBlock,
+    EventIndexInTransactionOutput, TransactionHash, TransactionOffsetInBlock,
 };
 use state::{FunctionCall, FunctionCallResult};
 use tracing::{debug, error, info, instrument};
@@ -170,7 +170,7 @@ fn get_state<Mode: TransactionKind>(
         class_hash_to_class: res,
     });
 
-    return Ok(state);
+    Ok(state)
 }
 
 struct ContinuationTokenAsStruct(EventIndex);
@@ -589,7 +589,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
             validate_max_n_steps: 1000000,
             gas_price: 0,
             sequencer_address: block_header.sequencer_address,
-            fee_token_address: self.fee_token_address.clone(),
+            fee_token_address: self.fee_token_address,
         };
 
         let mut execution_resources = ExecutionResources::default();
