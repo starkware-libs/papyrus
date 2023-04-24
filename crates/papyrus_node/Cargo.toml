@@ -3,6 +3,9 @@ name = "papyrus_node"
 version = "0.1.0"
 edition = "2021"
 
+[package.metadata.cargo-udeps.ignore]
+normal = ["papyrus_base_layer"]
+
 [dependencies]
 anyhow.workspace = true
 async-stream.workspace = true
