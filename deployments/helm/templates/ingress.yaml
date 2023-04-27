@@ -27,7 +27,7 @@ spec:
             name: {{ template "papyrus.name" . }}-monitoring
             port:
               number: {{ .Values.services.monitoring.port }}
-        path: /monitoring
+        path: /monitoring(/|$)(.*)
         pathType: {{ .Values.ingress.pathType }}
   tls:
   - hosts:
