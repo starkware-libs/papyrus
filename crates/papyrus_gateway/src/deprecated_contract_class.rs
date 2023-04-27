@@ -93,13 +93,9 @@ impl TryFrom<starknet_api::deprecated_contract_class::ContractClass> for Contrac
     ) -> Result<Self, Self::Error> {
         let mut program_value = serde_json::to_value(&class.program)
             .map_err(|err| CompressionError::StorageSerde(StorageSerdeError::Serde(err)))?;
-        // Remove the 'attributes' key if it is null.
-        if class.program.attributes == serde_json::value::Value::Null {
+        // Remove the 'attributes' key if the value is an empty vector.
+        if Vec::is_empty(&class.program.attributes) {
             program_value.as_object_mut().unwrap().remove("attributes");
-        }
-        // Remove the 'compiler_version' key if it is null.
-        if class.program.compiler_version == serde_json::value::Value::Null {
-            program_value.as_object_mut().unwrap().remove("compiler_version");
         }
 
         let abi = if class.abi.is_none() {

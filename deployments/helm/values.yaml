@@ -1,24 +1,24 @@
 # Default values for a papyrus deployment.
 
 # The verbosity level of logs ("debug", "info", "error", etc.)
-rustLogLevel: "info"
+rustLogLevel: "papyrus=DEBUG,starknet_client=DEBUG"
 
 # The Docker image (including any tag and repository name)
 image:
   repository: ghcr.io/starkware-libs/papyrus
-  tag: dev
+  tag: 0.1.0-alpha
   pullPolicy: Always
 
 node:
   # Number of concurrent requests to the SN feeder gateway
-  concurrent_fg_requests: 50
+  concurrent_fg_requests: 10
 
 starknet:
-  chain_id: SN_MAIN # possible values: SN_MAIN, SN_GOERLI
+  chain_id: SN_GOERLI # possible values: SN_MAIN, SN_GOERLI
   # feeder-gateway url
   # SN_MAIN: https://alpha-mainnet.starknet.io
   # SN_GOERLI: https://alpha4.starknet.io
-  central_url: https://alpha-mainnet.starknet.io
+  central_url: https://alpha4.starknet.io
   additional_headers: # optional addtional headers for SN communication
 
 # The default resources for the pod.
@@ -46,9 +46,9 @@ services:
 # Persistent volume claim variables for a papyrus pod.
 pvc:
   # Recommended size is at least 512Gi.
-  size:
+  size: 1000Gi
   # Is is recommended to use an SSD volume (such as GKE premium-rwo).
-  storageClass: ""
+  storageClass: "premium-rwo"
   # Use an existing snapshot for the node's data. The kubernetes volumesnapshot object should
   # exist in the same namespace as the rest of the resources.
   restoreFromSnapshot:
@@ -57,18 +57,15 @@ pvc:
 
 # Configure Ingress.
 ingress:
-  # Should an ingress object be created
-  enabled: false
-  # Ingress class type.
-  type:
-  # Ingress object name in Kubernetes.
-  name:
-  # Host name to create Ingress rules.
-  host:
-  # Ingress path type.
-  pathType:
-  # Annotations to apply to the node ingress.
-  annotations:
+  enabled: true
+  type: gce
+  name: ssl-proxy
+  pathType: ImplementationSpecific
+  annotations: |
+    kubernetes.io/ingress.class: nginx
+    kubernetes.io/tls-acme: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
 
 # Backup mode
 backup:

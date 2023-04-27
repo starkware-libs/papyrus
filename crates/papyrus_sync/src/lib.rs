@@ -372,7 +372,7 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
     try_stream! {
         loop {
             let header_marker = reader.begin_ro_txn()?.get_header_marker()?;
-            let last_block_number = central_source.get_block_marker().await?;
+            let last_block_number = BlockNumber(10000);
             if header_marker == last_block_number {
                 debug!("Waiting for more blocks.");
                 tokio::time::sleep(block_propation_sleep_duration).await;

@@ -7,6 +7,9 @@ use std::ops::Index;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use cairo_vm::serde::deserialize_program::{
+    ApTracking, Attribute, BuiltinName, FlowTrackingData, HintParams,
+};
 use indexmap::IndexMap;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
@@ -205,6 +208,17 @@ pub trait GetTestInstance: Sized {
 }
 
 auto_impl_get_test_instance! {
+    pub struct ApTracking {
+        pub group: usize,
+        pub offset: usize,
+    }
+    pub struct Attribute {
+        pub name: String,
+        pub start_pc: usize,
+        pub end_pc: usize,
+        pub value: String,
+        pub flow_tracking_data: Option<FlowTrackingData>,
+    }
     pub struct BlockHash(pub StarkHash);
     pub struct BlockHeader {
         pub block_hash: BlockHash,
@@ -223,6 +237,16 @@ auto_impl_get_test_instance! {
         Rejected = 3,
     }
     pub struct BlockTimestamp(pub u64);
+    pub enum BuiltinName {
+        output = 0,
+        range_check= 1,
+        pedersen= 2,
+        ecdsa= 3,
+        keccak= 4,
+        bitwise= 5,
+        ec_op= 6,
+        poseidon= 7,
+    }
     pub struct Calldata(pub Arc<Vec<StarkFelt>>);
     pub struct ClassHash(pub StarkHash);
     pub struct CompiledClassHash(pub StarkHash);
@@ -318,6 +342,10 @@ auto_impl_get_test_instance! {
     pub struct EventIndexInTransactionOutput(pub usize);
     pub struct EventKey(pub StarkFelt);
     pub struct Fee(pub u128);
+    pub struct FlowTrackingData {
+        pub ap_tracking: ApTracking,
+        pub reference_ids: HashMap<String, usize>,
+    }
     pub struct FunctionAbiEntry {
         pub name: String,
         pub inputs: Vec<TypedParameter>,
@@ -334,6 +362,11 @@ auto_impl_get_test_instance! {
     }
     pub struct GasPrice(pub u128);
     pub struct GlobalRoot(pub StarkHash);
+    pub struct HintParams {
+        pub code: String,
+        pub accessible_scopes: Vec<String>,
+        pub flow_tracking_data: FlowTrackingData,
+    }
     pub enum InvokeTransaction {
         V0(InvokeTransactionV0) = 0,
         V1(InvokeTransactionV1) = 1,
@@ -376,15 +409,15 @@ auto_impl_get_test_instance! {
     }
     pub struct Nonce(pub StarkFelt);
     pub struct Program {
-        pub attributes: serde_json::Value,
-        pub builtins: serde_json::Value,
-        pub compiler_version: serde_json::Value,
-        pub data: serde_json::Value,
+        pub attributes: Vec<Attribute>,
+        pub builtins: Vec<BuiltinName>,
+        pub compiler_version: Option<String>,
+        pub data: Vec<StarkFelt>,
         pub debug_info: serde_json::Value,
-        pub hints: serde_json::Value,
+        pub hints: HashMap<String, Vec<HintParams>>,
         pub identifiers: serde_json::Value,
-        pub main_scope: serde_json::Value,
-        pub prime: serde_json::Value,
+        pub main_scope: String,
+        pub prime: StarkFelt,
         pub reference_manager: serde_json::Value,
     }
     pub struct StateDiff {

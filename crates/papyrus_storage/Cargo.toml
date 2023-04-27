@@ -15,6 +15,7 @@ testing = [
 
 [dependencies]
 byteorder.workspace = true
+cairo-vm.workspace = true
 flate2.workspace = true
 futures-util.workspace = true
 indexmap = { workspace = true, features = ["serde"] }

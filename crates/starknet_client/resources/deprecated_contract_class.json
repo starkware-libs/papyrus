@@ -37,9 +37,7 @@
         "prime": "0x800000000000011000000000000000000000000000000000000000000000001",
         "main_scope": "__main__",
         "identifiers": {},
-        "attributes": [
-            1234
-        ],
+        "attributes": [],
         "debug_info": null,
         "reference_manager": {},
         "hints": {}

@@ -6,6 +6,7 @@ edition = "2021"
 [features]
 
 [dependencies]
+cairo-vm.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
 rand.workspace = true
 rand_chacha.workspace = true

@@ -182,21 +182,19 @@ async fn deprecated_contract_class() {
         ])])
         .unwrap(),
         program: Program {
-            attributes: serde_json::Value::Array(vec![serde_json::json!(1234)]),
-            builtins: serde_json::Value::Array(Vec::new()),
-            compiler_version: serde_json::Value::Null,
-            data: serde_json::Value::Array(vec![
-                serde_json::Value::String("0x20780017fff7ffd".to_string()),
-                serde_json::Value::String("0x4".to_string()),
-                serde_json::Value::String("0x400780017fff7ffd".to_string()),
-            ]),
+            attributes: Vec::new(),
+            builtins: Vec::new(),
+            compiler_version: None,
+            data: vec![
+                stark_felt!("0x20780017fff7ffd"),
+                stark_felt!("0x4"),
+                stark_felt!("0x400780017fff7ffd"),
+            ],
             debug_info: serde_json::Value::Null,
-            hints: serde_json::Value::Object(serde_json::Map::new()),
+            hints: HashMap::new(),
             identifiers: serde_json::Value::Object(serde_json::Map::new()),
-            main_scope: serde_json::Value::String("__main__".to_string()),
-            prime: serde_json::Value::String(
-                "0x800000000000011000000000000000000000000000000000000000000000001".to_string(),
-            ),
+            main_scope: "__main__".to_string(),
+            prime: stark_felt!("0x800000000000011000000000000000000000000000000000000000000000001"),
             reference_manager: serde_json::Value::Object(serde_json::Map::new()),
         },
         entry_points_by_type: HashMap::from([
