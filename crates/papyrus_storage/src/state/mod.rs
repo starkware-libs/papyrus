@@ -309,7 +309,6 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             &self.txn,
             block_number,
             &declared_classes_table,
-            &deprecated_declared_classes_table,
         )?;
 
         // Write deprecated declared classes.
@@ -325,7 +324,6 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
                 &self.txn,
                 block_number,
                 &deprecated_declared_classes_table,
-                &declared_classes_table,
             )?;
         } else {
             write_deprecated_declared_classes(
@@ -333,7 +331,6 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
                 &self.txn,
                 block_number,
                 &deprecated_declared_classes_table,
-                &declared_classes_table,
             )?;
         }
 
@@ -420,14 +417,8 @@ fn write_declared_classes<'env>(
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     declared_classes_table: &'env DeclaredClassesTable<'env>,
-    deprecated_declared_classes_table: &'env DeprecatedDeclaredClassesTable<'env>,
 ) -> StorageResult<()> {
     for (class_hash, contract_class) in declared_classes {
-        if (declared_classes_table.get(txn, &class_hash)?).is_some()
-            || (deprecated_declared_classes_table.get(txn, &class_hash)?).is_some()
-        {
-            return Err(StorageError::ClassAlreadyExists { class_hash });
-        }
         let value = IndexedContractClass { block_number, contract_class };
         let res = declared_classes_table.insert(txn, &class_hash, &value);
         match res {
@@ -443,7 +434,6 @@ fn write_deprecated_declared_classes<'env>(
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     deprecated_declared_classes_table: &'env DeprecatedDeclaredClassesTable<'env>,
-    declared_classes_table: &'env DeclaredClassesTable<'env>,
 ) -> StorageResult<()> {
     for (class_hash, deprecated_contract_class) in deprecated_declared_classes {
         // TODO(dan): remove this check after regenesis, in favor of insert().
@@ -452,9 +442,6 @@ fn write_deprecated_declared_classes<'env>(
                 return Err(StorageError::ClassAlreadyExists { class_hash });
             }
             continue;
-        }
-        if (declared_classes_table.get(txn, &class_hash)?).is_some() {
-            return Err(StorageError::ClassAlreadyExists { class_hash });
         }
         let value = IndexedDeprecatedContractClass {
             block_number,
