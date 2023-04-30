@@ -124,6 +124,14 @@ impl DbWriter {
         txn.commit()?;
         Ok(TableIdentifier { name, _key_type: PhantomData {}, _value_type: PhantomData {} })
     }
+
+    #[allow(dead_code)]
+    pub(crate) unsafe fn drop_table(&mut self, name: &str) -> Result<()> {
+        let txn = self.begin_rw_txn()?;
+        let db = txn.txn.open_db(Some(name))?;
+        txn.txn.drop_db(db)?;
+        txn.commit()
+    }
 }
 
 type DbWriteTransaction<'env> = DbTransaction<'env, RW>;

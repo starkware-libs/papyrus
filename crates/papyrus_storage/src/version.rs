@@ -7,7 +7,7 @@ use std::fmt::Display;
 use crate::db::{TransactionKind, RW};
 use crate::{StorageError, StorageResult, StorageTxn};
 
-const VERSION_KEY: &str = "storage_version";
+pub(crate) const VERSION_KEY: &str = "storage_version";
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, PartialOrd)]
 pub struct Version(pub u32);
