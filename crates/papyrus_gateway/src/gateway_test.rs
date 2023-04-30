@@ -88,7 +88,7 @@ async fn block_hash_and_number() {
     ));
 
     // Add a block and check again.
-    let block = get_test_block(1);
+    let block = get_test_block(1, None);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -113,7 +113,7 @@ async fn block_hash_and_number() {
 async fn get_block_w_transaction_hashes() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
-    let block = get_test_block(1);
+    let block = get_test_block(1, None);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -193,7 +193,7 @@ async fn get_block_w_transaction_hashes() {
 async fn get_block_w_full_transactions() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
-    let block = get_test_block(1);
+    let block = get_test_block(1, None);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -539,7 +539,7 @@ async fn get_nonce() {
 #[tokio::test]
 async fn get_transaction_by_hash() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let block = get_test_block(1);
+    let block = get_test_block(1, None);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -576,7 +576,7 @@ async fn get_transaction_by_hash() {
 #[tokio::test]
 async fn get_transaction_by_block_id_and_index() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let block = get_test_block(1);
+    let block = get_test_block(1, None);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -661,7 +661,7 @@ async fn get_transaction_by_block_id_and_index() {
 async fn get_block_transaction_count() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
     let transaction_count = 5;
-    let block = get_test_block(transaction_count);
+    let block = get_test_block(transaction_count, None);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -820,7 +820,7 @@ async fn get_state_update() {
 #[tokio::test]
 async fn get_transaction_receipt() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
-    let block = get_test_block(1);
+    let block = get_test_block(1, None);
     storage_writer
         .begin_rw_txn()
         .unwrap()
