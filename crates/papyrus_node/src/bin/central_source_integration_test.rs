@@ -20,7 +20,7 @@ async fn main() {
         format!("--storage={}", path.display()),
     ])
     .expect("Load config");
-    let (storage_reader, _) = open_storage(config.storage.db_config).expect("Open storage");
+    let (storage_reader, _) = open_storage(config.storage).expect("Open storage");
     let central_source = CentralSource::new(config.central, VERSION_FULL, storage_reader)
         .expect("Create new client");
     let last_block_number = BlockNumber(283410);

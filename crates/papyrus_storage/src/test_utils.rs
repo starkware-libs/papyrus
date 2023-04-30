@@ -22,20 +22,25 @@ use crate::state::data::{
 };
 use crate::version::Version;
 use crate::{
-    open_storage, EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey, StorageReader,
-    StorageWriter, TransactionIndex,
+    open_storage, EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey, StorageConfig,
+    StorageReader, StorageWriter, TransactionIndex,
 };
 
-pub fn get_test_config() -> DbConfig {
+pub fn get_test_config() -> StorageConfig {
     let dir = tempdir().unwrap();
     println!("{dir:?}");
-    DbConfig {
-        path: dir.path().to_path_buf(),
-        min_size: 1 << 20,    // 1MB
-        max_size: 1 << 35,    // 32GB
-        growth_step: 1 << 26, // 64MB
+    StorageConfig {
+        db_config: DbConfig {
+            path: dir.path().to_path_buf(),
+            min_size: 1 << 20,    // 1MB
+            max_size: 1 << 35,    // 32GB
+            growth_step: 1 << 26, // 64MB
+        },
+
+        migrate_if_necessary: false,
     }
 }
+
 pub fn get_test_storage() -> (StorageReader, StorageWriter) {
     let config = get_test_config();
     open_storage(config).unwrap()

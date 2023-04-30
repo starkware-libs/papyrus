@@ -110,6 +110,7 @@ impl Default for ConfigBuilder {
                         max_size: 1 << 40,    // 1TB
                         growth_step: 1 << 26, // 64MB
                     },
+                    migrate_if_necessary: false,
                 },
                 sync: Some(SyncConfig {
                     block_propagation_sleep_duration: Duration::from_secs(10),

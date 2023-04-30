@@ -38,3 +38,4 @@ web3.workspace = true
 [dev-dependencies]
 assert_matches.workspace = true
 paste.workspace = true
+tracing-test.workspace = true
