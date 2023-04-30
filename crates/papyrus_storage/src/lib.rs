@@ -2,6 +2,7 @@ pub mod body;
 pub mod compression_utils;
 pub mod db;
 pub mod header;
+mod migration;
 pub mod ommer;
 mod serializers;
 pub mod state;
@@ -15,6 +16,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use db::DbTableStats;
+use migration::{migrate_db, StorageMigrationError};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
@@ -40,6 +42,7 @@ use crate::version::{VersionStorageReader, VersionStorageWriter};
 pub const STORAGE_VERSION: Version = Version(0);
 
 pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, StorageWriter)> {
+    migrate_db(&db_config)?;
     let (db_reader, mut db_writer) = open_env(db_config)?;
     let tables = Arc::new(Tables {
         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
@@ -256,6 +259,8 @@ pub enum StorageError {
     OmmerNonceAlreadyExists { block_hash: BlockHash, contract_address: ContractAddress },
     #[error(transparent)]
     StorageVersionInconcistency(#[from] StorageVersionError),
+    #[error(transparent)]
+    StorageMigrationError(#[from] StorageMigrationError),
 }
 
 pub type StorageResult<V> = std::result::Result<V, StorageError>;
