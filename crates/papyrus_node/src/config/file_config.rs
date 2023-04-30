@@ -111,7 +111,10 @@ impl From<MonitoringGatewayConfig> for MonitoringGateway {
 
 impl From<StorageConfig> for Storage {
     fn from(config: StorageConfig) -> Self {
-        Storage { db: Some(Db::from(config.db_config)) }
+        Storage {
+            db: Some(Db::from(config.db_config)),
+            migrate_if_necessary: Some(config.migrate_if_necessary),
+        }
     }
 }
 
@@ -239,12 +242,16 @@ impl MonitoringGateway {
 #[serde(deny_unknown_fields)]
 struct Storage {
     db: Option<Db>,
+    migrate_if_necessary: Option<bool>,
 }
 
 impl Storage {
     fn update_storage(self, config: &mut StorageConfig) {
         if let Some(db) = self.db {
             db.update_db(&mut config.db_config);
+        }
+        if let Some(migrate_if_necessary) = self.migrate_if_necessary {
+            config.migrate_if_necessary = migrate_if_necessary;
         }
     }
 }

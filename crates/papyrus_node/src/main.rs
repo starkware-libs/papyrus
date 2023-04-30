@@ -15,7 +15,7 @@ use tracing_subscriber::{fmt, EnvFilter};
 const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
 
 async fn run_threads(config: Config) -> anyhow::Result<()> {
-    let (storage_reader, storage_writer) = open_storage(config.storage.db_config.clone())?;
+    let (storage_reader, storage_writer) = open_storage(config.storage.clone())?;
 
     // Monitoring server.
     let monitoring_server = MonitoringServer::new(
