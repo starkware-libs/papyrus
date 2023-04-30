@@ -304,12 +304,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         state_diffs_table.insert(&self.txn, &block_number, &thin_state_diff)?;
 
         // Write declared classes.
-        write_declared_classes(
-            declared_classes,
-            &self.txn,
-            block_number,
-            &declared_classes_table,
-        )?;
+        write_declared_classes(declared_classes, &self.txn, block_number, &declared_classes_table)?;
 
         // Write deprecated declared classes.
         if !deployed_contract_class_definitions.is_empty() {
