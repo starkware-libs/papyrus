@@ -16,7 +16,7 @@ async fn iter_events_by_key() {
     let (storage_reader, mut storage_writer) = get_test_storage();
     let from_addresses =
         vec![ContractAddress(patricia_key!("0x22")), ContractAddress(patricia_key!("0x23"))];
-    let mut rng = get_rng();
+    let mut rng = get_rng(None);
     let block = get_rand_test_block_with_events(&mut rng, 2, 5, Some(from_addresses), None);
     let block_number = block.header.block_number;
     storage_writer
