@@ -4,6 +4,7 @@
 resolver = "2"
 
 members = [
+    "crates/papyrus_base_layer",
     "crates/papyrus_gateway",
     "crates/papyrus_load_test",
     "crates/papyrus_monitoring_gateway",
@@ -25,6 +26,7 @@ base64 = { version = "0.13.0" }
 byteorder = { version = "1.4.3" }
 clap = { version = "3.2.19" }
 const_format = { version = "0.2.30" }
+ethers = { version = "2.0.3"}
 flate2 = { version = "1.0.24" }
 futures = { version = "0.3.21" }
 futures-channel = { version = "0.3.21" }
@@ -46,6 +48,7 @@ paste = { version = "1.0.9" }
 rand = { version = "0.8.5" }
 rand_chacha = { version = "0.3.1" }
 reqwest = { version = "0.11" }
+rustc-hex = { version = "2.1.0" }
 serde = { version = "1.0.130" }
 serde_json = { version = "1.0.81" }
 serde_yaml = { version = "0.9.16" }

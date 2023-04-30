@@ -6,7 +6,7 @@ mod version_test;
 const VERSION_MAJOR: u32 = 0;
 
 /// Minor version component of the current release.
-const VERSION_MINOR: u32 = 0;
+const VERSION_MINOR: u32 = 1;
 
 /// Patch version component of the current release.
 const VERSION_PATCH: u32 = 1;
