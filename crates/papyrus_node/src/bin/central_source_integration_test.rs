@@ -14,7 +14,8 @@ const STREAM_LENGTH: u64 = 10;
 async fn main() {
     let mut path = env::temp_dir();
     path.push("data");
-    fs::create_dir_all(path.clone()).expect("Make a temporary `data` directory");
+    let _ = fs::remove_dir_all(path.clone());
+    fs::create_dir_all(path.clone()).expect("Should make a temporary `data` directory");
     let config = Config::load(vec![
         "--chain_id=SN_GOERLI".to_owned(),
         "--central_url=https://alpha4.starknet.io/".to_owned(),

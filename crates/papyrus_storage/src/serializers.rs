@@ -47,6 +47,7 @@ use crate::serializers::serializers_test::{create_storage_serde_test, StorageSer
 use crate::state::data::{
     IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass, ThinStateDiff,
 };
+use crate::version::Version;
 use crate::{EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey, TransactionIndex};
 
 auto_storage_serde! {
@@ -320,6 +321,7 @@ auto_storage_serde! {
     pub struct TransactionOffsetInBlock(pub usize);
     pub struct TransactionSignature(pub Vec<StarkFelt>);
     pub struct TransactionVersion(pub StarkFelt);
+    pub struct Version(pub u32);
 
     binary(u32, read_u32, write_u32);
     binary(u64, read_u64, write_u64);
