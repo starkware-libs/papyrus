@@ -50,7 +50,7 @@ fn append_state_diff_declared_classes() {
     let state1 = StateNumber::right_before_block(BlockNumber(1));
     let state2 = StateNumber::right_before_block(BlockNumber(2));
 
-    // ___Deprecated Classes Test___
+    // Deprecated Classes Test
     // Check for ClassAlreadyExists error when trying to declare another class to an existing
     // class hash.
     let txn = writer.begin_rw_txn().unwrap();
@@ -82,7 +82,7 @@ fn append_state_diff_declared_classes() {
     assert_matches!(statetxn.get_deprecated_class_definition_at(state1, &dc1).unwrap(), Some(_));
     assert_matches!(statetxn.get_deprecated_class_definition_at(state2, &dc1).unwrap(), Some(_));
 
-    // ___New Classes Test___
+    // New Classes Test
     drop(txn);
     let txn = writer.begin_rw_txn().unwrap();
     let statetxn = txn.get_state_reader().unwrap();
