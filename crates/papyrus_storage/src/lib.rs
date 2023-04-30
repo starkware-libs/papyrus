@@ -2,6 +2,7 @@ pub mod body;
 pub mod compression_utils;
 pub mod db;
 pub mod header;
+mod migration;
 pub mod ommer;
 mod serializers;
 pub mod state;
@@ -16,6 +17,7 @@ use std::sync::Arc;
 
 use body::events::EventIndex;
 use db::DbTableStats;
+use migration::{migrate_db, StorageMigrationError};
 use ommer::{OmmerEventKey, OmmerTransactionKey};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
@@ -24,7 +26,6 @@ use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StorageKey};
 use starknet_api::transaction::{EventContent, Transaction, TransactionHash};
 use tracing::debug;
-use version::{StorageVersionError, Version};
 
 use crate::body::events::ThinTransactionOutput;
 use crate::body::TransactionIndex;
@@ -35,12 +36,17 @@ use crate::db::{
 use crate::state::data::{
     IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass, ThinStateDiff,
 };
-use crate::version::{VersionStorageReader, VersionStorageWriter};
+use crate::version::{StorageVersionError, Version, VersionStorageReader, VersionStorageWriter};
 
 pub const STORAGE_VERSION: Version = Version(0);
 
-pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, StorageWriter)> {
-    let (db_reader, mut db_writer) = open_env(db_config)?;
+pub fn open_storage(
+    storage_config: StorageConfig,
+) -> StorageResult<(StorageReader, StorageWriter)> {
+    let (db_reader, mut db_writer) = open_env(storage_config.db_config)?;
+    if storage_config.migrate_if_necessary {
+        db_writer = migrate_db(db_writer)?;
+    }
     let tables = Arc::new(Tables {
         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
         contract_storage: db_writer.create_table("contract_storage")?,
@@ -256,6 +262,8 @@ pub enum StorageError {
     OmmerNonceAlreadyExists { block_hash: BlockHash, contract_address: ContractAddress },
     #[error(transparent)]
     StorageVersionInconcistency(#[from] StorageVersionError),
+    #[error(transparent)]
+    StorageMigration(#[from] StorageMigrationError),
 }
 
 pub type StorageResult<V> = std::result::Result<V, StorageError>;
@@ -263,6 +271,7 @@ pub type StorageResult<V> = std::result::Result<V, StorageError>;
 #[derive(Serialize, Deserialize, Clone)]
 pub struct StorageConfig {
     pub db_config: DbConfig,
+    pub migrate_if_necessary: bool,
 }
 
 /// A mapping from a table name in the database to its statistics.

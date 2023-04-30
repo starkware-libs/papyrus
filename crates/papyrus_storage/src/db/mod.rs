@@ -126,7 +126,7 @@ impl DbWriter {
     }
 }
 
-type DbWriteTransaction<'env> = DbTransaction<'env, RW>;
+pub(crate) type DbWriteTransaction<'env> = DbTransaction<'env, RW>;
 
 impl<'a> DbWriteTransaction<'a> {
     pub(crate) fn commit(self) -> Result<()> {
@@ -141,7 +141,7 @@ pub trait TransactionKind {
 }
 
 pub(crate) struct DbTransaction<'env, Mode: TransactionKind> {
-    txn: libmdbx::Transaction<'env, Mode::Internal, EnvironmentKind>,
+    pub(crate) txn: libmdbx::Transaction<'env, Mode::Internal, EnvironmentKind>,
 }
 
 impl<'a, Mode: TransactionKind> DbTransaction<'a, Mode> {
@@ -160,8 +160,14 @@ pub struct TableIdentifier<K: StorageSerde, V: StorageSerde> {
     _value_type: PhantomData<V>,
 }
 
+impl<K: StorageSerde, V: StorageSerde> TableIdentifier<K, V> {
+    pub fn new(name: &'static str) -> Self {
+        TableIdentifier { name, _key_type: PhantomData {}, _value_type: PhantomData {} }
+    }
+}
+
 pub struct TableHandle<'env, K: StorageSerde, V: StorageSerde> {
-    database: libmdbx::Database<'env>,
+    pub(crate) database: libmdbx::Database<'env>,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
 }
