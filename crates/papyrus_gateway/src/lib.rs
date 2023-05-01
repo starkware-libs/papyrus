@@ -58,7 +58,7 @@ pub struct GatewayConfig {
     pub server_address: String,
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
-    pub fee_address: String,
+    pub fee_token_address: String,
 }
 
 /// Rpc server.
@@ -638,7 +638,7 @@ pub async fn run_server(
             max_events_chunk_size: config.max_events_chunk_size,
             max_events_keys: config.max_events_keys,
             fee_token_address: ContractAddress::try_from(StarkFelt::try_from(
-                config.fee_address.as_str(),
+                config.fee_token_address.as_str(),
             )?)?,
         }
         .into_rpc(),

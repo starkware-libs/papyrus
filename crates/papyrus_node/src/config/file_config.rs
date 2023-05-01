@@ -78,7 +78,7 @@ impl From<GatewayConfig> for Gateway {
             server_address: Some(config.server_address),
             max_events_chunk_size: Some(config.max_events_chunk_size),
             max_events_keys: Some(config.max_events_keys),
-            fee_address: Some(config.fee_address),
+            fee_token_address: Some(config.fee_token_address),
         }
     }
 }
@@ -204,7 +204,7 @@ struct Gateway {
     server_address: Option<String>,
     max_events_chunk_size: Option<usize>,
     max_events_keys: Option<usize>,
-    fee_address: Option<String>,
+    fee_token_address: Option<String>,
 }
 
 impl Gateway {
@@ -218,8 +218,8 @@ impl Gateway {
         if let Some(max_events_keys) = self.max_events_keys {
             config.max_events_keys = max_events_keys;
         }
-        if let Some(fee_address) = self.fee_address {
-            config.fee_address = fee_address;
+        if let Some(fee_address) = self.fee_token_address {
+            config.fee_token_address = fee_address;
         }
     }
 }
