@@ -26,7 +26,6 @@ use starknet_api::transaction::{
     EventContent, EventIndexInTransactionOutput, Transaction, TransactionHash,
     TransactionOffsetInBlock,
 };
-use tracing::debug;
 use version::{StorageVersionError, Version};
 
 use crate::body::events::ThinTransactionOutput;
@@ -37,7 +36,6 @@ use crate::db::{
 use crate::state::data::{
     IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass, ThinStateDiff,
 };
-use crate::version::{VersionStorageReader, VersionStorageWriter};
 
 pub const STORAGE_VERSION: Version = Version(0);
 
@@ -73,37 +71,7 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
     let reader = StorageReader { db_reader, tables: tables.clone() };
     let writer = StorageWriter { db_writer, tables };
 
-    let writer = set_initial_version_if_needed(writer)?;
-    verify_storage_version(reader.clone())?;
     Ok((reader, writer))
-}
-
-// In case storage version does not exist, set it to the crate version.
-// Expected to happen once - when the node is launched for the first time.
-fn set_initial_version_if_needed(mut writer: StorageWriter) -> StorageResult<StorageWriter> {
-    let current_storage_version = writer.begin_rw_txn()?.get_version()?;
-    if current_storage_version.is_none() {
-        writer.begin_rw_txn()?.set_version(&STORAGE_VERSION)?.commit()?;
-    };
-    Ok(writer)
-}
-
-// Assumes the storage has a version.
-fn verify_storage_version(reader: StorageReader) -> StorageResult<()> {
-    debug!("Storage crate version = {STORAGE_VERSION:}.");
-    let current_storage_version =
-        reader.begin_ro_txn()?.get_version()?.expect("Storage should have a version");
-    debug!("Current storage version = {current_storage_version:}.");
-
-    if STORAGE_VERSION != current_storage_version {
-        return Err(StorageError::StorageVersionInconcistency(
-            StorageVersionError::InconsistentStorageVersion {
-                crate_version: STORAGE_VERSION,
-                storage_version: current_storage_version,
-            },
-        ));
-    }
-    Ok(())
 }
 
 #[derive(Clone)]
