@@ -5,6 +5,7 @@ mod state_test;
 
 use std::collections::{HashSet, HashMap};
 
+use blockifier::state::errors::StateError;
 use indexmap::IndexMap;
 use starknet_api::block::{BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
@@ -46,6 +47,7 @@ pub trait StateStorageReader<Mode: TransactionKind> {
     fn get_state_marker(&self) -> StorageResult<BlockNumber>;
     fn get_state_diff(&self, block_number: BlockNumber) -> StorageResult<Option<ThinStateDiff>>;
     fn get_state_reader(&self) -> StorageResult<StateReader<'_, Mode>>;
+    fn get_state_reader_at_block(&self, block_number: BlockNumber) -> StorageResult<StateReader<'_, Mode>>;
 }
 
 type RevertedStateDiff = (
@@ -92,6 +94,12 @@ impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for StorageTxn<'env, 
     fn get_state_reader(&self) -> StorageResult<StateReader<'_, Mode>> {
         StateReader::new(self)
     }
+
+    fn get_state_reader_at_block(&self, block_number: BlockNumber) -> StorageResult<StateReader<'_, Mode>> {
+        let mut state = StateReader::new(self)?;
+        state.set_state_number(StateNumber::right_after_block(block_number));
+        Ok(state)
+    }
 }
 
 /// A single coherent state at a single point in time,
@@ -103,6 +111,7 @@ pub struct StateReader<'env, Mode: TransactionKind> {
     nonces_table: NoncesTable<'env>,
     replaced_classes_table: ReplacedClassesTable<'env>,
     storage_table: ContractStorageTable<'env>,
+    state_number: Option<StateNumber>,
 }
 
 #[allow(dead_code)]
@@ -123,7 +132,12 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
             nonces_table,
             replaced_classes_table,
             storage_table,
+            state_number: Option::None
         })
+    }
+
+    pub fn set_state_number(&mut self, state_number: StateNumber){
+        self.state_number = Some(state_number);
     }
 
     // Returns the latest class hash of the contract, before state_number.
@@ -317,6 +331,36 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         }
 
         Ok(result)
+    }
+}
+
+impl<'env, Mode: TransactionKind> blockifier::state::state_api::StateReader for StateReader<'env, Mode> {
+    fn get_storage_at(
+        &mut self,
+        contract_address: ContractAddress,
+        key: StorageKey,
+    ) -> blockifier::state::state_api::StateResult<StarkFelt> {
+        StateReader::get_storage_at(
+            &self, 
+            self.state_number.unwrap_or_default(), 
+            &contract_address, 
+            &key
+        ).map_err(map_storage_err_to_state_err)
+    }
+
+    fn get_nonce_at(&mut self, contract_address: ContractAddress) -> blockifier::state::state_api::StateResult<Nonce> {
+        let res = StateReader::get_nonce_at(&self, self.state_number.unwrap_or_default(), &contract_address).map_err(map_storage_err_to_state_err)?;
+        Ok(res.unwrap_or_default())
+    }
+
+    fn get_class_hash_at(&mut self, contract_address: ContractAddress) -> blockifier::state::state_api::StateResult<ClassHash> {
+        let res = StateReader::get_class_hash_at(&self, self.state_number.unwrap_or_default(), &contract_address).map_err(map_storage_err_to_state_err)?;
+        Ok(res.unwrap_or_default())
+    }
+
+    fn get_contract_class(&mut self, class_hash: &ClassHash) -> blockifier::state::state_api::StateResult<std::sync::Arc<blockifier::execution::contract_class::ContractClass>> {
+        let res = StateReader::get_deprecated_class_definition_at(&self, self.state_number.unwrap_or_default(), &class_hash).map_err(map_storage_err_to_state_err)?;
+        Ok(std::sync::Arc::new(blockifier::execution::contract_class::ContractClass::try_from(res.unwrap_or_default()).unwrap()))
     }
 }
 
@@ -690,4 +734,8 @@ fn delete_replaced_classes<'env>(
         replaced_classes_table.delete(txn, &(*contract_address, block_number))?;
     }
     Ok(())
+}
+
+fn map_storage_err_to_state_err(err: StorageError) -> StateError{
+    return StateError::StateReadError(err.to_string());
 }

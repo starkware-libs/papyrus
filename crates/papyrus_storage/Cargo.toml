@@ -8,6 +8,7 @@ default = ["starknet_api"]
 testing = ["tempfile", "starknet_api/testing", "rand", "test_utils", "rand_chacha"]
 
 [dependencies]
+blockifier = { git = "https://github.com/starkware-libs/blockifier"}
 byteorder = { version = "1.4.3" }
 flate2 = { version = "1.0.24" }
 futures-util = { version = "0.3.21" }

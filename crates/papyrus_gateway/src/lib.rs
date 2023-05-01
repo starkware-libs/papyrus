@@ -15,6 +15,7 @@ use std::sync::Arc;
 
 use api::GatewayContractClass;
 use blockifier::execution::entry_point::{CallEntryPoint, ExecutionContext, ExecutionResources};
+use blockifier::state::cached_state::CachedState;
 use blockifier::state::state_api::StateReader;
 use blockifier::test_utils::DictStateReader;
 use blockifier::transaction::objects::AccountTransactionContext;
@@ -574,11 +575,10 @@ impl JsonRpcServer for JsonRpcServerImpl {
     #[instrument(skip(self), level = "debug", err, ret)]
     fn call(&self, block_id: BlockId, request: FunctionCall) -> Result<FunctionCallResult, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-
         let block_number = get_block_number(&txn, block_id)?;
         let block_header = get_block_header_by_number(&txn, block_number)?;
 
-        let mut state = get_state(&txn, block_number)?;
+        let mut state = CachedState::new(txn.get_state_reader_at_block(block_number).unwrap());
 
         let block_context = blockifier::block_context::BlockContext {
             chain_id: self.chain_id.clone(),
