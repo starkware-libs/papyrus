@@ -28,6 +28,7 @@ use tracing::debug;
 use version::{StorageVersionError, Version};
 
 use crate::body::events::ThinTransactionOutput;
+use crate::body::TransactionIndex;
 use crate::db::{
     open_env, DbConfig, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier,
     TransactionKind, RO, RW,
@@ -281,8 +282,6 @@ pub enum MarkerKind {
 pub type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
 
 // TODO(yair): move the key structs from the main lib file.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
-pub struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);

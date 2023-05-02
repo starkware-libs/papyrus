@@ -3,6 +3,7 @@
 mod body_test;
 pub mod events;
 
+use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockBody, BlockNumber};
 use starknet_api::core::ContractAddress;
 use starknet_api::transaction::{
@@ -14,7 +15,7 @@ use tracing::debug;
 use crate::body::events::ThinTransactionOutput;
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::{
-    EventIndex, MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn, TransactionIndex,
+    EventIndex, MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn,
 };
 
 type TransactionsTable<'env> = TableHandle<'env, TransactionIndex, Transaction>;
@@ -22,6 +23,9 @@ type TransactionOutputsTable<'env> = TableHandle<'env, TransactionIndex, ThinTra
 type TransactionHashToIdxTable<'env> = TableHandle<'env, TransactionHash, TransactionIndex>;
 type EventsTableKey = (ContractAddress, EventIndex);
 type EventsTable<'env> = TableHandle<'env, EventsTableKey, EventContent>;
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
 
 pub trait BodyStorageReader {
     // The block number marker is the first block number that doesn't exist yet.

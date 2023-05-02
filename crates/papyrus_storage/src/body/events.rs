@@ -9,9 +9,9 @@ use starknet_api::transaction::{
     EventContent, EventIndexInTransactionOutput, Fee, MessageToL1, TransactionOutput,
 };
 
-use crate::body::{EventsTable, EventsTableKey};
+use crate::body::{EventsTable, EventsTableKey, TransactionIndex};
 use crate::db::{DbCursor, DbTransaction, RO};
-use crate::{EventIndex, StorageResult, StorageTxn, TransactionIndex};
+use crate::{EventIndex, StorageResult, StorageTxn};
 
 pub trait EventsReader<'txn, 'env> {
     /// Returns an itrator over events, which is a wrapper of two iterators.

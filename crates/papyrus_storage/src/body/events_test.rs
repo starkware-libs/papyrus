@@ -6,10 +6,10 @@ use starknet_api::transaction::{EventIndexInTransactionOutput, TransactionOffset
 use test_utils::{get_rand_test_block_with_events, get_rng, get_test_block};
 
 use crate::body::events::EventsReader;
-use crate::body::BodyStorageWriter;
+use crate::body::{BodyStorageWriter, TransactionIndex};
 use crate::header::HeaderStorageWriter;
 use crate::test_utils::get_test_storage;
-use crate::{EventIndex, TransactionIndex};
+use crate::{EventIndex};
 
 #[tokio::test]
 async fn iter_events_by_key() {

@@ -12,6 +12,7 @@ use starknet_api::transaction::{
 use tempfile::tempdir;
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
 
+use crate::body::TransactionIndex;
 use crate::body::events::{
     ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput, ThinDeployTransactionOutput,
     ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
@@ -23,7 +24,7 @@ use crate::state::data::{
 use crate::version::Version;
 use crate::{
     open_storage, EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey, StorageReader,
-    StorageWriter, TransactionIndex,
+    StorageWriter,
 };
 
 pub fn get_test_config() -> DbConfig {

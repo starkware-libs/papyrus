@@ -4,9 +4,9 @@ use starknet_api::transaction::TransactionOffsetInBlock;
 use test_utils::{get_test_block, get_test_body};
 
 use crate::body::events::ThinTransactionOutput;
-use crate::body::{BodyStorageReader, BodyStorageWriter};
+use crate::body::{BodyStorageReader, BodyStorageWriter, TransactionIndex};
 use crate::test_utils::get_test_storage;
-use crate::{StorageError, StorageWriter, TransactionIndex};
+use crate::{StorageError, StorageWriter,};
 
 #[tokio::test]
 async fn append_body() {
