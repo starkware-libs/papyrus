@@ -14,9 +14,7 @@ use tracing::debug;
 
 use crate::body::events::{EventIndex, ThinTransactionOutput};
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
-use crate::{
-    MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn,
-};
+use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
 type TransactionsTable<'env> = TableHandle<'env, TransactionIndex, Transaction>;
 type TransactionOutputsTable<'env> = TableHandle<'env, TransactionIndex, ThinTransactionOutput>;

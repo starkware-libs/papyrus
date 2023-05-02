@@ -44,7 +44,7 @@ use crate::body::events::{
 };
 use crate::body::TransactionIndex;
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
-use crate::ommer::{OmmerTransactionKey, OmmerEventKey};
+use crate::ommer::{OmmerEventKey, OmmerTransactionKey};
 #[cfg(test)]
 use crate::serializers::serializers_test::{create_storage_serde_test, StorageSerdeTest};
 use crate::state::data::{

@@ -6,7 +6,7 @@ use test_utils::{get_test_block, get_test_body};
 use crate::body::events::ThinTransactionOutput;
 use crate::body::{BodyStorageReader, BodyStorageWriter, TransactionIndex};
 use crate::test_utils::get_test_storage;
-use crate::{StorageError, StorageWriter,};
+use crate::{StorageError, StorageWriter};
 
 #[tokio::test]
 async fn append_body() {
