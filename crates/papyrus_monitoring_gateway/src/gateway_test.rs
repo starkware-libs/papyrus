@@ -7,7 +7,7 @@ use papyrus_storage::{table_names, test_utils};
 use serde_json::{json, Value};
 use tower::ServiceExt;
 
-use crate::app;
+use crate::{app, MONITORING_PREFIX};
 
 const TEST_CONFIG_REPRESENTATION: &str = "general_config_representation";
 const TEST_VERSION: &str = "1.2.3-dev";
@@ -22,7 +22,12 @@ fn setup_app() -> Router {
 async fn db_stats() {
     let app = setup_app();
     let response = app
-        .oneshot(Request::builder().uri("/dbTablesStats").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri(format!("/{MONITORING_PREFIX}/dbTablesStats").as_str())
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
 
@@ -39,7 +44,12 @@ async fn db_stats() {
 async fn version() {
     let app = setup_app();
     let response = app
-        .oneshot(Request::builder().uri("/nodeVersion").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri(format!("/{MONITORING_PREFIX}/nodeVersion").as_str())
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
 
@@ -53,7 +63,12 @@ async fn version() {
 async fn node_config() {
     let app = setup_app();
     let response = app
-        .oneshot(Request::builder().uri("/nodeConfig").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri(format!("/{MONITORING_PREFIX}/nodeConfig").as_str())
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
 
@@ -82,7 +97,7 @@ async fn run_server() {
     let response = client
         .request(
             Request::builder()
-                .uri(format!("http://{addr}/nodeVersion"))
+                .uri(format!("http://{addr}/{MONITORING_PREFIX}/nodeVersion"))
                 .body(Body::empty())
                 .unwrap(),
         )
