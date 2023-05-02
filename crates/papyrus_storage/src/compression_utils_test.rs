@@ -4,7 +4,7 @@ use tracing::debug;
 
 use crate::compression_utils::GzEncoded;
 use crate::db::serialization::StorageSerde;
-use crate::state::data::IndexedDeprecatedDeclaredContract;
+use crate::state::data::IndexedDeprecatedContractClass;
 
 #[test]
 fn gzip_encode_decode_contract_program() {
@@ -32,8 +32,7 @@ fn gzip_encode_decode_indexed_declared_contract() {
     let _ = simple_logger::init_with_env();
 
     let contract_json = read_json_file("indexed_declared_contract.json");
-    let contract: IndexedDeprecatedDeclaredContract =
-        serde_json::from_value(contract_json).unwrap();
+    let contract: IndexedDeprecatedContractClass = serde_json::from_value(contract_json).unwrap();
     let mut buff = Vec::new();
     contract.serialize_into(&mut buff).unwrap();
     let len_before_compression = buff.len();

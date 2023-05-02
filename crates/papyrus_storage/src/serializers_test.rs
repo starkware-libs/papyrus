@@ -35,7 +35,7 @@ pub(crate) trait StorageSerdeExTest: StorageSerdeEx {
 // implements the [`StorageSerde`] and [`GetTestInstance`] traits.
 impl<T: StorageSerdeEx + GetTestInstance + Eq + Debug> StorageSerdeExTest for T {
     fn storage_serde_ex_test() {
-        let mut rng = get_rng();
+        let mut rng = get_rng(None);
         let item = T::get_test_instance(&mut rng);
         let serialized = item.serialize().unwrap();
         let bytes = serialized.into_boxed_slice();
