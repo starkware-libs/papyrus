@@ -32,6 +32,7 @@ use papyrus_storage::{EventIndex, StorageReader, StorageTxn, TransactionIndex};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockStatus};
 use starknet_api::core::{ChainId, ClassHash, ContractAddress, GlobalRoot, Nonce};
+use starknet_api::deprecated_contract_class::EntryPointType;
 use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
@@ -568,7 +569,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
         let call_entry_point = CallEntryPoint {
             class_hash: Option::Some(class_hash),
-            entry_point_type: starknet_api::deprecated_contract_class::EntryPointType::External,
+            entry_point_type: EntryPointType::External,
             entry_point_selector: request.entry_point_selector,
             calldata: request.calldata,
             call_type: blockifier::execution::entry_point::CallType::Call,
