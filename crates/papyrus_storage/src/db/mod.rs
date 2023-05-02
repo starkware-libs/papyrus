@@ -13,6 +13,47 @@ use serde::{Deserialize, Serialize};
 
 use crate::db::serialization::{StorageSerde, StorageSerdeEx};
 
+/////////////////////////////////////////////////////////////////////////////
+use crate::StorageReader;
+
+pub fn get_value<K: StorageSerde, V: StorageSerde>(
+    storage_reader: &StorageReader,
+    table_name: &'static str,
+    key: &K,
+) -> V {
+    let table_id = TableIdentifier::<K, V> {
+        name: table_name,
+        _key_type: PhantomData,
+        _value_type: PhantomData,
+    };
+    let db_trans = storage_reader.begin_ro_txn().unwrap().txn;
+    let table_handle = db_trans.open_table(&table_id).unwrap();
+    table_handle.get(&db_trans, key).unwrap().unwrap()
+}
+
+pub fn get_keys_list<K: StorageSerde, V: StorageSerde>(
+    storage_reader: &StorageReader,
+    table_name: &'static str,
+    start_key: &K,
+) -> Vec<K> {
+    let table_id = TableIdentifier::<K, V> {
+        name: table_name,
+        _key_type: PhantomData,
+        _value_type: PhantomData,
+    };
+    let db_trans = storage_reader.begin_ro_txn().unwrap().txn;
+    let table_handle = db_trans.open_table(&table_id).unwrap();
+    let mut cursor = table_handle.cursor(&db_trans).unwrap();
+    let _ = cursor.lower_bound(start_key).unwrap();
+
+    let mut keys = vec![];
+    while let Some((key, _value)) = cursor.next().unwrap() {
+        keys.push(key);
+    }
+    keys
+}
+/////////////////////////////////////////////////////////////////////////////
+
 // Low database layer for interaction with libmdbx. The API is supposedly generic enough to easily
 // replace the database library with other Berkley-like database implementations.
 //

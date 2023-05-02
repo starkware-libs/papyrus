@@ -6,6 +6,31 @@ use tracing::trace;
 use crate::compression_utils::{decode_buffer, GzEncoded};
 use crate::db::DbError;
 
+/////////////////////////////////////////////////////////////////////////////
+impl<T: StorageSerde> StorageOps for T {}
+
+pub trait StorageOps: StorageSerde {
+    fn serialize_with_compression(&self) -> Result<Vec<u8>, DbError> {
+        let encoded = GzEncoded::encode(self).map_err(|_| DbError::Serialization)?;
+        Ok(encoded.0)
+    }
+
+    fn serialize_without_compression(&self) -> Result<Vec<u8>, DbError> {
+        let mut res: Vec<u8> = Vec::new();
+        self.serialize_into(&mut res).map_err(|_| DbError::Serialization)?;
+        Ok(res)
+    }
+
+    fn deserialize_with_compression(bytes: &mut impl std::io::Read) -> Option<Self> {
+        deserialize_compressed(bytes)
+    }
+
+    fn deserialize_without_compression(bytes: &mut impl std::io::Read) -> Option<Self> {
+        deserialize_uncompressed(bytes)
+    }
+}
+/////////////////////////////////////////////////////////////////////////////
+
 pub(crate) trait StorageSerdeEx: StorageSerde {
     fn serialize(&self) -> Result<Vec<u8>, DbError>;
 
