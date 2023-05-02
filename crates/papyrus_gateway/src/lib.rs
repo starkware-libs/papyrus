@@ -37,7 +37,7 @@ use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
     EventIndexInTransactionOutput, TransactionHash, TransactionOffsetInBlock,
 };
-use state::{FunctionCall, FunctionCallResult};
+use state::{FunctionCall, FunctionCallRetdata};
 use tracing::{debug, error, info, instrument};
 
 use crate::api::{
@@ -540,7 +540,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn call(&self, block_id: BlockId, request: FunctionCall) -> Result<FunctionCallResult, Error> {
+    fn call(&self, block_id: BlockId, request: FunctionCall) -> Result<FunctionCallRetdata, Error> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
         let block_header = get_block_header_by_number(&txn, block_number)?;
@@ -586,7 +586,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
             )
             .map_err(internal_server_error)?;
 
-        Ok(FunctionCallResult(Arc::new(call_result.execution.retdata.0)))
+        Ok(FunctionCallRetdata(Arc::new(call_result.execution.retdata.0)))
     }
 }
 

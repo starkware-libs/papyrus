@@ -136,4 +136,4 @@ pub struct FunctionCall {
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct FunctionCallResult(pub Arc<Vec<StarkFelt>>);
+pub struct FunctionCallRetdata(pub Arc<Vec<StarkFelt>>);

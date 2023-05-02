@@ -37,7 +37,7 @@ use crate::api::{
 };
 use crate::block::Block;
 use crate::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use crate::state::{ContractClass, FunctionCall, FunctionCallResult, StateUpdate, ThinStateDiff};
+use crate::state::{ContractClass, FunctionCall, FunctionCallRetdata, StateUpdate, ThinStateDiff};
 use crate::test_utils::{
     get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
 };
@@ -1672,7 +1672,7 @@ async fn call_view_function_in_contract() {
 
     // Get class by block hash.
     let res = module
-        .call::<_, FunctionCallResult>("starknet_call", (BlockId::Tag(Tag::Latest), request))
+        .call::<_, FunctionCallRetdata>("starknet_call", (BlockId::Tag(Tag::Latest), request))
         .await
         .unwrap();
 
