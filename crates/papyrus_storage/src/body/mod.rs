@@ -12,10 +12,10 @@ use starknet_api::transaction::{
 };
 use tracing::debug;
 
-use crate::body::events::ThinTransactionOutput;
+use crate::body::events::{EventIndex, ThinTransactionOutput};
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::{
-    EventIndex, MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn,
+    MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn,
 };
 
 type TransactionsTable<'env> = TableHandle<'env, TransactionIndex, Transaction>;

@@ -9,7 +9,7 @@ use crate::body::events::EventsReader;
 use crate::body::{BodyStorageWriter, TransactionIndex};
 use crate::header::HeaderStorageWriter;
 use crate::test_utils::get_test_storage;
-use crate::{EventIndex};
+use crate::body::events::EventIndex;
 
 #[tokio::test]
 async fn iter_events_by_key() {

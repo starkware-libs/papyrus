@@ -14,6 +14,7 @@ pub mod test_utils;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use body::events::EventIndex;
 use db::DbTableStats;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
@@ -282,9 +283,6 @@ pub enum MarkerKind {
 pub type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
 
 // TODO(yair): move the key structs from the main lib file.
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize)]
-pub struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct OmmerTransactionKey(pub BlockHash, pub TransactionOffsetInBlock);
