@@ -17,7 +17,6 @@ use api::GatewayContractClass;
 use blockifier::execution::entry_point::{CallEntryPoint, ExecutionContext, ExecutionResources};
 use blockifier::state::cached_state::CachedState;
 use blockifier::state::state_api::StateReader;
-use blockifier::test_utils::DictStateReader;
 use blockifier::transaction::objects::AccountTransactionContext;
 use jsonrpsee::core::{async_trait, Error};
 use jsonrpsee::http_server::types::error::CallError;
@@ -140,38 +139,6 @@ fn get_block_txs_by_number<Mode: TransactionKind>(
         .ok_or_else(|| Error::from(JsonRpcError::BlockNotFound))?;
 
     Ok(transactions.into_iter().map(Transaction::from).collect())
-}
-
-fn get_state<Mode: TransactionKind>(
-    txn: &StorageTxn<'_, Mode>,
-    block_number: BlockNumber,
-) -> Result<blockifier::state::cached_state::CachedState<DictStateReader>, Error> {
-    let state_reader = txn.get_state_reader().unwrap();
-
-    let class_hash_classes = state_reader.get_class_hashes_classes(block_number).unwrap();
-
-    let res = class_hash_classes.into_iter().fold(
-        HashMap::new(),
-        |mut acc: HashMap<ClassHash, blockifier::execution::contract_class::ContractClass>,
-         (key, v)| {
-            if let Ok(contract_class) =
-                blockifier::execution::contract_class::ContractClass::try_from(v)
-            {
-                acc.insert(key, contract_class);
-            }
-
-            acc
-        },
-    );
-
-    let state = blockifier::state::cached_state::CachedState::new(DictStateReader {
-        storage_view: state_reader.get_storage_view(block_number).unwrap(),
-        address_to_nonce: state_reader.get_addresses_nonces().unwrap(),
-        address_to_class_hash: state_reader.get_adresses_class_hashes(block_number).unwrap(),
-        class_hash_to_class: res,
-    });
-
-    Ok(state)
 }
 
 struct ContinuationTokenAsStruct(EventIndex);

@@ -359,7 +359,7 @@ impl<'env, Mode: TransactionKind> blockifier::state::state_api::StateReader
         key: StorageKey,
     ) -> blockifier::state::state_api::StateResult<StarkFelt> {
         StateReader::get_storage_at(
-            &self,
+            self,
             self.state_number.unwrap_or_default(),
             &contract_address,
             &key,
@@ -372,7 +372,7 @@ impl<'env, Mode: TransactionKind> blockifier::state::state_api::StateReader
         contract_address: ContractAddress,
     ) -> blockifier::state::state_api::StateResult<Nonce> {
         let res = StateReader::get_nonce_at(
-            &self,
+            self,
             self.state_number.unwrap_or_default(),
             &contract_address,
         )
@@ -385,7 +385,7 @@ impl<'env, Mode: TransactionKind> blockifier::state::state_api::StateReader
         contract_address: ContractAddress,
     ) -> blockifier::state::state_api::StateResult<ClassHash> {
         let res = StateReader::get_class_hash_at(
-            &self,
+            self,
             self.state_number.unwrap_or_default(),
             &contract_address,
         )
@@ -400,9 +400,9 @@ impl<'env, Mode: TransactionKind> blockifier::state::state_api::StateReader
         std::sync::Arc<blockifier::execution::contract_class::ContractClass>,
     > {
         let res = StateReader::get_deprecated_class_definition_at(
-            &self,
+            self,
             self.state_number.unwrap_or_default(),
-            &class_hash,
+            class_hash,
         )
         .map_err(map_storage_err_to_state_err)?;
         Ok(std::sync::Arc::new(
@@ -785,5 +785,5 @@ fn delete_replaced_classes<'env>(
 }
 
 fn map_storage_err_to_state_err(err: StorageError) -> StateError {
-    return StateError::StateReadError(err.to_string());
+    StateError::StateReadError(err.to_string())
 }
