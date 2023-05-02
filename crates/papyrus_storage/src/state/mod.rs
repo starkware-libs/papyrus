@@ -3,11 +3,11 @@ pub mod data;
 #[path = "state_test.rs"]
 mod state_test;
 
-use std::collections::{HashSet, HashMap};
+use std::collections::{HashMap, HashSet};
 
 use blockifier::state::errors::StateError;
 use indexmap::IndexMap;
-use starknet_api::block::{BlockNumber};
+use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::StarkFelt;
@@ -47,7 +47,10 @@ pub trait StateStorageReader<Mode: TransactionKind> {
     fn get_state_marker(&self) -> StorageResult<BlockNumber>;
     fn get_state_diff(&self, block_number: BlockNumber) -> StorageResult<Option<ThinStateDiff>>;
     fn get_state_reader(&self) -> StorageResult<StateReader<'_, Mode>>;
-    fn get_state_reader_at_block(&self, block_number: BlockNumber) -> StorageResult<StateReader<'_, Mode>>;
+    fn get_state_reader_at_block(
+        &self,
+        block_number: BlockNumber,
+    ) -> StorageResult<StateReader<'_, Mode>>;
 }
 
 type RevertedStateDiff = (
@@ -95,7 +98,10 @@ impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for StorageTxn<'env, 
         StateReader::new(self)
     }
 
-    fn get_state_reader_at_block(&self, block_number: BlockNumber) -> StorageResult<StateReader<'_, Mode>> {
+    fn get_state_reader_at_block(
+        &self,
+        block_number: BlockNumber,
+    ) -> StorageResult<StateReader<'_, Mode>> {
         let mut state = StateReader::new(self)?;
         state.set_state_number(StateNumber::right_after_block(block_number));
         Ok(state)
@@ -132,11 +138,11 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
             nonces_table,
             replaced_classes_table,
             storage_table,
-            state_number: Option::None
+            state_number: Option::None,
         })
     }
 
-    pub fn set_state_number(&mut self, state_number: StateNumber){
+    pub fn set_state_number(&mut self, state_number: StateNumber) {
         self.state_number = Some(state_number);
     }
 
@@ -268,7 +274,10 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         Ok(None)
     }
 
-    pub fn get_class_hashes_classes(&self, until_block: BlockNumber) -> StorageResult<HashMap<ClassHash, DeprecatedContractClass>> {
+    pub fn get_class_hashes_classes(
+        &self,
+        until_block: BlockNumber,
+    ) -> StorageResult<HashMap<ClassHash, DeprecatedContractClass>> {
         let mut cursor = self.deprecated_declared_classes_table.cursor(self.txn)?;
         let mut result = HashMap::<ClassHash, DeprecatedContractClass>::new();
 
@@ -282,7 +291,10 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         Ok(result)
     }
 
-    pub fn get_adresses_class_hashes(&self, until_block: BlockNumber) -> StorageResult<HashMap<ContractAddress, ClassHash>> {
+    pub fn get_adresses_class_hashes(
+        &self,
+        until_block: BlockNumber,
+    ) -> StorageResult<HashMap<ContractAddress, ClassHash>> {
         let mut cursor = self.deployed_contracts_table.cursor(self.txn)?;
         let mut result = HashMap::<ContractAddress, ClassHash>::new();
 
@@ -302,9 +314,9 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         let mut result = HashMap::<ContractAddress, Nonce>::new();
         let mut last_added_block_for_nonce = HashMap::<ContractAddress, BlockNumber>::new();
 
-        while let Some(((address, block),nonce)) = cursor.next()? {
+        while let Some(((address, block), nonce)) = cursor.next()? {
             let added_block_option = last_added_block_for_nonce.get(&address);
-            if added_block_option.is_none() || (Some(block) > added_block_option.copied()){
+            if added_block_option.is_none() || (Some(block) > added_block_option.copied()) {
                 result.insert(address, nonce);
                 last_added_block_for_nonce.insert(address, block);
             }
@@ -313,12 +325,16 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         Ok(result)
     }
 
-    pub fn get_storage_view(&self, until_block: BlockNumber) -> StorageResult<HashMap<(ContractAddress, StorageKey), StarkFelt>>{
+    pub fn get_storage_view(
+        &self,
+        until_block: BlockNumber,
+    ) -> StorageResult<HashMap<(ContractAddress, StorageKey), StarkFelt>> {
         let mut cursor = self.storage_table.cursor(self.txn)?;
         let mut result = HashMap::<(ContractAddress, StorageKey), StarkFelt>::new();
-        let mut last_added_block_for_contract_storage_key = HashMap::<(ContractAddress, StorageKey), BlockNumber>::new();
+        let mut last_added_block_for_contract_storage_key =
+            HashMap::<(ContractAddress, StorageKey), BlockNumber>::new();
 
-        while let Some(((address, key, block), storage_hash)) = cursor.next()?{
+        while let Some(((address, key, block), storage_hash)) = cursor.next()? {
             if block > until_block {
                 continue;
             }
@@ -334,33 +350,65 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
     }
 }
 
-impl<'env, Mode: TransactionKind> blockifier::state::state_api::StateReader for StateReader<'env, Mode> {
+impl<'env, Mode: TransactionKind> blockifier::state::state_api::StateReader
+    for StateReader<'env, Mode>
+{
     fn get_storage_at(
         &mut self,
         contract_address: ContractAddress,
         key: StorageKey,
     ) -> blockifier::state::state_api::StateResult<StarkFelt> {
         StateReader::get_storage_at(
-            &self, 
-            self.state_number.unwrap_or_default(), 
-            &contract_address, 
-            &key
-        ).map_err(map_storage_err_to_state_err)
+            &self,
+            self.state_number.unwrap_or_default(),
+            &contract_address,
+            &key,
+        )
+        .map_err(map_storage_err_to_state_err)
     }
 
-    fn get_nonce_at(&mut self, contract_address: ContractAddress) -> blockifier::state::state_api::StateResult<Nonce> {
-        let res = StateReader::get_nonce_at(&self, self.state_number.unwrap_or_default(), &contract_address).map_err(map_storage_err_to_state_err)?;
+    fn get_nonce_at(
+        &mut self,
+        contract_address: ContractAddress,
+    ) -> blockifier::state::state_api::StateResult<Nonce> {
+        let res = StateReader::get_nonce_at(
+            &self,
+            self.state_number.unwrap_or_default(),
+            &contract_address,
+        )
+        .map_err(map_storage_err_to_state_err)?;
         Ok(res.unwrap_or_default())
     }
 
-    fn get_class_hash_at(&mut self, contract_address: ContractAddress) -> blockifier::state::state_api::StateResult<ClassHash> {
-        let res = StateReader::get_class_hash_at(&self, self.state_number.unwrap_or_default(), &contract_address).map_err(map_storage_err_to_state_err)?;
+    fn get_class_hash_at(
+        &mut self,
+        contract_address: ContractAddress,
+    ) -> blockifier::state::state_api::StateResult<ClassHash> {
+        let res = StateReader::get_class_hash_at(
+            &self,
+            self.state_number.unwrap_or_default(),
+            &contract_address,
+        )
+        .map_err(map_storage_err_to_state_err)?;
         Ok(res.unwrap_or_default())
     }
 
-    fn get_contract_class(&mut self, class_hash: &ClassHash) -> blockifier::state::state_api::StateResult<std::sync::Arc<blockifier::execution::contract_class::ContractClass>> {
-        let res = StateReader::get_deprecated_class_definition_at(&self, self.state_number.unwrap_or_default(), &class_hash).map_err(map_storage_err_to_state_err)?;
-        Ok(std::sync::Arc::new(blockifier::execution::contract_class::ContractClass::try_from(res.unwrap_or_default()).unwrap()))
+    fn get_contract_class(
+        &mut self,
+        class_hash: &ClassHash,
+    ) -> blockifier::state::state_api::StateResult<
+        std::sync::Arc<blockifier::execution::contract_class::ContractClass>,
+    > {
+        let res = StateReader::get_deprecated_class_definition_at(
+            &self,
+            self.state_number.unwrap_or_default(),
+            &class_hash,
+        )
+        .map_err(map_storage_err_to_state_err)?;
+        Ok(std::sync::Arc::new(
+            blockifier::execution::contract_class::ContractClass::try_from(res.unwrap_or_default())
+                .unwrap(),
+        ))
     }
 }
 
@@ -736,6 +784,6 @@ fn delete_replaced_classes<'env>(
     Ok(())
 }
 
-fn map_storage_err_to_state_err(err: StorageError) -> StateError{
+fn map_storage_err_to_state_err(err: StorageError) -> StateError {
     return StateError::StateReadError(err.to_string());
 }

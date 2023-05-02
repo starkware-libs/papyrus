@@ -1,15 +1,10 @@
-use std::collections::{HashSet};
+use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::ops::Index;
 
 use assert_matches::assert_matches;
 use blockifier::abi::abi_utils::get_storage_var_address;
-
-
-
-use blockifier::test_utils::{TEST_CONTRACT_ADDRESS};
-
-
+use blockifier::test_utils::TEST_CONTRACT_ADDRESS;
 use indexmap::IndexMap;
 use jsonrpsee::core::Error;
 use jsonrpsee::http_client::HttpClientBuilder;
@@ -18,12 +13,10 @@ use jsonrpsee::types::error::ErrorObject;
 use jsonrpsee::types::EmptyParams;
 use jsonschema::JSONSchema;
 use papyrus_storage::body::BodyStorageWriter;
-
-use papyrus_storage::header::{HeaderStorageWriter};
-use papyrus_storage::state::{StateStorageWriter};
+use papyrus_storage::header::HeaderStorageWriter;
+use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{EventIndex, TransactionIndex};
-
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
@@ -42,7 +35,7 @@ use crate::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, EventsChunk,
     JsonRpcClient, JsonRpcError, Tag,
 };
-use crate::block::{Block};
+use crate::block::Block;
 use crate::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use crate::state::{ContractClass, FunctionCall, FunctionCallResult, StateUpdate, ThinStateDiff};
 use crate::test_utils::{
