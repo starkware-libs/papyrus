@@ -44,13 +44,14 @@ use crate::body::events::{
 };
 use crate::body::TransactionIndex;
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
+use crate::ommer::{OmmerTransactionKey, OmmerEventKey};
 #[cfg(test)]
 use crate::serializers::serializers_test::{create_storage_serde_test, StorageSerdeTest};
 use crate::state::data::{
     IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass, ThinStateDiff,
 };
 use crate::version::Version;
-use crate::{MarkerKind, OmmerEventKey, OmmerTransactionKey};
+use crate::MarkerKind;
 
 auto_storage_serde! {
     pub struct BlockHash(pub StarkHash);
