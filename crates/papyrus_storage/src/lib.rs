@@ -279,5 +279,3 @@ pub enum MarkerKind {
 }
 
 pub type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
-
-// TODO(yair): move the key structs from the main lib file.
