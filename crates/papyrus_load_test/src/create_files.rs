@@ -57,6 +57,11 @@ pub async fn create_files(node_address: &str) {
         tokio::spawn(create_file("block_hash_and_class_hash.txt", BLOCK_HASH_COUNT, move || {
             get_block_hash_and_class_hash_args(node_socket)
         }));
+    let block_range_and_contract_address = tokio::spawn(create_file(
+        "block_range_and_contract_address.txt",
+        BLOCK_HASH_COUNT,
+        move || get_block_range_and_contract_address_args(node_socket),
+    ));
     tokio::try_join!(
         block_number,
         block_hash,
@@ -67,6 +72,7 @@ pub async fn create_files(node_address: &str) {
         block_hash_and_contract_address,
         block_number_and_class_hash,
         block_hash_and_class_hash,
+        block_range_and_contract_address,
     )
     .unwrap();
 }
@@ -304,4 +310,14 @@ pub async fn get_random_class_hash_declared_in_block(
     let random_index = rand::thread_rng().gen_range(0..declared_classes.len());
     let class_hash = declared_classes[random_index].as_str().unwrap().to_string();
     Some(class_hash)
+}
+
+// Returns a vector with a block range (from_block_number, to_block_number) and contract address of
+// a contract that was already deployed in this range.
+pub async fn get_block_range_and_contract_address_args(node_address: SocketAddr) -> Vec<String> {
+    let (block_number, contract_address) =
+        get_random_block_number_and_contract_address(node_address).await;
+    let from_block = rand::thread_rng().gen_range(block_number..=get_last_block_number());
+    let to_block = rand::thread_rng().gen_range(from_block..=get_last_block_number());
+    vec![from_block.to_string(), to_block.to_string(), contract_address]
 }

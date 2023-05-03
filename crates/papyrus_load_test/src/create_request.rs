@@ -4,6 +4,32 @@ use serde_json::{json, Value as jsonVal};
 
 use crate::jsonrpc_request;
 
+// TODO(dvir): consider adding more variations to get_events requests.
+// Chunk size for get_events requests.
+const CHUNK_SIZE: usize = 100;
+pub fn get_events_with_address(args: &str) -> jsonVal {
+    let mut arg_iter = ArgsIter::new(args);
+    let from_block = arg_iter.next_u64();
+    let to_block = arg_iter.next_u64();
+    let contract_address = arg_iter.next_str();
+    jsonrpc_request(
+        "starknet_getEvents",
+        json!([{"from_block":{"block_number": from_block}, "to_block":{"block_number": to_block}, 
+        "chunk_size": CHUNK_SIZE, "address": contract_address, "keys": []}]),
+    )
+}
+
+pub fn get_events_without_address(args: &str) -> jsonVal {
+    let mut arg_iter = ArgsIter::new(args);
+    let from_block = arg_iter.next_u64();
+    let to_block = arg_iter.next_u64();
+    jsonrpc_request(
+        "starknet_getEvents",
+        json!([{"from_block":{"block_number": from_block}, "to_block":{"block_number": to_block}, 
+        "chunk_size": CHUNK_SIZE, "keys": []}]),
+    )
+}
+
 pub fn get_class_by_number(args: &str) -> jsonVal {
     let mut arg_iter = ArgsIter::new(args);
     let block_number = arg_iter.next_u64();
