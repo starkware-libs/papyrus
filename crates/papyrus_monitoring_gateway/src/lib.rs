@@ -13,6 +13,8 @@ use papyrus_storage::{DbTablesStats, StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument};
 
+const MONITORING_PREFIX: &str = "monitoring";
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MonitoringGatewayConfig {
     pub server_address: String,
@@ -73,9 +75,18 @@ fn app(
     general_config_representation: serde_json::Value,
 ) -> Router {
     Router::new()
-        .route("/dbTablesStats", get(move || db_tables_stats(storage_reader)))
-        .route("/nodeConfig", get(move || node_config(general_config_representation)))
-        .route("/nodeVersion", get(move || node_version(version)))
+        .route(
+            format!("/{MONITORING_PREFIX}/dbTablesStats").as_str(),
+            get(move || db_tables_stats(storage_reader)),
+        )
+        .route(
+            format!("/{MONITORING_PREFIX}/nodeConfig").as_str(),
+            get(move || node_config(general_config_representation)),
+        )
+        .route(
+            format!("/{MONITORING_PREFIX}/nodeVersion").as_str(),
+            get(move || node_version(version)),
+        )
 }
 
 /// Returns DB statistics.
