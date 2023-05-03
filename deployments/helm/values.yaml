@@ -14,11 +14,11 @@ node:
   concurrent_fg_requests: 50
 
 starknet:
-  chain_id: SN_GOERLI # possible values: SN_MAIN, SN_GOERLI
+  chain_id: SN_MAIN # possible values: SN_MAIN, SN_GOERLI
   # feeder-gateway url
   # SN_MAIN: https://alpha-mainnet.starknet.io
   # SN_GOERLI: https://alpha4.starknet.io
-  central_url: https://alpha4.starknet.io
+  central_url: https://alpha-mainnet.starknet.io
   additional_headers: # optional addtional headers for SN communication
 
 # The default resources for the pod.

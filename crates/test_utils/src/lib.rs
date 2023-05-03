@@ -41,6 +41,10 @@ use starknet_api::transaction::{
 };
 use web3::types::H160;
 
+//////////////////////////////////////////////////////////////////////////
+// GENERIC TEST UTIL FUNCTIONS
+//////////////////////////////////////////////////////////////////////////
+
 pub async fn send_request(address: SocketAddr, method: &str, params: &str) -> serde_json::Value {
     let client = Client::new();
     let res_str = client
@@ -56,14 +60,13 @@ pub async fn send_request(address: SocketAddr, method: &str, params: &str) -> se
     serde_json::from_str(&res_str).unwrap()
 }
 
-// Returns the absolute  path from the project root.
+/// Returns the absolute path from the project root.
 pub fn get_absolute_path(relative_path: &str) -> PathBuf {
     Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap()).join("../..").join(relative_path)
 }
 
+/// Reads from the directory containing the manifest at run time, same as current working directory.
 pub fn read_json_file(path_in_resource_dir: &str) -> serde_json::Value {
-    // Reads from the directory containing the manifest at run time, same as current working
-    // directory.
     let path = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap())
         .join("resources")
         .join(path_in_resource_dir);
@@ -71,7 +74,32 @@ pub fn read_json_file(path_in_resource_dir: &str) -> serde_json::Value {
     serde_json::from_str(&json_str).unwrap()
 }
 
-// Returns a test block with a variable number of transactions and events.
+/// Used in random test to create a random generator, see for example storage_serde_test.
+/// Randomness can be seeded by passing a seed parameter or by setting and env variable `SEED` or by
+/// the OS (the rust default).
+pub fn get_rng(seed: Option<u64>) -> ChaCha8Rng {
+    let seed: u64 = if let Some(seed) = seed {
+        seed
+    } else if let Ok(seed_str) = env::var("SEED") {
+        seed_str.parse().unwrap()
+    } else {
+        let mut rng = rand::thread_rng();
+        rng.gen()
+    };
+    // Will be printed if the test failed.
+    println!("Testing with seed: {seed:?}");
+    // Create a new PRNG using a u64 seed. This is a convenience-wrapper around from_seed.
+    // It is designed such that low Hamming Weight numbers like 0 and 1 can be used and
+    // should still result in good, independent seeds to the returned PRNG.
+    // This is not suitable for cryptography purposes.
+    ChaCha8Rng::seed_from_u64(seed)
+}
+
+//////////////////////////////////////////////////////////////////////////
+// INTERNAL FUNCTIONS
+//////////////////////////////////////////////////////////////////////////
+
+/// Returns a test block with a variable number of transactions and events.
 pub fn get_rand_test_block_with_events(
     rng: &mut ChaCha8Rng,
     transaction_count: usize,
@@ -91,8 +119,8 @@ pub fn get_rand_test_block_with_events(
     }
 }
 
-// Returns a test block body with a variable number of transactions and events.
-pub fn get_rand_test_body_with_events(
+/// Returns a test block body with a variable number of transactions and events.
+fn get_rand_test_body_with_events(
     rng: &mut ChaCha8Rng,
     transaction_count: usize,
     events_per_tx: usize,
@@ -137,38 +165,69 @@ pub fn get_rand_test_body_with_events(
     body
 }
 
+fn get_test_transaction_output(transaction: &Transaction) -> TransactionOutput {
+    match transaction {
+        Transaction::Declare(_) => TransactionOutput::Declare(DeclareTransactionOutput::default()),
+        Transaction::Deploy(_) => TransactionOutput::Deploy(DeployTransactionOutput::default()),
+        Transaction::DeployAccount(_) => {
+            TransactionOutput::DeployAccount(DeployAccountTransactionOutput::default())
+        }
+        Transaction::Invoke(_) => TransactionOutput::Invoke(InvokeTransactionOutput::default()),
+        Transaction::L1Handler(_) => {
+            TransactionOutput::L1Handler(L1HandlerTransactionOutput::default())
+        }
+    }
+}
+
+fn set_events(tx: &mut TransactionOutput, events: Vec<Event>) {
+    match tx {
+        TransactionOutput::Declare(tx) => tx.events = events,
+        TransactionOutput::Deploy(tx) => tx.events = events,
+        TransactionOutput::DeployAccount(tx) => tx.events = events,
+        TransactionOutput::Invoke(tx) => tx.events = events,
+        TransactionOutput::L1Handler(tx) => tx.events = events,
+    }
+}
+
+fn set_transaction_hash(tx: &mut Transaction, hash: TransactionHash) {
+    match tx {
+        Transaction::Declare(tx) => match tx {
+            DeclareTransaction::V0(tx) => tx.transaction_hash = hash,
+            DeclareTransaction::V1(tx) => tx.transaction_hash = hash,
+            DeclareTransaction::V2(tx) => tx.transaction_hash = hash,
+        },
+        Transaction::Deploy(tx) => tx.transaction_hash = hash,
+        Transaction::DeployAccount(tx) => tx.transaction_hash = hash,
+        Transaction::Invoke(tx) => match tx {
+            InvokeTransaction::V0(tx) => tx.transaction_hash = hash,
+            InvokeTransaction::V1(tx) => tx.transaction_hash = hash,
+        },
+        Transaction::L1Handler(tx) => tx.transaction_hash = hash,
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+/// EXTERNAL FUNCTIONS - REMOVE DUPLICATIONS
+//////////////////////////////////////////////////////////////////////////
+
 // Returns a test block with a variable number of transactions and events.
-pub fn get_test_block_with_events(transaction_count: usize, events_per_tx: usize) -> Block {
-    let mut rng = ChaCha8Rng::seed_from_u64(0);
+pub fn get_test_block(transaction_count: usize, events_per_tx: Option<usize>) -> Block {
+    let mut rng = get_rng(Some(0));
+    let events_per_tx = if let Some(events_per_tx) = events_per_tx { events_per_tx } else { 0 };
     get_rand_test_block_with_events(&mut rng, transaction_count, events_per_tx, None, None)
 }
 
-// Returns a test block body with a variable number of transactions and events.
-pub fn get_test_body_with_events(transaction_count: usize, events_per_tx: usize) -> BlockBody {
-    let mut rng = ChaCha8Rng::seed_from_u64(0);
-    get_rand_test_body_with_events(&mut rng, transaction_count, events_per_tx, None, None)
-}
-
-// Returns a test block with a variable number of transactions.
-pub fn get_rand_test_block(rng: &mut ChaCha8Rng, transaction_count: usize) -> Block {
-    get_rand_test_block_with_events(rng, transaction_count, 0, None, None)
-}
-
 // Returns a test block body with a variable number of transactions.
-pub fn get_rand_test_body(rng: &mut ChaCha8Rng, transaction_count: usize) -> BlockBody {
-    get_rand_test_body_with_events(rng, transaction_count, 0, None, None)
-}
-
-// Returns a test block with a variable number of transactions.
-pub fn get_test_block(transaction_count: usize) -> Block {
-    let mut rng = ChaCha8Rng::seed_from_u64(0);
-    get_rand_test_block(&mut rng, transaction_count)
-}
-
-// Returns a test block body with a variable number of transactions.
-pub fn get_test_body(transaction_count: usize) -> BlockBody {
-    let mut rng = ChaCha8Rng::seed_from_u64(0);
-    get_rand_test_body(&mut rng, transaction_count)
+pub fn get_test_body(
+    seed: Option<u64>,
+    transaction_count: usize,
+    events_per_tx: Option<usize>,
+    from_addresses: Option<Vec<ContractAddress>>,
+    keys: Option<Vec<Vec<EventKey>>>,
+) -> BlockBody {
+    let mut rng = get_rng(seed);
+    let events_per_tx = if let Some(events_per_tx) = events_per_tx { events_per_tx } else { 0 };
+    get_rand_test_body_with_events(&mut rng, transaction_count, events_per_tx, from_addresses, keys)
 }
 
 // Returns a state diff with one item in each IndexMap.
@@ -183,22 +242,9 @@ pub fn get_test_state_diff() -> StateDiff {
     res
 }
 
-// Used in random test to create a random generator, see for example storage_serde_test.
-pub fn get_rng() -> ChaCha8Rng {
-    let seed = if let Ok(seed_str) = env::var("SEED") {
-        seed_str.parse().unwrap()
-    } else {
-        let mut rng = rand::thread_rng();
-        rng.gen()
-    };
-    // Will be printed if the test failed.
-    println!("Testing with seed: {seed:?}");
-    // Create a new PRNG using a u64 seed. This is a convenience-wrapper around from_seed.
-    // It is designed such that low Hamming Weight numbers like 0 and 1 can be used and
-    // should still result in good, independent seeds to the returned PRNG.
-    // This is not suitable for cryptography purposes.
-    ChaCha8Rng::seed_from_u64(seed)
-}
+////////////////////////////////////////////////////////////////////////
+// Implementation of GetTestInstance
+////////////////////////////////////////////////////////////////////////
 
 pub trait GetTestInstance: Sized {
     fn get_test_instance(rng: &mut ChaCha8Rng) -> Self;
@@ -594,46 +640,5 @@ impl GetTestInstance for StructAbiEntry {
             size: 1, // Should be minimum 1.
             members: Vec::<StructMember>::get_test_instance(rng),
         }
-    }
-}
-
-fn get_test_transaction_output(transaction: &Transaction) -> TransactionOutput {
-    match transaction {
-        Transaction::Declare(_) => TransactionOutput::Declare(DeclareTransactionOutput::default()),
-        Transaction::Deploy(_) => TransactionOutput::Deploy(DeployTransactionOutput::default()),
-        Transaction::DeployAccount(_) => {
-            TransactionOutput::DeployAccount(DeployAccountTransactionOutput::default())
-        }
-        Transaction::Invoke(_) => TransactionOutput::Invoke(InvokeTransactionOutput::default()),
-        Transaction::L1Handler(_) => {
-            TransactionOutput::L1Handler(L1HandlerTransactionOutput::default())
-        }
-    }
-}
-
-fn set_events(tx: &mut TransactionOutput, events: Vec<Event>) {
-    match tx {
-        TransactionOutput::Declare(tx) => tx.events = events,
-        TransactionOutput::Deploy(tx) => tx.events = events,
-        TransactionOutput::DeployAccount(tx) => tx.events = events,
-        TransactionOutput::Invoke(tx) => tx.events = events,
-        TransactionOutput::L1Handler(tx) => tx.events = events,
-    }
-}
-
-fn set_transaction_hash(tx: &mut Transaction, hash: TransactionHash) {
-    match tx {
-        Transaction::Declare(tx) => match tx {
-            DeclareTransaction::V0(tx) => tx.transaction_hash = hash,
-            DeclareTransaction::V1(tx) => tx.transaction_hash = hash,
-            DeclareTransaction::V2(tx) => tx.transaction_hash = hash,
-        },
-        Transaction::Deploy(tx) => tx.transaction_hash = hash,
-        Transaction::DeployAccount(tx) => tx.transaction_hash = hash,
-        Transaction::Invoke(tx) => match tx {
-            InvokeTransaction::V0(tx) => tx.transaction_hash = hash,
-            InvokeTransaction::V1(tx) => tx.transaction_hash = hash,
-        },
-        Transaction::L1Handler(tx) => tx.transaction_hash = hash,
     }
 }

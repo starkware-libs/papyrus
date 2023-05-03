@@ -137,7 +137,6 @@ pub enum ClientError {
     /// A client error representing transaction receipts errors.
     #[error(transparent)]
     TransactionReceiptsError(#[from] TransactionReceiptsError),
-    // TODO(yair): Add more info.
     #[error("Invalid transaction: {:?}, error: {:?}.", tx_hash, msg)]
     BadTransaction { tx_hash: TransactionHash, msg: String },
 }

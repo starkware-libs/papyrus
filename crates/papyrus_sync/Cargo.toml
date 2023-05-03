@@ -4,31 +4,30 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-async-stream = { version = "0.3.3" }
-async-trait = { version = "0.1.56" }
-futures = { version = "0.3.21" }
-futures-channel = { version = "0.3.21" }
-futures-util = { version = "0.3.21" }
-hex = { version = "0.4.3" }
-indexmap = { version = "1.9.2", features = ["serde"] }
-libmdbx = { version = "0.1.5", features = ["lifetimed-bytes"] }
-reqwest = { version = "0.11", features = ["json", "blocking"] }
-serde = { version = "1.0.130", features = ["derive"] }
-serde_json = { version = "1.0.81" }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "0029ffe" }
-starknet_client = { path = "../starknet_client" }
+async-stream.workspace = true
+async-trait.workspace = true
+futures-channel.workspace = true
+futures-util.workspace = true
+futures.workspace = true
+hex.workspace = true
+indexmap = { workspace = true, features = ["serde"] }
+libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
 papyrus_storage = { path = "../papyrus_storage" }
-thiserror = { version = "1.0.31" }
-tokio = { version = "1.18.2", features = ["full","sync"] }
-tokio-stream = { version = "0.1.8" }
-tracing = { version = "0.1.37" }
-url = { version = "2.2.2" }
+reqwest = { workspace = true, features = ["json", "blocking"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+starknet_api.workspace = true
+starknet_client = { path = "../starknet_client" }
+thiserror.workspace = true
+tokio = { workspace = true, features = ["full", "sync"] }
+tokio-stream.workspace = true
+tracing.workspace = true
+url.workspace = true
 
 [dev-dependencies]
-simple_logger = { version = "4.0.0" }
-assert_matches = { version = "1.5.0" }
-mockall = { version = "0.11.2" }
+simple_logger.workspace = true
+assert_matches.workspace = true
+mockall.workspace = true
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 starknet_client = { path = "../starknet_client", features = ["testing"] }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", features = ["testing"], rev = "0029ffe" }
-
+starknet_api = { workspace = true, features = ["testing"] }

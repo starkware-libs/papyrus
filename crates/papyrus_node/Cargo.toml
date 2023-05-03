@@ -3,34 +3,35 @@ name = "papyrus_node"
 version = "0.1.0"
 edition = "2021"
 
+[package.metadata.cargo-udeps.ignore]
+normal = ["papyrus_base_layer"]
+
 [dependencies]
-anyhow = { version = "1.0.44" }
-async-stream = { version = "0.3.3" }
+anyhow.workspace = true
+async-stream.workspace = true
 clap = { version = "3.2.19", features = ["derive"] }
-const_format = { version = "0.2.30" }
-# TODO(yair): the base layer dependency was removed because of a bug in ethers. Need to restore it
-# once the bug is solved.
-# papyrus_base_layer = { path = "../papyrus_base_layer" }
-papyrus_storage = { path = "../papyrus_storage" }
-papyrus_sync = { path = "../papyrus_sync" }
-futures-util = { version = "0.3.21" }
+const_format.workspace = true
+papyrus_base_layer = { path = "../papyrus_base_layer" }
+futures-util.workspace = true
+jsonrpsee = { workspace = true, features = ["full"] }
+libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
 papyrus_gateway = { path = "../papyrus_gateway" }
 papyrus_monitoring_gateway = { path = "../papyrus_monitoring_gateway" }
-jsonrpsee = { version = "0.13.1", features = ["full"] }
-libmdbx = { version = "0.1.5", features = ["lifetimed-bytes"] }
-reqwest = { version = "0.11", features = ["json", "blocking"] }
-serde = { version = "1.0.130", features = ["derive"] }
-serde_json = { version = "1.0.81" }
-serde_yaml = { version = "0.9.16" }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "0029ffe" }
+papyrus_storage = { path = "../papyrus_storage" }
+papyrus_sync = { path = "../papyrus_sync" }
+reqwest = { workspace = true, features = ["json", "blocking"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+serde_yaml.workspace = true
+starknet_api.workspace = true
 starknet_client = { path = "../starknet_client" }
-thiserror = { version = "1.0.31" }
-tokio = { version = "1.18.2", features = ["full","sync"] }
-tokio-stream = { version = "0.1.8" }
-tracing = { version = "0.1.37" }
-tracing-subscriber = {version = "0.3.16", features = ["env-filter"]}
-url = { version = "2.2.2" }
+thiserror.workspace = true
+tokio = { workspace = true, features = ["full", "sync"] }
+tokio-stream.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+tracing.workspace = true
+url.workspace = true
 
 [dev-dependencies]
-tempfile = { version = "3.3.0" }
+tempfile.workspace = true
 test_utils = { path = "../test_utils" }

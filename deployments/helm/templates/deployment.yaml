@@ -36,6 +36,11 @@ spec:
       containers:
       - name: {{ template "papyrus.name" . }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        args:
+        - --chain_id
+        - {{ .Values.starknet.chain_id }}
+        - --central_url
+        - {{ .Values.starknet.central_url }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         resources:
           limits:
