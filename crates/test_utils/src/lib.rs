@@ -1,3 +1,5 @@
+pub mod compiled_class;
+
 use std::collections::HashMap;
 use std::env;
 use std::fs::read_to_string;
@@ -483,6 +485,7 @@ auto_impl_get_test_instance! {
 
     binary(bool);
     binary(EthAddress);
+    binary(i16);
     binary(u8);
     binary(u32);
     binary(u64);

@@ -1,6 +1,6 @@
 #[cfg(test)]
 #[path = "serializers_test.rs"]
-mod serializers_test;
+pub(crate) mod serializers_test;
 
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -336,6 +336,7 @@ auto_storage_serde! {
     (ContractAddress, OmmerEventKey);
     (ContractAddress, StorageKey, BlockHash);
     (ContractAddress, StorageKey, BlockNumber);
+    (usize, Vec<std::string::String>);
 }
 
 ////////////////////////////////////////////////////////////////////////

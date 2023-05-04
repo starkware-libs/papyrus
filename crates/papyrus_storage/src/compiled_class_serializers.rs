@@ -1,85 +1,95 @@
-use std::fmt::Debug;
-
-use cairo_lang_casm::operand::{BinOpOperand, CellRef, ResOperand};
-use cairo_lang_utils::bigint::BigIntAsHex;
-use rand::Rng;
-use rand_chacha::ChaCha8Rng;
-use starknet_api::block::BlockNumber;
-use starknet_api::core::ContractAddress;
-use starknet_api::hash::StarkHash;
-use starknet_api::state::StorageKey;
-use test_utils::{auto_impl_get_test_instance, get_number_of_variants, get_rng, GetTestInstance};
+use byteorder::BigEndian;
+use cairo_lang_casm::hints::{CoreHint, CoreHintBase, DeprecatedHint, Hint, StarknetHint};
+use cairo_lang_casm::operand::{
+    BinOpOperand, CellRef, DerefOrImmediate, Operation, Register, ResOperand,
+};
+use cairo_lang_starknet::casm_contract_class::{
+    CasmContractClass, CasmContractEntryPoint, CasmContractEntryPoints,
+};
+use cairo_lang_utils::bigint::{BigIntAsHex, BigUintAsHex};
+use num_bigint::{BigInt, BigUint, Sign};
 
 use crate::compiled_class_serializers_helper::*;
-use crate::db::serialization::StorageSerde;
+use crate::db::serialization::{StorageSerde, StorageSerdeError};
+#[cfg(test)]
+use crate::serializers::serializers_test::{create_storage_serde_test, StorageSerdeTest};
+use crate::serializers::*;
 
-pub trait StorageSerdeTest: StorageSerde {
-    fn storage_serde_test();
-}
-
-// Implements the [`storage_serde_test`] function for every type that
-// implements the [`StorageSerde`] and [`GetTestInstance`] traits.
-impl<T: StorageSerde + GetTestInstance + Eq + Debug> StorageSerdeTest for T {
-    fn storage_serde_test() {
-        let mut rng = get_rng(None);
-        let item = T::get_test_instance(&mut rng);
-        let mut serialized: Vec<u8> = Vec::new();
-        item.serialize_into(&mut serialized).unwrap();
-        let bytes = serialized.into_boxed_slice();
-        let deserialized = T::deserialize_from(&mut bytes.as_ref());
-        assert_eq!(item, deserialized.unwrap());
+auto_storage_serde! {
+    pub struct CasmContractClass {
+        pub prime: BigUint,
+        pub compiler_version: String,
+        pub bytecode: Vec<BigUintAsHex>,
+        pub hints: Vec<(usize, Vec<Hint>)>,
+        pub pythonic_hints: Option<Vec<(usize, Vec<String>)>>,
+        pub entry_points_by_type: CasmContractEntryPoints,
     }
-}
 
-// Tests all types that implement the [`StorageSerde`] trait
-// via the [`auto_storage_serde`] macro.
-macro_rules! create_storage_serde_test {
-    ($name:ident) => {
-        paste::paste! {
-            #[test]
-            fn [<"storage_serde_test" _$name:snake>]() {
-                $name::storage_serde_test()
-            }
-        }
-    };
-}
-pub(crate) use create_storage_serde_test;
+    pub enum Hint {
+        Core(CoreHintBase) = 0,
+        Starknet(StarknetHint) = 1,
+    }
 
-////////////////////////////////////////////////////////////////////////
-// Implements the [`GetTestInstance`] trait for types not supported
-// by the macro [`impl_get_test_instance`] and calls the [`create_test`]
-// macro to create the tests for them.
-////////////////////////////////////////////////////////////////////////
-create_storage_serde_test!(bool);
-create_storage_serde_test!(ContractAddress);
-create_storage_serde_test!(StarkHash);
-create_storage_serde_test!(StorageKey);
-create_storage_serde_test!(u8);
-create_storage_serde_test!(usize);
+    pub struct CasmContractEntryPoints {
+        pub external: Vec<CasmContractEntryPoint>,
+        pub l1_handler: Vec<CasmContractEntryPoint>,
+        pub constructor: Vec<CasmContractEntryPoint>,
+    }
 
-#[test]
-fn block_number_endianness() {
-    let bn_255 = BlockNumber(255);
-    let mut serialized: Vec<u8> = Vec::new();
-    bn_255.serialize_into(&mut serialized).unwrap();
-    let bytes_255 = serialized.into_boxed_slice();
-    let deserialized = BlockNumber::deserialize_from(&mut bytes_255.as_ref());
-    assert_eq!(bn_255, deserialized.unwrap());
+    pub enum CoreHintBase {
+        Core(CoreHint) = 0,
+        Deprecated(DeprecatedHint) = 1,
+    }
 
-    let bn_256 = BlockNumber(256);
-    let mut serialized: Vec<u8> = Vec::new();
-    bn_256.serialize_into(&mut serialized).unwrap();
-    let bytes_256 = serialized.into_boxed_slice();
-    let deserialized = BlockNumber::deserialize_from(&mut bytes_256.as_ref());
-    assert_eq!(bn_256, deserialized.unwrap());
+    pub struct CasmContractEntryPoint {
+        pub selector: BigUint,
+        pub offset: usize,
+        pub builtins: Vec<String>,
+    }
 
-    assert!(bytes_255 < bytes_256);
-}
+    pub struct CellRef {
+        pub register: Register,
+        pub offset: i16,
+    }
+    pub enum Register {
+        AP = 0,
+        FP = 1,
+    }
 
-// These are stucts defined in this crate, so we can't import them into test_utils
-// because it will cause a circular dependency.
-// Once the macro will support all kind of enums variants, these structs will be deleted.
-auto_impl_get_test_instance! {
+    pub struct BigUintAsHex {
+        pub value: BigUint,
+    }
+
+    pub struct BigIntAsHex {
+        pub value: BigInt,
+    }
+
+    pub enum Sign {
+        Minus = 0,
+        NoSign = 1,
+        Plus = 2,
+    }
+
+    pub struct BinOpOperand {
+        pub op: Operation,
+        pub a: CellRef,
+        pub b: DerefOrImmediate,
+    }
+
+    pub enum Operation {
+        Add = 0,
+        Mul = 1,
+    }
+    pub enum DerefOrImmediate {
+        Deref(CellRef) = 0,
+        Immediate(BigIntAsHex) = 1,
+    }
+
+    binary(i16, read_i16, write_i16);
+    (usize, Vec<Hint>);
+
+    // Helper structs
+    // TODO(yair): Remove them once the macro supports enums with named variables and tuples.
     pub enum CoreHintHelper {
         AllocSegment(AllocSegmentStruct) = 0,
         TestLessThan(TestLessThanStruct) = 1,
@@ -306,5 +316,81 @@ auto_impl_get_test_instance! {
     pub struct SetSignatureStruct {
         pub start: ResOperand,
         pub end: ResOperand,
+    }
+}
+
+// Explicit implementation because of private fields.
+impl StorageSerde for BigUint {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        self.to_u32_digits().serialize_into(res)?;
+        Ok(())
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        Some(BigUint::from_slice(Vec::<u32>::deserialize_from(bytes)?.as_slice()))
+    }
+}
+
+// TODO(yair) move enum to the macro and delete the helper struct when the macro supports named
+// variables.
+impl StorageSerde for CoreHint {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        CoreHintHelper::from(self.clone()).serialize_into(res)
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        Some(CoreHintHelper::deserialize_from(bytes)?.into())
+    }
+}
+
+// TODO(yair) move enum to the macro and delete the helper struct when the macro supports multiple
+// fields in tuples.
+impl StorageSerde for ResOperand {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        ResOperandHelper::from(self.clone()).serialize_into(res)
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        Some(ResOperandHelper::deserialize_from(bytes)?.into())
+    }
+}
+
+// TODO(yair) move enum to the macro and delete the helper struct when the macro supports named
+// variables.
+impl StorageSerde for DeprecatedHint {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        DeprecatedHintHelper::from(self.clone()).serialize_into(res)
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        Some(DeprecatedHintHelper::deserialize_from(bytes)?.into())
+    }
+}
+
+// Explicit implementation because of private fields.
+impl StorageSerde for BigInt {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        let (sign, bytes) = self.to_bytes_be();
+        sign.serialize_into(res)?;
+        bytes.serialize_into(res)?;
+        Ok(())
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        let sign = Sign::deserialize_from(bytes)?;
+        let data = Vec::<u8>::deserialize_from(bytes)?;
+        Some(Self::from_bytes_be(sign, data.as_slice()))
+    }
+}
+
+// TODO(yair) move enum to the macro and delete the helper struct when the macro supports named
+// variables.
+impl StorageSerde for StarknetHint {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        StarknetHintHelper::from(self.clone()).serialize_into(res)
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        Some(StarknetHintHelper::deserialize_from(bytes)?.into())
     }
 }

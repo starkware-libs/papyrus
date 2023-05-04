@@ -6,7 +6,11 @@ edition = "2021"
 [features]
 
 [dependencies]
+cairo-lang-casm.workspace = true
+cairo-lang-starknet.workspace = true
+cairo-lang-utils.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
+num-bigint.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true
 reqwest = { workspace = true, features = ["json"] }
