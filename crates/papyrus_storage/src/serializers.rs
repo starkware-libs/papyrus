@@ -38,17 +38,20 @@ use starknet_api::transaction::{
 use web3::types::H160;
 
 use crate::body::events::{
-    ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput, ThinDeployTransactionOutput,
-    ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
+    EventIndex, ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput,
+    ThinDeployTransactionOutput, ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput,
+    ThinTransactionOutput,
 };
+use crate::body::TransactionIndex;
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
+use crate::ommer::{OmmerEventKey, OmmerTransactionKey};
 #[cfg(test)]
 use crate::serializers::serializers_test::{create_storage_serde_test, StorageSerdeTest};
 use crate::state::data::{
     IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass, ThinStateDiff,
 };
 use crate::version::Version;
-use crate::{EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey, TransactionIndex};
+use crate::MarkerKind;
 
 auto_storage_serde! {
     pub struct BlockHash(pub StarkHash);

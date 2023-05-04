@@ -16,6 +16,7 @@ use crate::body::events::{
     ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput, ThinDeployTransactionOutput,
     ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
 };
+use crate::body::TransactionIndex;
 use crate::db::DbConfig;
 use crate::state::data::{
     IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass, ThinStateDiff,
@@ -23,7 +24,7 @@ use crate::state::data::{
 use crate::version::Version;
 use crate::{
     open_storage, EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey, StorageReader,
-    StorageWriter, TransactionIndex,
+    StorageWriter,
 };
 
 pub fn get_test_config() -> DbConfig {
