@@ -1,4 +1,5 @@
 pub mod body;
+pub mod casm;
 pub mod compression_utils;
 pub mod db;
 pub mod header;
@@ -15,6 +16,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use body::events::EventIndex;
+use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use db::DbTableStats;
 use ommer::{OmmerEventKey, OmmerTransactionKey};
 use serde::{Deserialize, Serialize};
@@ -41,6 +43,7 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
     let (db_reader, mut db_writer) = open_env(db_config)?;
     let tables = Arc::new(Tables {
         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
+        casms: db_writer.create_table("casms")?,
         contract_storage: db_writer.create_table("contract_storage")?,
         declared_classes: db_writer.create_table("declared_classes")?,
         declared_classes_block: db_writer.create_table("declared_classes_block")?,
@@ -151,6 +154,7 @@ pub fn table_names() -> &'static [&'static str] {
 struct_field_names! {
     struct Tables {
         block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
+        casms: TableIdentifier<ClassHash, CasmContractClass>,
         contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
         declared_classes: TableIdentifier<ClassHash, ContractClass>,
         declared_classes_block: TableIdentifier<ClassHash, BlockNumber>,
