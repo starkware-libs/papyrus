@@ -1,30 +1,29 @@
+mod state_update_stream;
+
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_stream::stream;
 use async_trait::async_trait;
 use futures::stream::BoxStream;
-use futures::{future, pin_mut, TryStreamExt};
 use futures_util::StreamExt;
 use indexmap::IndexMap;
 #[cfg(test)]
 use mockall::automock;
-use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::state::{ContractClass, StateDiff, StateNumber};
+use starknet_api::state::{ContractClass, StateDiff};
 use starknet_api::StarknetApiError;
 use starknet_client::{
     ClientCreationError, ClientError, GenericContractClass, RetryConfig, StarknetClient,
-    StarknetClientTrait, StateUpdate,
+    StarknetClientTrait,
 };
-use tokio_stream::Stream;
 use tracing::{debug, trace};
 
-use super::stream_utils::MyStreamExt;
+use self::state_update_stream::StateUpdateStream;
 
 pub type CentralResult<T> = Result<T, CentralError>;
 #[derive(Clone, Serialize, Deserialize)]
@@ -147,30 +146,12 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
     ) -> StateUpdatesStream<'_> {
-        let mut current_block_number = initial_block_number;
-        stream! {
-            while current_block_number < up_to_block_number {
-                let state_update_stream = self.state_update_stream(futures_util::stream::iter(
-                    current_block_number.iter_up_to(up_to_block_number),
-                ));
-                pin_mut!(state_update_stream);
-                while let Some(maybe_client_state_update) = state_update_stream.next().await {
-                    let maybe_central_state_update = client_to_central_state_update(
-                        current_block_number, maybe_client_state_update
-                    );
-                    match maybe_central_state_update {
-                        Ok(central_state_update) => {
-                            yield Ok(central_state_update);
-                            current_block_number = current_block_number.next();
-                        },
-                        Err(err) => {
-                            yield Err(err);
-                            return;
-                        }
-                    }
-                }
-            }
-        }
+        StateUpdateStream::new(
+            initial_block_number,
+            up_to_block_number,
+            self.starknet_client.clone(),
+            self.storage_reader.clone(),
+        )
         .boxed()
     }
 
@@ -204,93 +185,6 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
     }
 }
 
-fn client_to_central_state_update(
-    current_block_number: BlockNumber,
-    maybe_client_state_update: CentralResult<(StateUpdate, IndexMap<ClassHash, ApiContractClass>)>,
-) -> CentralResult<CentralStateUpdate> {
-    match maybe_client_state_update {
-        Ok((state_update, mut declared_classes)) => {
-            // Destruct the state diff to avoid partial move.
-            let starknet_client::StateDiff {
-                storage_diffs,
-                deployed_contracts,
-                declared_classes: declared_class_hashes,
-                old_declared_contracts: old_declared_contract_hashes,
-                nonces,
-                replaced_classes,
-            } = state_update.state_diff;
-
-            // Separate the declared classes to new classes, old classes and classes of deployed
-            // contracts (both new and old).
-            let n_declared_classes = declared_class_hashes.len();
-            let mut deprecated_classes = declared_classes.split_off(n_declared_classes);
-            let n_deprecated_declared_classes = old_declared_contract_hashes.len();
-            let deployed_contract_class_definitions =
-                deprecated_classes.split_off(n_deprecated_declared_classes);
-
-            let state_diff = StateDiff {
-                deployed_contracts: IndexMap::from_iter(
-                    deployed_contracts.iter().map(|dc| (dc.address, dc.class_hash)),
-                ),
-                storage_diffs: IndexMap::from_iter(storage_diffs.into_iter().map(
-                    |(address, entries)| {
-                        (address, entries.into_iter().map(|se| (se.key, se.value)).collect())
-                    },
-                )),
-                declared_classes: declared_classes
-                    .into_iter()
-                    .map(|(class_hash, class)| {
-                        (class_hash, class.into_cairo1().expect("Expected Cairo1 class."))
-                    })
-                    .zip(
-                        declared_class_hashes
-                            .into_iter()
-                            .map(|hash_entry| hash_entry.compiled_class_hash),
-                    )
-                    .map(|((class_hash, class), compiled_class_hash)| {
-                        (class_hash, (compiled_class_hash, class))
-                    })
-                    .collect(),
-                deprecated_declared_classes: deprecated_classes
-                    .into_iter()
-                    .map(|(class_hash, generic_class)| {
-                        (class_hash, generic_class.into_cairo0().expect("Expected Cairo0 class."))
-                    })
-                    .collect(),
-                nonces,
-                replaced_classes: replaced_classes
-                    .into_iter()
-                    .map(|replaced_class| (replaced_class.address, replaced_class.class_hash))
-                    .collect(),
-            };
-            // Filter out deployed contracts of new classes because since 0.11 new classes can not
-            // be implicitly declared by deployment.
-            let deployed_contract_class_definitions = deployed_contract_class_definitions
-                .into_iter()
-                .filter_map(|(class_hash, contract_class)| match contract_class {
-                    ApiContractClass::DeprecatedContractClass(deprecated_contract_class) => {
-                        Some((class_hash, deprecated_contract_class))
-                    }
-                    ApiContractClass::ContractClass(_) => None,
-                })
-                .collect();
-            let block_hash = state_update.block_hash;
-            debug!(
-                "Received new state update of block {current_block_number} with hash {block_hash}."
-            );
-            trace!(
-                "State diff: {state_diff:?}, deployed_contract_class_definitions: \
-                 {deployed_contract_class_definitions:?}."
-            );
-            Ok((current_block_number, block_hash, state_diff, deployed_contract_class_definitions))
-        }
-        Err(err) => {
-            debug!("Received error for state diff {}: {:?}.", current_block_number, err);
-            Err(err)
-        }
-    }
-}
-
 fn client_to_central_block(
     current_block_number: BlockNumber,
     maybe_client_block: Result<Option<starknet_client::Block>, ClientError>,
@@ -310,118 +204,6 @@ fn client_to_central_block(
             debug!("Received error for block {}: {:?}.", current_block_number, err);
             Err(err)
         }
-    }
-}
-
-// Given a class hash, returns the corresponding class definition.
-// First tries to retrieve the class from the storage.
-// If not found in the storage, the class is downloaded.
-async fn download_class_if_necessary<TStarknetClient: StarknetClientTrait>(
-    class_hash: ClassHash,
-    starknet_client: Arc<TStarknetClient>,
-    storage_reader: StorageReader,
-) -> CentralResult<Option<ApiContractClass>> {
-    let txn = storage_reader.begin_ro_txn()?;
-    let state_reader = txn.get_state_reader()?;
-    let block_number = txn.get_state_marker()?;
-    let state_number = StateNumber::right_after_block(block_number);
-
-    // Check declared classes.
-    if let Ok(Some(class)) = state_reader.get_class_definition_at(state_number, &class_hash) {
-        trace!("Class {:?} retrieved from storage.", class_hash);
-        return Ok(Some(ApiContractClass::ContractClass(class)));
-    };
-
-    // Check deprecated classes.
-    if let Ok(Some(class)) =
-        state_reader.get_deprecated_class_definition_at(state_number, &class_hash)
-    {
-        trace!("Deprecated class {:?} retrieved from storage.", class_hash);
-        return Ok(Some(ApiContractClass::DeprecatedContractClass(class)));
-    }
-
-    // Class not found in storage - download.
-    trace!("Downloading class {:?}.", class_hash);
-    let client_class = starknet_client.class_by_hash(class_hash).await.map_err(Arc::new)?;
-    match client_class {
-        None => Ok(None),
-        Some(class) => Ok(Some(class.into())),
-    }
-}
-
-impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
-    GenericCentralSource<TStarknetClient>
-{
-    fn state_update_stream(
-        &self,
-        block_number_stream: impl Stream<Item = BlockNumber> + Send + Sync + 'static,
-    ) -> impl Stream<Item = CentralResult<(StateUpdate, IndexMap<ClassHash, ApiContractClass>)>>
-    {
-        // Stream the state updates.
-        let starknet_client = self.starknet_client.clone();
-        let (state_updates0, mut state_updates1) = block_number_stream
-            .map(move |block_number| {
-                let starknet_client = starknet_client.clone();
-                async move { starknet_client.state_update(block_number).await }
-            })
-            .buffered(self.concurrent_requests)
-            // Client error is not cloneable.
-            .map_err(Arc::new)
-            // TODO: The buffer size is a hack to prevent a deadlock while syncing. Change this.
-            .fanout(1 << 20);
-
-        // Stream the declared and deployed classes.
-        let starknet_client = self.starknet_client.clone();
-        let storage_reader = self.storage_reader.clone();
-        let mut flat_classes = state_updates0
-            // In case state_updates1 contains a ClientError, we yield it and break - without
-            // evaluating flat_classes.
-            .filter_map(|state_update| future::ready(state_update.ok()))
-            .filter_map(future::ready)
-            .map(|state_update| state_update.state_diff.class_hashes())
-            .flat_map(futures::stream::iter)
-            .map(move |class_hash| {
-                let starknet_client = starknet_client.clone();
-                let storage_reader = storage_reader.clone();
-                async move { (class_hash, download_class_if_necessary(class_hash, starknet_client, storage_reader).await) }
-            })
-            .buffered(self.concurrent_requests);
-
-        let res_stream = stream! {
-            while let Some(maybe_state_update) = state_updates1.next().await {
-                // Get the next state update.
-                let state_update = match maybe_state_update {
-                    Ok(Some(state_update)) => state_update,
-                    Ok(None) => {
-                        yield (Err(CentralError::StateUpdateNotFound));
-                        break;
-                    }
-                    Err(err) => {
-                        yield (Err(CentralError::ClientError(err)));
-                        break;
-                    }
-                };
-
-                // Get the next state declared and deployed classes.
-                let len = state_update.state_diff.class_hashes().len();
-                let classes: Option<Result<IndexMap<ClassHash, ApiContractClass>, _>> =
-                    flat_classes.take_n(len).await.map(|v| {
-                        v.into_iter()
-                            .map(|(class_hash, class)| match class {
-                                Ok(Some(class)) => Ok((class_hash, class)),
-                                Ok(None) => Err(CentralError::StateUpdateNotFound),
-                                Err(err) => Err(err),
-                            })
-                            .collect()
-                    });
-                match classes {
-                    Some(Ok(classes)) => yield (Ok((state_update, classes))),
-                    Some(Err(err)) => yield (Err(err)),
-                    None => yield (Err(CentralError::ClassNotFound)),
-                }
-            }
-        };
-        res_stream
     }
 }
 
