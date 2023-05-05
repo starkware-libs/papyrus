@@ -219,6 +219,8 @@ impl StarknetClient {
             ClientError::RequestError(internal_err) => {
                 if internal_err.is_timeout() {
                     Some(RetryErrorCode::Timeout)
+                } else if internal_err.is_request() {
+                    None
                 } else if internal_err.is_connect() {
                     Some(RetryErrorCode::Disconnect)
                 } else if internal_err.is_redirect() {

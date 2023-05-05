@@ -16,11 +16,13 @@ use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::ommer::{OmmerStorageReader, OmmerStorageWriter};
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::StateDiff;
+use starknet_client::ClientError;
 use tracing::{debug, error, info, trace, warn};
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
@@ -121,7 +123,29 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         // Whitelisting of errors from which we might be able to recover.
         fn is_recoverable(err: &StateSyncError) -> bool {
             match err {
-                StateSyncError::CentralSourceError(_) => true,
+                StateSyncError::CentralSourceError(central_err) => {
+                    if let CentralError::ClientError(client_err) = central_err {
+                        match **client_err {
+                            // In case of non existing url this error will occur.
+                            ClientError::RequestError(ref request_err) => {
+                                return !request_err.is_request();
+                            }
+                            // In the case of an existing URL but not existing function, some
+                            // servers will return bad response status(first pattern), and others
+                            // will return a not syntactically valid response (second pattern).
+                            ClientError::BadResponseStatus { ref code, message: _ } => {
+                                return &StatusCode::NOT_FOUND != code;
+                            }
+                            ClientError::SerdeError(ref serde_err) => {
+                                return !serde_err.is_syntax();
+                            }
+                            _ => {
+                                return true;
+                            }
+                        }
+                    }
+                    true
+                }
                 StateSyncError::StorageError(storage_err)
                     if matches!(storage_err, StorageError::InnerError(_)) =>
                 {
