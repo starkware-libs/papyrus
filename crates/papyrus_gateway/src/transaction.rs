@@ -39,21 +39,6 @@ pub struct DeclareTransactionV0V1 {
     pub transaction_hash: TransactionHash,
     pub signature: TransactionSignature,
 }
-
-impl From<starknet_api::transaction::DeclareTransactionV0V1> for DeclareTransactionV0V1 {
-    fn from(tx: starknet_api::transaction::DeclareTransactionV0V1) -> Self {
-        Self {
-            class_hash: tx.class_hash,
-            sender_address: tx.sender_address,
-            nonce: tx.nonce,
-            max_fee: tx.max_fee,
-            version: tx_v0(),
-            transaction_hash: tx.transaction_hash,
-            signature: tx.signature,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeclareTransactionV2 {
     pub class_hash: ClassHash,
@@ -178,10 +163,26 @@ impl From<starknet_api::transaction::Transaction> for Transaction {
         match tx {
             starknet_api::transaction::Transaction::Declare(declare_tx) => match declare_tx {
                 starknet_api::transaction::DeclareTransaction::V0(tx) => {
-                    Self::Declare(DeclareTransaction::Version0(tx.into()))
+                    Self::Declare(DeclareTransaction::Version0(DeclareTransactionV0V1 {
+                        class_hash: tx.class_hash,
+                        sender_address: tx.sender_address,
+                        nonce: tx.nonce,
+                        max_fee: tx.max_fee,
+                        version: tx_v0(),
+                        transaction_hash: tx.transaction_hash,
+                        signature: tx.signature,
+                    }))
                 }
                 starknet_api::transaction::DeclareTransaction::V1(tx) => {
-                    Self::Declare(DeclareTransaction::Version1(tx.into()))
+                    Self::Declare(DeclareTransaction::Version0(DeclareTransactionV0V1 {
+                        class_hash: tx.class_hash,
+                        sender_address: tx.sender_address,
+                        nonce: tx.nonce,
+                        max_fee: tx.max_fee,
+                        version: tx_v1(),
+                        transaction_hash: tx.transaction_hash,
+                        signature: tx.signature,
+                    }))
                 }
                 starknet_api::transaction::DeclareTransaction::V2(tx) => {
                     Self::Declare(DeclareTransaction::Version2(tx.into()))

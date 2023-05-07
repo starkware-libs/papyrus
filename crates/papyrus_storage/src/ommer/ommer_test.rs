@@ -12,7 +12,7 @@ use crate::test_utils::get_test_storage;
 #[test]
 fn insert_header_to_ommer() {
     let (_, mut writer) = get_test_storage();
-    let block = get_test_block(7);
+    let block = get_test_block(Some(0), 7, None, None, None);
     let block_hash = block.header.block_hash;
 
     writer
@@ -27,7 +27,7 @@ fn insert_header_to_ommer() {
 #[test]
 fn insert_body_to_ommer() {
     let (_, mut writer) = get_test_storage();
-    let block = get_test_block(7);
+    let block = get_test_block(Some(0), 7, None, None, None);
 
     fn split_tx_output(tx_output: TransactionOutput) -> (ThinTransactionOutput, Vec<EventContent>) {
         let events = tx_output.events().iter().map(|e| e.content.clone()).collect();
@@ -73,7 +73,7 @@ fn insert_raw_state_diff_to_ommer() {
 #[test]
 fn get_ommer_header() {
     let (reader, mut writer) = get_test_storage();
-    let block = get_test_block(7);
+    let block = get_test_block(Some(0), 7, None, None, None);
     let block_hash = block.header.block_hash;
 
     assert!(reader.begin_ro_txn().unwrap().get_ommer_header(block_hash).unwrap().is_none());

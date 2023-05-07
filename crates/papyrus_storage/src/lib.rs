@@ -14,20 +14,20 @@ pub mod test_utils;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use body::events::EventIndex;
 use db::DbTableStats;
+use ommer::{OmmerEventKey, OmmerTransactionKey};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StorageKey};
-use starknet_api::transaction::{
-    EventContent, EventIndexInTransactionOutput, Transaction, TransactionHash,
-    TransactionOffsetInBlock,
-};
+use starknet_api::transaction::{EventContent, Transaction, TransactionHash};
 use tracing::debug;
 use version::{StorageVersionError, Version};
 
 use crate::body::events::ThinTransactionOutput;
+use crate::body::TransactionIndex;
 use crate::db::{
     open_env, DbConfig, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier,
     TransactionKind, RO, RW,
@@ -279,16 +279,3 @@ pub enum MarkerKind {
 }
 
 pub type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
-
-// TODO(yair): move the key structs from the main lib file.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
-pub struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize)]
-pub struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
-pub struct OmmerTransactionKey(pub BlockHash, pub TransactionOffsetInBlock);
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize)]
-pub struct OmmerEventKey(pub OmmerTransactionKey, pub EventIndexInTransactionOutput);

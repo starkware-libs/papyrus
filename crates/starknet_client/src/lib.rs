@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use std::fmt::{self, Display, Formatter};
 
 use async_trait::async_trait;
+use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 #[cfg(any(feature = "testing", test))]
 use mockall::automock;
 use reqwest::header::HeaderMap;
@@ -53,6 +54,11 @@ pub trait StarknetClientTrait {
         &self,
         class_hash: ClassHash,
     ) -> ClientResult<Option<GenericContractClass>>;
+    /// Returns a [`CasmContractClass`] corresponding to `class_hash`.
+    async fn compiled_class_by_hash(
+        &self,
+        class_hash: ClassHash,
+    ) -> ClientResult<Option<CasmContractClass>>;
     /// Returns a [`starknet_client`][`StateUpdate`] corresponding to `block_number`.
     async fn state_update(&self, block_number: BlockNumber) -> ClientResult<Option<StateUpdate>>;
 }
@@ -69,6 +75,7 @@ pub struct StarknetClient {
 struct StarknetUrls {
     get_block: Url,
     get_contract_by_hash: Url,
+    get_compiled_class_by_class_hash: Url,
     get_state_update: Url,
 }
 
@@ -143,6 +150,8 @@ pub enum ClientError {
 
 const GET_BLOCK_URL: &str = "feeder_gateway/get_block";
 const GET_CONTRACT_BY_HASH_URL: &str = "feeder_gateway/get_class_by_hash";
+const GET_COMPILED_CLASS_BY_CLASS_HASH_URL: &str =
+    "feeder_gateway/get_compiled_class_by_class_hash";
 const GET_STATE_UPDATE_URL: &str = "feeder_gateway/get_state_update";
 const BLOCK_NUMBER_QUERY: &str = "blockNumber";
 const CLASS_HASH_QUERY: &str = "classHash";
@@ -153,6 +162,8 @@ impl StarknetUrls {
         Ok(StarknetUrls {
             get_block: base_url.join(GET_BLOCK_URL)?,
             get_contract_by_hash: base_url.join(GET_CONTRACT_BY_HASH_URL)?,
+            get_compiled_class_by_class_hash: base_url
+                .join(GET_COMPILED_CLASS_BY_CLASS_HASH_URL)?,
             get_state_update: base_url.join(GET_STATE_UPDATE_URL)?,
         })
     }
@@ -208,6 +219,8 @@ impl StarknetClient {
             ClientError::RequestError(internal_err) => {
                 if internal_err.is_timeout() {
                     Some(RetryErrorCode::Timeout)
+                } else if internal_err.is_request() {
+                    None
                 } else if internal_err.is_connect() {
                     Some(RetryErrorCode::Disconnect)
                 } else if internal_err.is_redirect() {
@@ -330,6 +343,31 @@ impl StarknetClientTrait for StarknetClient {
                 debug!(
                     "Failed to get state update for block number {} from starknet server.",
                     block_number
+                );
+                Err(err)
+            }
+        }
+    }
+
+    async fn compiled_class_by_hash(
+        &self,
+        class_hash: ClassHash,
+    ) -> ClientResult<Option<CasmContractClass>> {
+        let mut url = self.urls.get_compiled_class_by_class_hash.clone();
+        let class_hash = serde_json::to_string(&class_hash)?;
+        url.query_pairs_mut()
+            .append_pair(CLASS_HASH_QUERY, &class_hash.as_str()[1..class_hash.len() - 1]);
+        let response = self.request_with_retry(url).await;
+        match response {
+            Ok(raw_compiled_class) => Ok(Some(serde_json::from_str(&raw_compiled_class)?)),
+            Err(ClientError::StarknetError(StarknetError {
+                code: StarknetErrorCode::UndeclaredClass,
+                message: _,
+            })) => Ok(None),
+            Err(err) => {
+                debug!(
+                    "Failed to get compiled class with hash {:?} from starknet server.",
+                    class_hash
                 );
                 Err(err)
             }

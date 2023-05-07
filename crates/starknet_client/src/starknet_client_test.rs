@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use assert_matches::assert_matches;
+use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use mockito::mock;
 use reqwest::StatusCode;
 use starknet_api::block::BlockNumber;
@@ -280,6 +281,28 @@ async fn get_block() {
     let block = starknet_client.block(BlockNumber(9999999999)).await.unwrap();
     mock_no_block.assert();
     assert!(block.is_none());
+}
+#[tokio::test]
+async fn compiled_class_by_hash() {
+    let starknet_client =
+        StarknetClient::new(&mockito::server_url(), None, NODE_VERSION, get_test_config()).unwrap();
+    let raw_casm_contract_class = read_resource_file("casm_contract_class.json");
+    let mock_casm_contract_class = mock(
+        "GET",
+        &format!("/feeder_gateway/get_compiled_class_by_class_hash?{CLASS_HASH_QUERY}=0x7")[..],
+    )
+    .with_status(200)
+    .with_body(&raw_casm_contract_class)
+    .create();
+    let casm_contract_class = starknet_client
+        .compiled_class_by_hash(ClassHash(stark_felt!("0x7")))
+        .await
+        .unwrap()
+        .unwrap();
+    mock_casm_contract_class.assert();
+    let expected_casm_contract_class: CasmContractClass =
+        serde_json::from_str(&raw_casm_contract_class).unwrap();
+    assert_eq!(casm_contract_class, expected_casm_contract_class);
 }
 
 #[tokio::test]

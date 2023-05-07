@@ -75,8 +75,12 @@ pub fn read_json_file(path_in_resource_dir: &str) -> serde_json::Value {
 }
 
 /// Used in random test to create a random generator, see for example storage_serde_test.
-pub fn get_rng() -> ChaCha8Rng {
-    let seed = if let Ok(seed_str) = env::var("SEED") {
+/// Randomness can be seeded by passing a seed parameter or by setting and env variable `SEED` or by
+/// the OS (the rust default).
+pub fn get_rng(seed: Option<u64>) -> ChaCha8Rng {
+    let seed: u64 = if let Some(seed) = seed {
+        seed
+    } else if let Ok(seed_str) = env::var("SEED") {
         seed_str.parse().unwrap()
     } else {
         let mut rng = rand::thread_rng();
@@ -96,7 +100,7 @@ pub fn get_rng() -> ChaCha8Rng {
 //////////////////////////////////////////////////////////////////////////
 
 /// Returns a test block with a variable number of transactions and events.
-pub fn get_rand_test_block_with_events(
+fn get_rand_test_block_with_events(
     rng: &mut ChaCha8Rng,
     transaction_count: usize,
     events_per_tx: usize,
@@ -116,7 +120,7 @@ pub fn get_rand_test_block_with_events(
 }
 
 /// Returns a test block body with a variable number of transactions and events.
-pub fn get_rand_test_body_with_events(
+fn get_rand_test_body_with_events(
     rng: &mut ChaCha8Rng,
     transaction_count: usize,
     events_per_tx: usize,
@@ -207,37 +211,35 @@ fn set_transaction_hash(tx: &mut Transaction, hash: TransactionHash) {
 //////////////////////////////////////////////////////////////////////////
 
 // Returns a test block with a variable number of transactions and events.
-pub fn get_test_block_with_events(transaction_count: usize, events_per_tx: usize) -> Block {
-    let mut rng = ChaCha8Rng::seed_from_u64(0);
-    get_rand_test_block_with_events(&mut rng, transaction_count, events_per_tx, None, None)
-}
-
-// Returns a test block body with a variable number of transactions and events.
-pub fn get_test_body_with_events(transaction_count: usize, events_per_tx: usize) -> BlockBody {
-    let mut rng = ChaCha8Rng::seed_from_u64(0);
-    get_rand_test_body_with_events(&mut rng, transaction_count, events_per_tx, None, None)
-}
-
-// Returns a test block with a variable number of transactions.
-pub fn get_rand_test_block(rng: &mut ChaCha8Rng, transaction_count: usize) -> Block {
-    get_rand_test_block_with_events(rng, transaction_count, 0, None, None)
-}
-
-// Returns a test block body with a variable number of transactions.
-pub fn get_rand_test_body(rng: &mut ChaCha8Rng, transaction_count: usize) -> BlockBody {
-    get_rand_test_body_with_events(rng, transaction_count, 0, None, None)
-}
-
-// Returns a test block with a variable number of transactions.
-pub fn get_test_block(transaction_count: usize) -> Block {
-    let mut rng = ChaCha8Rng::seed_from_u64(0);
-    get_rand_test_block(&mut rng, transaction_count)
+pub fn get_test_block(
+    seed: Option<u64>,
+    transaction_count: usize,
+    events_per_tx: Option<usize>,
+    from_addresses: Option<Vec<ContractAddress>>,
+    keys: Option<Vec<Vec<EventKey>>>,
+) -> Block {
+    let mut rng = get_rng(seed);
+    let events_per_tx = if let Some(events_per_tx) = events_per_tx { events_per_tx } else { 0 };
+    get_rand_test_block_with_events(
+        &mut rng,
+        transaction_count,
+        events_per_tx,
+        from_addresses,
+        keys,
+    )
 }
 
 // Returns a test block body with a variable number of transactions.
-pub fn get_test_body(transaction_count: usize) -> BlockBody {
-    let mut rng = ChaCha8Rng::seed_from_u64(0);
-    get_rand_test_body(&mut rng, transaction_count)
+pub fn get_test_body(
+    seed: Option<u64>,
+    transaction_count: usize,
+    events_per_tx: Option<usize>,
+    from_addresses: Option<Vec<ContractAddress>>,
+    keys: Option<Vec<Vec<EventKey>>>,
+) -> BlockBody {
+    let mut rng = get_rng(seed);
+    let events_per_tx = if let Some(events_per_tx) = events_per_tx { events_per_tx } else { 0 };
+    get_rand_test_body_with_events(&mut rng, transaction_count, events_per_tx, from_addresses, keys)
 }
 
 // Returns a state diff with one item in each IndexMap.
