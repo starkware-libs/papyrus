@@ -26,7 +26,9 @@ use starknet_api::deprecated_contract_class::{
     TypedParameter,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::{ContractClass, EntryPoint, EntryPointType, FunctionIndex, StorageKey};
+use starknet_api::state::{
+    ContractClass, EntryPoint, EntryPointType, FunctionIndex, StorageKey, ThinStateDiff,
+};
 use starknet_api::transaction::{
     Calldata, ContractAddressSalt, DeclareTransaction, DeclareTransactionV0V1,
     DeclareTransactionV2, DeployAccountTransaction, DeployTransaction, EthAddress, EventContent,
@@ -48,7 +50,7 @@ use crate::ommer::{OmmerEventKey, OmmerTransactionKey};
 #[cfg(test)]
 use crate::serializers::serializers_test::{create_storage_serde_test, StorageSerdeTest};
 use crate::state::data::{
-    IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass, ThinStateDiff,
+    IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass,
 };
 use crate::version::Version;
 use crate::MarkerKind;

@@ -1,12 +1,12 @@
 use indexmap::IndexMap;
 use starknet_api::block::BlockHeader;
+use starknet_api::state::ThinStateDiff;
 use starknet_api::transaction::{EventContent, TransactionOutput};
 use test_utils::{get_test_block, get_test_state_diff};
 
 use super::OmmerStorageReader;
 use crate::body::events::ThinTransactionOutput;
 use crate::ommer::OmmerStorageWriter;
-use crate::state::data::ThinStateDiff;
 use crate::test_utils::get_test_storage;
 
 #[test]
