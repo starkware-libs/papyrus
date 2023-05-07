@@ -6,14 +6,13 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader};
 use starknet_api::core::ClassHash;
-use starknet_api::state::ContractClass;
+use starknet_api::state::{ContractClass, ThinStateDiff};
 use starknet_api::transaction::{
     EventContent, EventIndexInTransactionOutput, Transaction, TransactionOffsetInBlock,
 };
 
 use crate::body::events::ThinTransactionOutput;
 use crate::db::{DbError, RW};
-use crate::state::data::ThinStateDiff;
 use crate::{StorageError, StorageResult, StorageTxn, TransactionKind};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]

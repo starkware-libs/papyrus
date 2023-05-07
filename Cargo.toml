@@ -54,7 +54,7 @@ serde = { version = "1.0.130" }
 serde_json = { version = "1.0.81" }
 serde_yaml = { version = "0.9.16" }
 simple_logger = { version = "4.0.0" }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "7d21dcb" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "22782b5" }
 tempfile = { version = "3.3.0" }
 thiserror = { version = "1.0.31" }
 tokio = { version = "1.18.2" }

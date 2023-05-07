@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
-use starknet_api::state::{ContractClass, StorageKey};
+use starknet_api::state::{ContractClass, StorageKey, ThinStateDiff};
 use starknet_api::transaction::{EventContent, Transaction, TransactionHash};
 use tracing::debug;
 use version::{StorageVersionError, Version};
@@ -33,7 +33,7 @@ use crate::db::{
     TransactionKind, RO, RW,
 };
 use crate::state::data::{
-    IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass, ThinStateDiff,
+    IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass,
 };
 use crate::version::{VersionStorageReader, VersionStorageWriter};
 
