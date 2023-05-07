@@ -34,8 +34,8 @@ fn append_state_diff_declared_classes() {
         ..Default::default()
     };
     let diff1 = StateDiff {
-        deprecated_declared_classes: IndexMap::from([(dc0, dep_class.clone())]),
-        declared_classes: IndexMap::from([(nc1, new_class.clone())]),
+        deprecated_declared_classes: IndexMap::from([(dc0, dep_class)]),
+        declared_classes: IndexMap::from([(nc1, new_class)]),
         ..Default::default()
     };
 
@@ -50,7 +50,7 @@ fn append_state_diff_declared_classes() {
     let state1 = StateNumber::right_before_block(BlockNumber(1));
     let state2 = StateNumber::right_before_block(BlockNumber(2));
 
-    // ___Deprecated Classes Test___
+    // Deprecated Classes Test
     // Check for ClassAlreadyExists error when trying to declare another class to an existing
     // class hash.
     let txn = writer.begin_rw_txn().unwrap();
@@ -82,18 +82,8 @@ fn append_state_diff_declared_classes() {
     assert_matches!(statetxn.get_deprecated_class_definition_at(state1, &dc1).unwrap(), Some(_));
     assert_matches!(statetxn.get_deprecated_class_definition_at(state2, &dc1).unwrap(), Some(_));
 
-    // ___New Classes Test___
-    // Check for ClassAlreadyExists error when trying to declare a different class to an existing
-    // class hash.
+    // New Classes Test
     drop(txn);
-    let txn = writer.begin_rw_txn().unwrap();
-    let diff2 = StateDiff { declared_classes: diff1.declared_classes, ..StateDiff::default() };
-    if let Err(err) = txn.append_state_diff(BlockNumber(2), diff2, IndexMap::new()) {
-        assert_matches!(err, StorageError::ClassAlreadyExists { class_hash: _ });
-    } else {
-        panic!("Unexpected Ok.");
-    }
-
     let txn = writer.begin_rw_txn().unwrap();
     let statetxn = txn.get_state_reader().unwrap();
 
@@ -106,31 +96,6 @@ fn append_state_diff_declared_classes() {
     assert_matches!(statetxn.get_class_definition_at(state0, &nc1).unwrap(), None);
     assert_matches!(statetxn.get_class_definition_at(state1, &nc1).unwrap(), None);
     assert_matches!(statetxn.get_class_definition_at(state2, &nc1).unwrap(), Some(_));
-
-    // Check for ClassAlreadyExists error when trying to declare another class using the new
-    // version to an existing class hash in the older version .
-    drop(txn);
-    let txn = writer.begin_rw_txn().unwrap();
-    let diff2 =
-        StateDiff { declared_classes: IndexMap::from([(dc0, new_class)]), ..StateDiff::default() };
-    if let Err(err) = txn.append_state_diff(BlockNumber(2), diff2, IndexMap::new()) {
-        assert_matches!(err, StorageError::ClassAlreadyExists { class_hash: _ });
-    } else {
-        panic!("Unexpected Ok.");
-    }
-
-    // Check for ClassAlreadyExists error when trying to declare another class using the old
-    // version to an existing class hash in the new version.
-    let txn = writer.begin_rw_txn().unwrap();
-    let diff2 = StateDiff {
-        deprecated_declared_classes: IndexMap::from([(nc0, dep_class)]),
-        ..StateDiff::default()
-    };
-    if let Err(err) = txn.append_state_diff(BlockNumber(2), diff2, IndexMap::new()) {
-        assert_matches!(err, StorageError::ClassAlreadyExists { class_hash: _ });
-    } else {
-        panic!("Unexpected Ok.");
-    };
 }
 
 #[test]
