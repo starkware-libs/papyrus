@@ -11,9 +11,9 @@ use papyrus_storage::StorageReader;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 use starknet_api::state::{StateDiff, StateNumber};
-use starknet_client::{ClientError, StarknetClientTrait, StateUpdate};
-use tracing::debug;
+use starknet_client::{ClientResult, StarknetClientTrait, StateUpdate};
 use tracing::log::trace;
+use tracing::{debug, instrument};
 
 use super::{ApiContractClass, CentralResult, CentralStateUpdate};
 use crate::CentralError;
@@ -24,17 +24,19 @@ const MAX_STATE_UPDATES_TO_STORE_IN_MEMORY: usize = 100;
 const MAX_CLASSES_TO_DOWNLOAD: usize = 100;
 const CLASSES_INITIAL_CAPACITY: usize = MAX_STATE_UPDATES_TO_STORE_IN_MEMORY * 5;
 
-type FuturesOrderedPinBox<T> = FuturesOrdered<Pin<Box<dyn Future<Output = T> + Send>>>;
+type TasksQueue<T> = FuturesOrdered<Pin<Box<dyn Future<Output = T> + Send>>>;
+type NumberOfClasses = usize;
+
 pub(crate) struct StateUpdateStream<TStarknetClient: StarknetClientTrait + Send + 'static> {
     initial_block_number: BlockNumber,
     up_to_block_number: BlockNumber,
     starknet_client: Arc<TStarknetClient>,
     storage_reader: StorageReader,
-    download_state_update_tasks:
-        FuturesOrderedPinBox<(BlockNumber, Result<Option<StateUpdate>, ClientError>)>,
-    downloaded_state_updates: VecDeque<(BlockNumber, usize, StateUpdate)>,
+    download_state_update_tasks: TasksQueue<(BlockNumber, ClientResult<Option<StateUpdate>>)>,
+    // Contains NumberOfClasses so we don't need to calculate it from the StateUpdate.
+    downloaded_state_updates: VecDeque<(BlockNumber, NumberOfClasses, StateUpdate)>,
     classes_to_download: VecDeque<ClassHash>,
-    download_class_tasks: FuturesOrderedPinBox<Result<Option<ApiContractClass>, CentralError>>,
+    download_class_tasks: TasksQueue<CentralResult<Option<ApiContractClass>>>,
     downloaded_classes: VecDeque<ApiContractClass>,
 }
 
@@ -52,18 +54,18 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> Stream
             // again.
             let mut should_poll_again = false;
 
-            // If available, retrieve next block state update and classes.
-            // We don't return it immediately to allow initiating more downloading tasks.
-            if let Some(maybe_central_state_update) = self.next_output() {
-                return Poll::Ready(Some(maybe_central_state_update));
-            }
-
+            // Advances scheduling logic.
             if let Err(err) = self.do_scheduling(&mut should_poll_again, cx) {
                 return Poll::Ready(Some(Err(err)));
             }
 
+            // If available, returns the next block state update and corresponding classes.
+            if let Some(maybe_central_state_update) = self.next_output() {
+                return Poll::Ready(Some(maybe_central_state_update));
+            }
+
             // In case no task is done and there are no newly initiated tasks, the stream is either
-            // exhausted or no new item available.
+            // exhausted or no new item is available.
             if !should_poll_again {
                 break;
             }
@@ -100,7 +102,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
         }
     }
 
-    // Return data needed for the next block CentralStateUpdate, or None if it is not ready.
+    // Returns data needed for the next block CentralStateUpdate, or None if it is not yet ready.
     fn next_output(&mut self) -> Option<CentralResult<CentralStateUpdate>> {
         let (_, n_classes, _) = self.downloaded_state_updates.front()?;
         if self.downloaded_classes.len() < *n_classes {
@@ -115,20 +117,25 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
         Some(client_to_central_state_update(block_number, Ok((state_update, classes))))
     }
 
-    /// Advances scheduling logic.
+    // Advances scheduling logic. Propagates errors to be returned from the stream.
+    // - Schedules state update downloading tasks.
+    // - For each downloaded state update: stores the result and the corresponding classes needed to
+    //   be downloaded.
+    // - Schedules class downloading tasks.
+    // - For each downloaded class: stores the result.
     fn do_scheduling(
         self: &mut std::pin::Pin<&mut Self>,
         should_poll_again: &mut bool,
         cx: &mut std::task::Context<'_>,
     ) -> CentralResult<()> {
         self.schedule_class_downloads(should_poll_again);
-        self.enqueue_downloaded_classes(cx, should_poll_again)?;
+        self.handle_downloaded_classes(cx, should_poll_again)?;
         self.schedule_state_update_downloads(should_poll_again);
         self.handle_downloaded_state_updates(cx, should_poll_again)?;
         Ok(())
     }
 
-    /// Adds more class downloading tasks.
+    // Adds more class downloading tasks.
     fn schedule_class_downloads(self: &mut std::pin::Pin<&mut Self>, should_poll_again: &mut bool) {
         while self.download_class_tasks.len() < MAX_CLASSES_TO_DOWNLOAD {
             let Some(class_hash) = self.classes_to_download.pop_front() else { break; };
@@ -143,27 +150,32 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
         }
     }
 
-    /// Checks for finished class downloading tasks.
-    fn enqueue_downloaded_classes(
+    // Checks for finished class downloading tasks and adds the result to `downloaded_classes`.
+    fn handle_downloaded_classes(
         self: &mut std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
         should_poll_again: &mut bool,
     ) -> CentralResult<()> {
-        if let Poll::Ready(Some(maybe_class)) = self.download_class_tasks.poll_next_unpin(cx) {
-            *should_poll_again = true;
-            match maybe_class {
-                // Add to downloaded classes.
-                Ok(Some(class)) => self.downloaded_classes.push_back(class),
-                // Class was not found.
-                Ok(None) => return Err(CentralError::ClassNotFound),
-                // An error occurred while downloading the class.
-                Err(err) => return Err(err),
+        let Poll::Ready(Some(maybe_class)) =
+            self.download_class_tasks.poll_next_unpin(cx) else {
+            return Ok(());
+        };
+
+        *should_poll_again = true;
+        match maybe_class {
+            // Add to downloaded classes.
+            Ok(Some(class)) => {
+                self.downloaded_classes.push_back(class);
+                Ok(())
             }
+            // Class was not found.
+            Ok(None) => Err(CentralError::ClassNotFound),
+            // An error occurred while downloading the class.
+            Err(err) => Err(err),
         }
-        Ok(())
     }
 
-    // Adds more state update download tasks.
+    // Adds more state update downloading tasks.
     fn schedule_state_update_downloads(
         self: &mut std::pin::Pin<&mut Self>,
         should_poll_again: &mut bool,
@@ -182,6 +194,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
     }
 
     // Checks for finished state update downloading tasks.
+    // Checks for finished class downloading tasks and adds the result to `downloaded_classes`.
     fn handle_downloaded_state_updates(
         self: &mut std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
@@ -198,21 +211,20 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
 
         *should_poll_again = true;
         match maybe_state_update {
-            // Add to downloaded state updates.
+            // Add to downloaded state updates. Adds the results to `downloaded_state_updates` and
+            // the corresponding classes needed to   be downloaded to `classes_to_download`.
             Ok(Some(state_update)) => {
                 let hashes = state_update.state_diff.class_hashes();
                 let n_classes = hashes.len();
                 self.classes_to_download.append(&mut VecDeque::from(hashes));
                 self.downloaded_state_updates.push_back((block_number, n_classes, state_update));
+                Ok(())
             }
             // Class was not found.
-            Ok(None) => return Err(CentralError::ClassNotFound),
+            Ok(None) => Err(CentralError::ClassNotFound),
             // An error occurred while downloading the class.
-            Err(err) => {
-                return Err(CentralError::ClientError(err.into()));
-            }
+            Err(err) => Err(CentralError::ClientError(err.into())),
         }
-        Ok(())
     }
 }
 
@@ -306,10 +318,8 @@ fn client_to_central_state_update(
 // Given a class hash, returns the corresponding class definition.
 // First tries to retrieve the class from the storage.
 // If not found in the storage, the class is downloaded.
+#[instrument(skip(starknet_client, storage_reader), level = "debug", err)]
 async fn download_class_if_necessary<TStarknetClient: StarknetClientTrait>(
-    //     async fn download_class_if_necessary<
-    //     TStarknetClient: StarknetClientTrait + Send + Sync + 'static,
-    // >(
     class_hash: ClassHash,
     starknet_client: Arc<TStarknetClient>,
     storage_reader: StorageReader,
