@@ -49,7 +49,6 @@ impl MonitoringServer {
     }
 
     #[instrument(
-        name = "run monitoring server",
         skip(self),
         fields(
             version = %self.version,
