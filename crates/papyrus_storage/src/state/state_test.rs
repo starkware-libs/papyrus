@@ -154,8 +154,6 @@ fn append_state_diff_replaced_classes() {
     assert_eq!(statetxn.get_class_hash_at(state3, &contract_1).unwrap(), Some(hash_2));
 }
 
-// TODO(dvir): add replaced classes and declared classes to the state diff comparison.
-// TODO(dvir): consider dividing this test into different components.
 #[test]
 fn append_state_diff() {
     let c0 = ContractAddress(patricia_key!("0x11"));
@@ -166,7 +164,7 @@ fn append_state_diff() {
     let cl1 = ClassHash(stark_felt!("0x5"));
     let cl2 = ClassHash(stark_felt!("0x6"));
     let c_cls0 = DeprecatedContractClass::default();
-    let c_cls1 = DeprecatedContractClass::default();
+    let c_cls1 = (CompiledClassHash::default(), ContractClass::default());
     let key0 = StorageKey(patricia_key!("0x1001"));
     let key1 = StorageKey(patricia_key!("0x101"));
     let diff0 = StateDiff {
@@ -175,8 +173,8 @@ fn append_state_diff() {
             (c0, IndexMap::from([(key0, stark_felt!("0x200")), (key1, stark_felt!("0x201"))])),
             (c1, IndexMap::new()),
         ]),
-        deprecated_declared_classes: IndexMap::from([(cl0, c_cls0.clone()), (cl1, c_cls1)]),
-        declared_classes: indexmap! {},
+        deprecated_declared_classes: IndexMap::from([(cl0, c_cls0.clone())]),
+        declared_classes: IndexMap::from([(cl1, c_cls1)]),
         nonces: IndexMap::from([(c0, Nonce(StarkHash::from(1)))]),
         replaced_classes: indexmap! {},
     };
@@ -193,7 +191,7 @@ fn append_state_diff() {
             (c1, Nonce(StarkHash::from(1))),
             (c2, Nonce(StarkHash::from(1))),
         ]),
-        replaced_classes: indexmap! {},
+        replaced_classes: IndexMap::from([(c0, cl1)]),
     };
 
     let (_, mut writer) = get_test_storage();
@@ -235,7 +233,7 @@ fn append_state_diff() {
     // Contract0.
     assert_eq!(statetxn.get_class_hash_at(state0, &c0).unwrap(), None);
     assert_eq!(statetxn.get_class_hash_at(state1, &c0).unwrap(), Some(cl0));
-    assert_eq!(statetxn.get_class_hash_at(state2, &c0).unwrap(), Some(cl0));
+    assert_eq!(statetxn.get_class_hash_at(state2, &c0).unwrap(), Some(cl1));
     assert_eq!(statetxn.get_nonce_at(state0, &c0).unwrap(), None);
     assert_eq!(statetxn.get_nonce_at(state1, &c0).unwrap(), Some(Nonce(StarkHash::from(1))));
     assert_eq!(statetxn.get_nonce_at(state2, &c0).unwrap(), Some(Nonce(StarkHash::from(2))));
