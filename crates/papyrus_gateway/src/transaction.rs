@@ -30,6 +30,7 @@ pub enum Transactions {
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(deny_unknown_fields)]
 pub struct DeclareTransactionV0V1 {
     pub class_hash: ClassHash,
     pub sender_address: ContractAddress,

@@ -15,7 +15,7 @@ use papyrus_storage::body::{BodyStorageWriter, TransactionIndex};
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
+use starknet_api::block::{BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::StateDiff;
@@ -186,6 +186,22 @@ async fn get_block_w_transaction_hashes() {
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
+}
+
+#[tokio::test]
+async fn verify_serialization_deserialization_of_block() {
+    let block: starknet_api::block::Block = get_test_block(1, None, None, None);
+    let block_string = serde_json::to_string(&block).unwrap();
+    let res: starknet_api::block::Block = serde_json::from_str(block_string.as_str()).unwrap();
+    assert_eq!(res, block);
+}
+
+#[tokio::test]
+async fn verify_serialization_deserialization_of_body() {
+    let body: BlockBody = get_test_body(1, None, None, None);
+    let body_string = serde_json::to_string(&body).unwrap();
+    let res: BlockBody = serde_json::from_str(body_string.as_str()).unwrap();
+    assert_eq!(res, body);
 }
 
 #[tokio::test]
