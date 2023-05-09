@@ -98,3 +98,38 @@ pub enum GatewayContractClass {
     Cairo0(DeprecatedContractClass),
     Sierra(ContractClass),
 }
+
+pub fn get_methods_from_supported_apis(
+    chain_id: &ChainId,
+    storage_reader: StorageReader,
+    max_events_chunk_size: usize,
+    max_events_keys: usize,
+) -> Methods {
+    let mut methods: Methods = Methods::new();
+    version_config::VERSION_CONFIG
+        .iter()
+        .filter_map(|version_config| {
+            let (version_id, version_state) = version_config;
+            match version_state {
+                version_config::VersionState::Deprecated => None,
+                version_config::VersionState::Supported | version_config::VersionState::Latest => {
+                    if *version_id == version_config::VERSION_0_3_0 {
+                        Some(JsonRpcServerV0_3_0Impl {
+                            chain_id: chain_id.clone(),
+                            storage_reader: storage_reader.clone(),
+                            max_events_chunk_size,
+                            max_events_keys,
+                        })
+                    } else {
+                        None
+                    }
+                }
+            }
+        })
+        .map(|rpc_module| rpc_module.into_rpc().into())
+        .fold(&mut methods, |methods, new_methods: Methods| {
+            let _res = methods.merge(new_methods);
+            methods
+        });
+    methods
+}
