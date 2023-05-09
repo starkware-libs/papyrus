@@ -164,40 +164,36 @@ pub struct Discovery {
     // TODO consider supporting multiple known peers.
     known_peer: PeerId,
     known_peer_address: Multiaddr,
-    found_peers_send: Sender<PeerId>,
     found_peers: HashSet<PeerId>,
 }
 
 impl Discovery {
-    pub async fn spawn(
+    pub fn new(
         transport: Boxed<(PeerId, StreamMuxerBox)>,
         peer_id: PeerId,
         address: Multiaddr,
         known_peer: PeerId,
         known_peer_address: Multiaddr,
-        // ) -> (Receiver<PeerId>, tokio::task::JoinHandle<Result<(), ()>>) {
-    ) -> Receiver<PeerId> {
+    ) -> Self {
         let mut swarm = Swarm::without_executor(
             transport,
             Kademlia::new(peer_id, MemoryStore::new(peer_id)),
             peer_id,
         );
-        let (found_peers_send, found_peers_recv) = channel();
         swarm.listen_on(address);
-        let mut discovery = Self {
+        self.swarm.behaviour_mut().add_address(&self.known_peer, self.known_peer_address.clone());
+        // TODO handle error
+        self.swarm.behaviour_mut().bootstrap().unwrap();
+        Self {
             swarm,
             known_peer,
             known_peer_address,
             found_peers_send,
             found_peers: HashSet::new(),
-        };
-        let handle = tokio::task::spawn(async move { discovery.run().await });
-        tokio::time::sleep(Duration::from_millis(100)).await;
-        found_peers_recv
+        }
     }
 
     async fn run(&mut self) -> Result<(), ()> {
-        self.swarm.behaviour_mut().add_address(&self.known_peer, self.known_peer_address.clone());
         // TODO send multiple queries
         self.perform_closest_peer_query();
         loop {
@@ -225,8 +221,6 @@ impl Discovery {
     }
 
     fn perform_closest_peer_query(&mut self) {
-        // TODO handle error
-        self.swarm.behaviour_mut().bootstrap().unwrap();
         self.swarm.behaviour_mut().get_closest_peers(PeerId::random());
     }
 
