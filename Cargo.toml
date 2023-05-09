@@ -10,6 +10,7 @@ members = [
     "crates/papyrus_load_test",
     "crates/papyrus_monitoring_gateway",
     "crates/papyrus_node",
+    "crates/papyrus_proc_macros",
     "crates/papyrus_storage",
     "crates/papyrus_sync",
     "crates/starknet_client",
