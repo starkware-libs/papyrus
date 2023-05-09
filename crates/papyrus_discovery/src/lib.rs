@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod discovery_test;
 use std::collections::{HashSet, VecDeque};
+use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 use std::thread::sleep;
@@ -12,8 +13,16 @@ use futures::future::BoxFuture;
 use futures::prelude::{AsyncRead, AsyncWrite};
 use futures::stream::Next;
 use futures::StreamExt;
+use libp2p::core::muxing::StreamMuxerBox;
+use libp2p::core::transport::{Boxed, MemoryTransport};
 use libp2p::core::upgrade::{
     read_varint, write_varint, InboundUpgrade, OutboundUpgrade, ProtocolName, UpgradeInfo,
+};
+use libp2p::kad::record::store::MemoryStore;
+use libp2p::kad::record::Key;
+use libp2p::kad::store::RecordStore;
+use libp2p::kad::{
+    GetProvidersOk, GetRecordOk, Kademlia, KademliaEvent, QueryInfo, QueryResult, Quorum, Record,
 };
 use libp2p::swarm::dial_opts::DialOpts;
 use libp2p::swarm::handler::ConnectionEvent;
@@ -24,6 +33,7 @@ use libp2p::swarm::{
 };
 use libp2p::{request_response, Multiaddr, PeerId};
 use tokio::join;
+use tokio_executor::Executor;
 
 #[derive(Debug)]
 pub struct DiscoveryRequest(u64);
@@ -146,5 +156,84 @@ impl DiscoveryClient {
             }
         }
         true
+    }
+}
+
+pub struct Discovery {
+    swarm: Swarm<Kademlia<MemoryStore>>,
+    // TODO consider supporting multiple known peers.
+    known_peer: PeerId,
+    known_peer_address: Multiaddr,
+    found_peers_send: Sender<PeerId>,
+    found_peers: HashSet<PeerId>,
+}
+
+impl Discovery {
+    pub async fn spawn(
+        transport: Boxed<(PeerId, StreamMuxerBox)>,
+        peer_id: PeerId,
+        address: Multiaddr,
+        known_peer: PeerId,
+        known_peer_address: Multiaddr,
+        // ) -> (Receiver<PeerId>, tokio::task::JoinHandle<Result<(), ()>>) {
+    ) -> Receiver<PeerId> {
+        let mut swarm = Swarm::without_executor(
+            transport,
+            Kademlia::new(peer_id, MemoryStore::new(peer_id)),
+            peer_id,
+        );
+        let (found_peers_send, found_peers_recv) = channel();
+        swarm.listen_on(address);
+        let mut discovery = Self {
+            swarm,
+            known_peer,
+            known_peer_address,
+            found_peers_send,
+            found_peers: HashSet::new(),
+        };
+        let handle = tokio::task::spawn(async move { discovery.run().await });
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        found_peers_recv
+    }
+
+    async fn run(&mut self) -> Result<(), ()> {
+        self.swarm.behaviour_mut().add_address(&self.known_peer, self.known_peer_address.clone());
+        // TODO send multiple queries
+        self.perform_closest_peer_query();
+        loop {
+            futures::select! {
+                swarm_event = self.swarm.next() => {
+                    match swarm_event {
+                        Some(SwarmEvent::Behaviour(
+                        KademliaEvent::OutboundQueryProgressed {
+                            id,
+                            result: QueryResult::GetClosestPeers(Ok(r)),
+                            ..
+                        })) => {
+                            for peer_id in r.peers {
+                                self.handle_found_peer(peer_id)
+                            }
+                            self.perform_closest_peer_query();
+                        }
+                        // TODO try to get peers from other events
+                        _ => {}
+                    }
+                }
+            }
+        }
+        Ok::<(), ()>(())
+    }
+
+    fn perform_closest_peer_query(&mut self) {
+        // TODO handle error
+        self.swarm.behaviour_mut().bootstrap().unwrap();
+        self.swarm.behaviour_mut().get_closest_peers(PeerId::random());
+    }
+
+    fn handle_found_peer(&mut self, found_peer: PeerId) {
+        if !self.found_peers.contains(&found_peer) {
+            self.found_peers.insert(found_peer);
+            self.found_peers_send.send(found_peer);
+        }
     }
 }
