@@ -17,6 +17,7 @@ tokio = { workspace = true, features = ["full", "sync"] }
 tokio-stream.workspace = true
 tracing.workspace = true
 url.workspace = true
+papyrus_proc_macros = { path = "../papyrus_proc_macros"}
 
 [dev-dependencies]
 assert_matches.workspace = true
