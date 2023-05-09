@@ -4,7 +4,8 @@ use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
 use starknet_api::core::ChainId;
 
-use crate::{GatewayConfig, JsonRpcServer, JsonRpcServerImpl};
+use crate::api::v0_3_0::{JsonRpcServerV0_3_0Impl, JsonRpcV0_3_0Server};
+use crate::GatewayConfig;
 
 pub fn get_test_gateway_config() -> GatewayConfig {
     GatewayConfig {
@@ -16,11 +17,11 @@ pub fn get_test_gateway_config() -> GatewayConfig {
 }
 
 pub(crate) fn get_test_rpc_server_and_storage_writer()
--> (RpcModule<JsonRpcServerImpl>, StorageWriter) {
+-> (RpcModule<JsonRpcServerV0_3_0Impl>, StorageWriter) {
     let (storage_reader, storage_writer) = get_test_storage();
     let config = get_test_gateway_config();
     (
-        JsonRpcServerImpl {
+        JsonRpcServerV0_3_0Impl {
             chain_id: config.chain_id,
             storage_reader,
             max_events_chunk_size: config.max_events_chunk_size,
