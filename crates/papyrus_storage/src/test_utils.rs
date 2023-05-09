@@ -1,11 +1,9 @@
-use indexmap::IndexMap;
 use rand::Rng;
 use rand_chacha::ChaCha8Rng;
 use starknet_api::block::{BlockHash, BlockNumber};
-use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
+use starknet_api::core::{ClassHash, ContractAddress};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::hash::StarkFelt;
-use starknet_api::state::{ContractClass, StorageKey};
+use starknet_api::state::ContractClass;
 use starknet_api::transaction::{
     EventIndexInTransactionOutput, Fee, MessageToL1, TransactionOffsetInBlock,
 };
@@ -19,7 +17,7 @@ use crate::body::events::{
 use crate::body::TransactionIndex;
 use crate::db::DbConfig;
 use crate::state::data::{
-    IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass, ThinStateDiff,
+    IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass,
 };
 use crate::version::Version;
 use crate::{
@@ -87,14 +85,6 @@ auto_impl_get_test_instance! {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
-    }
-    pub struct ThinStateDiff {
-        pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
-        pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
-        pub declared_classes: IndexMap<ClassHash, CompiledClassHash>,
-        pub deprecated_declared_classes: Vec<ClassHash>,
-        pub nonces: IndexMap<ContractAddress, Nonce>,
-        pub replaced_classes: IndexMap<ContractAddress, ClassHash>,
     }
     pub enum ThinTransactionOutput {
         Declare(ThinDeclareTransactionOutput) = 0,

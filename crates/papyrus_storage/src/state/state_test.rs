@@ -7,13 +7,13 @@ use starknet_api::deprecated_contract_class::{
     FunctionAbiEntryType, FunctionAbiEntryWithType,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey};
+use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey, ThinStateDiff};
 use starknet_api::{patricia_key, stark_felt};
 use test_utils::get_test_state_diff;
 
 use crate::state::{StateStorageReader, StateStorageWriter, StorageError};
 use crate::test_utils::get_test_storage;
-use crate::{StorageWriter, ThinStateDiff};
+use crate::StorageWriter;
 
 #[test]
 fn append_state_diff_declared_classes() {

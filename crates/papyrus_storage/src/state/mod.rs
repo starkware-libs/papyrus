@@ -10,12 +10,12 @@ use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::StarkFelt;
-use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey};
+use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey, ThinStateDiff};
 use tracing::debug;
 
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::state::data::{
-    IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass, ThinStateDiff,
+    IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass,
 };
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 

@@ -27,7 +27,7 @@ use starknet_api::deprecated_contract_class::{
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::stark_felt;
 use starknet_api::state::{
-    ContractClass, EntryPoint, EntryPointType, FunctionIndex, StateDiff, StorageKey,
+    ContractClass, EntryPoint, EntryPointType, FunctionIndex, StateDiff, StorageKey, ThinStateDiff,
 };
 use starknet_api::transaction::{
     Calldata, ContractAddressSalt, DeclareTransaction, DeclareTransactionOutput,
@@ -456,6 +456,14 @@ auto_impl_get_test_instance! {
     pub struct StructMember {
         pub param: TypedParameter,
         pub offset: usize,
+    }
+    pub struct ThinStateDiff {
+        pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
+        pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
+        pub declared_classes: IndexMap<ClassHash, CompiledClassHash>,
+        pub deprecated_declared_classes: Vec<ClassHash>,
+        pub nonces: IndexMap<ContractAddress, Nonce>,
+        pub replaced_classes: IndexMap<ContractAddress, ClassHash>,
     }
     pub enum Transaction {
         Declare(DeclareTransaction) = 0,
