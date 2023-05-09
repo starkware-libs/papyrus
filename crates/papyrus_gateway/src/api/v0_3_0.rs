@@ -28,9 +28,8 @@ use crate::{
     get_block_header_by_number, get_block_number, get_block_txs_by_number, get_latest_block_number,
     internal_server_error, ContinuationTokenAsStruct,
 };
-
-#[rpc(server, client, namespace = "starknet")]
-pub trait JsonRpcV0_3_0 {
+#[versioned_rpc("V0_3_0")]
+pub trait JsonRpc {
     /// Gets the most recent accepted block number.
     #[method(name = "blockNumber")]
     fn block_number(&self) -> Result<BlockNumber, Error>;
