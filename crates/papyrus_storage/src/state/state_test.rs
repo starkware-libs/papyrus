@@ -466,8 +466,9 @@ fn revert_state() {
         new_data
     );
 
+    let block_number = BlockNumber(1);
     let (txn, deleted_data) =
-        writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(1)).unwrap();
+        writer.begin_rw_txn().unwrap().revert_state_diff(block_number).unwrap();
     txn.commit().unwrap();
 
     let expected_deleted_state_diff = ThinStateDiff::from(state_diff1);
