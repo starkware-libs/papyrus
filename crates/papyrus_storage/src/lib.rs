@@ -32,9 +32,7 @@ use crate::db::{
     open_env, DbConfig, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier,
     TransactionKind, RO, RW,
 };
-use crate::state::data::{
-    IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass,
-};
+use crate::state::data::{IndexedDeployedContract, IndexedDeprecatedContractClass};
 use crate::version::{VersionStorageReader, VersionStorageWriter};
 
 pub const STORAGE_VERSION: Version = Version(0);
@@ -45,6 +43,7 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
         contract_storage: db_writer.create_table("contract_storage")?,
         declared_classes: db_writer.create_table("declared_classes")?,
+        declared_classes_block: db_writer.create_table("declared_classes_block")?,
         deprecated_declared_classes: db_writer.create_table("deprecated_declared_classes")?,
         deployed_contracts: db_writer.create_table("deployed_contracts")?,
         events: db_writer.create_table("events")?,
@@ -153,7 +152,8 @@ struct_field_names! {
     struct Tables {
         block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
         contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
-        declared_classes: TableIdentifier<ClassHash, IndexedContractClass>,
+        declared_classes: TableIdentifier<ClassHash, ContractClass>,
+        declared_classes_block: TableIdentifier<ClassHash, BlockNumber>,
         deprecated_declared_classes: TableIdentifier<ClassHash, IndexedDeprecatedContractClass>,
         deployed_contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
         events: TableIdentifier<(ContractAddress, EventIndex), EventContent>,
