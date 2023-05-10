@@ -1,5 +1,6 @@
-use jsonrpsee::core::{async_trait, Error};
+use jsonrpsee::core::{async_trait, RpcResult};
 use jsonrpsee::proc_macros::rpc;
+use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_proc_macros::versioned_rpc;
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
@@ -32,19 +33,19 @@ use crate::{
 pub trait JsonRpc {
     /// Gets the most recent accepted block number.
     #[method(name = "blockNumber")]
-    fn block_number(&self) -> Result<BlockNumber, Error>;
+    fn block_number(&self) -> RpcResult<BlockNumber>;
 
     /// Gets the most recent accepted block hash and number.
     #[method(name = "blockHashAndNumber")]
-    fn block_hash_and_number(&self) -> Result<BlockHashAndNumber, Error>;
+    fn block_hash_and_number(&self) -> RpcResult<BlockHashAndNumber>;
 
     /// Gets block information with transaction hashes given a block identifier.
     #[method(name = "getBlockWithTxHashes")]
-    fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> Result<Block, Error>;
+    fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> RpcResult<Block>;
 
     /// Gets block information with full transactions given a block identifier.
     #[method(name = "getBlockWithTxs")]
-    fn get_block_w_full_transactions(&self, block_id: BlockId) -> Result<Block, Error>;
+    fn get_block_w_full_transactions(&self, block_id: BlockId) -> RpcResult<Block>;
 
     /// Gets the value of the storage at the given address, key, and block.
     #[method(name = "getStorageAt")]
@@ -53,14 +54,14 @@ pub trait JsonRpc {
         contract_address: ContractAddress,
         key: StorageKey,
         block_id: BlockId,
-    ) -> Result<StarkFelt, Error>;
+    ) -> RpcResult<StarkFelt>;
 
     /// Gets the details of a submitted transaction.
     #[method(name = "getTransactionByHash")]
     fn get_transaction_by_hash(
         &self,
         transaction_hash: TransactionHash,
-    ) -> Result<TransactionWithType, Error>;
+    ) -> RpcResult<TransactionWithType>;
 
     /// Gets the details of a transaction by a given block id and index.
     #[method(name = "getTransactionByBlockIdAndIndex")]
@@ -68,22 +69,22 @@ pub trait JsonRpc {
         &self,
         block_id: BlockId,
         index: TransactionOffsetInBlock,
-    ) -> Result<TransactionWithType, Error>;
+    ) -> RpcResult<TransactionWithType>;
 
     /// Gets the number of transactions in a block given a block id.
     #[method(name = "getBlockTransactionCount")]
-    fn get_block_transaction_count(&self, block_id: BlockId) -> Result<usize, Error>;
+    fn get_block_transaction_count(&self, block_id: BlockId) -> RpcResult<usize>;
 
     /// Gets the information about the result of executing the requested block.
     #[method(name = "getStateUpdate")]
-    fn get_state_update(&self, block_id: BlockId) -> Result<StateUpdate, Error>;
+    fn get_state_update(&self, block_id: BlockId) -> RpcResult<StateUpdate>;
 
     /// Gets the transaction receipt by the transaction hash.
     #[method(name = "getTransactionReceipt")]
     fn get_transaction_receipt(
         &self,
         transaction_hash: TransactionHash,
-    ) -> Result<TransactionReceiptWithStatus, Error>;
+    ) -> RpcResult<TransactionReceiptWithStatus>;
 
     /// Gets the contract class definition associated with the given hash.
     #[method(name = "getClass")]
@@ -91,7 +92,7 @@ pub trait JsonRpc {
         &self,
         block_id: BlockId,
         class_hash: ClassHash,
-    ) -> Result<GatewayContractClass, Error>;
+    ) -> RpcResult<GatewayContractClass>;
 
     /// Gets the contract class definition in the given block at the given address.
     #[method(name = "getClassAt")]
@@ -99,7 +100,7 @@ pub trait JsonRpc {
         &self,
         block_id: BlockId,
         contract_address: ContractAddress,
-    ) -> Result<GatewayContractClass, Error>;
+    ) -> RpcResult<GatewayContractClass>;
 
     /// Gets the contract class hash in the given block for the contract deployed at the given
     /// address.
@@ -108,23 +109,19 @@ pub trait JsonRpc {
         &self,
         block_id: BlockId,
         contract_address: ContractAddress,
-    ) -> Result<ClassHash, Error>;
+    ) -> RpcResult<ClassHash>;
 
     /// Gets the nonce associated with the given address in the given block.
     #[method(name = "getNonce")]
-    fn get_nonce(
-        &self,
-        block_id: BlockId,
-        contract_address: ContractAddress,
-    ) -> Result<Nonce, Error>;
+    fn get_nonce(&self, block_id: BlockId, contract_address: ContractAddress) -> RpcResult<Nonce>;
 
     /// Returns the currently configured StarkNet chain id.
     #[method(name = "chainId")]
-    fn chain_id(&self) -> Result<String, Error>;
+    fn chain_id(&self) -> RpcResult<String>;
 
     /// Returns all events matching the given filter.
     #[method(name = "getEvents")]
-    fn get_events(&self, filter: EventFilter) -> Result<EventsChunk, Error>;
+    fn get_events(&self, filter: EventFilter) -> RpcResult<EventsChunk>;
 }
 
 /// Rpc server.
@@ -138,23 +135,23 @@ pub struct JsonRpcServerV0_3_0Impl {
 #[async_trait]
 impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn block_number(&self) -> Result<BlockNumber, Error> {
+    fn block_number(&self) -> RpcResult<BlockNumber> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        get_latest_block_number(&txn)?.ok_or_else(|| Error::from(JsonRpcError::NoBlocks))
+        get_latest_block_number(&txn)?.ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::NoBlocks))
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn block_hash_and_number(&self) -> Result<BlockHashAndNumber, Error> {
+    fn block_hash_and_number(&self) -> RpcResult<BlockHashAndNumber> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        let block_number =
-            get_latest_block_number(&txn)?.ok_or_else(|| Error::from(JsonRpcError::NoBlocks))?;
+        let block_number = get_latest_block_number(&txn)?
+            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::NoBlocks))?;
         let header = get_block_header_by_number(&txn, block_number)?;
 
         Ok(BlockHashAndNumber { block_hash: header.block_hash, block_number })
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> Result<Block, Error> {
+    fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> RpcResult<Block> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
         let header = get_block_header_by_number(&txn, block_number)?;
@@ -170,7 +167,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_block_w_full_transactions(&self, block_id: BlockId) -> Result<Block, Error> {
+    fn get_block_w_full_transactions(&self, block_id: BlockId) -> RpcResult<Block> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
         let header = get_block_header_by_number(&txn, block_number)?;
@@ -191,7 +188,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         contract_address: ContractAddress,
         key: StorageKey,
         block_id: BlockId,
-    ) -> Result<StarkFelt, Error> {
+    ) -> RpcResult<StarkFelt> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         // Check that the block is valid and get the state number.
@@ -203,7 +200,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         state_reader
             .get_class_hash_at(state, &contract_address)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))?;
+            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::ContractNotFound))?;
 
         state_reader.get_storage_at(state, &contract_address, &key).map_err(internal_server_error)
     }
@@ -212,18 +209,18 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
     fn get_transaction_by_hash(
         &self,
         transaction_hash: TransactionHash,
-    ) -> Result<TransactionWithType, Error> {
+    ) -> RpcResult<TransactionWithType> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let transaction_index = txn
             .get_transaction_idx_by_hash(&transaction_hash)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::TransactionHashNotFound))?;
+            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
 
         let transaction = txn
             .get_transaction(transaction_index)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::TransactionHashNotFound))?;
+            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
 
         Ok(TransactionWithType::from(transaction))
     }
@@ -233,20 +230,20 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         &self,
         block_id: BlockId,
         index: TransactionOffsetInBlock,
-    ) -> Result<TransactionWithType, Error> {
+    ) -> RpcResult<TransactionWithType> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
 
         let transaction = txn
             .get_transaction(TransactionIndex(block_number, index))
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::InvalidTransactionIndex))?;
+            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::InvalidTransactionIndex))?;
 
         Ok(TransactionWithType::from(transaction))
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_block_transaction_count(&self, block_id: BlockId) -> Result<usize, Error> {
+    fn get_block_transaction_count(&self, block_id: BlockId) -> RpcResult<usize> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
         let transactions = get_block_txs_by_number(&txn, block_number)?;
@@ -255,7 +252,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_state_update(&self, block_id: BlockId) -> Result<StateUpdate, Error> {
+    fn get_state_update(&self, block_id: BlockId) -> RpcResult<StateUpdate> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         // Get the block header for the block hash and state root.
@@ -278,7 +275,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         let thin_state_diff = txn
             .get_state_diff(block_number)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::BlockNotFound))?;
+            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
 
         Ok(StateUpdate {
             block_hash: header.block_hash,
@@ -292,13 +289,13 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
     fn get_transaction_receipt(
         &self,
         transaction_hash: TransactionHash,
-    ) -> Result<TransactionReceiptWithStatus, Error> {
+    ) -> RpcResult<TransactionReceiptWithStatus> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let transaction_index = txn
             .get_transaction_idx_by_hash(&transaction_hash)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::TransactionHashNotFound))?;
+            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
 
         let block_number = transaction_index.0;
         let header =
@@ -307,17 +304,17 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         let transaction = txn
             .get_transaction(transaction_index)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::TransactionHashNotFound))?;
+            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
 
         let thin_tx_output = txn
             .get_transaction_output(transaction_index)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::TransactionHashNotFound))?;
+            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
 
         let events = txn
             .get_transaction_events(transaction_index)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::TransactionHashNotFound))?;
+            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
 
         let output = TransactionOutput::from_thin_transaction_output(thin_tx_output, events);
 
@@ -337,7 +334,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         &self,
         block_id: BlockId,
         class_hash: ClassHash,
-    ) -> Result<GatewayContractClass, Error> {
+    ) -> RpcResult<GatewayContractClass> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let block_number = get_block_number(&txn, block_id)?;
@@ -355,7 +352,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
             let class = state_reader
                 .get_deprecated_class_definition_at(state_number, &class_hash)
                 .map_err(internal_server_error)?
-                .ok_or_else(|| Error::from(JsonRpcError::ClassHashNotFound))?;
+                .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::ClassHashNotFound))?;
             Ok(GatewayContractClass::Cairo0(class.try_into().map_err(internal_server_error)?))
         }
     }
@@ -365,7 +362,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         &self,
         block_id: BlockId,
         contract_address: ContractAddress,
-    ) -> Result<GatewayContractClass, Error> {
+    ) -> RpcResult<GatewayContractClass> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let block_number = get_block_number(&txn, block_id)?;
@@ -375,7 +372,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         let class_hash = state_reader
             .get_class_hash_at(state_number, &contract_address)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))?;
+            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::ContractNotFound))?;
 
         if let Some(class) = state_reader
             .get_class_definition_at(state_number, &class_hash)
@@ -386,7 +383,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
             let class = state_reader
                 .get_deprecated_class_definition_at(state_number, &class_hash)
                 .map_err(internal_server_error)?
-                .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))?;
+                .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::ContractNotFound))?;
             Ok(GatewayContractClass::Cairo0(class.try_into().map_err(internal_server_error)?))
         }
     }
@@ -396,7 +393,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         &self,
         block_id: BlockId,
         contract_address: ContractAddress,
-    ) -> Result<ClassHash, Error> {
+    ) -> RpcResult<ClassHash> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let block_number = get_block_number(&txn, block_id)?;
@@ -406,15 +403,11 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         state_reader
             .get_class_hash_at(state, &contract_address)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))
+            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::ContractNotFound))
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_nonce(
-        &self,
-        block_id: BlockId,
-        contract_address: ContractAddress,
-    ) -> Result<Nonce, Error> {
+    fn get_nonce(&self, block_id: BlockId, contract_address: ContractAddress) -> RpcResult<Nonce> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let block_number = get_block_number(&txn, block_id)?;
@@ -424,23 +417,23 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         state_reader
             .get_nonce_at(state, &contract_address)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::ContractNotFound))
+            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::ContractNotFound))
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn chain_id(&self) -> Result<String, Error> {
+    fn chain_id(&self) -> RpcResult<String> {
         Ok(self.chain_id.as_hex())
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_events(&self, filter: EventFilter) -> Result<EventsChunk, Error> {
+    fn get_events(&self, filter: EventFilter) -> RpcResult<EventsChunk> {
         // Check the chunk size.
         if filter.chunk_size > self.max_events_chunk_size {
-            return Err(Error::from(JsonRpcError::PageSizeTooBig));
+            return Err(ErrorObjectOwned::from(JsonRpcError::PageSizeTooBig));
         }
         // Check the number of keys.
         if filter.keys.len() > self.max_events_keys {
-            return Err(Error::from(JsonRpcError::TooManyKeysInFilter));
+            return Err(ErrorObjectOwned::from(JsonRpcError::TooManyKeysInFilter));
         }
 
         // Get the requested block numbers.

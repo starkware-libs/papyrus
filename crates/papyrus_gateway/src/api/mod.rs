@@ -7,7 +7,7 @@ mod version_config_test;
 
 use std::collections::HashSet;
 
-use jsonrpsee::core::server::rpc_module::Methods;
+use jsonrpsee::Methods;
 use papyrus_storage::StorageReader;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};

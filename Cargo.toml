@@ -39,7 +39,7 @@ http = { version = "0.2.8" }
 hyper = { version = "0.14", features = ["full"] }
 indexmap = { version = "1.9.2" }
 integer-encoding = { version = "3.0.4" }
-jsonrpsee = { version = "0.13.1" }
+jsonrpsee = { version = "0.18.1" }
 jsonschema = { version = "0.17.0" }
 libmdbx = { version = ">=0.1.5,<0.1.8" }
 mockall = { version = "0.11.2" }
