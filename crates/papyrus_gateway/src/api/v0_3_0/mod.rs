@@ -1,4 +1,4 @@
-use jsonrpsee::core::Error;
+use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
 use papyrus_proc_macros::versioned_rpc;
 use starknet_api::block::BlockNumber;
@@ -20,19 +20,19 @@ mod v0_3_0_test;
 pub trait JsonRpc {
     /// Gets the most recent accepted block number.
     #[method(name = "blockNumber")]
-    fn block_number(&self) -> Result<BlockNumber, Error>;
+    fn block_number(&self) -> RpcResult<BlockNumber>;
 
     /// Gets the most recent accepted block hash and number.
     #[method(name = "blockHashAndNumber")]
-    fn block_hash_and_number(&self) -> Result<BlockHashAndNumber, Error>;
+    fn block_hash_and_number(&self) -> RpcResult<BlockHashAndNumber>;
 
     /// Gets block information with transaction hashes given a block identifier.
     #[method(name = "getBlockWithTxHashes")]
-    fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> Result<Block, Error>;
+    fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> RpcResult<Block>;
 
     /// Gets block information with full transactions given a block identifier.
     #[method(name = "getBlockWithTxs")]
-    fn get_block_w_full_transactions(&self, block_id: BlockId) -> Result<Block, Error>;
+    fn get_block_w_full_transactions(&self, block_id: BlockId) -> RpcResult<Block>;
 
     /// Gets the value of the storage at the given address, key, and block.
     #[method(name = "getStorageAt")]
@@ -41,14 +41,14 @@ pub trait JsonRpc {
         contract_address: ContractAddress,
         key: StorageKey,
         block_id: BlockId,
-    ) -> Result<StarkFelt, Error>;
+    ) -> RpcResult<StarkFelt>;
 
     /// Gets the details of a submitted transaction.
     #[method(name = "getTransactionByHash")]
     fn get_transaction_by_hash(
         &self,
         transaction_hash: TransactionHash,
-    ) -> Result<TransactionWithType, Error>;
+    ) -> RpcResult<TransactionWithType>;
 
     /// Gets the details of a transaction by a given block id and index.
     #[method(name = "getTransactionByBlockIdAndIndex")]
@@ -56,22 +56,22 @@ pub trait JsonRpc {
         &self,
         block_id: BlockId,
         index: TransactionOffsetInBlock,
-    ) -> Result<TransactionWithType, Error>;
+    ) -> RpcResult<TransactionWithType>;
 
     /// Gets the number of transactions in a block given a block id.
     #[method(name = "getBlockTransactionCount")]
-    fn get_block_transaction_count(&self, block_id: BlockId) -> Result<usize, Error>;
+    fn get_block_transaction_count(&self, block_id: BlockId) -> RpcResult<usize>;
 
     /// Gets the information about the result of executing the requested block.
     #[method(name = "getStateUpdate")]
-    fn get_state_update(&self, block_id: BlockId) -> Result<StateUpdate, Error>;
+    fn get_state_update(&self, block_id: BlockId) -> RpcResult<StateUpdate>;
 
     /// Gets the transaction receipt by the transaction hash.
     #[method(name = "getTransactionReceipt")]
     fn get_transaction_receipt(
         &self,
         transaction_hash: TransactionHash,
-    ) -> Result<TransactionReceiptWithStatus, Error>;
+    ) -> RpcResult<TransactionReceiptWithStatus>;
 
     /// Gets the contract class definition associated with the given hash.
     #[method(name = "getClass")]
@@ -79,7 +79,7 @@ pub trait JsonRpc {
         &self,
         block_id: BlockId,
         class_hash: ClassHash,
-    ) -> Result<GatewayContractClass, Error>;
+    ) -> RpcResult<GatewayContractClass>;
 
     /// Gets the contract class definition in the given block at the given address.
     #[method(name = "getClassAt")]
@@ -87,7 +87,7 @@ pub trait JsonRpc {
         &self,
         block_id: BlockId,
         contract_address: ContractAddress,
-    ) -> Result<GatewayContractClass, Error>;
+    ) -> RpcResult<GatewayContractClass>;
 
     /// Gets the contract class hash in the given block for the contract deployed at the given
     /// address.
@@ -96,21 +96,17 @@ pub trait JsonRpc {
         &self,
         block_id: BlockId,
         contract_address: ContractAddress,
-    ) -> Result<ClassHash, Error>;
+    ) -> RpcResult<ClassHash>;
 
     /// Gets the nonce associated with the given address in the given block.
     #[method(name = "getNonce")]
-    fn get_nonce(
-        &self,
-        block_id: BlockId,
-        contract_address: ContractAddress,
-    ) -> Result<Nonce, Error>;
+    fn get_nonce(&self, block_id: BlockId, contract_address: ContractAddress) -> RpcResult<Nonce>;
 
     /// Returns the currently configured StarkNet chain id.
     #[method(name = "chainId")]
-    fn chain_id(&self) -> Result<String, Error>;
+    fn chain_id(&self) -> RpcResult<String>;
 
     /// Returns all events matching the given filter.
     #[method(name = "getEvents")]
-    fn get_events(&self, filter: EventFilter) -> Result<EventsChunk, Error>;
+    fn get_events(&self, filter: EventFilter) -> RpcResult<EventsChunk>;
 }
