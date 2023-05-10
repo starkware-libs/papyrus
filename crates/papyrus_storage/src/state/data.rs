@@ -17,12 +17,6 @@ pub(crate) struct IndexedDeployedContract {
 }
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
-pub(crate) struct IndexedContractClass {
-    pub block_number: BlockNumber,
-    pub contract_class: ContractClass,
-}
-
-#[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub(crate) struct IndexedDeprecatedContractClass {
     pub block_number: BlockNumber,
     pub contract_class: DeprecatedContractClass,
