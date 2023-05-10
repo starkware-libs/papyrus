@@ -20,7 +20,7 @@ use crate::db::serialization::{StorageSerde, StorageSerdeEx};
 // The serialization is consistent across code versions (though, not necessarily across machines).
 
 // Maximum number of Sub-Databases.
-const MAX_DBS: usize = 24;
+const MAX_DBS: usize = 25;
 
 // Note that NO_TLS mode is used by default.
 type EnvironmentKind = WriteMap;

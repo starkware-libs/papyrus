@@ -14,12 +14,11 @@ use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey, Thi
 use tracing::debug;
 
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
-use crate::state::data::{
-    IndexedContractClass, IndexedDeployedContract, IndexedDeprecatedContractClass,
-};
+use crate::state::data::{IndexedDeployedContract, IndexedDeprecatedContractClass};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
-type DeclaredClassesTable<'env> = TableHandle<'env, ClassHash, IndexedContractClass>;
+type DeclaredClassesTable<'env> = TableHandle<'env, ClassHash, ContractClass>;
+type DeclaredClassesBlockTable<'env> = TableHandle<'env, ClassHash, BlockNumber>;
 type DeprecatedDeclaredClassesTable<'env> =
     TableHandle<'env, ClassHash, IndexedDeprecatedContractClass>;
 type DeployedContractsTable<'env> = TableHandle<'env, ContractAddress, IndexedDeployedContract>;
@@ -105,6 +104,7 @@ impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for StorageTxn<'env, 
 pub struct StateReader<'env, Mode: TransactionKind> {
     txn: &'env DbTransaction<'env, Mode>,
     declared_classes_table: DeclaredClassesTable<'env>,
+    declared_classes_block_table: DeclaredClassesBlockTable<'env>,
     deprecated_declared_classes_table: DeprecatedDeclaredClassesTable<'env>,
     deployed_contracts_table: DeployedContractsTable<'env>,
     nonces_table: NoncesTable<'env>,
@@ -116,6 +116,8 @@ pub struct StateReader<'env, Mode: TransactionKind> {
 impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
     fn new(txn: &'env StorageTxn<'env, Mode>) -> StorageResult<Self> {
         let declared_classes_table = txn.txn.open_table(&txn.tables.declared_classes)?;
+        let declared_classes_block_table =
+            txn.txn.open_table(&txn.tables.declared_classes_block)?;
         let deprecated_declared_classes_table =
             txn.txn.open_table(&txn.tables.deprecated_declared_classes)?;
         let deployed_contracts_table = txn.txn.open_table(&txn.tables.deployed_contracts)?;
@@ -125,6 +127,7 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         Ok(StateReader {
             txn: &txn.txn,
             declared_classes_table,
+            declared_classes_block_table,
             deprecated_declared_classes_table,
             deployed_contracts_table,
             nonces_table,
@@ -238,10 +241,11 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         state_number: StateNumber,
         class_hash: &ClassHash,
     ) -> StorageResult<Option<ContractClass>> {
-        let value = self.declared_classes_table.get(self.txn, class_hash)?;
-        if let Some(value) = value {
-            if state_number.is_after(value.block_number) {
-                return Ok(Some(value.contract_class));
+        if let Some(block_number) = self.declared_classes_block_table.get(self.txn, class_hash)? {
+            if let Some(contract_class) = self.declared_classes_table.get(self.txn, class_hash)? {
+                if state_number.is_after(block_number) {
+                    return Ok(Some(contract_class));
+                }
             }
         }
         Ok(None)
@@ -273,6 +277,8 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         let nonces_table = self.txn.open_table(&self.tables.nonces)?;
         let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
         let declared_classes_table = self.txn.open_table(&self.tables.declared_classes)?;
+        let declared_classes_block_table =
+            self.txn.open_table(&self.tables.declared_classes_block)?;
         let deprecated_declared_classes_table =
             self.txn.open_table(&self.tables.deprecated_declared_classes)?;
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
@@ -304,7 +310,13 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         state_diffs_table.insert(&self.txn, &block_number, &thin_state_diff)?;
 
         // Write declared classes.
-        write_declared_classes(declared_classes, &self.txn, block_number, &declared_classes_table)?;
+        write_declared_classes(
+            &declared_classes,
+            &self.txn,
+            &declared_classes_table,
+            block_number,
+            &declared_classes_block_table,
+        )?;
 
         // Write deprecated declared classes.
         if !deployed_contract_class_definitions.is_empty() {
@@ -338,6 +350,8 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
     ) -> StorageResult<(Self, Option<RevertedStateDiff>)> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let declared_classes_table = self.txn.open_table(&self.tables.declared_classes)?;
+        let declared_classes_block_table =
+            self.txn.open_table(&self.tables.declared_classes_block)?;
         let deprecated_declared_classes_table =
             self.txn.open_table(&self.tables.deprecated_declared_classes)?;
         let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
@@ -364,6 +378,11 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         markers_table.upsert(&self.txn, &MarkerKind::State, &block_number)?;
         let deleted_classes =
             delete_declared_classes(&self.txn, &thin_state_diff, &declared_classes_table)?;
+        let _deleted_classes_block = delete_declared_classes_block(
+            &self.txn,
+            &thin_state_diff,
+            &declared_classes_block_table,
+        )?;
         let deleted_deprecated_classes = delete_deprecated_declared_classes(
             &self.txn,
             block_number,
@@ -408,17 +427,20 @@ fn update_marker<'env>(
 }
 
 fn write_declared_classes<'env>(
-    declared_classes: IndexMap<ClassHash, ContractClass>,
+    declared_classes: &IndexMap<ClassHash, ContractClass>,
     txn: &DbTransaction<'env, RW>,
-    block_number: BlockNumber,
     declared_classes_table: &'env DeclaredClassesTable<'env>,
+    block_number: BlockNumber,
+    declared_classes_block_table: &'env DeclaredClassesBlockTable<'env>,
 ) -> StorageResult<()> {
     for (class_hash, contract_class) in declared_classes {
-        let value = IndexedContractClass { block_number, contract_class };
-        let res = declared_classes_table.insert(txn, &class_hash, &value);
-        match res {
-            Ok(()) => continue,
-            Err(err) => return Err(err.into()),
+        let res_class = declared_classes_table.insert(txn, class_hash, contract_class);
+        let res_block = declared_classes_block_table.insert(txn, class_hash, &block_number);
+        match (res_class, res_block) {
+            (Ok(()), Ok(())) => continue,
+            (Err(_), Err(_)) | (Err(_), Ok(())) | (Ok(()), Err(_)) => {
+                return Err(StorageError::ClassAlreadyExists { class_hash: (*class_hash) });
+            }
         }
     }
     Ok(())
@@ -528,11 +550,28 @@ fn delete_declared_classes<'env>(
 ) -> StorageResult<IndexMap<ClassHash, ContractClass>> {
     let mut deleted_data = IndexMap::new();
     for class_hash in thin_state_diff.declared_classes.keys() {
-        let IndexedContractClass { block_number: _, contract_class } = declared_classes_table
+        let contract_class = declared_classes_table
             .get(txn, class_hash)?
             .expect("Missing declared class {class_hash:#?}.");
         deleted_data.insert(*class_hash, contract_class);
         declared_classes_table.delete(txn, class_hash)?;
+    }
+
+    Ok(deleted_data)
+}
+
+fn delete_declared_classes_block<'env>(
+    txn: &'env DbTransaction<'env, RW>,
+    thin_state_diff: &ThinStateDiff,
+    declared_classes_block_table: &'env DeclaredClassesBlockTable<'env>,
+) -> StorageResult<IndexMap<ClassHash, BlockNumber>> {
+    let mut deleted_data = IndexMap::new();
+    for class_hash in thin_state_diff.declared_classes.keys() {
+        let block_number = declared_classes_block_table
+            .get(txn, class_hash)?
+            .expect("Missing declared class {class_hash:#?}.");
+        deleted_data.insert(*class_hash, block_number);
+        declared_classes_block_table.delete(txn, class_hash)?;
     }
 
     Ok(deleted_data)
