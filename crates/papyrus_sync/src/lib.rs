@@ -335,7 +335,13 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             let res = txn.revert_state_diff(block_number)?;
             txn = res.0;
             // TODO(yair): consider inserting to ommer the deprecated_declared_classes.
-            if let Some((thin_state_diff, declared_classes, _deprecated_declared_classes)) = res.1 {
+            if let Some((
+                thin_state_diff,
+                declared_classes,
+                _declared_classes_block,
+                _deprecated_declared_classes,
+            )) = res.1
+            {
                 txn = txn.insert_ommer_state_diff(
                     header.block_hash,
                     &thin_state_diff,

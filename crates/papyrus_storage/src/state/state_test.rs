@@ -466,18 +466,20 @@ fn revert_state() {
         new_data
     );
 
+    let block_number = BlockNumber(1);
     let (txn, deleted_data) =
-        writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(1)).unwrap();
+        writer.begin_rw_txn().unwrap().revert_state_diff(block_number).unwrap();
     txn.commit().unwrap();
 
     let expected_deleted_state_diff = ThinStateDiff::from(state_diff1);
     let expected_deleted_deprecated_classes =
         IndexMap::from([(class1, DeprecatedContractClass::default())]);
     let expected_deleted_classes = IndexMap::from([(class2, ContractClass::default())]);
+    let expected_deleted_classes_block = IndexMap::from([(class2, block_number)]);
     assert_matches!(
         deleted_data,
-        Some((thin_state_diff, class_definitions, deprecated_class_definitions))
-        if thin_state_diff == expected_deleted_state_diff && class_definitions==expected_deleted_classes
+        Some((thin_state_diff, class_definitions, class_block_number, deprecated_class_definitions))
+        if thin_state_diff == expected_deleted_state_diff && class_definitions==expected_deleted_classes && class_block_number == expected_deleted_classes_block
         && deprecated_class_definitions == expected_deleted_deprecated_classes
     );
 
