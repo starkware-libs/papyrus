@@ -170,10 +170,9 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
 
         // The class wasn't replaced, check in deployed_contracts.
         let value = self.deployed_contracts_table.get(self.txn, address)?;
-        if let Some(value) = value {
-            if state_number.is_after(value.block_number) {
-                return Ok(Some(value.class_hash));
-            }
+        let Some(value) = value else {return Ok(None)};
+        if state_number.is_after(value.block_number) {
+            return Ok(Some(value.class_hash));
         }
         Ok(None)
     }
@@ -239,10 +238,9 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         class_hash: &ClassHash,
     ) -> StorageResult<Option<ContractClass>> {
         let value = self.declared_classes_table.get(self.txn, class_hash)?;
-        if let Some(value) = value {
-            if state_number.is_after(value.block_number) {
-                return Ok(Some(value.contract_class));
-            }
+        let Some(value) = value else {return Ok(None)};
+        if state_number.is_after(value.block_number) {
+            return Ok(Some(value.contract_class));
         }
         Ok(None)
     }
