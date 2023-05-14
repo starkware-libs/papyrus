@@ -3,6 +3,7 @@ mod block;
 mod deprecated_contract_class;
 #[cfg(test)]
 mod gateway_test;
+mod middleware;
 mod state;
 #[cfg(test)]
 mod test_utils;
@@ -30,8 +31,10 @@ use crate::api::{
     Tag,
 };
 use crate::block::BlockHeader;
+use crate::middleware::proxy_request;
 use crate::transaction::Transaction;
 
+pub const SERVER_MAX_BODY_SIZE: u32 = 10 * 1024 * 1024;
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct GatewayConfig {
     pub chain_id: ChainId,
@@ -128,7 +131,11 @@ pub async fn run_server(
     storage_reader: StorageReader,
 ) -> anyhow::Result<(SocketAddr, ServerHandle)> {
     debug!("Starting gateway.");
-    let server = ServerBuilder::default().build(&config.server_address).await?;
+    let server = ServerBuilder::default()
+        .max_request_body_size(SERVER_MAX_BODY_SIZE)
+        .set_middleware(tower::ServiceBuilder::new().filter_async(proxy_request))
+        .build(&config.server_address)
+        .await?;
     let addr = server.local_addr()?;
     let methods = get_methods_from_supported_apis(
         &config.chain_id,

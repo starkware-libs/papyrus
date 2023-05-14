@@ -71,3 +71,4 @@ tracing = { version = "0.1.37" }
 tracing-subscriber = { version = "0.3.16" }
 url = { version = "2.2.2" }
 web3 = { version = "0.18.0" }
+tower = { version = "0.4" }
