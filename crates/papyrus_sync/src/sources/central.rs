@@ -5,15 +5,17 @@ use std::sync::Arc;
 
 use async_stream::stream;
 use async_trait::async_trait;
+use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use futures::stream::BoxStream;
 use futures_util::StreamExt;
 use indexmap::IndexMap;
 #[cfg(test)]
 use mockall::automock;
+use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockHash, BlockNumber};
-use starknet_api::core::ClassHash;
+use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::{ContractClass, StateDiff};
 use starknet_api::StarknetApiError;
@@ -82,6 +84,8 @@ pub enum CentralError {
     StateUpdateNotFound,
     #[error("Could not find a class definitions.")]
     ClassNotFound,
+    #[error("Could not find a compiled class of {}.", class_hash)]
+    CompiledClassNotFound { class_hash: ClassHash },
     #[error("Could not find a block with block number {}.", block_number)]
     BlockNotFound { block_number: BlockNumber },
     #[error(transparent)]
@@ -111,12 +115,20 @@ pub trait CentralSourceTrait {
         &self,
         block_number: BlockNumber,
     ) -> Result<Option<BlockHash>, CentralError>;
+
+    fn stream_compiled_classes(
+        &self,
+        initial_block_number: BlockNumber,
+        up_to_block_number: BlockNumber,
+    ) -> CompiledClassesStream<'_>;
 }
 
 pub(crate) type BlocksStream<'a> = BoxStream<'a, Result<(BlockNumber, Block), CentralError>>;
 type CentralStateUpdate =
     (BlockNumber, BlockHash, StateDiff, IndexMap<ClassHash, DeprecatedContractClass>);
 pub(crate) type StateUpdatesStream<'a> = BoxStream<'a, CentralResult<CentralStateUpdate>>;
+type CentralCompiledClass = (ClassHash, CompiledClassHash, CasmContractClass);
+pub(crate) type CompiledClassesStream<'a> = BoxStream<'a, CentralResult<CentralCompiledClass>>;
 
 #[async_trait]
 impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSourceTrait
@@ -176,6 +188,67 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                     }
                     Err(err) => {
                         yield (Err(err));
+                        return;
+                    }
+                }
+            }
+        }
+        .boxed()
+    }
+
+    fn stream_compiled_classes(
+        &self,
+        initial_block_number: BlockNumber,
+        up_to_block_number: BlockNumber,
+    ) -> CompiledClassesStream<'_> {
+        stream! {
+            let txn = self.storage_reader.begin_ro_txn().map_err(CentralError::StorageError)?;
+            let class_hashes_iter = initial_block_number
+                .iter_up_to(up_to_block_number)
+                .map(|bn| {
+                    match txn.get_state_diff(bn) {
+                        Err(err) => Err(CentralError::StorageError(err)),
+                        // TODO(yair): Consider expecting, since the state diffs should not contain
+                        // holes and we suppose to never exceed the state marker.
+                        Ok(None) => Err(CentralError::StateUpdateNotFound),
+                        Ok(Some(state_diff)) => Ok(state_diff),
+                    }
+                })
+                .flat_map(|maybe_state_diff| match maybe_state_diff {
+                    Ok(state_diff) => {
+                        let res: Vec<CentralResult<(ClassHash, CompiledClassHash)>> = state_diff
+                            .declared_classes
+                            .into_iter()
+                            .map(Ok)
+                            .collect();
+                        res
+                    }
+                    Err(err) => vec![Err(err)],
+                });
+
+            let mut res = futures_util::stream::iter(class_hashes_iter)
+                .map(|maybe_class_hashes| async move {
+                    match maybe_class_hashes {
+                        Ok((class_hash, compiled_class_hash)) => {
+                            trace!("Downloading compiled class {:?}.", class_hash);
+                            match self.starknet_client.compiled_class_by_hash(class_hash).await {
+                                Ok(Some(compiled_class)) => Ok((class_hash, compiled_class_hash, compiled_class)),
+                                Ok(None) => Err(CentralError::CompiledClassNotFound{class_hash}),
+                                Err(err) => Err(CentralError::ClientError(Arc::new(err))),
+                            }
+                        },
+                        Err(err) => Err(err),
+                    }
+                })
+                .buffered(self.concurrent_requests);
+
+            while let Some(maybe_compiled_class) = res.next().await {
+                match maybe_compiled_class {
+                    Ok((class_hash, compiled_class_hash, compiled_class)) => {
+                        yield Ok((class_hash, compiled_class_hash, compiled_class));
+                    }
+                    Err(err) => {
+                        yield Err(err);
                         return;
                     }
                 }

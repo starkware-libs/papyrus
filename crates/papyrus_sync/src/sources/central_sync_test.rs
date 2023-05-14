@@ -17,7 +17,7 @@ use tokio::sync::Mutex;
 use tracing::{debug, error};
 
 use super::central::BlocksStream;
-use crate::sources::central::{MockCentralSourceTrait, StateUpdatesStream};
+use crate::sources::central::{CompiledClassesStream, MockCentralSourceTrait, StateUpdatesStream};
 use crate::{CentralError, CentralSourceTrait, GenericStateSync, StateSyncResult, SyncConfig};
 
 const SYNC_SLEEP_DURATION: Duration = Duration::new(0, 1000 * 1000 * 100); // 100ms
@@ -425,6 +425,21 @@ async fn sync_with_revert() {
                 }
                 .boxed(),
             }
+        }
+
+        fn stream_compiled_classes(
+            &self,
+            _initial_block_number: BlockNumber,
+            _up_to_block_number: BlockNumber,
+        ) -> CompiledClassesStream<'_> {
+            // An empty stream.
+            let res: CompiledClassesStream<'_> = stream! {
+                for i in [] {
+                    yield i;
+                }
+            }
+            .boxed();
+            res
         }
     }
 }
