@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use async_std::stream::StreamExt;
-use libp2p::core::identity::Keypair;
+use libp2p::core::identity::{Keypair, PublicKey};
 use libp2p::core::multiaddr;
 use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::transport::{Boxed, MemoryTransport};
@@ -13,7 +13,7 @@ use rand::random;
 
 use crate::Discovery;
 
-fn get_transport_and_peer_id() -> (Boxed<(PeerId, StreamMuxerBox)>, PeerId) {
+fn get_transport_and_public_key() -> (Boxed<(PeerId, StreamMuxerBox)>, PublicKey) {
     let key_pair = Keypair::generate_ed25519();
     let transport = MemoryTransport::default()
         .upgrade(Version::V1)
@@ -21,24 +21,27 @@ fn get_transport_and_peer_id() -> (Boxed<(PeerId, StreamMuxerBox)>, PeerId) {
         .multiplex(YamuxConfig::default())
         .boxed();
 
-    let local_id = key_pair.public().to_peer_id();
-    (transport, local_id)
+    let public_key = key_pair.public();
+    (transport, public_key)
 }
 
 #[tokio::test]
 async fn basic_usage() {
-    let (transport0, peer_id0) = get_transport_and_peer_id();
-    let (transport1, peer_id1) = get_transport_and_peer_id();
-    let (transport2, peer_id2) = get_transport_and_peer_id();
+    let (transport0, public_key0) = get_transport_and_public_key();
+    let (transport1, public_key1) = get_transport_and_public_key();
+    let (transport2, public_key2) = get_transport_and_public_key();
+    let peer_id0 = public_key0.to_peer_id();
+    let peer_id1 = public_key1.to_peer_id();
+    let peer_id2 = public_key2.to_peer_id();
     let address0: Multiaddr = multiaddr::Protocol::Memory(random::<u64>()).into();
     let address1: Multiaddr = multiaddr::Protocol::Memory(random::<u64>()).into();
     let address2: Multiaddr = multiaddr::Protocol::Memory(random::<u64>()).into();
     let discovery0 =
-        Discovery::new(transport0, peer_id0, address0.clone(), peer_id2, address2.clone());
+        Discovery::new(transport0, public_key0, address0.clone(), peer_id2, address2.clone());
     let discovery1 =
-        Discovery::new(transport1, peer_id1, address1.clone(), peer_id0, address0.clone());
+        Discovery::new(transport1, public_key1, address1.clone(), peer_id0, address0.clone());
     let discovery2 =
-        Discovery::new(transport2, peer_id2, address2.clone(), peer_id1, address1.clone());
+        Discovery::new(transport2, public_key2, address2.clone(), peer_id1, address1.clone());
     let merged_stream = discovery0
         .map(|x| (0, x))
         .merge(discovery1.map(|x| (1, x)))

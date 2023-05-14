@@ -5,8 +5,9 @@ edition = "2021"
 
 [dependencies]
 futures = { version = "0.3.7" }
-libp2p = { version = "0.51.1", features = ["noise", "yamux", "kad"] }
+libp2p = { version = "0.51.3", features = ["identify", "kad", "noise", "yamux"] }
 libp2p-identity = { version = "0.1.1" }
+libp2p-swarm-derive = { version = "0.32.0" }
 thiserror = { version = "1.0.31" }
 
 [dev-dependencies]

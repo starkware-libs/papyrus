@@ -1,19 +1,22 @@
 #[cfg(test)]
 mod discovery_test;
+mod mixed_behaviour;
 use std::collections::HashSet;
 use std::task::Poll;
 
 use futures::{Stream, StreamExt};
+use libp2p::core::identity::PublicKey;
 use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::transport::Boxed;
 use libp2p::kad::record::store::MemoryStore;
 use libp2p::kad::{Kademlia, KademliaEvent, QueryResult};
 use libp2p::swarm::{Swarm, SwarmEvent};
-use libp2p::{Multiaddr, PeerId};
+use libp2p::{identify, Multiaddr, PeerId};
 use libp2p_identity::PeerId as KadPeerId;
+use mixed_behaviour::{MixedBehaviour, MixedEvent};
 
 pub struct Discovery {
-    swarm: Swarm<Kademlia<MemoryStore>>,
+    swarm: Swarm<MixedBehaviour>,
     found_peers: HashSet<PeerId>,
 }
 
@@ -30,11 +33,13 @@ impl Stream for Discovery {
             match item {
                 Poll::Ready(Some(swarm_event)) => {
                     match swarm_event {
-                        SwarmEvent::Behaviour(KademliaEvent::OutboundQueryProgressed {
-                            id: _,
-                            result: QueryResult::GetClosestPeers(Ok(r)),
-                            ..
-                        }) => {
+                        SwarmEvent::Behaviour(MixedEvent::Kademlia(
+                            KademliaEvent::OutboundQueryProgressed {
+                                id: _,
+                                result: QueryResult::GetClosestPeers(Ok(r)),
+                                ..
+                            },
+                        )) => {
                             self.perform_closest_peer_query();
                             for peer_id in r.peers {
                                 if let Some(new_peer_id) = self.handle_found_peer(peer_id) {
@@ -65,20 +70,27 @@ impl Stream for Discovery {
 impl Discovery {
     pub fn new(
         transport: Boxed<(PeerId, StreamMuxerBox)>,
-        peer_id: PeerId,
+        public_key: PublicKey,
         address: Multiaddr,
         // TODO consider supporting multiple known peers.
         known_peer: PeerId,
         known_peer_address: Multiaddr,
     ) -> Self {
+        let peer_id = PeerId::from_public_key(&public_key);
         let mut swarm = Swarm::without_executor(
             transport,
-            Kademlia::new(peer_id, MemoryStore::new(peer_id)),
+            MixedBehaviour {
+                kademlia: Kademlia::new(peer_id, MemoryStore::new(peer_id)),
+                identify: identify::Behaviour::new(identify::Config::new(
+                    "discovery/0.0.1".to_string(),
+                    public_key,
+                )),
+            },
             peer_id,
         );
         // TODO handle error
         swarm.listen_on(address).unwrap();
-        swarm.behaviour_mut().add_address(&known_peer, known_peer_address.clone());
+        swarm.behaviour_mut().kademlia.add_address(&known_peer, known_peer_address.clone());
         // // TODO handle error
         // let qid = swarm.behaviour_mut().bootstrap().unwrap();
         // loop {
@@ -103,7 +115,7 @@ impl Discovery {
     }
 
     fn perform_closest_peer_query(&mut self) {
-        self.swarm.behaviour_mut().get_closest_peers(KadPeerId::random());
+        self.swarm.behaviour_mut().kademlia.get_closest_peers(KadPeerId::random());
     }
 
     fn handle_found_peer(&mut self, found_peer: PeerId) -> Option<PeerId> {
