@@ -34,11 +34,11 @@ async fn basic_usage() {
     let address1: Multiaddr = multiaddr::Protocol::Memory(random::<u64>()).into();
     let address2: Multiaddr = multiaddr::Protocol::Memory(random::<u64>()).into();
     let discovery0 =
-        Discovery::new(transport0, peer_id0, address0.clone(), peer_id2, address2.clone()).await;
+        Discovery::new(transport0, peer_id0, address0.clone(), peer_id2, address2.clone());
     let discovery1 =
-        Discovery::new(transport1, peer_id1, address1.clone(), peer_id0, address0.clone()).await;
+        Discovery::new(transport1, peer_id1, address1.clone(), peer_id0, address0.clone());
     let discovery2 =
-        Discovery::new(transport2, peer_id2, address2.clone(), peer_id1, address1.clone()).await;
+        Discovery::new(transport2, peer_id2, address2.clone(), peer_id1, address1.clone());
     let merged_stream = discovery0
         .map(|x| (0, x))
         .merge(discovery1.map(|x| (1, x)))

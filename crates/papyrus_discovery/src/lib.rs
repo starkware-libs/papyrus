@@ -63,7 +63,7 @@ impl Stream for Discovery {
 }
 
 impl Discovery {
-    pub async fn new(
+    pub fn new(
         transport: Boxed<(PeerId, StreamMuxerBox)>,
         peer_id: PeerId,
         address: Multiaddr,
