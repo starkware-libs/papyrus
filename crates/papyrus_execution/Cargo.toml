@@ -1,0 +1,13 @@
+[package]
+name = "papyrus_execution"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+blockifier.workspace = true
+papyrus_storage = { path = "../papyrus_storage" }
+starknet_api.workspace = true
+
+[dev-dependencies]
+indexmap = { workspace = true }
+papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
