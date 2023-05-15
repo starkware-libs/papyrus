@@ -1,5 +1,6 @@
 use jsonrpsee::core::{async_trait, Error};
 use jsonrpsee::proc_macros::rpc;
+use jsonrpsee::RpcModule;
 use papyrus_proc_macros::versioned_rpc;
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
@@ -16,7 +17,7 @@ use tracing::instrument;
 
 use super::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, EventsChunk,
-    GatewayContractClass, JsonRpcError,
+    GatewayContractClass, JsonRpcError, JsonRpcServerImpl,
 };
 use crate::block::Block;
 use crate::state::StateUpdate;
@@ -516,5 +517,20 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         }
 
         Ok(EventsChunk { events: filtered_events, continuation_token: None })
+    }
+}
+
+impl JsonRpcServerImpl for JsonRpcServerV0_3_0Impl {
+    fn new(
+        chain_id: ChainId,
+        storage_reader: StorageReader,
+        max_events_chunk_size: usize,
+        max_events_keys: usize,
+    ) -> Self {
+        Self { chain_id, storage_reader, max_events_chunk_size, max_events_keys }
+    }
+
+    fn into(self) -> RpcModule<Self> {
+        self.into_rpc()
     }
 }

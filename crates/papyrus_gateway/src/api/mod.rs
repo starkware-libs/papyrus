@@ -8,6 +8,7 @@ mod version_config_test;
 use std::collections::HashSet;
 
 use jsonrpsee::core::server::rpc_module::Methods;
+use jsonrpsee::RpcModule;
 use papyrus_storage::StorageReader;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
@@ -131,4 +132,15 @@ pub fn get_methods_from_supported_apis(
             methods
         });
     methods
+}
+
+pub trait JsonRpcServerImpl: Sized {
+    fn new(
+        chain_id: ChainId,
+        storage_reader: StorageReader,
+        max_events_chunk_size: usize,
+        max_events_keys: usize,
+    ) -> Self;
+
+    fn into(self) -> RpcModule<Self>;
 }
