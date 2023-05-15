@@ -49,6 +49,13 @@ impl Stream for Discovery {
                             }
                             continue;
                         }
+                        SwarmEvent::Behaviour(MixedEvent::Identify(
+                            identify::Event::Received { peer_id, info },
+                        )) => {
+                            for address in info.listen_addrs {
+                                self.swarm.behaviour_mut().kademlia.add_address(&peer_id, address);
+                            }
+                        }
                         // TODO try to get peers from other events
                         _ => {
                             // print!(
