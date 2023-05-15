@@ -2,9 +2,12 @@ use proc_macro::TokenStream;
 use quote::ToTokens;
 use syn::{parse_macro_input, ItemTrait, LitStr, Meta, TraitItem};
 
-/// This macro is a wrapper around the "rpc" macro supplied by the jsonrpsee library that generates a server and client traits from a given trait definition.
-/// The wrapper gets a version id and prepend the version id to the trait name and to every method name (note method name refers to the name the API has for the function not the actual function name).
-/// We need this in order to be able to merge multiple versions of jsonrpc APIs into one server and not have a clash in method resolution.
+/// This macro is a wrapper around the "rpc" macro supplied by the jsonrpsee library that generates
+/// a server and client traits from a given trait definition. The wrapper gets a version id and
+/// prepend the version id to the trait name and to every method name (note method name refers to
+/// the name the API has for the function not the actual function name). We need this in order to be
+/// able to merge multiple versions of jsonrpc APIs into one server and not have a clash in method
+/// resolution.
 ///
 /// Example:
 ///
@@ -21,7 +24,6 @@ use syn::{parse_macro_input, ItemTrait, LitStr, Meta, TraitItem};
 ///     #[method(name = "V0_3_0_blockNumber")]
 ///     fn block_number(&self) -> Result<BlockNumber, Error>;
 /// }
-///
 #[proc_macro_attribute]
 pub fn versioned_rpc(attr: TokenStream, input: TokenStream) -> TokenStream {
     let version = parse_macro_input!(attr as syn::LitStr);
