@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use papyrus_storage::compression_utils::{CompressionError, GzEncoded};
+use papyrus_storage::compression_utils::compress_object;
 use papyrus_storage::db::serialization::{StorageSerde, StorageSerdeError};
 use serde::{Deserialize, Serialize};
 use starknet_api::deprecated_contract_class::{
@@ -87,12 +87,11 @@ pub struct ContractClass {
 }
 
 impl TryFrom<starknet_api::deprecated_contract_class::ContractClass> for ContractClass {
-    type Error = CompressionError;
+    type Error = StorageSerdeError;
     fn try_from(
         class: starknet_api::deprecated_contract_class::ContractClass,
     ) -> Result<Self, Self::Error> {
-        let mut program_value = serde_json::to_value(&class.program)
-            .map_err(|err| CompressionError::StorageSerde(StorageSerdeError::Serde(err)))?;
+        let mut program_value = serde_json::to_value(&class.program)?;
         // Remove the 'attributes' key if it is null.
         if class.program.attributes == serde_json::value::Value::Null {
             program_value.as_object_mut().unwrap().remove("attributes");
@@ -110,7 +109,7 @@ impl TryFrom<starknet_api::deprecated_contract_class::ContractClass> for Contrac
 
         Ok(Self {
             abi,
-            program: base64::encode(GzEncoded::encode(Program(program_value))?),
+            program: base64::encode(compress_object(&Program(program_value))?),
             entry_points_by_type: class.entry_points_by_type,
         })
     }
