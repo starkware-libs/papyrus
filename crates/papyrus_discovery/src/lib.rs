@@ -75,14 +75,15 @@ impl Stream for Discovery {
 }
 
 impl Discovery {
-    pub fn new(
+    pub fn new<I>(
         transport: Boxed<(PeerId, StreamMuxerBox)>,
         public_key: PublicKey,
         address: Multiaddr,
-        // TODO consider supporting multiple known peers.
-        known_peer: PeerId,
-        known_peer_address: Multiaddr,
-    ) -> Self {
+        known_peers: I,
+    ) -> Self
+    where
+        I: IntoIterator<Item = (PeerId, Multiaddr)>,
+    {
         let peer_id = PeerId::from_public_key(&public_key);
         let mut swarm = Swarm::without_executor(
             transport,
@@ -97,7 +98,9 @@ impl Discovery {
         );
         // TODO handle error
         swarm.listen_on(address).unwrap();
-        swarm.behaviour_mut().kademlia.add_address(&known_peer, known_peer_address.clone());
+        for (known_peer_id, known_peer_address) in known_peers {
+            swarm.behaviour_mut().kademlia.add_address(&known_peer_id, known_peer_address.clone());
+        }
         // // TODO handle error
         // let qid = swarm.behaviour_mut().bootstrap().unwrap();
         // loop {

@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::iter;
 
 use async_std::stream::StreamExt;
 use libp2p::core::identity::{Keypair, PublicKey};
@@ -36,12 +37,24 @@ async fn basic_usage() {
     let address0: Multiaddr = multiaddr::Protocol::Memory(random::<u64>()).into();
     let address1: Multiaddr = multiaddr::Protocol::Memory(random::<u64>()).into();
     let address2: Multiaddr = multiaddr::Protocol::Memory(random::<u64>()).into();
-    let discovery0 =
-        Discovery::new(transport0, public_key0, address0.clone(), peer_id1, address1.clone());
-    let discovery1 =
-        Discovery::new(transport1, public_key1, address1.clone(), peer_id0, address0.clone());
-    let discovery2 =
-        Discovery::new(transport2, public_key2, address2.clone(), peer_id1, address1.clone());
+    let discovery0 = Discovery::new(
+        transport0,
+        public_key0,
+        address0.clone(),
+        iter::once((peer_id1, address1.clone())),
+    );
+    let discovery1 = Discovery::new(
+        transport1,
+        public_key1,
+        address1.clone(),
+        iter::once((peer_id0, address0.clone())),
+    );
+    let discovery2 = Discovery::new(
+        transport2,
+        public_key2,
+        address2.clone(),
+        iter::once((peer_id1, address1.clone())),
+    );
     let merged_stream = discovery0
         .map(|x| (0, x))
         .merge(discovery1.map(|x| (1, x)))
