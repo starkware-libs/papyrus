@@ -49,6 +49,7 @@ use crate::body::events::{
     ThinTransactionOutput,
 };
 use crate::body::TransactionIndex;
+use crate::compression_utils::{compress, compress_object, decompress, decompress_from_reader};
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
 use crate::ommer::{OmmerEventKey, OmmerTransactionKey};
 #[cfg(test)]
@@ -80,17 +81,6 @@ auto_storage_serde! {
     pub struct CompiledClassHash(pub StarkHash);
     pub struct ClassHash(pub StarkHash);
     pub struct ContractAddressSalt(pub StarkHash);
-    // TODO(anatg): Consider using the compression utils.
-    pub struct ContractClass {
-        pub sierra_program: Vec<StarkFelt>,
-        pub entry_point_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
-        pub abi: String,
-    }
-    pub struct DeprecatedContractClass {
-        pub abi: Option<Vec<ContractClassAbiEntry>>,
-        pub program: Program,
-        pub entry_points_by_type: HashMap<DeprecatedEntryPointType, Vec<DeprecatedEntryPoint>>,
-    }
     pub enum ContractClassAbiEntry {
         Event(EventAbiEntry) = 0,
         Function(FunctionAbiEntryWithType) = 1,
@@ -786,3 +776,58 @@ impl StorageSerde for CasmContractClass {
         })
     }
 }
+
+////////////////////////////////////////////////////////////////////////
+//  Custom serialization with compression.
+////////////////////////////////////////////////////////////////////////
+impl StorageSerde for ContractClass {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        compress_object(&self.sierra_program)?.serialize_into(res)?;
+        self.entry_point_by_type.serialize_into(res)?;
+        compress_object(&self.abi)?.serialize_into(res)?;
+        Ok(())
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        Some(Self {
+            sierra_program: Vec::<StarkFelt>::deserialize_from(
+                &mut decompress_from_reader(bytes)?.as_slice(),
+            )?,
+            entry_point_by_type: HashMap::<EntryPointType, Vec<EntryPoint>>::deserialize_from(
+                bytes,
+            )?,
+            abi: String::deserialize_from(&mut decompress_from_reader(bytes)?.as_slice())?,
+        })
+    }
+}
+#[cfg(test)]
+create_storage_serde_test!(ContractClass);
+
+impl StorageSerde for DeprecatedContractClass {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        // Compress together the program and abi for better compression results.
+        let mut to_compress: Vec<u8> = Vec::new();
+        self.abi.serialize_into(&mut to_compress)?;
+        self.program.serialize_into(&mut to_compress)?;
+        let compressed = compress(to_compress.as_slice())?;
+        compressed.serialize_into(res)?;
+        self.entry_points_by_type.serialize_into(res)?;
+        Ok(())
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        let compressed_data = Vec::<u8>::deserialize_from(bytes)?;
+        let data = decompress(compressed_data.as_slice()).ok()?;
+        let data = &mut data.as_slice();
+        Some(Self {
+            abi: Option::<Vec<ContractClassAbiEntry>>::deserialize_from(data)?,
+            program: Program::deserialize_from(data)?,
+            entry_points_by_type:
+                HashMap::<DeprecatedEntryPointType, Vec<DeprecatedEntryPoint>>::deserialize_from(
+                    bytes,
+                )?,
+        })
+    }
+}
+#[cfg(test)]
+create_storage_serde_test!(DeprecatedContractClass);
