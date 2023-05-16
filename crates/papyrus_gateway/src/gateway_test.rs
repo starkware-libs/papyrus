@@ -190,9 +190,14 @@ async fn get_block_w_transaction_hashes() {
 
 #[tokio::test]
 async fn verify_serialization_deserialization_of_block() {
-    let block: starknet_api::block::Block = get_test_block(Some(0), 1, None, None, None);
+    let api_block: starknet_api::block::Block = get_test_block(Some(0), 1, None, None, None);
+    let block = Block {
+        status: BlockStatus::AcceptedOnL2,
+        header: api_block.header.into(),
+        transactions: Transactions::Full(vec![api_block.body.transactions.index(0).clone().into()]),
+    };
     let block_string = serde_json::to_string(&block).unwrap();
-    let res: starknet_api::block::Block = serde_json::from_str(block_string.as_str()).unwrap();
+    let res: Block = serde_json::from_str(block_string.as_str()).unwrap();
     assert_eq!(res, block);
 }
 
