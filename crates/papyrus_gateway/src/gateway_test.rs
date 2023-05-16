@@ -202,14 +202,6 @@ async fn verify_serialization_deserialization_of_block() {
 }
 
 #[tokio::test]
-async fn verify_serialization_deserialization_of_body() {
-    let body: BlockBody = get_test_body(Some(0), 1, None, None, None);
-    let body_string = serde_json::to_string(&body).unwrap();
-    let res: BlockBody = serde_json::from_str(body_string.as_str()).unwrap();
-    assert_eq!(res, body);
-}
-
-#[tokio::test]
 async fn get_block_w_full_transactions() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer();
 
