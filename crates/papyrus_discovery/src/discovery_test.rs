@@ -14,7 +14,7 @@ use libp2p::yamux::YamuxConfig;
 use libp2p::{Multiaddr, PeerId, Transport};
 use rand::random;
 
-use crate::Discovery;
+use crate::{Discovery, DiscoveryConfig};
 
 fn get_transport_and_public_key() -> (Boxed<(PeerId, StreamMuxerBox)>, PublicKey) {
     let key_pair = Keypair::generate_ed25519();
@@ -104,6 +104,7 @@ where
         .zip(transports_and_public_keys.into_iter().zip(addresses.iter()))
         .map(|(out_vertices, ((transport, public_key), address))| {
             Discovery::new(
+                DiscoveryConfig::default(),
                 transport,
                 public_key.clone(),
                 address.clone(),

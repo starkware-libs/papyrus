@@ -15,7 +15,19 @@ use libp2p::{identify, Multiaddr, PeerId};
 use libp2p_identity::PeerId as KadPeerId;
 use mixed_behaviour::{MixedBehaviour, MixedEvent};
 
+pub struct DiscoveryConfig {
+    pub n_active_queries: usize,
+    pub found_peers_limit: Option<usize>,
+}
+
+impl Default for DiscoveryConfig {
+    fn default() -> Self {
+        Self { n_active_queries: 1, found_peers_limit: None }
+    }
+}
+
 pub struct Discovery {
+    discovery_config: DiscoveryConfig,
     swarm: Swarm<MixedBehaviour>,
     found_peers: HashSet<PeerId>,
 }
@@ -28,6 +40,11 @@ impl Stream for Discovery {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
+        if let Some(found_peers_limit) = self.discovery_config.found_peers_limit {
+            if self.found_peers.len() >= found_peers_limit {
+                return Poll::Ready(None);
+            }
+        }
         loop {
             let item = self.swarm.poll_next_unpin(cx);
             match item {
@@ -76,6 +93,7 @@ impl Stream for Discovery {
 
 impl Discovery {
     pub fn new<I>(
+        discovery_config: DiscoveryConfig,
         transport: Boxed<(PeerId, StreamMuxerBox)>,
         public_key: PublicKey,
         address: Multiaddr,
@@ -118,9 +136,11 @@ impl Discovery {
         //         }
         //     }
         // }
-        let mut discovery = Self { swarm, found_peers: HashSet::new() };
+        let mut discovery = Self { discovery_config, swarm, found_peers: HashSet::new() };
         // TODO send multiple queries
-        discovery.perform_closest_peer_query();
+        for _ in 0..discovery.discovery_config.n_active_queries {
+            discovery.perform_closest_peer_query();
+        }
         discovery
     }
 
