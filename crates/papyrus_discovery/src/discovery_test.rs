@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 use std::iter;
+use std::pin::Pin;
+use std::task::Poll;
 
-use async_std::stream::StreamExt;
+use futures::{Stream, StreamExt};
 use libp2p::core::identity::{Keypair, PublicKey};
 use libp2p::core::multiaddr;
 use libp2p::core::muxing::StreamMuxerBox;
@@ -26,46 +28,105 @@ fn get_transport_and_public_key() -> (Boxed<(PeerId, StreamMuxerBox)>, PublicKey
     (transport, public_key)
 }
 
+// TODO extract to a utility.
+struct MergedStream<S>
+where
+    S: StreamExt + Unpin,
+{
+    streams: Vec<S>,
+    is_stream_consumed_vec: Vec<bool>,
+}
+
+impl<S> Unpin for MergedStream<S> where S: StreamExt + Unpin {}
+
+impl<S> Stream for MergedStream<S>
+where
+    S: StreamExt + Unpin,
+{
+    type Item = (usize, S::Item);
+    fn poll_next(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
+        let unpinned_self = Pin::into_inner(self);
+        for ((i, stream), is_consumed) in unpinned_self
+            .streams
+            .iter_mut()
+            .enumerate()
+            .zip(unpinned_self.is_stream_consumed_vec.iter_mut())
+        {
+            if *is_consumed {
+                continue;
+            }
+            match stream.poll_next_unpin(cx) {
+                Poll::Ready(Some(item)) => {
+                    return Poll::Ready(Some((i, item)));
+                }
+                Poll::Ready(None) => {
+                    *is_consumed = true;
+                    continue;
+                }
+                Poll::Pending => {
+                    continue;
+                }
+            }
+        }
+        if unpinned_self.is_stream_consumed_vec.iter().all(|x| *x) {
+            return Poll::Ready(None);
+        }
+        Poll::Pending
+    }
+}
+
+impl<S> MergedStream<S>
+where
+    S: StreamExt + Unpin,
+{
+    pub fn new(streams: Vec<S>) -> Self {
+        let len = streams.len();
+        Self { streams, is_stream_consumed_vec: iter::repeat(false).take(len).collect() }
+    }
+}
+
+async fn test_graph<I>(graph: Vec<I>)
+where
+    I: IntoIterator<Item = usize>,
+{
+    let n_vertices = graph.len();
+    let transports_and_public_keys: Vec<(Boxed<(PeerId, StreamMuxerBox)>, PublicKey)> =
+        (0..n_vertices).map(|_| get_transport_and_public_key()).collect();
+    let addresses: Vec<Multiaddr> =
+        (0..n_vertices).map(|_| multiaddr::Protocol::Memory(random::<u64>()).into()).collect();
+    let peer_ids: Vec<PeerId> =
+        transports_and_public_keys.iter().map(|(_, public_key)| public_key.to_peer_id()).collect();
+    let discoveries: Vec<Discovery> = graph
+        .into_iter()
+        .zip(transports_and_public_keys.into_iter().zip(addresses.iter()))
+        .map(|(out_vertices, ((transport, public_key), address))| {
+            Discovery::new(
+                transport,
+                public_key.clone(),
+                address.clone(),
+                out_vertices.into_iter().map(|i| (peer_ids[i], addresses[i].clone())),
+            )
+        })
+        .collect();
+    let stream = MergedStream::new(discoveries);
+    let result: HashSet<(usize, PeerId)> =
+        stream.take(n_vertices * (n_vertices - 1)).collect().await;
+    let expected_result: HashSet<(usize, PeerId)> = (0..n_vertices)
+        .flat_map(|i| peer_ids.iter().cloned().map(move |peer_id| (i, peer_id)))
+        .filter(|(i, peer_id)| *peer_id != peer_ids[*i])
+        .collect();
+    assert_eq!(result, expected_result);
+}
+
 #[tokio::test]
-async fn basic_usage() {
-    let (transport0, public_key0) = get_transport_and_public_key();
-    let (transport1, public_key1) = get_transport_and_public_key();
-    let (transport2, public_key2) = get_transport_and_public_key();
-    let peer_id0 = public_key0.to_peer_id();
-    let peer_id1 = public_key1.to_peer_id();
-    let peer_id2 = public_key2.to_peer_id();
-    let address0: Multiaddr = multiaddr::Protocol::Memory(random::<u64>()).into();
-    let address1: Multiaddr = multiaddr::Protocol::Memory(random::<u64>()).into();
-    let address2: Multiaddr = multiaddr::Protocol::Memory(random::<u64>()).into();
-    let discovery0 = Discovery::new(
-        transport0,
-        public_key0,
-        address0.clone(),
-        iter::once((peer_id1, address1.clone())),
-    );
-    let discovery1 = Discovery::new(
-        transport1,
-        public_key1,
-        address1.clone(),
-        iter::once((peer_id0, address0.clone())),
-    );
-    let discovery2 = Discovery::new(
-        transport2,
-        public_key2,
-        address2.clone(),
-        iter::once((peer_id1, address1.clone())),
-    );
-    let merged_stream = discovery0
-        .map(|x| (0, x))
-        .merge(discovery1.map(|x| (1, x)))
-        .merge(discovery2.map(|x| (2, x)));
-    let result: HashSet<(u64, PeerId)> = merged_stream.take(6).collect().await;
-    let mut expected_result = HashSet::new();
-    expected_result.insert((0, peer_id1));
-    expected_result.insert((0, peer_id2));
-    expected_result.insert((1, peer_id0));
-    expected_result.insert((1, peer_id2));
-    expected_result.insert((2, peer_id0));
-    expected_result.insert((2, peer_id1));
-    assert_eq!(result, expected_result)
+async fn basic_usage_chain() {
+    test_graph((0..10).map(|i| vec![if i == 0 { 1 } else { i - 1 }]).collect()).await;
+}
+
+#[tokio::test]
+async fn basic_usage_two_stars() {
+    test_graph((0..10).map(|i| vec![if i < 2 { 1 - i } else { i % 2 }]).collect()).await;
 }
