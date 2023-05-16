@@ -91,11 +91,19 @@ fn append_state_diff_declared_classes() {
     assert_matches!(statetxn.get_class_definition_at(state0, &nc0).unwrap(), None);
     assert_matches!(statetxn.get_class_definition_at(state1, &nc0).unwrap(), Some(_));
     assert_matches!(statetxn.get_class_definition_at(state2, &nc0).unwrap(), Some(_));
+    assert_matches!(
+        statetxn.get_class_definition_block_number(&nc0).unwrap(),
+        Some(BlockNumber(0))
+    );
 
     // Class1.
     assert_matches!(statetxn.get_class_definition_at(state0, &nc1).unwrap(), None);
     assert_matches!(statetxn.get_class_definition_at(state1, &nc1).unwrap(), None);
     assert_matches!(statetxn.get_class_definition_at(state2, &nc1).unwrap(), Some(_));
+    assert_matches!(
+        statetxn.get_class_definition_block_number(&nc1).unwrap(),
+        Some(BlockNumber(1))
+    );
 }
 
 #[test]
