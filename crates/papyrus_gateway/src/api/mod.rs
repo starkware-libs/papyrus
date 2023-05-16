@@ -1,6 +1,5 @@
 pub mod v0_3_0;
-#[cfg(test)]
-mod v0_3_0_test;
+
 pub mod version_config;
 #[cfg(test)]
 mod version_config_test;
@@ -15,7 +14,8 @@ use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{ChainId, ContractAddress};
 use starknet_api::transaction::EventKey;
 
-use self::v0_3_0::{JsonRpcServerV0_3_0Impl, JsonRpcV0_3_0Server};
+use self::v0_3_0::v0_3_0_impl::JsonRpcServerV0_3_0Impl;
+use self::v0_3_0::JsonRpcV0_3_0Server;
 use crate::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use crate::state::ContractClass;
 use crate::transaction::Event;

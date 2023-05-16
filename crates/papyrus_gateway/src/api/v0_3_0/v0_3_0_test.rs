@@ -25,7 +25,7 @@ use test_utils::{
     get_rng, get_test_block, get_test_body, get_test_state_diff, send_request, GetTestInstance,
 };
 
-use crate::api::v0_3_0::JsonRpcServerV0_3_0Impl;
+use crate::api::v0_3_0::v0_3_0_impl::JsonRpcServerV0_3_0Impl;
 use crate::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, EventsChunk,
     JsonRpcError, Tag,
