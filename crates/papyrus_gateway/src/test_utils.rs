@@ -16,8 +16,8 @@ pub fn get_test_gateway_config() -> GatewayConfig {
     }
 }
 
-pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>(
-) -> (RpcModule<T>, StorageWriter) {
+pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
+-> (RpcModule<T>, StorageWriter) {
     let (storage_reader, storage_writer) = get_test_storage();
     let config = get_test_gateway_config();
     (
