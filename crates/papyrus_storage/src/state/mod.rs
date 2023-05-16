@@ -256,6 +256,13 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         Ok(Some(contract_class))
     }
 
+    pub fn get_class_definition_block_number(
+        &self,
+        class_hash: &ClassHash,
+    ) -> StorageResult<Option<BlockNumber>> {
+        Ok(self.declared_classes_block_table.get(self.txn, class_hash)?)
+    }
+
     pub fn get_deprecated_class_definition_at(
         &self,
         state_number: StateNumber,
