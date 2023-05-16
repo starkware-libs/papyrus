@@ -190,7 +190,7 @@ async fn get_block_w_transaction_hashes() {
 
 #[tokio::test]
 async fn verify_serialization_deserialization_of_block() {
-    let api_block: starknet_api::block::Block = get_test_block(Some(0), 1, None, None, None);
+    let api_block: starknet_api::block::Block = get_test_block(1, None, None, None);
     let block = Block {
         status: BlockStatus::AcceptedOnL2,
         header: api_block.header.into(),
