@@ -510,7 +510,10 @@ fn get_nonce_key_serialization() {
             storage_diffs: IndexMap::new(),
             declared_classes: IndexMap::new(),
             deprecated_declared_classes: IndexMap::new(),
-            nonces: IndexMap::from([(contract_address, Nonce(StarkHash::from(block_number + 1)))]),
+            nonces: IndexMap::from([(
+                contract_address,
+                Nonce(StarkHash::from((block_number as u128) + 1)),
+            )]),
             replaced_classes: IndexMap::new(),
         };
 
@@ -544,7 +547,7 @@ fn get_nonce_key_serialization() {
         println!("{nonce:?}");
         let nonce = nonce.unwrap();
 
-        assert_eq!(nonce, Nonce(StarkHash::from(block_number)));
+        assert_eq!(nonce, Nonce(StarkHash::from(block_number as u128)));
     }
 }
 

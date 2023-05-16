@@ -131,7 +131,7 @@ fn get_rand_test_body_with_events(
     let mut transaction_outputs = vec![];
     for i in 0..transaction_count {
         let mut transaction = Transaction::get_test_instance(rng);
-        set_transaction_hash(&mut transaction, TransactionHash(StarkHash::from(i as u64)));
+        set_transaction_hash(&mut transaction, TransactionHash(StarkHash::from(i as u128)));
         let transaction_output = get_test_transaction_output(&transaction);
         transactions.push(transaction);
         transaction_outputs.push(transaction_output);
