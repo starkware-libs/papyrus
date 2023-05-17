@@ -3,6 +3,7 @@ use std::iter;
 use std::pin::Pin;
 use std::task::Poll;
 
+use futures::executor::block_on;
 use futures::{Stream, StreamExt};
 use libp2p::core::identity::{Keypair, PublicKey};
 use libp2p::core::multiaddr;
@@ -88,7 +89,7 @@ where
     }
 }
 
-async fn test_graph<I>(graph: Vec<I>)
+fn test_graph<I>(graph: Vec<I>)
 where
     I: IntoIterator<Item = usize>,
 {
@@ -114,7 +115,7 @@ where
         .collect();
     let stream = MergedStream::new(discoveries);
     let result: HashSet<(usize, PeerId)> =
-        stream.take(n_vertices * (n_vertices - 1)).collect().await;
+        block_on(stream.take(n_vertices * (n_vertices - 1)).collect());
     let expected_result: HashSet<(usize, PeerId)> = (0..n_vertices)
         .flat_map(|i| peer_ids.iter().cloned().map(move |peer_id| (i, peer_id)))
         .filter(|(i, peer_id)| *peer_id != peer_ids[*i])
@@ -122,12 +123,12 @@ where
     assert_eq!(result, expected_result);
 }
 
-#[tokio::test]
-async fn basic_usage_chain() {
-    test_graph((0..10).map(|i| vec![if i == 0 { 1 } else { i - 1 }]).collect()).await;
+#[test]
+fn basic_usage_chain() {
+    test_graph((0..10).map(|i| vec![if i == 0 { 1 } else { i - 1 }]).collect());
 }
 
-#[tokio::test]
-async fn basic_usage_two_stars() {
-    test_graph((0..10).map(|i| vec![if i < 2 { 1 - i } else { i % 2 }]).collect()).await;
+#[test]
+fn basic_usage_two_stars() {
+    test_graph((0..10).map(|i| vec![if i < 2 { 1 - i } else { i % 2 }]).collect());
 }

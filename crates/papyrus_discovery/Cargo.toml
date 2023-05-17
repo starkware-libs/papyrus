@@ -11,6 +11,4 @@ libp2p-swarm-derive = { version = "0.32.0" }
 thiserror = { version = "1.0.31" }
 
 [dev-dependencies]
-async-std = { version = "1.12", features = ["unstable"] }
 rand = { version = "0.8.5" }
-tokio = { version = "1.18.2" }

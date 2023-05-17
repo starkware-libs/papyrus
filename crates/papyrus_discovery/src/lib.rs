@@ -10,7 +10,7 @@ use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::transport::Boxed;
 use libp2p::kad::record::store::MemoryStore;
 use libp2p::kad::{Kademlia, KademliaEvent, QueryResult};
-use libp2p::swarm::{Swarm, SwarmEvent};
+use libp2p::swarm::{Swarm, SwarmBuilder, SwarmEvent};
 use libp2p::{identify, Multiaddr, PeerId};
 use libp2p_identity::PeerId as KadPeerId;
 use mixed_behaviour::{MixedBehaviour, MixedEvent};
@@ -103,7 +103,8 @@ impl Discovery {
         I: IntoIterator<Item = (PeerId, Multiaddr)>,
     {
         let peer_id = PeerId::from_public_key(&public_key);
-        let mut swarm = Swarm::without_executor(
+        // TODO allow customization of swarm building (executor and builder functions)
+        let mut swarm = SwarmBuilder::without_executor(
             transport,
             MixedBehaviour {
                 kademlia: Kademlia::new(peer_id, MemoryStore::new(peer_id)),
@@ -113,7 +114,8 @@ impl Discovery {
                 )),
             },
             peer_id,
-        );
+        )
+        .build();
         // TODO handle error
         swarm.listen_on(address).unwrap();
         for (known_peer_id, known_peer_address) in known_peers {
@@ -137,7 +139,6 @@ impl Discovery {
         //     }
         // }
         let mut discovery = Self { discovery_config, swarm, found_peers: HashSet::new() };
-        // TODO send multiple queries
         for _ in 0..discovery.discovery_config.n_active_queries {
             discovery.perform_closest_peer_query();
         }
