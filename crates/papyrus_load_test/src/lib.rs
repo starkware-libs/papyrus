@@ -52,10 +52,41 @@ pub fn get_last_block_number() -> u64 {
 pub fn get_random_block_number() -> u64 {
     let last_block = get_last_block_number();
     let mut rng = rand::thread_rng();
-    rng.gen_range(0..=last_block)
+    rng.gen_range(790000..=last_block)
 }
 
 // Returns the path to the file_name inside the resources folder in payprus_loadtest module.
 pub fn path_in_resources(file_name: &str) -> String {
     env::var("CARGO_MANIFEST_DIR").unwrap() + "/resources/" + file_name
 }
+
+// TODO(dvir): update those number with real statics after the node will be in production.
+// Weight for each request to the node. Currently, the numbers are rough estimation based on the
+// requests to the starknet feeder gateway.
+const BLOCK_HASH_AND_NUMBER_WEIGHT: usize = 5000;
+const BLOCK_NUMBER_WEIGHT: usize = 5000;
+const CHAIN_ID_WEIGHT: usize = 100;
+const GET_BLOCK_TRANSACTION_COUNT_BY_HASH_WEIGHT: usize = 1000;
+const GET_BLOCK_TRANSACTION_COUNT_BY_NUMBER_WEIGHT: usize = 1000;
+const GET_BLOCK_WITH_FULL_TRANSACTIONS_BY_HASH_WEIGHT: usize = 1_300;
+const GET_BLOCK_WITH_FULL_TRANSACTIONS_BY_NUMBER_WEIGHT: usize = 7_500_000;
+const GET_BLOCK_WITH_TRANSACTION_HASHES_BY_HASH_WEIGHT: usize = 1_300;
+const GET_BLOCK_WITH_TRANSACTION_HASHES_BY_NUMBER_WEIGHT: usize = 7_500_000;
+const GET_CLASS_AT_BY_HASH_WEIGHT: usize = 70_000;
+const GET_CLASS_AT_BY_NUMBER_WEIGHT: usize = 70_000;
+const GET_CLASS_BY_HASH_WEIGHT: usize = 70_000;
+const GET_CLASS_BY_NUMBER_WEIGHT: usize = 70_000;
+const GET_CLASS_HASH_AT_BY_HASH_WEIGHT: usize = 0;
+const GET_CLASS_HASH_AT_BY_NUMBER_WEIGHT: usize = 425;
+const GET_EVENTS_WITHOUT_ADDRESS_WEIGHT: usize = 33_000;
+const GET_EVENTS_WITH_ADDRESS_WEIGHT: usize = 33_000;
+const GET_NONCE_BY_HASH_WEIGHT: usize = 0;
+const GET_NONCE_BY_NUMBER_WEIGHT: usize = 258;
+const GET_STATE_UPDATE_BY_HASH_WEIGHT: usize = 10_328_572;
+const GET_STATE_UPDATE_BY_NUMBER_WEIGHT: usize = 239_262;
+const GET_STORAGE_AT_BY_HASH_WEIGHT: usize = 0;
+const GET_STORAGE_AT_BY_NUMBER_WEIGHT: usize = 5_935;
+const GET_TRANSACTION_BY_BLOCK_ID_AND_INDEX_BY_HASH_WEIGHT: usize = 2_500;
+const GET_TRANSACTION_BY_BLOCK_ID_AND_INDEX_BY_NUMBER_WEIGHT: usize = 2_500;
+const GET_TRANSACTION_BY_HASH_WEIGHT: usize = 11_991;
+const GET_TRANSACTION_RECEIPT_WEIGHT: usize = 57_152;
