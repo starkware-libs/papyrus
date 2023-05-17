@@ -24,6 +24,17 @@ while true; do
     kill -15 "$PAPYRUS_PID"
     sleep 5s
 
-    # upload db file to s3
-    aws s3 cp "/app/data/$CHAIN_ID/mdbx.dat" "s3://$S3_BUCKET_NAME/$CHAIN_ID/$PAPYRUS_VERSION/$(date +%s).dat"
+    TS=$(date +%s)
+    if [ "$COMPRESS_BACKUP" = true ]; then
+        # compress file, upload compressed file and delete the compressed file
+        cd "/app/data/$CHAIN_ID" || exit 1
+        TAR_FILE_NAME="$TS.tar.gz"
+        tar -czvf "$TAR_FILE_NAME" mdbx.dat
+        aws s3 cp "$TAR_FILE_NAME" "s3://$S3_BUCKET_NAME/$CHAIN_ID/$PAPYRUS_VERSION/$TAR_FILE_NAME"
+        rm "$TAR_FILE_NAME"
+        cd /app || exit 1
+    else
+        # upload db file to s3
+        aws s3 cp "/app/data/$CHAIN_ID/mdbx.dat" "s3://$S3_BUCKET_NAME/$CHAIN_ID/$PAPYRUS_VERSION/$TS.dat"
+    fi
 done
