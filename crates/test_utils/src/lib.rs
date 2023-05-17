@@ -77,11 +77,9 @@ pub fn read_json_file(path_in_resource_dir: &str) -> serde_json::Value {
 /// Used in random test to create a random generator, see for example storage_serde_test.
 /// Randomness can be seeded by setting and env variable `SEED` or by the OS (the rust default).
 pub fn get_rng() -> ChaCha8Rng {
-    let seed: u64 = if let Ok(seed_str) = env::var("SEED") {
-        seed_str.parse().unwrap()
-    } else {
-        let mut rng = rand::thread_rng();
-        rng.gen()
+    let seed: u64 = match env::var("SEED") {
+        Ok(seed_str) => seed_str.parse().unwrap(),
+        _ => rand::thread_rng().gen(),
     };
     // Will be printed if the test failed.
     println!("Testing with seed: {seed:?}");
