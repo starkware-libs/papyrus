@@ -14,6 +14,7 @@ use libp2p::swarm::{Swarm, SwarmBuilder, SwarmEvent};
 use libp2p::{identify, Multiaddr, PeerId};
 use libp2p_identity::PeerId as KadPeerId;
 use mixed_behaviour::{MixedBehaviour, MixedEvent};
+use tracing::{debug, info};
 
 #[derive(Clone)]
 pub struct DiscoveryConfig {
@@ -31,6 +32,7 @@ pub struct Discovery {
     discovery_config: DiscoveryConfig,
     swarm: Swarm<MixedBehaviour>,
     found_peers: HashSet<PeerId>,
+    global_peers_names: Vec<(String, PeerId, Multiaddr)>,
 }
 
 impl Unpin for Discovery {}
@@ -51,21 +53,36 @@ impl Stream for Discovery {
             match item {
                 Poll::Ready(Some(swarm_event)) => {
                     match swarm_event {
-                        SwarmEvent::Behaviour(MixedEvent::Kademlia(
-                            KademliaEvent::OutboundQueryProgressed {
-                                id: _,
-                                result: QueryResult::GetClosestPeers(Ok(r)),
-                                ..
-                            },
-                        )) => {
-                            self.perform_closest_peer_query();
-                            for peer_id in r.peers {
-                                if let Some(new_peer_id) = self.handle_found_peer(peer_id) {
-                                    // TODO get peer ids from all peers of this request
-                                    return Poll::Ready(Some(new_peer_id));
+                        SwarmEvent::Behaviour(MixedEvent::Kademlia(kademlia_event)) => {
+                            match kademlia_event {
+                                KademliaEvent::OutboundQueryProgressed {
+                                    id: _,
+                                    result: QueryResult::GetClosestPeers(Ok(r)),
+                                    ..
+                                } => {
+                                    self.perform_closest_peer_query();
+                                    self.log_message(format!(
+                                        "{:?} found peers {:?}",
+                                        self.swarm.local_peer_id(),
+                                        r.peers
+                                    ));
+                                    for peer_id in r.peers {
+                                        if let Some(new_peer_id) = self.handle_found_peer(peer_id) {
+                                            // TODO get peer ids from all peers of this request
+                                            return Poll::Ready(Some(new_peer_id));
+                                        }
+                                    }
+                                    continue;
+                                }
+                                _ => {
+                                    self.log_message(format!(
+                                        "{:?} got event {:?}",
+                                        self.swarm.local_peer_id(),
+                                        kademlia_event,
+                                    ));
+                                    continue;
                                 }
                             }
-                            continue;
                         }
                         SwarmEvent::Behaviour(MixedEvent::Identify(
                             identify::Event::Received { peer_id, info },
@@ -76,11 +93,7 @@ impl Stream for Discovery {
                         }
                         // TODO try to get peers from other events
                         _ => {
-                            // print!(
-                            //     "{:?} got event {:?}\n",
-                            //     self.swarm.local_peer_id(),
-                            //     swarm_event
-                            // );
+                            debug!("{:?} got event {:?}", self.swarm.local_peer_id(), swarm_event);
                             continue;
                         }
                     }
@@ -99,6 +112,7 @@ impl Discovery {
         public_key: PublicKey,
         address: Multiaddr,
         known_peers: I,
+        global_peers_names: Vec<(String, PeerId, Multiaddr)>,
     ) -> Self
     where
         I: IntoIterator<Item = (PeerId, Multiaddr)>,
@@ -139,7 +153,8 @@ impl Discovery {
         //         }
         //     }
         // }
-        let mut discovery = Self { discovery_config, swarm, found_peers: HashSet::new() };
+        let mut discovery =
+            Self { discovery_config, swarm, found_peers: HashSet::new(), global_peers_names };
         for _ in 0..discovery.discovery_config.n_active_queries {
             discovery.perform_closest_peer_query();
         }
@@ -160,5 +175,14 @@ impl Discovery {
             return Some(found_peer);
         }
         None
+    }
+
+    fn log_message(&self, msg: String) {
+        let mut msg = msg;
+        for (name, peer_id, address) in &self.global_peers_names {
+            msg = msg.replace(&format!("{:?}", peer_id), &format!("id{name}"));
+            msg = msg.replace(&format!("{:?}", address), &format!("address{name}"));
+        }
+        info!(msg);
     }
 }
