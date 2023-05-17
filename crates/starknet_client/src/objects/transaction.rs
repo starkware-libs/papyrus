@@ -92,6 +92,8 @@ pub struct L1HandlerTransaction {
     pub entry_point_selector: EntryPointSelector,
     pub calldata: Calldata,
     pub r#type: TransactionType,
+    #[serde(default)]
+    pub paid_fee_on_l1: Fee,
 }
 
 impl From<L1HandlerTransaction> for starknet_api::transaction::L1HandlerTransaction {
@@ -103,6 +105,7 @@ impl From<L1HandlerTransaction> for starknet_api::transaction::L1HandlerTransact
             contract_address: l1_handler_tx.contract_address,
             entry_point_selector: l1_handler_tx.entry_point_selector,
             calldata: l1_handler_tx.calldata,
+            paid_fee_on_l1: l1_handler_tx.paid_fee_on_l1,
         }
     }
 }

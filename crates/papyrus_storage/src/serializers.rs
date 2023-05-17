@@ -287,6 +287,7 @@ auto_storage_serde! {
         pub contract_address: ContractAddress,
         pub entry_point_selector: EntryPointSelector,
         pub calldata: Calldata,
+        pub paid_fee_on_l1: Fee,
     }
     pub struct ThinL1HandlerTransactionOutput {
         pub actual_fee: Fee,
