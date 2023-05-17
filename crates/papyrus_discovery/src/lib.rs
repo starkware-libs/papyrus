@@ -15,6 +15,7 @@ use libp2p::{identify, Multiaddr, PeerId};
 use libp2p_identity::PeerId as KadPeerId;
 use mixed_behaviour::{MixedBehaviour, MixedEvent};
 
+#[derive(Clone)]
 pub struct DiscoveryConfig {
     pub n_active_queries: usize,
     pub found_peers_limit: Option<usize>,
@@ -143,6 +144,10 @@ impl Discovery {
             discovery.perform_closest_peer_query();
         }
         discovery
+    }
+
+    pub fn peer_id(&self) -> &PeerId {
+        self.swarm.local_peer_id()
     }
 
     fn perform_closest_peer_query(&mut self) {

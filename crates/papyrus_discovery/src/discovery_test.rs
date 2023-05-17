@@ -34,7 +34,7 @@ struct MergedStream<S>
 where
     S: StreamExt + Unpin,
 {
-    streams: Vec<S>,
+    pub streams: Vec<S>,
     is_stream_consumed_vec: Vec<bool>,
 }
 
@@ -89,7 +89,10 @@ where
     }
 }
 
-fn test_graph<I>(graph: Vec<I>)
+fn discoveries_stream_from_graph<I>(
+    graph: Vec<I>,
+    config: DiscoveryConfig,
+) -> MergedStream<Discovery>
 where
     I: IntoIterator<Item = usize>,
 {
@@ -105,7 +108,7 @@ where
         .zip(transports_and_public_keys.into_iter().zip(addresses.iter()))
         .map(|(out_vertices, ((transport, public_key), address))| {
             Discovery::new(
-                DiscoveryConfig::default(),
+                config.clone(),
                 transport,
                 public_key.clone(),
                 address.clone(),
@@ -113,10 +116,15 @@ where
             )
         })
         .collect();
-    let stream = MergedStream::new(discoveries);
-    let result: HashSet<(usize, PeerId)> =
-        block_on(stream.take(n_vertices * (n_vertices - 1)).collect());
-    let expected_result: HashSet<(usize, PeerId)> = (0..n_vertices)
+    MergedStream::new(discoveries)
+}
+
+fn test_found_all_peers(stream: MergedStream<Discovery>) {
+    let peer_ids: Vec<PeerId> =
+        stream.streams.iter().map(|discovery| discovery.peer_id().clone()).collect();
+    let n_peers = peer_ids.len();
+    let result: HashSet<(usize, PeerId)> = block_on(stream.take(n_peers * (n_peers - 1)).collect());
+    let expected_result: HashSet<(usize, PeerId)> = (0..n_peers)
         .flat_map(|i| peer_ids.iter().cloned().map(move |peer_id| (i, peer_id)))
         .filter(|(i, peer_id)| *peer_id != peer_ids[*i])
         .collect();
@@ -125,10 +133,16 @@ where
 
 #[test]
 fn basic_usage_chain() {
-    test_graph((0..10).map(|i| vec![if i == 0 { 1 } else { i - 1 }]).collect());
+    test_found_all_peers(discoveries_stream_from_graph(
+        (0..10).map(|i| vec![if i == 0 { 1 } else { i - 1 }]).collect(),
+        DiscoveryConfig::default(),
+    ));
 }
 
 #[test]
 fn basic_usage_two_stars() {
-    test_graph((0..10).map(|i| vec![if i < 2 { 1 - i } else { i % 2 }]).collect());
+    test_found_all_peers(discoveries_stream_from_graph(
+        (0..10).map(|i| vec![if i < 2 { 1 - i } else { i % 2 }]).collect(),
+        DiscoveryConfig::default(),
+    ));
 }
