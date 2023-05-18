@@ -574,7 +574,7 @@ async fn get_transaction_by_hash() {
     let err = module
         .call::<_, TransactionWithType>(
             "starknet_getTransactionByHash",
-            [TransactionHash(StarkHash::from(1))],
+            [TransactionHash(StarkHash::from(1_u8))],
         )
         .await
         .unwrap_err();
@@ -873,7 +873,7 @@ async fn get_transaction_receipt() {
     let err = module
         .call::<_, TransactionReceiptWithStatus>(
             "starknet_getTransactionReceipt",
-            [TransactionHash(StarkHash::from(1))],
+            [TransactionHash(StarkHash::from(1_u8))],
         )
         .await
         .unwrap_err();
