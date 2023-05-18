@@ -182,12 +182,11 @@ impl<'env, 'txn, K: StorageSerde, V: StorageSerde> TableHandle<'env, K, V> {
     ) -> Result<Option<V>> {
         // TODO: Support zero-copy. This might require a return type of Cow<'env, ValueType>.
         let bin_key = key.serialize()?;
-        if let Some(bytes) = txn.txn.get::<Cow<'env, [u8]>>(&self.database, &bin_key)? {
-            let value = V::deserialize(&mut bytes.as_ref()).ok_or(DbError::InnerDeserialization)?;
-            Ok(Some(value))
-        } else {
-            Ok(None)
-        }
+        let Some(bytes) = txn.txn.get::<Cow<'env, [u8]>>(&self.database, &bin_key)? else {
+            return Ok(None)
+        };
+        let value = V::deserialize(&mut bytes.as_ref()).ok_or(DbError::InnerDeserialization)?;
+        Ok(Some(value))
     }
 
     pub(crate) fn upsert(

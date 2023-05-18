@@ -173,10 +173,9 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
 
         // The class wasn't replaced, check in deployed_contracts.
         let value = self.deployed_contracts_table.get(self.txn, address)?;
-        if let Some(value) = value {
-            if state_number.is_after(value.block_number) {
-                return Ok(Some(value.class_hash));
-            }
+        let Some(value) = value else {return Ok(None)};
+        if state_number.is_after(value.block_number) {
+            return Ok(Some(value.class_hash));
         }
         Ok(None)
     }
@@ -241,12 +240,18 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         state_number: StateNumber,
         class_hash: &ClassHash,
     ) -> StorageResult<Option<ContractClass>> {
-        let Some(block_number) = self.declared_classes_block_table.get(self.txn, class_hash)? else {return Ok(None)};
+        let Some(block_number) =
+            self.declared_classes_block_table.get(self.txn, class_hash)? else {return Ok(None)};
         if state_number.is_before(block_number) {
             return Ok(None);
         }
-        let Some(contract_class) = self.declared_classes_table.get(self.txn, class_hash)? else {
-            return Err(StorageError::DBInconsistency { msg: "block number found in declared_classes_block_table but contract class is not found in declared_classes_table".into() })
+        let Some(contract_class) =
+        self.declared_classes_table.get(self.txn, class_hash)? else {
+            return Err(StorageError::DBInconsistency {
+                msg: "block number found in declared_classes_block_table but contract class is \
+                      not found in declared_classes_table."
+                    .to_string(),
+            });
         };
         Ok(Some(contract_class))
     }

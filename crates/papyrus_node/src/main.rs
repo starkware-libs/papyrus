@@ -44,16 +44,13 @@ async fn run_threads(config: Config) -> anyhow::Result<()> {
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
     ) -> Result<(), StateSyncError> {
-        if let Some(sync_config) = config.sync {
-            let central_source =
-                CentralSource::new(config.central.clone(), VERSION_FULL, storage_reader.clone())
-                    .map_err(CentralError::ClientCreation)?;
-            let mut sync =
-                StateSync::new(sync_config, central_source, storage_reader.clone(), storage_writer);
-            return sync.run().await;
-        }
-
-        Ok(())
+        let Some(sync_config) = config.sync else {return Ok(())};
+        let central_source =
+            CentralSource::new(config.central.clone(), VERSION_FULL, storage_reader.clone())
+                .map_err(CentralError::ClientCreation)?;
+        let mut sync =
+            StateSync::new(sync_config, central_source, storage_reader.clone(), storage_writer);
+        sync.run().await
     }
 }
 
