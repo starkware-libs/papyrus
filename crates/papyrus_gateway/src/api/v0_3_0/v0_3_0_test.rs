@@ -72,7 +72,7 @@ async fn block_hash_and_number() {
     ));
 
     // Add a block and check again.
-    let block = get_test_block(Some(0), 1, None, None, None);
+    let block = get_test_block(1, None, None, None);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -129,7 +129,7 @@ async fn get_block_transaction_count() {
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
     let transaction_count = 5;
-    let block = get_test_block(Some(0), transaction_count, None, None, None);
+    let block = get_test_block(transaction_count, None, None, None);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -203,7 +203,7 @@ async fn get_block_w_full_transactions() {
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
 
-    let block = get_test_block(Some(0), 1, None, None, None);
+    let block = get_test_block(1, None, None, None);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -284,7 +284,7 @@ async fn get_block_w_transaction_hashes() {
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
 
-    let block = get_test_block(Some(0), 1, None, None, None);
+    let block = get_test_block(1, None, None, None);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -512,7 +512,7 @@ async fn get_class() {
 async fn get_transaction_receipt() {
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
-    let block = get_test_block(Some(0), 1, None, None, None);
+    let block = get_test_block(1, None, None, None);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -993,7 +993,7 @@ async fn get_storage_at() {
 async fn get_transaction_by_hash() {
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
-    let block = get_test_block(Some(0), 1, None, None, None);
+    let block = get_test_block(1, None, None, None);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -1031,7 +1031,7 @@ async fn get_transaction_by_hash() {
 async fn get_transaction_by_block_id_and_index() {
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
-    let block = get_test_block(Some(0), 1, None, None, None);
+    let block = get_test_block(1, None, None, None);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -1208,7 +1208,6 @@ async fn get_events_chunk_size_2_with_address() {
     let key0 = EventKey(stark_felt!("0x6"));
     let key1 = EventKey(stark_felt!("0x7"));
     let block = get_test_block(
-        None,
         2,
         Some(5),
         Some(vec![address, ContractAddress(patricia_key!("0x23"))]),
@@ -1292,7 +1291,6 @@ async fn get_events_chunk_size_2_without_address() {
     let key0 = EventKey(stark_felt!("0x6"));
     let key1 = EventKey(stark_felt!("0x7"));
     let block = get_test_block(
-        None,
         2,
         Some(5),
         None,
@@ -1446,7 +1444,7 @@ async fn get_events_no_blocks_in_filter() {
             block_number: BlockNumber(1),
             ..BlockHeader::default()
         },
-        body: get_test_body(Some(0), 1, None, None, None),
+        body: get_test_body(1, None, None, None),
     };
     storage_writer
         .begin_rw_txn()
@@ -1513,7 +1511,7 @@ async fn get_events_invalid_ct() {
 #[tokio::test]
 async fn serialize_returns_valid_json() {
     let (storage_reader, mut storage_writer) = get_test_storage();
-    let mut rng = get_rng(None);
+    let mut rng = get_rng();
     let parent_block = starknet_api::block::Block::default();
     let block = starknet_api::block::Block {
         header: BlockHeader {
@@ -1522,7 +1520,7 @@ async fn serialize_returns_valid_json() {
             block_number: BlockNumber(1),
             ..BlockHeader::default()
         },
-        body: get_test_body(None, 5, Some(5), None, None),
+        body: get_test_body(5, Some(5), None, None),
     };
     let mut state_diff = StateDiff::get_test_instance(&mut rng);
     // In the test instance both declared_classes and deprecated_declared_classes have an entry
