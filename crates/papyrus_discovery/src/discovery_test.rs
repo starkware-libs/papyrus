@@ -154,7 +154,7 @@ fn test_found_all_peers(stream: MergedStream<Discovery>) {
 #[test]
 fn basic_usage_chain() {
     test_found_all_peers(discoveries_stream_from_graph(
-        (0..3).map(|i| vec![if i == 0 { 1 } else { i - 1 }]).collect(),
+        (0..6).map(|i| vec![if i == 0 { 1 } else { i - 1 }]).collect(),
         DiscoveryConfig::default(),
     ));
 }

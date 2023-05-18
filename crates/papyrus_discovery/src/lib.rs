@@ -14,6 +14,7 @@ use libp2p::swarm::{Swarm, SwarmBuilder, SwarmEvent};
 use libp2p::{identify, Multiaddr, PeerId};
 use libp2p_identity::PeerId as KadPeerId;
 use mixed_behaviour::{MixedBehaviour, MixedEvent};
+use primitive_types::U256;
 use tracing::{debug, info};
 
 #[derive(Clone)]
@@ -182,6 +183,18 @@ impl Discovery {
         for (name, peer_id, address) in &self.global_peers_names {
             msg = msg.replace(&format!("{:?}", peer_id), &format!("id{name}"));
             msg = msg.replace(&format!("{:?}", address), &format!("address{name}"));
+            msg =
+                msg.replace(&format!("{:?}", address).trim_matches('"'), &format!("address{name}"));
+            let mut parts: Vec<String> = msg.split("Distance(").map(|s| s.to_string()).collect();
+            for mut part in parts.iter_mut().skip(1) {
+                let i = part.find(')').unwrap();
+                let (s1, s2) = part.split_at(i);
+                let n = U256::from_dec_str(&s1).unwrap();
+                let ilog2: i32 = (256 - n.leading_zeros() - 1).try_into().unwrap();
+                let new_part = format!("{}{}", ilog2, s2);
+                *part = new_part;
+            }
+            msg = parts.join("");
         }
         info!(msg);
     }
