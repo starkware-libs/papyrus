@@ -37,13 +37,12 @@ fn casm_rewrite() {
         .commit()
         .unwrap();
 
-    let err = writer
+    let Err(err) = writer
         .begin_rw_txn()
         .unwrap()
-        .append_casm(ClassHash::default(), &CasmContractClass::default())
-        // A workaround because StorageTxn doesn't implement Debug.
-        .map(|_| ())
-        .unwrap_err();
+        .append_casm(ClassHash::default(), &CasmContractClass::default())  else {
+            panic!("Unexpected Ok.");
+        };
 
     assert_matches!(err, StorageError::CompiledClassReWrite{class_hash} if class_hash == ClassHash::default());
 }
