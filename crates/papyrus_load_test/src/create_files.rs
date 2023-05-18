@@ -82,7 +82,7 @@ pub async fn create_files(node_address: &str) {
 // - params_set_count: the number of lines with parameters to write to the file.
 // - get_params: a function that returns a vector with parameters to a request. The use of Fn is to
 //   enable closure, and the reason get_args is async is that creating the parameters is IO bound.
-pub async fn create_file<Fut>(file_name: &str, param_set_count: u32, get_params: impl Fn() -> Fut)
+pub async fn create_file<Fut>(file_name: &str, param_set_count: usize, get_params: impl Fn() -> Fut)
 where
     Fut: Future<Output = Vec<String>>,
 {
@@ -96,7 +96,7 @@ where
         to_write.push('\n');
     }
     // Remove the last '\n'.
-    to_write.pop().unwrap();
+    to_write.pop();
     let mut file =
         File::create(path_in_resources(file_name)).expect("Create file \"{file_name}\" failed.");
     file.write_all(to_write.as_bytes()).unwrap();
@@ -297,7 +297,14 @@ pub async fn get_random_class_hash_declared_in_block(
     let classes = &mut send_request(node_address, "starknet_getStateUpdate", &params).await
         ["result"]["state_diff"]["declared_classes"]
         .take();
-    declared_classes.append(classes.as_array_mut().unwrap());
+    // Cairo 1 declared classes returns as a couple of "class_hash" and "compiled_class_hash".
+    let mut classes = classes
+        .as_array_mut()
+        .unwrap()
+        .iter()
+        .map(|two_hashes| two_hashes["class_hash"].clone())
+        .collect();
+    declared_classes.append(&mut classes);
     // Cairo 0 classes.
     let classes = &mut send_request(node_address, "starknet_getStateUpdate", &params).await
         ["result"]["state_diff"]["deprecated_declared_classes"]
