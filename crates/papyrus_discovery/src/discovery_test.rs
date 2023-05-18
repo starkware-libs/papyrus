@@ -163,7 +163,7 @@ fn basic_usage_chain() {
 #[test]
 fn basic_usage_two_stars() {
     test_found_all_peers(discoveries_stream_from_graph(
-        (0..10).map(|i| vec![if i < 2 { 1 - i } else { i % 2 }]).collect(),
+        (0..50).map(|i| vec![if i < 2 { 1 - i } else { i % 2 }]).collect(),
         DiscoveryConfig::default(),
     ));
 }

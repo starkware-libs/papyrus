@@ -8,7 +8,6 @@ testing = ["mockall"]
 
 [dependencies]
 async-trait.workspace = true
-cairo-lang-starknet.workspace = true
 http.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
 mockall = { workspace = true, optional = true }
