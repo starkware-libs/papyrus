@@ -11,11 +11,10 @@ mod transaction;
 use std::fmt::Display;
 use std::net::SocketAddr;
 
-use jsonrpsee::core::Error;
-use jsonrpsee::http_server::types::error::CallError;
-use jsonrpsee::http_server::{HttpServerBuilder, HttpServerHandle};
+use jsonrpsee::server::{ServerBuilder, ServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
-use jsonrpsee::types::error::{ErrorObject, INTERNAL_ERROR_MSG};
+use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
+use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::db::TransactionKind;
@@ -41,42 +40,37 @@ pub struct GatewayConfig {
     pub max_events_keys: usize,
 }
 
-impl From<JsonRpcError> for Error {
+impl From<JsonRpcError> for ErrorObjectOwned {
     fn from(err: JsonRpcError) -> Self {
-        Error::Call(CallError::Custom(ErrorObject::owned(err as i32, err.to_string(), None::<()>)))
+        ErrorObjectOwned::owned(err as i32, err.to_string(), None::<()>)
     }
 }
 
-fn internal_server_error(err: impl Display) -> Error {
+fn internal_server_error(err: impl Display) -> ErrorObjectOwned {
     error!("{}: {}", INTERNAL_ERROR_MSG, err);
-    Error::Call(CallError::Custom(ErrorObject::owned(
-        InternalError.code(),
-        INTERNAL_ERROR_MSG,
-        None::<()>,
-    )))
+    ErrorObjectOwned::owned(InternalError.code(), INTERNAL_ERROR_MSG, None::<()>)
 }
 
 fn get_block_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
     block_id: BlockId,
-) -> Result<BlockNumber, Error> {
+) -> Result<BlockNumber, ErrorObjectOwned> {
     Ok(match block_id {
         BlockId::HashOrNumber(BlockHashOrNumber::Hash(block_hash)) => txn
             .get_block_number_by_hash(&block_hash)
             .map_err(internal_server_error)?
-            .ok_or_else(|| Error::from(JsonRpcError::BlockNotFound))?,
+            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?,
         BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number)) => {
             // Check that the block exists.
             let last_block_number = get_latest_block_number(txn)?
-                .ok_or_else(|| Error::from(JsonRpcError::BlockNotFound))?;
+                .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
             if block_number > last_block_number {
-                return Err(Error::from(JsonRpcError::BlockNotFound));
+                return Err(ErrorObjectOwned::from(JsonRpcError::BlockNotFound));
             }
             block_number
         }
-        BlockId::Tag(Tag::Latest) => {
-            get_latest_block_number(txn)?.ok_or_else(|| Error::from(JsonRpcError::BlockNotFound))?
-        }
+        BlockId::Tag(Tag::Latest) => get_latest_block_number(txn)?
+            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?,
         BlockId::Tag(Tag::Pending) => {
             todo!("Pending tag is not supported yet.")
         }
@@ -85,18 +79,18 @@ fn get_block_number<Mode: TransactionKind>(
 
 fn get_latest_block_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
-) -> Result<Option<BlockNumber>, Error> {
+) -> Result<Option<BlockNumber>, ErrorObjectOwned> {
     Ok(txn.get_header_marker().map_err(internal_server_error)?.prev())
 }
 
 fn get_block_header_by_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
     block_number: BlockNumber,
-) -> Result<BlockHeader, Error> {
+) -> Result<BlockHeader, ErrorObjectOwned> {
     let header = txn
         .get_block_header(block_number)
         .map_err(internal_server_error)?
-        .ok_or_else(|| Error::from(JsonRpcError::BlockNotFound))?;
+        .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
 
     Ok(BlockHeader::from(header))
 }
@@ -104,11 +98,11 @@ fn get_block_header_by_number<Mode: TransactionKind>(
 fn get_block_txs_by_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
     block_number: BlockNumber,
-) -> Result<Vec<Transaction>, Error> {
+) -> Result<Vec<Transaction>, ErrorObjectOwned> {
     let transactions = txn
         .get_block_transactions(block_number)
         .map_err(internal_server_error)?
-        .ok_or_else(|| Error::from(JsonRpcError::BlockNotFound))?;
+        .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
 
     Ok(transactions.into_iter().map(Transaction::from).collect())
 }
@@ -116,14 +110,14 @@ fn get_block_txs_by_number<Mode: TransactionKind>(
 struct ContinuationTokenAsStruct(EventIndex);
 
 impl ContinuationToken {
-    fn parse(&self) -> Result<ContinuationTokenAsStruct, Error> {
+    fn parse(&self) -> Result<ContinuationTokenAsStruct, ErrorObjectOwned> {
         let ct = serde_json::from_str(&self.0)
-            .map_err(|_| Error::from(JsonRpcError::InvalidContinuationToken))?;
+            .map_err(|_| ErrorObjectOwned::from(JsonRpcError::InvalidContinuationToken))?;
 
         Ok(ContinuationTokenAsStruct(ct))
     }
 
-    fn new(ct: ContinuationTokenAsStruct) -> Result<Self, Error> {
+    fn new(ct: ContinuationTokenAsStruct) -> Result<Self, ErrorObjectOwned> {
         Ok(Self(serde_json::to_string(&ct.0).map_err(internal_server_error)?))
     }
 }
@@ -132,9 +126,9 @@ impl ContinuationToken {
 pub async fn run_server(
     config: &GatewayConfig,
     storage_reader: StorageReader,
-) -> anyhow::Result<(SocketAddr, HttpServerHandle)> {
+) -> anyhow::Result<(SocketAddr, ServerHandle)> {
     debug!("Starting gateway.");
-    let server = HttpServerBuilder::default().build(&config.server_address).await?;
+    let server = ServerBuilder::default().build(&config.server_address).await?;
     let addr = server.local_addr()?;
     let methods = get_methods_from_supported_apis(
         &config.chain_id,
