@@ -16,7 +16,7 @@ pub trait StorageSerdeTest: StorageSerde {
 // implements the [`StorageSerde`] and [`GetTestInstance`] traits.
 impl<T: StorageSerde + GetTestInstance + Eq + Debug> StorageSerdeTest for T {
     fn storage_serde_test() {
-        let mut rng = get_rng(None);
+        let mut rng = get_rng();
         let item = T::get_test_instance(&mut rng);
         let mut serialized: Vec<u8> = Vec::new();
         item.serialize_into(&mut serialized).unwrap();
