@@ -177,7 +177,7 @@ fn append_state_diff() {
         ]),
         deprecated_declared_classes: IndexMap::from([(cl0, c_cls0.clone())]),
         declared_classes: IndexMap::from([(cl1, c_cls1)]),
-        nonces: IndexMap::from([(c0, Nonce(StarkHash::from(1)))]),
+        nonces: IndexMap::from([(c0, Nonce(StarkHash::from(1_u8)))]),
         replaced_classes: indexmap! {},
     };
     let diff1 = StateDiff {
@@ -189,9 +189,9 @@ fn append_state_diff() {
         deprecated_declared_classes: IndexMap::from([(cl0, c_cls0)]),
         declared_classes: indexmap! {},
         nonces: IndexMap::from([
-            (c0, Nonce(StarkHash::from(2))),
-            (c1, Nonce(StarkHash::from(1))),
-            (c2, Nonce(StarkHash::from(1))),
+            (c0, Nonce(StarkHash::from(2_u8))),
+            (c1, Nonce(StarkHash::from(1_u8))),
+            (c2, Nonce(StarkHash::from(1_u8))),
         ]),
         replaced_classes: IndexMap::from([(c0, cl1)]),
     };
@@ -237,8 +237,8 @@ fn append_state_diff() {
     assert_eq!(statetxn.get_class_hash_at(state1, &c0).unwrap(), Some(cl0));
     assert_eq!(statetxn.get_class_hash_at(state2, &c0).unwrap(), Some(cl1));
     assert_eq!(statetxn.get_nonce_at(state0, &c0).unwrap(), None);
-    assert_eq!(statetxn.get_nonce_at(state1, &c0).unwrap(), Some(Nonce(StarkHash::from(1))));
-    assert_eq!(statetxn.get_nonce_at(state2, &c0).unwrap(), Some(Nonce(StarkHash::from(2))));
+    assert_eq!(statetxn.get_nonce_at(state1, &c0).unwrap(), Some(Nonce(StarkHash::from(1_u8))));
+    assert_eq!(statetxn.get_nonce_at(state2, &c0).unwrap(), Some(Nonce(StarkHash::from(2_u8))));
 
     // Contract1.
     assert_eq!(statetxn.get_class_hash_at(state0, &c1).unwrap(), None);
@@ -246,7 +246,7 @@ fn append_state_diff() {
     assert_eq!(statetxn.get_class_hash_at(state2, &c1).unwrap(), Some(cl1));
     assert_eq!(statetxn.get_nonce_at(state0, &c1).unwrap(), None);
     assert_eq!(statetxn.get_nonce_at(state1, &c1).unwrap(), Some(Nonce::default()));
-    assert_eq!(statetxn.get_nonce_at(state2, &c1).unwrap(), Some(Nonce(StarkHash::from(1))));
+    assert_eq!(statetxn.get_nonce_at(state2, &c1).unwrap(), Some(Nonce(StarkHash::from(1_u8))));
 
     // Contract2.
     assert_eq!(statetxn.get_class_hash_at(state0, &c2).unwrap(), None);
@@ -254,7 +254,7 @@ fn append_state_diff() {
     assert_eq!(statetxn.get_class_hash_at(state2, &c2).unwrap(), Some(cl0));
     assert_eq!(statetxn.get_nonce_at(state0, &c2).unwrap(), None);
     assert_eq!(statetxn.get_nonce_at(state1, &c2).unwrap(), None);
-    assert_eq!(statetxn.get_nonce_at(state2, &c2).unwrap(), Some(Nonce(StarkHash::from(1))));
+    assert_eq!(statetxn.get_nonce_at(state2, &c2).unwrap(), Some(Nonce(StarkHash::from(1_u8))));
 
     // Contract3.
     assert_eq!(statetxn.get_class_hash_at(state0, &c3).unwrap(), None);
@@ -363,7 +363,7 @@ fn revert_doesnt_delete_previously_declared_classes() {
         storage_diffs: IndexMap::new(),
         deprecated_declared_classes: IndexMap::from([(cl0, c_cls0.clone())]),
         declared_classes: indexmap! {},
-        nonces: IndexMap::from([(c0, Nonce(StarkHash::from(1)))]),
+        nonces: IndexMap::from([(c0, Nonce(StarkHash::from(1_u8)))]),
         replaced_classes: indexmap! {},
     };
 
@@ -373,7 +373,7 @@ fn revert_doesnt_delete_previously_declared_classes() {
         storage_diffs: IndexMap::new(),
         deprecated_declared_classes: IndexMap::from([(cl0, c_cls0)]),
         declared_classes: indexmap! {},
-        nonces: IndexMap::from([(c1, Nonce(StarkHash::from(2)))]),
+        nonces: IndexMap::from([(c1, Nonce(StarkHash::from(2_u8)))]),
         replaced_classes: indexmap! {},
     };
 
@@ -426,9 +426,9 @@ fn revert_state() {
     let class1 = ClassHash(stark_felt!("0x11"));
     let class2 = ClassHash(stark_felt!("0x22"));
     let updated_storage_key = StorageKey(patricia_key!("0x1"));
-    let new_data = StarkFelt::from(1);
+    let new_data = StarkFelt::from(1_u8);
     let updated_storage = IndexMap::from([(updated_storage_key, new_data)]);
-    let nonce1 = Nonce(StarkFelt::from(111));
+    let nonce1 = Nonce(StarkFelt::from(111_u8));
     let state_diff1 = StateDiff {
         deployed_contracts: IndexMap::from([(contract1, class1), (contract2, class2)]),
         storage_diffs: IndexMap::from([(*contract0, updated_storage)]),
@@ -497,7 +497,7 @@ fn revert_state() {
     assert!(state_reader.get_nonce_at(state_number, &contract1).unwrap().is_none());
     assert_eq!(
         state_reader.get_storage_at(state_number, contract0, &updated_storage_key).unwrap(),
-        StarkFelt::from(0)
+        StarkFelt::from(0_u8)
     );
 }
 
