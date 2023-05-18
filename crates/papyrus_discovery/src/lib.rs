@@ -6,6 +6,7 @@ use std::task::Poll;
 
 use futures::{Stream, StreamExt};
 use libp2p::core::identity::PublicKey;
+use libp2p::core::multiaddr::Protocol;
 use libp2p::core::muxing::StreamMuxerBox;
 use libp2p::core::transport::Boxed;
 use libp2p::kad::record::store::MemoryStore;
@@ -33,13 +34,14 @@ pub struct Discovery {
     discovery_config: DiscoveryConfig,
     swarm: Swarm<MixedBehaviour>,
     found_peers: HashSet<PeerId>,
+    address: Multiaddr,
     global_peers_names: Vec<(String, PeerId, Multiaddr)>,
 }
 
 impl Unpin for Discovery {}
 
 impl Stream for Discovery {
-    type Item = PeerId;
+    type Item = (PeerId, Multiaddr);
     fn poll_next(
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
@@ -52,53 +54,73 @@ impl Stream for Discovery {
         loop {
             let item = self.swarm.poll_next_unpin(cx);
             match item {
-                Poll::Ready(Some(swarm_event)) => {
-                    match swarm_event {
-                        SwarmEvent::Behaviour(MixedEvent::Kademlia(kademlia_event)) => {
-                            match kademlia_event {
-                                KademliaEvent::OutboundQueryProgressed {
-                                    id: _,
-                                    result: QueryResult::GetClosestPeers(Ok(r)),
-                                    ..
-                                } => {
-                                    self.perform_closest_peer_query();
-                                    self.log_message(format!(
-                                        "{:?} found peers {:?}",
-                                        self.swarm.local_peer_id(),
-                                        r.peers
-                                    ));
-                                    for peer_id in r.peers {
-                                        if let Some(new_peer_id) = self.handle_found_peer(peer_id) {
-                                            // TODO get peer ids from all peers of this request
-                                            return Poll::Ready(Some(new_peer_id));
-                                        }
-                                    }
-                                    continue;
-                                }
-                                _ => {
-                                    self.log_message(format!(
-                                        "{:?} got event {:?}",
-                                        self.swarm.local_peer_id(),
-                                        kademlia_event,
-                                    ));
-                                    continue;
+                Poll::Ready(Some(swarm_event)) => match swarm_event {
+                    SwarmEvent::Behaviour(MixedEvent::Kademlia(kademlia_event)) => {
+                        match kademlia_event {
+                            KademliaEvent::OutboundQueryProgressed {
+                                id: _,
+                                result: QueryResult::GetClosestPeers(Ok(r)),
+                                ..
+                            } => {
+                                self.perform_closest_peer_query();
+                            }
+                            KademliaEvent::RoutingUpdated { peer, addresses, .. } => {
+                                self.log_message(format!(
+                                    "{:?} found peer {:?} through RoutingUpdated",
+                                    self.peer_id(),
+                                    peer,
+                                ));
+                                if let Some((peer_id, address)) =
+                                    self.handle_found_peer(peer, addresses.first().clone())
+                                {
+                                    return Poll::Ready(Some((peer_id, address)));
                                 }
                             }
-                        }
-                        SwarmEvent::Behaviour(MixedEvent::Identify(
-                            identify::Event::Received { peer_id, info },
-                        )) => {
-                            for address in info.listen_addrs {
-                                self.swarm.behaviour_mut().kademlia.add_address(&peer_id, address);
+                            KademliaEvent::RoutablePeer { peer, address } => {
+                                self.log_message(format!(
+                                    "{:?} found peer {:?} through RoutablePeer",
+                                    self.peer_id(),
+                                    peer,
+                                ));
+                                if let Some((peer_id, address)) =
+                                    self.handle_found_peer(peer, address)
+                                {
+                                    return Poll::Ready(Some((peer_id, address)));
+                                }
                             }
-                        }
-                        // TODO try to get peers from other events
-                        _ => {
-                            debug!("{:?} got event {:?}", self.swarm.local_peer_id(), swarm_event);
-                            continue;
+                            KademliaEvent::PendingRoutablePeer { peer, address } => {
+                                self.log_message(format!(
+                                    "{:?} found peer {:?} through PendingRoutablePeer",
+                                    self.peer_id(),
+                                    peer,
+                                ));
+                                if let Some((peer_id, address)) =
+                                    self.handle_found_peer(peer, address)
+                                {
+                                    return Poll::Ready(Some((peer_id, address)));
+                                }
+                            }
+                            _ => {
+                                self.log_message(format!(
+                                    "{:?} got event {:?}",
+                                    self.swarm.local_peer_id(),
+                                    kademlia_event,
+                                ));
+                            }
                         }
                     }
-                }
+                    SwarmEvent::Behaviour(MixedEvent::Identify(identify::Event::Received {
+                        peer_id,
+                        info,
+                    })) => {
+                        for address in info.listen_addrs {
+                            self.swarm.behaviour_mut().kademlia.add_address(&peer_id, address);
+                        }
+                    }
+                    _ => {
+                        debug!("{:?} got event {:?}", self.swarm.local_peer_id(), swarm_event);
+                    }
+                },
                 Poll::Ready(None) => return Poll::Ready(None),
                 Poll::Pending => return Poll::Pending,
             }
@@ -133,7 +155,7 @@ impl Discovery {
         )
         .build();
         // TODO handle error
-        swarm.listen_on(address).unwrap();
+        swarm.listen_on(address.clone()).unwrap();
         for (known_peer_id, known_peer_address) in known_peers {
             swarm.behaviour_mut().kademlia.add_address(&known_peer_id, known_peer_address.clone());
         }
@@ -154,8 +176,13 @@ impl Discovery {
         //         }
         //     }
         // }
-        let mut discovery =
-            Self { discovery_config, swarm, found_peers: HashSet::new(), global_peers_names };
+        let mut discovery = Self {
+            discovery_config,
+            swarm,
+            found_peers: HashSet::new(),
+            address,
+            global_peers_names,
+        };
         for _ in 0..discovery.discovery_config.n_active_queries {
             discovery.perform_closest_peer_query();
         }
@@ -166,14 +193,27 @@ impl Discovery {
         self.swarm.local_peer_id()
     }
 
+    pub fn address(&self) -> &Multiaddr {
+        &self.address
+    }
+
     fn perform_closest_peer_query(&mut self) {
+        self.log_message(format!("{:?} starts query", self.swarm.local_peer_id(),));
         self.swarm.behaviour_mut().kademlia.get_closest_peers(KadPeerId::random());
     }
 
-    fn handle_found_peer(&mut self, found_peer: PeerId) -> Option<PeerId> {
+    fn handle_found_peer(
+        &mut self,
+        found_peer: PeerId,
+        address: Multiaddr,
+    ) -> Option<(PeerId, Multiaddr)> {
+        let mut address = address;
         if !self.found_peers.contains(&found_peer) {
             self.found_peers.insert(found_peer);
-            return Some(found_peer);
+            if let Some(Protocol::P2p(_)) = address.iter().last() {
+                address.pop();
+            }
+            return Some((found_peer, address));
         }
         None
     }

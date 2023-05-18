@@ -4,15 +4,15 @@
 resolver = "2"
 
 members = [
-    "crates/papyrus_base_layer",
+    # "crates/papyrus_base_layer",
     "crates/papyrus_discovery",
-    "crates/papyrus_gateway",
-    "crates/papyrus_monitoring_gateway",
-    "crates/papyrus_node",
-    "crates/papyrus_storage",
-    "crates/papyrus_sync",
-    "crates/starknet_client",
-    "crates/test_utils",
+    # "crates/papyrus_gateway",
+    # "crates/papyrus_monitoring_gateway",
+    # "crates/papyrus_node",
+    # "crates/papyrus_storage",
+    # "crates/papyrus_sync",
+    # "crates/starknet_client",
+    # "crates/test_utils",
 ]
 
 [workspace.dependencies]

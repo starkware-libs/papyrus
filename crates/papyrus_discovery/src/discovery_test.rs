@@ -6,6 +6,7 @@ use std::time::Instant;
 
 use futures::executor::block_on;
 use futures::{Stream, StreamExt};
+use kdam::tqdm;
 use libp2p::core::identity::{Keypair, PublicKey};
 use libp2p::core::multiaddr;
 use libp2p::core::muxing::StreamMuxerBox;
@@ -140,13 +141,17 @@ where
 }
 
 fn test_found_all_peers(stream: MergedStream<Discovery>) {
-    let peer_ids: Vec<PeerId> =
-        stream.streams.iter().map(|discovery| discovery.peer_id().clone()).collect();
-    let n_peers = peer_ids.len();
-    let result: HashSet<(usize, PeerId)> = block_on(stream.take(n_peers * (n_peers - 1)).collect());
-    let expected_result: HashSet<(usize, PeerId)> = (0..n_peers)
-        .flat_map(|i| peer_ids.iter().cloned().map(move |peer_id| (i, peer_id)))
-        .filter(|(i, peer_id)| *peer_id != peer_ids[*i])
+    let peer_ids_and_addresses: Vec<(PeerId, Multiaddr)> = stream
+        .streams
+        .iter()
+        .map(|discovery| (discovery.peer_id().clone(), discovery.address().clone()))
+        .collect();
+    let n_peers = peer_ids_and_addresses.len();
+    let result: HashSet<(usize, (PeerId, Multiaddr))> =
+        block_on(stream.take(n_peers * (n_peers - 1)).collect());
+    let expected_result: HashSet<(usize, (PeerId, Multiaddr))> = (0..n_peers)
+        .flat_map(|i| peer_ids_and_addresses.iter().cloned().map(move |peer_id| (i, peer_id)))
+        .filter(|(i, (peer_id, _))| *peer_id != peer_ids_and_addresses[*i].0)
         .collect();
     assert_eq!(result, expected_result);
 }
@@ -154,7 +159,7 @@ fn test_found_all_peers(stream: MergedStream<Discovery>) {
 #[test]
 fn basic_usage_chain() {
     test_found_all_peers(discoveries_stream_from_graph(
-        (0..6).map(|i| vec![if i == 0 { 1 } else { i - 1 }]).collect(),
+        (0..10).map(|i| vec![if i == 0 { 1 } else { i - 1 }]).collect(),
         DiscoveryConfig::default(),
     ));
 }
@@ -169,7 +174,7 @@ fn basic_usage_two_stars() {
 
 #[test]
 fn bench_chain() {
-    const N_NODES: usize = 20;
+    const N_NODES: usize = 70;
     // const FOUND_PEERS_LIMIT: usize = 9;
     let mut stream = discoveries_stream_from_graph(
         (0..N_NODES).map(|i| vec![if i == 0 { 1 } else { i - 1 }]).collect(),
@@ -178,7 +183,7 @@ fn bench_chain() {
     );
     let start_time = Instant::now();
     // while let Some(_) = block_on(stream.next()) {}
-    for _ in 0..(N_NODES * (N_NODES - 1)) {
+    for _ in tqdm!(0..(N_NODES * (N_NODES - 1))) {
         block_on(stream.next());
     }
     println!("Took {} ms", start_time.elapsed().as_millis());
