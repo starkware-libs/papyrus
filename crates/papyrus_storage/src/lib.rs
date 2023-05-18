@@ -1,5 +1,5 @@
 pub mod body;
-pub mod casm;
+pub mod compiled_class;
 pub mod compression_utils;
 pub mod db;
 pub mod header;

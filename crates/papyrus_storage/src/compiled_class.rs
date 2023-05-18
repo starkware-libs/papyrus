@@ -1,12 +1,12 @@
 #[cfg(test)]
-#[path = "casm_test.rs"]
+#[path = "compiled_class_test.rs"]
 mod casm_test;
 
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use starknet_api::core::ClassHash;
 
-use crate::db::{TransactionKind, RW, DbError};
-use crate::{StorageResult, StorageTxn, StorageError};
+use crate::db::{DbError, TransactionKind, RW};
+use crate::{StorageError, StorageResult, StorageTxn};
 
 pub trait CasmStorageReader {
     /// Returns the Cairo assembly of a class given its Sierra class hash.

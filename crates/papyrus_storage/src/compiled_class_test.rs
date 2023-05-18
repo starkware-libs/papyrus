@@ -3,7 +3,7 @@ use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use starknet_api::core::ClassHash;
 use test_utils::read_json_file;
 
-use crate::casm::{CasmStorageReader, CasmStorageWriter};
+use crate::compiled_class::{CasmStorageReader, CasmStorageWriter};
 use crate::test_utils::get_test_storage;
 use crate::StorageError;
 
