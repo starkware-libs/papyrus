@@ -73,14 +73,14 @@ fn append_state_diff_declared_classes() {
     let statetxn = txn.get_state_reader().unwrap();
 
     // Class0.
-    assert_matches!(statetxn.get_deprecated_class_definition_at(state0, &dc0).unwrap(), None);
-    assert_matches!(statetxn.get_deprecated_class_definition_at(state1, &dc0).unwrap(), Some(_));
-    assert_matches!(statetxn.get_deprecated_class_definition_at(state2, &dc0).unwrap(), Some(_));
+    assert!(statetxn.get_deprecated_class_definition_at(state0, &dc0).unwrap().is_none());
+    assert!(statetxn.get_deprecated_class_definition_at(state1, &dc0).unwrap().is_some());
+    assert!(statetxn.get_deprecated_class_definition_at(state2, &dc0).unwrap().is_some());
 
     // Class1.
-    assert_matches!(statetxn.get_deprecated_class_definition_at(state0, &dc1).unwrap(), None);
-    assert_matches!(statetxn.get_deprecated_class_definition_at(state1, &dc1).unwrap(), Some(_));
-    assert_matches!(statetxn.get_deprecated_class_definition_at(state2, &dc1).unwrap(), Some(_));
+    assert!(statetxn.get_deprecated_class_definition_at(state0, &dc1).unwrap().is_none());
+    assert!(statetxn.get_deprecated_class_definition_at(state1, &dc1).unwrap().is_some());
+    assert!(statetxn.get_deprecated_class_definition_at(state2, &dc1).unwrap().is_some());
 
     // New Classes Test
     drop(txn);
@@ -88,15 +88,15 @@ fn append_state_diff_declared_classes() {
     let statetxn = txn.get_state_reader().unwrap();
 
     // Class0.
-    assert_matches!(statetxn.get_class_definition_at(state0, &nc0).unwrap(), None);
-    assert_matches!(statetxn.get_class_definition_at(state1, &nc0).unwrap(), Some(_));
-    assert_matches!(statetxn.get_class_definition_at(state2, &nc0).unwrap(), Some(_));
+    assert!(statetxn.get_class_definition_at(state0, &nc0).unwrap().is_none());
+    assert!(statetxn.get_class_definition_at(state1, &nc0).unwrap().is_some());
+    assert!(statetxn.get_class_definition_at(state2, &nc0).unwrap().is_some());
     assert_eq!(statetxn.get_class_definition_block_number(&nc0).unwrap(), Some(BlockNumber(0)));
 
     // Class1.
-    assert_matches!(statetxn.get_class_definition_at(state0, &nc1).unwrap(), None);
-    assert_matches!(statetxn.get_class_definition_at(state1, &nc1).unwrap(), None);
-    assert_matches!(statetxn.get_class_definition_at(state2, &nc1).unwrap(), Some(_));
+    assert!(statetxn.get_class_definition_at(state0, &nc1).unwrap().is_none());
+    assert!(statetxn.get_class_definition_at(state1, &nc1).unwrap().is_none());
+    assert!(statetxn.get_class_definition_at(state2, &nc1).unwrap().is_some());
     assert_eq!(statetxn.get_class_definition_block_number(&nc1).unwrap(), Some(BlockNumber(1)));
 }
 
