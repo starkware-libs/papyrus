@@ -260,6 +260,8 @@ pub enum StorageError {
     OmmerNonceAlreadyExists { block_hash: BlockHash, contract_address: ContractAddress },
     #[error(transparent)]
     StorageVersionInconcistency(#[from] StorageVersionError),
+    #[error("Compiled class of {class_hash:?} already exists.")]
+    CompiledClassReWrite { class_hash: ClassHash },
 }
 
 pub type StorageResult<V> = std::result::Result<V, StorageError>;
