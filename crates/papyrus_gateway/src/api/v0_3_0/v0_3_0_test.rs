@@ -1394,7 +1394,7 @@ async fn get_events_page_size_too_big() {
 async fn get_events_too_many_keys() {
     let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
     let keys = (0..get_test_gateway_config().max_events_keys + 1)
-        .map(|i| HashSet::from([EventKey(StarkFelt::from(i as u64))]))
+        .map(|i| HashSet::from([EventKey(StarkFelt::from(i as u128))]))
         .collect();
 
     // Create the filter.
