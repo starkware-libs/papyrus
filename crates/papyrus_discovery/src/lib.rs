@@ -3,6 +3,7 @@ mod discovery_test;
 mod mixed_behaviour;
 use std::collections::HashSet;
 use std::task::Poll;
+use std::time::Instant;
 
 use futures::{Stream, StreamExt};
 use libp2p::core::identity::PublicKey;
@@ -34,6 +35,7 @@ pub struct Discovery {
     swarm: Swarm<MixedBehaviour>,
     found_peers: HashSet<PeerId>,
     global_peers_names: Vec<(String, PeerId, Multiaddr)>,
+    time_last_query_sent: Instant,
 }
 
 impl Unpin for Discovery {}
@@ -44,6 +46,11 @@ impl Stream for Discovery {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
+        if self.time_last_query_sent.elapsed().as_secs() > 1 {
+            self.log_message(format!("!!!! {:?} performed query", self.swarm.local_peer_id()));
+            self.perform_closest_peer_query();
+            self.time_last_query_sent = Instant::now()
+        }
         if let Some(found_peers_limit) = self.discovery_config.found_peers_limit {
             if self.found_peers.len() >= found_peers_limit {
                 return Poll::Ready(None);
@@ -61,9 +68,9 @@ impl Stream for Discovery {
                                     result: QueryResult::GetClosestPeers(Ok(r)),
                                     ..
                                 } => {
-                                    self.perform_closest_peer_query();
+                                    // self.perform_closest_peer_query();
                                     self.log_message(format!(
-                                        "{:?} found peers {:?}",
+                                        "=== {:?} found peers {:?}",
                                         self.swarm.local_peer_id(),
                                         r.peers
                                     ));
@@ -154,11 +161,16 @@ impl Discovery {
         //         }
         //     }
         // }
-        let mut discovery =
-            Self { discovery_config, swarm, found_peers: HashSet::new(), global_peers_names };
-        for _ in 0..discovery.discovery_config.n_active_queries {
-            discovery.perform_closest_peer_query();
-        }
+        let mut discovery = Self {
+            discovery_config,
+            swarm,
+            found_peers: HashSet::new(),
+            global_peers_names,
+            time_last_query_sent: Instant::now(),
+        };
+        // for _ in 0..discovery.discovery_config.n_active_queries {
+        //     discovery.perform_closest_peer_query();
+        // }
         discovery
     }
 
