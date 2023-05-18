@@ -26,7 +26,7 @@ pub struct DiscoveryConfig {
 
 impl Default for DiscoveryConfig {
     fn default() -> Self {
-        Self { n_active_queries: 10, found_peers_limit: None }
+        Self { n_active_queries: 1, found_peers_limit: None }
     }
 }
 
@@ -46,18 +46,10 @@ impl Stream for Discovery {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        if self.time_last_query_sent.elapsed().as_secs() > 10 {
-            if self
-                .global_peers_names
-                .iter()
-                .filter(|(name, peer_id, _)| peer_id == self.swarm.local_peer_id() && name == "5")
-                .next()
-                .is_some()
-            {
-                self.log_message(format!("!!!! {:?} performed query", self.swarm.local_peer_id()));
-                self.perform_closest_peer_query();
-                self.time_last_query_sent = Instant::now()
-            }
+        if self.time_last_query_sent.elapsed().as_secs() > 1 {
+            self.log_message(format!("!!!! {:?} performed query", self.swarm.local_peer_id()));
+            self.perform_closest_peer_query();
+            self.time_last_query_sent = Instant::now()
         }
         if let Some(found_peers_limit) = self.discovery_config.found_peers_limit {
             if self.found_peers.len() >= found_peers_limit {
@@ -82,19 +74,6 @@ impl Stream for Discovery {
                                         self.swarm.local_peer_id(),
                                         r.peers
                                     ));
-                                    let kbuckets = self
-                                        .swarm
-                                        .behaviour_mut()
-                                        .kademlia
-                                        .kbuckets()
-                                        .map(|bucket| {
-                                            bucket
-                                                .iter()
-                                                .map(|entry| entry.node.key.preimage().clone())
-                                                .collect::<Vec<_>>()
-                                        })
-                                        .collect::<Vec<_>>();
-                                    self.log_message(format!("KBUCKECTS {:?}", kbuckets));
                                     for peer_id in r.peers {
                                         if let Some(new_peer_id) = self.handle_found_peer(peer_id) {
                                             // TODO get peer ids from all peers of this request
@@ -189,17 +168,9 @@ impl Discovery {
             global_peers_names,
             time_last_query_sent: Instant::now(),
         };
-        if discovery
-            .global_peers_names
-            .iter()
-            .filter(|(name, peer_id, _)| peer_id == discovery.swarm.local_peer_id() && name != "5")
-            .next()
-            .is_some()
-        {
-            for _ in 0..discovery.discovery_config.n_active_queries {
-                discovery.perform_closest_peer_query();
-            }
-        }
+        // for _ in 0..discovery.discovery_config.n_active_queries {
+        //     discovery.perform_closest_peer_query();
+        // }
         discovery
     }
 
@@ -220,15 +191,6 @@ impl Discovery {
     }
 
     fn log_message(&self, msg: String) {
-        if self
-            .global_peers_names
-            .iter()
-            .filter(|(name, peer_id, _)| peer_id == self.swarm.local_peer_id() && name != "5")
-            .next()
-            .is_some()
-        {
-            return;
-        }
         let mut msg = msg;
         for (name, peer_id, address) in &self.global_peers_names {
             msg = msg.replace(&format!("{:?}", peer_id), &format!("id{name}"));

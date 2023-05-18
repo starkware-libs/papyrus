@@ -4,15 +4,15 @@
 resolver = "2"
 
 members = [
-    # "crates/papyrus_base_layer",
+    "crates/papyrus_base_layer",
     "crates/papyrus_discovery",
-    # "crates/papyrus_gateway",
-    # "crates/papyrus_monitoring_gateway",
-    # "crates/papyrus_node",
-    # "crates/papyrus_storage",
-    # "crates/papyrus_sync",
-    # "crates/starknet_client",
-    # "crates/test_utils",
+    "crates/papyrus_gateway",
+    "crates/papyrus_monitoring_gateway",
+    "crates/papyrus_node",
+    "crates/papyrus_storage",
+    "crates/papyrus_sync",
+    "crates/starknet_client",
+    "crates/test_utils",
 ]
 
 [workspace.dependencies]
@@ -64,10 +64,3 @@ tracing = { version = "0.1.37" }
 tracing-subscriber = { version = "0.3.16" }
 url = { version = "2.2.2" }
 web3 = { version = "0.18.0" }
-libp2p = { version = "0.51.3", features = ["identify", "kad", "noise", "yamux"] }
-
-[patch.crates-io]
-libp2p-core = { path = "../../other_repos/rust-libp2p/core" }
-libp2p-identity = { path = "../../other_repos/rust-libp2p/identity" }
-libp2p-identify = { path = "../../other_repos/rust-libp2p/protocols/identify" }
-libp2p-swarm = { path = "../../other_repos/rust-libp2p/swarm" }

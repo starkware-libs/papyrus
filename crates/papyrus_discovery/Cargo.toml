@@ -5,12 +5,12 @@ edition = "2021"
 
 [dependencies]
 futures = { version = "0.3.7" }
+libp2p = { version = "0.51.3", features = ["identify", "kad", "noise", "yamux"] }
 libp2p-identity = { version = "0.1.1" }
-libp2p.workspace = true
 libp2p-swarm-derive = { version = "0.32.0" }
 thiserror = { version = "1.0.31" }
 tracing = { version = "0.1.37" }
-tracing-subscriber = { version = "0.3.16", features = ["env-filter", "std"] }
+tracing-subscriber = { version = "0.3.16" }
 primitive-types = { version = "0.12.1" }
 
 [dev-dependencies]
