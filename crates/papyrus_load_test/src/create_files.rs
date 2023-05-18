@@ -7,14 +7,92 @@ use rand::Rng;
 use serde_json::Value as jsonVal;
 use test_utils::send_request;
 
-use crate::{get_last_block_number, get_random_block_number, path_in_resources};
+use crate::{
+    get_last_block_number, get_random_block_number, path_in_resources,
+    GET_BLOCK_TRANSACTION_COUNT_BY_HASH_WEIGHT, GET_BLOCK_TRANSACTION_COUNT_BY_NUMBER_WEIGHT,
+    GET_BLOCK_WITH_FULL_TRANSACTIONS_BY_HASH_WEIGHT,
+    GET_BLOCK_WITH_FULL_TRANSACTIONS_BY_NUMBER_WEIGHT,
+    GET_BLOCK_WITH_TRANSACTION_HASHES_BY_HASH_WEIGHT,
+    GET_BLOCK_WITH_TRANSACTION_HASHES_BY_NUMBER_WEIGHT, GET_CLASS_AT_BY_HASH_WEIGHT,
+    GET_CLASS_AT_BY_NUMBER_WEIGHT, GET_CLASS_BY_HASH_WEIGHT, GET_CLASS_BY_NUMBER_WEIGHT,
+    GET_CLASS_HASH_AT_BY_HASH_WEIGHT, GET_CLASS_HASH_AT_BY_NUMBER_WEIGHT,
+    GET_EVENTS_WITHOUT_ADDRESS_WEIGHT, GET_EVENTS_WITH_ADDRESS_WEIGHT, GET_NONCE_BY_HASH_WEIGHT,
+    GET_NONCE_BY_NUMBER_WEIGHT, GET_STATE_UPDATE_BY_HASH_WEIGHT, GET_STATE_UPDATE_BY_NUMBER_WEIGHT,
+    GET_STORAGE_AT_BY_HASH_WEIGHT, GET_STORAGE_AT_BY_NUMBER_WEIGHT,
+    GET_TRANSACTION_BY_BLOCK_ID_AND_INDEX_BY_HASH_WEIGHT,
+    GET_TRANSACTION_BY_BLOCK_ID_AND_INDEX_BY_NUMBER_WEIGHT, GET_TRANSACTION_BY_HASH_WEIGHT,
+    GET_TRANSACTION_RECEIPT_WEIGHT,
+};
 
-// Currently, those numbers are random; we will decide how to choose them
-// in the future.
-// The number of block numbers to write.
-const BLOCK_NUMBER_COUNT: u32 = 5;
-// The number of block hashes.
-const BLOCK_HASH_COUNT: u32 = 5;
+// The limit on the storage size for request arguments.
+const STORAGE_SIZE_IN_BYTES: usize = 7000;
+// Average size of arguments to a request.
+const AVERAGE_ARGS_SIZE_IN_BYTES: usize = 70;
+// The number of arguments to requests we can save with the given storage size limit.
+const ARGS_COUNT: usize = STORAGE_SIZE_IN_BYTES / AVERAGE_ARGS_SIZE_IN_BYTES;
+
+// Returns the number of arguments given a weight.
+const fn get_args_count(weight: usize) -> usize {
+    weight * ARGS_COUNT / WEIGHT_SUM
+}
+
+// The weight of each file. The weight is the sum of the request weights which use the file content
+// as arguments.
+const BLOCK_NUMBER_WEIGHT: usize = GET_BLOCK_WITH_TRANSACTION_HASHES_BY_NUMBER_WEIGHT
+    + GET_BLOCK_WITH_FULL_TRANSACTIONS_BY_NUMBER_WEIGHT
+    + GET_BLOCK_TRANSACTION_COUNT_BY_NUMBER_WEIGHT
+    + GET_STATE_UPDATE_BY_NUMBER_WEIGHT;
+const BLOCK_HASH_WEIGHT: usize = GET_BLOCK_WITH_TRANSACTION_HASHES_BY_HASH_WEIGHT
+    + GET_BLOCK_WITH_FULL_TRANSACTIONS_BY_HASH_WEIGHT
+    + GET_BLOCK_TRANSACTION_COUNT_BY_HASH_WEIGHT
+    + GET_STATE_UPDATE_BY_HASH_WEIGHT;
+const BLOCK_NUMBER_AND_TRANSACTION_INDEX_WEIGHT: usize =
+    GET_TRANSACTION_BY_BLOCK_ID_AND_INDEX_BY_NUMBER_WEIGHT;
+const BLOCK_HASH_AND_TRANSACTION_INDEX_WEIGHT: usize =
+    GET_TRANSACTION_BY_BLOCK_ID_AND_INDEX_BY_HASH_WEIGHT;
+const TRANSACTION_HASH_WEIGHT: usize =
+    GET_TRANSACTION_BY_HASH_WEIGHT + GET_TRANSACTION_RECEIPT_WEIGHT;
+const BLOCK_NUMBER_AND_CONTRACT_ADDRESS_WEIGHT: usize = GET_CLASS_AT_BY_NUMBER_WEIGHT
+    + GET_CLASS_HASH_AT_BY_NUMBER_WEIGHT
+    + GET_NONCE_BY_NUMBER_WEIGHT
+    + GET_STORAGE_AT_BY_NUMBER_WEIGHT;
+const BLOCK_HASH_AND_CONTRACT_ADDRESS_WEIGHT: usize = GET_CLASS_AT_BY_HASH_WEIGHT
+    + GET_CLASS_HASH_AT_BY_HASH_WEIGHT
+    + GET_NONCE_BY_HASH_WEIGHT
+    + GET_STORAGE_AT_BY_HASH_WEIGHT;
+const BLOCK_NUMBER_AND_CLASS_HASH_WEIGHT: usize = GET_CLASS_BY_NUMBER_WEIGHT;
+const BLOCK_HASH_AND_CLASS_HASH_WEIGHT: usize = GET_CLASS_BY_HASH_WEIGHT;
+const BLOCK_RANGE_AND_CONTRACT_ADDRESS_WEIGHT: usize =
+    GET_EVENTS_WITH_ADDRESS_WEIGHT + GET_EVENTS_WITHOUT_ADDRESS_WEIGHT;
+
+// The sum of the file’s weights.
+const WEIGHT_SUM: usize = BLOCK_NUMBER_WEIGHT
+    + BLOCK_HASH_WEIGHT
+    + BLOCK_NUMBER_AND_TRANSACTION_INDEX_WEIGHT
+    + BLOCK_HASH_AND_TRANSACTION_INDEX_WEIGHT
+    + TRANSACTION_HASH_WEIGHT
+    + BLOCK_NUMBER_AND_CONTRACT_ADDRESS_WEIGHT
+    + BLOCK_HASH_AND_CONTRACT_ADDRESS_WEIGHT
+    + BLOCK_NUMBER_AND_CLASS_HASH_WEIGHT
+    + BLOCK_HASH_AND_CLASS_HASH_WEIGHT
+    + BLOCK_RANGE_AND_CONTRACT_ADDRESS_WEIGHT;
+
+// The number of arguments to write in a file.
+const BLOCK_NUMBER_COUNT: usize = get_args_count(BLOCK_NUMBER_WEIGHT);
+const BLOCK_HASH_COUNT: usize = get_args_count(BLOCK_HASH_WEIGHT);
+const BLOCK_NUMBER_AND_TRANSACTION_INDEX_COUNT: usize =
+    get_args_count(BLOCK_NUMBER_AND_TRANSACTION_INDEX_WEIGHT);
+const BLOCK_HASH_AND_TRANSACTION_INDEX_COUNT: usize =
+    get_args_count(BLOCK_HASH_AND_TRANSACTION_INDEX_WEIGHT);
+const TRANSACTION_HASH_COUNT: usize = get_args_count(TRANSACTION_HASH_WEIGHT);
+const BLOCK_NUMBER_AND_CONTRACT_ADDRESS_COUNT: usize =
+    get_args_count(BLOCK_NUMBER_AND_CONTRACT_ADDRESS_WEIGHT);
+const BLOCK_HASH_AND_CONTRACT_ADDRESS_COUNT: usize =
+    get_args_count(BLOCK_HASH_AND_CONTRACT_ADDRESS_WEIGHT);
+const BLOCK_NUMBER_AND_CLASS_HASH_COUNT: usize = get_args_count(BLOCK_NUMBER_AND_CLASS_HASH_WEIGHT);
+const BLOCK_HASH_AND_CLASS_HASH_COUNT: usize = get_args_count(BLOCK_HASH_AND_CLASS_HASH_WEIGHT);
+const BLOCK_RANGE_AND_CONTRACT_ADDRESS_COUNT: usize =
+    get_args_count(BLOCK_RANGE_AND_CONTRACT_ADDRESS_WEIGHT);
 
 // Creates the files to run the load test.
 pub async fn create_files(node_address: &str) {
@@ -26,40 +104,42 @@ pub async fn create_files(node_address: &str) {
         get_block_hash_args(node_socket)
     }));
     let transaction_hash =
-        tokio::spawn(create_file("transaction_hash.txt", BLOCK_HASH_COUNT, move || {
+        tokio::spawn(create_file("transaction_hash.txt", TRANSACTION_HASH_COUNT, move || {
             get_transaction_hash_args(node_socket)
         }));
     let block_hash_and_transaction_index = tokio::spawn(create_file(
         "block_hash_and_transaction_index.txt",
-        BLOCK_HASH_COUNT,
+        BLOCK_HASH_AND_TRANSACTION_INDEX_COUNT,
         move || get_block_hash_and_transaction_index_args(node_socket),
     ));
     let block_number_and_transaction_index = tokio::spawn(create_file(
         "block_number_and_transaction_index.txt",
-        BLOCK_HASH_COUNT,
+        BLOCK_NUMBER_AND_TRANSACTION_INDEX_COUNT,
         move || get_block_number_and_transaction_index_args(node_socket),
     ));
     let block_number_and_contract_address = tokio::spawn(create_file(
         "block_number_and_contract_address.txt",
-        BLOCK_HASH_COUNT,
+        BLOCK_NUMBER_AND_CONTRACT_ADDRESS_COUNT,
         move || get_block_number_and_contract_address_args(node_socket),
     ));
     let block_hash_and_contract_address = tokio::spawn(create_file(
         "block_hash_and_contract_address.txt",
-        BLOCK_HASH_COUNT,
+        BLOCK_HASH_AND_CONTRACT_ADDRESS_COUNT,
         move || get_block_hash_and_contract_address_args(node_socket),
     ));
-    let block_number_and_class_hash =
-        tokio::spawn(create_file("block_number_and_class_hash.txt", BLOCK_HASH_COUNT, move || {
-            get_block_number_and_class_hash_args(node_socket)
-        }));
-    let block_hash_and_class_hash =
-        tokio::spawn(create_file("block_hash_and_class_hash.txt", BLOCK_HASH_COUNT, move || {
-            get_block_hash_and_class_hash_args(node_socket)
-        }));
+    let block_number_and_class_hash = tokio::spawn(create_file(
+        "block_number_and_class_hash.txt",
+        BLOCK_NUMBER_AND_CLASS_HASH_COUNT,
+        move || get_block_number_and_class_hash_args(node_socket),
+    ));
+    let block_hash_and_class_hash = tokio::spawn(create_file(
+        "block_hash_and_class_hash.txt",
+        BLOCK_HASH_AND_CLASS_HASH_COUNT,
+        move || get_block_hash_and_class_hash_args(node_socket),
+    ));
     let block_range_and_contract_address = tokio::spawn(create_file(
         "block_range_and_contract_address.txt",
-        BLOCK_HASH_COUNT,
+        BLOCK_RANGE_AND_CONTRACT_ADDRESS_COUNT,
         move || get_block_range_and_contract_address_args(node_socket),
     ));
     tokio::try_join!(
