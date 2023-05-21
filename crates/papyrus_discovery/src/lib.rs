@@ -62,6 +62,15 @@ impl Stream for Discovery {
                                 result: QueryResult::GetClosestPeers(Ok(r)),
                                 ..
                             } => {
+                                for peer in r.peers {
+                                    if !self.found_peers.contains(&peer) {
+                                        self.log_message(format!(
+                                            "ERROR: {:?} found peer {:?} without routing to it",
+                                            self.peer_id(),
+                                            peer,
+                                        ));
+                                    }
+                                }
                                 self.perform_closest_peer_query();
                             }
                             KademliaEvent::RoutingUpdated { peer, addresses, .. } => {
@@ -114,8 +123,21 @@ impl Stream for Discovery {
                         info,
                     })) => {
                         for address in info.listen_addrs {
+                            self.log_message(format!(
+                                "{:?} found through identify {:?} with {:?}",
+                                self.peer_id(),
+                                peer_id,
+                                address
+                            ));
                             self.swarm.behaviour_mut().kademlia.add_address(&peer_id, address);
                         }
+                    }
+                    SwarmEvent::IncomingConnection { send_back_addr, .. } => {
+                        self.log_message(format!(
+                            "{:?} has incoming connection from {:?}",
+                            self.peer_id(),
+                            send_back_addr
+                        ));
                     }
                     _ => {
                         debug!("{:?} got event {:?}", self.swarm.local_peer_id(), swarm_event);
