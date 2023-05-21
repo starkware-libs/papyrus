@@ -36,4 +36,6 @@ pub enum StorageSerdeError {
     Io(#[from] std::io::Error),
     #[error(transparent)]
     Serde(#[from] serde_json::Error),
+    #[error(transparent)]
+    Bson(#[from] bson::ser::Error),
 }

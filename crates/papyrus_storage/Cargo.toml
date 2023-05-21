@@ -14,6 +14,7 @@ testing = [
 ]
 
 [dependencies]
+bson.workspace = true
 byteorder.workspace = true
 cairo-lang-starknet.workspace = true
 cairo-lang-casm.workspace = true

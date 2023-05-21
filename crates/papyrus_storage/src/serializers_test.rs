@@ -1,10 +1,16 @@
-use std::fmt::Debug;
+use core::fmt::Debug;
+use std::env;
+use std::fs::File;
+use std::io::{BufReader, Read, Write};
+use std::path::Path;
 
+use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ContractAddress;
 use starknet_api::hash::StarkHash;
 use starknet_api::state::StorageKey;
-use test_utils::{get_rng, GetTestInstance};
+use tempfile::NamedTempFile;
+use test_utils::{get_rng, read_json_file, GetTestInstance};
 
 use crate::db::serialization::StorageSerde;
 
@@ -69,4 +75,49 @@ fn block_number_endianness() {
     assert_eq!(bn_256, deserialized.unwrap());
 
     assert!(bytes_255 < bytes_256);
+}
+
+#[test]
+fn casm_serde_regression_test() {
+    // TODO(yair): Keep compiled class instances spanning all of the possible types.
+    const NUM_TEST_OBJECTS: u8 = 1;
+    for i in 0..NUM_TEST_OBJECTS {
+        // Get the casm and its serialization.
+        let casm_json = read_json_file(format!("{i}_compiled_class.json").as_str());
+        let expected_casm: CasmContractClass = serde_json::from_value(casm_json).unwrap();
+        let mut expected_serialization = Vec::new();
+
+        let serialization_path = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap())
+            .join(format!("resources/{i}_serialization.bin"));
+        BufReader::new(File::open(serialization_path.clone()).unwrap())
+            .read_to_end(&mut expected_serialization)
+            .unwrap();
+
+        // Check that the serialization didn't change.
+        let mut serialized = Vec::new();
+        expected_casm.serialize_into(&mut serialized).unwrap();
+
+        if expected_serialization != serialized {
+            let (mut temp_file, path) = NamedTempFile::new().unwrap().keep().unwrap();
+            temp_file.write_all(serialized.as_slice()).unwrap();
+
+            let casm_json_path = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap())
+                .join(format!("resources/{i}_compiled_class.json"));
+
+            panic!(
+                "Storage serialization of {} changed. If this is intended, store the new \
+                 serialization.\nThe computed serialization can be found in: {}\nStore the new \
+                 serialization in: {}",
+                casm_json_path.display(),
+                path.display(),
+                serialization_path.to_str().unwrap(),
+            );
+        }
+
+        // Check that the deserialization returns the original object.
+        let bytes = serialized.into_boxed_slice();
+        let deserialized = CasmContractClass::deserialize_from(&mut bytes.as_ref()).unwrap();
+
+        assert_eq!(expected_casm, deserialized);
+    }
 }

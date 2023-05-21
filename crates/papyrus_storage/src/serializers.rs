@@ -8,6 +8,7 @@ use std::hash::Hash;
 use std::ops::Deref;
 use std::sync::Arc;
 
+use bson::{DeserializerOptions, SerializerOptions};
 use byteorder::BigEndian;
 use cairo_lang_casm::hints::Hint;
 use cairo_lang_starknet::casm_contract_class::{CasmContractClass, CasmContractEntryPoints};
@@ -563,6 +564,17 @@ impl StorageSerde for serde_json::Value {
     }
 }
 
+impl StorageSerde for bson::Bson {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        bson::to_vec(self)?.serialize_into(res)
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        let buf = Vec::deserialize_from(bytes)?;
+        bson::from_slice(buf.as_slice()).ok()
+    }
+}
+
 impl StorageSerde for String {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
         (self.as_bytes().to_vec()).serialize_into(res)
@@ -734,13 +746,21 @@ impl StorageSerde for BigUintAsHex {
 
 impl StorageSerde for Hint {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
-        serde_json::to_value(self)?.serialize_into(res)?;
+        let bson = bson::to_bson_with_options(
+            self,
+            SerializerOptions::builder().human_readable(false).build(),
+        )?;
+        bson.serialize_into(res)?;
         Ok(())
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        let value = serde_json::Value::deserialize_from(bytes)?;
-        serde_json::from_value::<Self>(value).ok()
+        let bson = bson::Bson::deserialize_from(bytes)?;
+        bson::from_bson_with_options(
+            bson,
+            DeserializerOptions::builder().human_readable(false).build(),
+        )
+        .ok()
     }
 }
 
