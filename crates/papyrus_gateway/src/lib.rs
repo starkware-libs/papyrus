@@ -34,6 +34,7 @@ use crate::block::BlockHeader;
 use crate::middleware::proxy_request;
 use crate::transaction::Transaction;
 
+/// Const for limiting the size of a supported transaction body to 10MB
 pub const SERVER_MAX_BODY_SIZE: u32 = 10 * 1024 * 1024;
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct GatewayConfig {
