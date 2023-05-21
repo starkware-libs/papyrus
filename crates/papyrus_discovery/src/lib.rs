@@ -3,6 +3,7 @@ mod discovery_test;
 mod mixed_behaviour;
 use std::collections::HashSet;
 use std::task::Poll;
+use std::time::Instant;
 
 use futures::{Stream, StreamExt};
 use libp2p::core::identity::PublicKey;
@@ -36,6 +37,7 @@ pub struct Discovery {
     found_peers: HashSet<PeerId>,
     address: Multiaddr,
     global_peers_names: Vec<(String, PeerId, Multiaddr)>,
+    time_last_query_sent: Instant,
 }
 
 impl Unpin for Discovery {}
@@ -46,6 +48,19 @@ impl Stream for Discovery {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
+        if self.time_last_query_sent.elapsed().as_secs() > 5 {
+            if self
+                .global_peers_names
+                .iter()
+                .filter(|(name, peer_id, _)| peer_id == self.swarm.local_peer_id() && name == "5")
+                .next()
+                .is_some()
+            {
+                self.log_message(format!("!!!! {:?} performed query", self.swarm.local_peer_id()));
+                self.perform_closest_peer_query();
+                self.time_last_query_sent = Instant::now();
+            }
+        }
         if let Some(found_peers_limit) = self.discovery_config.found_peers_limit {
             if self.found_peers.len() >= found_peers_limit {
                 return Poll::Ready(None);
@@ -62,6 +77,11 @@ impl Stream for Discovery {
                                 result: QueryResult::GetClosestPeers(Ok(r)),
                                 ..
                             } => {
+                                self.log_message(format!(
+                                    "{:?} got query result {:?}",
+                                    self.peer_id(),
+                                    r.peers
+                                ));
                                 for peer in r.peers {
                                     if !self.found_peers.contains(&peer) {
                                         self.log_message(format!(
@@ -71,7 +91,7 @@ impl Stream for Discovery {
                                         ));
                                     }
                                 }
-                                self.perform_closest_peer_query();
+                                // self.perform_closest_peer_query();
                             }
                             KademliaEvent::RoutingUpdated { peer, addresses, .. } => {
                                 self.log_message(format!(
@@ -204,10 +224,11 @@ impl Discovery {
             found_peers: HashSet::new(),
             address,
             global_peers_names,
+            time_last_query_sent: Instant::now(),
         };
-        for _ in 0..discovery.discovery_config.n_active_queries {
-            discovery.perform_closest_peer_query();
-        }
+        // for _ in 0..discovery.discovery_config.n_active_queries {
+        //     discovery.perform_closest_peer_query();
+        // }
         discovery
     }
 
@@ -241,6 +262,15 @@ impl Discovery {
     }
 
     fn log_message(&self, msg: String) {
+        // if self
+        //     .global_peers_names
+        //     .iter()
+        //     .filter(|(name, peer_id, _)| peer_id == self.swarm.local_peer_id() && name != "5")
+        //     .next()
+        //     .is_some()
+        // {
+        //     return;
+        // }
         let mut msg = msg;
         for (name, peer_id, address) in &self.global_peers_names {
             msg = msg.replace(&format!("{:?}", peer_id), &format!("id{name}"));

@@ -56,32 +56,33 @@ where
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
         let unpinned_self = Pin::into_inner(self);
-        for ((i, stream), is_consumed) in unpinned_self
-            .streams
-            .iter_mut()
-            .enumerate()
-            .zip(unpinned_self.is_stream_consumed_vec.iter_mut())
-        {
-            if *is_consumed {
-                continue;
-            }
-            match stream.poll_next_unpin(cx) {
-                Poll::Ready(Some(item)) => {
-                    return Poll::Ready(Some((i, item)));
-                }
-                Poll::Ready(None) => {
-                    *is_consumed = true;
+        loop {
+            for ((i, stream), is_consumed) in unpinned_self
+                .streams
+                .iter_mut()
+                .enumerate()
+                .zip(unpinned_self.is_stream_consumed_vec.iter_mut())
+            {
+                if *is_consumed {
                     continue;
                 }
-                Poll::Pending => {
-                    continue;
+                match stream.poll_next_unpin(cx) {
+                    Poll::Ready(Some(item)) => {
+                        return Poll::Ready(Some((i, item)));
+                    }
+                    Poll::Ready(None) => {
+                        *is_consumed = true;
+                        continue;
+                    }
+                    Poll::Pending => {
+                        continue;
+                    }
                 }
             }
+            if unpinned_self.is_stream_consumed_vec.iter().all(|x| *x) {
+                return Poll::Ready(None);
+            }
         }
-        if unpinned_self.is_stream_consumed_vec.iter().all(|x| *x) {
-            return Poll::Ready(None);
-        }
-        Poll::Pending
     }
 }
 
