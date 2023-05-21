@@ -17,20 +17,21 @@ pub async fn proxy_request(req: Request<Body>) -> Result<Request<Body>, BoxError
     let new_body = match is_single {
         true => {
             let body = serde_json::from_slice::<jsonrpsee::types::Request<'_>>(&body_bytes)?;
-            add_version_to_method_name_in_body(vec![body], prefix)
+            add_version_to_method_name_in_body(vec![body], prefix, is_single)
         }
         false => {
             let vec_body =
                 serde_json::from_slice::<Vec<jsonrpsee::types::Request<'_>>>(&body_bytes)?;
-            add_version_to_method_name_in_body(vec_body, prefix)
+            add_version_to_method_name_in_body(vec_body, prefix, is_single)
         }
     }?;
     Ok(Request::from_parts(parts, new_body.into()))
 }
 
 fn add_version_to_method_name_in_body(
-    mut vec_body: Vec<jsonrpsee::types::Request>,
+    mut vec_body: Vec<jsonrpsee::types::Request<'_>>,
     prefix: &str,
+    is_single: bool,
 ) -> Result<Vec<u8>, BoxError> {
     let vec_body = vec_body
         .iter_mut()
@@ -46,14 +47,18 @@ fn add_version_to_method_name_in_body(
         true => vec_body.iter().map(|body| body.as_ref().unwrap()).collect::<Vec<_>>(),
         false => return Err(BoxError::from("Method name has unexpected format")),
     };
-    serde_json::to_vec(&vec_body).or_else(|err| Err(BoxError::from(err)))
+    let serialized = match is_single {
+        true => serde_json::to_vec(&vec_body[0]),
+        false => serde_json::to_vec(&vec_body),
+    };
+    serialized.map_err(BoxError::from)
 }
 
 /// this assumes that all methods are of the form:
 /// starknet_OnlyOneUnderScoreAndMethodNameIsCamleCased
 fn strip_starknet_from_method(method: &str) -> Option<&str> {
     let split_method_name = method.split('_').collect::<Vec<_>>();
-    split_method_name.get(1).and_then(|res| Some(res.clone()))
+    split_method_name.get(1).copied()
 }
 
 fn get_version_as_prefix(path: &str) -> Result<&str, BoxError> {

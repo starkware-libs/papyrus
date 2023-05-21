@@ -30,5 +30,5 @@ pub const fn get_latest_version_id() -> &'static str {
         }
     }
     // this would never be returned, it's just for compilations purposes (if n == 0).
-    return "";
+    ""
 }
