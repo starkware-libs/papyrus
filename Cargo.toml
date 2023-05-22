@@ -24,7 +24,7 @@ async-stream = { version = "0.3.3" }
 async-trait = { version = "0.1.56" }
 axum = { version = "0.6.12" }
 base64 = { version = "0.13.0" }
-blockifier = { git = "https://github.com/starkware-libs/blockifier", rev = "db07e56" }
+blockifier = { git = "https://github.com/starkware-libs/blockifier", rev = "2d1799a" }
 byteorder = { version = "1.4.3" }
 cairo-lang-starknet = { version = "1.1.0-alpha0" }
 cairo-lang-casm = { version = "1.1.0-alpha0" }
