@@ -15,7 +15,7 @@ use starknet_api::state::{ContractClass, StateDiff, StorageKey};
 use starknet_api::{patricia_key, stark_felt};
 use test_utils::read_json_file;
 
-use crate::blockifier_state::PapyrusStateReader;
+use crate::blockifier_state::{PapyrusReader, PapyrusStateReader};
 
 #[test]
 fn class_hash_nonce_and_storage_at() {
@@ -68,7 +68,8 @@ fn class_hash_nonce_and_storage_at() {
     let txn = storage_reader.begin_ro_txn().unwrap();
     let state_reader = txn.get_state_reader().unwrap();
     let block_number = BlockNumber(0);
-    let papyrus_reader = PapyrusStateReader::new(state_reader, casm_reader_txn, block_number);
+    let fixed_block_state_reader = PapyrusStateReader::new(state_reader, block_number);
+    let papyrus_reader = PapyrusReader::new(&casm_reader_txn, fixed_block_state_reader);
     let mut state = CachedState::new(papyrus_reader);
 
     assert_eq!(state.get_class_hash_at(c0).unwrap(), ClassHash::default());
@@ -88,7 +89,8 @@ fn class_hash_nonce_and_storage_at() {
     let txn = storage_reader.begin_ro_txn().unwrap();
     let state_reader = txn.get_state_reader().unwrap();
     let block_number = BlockNumber(1);
-    let papyrus_reader = PapyrusStateReader::new(state_reader, casm_reader_txn, block_number);
+    let fixed_block_state_reader = PapyrusStateReader::new(state_reader, block_number);
+    let papyrus_reader = PapyrusReader::new(&casm_reader_txn, fixed_block_state_reader);
     let mut state = CachedState::new(papyrus_reader);
 
     assert_eq!(state.get_class_hash_at(c0).unwrap(), cl0);
@@ -108,7 +110,8 @@ fn class_hash_nonce_and_storage_at() {
     let txn = storage_reader.begin_ro_txn().unwrap();
     let state_reader = txn.get_state_reader().unwrap();
     let block_number = BlockNumber(2);
-    let papyrus_reader = PapyrusStateReader::new(state_reader, casm_reader_txn, block_number);
+    let fixed_block_state_reader = PapyrusStateReader::new(state_reader, block_number);
+    let papyrus_reader = PapyrusReader::new(&casm_reader_txn, fixed_block_state_reader);
     let mut state = CachedState::new(papyrus_reader);
 
     assert_eq!(state.get_class_hash_at(c0).unwrap(), cl1);
@@ -153,7 +156,8 @@ fn compiled_class() {
     let txn = storage_reader.begin_ro_txn().unwrap();
     let state_reader = txn.get_state_reader().unwrap();
     let block_number = BlockNumber(1);
-    let papyrus_reader = PapyrusStateReader::new(state_reader, casm_reader_txn, block_number);
+    let fixed_block_state_reader = PapyrusStateReader::new(state_reader, block_number);
+    let papyrus_reader = PapyrusReader::new(&casm_reader_txn, fixed_block_state_reader);
     let mut state = CachedState::new(papyrus_reader);
 
     assert_eq!(
