@@ -21,7 +21,7 @@ fn append_casm() {
         .commit()
         .unwrap();
 
-    let casm = reader.begin_ro_txn().unwrap().get_casm(ClassHash::default()).unwrap().unwrap();
+    let casm = reader.begin_ro_txn().unwrap().get_casm(&ClassHash::default()).unwrap().unwrap();
     assert_eq!(casm, expected_casm);
 }
 
