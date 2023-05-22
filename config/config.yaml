@@ -1,13 +1,13 @@
 # The chain to follow.
 # For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.
-chain_id: SN_MAIN
+chain_id: SN_GOERLI
 
 # Connection with Starknet feeder-gateway.
 central:
     # Maximum number of concurrent requests to Starknet feeder-gateway for getting a type of data (for example, blocks).
-    concurrent_requests: 10
+    concurrent_requests: 100
     # Starknet feeder-gateway URL. It should match chain_id.
-    url: https://alpha-mainnet.starknet.io/
+    url: https://alpha4.starknet.io/
     # In case of failed requests to the central.
     retry:
         # Base waiting time after a failed request. After that, the time increases exponentially.

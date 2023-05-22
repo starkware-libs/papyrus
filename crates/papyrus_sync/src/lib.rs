@@ -123,29 +123,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         // Whitelisting of errors from which we might be able to recover.
         fn is_recoverable(err: &StateSyncError) -> bool {
             match err {
-                StateSyncError::CentralSourceError(central_err) => {
-                    if let CentralError::ClientError(client_err) = central_err {
-                        match **client_err {
-                            // In case of non existing url this error will occur.
-                            ClientError::RequestError(ref request_err) => {
-                                return !request_err.is_request();
-                            }
-                            // In the case of an existing URL but not existing function, some
-                            // servers will return bad response status(first pattern), and others
-                            // will return a not syntactically valid response (second pattern).
-                            ClientError::BadResponseStatus { ref code, message: _ } => {
-                                return &StatusCode::NOT_FOUND != code;
-                            }
-                            ClientError::SerdeError(ref serde_err) => {
-                                return !serde_err.is_syntax();
-                            }
-                            _ => {
-                                return true;
-                            }
-                        }
-                    }
-                    true
-                }
+                StateSyncError::CentralSourceError(_) => true,
                 StateSyncError::StorageError(storage_err)
                     if matches!(storage_err, StorageError::InnerError(_)) =>
                 {
