@@ -3,6 +3,8 @@ pub mod compiled_class;
 pub mod compression_utils;
 pub mod db;
 pub mod header;
+#[cfg(test)]
+mod hints_test;
 pub mod ommer;
 mod serializers;
 pub mod state;
