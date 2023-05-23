@@ -7,7 +7,16 @@ use std::ops::Index;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use cairo_lang_casm::hints::{CoreHint, CoreHintBase, Hint};
+use cairo_lang_casm::operand::{
+    BinOpOperand, CellRef, DerefOrImmediate, Operation, Register, ResOperand,
+};
+use cairo_lang_starknet::casm_contract_class::{
+    CasmContractClass, CasmContractEntryPoint, CasmContractEntryPoints,
+};
+use cairo_lang_utils::bigint::BigUintAsHex;
 use indexmap::IndexMap;
+use num_bigint::BigUint;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use reqwest::Client;
@@ -474,6 +483,31 @@ auto_impl_get_test_instance! {
         pub r#type: String,
     }
 
+    pub struct CasmContractClass {
+        pub prime: BigUint,
+        pub compiler_version: String,
+        pub bytecode: Vec<BigUintAsHex>,
+        pub hints: Vec<(usize, Vec<Hint>)>,
+        pub pythonic_hints: Option<Vec<(usize, Vec<String>)>>,
+        pub entry_points_by_type: CasmContractEntryPoints,
+    }
+
+    pub struct CasmContractEntryPoints {
+        pub external: Vec<CasmContractEntryPoint>,
+        pub l1_handler: Vec<CasmContractEntryPoint>,
+        pub constructor: Vec<CasmContractEntryPoint>,
+    }
+
+    pub struct CasmContractEntryPoint {
+        pub selector: BigUint,
+        pub offset: usize,
+        pub builtins: Vec<String>,
+    }
+
+    pub struct BigUintAsHex {
+        pub value: BigUint,
+    }
+
     binary(bool);
     binary(EthAddress);
     binary(u8);
@@ -490,6 +524,8 @@ auto_impl_get_test_instance! {
     (ContractAddress, StorageKey, BlockHash);
     (ContractAddress, StorageKey, BlockNumber);
     (CompiledClassHash, ContractClass);
+    (usize, Vec<Hint>);
+    (usize, Vec<String>);
 }
 
 #[macro_export]
@@ -645,6 +681,7 @@ default_impl_get_test_instance!(H160);
 default_impl_get_test_instance!(ContractAddress);
 default_impl_get_test_instance!(StarkHash);
 default_impl_get_test_instance!(StorageKey);
+default_impl_get_test_instance!(BigUint);
 
 impl GetTestInstance for StructAbiEntry {
     fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
@@ -653,5 +690,19 @@ impl GetTestInstance for StructAbiEntry {
             size: 1, // Should be minimum 1.
             members: Vec::<StructMember>::get_test_instance(rng),
         }
+    }
+}
+
+// Hint Doesn't implement Default - create instance manually.
+impl GetTestInstance for Hint {
+    fn get_test_instance(_rng: &mut ChaCha8Rng) -> Self {
+        Self::Core(CoreHintBase::Core(CoreHint::AllocConstantSize {
+            size: ResOperand::BinOp(BinOpOperand {
+                op: Operation::Add,
+                a: CellRef { register: Register::AP, offset: 0 },
+                b: DerefOrImmediate::Deref(CellRef { register: Register::AP, offset: 0 }),
+            }),
+            dst: CellRef { register: Register::AP, offset: 0 },
+        }))
     }
 }
