@@ -439,7 +439,7 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
             let up_to = min(last_block_number, BlockNumber(state_marker.0 + max_stream_size as u64));
             debug!("Downloading state diffs [{} - {}).", state_marker, up_to);
             let state_diff_stream =
-                central_source.stream_state_updates(state_marker, last_block_number).fuse();
+                central_source.stream_state_updates(state_marker, up_to).fuse();
             pin_mut!(state_diff_stream);
 
             while let Some(maybe_state_diff) = state_diff_stream.next().await {
