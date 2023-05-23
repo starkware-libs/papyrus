@@ -5,6 +5,7 @@ mod state_test;
 
 use std::collections::HashSet;
 
+use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use indexmap::IndexMap;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
@@ -21,6 +22,7 @@ type DeclaredClassesTable<'env> = TableHandle<'env, ClassHash, ContractClass>;
 type DeclaredClassesBlockTable<'env> = TableHandle<'env, ClassHash, BlockNumber>;
 type DeprecatedDeclaredClassesTable<'env> =
     TableHandle<'env, ClassHash, IndexedDeprecatedContractClass>;
+type CompiledClassesTable<'env> = TableHandle<'env, ClassHash, CasmContractClass>;
 type DeployedContractsTable<'env> = TableHandle<'env, ContractAddress, IndexedDeployedContract>;
 type ContractStorageTable<'env> =
     TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), StarkFelt>;
@@ -58,6 +60,7 @@ type RevertedStateDiff = (
     ThinStateDiff,
     IndexMap<ClassHash, ContractClass>,
     IndexMap<ClassHash, DeprecatedContractClass>,
+    IndexMap<ClassHash, CasmContractClass>,
 );
 
 pub trait StateStorageWriter
@@ -441,6 +444,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             self.txn.open_table(&self.tables.declared_classes_block)?;
         let deprecated_declared_classes_table =
             self.txn.open_table(&self.tables.deprecated_declared_classes)?;
+        let compiled_classes_table = self.txn.open_table(&self.tables.casms)?;
         let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
         let nonces_table = self.txn.open_table(&self.tables.nonces)?;
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
@@ -475,6 +479,11 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             &thin_state_diff,
             &deprecated_declared_classes_table,
         )?;
+        let deleted_compiled_classes = delete_compiled_classes(
+            &self.txn,
+            thin_state_diff.declared_classes.keys(),
+            &compiled_classes_table,
+        )?;
         delete_deployed_contracts(
             &self.txn,
             block_number,
@@ -492,7 +501,15 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             &replaced_classes_table,
         )?;
 
-        Ok((self, Some((thin_state_diff, deleted_classes, deleted_deprecated_classes))))
+        Ok((
+            self,
+            Some((
+                thin_state_diff,
+                deleted_classes,
+                deleted_deprecated_classes,
+                deleted_compiled_classes,
+            )),
+        ))
     }
 }
 
@@ -682,6 +699,25 @@ fn delete_deprecated_declared_classes<'env>(
                 deprecated_declared_classes_table.delete(txn, class_hash)?;
             }
         }
+    }
+
+    Ok(deleted_data)
+}
+
+fn delete_compiled_classes<'a, 'env>(
+    txn: &'env DbTransaction<'env, RW>,
+    class_hashes: impl Iterator<Item = &'a ClassHash>,
+    compiled_classes_table: &'env CompiledClassesTable<'env>,
+) -> StorageResult<IndexMap<ClassHash, CasmContractClass>> {
+    let mut deleted_data = IndexMap::new();
+    for class_hash in class_hashes {
+        let Some(compiled_class) = compiled_classes_table.get(txn, class_hash)?
+        // No compiled class means the rest of the compiled classes weren't downloaded yet.
+        else {
+            break;
+        };
+        compiled_classes_table.delete(txn, class_hash)?;
+        deleted_data.insert(*class_hash, compiled_class);
     }
 
     Ok(deleted_data)
