@@ -1,0 +1,744 @@
+[
+    {
+        "AllocSegment": {
+            "dst": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    {
+        "TestLessThan": {
+            "lhs": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "rhs": {
+                "DoubleDeref": [
+                    {
+                        "register": "AP",
+                        "offset": 0
+                    },
+                    0
+                ]
+            },
+            "dst": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    {
+        "TestLessThanOrEqual": {
+            "lhs": {
+                "Immediate": "0x0"
+            },
+            "rhs": {
+                "BinOp": {
+                    "op": "Add",
+                    "a": {
+                        "register": "FP",
+                        "offset": 0
+                    },
+                    "b": {
+                        "Deref": {
+                            "register": "AP",
+                            "offset": 0
+                        }
+                    }
+                }
+            },
+            "dst": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    {
+        "WideMul128": {
+            "lhs": {
+                "BinOp": {
+                    "op": "Mul",
+                    "a": {
+                        "register": "AP",
+                        "offset": 0
+                    },
+                    "b": {
+                        "Immediate": "0x0"
+                    }
+                }
+            },
+            "rhs": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "high": {
+                "register": "AP",
+                "offset": 0
+            },
+            "low": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    {
+        "DivMod": {
+            "lhs": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "rhs": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "quotient": {
+                "register": "AP",
+                "offset": 0
+            },
+            "remainder": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    {
+        "Uint256DivMod": {
+            "dividend_low": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "dividend_high": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "divisor_low": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "divisor_high": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "quotient0": {
+                "register": "AP",
+                "offset": 0
+            },
+            "quotient1": {
+                "register": "AP",
+                "offset": 0
+            },
+            "divisor0": {
+                "register": "AP",
+                "offset": 0
+            },
+            "divisor1": {
+                "register": "AP",
+                "offset": 0
+            },
+            "extra0": {
+                "register": "AP",
+                "offset": 0
+            },
+            "extra1": {
+                "register": "AP",
+                "offset": 0
+            },
+            "remainder_low": {
+                "register": "AP",
+                "offset": 0
+            },
+            "remainder_high": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    {
+        "Uint512DivModByUint256": {
+            "dividend0": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "dividend1": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "dividend2": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "dividend3": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "divisor0": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "divisor1": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "quotient0": {
+                "register": "AP",
+                "offset": 0
+            },
+            "quotient1": {
+                "register": "AP",
+                "offset": 0
+            },
+            "quotient2": {
+                "register": "AP",
+                "offset": 0
+            },
+            "quotient3": {
+                "register": "AP",
+                "offset": 0
+            },
+            "remainder0": {
+                "register": "AP",
+                "offset": 0
+            },
+            "remainder1": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    {
+        "SquareRoot": {
+            "value": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "dst": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    {
+        "Uint256SquareRoot": {
+            "value_low": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "value_high": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "sqrt0": {
+                "register": "AP",
+                "offset": 0
+            },
+            "sqrt1": {
+                "register": "AP",
+                "offset": 0
+            },
+            "remainder_low": {
+                "register": "AP",
+                "offset": 0
+            },
+            "remainder_high": {
+                "register": "AP",
+                "offset": 0
+            },
+            "sqrt_mul_2_minus_remainder_ge_u128": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    {
+        "LinearSplit": {
+            "value": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "scalar": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "max_x": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "x": {
+                "register": "AP",
+                "offset": 0
+            },
+            "y": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    {
+        "AllocFelt252Dict": {
+            "segment_arena_ptr": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            }
+        }
+    },
+    {
+        "Felt252DictEntryInit": {
+            "dict_ptr": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "key": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            }
+        }
+    },
+    {
+        "Felt252DictEntryUpdate": {
+            "dict_ptr": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "value": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            }
+        }
+    },
+    {
+        "GetSegmentArenaIndex": {
+            "dict_end_ptr": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "dict_index": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    {
+        "InitSquashData": {
+            "dict_accesses": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "ptr_diff": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "n_accesses": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "big_keys": {
+                "register": "AP",
+                "offset": 0
+            },
+            "first_key": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    {
+        "GetCurrentAccessIndex": {
+            "range_check_ptr": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            }
+        }
+    },
+    {
+        "ShouldSkipSquashLoop": {
+            "should_skip_loop": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    {
+        "GetCurrentAccessDelta": {
+            "index_delta_minus1": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    {
+        "ShouldContinueSquashLoop": {
+            "should_continue": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    {
+        "GetNextDictKey": {
+            "next_key": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    {
+        "AssertLeFindSmallArcs": {
+            "range_check_ptr": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "a": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "b": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            }
+        }
+    },
+    {
+        "AssertLeIsFirstArcExcluded": {
+            "skip_exclude_a_flag": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    {
+        "AssertLeIsSecondArcExcluded": {
+            "skip_exclude_b_minus_a": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    {
+        "RandomEcPoint": {
+            "x": {
+                "register": "AP",
+                "offset": 0
+            },
+            "y": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    {
+        "FieldSqrt": {
+            "val": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "sqrt": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    {
+        "DebugPrint": {
+            "start": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "end": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            }
+        }
+    },
+    {
+        "AllocConstantSize": {
+            "size": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "dst": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    "AssertCurrentAccessIndicesIsEmpty",
+    {
+        "AssertAllAccessesUsed": {
+            "n_used_accesses": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    "AssertAllKeysUsed",
+    "AssertLeAssertThirdArcExcluded",
+    {
+        "AssertLtAssertValidInput": {
+            "a": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "b": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            }
+        }
+    },
+    {
+        "Felt252DictRead": {
+            "dict_ptr": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "key": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "value_dst": {
+                "register": "AP",
+                "offset": 0
+            }
+        }
+    },
+    {
+        "Felt252DictWrite": {
+            "dict_ptr": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "key": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "value": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            }
+        }
+    },
+    {
+        "SystemCall": {
+            "system": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            }
+        }
+    },
+    {
+        "SetBlockNumber": {
+            "value": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            }
+        }
+    },
+    {
+        "SetBlockTimestamp": {
+            "value": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            }
+        }
+    },
+    {
+        "SetCallerAddress": {
+            "value": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            }
+        }
+    },
+    {
+        "SetContractAddress": {
+            "value": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            }
+        }
+    },
+    {
+        "SetSequencerAddress": {
+            "value": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            }
+        }
+    },
+    {
+        "SetVersion": {
+            "value": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            }
+        }
+    },
+    {
+        "SetAccountContractAddress": {
+            "value": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            }
+        }
+    },
+    {
+        "SetMaxFee": {
+            "value": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            }
+        }
+    },
+    {
+        "SetTransactionHash": {
+            "value": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            }
+        }
+    },
+    {
+        "SetChainId": {
+            "value": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            }
+        }
+    },
+    {
+        "SetNonce": {
+            "value": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            }
+        }
+    },
+    {
+        "SetSignature": {
+            "start": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            },
+            "end": {
+                "Deref": {
+                    "register": "AP",
+                    "offset": 0
+                }
+            }
+        }
+    }
+]
