@@ -394,7 +394,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
 fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
-    block_propation_sleep_duration: Duration,
+    block_propagation_sleep_duration: Duration,
     max_stream_size: u32,
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
@@ -403,7 +403,7 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
             let last_block_number = central_source.get_block_marker().await?;
             if header_marker == last_block_number {
                 debug!("Blocks syncing reached the last known block, waiting for blockchain to advance.");
-                tokio::time::sleep(block_propation_sleep_duration).await;
+                tokio::time::sleep(block_propagation_sleep_duration).await;
                 continue;
             }
             let up_to = min(last_block_number, BlockNumber(header_marker.0 + max_stream_size as u64));
@@ -422,7 +422,7 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
 fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
-    block_propation_sleep_duration: Duration,
+    block_propagation_sleep_duration: Duration,
     max_stream_size: u32,
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
@@ -433,13 +433,13 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
             drop(txn);
             if state_marker == last_block_number {
                 debug!("State updates syncing reached the last downloaded block, waiting for more blocks.");
-                tokio::time::sleep(block_propation_sleep_duration).await;
+                tokio::time::sleep(block_propagation_sleep_duration).await;
                 continue;
             }
             let up_to = min(last_block_number, BlockNumber(state_marker.0 + max_stream_size as u64));
             debug!("Downloading state diffs [{} - {}).", state_marker, up_to);
             let state_diff_stream =
-                central_source.stream_state_updates(state_marker, last_block_number).fuse();
+                central_source.stream_state_updates(state_marker, up_to).fuse();
             pin_mut!(state_diff_stream);
 
             while let Some(maybe_state_diff) = state_diff_stream.next().await {
