@@ -5,12 +5,12 @@ edition = "2021"
 
 [dependencies]
 blockifier.workspace = true
+cairo-lang-starknet.workspace = true
 papyrus_storage = { path = "../papyrus_storage" }
 starknet_api.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
-cairo-lang-starknet.workspace = true
 indexmap = { workspace = true }
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 serde_json.workspace = true
