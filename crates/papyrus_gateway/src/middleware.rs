@@ -5,15 +5,21 @@ use tower::BoxError;
 use crate::api::version_config::{get_latest_version_id, VersionState, VERSION_CONFIG};
 use crate::SERVER_MAX_BODY_SIZE;
 
+/// [`Tower`] middleware intended to proxy method requests to the right version of the API.
+/// The middleware reads the JsonRPC request body and request path
+/// then prefixes the method name with the appropriate version identifier.
+/// It returns a new [`hyper::Request`] object with the new method name.
+///
+/// # Arguments
+/// * req - [`hyper::Request`] object passed by the server.
+///
+/// [`Tower`]: https://crates.io/crates/tower
 pub async fn proxy_request(req: Request<Body>) -> Result<Request<Body>, BoxError> {
     let uri = &req.uri().clone();
     let prefix = get_version_as_prefix(uri.path())?;
     let (parts, body) = req.into_parts();
-    let (body_bytes, is_single) = match read_body(&parts.headers, body, SERVER_MAX_BODY_SIZE).await
-    {
-        Ok(res) => res,
-        Err(err) => return Err(BoxError::from(err)),
-    };
+    let (body_bytes, is_single) =
+        read_body(&parts.headers, body, SERVER_MAX_BODY_SIZE).await.map_err(BoxError::from)?;
     let new_body = match is_single {
         true => {
             let body = serde_json::from_slice::<jsonrpsee::types::Request<'_>>(&body_bytes)?;
@@ -62,9 +68,8 @@ fn strip_starknet_from_method(method: &str) -> Option<&str> {
 }
 
 fn get_version_as_prefix(path: &str) -> Result<&str, BoxError> {
-    let latest_version_id = get_latest_version_id();
     let prefix = match path {
-        "/" | "" => latest_version_id,
+        "/" | "" => get_latest_version_id(),
         path => {
             // get the version name from the path (should be something like "http://host:port/version_id")
             let Some(version) = path.split('/').collect::<Vec<_>>().pop() else {

@@ -90,8 +90,8 @@ async fn test_version_middleware() {
         handles.push(handle);
     }
     let _res = join_all(handles).await;
-    let rand_unknown_version = "not_a_valid_version";
-    let bad_uri = format!("{}/{}", base_uri, rand_unknown_version);
+    let unknown_version = "not_a_valid_version";
+    let bad_uri = format!("{}/{}", base_uri, unknown_version);
     if let Ok(res) = call_proxy_request_get_method_in_out(bad_uri).await {
         panic!("expected failure got: {:?}", res);
     };
