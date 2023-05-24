@@ -16,13 +16,11 @@ use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::ommer::{OmmerStorageReader, OmmerStorageWriter};
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
-use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::StateDiff;
-use starknet_client::ClientError;
 use tracing::{debug, error, info, instrument, trace, warn};
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
@@ -123,29 +121,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         // Whitelisting of errors from which we might be able to recover.
         fn is_recoverable(err: &StateSyncError) -> bool {
             match err {
-                StateSyncError::CentralSourceError(central_err) => {
-                    if let CentralError::ClientError(client_err) = central_err {
-                        match **client_err {
-                            // In case of non existing url this error will occur.
-                            ClientError::RequestError(ref request_err) => {
-                                return !request_err.is_request();
-                            }
-                            // In the case of an existing URL but not existing function, some
-                            // servers will return bad response status(first pattern), and others
-                            // will return a not syntactically valid response (second pattern).
-                            ClientError::BadResponseStatus { ref code, message: _ } => {
-                                return &StatusCode::NOT_FOUND != code;
-                            }
-                            ClientError::SerdeError(ref serde_err) => {
-                                return !serde_err.is_syntax();
-                            }
-                            _ => {
-                                return true;
-                            }
-                        }
-                    }
-                    true
-                }
+                StateSyncError::CentralSourceError(_) => true,
                 StateSyncError::StorageError(storage_err)
                     if matches!(storage_err, StorageError::InnerError(_)) =>
                 {
@@ -394,7 +370,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
 fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
-    block_propation_sleep_duration: Duration,
+    block_propagation_sleep_duration: Duration,
     max_stream_size: u32,
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
@@ -403,7 +379,7 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
             let last_block_number = central_source.get_block_marker().await?;
             if header_marker == last_block_number {
                 debug!("Blocks syncing reached the last known block, waiting for blockchain to advance.");
-                tokio::time::sleep(block_propation_sleep_duration).await;
+                tokio::time::sleep(block_propagation_sleep_duration).await;
                 continue;
             }
             let up_to = min(last_block_number, BlockNumber(header_marker.0 + max_stream_size as u64));
@@ -422,7 +398,7 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
 fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
-    block_propation_sleep_duration: Duration,
+    block_propagation_sleep_duration: Duration,
     max_stream_size: u32,
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
@@ -433,13 +409,13 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
             drop(txn);
             if state_marker == last_block_number {
                 debug!("State updates syncing reached the last downloaded block, waiting for more blocks.");
-                tokio::time::sleep(block_propation_sleep_duration).await;
+                tokio::time::sleep(block_propagation_sleep_duration).await;
                 continue;
             }
             let up_to = min(last_block_number, BlockNumber(state_marker.0 + max_stream_size as u64));
             debug!("Downloading state diffs [{} - {}).", state_marker, up_to);
             let state_diff_stream =
-                central_source.stream_state_updates(state_marker, last_block_number).fuse();
+                central_source.stream_state_updates(state_marker, up_to).fuse();
             pin_mut!(state_diff_stream);
 
             while let Some(maybe_state_diff) = state_diff_stream.next().await {
