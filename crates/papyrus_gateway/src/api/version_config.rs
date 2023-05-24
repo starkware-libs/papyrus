@@ -17,18 +17,6 @@ pub enum VersionState {
 }
 
 pub const VERSION_0_3_0: &str = "V0_3_0";
-pub const VERSION_CONFIG: &[(&str, VersionState)] = &[(VERSION_0_3_0, VersionState::Latest)];
-
-pub const fn get_latest_version_id() -> &'static str {
-    let mut i = 0;
-    let n = VERSION_CONFIG.len();
-    while i < n {
-        let (version_id, version_state) = VERSION_CONFIG[i];
-        match version_state {
-            VersionState::Latest => return version_id,
-            _ => i += 1,
-        }
-    }
-    // this would never be returned, it's just for compilations purposes (if n == 0).
-    ""
-}
+pub const LATEST_VERSION_ID: &str = VERSION_0_3_0;
+pub const VERSION_CONFIG: &[(&str, VersionState)] =
+    &[(LATEST_VERSION_ID, VersionState::Latest), (VERSION_0_3_0, VersionState::Supported)];

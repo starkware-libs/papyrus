@@ -12,7 +12,7 @@ use papyrus_storage::test_utils::get_test_storage;
 use starknet_api::block::BlockNumber;
 use tower::BoxError;
 
-use crate::api::version_config::{get_latest_version_id, VERSION_CONFIG};
+use crate::api::version_config::{LATEST_VERSION_ID, VERSION_CONFIG};
 use crate::api::JsonRpcError;
 use crate::middleware::proxy_request;
 use crate::test_utils::get_test_gateway_config;
@@ -68,10 +68,12 @@ async fn call_proxy_request_get_method_in_out(uri: String) -> Result<(String, St
     }
 }
 
+// TODO: nevo - add middleware negative cases tests
+
 #[tokio::test]
 async fn test_version_middleware() {
     let base_uri = "http://localhost:8080";
-    let latest_version = get_latest_version_id().to_string();
+    let latest_version = LATEST_VERSION_ID.to_string();
     let mut path_options =
         vec![("".to_string(), latest_version.clone()), ("/".to_string(), latest_version.clone())];
     VERSION_CONFIG.iter().for_each(|(version_id, _)| {
@@ -90,8 +92,8 @@ async fn test_version_middleware() {
         handles.push(handle);
     }
     let _res = join_all(handles).await;
-    let rand_unknown_version = "not_a_valid_version";
-    let bad_uri = format!("{}/{}", base_uri, rand_unknown_version);
+    let unknown_version = "not_a_valid_version";
+    let bad_uri = format!("{}/{}", base_uri, unknown_version);
     if let Ok(res) = call_proxy_request_get_method_in_out(bad_uri).await {
         panic!("expected failure got: {:?}", res);
     };

@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
-use super::version_config::{VERSION_0_3_0, VERSION_CONFIG};
-use crate::api::version_config::{get_latest_version_id, VersionState};
+use assert_matches::assert_matches;
+
+use super::version_config::VERSION_CONFIG;
+use crate::api::version_config::{VersionState, LATEST_VERSION_ID};
 
 #[tokio::test]
 async fn validate_version_configuration() {
@@ -18,13 +20,15 @@ async fn validate_version_configuration() {
     });
     // verify only one version is defined as latest
     assert_eq!(config_type_counter.get(&VersionState::Latest), Some(&1));
-    // verify each version is listed only once
-    config_version_counter.iter().for_each(|version_counter| assert_eq!(version_counter.1, &1))
+    // verify each version is listed once for non latest version or twice in case it is the latest
+    // version
+    config_version_counter.iter().for_each(
+        |version_counter| assert_matches!(*version_counter.1, 1 | 2 if *version_counter.0 == LATEST_VERSION_ID),
+    )
 }
 
 #[tokio::test]
-async fn test_get_latest_version_id() {
-    let expected_latest_version_id = VERSION_0_3_0;
-    let res = get_latest_version_id();
-    assert_eq!(expected_latest_version_id, res);
+async fn test_latest_version_id_in_version_config() {
+    let Some(res) = VERSION_CONFIG.iter().find(|version| version.1 == VersionState::Latest) else {panic!("no latest version found")};
+    assert_eq!(LATEST_VERSION_ID, res.0);
 }

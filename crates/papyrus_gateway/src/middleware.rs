@@ -2,18 +2,24 @@ use hyper::{Body, Request};
 use jsonrpsee::core::http_helpers::read_body;
 use tower::BoxError;
 
-use crate::api::version_config::{get_latest_version_id, VersionState, VERSION_CONFIG};
+use crate::api::version_config::{VersionState, LATEST_VERSION_ID, VERSION_CONFIG};
 use crate::SERVER_MAX_BODY_SIZE;
 
+/// [`Tower`] middleware intended to proxy method requests to the right version of the API.
+/// The middleware reads the JsonRPC request body and request path
+/// then prefixes the method name with the appropriate version identifier.
+/// It returns a new [`hyper::Request`] object with the new method name.
+///
+/// # Arguments
+/// * req - [`hyper::Request`] object passed by the server.
+///
+/// [`Tower`]: https://crates.io/crates/tower
 pub async fn proxy_request(req: Request<Body>) -> Result<Request<Body>, BoxError> {
     let uri = &req.uri().clone();
     let prefix = get_version_as_prefix(uri.path())?;
     let (parts, body) = req.into_parts();
-    let (body_bytes, is_single) = match read_body(&parts.headers, body, SERVER_MAX_BODY_SIZE).await
-    {
-        Ok(res) => res,
-        Err(err) => return Err(BoxError::from(err)),
-    };
+    let (body_bytes, is_single) =
+        read_body(&parts.headers, body, SERVER_MAX_BODY_SIZE).await.map_err(BoxError::from)?;
     let new_body = match is_single {
         true => {
             let body = serde_json::from_slice::<jsonrpsee::types::Request<'_>>(&body_bytes)?;
@@ -33,7 +39,7 @@ fn add_version_to_method_name_in_body(
     prefix: &str,
     is_single: bool,
 ) -> Result<Vec<u8>, BoxError> {
-    let vec_body = vec_body
+    let Ok(vec_body) = vec_body
         .iter_mut()
         .map(|body| {
             let Some(stripped_method) = strip_starknet_from_method(body.method.as_ref()) else {
@@ -42,11 +48,7 @@ fn add_version_to_method_name_in_body(
             body.method = format!("starknet_{}_{}", prefix, stripped_method).into();
             Ok(body)
         })
-        .collect::<Vec<_>>();
-    let vec_body = match vec_body.iter().all(|body| body.is_ok()) {
-        true => vec_body.iter().map(|body| body.as_ref().unwrap()).collect::<Vec<_>>(),
-        false => return Err(BoxError::from("Method name has unexpected format")),
-    };
+        .collect::<Result<Vec<_>, _>>() else { return Err(BoxError::from("Method name has unexpected format")) };
     let serialized = match is_single {
         true => serde_json::to_vec(&vec_body[0]),
         false => serde_json::to_vec(&vec_body),
@@ -62,9 +64,8 @@ fn strip_starknet_from_method(method: &str) -> Option<&str> {
 }
 
 fn get_version_as_prefix(path: &str) -> Result<&str, BoxError> {
-    let latest_version_id = get_latest_version_id();
     let prefix = match path {
-        "/" | "" => latest_version_id,
+        "/" | "" => LATEST_VERSION_ID,
         path => {
             // get the version name from the path (should be something like "http://host:port/version_id")
             let Some(version) = path.split('/').collect::<Vec<_>>().pop() else {
