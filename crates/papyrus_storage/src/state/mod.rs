@@ -114,6 +114,15 @@ pub struct StateReader<'env, Mode: TransactionKind> {
 
 #[allow(dead_code)]
 impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
+    /// Creates a new state reader from a storage transaction.
+    ///
+    /// Opens a handle to each table to be used when reading.
+    ///
+    /// # Arguments
+    /// * txn - A storage transaction object.
+    ///
+    /// # Errors
+    /// Returns [`StorageError`] if there was an error opening the tables.
     fn new(txn: &'env StorageTxn<'env, Mode>) -> StorageResult<Self> {
         let declared_classes_table = txn.txn.open_table(&txn.tables.declared_classes)?;
         let declared_classes_block_table =
@@ -136,11 +145,19 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         })
     }
 
-    // Returns the latest class hash of the contract, before state_number.
-    // If the class wasn't replaced before state_number, returns None.
-    // Note: None means that the class in deployed_contracts table was not replaced before
-    // state_number, it could still be declared before state_number - need to check against the
-    // value in deployed_contracts.
+    /// Returns the latest class hash of the contract, before state_number.
+    /// If the class wasn't replaced before state_number, returns `None`.
+    ///
+    /// **Note:** None means that the class in deployed_contracts table was not replaced before
+    /// state_number, it could still be declared before state_number - need to check against the
+    /// value in deployed_contracts.
+    ///
+    /// # Arguments
+    /// * state_number - state number to search before.
+    /// * address - contract addrest to search for.
+    ///
+    /// # Errors
+    /// Returns [`StorageError`] if there was an error searching the table.
     fn get_replaced_class_hash(
         &self,
         state_number: StateNumber,
@@ -161,6 +178,15 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         }
     }
 
+    /// Returns the class hash at a given state number.
+    /// If class hash is not found, returns `None`.
+    ///
+    /// # Arguments
+    /// * state_number - state number to search before.
+    /// * address - contract addrest to search for.
+    ///
+    /// # Errors
+    /// Returns [`StorageError`] if there was an error searching the table.
     pub fn get_class_hash_at(
         &self,
         state_number: StateNumber,
@@ -180,6 +206,15 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         Ok(None)
     }
 
+    /// Returns the nonce at a given state number.
+    /// If there is no nonce at the given state number, returns `None`.
+    ///
+    /// # Arguments
+    /// * state_number - state number to search before.
+    /// * address - contract addrest to search for.
+    ///
+    /// # Errors
+    /// Returns [`StorageError`] if there was an error searching the table.
     pub fn get_nonce_at(
         &self,
         state_number: StateNumber,
@@ -207,6 +242,16 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         }
     }
 
+    /// Returns the storage value at a given state number for a given contract and key.
+    /// If no value is stored at the given state number, returns [`StarkFelt`]::default.
+    ///
+    /// # Arguments
+    /// * state_number - state number to search before.
+    /// * address - contract addrest to search for.
+    /// * key - key to search for.
+    ///
+    /// # Errors
+    /// Returns [`StorageError`] if there was an error searching the table.
     pub fn get_storage_at(
         &self,
         state_number: StateNumber,
@@ -235,6 +280,20 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         }
     }
 
+    /// Returns the class definition at a given state number.
+    ///
+    /// If class_hash is not found, returns `None`.
+    /// If class_hash is found but given state is before the block it's defined at, returns `None`.
+    ///
+    /// # Arguments
+    /// * state_number - state number to search before.
+    /// * class_hash - class hash to search for.
+    ///
+    /// # Errors
+    /// Returns [`StorageError`] if there was an error searching the table.
+    ///
+    /// Returns [`StorageError`]::DBInconsistency if the block number found for the class hash but
+    /// the contract class was not found.
     pub fn get_class_definition_at(
         &self,
         state_number: StateNumber,
@@ -256,6 +315,14 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         Ok(Some(contract_class))
     }
 
+    /// Returns the block number for a given class hash (the block in which it was defined).
+    /// If class is not defined, returns `None`.
+    ///
+    /// # Arguments
+    /// * class_hash - class hash to search for.
+    ///
+    /// # Errors
+    /// Returns [`StorageError`] if there was an error searching the table.
     pub fn get_class_definition_block_number(
         &self,
         class_hash: &ClassHash,
@@ -263,18 +330,26 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         Ok(self.declared_classes_block_table.get(self.txn, class_hash)?)
     }
 
+    // Returns the deprecated contract class at a given state number for a given class hash.
+    /// If class is not found, returns `None`.
+    /// If class is defined but in a block after given state number, returns `None`.
+    ///
+    /// # Arguments
+    /// * state_number - state number to search before.
+    /// * class_hash - class hash to search for.
+    ///
+    /// # Errors
+    /// Returns [`StorageError`] if there was an error searching the table.
     pub fn get_deprecated_class_definition_at(
         &self,
         state_number: StateNumber,
         class_hash: &ClassHash,
     ) -> StorageResult<Option<DeprecatedContractClass>> {
-        let value = self.deprecated_declared_classes_table.get(self.txn, class_hash)?;
-        if let Some(value) = value {
-            if state_number.is_after(value.block_number) {
-                return Ok(Some(value.contract_class));
-            }
+        let Some(value) = self.deprecated_declared_classes_table.get(self.txn, class_hash)? else { return Ok(None) };
+        if state_number.is_before(value.block_number) {
+            return Ok(None);
         }
-        Ok(None)
+        Ok(Some(value.contract_class))
     }
 }
 
