@@ -134,6 +134,7 @@ pub(crate) type CompiledClassesStream<'a> = BoxStream<'a, CentralResult<CentralC
 impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSourceTrait
     for GenericCentralSource<TStarknetClient>
 {
+    // Returns the block number of the latest block from the central source.
     async fn get_block_marker(&self) -> Result<BlockNumber, CentralError> {
         self.starknet_client
             .block_number()
@@ -142,6 +143,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
             .map_or(Ok(BlockNumber::default()), |block_number| Ok(block_number.next()))
     }
 
+    // Returns the current block hash of the given block number from the central source.
     async fn get_block_hash(
         &self,
         block_number: BlockNumber,
@@ -153,6 +155,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
             .map_or(Ok(None), |block| Ok(Some(block.block_hash)))
     }
 
+    // Returns a stream of state updates downloaded from the central source.
     fn stream_state_updates(
         &self,
         initial_block_number: BlockNumber,
@@ -168,6 +171,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
     }
 
     // TODO(shahak): rename.
+    // Returns a stream of blocks downloaded from the central source.
     fn stream_new_blocks(
         &self,
         initial_block_number: BlockNumber,
@@ -196,6 +200,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
         .boxed()
     }
 
+    // Returns a stream of compiled classes downloaded from the central source.
     fn stream_compiled_classes(
         &self,
         initial_block_number: BlockNumber,
@@ -216,17 +221,16 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                 })
                 .flat_map(|maybe_state_diff| match maybe_state_diff {
                     Ok(state_diff) => {
-                        let res: Vec<CentralResult<(ClassHash, CompiledClassHash)>> = state_diff
+                        state_diff
                             .declared_classes
                             .into_iter()
                             .map(Ok)
-                            .collect();
-                        res
+                            .collect()
                     }
                     Err(err) => vec![Err(err)],
                 });
 
-            let mut res = futures_util::stream::iter(class_hashes_iter)
+            let mut compiled_classes = futures_util::stream::iter(class_hashes_iter)
                 .map(|maybe_class_hashes| async move {
                     match maybe_class_hashes {
                         Ok((class_hash, compiled_class_hash)) => {
@@ -242,7 +246,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                 })
                 .buffered(self.concurrent_requests);
 
-            while let Some(maybe_compiled_class) = res.next().await {
+            while let Some(maybe_compiled_class) = compiled_classes.next().await {
                 match maybe_compiled_class {
                     Ok((class_hash, compiled_class_hash, compiled_class)) => {
                         yield Ok((class_hash, compiled_class_hash, compiled_class));

@@ -388,24 +388,14 @@ async fn stream_compiled_classes() {
         indexmap! {},
     ).unwrap().commit().unwrap();
 
+    let felts: Vec<_> = (0..4).map(|i| stark_felt!(format!("0x{i}").as_str())).collect();
     let mut mock = MockStarknetClientTrait::new();
-
-    mock.expect_compiled_class_by_hash()
-        .with(predicate::eq(ClassHash(stark_felt!("0x0"))))
-        .times(1)
-        .returning(move |_x| Ok(Some(CasmContractClass::default())));
-    mock.expect_compiled_class_by_hash()
-        .with(predicate::eq(ClassHash(stark_felt!("0x1"))))
-        .times(1)
-        .returning(move |_x| Ok(Some(CasmContractClass::default())));
-    mock.expect_compiled_class_by_hash()
-        .with(predicate::eq(ClassHash(stark_felt!("0x2"))))
-        .times(1)
-        .returning(move |_x| Ok(Some(CasmContractClass::default())));
-    mock.expect_compiled_class_by_hash()
-        .with(predicate::eq(ClassHash(stark_felt!("0x3"))))
-        .times(1)
-        .returning(move |_x| Ok(Some(CasmContractClass::default())));
+    for felt in felts.clone() {
+        mock.expect_compiled_class_by_hash()
+            .with(predicate::eq(ClassHash(felt)))
+            .times(1)
+            .returning(move |_x| Ok(Some(CasmContractClass::default())));
+    }
 
     let central_source = GenericCentralSource {
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
@@ -416,14 +406,12 @@ async fn stream_compiled_classes() {
     let stream = central_source.stream_compiled_classes(BlockNumber(0), BlockNumber(2));
     pin_mut!(stream);
 
-    for i in 0..4 {
-        println!("{i}");
+    let expected_compiled_class = CasmContractClass::default();
+    for felt in felts {
         let (class_hash, compiled_class_hash, compiled_class) =
             stream.next().await.unwrap().unwrap();
-        let expected_class_hash = ClassHash(stark_felt!(format!("0x{i}").as_str()));
-        let expected_compiled_class_hash =
-            CompiledClassHash(stark_felt!(format!("0x{i}").as_str()));
-        let expected_compiled_class = CasmContractClass::default();
+        let expected_class_hash = ClassHash(felt);
+        let expected_compiled_class_hash = CompiledClassHash(felt);
         assert_eq!(class_hash, expected_class_hash);
         assert_eq!(compiled_class_hash, expected_compiled_class_hash);
         assert_eq!(compiled_class, expected_compiled_class);
