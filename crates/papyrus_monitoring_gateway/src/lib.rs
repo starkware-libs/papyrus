@@ -136,6 +136,8 @@ async fn get_metrics(gateway_registry: Registry) -> Result<Vec<u8>, ServerError>
     let mut buffer = Vec::new();
     encoder.encode(&gateway_registry.gather(), &mut buffer)?;
     // Metrics of DEFAULT_REGISTRY, include time and memory usage.
+    let x=prometheus::gather();
+    println!("=========\nin get_metrics:\n{:?}\n===========\n", x);
     encoder.encode(&prometheus::gather(), &mut buffer)?;
     Ok(buffer)
 }
