@@ -9,16 +9,18 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_stream::try_stream;
+use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use indexmap::IndexMap;
 use papyrus_storage::body::BodyStorageWriter;
+use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::ommer::{OmmerStorageReader, OmmerStorageWriter};
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockHash, BlockNumber};
-use starknet_api::core::ClassHash;
+use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::StateDiff;
 use tracing::{debug, error, info, instrument, trace, warn};
@@ -80,6 +82,11 @@ pub enum SyncEvent {
         // state diff.
         // Note: Since 0.11 new classes can not be implicitly declared.
         deployed_contract_class_definitions: IndexMap<ClassHash, DeprecatedContractClass>,
+    },
+    CompiledClassAvailable {
+        class_hash: ClassHash,
+        compiled_class_hash: CompiledClassHash,
+        compiled_class: CasmContractClass,
     },
 }
 
@@ -156,13 +163,22 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             self.config.state_updates_max_stream_size,
         )
         .fuse();
-        pin_mut!(block_stream, state_diff_stream);
+        let compiled_class_stream = stream_new_compiled_classes(
+            self.reader.clone(),
+            self.central_source.clone(),
+            self.config.block_propagation_sleep_duration,
+            // TODO(yair): separate config param.
+            self.config.state_updates_max_stream_size,
+        )
+        .fuse();
+        pin_mut!(block_stream, state_diff_stream, compiled_class_stream);
 
         loop {
             debug!("Selecting between block sync and state diff sync.");
             let sync_event = select! {
               res = block_stream.next() => res,
               res = state_diff_stream.next() => res,
+              res = compiled_class_stream.next() => res,
               complete => break,
             }
             .expect("Received None as a sync event.")?;
@@ -189,6 +205,11 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 state_diff,
                 deployed_contract_class_definitions,
             ),
+            SyncEvent::CompiledClassAvailable {
+                class_hash,
+                compiled_class_hash,
+                compiled_class,
+            } => self.store_compiled_class(class_hash, compiled_class_hash, compiled_class),
         }
     }
 
@@ -230,6 +251,38 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             todo!("Insert to ommer table.");
         }
         Ok(())
+    }
+
+    #[instrument(skip(self, compiled_class), level = "debug", err)]
+    fn store_compiled_class(
+        &mut self,
+        class_hash: ClassHash,
+        compiled_class_hash: CompiledClassHash,
+        compiled_class: CasmContractClass,
+    ) -> StateSyncResult {
+        let txn = self.writer.begin_rw_txn()?;
+        let is_reverted_class =
+            txn.get_state_reader()?.get_class_definition_block_number(&class_hash)?.is_none();
+        if is_reverted_class {
+            todo!("Insert to ommer table.");
+        }
+        match txn.append_casm(class_hash, &compiled_class) {
+            Ok(txn) => {
+                txn.commit()?;
+                debug!("Added compiled class.");
+                Ok(())
+            }
+            // TODO(yair): Modify the stream so it skips already stored classes.
+            // Compiled classes rewrite is valid because the stream downloads from the beginning of
+            // the block instead of the last downloaded class.
+            Err(StorageError::CompiledClassReWrite { class_hash: existing_class_hash })
+                if existing_class_hash == class_hash =>
+            {
+                debug!("Compiled class of {class_hash} already stored.");
+                Ok(())
+            }
+            Err(err) => Err(StateSyncError::StorageError(err)),
+        }
     }
 
     // Compares the block's parent hash to the stored block.
@@ -465,5 +518,55 @@ impl StateSync {
         writer: StorageWriter,
     ) -> Self {
         Self { config, central_source: Arc::new(central_source), reader, writer }
+    }
+}
+
+fn stream_new_compiled_classes<TCentralSource: CentralSourceTrait + Sync + Send>(
+    reader: StorageReader,
+    central_source: Arc<TCentralSource>,
+    block_propagation_sleep_duration: Duration,
+    max_stream_size: u32,
+) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
+    try_stream! {
+        loop {
+            let txn = reader.begin_ro_txn()?;
+            let mut from = txn.get_compiled_class_marker()?;
+            let state_marker = txn.get_state_marker()?;
+            // Avoid starting streams from blocks without declared classes.
+            while from < state_marker {
+                let state_diff = txn.get_state_diff(from)?.expect("Expecting to have state diff up to the marker.");
+                if state_diff.declared_classes.is_empty() {
+                    from = from.next();
+                }
+                else {
+                    break;
+                }
+            }
+
+            if from == state_marker {
+                debug!(
+                    "Compiled classes syncing reached the last downloaded state update, waiting \
+                     for more state updates."
+                );
+                tokio::time::sleep(block_propagation_sleep_duration).await;
+                continue;
+            }
+            let up_to = min(state_marker, BlockNumber(from.0 + max_stream_size as u64));
+            debug!("Downloading compiled classes of blocks [{} - {}).", from, up_to);
+            let compiled_classes_stream =
+                central_source.stream_compiled_classes(from, up_to).fuse();
+            pin_mut!(compiled_classes_stream);
+
+            // TODO(yair): Consider adding the block number and hash in order to make sure
+            // that we do not write classes of ommer blocks.
+            while let Some(maybe_compiled_class) = compiled_classes_stream.next().await {
+                let (class_hash, compiled_class_hash, compiled_class) = maybe_compiled_class?;
+                yield SyncEvent::CompiledClassAvailable {
+                    class_hash,
+                    compiled_class_hash,
+                    compiled_class,
+                };
+            }
+        }
     }
 }
