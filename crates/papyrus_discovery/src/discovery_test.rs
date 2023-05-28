@@ -5,7 +5,7 @@ use std::task::Poll;
 use std::time::Instant;
 
 use futures::executor::block_on;
-use futures::{Stream, StreamExt};
+use futures::{future, Stream, StreamExt};
 use kdam::tqdm;
 use libp2p::core::identity::{Keypair, PublicKey};
 use libp2p::core::multiaddr;
@@ -42,6 +42,7 @@ where
 {
     pub streams: Vec<S>,
     is_stream_consumed_vec: Vec<bool>,
+    current_index: usize,
 }
 
 impl<S> Unpin for MergedStream<S> where S: StreamExt + Unpin {}
@@ -55,22 +56,20 @@ where
         self: Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        let unpinned_self = Pin::into_inner(self);
-        for ((i, stream), is_consumed) in unpinned_self
-            .streams
-            .iter_mut()
-            .enumerate()
-            .zip(unpinned_self.is_stream_consumed_vec.iter_mut())
+        let mut unpinned_self = Pin::into_inner(self);
+        for i in (unpinned_self.current_index..(unpinned_self.streams.len()))
+            .chain(0..unpinned_self.current_index)
         {
-            if *is_consumed {
+            if unpinned_self.is_stream_consumed_vec[i] {
                 continue;
             }
-            match stream.poll_next_unpin(cx) {
+            match unpinned_self.streams[i].poll_next_unpin(cx) {
                 Poll::Ready(Some(item)) => {
+                    unpinned_self.current_index = i + 1;
                     return Poll::Ready(Some((i, item)));
                 }
                 Poll::Ready(None) => {
-                    *is_consumed = true;
+                    unpinned_self.is_stream_consumed_vec[i] = true;
                     continue;
                 }
                 Poll::Pending => {
@@ -91,7 +90,11 @@ where
 {
     pub fn new(streams: Vec<S>) -> Self {
         let len = streams.len();
-        Self { streams, is_stream_consumed_vec: iter::repeat(false).take(len).collect() }
+        Self {
+            streams,
+            is_stream_consumed_vec: iter::repeat(false).take(len).collect(),
+            current_index: 0,
+        }
     }
 }
 
@@ -173,17 +176,35 @@ fn basic_usage_two_stars() {
 }
 
 #[test]
-fn bench_chain() {
+fn bench_star() {
     const N_NODES: usize = 70;
     // const FOUND_PEERS_LIMIT: usize = 9;
     let mut stream = discoveries_stream_from_graph(
-        (0..N_NODES).map(|i| vec![if i == 0 { 1 } else { i - 1 }]).collect(),
+        (0..N_NODES).map(|i| vec![if i == 0 { 1 } else { 0 }]).collect(),
         // DiscoveryConfig { n_active_queries: 1, found_peers_limit: Some(FOUND_PEERS_LIMIT) },
         DiscoveryConfig::default(),
     );
     let start_time = Instant::now();
     // while let Some(_) = block_on(stream.next()) {}
     for _ in tqdm!(0..(N_NODES * (N_NODES - 1))) {
+        block_on(stream.next());
+    }
+    println!("Took {} ms", start_time.elapsed().as_millis());
+}
+
+#[test]
+fn bench_one_joining() {
+    const N_NODES: usize = 100;
+    // const FOUND_PEERS_LIMIT: usize = 9;
+    let mut stream = discoveries_stream_from_graph(
+        (0..N_NODES).map(|i| if i == 0 { vec![1] } else { (1..N_NODES).collect() }).collect(),
+        // DiscoveryConfig { n_active_queries: 1, found_peers_limit: Some(FOUND_PEERS_LIMIT) },
+        DiscoveryConfig::default(),
+    )
+    .filter(|(i, _)| future::ready(*i == 0));
+    let start_time = Instant::now();
+    // while let Some(_) = block_on(stream.next()) {}
+    for _ in tqdm!(0..10) {
         block_on(stream.next());
     }
     println!("Took {} ms", start_time.elapsed().as_millis());
