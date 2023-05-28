@@ -282,6 +282,7 @@ pub enum MarkerKind {
     Header,
     Body,
     State,
+    CompiledClass,
 }
 
 pub type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;

@@ -444,6 +444,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             self.txn.open_table(&self.tables.declared_classes_block)?;
         let deprecated_declared_classes_table =
             self.txn.open_table(&self.tables.deprecated_declared_classes)?;
+        // TODO(yair): Consider reverting the compiled classes in their own module.
         let compiled_classes_table = self.txn.open_table(&self.tables.casms)?;
         let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
         let nonces_table = self.txn.open_table(&self.tables.nonces)?;
@@ -467,6 +468,11 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             .get_state_diff(block_number)?
             .expect("Missing state diff for block {block_number}.");
         markers_table.upsert(&self.txn, &MarkerKind::State, &block_number)?;
+        let compiled_classes_marker =
+            markers_table.get(&self.txn, &MarkerKind::CompiledClass)?.unwrap_or_default();
+        if compiled_classes_marker == block_number.next() {
+            markers_table.upsert(&self.txn, &MarkerKind::CompiledClass, &block_number)?;
+        }
         let deleted_classes = delete_declared_classes(
             &self.txn,
             &thin_state_diff,
