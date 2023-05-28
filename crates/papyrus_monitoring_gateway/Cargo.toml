@@ -8,6 +8,7 @@ axum.workspace = true
 futures-util.workspace = true
 hyper = { workspace = true, features = ["full"] }
 papyrus_storage = { path = "../papyrus_storage" }
+prometheus.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 thiserror.workspace = true
