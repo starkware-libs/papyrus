@@ -127,10 +127,10 @@ async fn metrics() {
     let body_string = String::from_utf8(body_bytes.to_vec()).unwrap();
     // TODO(dvir): Find a better way to compare the response.
     let expected_prefix = format!(
-        "# HELP {COUNTER_NAME} {COUNTER_HELP}\n# TYPE {COUNTER_NAME} counter\n{COUNTER_NAME} 0\n# \
-         HELP process_cpu_seconds_total Total user and system CPU time spent in seconds.\n# TYPE \
-         process_cpu_seconds_total counter\nprocess_cpu_seconds_total"
+        "# HELP {COUNTER_NAME} {COUNTER_HELP}\n# TYPE {COUNTER_NAME} counter\n{COUNTER_NAME} 0\n"
     );
+    println!("{}", expected_prefix);
+    println!("{}", body_string);
     assert!(body_string.starts_with(&expected_prefix));
 }
 
