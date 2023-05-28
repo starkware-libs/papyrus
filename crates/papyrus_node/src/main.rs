@@ -17,18 +17,20 @@ const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
 async fn run_threads(config: Config) -> anyhow::Result<()> {
     let (storage_reader, storage_writer) = open_storage(config.storage.db_config.clone())?;
 
+    // JSON-RPC server.
+    let (_, server_future, gw_prometheus_registry) =
+        run_server(&config.gateway, storage_reader.clone()).await?;
+    let server_handle = tokio::spawn(server_future);
+
     // Monitoring server.
     let monitoring_server = MonitoringServer::new(
         config.monitoring_gateway.clone(),
         config.get_config_representation()?,
         storage_reader.clone(),
+        gw_prometheus_registry,
         VERSION_FULL,
     );
     let monitoring_server_handle = monitoring_server.spawn_server().await;
-
-    // JSON-RPC server.
-    let (_, server_future) = run_server(&config.gateway, storage_reader.clone()).await?;
-    let server_handle = tokio::spawn(server_future);
 
     // Sync task.
     let sync_future = run_sync(config, storage_reader.clone(), storage_writer);

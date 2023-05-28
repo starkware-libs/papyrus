@@ -10,6 +10,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Json, Router};
 use papyrus_storage::{DbTablesStats, StorageError, StorageReader};
+use prometheus::{Encoder, Registry};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument};
 
@@ -30,6 +31,7 @@ pub struct MonitoringServer {
     config: MonitoringGatewayConfig,
     general_config_representation: serde_json::Value,
     storage_reader: StorageReader,
+    gw_prometheus_registry: Registry,
     version: &'static str,
 }
 
@@ -38,9 +40,16 @@ impl MonitoringServer {
         config: MonitoringGatewayConfig,
         general_config_representation: serde_json::Value,
         storage_reader: StorageReader,
+        gw_prometheus_registry: Registry,
         version: &'static str,
     ) -> Self {
-        MonitoringServer { config, storage_reader, general_config_representation, version }
+        MonitoringServer {
+            gw_prometheus_registry,
+            config,
+            storage_reader,
+            general_config_representation,
+            version,
+        }
     }
 
     /// Spawns a monitoring server.
@@ -62,6 +71,7 @@ impl MonitoringServer {
             self.storage_reader.clone(),
             self.version,
             self.general_config_representation.clone(),
+            self.gw_prometheus_registry.clone(),
         );
         debug!("Starting monitoring gateway.");
         axum::Server::bind(&server_address).serve(app.into_make_service()).await
@@ -72,6 +82,7 @@ fn app(
     storage_reader: StorageReader,
     version: &'static str,
     general_config_representation: serde_json::Value,
+    gw_prometheus_registry: Registry,
 ) -> Router {
     Router::new()
         .route(
@@ -89,6 +100,10 @@ fn app(
         .route(
             format!("/{MONITORING_PREFIX}/alive").as_str(),
             get(move || async { StatusCode::OK }),
+        )
+        .route(
+            format!("/{MONITORING_PREFIX}/metrics").as_str(),
+            get(move || get_metrics(gw_prometheus_registry)),
         )
 }
 
@@ -114,10 +129,26 @@ async fn node_version(version: &'static str) -> String {
     version.to_string()
 }
 
+// Returns prometheus metrics.
+#[instrument(level = "debug", ret)]
+async fn get_metrics(gateway_registry: Registry) -> Result<Vec<u8>, ServerError> {
+    let encoder = prometheus::TextEncoder::new();
+    let mut buffer = Vec::new();
+    encoder.encode(&gateway_registry.gather(), &mut buffer)?;
+    // Metrics of DEFAULT_REGISTRY, include time and memory usage.
+    // Those metrics are not include in mac os.
+    if std::env::consts::OS != "macos" {
+        encoder.encode(&prometheus::gather(), &mut buffer)?;
+    }
+    Ok(buffer)
+}
+
 #[derive(thiserror::Error, Debug)]
 enum ServerError {
     #[error(transparent)]
     StorageError(#[from] StorageError),
+    #[error(transparent)]
+    PrometheusMetricError(#[from] prometheus::Error),
 }
 
 impl IntoResponse for ServerError {
@@ -125,6 +156,9 @@ impl IntoResponse for ServerError {
         let (status, error_message) = match self {
             // TODO(dan): consider using a generic error message instead.
             ServerError::StorageError(err) => (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
+            ServerError::PrometheusMetricError(err) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
         };
         (status, error_message).into_response()
     }

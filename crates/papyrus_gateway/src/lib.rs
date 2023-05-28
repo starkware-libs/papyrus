@@ -17,12 +17,14 @@ use jsonrpsee::http_server::types::error::CallError;
 use jsonrpsee::http_server::{HttpServerBuilder, HttpServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::{ErrorObject, INTERNAL_ERROR_MSG};
+use lazy_static::lazy_static;
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
 use papyrus_storage::db::TransactionKind;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageReader, StorageTxn};
+use prometheus::{IntCounter, Registry};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockStatus};
 use starknet_api::core::{ChainId, ClassHash, ContractAddress, GlobalRoot, Nonce};
@@ -147,16 +149,119 @@ impl ContinuationToken {
     }
 }
 
+lazy_static! {
+    static ref GW_BLOCK_NUMBER_INCOMING_REQUESTS: IntCounter = IntCounter::new(
+        "blockNumber_incoming_requests",
+        r#"Number of "blockNumber" requests to the gateway"#
+    )
+    .expect("Metric can be created");
+    static ref GW_BLOCK_HASH_AND_NUMBER_INCOMING_REQUESTS: IntCounter = IntCounter::new(
+        "blockHashAndNumber_incoming_requests",
+        r#"Number of "blockHashAndNumber" requests to the gateway"#
+    )
+    .expect("Metric can be created");
+    static ref GW_GET_BLOCK_WITH_TX_HASHES_INCOMING_REQUESTS: IntCounter = IntCounter::new(
+        "getBlockWithTxHashes_incoming_requests",
+        r#"Number of "getBlockWithTxHashes" requests to the gateway"#
+    )
+    .expect("Metric can be created");
+    static ref GW_GET_BLOCK_WITH_TXS_INCOMING_REQUESTS: IntCounter = IntCounter::new(
+        "getBlockWithTxs_incoming_requests",
+        r#"Number of "getBlockWithTxs" requests to the gateway"#
+    )
+    .expect("Metric can be created");
+    static ref GW_GET_STORAGE_AT_INCOMING_REQUESTS: IntCounter = IntCounter::new(
+        "getStorageAt_incoming_requests",
+        r#"Number of "getStorageAt" requests to the gateway"#
+    )
+    .expect("Metric can be created");
+    static ref GW_GET_TRANSACTION_BY_HASH_INCOMING_REQUESTS: IntCounter = IntCounter::new(
+        "getTransactionByHash_incoming_requests",
+        r#"Number of "getTransactionByHash" requests to the gateway"#
+    )
+    .expect("Metric can be created");
+    static ref GW_GET_TRANSACTION_BY_BLOCK_ID_AND_INDEX_INCOMING_REQUESTS: IntCounter =
+        IntCounter::new(
+            "getTransactionByBlockIdAndIndex_incoming_requests",
+            r#"Number of "getTransactionByBlockIdAndIndex" requests to the gateway"#
+        )
+        .expect("Metric can be created");
+    static ref GW_GET_BLOCK_TRANSACTION_COUNT_INCOMING_REQUESTS: IntCounter = IntCounter::new(
+        "getBlockTransactionCount_incoming_requests",
+        r#"Number of "getBlockTransactionCount" requests to the gateway"#
+    )
+    .expect("Metric can be created");
+    static ref GW_GET_STATE_UPDATE_INCOMING_REQUESTS: IntCounter = IntCounter::new(
+        "getStateUpdate_incoming_requests",
+        r#"Number of "getStateUpdate" requests to the gateway"#
+    )
+    .expect("Metric can be created");
+    static ref GW_GET_TRANSACTION_RECEIPT_INCOMING_REQUESTS: IntCounter = IntCounter::new(
+        "getTransactionReceipt_incoming_requests",
+        r#"Number of "getTransactionReceipt" requests to the gateway"#
+    )
+    .expect("Metric can be created");
+    static ref GW_GET_CLASS_INCOMING_REQUESTS: IntCounter = IntCounter::new(
+        "getClass_incoming_requests",
+        r#"Number of "getClass" requests to the gateway"#
+    )
+    .expect("Metric can be created");
+    static ref GW_GET_CLASS_AT_INCOMING_REQUESTS: IntCounter = IntCounter::new(
+        "getClassAt_incoming_requests",
+        r#"Number of "getClassAt" requests to the gateway"#
+    )
+    .expect("Metric can be created");
+    static ref GW_GET_CLASS_HASH_AT_INCOMING_REQUESTS: IntCounter = IntCounter::new(
+        "getClassHashAt_incoming_requests",
+        r#"Number of "getClassHashAt" requests to the gateway"#
+    )
+    .expect("Metric can be created");
+    static ref GW_GET_NONCE_INCOMING_REQUESTS: IntCounter = IntCounter::new(
+        "getNonce_incoming_requests",
+        r#"Number of "getNonce" requests to the gateway"#
+    )
+    .expect("Metric can be created");
+    static ref GW_CHAIN_ID_INCOMING_REQUESTS: IntCounter = IntCounter::new(
+        "chainId_incoming_requests",
+        r#"Number of "chainId" requests to the gateway"#
+    )
+    .expect("Metric can be created");
+}
+
+fn register_prometheus_collectors(registry: &Registry) -> Result<(), prometheus::Error> {
+    registry.register(Box::new(GW_BLOCK_NUMBER_INCOMING_REQUESTS.clone()))?;
+    registry.register(Box::new(GW_BLOCK_HASH_AND_NUMBER_INCOMING_REQUESTS.clone()))?;
+    registry.register(Box::new(GW_GET_BLOCK_WITH_TX_HASHES_INCOMING_REQUESTS.clone()))?;
+    registry.register(Box::new(GW_GET_BLOCK_WITH_TXS_INCOMING_REQUESTS.clone()))?;
+    registry.register(Box::new(GW_GET_STORAGE_AT_INCOMING_REQUESTS.clone()))?;
+    registry.register(Box::new(GW_GET_TRANSACTION_BY_HASH_INCOMING_REQUESTS.clone()))?;
+    registry
+        .register(Box::new(GW_GET_TRANSACTION_BY_BLOCK_ID_AND_INDEX_INCOMING_REQUESTS.clone()))?;
+    registry.register(Box::new(GW_GET_BLOCK_TRANSACTION_COUNT_INCOMING_REQUESTS.clone()))?;
+    registry.register(Box::new(GW_GET_STATE_UPDATE_INCOMING_REQUESTS.clone()))?;
+    registry.register(Box::new(GW_GET_TRANSACTION_RECEIPT_INCOMING_REQUESTS.clone()))?;
+    registry.register(Box::new(GW_GET_CLASS_INCOMING_REQUESTS.clone()))?;
+    registry.register(Box::new(GW_GET_CLASS_AT_INCOMING_REQUESTS.clone()))?;
+    registry.register(Box::new(GW_GET_CLASS_HASH_AT_INCOMING_REQUESTS.clone()))?;
+    registry.register(Box::new(GW_GET_NONCE_INCOMING_REQUESTS.clone()))?;
+    registry.register(Box::new(GW_CHAIN_ID_INCOMING_REQUESTS.clone()))?;
+    Ok(())
+}
+
 #[async_trait]
 impl JsonRpcServer for JsonRpcServerImpl {
     #[instrument(skip(self), level = "debug", err, ret)]
     fn block_number(&self) -> Result<BlockNumber, Error> {
+        GW_BLOCK_NUMBER_INCOMING_REQUESTS.inc();
+
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         get_latest_block_number(&txn)?.ok_or_else(|| Error::from(JsonRpcError::NoBlocks))
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
     fn block_hash_and_number(&self) -> Result<BlockHashAndNumber, Error> {
+        GW_BLOCK_HASH_AND_NUMBER_INCOMING_REQUESTS.inc();
+
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number =
             get_latest_block_number(&txn)?.ok_or_else(|| Error::from(JsonRpcError::NoBlocks))?;
@@ -167,6 +272,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
     #[instrument(skip(self), level = "debug", err, ret)]
     fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> Result<Block, Error> {
+        GW_GET_BLOCK_WITH_TX_HASHES_INCOMING_REQUESTS.inc();
+
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
         let header = get_block_header_by_number(&txn, block_number)?;
@@ -183,6 +290,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
     #[instrument(skip(self), level = "debug", err, ret)]
     fn get_block_w_full_transactions(&self, block_id: BlockId) -> Result<Block, Error> {
+        GW_GET_BLOCK_WITH_TXS_INCOMING_REQUESTS.inc();
+
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
         let header = get_block_header_by_number(&txn, block_number)?;
@@ -204,6 +313,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
         key: StorageKey,
         block_id: BlockId,
     ) -> Result<StarkFelt, Error> {
+        GW_GET_STORAGE_AT_INCOMING_REQUESTS.inc();
+
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         // Check that the block is valid and get the state number.
@@ -225,6 +336,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
         &self,
         transaction_hash: TransactionHash,
     ) -> Result<TransactionWithType, Error> {
+        GW_GET_TRANSACTION_BY_HASH_INCOMING_REQUESTS.inc();
+
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let transaction_index = txn
@@ -246,6 +359,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
         block_id: BlockId,
         index: TransactionOffsetInBlock,
     ) -> Result<TransactionWithType, Error> {
+        GW_GET_TRANSACTION_BY_BLOCK_ID_AND_INDEX_INCOMING_REQUESTS.inc();
+
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
 
@@ -259,6 +374,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
     #[instrument(skip(self), level = "debug", err, ret)]
     fn get_block_transaction_count(&self, block_id: BlockId) -> Result<usize, Error> {
+        GW_GET_BLOCK_TRANSACTION_COUNT_INCOMING_REQUESTS.inc();
+
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
         let transactions = get_block_txs_by_number(&txn, block_number)?;
@@ -268,6 +385,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
     #[instrument(skip(self), level = "debug", err, ret)]
     fn get_state_update(&self, block_id: BlockId) -> Result<StateUpdate, Error> {
+        GW_GET_STATE_UPDATE_INCOMING_REQUESTS.inc();
+
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         // Get the block header for the block hash and state root.
@@ -305,6 +424,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
         &self,
         transaction_hash: TransactionHash,
     ) -> Result<TransactionReceiptWithStatus, Error> {
+        GW_GET_TRANSACTION_RECEIPT_INCOMING_REQUESTS.inc();
+
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let transaction_index = txn
@@ -350,6 +471,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
         block_id: BlockId,
         class_hash: ClassHash,
     ) -> Result<GatewayContractClass, Error> {
+        GW_GET_CLASS_INCOMING_REQUESTS.inc();
+
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let block_number = get_block_number(&txn, block_id)?;
@@ -378,6 +501,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
         block_id: BlockId,
         contract_address: ContractAddress,
     ) -> Result<GatewayContractClass, Error> {
+        GW_GET_CLASS_AT_INCOMING_REQUESTS.inc();
+
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let block_number = get_block_number(&txn, block_id)?;
@@ -409,6 +534,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
         block_id: BlockId,
         contract_address: ContractAddress,
     ) -> Result<ClassHash, Error> {
+        GW_GET_CLASS_HASH_AT_INCOMING_REQUESTS.inc();
+
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let block_number = get_block_number(&txn, block_id)?;
@@ -427,6 +554,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
         block_id: BlockId,
         contract_address: ContractAddress,
     ) -> Result<Nonce, Error> {
+        GW_GET_NONCE_INCOMING_REQUESTS.inc();
+
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let block_number = get_block_number(&txn, block_id)?;
@@ -441,6 +570,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
     #[instrument(skip(self), level = "debug", err, ret)]
     fn chain_id(&self) -> Result<String, Error> {
+        GW_CHAIN_ID_INCOMING_REQUESTS.inc();
+
         Ok(self.chain_id.as_hex())
     }
 
@@ -535,7 +666,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
 pub async fn run_server(
     config: &GatewayConfig,
     storage_reader: StorageReader,
-) -> anyhow::Result<(SocketAddr, HttpServerHandle)> {
+) -> anyhow::Result<(SocketAddr, HttpServerHandle, Registry)> {
     debug!("Starting gateway.");
     let server = HttpServerBuilder::default().build(&config.server_address).await?;
     let addr = server.local_addr()?;
@@ -549,5 +680,7 @@ pub async fn run_server(
         .into_rpc(),
     )?;
     info!(local_address = %addr, "Gateway is running.");
-    Ok((addr, handle))
+    let prometheus_registry = Registry::new();
+    register_prometheus_collectors(&prometheus_registry)?;
+    Ok((addr, handle, prometheus_registry))
 }
