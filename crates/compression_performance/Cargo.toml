@@ -1,0 +1,14 @@
+[package]
+name = "compression_performance"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+papyrus_storage = { path = "../papyrus_storage" }
+starknet_api.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+test_utils = { path= "../test_utils"}
+papyrus_node = { path = "../papyrus_node" }
+tokio = { workspace = true, features = ["full", "sync"] }
+

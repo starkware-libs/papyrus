@@ -1281,6 +1281,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "compression_performance"
+version = "0.1.0"
+dependencies = [
+ "papyrus_node",
+ "papyrus_storage",
+ "serde",
+ "serde_json",
+ "starknet_api",
+ "test_utils",
+ "tokio",
+]
+
+[[package]]
 name = "console"
 version = "0.15.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
