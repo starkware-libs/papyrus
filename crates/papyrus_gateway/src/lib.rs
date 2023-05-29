@@ -3,6 +3,7 @@ mod block;
 mod deprecated_contract_class;
 #[cfg(test)]
 mod gateway_test;
+mod middleware;
 mod state;
 #[cfg(test)]
 mod test_utils;
