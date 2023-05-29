@@ -2,7 +2,7 @@ use hyper::{Body, Request};
 use jsonrpsee::core::http_helpers::read_body;
 use tower::BoxError;
 
-use crate::api::version_config::{VersionState, LATEST_VERSION_ID, VERSION_CONFIG};
+use crate::version_config::version_config::{VersionState, LATEST_VERSION_ID, VERSION_CONFIG};
 use crate::SERVER_MAX_BODY_SIZE;
 
 /// [`Tower`] middleware intended to proxy method requests to the right version of the API.
@@ -12,22 +12,6 @@ use crate::SERVER_MAX_BODY_SIZE;
 ///
 /// # Arguments
 /// * req - [`hyper::Request`] object passed by the server.
-///
-/// # Examples
-/// ```ignore
-/// use papyrus_gateway::SERVER_MAX_BODY_SIZE;
-/// use papyrus_gateway::middleware::papyrus_gateway;
-/// use jsonrpsee::server::ServerBuilder;
-///
-/// #[tokio::main]
-/// async fn main() {
-///     let server = ServerBuilder::default(
-///         .max_request_body_size(SERVER_MAX_BODY_SIZE)
-///         .set_middleware(tower::ServiceBuilder::new().filter_async(proxy_request))
-///         .build(&config.server_address)
-///         .await?;
-/// };
-/// ```
 ///
 /// [`Tower`]: https://crates.io/crates/tower
 pub(crate) async fn proxy_request(req: Request<Body>) -> Result<Request<Body>, BoxError> {
@@ -52,7 +36,7 @@ pub(crate) async fn proxy_request(req: Request<Body>) -> Result<Request<Body>, B
 
 fn add_version_to_method_name_in_body(
     mut vec_body: Vec<jsonrpsee::types::Request<'_>>,
-    prefix: &str,
+    _prefix: &str,
     is_single: bool,
 ) -> Result<Vec<u8>, BoxError> {
     let Ok(vec_body) = vec_body
@@ -61,7 +45,7 @@ fn add_version_to_method_name_in_body(
             let Some(stripped_method) = strip_starknet_from_method(body.method.as_ref()) else {
                 return Err(BoxError::from("Method name has unexpected format"))
             };
-            body.method = format!("starknet_{}_{}", prefix, stripped_method).into();
+            body.method = format!("starknet_{}", stripped_method).into();
             Ok(body)
         })
         .collect::<Result<Vec<_>, _>>() else { return Err(BoxError::from("Method name has unexpected format")) };
