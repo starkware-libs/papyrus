@@ -1,5 +1,0 @@
-output-type: cobertura
-output-file: /home/runner/work/papyrus/papyrus/coverage.xml
-ignore: 
-  - "crates/papyrus_load_test/*"
-  - "crates/test_utils/*"
