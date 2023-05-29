@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow.workspace = true
 base64.workspace = true
+hyper = { workspace = true, features = ["full"] }
 papyrus_storage = { path = "../papyrus_storage" }
 futures-util.workspace = true
 jsonrpsee = { workspace = true, features = ["full"] }
@@ -15,6 +16,7 @@ starknet_api.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
 tokio-stream.workspace = true
+tower = { workspace = true, features = ["full"]}
 tracing.workspace = true
 url.workspace = true
 
