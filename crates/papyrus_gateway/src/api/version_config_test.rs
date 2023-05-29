@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use assert_matches::assert_matches;
 
 use super::version_config::VERSION_CONFIG;
-use crate::version_config::version_config::{VersionState, LATEST_VERSION_ID};
+use crate::api::version_config::{VersionState, LATEST_VERSION_ID};
 
 #[tokio::test]
 async fn validate_version_configuration() {
