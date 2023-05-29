@@ -69,5 +69,6 @@ tokio-retry = { version = "0.3" }
 tokio-stream = { version = "0.1.8" }
 tracing = { version = "0.1.37" }
 tracing-subscriber = { version = "0.3.16" }
+tower = { version = "0.4" }
 url = { version = "2.2.2" }
 web3 = { version = "0.18.0" }

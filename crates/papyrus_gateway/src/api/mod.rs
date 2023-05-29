@@ -112,17 +112,15 @@ pub fn get_methods_from_supported_apis(
             let (version_id, version_state) = version_config;
             match version_state {
                 version_config::VersionState::Deprecated => None,
-                version_config::VersionState::Supported | version_config::VersionState::Latest => {
-                    match *version_id {
-                        version_config::VERSION_0_3_0 => Some(JsonRpcServerV0_3_0Impl {
-                            chain_id: chain_id.clone(),
-                            storage_reader: storage_reader.clone(),
-                            max_events_chunk_size,
-                            max_events_keys,
-                        }),
-                        _ => None,
-                    }
-                }
+                version_config::VersionState::Supported => match *version_id {
+                    version_config::VERSION_0_3_0 => Some(JsonRpcServerV0_3_0Impl {
+                        chain_id: chain_id.clone(),
+                        storage_reader: storage_reader.clone(),
+                        max_events_chunk_size,
+                        max_events_keys,
+                    }),
+                    _ => None,
+                },
             }
         })
         .map(|rpc_module| rpc_module.into_rpc().into())
