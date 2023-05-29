@@ -44,6 +44,8 @@ use crate::transaction::{
     TransactionStatus, TransactionWithType, Transactions,
 };
 
+/// Maximum size of a supported transaction body - 10MB.
+pub const SERVER_MAX_BODY_SIZE: u32 = 10 * 1024 * 1024;
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct GatewayConfig {
     pub chain_id: ChainId,
