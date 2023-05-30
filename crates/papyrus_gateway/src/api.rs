@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
+use papyrus_proc_macros::versioned_rpc;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
@@ -94,7 +95,7 @@ pub enum GatewayContractClass {
     Sierra(ContractClass),
 }
 
-#[rpc(server, client, namespace = "starknet")]
+#[versioned_rpc("V0_3_0")]
 pub trait JsonRpc {
     /// Gets the most recent accepted block number.
     #[method(name = "blockNumber")]
