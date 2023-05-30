@@ -37,7 +37,7 @@ use tracing::{debug, error, info, instrument};
 
 use crate::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, EventsChunk,
-    JsonRpcError, JsonRpcServer, Tag,
+    JsonRpcError, JsonRpcV0_3_0Server, Tag,
 };
 use crate::block::{Block, BlockHeader};
 use crate::middleware::proxy_request;
@@ -58,7 +58,7 @@ pub struct GatewayConfig {
 }
 
 /// Rpc server.
-struct JsonRpcServerImpl {
+struct JsonRpcServerV0_3_0Impl {
     chain_id: ChainId,
     storage_reader: StorageReader,
     max_events_chunk_size: usize,
@@ -148,7 +148,7 @@ impl ContinuationToken {
 }
 
 #[async_trait]
-impl JsonRpcServer for JsonRpcServerImpl {
+impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     fn block_number(&self) -> RpcResult<BlockNumber> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
@@ -540,7 +540,7 @@ pub async fn run_server(
         .await?;
     let addr = server.local_addr()?;
     let handle = server.start(
-        JsonRpcServerImpl {
+        JsonRpcServerV0_3_0Impl {
             chain_id: config.chain_id.clone(),
             storage_reader,
             max_events_chunk_size: config.max_events_chunk_size,
