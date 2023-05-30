@@ -4,11 +4,10 @@ use std::ops::Index;
 
 use assert_matches::assert_matches;
 use indexmap::IndexMap;
+use jsonrpsee::core::params::ObjectParams;
 use jsonrpsee::core::Error;
 use jsonrpsee::http_client::HttpClientBuilder;
-use jsonrpsee::http_server::types::error::CallError;
-use jsonrpsee::types::error::ErrorObject;
-use jsonrpsee::types::EmptyParams;
+use jsonrpsee::types::ErrorObjectOwned;
 use jsonschema::JSONSchema;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::body::{BodyStorageWriter, TransactionIndex};
@@ -49,10 +48,10 @@ async fn block_number() {
 
     // No blocks yet.
     let err = module
-        .call::<_, BlockNumber>("starknet_blockNumber", EmptyParams::new())
+        .call::<_, BlockNumber>("starknet_blockNumber", ObjectParams::new())
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::NoBlocks as i32,
         JsonRpcError::NoBlocks.to_string(),
         None::<()>,
@@ -67,7 +66,7 @@ async fn block_number() {
         .commit()
         .unwrap();
     let block_number =
-        module.call::<_, BlockNumber>("starknet_blockNumber", EmptyParams::new()).await.unwrap();
+        module.call::<_, BlockNumber>("starknet_blockNumber", ObjectParams::new()).await.unwrap();
     assert_eq!(block_number, BlockNumber(0));
 }
 
@@ -77,10 +76,10 @@ async fn block_hash_and_number() {
 
     // No blocks yet.
     let err = module
-        .call::<_, BlockHashAndNumber>("starknet_blockHashAndNumber", EmptyParams::new())
+        .call::<_, BlockHashAndNumber>("starknet_blockHashAndNumber", ObjectParams::new())
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::NoBlocks as i32,
         JsonRpcError::NoBlocks.to_string(),
         None::<()>,
@@ -96,7 +95,7 @@ async fn block_hash_and_number() {
         .commit()
         .unwrap();
     let block_hash_and_number = module
-        .call::<_, BlockHashAndNumber>("starknet_blockHashAndNumber", EmptyParams::new())
+        .call::<_, BlockHashAndNumber>("starknet_blockHashAndNumber", ObjectParams::new())
         .await
         .unwrap();
     assert_eq!(
@@ -167,7 +166,7 @@ async fn get_block_w_transaction_hashes() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::BlockNotFound as i32,
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
@@ -181,7 +180,7 @@ async fn get_block_w_transaction_hashes() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::BlockNotFound as i32,
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
@@ -260,7 +259,7 @@ async fn get_block_w_full_transactions() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::BlockNotFound as i32,
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
@@ -274,7 +273,7 @@ async fn get_block_w_full_transactions() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::BlockNotFound as i32,
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
@@ -331,7 +330,7 @@ async fn get_storage_at() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::ContractNotFound as i32,
         JsonRpcError::ContractNotFound.to_string(),
         None::<()>,
@@ -351,7 +350,7 @@ async fn get_storage_at() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::BlockNotFound as i32,
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
@@ -365,7 +364,7 @@ async fn get_storage_at() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::BlockNotFound as i32,
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
@@ -420,7 +419,7 @@ async fn get_class_hash_at() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::ContractNotFound as i32,
         JsonRpcError::ContractNotFound.to_string(),
         None::<()>,
@@ -439,7 +438,7 @@ async fn get_class_hash_at() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::BlockNotFound as i32,
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
@@ -453,7 +452,7 @@ async fn get_class_hash_at() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::BlockNotFound as i32,
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
@@ -508,7 +507,7 @@ async fn get_nonce() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::ContractNotFound as i32,
         JsonRpcError::ContractNotFound.to_string(),
         None::<()>,
@@ -527,7 +526,7 @@ async fn get_nonce() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::BlockNotFound as i32,
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
@@ -541,7 +540,7 @@ async fn get_nonce() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::BlockNotFound as i32,
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
@@ -578,7 +577,7 @@ async fn get_transaction_by_hash() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::TransactionHashNotFound as i32,
         JsonRpcError::TransactionHashNotFound.to_string(),
         None::<()>,
@@ -634,7 +633,7 @@ async fn get_transaction_by_block_id_and_index() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::BlockNotFound as i32,
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
@@ -648,7 +647,7 @@ async fn get_transaction_by_block_id_and_index() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::BlockNotFound as i32,
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
@@ -662,7 +661,7 @@ async fn get_transaction_by_block_id_and_index() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::InvalidTransactionIndex as i32,
         JsonRpcError::InvalidTransactionIndex.to_string(),
         None::<()>,
@@ -721,7 +720,7 @@ async fn get_block_transaction_count() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::BlockNotFound as i32,
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
@@ -735,7 +734,7 @@ async fn get_block_transaction_count() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::BlockNotFound as i32,
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
@@ -808,7 +807,7 @@ async fn get_state_update() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::BlockNotFound as i32,
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
@@ -822,7 +821,7 @@ async fn get_state_update() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::BlockNotFound as i32,
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
@@ -877,7 +876,7 @@ async fn get_transaction_receipt() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::TransactionHashNotFound as i32,
         JsonRpcError::TransactionHashNotFound.to_string(),
         None::<()>,
@@ -948,7 +947,7 @@ async fn get_class() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::ClassHashNotFound as i32,
         JsonRpcError::ClassHashNotFound.to_string(),
         None::<()>,
@@ -991,7 +990,7 @@ async fn get_class() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::ClassHashNotFound as i32,
         JsonRpcError::ClassHashNotFound.to_string(),
         None::<()>,
@@ -1010,7 +1009,7 @@ async fn get_class() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::BlockNotFound as i32,
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
@@ -1024,7 +1023,7 @@ async fn get_class() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::BlockNotFound as i32,
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
@@ -1128,7 +1127,7 @@ async fn get_class_at() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::ContractNotFound as i32,
         JsonRpcError::ContractNotFound.to_string(),
         None::<()>,
@@ -1145,7 +1144,7 @@ async fn get_class_at() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::ContractNotFound as i32,
         JsonRpcError::ContractNotFound.to_string(),
         None::<()>,
@@ -1164,7 +1163,7 @@ async fn get_class_at() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::BlockNotFound as i32,
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
@@ -1178,7 +1177,7 @@ async fn get_class_at() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::BlockNotFound as i32,
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
@@ -1189,7 +1188,7 @@ async fn get_class_at() {
 async fn chain_id() {
     let (module, _) = get_test_rpc_server_and_storage_writer();
 
-    let res = module.call::<_, String>("starknet_chainId", EmptyParams::new()).await.unwrap();
+    let res = module.call::<_, String>("starknet_chainId", ObjectParams::new()).await.unwrap();
     // The result should be equal to the result of the following python code
     // hex(int.from_bytes(b'SN_GOERLI', byteorder="big", signed=False))
     // taken from starknet documentation:
@@ -1371,7 +1370,7 @@ async fn get_events_page_size_too_big() {
     };
 
     let err = module.call::<_, EventsChunk>("starknet_getEvents", [filter]).await.unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::PageSizeTooBig as i32,
         JsonRpcError::PageSizeTooBig.to_string(),
         None::<()>,
@@ -1396,7 +1395,7 @@ async fn get_events_too_many_keys() {
     };
 
     let err = module.call::<_, EventsChunk>("starknet_getEvents", [filter]).await.unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::TooManyKeysInFilter as i32,
         JsonRpcError::TooManyKeysInFilter.to_string(),
         None::<()>,
@@ -1487,7 +1486,7 @@ async fn get_events_invalid_ct() {
     };
 
     let err = module.call::<_, EventsChunk>("starknet_getEvents", [filter]).await.unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::InvalidContinuationToken as i32,
         JsonRpcError::InvalidContinuationToken.to_string(),
         None::<()>,
@@ -1501,7 +1500,7 @@ async fn run_server_no_blocks() {
     let (addr, _handle) = run_server(&gateway_config, storage_reader).await.unwrap();
     let client = HttpClientBuilder::default().build(format!("http://{addr:?}")).unwrap();
     let err = client.block_number().await.unwrap_err();
-    assert_matches!(err, Error::Call(CallError::Custom(err)) if err == ErrorObject::owned(
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::NoBlocks as i32,
         JsonRpcError::NoBlocks.to_string(),
         None::<()>,
