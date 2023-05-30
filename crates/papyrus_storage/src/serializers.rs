@@ -226,6 +226,7 @@ auto_storage_serde! {
         Header = 0,
         Body = 1,
         State = 2,
+        CompiledClass = 3,
     }
     pub struct MessageToL1 {
         pub to_address: EthAddress,
