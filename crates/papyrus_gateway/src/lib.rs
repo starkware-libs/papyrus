@@ -3,10 +3,12 @@ mod block;
 mod deprecated_contract_class;
 #[cfg(test)]
 mod gateway_test;
+mod middleware;
 mod state;
 #[cfg(test)]
 mod test_utils;
 mod transaction;
+mod version_config;
 
 use std::fmt::Display;
 use std::net::SocketAddr;
@@ -38,6 +40,7 @@ use crate::api::{
     JsonRpcError, JsonRpcServer, Tag,
 };
 use crate::block::{Block, BlockHeader};
+use crate::middleware::proxy_request;
 use crate::state::StateUpdate;
 use crate::transaction::{
     Event, Transaction, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus,
@@ -530,7 +533,11 @@ pub async fn run_server(
     storage_reader: StorageReader,
 ) -> anyhow::Result<(SocketAddr, ServerHandle)> {
     debug!("Starting gateway.");
-    let server = ServerBuilder::default().build(&config.server_address).await?;
+    let server = ServerBuilder::default()
+        .max_request_body_size(SERVER_MAX_BODY_SIZE)
+        .set_middleware(tower::ServiceBuilder::new().filter_async(proxy_request))
+        .build(&config.server_address)
+        .await?;
     let addr = server.local_addr()?;
     let handle = server.start(
         JsonRpcServerImpl {
