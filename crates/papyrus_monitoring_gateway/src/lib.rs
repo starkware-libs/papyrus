@@ -86,6 +86,10 @@ fn app(
             format!("/{MONITORING_PREFIX}/nodeVersion").as_str(),
             get(move || node_version(version)),
         )
+        .route(
+            format!("/{MONITORING_PREFIX}/alive").as_str(),
+            get(move || async { StatusCode::OK }),
+        )
 }
 
 /// Returns DB statistics.

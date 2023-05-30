@@ -80,6 +80,22 @@ async fn node_config() {
 }
 
 #[tokio::test]
+async fn alive() {
+    let app = setup_app();
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri(format!("/{MONITORING_PREFIX}/alive").as_str())
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
 async fn run_server() {
     let listener = TcpListener::bind("0.0.0.0:0".parse::<SocketAddr>().unwrap()).unwrap();
     let addr = listener.local_addr().unwrap();
