@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use papyrus_storage::compression_utils::compress_object;
+use papyrus_storage::compression_utils::serialize_and_compress;
 use papyrus_storage::db::serialization::{StorageSerde, StorageSerdeError};
 use serde::{Deserialize, Serialize};
 use starknet_api::deprecated_contract_class::{
@@ -109,7 +109,7 @@ impl TryFrom<starknet_api::deprecated_contract_class::ContractClass> for Contrac
 
         Ok(Self {
             abi,
-            program: base64::encode(compress_object(&Program(program_value))?),
+            program: base64::encode(serialize_and_compress(&Program(program_value))?),
             entry_points_by_type: class.entry_points_by_type,
         })
     }

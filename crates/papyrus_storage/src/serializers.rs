@@ -49,7 +49,9 @@ use crate::body::events::{
     ThinTransactionOutput,
 };
 use crate::body::TransactionIndex;
-use crate::compression_utils::{compress, compress_object, decompress, decompress_from_reader};
+use crate::compression_utils::{
+    compress, decompress, decompress_from_reader, serialize_and_compress,
+};
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
 use crate::ommer::{OmmerEventKey, OmmerTransactionKey};
 #[cfg(test)]
@@ -782,9 +784,9 @@ impl StorageSerde for CasmContractClass {
 ////////////////////////////////////////////////////////////////////////
 impl StorageSerde for ContractClass {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
-        compress_object(&self.sierra_program)?.serialize_into(res)?;
+        serialize_and_compress(&self.sierra_program)?.serialize_into(res)?;
         self.entry_point_by_type.serialize_into(res)?;
-        compress_object(&self.abi)?.serialize_into(res)?;
+        serialize_and_compress(&self.abi)?.serialize_into(res)?;
         Ok(())
     }
 
