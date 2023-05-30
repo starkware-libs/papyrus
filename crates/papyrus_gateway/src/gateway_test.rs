@@ -4,8 +4,9 @@ use std::ops::Index;
 
 use assert_matches::assert_matches;
 use indexmap::IndexMap;
+use jsonrpsee::core::client::ClientT;
 use jsonrpsee::core::params::ObjectParams;
-use jsonrpsee::core::Error;
+use jsonrpsee::core::{Error, RpcResult};
 use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonschema::JSONSchema;
@@ -28,7 +29,7 @@ use test_utils::{
 
 use crate::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, EventsChunk,
-    JsonRpcClient, JsonRpcError, Tag,
+    JsonRpcError, Tag,
 };
 use crate::block::Block;
 use crate::deprecated_contract_class::ContractClass as DeprecatedContractClass;
@@ -48,7 +49,7 @@ async fn block_number() {
 
     // No blocks yet.
     let err = module
-        .call::<_, BlockNumber>("starknet_blockNumber", ObjectParams::new())
+        .call::<_, BlockNumber>("starknet_V0_3_0_blockNumber", ObjectParams::new())
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
@@ -65,8 +66,10 @@ async fn block_number() {
         .unwrap()
         .commit()
         .unwrap();
-    let block_number =
-        module.call::<_, BlockNumber>("starknet_blockNumber", ObjectParams::new()).await.unwrap();
+    let block_number = module
+        .call::<_, BlockNumber>("starknet_V0_3_0_blockNumber", ObjectParams::new())
+        .await
+        .unwrap();
     assert_eq!(block_number, BlockNumber(0));
 }
 
@@ -76,7 +79,7 @@ async fn block_hash_and_number() {
 
     // No blocks yet.
     let err = module
-        .call::<_, BlockHashAndNumber>("starknet_blockHashAndNumber", ObjectParams::new())
+        .call::<_, BlockHashAndNumber>("starknet_V0_3_0_blockHashAndNumber", ObjectParams::new())
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
@@ -95,7 +98,7 @@ async fn block_hash_and_number() {
         .commit()
         .unwrap();
     let block_hash_and_number = module
-        .call::<_, BlockHashAndNumber>("starknet_blockHashAndNumber", ObjectParams::new())
+        .call::<_, BlockHashAndNumber>("starknet_V0_3_0_blockHashAndNumber", ObjectParams::new())
         .await
         .unwrap();
     assert_eq!(
@@ -132,7 +135,7 @@ async fn get_block_w_transaction_hashes() {
     // Get block by hash.
     let block = module
         .call::<_, Block>(
-            "starknet_getBlockWithTxHashes",
+            "starknet_V0_3_0_getBlockWithTxHashes",
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header.block_hash))],
         )
         .await
@@ -142,7 +145,7 @@ async fn get_block_w_transaction_hashes() {
     // Get block by number.
     let block = module
         .call::<_, Block>(
-            "starknet_getBlockWithTxHashes",
+            "starknet_V0_3_0_getBlockWithTxHashes",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(expected_block.header.block_number))],
         )
         .await
@@ -151,7 +154,7 @@ async fn get_block_w_transaction_hashes() {
 
     // Ask for the latest block.
     let block = module
-        .call::<_, Block>("starknet_getBlockWithTxHashes", [BlockId::Tag(Tag::Latest)])
+        .call::<_, Block>("starknet_V0_3_0_getBlockWithTxHashes", [BlockId::Tag(Tag::Latest)])
         .await
         .unwrap();
     assert_eq!(block, expected_block);
@@ -159,7 +162,7 @@ async fn get_block_w_transaction_hashes() {
     // Ask for an invalid block hash.
     let err = module
         .call::<_, Block>(
-            "starknet_getBlockWithTxHashes",
+            "starknet_V0_3_0_getBlockWithTxHashes",
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             ))))],
@@ -175,7 +178,7 @@ async fn get_block_w_transaction_hashes() {
     // Ask for an invalid block number.
     let err = module
         .call::<_, Block>(
-            "starknet_getBlockWithTxHashes",
+            "starknet_V0_3_0_getBlockWithTxHashes",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))],
         )
         .await
@@ -225,7 +228,7 @@ async fn get_block_w_full_transactions() {
     // Get block by hash.
     let block = module
         .call::<_, Block>(
-            "starknet_getBlockWithTxs",
+            "starknet_V0_3_0_getBlockWithTxs",
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header.block_hash))],
         )
         .await
@@ -235,7 +238,7 @@ async fn get_block_w_full_transactions() {
     // Get block by number.
     let block = module
         .call::<_, Block>(
-            "starknet_getBlockWithTxs",
+            "starknet_V0_3_0_getBlockWithTxs",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(expected_block.header.block_number))],
         )
         .await
@@ -244,7 +247,7 @@ async fn get_block_w_full_transactions() {
 
     // Ask for the latest block.
     let block = module
-        .call::<_, Block>("starknet_getBlockWithTxs", [BlockId::Tag(Tag::Latest)])
+        .call::<_, Block>("starknet_V0_3_0_getBlockWithTxs", [BlockId::Tag(Tag::Latest)])
         .await
         .unwrap();
     assert_eq!(block, expected_block);
@@ -252,7 +255,7 @@ async fn get_block_w_full_transactions() {
     // Ask for an invalid block hash.
     let err = module
         .call::<_, Block>(
-            "starknet_getBlockWithTxs",
+            "starknet_V0_3_0_getBlockWithTxs",
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             ))))],
@@ -268,7 +271,7 @@ async fn get_block_w_full_transactions() {
     // Ask for an invalid block number.
     let err = module
         .call::<_, Block>(
-            "starknet_getBlockWithTxs",
+            "starknet_V0_3_0_getBlockWithTxs",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))],
         )
         .await
@@ -301,7 +304,7 @@ async fn get_storage_at() {
     // Get storage by block hash.
     let res = module
         .call::<_, StarkFelt>(
-            "starknet_getStorageAt",
+            "starknet_V0_3_0_getStorageAt",
             (*address, *key, BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))),
         )
         .await
@@ -311,7 +314,7 @@ async fn get_storage_at() {
     // Get storage by block number.
     let res = module
         .call::<_, StarkFelt>(
-            "starknet_getStorageAt",
+            "starknet_V0_3_0_getStorageAt",
             (*address, *key, BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))),
         )
         .await
@@ -321,7 +324,7 @@ async fn get_storage_at() {
     // Ask for an invalid contract.
     let err = module
         .call::<_, StarkFelt>(
-            "starknet_getStorageAt",
+            "starknet_V0_3_0_getStorageAt",
             (
                 ContractAddress(patricia_key!("0x12")),
                 key,
@@ -339,7 +342,7 @@ async fn get_storage_at() {
     // Ask for an invalid block hash.
     let err = module
         .call::<_, StarkFelt>(
-            "starknet_getStorageAt",
+            "starknet_V0_3_0_getStorageAt",
             (
                 *address,
                 key,
@@ -359,7 +362,7 @@ async fn get_storage_at() {
     // Ask for an invalid block number.
     let err = module
         .call::<_, StarkFelt>(
-            "starknet_getStorageAt",
+            "starknet_V0_3_0_getStorageAt",
             (*address, key, BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))),
         )
         .await
@@ -391,7 +394,7 @@ async fn get_class_hash_at() {
     // Get class hash by block hash.
     let res = module
         .call::<_, ClassHash>(
-            "starknet_getClassHashAt",
+            "starknet_V0_3_0_getClassHashAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address),
         )
         .await
@@ -401,7 +404,7 @@ async fn get_class_hash_at() {
     // Get class hash by block number.
     let res = module
         .call::<_, ClassHash>(
-            "starknet_getClassHashAt",
+            "starknet_V0_3_0_getClassHashAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *address),
         )
         .await
@@ -411,7 +414,7 @@ async fn get_class_hash_at() {
     // Ask for an invalid contract.
     let err = module
         .call::<_, ClassHash>(
-            "starknet_getClassHashAt",
+            "starknet_V0_3_0_getClassHashAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
                 ContractAddress(patricia_key!("0x12")),
@@ -428,7 +431,7 @@ async fn get_class_hash_at() {
     // Ask for an invalid block hash.
     let err = module
         .call::<_, ClassHash>(
-            "starknet_getClassHashAt",
+            "starknet_V0_3_0_getClassHashAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
@@ -447,7 +450,7 @@ async fn get_class_hash_at() {
     // Ask for an invalid block number.
     let err = module
         .call::<_, ClassHash>(
-            "starknet_getClassHashAt",
+            "starknet_V0_3_0_getClassHashAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), *address),
         )
         .await
@@ -479,7 +482,7 @@ async fn get_nonce() {
     // Get class hash by block hash.
     let res = module
         .call::<_, Nonce>(
-            "starknet_getNonce",
+            "starknet_V0_3_0_getNonce",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address),
         )
         .await
@@ -489,7 +492,7 @@ async fn get_nonce() {
     // Get class hash by block number.
     let res = module
         .call::<_, Nonce>(
-            "starknet_getNonce",
+            "starknet_V0_3_0_getNonce",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *address),
         )
         .await
@@ -499,7 +502,7 @@ async fn get_nonce() {
     // Ask for an invalid contract.
     let err = module
         .call::<_, Nonce>(
-            "starknet_getNonce",
+            "starknet_V0_3_0_getNonce",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
                 ContractAddress(patricia_key!("0x31")),
@@ -516,7 +519,7 @@ async fn get_nonce() {
     // Ask for an invalid block hash.
     let err = module
         .call::<_, Nonce>(
-            "starknet_getNonce",
+            "starknet_V0_3_0_getNonce",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
@@ -535,7 +538,7 @@ async fn get_nonce() {
     // Ask for an invalid block number.
     let err = module
         .call::<_, Nonce>(
-            "starknet_getNonce",
+            "starknet_V0_3_0_getNonce",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), *address),
         )
         .await
@@ -562,7 +565,7 @@ async fn get_transaction_by_hash() {
     let expected_transaction = block.body.transactions.index(0);
     let res = module
         .call::<_, TransactionWithType>(
-            "starknet_getTransactionByHash",
+            "starknet_V0_3_0_getTransactionByHash",
             [expected_transaction.transaction_hash()],
         )
         .await
@@ -572,7 +575,7 @@ async fn get_transaction_by_hash() {
     // Ask for an invalid transaction.
     let err = module
         .call::<_, TransactionWithType>(
-            "starknet_getTransactionByHash",
+            "starknet_V0_3_0_getTransactionByHash",
             [TransactionHash(StarkHash::from(1_u8))],
         )
         .await
@@ -603,7 +606,7 @@ async fn get_transaction_by_block_id_and_index() {
     // Get transaction by block hash.
     let res = module
         .call::<_, TransactionWithType>(
-            "starknet_getTransactionByBlockIdAndIndex",
+            "starknet_V0_3_0_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash)), 0),
         )
         .await
@@ -613,7 +616,7 @@ async fn get_transaction_by_block_id_and_index() {
     // Get transaction by block number.
     let res = module
         .call::<_, TransactionWithType>(
-            "starknet_getTransactionByBlockIdAndIndex",
+            "starknet_V0_3_0_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(block.header.block_number)), 0),
         )
         .await
@@ -623,7 +626,7 @@ async fn get_transaction_by_block_id_and_index() {
     // Ask for an invalid block hash.
     let err = module
         .call::<_, TransactionWithType>(
-            "starknet_getTransactionByBlockIdAndIndex",
+            "starknet_V0_3_0_getTransactionByBlockIdAndIndex",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
@@ -642,7 +645,7 @@ async fn get_transaction_by_block_id_and_index() {
     // Ask for an invalid block number.
     let err = module
         .call::<_, TransactionWithType>(
-            "starknet_getTransactionByBlockIdAndIndex",
+            "starknet_V0_3_0_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), 0),
         )
         .await
@@ -656,7 +659,7 @@ async fn get_transaction_by_block_id_and_index() {
     // Ask for an invalid transaction index.
     let err = module
         .call::<_, TransactionWithType>(
-            "starknet_getTransactionByBlockIdAndIndex",
+            "starknet_V0_3_0_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash)), 1),
         )
         .await
@@ -686,7 +689,7 @@ async fn get_block_transaction_count() {
     // Get block by hash.
     let res = module
         .call::<_, usize>(
-            "starknet_getBlockTransactionCount",
+            "starknet_V0_3_0_getBlockTransactionCount",
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash))],
         )
         .await
@@ -696,7 +699,7 @@ async fn get_block_transaction_count() {
     // Get block by number.
     let res = module
         .call::<_, usize>(
-            "starknet_getBlockTransactionCount",
+            "starknet_V0_3_0_getBlockTransactionCount",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(block.header.block_number))],
         )
         .await
@@ -705,7 +708,7 @@ async fn get_block_transaction_count() {
 
     // Ask for the latest block.
     let res = module
-        .call::<_, usize>("starknet_getBlockTransactionCount", [BlockId::Tag(Tag::Latest)])
+        .call::<_, usize>("starknet_V0_3_0_getBlockTransactionCount", [BlockId::Tag(Tag::Latest)])
         .await
         .unwrap();
     assert_eq!(res, transaction_count);
@@ -713,7 +716,7 @@ async fn get_block_transaction_count() {
     // Ask for an invalid block hash.
     let err = module
         .call::<_, usize>(
-            "starknet_getBlockTransactionCount",
+            "starknet_V0_3_0_getBlockTransactionCount",
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             ))))],
@@ -729,7 +732,7 @@ async fn get_block_transaction_count() {
     // Ask for an invalid block number.
     let err = module
         .call::<_, usize>(
-            "starknet_getBlockTransactionCount",
+            "starknet_V0_3_0_getBlockTransactionCount",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))],
         )
         .await
@@ -780,7 +783,7 @@ async fn get_state_update() {
     // Get state update by block hash.
     let res = module
         .call::<_, StateUpdate>(
-            "starknet_getStateUpdate",
+            "starknet_V0_3_0_getStateUpdate",
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))],
         )
         .await
@@ -790,7 +793,7 @@ async fn get_state_update() {
     // Get state update by block number.
     let res = module
         .call::<_, StateUpdate>(
-            "starknet_getStateUpdate",
+            "starknet_V0_3_0_getStateUpdate",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))],
         )
         .await
@@ -800,7 +803,7 @@ async fn get_state_update() {
     // Ask for an invalid block hash.
     let err = module
         .call::<_, StateUpdate>(
-            "starknet_getStateUpdate",
+            "starknet_V0_3_0_getStateUpdate",
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             ))))],
@@ -816,7 +819,7 @@ async fn get_state_update() {
     // Ask for an invalid block number.
     let err = module
         .call::<_, StateUpdate>(
-            "starknet_getStateUpdate",
+            "starknet_V0_3_0_getStateUpdate",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2)))],
         )
         .await
@@ -855,7 +858,7 @@ async fn get_transaction_receipt() {
     };
     let res = module
         .call::<_, TransactionReceiptWithStatus>(
-            "starknet_getTransactionReceipt",
+            "starknet_V0_3_0_getTransactionReceipt",
             [transaction.transaction_hash()],
         )
         .await
@@ -871,7 +874,7 @@ async fn get_transaction_receipt() {
     // Ask for an invalid transaction.
     let err = module
         .call::<_, TransactionReceiptWithStatus>(
-            "starknet_getTransactionReceipt",
+            "starknet_V0_3_0_getTransactionReceipt",
             [TransactionHash(StarkHash::from(1_u8))],
         )
         .await
@@ -919,7 +922,7 @@ async fn get_class() {
     // Get class by block hash.
     let res = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_getClass",
+            "starknet_V0_3_0_getClass",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *class_hash),
         )
         .await
@@ -929,7 +932,7 @@ async fn get_class() {
     // Get class by block number.
     let res = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_getClass",
+            "starknet_V0_3_0_getClass",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *class_hash),
         )
         .await
@@ -939,7 +942,7 @@ async fn get_class() {
     // Ask for an invalid class hash.
     let err = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_getClass",
+            "starknet_V0_3_0_getClass",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
                 ClassHash(stark_felt!("0x7")),
@@ -961,7 +964,7 @@ async fn get_class() {
     // Get class by block hash.
     let res = module
         .call::<_, ContractClass>(
-            "starknet_getClass",
+            "starknet_V0_3_0_getClass",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *class_hash),
         )
         .await
@@ -971,7 +974,7 @@ async fn get_class() {
     // Get class by block number.
     let res = module
         .call::<_, ContractClass>(
-            "starknet_getClass",
+            "starknet_V0_3_0_getClass",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *class_hash),
         )
         .await
@@ -982,7 +985,7 @@ async fn get_class() {
     // Ask for an invalid class hash in the given block.
     let err = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_getClass",
+            "starknet_V0_3_0_getClass",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_header.block_number)),
                 *class_hash,
@@ -999,7 +1002,7 @@ async fn get_class() {
     // Ask for an invalid block hash.
     let err = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_getClass",
+            "starknet_V0_3_0_getClass",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
@@ -1018,7 +1021,7 @@ async fn get_class() {
     // Ask for an invalid block number.
     let err = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_getClass",
+            "starknet_V0_3_0_getClass",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))), *class_hash),
         )
         .await
@@ -1071,7 +1074,7 @@ async fn get_class_at() {
     // Get class by block hash.
     let res = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_getClassAt",
+            "starknet_V0_3_0_getClassAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address),
         )
         .await
@@ -1081,7 +1084,7 @@ async fn get_class_at() {
     // Get class by block number.
     let res = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_getClassAt",
+            "starknet_V0_3_0_getClassAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *address),
         )
         .await
@@ -1098,7 +1101,7 @@ async fn get_class_at() {
     // Get class by block hash.
     let res = module
         .call::<_, ContractClass>(
-            "starknet_getClassAt",
+            "starknet_V0_3_0_getClassAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address),
         )
         .await
@@ -1108,7 +1111,7 @@ async fn get_class_at() {
     // Get class by block number.
     let res = module
         .call::<_, ContractClass>(
-            "starknet_getClassAt",
+            "starknet_V0_3_0_getClassAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *address),
         )
         .await
@@ -1119,7 +1122,7 @@ async fn get_class_at() {
     // Ask for an invalid contract.
     let err = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_getClassAt",
+            "starknet_V0_3_0_getClassAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
                 ContractAddress(patricia_key!("0x12")),
@@ -1136,7 +1139,7 @@ async fn get_class_at() {
     // Ask for an invalid contract in the given block.
     let err = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_getClassAt",
+            "starknet_V0_3_0_getClassAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_header.block_number)),
                 *address,
@@ -1153,7 +1156,7 @@ async fn get_class_at() {
     // Ask for an invalid block hash.
     let err = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_getClassAt",
+            "starknet_V0_3_0_getClassAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
@@ -1172,7 +1175,7 @@ async fn get_class_at() {
     // Ask for an invalid block number.
     let err = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_getClassAt",
+            "starknet_V0_3_0_getClassAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))), *address),
         )
         .await
@@ -1188,7 +1191,8 @@ async fn get_class_at() {
 async fn chain_id() {
     let (module, _) = get_test_rpc_server_and_storage_writer();
 
-    let res = module.call::<_, String>("starknet_chainId", ObjectParams::new()).await.unwrap();
+    let res =
+        module.call::<_, String>("starknet_V0_3_0_chainId", ObjectParams::new()).await.unwrap();
     // The result should be equal to the result of the following python code
     // hex(int.from_bytes(b'SN_GOERLI', byteorder="big", signed=False))
     // taken from starknet documentation:
@@ -1258,8 +1262,10 @@ async fn get_events_chunk_size_2_with_address() {
     }
 
     for (i, chunk) in emitted_events.chunks(chunk_size).enumerate() {
-        let res =
-            module.call::<_, EventsChunk>("starknet_getEvents", [filter.clone()]).await.unwrap();
+        let res = module
+            .call::<_, EventsChunk>("starknet_V0_3_0_getEvents", [filter.clone()])
+            .await
+            .unwrap();
         assert_eq!(res.events, chunk);
         let index = (i + 1) * chunk_size;
         let expected_continuation_token = if index < emitted_event_indices.len() {
@@ -1336,8 +1342,10 @@ async fn get_events_chunk_size_2_without_address() {
     }
 
     for (i, chunk) in emitted_events.chunks(chunk_size).enumerate() {
-        let res =
-            module.call::<_, EventsChunk>("starknet_getEvents", [filter.clone()]).await.unwrap();
+        let res = module
+            .call::<_, EventsChunk>("starknet_V0_3_0_getEvents", [filter.clone()])
+            .await
+            .unwrap();
         assert_eq!(res.events, chunk);
         let index = (i + 1) * chunk_size;
         let expected_continuation_token = if index < emitted_event_indices.len() {
@@ -1369,7 +1377,8 @@ async fn get_events_page_size_too_big() {
         keys: vec![],
     };
 
-    let err = module.call::<_, EventsChunk>("starknet_getEvents", [filter]).await.unwrap_err();
+    let err =
+        module.call::<_, EventsChunk>("starknet_V0_3_0_getEvents", [filter]).await.unwrap_err();
     assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::PageSizeTooBig as i32,
         JsonRpcError::PageSizeTooBig.to_string(),
@@ -1394,7 +1403,8 @@ async fn get_events_too_many_keys() {
         keys,
     };
 
-    let err = module.call::<_, EventsChunk>("starknet_getEvents", [filter]).await.unwrap_err();
+    let err =
+        module.call::<_, EventsChunk>("starknet_V0_3_0_getEvents", [filter]).await.unwrap_err();
     assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::TooManyKeysInFilter as i32,
         JsonRpcError::TooManyKeysInFilter.to_string(),
@@ -1416,7 +1426,7 @@ async fn get_events_no_blocks() {
         keys: vec![],
     };
 
-    let res = module.call::<_, EventsChunk>("starknet_getEvents", [filter]).await.unwrap();
+    let res = module.call::<_, EventsChunk>("starknet_V0_3_0_getEvents", [filter]).await.unwrap();
     assert_eq!(res, EventsChunk { events: vec![], continuation_token: None });
 }
 
@@ -1457,7 +1467,7 @@ async fn get_events_no_blocks_in_filter() {
         keys: vec![],
     };
 
-    let res = module.call::<_, EventsChunk>("starknet_getEvents", [filter]).await.unwrap();
+    let res = module.call::<_, EventsChunk>("starknet_V0_3_0_getEvents", [filter]).await.unwrap();
     assert_eq!(res, EventsChunk { events: vec![], continuation_token: None });
 }
 
@@ -1485,7 +1495,8 @@ async fn get_events_invalid_ct() {
         keys: vec![],
     };
 
-    let err = module.call::<_, EventsChunk>("starknet_getEvents", [filter]).await.unwrap_err();
+    let err =
+        module.call::<_, EventsChunk>("starknet_V0_3_0_getEvents", [filter]).await.unwrap_err();
     assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::InvalidContinuationToken as i32,
         JsonRpcError::InvalidContinuationToken.to_string(),
@@ -1499,12 +1510,13 @@ async fn run_server_no_blocks() {
     let gateway_config = get_test_gateway_config();
     let (addr, _handle) = run_server(&gateway_config, storage_reader).await.unwrap();
     let client = HttpClientBuilder::default().build(format!("http://{addr:?}")).unwrap();
-    let err = client.block_number().await.unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::NoBlocks as i32,
-        JsonRpcError::NoBlocks.to_string(),
-        None::<()>,
-    ));
+    let res: Result<RpcResult<BlockNumber>, Error> =
+        client.request("starknet_blockNumber", [""]).await;
+    let _expected_error = ErrorObjectOwned::from(JsonRpcError::NoBlocks);
+    match res {
+        Err(err) => assert_matches!(err, _expected_error),
+        Ok(_) => panic!("should error with no blocks"),
+    };
 }
 
 #[tokio::test]

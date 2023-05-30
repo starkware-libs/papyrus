@@ -36,7 +36,7 @@ pub(crate) async fn proxy_request(req: Request<Body>) -> Result<Request<Body>, B
 
 fn add_version_to_method_name_in_body(
     mut vec_body: Vec<jsonrpsee::types::Request<'_>>,
-    _prefix: &str,
+    prefix: &str,
     is_single: bool,
 ) -> Result<Vec<u8>, BoxError> {
     let Ok(vec_body) = vec_body
@@ -45,7 +45,7 @@ fn add_version_to_method_name_in_body(
             let Some(stripped_method) = strip_starknet_from_method(body.method.as_ref()) else {
                 return Err(BoxError::from("Method name has unexpected format"))
             };
-            body.method = format!("starknet_{}", stripped_method).into();
+            body.method = format!("starknet_{}_{}", prefix, stripped_method).into();
             Ok(body)
         })
         .collect::<Result<Vec<_>, _>>() else { return Err(BoxError::from("Method name has unexpected format")) };
