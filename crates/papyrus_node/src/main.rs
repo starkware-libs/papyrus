@@ -27,15 +27,15 @@ async fn run_threads(config: Config) -> anyhow::Result<()> {
     let monitoring_server_handle = monitoring_server.spawn_server().await;
 
     // JSON-RPC server.
-    let (_, server_future) = run_server(&config.gateway, storage_reader.clone()).await?;
-    let server_handle = tokio::spawn(server_future);
+    let (_, server_handle) = run_server(&config.gateway, storage_reader.clone()).await?;
+    let server_handle_future = tokio::spawn(server_handle.stopped());
 
     // Sync task.
     let sync_future = run_sync(config, storage_reader.clone(), storage_writer);
     let sync_handle = tokio::spawn(sync_future);
 
     let (_, _, sync_result) =
-        tokio::try_join!(server_handle, monitoring_server_handle, sync_handle)?;
+        tokio::try_join!(server_handle_future, monitoring_server_handle, sync_handle)?;
     sync_result?;
     return Ok(());
 

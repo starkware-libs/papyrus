@@ -1,4 +1,5 @@
 use assert_matches::assert_matches;
+use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use indexmap::{indexmap, IndexMap};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
@@ -11,6 +12,7 @@ use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey, Thi
 use starknet_api::{patricia_key, stark_felt};
 use test_utils::get_test_state_diff;
 
+use crate::compiled_class::{CasmStorageReader, CasmStorageWriter};
 use crate::state::{StateStorageReader, StateStorageWriter, StorageError};
 use crate::test_utils::get_test_storage;
 use crate::StorageWriter;
@@ -425,6 +427,7 @@ fn revert_state() {
     let contract2 = ContractAddress(patricia_key!("0x2"));
     let class1 = ClassHash(stark_felt!("0x11"));
     let class2 = ClassHash(stark_felt!("0x22"));
+    let compiled_class2 = CasmContractClass::default();
     let updated_storage_key = StorageKey(patricia_key!("0x1"));
     let new_data = StarkFelt::from(1_u8);
     let updated_storage = IndexMap::from([(updated_storage_key, new_data)]);
@@ -448,6 +451,8 @@ fn revert_state() {
         .append_state_diff(BlockNumber(0), state_diff0.clone(), IndexMap::new())
         .unwrap()
         .append_state_diff(BlockNumber(1), state_diff1.clone(), IndexMap::new())
+        .unwrap()
+        .append_casm(class2, &compiled_class2)
         .unwrap()
         .commit()
         .unwrap();
@@ -477,11 +482,15 @@ fn revert_state() {
     let expected_deleted_deprecated_classes =
         IndexMap::from([(class1, DeprecatedContractClass::default())]);
     let expected_deleted_classes = IndexMap::from([(class2, ContractClass::default())]);
+    let expected_deleted_compiled_classes =
+        IndexMap::from([(class2, CasmContractClass::default())]);
     assert_matches!(
         deleted_data,
-        Some((thin_state_diff, class_definitions, deprecated_class_definitions))
-        if thin_state_diff == expected_deleted_state_diff && class_definitions==expected_deleted_classes
+        Some((thin_state_diff, class_definitions, deprecated_class_definitions, compiled_classes))
+        if thin_state_diff == expected_deleted_state_diff
+        && class_definitions == expected_deleted_classes
         && deprecated_class_definitions == expected_deleted_deprecated_classes
+        && compiled_classes == expected_deleted_compiled_classes
     );
 
     let txn = reader.begin_ro_txn().unwrap();
@@ -499,6 +508,7 @@ fn revert_state() {
         state_reader.get_storage_at(state_number, contract0, &updated_storage_key).unwrap(),
         StarkFelt::from(0_u8)
     );
+    assert!(txn.get_casm(&class2).unwrap().is_none());
 }
 
 #[test]
