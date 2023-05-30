@@ -9,7 +9,7 @@ fn gzip_encode_decode_contract_program() {
     let program: Program = serde_json::from_value(program_json).unwrap();
     let program_as_bytes = serde_json::to_vec(&program).unwrap();
     let len_before_compression = program_as_bytes.len();
-
+    // coment.
     let encoded = GzEncoded::encode(program.clone()).unwrap();
     let mut buff = Vec::new();
     let decoded = encoded.decode(&mut buff).unwrap();
