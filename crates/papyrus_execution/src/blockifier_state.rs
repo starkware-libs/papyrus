@@ -2,10 +2,12 @@
 
 use std::fmt::Display;
 
-use blockifier::execution::contract_class::{ContractClass, ContractClassV0, ContractClassV1};
-use blockifier::state::errors::StateError;
-use blockifier::state::state_api::{StateReader, StateResult};
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+use native_blockifier::blockifier::execution::contract_class::{
+    ContractClass, ContractClassV0, ContractClassV1,
+};
+use native_blockifier::blockifier::state::errors::StateError;
+use native_blockifier::blockifier::state::state_api::{StateReader, StateResult};
 use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::RO;
 use papyrus_storage::state::StateReader as RawPapyrusStateReader;

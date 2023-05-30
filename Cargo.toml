@@ -17,14 +17,14 @@ members = [
 ]
 
 [workspace.dependencies]
-anyhow = { version = "1.0.44" }
+anyhow = { version = "1.0.69" }
 assert = { version = "0.0.4" }
 assert_matches = { version = "1.5.0" }
 async-stream = { version = "0.3.3" }
 async-trait = { version = "0.1.56" }
 axum = { version = "0.6.12" }
 base64 = { version = "0.13.0" }
-blockifier = { git = "https://github.com/starkware-libs/blockifier", branch = "main-v0.12.0" }
+native_blockifier = { git = "https://github.com/starkware-libs/blockifier", branch = "main-v0.12.0" }
 byteorder = { version = "1.4.3" }
 cairo-lang-starknet = { version = "1.1.0-alpha0" }
 cairo-lang-casm = { version = "1.1.0-alpha0" }
