@@ -1,6 +1,6 @@
 ignore:
-  - "**/*test*"
-  - "crates/*test*/*"
+  - "crates/test_utils"
+  - "crates/papyrus_load_test"
 coverage:
   status:
     project:
