@@ -1,15 +1,17 @@
 use std::sync::Arc;
 
 use assert_matches::assert_matches;
+use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use futures_util::pin_mut;
-use indexmap::IndexMap;
+use indexmap::{indexmap, IndexMap};
 use mockall::predicate;
+use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use reqwest::StatusCode;
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::StorageKey;
+use starknet_api::state::{ContractClass as sn_api_ContractClass, StateDiff, StorageKey};
 use starknet_api::{patricia_key, stark_felt};
 use starknet_client::{
     Block, ClientError, ContractClass, DeclaredClassHashEntry, DeployedContract,
@@ -351,4 +353,67 @@ async fn stream_state_updates() {
     assert_eq!(state_diff, starknet_api::state::StateDiff::default());
 
     assert!(stream.next().await.is_none());
+}
+
+#[tokio::test]
+async fn stream_compiled_classes() {
+    let (reader, mut writer) = get_test_storage();
+    writer.begin_rw_txn().unwrap().append_state_diff(
+        BlockNumber(0),
+        StateDiff {
+            deployed_contracts: indexmap! {},
+            storage_diffs: indexmap! {},
+            declared_classes: indexmap! {
+                ClassHash(stark_felt!("0x0")) => (CompiledClassHash(stark_felt!("0x0")), sn_api_ContractClass::default()),
+                ClassHash(stark_felt!("0x1")) => (CompiledClassHash(stark_felt!("0x1")), sn_api_ContractClass::default())
+            },
+            deprecated_declared_classes: indexmap! {},
+            nonces: indexmap! {},
+            replaced_classes: indexmap! {},
+        },
+        indexmap! {},
+    ).unwrap().append_state_diff(
+        BlockNumber(1),
+        StateDiff {
+            deployed_contracts: indexmap! {},
+            storage_diffs: indexmap! {},
+            declared_classes: indexmap! {
+                ClassHash(stark_felt!("0x2")) => (CompiledClassHash(stark_felt!("0x2")), sn_api_ContractClass::default()),
+                ClassHash(stark_felt!("0x3")) => (CompiledClassHash(stark_felt!("0x3")), sn_api_ContractClass::default())
+            },
+            deprecated_declared_classes: indexmap! {},
+            nonces: indexmap! {},
+            replaced_classes: indexmap! {},
+        },
+        indexmap! {},
+    ).unwrap().commit().unwrap();
+
+    let felts: Vec<_> = (0..4).map(|i| stark_felt!(format!("0x{i}").as_str())).collect();
+    let mut mock = MockStarknetClientTrait::new();
+    for felt in felts.clone() {
+        mock.expect_compiled_class_by_hash()
+            .with(predicate::eq(ClassHash(felt)))
+            .times(1)
+            .returning(move |_x| Ok(Some(CasmContractClass::default())));
+    }
+
+    let central_source = GenericCentralSource {
+        concurrent_requests: TEST_CONCURRENT_REQUESTS,
+        starknet_client: Arc::new(mock),
+        storage_reader: reader,
+    };
+
+    let stream = central_source.stream_compiled_classes(BlockNumber(0), BlockNumber(2));
+    pin_mut!(stream);
+
+    let expected_compiled_class = CasmContractClass::default();
+    for felt in felts {
+        let (class_hash, compiled_class_hash, compiled_class) =
+            stream.next().await.unwrap().unwrap();
+        let expected_class_hash = ClassHash(felt);
+        let expected_compiled_class_hash = CompiledClassHash(felt);
+        assert_eq!(class_hash, expected_class_hash);
+        assert_eq!(compiled_class_hash, expected_compiled_class_hash);
+        assert_eq!(compiled_class, expected_compiled_class);
+    }
 }

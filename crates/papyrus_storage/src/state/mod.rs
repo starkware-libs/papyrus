@@ -5,6 +5,7 @@ mod state_test;
 
 use std::collections::HashSet;
 
+use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use indexmap::IndexMap;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
@@ -21,6 +22,7 @@ type DeclaredClassesTable<'env> = TableHandle<'env, ClassHash, ContractClass>;
 type DeclaredClassesBlockTable<'env> = TableHandle<'env, ClassHash, BlockNumber>;
 type DeprecatedDeclaredClassesTable<'env> =
     TableHandle<'env, ClassHash, IndexedDeprecatedContractClass>;
+type CompiledClassesTable<'env> = TableHandle<'env, ClassHash, CasmContractClass>;
 type DeployedContractsTable<'env> = TableHandle<'env, ContractAddress, IndexedDeployedContract>;
 type ContractStorageTable<'env> =
     TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), StarkFelt>;
@@ -58,6 +60,7 @@ type RevertedStateDiff = (
     ThinStateDiff,
     IndexMap<ClassHash, ContractClass>,
     IndexMap<ClassHash, DeprecatedContractClass>,
+    IndexMap<ClassHash, CasmContractClass>,
 );
 
 pub trait StateStorageWriter
@@ -114,6 +117,15 @@ pub struct StateReader<'env, Mode: TransactionKind> {
 
 #[allow(dead_code)]
 impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
+    /// Creates a new state reader from a storage transaction.
+    ///
+    /// Opens a handle to each table to be used when reading.
+    ///
+    /// # Arguments
+    /// * txn - A storage transaction object.
+    ///
+    /// # Errors
+    /// Returns [`StorageError`] if there was an error opening the tables.
     fn new(txn: &'env StorageTxn<'env, Mode>) -> StorageResult<Self> {
         let declared_classes_table = txn.txn.open_table(&txn.tables.declared_classes)?;
         let declared_classes_block_table =
@@ -136,11 +148,19 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         })
     }
 
-    // Returns the latest class hash of the contract, before state_number.
-    // If the class wasn't replaced before state_number, returns None.
-    // Note: None means that the class in deployed_contracts table was not replaced before
-    // state_number, it could still be declared before state_number - need to check against the
-    // value in deployed_contracts.
+    /// Returns the latest class hash of the contract, before state_number.
+    /// If the class wasn't replaced before state_number, returns `None`.
+    ///
+    /// **Note:** None means that the class in deployed_contracts table was not replaced before
+    /// state_number, it could still be declared before state_number - need to check against the
+    /// value in deployed_contracts.
+    ///
+    /// # Arguments
+    /// * state_number - state number to search before.
+    /// * address - contract addrest to search for.
+    ///
+    /// # Errors
+    /// Returns [`StorageError`] if there was an error searching the table.
     fn get_replaced_class_hash(
         &self,
         state_number: StateNumber,
@@ -161,6 +181,15 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         }
     }
 
+    /// Returns the class hash at a given state number.
+    /// If class hash is not found, returns `None`.
+    ///
+    /// # Arguments
+    /// * state_number - state number to search before.
+    /// * address - contract addrest to search for.
+    ///
+    /// # Errors
+    /// Returns [`StorageError`] if there was an error searching the table.
     pub fn get_class_hash_at(
         &self,
         state_number: StateNumber,
@@ -180,6 +209,15 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         Ok(None)
     }
 
+    /// Returns the nonce at a given state number.
+    /// If there is no nonce at the given state number, returns `None`.
+    ///
+    /// # Arguments
+    /// * state_number - state number to search before.
+    /// * address - contract addrest to search for.
+    ///
+    /// # Errors
+    /// Returns [`StorageError`] if there was an error searching the table.
     pub fn get_nonce_at(
         &self,
         state_number: StateNumber,
@@ -207,6 +245,16 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         }
     }
 
+    /// Returns the storage value at a given state number for a given contract and key.
+    /// If no value is stored at the given state number, returns [`StarkFelt`]::default.
+    ///
+    /// # Arguments
+    /// * state_number - state number to search before.
+    /// * address - contract addrest to search for.
+    /// * key - key to search for.
+    ///
+    /// # Errors
+    /// Returns [`StorageError`] if there was an error searching the table.
     pub fn get_storage_at(
         &self,
         state_number: StateNumber,
@@ -235,6 +283,20 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         }
     }
 
+    /// Returns the class definition at a given state number.
+    ///
+    /// If class_hash is not found, returns `None`.
+    /// If class_hash is found but given state is before the block it's defined at, returns `None`.
+    ///
+    /// # Arguments
+    /// * state_number - state number to search before.
+    /// * class_hash - class hash to search for.
+    ///
+    /// # Errors
+    /// Returns [`StorageError`] if there was an error searching the table.
+    ///
+    /// Returns [`StorageError`]::DBInconsistency if the block number found for the class hash but
+    /// the contract class was not found.
     pub fn get_class_definition_at(
         &self,
         state_number: StateNumber,
@@ -256,6 +318,14 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         Ok(Some(contract_class))
     }
 
+    /// Returns the block number for a given class hash (the block in which it was defined).
+    /// If class is not defined, returns `None`.
+    ///
+    /// # Arguments
+    /// * class_hash - class hash to search for.
+    ///
+    /// # Errors
+    /// Returns [`StorageError`] if there was an error searching the table.
     pub fn get_class_definition_block_number(
         &self,
         class_hash: &ClassHash,
@@ -263,18 +333,26 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         Ok(self.declared_classes_block_table.get(self.txn, class_hash)?)
     }
 
+    // Returns the deprecated contract class at a given state number for a given class hash.
+    /// If class is not found, returns `None`.
+    /// If class is defined but in a block after given state number, returns `None`.
+    ///
+    /// # Arguments
+    /// * state_number - state number to search before.
+    /// * class_hash - class hash to search for.
+    ///
+    /// # Errors
+    /// Returns [`StorageError`] if there was an error searching the table.
     pub fn get_deprecated_class_definition_at(
         &self,
         state_number: StateNumber,
         class_hash: &ClassHash,
     ) -> StorageResult<Option<DeprecatedContractClass>> {
-        let value = self.deprecated_declared_classes_table.get(self.txn, class_hash)?;
-        if let Some(value) = value {
-            if state_number.is_after(value.block_number) {
-                return Ok(Some(value.contract_class));
-            }
+        let Some(value) = self.deprecated_declared_classes_table.get(self.txn, class_hash)? else { return Ok(None) };
+        if state_number.is_before(value.block_number) {
+            return Ok(None);
         }
-        Ok(None)
+        Ok(Some(value.contract_class))
     }
 }
 
@@ -366,6 +444,8 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             self.txn.open_table(&self.tables.declared_classes_block)?;
         let deprecated_declared_classes_table =
             self.txn.open_table(&self.tables.deprecated_declared_classes)?;
+        // TODO(yair): Consider reverting the compiled classes in their own module.
+        let compiled_classes_table = self.txn.open_table(&self.tables.casms)?;
         let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
         let nonces_table = self.txn.open_table(&self.tables.nonces)?;
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
@@ -388,6 +468,11 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             .get_state_diff(block_number)?
             .expect("Missing state diff for block {block_number}.");
         markers_table.upsert(&self.txn, &MarkerKind::State, &block_number)?;
+        let compiled_classes_marker =
+            markers_table.get(&self.txn, &MarkerKind::CompiledClass)?.unwrap_or_default();
+        if compiled_classes_marker == block_number.next() {
+            markers_table.upsert(&self.txn, &MarkerKind::CompiledClass, &block_number)?;
+        }
         let deleted_classes = delete_declared_classes(
             &self.txn,
             &thin_state_diff,
@@ -399,6 +484,11 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             block_number,
             &thin_state_diff,
             &deprecated_declared_classes_table,
+        )?;
+        let deleted_compiled_classes = delete_compiled_classes(
+            &self.txn,
+            thin_state_diff.declared_classes.keys(),
+            &compiled_classes_table,
         )?;
         delete_deployed_contracts(
             &self.txn,
@@ -417,7 +507,15 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             &replaced_classes_table,
         )?;
 
-        Ok((self, Some((thin_state_diff, deleted_classes, deleted_deprecated_classes))))
+        Ok((
+            self,
+            Some((
+                thin_state_diff,
+                deleted_classes,
+                deleted_deprecated_classes,
+                deleted_compiled_classes,
+            )),
+        ))
     }
 }
 
@@ -607,6 +705,25 @@ fn delete_deprecated_declared_classes<'env>(
                 deprecated_declared_classes_table.delete(txn, class_hash)?;
             }
         }
+    }
+
+    Ok(deleted_data)
+}
+
+fn delete_compiled_classes<'a, 'env>(
+    txn: &'env DbTransaction<'env, RW>,
+    class_hashes: impl Iterator<Item = &'a ClassHash>,
+    compiled_classes_table: &'env CompiledClassesTable<'env>,
+) -> StorageResult<IndexMap<ClassHash, CasmContractClass>> {
+    let mut deleted_data = IndexMap::new();
+    for class_hash in class_hashes {
+        let Some(compiled_class) = compiled_classes_table.get(txn, class_hash)?
+        // No compiled class means the rest of the compiled classes weren't downloaded yet.
+        else {
+            break;
+        };
+        compiled_classes_table.delete(txn, class_hash)?;
+        deleted_data.insert(*class_hash, compiled_class);
     }
 
     Ok(deleted_data)

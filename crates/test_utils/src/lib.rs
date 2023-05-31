@@ -75,16 +75,11 @@ pub fn read_json_file(path_in_resource_dir: &str) -> serde_json::Value {
 }
 
 /// Used in random test to create a random generator, see for example storage_serde_test.
-/// Randomness can be seeded by passing a seed parameter or by setting and env variable `SEED` or by
-/// the OS (the rust default).
-pub fn get_rng(seed: Option<u64>) -> ChaCha8Rng {
-    let seed: u64 = if let Some(seed) = seed {
-        seed
-    } else if let Ok(seed_str) = env::var("SEED") {
-        seed_str.parse().unwrap()
-    } else {
-        let mut rng = rand::thread_rng();
-        rng.gen()
+/// Randomness can be seeded by setting and env variable `SEED` or by the OS (the rust default).
+pub fn get_rng() -> ChaCha8Rng {
+    let seed: u64 = match env::var("SEED") {
+        Ok(seed_str) => seed_str.parse().unwrap(),
+        _ => rand::thread_rng().gen(),
     };
     // Will be printed if the test failed.
     println!("Testing with seed: {seed:?}");
@@ -212,13 +207,12 @@ fn set_transaction_hash(tx: &mut Transaction, hash: TransactionHash) {
 
 // Returns a test block with a variable number of transactions and events.
 pub fn get_test_block(
-    seed: Option<u64>,
     transaction_count: usize,
     events_per_tx: Option<usize>,
     from_addresses: Option<Vec<ContractAddress>>,
     keys: Option<Vec<Vec<EventKey>>>,
 ) -> Block {
-    let mut rng = get_rng(seed);
+    let mut rng = get_rng();
     let events_per_tx = if let Some(events_per_tx) = events_per_tx { events_per_tx } else { 0 };
     get_rand_test_block_with_events(
         &mut rng,
@@ -231,13 +225,12 @@ pub fn get_test_block(
 
 // Returns a test block body with a variable number of transactions.
 pub fn get_test_body(
-    seed: Option<u64>,
     transaction_count: usize,
     events_per_tx: Option<usize>,
     from_addresses: Option<Vec<ContractAddress>>,
     keys: Option<Vec<Vec<EventKey>>>,
 ) -> BlockBody {
-    let mut rng = get_rng(seed);
+    let mut rng = get_rng();
     let events_per_tx = if let Some(events_per_tx) = events_per_tx { events_per_tx } else { 0 };
     get_rand_test_body_with_events(&mut rng, transaction_count, events_per_tx, from_addresses, keys)
 }
@@ -245,7 +238,7 @@ pub fn get_test_body(
 // Returns a state diff with one item in each IndexMap.
 // For a random test state diff call StateDiff::get_test_instance.
 pub fn get_test_state_diff() -> StateDiff {
-    let mut rng = ChaCha8Rng::seed_from_u64(0);
+    let mut rng = get_rng();
     let mut res = StateDiff::get_test_instance(&mut rng);
     // TODO(anatg): fix StateDiff::get_test_instance so the declared_classes will have different
     // hashes than the deprecated_contract_classes.
