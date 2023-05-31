@@ -2,7 +2,9 @@ use std::net::{SocketAddr, TcpListener};
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
+use axum::response::Response;
 use axum::Router;
+use http_body::combinators::UnsyncBoxBody;
 use papyrus_storage::{table_names, test_utils};
 use serde_json::{json, Value};
 use tower::ServiceExt;
@@ -18,18 +20,24 @@ fn setup_app() -> Router {
     app(storage_reader, TEST_VERSION, serde_json::to_value(TEST_CONFIG_REPRESENTATION).unwrap())
 }
 
+async fn request_app(
+    app: Router,
+    method: &str,
+) -> Response<UnsyncBoxBody<axum::body::Bytes, axum::Error>> {
+    app.oneshot(
+        Request::builder()
+            .uri(format!("/{MONITORING_PREFIX}/{method}").as_str())
+            .body(Body::empty())
+            .unwrap(),
+    )
+    .await
+    .unwrap()
+}
+
 #[tokio::test]
 async fn db_stats() {
     let app = setup_app();
-    let response = app
-        .oneshot(
-            Request::builder()
-                .uri(format!("/{MONITORING_PREFIX}/dbTablesStats").as_str())
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
+    let response = request_app(app, "dbTablesStats").await;
 
     assert_eq!(response.status(), StatusCode::OK);
 
@@ -43,15 +51,7 @@ async fn db_stats() {
 #[tokio::test]
 async fn version() {
     let app = setup_app();
-    let response = app
-        .oneshot(
-            Request::builder()
-                .uri(format!("/{MONITORING_PREFIX}/nodeVersion").as_str())
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
+    let response = request_app(app, "nodeVersion").await;
 
     assert_eq!(response.status(), StatusCode::OK);
 
@@ -62,15 +62,7 @@ async fn version() {
 #[tokio::test]
 async fn node_config() {
     let app = setup_app();
-    let response = app
-        .oneshot(
-            Request::builder()
-                .uri(format!("/{MONITORING_PREFIX}/nodeConfig").as_str())
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
+    let response = request_app(app, "nodeConfig").await;
 
     assert_eq!(response.status(), StatusCode::OK);
 
@@ -82,15 +74,7 @@ async fn node_config() {
 #[tokio::test]
 async fn alive() {
     let app = setup_app();
-    let response = app
-        .oneshot(
-            Request::builder()
-                .uri(format!("/{MONITORING_PREFIX}/alive").as_str())
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
+    let response = request_app(app, "alive").await;
 
     assert_eq!(response.status(), StatusCode::OK);
 }
