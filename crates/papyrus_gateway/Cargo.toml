@@ -10,6 +10,7 @@ futures.workspace = true
 futures-util.workspace = true
 hyper = { workspace = true, features = ["full"] }
 jsonrpsee = { workspace = true, features = ["full"] }
+papyrus_config = { path = "../papyrus_config" }
 papyrus_proc_macros = { path = "../papyrus_proc_macros"}
 papyrus_storage = { path = "../papyrus_storage" }
 serde = { workspace = true, features = ["derive"] }

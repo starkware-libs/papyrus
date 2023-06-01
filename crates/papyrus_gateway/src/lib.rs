@@ -16,6 +16,7 @@ use jsonrpsee::server::{ServerBuilder, ServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
 use jsonrpsee::types::ErrorObjectOwned;
+use papyrus_config::default_chain_id;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::db::TransactionKind;
@@ -42,6 +43,17 @@ pub struct GatewayConfig {
     pub server_address: String,
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
+}
+
+impl Default for GatewayConfig {
+    fn default() -> Self {
+        GatewayConfig {
+            chain_id: ChainId(default_chain_id()),
+            server_address: String::from("0.0.0.0:8080"),
+            max_events_chunk_size: 1000,
+            max_events_keys: 100,
+        }
+    }
 }
 
 impl From<JsonRpcError> for ErrorObjectOwned {

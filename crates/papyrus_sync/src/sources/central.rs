@@ -35,6 +35,22 @@ pub struct CentralSourceConfig {
     pub http_headers: Option<HashMap<String, String>>,
     pub retry_config: RetryConfig,
 }
+
+impl Default for CentralSourceConfig {
+    fn default() -> Self {
+        CentralSourceConfig {
+            concurrent_requests: 300,
+            url: String::from("https://alpha-mainnet.starknet.io/"),
+            http_headers: None,
+            retry_config: RetryConfig {
+                retry_base_millis: 30,
+                retry_max_delay_millis: 30000,
+                max_retries: 10,
+            },
+        }
+    }
+}
+
 pub struct GenericCentralSource<TStarknetClient: StarknetClientTrait + Send + Sync> {
     pub concurrent_requests: usize,
     pub starknet_client: Arc<TStarknetClient>,
