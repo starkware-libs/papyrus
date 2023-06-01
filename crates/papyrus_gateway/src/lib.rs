@@ -44,6 +44,17 @@ pub struct GatewayConfig {
     pub max_events_keys: usize,
 }
 
+impl Default for GatewayConfig {
+    fn default() -> Self {
+        GatewayConfig {
+            chain_id: ChainId(String::from("SN_MAIN")),
+            server_address: String::from("0.0.0.0:8080"),
+            max_events_chunk_size: 1000,
+            max_events_keys: 100,
+        }
+    }
+}
+
 impl From<JsonRpcError> for ErrorObjectOwned {
     fn from(err: JsonRpcError) -> Self {
         ErrorObjectOwned::owned(err as i32, err.to_string(), None::<()>)
