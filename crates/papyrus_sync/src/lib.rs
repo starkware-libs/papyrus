@@ -35,6 +35,17 @@ pub struct SyncConfig {
     pub state_updates_max_stream_size: u32,
 }
 
+impl Default for SyncConfig {
+    fn default() -> Self {
+        SyncConfig {
+            block_propagation_sleep_duration: Duration::from_secs(10),
+            recoverable_error_sleep_duration: Duration::from_secs(10),
+            blocks_max_stream_size: 1000,
+            state_updates_max_stream_size: 1000,
+        }
+    }
+}
+
 // Orchestrates specific network interfaces (e.g. central, p2p, l1) and writes to Storage.
 pub struct GenericStateSync<TCentralSource: CentralSourceTrait + Sync + Send> {
     config: SyncConfig,

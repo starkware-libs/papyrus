@@ -37,6 +37,17 @@ pub struct DbConfig {
     pub growth_step: isize,
 }
 
+impl Default for DbConfig {
+    fn default() -> Self {
+        DbConfig {
+            path: PathBuf::from("./data"),
+            min_size: 1 << 20,    // 1MB
+            max_size: 1 << 40,    // 1TB
+            growth_step: 1 << 26, // 64MB
+        }
+    }
+}
+
 /// A single table statistics.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbTableStats {
