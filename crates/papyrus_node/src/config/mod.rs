@@ -76,47 +76,18 @@ pub(crate) struct ConfigBuilder {
 }
 
 // Default configuration values.
-// TODO: Consider implementing Default for each component individually.
 impl Default for ConfigBuilder {
     fn default() -> Self {
-        let chain_id = ChainId(String::from("SN_MAIN"));
+        let gateway_config = GatewayConfig::default();
         ConfigBuilder {
             args: None,
-            chain_id: chain_id.clone(),
+            chain_id: gateway_config.chain_id.clone(),
             config: Config {
-                central: CentralSourceConfig {
-                    concurrent_requests: 300,
-                    url: String::from("https://alpha-mainnet.starknet.io/"),
-                    http_headers: None,
-                    retry_config: RetryConfig {
-                        retry_base_millis: 30,
-                        retry_max_delay_millis: 30000,
-                        max_retries: 10,
-                    },
-                },
-                gateway: GatewayConfig {
-                    chain_id,
-                    server_address: String::from("0.0.0.0:8080"),
-                    max_events_chunk_size: 1000,
-                    max_events_keys: 100,
-                },
-                monitoring_gateway: MonitoringGatewayConfig {
-                    server_address: String::from("0.0.0.0:8081"),
-                },
-                storage: StorageConfig {
-                    db_config: DbConfig {
-                        path: PathBuf::from("./data"),
-                        min_size: 1 << 20,    // 1MB
-                        max_size: 1 << 40,    // 1TB
-                        growth_step: 1 << 26, // 64MB
-                    },
-                },
-                sync: Some(SyncConfig {
-                    block_propagation_sleep_duration: Duration::from_secs(10),
-                    recoverable_error_sleep_duration: Duration::from_secs(10),
-                    blocks_max_stream_size: 1000,
-                    state_updates_max_stream_size: 1000,
-                }),
+                central: CentralSourceConfig::default(),
+                gateway: gateway_config,
+                monitoring_gateway: MonitoringGatewayConfig::default(),
+                storage: StorageConfig::default(),
+                sync: Some(SyncConfig::default()),
             },
         }
     }
