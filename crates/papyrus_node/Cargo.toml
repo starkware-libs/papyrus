@@ -15,6 +15,7 @@ papyrus_base_layer = { path = "../papyrus_base_layer" }
 futures-util.workspace = true
 jsonrpsee = { workspace = true, features = ["full"] }
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
+papyrus_config = { path = "../papyrus_config" }
 papyrus_gateway = { path = "../papyrus_gateway" }
 papyrus_monitoring_gateway = { path = "../papyrus_monitoring_gateway" }
 papyrus_storage = { path = "../papyrus_storage" }

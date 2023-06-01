@@ -266,7 +266,7 @@ pub enum StorageError {
 
 pub type StorageResult<V> = std::result::Result<V, StorageError>;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Default)]
 pub struct StorageConfig {
     pub db_config: DbConfig,
 }
