@@ -16,7 +16,7 @@ use jsonrpsee::server::{ServerBuilder, ServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
 use jsonrpsee::types::ErrorObjectOwned;
-use papyrus_config::DEFAULT_CHAIN_ID;
+use papyrus_config::{Description, ParamPath, SerializedValue, SubConfig, DEFAULT_CHAIN_ID};
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::db::TransactionKind;
@@ -37,7 +37,7 @@ use crate::transaction::Transaction;
 
 /// Maximum size of a supported transaction body - 10MB.
 pub const SERVER_MAX_BODY_SIZE: u32 = 10 * 1024 * 1024;
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct GatewayConfig {
     pub chain_id: ChainId,
     pub server_address: String,
@@ -53,6 +53,55 @@ impl Default for GatewayConfig {
             max_events_chunk_size: 1000,
             max_events_keys: 100,
         }
+    }
+}
+
+impl SubConfig for GatewayConfig {
+    fn config_name() -> String {
+        String::from("GatewayConfig")
+    }
+
+    fn dump(&self) -> Vec<(ParamPath, SerializedValue, Description)> {
+        vec![
+            (
+                GatewayConfig::chain_id_path(),
+                String::from("The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id."),
+                self.chain_id.0.clone(),
+            ),
+            (
+                GatewayConfig::server_address_path(),
+                String::from("IP:PORT of the node's JSON-RPC server."),
+                self.server_address.clone(),
+            ),
+            (
+                GatewayConfig::max_events_chunk_size_path(),
+                String::from("Maximum chunk size supported by the node in get_events requests."),
+                self.max_events_chunk_size.to_string(),
+            ),
+            (
+                GatewayConfig::max_events_keys_path(),
+                String::from("Maximum number of keys supported by the node in get_events requests."),
+                self.max_events_keys.to_string(),
+            ),
+        ]
+    }
+}
+
+impl GatewayConfig {
+    fn chain_id_path() -> ParamPath {
+        GatewayConfig::param_path(String::from("chain_id"))
+    }
+
+    fn server_address_path() -> ParamPath {
+        GatewayConfig::param_path(String::from("server_address"))
+    }
+
+    fn max_events_chunk_size_path() -> ParamPath {
+        GatewayConfig::param_path(String::from("max_events_chunk_size"))
+    }
+
+    fn max_events_keys_path() -> ParamPath {
+        GatewayConfig::param_path(String::from("max_events_keys"))
     }
 }
 
