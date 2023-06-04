@@ -15,6 +15,7 @@ papyrus_proc_macros = { path = "../papyrus_proc_macros"}
 papyrus_storage = { path = "../papyrus_storage" }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
+serde_yaml.workspace = true
 starknet_api.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
