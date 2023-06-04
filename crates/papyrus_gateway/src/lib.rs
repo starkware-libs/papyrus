@@ -1,6 +1,7 @@
 mod api;
 mod block;
 mod deprecated_contract_class;
+mod gateway_metrics;
 #[cfg(test)]
 mod gateway_test;
 mod middleware;
@@ -31,6 +32,7 @@ use crate::api::{
     Tag,
 };
 use crate::block::BlockHeader;
+use crate::gateway_metrics::MetricLogger;
 use crate::middleware::proxy_request;
 use crate::transaction::Transaction;
 
@@ -135,6 +137,7 @@ pub async fn run_server(
     let server = ServerBuilder::default()
         .max_request_body_size(SERVER_MAX_BODY_SIZE)
         .set_middleware(tower::ServiceBuilder::new().filter_async(proxy_request))
+        .set_logger(MetricLogger {})
         .build(&config.server_address)
         .await?;
     let addr = server.local_addr()?;
