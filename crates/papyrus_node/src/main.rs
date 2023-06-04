@@ -23,7 +23,7 @@ async fn run_threads(config: Config) -> anyhow::Result<()> {
         config.get_config_representation()?,
         storage_reader.clone(),
         VERSION_FULL,
-    );
+    )?;
     let monitoring_server_handle = monitoring_server.spawn_server().await;
 
     // JSON-RPC server.

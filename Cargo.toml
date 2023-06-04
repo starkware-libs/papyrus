@@ -47,6 +47,7 @@ integer-encoding = { version = "3.0.4" }
 jsonrpsee = { version = "0.18.1" }
 jsonschema = { version = "0.17.0" }
 libmdbx = { version = ">=0.1.5,<0.1.8" }
+metrics = { version = "0.21.0" }
 mockall = { version = "0.11.2" }
 mockito = { version = "0.31.0" }
 num-traits = { version = "0.2.15" }

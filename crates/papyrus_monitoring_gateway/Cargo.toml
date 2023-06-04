@@ -7,6 +7,7 @@ edition = "2021"
 axum.workspace = true
 futures-util.workspace = true
 hyper = { workspace = true, features = ["full"] }
+metrics-exporter-prometheus = { version = "0.12.1" }
 papyrus_storage = { path = "../papyrus_storage" }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
@@ -18,5 +19,6 @@ url.workspace = true
 
 [dev-dependencies]
 http-body = { version = "0.4.5" }
+metrics.workspace = true
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 tower = { workspace = true, features = ["util"] }
