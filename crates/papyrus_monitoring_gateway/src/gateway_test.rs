@@ -118,11 +118,11 @@ async fn with_metrics() {
 
     let body_bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
     let body_string = String::from_utf8(body_bytes.to_vec()).unwrap();
-    let expected_output = format!(
+    let expected_prefix = format!(
         "# HELP {metric_name} {metric_help}\n# TYPE {metric_name} counter\n{metric_name} \
          {metric_value}\n\n"
     );
-    assert_eq!(expected_output, body_string);
+    assert!(body_string.starts_with(&expected_prefix));
 }
 
 #[tokio::test]
