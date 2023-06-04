@@ -8,15 +8,20 @@ use jsonrpsee::core::http_helpers::read_body;
 use jsonrpsee::core::{Error, RpcResult};
 use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::types::ErrorObjectOwned;
+use papyrus_config::SubConfig;
 use papyrus_storage::test_utils::get_test_storage;
+use serde_json::{Map, Value};
 use starknet_api::block::BlockNumber;
+use test_utils::get_absolute_path;
 use tower::BoxError;
 
 use crate::api::version_config::{LATEST_VERSION_ID, VERSION_CONFIG};
 use crate::api::JsonRpcError;
 use crate::middleware::proxy_request;
 use crate::test_utils::get_test_gateway_config;
-use crate::{run_server, SERVER_MAX_BODY_SIZE};
+use crate::{run_server, GatewayConfig, SERVER_MAX_BODY_SIZE};
+
+const DEFAULT_CONFIG_FILE: &str = "config/default_config.yaml";
 
 #[tokio::test]
 async fn run_server_no_blocks() {
@@ -97,4 +102,14 @@ async fn test_version_middleware() {
     if let Ok(res) = call_proxy_request_get_method_in_out(bad_uri).await {
         panic!("expected failure got: {:?}", res);
     };
+}
+
+#[test]
+fn test_dump_default_config() {
+    let default_gateway = GatewayConfig::default();
+    let path = get_absolute_path(DEFAULT_CONFIG_FILE);
+    let file = std::fs::File::open(path).unwrap();
+    let deserialized_default_config: Map<String, Value> = serde_json::from_reader(file).unwrap();
+    let dumped = default_gateway.dumps();
+    assert_eq!(deserialized_default_config, dumped);
 }

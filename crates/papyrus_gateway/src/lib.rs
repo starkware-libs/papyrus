@@ -9,6 +9,7 @@ mod state;
 mod test_utils;
 mod transaction;
 
+use std::collections::HashMap;
 use std::fmt::Display;
 use std::net::SocketAddr;
 
@@ -16,7 +17,7 @@ use jsonrpsee::server::{ServerBuilder, ServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
 use jsonrpsee::types::ErrorObjectOwned;
-use papyrus_config::DEFAULT_CHAIN_ID;
+use papyrus_config::{Description, SubConfig, DEFAULT_CHAIN_ID};
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::db::TransactionKind;
@@ -37,7 +38,7 @@ use crate::transaction::Transaction;
 
 /// Maximum size of a supported transaction body - 10MB.
 pub const SERVER_MAX_BODY_SIZE: u32 = 10 * 1024 * 1024;
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct GatewayConfig {
     pub chain_id: ChainId,
     pub server_address: String,
@@ -53,6 +54,33 @@ impl Default for GatewayConfig {
             max_events_chunk_size: 1000,
             max_events_keys: 100,
         }
+    }
+}
+
+impl SubConfig for GatewayConfig {
+    fn config_name() -> String {
+        String::from("GatewayConfig")
+    }
+
+    fn fields_description() -> HashMap<String, Description> {
+        HashMap::from([
+            (
+                String::from("chain_id"),
+                String::from("The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id."),
+            ),
+            (
+                String::from("server_address"),
+                String::from("IP:PORT of the node`s JSON-RPC server."),
+            ),
+            (
+                String::from("max_events_chunk_size"),
+                String::from("Maximum chunk size supported by the node in get_events requests."),
+            ),
+            (
+                String::from("max_events_keys"),
+                String::from("Maximum number of keys supported by the node in get_events requests."),
+            ),
+        ])
     }
 }
 
