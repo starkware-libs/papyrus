@@ -1,6 +1,7 @@
 mod api;
 mod block;
 mod deprecated_contract_class;
+mod gateway_metrics;
 #[cfg(test)]
 mod gateway_test;
 mod middleware;
@@ -125,7 +126,7 @@ impl ContinuationToken {
         Ok(Self(serde_json::to_string(&ct.0).map_err(internal_server_error)?))
     }
 }
-
+use gateway_metrics::MetricLogger;
 #[instrument(skip(storage_reader), level = "debug", err)]
 pub async fn run_server(
     config: &GatewayConfig,
@@ -135,6 +136,7 @@ pub async fn run_server(
     let server = ServerBuilder::default()
         .max_request_body_size(SERVER_MAX_BODY_SIZE)
         .set_middleware(tower::ServiceBuilder::new().filter_async(proxy_request))
+        .set_logger(MetricLogger {})
         .build(&config.server_address)
         .await?;
     let addr = server.local_addr()?;
