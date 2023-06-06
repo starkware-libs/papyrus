@@ -1,12 +1,15 @@
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{BufWriter, Write};
+use std::ops::IndexMut;
 
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
+
 pub type ParamPath = String;
 pub type SerializedValue = Value;
 pub type Description = String;
+pub type ParamMapping = BTreeMap<ParamPath, SerializedValue>;
 
 pub const DEFAULT_CHAIN_ID: &str = "SN_MAIN";
 
@@ -16,8 +19,13 @@ pub struct SerializedParam {
     pub value: Value,
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum SubConfigError {
+    #[error(transparent)]
+    MissingParam(#[from] serde_json::Error),
+}
 /// Serialization and deserialization for configs.
-pub trait SerdeConfig: Serialize + Sized {
+pub trait SerdeConfig: for<'a> Deserialize<'a> + Serialize + Sized {
     fn config_name() -> String;
 
     /// Serializes the config into flatten JSON.
@@ -34,6 +42,37 @@ pub trait SerdeConfig: Serialize + Sized {
             named_map.insert(param_path::<Self>(&field_name), val);
         }
         named_map
+    }
+
+    /// Deserializes the sub-config from flatten JSON.
+    fn load(
+        serialized_configuration: &BTreeMap<ParamPath, SerializedParam>,
+    ) -> Result<Self, SubConfigError> {
+        let mut nested_map = json!({});
+        for (param_path, serialized_param) in serialized_configuration {
+            let mut entry = &mut nested_map;
+            for config_name in param_path.split(".") {
+                entry = entry.index_mut(config_name);
+            }
+            *entry = serialized_param.value.clone();
+        }
+        Ok(serde_json::from_value(nested_map)?)
+    }
+
+    /// Deserializes the sub-config from flatten JSON. Takes the params that are rooted at this
+    /// config name.
+    fn load_sub_config(
+        serialized_configuration: &BTreeMap<ParamPath, SerializedParam>,
+    ) -> Result<Self, SubConfigError> {
+        let prefix = format!("{}.", Self::config_name());
+
+        let mut filtered_map = BTreeMap::<ParamPath, SerializedParam>::new();
+        for (key, value) in serialized_configuration {
+            if let Some(param_name) = key.strip_prefix(&prefix) {
+                filtered_map.insert(param_name.to_owned(), value.to_owned());
+            }
+        }
+        Self::load(&filtered_map)
     }
 }
 
