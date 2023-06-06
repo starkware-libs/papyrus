@@ -129,3 +129,13 @@ fn test_dump_default_config() {
 
     assert_eq!(deserialized_map, dumped_default_gateway);
 }
+
+#[test]
+fn test_dump_and_load() {
+    let default_gateway = GatewayConfig::default();
+    let loaded_sub_config =
+        GatewayConfig::load_sub_config(&default_gateway.dump_sub_config()).unwrap();
+    assert_eq!(loaded_sub_config, default_gateway);
+    let loaded_config = GatewayConfig::load(&default_gateway.dump()).unwrap();
+    assert_eq!(loaded_config, default_gateway);
+}
