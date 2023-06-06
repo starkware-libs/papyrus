@@ -12,7 +12,7 @@ use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
 pub trait CasmStorageReader {
     /// Returns the Cairo assembly of a class given its Sierra class hash.
-    fn get_casm(&self, class_hash: &ClassHash) -> StorageResult<Option<CasmContractClass>>;
+    fn get_casm(&self, class_hash: ClassHash) -> StorageResult<Option<CasmContractClass>>;
     fn get_compiled_class_marker(&self) -> StorageResult<BlockNumber>;
 }
 
@@ -26,9 +26,9 @@ where
 }
 
 impl<'env, Mode: TransactionKind> CasmStorageReader for StorageTxn<'env, Mode> {
-    fn get_casm(&self, class_hash: &ClassHash) -> StorageResult<Option<CasmContractClass>> {
+    fn get_casm(&self, class_hash: ClassHash) -> StorageResult<Option<CasmContractClass>> {
         let casm_table = self.txn.open_table(&self.tables.casms)?;
-        Ok(casm_table.get(&self.txn, class_hash)?)
+        Ok(casm_table.get(&self.txn, &class_hash)?)
     }
 
     fn get_compiled_class_marker(&self) -> StorageResult<BlockNumber> {
