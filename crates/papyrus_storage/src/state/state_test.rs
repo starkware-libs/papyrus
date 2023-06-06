@@ -452,7 +452,7 @@ fn revert_state() {
         .unwrap()
         .append_state_diff(BlockNumber(1), state_diff1.clone(), IndexMap::new())
         .unwrap()
-        .append_casm(class2, &compiled_class2)
+        .append_casm(&class2, &compiled_class2)
         .unwrap()
         .commit()
         .unwrap();
@@ -508,7 +508,7 @@ fn revert_state() {
         state_reader.get_storage_at(state_number, contract0, &updated_storage_key).unwrap(),
         StarkFelt::from(0_u8)
     );
-    assert!(txn.get_casm(class2).unwrap().is_none());
+    assert!(txn.get_casm(&class2).unwrap().is_none());
 }
 
 #[test]
