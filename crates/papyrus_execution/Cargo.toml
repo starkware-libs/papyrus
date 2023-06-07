@@ -4,5 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+blockifier.workspace = true
+starknet_api.workspace = true
+thiserror.workspace = true
 
 [dev-dependencies]
