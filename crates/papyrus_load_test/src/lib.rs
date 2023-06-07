@@ -59,3 +59,33 @@ pub fn get_random_block_number() -> u64 {
 pub fn path_in_resources(file_name: &str) -> String {
     env::var("CARGO_MANIFEST_DIR").unwrap() + "/resources/" + file_name
 }
+
+// TODO(dvir): update those number with real statics after the node will be in production.
+// Weight for each request to the node.
+const BLOCK_HASH_AND_NUMBER_WEIGHT: usize = 10;
+const BLOCK_NUMBER_WEIGHT: usize = 10;
+const CHAIN_ID_WEIGHT: usize = 10;
+const GET_BLOCK_TRANSACTION_COUNT_BY_HASH_WEIGHT: usize = 10;
+const GET_BLOCK_TRANSACTION_COUNT_BY_NUMBER_WEIGHT: usize = 10;
+const GET_BLOCK_WITH_FULL_TRANSACTIONS_BY_HASH_WEIGHT: usize = 10;
+const GET_BLOCK_WITH_FULL_TRANSACTIONS_BY_NUMBER_WEIGHT: usize = 10;
+const GET_BLOCK_WITH_TRANSACTION_HASHES_BY_HASH_WEIGHT: usize = 10;
+const GET_BLOCK_WITH_TRANSACTION_HASHES_BY_NUMBER_WEIGHT: usize = 10;
+const GET_CLASS_AT_BY_HASH_WEIGHT: usize = 10;
+const GET_CLASS_AT_BY_NUMBER_WEIGHT: usize = 10;
+const GET_CLASS_BY_HASH_WEIGHT: usize = 10;
+const GET_CLASS_BY_NUMBER_WEIGHT: usize = 10;
+const GET_CLASS_HASH_AT_BY_HASH_WEIGHT: usize = 10;
+const GET_CLASS_HASH_AT_BY_NUMBER_WEIGHT: usize = 10;
+const GET_EVENTS_WITHOUT_ADDRESS_WEIGHT: usize = 10;
+const GET_EVENTS_WITH_ADDRESS_WEIGHT: usize = 10;
+const GET_NONCE_BY_HASH_WEIGHT: usize = 10;
+const GET_NONCE_BY_NUMBER_WEIGHT: usize = 10;
+const GET_STATE_UPDATE_BY_HASH_WEIGHT: usize = 10;
+const GET_STATE_UPDATE_BY_NUMBER_WEIGHT: usize = 10;
+const GET_STORAGE_AT_BY_HASH_WEIGHT: usize = 10;
+const GET_STORAGE_AT_BY_NUMBER_WEIGHT: usize = 10;
+const GET_TRANSACTION_BY_BLOCK_ID_AND_INDEX_BY_HASH_WEIGHT: usize = 10;
+const GET_TRANSACTION_BY_BLOCK_ID_AND_INDEX_BY_NUMBER_WEIGHT: usize = 10;
+const GET_TRANSACTION_BY_HASH_WEIGHT: usize = 10;
+const GET_TRANSACTION_RECEIPT_WEIGHT: usize = 10;

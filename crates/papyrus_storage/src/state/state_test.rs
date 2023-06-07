@@ -508,7 +508,7 @@ fn revert_state() {
         state_reader.get_storage_at(state_number, contract0, &updated_storage_key).unwrap(),
         StarkFelt::from(0_u8)
     );
-    assert!(txn.get_casm(&class2).unwrap().is_none());
+    assert!(txn.get_casm(class2).unwrap().is_none());
 }
 
 #[test]
