@@ -8,11 +8,13 @@ license-file.workspace = true
 [dependencies]
 anyhow.workspace = true
 base64.workspace = true
+blockifier.workspace = true
 futures.workspace = true
 futures-util.workspace = true
 hyper = { workspace = true, features = ["full"] }
 jsonrpsee = { workspace = true, features = ["full"] }
 papyrus_proc_macros = { path = "../papyrus_proc_macros"}
+papyrus_execution = { path = "../papyrus_execution" }
 papyrus_storage = { path = "../papyrus_storage" }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
@@ -26,6 +28,8 @@ url.workspace = true
 
 [dev-dependencies]
 assert_matches.workspace = true
+cairo-lang-casm.workspace = true
+cairo-lang-starknet.workspace = true
 hex.workspace = true
 jsonschema.workspace = true
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
