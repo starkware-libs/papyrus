@@ -57,7 +57,7 @@ pub trait StarknetClientTrait {
     /// Returns a [`CasmContractClass`] corresponding to `class_hash`.
     async fn compiled_class_by_hash(
         &self,
-        &class_hash: ClassHash,
+        class_hash: ClassHash,
     ) -> ClientResult<Option<CasmContractClass>>;
     /// Returns a [`starknet_client`][`StateUpdate`] corresponding to `block_number`.
     async fn state_update(&self, block_number: BlockNumber) -> ClientResult<Option<StateUpdate>>;
@@ -351,8 +351,50 @@ impl StarknetClientTrait for StarknetClient {
 
     async fn compiled_class_by_hash(
         &self,
-        &class_hash: ClassHash,
+        class_hash: ClassHash,
     ) -> ClientResult<Option<CasmContractClass>> {
+        debug!("Got compiled_class_by_hash {} from starknet server.", class_hash);
+        // FIXME: Remove the following default CasmContractClass once integration environment gets
+        // regenesissed.
+        // Use default value for CasmConractClass that are malformed in the integration environment.
+        if [
+            ClassHash(
+                starknet_api::hash::StarkFelt::try_from(
+                    "0x4e70b19333ae94bd958625f7b61ce9eec631653597e68645e13780061b2136c",
+                )
+                .unwrap(),
+            ),
+            ClassHash(
+                starknet_api::hash::StarkFelt::try_from(
+                    "0x6208b3f9f94e6220f3d6a3562fe06a35a66181a202d946c3522fd28eda9ea1b",
+                )
+                .unwrap(),
+            ),
+            ClassHash(
+                starknet_api::hash::StarkFelt::try_from(
+                    "0xd6916ff38c93f834e7223a95b41d4542152d8288ff388b5d3dcdf8126a784a",
+                )
+                .unwrap(),
+            ),
+            ClassHash(
+                starknet_api::hash::StarkFelt::try_from(
+                    "0x161354521d46ca89a5b64aa41fa4e77ffeadc0f9796272d9b94227dbbb3840e",
+                )
+                .unwrap(),
+            ),
+            ClassHash(
+                starknet_api::hash::StarkFelt::try_from(
+                    "0x6a9eb910b3f83989900c8d65f9d67d67016f2528cc1b834019cf489f4f7d716",
+                )
+                .unwrap(),
+            ),
+        ]
+        .contains(&class_hash)
+        {
+            debug!("Using default compiled class for class hash {}.", class_hash);
+            return Ok(Some(CasmContractClass::default()));
+        }
+
         let mut url = self.urls.get_compiled_class_by_class_hash.clone();
         let class_hash = serde_json::to_string(&class_hash)?;
         url.query_pairs_mut()
