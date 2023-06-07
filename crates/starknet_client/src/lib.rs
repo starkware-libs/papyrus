@@ -57,7 +57,7 @@ pub trait StarknetClientTrait {
     /// Returns a [`CasmContractClass`] corresponding to `class_hash`.
     async fn compiled_class_by_hash(
         &self,
-        class_hash: ClassHash,
+        &class_hash: ClassHash,
     ) -> ClientResult<Option<CasmContractClass>>;
     /// Returns a [`starknet_client`][`StateUpdate`] corresponding to `block_number`.
     async fn state_update(&self, block_number: BlockNumber) -> ClientResult<Option<StateUpdate>>;
@@ -351,7 +351,7 @@ impl StarknetClientTrait for StarknetClient {
 
     async fn compiled_class_by_hash(
         &self,
-        class_hash: ClassHash,
+        &class_hash: ClassHash,
     ) -> ClientResult<Option<CasmContractClass>> {
         let mut url = self.urls.get_compiled_class_by_class_hash.clone();
         let class_hash = serde_json::to_string(&class_hash)?;
