@@ -17,5 +17,6 @@ tracing.workspace = true
 url.workspace = true
 
 [dev-dependencies]
+http-body = { version = "0.4.5" }
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 tower = { workspace = true, features = ["util"] }
