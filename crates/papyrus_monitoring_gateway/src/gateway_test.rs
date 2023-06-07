@@ -5,6 +5,8 @@ use axum::http::{Request, StatusCode};
 use axum::response::Response;
 use axum::Router;
 use http_body::combinators::UnsyncBoxBody;
+use metrics::{absolute_counter, describe_counter, register_counter};
+use metrics_exporter_prometheus::PrometheusBuilder;
 use papyrus_storage::{table_names, test_utils};
 use serde_json::{json, Value};
 use tower::ServiceExt;
@@ -17,7 +19,12 @@ const TEST_VERSION: &str = "1.2.3-dev";
 // TODO(dan): consider using a proper fixture.
 fn setup_app() -> Router {
     let (storage_reader, _) = test_utils::get_test_storage();
-    app(storage_reader, TEST_VERSION, serde_json::to_value(TEST_CONFIG_REPRESENTATION).unwrap())
+    app(
+        storage_reader,
+        TEST_VERSION,
+        serde_json::to_value(TEST_CONFIG_REPRESENTATION).unwrap(),
+        None,
+    )
 }
 
 async fn request_app(
@@ -77,6 +84,45 @@ async fn alive() {
     let response = request_app(app, "alive").await;
 
     assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn without_metrics() {
+    let app = setup_app();
+    let response = request_app(app, "metrics").await;
+
+    assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
+    let body_bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    assert!(body_bytes.is_empty());
+}
+
+#[tokio::test]
+async fn with_metrics() {
+    // Creates an app with prometheus handle.
+    let (storage_reader, _) = test_utils::get_test_storage();
+    let prometheus_handle = PrometheusBuilder::new().install_recorder().unwrap();
+    let app =
+        app(storage_reader, TEST_VERSION, serde_json::Value::default(), Some(prometheus_handle));
+
+    // Register a metric.
+    let metric_name = "metric_name";
+    let metric_help = "metric_help";
+    let metric_value = 8224;
+    register_counter!(metric_name);
+    describe_counter!(metric_name, metric_help);
+    absolute_counter!(metric_name, metric_value);
+
+    let response = request_app(app, "metrics").await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body_bytes = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let body_string = String::from_utf8(body_bytes.to_vec()).unwrap();
+    let expected_output = format!(
+        "# HELP {metric_name} {metric_help}\n# TYPE {metric_name} counter\n{metric_name} \
+         {metric_value}\n\n"
+    );
+    assert_eq!(expected_output, body_string);
 }
 
 #[tokio::test]

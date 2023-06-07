@@ -9,11 +9,14 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Json, Router};
+use metrics_exporter_prometheus::{BuildError, PrometheusBuilder, PrometheusHandle};
 use papyrus_storage::{DbTablesStats, StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument};
 
 const MONITORING_PREFIX: &str = "monitoring";
+// TODO(dvir): Add to config.
+const COLLECT_METRICS: bool = true;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MonitoringGatewayConfig {
@@ -31,6 +34,7 @@ pub struct MonitoringServer {
     general_config_representation: serde_json::Value,
     storage_reader: StorageReader,
     version: &'static str,
+    prometheus_handle: Option<PrometheusHandle>,
 }
 
 impl MonitoringServer {
@@ -39,8 +43,16 @@ impl MonitoringServer {
         general_config_representation: serde_json::Value,
         storage_reader: StorageReader,
         version: &'static str,
-    ) -> Self {
-        MonitoringServer { config, storage_reader, general_config_representation, version }
+    ) -> Result<Self, BuildError> {
+        let prometheus_handle =
+            if COLLECT_METRICS { Some(PrometheusBuilder::new().install_recorder()?) } else { None };
+        Ok(MonitoringServer {
+            config,
+            storage_reader,
+            general_config_representation,
+            version,
+            prometheus_handle,
+        })
     }
 
     /// Spawns a monitoring server.
@@ -62,6 +74,7 @@ impl MonitoringServer {
             self.storage_reader.clone(),
             self.version,
             self.general_config_representation.clone(),
+            self.prometheus_handle.clone(),
         );
         debug!("Starting monitoring gateway.");
         axum::Server::bind(&server_address).serve(app.into_make_service()).await
@@ -72,6 +85,7 @@ fn app(
     storage_reader: StorageReader,
     version: &'static str,
     general_config_representation: serde_json::Value,
+    prometheus_handle: Option<PrometheusHandle>,
 ) -> Router {
     Router::new()
         .route(
@@ -90,6 +104,10 @@ fn app(
             format!("/{MONITORING_PREFIX}/alive").as_str(),
             get(move || async { StatusCode::OK }),
         )
+        .route(
+            format!("/{MONITORING_PREFIX}/metrics").as_str(),
+            get(move || metrics(prometheus_handle)),
+        )
 }
 
 /// Returns DB statistics.
@@ -106,6 +124,17 @@ async fn node_config(
     general_config_representation: serde_json::Value,
 ) -> axum::Json<serde_json::Value> {
     general_config_representation.into()
+}
+
+/// Returns prometheus metrics.
+/// In case the node doesn’t collect metrics returns an empty response with status code 405: method
+/// not allowed.
+#[instrument(level = "debug", ret, skip(prometheus_handle))]
+async fn metrics(prometheus_handle: Option<PrometheusHandle>) -> Response {
+    match prometheus_handle {
+        Some(handle) => handle.render().into_response(),
+        None => StatusCode::METHOD_NOT_ALLOWED.into_response(),
+    }
 }
 
 /// Returns the node version.
