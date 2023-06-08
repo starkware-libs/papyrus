@@ -1,18 +1,24 @@
 use starknet_api::deprecated_contract_class::Program;
 use test_utils::read_json_file;
 
-use crate::compression_utils::GzEncoded;
+use super::{compress, decompress, decompress_from_reader, serialize_and_compress};
+use crate::db::serialization::StorageSerde;
 
 #[test]
-fn gzip_encode_decode_contract_program() {
-    let program_json = read_json_file("program.json");
-    let program: Program = serde_json::from_value(program_json).unwrap();
-    let program_as_bytes = serde_json::to_vec(&program).unwrap();
-    let len_before_compression = program_as_bytes.len();
+fn bytes_compression() {
+    let bytes = vec![30, 5, 23, 12, 47];
+    let x = decompress(compress(bytes.as_slice()).unwrap().as_slice()).unwrap();
+    assert_eq!(bytes, x);
+}
 
-    let encoded = GzEncoded::encode(program.clone()).unwrap();
-    let mut buff = Vec::new();
-    let decoded = encoded.decode(&mut buff).unwrap();
-    assert_eq!(program, decoded);
-    assert!(encoded.0.len() < len_before_compression);
+#[test]
+fn object_compression() {
+    let program_json = read_json_file("program.json");
+    let program = serde_json::from_value::<Program>(program_json).unwrap();
+    let compressed = serialize_and_compress(&program).unwrap();
+    let mut buf = Vec::new();
+    compressed.serialize_into(&mut buf).unwrap();
+    let decompressed = decompress_from_reader(&mut buf.as_slice()).unwrap();
+    let restored_program = Program::deserialize_from(&mut decompressed.as_slice()).unwrap();
+    assert_eq!(program, restored_program);
 }
