@@ -24,6 +24,7 @@ indexmap = { workspace = true, features = ["serde"] }
 integer-encoding.workspace = true
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
 num-bigint.workspace = true
+primitive-types.workspace = true
 rand = { workspace = true, optional = true }
 rand_chacha = { workspace = true, optional = true }
 reqwest = { workspace = true, features = ["json", "blocking"] }

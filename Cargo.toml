@@ -25,9 +25,9 @@ async-trait = { version = "0.1.56" }
 axum = { version = "0.6.12" }
 base64 = { version = "0.13.0" }
 byteorder = { version = "1.4.3" }
-cairo-lang-starknet = { version = "1.1.0-alpha0" }
-cairo-lang-casm = { version = "1.1.0-alpha0" }
-cairo-lang-utils = { version = "1.1.0-alpha0" }
+cairo-lang-starknet = { git = "https://github.com/starkware-libs/cairo", rev = "e71724e4" }
+cairo-lang-casm = { git = "https://github.com/starkware-libs/cairo", rev = "e71724e4" }
+cairo-lang-utils = { git = "https://github.com/starkware-libs/cairo", rev = "e71724e4" }
 num-bigint = { version = "0.4" }
 clap = { version = "3.2.19" }
 const_format = { version = "0.2.30" }
@@ -52,6 +52,7 @@ num-traits = { version = "0.2.15" }
 once_cell = { version = "1.17.1" }
 os_info = { version = "3.6.0" }
 paste = { version = "1.0.9" }
+primitive-types = { version = "0.12.1", features = ["serde"] }
 rand = { version = "0.8.5" }
 rand_chacha = { version = "0.3.1" }
 reqwest = { version = "0.11" }
@@ -60,7 +61,7 @@ serde = { version = "1.0.130" }
 serde_json = { version = "1.0.81" }
 serde_yaml = { version = "0.9.16" }
 simple_logger = { version = "4.0.0" }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "24a7249" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "e91c0d2" }
 tempfile = { version = "3.3.0" }
 thiserror = { version = "1.0.31" }
 tokio = { version = "1.18.2" }

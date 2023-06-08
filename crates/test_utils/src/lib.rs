@@ -39,7 +39,7 @@ use starknet_api::transaction::{
     Transaction, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
     TransactionSignature, TransactionVersion,
 };
-use web3::types::H160;
+use primitive_types::H160;
 
 //////////////////////////////////////////////////////////////////////////
 // GENERIC TEST UTIL FUNCTIONS
@@ -377,7 +377,7 @@ auto_impl_get_test_instance! {
     pub enum FunctionAbiEntryType {
         Constructor = 0,
         L1Handler = 1,
-        Regular = 2,
+        Function = 2,
     }
     pub struct FunctionAbiEntryWithType {
         pub r#type: FunctionAbiEntryType,
