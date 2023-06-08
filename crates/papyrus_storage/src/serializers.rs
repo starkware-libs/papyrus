@@ -15,6 +15,7 @@ use cairo_lang_utils::bigint::BigUintAsHex;
 use indexmap::IndexMap;
 use integer_encoding::*;
 use num_bigint::BigUint;
+use primitive_types::H160;
 use starknet_api::block::{
     BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
 };
@@ -41,7 +42,6 @@ use starknet_api::transaction::{
     MessageToL1, MessageToL2, Transaction, TransactionHash, TransactionOffsetInBlock,
     TransactionSignature, TransactionVersion,
 };
-use web3::types::H160;
 
 use crate::body::events::{
     EventIndex, ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput,
@@ -182,7 +182,7 @@ auto_storage_serde! {
     pub enum FunctionAbiEntryType {
         Constructor = 0,
         L1Handler = 1,
-        Regular = 2,
+        Function = 2,
     }
     pub struct FunctionAbiEntryWithType {
         pub r#type: FunctionAbiEntryType,
