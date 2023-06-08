@@ -10,6 +10,7 @@ futures.workspace = true
 futures-util.workspace = true
 hyper = { workspace = true, features = ["full"] }
 jsonrpsee = { workspace = true, features = ["full"] }
+metrics.workspace = true
 papyrus_proc_macros = { path = "../papyrus_proc_macros"}
 papyrus_storage = { path = "../papyrus_storage" }
 serde = { workspace = true, features = ["derive"] }
@@ -26,7 +27,9 @@ url.workspace = true
 assert_matches.workspace = true
 hex.workspace = true
 jsonschema.workspace = true
+metrics-exporter-prometheus = { version = "0.12.1" }
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
+prometheus-parse.workspace = true
 test_utils = { path = "../test_utils" }
 starknet_api = { workspace = true, features = ["testing"] }
 web3.workspace = true

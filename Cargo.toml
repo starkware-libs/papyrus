@@ -54,6 +54,7 @@ num-traits = { version = "0.2.15" }
 once_cell = { version = "1.17.1" }
 os_info = { version = "3.6.0" }
 paste = { version = "1.0.9" }
+prometheus-parse = { version = "0.2.4"}
 rand = { version = "0.8.5" }
 rand_chacha = { version = "0.3.1" }
 reqwest = { version = "0.11" }

@@ -1,6 +1,7 @@
 mod api;
 mod block;
 mod deprecated_contract_class;
+mod gateway_metrics;
 #[cfg(test)]
 mod gateway_test;
 mod middleware;
@@ -125,25 +126,28 @@ impl ContinuationToken {
         Ok(Self(serde_json::to_string(&ct.0).map_err(internal_server_error)?))
     }
 }
-
+use gateway_metrics::MetricLogger;
 #[instrument(skip(storage_reader), level = "debug", err)]
 pub async fn run_server(
     config: &GatewayConfig,
     storage_reader: StorageReader,
 ) -> anyhow::Result<(SocketAddr, ServerHandle)> {
     debug!("Starting gateway.");
-    let server = ServerBuilder::default()
-        .max_request_body_size(SERVER_MAX_BODY_SIZE)
-        .set_middleware(tower::ServiceBuilder::new().filter_async(proxy_request))
-        .build(&config.server_address)
-        .await?;
-    let addr = server.local_addr()?;
     let methods = get_methods_from_supported_apis(
         &config.chain_id,
         storage_reader,
         config.max_events_chunk_size,
         config.max_events_keys,
     );
+    // TODO(dvir): set the logger only if we want to collect metrics.
+    let server = ServerBuilder::default()
+        .max_request_body_size(SERVER_MAX_BODY_SIZE)
+        .set_middleware(tower::ServiceBuilder::new().filter_async(proxy_request))
+        .set_logger(MetricLogger::new(&methods))
+        .build(&config.server_address)
+        .await?;
+    let addr = server.local_addr()?;
+
     let handle = server.start(methods)?;
     info!(local_address = %addr, "Gateway is running.");
     Ok((addr, handle))
