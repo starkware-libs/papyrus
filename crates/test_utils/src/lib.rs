@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use indexmap::IndexMap;
+use primitive_types::H160;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use reqwest::Client;
@@ -39,7 +40,6 @@ use starknet_api::transaction::{
     Transaction, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
     TransactionSignature, TransactionVersion,
 };
-use web3::types::H160;
 
 //////////////////////////////////////////////////////////////////////////
 // GENERIC TEST UTIL FUNCTIONS
@@ -377,7 +377,7 @@ auto_impl_get_test_instance! {
     pub enum FunctionAbiEntryType {
         Constructor = 0,
         L1Handler = 1,
-        Regular = 2,
+        Function = 2,
     }
     pub struct FunctionAbiEntryWithType {
         pub r#type: FunctionAbiEntryType,
