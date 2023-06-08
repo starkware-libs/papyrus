@@ -10,11 +10,14 @@ use std::sync::Arc;
 
 use byteorder::BigEndian;
 use cairo_lang_casm::hints::Hint;
-use cairo_lang_starknet::casm_contract_class::{CasmContractClass, CasmContractEntryPoints};
+use cairo_lang_starknet::casm_contract_class::{
+    CasmContractClass, CasmContractEntryPoint, CasmContractEntryPoints,
+};
 use cairo_lang_utils::bigint::BigUintAsHex;
 use indexmap::IndexMap;
 use integer_encoding::*;
 use num_bigint::BigUint;
+use parity_scale_codec::{Decode, Encode};
 use primitive_types::H160;
 use starknet_api::block::{
     BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
@@ -319,6 +322,32 @@ auto_storage_serde! {
     pub struct TransactionVersion(pub StarkFelt);
     pub struct Version(pub u32);
 
+    // Casm related structs.
+    pub struct CasmContractClass {
+        pub prime: BigUint,
+        pub compiler_version: String,
+        pub bytecode: Vec<BigUintAsHex>,
+        pub hints: Vec<(usize, Vec<Hint>)>,
+        pub pythonic_hints: Option<Vec<(usize, Vec<String>)>>,
+        pub entry_points_by_type: CasmContractEntryPoints,
+    }
+
+    pub struct CasmContractEntryPoints {
+        pub external: Vec<CasmContractEntryPoint>,
+        pub l1_handler: Vec<CasmContractEntryPoint>,
+        pub constructor: Vec<CasmContractEntryPoint>,
+    }
+
+    pub struct CasmContractEntryPoint {
+        pub selector: BigUint,
+        pub offset: usize,
+        pub builtins: Vec<String>,
+    }
+
+    pub struct BigUintAsHex {
+        pub value: BigUint,
+    }
+
     binary(u32, read_u32, write_u32);
     binary(u64, read_u64, write_u64);
     binary(u128, read_u128, write_u128);
@@ -334,7 +363,7 @@ auto_storage_serde! {
     (ContractAddress, StorageKey, BlockHash);
     (ContractAddress, StorageKey, BlockNumber);
     (usize, Vec<Hint>);
-    (usize, Vec<std::string::String>);
+    (usize, Vec<String>);
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -702,80 +731,24 @@ impl<T: StorageSerde> StorageSerde for Arc<T> {
     }
 }
 
-impl StorageSerde for BigUint {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
-        self.to_u32_digits().serialize_into(res)?;
-        Ok(())
-    }
-
-    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        Some(BigUint::from_slice(Vec::<u32>::deserialize_from(bytes)?.as_slice()))
-    }
-}
-
-impl StorageSerde for BigUintAsHex {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
-        self.value.serialize_into(res)?;
-        Ok(())
-    }
-
-    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        let value = BigUint::deserialize_from(bytes)?;
-        Some(BigUintAsHex { value })
-    }
-}
-
 impl StorageSerde for Hint {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
-        serde_json::to_value(self)?.serialize_into(res)?;
-        Ok(())
+        self.encode().serialize_into(res)
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        let value = serde_json::Value::deserialize_from(bytes)?;
-        serde_json::from_value::<Self>(value).ok()
+        Self::decode(&mut Vec::<u8>::deserialize_from(bytes)?.as_slice()).ok()
     }
 }
 
-impl StorageSerde for CasmContractEntryPoints {
+impl StorageSerde for BigUint {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
-        serde_json::to_value(self)?.serialize_into(res)?;
-        Ok(())
+        self.to_bytes_be().serialize_into(res)
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        let value = serde_json::Value::deserialize_from(bytes)?;
-        serde_json::from_value::<Self>(value).ok()
-    }
-}
-
-impl StorageSerde for CasmContractClass {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
-        self.prime.serialize_into(res)?;
-        self.compiler_version.serialize_into(res)?;
-        self.bytecode.serialize_into(res)?;
-        self.hints.serialize_into(res)?;
-        self.pythonic_hints.serialize_into(res)?;
-        self.entry_points_by_type.serialize_into(res)?;
-        Ok(())
-    }
-
-    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        let prime = BigUint::deserialize_from(bytes)?;
-        let compiler_version = String::deserialize_from(bytes)?;
-        let bytecode = Vec::<BigUintAsHex>::deserialize_from(bytes)?;
-        let hints = Vec::<(usize, Vec<Hint>)>::deserialize_from(bytes)?;
-        let pythonic_hints = Option::<Vec<(usize, Vec<String>)>>::deserialize_from(bytes)?;
-        let entry_points_by_type = CasmContractEntryPoints::deserialize_from(bytes)?;
-
-        Some(Self {
-            prime,
-            compiler_version,
-            bytecode,
-            hints,
-            pythonic_hints,
-            entry_points_by_type,
-        })
+        let bytes_be = Vec::<u8>::deserialize_from(bytes)?;
+        Some(BigUint::from_bytes_be(bytes_be.as_slice()))
     }
 }
 
