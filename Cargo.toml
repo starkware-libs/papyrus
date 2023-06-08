@@ -30,6 +30,7 @@ byteorder = { version = "1.4.3" }
 cairo-lang-starknet = { version = "1.1.0-alpha0" }
 cairo-lang-casm = { version = "1.1.0-alpha0" }
 cairo-lang-utils = { version = "1.1.0-alpha0" }
+cairo-vm = "0.3.0-rc1"
 num-bigint = { version = "0.4" }
 clap = { version = "3.2.19" }
 const_format = { version = "0.2.30" }
