@@ -3967,9 +3967,12 @@ dependencies = [
  "indexmap 1.9.3",
  "jsonrpsee",
  "jsonschema",
+ "metrics",
+ "metrics-exporter-prometheus",
  "papyrus_proc_macros",
  "papyrus_storage",
  "pretty_assertions",
+ "prometheus-parse",
  "serde",
  "serde_json",
  "starknet_api",
@@ -4521,6 +4524,18 @@ dependencies = [
  "hex",
  "lazy_static",
  "rustix 0.36.14",
+]
+
+[[package]]
+name = "prometheus-parse"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c2aa5feb83bf4b2c8919eaf563f51dbab41183de73ba2353c0e03cd7b6bd892"
+dependencies = [
+ "chrono",
+ "itertools",
+ "once_cell",
+ "regex",
 ]
 
 [[package]]
@@ -5752,6 +5767,7 @@ dependencies = [
  "indexmap 1.9.3",
  "num-bigint",
  "primitive-types",
+ "prometheus-parse",
  "rand",
  "rand_chacha",
  "reqwest",
