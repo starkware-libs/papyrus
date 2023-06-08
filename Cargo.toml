@@ -25,6 +25,10 @@ async-trait = { version = "0.1.56" }
 axum = { version = "0.6.12" }
 base64 = { version = "0.13.0" }
 byteorder = { version = "1.4.3" }
+# TODO(yair): wait for the tag to update with the recent changes.
+# cairo-lang-starknet = { version = "1.1.0-alpha0" }
+# cairo-lang-casm = { version = "1.1.0-alpha0" }
+# cairo-lang-utils = { version = "1.1.0-alpha0" }
 cairo-lang-starknet = { path="../cairo/crates/cairo-lang-starknet" }
 cairo-lang-casm = { path="../cairo/crates/cairo-lang-casm" }
 cairo-lang-utils = { path="../cairo/crates/cairo-lang-utils" }
