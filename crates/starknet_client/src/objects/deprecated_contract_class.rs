@@ -73,7 +73,7 @@ impl FunctionAbiEntry {
                 Ok(starknet_api::deprecated_contract_class::FunctionAbiEntryType::Constructor)
             }
             "function" => {
-                Ok(starknet_api::deprecated_contract_class::FunctionAbiEntryType::Regular)
+                Ok(starknet_api::deprecated_contract_class::FunctionAbiEntryType::Function)
             }
             "l1_handler" => {
                 Ok(starknet_api::deprecated_contract_class::FunctionAbiEntryType::L1Handler)
