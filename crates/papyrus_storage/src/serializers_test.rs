@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use cairo_lang_casm::hints::Hint;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ContractAddress;
 use starknet_api::hash::StarkHash;
@@ -69,4 +70,12 @@ fn block_number_endianness() {
     assert_eq!(bn_256, deserialized.unwrap());
 
     assert!(bytes_255 < bytes_256);
+}
+
+// Make sure that the [`Hint`] schema is not modified. If it is, its encoding might change and a
+// storage migration is needed.
+#[test]
+fn hint_modified() {
+    let hint_schema = schemars::schema_for!(Hint);
+    insta::assert_yaml_snapshot!(hint_schema);
 }
