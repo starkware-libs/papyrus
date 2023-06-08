@@ -29,5 +29,4 @@ jsonschema.workspace = true
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 test_utils = { path = "../test_utils" }
 starknet_api = { workspace = true, features = ["testing"] }
-web3.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
