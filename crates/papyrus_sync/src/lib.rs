@@ -266,7 +266,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         if is_reverted_class {
             todo!("Insert to ommer table.");
         }
-        match txn.append_casm(class_hash, &compiled_class) {
+        match txn.append_casm(&class_hash, &compiled_class) {
             Ok(txn) => {
                 txn.commit()?;
                 debug!("Added compiled class.");

@@ -16,12 +16,12 @@ fn append_casm() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_casm(ClassHash::default(), &expected_casm)
+        .append_casm(&ClassHash::default(), &expected_casm)
         .unwrap()
         .commit()
         .unwrap();
 
-    let casm = reader.begin_ro_txn().unwrap().get_casm(ClassHash::default()).unwrap().unwrap();
+    let casm = reader.begin_ro_txn().unwrap().get_casm(&ClassHash::default()).unwrap().unwrap();
     assert_eq!(casm, expected_casm);
 }
 
@@ -32,7 +32,7 @@ fn casm_rewrite() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_casm(ClassHash::default(), &CasmContractClass::default())
+        .append_casm(&ClassHash::default(), &CasmContractClass::default())
         .unwrap()
         .commit()
         .unwrap();
@@ -40,7 +40,7 @@ fn casm_rewrite() {
     let Err(err) = writer
         .begin_rw_txn()
         .unwrap()
-        .append_casm(ClassHash::default(), &CasmContractClass::default())  else {
+        .append_casm(&ClassHash::default(), &CasmContractClass::default())  else {
             panic!("Unexpected Ok.");
         };
 
