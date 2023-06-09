@@ -20,13 +20,13 @@ use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
+use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::transaction::TransactionHash;
 use starknet_api::StarknetApiError;
 use tracing::debug;
 use url::Url;
 
 pub use self::objects::block::{Block, GlobalRoot, TransactionReceiptsError};
-pub use self::objects::deprecated_contract_class::DeprecatedContractClass;
 pub use self::objects::state::{
     ContractClass, DeclaredClassHashEntry, DeployedContract, ReplacedClass, StateDiff, StateUpdate,
     StorageEntry,
