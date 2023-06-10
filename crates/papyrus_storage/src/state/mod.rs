@@ -377,6 +377,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
 
         update_marker(&self.txn, &markers_table, block_number)?;
 
+        dbg!(&state_diff.deployed_contracts);
         // Write state except declared classes.
         write_deployed_contracts(
             &state_diff.deployed_contracts,
@@ -591,7 +592,9 @@ fn write_deployed_contracts<'env>(
 ) -> StorageResult<()> {
     for (address, class_hash) in deployed_contracts {
         let value = IndexedDeployedContract { block_number, class_hash: *class_hash };
-        deployed_contracts_table.insert(txn, address, &value).map_err(|err| {
+        deployed_contracts_table.insert(txn, address, &value).
+        //unwrap_or_default();
+        map_err(|err| {
             if matches!(err, DbError::Inner(libmdbx::Error::KeyExist)) {
                 StorageError::ContractAlreadyExists { address: *address }
             } else {
