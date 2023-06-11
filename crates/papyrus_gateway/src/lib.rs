@@ -17,13 +17,17 @@ use jsonrpsee::server::{ServerBuilder, ServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
 use jsonrpsee::types::ErrorObjectOwned;
-use papyrus_config::{Description, SubConfig, DEFAULT_CHAIN_ID};
+use papyrus_config::{
+    ParamPath, SerializedParam, SubConfig,
+    DEFAULT_CHAIN_ID,
+};
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::db::TransactionKind;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageReader, StorageTxn};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ChainId;
 use tracing::{debug, error, info, instrument};
@@ -62,23 +66,35 @@ impl SubConfig for GatewayConfig {
         String::from("GatewayConfig")
     }
 
-    fn fields_description() -> HashMap<String, Description> {
-        HashMap::from([
+    fn dump(&self) -> HashMap<ParamPath, SerializedParam> {
+        HashMap::from_iter([
             (
                 String::from("chain_id"),
-                String::from("The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id."),
+                SerializedParam {
+                    description: String::from("The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id."),
+                    value: json!(self.chain_id),
+                }
             ),
             (
                 String::from("server_address"),
-                String::from("IP:PORT of the node`s JSON-RPC server."),
+                SerializedParam {
+                    description: String::from("IP:PORT of the node`s JSON-RPC server."),
+                    value: json!(self.server_address),
+                }
             ),
             (
                 String::from("max_events_chunk_size"),
-                String::from("Maximum chunk size supported by the node in get_events requests."),
+                SerializedParam {
+                    description: String::from("Maximum chunk size supported by the node in get_events requests."),
+                    value: json!(self.max_events_chunk_size),
+                }
             ),
             (
                 String::from("max_events_keys"),
-                String::from("Maximum number of keys supported by the node in get_events requests."),
+                SerializedParam {
+                    description: String::from("Maximum number of keys supported by the node in get_events requests."),
+                    value: json!(self.max_events_keys),
+                }
             ),
         ])
     }

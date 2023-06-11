@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::panic;
 
 use assert_matches::assert_matches;
@@ -8,7 +9,7 @@ use jsonrpsee::core::http_helpers::read_body;
 use jsonrpsee::core::{Error, RpcResult};
 use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::types::ErrorObjectOwned;
-use papyrus_config::SubConfig;
+use papyrus_config::{SerializedParam, SubConfig};
 use papyrus_storage::test_utils::get_test_storage;
 use serde_json::{Map, Value};
 use starknet_api::block::BlockNumber;
@@ -105,11 +106,23 @@ async fn test_version_middleware() {
 }
 
 #[test]
+/// Regression test which checks that the default config hasn't changed as well as dumping/parsing configs.
 fn test_dump_default_config() {
     let default_gateway = GatewayConfig::default();
     let path = get_absolute_path(DEFAULT_CONFIG_FILE);
     let file = std::fs::File::open(path).unwrap();
     let deserialized_default_config: Map<String, Value> = serde_json::from_reader(file).unwrap();
-    let dumped = default_gateway.dumps();
-    assert_eq!(deserialized_default_config, dumped);
+
+    let mut deserialized_map: HashMap<String, SerializedParam> = HashMap::new();
+    for (key, value) in deserialized_default_config {
+        deserialized_map.insert(
+            key.to_owned(),
+            SerializedParam {
+                description: value["description"].as_str().unwrap().to_owned(),
+                value: value["value"].to_owned(),
+            },
+        );
+    }
+
+    assert_eq!(deserialized_map, default_gateway.dump_sub_config());
 }
