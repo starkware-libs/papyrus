@@ -1,3 +1,7 @@
+---
+source: crates/papyrus_gateway/src/gateway_test.rs
+expression: dumped_default_gateway
+---
 {
   "GatewayConfig.chain_id": {
     "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
@@ -5,11 +9,15 @@
   },
   "GatewayConfig.max_events_chunk_size": {
     "description": "Maximum chunk size supported by the node in get_events requests.",
-    "value": 1000
+    "value": {
+      "$serde_json::private::Number": "1000"
+    }
   },
   "GatewayConfig.max_events_keys": {
     "description": "Maximum number of keys supported by the node in get_events requests.",
-    "value": 100
+    "value": {
+      "$serde_json::private::Number": "100"
+    }
   },
   "GatewayConfig.server_address": {
     "description": "IP:PORT of the node`s JSON-RPC server.",

@@ -1,44 +1,51 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
+use std::fs::File;
+use std::io::{BufWriter, Write};
 
-use serde::Serialize;
-use serde_json::{json, Map, Value};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 pub type ParamPath = String;
-pub type SerializedValue = String;
+pub type SerializedValue = Value;
 pub type Description = String;
 
 pub const DEFAULT_CHAIN_ID: &str = "SN_MAIN";
 
-pub trait SubConfig: Serialize {
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub struct SerializedParam {
+    pub description: String,
+    pub value: Value,
+}
+
+/// Serialization and deserialization for configs.
+pub trait SerdeConfig: Serialize + Sized {
     fn config_name() -> String;
 
-    /// A mapping between a param name to its description.
-    fn fields_description() -> HashMap<String, Description>;
+    /// Serializes the config into flatten JSON.
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam>;
 
-    fn param_path(param_name: &String) -> ParamPath {
-        let config_name = Self::config_name();
-        format!("{config_name}.{param_name}")
-    }
+    /// Serializes the config into flatten JSON, where the path of each param is rooted at this
+    /// config name.
+    /// Used by `dump` when a field itself implements `SerdeConfig`.
+    fn dump_sub_config(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        let descriptions = self.dump();
+        let mut named_map = BTreeMap::new();
 
-    /// Serializes the sub-config into JSON.
-    fn dumps(&self) -> Map<String, Value> {
-        let descriptions = Self::fields_description();
-        let json_map: Map<String, Value> = serde_json::to_value(self)
-            .expect("Unable to serialize sub-config")
-            .as_object()
-            .expect("Unable to convert sub-config to map")
-            .clone();
-
-        let mut described_json_map = Map::<String, Value>::new();
-        for (key, value) in json_map {
-            let described_value = json!({
-                "description": descriptions
-                    .get(&key)
-                    .expect("Missing key from sub-config descriptions")
-                    .to_owned(),
-                "value": value
-            });
-            described_json_map.insert(Self::param_path(&key), described_value);
+        for (field_name, val) in descriptions {
+            named_map.insert(param_path::<Self>(&field_name), val);
         }
-        described_json_map
+        named_map
     }
+}
+
+fn param_path<T: SerdeConfig>(param_name: &str) -> ParamPath {
+    let config_name = T::config_name();
+    format!("{config_name}.{param_name}")
+}
+
+pub fn dump_sub_config_to_file<T: SerdeConfig>(config: &T, file_path: &str) {
+    let dumped = config.dump_sub_config();
+    let file = File::create(file_path).expect("creating failed");
+    let mut writer = BufWriter::new(file);
+    serde_json::to_writer_pretty(&mut writer, &dumped).expect("writing failed");
+    writer.flush().expect("flushing failed");
 }
