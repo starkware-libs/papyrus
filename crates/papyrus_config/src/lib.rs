@@ -1,44 +1,39 @@
 use std::collections::HashMap;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 pub type ParamPath = String;
-pub type SerializedValue = String;
+pub type SerializedValue = Value;
 pub type Description = String;
 
 pub const DEFAULT_CHAIN_ID: &str = "SN_MAIN";
 
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub struct SerializedParam {
+    pub description: String,
+    pub value: Value,
+}
+
 pub trait SubConfig: Serialize {
     fn config_name() -> String;
-
-    /// A mapping between a param name to its description.
-    fn fields_description() -> HashMap<String, Description>;
 
     fn param_path(param_name: &String) -> ParamPath {
         let config_name = Self::config_name();
         format!("{config_name}.{param_name}")
     }
 
-    /// Serializes the sub-config into JSON.
-    fn dumps(&self) -> Map<String, Value> {
-        let descriptions = Self::fields_description();
-        let json_map: Map<String, Value> = serde_json::to_value(self)
-            .expect("Unable to serialize sub-config")
-            .as_object()
-            .expect("Unable to convert sub-config to map")
-            .clone();
+    /// Serializes the config into flatten JSON.
+    fn dump(&self) -> HashMap<ParamPath, SerializedParam>;
 
-        let mut described_json_map = Map::<String, Value>::new();
-        for (key, value) in json_map {
-            let described_value = json!({
-                "description": descriptions
-                    .get(&key)
-                    .expect("Missing key from sub-config descriptions")
-                    .to_owned(),
-                "value": value
-            });
-            described_json_map.insert(Self::param_path(&key), described_value);
+    /// Serializes the sub-config into flatten JSON.
+    /// The path of each param is rooted at this config name.
+    fn dump_sub_config(&self) -> HashMap<ParamPath, SerializedParam> {
+        let descriptions = self.dump();
+        let mut named_map = HashMap::new();
+
+        for (field_name, val) in descriptions {
+            named_map.insert(Self::param_path(&field_name), val);
         }
-        described_json_map
+        named_map
     }
 }
