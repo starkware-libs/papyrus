@@ -17,7 +17,6 @@ papyrus_proc_macros = { path = "../papyrus_proc_macros"}
 papyrus_storage = { path = "../papyrus_storage" }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-serde_yaml.workspace = true
 starknet_api.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
@@ -29,6 +28,7 @@ url.workspace = true
 [dev-dependencies]
 assert_matches.workspace = true
 hex.workspace = true
+insta = { workspace = true, features = ["json"] }
 jsonschema.workspace = true
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 test_utils = { path = "../test_utils" }
