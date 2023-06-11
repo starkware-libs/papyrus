@@ -51,7 +51,7 @@ impl From<GenericContractClass> for ApiContractClass {
     fn from(value: GenericContractClass) -> Self {
         match value {
             GenericContractClass::Cairo0ContractClass(class) => {
-                Self::DeprecatedContractClass(class.into())
+                Self::DeprecatedContractClass(class)
             }
             GenericContractClass::Cairo1ContractClass(class) => Self::ContractClass(class.into()),
         }

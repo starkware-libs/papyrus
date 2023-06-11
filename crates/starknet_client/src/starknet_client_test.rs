@@ -7,15 +7,16 @@ use reqwest::StatusCode;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
+    ContractClass as DeprecatedContractClass, ContractClassAbiEntry,
     EntryPoint as DeprecatedEntryPoint, EntryPointOffset,
-    EntryPointType as DeprecatedEntryPointType, Program,
+    EntryPointType as DeprecatedEntryPointType, FunctionAbiEntry, FunctionAbiEntryType,
+    FunctionAbiEntryWithType, Program, TypedParameter,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{EntryPoint, EntryPointType, FunctionIndex};
 use starknet_api::transaction::{Fee, TransactionHash, TransactionSignature, TransactionVersion};
 use starknet_api::{patricia_key, stark_felt};
 
-use super::objects::deprecated_contract_class::DeprecatedContractClass;
 use super::objects::state::StateUpdate;
 use super::objects::transaction::{IntermediateDeclareTransaction, TransactionType};
 use super::test_utils::read_resource::read_resource_file;
@@ -168,20 +169,17 @@ async fn deprecated_contract_class() {
     let starknet_client =
         StarknetClient::new(&mockito::server_url(), None, NODE_VERSION, get_test_config()).unwrap();
     let expected_contract_class = DeprecatedContractClass {
-        abi: serde_json::to_value(vec![HashMap::from([
-            (
-                "inputs".to_string(),
-                serde_json::to_value(vec![HashMap::from([
-                    ("name".to_string(), serde_json::Value::String("implementation".to_string())),
-                    ("type".to_string(), serde_json::Value::String("felt".to_string())),
-                ])])
-                .unwrap(),
-            ),
-            ("name".to_string(), serde_json::Value::String("constructor".to_string())),
-            ("type".to_string(), serde_json::Value::String("constructor".to_string())),
-            ("outputs".to_string(), serde_json::Value::Array(Vec::new())),
-        ])])
-        .unwrap(),
+        abi: Some(vec![ContractClassAbiEntry::Function(FunctionAbiEntryWithType {
+            r#type: FunctionAbiEntryType::Constructor,
+            entry: FunctionAbiEntry {
+                name: "constructor".to_string(),
+                inputs: vec![TypedParameter {
+                    name: "implementation".to_string(),
+                    r#type: "felt".to_string(),
+                }],
+                outputs: vec![],
+            },
+        })]),
         program: Program {
             attributes: serde_json::Value::Array(vec![serde_json::json!(1234)]),
             builtins: serde_json::Value::Array(Vec::new()),

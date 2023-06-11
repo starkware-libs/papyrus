@@ -10,7 +10,6 @@ use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 use starknet_api::{patricia_key, stark_felt};
 
 use super::block::{Block, GlobalRoot, TransactionReceiptsError};
-use super::deprecated_contract_class::{ContractClassAbiEntry, DeprecatedContractClass};
 use super::state::{
     DeclaredClassHashEntry, DeployedContract, StateDiff, StateUpdate, StorageEntry,
 };
@@ -166,24 +165,4 @@ async fn try_into_starknet_api() {
             tx_type: _,
         })
     );
-}
-
-#[tokio::test]
-async fn abi_into_starknet_api_full() {
-    // TODO(anatg): Find an abi json with event entries.
-    let raw_abi: serde_json::Value = serde_json::from_str(&read_resource_file("abi.json")).unwrap();
-    let abi = serde_json::from_value::<Vec<ContractClassAbiEntry>>(raw_abi.clone()).unwrap();
-    let expected_num_of_entries = abi.len();
-
-    let class = DeprecatedContractClass { abi: raw_abi, ..DeprecatedContractClass::default() };
-    let starknet_api_class = starknet_api::deprecated_contract_class::ContractClass::from(class);
-    assert_eq!(expected_num_of_entries, starknet_api_class.abi.unwrap().len());
-}
-
-#[tokio::test]
-async fn abi_into_starknet_api_none() {
-    let raw_abi = serde_json::to_value("junk").unwrap();
-    let class = DeprecatedContractClass { abi: raw_abi, ..DeprecatedContractClass::default() };
-    let starknet_api_class = starknet_api::deprecated_contract_class::ContractClass::from(class);
-    assert!(starknet_api_class.abi.is_none())
 }

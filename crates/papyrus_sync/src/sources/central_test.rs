@@ -10,13 +10,14 @@ use papyrus_storage::test_utils::get_test_storage;
 use reqwest::StatusCode;
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
+use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass as sn_api_ContractClass, StateDiff, StorageKey};
 use starknet_api::{patricia_key, stark_felt};
 use starknet_client::{
     Block, ClientError, ContractClass, DeclaredClassHashEntry, DeployedContract,
-    DeprecatedContractClass, GenericContractClass, GlobalRoot, MockStarknetClientTrait,
-    ReplacedClass, StateUpdate, StorageEntry,
+    GenericContractClass, GlobalRoot, MockStarknetClientTrait, ReplacedClass, StateUpdate,
+    StorageEntry,
 };
 use tokio_stream::StreamExt;
 
@@ -292,12 +293,7 @@ async fn stream_state_updates() {
     assert_eq!(initial_block_num, current_block_num);
     assert_eq!(block_hash1, current_block_hash);
     assert_eq!(
-        IndexMap::from([(
-            class_hash2,
-            starknet_api::deprecated_contract_class::ContractClass::from(
-                deprecated_contract_class2
-            )
-        )]),
+        IndexMap::from([(class_hash2, deprecated_contract_class2)]),
         deployed_contract_class_definitions,
     );
 
@@ -311,18 +307,8 @@ async fn stream_state_updates() {
     );
     assert_eq!(
         IndexMap::from([
-            (
-                class_hash1,
-                starknet_api::deprecated_contract_class::ContractClass::from(
-                    deprecated_contract_class1
-                )
-            ),
-            (
-                class_hash3,
-                starknet_api::deprecated_contract_class::ContractClass::from(
-                    deprecated_contract_class3
-                )
-            ),
+            (class_hash1, deprecated_contract_class1),
+            (class_hash3, deprecated_contract_class3),
         ]),
         state_diff.deprecated_declared_classes,
     );
