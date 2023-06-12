@@ -166,7 +166,6 @@ fn append_state_diff() {
     let c3 = ContractAddress(patricia_key!("0x14"));
     let cl0 = ClassHash(stark_felt!("0x4"));
     let cl1 = ClassHash(stark_felt!("0x5"));
-    let cl2 = ClassHash(stark_felt!("0x6"));
     let c_cls0 = DeprecatedContractClass::default();
     let c_cls1 = (CompiledClassHash::default(), ContractClass::default());
     let key0 = StorageKey(patricia_key!("0x1001"));
@@ -203,7 +202,7 @@ fn append_state_diff() {
     assert_eq!(txn.get_state_diff(BlockNumber(0)).unwrap(), None);
     assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap(), None);
     txn = txn.append_state_diff(BlockNumber(0), diff0.clone(), IndexMap::new()).unwrap();
-    let thin_state_diff_0 = diff0.clone().into();
+    let thin_state_diff_0 = diff0.into();
     assert_eq!(txn.get_state_diff(BlockNumber(0)).unwrap().unwrap(), thin_state_diff_0);
     assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap(), None);
     txn = txn.append_state_diff(BlockNumber(1), diff1.clone(), IndexMap::new()).unwrap();
@@ -211,18 +210,6 @@ fn append_state_diff() {
 
     txn.commit().unwrap();
 
-    // Check for ContractAlreadyExists error when trying to deploy a different class hash to an
-    // existing contract address.
-    let txn = writer.begin_rw_txn().unwrap();
-    let mut diff2 =
-        StateDiff { deployed_contracts: diff0.deployed_contracts, ..StateDiff::default() };
-    let (_, hash) = diff2.deployed_contracts.iter_mut().next().unwrap();
-    *hash = cl2;
-    if let Err(err) = txn.append_state_diff(BlockNumber(2), diff2, IndexMap::new()) {
-        assert_matches!(err, StorageError::ContractAlreadyExists { address: _ });
-    } else {
-        panic!("Unexpected Ok.");
-    }
     let txn = writer.begin_rw_txn().unwrap();
     assert_eq!(txn.get_state_diff(BlockNumber(0)).unwrap().unwrap(), thin_state_diff_0);
     assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap().unwrap(), thin_state_diff_1);
@@ -622,20 +609,8 @@ fn replace_class() {
         .commit()
         .unwrap();
 
-    // Verify that the contract class was replaced.
-    let state2 = StateNumber(BlockNumber(2));
-    let replaced_class_hash = reader
-        .begin_ro_txn()
-        .unwrap()
-        .get_state_reader()
-        .unwrap()
-        .get_replaced_class_hash(state2, &contract_address)
-        .unwrap()
-        .unwrap();
-
-    assert_eq!(replaced_class_hash, class_hash1);
-
     // Verify that fetching the class hash returns the new class.
+    let state2 = StateNumber(BlockNumber(2));
     let current_class_hash = reader
         .begin_ro_txn()
         .unwrap()
