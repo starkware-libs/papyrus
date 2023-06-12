@@ -15,7 +15,7 @@ use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey, Thi
 use tracing::debug;
 
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
-use crate::state::data::{IndexedDeployedContract, IndexedDeprecatedContractClass};
+use crate::state::data::IndexedDeprecatedContractClass;
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
 type DeclaredClassesTable<'env> = TableHandle<'env, ClassHash, ContractClass>;
@@ -23,11 +23,10 @@ type DeclaredClassesBlockTable<'env> = TableHandle<'env, ClassHash, BlockNumber>
 type DeprecatedDeclaredClassesTable<'env> =
     TableHandle<'env, ClassHash, IndexedDeprecatedContractClass>;
 type CompiledClassesTable<'env> = TableHandle<'env, ClassHash, CasmContractClass>;
-type DeployedContractsTable<'env> = TableHandle<'env, ContractAddress, IndexedDeployedContract>;
+type DeployedContractsTable<'env> = TableHandle<'env, (ContractAddress, BlockNumber), ClassHash>;
 type ContractStorageTable<'env> =
     TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), StarkFelt>;
 type NoncesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumber), Nonce>;
-type ReplacedClassesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumber), ClassHash>;
 
 // Structure of state data:
 // * declared_classes_table: (class_hash) -> (block_num, contract_class). Each entry specifies at
@@ -36,9 +35,8 @@ type ReplacedClassesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumbe
 // * deprecated_declared_classes_table: (class_hash) -> (block_num, deprecated_contract_class). Each
 //   entry specifies at which block was this class declared and with what class definition. For
 //   Cairo 0 class definitions.
-// * deployed_contracts_table: (contract_address) -> (block_num, class_hash). Each entry specifies
-//   at which block was this contract deployed and with what class hash. Note that each contract may
-//   only be deployed once, so we don't need to support multiple entries per contract address.
+// * deployed_contracts_table: (contract_address, block_num) -> (class_hash). Each entry specifies
+//   at which block was this contract deployed (or its class got replaced) and with what class hash.
 // * storage_table: (contract_address, key, block_num) -> (value). Specifies that at `block_num`,
 //   the `key` at `contract_address` was changed to `value`. This structure let's us do quick
 //   lookup, since the database supports "Get the closet element from  the left". Thus, to lookup
@@ -47,8 +45,6 @@ type ReplacedClassesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumbe
 //   block_num.
 // * nonces_table: (contract_address, block_num) -> (nonce). Specifies that at `block_num`, the
 //   nonce of `contract_address` was changed to `nonce`.
-// * replaced_classes_table: (contract_address, block_num) -> (class_hash). Specifies that at
-//   `block_num`, the class of `contract_address` was changed to the class with `class_hash`.
 
 pub trait StateStorageReader<Mode: TransactionKind> {
     fn get_state_marker(&self) -> StorageResult<BlockNumber>;
@@ -111,7 +107,6 @@ pub struct StateReader<'env, Mode: TransactionKind> {
     deprecated_declared_classes_table: DeprecatedDeclaredClassesTable<'env>,
     deployed_contracts_table: DeployedContractsTable<'env>,
     nonces_table: NoncesTable<'env>,
-    replaced_classes_table: ReplacedClassesTable<'env>,
     storage_table: ContractStorageTable<'env>,
 }
 
@@ -135,7 +130,6 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         let deployed_contracts_table = txn.txn.open_table(&txn.tables.deployed_contracts)?;
         let nonces_table = txn.txn.open_table(&txn.tables.nonces)?;
         let storage_table = txn.txn.open_table(&txn.tables.contract_storage)?;
-        let replaced_classes_table = txn.txn.open_table(&txn.tables.replaced_classes)?;
         Ok(StateReader {
             txn: &txn.txn,
             declared_classes_table,
@@ -143,42 +137,8 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
             deprecated_declared_classes_table,
             deployed_contracts_table,
             nonces_table,
-            replaced_classes_table,
             storage_table,
         })
-    }
-
-    /// Returns the latest class hash of the contract, before state_number.
-    /// If the class wasn't replaced before state_number, returns `None`.
-    ///
-    /// **Note:** None means that the class in deployed_contracts table was not replaced before
-    /// state_number, it could still be declared before state_number - need to check against the
-    /// value in deployed_contracts.
-    ///
-    /// # Arguments
-    /// * state_number - state number to search before.
-    /// * address - contract addrest to search for.
-    ///
-    /// # Errors
-    /// Returns [`StorageError`] if there was an error searching the table.
-    fn get_replaced_class_hash(
-        &self,
-        state_number: StateNumber,
-        address: &ContractAddress,
-    ) -> StorageResult<Option<ClassHash>> {
-        let first_irrelevant_block: BlockNumber = state_number.block_after();
-        let db_key = (*address, first_irrelevant_block);
-        let mut cursor = self.replaced_classes_table.cursor(self.txn)?;
-        cursor.lower_bound(&db_key)?;
-        let res = cursor.prev()?;
-
-        match res {
-            // Class was never replaced before state_number.
-            None => Ok(None),
-            Some(((got_address, _), _)) if got_address != *address => Ok(None),
-            // Class was replaced to new_class_hash.
-            Some((_, new_class_hash)) => Ok(Some(new_class_hash)),
-        }
     }
 
     /// Returns the class hash at a given state number.
@@ -195,18 +155,17 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         state_number: StateNumber,
         address: &ContractAddress,
     ) -> StorageResult<Option<ClassHash>> {
-        // Check if the class was replaced before state_number.
-        if let Some(class_hash) = self.get_replaced_class_hash(state_number, address)? {
-            return Ok(Some(class_hash));
-        }
+        let first_irrelevant_block: BlockNumber = state_number.block_after();
+        let db_key = (*address, first_irrelevant_block);
+        let mut cursor = self.deployed_contracts_table.cursor(self.txn)?;
+        cursor.lower_bound(&db_key)?;
+        let res = cursor.prev()?;
 
-        // The class wasn't replaced, check in deployed_contracts.
-        let value = self.deployed_contracts_table.get(self.txn, address)?;
-        let Some(value) = value else {return Ok(None)};
-        if state_number.is_after(value.block_number) {
-            return Ok(Some(value.class_hash));
+        match res {
+            None => Ok(None),
+            Some(((got_address, _), _)) if got_address != *address => Ok(None),
+            Some((_, class_hash)) => Ok(Some(class_hash)),
         }
-        Ok(None)
     }
 
     /// Returns the nonce at a given state number.
@@ -372,7 +331,6 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         let deprecated_declared_classes_table =
             self.txn.open_table(&self.tables.deprecated_declared_classes)?;
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
-        let replaced_classes_table = self.txn.open_table(&self.tables.replaced_classes)?;
         let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
 
         update_marker(&self.txn, &markers_table, block_number)?;
@@ -391,7 +349,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             &state_diff.replaced_classes,
             &self.txn,
             block_number,
-            &replaced_classes_table,
+            &deployed_contracts_table,
         )?;
 
         // Write state diff.
@@ -450,7 +408,6 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         let nonces_table = self.txn.open_table(&self.tables.nonces)?;
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
         let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
-        let replaced_classes_table = self.txn.open_table(&self.tables.replaced_classes)?;
 
         let current_state_marker = self.get_state_marker()?;
 
@@ -504,7 +461,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             &self.txn,
             block_number,
             &thin_state_diff,
-            &replaced_classes_table,
+            &deployed_contracts_table,
         )?;
 
         Ok((
@@ -590,14 +547,15 @@ fn write_deployed_contracts<'env>(
     nonces_table: &'env NoncesTable<'env>,
 ) -> StorageResult<()> {
     for (address, class_hash) in deployed_contracts {
-        let value = IndexedDeployedContract { block_number, class_hash: *class_hash };
-        deployed_contracts_table.insert(txn, address, &value).map_err(|err| {
-            if matches!(err, DbError::Inner(libmdbx::Error::KeyExist)) {
-                StorageError::ContractAlreadyExists { address: *address }
-            } else {
-                StorageError::from(err)
-            }
-        })?;
+        deployed_contracts_table.insert(txn, &(*address, block_number), class_hash).map_err(
+            |err| {
+                if matches!(err, DbError::Inner(libmdbx::Error::KeyExist)) {
+                    StorageError::ContractAlreadyExists { address: *address }
+                } else {
+                    StorageError::from(err)
+                }
+            },
+        )?;
 
         nonces_table.insert(txn, &(*address, block_number), &Nonce::default()).map_err(|err| {
             if matches!(err, DbError::Inner(libmdbx::Error::KeyExist)) {
@@ -630,10 +588,10 @@ fn write_replaced_classes<'env>(
     replaced_classes: &IndexMap<ContractAddress, ClassHash>,
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
-    replaced_classes_table: &'env ReplacedClassesTable<'env>,
+    deployed_contracts_table: &'env DeployedContractsTable<'env>,
 ) -> StorageResult<()> {
     for (contract_address, class_hash) in replaced_classes {
-        replaced_classes_table.insert(txn, &(*contract_address, block_number), class_hash)?;
+        deployed_contracts_table.insert(txn, &(*contract_address, block_number), class_hash)?;
     }
     Ok(())
 }
@@ -737,7 +695,7 @@ fn delete_deployed_contracts<'env>(
     nonces_table: &'env NoncesTable<'env>,
 ) -> StorageResult<()> {
     for contract_address in thin_state_diff.deployed_contracts.keys() {
-        deployed_contracts_table.delete(txn, contract_address)?;
+        deployed_contracts_table.delete(txn, &(*contract_address, block_number))?;
         nonces_table.delete(txn, &(*contract_address, block_number))?;
     }
     Ok(())
@@ -773,10 +731,10 @@ fn delete_replaced_classes<'env>(
     txn: &'env DbTransaction<'env, RW>,
     block_number: BlockNumber,
     thin_state_diff: &ThinStateDiff,
-    replaced_classes_table: &'env ReplacedClassesTable<'env>,
+    deployed_contracts_table: &'env DeployedContractsTable<'env>,
 ) -> StorageResult<()> {
     for contract_address in thin_state_diff.replaced_classes.keys() {
-        replaced_classes_table.delete(txn, &(*contract_address, block_number))?;
+        deployed_contracts_table.delete(txn, &(*contract_address, block_number))?;
     }
     Ok(())
 }
