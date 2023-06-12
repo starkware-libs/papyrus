@@ -149,6 +149,8 @@ jobs:
       - run: npm install -g ganache@7.4.3
       - name: Coverage
         run: cargo llvm-cov --codecov --output-path codecov.json
+        env:
+          SEED: 0
       - name: Codecov
         uses: codecov/codecov-action@v3
         with:
