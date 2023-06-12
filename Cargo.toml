@@ -16,6 +16,13 @@ members = [
     "crates/test_utils",
 ]
 
+[workspace.package]
+version = "0.1.0-alpha"
+edition = "2021"
+repository = "https://github.com/starkware-libs/papyrus/"
+license = "Apache-2.0"
+license-file = "LICENSE"
+
 [workspace.dependencies]
 anyhow = { version = "1.0.44" }
 assert = { version = "0.0.4" }
