@@ -292,7 +292,6 @@ auto_impl_get_test_instance! {
         pub entry_point_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
         pub abi: String,
     }
-    // TODO(anatg): Consider using the compression utils.
     pub struct DeprecatedContractClass {
         pub abi: Option<Vec<ContractClassAbiEntry>>,
         pub program: Program,
