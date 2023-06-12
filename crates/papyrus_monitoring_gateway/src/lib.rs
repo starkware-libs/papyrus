@@ -1,3 +1,7 @@
+//! Monitoring gateway for [`starknet`] papyrus node.
+//!
+//! [`starknet`]: https://starknet.io/
+
 #[cfg(test)]
 mod gateway_test;
 

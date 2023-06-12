@@ -1,3 +1,9 @@
+//! This crate contains wrapper around the "rpc" macro supplied by the [`jsonrpsee`] library. The
+//! wrapper gets a version id and prepend the version id to the trait name and to every method name
+//! (note method name refers to the name the API has for the function not the actual function name).
+//!
+//! [`jsonrpsee`]: https://docs.rs/jsonrpsee/latest/jsonrpsee/
+
 use proc_macro::TokenStream;
 use quote::ToTokens;
 use syn::{parse_macro_input, ItemTrait, LitStr, Meta, TraitItem};

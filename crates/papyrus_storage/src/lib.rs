@@ -1,3 +1,7 @@
+//! Storage crate for a [`starknet`] node.
+//!
+//! [`starknet`]: https://starknet.io/
+
 pub mod body;
 pub mod compiled_class;
 pub mod compression_utils;

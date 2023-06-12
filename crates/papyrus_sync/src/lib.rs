@@ -1,3 +1,7 @@
+//! Synchronization component for a [`starknet`] node.
+//!
+//! [`starknet`]: https://starknet.io/
+
 #[cfg(test)]
 #[path = "sync_test.rs"]
 mod sync_test;

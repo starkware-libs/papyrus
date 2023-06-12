@@ -1,3 +1,7 @@
+//! Test utils for [`starknet`] papyrus node.
+//!
+//! [`starknet`]: https://starknet.io/
+
 use std::collections::HashMap;
 use std::env;
 use std::fs::read_to_string;

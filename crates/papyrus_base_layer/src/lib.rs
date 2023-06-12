@@ -1,3 +1,7 @@
+//! Utils for reading data from the [`starknet`] base contract.
+//!
+//! [`starknet`]: https://starknet.io/
+
 use async_trait::async_trait;
 use starknet_api::block::{BlockHash, BlockNumber};
 
