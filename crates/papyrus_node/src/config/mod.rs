@@ -102,6 +102,7 @@ impl Default for ConfigBuilder {
                 },
                 monitoring_gateway: MonitoringGatewayConfig {
                     server_address: String::from("0.0.0.0:8081"),
+                    collect_metrics: true,
                 },
                 storage: StorageConfig {
                     db_config: DbConfig {

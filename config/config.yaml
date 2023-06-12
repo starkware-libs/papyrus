@@ -35,6 +35,8 @@ gateway:
 monitoring_gateway:
     # node's monitoring server.
     server_address: 0.0.0.0:8081
+    # collect metrics for the package.
+    collect_metrics: true
 
 # Node's storage configuration.
 storage:

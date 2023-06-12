@@ -15,12 +15,11 @@ use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument};
 
 const MONITORING_PREFIX: &str = "monitoring";
-// TODO(dvir): Add to config.
-const COLLECT_METRICS: bool = true;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MonitoringGatewayConfig {
     pub server_address: String,
+    pub collect_metrics: bool,
 }
 
 impl Display for MonitoringGatewayConfig {
@@ -44,8 +43,11 @@ impl MonitoringServer {
         storage_reader: StorageReader,
         version: &'static str,
     ) -> Result<Self, BuildError> {
-        let prometheus_handle =
-            if COLLECT_METRICS { Some(PrometheusBuilder::new().install_recorder()?) } else { None };
+        let prometheus_handle = if config.collect_metrics {
+            Some(PrometheusBuilder::new().install_recorder()?)
+        } else {
+            None
+        };
         Ok(MonitoringServer {
             config,
             storage_reader,
