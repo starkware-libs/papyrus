@@ -41,6 +41,7 @@ hex = { version = "0.4.3" }
 http = { version = "0.2.8" }
 hyper = { version = "0.14", features = ["full"] }
 indexmap = { version = "1.9.2" }
+insta = { version = "1.29.0", features = ["yaml"] }
 integer-encoding = { version = "3.0.4" }
 jsonrpsee = { version = "0.18.1" }
 jsonschema = { version = "0.17.0" }
@@ -58,6 +59,7 @@ rand = { version = "0.8.5" }
 rand_chacha = { version = "0.3.1" }
 reqwest = { version = "0.11" }
 rustc-hex = { version = "2.1.0" }
+schemars = { version = "0.8.12", features = ["preserve_order"] }
 serde = { version = "1.0.130" }
 serde_json = { version = "1.0.81" }
 serde_yaml = { version = "0.9.16" }
