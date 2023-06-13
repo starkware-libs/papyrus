@@ -253,6 +253,8 @@ pub fn get_test_state_diff() -> StateDiff {
     // hashes than the deprecated_contract_classes.
     let (_, data) = res.declared_classes.pop().unwrap();
     res.declared_classes.insert(ClassHash(stark_felt!("0x001")), data);
+    // TODO(yair): Find a way to create replaced classes in a test instance of StateDiff.
+    res.replaced_classes.clear();
     res
 }
 

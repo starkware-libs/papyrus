@@ -59,7 +59,7 @@ use crate::db::serialization::{StorageSerde, StorageSerdeError};
 use crate::ommer::{OmmerEventKey, OmmerTransactionKey};
 #[cfg(test)]
 use crate::serializers::serializers_test::{create_storage_serde_test, StorageSerdeTest};
-use crate::state::data::{IndexedDeployedContract, IndexedDeprecatedContractClass};
+use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::Version;
 use crate::MarkerKind;
 
@@ -189,10 +189,6 @@ auto_storage_serde! {
     pub struct IndexedDeprecatedContractClass {
         pub block_number: BlockNumber,
         pub contract_class: DeprecatedContractClass,
-    }
-    pub struct IndexedDeployedContract {
-        pub block_number: BlockNumber,
-        pub class_hash: ClassHash,
     }
     pub enum InvokeTransaction {
         V0(InvokeTransactionV0) = 0,
