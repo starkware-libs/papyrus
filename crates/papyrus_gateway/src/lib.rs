@@ -1,4 +1,4 @@
-//! [`Starknet`] Gateway implementation of [`starknet_api`].
+//! JSON-RPC server implementation of [`starknet_api`].
 //!
 //! [`starknet`]: https://starknet.io/
 //! [`starknet_api`]: https://github.com/starkware-libs/starknet-specs/tree/master/api

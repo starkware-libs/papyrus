@@ -1,4 +1,4 @@
-//! Utils for reading data from the [`starknet`] base contract.
+//! Utils for reading data from the [`starknet`] base layer.
 //!
 //! [`starknet`]: https://starknet.io/
 
