@@ -887,4 +887,31 @@ definitions:
               end:
                 $ref: "#/definitions/ResOperand"
         additionalProperties: false
+      - type: object
+        required:
+          - PopLog
+        properties:
+          PopLog:
+            type: object
+            required:
+              - data_end
+              - data_start
+              - keys_end
+              - keys_start
+              - opt_variant
+              - value
+            properties:
+              value:
+                $ref: "#/definitions/ResOperand"
+              opt_variant:
+                $ref: "#/definitions/CellRef"
+              keys_start:
+                $ref: "#/definitions/CellRef"
+              keys_end:
+                $ref: "#/definitions/CellRef"
+              data_start:
+                $ref: "#/definitions/CellRef"
+              data_end:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
 
