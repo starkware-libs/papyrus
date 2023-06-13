@@ -9,7 +9,7 @@ const VERSION_MAJOR: u32 = 0;
 const VERSION_MINOR: u32 = 1;
 
 /// Patch version component of the current release.
-const VERSION_PATCH: u32 = 2;
+const VERSION_PATCH: u32 = 3;
 
 /// Version metadata to append to the version string.
 /// Expected values are `dev` and `stable`.
