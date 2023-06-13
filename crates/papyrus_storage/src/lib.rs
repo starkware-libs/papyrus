@@ -37,7 +37,7 @@ use crate::db::{
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::{VersionStorageReader, VersionStorageWriter};
 
-pub const STORAGE_VERSION: Version = Version(0);
+pub const STORAGE_VERSION: Version = Version(1);
 
 pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, StorageWriter)> {
     let (db_reader, mut db_writer) = open_env(db_config)?;
