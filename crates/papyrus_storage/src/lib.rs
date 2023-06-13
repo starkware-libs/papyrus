@@ -34,10 +34,10 @@ use crate::db::{
     open_env, DbConfig, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier,
     TransactionKind, RO, RW,
 };
-use crate::state::data::{IndexedDeployedContract, IndexedDeprecatedContractClass};
+use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::{VersionStorageReader, VersionStorageWriter};
 
-pub const STORAGE_VERSION: Version = Version(0);
+pub const STORAGE_VERSION: Version = Version(1);
 
 pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, StorageWriter)> {
     let (db_reader, mut db_writer) = open_env(db_config)?;
@@ -62,7 +62,6 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         ommer_state_diffs: db_writer.create_table("ommer_state_diffs")?,
         ommer_transaction_outputs: db_writer.create_table("ommer_transaction_outputs")?,
         ommer_transactions: db_writer.create_table("ommer_transactions")?,
-        replaced_classes: db_writer.create_table("replaced_classes")?,
         state_diffs: db_writer.create_table("state_diffs")?,
         transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
         transaction_outputs: db_writer.create_table("transaction_outputs")?,
@@ -159,7 +158,7 @@ struct_field_names! {
         declared_classes: TableIdentifier<ClassHash, ContractClass>,
         declared_classes_block: TableIdentifier<ClassHash, BlockNumber>,
         deprecated_declared_classes: TableIdentifier<ClassHash, IndexedDeprecatedContractClass>,
-        deployed_contracts: TableIdentifier<ContractAddress, IndexedDeployedContract>,
+        deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), ClassHash>,
         events: TableIdentifier<(ContractAddress, EventIndex), EventContent>,
         headers: TableIdentifier<BlockNumber, BlockHeader>,
         markers: TableIdentifier<MarkerKind, BlockNumber>,
@@ -174,7 +173,6 @@ struct_field_names! {
         ommer_state_diffs: TableIdentifier<BlockHash, ThinStateDiff>,
         ommer_transaction_outputs: TableIdentifier<OmmerTransactionKey, ThinTransactionOutput>,
         ommer_transactions: TableIdentifier<OmmerTransactionKey, Transaction>,
-        replaced_classes: TableIdentifier<(ContractAddress, BlockNumber),ClassHash>,
         state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
         transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
         transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
