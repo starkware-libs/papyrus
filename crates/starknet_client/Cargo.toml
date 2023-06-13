@@ -1,7 +1,9 @@
 [package]
 name = "starknet_client"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license-file.workspace = true
 
 [features]
 testing = ["mockall"]

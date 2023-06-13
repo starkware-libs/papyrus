@@ -1,7 +1,7 @@
 use rand::Rng;
 use rand_chacha::ChaCha8Rng;
 use starknet_api::block::{BlockHash, BlockNumber};
-use starknet_api::core::{ClassHash, ContractAddress};
+use starknet_api::core::ContractAddress;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::transaction::{
     EventIndexInTransactionOutput, Fee, MessageToL1, TransactionOffsetInBlock,
@@ -15,7 +15,7 @@ use crate::body::events::{
 };
 use crate::body::TransactionIndex;
 use crate::db::DbConfig;
-use crate::state::data::{IndexedDeployedContract, IndexedDeprecatedContractClass};
+use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::Version;
 use crate::{
     open_storage, EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey, StorageReader,
@@ -42,10 +42,6 @@ auto_impl_get_test_instance! {
     pub struct IndexedDeprecatedContractClass {
         pub block_number: BlockNumber,
         pub contract_class: DeprecatedContractClass,
-    }
-    pub struct IndexedDeployedContract {
-        pub block_number: BlockNumber,
-        pub class_hash: ClassHash,
     }
     enum MarkerKind {
         Header = 0,

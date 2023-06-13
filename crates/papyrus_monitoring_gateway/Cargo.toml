@@ -1,13 +1,16 @@
 [package]
 name = "papyrus_monitoring_gateway"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license-file.workspace = true
 
 [dependencies]
 axum.workspace = true
 futures-util.workspace = true
 hyper = { workspace = true, features = ["full"] }
 metrics-exporter-prometheus = { version = "0.12.1" }
+metrics-process = { version = "1.0.11" }
 papyrus_storage = { path = "../papyrus_storage" }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true

@@ -10,6 +10,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Json, Router};
 use metrics_exporter_prometheus::{BuildError, PrometheusBuilder, PrometheusHandle};
+use metrics_process::Collector;
 use papyrus_storage::{DbTablesStats, StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument};
@@ -132,7 +133,10 @@ async fn node_config(
 #[instrument(level = "debug", ret, skip(prometheus_handle))]
 async fn metrics(prometheus_handle: Option<PrometheusHandle>) -> Response {
     match prometheus_handle {
-        Some(handle) => handle.render().into_response(),
+        Some(handle) => {
+            Collector::default().collect();
+            handle.render().into_response()
+        }
         None => StatusCode::METHOD_NOT_ALLOWED.into_response(),
     }
 }
