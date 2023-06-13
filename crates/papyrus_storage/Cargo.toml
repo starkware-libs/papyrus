@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 repository.workspace = true
 license-file.workspace = true
+description = "A storage implementation for a Starknet node."
 
 [features]
 default = ["starknet_api"]
