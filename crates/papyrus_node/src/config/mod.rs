@@ -3,7 +3,9 @@ mod config_test;
 
 mod file_config;
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
+use std::fs::File;
+use std::io::{BufWriter, Write};
 use std::mem::discriminant;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -11,7 +13,9 @@ use std::{env, fs, io};
 
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
 use file_config::FileConfigFormat;
-use papyrus_config::DEFAULT_CHAIN_ID;
+use papyrus_config::{
+    append_sub_config_name, ParamPath, SerdeConfig, SerializedParam, DEFAULT_CHAIN_ID,
+};
 use papyrus_gateway::GatewayConfig;
 use papyrus_monitoring_gateway::MonitoringGatewayConfig;
 use papyrus_storage::db::DbConfig;
@@ -27,7 +31,7 @@ use crate::version::VERSION_FULL;
 const CONFIG_FILE: &str = "config/config.yaml";
 
 /// The configurations of the various components of the node.
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct Config {
     pub gateway: GatewayConfig,
     pub central: CentralSourceConfig,
@@ -51,8 +55,31 @@ impl Default for Config {
     }
 }
 
+impl SerdeConfig for Config {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        append_sub_config_name(self.central.dump(), "central")
+            .into_iter()
+            .chain(append_sub_config_name(self.gateway.dump(), "gateway"))
+            .chain(append_sub_config_name(self.monitoring_gateway.dump(), "monitoring_gateway"))
+            .chain(append_sub_config_name(self.storage.dump(), "storage"))
+            .chain(match self.sync {
+                None => BTreeMap::new(),
+                Some(sync_config) => append_sub_config_name(sync_config.dump(), "sync"),
+            })
+            .collect()
+    }
+}
+
+pub fn dump_default_config_to_file(file_path: &str) {
+    let dumped = Config::default().dump();
+    let file = File::create(file_path).expect("creating failed");
+    let mut writer = BufWriter::new(file);
+    serde_json::to_writer_pretty(&mut writer, &dumped).expect("writing failed");
+    writer.flush().expect("flushing failed");
+}
+
 impl Config {
-    pub fn load(args: Vec<String>) -> Result<Self, ConfigError> {
+    pub fn load_from_builder(args: Vec<String>) -> Result<Self, ConfigError> {
         ConfigBuilder::build(args)
     }
 

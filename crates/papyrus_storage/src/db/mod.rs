@@ -3,13 +3,16 @@ mod db_test;
 pub mod serialization;
 
 use std::borrow::Cow;
+use std::collections::BTreeMap;
 use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::result;
 use std::sync::Arc;
 
 use libmdbx::{Cursor, DatabaseFlags, Geometry, WriteFlags, WriteMap};
+use papyrus_config::{ParamPath, SerdeConfig, SerializedParam};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 use crate::db::serialization::{StorageSerde, StorageSerdeEx};
 
@@ -29,7 +32,7 @@ type Environment = libmdbx::Environment<EnvironmentKind>;
 type DbKeyType<'env> = Cow<'env, [u8]>;
 type DbValueType<'env> = Cow<'env, [u8]>;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct DbConfig {
     pub path: PathBuf,
     pub min_size: usize,
@@ -45,6 +48,48 @@ impl Default for DbConfig {
             max_size: 1 << 40,    // 1TB
             growth_step: 1 << 26, // 64MB
         }
+    }
+}
+
+impl SerdeConfig for DbConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from_iter([
+            (
+                String::from("path"),
+                SerializedParam {
+                    description: String::from(
+                        "Path of the node's storage directory, the storage file path will be \
+                         <path>/<chain_id>.
+                    The path is not created automatically.",
+                    ),
+                    value: json!(self.path),
+                },
+            ),
+            (
+                String::from("min_size"),
+                SerializedParam {
+                    description: String::from("The minimum size of the node's storage in bytes."),
+                    value: json!(self.min_size),
+                },
+            ),
+            (
+                String::from("max_size"),
+                SerializedParam {
+                    description: String::from("The maximum size of the node's storage in bytes."),
+                    value: json!(self.max_size),
+                },
+            ),
+            (
+                String::from("growth_step"),
+                SerializedParam {
+                    description: String::from(
+                        "The growth step in bytes, must be greater than zero to allow the \
+                         database to grow.",
+                    ),
+                    value: json!(self.growth_step),
+                },
+            ),
+        ])
     }
 }
 

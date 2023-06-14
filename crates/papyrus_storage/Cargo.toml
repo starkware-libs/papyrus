@@ -28,6 +28,7 @@ integer-encoding.workspace = true
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
 num-bigint.workspace = true
 primitive-types.workspace = true
+papyrus_config = { path = "../papyrus_config" }
 parity-scale-codec.workspace = true
 rand = { workspace = true, optional = true }
 rand_chacha = { workspace = true, optional = true }

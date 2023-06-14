@@ -36,5 +36,6 @@ tracing.workspace = true
 url.workspace = true
 
 [dev-dependencies]
+insta = { workspace = true, features = ["json"] }
 tempfile.workspace = true
 test_utils = { path = "../test_utils" }
