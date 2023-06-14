@@ -23,6 +23,12 @@ pub struct MonitoringGatewayConfig {
     pub collect_metrics: bool,
 }
 
+impl Default for MonitoringGatewayConfig {
+    fn default() -> Self {
+        MonitoringGatewayConfig { server_address: String::from("0.0.0.0:8081") }
+    }
+}
+
 impl Display for MonitoringGatewayConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self:?}")

@@ -3870,6 +3870,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "papyrus_config"
+version = "0.1.0"
+
+[[package]]
 name = "papyrus_gateway"
 version = "0.1.0-alpha"
 dependencies = [
@@ -3884,6 +3888,7 @@ dependencies = [
  "indexmap",
  "jsonrpsee",
  "jsonschema",
+ "papyrus_config",
  "papyrus_proc_macros",
  "papyrus_storage",
  "serde",
@@ -3946,6 +3951,7 @@ dependencies = [
  "jsonrpsee",
  "libmdbx",
  "papyrus_base_layer",
+ "papyrus_config",
  "papyrus_gateway",
  "papyrus_monitoring_gateway",
  "papyrus_storage",
@@ -3992,6 +3998,7 @@ dependencies = [
  "libmdbx",
  "num-bigint",
  "num-traits 0.2.15",
+ "papyrus_config",
  "parity-scale-codec",
  "paste",
  "primitive-types",

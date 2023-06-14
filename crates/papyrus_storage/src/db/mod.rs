@@ -2,6 +2,7 @@
 mod db_test;
 pub mod serialization;
 
+use papyrus_config::DEFAULT_CHAIN_ID;
 use std::borrow::Cow;
 use std::marker::PhantomData;
 use std::path::PathBuf;
@@ -37,6 +38,18 @@ pub struct DbConfig {
     pub min_size: usize,
     pub max_size: usize,
     pub growth_step: isize,
+}
+
+impl Default for DbConfig {
+    fn default() -> Self {
+        DbConfig {
+            path_prefix: PathBuf::from("./data"),
+            chain_id: ChainId(DEFAULT_CHAIN_ID.to_string()),
+            min_size: 1 << 20,    // 1MB
+            max_size: 1 << 40,    // 1TB
+            growth_step: 1 << 26, // 64MB
+        }
+    }
 }
 
 impl DbConfig {
