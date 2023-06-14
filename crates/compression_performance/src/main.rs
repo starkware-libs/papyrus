@@ -104,31 +104,32 @@ impl<T: TestFunctionPerformance> CompressionResult<T> {
         println!("ser_time: {}", self.ser_time);
         println!("com_time: {}", self.com_time);
         println!("des_ser_time: {}", self.des_ser_time);
-        println!("des_com_time: {}", self.com_size);
+        println!("des_com_time: {}", self.des_com_time);
         println!("====");
     }
 }
 
 pub fn get_db_config() -> DbConfig {
     DbConfig {
-        path: "./data/SN_MAIN".into(),
+        path: "/home/dvir/papyrus_storage/with_casm/SN_GOERLI".into(),
         // Same values as the default storage config.
         min_size: 1048576,
         max_size: 1099511627776,
         growth_step: 67108864,
     }
 }
+use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 
 // Key and value type of the table we currently use.
 type KeyType = ClassHash;
-type ValueType = IndexedDeprecatedContractClass;
+type ValueType = CasmContractClass;
 
 // Number of keys to read from the database.
-const KEY_LIMIT: usize = 10; //usize::MAX;
+const KEY_LIMIT: usize = 10000; //usize::MAX;
 
 #[tokio::main]
 async fn main() {
-    let table_name = "deprecated_declared_classes";
+    let table_name = "casms";
     // let tra_idx=TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(0));
     let (storage_reader_data, _storage_writer) = open_storage(get_db_config()).unwrap();
     let keys_vec = get_keys_list::<KeyType, ValueType>(
@@ -144,7 +145,7 @@ async fn main() {
     let mut results = Vec::new();
     for key in keys_vec {
         let value = get_value::<KeyType, ValueType>(&storage_reader_data, table_name, &key);
-        let cur = CompressionResult::new(value.contract_class.program);
+        let cur = CompressionResult::new(value);
         results.push(cur);
     }
 
@@ -153,7 +154,11 @@ async fn main() {
     let mut des_com_bigger = 0;
     let mut sum_com = 0;
     let mut sum_ser = 0;
+    let mut com_time=0;
+    let mut ser_time=0;
     for s in results.iter() {
+        com_time+=s.com_time;
+        ser_time+=s.ser_time;
         sum_com += s.com_size;
         sum_ser += s.ser_size;
         if s.com_size >= s.ser_size {
@@ -173,4 +178,9 @@ async fn main() {
     println!("sum_ser size: {}", sum_ser);
     println!("sum_com size: {}", sum_com);
     println!("ratio: {}", sum_ser as f64 / sum_com as f64);
+
+    println!();
+    println!("sum_ser time: {}", ser_time);
+    println!("sum_com time: {}", com_time);
+    println!("ratio: {}", com_time as f64 / ser_time as f64);
 }
