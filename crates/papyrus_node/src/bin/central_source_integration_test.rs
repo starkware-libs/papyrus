@@ -16,7 +16,7 @@ async fn main() {
     path.push("data");
     let _ = fs::remove_dir_all(path.clone());
     fs::create_dir_all(path.clone()).expect("Should make a temporary `data` directory");
-    let config = Config::load(vec![
+    let config = Config::load_from_builder(vec![
         "--chain_id=SN_GOERLI".to_owned(),
         "--central_url=https://alpha4.starknet.io/".to_owned(),
         format!("--storage={}", path.display()),

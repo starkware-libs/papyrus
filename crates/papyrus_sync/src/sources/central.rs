@@ -1,6 +1,6 @@
 mod state_update_stream;
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use async_stream::stream;
@@ -11,9 +11,11 @@ use futures_util::StreamExt;
 use indexmap::IndexMap;
 #[cfg(test)]
 use mockall::automock;
+use papyrus_config::{append_sub_config_name, ParamPath, SerdeConfig, SerializedParam};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
@@ -28,7 +30,7 @@ use tracing::{debug, trace};
 use self::state_update_stream::StateUpdateStream;
 
 pub type CentralResult<T> = Result<T, CentralError>;
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct CentralSourceConfig {
     pub concurrent_requests: usize,
     pub url: String,
@@ -48,6 +50,42 @@ impl Default for CentralSourceConfig {
                 max_retries: 10,
             },
         }
+    }
+}
+
+impl SerdeConfig for CentralSourceConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from_iter([
+            (
+                String::from("concurrent_requests"),
+                SerializedParam {
+                    description: String::from(
+                        "Maximum number of concurrent requests to Starknet feeder-gateway for \
+                         getting a type of data (for example, blocks).",
+                    ),
+                    value: json!(self.concurrent_requests),
+                },
+            ),
+            (
+                String::from("url"),
+                SerializedParam {
+                    description: String::from(
+                        "Starknet feeder-gateway URL. It should match chain_id.",
+                    ),
+                    value: json!(self.url),
+                },
+            ),
+            (
+                String::from("http_headers"),
+                SerializedParam {
+                    description: String::from("Optional headers for SN-client."),
+                    value: json!(self.http_headers),
+                },
+            ),
+        ])
+        .into_iter()
+        .chain(append_sub_config_name(self.retry_config.dump(), "retry_config"))
+        .collect()
     }
 }
 

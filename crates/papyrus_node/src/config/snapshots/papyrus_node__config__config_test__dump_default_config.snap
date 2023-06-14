@@ -1,7 +1,13 @@
+---
+source: crates/papyrus_node/src/config/config_test.rs
+expression: dumped_default_config
+---
 {
   "central.concurrent_requests": {
     "description": "Maximum number of concurrent requests to Starknet feeder-gateway for getting a type of data (for example, blocks).",
-    "value": 300
+    "value": {
+      "$serde_json::private::Number": "300"
+    }
   },
   "central.http_headers": {
     "description": "Optional headers for SN-client.",
@@ -9,15 +15,21 @@
   },
   "central.retry_config.max_retries": {
     "description": "Maximum number of retries before the node stops retrying.",
-    "value": 10
+    "value": {
+      "$serde_json::private::Number": "10"
+    }
   },
   "central.retry_config.retry_base_millis": {
     "description": "Base waiting time after a failed request. After that, the time increases exponentially.",
-    "value": 30
+    "value": {
+      "$serde_json::private::Number": "30"
+    }
   },
   "central.retry_config.retry_max_delay_millis": {
     "description": "Max waiting time after a failed request.",
-    "value": 30000
+    "value": {
+      "$serde_json::private::Number": "30000"
+    }
   },
   "central.url": {
     "description": "Starknet feeder-gateway URL. It should match chain_id.",
@@ -29,11 +41,15 @@
   },
   "gateway.max_events_chunk_size": {
     "description": "Maximum chunk size supported by the node in get_events requests.",
-    "value": 1000
+    "value": {
+      "$serde_json::private::Number": "1000"
+    }
   },
   "gateway.max_events_keys": {
     "description": "Maximum number of keys supported by the node in get_events requests.",
-    "value": 100
+    "value": {
+      "$serde_json::private::Number": "100"
+    }
   },
   "gateway.server_address": {
     "description": "IP:PORT of the node`s JSON-RPC server.",
@@ -45,15 +61,21 @@
   },
   "storage.db_config.growth_step": {
     "description": "The growth step in bytes, must be greater than zero to allow the database to grow.",
-    "value": 67108864
+    "value": {
+      "$serde_json::private::Number": "67108864"
+    }
   },
   "storage.db_config.max_size": {
     "description": "The maximum size of the node's storage in bytes.",
-    "value": 1099511627776
+    "value": {
+      "$serde_json::private::Number": "1099511627776"
+    }
   },
   "storage.db_config.min_size": {
     "description": "The minimum size of the node's storage in bytes.",
-    "value": 1048576
+    "value": {
+      "$serde_json::private::Number": "1048576"
+    }
   },
   "storage.db_config.path": {
     "description": "Path of the node's storage directory, the storage file path will be <path>/<chain_id>. The path is not created automatically.",
@@ -62,23 +84,35 @@
   "sync.block_propagation_sleep_duration": {
     "description": "Time before checking for a new block after the node is synchronized.",
     "value": {
-      "nanos": 0,
-      "secs": 10
+      "nanos": {
+        "$serde_json::private::Number": "0"
+      },
+      "secs": {
+        "$serde_json::private::Number": "10"
+      }
     }
   },
   "sync.blocks_max_stream_size": {
     "description": "Max amount of blocks to download in a stream.",
-    "value": 1000
+    "value": {
+      "$serde_json::private::Number": "1000"
+    }
   },
   "sync.recoverable_error_sleep_duration": {
     "description": "Waiting time before restarting synchronization after a recoverable error.",
     "value": {
-      "nanos": 0,
-      "secs": 10
+      "nanos": {
+        "$serde_json::private::Number": "0"
+      },
+      "secs": {
+        "$serde_json::private::Number": "10"
+      }
     }
   },
   "sync.state_updates_max_stream_size": {
     "description": "Max amount of state updates to download in a stream.",
-    "value": 1000
+    "value": {
+      "$serde_json::private::Number": "1000"
+    }
   }
 }
