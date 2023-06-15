@@ -15,6 +15,29 @@ use crate::db::serialization::{StorageSerde, StorageSerdeEx};
 /////////////////////////////////////////////////////////////////////////////
 use crate::{StorageReader, StorageWriter};
 
+pub fn write_to_disk<K: StorageSerde, V: StorageSerde, F: FnOnce(&V) -> Vec<u8>>(storage_writer: &mut StorageWriter, table_name: &'static str, key: &K, value: &V, ser: F) {
+    let table_id = TableIdentifier::<K, V> {
+        name: table_name,
+        _key_type: PhantomData,
+        _value_type: PhantomData,
+    };
+    let db_trans = storage_writer.begin_rw_txn().unwrap().txn;
+    let table_handle = db_trans.open_table(&table_id).unwrap();
+    table_handle.my_insert(&db_trans, key, value, ser).unwrap();
+    db_trans.commit().unwrap();
+}
+
+pub fn read_from_disk<K: StorageSerde, V: StorageSerde,  F: FnOnce(&mut &[u8]) -> V>(storage_reader: &StorageReader, table_name: &'static str, key: &K, des: F) -> V {
+    let table_id = TableIdentifier::<K, V> {
+        name: table_name,
+        _key_type: PhantomData,
+        _value_type: PhantomData,
+    };
+    let db_trans = storage_reader.begin_ro_txn().unwrap().txn;
+    let table_handle = db_trans.open_table(&table_id).unwrap();
+    table_handle.my_get(&db_trans, key, des).unwrap().unwrap()
+}
+
 // Writes the (key, value) pair to the table with 'table name'.
 pub fn write_value<K: StorageSerde, V: StorageSerde>(
     storage_writer: &mut StorageWriter,
@@ -284,6 +307,36 @@ impl<'env, 'txn, K: StorageSerde, V: StorageSerde> TableHandle<'env, K, V> {
         let bin_key = key.serialize()?;
         txn.txn.del(&self.database, bin_key, None)?;
         Ok(())
+    }
+
+
+    pub(crate) fn my_insert<F: FnOnce(&V) -> Vec<u8>>(
+        &'env self,
+        txn: &DbTransaction<'env, RW>,
+        key: &K,
+        value: &V,
+        ser_val: F,
+    ) -> Result<()> {
+        let data = ser_val(value);
+        let bin_key = key.serialize()?;
+        txn.txn.put(&self.database, bin_key, data, WriteFlags::NO_OVERWRITE)?;
+        Ok(())
+    }
+
+    pub(crate) fn my_get<Mode: TransactionKind, F: FnOnce(&mut &[u8]) -> V>(
+        &'env self,
+        txn: &'env DbTransaction<'env, Mode>,
+        key: &K,
+        des_val: F,
+    ) -> Result<Option<V>> {
+        // TODO: Support zero-copy. This might require a return type of Cow<'env, ValueType>.
+        let bin_key = key.serialize()?;
+        let Some(bytes) = txn.txn.get::<Cow<'env, [u8]>>(&self.database, &bin_key)? else {
+            return Ok(None)
+        };
+        let value=des_val(&mut bytes.as_ref());
+        //let value = V::deserialize(&mut bytes.as_ref()).ok_or(DbError::InnerDeserialization)?;
+        Ok(Some(value))
     }
 }
 

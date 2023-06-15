@@ -1,8 +1,8 @@
 use std::time::Instant;
 
-use papyrus_storage::compression_utils::*;
+use papyrus_storage::{compression_utils::*, StorageWriter, StorageReader};
 use papyrus_storage::db::serialization::StorageSerde;
-use papyrus_storage::db::{get_keys_list, get_value, DbConfig};
+use papyrus_storage::db::{get_keys_list, get_value, DbConfig, write_value};
 use papyrus_storage::open_storage;
 use papyrus_storage::state::data::IndexedDeprecatedContractClass;
 use starknet_api::core::ClassHash;
@@ -109,7 +109,18 @@ impl<T: TestFunctionPerformance> CompressionResult<T> {
     }
 }
 
-pub fn get_db_config() -> DbConfig {
+
+
+fn write_to_storage(storage_writer: &mut StorageWriter, key: &KeyType, value: &ValueType) {
+    write_value(storage_writer, TABLE_NAME, key, value);
+}
+
+fn read_from_storage(storage_reader: &StorageReader, key: &KeyType) -> ValueType {
+    get_value::<KeyType, ValueType>(storage_reader, TABLE_NAME, key)
+}
+
+
+pub fn get_read_db_config() -> DbConfig {
     DbConfig {
         path: "/home/dvir/papyrus_storage/with_casm/SN_GOERLI".into(),
         // Same values as the default storage config.
@@ -118,6 +129,51 @@ pub fn get_db_config() -> DbConfig {
         growth_step: 67108864,
     }
 }
+
+use std::fs;
+
+pub fn get_new_db_config() -> DbConfig {
+    let path="/home/dvir/papyrus_storage/new_db/SN_GOERLI";
+    fs::remove_file(path).unwrap();
+    fs::File::create(path).unwrap();
+    DbConfig {
+        path: path.into(),
+        // Same values as the default storage config.
+        min_size: 1048576,
+        max_size: 1099511627776,
+        growth_step: 67108864,
+    }
+}
+
+pub fn get_new_db_config2() -> DbConfig {
+    let path="/home/dvir/papyrus_storage/new_db/SN_GOERLI2";
+    fs::remove_file(path).unwrap();
+    fs::File::create(path).unwrap();
+    DbConfig {
+        path: path.into(),
+        // Same values as the default storage config.
+        min_size: 1048576,
+        max_size: 1099511627776,
+        growth_step: 67108864,
+    }
+}
+
+
+fn get_keys_vector() -> (StorageReader, Vec<KeyType>){
+// let tra_idx=TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(0));
+    let (storage_reader_data, _storage_writer) = open_storage(get_read_db_config()).unwrap();
+    let keys_vec = get_keys_list::<KeyType, ValueType>(
+        &storage_reader_data,
+        TABLE_NAME,
+        //&(ContractAddress::default(), EventIndex(tra_idx, EventIndexInTransactionOutput(0))),
+        //&BlockNumber(0),
+        //&tra_idx,
+        &ClassHash(stark_felt!("0x0")),
+        KEY_LIMIT,
+    );
+    (storage_reader_data, keys_vec)
+}
+
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 
 // Key and value type of the table we currently use.
@@ -125,62 +181,72 @@ type KeyType = ClassHash;
 type ValueType = CasmContractClass;
 
 // Number of keys to read from the database.
-const KEY_LIMIT: usize = 10000; //usize::MAX;
+const KEY_LIMIT: usize = 10; //usize::MAX;
+const TABLE_NAME: &str = "casms";
+
+use papyrus_storage::db::{write_to_disk, read_from_disk};
+
 
 #[tokio::main]
 async fn main() {
-    let table_name = "casms";
-    // let tra_idx=TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(0));
-    let (storage_reader_data, _storage_writer) = open_storage(get_db_config()).unwrap();
-    let keys_vec = get_keys_list::<KeyType, ValueType>(
-        &storage_reader_data,
-        table_name,
-        //&(ContractAddress::default(), EventIndex(tra_idx, EventIndexInTransactionOutput(0))),
-        //&BlockNumber(0),
-        //&tra_idx,
-        &ClassHash(stark_felt!("0x0")),
-        KEY_LIMIT,
-    );
+    let (old_reader, keys_vec)=get_keys_vector();
+    let (storage_reader, mut storage_writer) = open_storage(get_new_db_config()).unwrap();
+    let (storage_reader2, mut storage_writer2) = open_storage(get_new_db_config2()).unwrap();
 
-    let mut results = Vec::new();
+    //let mut results = Vec::new();
     for key in keys_vec {
-        let value = get_value::<KeyType, ValueType>(&storage_reader_data, table_name, &key);
-        let cur = CompressionResult::new(value);
-        results.push(cur);
+        let value = get_value::<KeyType, ValueType>(&old_reader, TABLE_NAME, &key);
+        
+        let compresse = ValueType::serialize_with_compression(&value);
+        let serialized = ValueType::serialize_without_compression(&value);
+
+
+        let (write_com,_)=check_time(|| write_to_disk(&mut storage_writer, TABLE_NAME, &key, &value, |x|ValueType::serialize_with_compression(x)));
+        let (read_com,_)=check_time(|| read_from_disk(&storage_reader, TABLE_NAME, &key, |x|ValueType::deserialize_with_compression(x)));
+
+        let (write_com2,_)=check_time(|| write_to_disk(&mut storage_writer2, TABLE_NAME, &key, &value, |x|ValueType::serialize_without_compression(x)));
+        let (read_com2,_)=check_time(|| read_from_disk(&storage_reader2, TABLE_NAME, &key, |x|ValueType::deserialize_without_compression(x)));
+        //println!("===\ncompress_size: {:?}\n without_size: {:?}\nwrite compress: {:?}\nread_compress: {:?}\nwrite_without: {:?}\nread_without: {:?}\n===",compresse.len(), serialized.len(), write_com, read_com, write_com2, read_com2);
+        
+        println!("===\nser_size: {:?}\ncom_size: {:?}\nser_time: {:?}\ncom_time: {:?}\ndes_ser_time: {:?}\ndes_com_time: {:?}\n===",serialized.len(),compresse.len(),  write_com2, write_com, read_com2, read_com);
+
+        //let cur = CompressionResult::new(value);
+        //results.push(cur);
     }
+    return;
 
-    let total_values = results.len();
-    let mut com_bigger = 0;
-    let mut des_com_bigger = 0;
-    let mut sum_com = 0;
-    let mut sum_ser = 0;
-    let mut com_time=0;
-    let mut ser_time=0;
-    for s in results.iter() {
-        com_time+=s.com_time;
-        ser_time+=s.ser_time;
-        sum_com += s.com_size;
-        sum_ser += s.ser_size;
-        if s.com_size >= s.ser_size {
-            com_bigger += 1;
-        }
-        if s.des_com_time >= s.des_ser_time {
-            des_com_bigger += 1;
-        }
-        s.print_fields();
-    }
+    // let total_values = results.len();
+    // let mut com_bigger = 0;
+    // let mut des_com_bigger = 0;
+    // let mut sum_com = 0;
+    // let mut sum_ser = 0;
+    // let mut com_time=0;
+    // let mut ser_time=0;
+    // for s in results.iter() {
+    //     com_time+=s.com_time;
+    //     ser_time+=s.ser_time;
+    //     sum_com += s.com_size;
+    //     sum_ser += s.ser_size;
+    //     if s.com_size >= s.ser_size {
+    //         com_bigger += 1;
+    //     }
+    //     if s.des_com_time >= s.des_ser_time {
+    //         des_com_bigger += 1;
+    //     }
+    //     s.print_fields();
+    // }
 
-    println!("total_values: {}", total_values);
-    println!("com_bigger: {}", com_bigger);
-    println!("des_com_bigger: {}", des_com_bigger);
+    // println!("total_values: {}", total_values);
+    // println!("com_bigger: {}", com_bigger);
+    // println!("des_com_bigger: {}", des_com_bigger);
 
-    println!();
-    println!("sum_ser size: {}", sum_ser);
-    println!("sum_com size: {}", sum_com);
-    println!("ratio: {}", sum_ser as f64 / sum_com as f64);
+    // println!();
+    // println!("sum_ser size: {}", sum_ser);
+    // println!("sum_com size: {}", sum_com);
+    // println!("ratio: {}", sum_ser as f64 / sum_com as f64);
 
-    println!();
-    println!("sum_ser time: {}", ser_time);
-    println!("sum_com time: {}", com_time);
-    println!("ratio: {}", com_time as f64 / ser_time as f64);
+    // println!();
+    // println!("sum_ser time: {}", ser_time);
+    // println!("sum_com time: {}", com_time);
+    // println!("ratio: {}", com_time as f64 / ser_time as f64);
 }
