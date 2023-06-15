@@ -1,3 +1,11 @@
+//! A storage implementation for a [`Starknet`] node.
+//!
+//! This crate provides a writing and reading interface for various Starknet data structures to a
+//! database. Enables at most one writing operation and multiple reading operations concurrently.
+//! The underlying storage is implemented using the [`libmdbx`] crate.
+//!
+//! [`Starknet`]: https://starknet.io/
+
 pub mod body;
 pub mod compiled_class;
 pub mod compression_utils;
