@@ -1,3 +1,4 @@
+//! This module contains types and functions for iterating over events from the storage.
 #[cfg(test)]
 #[path = "events_test.rs"]
 mod events_test;
@@ -13,13 +14,23 @@ use crate::body::{EventsTable, EventsTableKey, TransactionIndex};
 use crate::db::{DbCursor, DbTransaction, RO};
 use crate::{StorageResult, StorageTxn};
 
+/// An identifier of an event.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
 
+/// An interface for reading events.
 pub trait EventsReader<'txn, 'env> {
-    /// Returns an itrator over events, which is a wrapper of two iterators.
+    /// Returns an iterator over events, which is a wrapper of two iterators.
     /// If the address is none it iterates the events by the order of the event index,
     /// else, it iterated the events by the order of the contract addresses.
+    ///
+    /// # Arguments
+    /// * address - contract address to iterate over events was emitted by it.
+    /// * event_index - event index to start iterate from it.
+    /// * to_block_number - block number to stop iterate at it.
+    ///
+    /// # Errors
+    /// Returns [`StorageError`](crate::StorageError) if there was an error.
     fn iter_events(
         &'env self,
         address: Option<ContractAddress>,
@@ -46,6 +57,7 @@ impl<'txn, 'env> EventsReader<'txn, 'env> for StorageTxn<'env, RO> {
     }
 }
 
+/// A wrapper of two iterators [`EventIterByContractAddress`] and [`EventIterByEventIndex`].
 pub enum EventIter<'txn, 'env> {
     ByContractAddress(EventIterByContractAddress<'txn>),
     ByEventIndex(EventIterByEventIndex<'txn, 'env>),
@@ -78,6 +90,10 @@ pub struct EventIterByContractAddress<'txn> {
 }
 
 impl EventIterByContractAddress<'_> {
+    /// Returns the next event. If there are no more events, returns None.
+    ///
+    /// # Errors
+    /// Returns [`StorageError`](crate::StorageError) if there was an error.
     fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
         let res = self.current.take();
         self.current = self.cursor.next()?;
@@ -99,6 +115,10 @@ pub struct EventIterByEventIndex<'txn, 'env> {
 }
 
 impl EventIterByEventIndex<'_, '_> {
+    /// Returns the next event. If there are no more events, returns None.
+    ///
+    /// # Errors
+    /// Returns [`StorageError`](crate::StorageError) if there was an error.
     fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
         let Some((tx_index, tx_output)) = &self.tx_current else {return Ok(None)};
         let Some(address) =
@@ -111,10 +131,13 @@ impl EventIterByEventIndex<'_, '_> {
         Ok(Some((key, content)))
     }
 
-    // Finds the event that corresponds to the first event index greater than or equals to the
-    // current event index. The current event index is composed of the transaction index of the
-    // current transaction (tx_current) and the event index in current transaction output
-    // (event_index_in_tx_current).
+    /// Finds the event that corresponds to the first event index greater than or equals to the
+    /// current event index. The current event index is composed of the transaction index of the
+    /// current transaction (tx_current) and the event index in current transaction output
+    /// (event_index_in_tx_current).
+    ///
+    /// # Errors
+    /// Returns [`StorageError`](crate::StorageError) if there was an error.
     fn find_next_event_by_event_index(&mut self) -> StorageResult<()> {
         while let Some((tx_index, tx_output)) = &self.tx_current {
             if tx_index.0 > self.to_block_number {
@@ -138,8 +161,13 @@ impl EventIterByEventIndex<'_, '_> {
 }
 
 impl<'txn, 'env> StorageTxn<'env, RO> {
-    // Returns an events iterator that iterates events by the events table key,
-    // starting from the first event with a key greater or equals to the given key.
+    /// Returns an events iterator that iterates events by the events table key from the given key.
+    ///
+    /// # Arguments
+    /// * key - key to start from the first event with a key greater or equals to the given key.
+    ///
+    /// # Errors
+    /// Returns [`StorageError`](crate::StorageError) if there was an error.
     fn iter_events_by_contract_address(
         &'env self,
         key: EventsTableKey,
@@ -150,9 +178,15 @@ impl<'txn, 'env> StorageTxn<'env, RO> {
         Ok(EventIterByContractAddress { current, cursor })
     }
 
-    // Returns an events iterator that iterates events by event index,
-    // starting from the first event with an index greater or equals to the given index,
-    // upto the given to_block_number.
+    /// Returns an events iterator that iterates events by event index from the given event index.
+    ///
+    /// # Arguments
+    /// * event_index - event index to start from the first event with an index greater or equals
+    ///   to.
+    /// * to_block_number - block number to stop iterate at it.
+    ///
+    /// # Errors
+    /// Returns [`StorageError`](crate::StorageError) if there was an error.
     fn iter_events_by_event_index(
         &'env self,
         event_index: EventIndex,
@@ -176,11 +210,12 @@ impl<'txn, 'env> StorageTxn<'env, RO> {
     }
 }
 
-// Each [`ThinTransactionOutput`] holds a list of event contract addresses so that given a thin
-// transaction output we can get all its events from the events table (see
-// [`get_transaction_events`] in [`BodyStorageReader`]). These events contract addresses are taken
-// from the events in the order of the events in [`starknet_api`][`TransactionOutput`].
-// In particular, they are not sorted and with duplicates.
+/// Each [`ThinTransactionOutput`] holds a list of event contract addresses so that given a thin
+/// transaction output we can get all its events from the events table (see
+/// [`get_transaction_events`](crate::body::BodyStorageReader::get_transaction_events) in
+/// [`BodyStorageReader`](crate::body::BodyStorageReader)). These events contract addresses are
+/// taken from the events in the order of the events in [`starknet_api`][`TransactionOutput`].
+/// In particular, they are not sorted and with duplicates.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum ThinTransactionOutput {
     Declare(ThinDeclareTransactionOutput),
@@ -191,6 +226,7 @@ pub enum ThinTransactionOutput {
 }
 
 impl ThinTransactionOutput {
+    /// Returns the events contract addresses of the transaction output.
     pub(crate) fn events_contract_addresses(self) -> Vec<ContractAddress> {
         match self {
             ThinTransactionOutput::Declare(tx_output) => tx_output.events_contract_addresses,
@@ -200,6 +236,7 @@ impl ThinTransactionOutput {
             ThinTransactionOutput::L1Handler(tx_output) => tx_output.events_contract_addresses,
         }
     }
+    /// Returns the events contract addresses of the transaction output.
     pub(crate) fn events_contract_addresses_as_ref(&self) -> &Vec<ContractAddress> {
         match self {
             ThinTransactionOutput::Declare(tx_output) => &tx_output.events_contract_addresses,
@@ -210,39 +247,68 @@ impl ThinTransactionOutput {
         }
     }
 }
-
+/// A thin version of
+/// [`InvokeTransactionOutput`](starknet_api::transaction::InvokeTransactionOutput), not holding the
+/// events content.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ThinInvokeTransactionOutput {
+    /// The actual fee paid for the transaction.
     pub actual_fee: Fee,
+    /// The messages sent by the transaction to the base layer.
     pub messages_sent: Vec<MessageToL1>,
+    /// The contract addresses of the events emitted by the transaction.
     pub events_contract_addresses: Vec<ContractAddress>,
 }
 
+/// A thin version of
+/// [`L1HandlerTransactionOutput`](starknet_api::transaction::L1HandlerTransactionOutput), not
+/// holding the events content.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ThinL1HandlerTransactionOutput {
+    /// The actual fee paid for the transaction.
     pub actual_fee: Fee,
+    /// The messages sent by the transaction to the base layer.
     pub messages_sent: Vec<MessageToL1>,
+    /// The contract addresses of the events emitted by the transaction.
     pub events_contract_addresses: Vec<ContractAddress>,
 }
 
+/// A thin version of
+/// [`DeclareTransactionOutput`](starknet_api::transaction::DeclareTransactionOutput), not holding
+/// the events content.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ThinDeclareTransactionOutput {
+    /// The actual fee paid for the transaction.
     pub actual_fee: Fee,
+    /// The messages sent by the transaction to the base layer.
     pub messages_sent: Vec<MessageToL1>,
+    /// The contract addresses of the events emitted by the transaction.
     pub events_contract_addresses: Vec<ContractAddress>,
 }
 
+/// A thin version of
+/// [`DeployTransactionOutput`](starknet_api::transaction::DeployTransactionOutput), not holding the
+/// events content.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ThinDeployTransactionOutput {
+    /// The actual fee paid for the transaction.
     pub actual_fee: Fee,
+    /// The messages sent by the transaction to the base layer.
     pub messages_sent: Vec<MessageToL1>,
+    /// The contract addresses of the events emitted by the transaction.
     pub events_contract_addresses: Vec<ContractAddress>,
 }
 
+/// A thin version of
+/// [`DeployAccountTransactionOutput`](starknet_api::transaction::DeployAccountTransactionOutput),
+/// not holding the events content.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ThinDeployAccountTransactionOutput {
+    /// The actual fee paid for the transaction.
     pub actual_fee: Fee,
+    /// The messages sent by the transaction to the base layer.
     pub messages_sent: Vec<MessageToL1>,
+    /// The contract addresses of the events emitted by the transaction.
     pub events_contract_addresses: Vec<ContractAddress>,
 }
 
@@ -290,8 +356,12 @@ impl From<TransactionOutput> for ThinTransactionOutput {
     }
 }
 
+/// A key-value pair of the events table.
 type EventsTableKeyValue = (EventsTableKey, EventContent);
+/// A cursor of the events table.
 type EventsTableCursor<'txn> = DbCursor<'txn, RO, EventsTableKey, EventContent>;
+/// A key-value pair of the transaction outputs table.
 type TransactionOutputsKeyValue = (TransactionIndex, ThinTransactionOutput);
+/// A cursor of the transaction outputs table.
 type TransactionOutputsTableCursor<'txn> =
     DbCursor<'txn, RO, TransactionIndex, ThinTransactionOutput>;
