@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use crate::db::serialization::{StorageSerde, StorageSerdeEx};
 /////////////////////////////////////////////////////////////////////////////
 use crate::{StorageReader, StorageWriter};
+use std::time::Instant;
 
 pub fn write_to_disk<K: StorageSerde, V: StorageSerde, F: FnOnce(&V) -> Vec<u8>>(storage_writer: &mut StorageWriter, table_name: &'static str, key: &K, value: &V, ser: F) {
     let table_id = TableIdentifier::<K, V> {
@@ -21,8 +22,14 @@ pub fn write_to_disk<K: StorageSerde, V: StorageSerde, F: FnOnce(&V) -> Vec<u8>>
         _key_type: PhantomData,
         _value_type: PhantomData,
     };
+
+    let now = Instant::now();
+
     let db_trans = storage_writer.begin_rw_txn().unwrap().txn;
     let table_handle = db_trans.open_table(&table_id).unwrap();
+    
+    println!("the time for begin: {}", now.elapsed().as_micros());
+
     table_handle.my_insert(&db_trans, key, value, ser).unwrap();
     db_trans.commit().unwrap();
 }
@@ -33,8 +40,12 @@ pub fn read_from_disk<K: StorageSerde, V: StorageSerde,  F: FnOnce(&mut &[u8]) -
         _key_type: PhantomData,
         _value_type: PhantomData,
     };
+    let now = Instant::now();
+
     let db_trans = storage_reader.begin_ro_txn().unwrap().txn;
     let table_handle = db_trans.open_table(&table_id).unwrap();
+    println!("read time: {}", now.elapsed().as_micros());
+
     table_handle.my_get(&db_trans, key, des).unwrap().unwrap()
 }
 

@@ -1,5 +1,6 @@
 use std::time::Instant;
 
+use cairo_lang_utils::bigint::BigUintAsHex;
 use papyrus_storage::{compression_utils::*, StorageWriter, StorageReader};
 use papyrus_storage::db::serialization::StorageSerde;
 use papyrus_storage::db::{get_keys_list, get_value, DbConfig, write_value};
@@ -181,39 +182,84 @@ type KeyType = ClassHash;
 type ValueType = CasmContractClass;
 
 // Number of keys to read from the database.
-const KEY_LIMIT: usize = 10; //usize::MAX;
+const KEY_LIMIT: usize = 1; //usize::MAX;
 const TABLE_NAME: &str = "casms";
 
 use papyrus_storage::db::{write_to_disk, read_from_disk};
 
+#[derive(Debug)]
+struct results{
+    ser_size: usize,
+    com_size: usize,
+    ser_time: u128,
+    com_time: u128,
+    des_ser_time: u128,
+    des_com_time: u128,
+}
 
 #[tokio::main]
 async fn main() {
-    let (old_reader, keys_vec)=get_keys_vector();
+    let (old_reader, mut keys_vec)=get_keys_vector();
     let (storage_reader, mut storage_writer) = open_storage(get_new_db_config()).unwrap();
     let (storage_reader2, mut storage_writer2) = open_storage(get_new_db_config2()).unwrap();
+    
 
-    //let mut results = Vec::new();
-    for key in keys_vec {
-        let value = get_value::<KeyType, ValueType>(&old_reader, TABLE_NAME, &key);
-        
+    //let mut end = Vec::new();
+    for key in keys_vec.iter() {
+        //let value = get_value::<KeyType, ValueType>(&old_reader, TABLE_NAME, &key);
+        let mut value=CasmContractClass::default();
+        let mut v=vec![];
+        for i in 0..100000{
+            v.push(BigUintAsHex::default());
+        }
+        value.bytecode=v;
+
         let compresse = ValueType::serialize_with_compression(&value);
         let serialized = ValueType::serialize_without_compression(&value);
 
 
-        let (write_com,_)=check_time(|| write_to_disk(&mut storage_writer, TABLE_NAME, &key, &value, |x|ValueType::serialize_with_compression(x)));
-        let (read_com,_)=check_time(|| read_from_disk(&storage_reader, TABLE_NAME, &key, |x|ValueType::deserialize_with_compression(x)));
+        let (write_com,_)=check_time(|| write_to_disk(&mut storage_writer, TABLE_NAME, key, &value, |x|ValueType::serialize_with_compression(x)));
+        let (read_com,_)=check_time(|| read_from_disk(&storage_reader, TABLE_NAME, key, |x|ValueType::deserialize_with_compression(x)));
 
-        let (write_com2,_)=check_time(|| write_to_disk(&mut storage_writer2, TABLE_NAME, &key, &value, |x|ValueType::serialize_without_compression(x)));
-        let (read_com2,_)=check_time(|| read_from_disk(&storage_reader2, TABLE_NAME, &key, |x|ValueType::deserialize_without_compression(x)));
+        let (write_com2,_)=check_time(|| write_to_disk(&mut storage_writer2, TABLE_NAME, key, &value, |x|ValueType::serialize_without_compression(x)));
+        let (read_com2,_)=check_time(|| read_from_disk(&storage_reader2, TABLE_NAME, key, |x|ValueType::deserialize_without_compression(x)));
         //println!("===\ncompress_size: {:?}\n without_size: {:?}\nwrite compress: {:?}\nread_compress: {:?}\nwrite_without: {:?}\nread_without: {:?}\n===",compresse.len(), serialized.len(), write_com, read_com, write_com2, read_com2);
         
         println!("===\nser_size: {:?}\ncom_size: {:?}\nser_time: {:?}\ncom_time: {:?}\ndes_ser_time: {:?}\ndes_com_time: {:?}\n===",serialized.len(),compresse.len(),  write_com2, write_com, read_com2, read_com);
 
         //let cur = CompressionResult::new(value);
         //results.push(cur);
+        // let cur=results{
+        //     ser_size: serialized.len(),
+        //     com_size: compresse.len(),
+        //     ser_time: write_com2,
+        //     com_time: write_com,
+        //     des_ser_time: 0,
+        //     des_com_time: 0,
+        // };
+        //end.push(cur);
     }
     return;
+    // use rand::Rng;
+    // let mut count=0;
+    // let mut rng = rand::thread_rng();
+    // while count!=keys_vec.len(){
+    //     let i=rng.gen_range(0..keys_vec.len());
+    //     if end[i].des_com_time==0{
+    //         count+=1;
+    //         let key=keys_vec[i];
+    //         let (read_com,_)=check_time(|| read_from_disk(&storage_reader, TABLE_NAME, &key, |x|ValueType::deserialize_with_compression(x)));
+    //         let (read_com2,_)=check_time(|| read_from_disk(&storage_reader2, TABLE_NAME, &key, |x|ValueType::deserialize_without_compression(x)));
+    //         end[i].des_com_time=read_com;
+    //         end[i].des_ser_time=read_com2; 
+
+
+    //     }
+    // }
+
+    // println!("{:#?}", end);
+
+    // return;
 
     // let total_values = results.len();
     // let mut com_bigger = 0;

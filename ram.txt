@@ -1,0 +1,10371 @@
+====
+ser_size: 29913
+com_size: 5045
+ser_time: 91
+com_time: 533
+des_ser_time: 202
+des_com_time: 264
+====
+====
+ser_size: 3710
+com_size: 1070
+ser_time: 11
+com_time: 73
+des_ser_time: 25
+des_com_time: 45
+====
+====
+ser_size: 3710
+com_size: 1070
+ser_time: 12
+com_time: 67
+des_ser_time: 25
+des_com_time: 38
+====
+====
+ser_size: 16326
+com_size: 3151
+ser_time: 54
+com_time: 228
+des_ser_time: 115
+des_com_time: 142
+====
+====
+ser_size: 15150
+com_size: 3262
+ser_time: 42
+com_time: 212
+des_ser_time: 96
+des_com_time: 122
+====
+====
+ser_size: 3792
+com_size: 1071
+ser_time: 11
+com_time: 71
+des_ser_time: 26
+des_com_time: 40
+====
+====
+ser_size: 49229
+com_size: 6755
+ser_time: 134
+com_time: 795
+des_ser_time: 425
+des_com_time: 402
+====
+====
+ser_size: 5662
+com_size: 1226
+ser_time: 20
+com_time: 107
+des_ser_time: 46
+des_com_time: 66
+====
+====
+ser_size: 10474
+com_size: 2019
+ser_time: 34
+com_time: 204
+des_ser_time: 67
+des_com_time: 94
+====
+====
+ser_size: 3710
+com_size: 1070
+ser_time: 13
+com_time: 84
+des_ser_time: 30
+des_com_time: 46
+====
+====
+ser_size: 12189
+com_size: 2498
+ser_time: 41
+com_time: 216
+des_ser_time: 79
+des_com_time: 123
+====
+====
+ser_size: 5096
+com_size: 1337
+ser_time: 18
+com_time: 161
+des_ser_time: 42
+des_com_time: 59
+====
+====
+ser_size: 11345
+com_size: 2258
+ser_time: 43
+com_time: 206
+des_ser_time: 78
+des_com_time: 108
+====
+====
+ser_size: 5593
+com_size: 1390
+ser_time: 20
+com_time: 127
+des_ser_time: 46
+des_com_time: 64
+====
+====
+ser_size: 57771
+com_size: 8205
+ser_time: 206
+com_time: 1213
+des_ser_time: 528
+des_com_time: 563
+====
+====
+ser_size: 14411
+com_size: 2681
+ser_time: 48
+com_time: 252
+des_ser_time: 98
+des_com_time: 141
+====
+====
+ser_size: 47032
+com_size: 6682
+ser_time: 158
+com_time: 914
+des_ser_time: 428
+des_com_time: 462
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 14
+com_time: 92
+des_ser_time: 34
+des_com_time: 53
+====
+====
+ser_size: 3893
+com_size: 1304
+ser_time: 14
+com_time: 98
+des_ser_time: 29
+des_com_time: 48
+====
+====
+ser_size: 20459
+com_size: 3946
+ser_time: 72
+com_time: 442
+des_ser_time: 165
+des_com_time: 214
+====
+====
+ser_size: 6921
+com_size: 1651
+ser_time: 24
+com_time: 168
+des_ser_time: 52
+des_com_time: 76
+====
+====
+ser_size: 10100
+com_size: 2293
+ser_time: 35
+com_time: 235
+des_ser_time: 76
+des_com_time: 107
+====
+====
+ser_size: 14509
+com_size: 2676
+ser_time: 47
+com_time: 281
+des_ser_time: 114
+des_com_time: 147
+====
+====
+ser_size: 13719
+com_size: 3110
+ser_time: 45
+com_time: 324
+des_ser_time: 103
+des_com_time: 135
+====
+====
+ser_size: 3255
+com_size: 984
+ser_time: 14
+com_time: 113
+des_ser_time: 26
+des_com_time: 42
+====
+====
+ser_size: 8427
+com_size: 2033
+ser_time: 29
+com_time: 198
+des_ser_time: 63
+des_com_time: 90
+====
+====
+ser_size: 27758
+com_size: 4816
+ser_time: 112
+com_time: 541
+des_ser_time: 220
+des_com_time: 253
+====
+====
+ser_size: 16138
+com_size: 2832
+ser_time: 45
+com_time: 301
+des_ser_time: 108
+des_com_time: 131
+====
+====
+ser_size: 100866
+com_size: 13490
+ser_time: 276
+com_time: 1817
+des_ser_time: 789
+des_com_time: 869
+====
+====
+ser_size: 84977
+com_size: 10444
+ser_time: 229
+com_time: 1257
+des_ser_time: 653
+des_com_time: 674
+====
+====
+ser_size: 25155
+com_size: 4118
+ser_time: 76
+com_time: 402
+des_ser_time: 160
+des_com_time: 199
+====
+====
+ser_size: 62260
+com_size: 7975
+ser_time: 167
+com_time: 892
+des_ser_time: 467
+des_com_time: 470
+====
+====
+ser_size: 14736
+com_size: 3220
+ser_time: 49
+com_time: 279
+des_ser_time: 97
+des_com_time: 138
+====
+====
+ser_size: 16227
+com_size: 2961
+ser_time: 55
+com_time: 253
+des_ser_time: 104
+des_com_time: 132
+====
+====
+ser_size: 14875
+com_size: 3169
+ser_time: 42
+com_time: 262
+des_ser_time: 102
+des_com_time: 135
+====
+====
+ser_size: 8250
+com_size: 1387
+ser_time: 23
+com_time: 107
+des_ser_time: 53
+des_com_time: 70
+====
+====
+ser_size: 31945
+com_size: 4986
+ser_time: 84
+com_time: 521
+des_ser_time: 225
+des_com_time: 240
+====
+====
+ser_size: 4557
+com_size: 1176
+ser_time: 14
+com_time: 117
+des_ser_time: 31
+des_com_time: 47
+====
+====
+ser_size: 31842
+com_size: 4866
+ser_time: 104
+com_time: 584
+des_ser_time: 261
+des_com_time: 304
+====
+====
+ser_size: 5593
+com_size: 1390
+ser_time: 20
+com_time: 128
+des_ser_time: 37
+des_com_time: 59
+====
+====
+ser_size: 48436
+com_size: 6821
+ser_time: 133
+com_time: 824
+des_ser_time: 358
+des_com_time: 377
+====
+====
+ser_size: 9560
+com_size: 1879
+ser_time: 27
+com_time: 150
+des_ser_time: 77
+des_com_time: 99
+====
+====
+ser_size: 20074
+com_size: 3892
+ser_time: 58
+com_time: 360
+des_ser_time: 141
+des_com_time: 174
+====
+====
+ser_size: 3710
+com_size: 1068
+ser_time: 11
+com_time: 86
+des_ser_time: 25
+des_com_time: 40
+====
+====
+ser_size: 19945
+com_size: 4150
+ser_time: 57
+com_time: 347
+des_ser_time: 131
+des_com_time: 166
+====
+====
+ser_size: 43259
+com_size: 5986
+ser_time: 119
+com_time: 680
+des_ser_time: 326
+des_com_time: 323
+====
+====
+ser_size: 36056
+com_size: 5155
+ser_time: 124
+com_time: 514
+des_ser_time: 253
+des_com_time: 281
+====
+====
+ser_size: 17519
+com_size: 3382
+ser_time: 48
+com_time: 292
+des_ser_time: 111
+des_com_time: 144
+====
+====
+ser_size: 3595
+com_size: 1015
+ser_time: 14
+com_time: 99
+des_ser_time: 29
+des_com_time: 46
+====
+====
+ser_size: 71893
+com_size: 9570
+ser_time: 216
+com_time: 1377
+des_ser_time: 587
+des_com_time: 650
+====
+====
+ser_size: 46611
+com_size: 6757
+ser_time: 133
+com_time: 744
+des_ser_time: 361
+des_com_time: 365
+====
+====
+ser_size: 51256
+com_size: 7205
+ser_time: 144
+com_time: 860
+des_ser_time: 451
+des_com_time: 415
+====
+====
+ser_size: 19007
+com_size: 3373
+ser_time: 55
+com_time: 320
+des_ser_time: 124
+des_com_time: 158
+====
+====
+ser_size: 12974
+com_size: 1827
+ser_time: 36
+com_time: 163
+des_ser_time: 88
+des_com_time: 106
+====
+====
+ser_size: 3838
+com_size: 1161
+ser_time: 14
+com_time: 108
+des_ser_time: 30
+des_com_time: 48
+====
+====
+ser_size: 10583
+com_size: 2302
+ser_time: 44
+com_time: 270
+des_ser_time: 82
+des_com_time: 111
+====
+====
+ser_size: 7507
+com_size: 1635
+ser_time: 35
+com_time: 137
+des_ser_time: 64
+des_com_time: 80
+====
+====
+ser_size: 50758
+com_size: 7415
+ser_time: 142
+com_time: 928
+des_ser_time: 396
+des_com_time: 419
+====
+====
+ser_size: 64121
+com_size: 8806
+ser_time: 183
+com_time: 1053
+des_ser_time: 500
+des_com_time: 529
+====
+====
+ser_size: 10283
+com_size: 2110
+ser_time: 30
+com_time: 168
+des_ser_time: 67
+des_com_time: 90
+====
+====
+ser_size: 70387
+com_size: 9733
+ser_time: 206
+com_time: 1205
+des_ser_time: 581
+des_com_time: 603
+====
+====
+ser_size: 10781
+com_size: 2407
+ser_time: 31
+com_time: 184
+des_ser_time: 70
+des_com_time: 95
+====
+====
+ser_size: 82054
+com_size: 10715
+ser_time: 222
+com_time: 1330
+des_ser_time: 643
+des_com_time: 685
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 12
+com_time: 75
+des_ser_time: 26
+des_com_time: 43
+====
+====
+ser_size: 6921
+com_size: 1651
+ser_time: 19
+com_time: 118
+des_ser_time: 43
+des_com_time: 61
+====
+====
+ser_size: 182529
+com_size: 22411
+ser_time: 513
+com_time: 3226
+des_ser_time: 1343
+des_com_time: 1527
+====
+====
+ser_size: 122443
+com_size: 15637
+ser_time: 337
+com_time: 1905
+des_ser_time: 906
+des_com_time: 986
+====
+====
+ser_size: 61811
+com_size: 9177
+ser_time: 175
+com_time: 1056
+des_ser_time: 421
+des_com_time: 492
+====
+====
+ser_size: 5449
+com_size: 1474
+ser_time: 16
+com_time: 120
+des_ser_time: 42
+des_com_time: 74
+====
+====
+ser_size: 82343
+com_size: 29485
+ser_time: 208
+com_time: 1710
+des_ser_time: 536
+des_com_time: 638
+====
+====
+ser_size: 29529
+com_size: 4918
+ser_time: 86
+com_time: 517
+des_ser_time: 194
+des_com_time: 248
+====
+====
+ser_size: 2617
+com_size: 662
+ser_time: 8
+com_time: 46
+des_ser_time: 16
+des_com_time: 28
+====
+====
+ser_size: 60247
+com_size: 8600
+ser_time: 170
+com_time: 1011
+des_ser_time: 443
+des_com_time: 499
+====
+====
+ser_size: 5593
+com_size: 1390
+ser_time: 20
+com_time: 101
+des_ser_time: 44
+des_com_time: 58
+====
+====
+ser_size: 6990
+com_size: 1268
+ser_time: 20
+com_time: 100
+des_ser_time: 44
+des_com_time: 60
+====
+====
+ser_size: 3791
+com_size: 1073
+ser_time: 12
+com_time: 71
+des_ser_time: 26
+des_com_time: 40
+====
+====
+ser_size: 22016
+com_size: 3580
+ser_time: 62
+com_time: 319
+des_ser_time: 136
+des_com_time: 170
+====
+====
+ser_size: 93642
+com_size: 12679
+ser_time: 258
+com_time: 1614
+des_ser_time: 698
+des_com_time: 811
+====
+====
+ser_size: 4539
+com_size: 1190
+ser_time: 14
+com_time: 85
+des_ser_time: 31
+des_com_time: 47
+====
+====
+ser_size: 2027
+com_size: 767
+ser_time: 7
+com_time: 47
+des_ser_time: 13
+des_com_time: 25
+====
+====
+ser_size: 1779
+com_size: 598
+ser_time: 5
+com_time: 38
+des_ser_time: 11
+des_com_time: 21
+====
+====
+ser_size: 31930
+com_size: 4741
+ser_time: 91
+com_time: 499
+des_ser_time: 210
+des_com_time: 260
+====
+====
+ser_size: 7323
+com_size: 1704
+ser_time: 20
+com_time: 126
+des_ser_time: 44
+des_com_time: 64
+====
+====
+ser_size: 4098
+com_size: 1244
+ser_time: 14
+com_time: 83
+des_ser_time: 31
+des_com_time: 45
+====
+====
+ser_size: 10826
+com_size: 2398
+ser_time: 43
+com_time: 188
+des_ser_time: 84
+des_com_time: 118
+====
+====
+ser_size: 3792
+com_size: 1067
+ser_time: 25
+com_time: 84
+des_ser_time: 34
+des_com_time: 65
+====
+====
+ser_size: 59649
+com_size: 8379
+ser_time: 192
+com_time: 1261
+des_ser_time: 524
+des_com_time: 556
+====
+====
+ser_size: 12318
+com_size: 2427
+ser_time: 33
+com_time: 188
+des_ser_time: 73
+des_com_time: 97
+====
+====
+ser_size: 8893
+com_size: 2156
+ser_time: 26
+com_time: 158
+des_ser_time: 55
+des_com_time: 78
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 11
+com_time: 70
+des_ser_time: 26
+des_com_time: 40
+====
+====
+ser_size: 51008
+com_size: 7271
+ser_time: 144
+com_time: 858
+des_ser_time: 384
+des_com_time: 406
+====
+====
+ser_size: 34051
+com_size: 5508
+ser_time: 95
+com_time: 567
+des_ser_time: 222
+des_com_time: 262
+====
+====
+ser_size: 129027
+com_size: 17440
+ser_time: 349
+com_time: 2380
+des_ser_time: 976
+des_com_time: 1105
+====
+====
+ser_size: 15206
+com_size: 3050
+ser_time: 44
+com_time: 255
+des_ser_time: 93
+des_com_time: 125
+====
+====
+ser_size: 5593
+com_size: 1387
+ser_time: 17
+com_time: 97
+des_ser_time: 43
+des_com_time: 64
+====
+====
+ser_size: 45666
+com_size: 6697
+ser_time: 149
+com_time: 754
+des_ser_time: 375
+des_com_time: 471
+====
+====
+ser_size: 5593
+com_size: 1390
+ser_time: 20
+com_time: 100
+des_ser_time: 46
+des_com_time: 67
+====
+====
+ser_size: 16591
+com_size: 3306
+ser_time: 51
+com_time: 348
+des_ser_time: 125
+des_com_time: 159
+====
+====
+ser_size: 41663
+com_size: 6368
+ser_time: 116
+com_time: 792
+des_ser_time: 290
+des_com_time: 334
+====
+====
+ser_size: 74961
+com_size: 9670
+ser_time: 211
+com_time: 1190
+des_ser_time: 568
+des_com_time: 616
+====
+====
+ser_size: 3165
+com_size: 828
+ser_time: 10
+com_time: 58
+des_ser_time: 22
+des_com_time: 36
+====
+====
+ser_size: 25353
+com_size: 4239
+ser_time: 69
+com_time: 377
+des_ser_time: 155
+des_com_time: 194
+====
+====
+ser_size: 43586
+com_size: 6224
+ser_time: 147
+com_time: 699
+des_ser_time: 328
+des_com_time: 325
+====
+====
+ser_size: 3792
+com_size: 1076
+ser_time: 12
+com_time: 72
+des_ser_time: 26
+des_com_time: 41
+====
+====
+ser_size: 7411
+com_size: 1816
+ser_time: 22
+com_time: 136
+des_ser_time: 61
+des_com_time: 79
+====
+====
+ser_size: 55964
+com_size: 7212
+ser_time: 156
+com_time: 831
+des_ser_time: 431
+des_com_time: 450
+====
+====
+ser_size: 87829
+com_size: 12062
+ser_time: 238
+com_time: 1537
+des_ser_time: 719
+des_com_time: 719
+====
+====
+ser_size: 97073
+com_size: 12847
+ser_time: 331
+com_time: 1950
+des_ser_time: 859
+des_com_time: 990
+====
+====
+ser_size: 17670
+com_size: 3485
+ser_time: 53
+com_time: 329
+des_ser_time: 128
+des_com_time: 163
+====
+====
+ser_size: 3791
+com_size: 1072
+ser_time: 11
+com_time: 73
+des_ser_time: 26
+des_com_time: 41
+====
+====
+ser_size: 21919
+com_size: 4160
+ser_time: 64
+com_time: 414
+des_ser_time: 148
+des_com_time: 188
+====
+====
+ser_size: 39914
+com_size: 5466
+ser_time: 108
+com_time: 569
+des_ser_time: 259
+des_com_time: 305
+====
+====
+ser_size: 147125
+com_size: 18304
+ser_time: 492
+com_time: 2420
+des_ser_time: 1115
+des_com_time: 1280
+====
+====
+ser_size: 152637
+com_size: 16983
+ser_time: 404
+com_time: 2506
+des_ser_time: 1174
+des_com_time: 1206
+====
+====
+ser_size: 74807
+com_size: 9641
+ser_time: 207
+com_time: 1100
+des_ser_time: 504
+des_com_time: 549
+====
+====
+ser_size: 10823
+com_size: 2621
+ser_time: 31
+com_time: 199
+des_ser_time: 69
+des_com_time: 97
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 11
+com_time: 73
+des_ser_time: 26
+des_com_time: 42
+====
+====
+ser_size: 11281
+com_size: 2283
+ser_time: 32
+com_time: 193
+des_ser_time: 74
+des_com_time: 100
+====
+====
+ser_size: 16872
+com_size: 3318
+ser_time: 47
+com_time: 290
+des_ser_time: 113
+des_com_time: 145
+====
+====
+ser_size: 65364
+com_size: 7767
+ser_time: 178
+com_time: 870
+des_ser_time: 488
+des_com_time: 548
+====
+====
+ser_size: 14439
+com_size: 3016
+ser_time: 41
+com_time: 252
+des_ser_time: 94
+des_com_time: 124
+====
+====
+ser_size: 7131
+com_size: 1309
+ser_time: 19
+com_time: 105
+des_ser_time: 46
+des_com_time: 77
+====
+====
+ser_size: 12218
+com_size: 2651
+ser_time: 33
+com_time: 212
+des_ser_time: 78
+des_com_time: 106
+====
+====
+ser_size: 10599
+com_size: 2388
+ser_time: 31
+com_time: 195
+des_ser_time: 80
+des_com_time: 117
+====
+====
+ser_size: 14265
+com_size: 2568
+ser_time: 49
+com_time: 256
+des_ser_time: 86
+des_com_time: 145
+====
+====
+ser_size: 28793
+com_size: 5232
+ser_time: 100
+com_time: 596
+des_ser_time: 195
+des_com_time: 244
+====
+====
+ser_size: 5593
+com_size: 1392
+ser_time: 17
+com_time: 169
+des_ser_time: 41
+des_com_time: 57
+====
+====
+ser_size: 3792
+com_size: 1069
+ser_time: 12
+com_time: 73
+des_ser_time: 26
+des_com_time: 58
+====
+====
+ser_size: 181098
+com_size: 21854
+ser_time: 506
+com_time: 3026
+des_ser_time: 1330
+des_com_time: 1513
+====
+====
+ser_size: 90854
+com_size: 11323
+ser_time: 249
+com_time: 1299
+des_ser_time: 621
+des_com_time: 692
+====
+====
+ser_size: 40050
+com_size: 5435
+ser_time: 124
+com_time: 591
+des_ser_time: 277
+des_com_time: 324
+====
+====
+ser_size: 86361
+com_size: 11579
+ser_time: 261
+com_time: 1398
+des_ser_time: 676
+des_com_time: 706
+====
+====
+ser_size: 73443
+com_size: 9044
+ser_time: 201
+com_time: 1098
+des_ser_time: 540
+des_com_time: 557
+====
+====
+ser_size: 38438
+com_size: 5483
+ser_time: 107
+com_time: 521
+des_ser_time: 255
+des_com_time: 298
+====
+====
+ser_size: 94710
+com_size: 12709
+ser_time: 261
+com_time: 1609
+des_ser_time: 735
+des_com_time: 800
+====
+====
+ser_size: 11345
+com_size: 2258
+ser_time: 29
+com_time: 168
+des_ser_time: 67
+des_com_time: 94
+====
+====
+ser_size: 33665
+com_size: 5504
+ser_time: 111
+com_time: 530
+des_ser_time: 212
+des_com_time: 258
+====
+====
+ser_size: 5661
+com_size: 1225
+ser_time: 16
+com_time: 88
+des_ser_time: 38
+des_com_time: 55
+====
+====
+ser_size: 19953
+com_size: 3710
+ser_time: 55
+com_time: 317
+des_ser_time: 140
+des_com_time: 166
+====
+====
+ser_size: 49225
+com_size: 6877
+ser_time: 134
+com_time: 763
+des_ser_time: 371
+des_com_time: 405
+====
+====
+ser_size: 6921
+com_size: 1651
+ser_time: 23
+com_time: 125
+des_ser_time: 43
+des_com_time: 62
+====
+====
+ser_size: 46
+com_size: 38
+ser_time: 0
+com_time: 9
+des_ser_time: 0
+des_com_time: 4
+====
+====
+ser_size: 49581
+com_size: 6878
+ser_time: 145
+com_time: 835
+des_ser_time: 372
+des_com_time: 394
+====
+====
+ser_size: 73188
+com_size: 9857
+ser_time: 209
+com_time: 1200
+des_ser_time: 558
+des_com_time: 638
+====
+====
+ser_size: 33891
+com_size: 5402
+ser_time: 93
+com_time: 536
+des_ser_time: 219
+des_com_time: 279
+====
+====
+ser_size: 85317
+com_size: 10986
+ser_time: 232
+com_time: 1336
+des_ser_time: 632
+des_com_time: 710
+====
+====
+ser_size: 21952
+com_size: 4168
+ser_time: 60
+com_time: 393
+des_ser_time: 144
+des_com_time: 182
+====
+====
+ser_size: 7323
+com_size: 1704
+ser_time: 20
+com_time: 126
+des_ser_time: 44
+des_com_time: 64
+====
+====
+ser_size: 24407
+com_size: 4114
+ser_time: 82
+com_time: 401
+des_ser_time: 160
+des_com_time: 198
+====
+====
+ser_size: 28494
+com_size: 4452
+ser_time: 79
+com_time: 432
+des_ser_time: 183
+des_com_time: 223
+====
+====
+ser_size: 66537
+com_size: 7496
+ser_time: 180
+com_time: 866
+des_ser_time: 466
+des_com_time: 490
+====
+====
+ser_size: 3710
+com_size: 1076
+ser_time: 12
+com_time: 73
+des_ser_time: 25
+des_com_time: 41
+====
+====
+ser_size: 60284
+com_size: 8302
+ser_time: 167
+com_time: 923
+des_ser_time: 445
+des_com_time: 498
+====
+====
+ser_size: 180178
+com_size: 21594
+ser_time: 500
+com_time: 2894
+des_ser_time: 1344
+des_com_time: 1471
+====
+====
+ser_size: 10133
+com_size: 2381
+ser_time: 30
+com_time: 187
+des_ser_time: 64
+des_com_time: 93
+====
+====
+ser_size: 15437
+com_size: 3081
+ser_time: 42
+com_time: 249
+des_ser_time: 95
+des_com_time: 125
+====
+====
+ser_size: 43258
+com_size: 5985
+ser_time: 118
+com_time: 633
+des_ser_time: 277
+des_com_time: 325
+====
+====
+ser_size: 10826
+com_size: 2398
+ser_time: 35
+com_time: 197
+des_ser_time: 67
+des_com_time: 96
+====
+====
+ser_size: 6170
+com_size: 1815
+ser_time: 21
+com_time: 119
+des_ser_time: 39
+des_com_time: 58
+====
+====
+ser_size: 73422
+com_size: 10965
+ser_time: 195
+com_time: 1237
+des_ser_time: 476
+des_com_time: 557
+====
+====
+ser_size: 5898
+com_size: 1471
+ser_time: 17
+com_time: 97
+des_ser_time: 36
+des_com_time: 51
+====
+====
+ser_size: 53648
+com_size: 7075
+ser_time: 147
+com_time: 724
+des_ser_time: 401
+des_com_time: 408
+====
+====
+ser_size: 20078
+com_size: 3835
+ser_time: 58
+com_time: 354
+des_ser_time: 135
+des_com_time: 173
+====
+====
+ser_size: 1467
+com_size: 543
+ser_time: 5
+com_time: 36
+des_ser_time: 10
+des_com_time: 20
+====
+====
+ser_size: 8387
+com_size: 1944
+ser_time: 22
+com_time: 136
+des_ser_time: 51
+des_com_time: 71
+====
+====
+ser_size: 5818
+com_size: 1518
+ser_time: 17
+com_time: 106
+des_ser_time: 38
+des_com_time: 56
+====
+====
+ser_size: 3792
+com_size: 1066
+ser_time: 13
+com_time: 70
+des_ser_time: 31
+des_com_time: 44
+====
+====
+ser_size: 115488
+com_size: 15624
+ser_time: 316
+com_time: 2063
+des_ser_time: 852
+des_com_time: 1017
+====
+====
+ser_size: 7088
+com_size: 1281
+ser_time: 24
+com_time: 110
+des_ser_time: 45
+des_com_time: 66
+====
+====
+ser_size: 24930
+com_size: 4438
+ser_time: 72
+com_time: 409
+des_ser_time: 168
+des_com_time: 212
+====
+====
+ser_size: 68507
+com_size: 8505
+ser_time: 185
+com_time: 954
+des_ser_time: 487
+des_com_time: 511
+====
+====
+ser_size: 1279
+com_size: 483
+ser_time: 4
+com_time: 34
+des_ser_time: 8
+des_com_time: 18
+====
+====
+ser_size: 73022
+com_size: 8970
+ser_time: 200
+com_time: 1090
+des_ser_time: 537
+des_com_time: 605
+====
+====
+ser_size: 64482
+com_size: 8399
+ser_time: 193
+com_time: 965
+des_ser_time: 476
+des_com_time: 489
+====
+====
+ser_size: 89909
+com_size: 12092
+ser_time: 237
+com_time: 1489
+des_ser_time: 672
+des_com_time: 760
+====
+====
+ser_size: 12590
+com_size: 2576
+ser_time: 35
+com_time: 209
+des_ser_time: 80
+des_com_time: 104
+====
+====
+ser_size: 66739
+com_size: 9350
+ser_time: 197
+com_time: 1085
+des_ser_time: 494
+des_com_time: 523
+====
+====
+ser_size: 127448
+com_size: 17236
+ser_time: 347
+com_time: 2324
+des_ser_time: 971
+des_com_time: 1061
+====
+====
+ser_size: 6927
+com_size: 1835
+ser_time: 23
+com_time: 134
+des_ser_time: 41
+des_com_time: 62
+====
+====
+ser_size: 11298
+com_size: 2429
+ser_time: 31
+com_time: 192
+des_ser_time: 66
+des_com_time: 98
+====
+====
+ser_size: 90900
+com_size: 12720
+ser_time: 252
+com_time: 1558
+des_ser_time: 649
+des_com_time: 682
+====
+====
+ser_size: 7323
+com_size: 1704
+ser_time: 21
+com_time: 130
+des_ser_time: 44
+des_com_time: 65
+====
+====
+ser_size: 39388
+com_size: 6337
+ser_time: 110
+com_time: 671
+des_ser_time: 266
+des_com_time: 320
+====
+====
+ser_size: 5850
+com_size: 1526
+ser_time: 17
+com_time: 108
+des_ser_time: 39
+des_com_time: 56
+====
+====
+ser_size: 19191
+com_size: 3689
+ser_time: 56
+com_time: 327
+des_ser_time: 129
+des_com_time: 163
+====
+====
+ser_size: 3710
+com_size: 1070
+ser_time: 11
+com_time: 72
+des_ser_time: 25
+des_com_time: 39
+====
+====
+ser_size: 30142
+com_size: 5077
+ser_time: 83
+com_time: 507
+des_ser_time: 202
+des_com_time: 236
+====
+====
+ser_size: 43241
+com_size: 6103
+ser_time: 120
+com_time: 661
+des_ser_time: 319
+des_com_time: 324
+====
+====
+ser_size: 6817
+com_size: 1562
+ser_time: 20
+com_time: 119
+des_ser_time: 47
+des_com_time: 66
+====
+====
+ser_size: 68982
+com_size: 7682
+ser_time: 176
+com_time: 877
+des_ser_time: 478
+des_com_time: 533
+====
+====
+ser_size: 41363
+com_size: 6346
+ser_time: 113
+com_time: 623
+des_ser_time: 281
+des_com_time: 315
+====
+====
+ser_size: 21416
+com_size: 4202
+ser_time: 61
+com_time: 321
+des_ser_time: 142
+des_com_time: 176
+====
+====
+ser_size: 6426
+com_size: 1458
+ser_time: 19
+com_time: 139
+des_ser_time: 42
+des_com_time: 60
+====
+====
+ser_size: 7406
+com_size: 1882
+ser_time: 21
+com_time: 133
+des_ser_time: 46
+des_com_time: 66
+====
+====
+ser_size: 36346
+com_size: 5809
+ser_time: 100
+com_time: 640
+des_ser_time: 267
+des_com_time: 282
+====
+====
+ser_size: 7323
+com_size: 1704
+ser_time: 20
+com_time: 125
+des_ser_time: 44
+des_com_time: 64
+====
+====
+ser_size: 30262
+com_size: 5102
+ser_time: 82
+com_time: 499
+des_ser_time: 199
+des_com_time: 232
+====
+====
+ser_size: 6921
+com_size: 1651
+ser_time: 19
+com_time: 153
+des_ser_time: 42
+des_com_time: 63
+====
+====
+ser_size: 4801
+com_size: 1230
+ser_time: 15
+com_time: 85
+des_ser_time: 32
+des_com_time: 48
+====
+====
+ser_size: 56381
+com_size: 9081
+ser_time: 144
+com_time: 949
+des_ser_time: 384
+des_com_time: 430
+====
+====
+ser_size: 50006
+com_size: 6837
+ser_time: 146
+com_time: 771
+des_ser_time: 380
+des_com_time: 397
+====
+====
+ser_size: 6816
+com_size: 1518
+ser_time: 21
+com_time: 124
+des_ser_time: 48
+des_com_time: 68
+====
+====
+ser_size: 28373
+com_size: 4954
+ser_time: 80
+com_time: 462
+des_ser_time: 183
+des_com_time: 225
+====
+====
+ser_size: 5441
+com_size: 1360
+ser_time: 17
+com_time: 110
+des_ser_time: 36
+des_com_time: 54
+====
+====
+ser_size: 6264
+com_size: 1303
+ser_time: 21
+com_time: 97
+des_ser_time: 42
+des_com_time: 58
+====
+====
+ser_size: 38816
+com_size: 6336
+ser_time: 108
+com_time: 725
+des_ser_time: 278
+des_com_time: 299
+====
+====
+ser_size: 44857
+com_size: 6639
+ser_time: 128
+com_time: 745
+des_ser_time: 325
+des_com_time: 333
+====
+====
+ser_size: 7323
+com_size: 1704
+ser_time: 24
+com_time: 131
+des_ser_time: 47
+des_com_time: 68
+====
+====
+ser_size: 5661
+com_size: 1227
+ser_time: 17
+com_time: 89
+des_ser_time: 39
+des_com_time: 55
+====
+====
+ser_size: 17801
+com_size: 3586
+ser_time: 57
+com_time: 315
+des_ser_time: 110
+des_com_time: 143
+====
+====
+ser_size: 59446
+com_size: 8457
+ser_time: 161
+com_time: 1032
+des_ser_time: 444
+des_com_time: 471
+====
+====
+ser_size: 43585
+com_size: 6218
+ser_time: 119
+com_time: 661
+des_ser_time: 322
+des_com_time: 336
+====
+====
+ser_size: 3806
+com_size: 947
+ser_time: 11
+com_time: 61
+des_ser_time: 25
+des_com_time: 39
+====
+====
+ser_size: 40331
+com_size: 6183
+ser_time: 111
+com_time: 680
+des_ser_time: 288
+des_com_time: 304
+====
+====
+ser_size: 36056
+com_size: 5121
+ser_time: 98
+com_time: 507
+des_ser_time: 250
+des_com_time: 279
+====
+====
+ser_size: 5217
+com_size: 1205
+ser_time: 17
+com_time: 84
+des_ser_time: 34
+des_com_time: 50
+====
+====
+ser_size: 6145
+com_size: 1336
+ser_time: 18
+com_time: 94
+des_ser_time: 42
+des_com_time: 58
+====
+====
+ser_size: 73490
+com_size: 9054
+ser_time: 203
+com_time: 1170
+des_ser_time: 547
+des_com_time: 584
+====
+====
+ser_size: 92469
+com_size: 11551
+ser_time: 244
+com_time: 1374
+des_ser_time: 663
+des_com_time: 728
+====
+====
+ser_size: 17394
+com_size: 3321
+ser_time: 49
+com_time: 290
+des_ser_time: 110
+des_com_time: 142
+====
+====
+ser_size: 12372
+com_size: 2520
+ser_time: 34
+com_time: 188
+des_ser_time: 80
+des_com_time: 105
+====
+====
+ser_size: 10316
+com_size: 2268
+ser_time: 36
+com_time: 182
+des_ser_time: 70
+des_com_time: 92
+====
+====
+ser_size: 57773
+com_size: 8208
+ser_time: 163
+com_time: 915
+des_ser_time: 435
+des_com_time: 444
+====
+====
+ser_size: 180489
+com_size: 21639
+ser_time: 503
+com_time: 2896
+des_ser_time: 1364
+des_com_time: 1549
+====
+====
+ser_size: 27251
+com_size: 4771
+ser_time: 79
+com_time: 450
+des_ser_time: 170
+des_com_time: 213
+====
+====
+ser_size: 5661
+com_size: 1227
+ser_time: 19
+com_time: 94
+des_ser_time: 38
+des_com_time: 55
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 12
+com_time: 71
+des_ser_time: 27
+des_com_time: 40
+====
+====
+ser_size: 55923
+com_size: 7242
+ser_time: 154
+com_time: 770
+des_ser_time: 394
+des_com_time: 435
+====
+====
+ser_size: 5735
+com_size: 1572
+ser_time: 17
+com_time: 115
+des_ser_time: 38
+des_com_time: 56
+====
+====
+ser_size: 9705
+com_size: 2017
+ser_time: 27
+com_time: 147
+des_ser_time: 61
+des_com_time: 79
+====
+====
+ser_size: 48526
+com_size: 6778
+ser_time: 131
+com_time: 719
+des_ser_time: 319
+des_com_time: 372
+====
+====
+ser_size: 3710
+com_size: 1070
+ser_time: 11
+com_time: 73
+des_ser_time: 25
+des_com_time: 40
+====
+====
+ser_size: 3174
+com_size: 889
+ser_time: 12
+com_time: 62
+des_ser_time: 23
+des_com_time: 35
+====
+====
+ser_size: 1318
+com_size: 499
+ser_time: 5
+com_time: 32
+des_ser_time: 9
+des_com_time: 18
+====
+====
+ser_size: 52902
+com_size: 7374
+ser_time: 145
+com_time: 814
+des_ser_time: 382
+des_com_time: 409
+====
+====
+ser_size: 73641
+com_size: 9868
+ser_time: 202
+com_time: 1185
+des_ser_time: 548
+des_com_time: 610
+====
+====
+ser_size: 12834
+com_size: 2623
+ser_time: 35
+com_time: 211
+des_ser_time: 81
+des_com_time: 109
+====
+====
+ser_size: 46725
+com_size: 6706
+ser_time: 127
+com_time: 721
+des_ser_time: 339
+des_com_time: 391
+====
+====
+ser_size: 5593
+com_size: 1390
+ser_time: 17
+com_time: 134
+des_ser_time: 37
+des_com_time: 54
+====
+====
+ser_size: 2301
+com_size: 790
+ser_time: 7
+com_time: 47
+des_ser_time: 16
+des_com_time: 27
+====
+====
+ser_size: 48525
+com_size: 6773
+ser_time: 132
+com_time: 724
+des_ser_time: 361
+des_com_time: 372
+====
+====
+ser_size: 19167
+com_size: 3974
+ser_time: 55
+com_time: 292
+des_ser_time: 128
+des_com_time: 160
+====
+====
+ser_size: 5593
+com_size: 1390
+ser_time: 17
+com_time: 122
+des_ser_time: 38
+des_com_time: 55
+====
+====
+ser_size: 87829
+com_size: 12060
+ser_time: 232
+com_time: 1521
+des_ser_time: 641
+des_com_time: 727
+====
+====
+ser_size: 6921
+com_size: 1651
+ser_time: 20
+com_time: 121
+des_ser_time: 44
+des_com_time: 63
+====
+====
+ser_size: 59903
+com_size: 8459
+ser_time: 162
+com_time: 957
+des_ser_time: 407
+des_com_time: 448
+====
+====
+ser_size: 36265
+com_size: 5933
+ser_time: 99
+com_time: 583
+des_ser_time: 238
+des_com_time: 283
+====
+====
+ser_size: 107882
+com_size: 14320
+ser_time: 289
+com_time: 1876
+des_ser_time: 775
+des_com_time: 882
+====
+====
+ser_size: 5480
+com_size: 1385
+ser_time: 16
+com_time: 100
+des_ser_time: 38
+des_com_time: 55
+====
+====
+ser_size: 24373
+com_size: 4096
+ser_time: 67
+com_time: 393
+des_ser_time: 156
+des_com_time: 195
+====
+====
+ser_size: 20466
+com_size: 3954
+ser_time: 56
+com_time: 357
+des_ser_time: 145
+des_com_time: 182
+====
+====
+ser_size: 100447
+com_size: 12118
+ser_time: 273
+com_time: 1508
+des_ser_time: 738
+des_com_time: 802
+====
+====
+ser_size: 38414
+com_size: 5870
+ser_time: 109
+com_time: 616
+des_ser_time: 258
+des_com_time: 310
+====
+====
+ser_size: 7577
+com_size: 1571
+ser_time: 22
+com_time: 113
+des_ser_time: 51
+des_com_time: 69
+====
+====
+ser_size: 6384
+com_size: 1308
+ser_time: 18
+com_time: 94
+des_ser_time: 42
+des_com_time: 58
+====
+====
+ser_size: 34044
+com_size: 5565
+ser_time: 95
+com_time: 564
+des_ser_time: 225
+des_com_time: 273
+====
+====
+ser_size: 58375
+com_size: 8150
+ser_time: 157
+com_time: 955
+des_ser_time: 422
+des_com_time: 460
+====
+====
+ser_size: 17920
+com_size: 3219
+ser_time: 51
+com_time: 277
+des_ser_time: 122
+des_com_time: 152
+====
+====
+ser_size: 29127
+com_size: 4729
+ser_time: 79
+com_time: 456
+des_ser_time: 200
+des_com_time: 228
+====
+====
+ser_size: 103631
+com_size: 12457
+ser_time: 279
+com_time: 1588
+des_ser_time: 752
+des_com_time: 842
+====
+====
+ser_size: 59209
+com_size: 8296
+ser_time: 160
+com_time: 916
+des_ser_time: 371
+des_com_time: 437
+====
+====
+ser_size: 5593
+com_size: 1390
+ser_time: 20
+com_time: 103
+des_ser_time: 38
+des_com_time: 56
+====
+====
+ser_size: 16957
+com_size: 3023
+ser_time: 45
+com_time: 235
+des_ser_time: 99
+des_com_time: 128
+====
+====
+ser_size: 66906
+com_size: 9392
+ser_time: 188
+com_time: 1149
+des_ser_time: 494
+des_com_time: 537
+====
+====
+ser_size: 3792
+com_size: 1073
+ser_time: 12
+com_time: 74
+des_ser_time: 26
+des_com_time: 41
+====
+====
+ser_size: 7323
+com_size: 1704
+ser_time: 20
+com_time: 124
+des_ser_time: 48
+des_com_time: 67
+====
+====
+ser_size: 71577
+com_size: 10054
+ser_time: 195
+com_time: 1264
+des_ser_time: 526
+des_com_time: 576
+====
+====
+ser_size: 18224
+com_size: 3178
+ser_time: 51
+com_time: 256
+des_ser_time: 115
+des_com_time: 144
+====
+====
+ser_size: 2799
+com_size: 859
+ser_time: 9
+com_time: 57
+des_ser_time: 20
+des_com_time: 33
+====
+====
+ser_size: 6383
+com_size: 1302
+ser_time: 18
+com_time: 92
+des_ser_time: 43
+des_com_time: 59
+====
+====
+ser_size: 18387
+com_size: 3350
+ser_time: 51
+com_time: 290
+des_ser_time: 120
+des_com_time: 146
+====
+====
+ser_size: 26569
+com_size: 4247
+ser_time: 70
+com_time: 392
+des_ser_time: 170
+des_com_time: 200
+====
+====
+ser_size: 24495
+com_size: 4135
+ser_time: 69
+com_time: 426
+des_ser_time: 156
+des_com_time: 197
+====
+====
+ser_size: 22577
+com_size: 4364
+ser_time: 64
+com_time: 457
+des_ser_time: 146
+des_com_time: 190
+====
+====
+ser_size: 31197
+com_size: 4601
+ser_time: 90
+com_time: 526
+des_ser_time: 214
+des_com_time: 240
+====
+====
+ser_size: 56417
+com_size: 7704
+ser_time: 156
+com_time: 943
+des_ser_time: 409
+des_com_time: 442
+====
+====
+ser_size: 3792
+com_size: 1071
+ser_time: 11
+com_time: 74
+des_ser_time: 26
+des_com_time: 41
+====
+====
+ser_size: 33368
+com_size: 5181
+ser_time: 90
+com_time: 503
+des_ser_time: 225
+des_com_time: 259
+====
+====
+ser_size: 26166
+com_size: 4136
+ser_time: 69
+com_time: 403
+des_ser_time: 158
+des_com_time: 190
+====
+====
+ser_size: 36731
+com_size: 5685
+ser_time: 101
+com_time: 657
+des_ser_time: 272
+des_com_time: 284
+====
+====
+ser_size: 8509
+com_size: 1546
+ser_time: 24
+com_time: 115
+des_ser_time: 59
+des_com_time: 76
+====
+====
+ser_size: 25531
+com_size: 4561
+ser_time: 70
+com_time: 472
+des_ser_time: 159
+des_com_time: 201
+====
+====
+ser_size: 9921
+com_size: 2276
+ser_time: 29
+com_time: 196
+des_ser_time: 63
+des_com_time: 88
+====
+====
+ser_size: 10998
+com_size: 2463
+ser_time: 31
+com_time: 210
+des_ser_time: 76
+des_com_time: 98
+====
+====
+ser_size: 14972
+com_size: 3058
+ser_time: 41
+com_time: 281
+des_ser_time: 92
+des_com_time: 123
+====
+====
+ser_size: 3971
+com_size: 1131
+ser_time: 12
+com_time: 94
+des_ser_time: 27
+des_com_time: 42
+====
+====
+ser_size: 3565
+com_size: 1163
+ser_time: 9
+com_time: 69
+des_ser_time: 21
+des_com_time: 35
+====
+====
+ser_size: 120590
+com_size: 16065
+ser_time: 418
+com_time: 2197
+des_ser_time: 1078
+des_com_time: 1159
+====
+====
+ser_size: 58079
+com_size: 8269
+ser_time: 186
+com_time: 1071
+des_ser_time: 441
+des_com_time: 515
+====
+====
+ser_size: 12691
+com_size: 2534
+ser_time: 37
+com_time: 210
+des_ser_time: 82
+des_com_time: 109
+====
+====
+ser_size: 73180
+com_size: 10978
+ser_time: 248
+com_time: 1291
+des_ser_time: 681
+des_com_time: 597
+====
+====
+ser_size: 3792
+com_size: 1074
+ser_time: 12
+com_time: 75
+des_ser_time: 27
+des_com_time: 43
+====
+====
+ser_size: 44235
+com_size: 6488
+ser_time: 119
+com_time: 719
+des_ser_time: 321
+des_com_time: 368
+====
+====
+ser_size: 3792
+com_size: 1071
+ser_time: 12
+com_time: 83
+des_ser_time: 31
+des_com_time: 48
+====
+====
+ser_size: 18521
+com_size: 2998
+ser_time: 57
+com_time: 280
+des_ser_time: 129
+des_com_time: 163
+====
+====
+ser_size: 7094
+com_size: 1579
+ser_time: 31
+com_time: 177
+des_ser_time: 60
+des_com_time: 83
+====
+====
+ser_size: 13386
+com_size: 2948
+ser_time: 44
+com_time: 294
+des_ser_time: 98
+des_com_time: 131
+====
+====
+ser_size: 28987
+com_size: 4185
+ser_time: 92
+com_time: 490
+des_ser_time: 208
+des_com_time: 275
+====
+====
+ser_size: 3710
+com_size: 1070
+ser_time: 11
+com_time: 106
+des_ser_time: 26
+des_com_time: 41
+====
+====
+ser_size: 62711
+com_size: 8327
+ser_time: 171
+com_time: 992
+des_ser_time: 461
+des_com_time: 544
+====
+====
+ser_size: 9368
+com_size: 2098
+ser_time: 24
+com_time: 150
+des_ser_time: 56
+des_com_time: 79
+====
+====
+ser_size: 91510
+com_size: 12179
+ser_time: 252
+com_time: 1558
+des_ser_time: 678
+des_com_time: 831
+====
+====
+ser_size: 6384
+com_size: 1308
+ser_time: 18
+com_time: 98
+des_ser_time: 44
+des_com_time: 61
+====
+====
+ser_size: 38950
+com_size: 6343
+ser_time: 105
+com_time: 651
+des_ser_time: 255
+des_com_time: 308
+====
+====
+ser_size: 12911
+com_size: 2677
+ser_time: 44
+com_time: 211
+des_ser_time: 83
+des_com_time: 109
+====
+====
+ser_size: 101905
+com_size: 12304
+ser_time: 337
+com_time: 1570
+des_ser_time: 780
+des_com_time: 815
+====
+====
+ser_size: 57778
+com_size: 8210
+ser_time: 160
+com_time: 915
+des_ser_time: 364
+des_com_time: 425
+====
+====
+ser_size: 3792
+com_size: 1076
+ser_time: 12
+com_time: 75
+des_ser_time: 26
+des_com_time: 41
+====
+====
+ser_size: 150991
+com_size: 19201
+ser_time: 411
+com_time: 2565
+des_ser_time: 1100
+des_com_time: 1314
+====
+====
+ser_size: 34418
+com_size: 5481
+ser_time: 118
+com_time: 578
+des_ser_time: 219
+des_com_time: 269
+====
+====
+ser_size: 9534
+com_size: 2375
+ser_time: 27
+com_time: 169
+des_ser_time: 62
+des_com_time: 86
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 11
+com_time: 74
+des_ser_time: 26
+des_com_time: 40
+====
+====
+ser_size: 7659
+com_size: 1972
+ser_time: 26
+com_time: 149
+des_ser_time: 47
+des_com_time: 73
+====
+====
+ser_size: 64225
+com_size: 9121
+ser_time: 189
+com_time: 1058
+des_ser_time: 427
+des_com_time: 533
+====
+====
+ser_size: 19481
+com_size: 4034
+ser_time: 55
+com_time: 300
+des_ser_time: 127
+des_com_time: 159
+====
+====
+ser_size: 3215
+com_size: 932
+ser_time: 10
+com_time: 59
+des_ser_time: 24
+des_com_time: 40
+====
+====
+ser_size: 152327
+com_size: 21642
+ser_time: 443
+com_time: 2802
+des_ser_time: 1190
+des_com_time: 1344
+====
+====
+ser_size: 3709
+com_size: 1077
+ser_time: 11
+com_time: 77
+des_ser_time: 26
+des_com_time: 42
+====
+====
+ser_size: 31913
+com_size: 5385
+ser_time: 104
+com_time: 543
+des_ser_time: 206
+des_com_time: 248
+====
+====
+ser_size: 35485
+com_size: 5541
+ser_time: 97
+com_time: 566
+des_ser_time: 226
+des_com_time: 274
+====
+====
+ser_size: 15976
+com_size: 3417
+ser_time: 45
+com_time: 313
+des_ser_time: 113
+des_com_time: 143
+====
+====
+ser_size: 4762
+com_size: 1219
+ser_time: 14
+com_time: 87
+des_ser_time: 32
+des_com_time: 48
+====
+====
+ser_size: 3792
+com_size: 1077
+ser_time: 11
+com_time: 72
+des_ser_time: 26
+des_com_time: 40
+====
+====
+ser_size: 52190
+com_size: 7058
+ser_time: 145
+com_time: 800
+des_ser_time: 339
+des_com_time: 398
+====
+====
+ser_size: 10202
+com_size: 1937
+ser_time: 36
+com_time: 156
+des_ser_time: 66
+des_com_time: 87
+====
+====
+ser_size: 100267
+com_size: 13338
+ser_time: 274
+com_time: 1698
+des_ser_time: 749
+des_com_time: 839
+====
+====
+ser_size: 32667
+com_size: 5277
+ser_time: 102
+com_time: 517
+des_ser_time: 232
+des_com_time: 260
+====
+====
+ser_size: 5970
+com_size: 1400
+ser_time: 17
+com_time: 99
+des_ser_time: 40
+des_com_time: 57
+====
+====
+ser_size: 16137
+com_size: 2994
+ser_time: 45
+com_time: 253
+des_ser_time: 106
+des_com_time: 136
+====
+====
+ser_size: 25948
+com_size: 4643
+ser_time: 70
+com_time: 430
+des_ser_time: 159
+des_com_time: 201
+====
+====
+ser_size: 2520
+com_size: 849
+ser_time: 8
+com_time: 53
+des_ser_time: 17
+des_com_time: 30
+====
+====
+ser_size: 176105
+com_size: 21217
+ser_time: 467
+com_time: 2871
+des_ser_time: 1270
+des_com_time: 1484
+====
+====
+ser_size: 73550
+com_size: 11223
+ser_time: 228
+com_time: 1289
+des_ser_time: 455
+des_com_time: 545
+====
+====
+ser_size: 7926
+com_size: 1712
+ser_time: 23
+com_time: 137
+des_ser_time: 56
+des_com_time: 75
+====
+====
+ser_size: 6921
+com_size: 1651
+ser_time: 19
+com_time: 118
+des_ser_time: 41
+des_com_time: 60
+====
+====
+ser_size: 9382
+com_size: 2237
+ser_time: 25
+com_time: 157
+des_ser_time: 56
+des_com_time: 79
+====
+====
+ser_size: 77439
+com_size: 9565
+ser_time: 227
+com_time: 1132
+des_ser_time: 546
+des_com_time: 574
+====
+====
+ser_size: 50759
+com_size: 6497
+ser_time: 132
+com_time: 697
+des_ser_time: 324
+des_com_time: 365
+====
+====
+ser_size: 33809
+com_size: 4584
+ser_time: 97
+com_time: 502
+des_ser_time: 252
+des_com_time: 262
+====
+====
+ser_size: 46
+com_size: 38
+ser_time: 0
+com_time: 45
+des_ser_time: 0
+des_com_time: 4
+====
+====
+ser_size: 16854
+com_size: 3324
+ser_time: 57
+com_time: 331
+des_ser_time: 109
+des_com_time: 142
+====
+====
+ser_size: 6385
+com_size: 1305
+ser_time: 18
+com_time: 115
+des_ser_time: 43
+des_com_time: 58
+====
+====
+ser_size: 6921
+com_size: 1651
+ser_time: 19
+com_time: 119
+des_ser_time: 42
+des_com_time: 60
+====
+====
+ser_size: 19298
+com_size: 3999
+ser_time: 54
+com_time: 309
+des_ser_time: 148
+des_com_time: 170
+====
+====
+ser_size: 14794
+com_size: 3329
+ser_time: 65
+com_time: 365
+des_ser_time: 101
+des_com_time: 151
+====
+====
+ser_size: 93630
+com_size: 11999
+ser_time: 363
+com_time: 1510
+des_ser_time: 800
+des_com_time: 899
+====
+====
+ser_size: 67312
+com_size: 9380
+ser_time: 187
+com_time: 1123
+des_ser_time: 500
+des_com_time: 520
+====
+====
+ser_size: 12490
+com_size: 2693
+ser_time: 42
+com_time: 252
+des_ser_time: 88
+des_com_time: 113
+====
+====
+ser_size: 11997
+com_size: 2568
+ser_time: 36
+com_time: 214
+des_ser_time: 81
+des_com_time: 107
+====
+====
+ser_size: 96253
+com_size: 12695
+ser_time: 324
+com_time: 1901
+des_ser_time: 742
+des_com_time: 865
+====
+====
+ser_size: 24085
+com_size: 4325
+ser_time: 83
+com_time: 433
+des_ser_time: 151
+des_com_time: 194
+====
+====
+ser_size: 24806
+com_size: 4054
+ser_time: 70
+com_time: 387
+des_ser_time: 206
+des_com_time: 249
+====
+====
+ser_size: 11810
+com_size: 2610
+ser_time: 41
+com_time: 258
+des_ser_time: 89
+des_com_time: 122
+====
+====
+ser_size: 83365
+com_size: 12264
+ser_time: 236
+com_time: 1619
+des_ser_time: 683
+des_com_time: 721
+====
+====
+ser_size: 17607
+com_size: 2934
+ser_time: 47
+com_time: 244
+des_ser_time: 109
+des_com_time: 141
+====
+====
+ser_size: 38920
+com_size: 5109
+ser_time: 107
+com_time: 519
+des_ser_time: 250
+des_com_time: 297
+====
+====
+ser_size: 61324
+com_size: 9020
+ser_time: 167
+com_time: 1123
+des_ser_time: 451
+des_com_time: 490
+====
+====
+ser_size: 34205
+com_size: 5774
+ser_time: 101
+com_time: 631
+des_ser_time: 220
+des_com_time: 275
+====
+====
+ser_size: 70221
+com_size: 8713
+ser_time: 188
+com_time: 1057
+des_ser_time: 493
+des_com_time: 550
+====
+====
+ser_size: 20665
+com_size: 3879
+ser_time: 57
+com_time: 341
+des_ser_time: 128
+des_com_time: 165
+====
+====
+ser_size: 113434
+com_size: 14611
+ser_time: 315
+com_time: 1969
+des_ser_time: 989
+des_com_time: 1016
+====
+====
+ser_size: 15127
+com_size: 3088
+ser_time: 42
+com_time: 280
+des_ser_time: 110
+des_com_time: 133
+====
+====
+ser_size: 50959
+com_size: 7467
+ser_time: 140
+com_time: 810
+des_ser_time: 325
+des_com_time: 388
+====
+====
+ser_size: 20665
+com_size: 3879
+ser_time: 57
+com_time: 344
+des_ser_time: 145
+des_com_time: 163
+====
+====
+ser_size: 19290
+com_size: 3879
+ser_time: 54
+com_time: 284
+des_ser_time: 127
+des_com_time: 157
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 12
+com_time: 75
+des_ser_time: 26
+des_com_time: 41
+====
+====
+ser_size: 57418
+com_size: 7504
+ser_time: 150
+com_time: 873
+des_ser_time: 414
+des_com_time: 437
+====
+====
+ser_size: 59883
+com_size: 8442
+ser_time: 174
+com_time: 998
+des_ser_time: 463
+des_com_time: 463
+====
+====
+ser_size: 18469
+com_size: 3536
+ser_time: 57
+com_time: 316
+des_ser_time: 123
+des_com_time: 158
+====
+====
+ser_size: 52868
+com_size: 8428
+ser_time: 146
+com_time: 974
+des_ser_time: 384
+des_com_time: 422
+====
+====
+ser_size: 48436
+com_size: 6821
+ser_time: 132
+com_time: 807
+des_ser_time: 412
+des_com_time: 443
+====
+====
+ser_size: 30255
+com_size: 4883
+ser_time: 98
+com_time: 538
+des_ser_time: 232
+des_com_time: 280
+====
+====
+ser_size: 46616
+com_size: 6990
+ser_time: 128
+com_time: 816
+des_ser_time: 360
+des_com_time: 370
+====
+====
+ser_size: 6921
+com_size: 1651
+ser_time: 23
+com_time: 123
+des_ser_time: 49
+des_com_time: 71
+====
+====
+ser_size: 15437
+com_size: 3073
+ser_time: 82
+com_time: 295
+des_ser_time: 96
+des_com_time: 135
+====
+====
+ser_size: 8498
+com_size: 1736
+ser_time: 25
+com_time: 173
+des_ser_time: 57
+des_com_time: 76
+====
+====
+ser_size: 15787
+com_size: 3083
+ser_time: 43
+com_time: 249
+des_ser_time: 97
+des_com_time: 126
+====
+====
+ser_size: 3447
+com_size: 1132
+ser_time: 10
+com_time: 87
+des_ser_time: 23
+des_com_time: 37
+====
+====
+ser_size: 3710
+com_size: 1073
+ser_time: 14
+com_time: 74
+des_ser_time: 26
+des_com_time: 40
+====
+====
+ser_size: 90951
+com_size: 11086
+ser_time: 290
+com_time: 1443
+des_ser_time: 657
+des_com_time: 752
+====
+====
+ser_size: 44228
+com_size: 6327
+ser_time: 118
+com_time: 670
+des_ser_time: 277
+des_com_time: 331
+====
+====
+ser_size: 62455
+com_size: 8287
+ser_time: 166
+com_time: 965
+des_ser_time: 472
+des_com_time: 477
+====
+====
+ser_size: 40848
+com_size: 6363
+ser_time: 124
+com_time: 658
+des_ser_time: 360
+des_com_time: 399
+====
+====
+ser_size: 2210
+com_size: 778
+ser_time: 7
+com_time: 48
+des_ser_time: 14
+des_com_time: 27
+====
+====
+ser_size: 19242
+com_size: 3738
+ser_time: 70
+com_time: 383
+des_ser_time: 137
+des_com_time: 173
+====
+====
+ser_size: 57410
+com_size: 7499
+ser_time: 151
+com_time: 958
+des_ser_time: 427
+des_com_time: 462
+====
+====
+ser_size: 24607
+com_size: 4434
+ser_time: 69
+com_time: 448
+des_ser_time: 163
+des_com_time: 195
+====
+====
+ser_size: 101905
+com_size: 12301
+ser_time: 339
+com_time: 1560
+des_ser_time: 733
+des_com_time: 867
+====
+====
+ser_size: 16591
+com_size: 3306
+ser_time: 47
+com_time: 286
+des_ser_time: 105
+des_com_time: 138
+====
+====
+ser_size: 7323
+com_size: 1704
+ser_time: 20
+com_time: 126
+des_ser_time: 45
+des_com_time: 64
+====
+====
+ser_size: 49877
+com_size: 6692
+ser_time: 134
+com_time: 720
+des_ser_time: 335
+des_com_time: 386
+====
+====
+ser_size: 47265
+com_size: 6626
+ser_time: 128
+com_time: 707
+des_ser_time: 370
+des_com_time: 373
+====
+====
+ser_size: 49562
+com_size: 6882
+ser_time: 136
+com_time: 788
+des_ser_time: 403
+des_com_time: 415
+====
+====
+ser_size: 48436
+com_size: 6821
+ser_time: 160
+com_time: 915
+des_ser_time: 395
+des_com_time: 435
+====
+====
+ser_size: 181331
+com_size: 21862
+ser_time: 482
+com_time: 2937
+des_ser_time: 1313
+des_com_time: 1549
+====
+====
+ser_size: 53670
+com_size: 6838
+ser_time: 150
+com_time: 754
+des_ser_time: 355
+des_com_time: 409
+====
+====
+ser_size: 11960
+com_size: 2582
+ser_time: 35
+com_time: 232
+des_ser_time: 83
+des_com_time: 110
+====
+====
+ser_size: 97024
+com_size: 12853
+ser_time: 267
+com_time: 1653
+des_ser_time: 802
+des_com_time: 765
+====
+====
+ser_size: 55123
+com_size: 7615
+ser_time: 164
+com_time: 900
+des_ser_time: 347
+des_com_time: 491
+====
+====
+ser_size: 1380
+com_size: 544
+ser_time: 5
+com_time: 39
+des_ser_time: 9
+des_com_time: 21
+====
+====
+ser_size: 85625
+com_size: 11466
+ser_time: 232
+com_time: 1441
+des_ser_time: 656
+des_com_time: 695
+====
+====
+ser_size: 23950
+com_size: 4015
+ser_time: 65
+com_time: 380
+des_ser_time: 150
+des_com_time: 189
+====
+====
+ser_size: 71774
+com_size: 9236
+ser_time: 263
+com_time: 1079
+des_ser_time: 596
+des_com_time: 731
+====
+====
+ser_size: 86399
+com_size: 11552
+ser_time: 356
+com_time: 1824
+des_ser_time: 817
+des_com_time: 940
+====
+====
+ser_size: 5591
+com_size: 1389
+ser_time: 21
+com_time: 130
+des_ser_time: 48
+des_com_time: 72
+====
+====
+ser_size: 6385
+com_size: 1307
+ser_time: 23
+com_time: 116
+des_ser_time: 52
+des_com_time: 75
+====
+====
+ser_size: 2685
+com_size: 861
+ser_time: 12
+com_time: 71
+des_ser_time: 22
+des_com_time: 38
+====
+====
+ser_size: 24910
+com_size: 4343
+ser_time: 87
+com_time: 486
+des_ser_time: 223
+des_com_time: 257
+====
+====
+ser_size: 3710
+com_size: 1070
+ser_time: 15
+com_time: 95
+des_ser_time: 32
+des_com_time: 49
+====
+====
+ser_size: 60278
+com_size: 8607
+ser_time: 199
+com_time: 1198
+des_ser_time: 548
+des_com_time: 585
+====
+====
+ser_size: 44413
+com_size: 7285
+ser_time: 149
+com_time: 958
+des_ser_time: 388
+des_com_time: 429
+====
+====
+ser_size: 31306
+com_size: 5086
+ser_time: 105
+com_time: 594
+des_ser_time: 231
+des_com_time: 292
+====
+====
+ser_size: 9727
+com_size: 2175
+ser_time: 34
+com_time: 246
+des_ser_time: 80
+des_com_time: 119
+====
+====
+ser_size: 71776
+com_size: 9655
+ser_time: 248
+com_time: 1216
+des_ser_time: 553
+des_com_time: 622
+====
+====
+ser_size: 6972
+com_size: 1783
+ser_time: 20
+com_time: 136
+des_ser_time: 46
+des_com_time: 65
+====
+====
+ser_size: 3907
+com_size: 1121
+ser_time: 11
+com_time: 72
+des_ser_time: 24
+des_com_time: 39
+====
+====
+ser_size: 7323
+com_size: 1704
+ser_time: 21
+com_time: 149
+des_ser_time: 44
+des_com_time: 65
+====
+====
+ser_size: 34361
+com_size: 5478
+ser_time: 92
+com_time: 550
+des_ser_time: 218
+des_com_time: 264
+====
+====
+ser_size: 11344
+com_size: 2248
+ser_time: 30
+com_time: 167
+des_ser_time: 65
+des_com_time: 90
+====
+====
+ser_size: 16842
+com_size: 3067
+ser_time: 56
+com_time: 319
+des_ser_time: 108
+des_com_time: 148
+====
+====
+ser_size: 6921
+com_size: 1651
+ser_time: 19
+com_time: 149
+des_ser_time: 42
+des_com_time: 61
+====
+====
+ser_size: 73779
+com_size: 9944
+ser_time: 212
+com_time: 1414
+des_ser_time: 606
+des_com_time: 671
+====
+====
+ser_size: 31720
+com_size: 4843
+ser_time: 85
+com_time: 452
+des_ser_time: 210
+des_com_time: 260
+====
+====
+ser_size: 94112
+com_size: 12034
+ser_time: 250
+com_time: 1489
+des_ser_time: 748
+des_com_time: 754
+====
+====
+ser_size: 30507
+com_size: 5126
+ser_time: 93
+com_time: 487
+des_ser_time: 193
+des_com_time: 238
+====
+====
+ser_size: 64682
+com_size: 8422
+ser_time: 178
+com_time: 969
+des_ser_time: 535
+des_com_time: 489
+====
+====
+ser_size: 36713
+com_size: 5819
+ser_time: 104
+com_time: 600
+des_ser_time: 234
+des_com_time: 288
+====
+====
+ser_size: 21071
+com_size: 4174
+ser_time: 60
+com_time: 399
+des_ser_time: 136
+des_com_time: 177
+====
+====
+ser_size: 68854
+com_size: 8695
+ser_time: 193
+com_time: 1165
+des_ser_time: 520
+des_com_time: 595
+====
+====
+ser_size: 69677
+com_size: 8726
+ser_time: 193
+com_time: 989
+des_ser_time: 518
+des_com_time: 601
+====
+====
+ser_size: 5587
+com_size: 1330
+ser_time: 17
+com_time: 96
+des_ser_time: 38
+des_com_time: 56
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 11
+com_time: 71
+des_ser_time: 27
+des_com_time: 40
+====
+====
+ser_size: 66553
+com_size: 8827
+ser_time: 184
+com_time: 1021
+des_ser_time: 518
+des_com_time: 527
+====
+====
+ser_size: 24308
+com_size: 4105
+ser_time: 70
+com_time: 382
+des_ser_time: 170
+des_com_time: 207
+====
+====
+ser_size: 68856
+com_size: 8691
+ser_time: 189
+com_time: 1036
+des_ser_time: 553
+des_com_time: 546
+====
+====
+ser_size: 21169
+com_size: 3438
+ser_time: 56
+com_time: 286
+des_ser_time: 127
+des_com_time: 160
+====
+====
+ser_size: 42972
+com_size: 6785
+ser_time: 143
+com_time: 744
+des_ser_time: 299
+des_com_time: 320
+====
+====
+ser_size: 1388
+com_size: 550
+ser_time: 5
+com_time: 60
+des_ser_time: 9
+des_com_time: 20
+====
+====
+ser_size: 57774
+com_size: 8206
+ser_time: 159
+com_time: 997
+des_ser_time: 433
+des_com_time: 474
+====
+====
+ser_size: 11965
+com_size: 2325
+ser_time: 34
+com_time: 196
+des_ser_time: 77
+des_com_time: 103
+====
+====
+ser_size: 30361
+com_size: 4838
+ser_time: 85
+com_time: 474
+des_ser_time: 199
+des_com_time: 241
+====
+====
+ser_size: 7351
+com_size: 1411
+ser_time: 20
+com_time: 125
+des_ser_time: 55
+des_com_time: 65
+====
+====
+ser_size: 6384
+com_size: 1308
+ser_time: 18
+com_time: 105
+des_ser_time: 43
+des_com_time: 66
+====
+====
+ser_size: 175998
+com_size: 21179
+ser_time: 467
+com_time: 2837
+des_ser_time: 1287
+des_com_time: 1458
+====
+====
+ser_size: 7348
+com_size: 1545
+ser_time: 22
+com_time: 117
+des_ser_time: 49
+des_com_time: 69
+====
+====
+ser_size: 42116
+com_size: 6034
+ser_time: 115
+com_time: 638
+des_ser_time: 278
+des_com_time: 328
+====
+====
+ser_size: 81201
+com_size: 11623
+ser_time: 224
+com_time: 1430
+des_ser_time: 565
+des_com_time: 612
+====
+====
+ser_size: 7844
+com_size: 1702
+ser_time: 23
+com_time: 132
+des_ser_time: 53
+des_com_time: 74
+====
+====
+ser_size: 31686
+com_size: 4689
+ser_time: 87
+com_time: 463
+des_ser_time: 202
+des_com_time: 243
+====
+====
+ser_size: 98155
+com_size: 12921
+ser_time: 272
+com_time: 1603
+des_ser_time: 734
+des_com_time: 840
+====
+====
+ser_size: 36209
+com_size: 5794
+ser_time: 100
+com_time: 576
+des_ser_time: 248
+des_com_time: 309
+====
+====
+ser_size: 34333
+com_size: 5101
+ser_time: 95
+com_time: 517
+des_ser_time: 221
+des_com_time: 267
+====
+====
+ser_size: 14777
+com_size: 3325
+ser_time: 40
+com_time: 264
+des_ser_time: 96
+des_com_time: 126
+====
+====
+ser_size: 24108
+com_size: 4078
+ser_time: 67
+com_time: 425
+des_ser_time: 164
+des_com_time: 194
+====
+====
+ser_size: 30248
+com_size: 4909
+ser_time: 81
+com_time: 496
+des_ser_time: 201
+des_com_time: 233
+====
+====
+ser_size: 14133
+com_size: 2890
+ser_time: 39
+com_time: 275
+des_ser_time: 93
+des_com_time: 121
+====
+====
+ser_size: 3710
+com_size: 1076
+ser_time: 12
+com_time: 90
+des_ser_time: 26
+des_com_time: 39
+====
+====
+ser_size: 46954
+com_size: 6760
+ser_time: 138
+com_time: 770
+des_ser_time: 355
+des_com_time: 365
+====
+====
+ser_size: 6606
+com_size: 1670
+ser_time: 20
+com_time: 128
+des_ser_time: 46
+des_com_time: 66
+====
+====
+ser_size: 7076
+com_size: 1739
+ser_time: 22
+com_time: 148
+des_ser_time: 46
+des_com_time: 66
+====
+====
+ser_size: 63047
+com_size: 8317
+ser_time: 221
+com_time: 1023
+des_ser_time: 505
+des_com_time: 506
+====
+====
+ser_size: 31806
+com_size: 5025
+ser_time: 87
+com_time: 490
+des_ser_time: 199
+des_com_time: 244
+====
+====
+ser_size: 3710
+com_size: 1070
+ser_time: 11
+com_time: 73
+des_ser_time: 25
+des_com_time: 39
+====
+====
+ser_size: 30183
+com_size: 4900
+ser_time: 82
+com_time: 494
+des_ser_time: 185
+des_com_time: 231
+====
+====
+ser_size: 38039
+com_size: 5544
+ser_time: 130
+com_time: 642
+des_ser_time: 280
+des_com_time: 311
+====
+====
+ser_size: 54184
+com_size: 8199
+ser_time: 148
+com_time: 1001
+des_ser_time: 405
+des_com_time: 434
+====
+====
+ser_size: 64223
+com_size: 9122
+ser_time: 178
+com_time: 1110
+des_ser_time: 483
+des_com_time: 519
+====
+====
+ser_size: 48436
+com_size: 6819
+ser_time: 129
+com_time: 727
+des_ser_time: 393
+des_com_time: 359
+====
+====
+ser_size: 5937
+com_size: 1646
+ser_time: 20
+com_time: 117
+des_ser_time: 36
+des_com_time: 57
+====
+====
+ser_size: 5484
+com_size: 1376
+ser_time: 16
+com_time: 94
+des_ser_time: 37
+des_com_time: 54
+====
+====
+ser_size: 5593
+com_size: 1393
+ser_time: 16
+com_time: 94
+des_ser_time: 37
+des_com_time: 54
+====
+====
+ser_size: 38889
+com_size: 6332
+ser_time: 130
+com_time: 758
+des_ser_time: 300
+des_com_time: 306
+====
+====
+ser_size: 1779
+com_size: 599
+ser_time: 6
+com_time: 85
+des_ser_time: 11
+des_com_time: 24
+====
+====
+ser_size: 59668
+com_size: 8317
+ser_time: 165
+com_time: 1072
+des_ser_time: 455
+des_com_time: 474
+====
+====
+ser_size: 50482
+com_size: 6515
+ser_time: 175
+com_time: 690
+des_ser_time: 388
+des_com_time: 395
+====
+====
+ser_size: 52761
+com_size: 6318
+ser_time: 139
+com_time: 663
+des_ser_time: 367
+des_com_time: 378
+====
+====
+ser_size: 28960
+com_size: 4448
+ser_time: 76
+com_time: 406
+des_ser_time: 173
+des_com_time: 215
+====
+====
+ser_size: 7508
+com_size: 1474
+ser_time: 22
+com_time: 147
+des_ser_time: 50
+des_com_time: 66
+====
+====
+ser_size: 4801
+com_size: 1230
+ser_time: 14
+com_time: 85
+des_ser_time: 33
+des_com_time: 48
+====
+====
+ser_size: 4876
+com_size: 1119
+ser_time: 14
+com_time: 78
+des_ser_time: 33
+des_com_time: 47
+====
+====
+ser_size: 11838
+com_size: 2558
+ser_time: 33
+com_time: 218
+des_ser_time: 75
+des_com_time: 104
+====
+====
+ser_size: 48436
+com_size: 6821
+ser_time: 133
+com_time: 817
+des_ser_time: 355
+des_com_time: 381
+====
+====
+ser_size: 31539
+com_size: 5306
+ser_time: 84
+com_time: 525
+des_ser_time: 205
+des_com_time: 243
+====
+====
+ser_size: 59951
+com_size: 8452
+ser_time: 165
+com_time: 1019
+des_ser_time: 458
+des_com_time: 498
+====
+====
+ser_size: 15298
+com_size: 3196
+ser_time: 41
+com_time: 278
+des_ser_time: 94
+des_com_time: 127
+====
+====
+ser_size: 64684
+com_size: 8421
+ser_time: 182
+com_time: 1087
+des_ser_time: 489
+des_com_time: 512
+====
+====
+ser_size: 5741
+com_size: 1583
+ser_time: 19
+com_time: 120
+des_ser_time: 38
+des_com_time: 58
+====
+====
+ser_size: 7582
+com_size: 1571
+ser_time: 22
+com_time: 116
+des_ser_time: 51
+des_com_time: 69
+====
+====
+ser_size: 57744
+com_size: 8187
+ser_time: 176
+com_time: 955
+des_ser_time: 427
+des_com_time: 454
+====
+====
+ser_size: 34044
+com_size: 5565
+ser_time: 97
+com_time: 556
+des_ser_time: 211
+des_com_time: 260
+====
+====
+ser_size: 2825
+com_size: 984
+ser_time: 9
+com_time: 56
+des_ser_time: 19
+des_com_time: 32
+====
+====
+ser_size: 120914
+com_size: 15619
+ser_time: 330
+com_time: 2054
+des_ser_time: 939
+des_com_time: 1004
+====
+====
+ser_size: 15591
+com_size: 3219
+ser_time: 43
+com_time: 268
+des_ser_time: 98
+des_com_time: 129
+====
+====
+ser_size: 45456
+com_size: 6949
+ser_time: 124
+com_time: 726
+des_ser_time: 289
+des_com_time: 362
+====
+====
+ser_size: 51474
+com_size: 7215
+ser_time: 144
+com_time: 901
+des_ser_time: 339
+des_com_time: 397
+====
+====
+ser_size: 33948
+com_size: 5406
+ser_time: 93
+com_time: 546
+des_ser_time: 230
+des_com_time: 263
+====
+====
+ser_size: 34554
+com_size: 5551
+ser_time: 102
+com_time: 609
+des_ser_time: 271
+des_com_time: 316
+====
+====
+ser_size: 75304
+com_size: 10055
+ser_time: 212
+com_time: 1263
+des_ser_time: 596
+des_com_time: 644
+====
+====
+ser_size: 11837
+com_size: 2561
+ser_time: 39
+com_time: 214
+des_ser_time: 75
+des_com_time: 105
+====
+====
+ser_size: 83605
+com_size: 12297
+ser_time: 236
+com_time: 1532
+des_ser_time: 622
+des_com_time: 702
+====
+====
+ser_size: 100785
+com_size: 15313
+ser_time: 292
+com_time: 1871
+des_ser_time: 792
+des_com_time: 835
+====
+====
+ser_size: 39415
+com_size: 6126
+ser_time: 122
+com_time: 677
+des_ser_time: 309
+des_com_time: 351
+====
+====
+ser_size: 6921
+com_size: 1651
+ser_time: 22
+com_time: 140
+des_ser_time: 44
+des_com_time: 69
+====
+====
+ser_size: 5480
+com_size: 1384
+ser_time: 16
+com_time: 96
+des_ser_time: 37
+des_com_time: 53
+====
+====
+ser_size: 59446
+com_size: 8458
+ser_time: 162
+com_time: 973
+des_ser_time: 468
+des_com_time: 468
+====
+====
+ser_size: 14268
+com_size: 2652
+ser_time: 36
+com_time: 207
+des_ser_time: 77
+des_com_time: 105
+====
+====
+ser_size: 4647
+com_size: 1216
+ser_time: 14
+com_time: 83
+des_ser_time: 30
+des_com_time: 46
+====
+====
+ser_size: 38504
+com_size: 5424
+ser_time: 103
+com_time: 569
+des_ser_time: 291
+des_com_time: 287
+====
+====
+ser_size: 75520
+com_size: 10095
+ser_time: 214
+com_time: 1243
+des_ser_time: 620
+des_com_time: 661
+====
+====
+ser_size: 29009
+com_size: 4932
+ser_time: 81
+com_time: 475
+des_ser_time: 187
+des_com_time: 230
+====
+====
+ser_size: 2195
+com_size: 722
+ser_time: 7
+com_time: 45
+des_ser_time: 15
+des_com_time: 28
+====
+====
+ser_size: 73783
+com_size: 11234
+ser_time: 200
+com_time: 1364
+des_ser_time: 668
+des_com_time: 628
+====
+====
+ser_size: 16057
+com_size: 3303
+ser_time: 46
+com_time: 261
+des_ser_time: 105
+des_com_time: 147
+====
+====
+ser_size: 4326
+com_size: 1105
+ser_time: 14
+com_time: 87
+des_ser_time: 29
+des_com_time: 45
+====
+====
+ser_size: 60433
+com_size: 8107
+ser_time: 166
+com_time: 1039
+des_ser_time: 497
+des_com_time: 473
+====
+====
+ser_size: 11263
+com_size: 2285
+ser_time: 33
+com_time: 184
+des_ser_time: 72
+des_com_time: 98
+====
+====
+ser_size: 26082
+com_size: 4223
+ser_time: 71
+com_time: 381
+des_ser_time: 163
+des_com_time: 198
+====
+====
+ser_size: 20589
+com_size: 3906
+ser_time: 62
+com_time: 383
+des_ser_time: 137
+des_com_time: 173
+====
+====
+ser_size: 23164
+com_size: 3885
+ser_time: 64
+com_time: 374
+des_ser_time: 143
+des_com_time: 183
+====
+====
+ser_size: 4762
+com_size: 1221
+ser_time: 18
+com_time: 159
+des_ser_time: 36
+des_com_time: 57
+====
+====
+ser_size: 3841
+com_size: 1075
+ser_time: 11
+com_time: 72
+des_ser_time: 26
+des_com_time: 41
+====
+====
+ser_size: 29578
+com_size: 4983
+ser_time: 83
+com_time: 521
+des_ser_time: 202
+des_com_time: 244
+====
+====
+ser_size: 4653
+com_size: 1194
+ser_time: 14
+com_time: 118
+des_ser_time: 31
+des_com_time: 47
+====
+====
+ser_size: 56055
+com_size: 7728
+ser_time: 154
+com_time: 916
+des_ser_time: 454
+des_com_time: 465
+====
+====
+ser_size: 94112
+com_size: 12030
+ser_time: 256
+com_time: 1494
+des_ser_time: 757
+des_com_time: 754
+====
+====
+ser_size: 12180
+com_size: 2491
+ser_time: 35
+com_time: 208
+des_ser_time: 86
+des_com_time: 116
+====
+====
+ser_size: 19271
+com_size: 3434
+ser_time: 53
+com_time: 326
+des_ser_time: 118
+des_com_time: 157
+====
+====
+ser_size: 6039
+com_size: 1730
+ser_time: 18
+com_time: 121
+des_ser_time: 38
+des_com_time: 57
+====
+====
+ser_size: 119379
+com_size: 15331
+ser_time: 334
+com_time: 2356
+des_ser_time: 913
+des_com_time: 1086
+====
+====
+ser_size: 10691
+com_size: 1825
+ser_time: 29
+com_time: 143
+des_ser_time: 84
+des_com_time: 93
+====
+====
+ser_size: 7762
+com_size: 1799
+ser_time: 25
+com_time: 129
+des_ser_time: 50
+des_com_time: 67
+====
+====
+ser_size: 67468
+com_size: 8581
+ser_time: 184
+com_time: 976
+des_ser_time: 542
+des_com_time: 505
+====
+====
+ser_size: 69097
+com_size: 9083
+ser_time: 190
+com_time: 1168
+des_ser_time: 604
+des_com_time: 564
+====
+====
+ser_size: 50100
+com_size: 6679
+ser_time: 141
+com_time: 769
+des_ser_time: 418
+des_com_time: 398
+====
+====
+ser_size: 23225
+com_size: 4291
+ser_time: 81
+com_time: 483
+des_ser_time: 175
+des_com_time: 224
+====
+====
+ser_size: 60560
+com_size: 8139
+ser_time: 197
+com_time: 1197
+des_ser_time: 526
+des_com_time: 590
+====
+====
+ser_size: 29164
+com_size: 4792
+ser_time: 95
+com_time: 538
+des_ser_time: 216
+des_com_time: 267
+====
+====
+ser_size: 8442
+com_size: 1575
+ser_time: 29
+com_time: 131
+des_ser_time: 69
+des_com_time: 88
+====
+====
+ser_size: 91376
+com_size: 11463
+ser_time: 286
+com_time: 1629
+des_ser_time: 798
+des_com_time: 863
+====
+====
+ser_size: 6121
+com_size: 1676
+ser_time: 18
+com_time: 136
+des_ser_time: 45
+des_com_time: 63
+====
+====
+ser_size: 10460
+com_size: 2406
+ser_time: 30
+com_time: 196
+des_ser_time: 68
+des_com_time: 94
+====
+====
+ser_size: 16457
+com_size: 3305
+ser_time: 46
+com_time: 282
+des_ser_time: 107
+des_com_time: 141
+====
+====
+ser_size: 81342
+com_size: 10006
+ser_time: 265
+com_time: 1297
+des_ser_time: 634
+des_com_time: 704
+====
+====
+ser_size: 23409
+com_size: 4002
+ser_time: 72
+com_time: 377
+des_ser_time: 172
+des_com_time: 198
+====
+====
+ser_size: 34660
+com_size: 5207
+ser_time: 119
+com_time: 577
+des_ser_time: 289
+des_com_time: 328
+====
+====
+ser_size: 6921
+com_size: 1651
+ser_time: 23
+com_time: 121
+des_ser_time: 50
+des_com_time: 72
+====
+====
+ser_size: 41643
+com_size: 6359
+ser_time: 116
+com_time: 712
+des_ser_time: 335
+des_com_time: 319
+====
+====
+ser_size: 17863
+com_size: 3573
+ser_time: 58
+com_time: 331
+des_ser_time: 133
+des_com_time: 161
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 12
+com_time: 93
+des_ser_time: 29
+des_com_time: 45
+====
+====
+ser_size: 25337
+com_size: 4385
+ser_time: 68
+com_time: 442
+des_ser_time: 153
+des_com_time: 196
+====
+====
+ser_size: 4098
+com_size: 1038
+ser_time: 13
+com_time: 106
+des_ser_time: 32
+des_com_time: 45
+====
+====
+ser_size: 2799
+com_size: 856
+ser_time: 9
+com_time: 66
+des_ser_time: 19
+des_com_time: 31
+====
+====
+ser_size: 18179
+com_size: 3241
+ser_time: 49
+com_time: 301
+des_ser_time: 112
+des_com_time: 146
+====
+====
+ser_size: 13386
+com_size: 2947
+ser_time: 38
+com_time: 268
+des_ser_time: 82
+des_com_time: 109
+====
+====
+ser_size: 92784
+com_size: 12362
+ser_time: 258
+com_time: 1606
+des_ser_time: 701
+des_com_time: 787
+====
+====
+ser_size: 140316
+com_size: 17503
+ser_time: 376
+com_time: 2259
+des_ser_time: 1166
+des_com_time: 1243
+====
+====
+ser_size: 21134
+com_size: 3814
+ser_time: 65
+com_time: 371
+des_ser_time: 139
+des_com_time: 178
+====
+====
+ser_size: 56752
+com_size: 7402
+ser_time: 153
+com_time: 829
+des_ser_time: 397
+des_com_time: 425
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 12
+com_time: 74
+des_ser_time: 27
+des_com_time: 43
+====
+====
+ser_size: 46667
+com_size: 6467
+ser_time: 125
+com_time: 690
+des_ser_time: 295
+des_com_time: 349
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 12
+com_time: 73
+des_ser_time: 27
+des_com_time: 42
+====
+====
+ser_size: 13059
+com_size: 1839
+ser_time: 37
+com_time: 158
+des_ser_time: 84
+des_com_time: 103
+====
+====
+ser_size: 54515
+com_size: 7163
+ser_time: 153
+com_time: 821
+des_ser_time: 419
+des_com_time: 426
+====
+====
+ser_size: 28766
+com_size: 4744
+ser_time: 80
+com_time: 468
+des_ser_time: 186
+des_com_time: 229
+====
+====
+ser_size: 51407
+com_size: 7841
+ser_time: 171
+com_time: 878
+des_ser_time: 370
+des_com_time: 423
+====
+====
+ser_size: 15437
+com_size: 3082
+ser_time: 42
+com_time: 249
+des_ser_time: 95
+des_com_time: 124
+====
+====
+ser_size: 8648
+com_size: 1637
+ser_time: 25
+com_time: 125
+des_ser_time: 58
+des_com_time: 77
+====
+====
+ser_size: 40503
+com_size: 6219
+ser_time: 111
+com_time: 740
+des_ser_time: 350
+des_com_time: 330
+====
+====
+ser_size: 6921
+com_size: 1651
+ser_time: 21
+com_time: 150
+des_ser_time: 42
+des_com_time: 64
+====
+====
+ser_size: 51360
+com_size: 7134
+ser_time: 180
+com_time: 923
+des_ser_time: 388
+des_com_time: 403
+====
+====
+ser_size: 1306
+com_size: 492
+ser_time: 4
+com_time: 35
+des_ser_time: 8
+des_com_time: 18
+====
+====
+ser_size: 40887
+com_size: 6329
+ser_time: 112
+com_time: 663
+des_ser_time: 319
+des_com_time: 351
+====
+====
+ser_size: 5690
+com_size: 1368
+ser_time: 17
+com_time: 96
+des_ser_time: 41
+des_com_time: 57
+====
+====
+ser_size: 3710
+com_size: 1070
+ser_time: 11
+com_time: 71
+des_ser_time: 25
+des_com_time: 40
+====
+====
+ser_size: 30040
+com_size: 4932
+ser_time: 83
+com_time: 508
+des_ser_time: 184
+des_com_time: 233
+====
+====
+ser_size: 16660
+com_size: 2767
+ser_time: 46
+com_time: 263
+des_ser_time: 112
+des_com_time: 131
+====
+====
+ser_size: 18833
+com_size: 3178
+ser_time: 53
+com_time: 294
+des_ser_time: 118
+des_com_time: 151
+====
+====
+ser_size: 24531
+com_size: 4283
+ser_time: 67
+com_time: 494
+des_ser_time: 156
+des_com_time: 196
+====
+====
+ser_size: 30142
+com_size: 5074
+ser_time: 85
+com_time: 532
+des_ser_time: 217
+des_com_time: 242
+====
+====
+ser_size: 66886
+com_size: 8666
+ser_time: 176
+com_time: 1056
+des_ser_time: 479
+des_com_time: 550
+====
+====
+ser_size: 21797
+com_size: 3901
+ser_time: 58
+com_time: 337
+des_ser_time: 136
+des_com_time: 172
+====
+====
+ser_size: 120531
+com_size: 15452
+ser_time: 420
+com_time: 2241
+des_ser_time: 948
+des_com_time: 1120
+====
+====
+ser_size: 9876
+com_size: 1786
+ser_time: 30
+com_time: 176
+des_ser_time: 68
+des_com_time: 90
+====
+====
+ser_size: 3712
+com_size: 1067
+ser_time: 11
+com_time: 73
+des_ser_time: 26
+des_com_time: 40
+====
+====
+ser_size: 6384
+com_size: 1308
+ser_time: 18
+com_time: 92
+des_ser_time: 44
+des_com_time: 60
+====
+====
+ser_size: 22847
+com_size: 4020
+ser_time: 66
+com_time: 382
+des_ser_time: 156
+des_com_time: 192
+====
+====
+ser_size: 15775
+com_size: 3014
+ser_time: 43
+com_time: 237
+des_ser_time: 97
+des_com_time: 125
+====
+====
+ser_size: 33170
+com_size: 5372
+ser_time: 95
+com_time: 532
+des_ser_time: 217
+des_com_time: 266
+====
+====
+ser_size: 2052
+com_size: 665
+ser_time: 7
+com_time: 51
+des_ser_time: 14
+des_com_time: 29
+====
+====
+ser_size: 11491
+com_size: 1830
+ser_time: 31
+com_time: 138
+des_ser_time: 84
+des_com_time: 112
+====
+====
+ser_size: 50100
+com_size: 6679
+ser_time: 139
+com_time: 707
+des_ser_time: 398
+des_com_time: 404
+====
+====
+ser_size: 12392
+com_size: 2753
+ser_time: 35
+com_time: 220
+des_ser_time: 85
+des_com_time: 114
+====
+====
+ser_size: 55322
+com_size: 7450
+ser_time: 155
+com_time: 852
+des_ser_time: 411
+des_com_time: 432
+====
+====
+ser_size: 102623
+com_size: 12361
+ser_time: 280
+com_time: 1627
+des_ser_time: 793
+des_com_time: 928
+====
+====
+ser_size: 83226
+com_size: 11070
+ser_time: 236
+com_time: 1445
+des_ser_time: 624
+des_com_time: 674
+====
+====
+ser_size: 20635
+com_size: 3908
+ser_time: 59
+com_time: 373
+des_ser_time: 135
+des_com_time: 174
+====
+====
+ser_size: 69247
+com_size: 9066
+ser_time: 188
+com_time: 1045
+des_ser_time: 504
+des_com_time: 570
+====
+====
+ser_size: 50309
+com_size: 7197
+ser_time: 137
+com_time: 774
+des_ser_time: 361
+des_com_time: 378
+====
+====
+ser_size: 52961
+com_size: 6358
+ser_time: 170
+com_time: 695
+des_ser_time: 369
+des_com_time: 364
+====
+====
+ser_size: 3792
+com_size: 1071
+ser_time: 12
+com_time: 73
+des_ser_time: 26
+des_com_time: 41
+====
+====
+ser_size: 17364
+com_size: 2177
+ser_time: 50
+com_time: 193
+des_ser_time: 111
+des_com_time: 133
+====
+====
+ser_size: 72662
+com_size: 9776
+ser_time: 227
+com_time: 1266
+des_ser_time: 643
+des_com_time: 666
+====
+====
+ser_size: 5593
+com_size: 1390
+ser_time: 17
+com_time: 100
+des_ser_time: 38
+des_com_time: 58
+====
+====
+ser_size: 9305
+com_size: 1942
+ser_time: 31
+com_time: 160
+des_ser_time: 68
+des_com_time: 101
+====
+====
+ser_size: 14439
+com_size: 3053
+ser_time: 50
+com_time: 258
+des_ser_time: 96
+des_com_time: 125
+====
+====
+ser_size: 13583
+com_size: 2839
+ser_time: 45
+com_time: 261
+des_ser_time: 85
+des_com_time: 109
+====
+====
+ser_size: 67469
+com_size: 8579
+ser_time: 195
+com_time: 1102
+des_ser_time: 508
+des_com_time: 548
+====
+====
+ser_size: 25356
+com_size: 4482
+ser_time: 80
+com_time: 414
+des_ser_time: 160
+des_com_time: 218
+====
+====
+ser_size: 11780
+com_size: 2540
+ser_time: 36
+com_time: 199
+des_ser_time: 75
+des_com_time: 102
+====
+====
+ser_size: 50166
+com_size: 7639
+ser_time: 138
+com_time: 840
+des_ser_time: 379
+des_com_time: 381
+====
+====
+ser_size: 46166
+com_size: 6269
+ser_time: 128
+com_time: 737
+des_ser_time: 333
+des_com_time: 347
+====
+====
+ser_size: 38885
+com_size: 6332
+ser_time: 113
+com_time: 692
+des_ser_time: 280
+des_com_time: 303
+====
+====
+ser_size: 3792
+com_size: 1071
+ser_time: 12
+com_time: 107
+des_ser_time: 27
+des_com_time: 43
+====
+====
+ser_size: 5480
+com_size: 1386
+ser_time: 16
+com_time: 94
+des_ser_time: 38
+des_com_time: 54
+====
+====
+ser_size: 21848
+com_size: 3996
+ser_time: 67
+com_time: 378
+des_ser_time: 164
+des_com_time: 216
+====
+====
+ser_size: 26410
+com_size: 4722
+ser_time: 77
+com_time: 463
+des_ser_time: 175
+des_com_time: 217
+====
+====
+ser_size: 43771
+com_size: 6182
+ser_time: 178
+com_time: 790
+des_ser_time: 374
+des_com_time: 380
+====
+====
+ser_size: 6168
+com_size: 1420
+ser_time: 25
+com_time: 120
+des_ser_time: 42
+des_com_time: 67
+====
+====
+ser_size: 6385
+com_size: 1306
+ser_time: 18
+com_time: 95
+des_ser_time: 45
+des_com_time: 62
+====
+====
+ser_size: 70310
+com_size: 9876
+ser_time: 194
+com_time: 1336
+des_ser_time: 529
+des_com_time: 568
+====
+====
+ser_size: 26135
+com_size: 4606
+ser_time: 72
+com_time: 460
+des_ser_time: 174
+des_com_time: 206
+====
+====
+ser_size: 24388
+com_size: 4394
+ser_time: 68
+com_time: 388
+des_ser_time: 152
+des_com_time: 192
+====
+====
+ser_size: 27484
+com_size: 4301
+ser_time: 75
+com_time: 467
+des_ser_time: 188
+des_com_time: 225
+====
+====
+ser_size: 101437
+com_size: 12206
+ser_time: 275
+com_time: 1618
+des_ser_time: 743
+des_com_time: 846
+====
+====
+ser_size: 73577
+com_size: 9089
+ser_time: 200
+com_time: 1113
+des_ser_time: 559
+des_com_time: 564
+====
+====
+ser_size: 3917
+com_size: 1102
+ser_time: 12
+com_time: 78
+des_ser_time: 28
+des_com_time: 43
+====
+====
+ser_size: 6383
+com_size: 1307
+ser_time: 18
+com_time: 92
+des_ser_time: 44
+des_com_time: 61
+====
+====
+ser_size: 14779
+com_size: 2885
+ser_time: 48
+com_time: 269
+des_ser_time: 110
+des_com_time: 143
+====
+====
+ser_size: 45269
+com_size: 6269
+ser_time: 123
+com_time: 702
+des_ser_time: 364
+des_com_time: 360
+====
+====
+ser_size: 84909
+com_size: 11609
+ser_time: 246
+com_time: 1605
+des_ser_time: 651
+des_com_time: 700
+====
+====
+ser_size: 19054
+com_size: 3677
+ser_time: 56
+com_time: 330
+des_ser_time: 124
+des_com_time: 160
+====
+====
+ser_size: 20924
+com_size: 3808
+ser_time: 56
+com_time: 325
+des_ser_time: 132
+des_com_time: 166
+====
+====
+ser_size: 15334
+com_size: 3192
+ser_time: 51
+com_time: 278
+des_ser_time: 95
+des_com_time: 149
+====
+====
+ser_size: 14439
+com_size: 3054
+ser_time: 41
+com_time: 249
+des_ser_time: 92
+des_com_time: 121
+====
+====
+ser_size: 5593
+com_size: 1393
+ser_time: 16
+com_time: 96
+des_ser_time: 37
+des_com_time: 54
+====
+====
+ser_size: 88407
+com_size: 12140
+ser_time: 237
+com_time: 1542
+des_ser_time: 624
+des_com_time: 778
+====
+====
+ser_size: 17359
+com_size: 3048
+ser_time: 46
+com_time: 240
+des_ser_time: 107
+des_com_time: 139
+====
+====
+ser_size: 38889
+com_size: 6331
+ser_time: 134
+com_time: 712
+des_ser_time: 255
+des_com_time: 311
+====
+====
+ser_size: 58519
+com_size: 7676
+ser_time: 160
+com_time: 1050
+des_ser_time: 524
+des_com_time: 488
+====
+====
+ser_size: 54685
+com_size: 6983
+ser_time: 151
+com_time: 752
+des_ser_time: 426
+des_com_time: 477
+====
+====
+ser_size: 7406
+com_size: 1882
+ser_time: 22
+com_time: 135
+des_ser_time: 47
+des_com_time: 70
+====
+====
+ser_size: 4928
+com_size: 1274
+ser_time: 17
+com_time: 90
+des_ser_time: 33
+des_com_time: 48
+====
+====
+ser_size: 16203
+com_size: 3402
+ser_time: 55
+com_time: 305
+des_ser_time: 100
+des_com_time: 133
+====
+====
+ser_size: 8887
+com_size: 1762
+ser_time: 25
+com_time: 131
+des_ser_time: 60
+des_com_time: 81
+====
+====
+ser_size: 53343
+com_size: 7212
+ser_time: 145
+com_time: 873
+des_ser_time: 391
+des_com_time: 459
+====
+====
+ser_size: 85012
+com_size: 11675
+ser_time: 226
+com_time: 1473
+des_ser_time: 655
+des_com_time: 719
+====
+====
+ser_size: 18167
+com_size: 3470
+ser_time: 50
+com_time: 304
+des_ser_time: 114
+des_com_time: 146
+====
+====
+ser_size: 77376
+com_size: 9528
+ser_time: 219
+com_time: 1141
+des_ser_time: 644
+des_com_time: 749
+====
+====
+ser_size: 66884
+com_size: 8668
+ser_time: 186
+com_time: 1012
+des_ser_time: 561
+des_com_time: 591
+====
+====
+ser_size: 4258
+com_size: 937
+ser_time: 16
+com_time: 86
+des_ser_time: 33
+des_com_time: 68
+====
+====
+ser_size: 35980
+com_size: 5692
+ser_time: 118
+com_time: 587
+des_ser_time: 226
+des_com_time: 274
+====
+====
+ser_size: 11263
+com_size: 2288
+ser_time: 39
+com_time: 224
+des_ser_time: 79
+des_com_time: 98
+====
+====
+ser_size: 34024
+com_size: 5396
+ser_time: 112
+com_time: 559
+des_ser_time: 233
+des_com_time: 262
+====
+====
+ser_size: 11344
+com_size: 2248
+ser_time: 38
+com_time: 186
+des_ser_time: 65
+des_com_time: 92
+====
+====
+ser_size: 6749
+com_size: 1764
+ser_time: 19
+com_time: 160
+des_ser_time: 43
+des_com_time: 62
+====
+====
+ser_size: 170754
+com_size: 20679
+ser_time: 460
+com_time: 2755
+des_ser_time: 1214
+des_com_time: 1388
+====
+====
+ser_size: 134876
+com_size: 17127
+ser_time: 554
+com_time: 2337
+des_ser_time: 995
+des_com_time: 1018
+====
+====
+ser_size: 51648
+com_size: 7357
+ser_time: 143
+com_time: 807
+des_ser_time: 335
+des_com_time: 435
+====
+====
+ser_size: 6318
+com_size: 1524
+ser_time: 19
+com_time: 120
+des_ser_time: 43
+des_com_time: 62
+====
+====
+ser_size: 6921
+com_size: 1651
+ser_time: 19
+com_time: 119
+des_ser_time: 42
+des_com_time: 61
+====
+====
+ser_size: 76413
+com_size: 10218
+ser_time: 216
+com_time: 1188
+des_ser_time: 636
+des_com_time: 645
+====
+====
+ser_size: 23459
+com_size: 4120
+ser_time: 65
+com_time: 366
+des_ser_time: 151
+des_com_time: 189
+====
+====
+ser_size: 7323
+com_size: 1704
+ser_time: 21
+com_time: 126
+des_ser_time: 44
+des_com_time: 63
+====
+====
+ser_size: 96730
+com_size: 11561
+ser_time: 275
+com_time: 1454
+des_ser_time: 777
+des_com_time: 812
+====
+====
+ser_size: 7323
+com_size: 1704
+ser_time: 23
+com_time: 144
+des_ser_time: 44
+des_com_time: 65
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 11
+com_time: 74
+des_ser_time: 26
+des_com_time: 40
+====
+====
+ser_size: 8031
+com_size: 1936
+ser_time: 22
+com_time: 139
+des_ser_time: 49
+des_com_time: 69
+====
+====
+ser_size: 34660
+com_size: 5207
+ser_time: 99
+com_time: 485
+des_ser_time: 239
+des_com_time: 320
+====
+====
+ser_size: 42658
+com_size: 5921
+ser_time: 119
+com_time: 699
+des_ser_time: 320
+des_com_time: 326
+====
+====
+ser_size: 72271
+com_size: 9389
+ser_time: 195
+com_time: 1182
+des_ser_time: 520
+des_com_time: 595
+====
+====
+ser_size: 6991
+com_size: 1268
+ser_time: 21
+com_time: 101
+des_ser_time: 45
+des_com_time: 62
+====
+====
+ser_size: 129044
+com_size: 17448
+ser_time: 375
+com_time: 2363
+des_ser_time: 951
+des_com_time: 1094
+====
+====
+ser_size: 43941
+com_size: 6506
+ser_time: 123
+com_time: 721
+des_ser_time: 299
+des_com_time: 344
+====
+====
+ser_size: 23550
+com_size: 4190
+ser_time: 74
+com_time: 365
+des_ser_time: 167
+des_com_time: 212
+====
+====
+ser_size: 9530
+com_size: 1922
+ser_time: 33
+com_time: 167
+des_ser_time: 74
+des_com_time: 116
+====
+====
+ser_size: 6701
+com_size: 1529
+ser_time: 19
+com_time: 111
+des_ser_time: 44
+des_com_time: 62
+====
+====
+ser_size: 66537
+com_size: 7475
+ser_time: 174
+com_time: 896
+des_ser_time: 542
+des_com_time: 552
+====
+====
+ser_size: 6995
+com_size: 1274
+ser_time: 19
+com_time: 101
+des_ser_time: 48
+des_com_time: 63
+====
+====
+ser_size: 59319
+com_size: 7899
+ser_time: 195
+com_time: 926
+des_ser_time: 456
+des_com_time: 456
+====
+====
+ser_size: 45708
+com_size: 6526
+ser_time: 129
+com_time: 682
+des_ser_time: 330
+des_com_time: 357
+====
+====
+ser_size: 5592
+com_size: 1389
+ser_time: 17
+com_time: 98
+des_ser_time: 38
+des_com_time: 55
+====
+====
+ser_size: 8728
+com_size: 1945
+ser_time: 23
+com_time: 136
+des_ser_time: 52
+des_com_time: 73
+====
+====
+ser_size: 73198
+com_size: 9151
+ser_time: 214
+com_time: 1101
+des_ser_time: 550
+des_com_time: 635
+====
+====
+ser_size: 3710
+com_size: 1077
+ser_time: 11
+com_time: 75
+des_ser_time: 25
+des_com_time: 41
+====
+====
+ser_size: 3710
+com_size: 1069
+ser_time: 11
+com_time: 69
+des_ser_time: 26
+des_com_time: 40
+====
+====
+ser_size: 114994
+com_size: 15651
+ser_time: 326
+com_time: 2062
+des_ser_time: 1046
+des_com_time: 1086
+====
+====
+ser_size: 9756
+com_size: 2170
+ser_time: 28
+com_time: 170
+des_ser_time: 60
+des_com_time: 93
+====
+====
+ser_size: 65515
+com_size: 7822
+ser_time: 180
+com_time: 905
+des_ser_time: 425
+des_com_time: 494
+====
+====
+ser_size: 29217
+com_size: 4259
+ser_time: 81
+com_time: 420
+des_ser_time: 190
+des_com_time: 228
+====
+====
+ser_size: 1306
+com_size: 491
+ser_time: 4
+com_time: 33
+des_ser_time: 9
+des_com_time: 19
+====
+====
+ser_size: 24110
+com_size: 4082
+ser_time: 67
+com_time: 384
+des_ser_time: 151
+des_com_time: 187
+====
+====
+ser_size: 16333
+com_size: 2955
+ser_time: 46
+com_time: 268
+des_ser_time: 103
+des_com_time: 133
+====
+====
+ser_size: 46460
+com_size: 6721
+ser_time: 131
+com_time: 812
+des_ser_time: 349
+des_com_time: 361
+====
+====
+ser_size: 5480
+com_size: 1386
+ser_time: 16
+com_time: 96
+des_ser_time: 37
+des_com_time: 53
+====
+====
+ser_size: 8073
+com_size: 1902
+ser_time: 22
+com_time: 125
+des_ser_time: 48
+des_com_time: 69
+====
+====
+ser_size: 37023
+com_size: 5321
+ser_time: 95
+com_time: 561
+des_ser_time: 240
+des_com_time: 262
+====
+====
+ser_size: 35979
+com_size: 5691
+ser_time: 133
+com_time: 614
+des_ser_time: 246
+des_com_time: 291
+====
+====
+ser_size: 49020
+com_size: 6822
+ser_time: 131
+com_time: 780
+des_ser_time: 383
+des_com_time: 401
+====
+====
+ser_size: 58707
+com_size: 8239
+ser_time: 177
+com_time: 1076
+des_ser_time: 483
+des_com_time: 484
+====
+====
+ser_size: 49234
+com_size: 6887
+ser_time: 162
+com_time: 811
+des_ser_time: 367
+des_com_time: 455
+====
+====
+ser_size: 62711
+com_size: 8327
+ser_time: 169
+com_time: 959
+des_ser_time: 474
+des_com_time: 488
+====
+====
+ser_size: 57346
+com_size: 8595
+ser_time: 171
+com_time: 1024
+des_ser_time: 417
+des_com_time: 454
+====
+====
+ser_size: 52202
+com_size: 7728
+ser_time: 141
+com_time: 853
+des_ser_time: 378
+des_com_time: 389
+====
+====
+ser_size: 3792
+com_size: 1068
+ser_time: 11
+com_time: 72
+des_ser_time: 27
+des_com_time: 42
+====
+====
+ser_size: 10047
+com_size: 2386
+ser_time: 34
+com_time: 191
+des_ser_time: 67
+des_com_time: 111
+====
+====
+ser_size: 11400
+com_size: 2443
+ser_time: 29
+com_time: 179
+des_ser_time: 67
+des_com_time: 92
+====
+====
+ser_size: 11197
+com_size: 2291
+ser_time: 32
+com_time: 193
+des_ser_time: 74
+des_com_time: 97
+====
+====
+ser_size: 36583
+com_size: 5841
+ser_time: 99
+com_time: 619
+des_ser_time: 262
+des_com_time: 280
+====
+====
+ser_size: 30386
+com_size: 5198
+ser_time: 85
+com_time: 538
+des_ser_time: 241
+des_com_time: 278
+====
+====
+ser_size: 3710
+com_size: 1070
+ser_time: 11
+com_time: 91
+des_ser_time: 26
+des_com_time: 41
+====
+====
+ser_size: 49369
+com_size: 6997
+ser_time: 171
+com_time: 893
+des_ser_time: 376
+des_com_time: 417
+====
+====
+ser_size: 62601
+com_size: 8572
+ser_time: 170
+com_time: 1060
+des_ser_time: 462
+des_com_time: 501
+====
+====
+ser_size: 10136
+com_size: 2360
+ser_time: 28
+com_time: 172
+des_ser_time: 62
+des_com_time: 88
+====
+====
+ser_size: 34304
+com_size: 5080
+ser_time: 93
+com_time: 512
+des_ser_time: 224
+des_com_time: 258
+====
+====
+ser_size: 16290
+com_size: 2843
+ser_time: 43
+com_time: 269
+des_ser_time: 126
+des_com_time: 135
+====
+====
+ser_size: 97012
+com_size: 11643
+ser_time: 268
+com_time: 1500
+des_ser_time: 737
+des_com_time: 818
+====
+====
+ser_size: 59779
+com_size: 8295
+ser_time: 164
+com_time: 962
+des_ser_time: 399
+des_com_time: 459
+====
+====
+ser_size: 49234
+com_size: 6887
+ser_time: 167
+com_time: 742
+des_ser_time: 413
+des_com_time: 383
+====
+====
+ser_size: 24546
+com_size: 4712
+ser_time: 84
+com_time: 523
+des_ser_time: 156
+des_com_time: 202
+====
+====
+ser_size: 46480
+com_size: 6719
+ser_time: 167
+com_time: 829
+des_ser_time: 359
+des_com_time: 458
+====
+====
+ser_size: 7170
+com_size: 1435
+ser_time: 24
+com_time: 116
+des_ser_time: 54
+des_com_time: 78
+====
+====
+ser_size: 4682
+com_size: 1373
+ser_time: 13
+com_time: 98
+des_ser_time: 27
+des_com_time: 43
+====
+====
+ser_size: 21179
+com_size: 3877
+ser_time: 69
+com_time: 402
+des_ser_time: 148
+des_com_time: 176
+====
+====
+ser_size: 10826
+com_size: 2399
+ser_time: 44
+com_time: 227
+des_ser_time: 75
+des_com_time: 102
+====
+====
+ser_size: 10914
+com_size: 2399
+ser_time: 31
+com_time: 248
+des_ser_time: 85
+des_com_time: 107
+====
+====
+ser_size: 7323
+com_size: 1704
+ser_time: 20
+com_time: 145
+des_ser_time: 46
+des_com_time: 65
+====
+====
+ser_size: 5592
+com_size: 1385
+ser_time: 16
+com_time: 94
+des_ser_time: 39
+des_com_time: 55
+====
+====
+ser_size: 3792
+com_size: 1069
+ser_time: 14
+com_time: 81
+des_ser_time: 31
+des_com_time: 55
+====
+====
+ser_size: 49666
+com_size: 6681
+ser_time: 141
+com_time: 774
+des_ser_time: 379
+des_com_time: 396
+====
+====
+ser_size: 6385
+com_size: 1307
+ser_time: 18
+com_time: 94
+des_ser_time: 43
+des_com_time: 60
+====
+====
+ser_size: 15587
+com_size: 3216
+ser_time: 43
+com_time: 270
+des_ser_time: 98
+des_com_time: 132
+====
+====
+ser_size: 1338
+com_size: 524
+ser_time: 4
+com_time: 35
+des_ser_time: 9
+des_com_time: 19
+====
+====
+ser_size: 17595
+com_size: 3267
+ser_time: 47
+com_time: 271
+des_ser_time: 106
+des_com_time: 136
+====
+====
+ser_size: 54396
+com_size: 7124
+ser_time: 158
+com_time: 826
+des_ser_time: 421
+des_com_time: 439
+====
+====
+ser_size: 10206
+com_size: 2316
+ser_time: 27
+com_time: 170
+des_ser_time: 62
+des_com_time: 87
+====
+====
+ser_size: 12963
+com_size: 1828
+ser_time: 37
+com_time: 157
+des_ser_time: 86
+des_com_time: 108
+====
+====
+ser_size: 11263
+com_size: 2288
+ser_time: 32
+com_time: 178
+des_ser_time: 73
+des_com_time: 96
+====
+====
+ser_size: 44870
+com_size: 6370
+ser_time: 142
+com_time: 687
+des_ser_time: 388
+des_com_time: 368
+====
+====
+ser_size: 62710
+com_size: 8328
+ser_time: 197
+com_time: 1106
+des_ser_time: 514
+des_com_time: 620
+====
+====
+ser_size: 25968
+com_size: 4654
+ser_time: 69
+com_time: 432
+des_ser_time: 161
+des_com_time: 205
+====
+====
+ser_size: 13969
+com_size: 2783
+ser_time: 40
+com_time: 221
+des_ser_time: 82
+des_com_time: 112
+====
+====
+ser_size: 3710
+com_size: 1070
+ser_time: 14
+com_time: 75
+des_ser_time: 26
+des_com_time: 40
+====
+====
+ser_size: 149025
+com_size: 19068
+ser_time: 400
+com_time: 2571
+des_ser_time: 1089
+des_com_time: 1286
+====
+====
+ser_size: 64121
+com_size: 8808
+ser_time: 189
+com_time: 1028
+des_ser_time: 493
+des_com_time: 510
+====
+====
+ser_size: 124453
+com_size: 17405
+ser_time: 441
+com_time: 2378
+des_ser_time: 949
+des_com_time: 1152
+====
+====
+ser_size: 12194
+com_size: 2446
+ser_time: 30
+com_time: 190
+des_ser_time: 67
+des_com_time: 94
+====
+====
+ser_size: 9680
+com_size: 2197
+ser_time: 26
+com_time: 166
+des_ser_time: 57
+des_com_time: 80
+====
+====
+ser_size: 3791
+com_size: 1067
+ser_time: 11
+com_time: 72
+des_ser_time: 26
+des_com_time: 40
+====
+====
+ser_size: 67469
+com_size: 8580
+ser_time: 185
+com_time: 966
+des_ser_time: 453
+des_com_time: 500
+====
+====
+ser_size: 3792
+com_size: 1068
+ser_time: 12
+com_time: 73
+des_ser_time: 27
+des_com_time: 42
+====
+====
+ser_size: 21953
+com_size: 4004
+ser_time: 62
+com_time: 377
+des_ser_time: 142
+des_com_time: 179
+====
+====
+ser_size: 75985
+com_size: 9535
+ser_time: 207
+com_time: 1236
+des_ser_time: 552
+des_com_time: 637
+====
+====
+ser_size: 1389
+com_size: 551
+ser_time: 5
+com_time: 38
+des_ser_time: 9
+des_com_time: 20
+====
+====
+ser_size: 28766
+com_size: 4748
+ser_time: 81
+com_time: 474
+des_ser_time: 207
+des_com_time: 239
+====
+====
+ser_size: 40453
+com_size: 6370
+ser_time: 112
+com_time: 651
+des_ser_time: 298
+des_com_time: 318
+====
+====
+ser_size: 4205
+com_size: 1071
+ser_time: 12
+com_time: 71
+des_ser_time: 34
+des_com_time: 57
+====
+====
+ser_size: 126215
+com_size: 34065
+ser_time: 372
+com_time: 3054
+des_ser_time: 1036
+des_com_time: 1123
+====
+====
+ser_size: 100866
+com_size: 13490
+ser_time: 280
+com_time: 1698
+des_ser_time: 759
+des_com_time: 797
+====
+====
+ser_size: 35813
+com_size: 5715
+ser_time: 102
+com_time: 577
+des_ser_time: 246
+des_com_time: 296
+====
+====
+ser_size: 32560
+com_size: 5275
+ser_time: 113
+com_time: 519
+des_ser_time: 211
+des_com_time: 263
+====
+====
+ser_size: 8548
+com_size: 1980
+ser_time: 27
+com_time: 154
+des_ser_time: 55
+des_com_time: 76
+====
+====
+ser_size: 6186
+com_size: 1608
+ser_time: 19
+com_time: 108
+des_ser_time: 41
+des_com_time: 60
+====
+====
+ser_size: 16892
+com_size: 3339
+ser_time: 47
+com_time: 292
+des_ser_time: 109
+des_com_time: 142
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 14
+com_time: 74
+des_ser_time: 26
+des_com_time: 40
+====
+====
+ser_size: 29818
+com_size: 4722
+ser_time: 78
+com_time: 510
+des_ser_time: 193
+des_com_time: 231
+====
+====
+ser_size: 84745
+com_size: 11615
+ser_time: 284
+com_time: 1654
+des_ser_time: 729
+des_com_time: 898
+====
+====
+ser_size: 45587
+com_size: 6711
+ser_time: 149
+com_time: 728
+des_ser_time: 299
+des_com_time: 377
+====
+====
+ser_size: 31739
+com_size: 4648
+ser_time: 89
+com_time: 487
+des_ser_time: 224
+des_com_time: 281
+====
+====
+ser_size: 6426
+com_size: 1458
+ser_time: 19
+com_time: 120
+des_ser_time: 43
+des_com_time: 60
+====
+====
+ser_size: 12176
+com_size: 2387
+ser_time: 35
+com_time: 245
+des_ser_time: 78
+des_com_time: 104
+====
+====
+ser_size: 26162
+com_size: 4229
+ser_time: 71
+com_time: 449
+des_ser_time: 172
+des_com_time: 204
+====
+====
+ser_size: 24417
+com_size: 4004
+ser_time: 69
+com_time: 411
+des_ser_time: 154
+des_com_time: 191
+====
+====
+ser_size: 24629
+com_size: 3975
+ser_time: 64
+com_time: 390
+des_ser_time: 150
+des_com_time: 198
+====
+====
+ser_size: 11276
+com_size: 2398
+ser_time: 53
+com_time: 200
+des_ser_time: 68
+des_com_time: 106
+====
+====
+ser_size: 51078
+com_size: 7271
+ser_time: 143
+com_time: 856
+des_ser_time: 375
+des_com_time: 400
+====
+====
+ser_size: 27710
+com_size: 4353
+ser_time: 78
+com_time: 409
+des_ser_time: 184
+des_com_time: 217
+====
+====
+ser_size: 18423
+com_size: 3659
+ser_time: 71
+com_time: 428
+des_ser_time: 150
+des_com_time: 206
+====
+====
+ser_size: 19876
+com_size: 3871
+ser_time: 56
+com_time: 394
+des_ser_time: 120
+des_com_time: 157
+====
+====
+ser_size: 49580
+com_size: 6877
+ser_time: 171
+com_time: 1036
+des_ser_time: 375
+des_com_time: 387
+====
+====
+ser_size: 158085
+com_size: 20827
+ser_time: 446
+com_time: 2779
+des_ser_time: 1156
+des_com_time: 1332
+====
+====
+ser_size: 20045
+com_size: 3693
+ser_time: 58
+com_time: 288
+des_ser_time: 150
+des_com_time: 170
+====
+====
+ser_size: 17257
+com_size: 3248
+ser_time: 48
+com_time: 285
+des_ser_time: 110
+des_com_time: 142
+====
+====
+ser_size: 57418
+com_size: 7504
+ser_time: 187
+com_time: 864
+des_ser_time: 369
+des_com_time: 432
+====
+====
+ser_size: 103686
+com_size: 11952
+ser_time: 309
+com_time: 1617
+des_ser_time: 873
+des_com_time: 859
+====
+====
+ser_size: 2982
+com_size: 952
+ser_time: 12
+com_time: 83
+des_ser_time: 23
+des_com_time: 40
+====
+====
+ser_size: 8977
+com_size: 1510
+ser_time: 26
+com_time: 114
+des_ser_time: 62
+des_com_time: 79
+====
+====
+ser_size: 27916
+com_size: 4865
+ser_time: 76
+com_time: 455
+des_ser_time: 175
+des_com_time: 217
+====
+====
+ser_size: 49694
+com_size: 7154
+ser_time: 135
+com_time: 811
+des_ser_time: 383
+des_com_time: 378
+====
+====
+ser_size: 63961
+com_size: 8526
+ser_time: 175
+com_time: 989
+des_ser_time: 479
+des_com_time: 502
+====
+====
+ser_size: 6921
+com_size: 1651
+ser_time: 20
+com_time: 120
+des_ser_time: 42
+des_com_time: 62
+====
+====
+ser_size: 96993
+com_size: 11605
+ser_time: 267
+com_time: 1484
+des_ser_time: 711
+des_com_time: 773
+====
+====
+ser_size: 14248
+com_size: 2648
+ser_time: 36
+com_time: 207
+des_ser_time: 80
+des_com_time: 109
+====
+====
+ser_size: 5485
+com_size: 1363
+ser_time: 16
+com_time: 92
+des_ser_time: 37
+des_com_time: 54
+====
+====
+ser_size: 65973
+com_size: 8129
+ser_time: 179
+com_time: 936
+des_ser_time: 522
+des_com_time: 534
+====
+====
+ser_size: 22080
+com_size: 3437
+ser_time: 69
+com_time: 331
+des_ser_time: 161
+des_com_time: 183
+====
+====
+ser_size: 7004
+com_size: 1280
+ser_time: 23
+com_time: 116
+des_ser_time: 52
+des_com_time: 73
+====
+====
+ser_size: 8635
+com_size: 1721
+ser_time: 30
+com_time: 173
+des_ser_time: 70
+des_com_time: 90
+====
+====
+ser_size: 61756
+com_size: 8462
+ser_time: 170
+com_time: 1053
+des_ser_time: 472
+des_com_time: 511
+====
+====
+ser_size: 36605
+com_size: 5609
+ser_time: 108
+com_time: 598
+des_ser_time: 234
+des_com_time: 280
+====
+====
+ser_size: 32244
+com_size: 5742
+ser_time: 94
+com_time: 592
+des_ser_time: 206
+des_com_time: 258
+====
+====
+ser_size: 45248
+com_size: 7220
+ser_time: 126
+com_time: 832
+des_ser_time: 360
+des_com_time: 339
+====
+====
+ser_size: 49225
+com_size: 6880
+ser_time: 163
+com_time: 803
+des_ser_time: 361
+des_com_time: 383
+====
+====
+ser_size: 51853
+com_size: 7888
+ser_time: 140
+com_time: 861
+des_ser_time: 380
+des_com_time: 414
+====
+====
+ser_size: 19738
+com_size: 3239
+ser_time: 52
+com_time: 266
+des_ser_time: 119
+des_com_time: 149
+====
+====
+ser_size: 36209
+com_size: 5794
+ser_time: 127
+com_time: 619
+des_ser_time: 290
+des_com_time: 313
+====
+====
+ser_size: 56607
+com_size: 7974
+ser_time: 203
+com_time: 1138
+des_ser_time: 452
+des_com_time: 505
+====
+====
+ser_size: 15437
+com_size: 3082
+ser_time: 42
+com_time: 250
+des_ser_time: 95
+des_com_time: 127
+====
+====
+ser_size: 13078
+com_size: 2515
+ser_time: 39
+com_time: 208
+des_ser_time: 87
+des_com_time: 112
+====
+====
+ser_size: 3710
+com_size: 1077
+ser_time: 11
+com_time: 71
+des_ser_time: 25
+des_com_time: 40
+====
+====
+ser_size: 65517
+com_size: 7822
+ser_time: 183
+com_time: 1050
+des_ser_time: 513
+des_com_time: 512
+====
+====
+ser_size: 20849
+com_size: 3633
+ser_time: 58
+com_time: 307
+des_ser_time: 133
+des_com_time: 169
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 12
+com_time: 73
+des_ser_time: 27
+des_com_time: 41
+====
+====
+ser_size: 3792
+com_size: 1079
+ser_time: 12
+com_time: 69
+des_ser_time: 25
+des_com_time: 40
+====
+====
+ser_size: 48366
+com_size: 6742
+ser_time: 126
+com_time: 773
+des_ser_time: 346
+des_com_time: 359
+====
+====
+ser_size: 6112
+com_size: 1725
+ser_time: 17
+com_time: 118
+des_ser_time: 38
+des_com_time: 57
+====
+====
+ser_size: 5850
+com_size: 1532
+ser_time: 17
+com_time: 109
+des_ser_time: 39
+des_com_time: 57
+====
+====
+ser_size: 47383
+com_size: 6570
+ser_time: 129
+com_time: 768
+des_ser_time: 383
+des_com_time: 369
+====
+====
+ser_size: 12176
+com_size: 2386
+ser_time: 35
+com_time: 188
+des_ser_time: 84
+des_com_time: 110
+====
+====
+ser_size: 19506
+com_size: 3113
+ser_time: 54
+com_time: 265
+des_ser_time: 132
+des_com_time: 162
+====
+====
+ser_size: 3791
+com_size: 1068
+ser_time: 11
+com_time: 105
+des_ser_time: 26
+des_com_time: 40
+====
+====
+ser_size: 3242
+com_size: 969
+ser_time: 10
+com_time: 61
+des_ser_time: 22
+des_com_time: 35
+====
+====
+ser_size: 1779
+com_size: 602
+ser_time: 5
+com_time: 38
+des_ser_time: 12
+des_com_time: 22
+====
+====
+ser_size: 2799
+com_size: 856
+ser_time: 8
+com_time: 53
+des_ser_time: 22
+des_com_time: 39
+====
+====
+ser_size: 5735
+com_size: 1575
+ser_time: 17
+com_time: 111
+des_ser_time: 38
+des_com_time: 56
+====
+====
+ser_size: 19010
+com_size: 3676
+ser_time: 55
+com_time: 363
+des_ser_time: 142
+des_com_time: 164
+====
+====
+ser_size: 28766
+com_size: 4748
+ser_time: 121
+com_time: 646
+des_ser_time: 229
+des_com_time: 261
+====
+====
+ser_size: 64226
+com_size: 9146
+ser_time: 181
+com_time: 1130
+des_ser_time: 488
+des_com_time: 536
+====
+====
+ser_size: 3710
+com_size: 1070
+ser_time: 14
+com_time: 104
+des_ser_time: 31
+des_com_time: 50
+====
+====
+ser_size: 94282
+com_size: 11213
+ser_time: 245
+com_time: 1394
+des_ser_time: 631
+des_com_time: 754
+====
+====
+ser_size: 3792
+com_size: 1073
+ser_time: 12
+com_time: 79
+des_ser_time: 28
+des_com_time: 42
+====
+====
+ser_size: 23141
+com_size: 3661
+ser_time: 62
+com_time: 309
+des_ser_time: 140
+des_com_time: 175
+====
+====
+ser_size: 14742
+com_size: 2895
+ser_time: 41
+com_time: 241
+des_ser_time: 96
+des_com_time: 128
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 13
+com_time: 72
+des_ser_time: 26
+des_com_time: 41
+====
+====
+ser_size: 56418
+com_size: 7705
+ser_time: 156
+com_time: 872
+des_ser_time: 463
+des_com_time: 418
+====
+====
+ser_size: 15127
+com_size: 3088
+ser_time: 42
+com_time: 253
+des_ser_time: 91
+des_com_time: 123
+====
+====
+ser_size: 26663
+com_size: 4332
+ser_time: 72
+com_time: 388
+des_ser_time: 176
+des_com_time: 216
+====
+====
+ser_size: 15437
+com_size: 3081
+ser_time: 44
+com_time: 280
+des_ser_time: 114
+des_com_time: 128
+====
+====
+ser_size: 3710
+com_size: 1070
+ser_time: 11
+com_time: 85
+des_ser_time: 25
+des_com_time: 39
+====
+====
+ser_size: 19485
+com_size: 3688
+ser_time: 54
+com_time: 320
+des_ser_time: 120
+des_com_time: 155
+====
+====
+ser_size: 64953
+com_size: 8753
+ser_time: 214
+com_time: 1135
+des_ser_time: 528
+des_com_time: 561
+====
+====
+ser_size: 63102
+com_size: 8994
+ser_time: 168
+com_time: 1066
+des_ser_time: 461
+des_com_time: 495
+====
+====
+ser_size: 17670
+com_size: 3485
+ser_time: 51
+com_time: 315
+des_ser_time: 124
+des_com_time: 159
+====
+====
+ser_size: 88407
+com_size: 12140
+ser_time: 247
+com_time: 1568
+des_ser_time: 654
+des_com_time: 719
+====
+====
+ser_size: 17736
+com_size: 3612
+ser_time: 52
+com_time: 264
+des_ser_time: 115
+des_com_time: 146
+====
+====
+ser_size: 8072
+com_size: 1965
+ser_time: 23
+com_time: 146
+des_ser_time: 60
+des_com_time: 105
+====
+====
+ser_size: 47922
+com_size: 6679
+ser_time: 130
+com_time: 732
+des_ser_time: 335
+des_com_time: 365
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 12
+com_time: 74
+des_ser_time: 26
+des_com_time: 41
+====
+====
+ser_size: 7735
+com_size: 1854
+ser_time: 21
+com_time: 125
+des_ser_time: 45
+des_com_time: 66
+====
+====
+ser_size: 7002
+com_size: 1276
+ser_time: 19
+com_time: 98
+des_ser_time: 44
+des_com_time: 60
+====
+====
+ser_size: 49602
+com_size: 6861
+ser_time: 158
+com_time: 811
+des_ser_time: 396
+des_com_time: 428
+====
+====
+ser_size: 6262
+com_size: 1451
+ser_time: 18
+com_time: 104
+des_ser_time: 51
+des_com_time: 69
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 11
+com_time: 73
+des_ser_time: 26
+des_com_time: 42
+====
+====
+ser_size: 59789
+com_size: 8390
+ser_time: 247
+com_time: 1123
+des_ser_time: 466
+des_com_time: 526
+====
+====
+ser_size: 64303
+com_size: 8966
+ser_time: 173
+com_time: 1063
+des_ser_time: 519
+des_com_time: 519
+====
+====
+ser_size: 7170
+com_size: 1436
+ser_time: 21
+com_time: 111
+des_ser_time: 48
+des_com_time: 66
+====
+====
+ser_size: 22289
+com_size: 3969
+ser_time: 76
+com_time: 346
+des_ser_time: 144
+des_com_time: 184
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 11
+com_time: 74
+des_ser_time: 25
+des_com_time: 40
+====
+====
+ser_size: 59426
+com_size: 8445
+ser_time: 164
+com_time: 982
+des_ser_time: 436
+des_com_time: 467
+====
+====
+ser_size: 21386
+com_size: 3790
+ser_time: 61
+com_time: 347
+des_ser_time: 151
+des_com_time: 169
+====
+====
+ser_size: 85561
+com_size: 11351
+ser_time: 233
+com_time: 1466
+des_ser_time: 624
+des_com_time: 697
+====
+====
+ser_size: 28557
+com_size: 4338
+ser_time: 74
+com_time: 402
+des_ser_time: 177
+des_com_time: 215
+====
+====
+ser_size: 21884
+com_size: 3665
+ser_time: 58
+com_time: 331
+des_ser_time: 132
+des_com_time: 167
+====
+====
+ser_size: 6015
+com_size: 1360
+ser_time: 17
+com_time: 99
+des_ser_time: 42
+des_com_time: 58
+====
+====
+ser_size: 2685
+com_size: 861
+ser_time: 10
+com_time: 65
+des_ser_time: 18
+des_com_time: 35
+====
+====
+ser_size: 15437
+com_size: 3082
+ser_time: 41
+com_time: 257
+des_ser_time: 94
+des_com_time: 124
+====
+====
+ser_size: 1279
+com_size: 486
+ser_time: 4
+com_time: 37
+des_ser_time: 8
+des_com_time: 18
+====
+====
+ser_size: 5479
+com_size: 1385
+ser_time: 16
+com_time: 94
+des_ser_time: 37
+des_com_time: 54
+====
+====
+ser_size: 37977
+com_size: 5791
+ser_time: 102
+com_time: 697
+des_ser_time: 282
+des_com_time: 286
+====
+====
+ser_size: 24629
+com_size: 3975
+ser_time: 70
+com_time: 368
+des_ser_time: 147
+des_com_time: 182
+====
+====
+ser_size: 228717
+com_size: 30617
+ser_time: 702
+com_time: 4206
+des_ser_time: 1735
+des_com_time: 1976
+====
+====
+ser_size: 117784
+com_size: 15697
+ser_time: 436
+com_time: 2191
+des_ser_time: 946
+des_com_time: 1008
+====
+====
+ser_size: 123615
+com_size: 15760
+ser_time: 337
+com_time: 1970
+des_ser_time: 931
+des_com_time: 977
+====
+====
+ser_size: 12176
+com_size: 2387
+ser_time: 35
+com_time: 194
+des_ser_time: 78
+des_com_time: 104
+====
+====
+ser_size: 34637
+com_size: 5003
+ser_time: 94
+com_time: 450
+des_ser_time: 238
+des_com_time: 298
+====
+====
+ser_size: 32620
+com_size: 5075
+ser_time: 87
+com_time: 489
+des_ser_time: 199
+des_com_time: 245
+====
+====
+ser_size: 12176
+com_size: 2387
+ser_time: 35
+com_time: 190
+des_ser_time: 85
+des_com_time: 110
+====
+====
+ser_size: 76419
+com_size: 10025
+ser_time: 212
+com_time: 1200
+des_ser_time: 595
+des_com_time: 691
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 13
+com_time: 77
+des_ser_time: 26
+des_com_time: 42
+====
+====
+ser_size: 71964
+com_size: 9679
+ser_time: 201
+com_time: 1172
+des_ser_time: 600
+des_com_time: 639
+====
+====
+ser_size: 10428
+com_size: 2143
+ser_time: 30
+com_time: 192
+des_ser_time: 67
+des_com_time: 93
+====
+====
+ser_size: 48290
+com_size: 6862
+ser_time: 132
+com_time: 746
+des_ser_time: 341
+des_com_time: 367
+====
+====
+ser_size: 22773
+com_size: 3609
+ser_time: 61
+com_time: 305
+des_ser_time: 138
+des_com_time: 172
+====
+====
+ser_size: 4258
+com_size: 937
+ser_time: 13
+com_time: 107
+des_ser_time: 27
+des_com_time: 42
+====
+====
+ser_size: 6921
+com_size: 1651
+ser_time: 19
+com_time: 118
+des_ser_time: 43
+des_com_time: 63
+====
+====
+ser_size: 34834
+com_size: 5153
+ser_time: 93
+com_time: 546
+des_ser_time: 232
+des_com_time: 287
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 12
+com_time: 91
+des_ser_time: 26
+des_com_time: 42
+====
+====
+ser_size: 32620
+com_size: 5075
+ser_time: 86
+com_time: 527
+des_ser_time: 219
+des_com_time: 246
+====
+====
+ser_size: 1379
+com_size: 541
+ser_time: 4
+com_time: 51
+des_ser_time: 9
+des_com_time: 19
+====
+====
+ser_size: 3792
+com_size: 1074
+ser_time: 11
+com_time: 71
+des_ser_time: 27
+des_com_time: 58
+====
+====
+ser_size: 25032
+com_size: 4052
+ser_time: 65
+com_time: 378
+des_ser_time: 144
+des_com_time: 184
+====
+====
+ser_size: 123551
+com_size: 17194
+ser_time: 362
+com_time: 2325
+des_ser_time: 942
+des_com_time: 1081
+====
+====
+ser_size: 34222
+com_size: 5175
+ser_time: 96
+com_time: 481
+des_ser_time: 238
+des_com_time: 278
+====
+====
+ser_size: 55470
+com_size: 7665
+ser_time: 171
+com_time: 848
+des_ser_time: 354
+des_com_time: 412
+====
+====
+ser_size: 11615
+com_size: 2642
+ser_time: 32
+com_time: 196
+des_ser_time: 74
+des_com_time: 102
+====
+====
+ser_size: 84762
+com_size: 30031
+ser_time: 208
+com_time: 1692
+des_ser_time: 529
+des_com_time: 675
+====
+====
+ser_size: 5591
+com_size: 1392
+ser_time: 17
+com_time: 99
+des_ser_time: 39
+des_com_time: 57
+====
+====
+ser_size: 5480
+com_size: 1388
+ser_time: 19
+com_time: 98
+des_ser_time: 37
+des_com_time: 53
+====
+====
+ser_size: 63751
+com_size: 8762
+ser_time: 173
+com_time: 1016
+des_ser_time: 492
+des_com_time: 549
+====
+====
+ser_size: 46010
+com_size: 6863
+ser_time: 126
+com_time: 724
+des_ser_time: 317
+des_com_time: 355
+====
+====
+ser_size: 6580
+com_size: 1482
+ser_time: 19
+com_time: 105
+des_ser_time: 44
+des_com_time: 62
+====
+====
+ser_size: 59046
+com_size: 7725
+ser_time: 156
+com_time: 955
+des_ser_time: 418
+des_com_time: 429
+====
+====
+ser_size: 70987
+com_size: 9798
+ser_time: 201
+com_time: 1205
+des_ser_time: 595
+des_com_time: 610
+====
+====
+ser_size: 9996
+com_size: 2341
+ser_time: 28
+com_time: 175
+des_ser_time: 64
+des_com_time: 89
+====
+====
+ser_size: 3792
+com_size: 1068
+ser_time: 11
+com_time: 72
+des_ser_time: 26
+des_com_time: 40
+====
+====
+ser_size: 59804
+com_size: 8025
+ser_time: 159
+com_time: 897
+des_ser_time: 442
+des_com_time: 458
+====
+====
+ser_size: 28588
+com_size: 4334
+ser_time: 76
+com_time: 407
+des_ser_time: 175
+des_com_time: 214
+====
+====
+ser_size: 29191
+com_size: 4535
+ser_time: 75
+com_time: 427
+des_ser_time: 173
+des_com_time: 210
+====
+====
+ser_size: 5662
+com_size: 1227
+ser_time: 17
+com_time: 113
+des_ser_time: 41
+des_com_time: 55
+====
+====
+ser_size: 25645
+com_size: 4560
+ser_time: 72
+com_time: 428
+des_ser_time: 158
+des_com_time: 203
+====
+====
+ser_size: 11709
+com_size: 2505
+ser_time: 33
+com_time: 228
+des_ser_time: 81
+des_com_time: 98
+====
+====
+ser_size: 3710
+com_size: 1073
+ser_time: 11
+com_time: 95
+des_ser_time: 25
+des_com_time: 39
+====
+====
+ser_size: 11263
+com_size: 2288
+ser_time: 32
+com_time: 179
+des_ser_time: 71
+des_com_time: 95
+====
+====
+ser_size: 7679
+com_size: 2021
+ser_time: 20
+com_time: 148
+des_ser_time: 42
+des_com_time: 61
+====
+====
+ser_size: 6743
+com_size: 1408
+ser_time: 19
+com_time: 98
+des_ser_time: 45
+des_com_time: 60
+====
+====
+ser_size: 24099
+com_size: 4091
+ser_time: 68
+com_time: 418
+des_ser_time: 156
+des_com_time: 196
+====
+====
+ser_size: 70715
+com_size: 10621
+ser_time: 192
+com_time: 1295
+des_ser_time: 509
+des_com_time: 606
+====
+====
+ser_size: 32967
+com_size: 5586
+ser_time: 92
+com_time: 543
+des_ser_time: 214
+des_com_time: 263
+====
+====
+ser_size: 30004
+com_size: 4853
+ser_time: 83
+com_time: 447
+des_ser_time: 189
+des_com_time: 256
+====
+====
+ser_size: 28442
+com_size: 4723
+ser_time: 77
+com_time: 465
+des_ser_time: 184
+des_com_time: 219
+====
+====
+ser_size: 24672
+com_size: 4361
+ser_time: 67
+com_time: 458
+des_ser_time: 158
+des_com_time: 200
+====
+====
+ser_size: 55341
+com_size: 9101
+ser_time: 158
+com_time: 978
+des_ser_time: 372
+des_com_time: 416
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 12
+com_time: 75
+des_ser_time: 26
+des_com_time: 41
+====
+====
+ser_size: 8079
+com_size: 2039
+ser_time: 23
+com_time: 147
+des_ser_time: 52
+des_com_time: 73
+====
+====
+ser_size: 17994
+com_size: 3213
+ser_time: 47
+com_time: 258
+des_ser_time: 114
+des_com_time: 138
+====
+====
+ser_size: 18517
+com_size: 3583
+ser_time: 52
+com_time: 350
+des_ser_time: 118
+des_com_time: 153
+====
+====
+ser_size: 149058
+com_size: 19070
+ser_time: 405
+com_time: 2508
+des_ser_time: 1092
+des_com_time: 1301
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 12
+com_time: 78
+des_ser_time: 26
+des_com_time: 42
+====
+====
+ser_size: 31706
+com_size: 5145
+ser_time: 84
+com_time: 485
+des_ser_time: 192
+des_com_time: 238
+====
+====
+ser_size: 3709
+com_size: 1076
+ser_time: 11
+com_time: 73
+des_ser_time: 25
+des_com_time: 40
+====
+====
+ser_size: 54646
+com_size: 7163
+ser_time: 156
+com_time: 757
+des_ser_time: 397
+des_com_time: 451
+====
+====
+ser_size: 3792
+com_size: 1067
+ser_time: 14
+com_time: 74
+des_ser_time: 25
+des_com_time: 40
+====
+====
+ser_size: 20818
+com_size: 3968
+ser_time: 56
+com_time: 332
+des_ser_time: 129
+des_com_time: 165
+====
+====
+ser_size: 48099
+com_size: 6557
+ser_time: 131
+com_time: 709
+des_ser_time: 332
+des_com_time: 371
+====
+====
+ser_size: 88161
+com_size: 11662
+ser_time: 248
+com_time: 1387
+des_ser_time: 672
+des_com_time: 730
+====
+====
+ser_size: 40473
+com_size: 6370
+ser_time: 114
+com_time: 656
+des_ser_time: 254
+des_com_time: 307
+====
+====
+ser_size: 18440
+com_size: 3780
+ser_time: 53
+com_time: 274
+des_ser_time: 121
+des_com_time: 153
+====
+====
+ser_size: 122187
+com_size: 15831
+ser_time: 334
+com_time: 2050
+des_ser_time: 955
+des_com_time: 1026
+====
+====
+ser_size: 45160
+com_size: 6904
+ser_time: 124
+com_time: 723
+des_ser_time: 289
+des_com_time: 346
+====
+====
+ser_size: 102586
+com_size: 13609
+ser_time: 283
+com_time: 1672
+des_ser_time: 904
+des_com_time: 934
+====
+====
+ser_size: 48436
+com_size: 6821
+ser_time: 157
+com_time: 885
+des_ser_time: 400
+des_com_time: 470
+====
+====
+ser_size: 6274
+com_size: 1370
+ser_time: 21
+com_time: 118
+des_ser_time: 62
+des_com_time: 68
+====
+====
+ser_size: 41853
+com_size: 6760
+ser_time: 138
+com_time: 836
+des_ser_time: 328
+des_com_time: 403
+====
+====
+ser_size: 43258
+com_size: 5983
+ser_time: 140
+com_time: 756
+des_ser_time: 366
+des_com_time: 434
+====
+====
+ser_size: 26571
+com_size: 4173
+ser_time: 105
+com_time: 457
+des_ser_time: 200
+des_com_time: 247
+====
+====
+ser_size: 16021
+com_size: 3056
+ser_time: 44
+com_time: 277
+des_ser_time: 98
+des_com_time: 130
+====
+====
+ser_size: 36759
+com_size: 5687
+ser_time: 100
+com_time: 613
+des_ser_time: 291
+des_com_time: 283
+====
+====
+ser_size: 86846
+com_size: 10738
+ser_time: 235
+com_time: 1380
+des_ser_time: 638
+des_com_time: 706
+====
+====
+ser_size: 4538
+com_size: 1186
+ser_time: 14
+com_time: 83
+des_ser_time: 31
+des_com_time: 48
+====
+====
+ser_size: 51584
+com_size: 7377
+ser_time: 158
+com_time: 830
+des_ser_time: 361
+des_com_time: 436
+====
+====
+ser_size: 62804
+com_size: 8576
+ser_time: 169
+com_time: 994
+des_ser_time: 470
+des_com_time: 496
+====
+====
+ser_size: 78861
+com_size: 9653
+ser_time: 212
+com_time: 1207
+des_ser_time: 565
+des_com_time: 641
+====
+====
+ser_size: 3710
+com_size: 1070
+ser_time: 11
+com_time: 74
+des_ser_time: 25
+des_com_time: 40
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 14
+com_time: 74
+des_ser_time: 27
+des_com_time: 41
+====
+====
+ser_size: 6921
+com_size: 1651
+ser_time: 19
+com_time: 119
+des_ser_time: 42
+des_com_time: 60
+====
+====
+ser_size: 44255
+com_size: 6494
+ser_time: 121
+com_time: 727
+des_ser_time: 291
+des_com_time: 336
+====
+====
+ser_size: 43116
+com_size: 6062
+ser_time: 118
+com_time: 625
+des_ser_time: 318
+des_com_time: 326
+====
+====
+ser_size: 55865
+com_size: 7591
+ser_time: 146
+com_time: 940
+des_ser_time: 408
+des_com_time: 415
+====
+====
+ser_size: 34367
+com_size: 5382
+ser_time: 96
+com_time: 552
+des_ser_time: 245
+des_com_time: 273
+====
+====
+ser_size: 6921
+com_size: 1651
+ser_time: 19
+com_time: 119
+des_ser_time: 43
+des_com_time: 63
+====
+====
+ser_size: 17012
+com_size: 3091
+ser_time: 46
+com_time: 263
+des_ser_time: 104
+des_com_time: 135
+====
+====
+ser_size: 49675
+com_size: 6961
+ser_time: 135
+com_time: 815
+des_ser_time: 371
+des_com_time: 379
+====
+====
+ser_size: 94978
+com_size: 12593
+ser_time: 273
+com_time: 1677
+des_ser_time: 707
+des_com_time: 781
+====
+====
+ser_size: 68982
+com_size: 7642
+ser_time: 214
+com_time: 843
+des_ser_time: 464
+des_com_time: 518
+====
+====
+ser_size: 49234
+com_size: 6887
+ser_time: 141
+com_time: 750
+des_ser_time: 357
+des_com_time: 367
+====
+====
+ser_size: 9347
+com_size: 2264
+ser_time: 28
+com_time: 173
+des_ser_time: 59
+des_com_time: 85
+====
+====
+ser_size: 130787
+com_size: 17659
+ser_time: 379
+com_time: 2365
+des_ser_time: 977
+des_com_time: 1150
+====
+====
+ser_size: 146170
+com_size: 18117
+ser_time: 392
+com_time: 2280
+des_ser_time: 1093
+des_com_time: 1246
+====
+====
+ser_size: 4761
+com_size: 1221
+ser_time: 15
+com_time: 89
+des_ser_time: 33
+des_com_time: 49
+====
+====
+ser_size: 19213
+com_size: 3314
+ser_time: 53
+com_time: 272
+des_ser_time: 117
+des_com_time: 149
+====
+====
+ser_size: 36056
+com_size: 5121
+ser_time: 97
+com_time: 470
+des_ser_time: 231
+des_com_time: 271
+====
+====
+ser_size: 48436
+com_size: 6821
+ser_time: 132
+com_time: 721
+des_ser_time: 312
+des_com_time: 373
+====
+====
+ser_size: 45500
+com_size: 6407
+ser_time: 121
+com_time: 684
+des_ser_time: 282
+des_com_time: 335
+====
+====
+ser_size: 3792
+com_size: 1069
+ser_time: 12
+com_time: 73
+des_ser_time: 26
+des_com_time: 42
+====
+====
+ser_size: 8585
+com_size: 1983
+ser_time: 23
+com_time: 141
+des_ser_time: 51
+des_com_time: 72
+====
+====
+ser_size: 29164
+com_size: 4792
+ser_time: 78
+com_time: 464
+des_ser_time: 179
+des_com_time: 225
+====
+====
+ser_size: 86378
+com_size: 11200
+ser_time: 236
+com_time: 1394
+des_ser_time: 639
+des_com_time: 705
+====
+====
+ser_size: 29897
+com_size: 5031
+ser_time: 86
+com_time: 485
+des_ser_time: 196
+des_com_time: 243
+====
+====
+ser_size: 5480
+com_size: 1386
+ser_time: 16
+com_time: 95
+des_ser_time: 38
+des_com_time: 54
+====
+====
+ser_size: 5900
+com_size: 1335
+ser_time: 17
+com_time: 91
+des_ser_time: 42
+des_com_time: 58
+====
+====
+ser_size: 5593
+com_size: 1389
+ser_time: 16
+com_time: 95
+des_ser_time: 38
+des_com_time: 54
+====
+====
+ser_size: 3164
+com_size: 828
+ser_time: 9
+com_time: 55
+des_ser_time: 21
+des_com_time: 33
+====
+====
+ser_size: 3791
+com_size: 1074
+ser_time: 14
+com_time: 74
+des_ser_time: 26
+des_com_time: 41
+====
+====
+ser_size: 9727
+com_size: 2173
+ser_time: 28
+com_time: 170
+des_ser_time: 62
+des_com_time: 85
+====
+====
+ser_size: 31619
+com_size: 4806
+ser_time: 89
+com_time: 481
+des_ser_time: 229
+des_com_time: 245
+====
+====
+ser_size: 4208
+com_size: 1076
+ser_time: 13
+com_time: 103
+des_ser_time: 27
+des_com_time: 42
+====
+====
+ser_size: 31267
+com_size: 4784
+ser_time: 86
+com_time: 483
+des_ser_time: 210
+des_com_time: 241
+====
+====
+ser_size: 6978
+com_size: 1501
+ser_time: 25
+com_time: 148
+des_ser_time: 46
+des_com_time: 63
+====
+====
+ser_size: 94746
+com_size: 12044
+ser_time: 254
+com_time: 1531
+des_ser_time: 689
+des_com_time: 787
+====
+====
+ser_size: 3791
+com_size: 1071
+ser_time: 11
+com_time: 74
+des_ser_time: 26
+des_com_time: 42
+====
+====
+ser_size: 67284
+com_size: 27060
+ser_time: 168
+com_time: 1268
+des_ser_time: 349
+des_com_time: 467
+====
+====
+ser_size: 32292
+com_size: 5436
+ser_time: 87
+com_time: 529
+des_ser_time: 209
+des_com_time: 253
+====
+====
+ser_size: 7323
+com_size: 1704
+ser_time: 20
+com_time: 161
+des_ser_time: 44
+des_com_time: 65
+====
+====
+ser_size: 5575
+com_size: 991
+ser_time: 15
+com_time: 68
+des_ser_time: 35
+des_com_time: 49
+====
+====
+ser_size: 14720
+com_size: 2881
+ser_time: 41
+com_time: 240
+des_ser_time: 101
+des_com_time: 134
+====
+====
+ser_size: 39481
+com_size: 6171
+ser_time: 133
+com_time: 705
+des_ser_time: 285
+des_com_time: 299
+====
+====
+ser_size: 11653
+com_size: 2518
+ser_time: 34
+com_time: 194
+des_ser_time: 75
+des_com_time: 102
+====
+====
+ser_size: 35190
+com_size: 5059
+ser_time: 92
+com_time: 541
+des_ser_time: 226
+des_com_time: 261
+====
+====
+ser_size: 5662
+com_size: 1228
+ser_time: 17
+com_time: 89
+des_ser_time: 38
+des_com_time: 55
+====
+====
+ser_size: 9536
+com_size: 1932
+ser_time: 27
+com_time: 166
+des_ser_time: 66
+des_com_time: 84
+====
+====
+ser_size: 92278
+com_size: 11545
+ser_time: 241
+com_time: 1481
+des_ser_time: 665
+des_com_time: 754
+====
+====
+ser_size: 73292
+com_size: 10934
+ser_time: 200
+com_time: 1290
+des_ser_time: 568
+des_com_time: 631
+====
+====
+ser_size: 48754
+com_size: 6830
+ser_time: 135
+com_time: 771
+des_ser_time: 344
+des_com_time: 396
+====
+====
+ser_size: 9276
+com_size: 2241
+ser_time: 26
+com_time: 169
+des_ser_time: 60
+des_com_time: 84
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 12
+com_time: 73
+des_ser_time: 27
+des_com_time: 42
+====
+====
+ser_size: 38889
+com_size: 6332
+ser_time: 108
+com_time: 729
+des_ser_time: 275
+des_com_time: 296
+====
+====
+ser_size: 48753
+com_size: 6829
+ser_time: 135
+com_time: 807
+des_ser_time: 362
+des_com_time: 390
+====
+====
+ser_size: 10082
+com_size: 2345
+ser_time: 27
+com_time: 163
+des_ser_time: 61
+des_com_time: 85
+====
+====
+ser_size: 31086
+com_size: 4721
+ser_time: 88
+com_time: 486
+des_ser_time: 217
+des_com_time: 247
+====
+====
+ser_size: 7323
+com_size: 1704
+ser_time: 24
+com_time: 179
+des_ser_time: 44
+des_com_time: 70
+====
+====
+ser_size: 56166
+com_size: 8470
+ser_time: 159
+com_time: 1002
+des_ser_time: 401
+des_com_time: 446
+====
+====
+ser_size: 20582
+com_size: 3386
+ser_time: 54
+com_time: 289
+des_ser_time: 121
+des_com_time: 154
+====
+====
+ser_size: 66518
+com_size: 7482
+ser_time: 169
+com_time: 869
+des_ser_time: 462
+des_com_time: 577
+====
+====
+ser_size: 46
+com_size: 38
+ser_time: 0
+com_time: 9
+des_ser_time: 0
+des_com_time: 4
+====
+====
+ser_size: 16451
+com_size: 2723
+ser_time: 45
+com_time: 220
+des_ser_time: 98
+des_com_time: 127
+====
+====
+ser_size: 3791
+com_size: 1071
+ser_time: 11
+com_time: 72
+des_ser_time: 28
+des_com_time: 43
+====
+====
+ser_size: 55060
+com_size: 7781
+ser_time: 147
+com_time: 910
+des_ser_time: 398
+des_com_time: 410
+====
+====
+ser_size: 16555
+com_size: 3534
+ser_time: 47
+com_time: 244
+des_ser_time: 113
+des_com_time: 144
+====
+====
+ser_size: 14438
+com_size: 3054
+ser_time: 51
+com_time: 257
+des_ser_time: 96
+des_com_time: 124
+====
+====
+ser_size: 3710
+com_size: 1074
+ser_time: 11
+com_time: 72
+des_ser_time: 25
+des_com_time: 39
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 11
+com_time: 70
+des_ser_time: 26
+des_com_time: 40
+====
+====
+ser_size: 7706
+com_size: 1899
+ser_time: 21
+com_time: 151
+des_ser_time: 48
+des_com_time: 68
+====
+====
+ser_size: 17925
+com_size: 3596
+ser_time: 71
+com_time: 336
+des_ser_time: 114
+des_com_time: 166
+====
+====
+ser_size: 9367
+com_size: 1716
+ser_time: 29
+com_time: 163
+des_ser_time: 65
+des_com_time: 84
+====
+====
+ser_size: 59791
+com_size: 8302
+ser_time: 164
+com_time: 1045
+des_ser_time: 445
+des_com_time: 498
+====
+====
+ser_size: 50912
+com_size: 6836
+ser_time: 140
+com_time: 749
+des_ser_time: 390
+des_com_time: 402
+====
+====
+ser_size: 7323
+com_size: 1704
+ser_time: 21
+com_time: 130
+des_ser_time: 45
+des_com_time: 65
+====
+====
+ser_size: 7411
+com_size: 1812
+ser_time: 22
+com_time: 136
+des_ser_time: 49
+des_com_time: 68
+====
+====
+ser_size: 45665
+com_size: 6698
+ser_time: 128
+com_time: 733
+des_ser_time: 345
+des_com_time: 349
+====
+====
+ser_size: 88622
+com_size: 12121
+ser_time: 238
+com_time: 1528
+des_ser_time: 661
+des_com_time: 713
+====
+====
+ser_size: 9382
+com_size: 2146
+ser_time: 31
+com_time: 162
+des_ser_time: 56
+des_com_time: 81
+====
+====
+ser_size: 180256
+com_size: 21580
+ser_time: 479
+com_time: 2920
+des_ser_time: 1351
+des_com_time: 1469
+====
+====
+ser_size: 31856
+com_size: 5163
+ser_time: 104
+com_time: 503
+des_ser_time: 200
+des_com_time: 249
+====
+====
+ser_size: 7076
+com_size: 1739
+ser_time: 21
+com_time: 127
+des_ser_time: 45
+des_com_time: 64
+====
+====
+ser_size: 31267
+com_size: 4784
+ser_time: 86
+com_time: 469
+des_ser_time: 203
+des_com_time: 245
+====
+====
+ser_size: 69762
+com_size: 9401
+ser_time: 192
+com_time: 1065
+des_ser_time: 451
+des_com_time: 527
+====
+====
+ser_size: 91481
+com_size: 11576
+ser_time: 240
+com_time: 1375
+des_ser_time: 659
+des_com_time: 719
+====
+====
+ser_size: 7494
+com_size: 1589
+ser_time: 21
+com_time: 120
+des_ser_time: 51
+des_com_time: 70
+====
+====
+ser_size: 5339
+com_size: 1535
+ser_time: 15
+com_time: 98
+des_ser_time: 32
+des_com_time: 50
+====
+====
+ser_size: 33942
+com_size: 5379
+ser_time: 97
+com_time: 556
+des_ser_time: 219
+des_com_time: 275
+====
+====
+ser_size: 24806
+com_size: 4055
+ser_time: 68
+com_time: 408
+des_ser_time: 164
+des_com_time: 204
+====
+====
+ser_size: 83365
+com_size: 12264
+ser_time: 231
+com_time: 1611
+des_ser_time: 633
+des_com_time: 701
+====
+====
+ser_size: 61627
+com_size: 8203
+ser_time: 164
+com_time: 913
+des_ser_time: 417
+des_com_time: 451
+====
+====
+ser_size: 57237
+com_size: 7725
+ser_time: 157
+com_time: 866
+des_ser_time: 419
+des_com_time: 423
+====
+====
+ser_size: 7762
+com_size: 1799
+ser_time: 21
+com_time: 119
+des_ser_time: 48
+des_com_time: 68
+====
+====
+ser_size: 30269
+com_size: 4925
+ser_time: 81
+com_time: 470
+des_ser_time: 186
+des_com_time: 228
+====
+====
+ser_size: 59302
+com_size: 8294
+ser_time: 160
+com_time: 967
+des_ser_time: 433
+des_com_time: 454
+====
+====
+ser_size: 39883
+com_size: 5637
+ser_time: 141
+com_time: 568
+des_ser_time: 322
+des_com_time: 317
+====
+====
+ser_size: 49234
+com_size: 6887
+ser_time: 138
+com_time: 782
+des_ser_time: 365
+des_com_time: 398
+====
+====
+ser_size: 56180
+com_size: 7874
+ser_time: 152
+com_time: 891
+des_ser_time: 417
+des_com_time: 431
+====
+====
+ser_size: 17324
+com_size: 3647
+ser_time: 49
+com_time: 258
+des_ser_time: 116
+des_com_time: 147
+====
+====
+ser_size: 57778
+com_size: 8210
+ser_time: 157
+com_time: 956
+des_ser_time: 423
+des_com_time: 444
+====
+====
+ser_size: 3791
+com_size: 1067
+ser_time: 12
+com_time: 76
+des_ser_time: 26
+des_com_time: 41
+====
+====
+ser_size: 46
+com_size: 38
+ser_time: 0
+com_time: 9
+des_ser_time: 0
+des_com_time: 3
+====
+====
+ser_size: 7003
+com_size: 1279
+ser_time: 19
+com_time: 98
+des_ser_time: 45
+des_com_time: 60
+====
+====
+ser_size: 6606
+com_size: 1672
+ser_time: 20
+com_time: 125
+des_ser_time: 44
+des_com_time: 64
+====
+====
+ser_size: 3792
+com_size: 1066
+ser_time: 14
+com_time: 73
+des_ser_time: 26
+des_com_time: 41
+====
+====
+ser_size: 50837
+com_size: 7254
+ser_time: 137
+com_time: 814
+des_ser_time: 377
+des_com_time: 402
+====
+====
+ser_size: 46
+com_size: 38
+ser_time: 0
+com_time: 9
+des_ser_time: 0
+des_com_time: 4
+====
+====
+ser_size: 46631
+com_size: 6767
+ser_time: 133
+com_time: 809
+des_ser_time: 343
+des_com_time: 357
+====
+====
+ser_size: 29919
+com_size: 4830
+ser_time: 83
+com_time: 426
+des_ser_time: 202
+des_com_time: 229
+====
+====
+ser_size: 48525
+com_size: 6774
+ser_time: 132
+com_time: 786
+des_ser_time: 360
+des_com_time: 393
+====
+====
+ser_size: 14948
+com_size: 3196
+ser_time: 41
+com_time: 208
+des_ser_time: 96
+des_com_time: 124
+====
+====
+ser_size: 6921
+com_size: 1651
+ser_time: 19
+com_time: 118
+des_ser_time: 42
+des_com_time: 61
+====
+====
+ser_size: 8056
+com_size: 2074
+ser_time: 22
+com_time: 154
+des_ser_time: 52
+des_com_time: 73
+====
+====
+ser_size: 8136
+com_size: 1594
+ser_time: 23
+com_time: 151
+des_ser_time: 52
+des_com_time: 70
+====
+====
+ser_size: 3748
+com_size: 1070
+ser_time: 11
+com_time: 71
+des_ser_time: 25
+des_com_time: 39
+====
+====
+ser_size: 92278
+com_size: 11544
+ser_time: 245
+com_time: 1449
+des_ser_time: 662
+des_com_time: 744
+====
+====
+ser_size: 18992
+com_size: 3676
+ser_time: 54
+com_time: 334
+des_ser_time: 124
+des_com_time: 158
+====
+====
+ser_size: 56234
+com_size: 7894
+ser_time: 153
+com_time: 864
+des_ser_time: 376
+des_com_time: 425
+====
+====
+ser_size: 65584
+com_size: 7375
+ser_time: 167
+com_time: 812
+des_ser_time: 450
+des_com_time: 495
+====
+====
+ser_size: 3709
+com_size: 1078
+ser_time: 11
+com_time: 74
+des_ser_time: 26
+des_com_time: 40
+====
+====
+ser_size: 2715
+com_size: 847
+ser_time: 8
+com_time: 55
+des_ser_time: 18
+des_com_time: 30
+====
+====
+ser_size: 26155
+com_size: 4606
+ser_time: 73
+com_time: 412
+des_ser_time: 166
+des_com_time: 207
+====
+====
+ser_size: 20350
+com_size: 3361
+ser_time: 53
+com_time: 282
+des_ser_time: 118
+des_com_time: 150
+====
+====
+ser_size: 3791
+com_size: 1072
+ser_time: 11
+com_time: 106
+des_ser_time: 25
+des_com_time: 40
+====
+====
+ser_size: 6921
+com_size: 1651
+ser_time: 20
+com_time: 117
+des_ser_time: 41
+des_com_time: 62
+====
+====
+ser_size: 1436
+com_size: 545
+ser_time: 5
+com_time: 37
+des_ser_time: 9
+des_com_time: 19
+====
+====
+ser_size: 66592
+com_size: 8855
+ser_time: 179
+com_time: 1089
+des_ser_time: 472
+des_com_time: 544
+====
+====
+ser_size: 21179
+com_size: 3877
+ser_time: 59
+com_time: 365
+des_ser_time: 137
+des_com_time: 175
+====
+====
+ser_size: 73490
+com_size: 9053
+ser_time: 202
+com_time: 1168
+des_ser_time: 542
+des_com_time: 609
+====
+====
+ser_size: 24455
+com_size: 4248
+ser_time: 65
+com_time: 378
+des_ser_time: 152
+des_com_time: 190
+====
+====
+ser_size: 6921
+com_size: 1651
+ser_time: 19
+com_time: 119
+des_ser_time: 42
+des_com_time: 61
+====
+====
+ser_size: 3792
+com_size: 1080
+ser_time: 13
+com_time: 73
+des_ser_time: 26
+des_com_time: 41
+====
+====
+ser_size: 31311
+com_size: 5283
+ser_time: 86
+com_time: 508
+des_ser_time: 203
+des_com_time: 252
+====
+====
+ser_size: 36204
+com_size: 4646
+ser_time: 122
+com_time: 534
+des_ser_time: 252
+des_com_time: 281
+====
+====
+ser_size: 27961
+com_size: 4348
+ser_time: 78
+com_time: 431
+des_ser_time: 192
+des_com_time: 219
+====
+====
+ser_size: 68508
+com_size: 8520
+ser_time: 181
+com_time: 1063
+des_ser_time: 496
+des_com_time: 557
+====
+====
+ser_size: 3710
+com_size: 1074
+ser_time: 12
+com_time: 74
+des_ser_time: 26
+des_com_time: 42
+====
+====
+ser_size: 47114
+com_size: 5697
+ser_time: 123
+com_time: 573
+des_ser_time: 329
+des_com_time: 334
+====
+====
+ser_size: 20367
+com_size: 4004
+ser_time: 57
+com_time: 337
+des_ser_time: 135
+des_com_time: 171
+====
+====
+ser_size: 65778
+com_size: 8548
+ser_time: 178
+com_time: 1019
+des_ser_time: 480
+des_com_time: 563
+====
+====
+ser_size: 5134
+com_size: 1295
+ser_time: 16
+com_time: 92
+des_ser_time: 35
+des_com_time: 52
+====
+====
+ser_size: 40157
+com_size: 6316
+ser_time: 112
+com_time: 651
+des_ser_time: 278
+des_com_time: 323
+====
+====
+ser_size: 7123
+com_size: 1776
+ser_time: 21
+com_time: 134
+des_ser_time: 47
+des_com_time: 67
+====
+====
+ser_size: 49229
+com_size: 6881
+ser_time: 133
+com_time: 824
+des_ser_time: 375
+des_com_time: 396
+====
+====
+ser_size: 41613
+com_size: 5772
+ser_time: 117
+com_time: 604
+des_ser_time: 317
+des_com_time: 321
+====
+====
+ser_size: 48436
+com_size: 6821
+ser_time: 131
+com_time: 757
+des_ser_time: 360
+des_com_time: 396
+====
+====
+ser_size: 19528
+com_size: 3343
+ser_time: 56
+com_time: 302
+des_ser_time: 131
+des_com_time: 166
+====
+====
+ser_size: 55309
+com_size: 9091
+ser_time: 140
+com_time: 958
+des_ser_time: 375
+des_com_time: 398
+====
+====
+ser_size: 17257
+com_size: 3248
+ser_time: 49
+com_time: 279
+des_ser_time: 110
+des_com_time: 146
+====
+====
+ser_size: 32056
+com_size: 5208
+ser_time: 90
+com_time: 503
+des_ser_time: 229
+des_com_time: 254
+====
+====
+ser_size: 70132
+com_size: 9443
+ser_time: 196
+com_time: 1169
+des_ser_time: 540
+des_com_time: 612
+====
+====
+ser_size: 15437
+com_size: 3081
+ser_time: 51
+com_time: 258
+des_ser_time: 98
+des_com_time: 130
+====
+====
+ser_size: 228708
+com_size: 30591
+ser_time: 649
+com_time: 4145
+des_ser_time: 1704
+des_com_time: 2030
+====
+====
+ser_size: 97759
+com_size: 11705
+ser_time: 262
+com_time: 1435
+des_ser_time: 624
+des_com_time: 719
+====
+====
+ser_size: 35135
+com_size: 5496
+ser_time: 98
+com_time: 557
+des_ser_time: 227
+des_com_time: 274
+====
+====
+ser_size: 11401
+com_size: 2540
+ser_time: 32
+com_time: 199
+des_ser_time: 72
+des_com_time: 98
+====
+====
+ser_size: 103688
+com_size: 12350
+ser_time: 275
+com_time: 1504
+des_ser_time: 710
+des_com_time: 741
+====
+====
+ser_size: 24684
+com_size: 4308
+ser_time: 73
+com_time: 396
+des_ser_time: 165
+des_com_time: 206
+====
+====
+ser_size: 3710
+com_size: 1070
+ser_time: 11
+com_time: 72
+des_ser_time: 25
+des_com_time: 40
+====
+====
+ser_size: 3791
+com_size: 1069
+ser_time: 11
+com_time: 70
+des_ser_time: 44
+des_com_time: 40
+====
+====
+ser_size: 32336
+com_size: 5430
+ser_time: 90
+com_time: 538
+des_ser_time: 206
+des_com_time: 253
+====
+====
+ser_size: 42935
+com_size: 6199
+ser_time: 120
+com_time: 654
+des_ser_time: 297
+des_com_time: 324
+====
+====
+ser_size: 8922
+com_size: 2186
+ser_time: 24
+com_time: 155
+des_ser_time: 54
+des_com_time: 76
+====
+====
+ser_size: 87098
+com_size: 10928
+ser_time: 237
+com_time: 1374
+des_ser_time: 628
+des_com_time: 704
+====
+====
+ser_size: 12176
+com_size: 2386
+ser_time: 34
+com_time: 193
+des_ser_time: 80
+des_com_time: 105
+====
+====
+ser_size: 8826
+com_size: 2092
+ser_time: 26
+com_time: 152
+des_ser_time: 60
+des_com_time: 80
+====
+====
+ser_size: 52902
+com_size: 7372
+ser_time: 146
+com_time: 815
+des_ser_time: 386
+des_com_time: 397
+====
+====
+ser_size: 30396
+com_size: 4958
+ser_time: 104
+com_time: 515
+des_ser_time: 203
+des_com_time: 248
+====
+====
+ser_size: 87414
+com_size: 11335
+ser_time: 241
+com_time: 1394
+des_ser_time: 660
+des_com_time: 760
+====
+====
+ser_size: 73630
+com_size: 9116
+ser_time: 208
+com_time: 1011
+des_ser_time: 551
+des_com_time: 571
+====
+====
+ser_size: 8976
+com_size: 1511
+ser_time: 26
+com_time: 116
+des_ser_time: 60
+des_com_time: 79
+====
+====
+ser_size: 53670
+com_size: 6838
+ser_time: 147
+com_time: 680
+des_ser_time: 408
+des_com_time: 419
+====
+====
+ser_size: 159365
+com_size: 22010
+ser_time: 441
+com_time: 2924
+des_ser_time: 1237
+des_com_time: 1393
+====
+====
+ser_size: 7433
+com_size: 1562
+ser_time: 22
+com_time: 116
+des_ser_time: 51
+des_com_time: 69
+====
+====
+ser_size: 31631
+com_size: 5558
+ser_time: 84
+com_time: 516
+des_ser_time: 199
+des_com_time: 251
+====
+====
+ser_size: 11420
+com_size: 2364
+ser_time: 30
+com_time: 174
+des_ser_time: 68
+des_com_time: 92
+====
+====
+ser_size: 13079
+com_size: 1845
+ser_time: 37
+com_time: 161
+des_ser_time: 83
+des_com_time: 105
+====
+====
+ser_size: 173888
+com_size: 20962
+ser_time: 475
+com_time: 2817
+des_ser_time: 1238
+des_com_time: 1465
+====
+====
+ser_size: 3710
+com_size: 1070
+ser_time: 14
+com_time: 78
+des_ser_time: 26
+des_com_time: 42
+====
+====
+ser_size: 5484
+com_size: 1359
+ser_time: 18
+com_time: 95
+des_ser_time: 38
+des_com_time: 55
+====
+====
+ser_size: 2602
+com_size: 852
+ser_time: 8
+com_time: 54
+des_ser_time: 18
+des_com_time: 30
+====
+====
+ser_size: 8473
+com_size: 2002
+ser_time: 28
+com_time: 142
+des_ser_time: 56
+des_com_time: 76
+====
+====
+ser_size: 3792
+com_size: 1076
+ser_time: 11
+com_time: 74
+des_ser_time: 26
+des_com_time: 40
+====
+====
+ser_size: 63962
+com_size: 8531
+ser_time: 173
+com_time: 953
+des_ser_time: 406
+des_com_time: 472
+====
+====
+ser_size: 5735
+com_size: 1575
+ser_time: 17
+com_time: 114
+des_ser_time: 38
+des_com_time: 57
+====
+====
+ser_size: 14500
+com_size: 2850
+ser_time: 41
+com_time: 236
+des_ser_time: 94
+des_com_time: 122
+====
+====
+ser_size: 30884
+com_size: 4891
+ser_time: 82
+com_time: 467
+des_ser_time: 200
+des_com_time: 242
+====
+====
+ser_size: 75622
+com_size: 9888
+ser_time: 208
+com_time: 1098
+des_ser_time: 561
+des_com_time: 604
+====
+====
+ser_size: 44448
+com_size: 7101
+ser_time: 123
+com_time: 756
+des_ser_time: 285
+des_com_time: 342
+====
+====
+ser_size: 5661
+com_size: 1224
+ser_time: 17
+com_time: 90
+des_ser_time: 40
+des_com_time: 56
+====
+====
+ser_size: 49230
+com_size: 6882
+ser_time: 134
+com_time: 789
+des_ser_time: 396
+des_com_time: 366
+====
+====
+ser_size: 34361
+com_size: 5478
+ser_time: 96
+com_time: 547
+des_ser_time: 240
+des_com_time: 268
+====
+====
+ser_size: 25156
+com_size: 4119
+ser_time: 70
+com_time: 440
+des_ser_time: 161
+des_com_time: 200
+====
+====
+ser_size: 7930
+com_size: 1694
+ser_time: 23
+com_time: 166
+des_ser_time: 52
+des_com_time: 73
+====
+====
+ser_size: 2951
+com_size: 898
+ser_time: 9
+com_time: 57
+des_ser_time: 20
+des_com_time: 33
+====
+====
+ser_size: 22117
+com_size: 4015
+ser_time: 62
+com_time: 409
+des_ser_time: 149
+des_com_time: 183
+====
+====
+ser_size: 31677
+com_size: 5349
+ser_time: 82
+com_time: 549
+des_ser_time: 203
+des_com_time: 238
+====
+====
+ser_size: 3917
+com_size: 1102
+ser_time: 12
+com_time: 108
+des_ser_time: 27
+des_com_time: 42
+====
+====
+ser_size: 43170
+com_size: 6244
+ser_time: 117
+com_time: 683
+des_ser_time: 305
+des_com_time: 320
+====
+====
+ser_size: 152170
+com_size: 16959
+ser_time: 399
+com_time: 2268
+des_ser_time: 1059
+des_com_time: 1242
+====
+====
+ser_size: 3902
+com_size: 1197
+ser_time: 12
+com_time: 86
+des_ser_time: 26
+des_com_time: 42
+====
+====
+ser_size: 20045
+com_size: 4042
+ser_time: 57
+com_time: 306
+des_ser_time: 130
+des_com_time: 164
+====
+====
+ser_size: 46283
+com_size: 6465
+ser_time: 126
+com_time: 717
+des_ser_time: 291
+des_com_time: 345
+====
+====
+ser_size: 6261
+com_size: 1376
+ser_time: 18
+com_time: 100
+des_ser_time: 42
+des_com_time: 59
+====
+====
+ser_size: 7323
+com_size: 1704
+ser_time: 20
+com_time: 124
+des_ser_time: 46
+des_com_time: 66
+====
+====
+ser_size: 43215
+com_size: 6412
+ser_time: 118
+com_time: 674
+des_ser_time: 278
+des_com_time: 331
+====
+====
+ser_size: 14420
+com_size: 2867
+ser_time: 41
+com_time: 235
+des_ser_time: 91
+des_com_time: 122
+====
+====
+ser_size: 48964
+com_size: 6803
+ser_time: 133
+com_time: 748
+des_ser_time: 368
+des_com_time: 367
+====
+====
+ser_size: 30063
+com_size: 5096
+ser_time: 82
+com_time: 484
+des_ser_time: 183
+des_com_time: 230
+====
+====
+ser_size: 18346
+com_size: 2882
+ser_time: 52
+com_time: 263
+des_ser_time: 121
+des_com_time: 149
+====
+====
+ser_size: 1306
+com_size: 492
+ser_time: 4
+com_time: 49
+des_ser_time: 8
+des_com_time: 18
+====
+====
+ser_size: 49961
+com_size: 5941
+ser_time: 130
+com_time: 650
+des_ser_time: 349
+des_com_time: 367
+====
+====
+ser_size: 34222
+com_size: 5175
+ser_time: 96
+com_time: 490
+des_ser_time: 258
+des_com_time: 270
+====
+====
+ser_size: 3710
+com_size: 1078
+ser_time: 11
+com_time: 74
+des_ser_time: 26
+des_com_time: 42
+====
+====
+ser_size: 8540
+com_size: 1978
+ser_time: 23
+com_time: 143
+des_ser_time: 50
+des_com_time: 73
+====
+====
+ser_size: 6281
+com_size: 1456
+ser_time: 19
+com_time: 138
+des_ser_time: 43
+des_com_time: 59
+====
+====
+ser_size: 6585
+com_size: 1826
+ser_time: 20
+com_time: 122
+des_ser_time: 41
+des_com_time: 61
+====
+====
+ser_size: 12845
+com_size: 2490
+ser_time: 36
+com_time: 201
+des_ser_time: 85
+des_com_time: 112
+====
+====
+ser_size: 175872
+com_size: 21168
+ser_time: 466
+com_time: 2806
+des_ser_time: 1277
+des_com_time: 1465
+====
+====
+ser_size: 92449
+com_size: 11544
+ser_time: 243
+com_time: 1331
+des_ser_time: 575
+des_com_time: 665
+====
+====
+ser_size: 66537
+com_size: 7459
+ser_time: 167
+com_time: 792
+des_ser_time: 406
+des_com_time: 464
+====
+====
+ser_size: 7323
+com_size: 1704
+ser_time: 21
+com_time: 130
+des_ser_time: 44
+des_com_time: 64
+====
+====
+ser_size: 48511
+com_size: 6675
+ser_time: 131
+com_time: 733
+des_ser_time: 349
+des_com_time: 369
+====
+====
+ser_size: 39789
+com_size: 6395
+ser_time: 111
+com_time: 721
+des_ser_time: 286
+des_com_time: 307
+====
+====
+ser_size: 119456
+com_size: 32423
+ser_time: 331
+com_time: 2503
+des_ser_time: 905
+des_com_time: 1063
+====
+====
+ser_size: 96712
+com_size: 12756
+ser_time: 266
+com_time: 1565
+des_ser_time: 716
+des_com_time: 733
+====
+====
+ser_size: 3058
+com_size: 967
+ser_time: 10
+com_time: 63
+des_ser_time: 19
+des_com_time: 34
+====
+====
+ser_size: 19424
+com_size: 3582
+ser_time: 54
+com_time: 275
+des_ser_time: 127
+des_com_time: 156
+====
+====
+ser_size: 16877
+com_size: 3462
+ser_time: 47
+com_time: 288
+des_ser_time: 106
+des_com_time: 140
+====
+====
+ser_size: 7869
+com_size: 1972
+ser_time: 22
+com_time: 149
+des_ser_time: 50
+des_com_time: 71
+====
+====
+ser_size: 3790
+com_size: 1071
+ser_time: 12
+com_time: 71
+des_ser_time: 26
+des_com_time: 40
+====
+====
+ser_size: 8590
+com_size: 2165
+ser_time: 24
+com_time: 150
+des_ser_time: 55
+des_com_time: 79
+====
+====
+ser_size: 49239
+com_size: 6818
+ser_time: 154
+com_time: 768
+des_ser_time: 367
+des_com_time: 381
+====
+====
+ser_size: 5605
+com_size: 1397
+ser_time: 18
+com_time: 99
+des_ser_time: 40
+des_com_time: 57
+====
+====
+ser_size: 22836
+com_size: 4134
+ser_time: 65
+com_time: 363
+des_ser_time: 149
+des_com_time: 185
+====
+====
+ser_size: 8888
+com_size: 1761
+ser_time: 26
+com_time: 144
+des_ser_time: 59
+des_com_time: 79
+====
+====
+ser_size: 12054
+com_size: 2384
+ser_time: 30
+com_time: 200
+des_ser_time: 66
+des_com_time: 92
+====
+====
+ser_size: 94092
+com_size: 12024
+ser_time: 254
+com_time: 1515
+des_ser_time: 688
+des_com_time: 766
+====
+====
+ser_size: 126303
+com_size: 17736
+ser_time: 344
+com_time: 2266
+des_ser_time: 961
+des_com_time: 1086
+====
+====
+ser_size: 51126
+com_size: 7338
+ser_time: 161
+com_time: 799
+des_ser_time: 348
+des_com_time: 467
+====
+====
+ser_size: 164577
+com_size: 20090
+ser_time: 436
+com_time: 2660
+des_ser_time: 1178
+des_com_time: 1356
+====
+====
+ser_size: 9254
+com_size: 1836
+ser_time: 27
+com_time: 151
+des_ser_time: 60
+des_com_time: 82
+====
+====
+ser_size: 50966
+com_size: 7022
+ser_time: 139
+com_time: 774
+des_ser_time: 336
+des_com_time: 394
+====
+====
+ser_size: 25337
+com_size: 4385
+ser_time: 82
+com_time: 401
+des_ser_time: 153
+des_com_time: 193
+====
+====
+ser_size: 5735
+com_size: 1572
+ser_time: 18
+com_time: 116
+des_ser_time: 39
+des_com_time: 58
+====
+====
+ser_size: 22203
+com_size: 3860
+ser_time: 61
+com_time: 328
+des_ser_time: 135
+des_com_time: 171
+====
+====
+ser_size: 10926
+com_size: 2339
+ser_time: 31
+com_time: 177
+des_ser_time: 77
+des_com_time: 100
+====
+====
+ser_size: 6921
+com_size: 1651
+ser_time: 18
+com_time: 117
+des_ser_time: 43
+des_com_time: 62
+====
+====
+ser_size: 13632
+com_size: 2908
+ser_time: 36
+com_time: 223
+des_ser_time: 79
+des_com_time: 106
+====
+====
+ser_size: 68820
+com_size: 8853
+ser_time: 189
+com_time: 988
+des_ser_time: 511
+des_com_time: 574
+====
+====
+ser_size: 16017
+com_size: 2803
+ser_time: 44
+com_time: 247
+des_ser_time: 106
+des_com_time: 137
+====
+====
+ser_size: 34554
+com_size: 5552
+ser_time: 98
+com_time: 548
+des_ser_time: 234
+des_com_time: 289
+====
+====
+ser_size: 22987
+com_size: 4016
+ser_time: 66
+com_time: 410
+des_ser_time: 153
+des_com_time: 188
+====
+====
+ser_size: 3792
+com_size: 1067
+ser_time: 12
+com_time: 78
+des_ser_time: 26
+des_com_time: 42
+====
+====
+ser_size: 85262
+com_size: 12077
+ser_time: 242
+com_time: 1572
+des_ser_time: 631
+des_com_time: 729
+====
+====
+ser_size: 3791
+com_size: 1069
+ser_time: 12
+com_time: 75
+des_ser_time: 27
+des_com_time: 44
+====
+====
+ser_size: 22343
+com_size: 3794
+ser_time: 61
+com_time: 328
+des_ser_time: 143
+des_com_time: 176
+====
+====
+ser_size: 47016
+com_size: 6604
+ser_time: 127
+com_time: 704
+des_ser_time: 328
+des_com_time: 358
+====
+====
+ser_size: 4762
+com_size: 1221
+ser_time: 14
+com_time: 85
+des_ser_time: 32
+des_com_time: 48
+====
+====
+ser_size: 19775
+com_size: 3962
+ser_time: 57
+com_time: 291
+des_ser_time: 129
+des_com_time: 159
+====
+====
+ser_size: 31686
+com_size: 4690
+ser_time: 86
+com_time: 494
+des_ser_time: 222
+des_com_time: 243
+====
+====
+ser_size: 18730
+com_size: 3233
+ser_time: 51
+com_time: 304
+des_ser_time: 124
+des_com_time: 151
+====
+====
+ser_size: 11086
+com_size: 2134
+ser_time: 38
+com_time: 192
+des_ser_time: 72
+des_com_time: 95
+====
+====
+ser_size: 6385
+com_size: 1306
+ser_time: 18
+com_time: 110
+des_ser_time: 43
+des_com_time: 58
+====
+====
+ser_size: 9680
+com_size: 2196
+ser_time: 26
+com_time: 165
+des_ser_time: 57
+des_com_time: 81
+====
+====
+ser_size: 60152
+com_size: 9026
+ser_time: 163
+com_time: 1135
+des_ser_time: 449
+des_com_time: 479
+====
+====
+ser_size: 83065
+com_size: 10515
+ser_time: 224
+com_time: 1269
+des_ser_time: 617
+des_com_time: 679
+====
+====
+ser_size: 20145
+com_size: 3999
+ser_time: 57
+com_time: 300
+des_ser_time: 132
+des_com_time: 165
+====
+====
+ser_size: 4928
+com_size: 1279
+ser_time: 15
+com_time: 89
+des_ser_time: 34
+des_com_time: 49
+====
+====
+ser_size: 17190
+com_size: 2985
+ser_time: 46
+com_time: 244
+des_ser_time: 102
+des_com_time: 132
+====
+====
+ser_size: 2209
+com_size: 782
+ser_time: 6
+com_time: 49
+des_ser_time: 13
+des_com_time: 26
+====
+====
+ser_size: 49580
+com_size: 6877
+ser_time: 168
+com_time: 790
+des_ser_time: 365
+des_com_time: 392
+====
+====
+ser_size: 10580
+com_size: 2206
+ser_time: 29
+com_time: 164
+des_ser_time: 65
+des_com_time: 88
+====
+====
+ser_size: 43258
+com_size: 5982
+ser_time: 122
+com_time: 643
+des_ser_time: 315
+des_com_time: 326
+====
+====
+ser_size: 32600
+com_size: 5078
+ser_time: 85
+com_time: 503
+des_ser_time: 212
+des_com_time: 254
+====
+====
+ser_size: 2861
+com_size: 858
+ser_time: 11
+com_time: 93
+des_ser_time: 19
+des_com_time: 32
+====
+====
+ser_size: 42140
+com_size: 5829
+ser_time: 111
+com_time: 645
+des_ser_time: 294
+des_com_time: 319
+====
+====
+ser_size: 3792
+com_size: 1064
+ser_time: 11
+com_time: 72
+des_ser_time: 26
+des_com_time: 41
+====
+====
+ser_size: 5480
+com_size: 1386
+ser_time: 16
+com_time: 94
+des_ser_time: 37
+des_com_time: 53
+====
+====
+ser_size: 12720
+com_size: 2545
+ser_time: 32
+com_time: 196
+des_ser_time: 77
+des_com_time: 100
+====
+====
+ser_size: 2825
+com_size: 984
+ser_time: 9
+com_time: 91
+des_ser_time: 18
+des_com_time: 31
+====
+====
+ser_size: 84095
+com_size: 11552
+ser_time: 228
+com_time: 1436
+des_ser_time: 630
+des_com_time: 710
+====
+====
+ser_size: 10552
+com_size: 2209
+ser_time: 28
+com_time: 164
+des_ser_time: 61
+des_com_time: 86
+====
+====
+ser_size: 5042
+com_size: 1239
+ser_time: 15
+com_time: 84
+des_ser_time: 35
+des_com_time: 51
+====
+====
+ser_size: 6606
+com_size: 1453
+ser_time: 18
+com_time: 100
+des_ser_time: 44
+des_com_time: 62
+====
+====
+ser_size: 94328
+com_size: 11642
+ser_time: 253
+com_time: 1480
+des_ser_time: 683
+des_com_time: 794
+====
+====
+ser_size: 3792
+com_size: 1068
+ser_time: 12
+com_time: 75
+des_ser_time: 26
+des_com_time: 41
+====
+====
+ser_size: 34678
+com_size: 5263
+ser_time: 94
+com_time: 537
+des_ser_time: 223
+des_com_time: 269
+====
+====
+ser_size: 90846
+com_size: 12681
+ser_time: 249
+com_time: 1599
+des_ser_time: 673
+des_com_time: 775
+====
+====
+ser_size: 1305
+com_size: 488
+ser_time: 5
+com_time: 36
+des_ser_time: 9
+des_com_time: 19
+====
+====
+ser_size: 3710
+com_size: 1070
+ser_time: 12
+com_time: 72
+des_ser_time: 26
+des_com_time: 40
+====
+====
+ser_size: 5526
+com_size: 1371
+ser_time: 20
+com_time: 97
+des_ser_time: 37
+des_com_time: 53
+====
+====
+ser_size: 7320
+com_size: 1434
+ser_time: 21
+com_time: 104
+des_ser_time: 48
+des_com_time: 64
+====
+====
+ser_size: 11018
+com_size: 2489
+ser_time: 31
+com_time: 187
+des_ser_time: 74
+des_com_time: 99
+====
+====
+ser_size: 53926
+com_size: 8126
+ser_time: 146
+com_time: 930
+des_ser_time: 389
+des_com_time: 411
+====
+====
+ser_size: 55341
+com_size: 9103
+ser_time: 154
+com_time: 918
+des_ser_time: 372
+des_com_time: 407
+====
+====
+ser_size: 73490
+com_size: 9058
+ser_time: 212
+com_time: 1118
+des_ser_time: 539
+des_com_time: 608
+====
+====
+ser_size: 24393
+com_size: 3805
+ser_time: 70
+com_time: 328
+des_ser_time: 150
+des_com_time: 187
+====
+====
+ser_size: 5122
+com_size: 1284
+ser_time: 16
+com_time: 90
+des_ser_time: 34
+des_com_time: 51
+====
+====
+ser_size: 156595
+com_size: 19176
+ser_time: 450
+com_time: 2557
+des_ser_time: 1171
+des_com_time: 1344
+====
+====
+ser_size: 3193
+com_size: 912
+ser_time: 10
+com_time: 70
+des_ser_time: 21
+des_com_time: 36
+====
+====
+ser_size: 6992
+com_size: 1270
+ser_time: 20
+com_time: 99
+des_ser_time: 44
+des_com_time: 61
+====
+====
+ser_size: 13385
+com_size: 2950
+ser_time: 39
+com_time: 246
+des_ser_time: 81
+des_com_time: 110
+====
+====
+ser_size: 51433
+com_size: 7306
+ser_time: 139
+com_time: 801
+des_ser_time: 341
+des_com_time: 380
+====
+====
+ser_size: 8079
+com_size: 2039
+ser_time: 23
+com_time: 152
+des_ser_time: 52
+des_com_time: 75
+====
+====
+ser_size: 125710
+com_size: 33985
+ser_time: 353
+com_time: 2551
+des_ser_time: 957
+des_com_time: 1088
+====
+====
+ser_size: 20381
+com_size: 3999
+ser_time: 58
+com_time: 300
+des_ser_time: 131
+des_com_time: 164
+====
+====
+ser_size: 63757
+com_size: 8758
+ser_time: 175
+com_time: 1009
+des_ser_time: 441
+des_com_time: 490
+====
+====
+ser_size: 24737
+com_size: 3843
+ser_time: 69
+com_time: 392
+des_ser_time: 164
+des_com_time: 201
+====
+====
+ser_size: 13495
+com_size: 2842
+ser_time: 37
+com_time: 217
+des_ser_time: 85
+des_com_time: 111
+====
+====
+ser_size: 51059
+com_size: 6558
+ser_time: 132
+com_time: 734
+des_ser_time: 364
+des_com_time: 370
+====
+====
+ser_size: 44447
+com_size: 6658
+ser_time: 121
+com_time: 740
+des_ser_time: 313
+des_com_time: 340
+====
+====
+ser_size: 47265
+com_size: 6627
+ser_time: 129
+com_time: 741
+des_ser_time: 349
+des_com_time: 364
+====
+====
+ser_size: 14107
+com_size: 2662
+ser_time: 41
+com_time: 233
+des_ser_time: 91
+des_com_time: 119
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 12
+com_time: 73
+des_ser_time: 27
+des_com_time: 42
+====
+====
+ser_size: 118360
+com_size: 15870
+ser_time: 335
+com_time: 2126
+des_ser_time: 894
+des_com_time: 1014
+====
+====
+ser_size: 9487
+com_size: 2172
+ser_time: 27
+com_time: 173
+des_ser_time: 64
+des_com_time: 87
+====
+====
+ser_size: 10159
+com_size: 2188
+ser_time: 30
+com_time: 178
+des_ser_time: 68
+des_com_time: 92
+====
+====
+ser_size: 34052
+com_size: 5511
+ser_time: 93
+com_time: 521
+des_ser_time: 221
+des_com_time: 267
+====
+====
+ser_size: 31761
+com_size: 4836
+ser_time: 111
+com_time: 503
+des_ser_time: 206
+des_com_time: 249
+====
+====
+ser_size: 3565
+com_size: 1163
+ser_time: 10
+com_time: 70
+des_ser_time: 21
+des_com_time: 36
+====
+====
+ser_size: 4067
+com_size: 1144
+ser_time: 12
+com_time: 80
+des_ser_time: 28
+des_com_time: 43
+====
+====
+ser_size: 55797
+com_size: 7641
+ser_time: 158
+com_time: 849
+des_ser_time: 414
+des_com_time: 439
+====
+====
+ser_size: 3792
+com_size: 1070
+ser_time: 11
+com_time: 74
+des_ser_time: 26
+des_com_time: 41
+====
+====
+ser_size: 16808
+com_size: 3113
+ser_time: 46
+com_time: 278
+des_ser_time: 109
+des_com_time: 141
+====
+====
+ser_size: 73446
+com_size: 9038
+ser_time: 206
+com_time: 1156
+des_ser_time: 542
+des_com_time: 595
+====
+====
+ser_size: 76635
+com_size: 10065
+ser_time: 203
+com_time: 1202
+des_ser_time: 552
+des_com_time: 629
+====
+====
+ser_size: 54516
+com_size: 7151
+ser_time: 156
+com_time: 755
+des_ser_time: 407
+des_com_time: 434
+====
+====
+ser_size: 52372
+com_size: 7975
+ser_time: 144
+com_time: 839
+des_ser_time: 377
+des_com_time: 410
+====
+====
+ser_size: 14428
+com_size: 2839
+ser_time: 41
+com_time: 240
+des_ser_time: 96
+des_com_time: 126
+====
+====
+ser_size: 11367
+com_size: 2196
+ser_time: 31
+com_time: 167
+des_ser_time: 73
+des_com_time: 97
+====
+====
+ser_size: 10612
+com_size: 2368
+ser_time: 31
+com_time: 181
+des_ser_time: 74
+des_com_time: 98
+====
+====
+ser_size: 6385
+com_size: 1308
+ser_time: 18
+com_time: 133
+des_ser_time: 42
+des_com_time: 59
+====
+====
+ser_size: 6606
+com_size: 1672
+ser_time: 20
+com_time: 128
+des_ser_time: 43
+des_com_time: 63
+====
+====
+ser_size: 48386
+com_size: 6734
+ser_time: 127
+com_time: 763
+des_ser_time: 343
+des_com_time: 363
+====
+====
+ser_size: 27170
+com_size: 4602
+ser_time: 75
+com_time: 453
+des_ser_time: 178
+des_com_time: 213
+====
+====
+ser_size: 6168
+com_size: 1420
+ser_time: 18
+com_time: 136
+des_ser_time: 41
+des_com_time: 59
+====
+====
+ser_size: 6976
+com_size: 1265
+ser_time: 19
+com_time: 95
+des_ser_time: 49
+des_com_time: 65
+====
+====
+ser_size: 6921
+com_size: 1651
+ser_time: 20
+com_time: 117
+des_ser_time: 41
+des_com_time: 59
+====
+====
+ser_size: 65584
+com_size: 7373
+ser_time: 212
+com_time: 871
+des_ser_time: 447
+des_com_time: 469
+====
+====
+ser_size: 4762
+com_size: 1222
+ser_time: 18
+com_time: 89
+des_ser_time: 32
+des_com_time: 50
+====
+====
+ser_size: 50837
+com_size: 7255
+ser_time: 137
+com_time: 777
+des_ser_time: 379
+des_com_time: 385
+====
+====
+ser_size: 3792
+com_size: 1074
+ser_time: 11
+com_time: 72
+des_ser_time: 25
+des_com_time: 41
+====
+====
+ser_size: 153019
+com_size: 21723
+ser_time: 422
+com_time: 2820
+des_ser_time: 1179
+des_com_time: 1332
+====
+total_values: 1295
+com_bigger: 0
+des_com_bigger: 1261
+
+sum_ser size: 44083213
+sum_com size: 6639436
+ratio: 6.639602068609442
+
+sum_ser time: 126237
+sum_com time: 732183
+ratio: 5.800066541505264

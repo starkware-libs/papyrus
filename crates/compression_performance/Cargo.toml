@@ -16,4 +16,5 @@ bson={ version="2.6.1"}
 cairo-lang-starknet .workspace=true
 cairo-lang-casm .workspace=true
 cairo-lang-utils .workspace=true
+rand = "*" 
 
