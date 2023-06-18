@@ -38,6 +38,7 @@ thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
 tracing = { workspace = true, features = ["log"] }
 url.workspace = true
+syscalls = { version = "0.6.12"}
 
 [dev-dependencies]
 assert_matches.workspace = true

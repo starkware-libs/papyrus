@@ -15,6 +15,9 @@ use crate::db::serialization::{StorageSerde, StorageSerdeEx};
 /////////////////////////////////////////////////////////////////////////////
 use crate::{StorageReader, StorageWriter};
 use std::time::Instant;
+use syscalls::{Sysno, syscall};
+use std::{thread, time};
+
 
 pub fn write_to_disk<K: StorageSerde, V: StorageSerde, F: FnOnce(&V) -> Vec<u8>>(storage_writer: &mut StorageWriter, table_name: &'static str, key: &K, value: &V, ser: F) {
     let table_id = TableIdentifier::<K, V> {
@@ -32,6 +35,9 @@ pub fn write_to_disk<K: StorageSerde, V: StorageSerde, F: FnOnce(&V) -> Vec<u8>>
 
     table_handle.my_insert(&db_trans, key, value, ser).unwrap();
     db_trans.commit().unwrap();
+    //thread::sleep(time::Duration::from_millis(1000));
+    //unsafe{syscall!(Sysno::sync).unwrap();}
+
 }
 
 pub fn read_from_disk<K: StorageSerde, V: StorageSerde,  F: FnOnce(&mut &[u8]) -> V>(storage_reader: &StorageReader, table_name: &'static str, key: &K, des: F) -> V {
