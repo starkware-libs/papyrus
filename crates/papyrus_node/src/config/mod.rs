@@ -143,6 +143,7 @@ impl ConfigBuilder {
                 arg!(-s --storage [path] "Optionally sets storage path to use (automatically extended with chain ID)").value_parser(value_parser!(PathBuf)),
                 arg!(-n --no_sync [bool] "Optionally run without sync").value_parser(value_parser!(bool)).default_missing_value("true"),
                 arg!(--central_url ["URL"] "Central URL. It should match chain_id."),
+                arg!(-n --collect_metrics [bool] "Collect metrics for monitoring gateway package").value_parser(value_parser!(bool)).default_missing_value("false"),
             ])
             .try_get_matches_from(args).unwrap_or_else(|e| e.exit()),
         );
