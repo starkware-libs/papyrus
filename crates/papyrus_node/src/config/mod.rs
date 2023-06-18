@@ -11,11 +11,13 @@ use std::path::PathBuf;
 use std::time::Duration;
 use std::{env, fs, io};
 
-use clap::{arg, value_parser, Arg, ArgMatches, Command};
+use clap::builder::StyledStr;
+use clap::{arg, value_parser, Arg, ArgMatches, Command, Id};
 use file_config::FileConfigFormat;
 use itertools::chain;
 use papyrus_config::{
-    append_sub_config_name, ParamPath, SerdeConfig, SerializedParam, DEFAULT_CHAIN_ID,
+    append_sub_config_name, ParamPath, SerdeConfig, SerializedParam, SubConfigError,
+    DEFAULT_CHAIN_ID,
 };
 use papyrus_gateway::GatewayConfig;
 use papyrus_monitoring_gateway::MonitoringGatewayConfig;
@@ -23,6 +25,7 @@ use papyrus_storage::db::DbConfig;
 use papyrus_storage::StorageConfig;
 use papyrus_sync::{CentralSourceConfig, SyncConfig};
 use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use starknet_api::core::ChainId;
 use starknet_client::RetryConfig;
 
@@ -78,6 +81,34 @@ pub fn dump_default_config_to_file(file_path: &str) {
     let mut writer = BufWriter::new(file);
     serde_json::to_writer_pretty(&mut writer, &dumped).expect("writing failed");
     writer.flush().expect("flushing failed");
+}
+
+/// Takes config params from the command line interface.
+pub fn args_config_map(
+    config_map: &BTreeMap<ParamPath, SerializedParam>,
+    args: Vec<&str>,
+) -> BTreeMap<ParamPath, String> {
+    let mut args_parser = Vec::new();
+    for (param_path, serialized_param) in config_map.iter() {
+        let arg = Arg::new(param_path).long(param_path).help(&serialized_param.description);
+        args_parser.push(arg);
+    }
+
+    let arg_match = Command::new("Papyrus")
+        .version(VERSION_FULL)
+        .about("Papyrus is a StarkNet full node written in Rust.")
+        .args(&args_parser)
+        .try_get_matches_from(args)
+        .unwrap_or_else(|e| e.exit());
+
+    let mut args_map = BTreeMap::new();
+    for param_path in arg_match.ids() {
+        args_map.insert(
+            param_path.to_string(),
+            arg_match.get_one::<String>(param_path.as_str()).unwrap().to_owned(),
+        );
+    }
+    args_map
 }
 
 impl Config {
