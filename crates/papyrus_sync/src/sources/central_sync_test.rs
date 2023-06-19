@@ -118,7 +118,25 @@ async fn sync_happy_flow() {
     // Mock having N_BLOCKS chain in central.
     let mut mock = MockCentralSourceTrait::new();
     mock.expect_get_block_marker().returning(|| Ok(BlockNumber(N_BLOCKS)));
-    mock.expect_stream_new_blocks().returning(move |initial, up_to| {
+    mock.expect_stream_new_block_headers().returning(move |initial, up_to| {
+        let blocks_stream: BlocksStream<'_> = stream! {
+            for block_number in initial.iter_up_to(up_to) {
+                if block_number.0 >= N_BLOCKS {
+                    yield Err(CentralError::BlockNotFound { block_number });
+                }
+                let header = BlockHeader {
+                    block_number,
+                    block_hash: create_block_hash(block_number, false),
+                    parent_hash: create_block_hash(block_number.prev().unwrap_or_default(), false),
+                    ..BlockHeader::default()
+                };
+                yield Ok((block_number, Block { header, body: BlockBody::default() }));
+            }
+        }
+        .boxed();
+        blocks_stream
+    });
+    mock.expect_stream_new_block_bodies().returning(move |initial, up_to| {
         let blocks_stream: BlocksStream<'_> = stream! {
             for block_number in initial.iter_up_to(up_to) {
                 if block_number.0 >= N_BLOCKS {
@@ -392,6 +410,22 @@ async fn sync_with_revert() {
                 }
                 .boxed(),
             }
+        }
+
+        fn stream_new_block_headers(
+            &self,
+            initial_block_number: BlockNumber,
+            up_to_block_number: BlockNumber,
+        ) -> BlocksStream<'_> {
+            self.stream_new_blocks(initial_block_number, up_to_block_number)
+        }
+
+        fn stream_new_block_bodies(
+            &self,
+            initial_block_number: BlockNumber,
+            up_to_block_number: BlockNumber,
+        ) -> BlocksStream<'_> {
+            self.stream_new_blocks(initial_block_number, up_to_block_number)
         }
 
         fn stream_state_updates(
