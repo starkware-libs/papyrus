@@ -10,7 +10,7 @@ use std::result;
 use std::sync::Arc;
 
 use libmdbx::{Cursor, DatabaseFlags, Geometry, WriteFlags, WriteMap};
-use papyrus_config::{ser_param, ParamPath, SerdeConfig, SerializedParam};
+use papyrus_config::{ser_param, ParamPath, SerializeConfig, SerializedParam};
 use serde::{Deserialize, Serialize};
 
 use crate::db::serialization::{StorageSerde, StorageSerdeEx};
@@ -50,7 +50,7 @@ impl Default for DbConfig {
     }
 }
 
-impl SerdeConfig for DbConfig {
+impl SerializeConfig for DbConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         BTreeMap::from_iter([
             ser_param(

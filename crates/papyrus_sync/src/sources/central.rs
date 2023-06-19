@@ -12,7 +12,9 @@ use indexmap::IndexMap;
 use itertools::chain;
 #[cfg(test)]
 use mockall::automock;
-use papyrus_config::{append_sub_config_name, ser_param, ParamPath, SerdeConfig, SerializedParam};
+use papyrus_config::{
+    append_sub_config_name, ser_param, ParamPath, SerializeConfig, SerializedParam,
+};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
@@ -53,7 +55,7 @@ impl Default for CentralSourceConfig {
     }
 }
 
-impl SerdeConfig for CentralSourceConfig {
+impl SerializeConfig for CentralSourceConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         let self_params_dump = BTreeMap::from_iter([
             ser_param(
