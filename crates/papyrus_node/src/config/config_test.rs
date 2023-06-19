@@ -34,6 +34,7 @@ fn prepare_command() {
         "--storage=path".to_owned(),
         "--no_sync=true".to_owned(),
         "--central_url=URL".to_owned(),
+        "--collect_metrics=false".to_owned(),
     ];
     let builder = ConfigBuilder::default().prepare_command(args).unwrap();
     let builder_args = builder.args.expect("Expected to have args");
@@ -72,6 +73,10 @@ fn prepare_command() {
         *builder_args.get_one::<String>("central_url").expect("Expected to have central_url arg"),
         "URL".to_owned()
     );
+    let collect_metrics = *builder_args
+        .get_one::<bool>("collect_metrics")
+        .expect("Expected to have collect_metrics arg");
+    assert!(!collect_metrics);
 }
 
 #[test]
@@ -97,7 +102,7 @@ fn load_http_headers() {
 central:
     http_headers:
         NAME_1: VALUE_1
-        NAME_2: VALUE_2 
+        NAME_2: VALUE_2
 ";
     f.write_all(yaml.as_bytes()).unwrap();
     let args = vec![

@@ -102,6 +102,7 @@ impl Default for ConfigBuilder {
                 },
                 monitoring_gateway: MonitoringGatewayConfig {
                     server_address: String::from("0.0.0.0:8081"),
+                    collect_metrics: false,
                 },
                 storage: StorageConfig {
                     db_config: DbConfig {
@@ -142,6 +143,7 @@ impl ConfigBuilder {
                 arg!(-s --storage [path] "Optionally sets storage path to use (automatically extended with chain ID)").value_parser(value_parser!(PathBuf)),
                 arg!(-n --no_sync [bool] "Optionally run without sync").value_parser(value_parser!(bool)).default_missing_value("true"),
                 arg!(--central_url ["URL"] "Central URL. It should match chain_id."),
+                arg!(--collect_metrics [bool] "Collect metrics for the node").value_parser(value_parser!(bool)).default_missing_value("true"),
             ])
             .try_get_matches_from(args).unwrap_or_else(|e| e.exit()),
         );
@@ -207,6 +209,9 @@ impl ConfigBuilder {
                 }
                 if let Some(central_url) = args.try_get_one::<String>("central_url")? {
                     self.config.central.url = central_url.to_string()
+                }
+                if let Some(collect_metrics) = args.try_get_one::<bool>("collect_metrics")? {
+                    self.config.monitoring_gateway.collect_metrics = *collect_metrics;
                 }
 
                 Ok(self)

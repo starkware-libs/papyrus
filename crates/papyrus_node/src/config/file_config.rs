@@ -105,7 +105,10 @@ impl From<RetryConfig> for Retry {
 
 impl From<MonitoringGatewayConfig> for MonitoringGateway {
     fn from(config: MonitoringGatewayConfig) -> Self {
-        MonitoringGateway { server_address: Some(config.server_address) }
+        MonitoringGateway {
+            server_address: Some(config.server_address),
+            collect_metrics: Some(config.collect_metrics),
+        }
     }
 }
 
@@ -225,12 +228,16 @@ impl Gateway {
 #[serde(deny_unknown_fields)]
 struct MonitoringGateway {
     server_address: Option<String>,
+    collect_metrics: Option<bool>,
 }
 
 impl MonitoringGateway {
     fn update_monitoring_gateway(self, config: &mut MonitoringGatewayConfig) {
         if let Some(server_address) = self.server_address {
             config.server_address = server_address;
+        }
+        if let Some(collect_metrics) = self.collect_metrics {
+            config.collect_metrics = collect_metrics;
         }
     }
 }
