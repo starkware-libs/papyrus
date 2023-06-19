@@ -29,6 +29,7 @@ url.workspace = true
 assert_matches.workspace = true
 camelpaste.workspace = true
 hex.workspace = true
+insta = { workspace = true, features = ["json"] }
 jsonschema.workspace = true
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 test_utils = { path = "../test_utils" }

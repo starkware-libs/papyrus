@@ -11,6 +11,7 @@ mod transaction;
 #[cfg(test)]
 mod transaction_test;
 
+use std::collections::BTreeMap;
 use std::fmt::Display;
 use std::net::SocketAddr;
 
@@ -18,13 +19,14 @@ use jsonrpsee::server::{ServerBuilder, ServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
 use jsonrpsee::types::ErrorObjectOwned;
-use papyrus_config::DEFAULT_CHAIN_ID;
+use papyrus_config::{ParamPath, SerdeConfig, SerializedParam, DEFAULT_CHAIN_ID};
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::db::TransactionKind;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageReader, StorageTxn};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use starknet_api::block::{BlockNumber, BlockStatus};
 use starknet_api::core::ChainId;
 use tracing::{debug, error, info, instrument};
@@ -39,7 +41,7 @@ use crate::transaction::Transaction;
 
 /// Maximum size of a supported transaction body - 10MB.
 pub const SERVER_MAX_BODY_SIZE: u32 = 10 * 1024 * 1024;
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct GatewayConfig {
     pub chain_id: ChainId,
     pub server_address: String,
@@ -55,6 +57,45 @@ impl Default for GatewayConfig {
             max_events_chunk_size: 1000,
             max_events_keys: 100,
         }
+    }
+}
+
+impl SerdeConfig for GatewayConfig {
+    fn config_name() -> String {
+        String::from("GatewayConfig")
+    }
+
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from_iter([
+            (
+                String::from("chain_id"),
+                SerializedParam {
+                    description: String::from("The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id."),
+                    value: json!(self.chain_id),
+                }
+            ),
+            (
+                String::from("server_address"),
+                SerializedParam {
+                    description: String::from("IP:PORT of the node`s JSON-RPC server."),
+                    value: json!(self.server_address),
+                }
+            ),
+            (
+                String::from("max_events_chunk_size"),
+                SerializedParam {
+                    description: String::from("Maximum chunk size supported by the node in get_events requests."),
+                    value: json!(self.max_events_chunk_size),
+                }
+            ),
+            (
+                String::from("max_events_keys"),
+                SerializedParam {
+                    description: String::from("Maximum number of keys supported by the node in get_events requests."),
+                    value: json!(self.max_events_keys),
+                }
+            ),
+        ])
     }
 }
 
