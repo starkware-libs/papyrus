@@ -2,9 +2,10 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::ops::IndexMut;
+use std::str::ParseBoolError;
 
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{json, Number, Value};
 
 pub type ParamPath = String;
 pub type Description = String;
@@ -25,6 +26,12 @@ pub struct SerializedParam {
 pub enum SubConfigError {
     #[error(transparent)]
     MissingParam(#[from] serde_json::Error),
+    #[error(transparent)]
+    ParseBoolError(#[from] ParseBoolError),
+    #[error("Insert a new param is not allowed.")]
+    NotExistParam,
+    #[error("Unable to parsing {flag_type} flag type.")]
+    NotImplementedFlagType { flag_type: String },
 }
 /// Serialization and deserialization for configs.
 /// For an explanation of `for<'a> Deserialize<'a>` see https://doc.rust-lang.org/nomicon/hrtb.html.
@@ -67,4 +74,47 @@ pub fn dump_to_file<T: SerdeConfig>(config: &T, file_path: &str) {
     let mut writer = BufWriter::new(file);
     serde_json::to_writer_pretty(&mut writer, &dumped).expect("writing failed");
     writer.flush().expect("flushing failed");
+}
+
+/// Replaces a JSON value with new data based on its type.
+fn replace_json(prev_value: &Value, raw_new_data: &str) -> Result<Value, SubConfigError> {
+    if raw_new_data.is_empty() {
+        return Ok(Value::Null);
+    }
+
+    match prev_value {
+        Value::Null => {
+            if let Ok(val) = raw_new_data.parse::<Number>() {
+                Ok(Value::Number(val))
+            } else if let Ok(val) = raw_new_data.parse::<bool>() {
+                Ok(Value::Bool(val))
+            } else {
+                Ok(Value::String(raw_new_data.to_string()))
+            }
+        }
+        Value::String(_) => Ok(Value::String(raw_new_data.to_string())),
+        Value::Number(_) => Ok(Value::Number(raw_new_data.parse()?)),
+        Value::Bool(_) => Ok(Value::Bool(raw_new_data.parse()?)),
+        Value::Object(_) => {
+            Err(SubConfigError::NotImplementedFlagType { flag_type: String::from("Object") })
+        }
+        Value::Array(_) => {
+            Err(SubConfigError::NotImplementedFlagType { flag_type: String::from("Array") })
+        }
+    }
+}
+
+/// Updates a dumped configuration by a new raw data.
+pub fn update_dumped_config(
+    mut dumped_config: BTreeMap<ParamPath, SerializedParam>,
+    raw_new_data: BTreeMap<ParamPath, String>,
+) -> Result<BTreeMap<ParamPath, SerializedParam>, SubConfigError> {
+    for (param_path, val) in raw_new_data {
+        if let Some(ser_param) = dumped_config.get_mut(&param_path) {
+            ser_param.value = replace_json(&ser_param.value, &val)?;
+        } else {
+            return Err(SubConfigError::NotExistParam);
+        }
+    }
+    Ok(dumped_config)
 }
