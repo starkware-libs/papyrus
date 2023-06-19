@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+clap = { version = "4.3.9", features = ["string"] }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

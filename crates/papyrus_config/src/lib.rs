@@ -3,12 +3,14 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::ops::IndexMut;
 
+use clap::parser::MatchesError;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 pub type ParamPath = String;
 pub type Description = String;
 
+pub mod command;
 #[cfg(test)]
 #[path = "config_test.rs"]
 mod config_test;
@@ -25,27 +27,31 @@ pub struct SerializedParam {
 pub enum SubConfigError {
     #[error(transparent)]
     MissingParam(#[from] serde_json::Error),
+    #[error(transparent)]
+    Matches(#[from] MatchesError),
 }
-/// Serialization and deserialization for configs.
-/// For an explanation of `for<'a> Deserialize<'a>` see
-/// `<https://doc.rust-lang.org/nomicon/hrtb.html>`.
-pub trait SerdeConfig: for<'a> Deserialize<'a> + Serialize + Sized {
+/// Serialization for configs.
+pub trait SerdeConfig: Serialize + Sized {
     /// Serializes the config into flatten JSON.
     /// Note, in the case of a None sub configs, its elements will not included in the flatten map.
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam>;
+}
 
-    /// Deserializes the config from flatten JSON.
-    fn load(config_dump: &BTreeMap<ParamPath, SerializedParam>) -> Result<Self, SubConfigError> {
-        let mut nested_map = json!({});
-        for (param_path, serialized_param) in config_dump {
-            let mut entry = &mut nested_map;
-            for config_name in param_path.split('.') {
-                entry = entry.index_mut(config_name);
-            }
-            *entry = serialized_param.value.clone();
+/// Deserializes config from flatten JSON.
+/// For an explanation of `for<'a> Deserialize<'a>` see
+/// `<https://doc.rust-lang.org/nomicon/hrtb.html>`.
+pub fn load<T: for<'a> Deserialize<'a>>(
+    config_dump: &BTreeMap<ParamPath, SerializedParam>,
+) -> Result<T, SubConfigError> {
+    let mut nested_map = json!({});
+    for (param_path, serialized_param) in config_dump {
+        let mut entry = &mut nested_map;
+        for config_name in param_path.split('.') {
+            entry = entry.index_mut(config_name);
         }
-        Ok(serde_json::from_value(nested_map)?)
+        *entry = serialized_param.value.clone();
     }
+    Ok(serde_json::from_value(nested_map)?)
 }
 
 /// Appends `sub_config_name` to the ParamPath for each entry in `sub_config_dump`.

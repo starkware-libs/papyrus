@@ -1,10 +1,12 @@
 use std::collections::BTreeMap;
 
+use clap::Command;
 use itertools::chain;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use crate::{append_sub_config_name, ser_param, ParamPath, SerdeConfig, SerializedParam};
+use crate::command::update_config_map_by_command;
+use crate::{append_sub_config_name, load, ser_param, ParamPath, SerdeConfig, SerializedParam};
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct InnerConfig {
@@ -80,6 +82,36 @@ fn dump_and_load_config() {
         ),
     ]);
     assert_eq!(dump, expected);
-    let loaded_config = OuterConfig::load(&dump).unwrap();
+    let loaded_config = load::<OuterConfig>(&dump).unwrap();
     assert_eq!(loaded_config, outer_config);
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub struct TypicalConfig {
+    pub a: usize,
+    pub b: String,
+    pub c: bool,
+}
+
+impl SerdeConfig for TypicalConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from([
+            ser_param("a", &self.a, "This is a."),
+            ser_param("b", &self.b, "This is b."),
+            ser_param("c", &self.c, "This is c."),
+        ])
+    }
+}
+
+#[test]
+fn test_update_dumped_config() {
+    let command = Command::new("Testing");
+    let mut dumped_config = TypicalConfig { a: 1, b: "bbb".to_owned(), c: false }.dump();
+    let args = vec!["Testing", "--a", "1234", "--b", "15", "--c", "true"];
+
+    update_config_map_by_command(&mut dumped_config, command, args);
+
+    assert_eq!(json!(1234), dumped_config["a"].value);
+    assert_eq!(json!("15"), dumped_config["b"].value);
+    assert_eq!(json!(true), dumped_config["c"].value);
 }
