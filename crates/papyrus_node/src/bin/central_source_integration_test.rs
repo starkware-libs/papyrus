@@ -30,9 +30,10 @@ async fn main() {
     let initial_block_number = BlockNumber(last_block_number.0 - STREAM_LENGTH);
 
     let mut block_marker = initial_block_number;
-    let block_stream = central_source.stream_new_blocks(block_marker, last_block_number).fuse();
-    pin_mut!(block_stream);
-    while let Some(Ok((block_number, _block))) = block_stream.next().await {
+    let block_headers_stream =
+        central_source.stream_new_block_headers(block_marker, last_block_number).fuse();
+    pin_mut!(block_headers_stream);
+    while let Some(Ok((block_number, _block))) = block_headers_stream.next().await {
         assert!(
             block_marker == block_number,
             "Expected block number ({block_marker}) does not match the result ({block_number}).",

@@ -12,7 +12,7 @@ use async_stream::try_stream;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use indexmap::IndexMap;
-use papyrus_storage::body::BodyStorageWriter;
+use papyrus_storage::body::{BodyStorageReader, BodyStorageWriter};
 use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::ommer::{OmmerStorageReader, OmmerStorageWriter};
@@ -69,7 +69,11 @@ pub enum StateSyncError {
 
 #[allow(clippy::large_enum_variant)]
 pub enum SyncEvent {
-    BlockAvailable {
+    BlockHeaderAvailable {
+        block_number: BlockNumber,
+        block: Block,
+    },
+    BlockBodyAvailable {
         block_number: BlockNumber,
         block: Block,
     },
@@ -149,7 +153,14 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     //  3. Fetch data from the streams with unblocking wait while there is no new data.
     async fn sync_while_ok(&mut self) -> StateSyncResult {
         self.handle_block_reverts().await?;
-        let block_stream = stream_new_blocks(
+        let block_header_stream = stream_new_block_headers(
+            self.reader.clone(),
+            self.central_source.clone(),
+            self.config.block_propagation_sleep_duration,
+            self.config.blocks_max_stream_size,
+        )
+        .fuse();
+        let block_body_stream = stream_new_block_bodies(
             self.reader.clone(),
             self.central_source.clone(),
             self.config.block_propagation_sleep_duration,
@@ -171,12 +182,13 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             self.config.state_updates_max_stream_size,
         )
         .fuse();
-        pin_mut!(block_stream, state_diff_stream, compiled_class_stream);
+        pin_mut!(block_header_stream, block_body_stream, state_diff_stream, compiled_class_stream);
 
         loop {
             debug!("Selecting between block sync and state diff sync.");
             let sync_event = select! {
-              res = block_stream.next() => res,
+              res = block_header_stream.next() => res,
+              res = block_body_stream.next() => res,
               res = state_diff_stream.next() => res,
               res = compiled_class_stream.next() => res,
               complete => break,
@@ -191,8 +203,11 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     // Tries to store the incoming data.
     async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult {
         match sync_event {
-            SyncEvent::BlockAvailable { block_number, block } => {
-                self.store_block(block_number, block)
+            SyncEvent::BlockHeaderAvailable { block_number, block } => {
+                self.store_block_header(block_number, block)
+            }
+            SyncEvent::BlockBodyAvailable { block_number, block } => {
+                self.store_block_body(block_number, block)
             }
             SyncEvent::StateDiffAvailable {
                 block_number,
@@ -214,18 +229,26 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     }
 
     #[instrument(skip(self, block), level = "debug", fields(block_hash = %block.header.block_hash), err)]
-    fn store_block(&mut self, block_number: BlockNumber, block: Block) -> StateSyncResult {
+    fn store_block_header(&mut self, block_number: BlockNumber, block: Block) -> StateSyncResult {
         // Assuming the central source is trusted, detect reverts by comparing the incoming block's
         // parent hash to the current hash.
         self.verify_parent_block_hash(block_number, &block)?;
 
         debug!("Storing block.");
         trace!("Block data: {block:#?}");
-        self.writer
-            .begin_rw_txn()?
-            .append_header(block_number, &block.header)?
-            .append_body(block_number, block.body)?
-            .commit()?;
+        self.writer.begin_rw_txn()?.append_header(block_number, &block.header)?.commit()?;
+        Ok(())
+    }
+
+    #[instrument(skip(self, block), level = "debug", fields(block_hash = %block.header.block_hash), err)]
+    fn store_block_body(&mut self, block_number: BlockNumber, block: Block) -> StateSyncResult {
+        // Assuming the central source is trusted, detect reverts by comparing the incoming block's
+        // parent hash to the current hash.
+        self.verify_parent_block_hash(block_number, &block)?;
+
+        debug!("Storing block.");
+        trace!("Block data: {block:#?}");
+        self.writer.begin_rw_txn()?.append_body(block_number, block.body)?.commit()?;
         Ok(())
     }
 
@@ -426,7 +449,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     }
 }
 
-fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
+fn stream_new_block_headers<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
     block_propagation_sleep_duration: Duration,
@@ -437,18 +460,48 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
             let header_marker = reader.begin_ro_txn()?.get_header_marker()?;
             let last_block_number = central_source.get_block_marker().await?;
             if header_marker == last_block_number {
-                debug!("Blocks syncing reached the last known block, waiting for blockchain to advance.");
+                debug!("Block headers syncing reached the last known block, waiting for blockchain to advance.");
                 tokio::time::sleep(block_propagation_sleep_duration).await;
                 continue;
             }
             let up_to = min(last_block_number, BlockNumber(header_marker.0 + max_stream_size as u64));
             debug!("Downloading blocks [{} - {}).", header_marker, up_to);
             let block_stream =
-                central_source.stream_new_blocks(header_marker, up_to).fuse();
+                central_source.stream_new_block_headers(header_marker, up_to).fuse();
             pin_mut!(block_stream);
             while let Some(maybe_block) = block_stream.next().await {
                 let (block_number, block) = maybe_block?;
-                yield SyncEvent::BlockAvailable { block_number, block };
+                yield SyncEvent::BlockHeaderAvailable { block_number, block };
+            }
+        }
+    }
+}
+
+fn stream_new_block_bodies<TCentralSource: CentralSourceTrait + Sync + Send>(
+    reader: StorageReader,
+    central_source: Arc<TCentralSource>,
+    block_propagation_sleep_duration: Duration,
+    max_stream_size: u32,
+) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
+    try_stream! {
+        loop {
+            let txn = reader.begin_ro_txn()?;
+            let body_marker = txn.get_body_marker()?;
+            let last_block_number = txn.get_header_marker()?;
+            drop(txn);
+            if body_marker == last_block_number {
+                debug!("Block bodies syncing reached the last downloaded block, waiting for more blocks.");
+                tokio::time::sleep(block_propagation_sleep_duration).await;
+                continue;
+            }
+            let up_to = min(last_block_number, BlockNumber(body_marker.0 + max_stream_size as u64));
+            debug!("Downloading blocks [{} - {}).", body_marker, up_to);
+            let block_stream =
+                central_source.stream_new_block_bodies(body_marker, up_to).fuse();
+            pin_mut!(block_stream);
+            while let Some(maybe_block) = block_stream.next().await {
+                let (block_number, block) = maybe_block?;
+                yield SyncEvent::BlockBodyAvailable { block_number, block };
             }
         }
     }

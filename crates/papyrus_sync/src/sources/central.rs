@@ -105,6 +105,16 @@ pub trait CentralSourceTrait {
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
     ) -> BlocksStream<'_>;
+    fn stream_new_block_headers(
+        &self,
+        initial_block_number: BlockNumber,
+        up_to_block_number: BlockNumber,
+    ) -> BlocksStream<'_>;
+    fn stream_new_block_bodies(
+        &self,
+        initial_block_number: BlockNumber,
+        up_to_block_number: BlockNumber,
+    ) -> BlocksStream<'_>;
     fn stream_state_updates(
         &self,
         initial_block_number: BlockNumber,
@@ -198,6 +208,24 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
             }
         }
         .boxed()
+    }
+
+    // Returns a stream of blocks downloaded from the central source.
+    fn stream_new_block_headers(
+        &self,
+        initial_block_number: BlockNumber,
+        up_to_block_number: BlockNumber,
+    ) -> BlocksStream<'_> {
+        self.stream_new_blocks(initial_block_number, up_to_block_number)
+    }
+
+    // Returns a stream of blocks downloaded from the central source.
+    fn stream_new_block_bodies(
+        &self,
+        initial_block_number: BlockNumber,
+        up_to_block_number: BlockNumber,
+    ) -> BlocksStream<'_> {
+        self.stream_new_blocks(initial_block_number, up_to_block_number)
     }
 
     // Returns a stream of compiled classes downloaded from the central source.
