@@ -12,7 +12,7 @@ use axum::routing::get;
 use axum::{Json, Router};
 use metrics_exporter_prometheus::{BuildError, PrometheusBuilder, PrometheusHandle};
 use metrics_process::Collector;
-use papyrus_config::{ser_param, ParamPath, SerdeConfig, SerializedParam};
+use papyrus_config::{ser_param, ParamPath, SerializeConfig, SerializedParam};
 use papyrus_storage::{DbTablesStats, StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument};
@@ -34,7 +34,7 @@ impl Default for MonitoringGatewayConfig {
     }
 }
 
-impl SerdeConfig for MonitoringGatewayConfig {
+impl SerializeConfig for MonitoringGatewayConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         BTreeMap::from_iter([
             ser_param("server_address", &self.server_address, "node's monitoring server."),

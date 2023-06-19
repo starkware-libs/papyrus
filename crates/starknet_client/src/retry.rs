@@ -7,7 +7,7 @@ use std::fmt::Debug;
 use std::iter::Take;
 use std::time::Duration;
 
-use papyrus_config::{ser_param, ParamPath, SerdeConfig, SerializedParam};
+use papyrus_config::{ser_param, ParamPath, SerializeConfig, SerializedParam};
 use serde::{Deserialize, Serialize};
 use tokio_retry::strategy::ExponentialBackoff;
 use tokio_retry::{Action, Condition, RetryIf};
@@ -24,7 +24,7 @@ pub struct RetryConfig {
     pub max_retries: usize,
 }
 
-impl SerdeConfig for RetryConfig {
+impl SerializeConfig for RetryConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         BTreeMap::from_iter([
             ser_param(
