@@ -3866,6 +3866,10 @@ dependencies = [
 [[package]]
 name = "papyrus_config"
 version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "papyrus_gateway"
@@ -3879,6 +3883,7 @@ dependencies = [
  "hex",
  "hyper",
  "indexmap",
+ "insta",
  "jsonrpsee",
  "jsonschema",
  "papyrus_config",
