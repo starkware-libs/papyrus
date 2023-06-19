@@ -3,12 +3,14 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::ops::IndexMut;
 
+use clap::parser::MatchesError;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 pub type ParamPath = String;
 pub type Description = String;
 
+pub mod command;
 #[cfg(test)]
 #[path = "config_test.rs"]
 mod config_test;
@@ -24,28 +26,49 @@ pub struct SerializedParam {
 #[derive(thiserror::Error, Debug)]
 pub enum SubConfigError {
     #[error(transparent)]
+    CommandInput(#[from] clap::error::Error),
+    #[error(transparent)]
     MissingParam(#[from] serde_json::Error),
+    #[error(transparent)]
+    CommandMatches(#[from] MatchesError),
+    #[error("Insert a new param is not allowed.")]
+    ParamNotFound { param_path: String },
 }
-/// Serialization and deserialization for configs.
-/// For an explanation of `for<'a> Deserialize<'a>` see
-/// `<https://doc.rust-lang.org/nomicon/hrtb.html>`.
-pub trait SerdeConfig: for<'a> Deserialize<'a> + Serialize + Sized {
-    /// Serializes the config into flatten JSON.
+/// Serialization for configs.
+pub trait SerializeConfig {
+    /// Conversion of a configuration to a mapping of flattened parameters to their descriptions and
+    /// values.
     /// Note, in the case of a None sub configs, its elements will not included in the flatten map.
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam>;
+}
 
-    /// Deserializes the config from flatten JSON.
-    fn load(config_dump: &BTreeMap<ParamPath, SerializedParam>) -> Result<Self, SubConfigError> {
-        let mut nested_map = json!({});
-        for (param_path, serialized_param) in config_dump {
-            let mut entry = &mut nested_map;
-            for config_name in param_path.split('.') {
-                entry = entry.index_mut(config_name);
-            }
-            *entry = serialized_param.value.clone();
+/// Deserializes config from flatten JSON.
+/// For an explanation of `for<'a> Deserialize<'a>` see
+/// `<https://doc.rust-lang.org/nomicon/hrtb.html>`.
+pub fn load<T: for<'a> Deserialize<'a>>(
+    config_dump: &BTreeMap<ParamPath, SerializedParam>,
+) -> Result<T, SubConfigError> {
+    let mut nested_map = json!({});
+    for (param_path, serialized_param) in config_dump {
+        let mut entry = &mut nested_map;
+        for config_name in param_path.split('.') {
+            entry = entry.index_mut(config_name);
         }
-        Ok(serde_json::from_value(nested_map)?)
+        *entry = serialized_param.value.clone();
     }
+    Ok(serde_json::from_value(nested_map)?)
+}
+
+pub fn update_config_map(
+    config_map: &mut BTreeMap<ParamPath, SerializedParam>,
+    param_path: &str,
+    new_value: Value,
+) -> Result<(), SubConfigError> {
+    let Some(serialized_param) = config_map.get_mut(param_path) else {
+        return Err(SubConfigError::ParamNotFound{param_path: param_path.to_string()});
+    };
+    serialized_param.value = new_value;
+    Ok(())
 }
 
 /// Appends `sub_config_name` to the ParamPath for each entry in `sub_config_dump`.
@@ -72,7 +95,7 @@ pub fn ser_param<T: Serialize>(
     (name.to_owned(), SerializedParam { description: description.to_owned(), value: json!(value) })
 }
 
-pub fn dump_to_file<T: SerdeConfig>(config: &T, file_path: &str) {
+pub fn dump_to_file<T: SerializeConfig>(config: &T, file_path: &str) {
     let dumped = config.dump();
     let file = File::create(file_path).expect("creating failed");
     let mut writer = BufWriter::new(file);

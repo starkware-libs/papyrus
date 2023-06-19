@@ -15,7 +15,7 @@ use clap::{arg, value_parser, Arg, ArgMatches, Command};
 use file_config::FileConfigFormat;
 use itertools::chain;
 use papyrus_config::{
-    append_sub_config_name, ParamPath, SerdeConfig, SerializedParam, DEFAULT_CHAIN_ID,
+    append_sub_config_name, ParamPath, SerializeConfig, SerializedParam, DEFAULT_CHAIN_ID,
 };
 use papyrus_gateway::GatewayConfig;
 use papyrus_monitoring_gateway::MonitoringGatewayConfig;
@@ -56,7 +56,7 @@ impl Default for Config {
     }
 }
 
-impl SerdeConfig for Config {
+impl SerializeConfig for Config {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         chain!(
             append_sub_config_name(self.central.dump(), "central"),
@@ -78,6 +78,12 @@ pub fn dump_default_config_to_file(file_path: &str) {
     let mut writer = BufWriter::new(file);
     serde_json::to_writer_pretty(&mut writer, &dumped).expect("writing failed");
     writer.flush().expect("flushing failed");
+}
+
+pub fn node_command() -> Command {
+    Command::new("Papyrus")
+        .version(VERSION_FULL)
+        .about("Papyrus is a StarkNet full node written in Rust.")
 }
 
 impl Config {
@@ -139,9 +145,7 @@ impl ConfigBuilder {
     // Builds the applications command-line interface.
     fn prepare_command(mut self, args: Vec<String>) -> Result<Self, ConfigError> {
         self.args = Some(
-            Command::new("Papyrus",)
-            .version(VERSION_FULL)
-            .about("Papyrus is a StarkNet full node written in Rust.")
+            node_command()
             .args(&[
                 arg!(-f --config_file [path] "Optionally sets a config file to use").value_parser(value_parser!(PathBuf)),
                 arg!(-c --chain_id [name] "Optionally sets chain id to use"),
