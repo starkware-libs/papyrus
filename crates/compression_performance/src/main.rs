@@ -28,7 +28,7 @@ pub fn get_full_contract() -> IndexedDeprecatedContractClass {
 pub fn check_time<T, F: FnMut() -> T>(mut f: F) -> (u128, T) {
     let now = Instant::now();
     let ans = f();
-    (now.elapsed().as_micros(), ans)
+    (now.elapsed().as_nanos(), ans)
 }
 
 #[derive(Debug, Default)]
@@ -179,11 +179,11 @@ use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 
 // Key and value type of the table we currently use.
 type KeyType = ClassHash;
-type ValueType = IndexedDeprecatedContractClass;
+type ValueType = CasmContractClass;
 
 // Number of keys to read from the database.
 const KEY_LIMIT: usize = 5000; //usize::MAX;
-const TABLE_NAME: &str = "deprecated_declared_classes";
+const TABLE_NAME: &str = "casms";
 
 use papyrus_storage::db::{write_to_disk, read_from_disk};
 
@@ -244,7 +244,7 @@ async fn main() {
         let (des_ser_time, _origin_serialized) =
             check_time(|| ValueType::deserialize_without_compression(&mut serialized.as_slice()));
 
-        let o=0;
+        //let o=0;
         //println!("===\nser_size: {:?}\ncom_size: {:?}\nser_time: {:?}\ncom_time: {:?}\ndes_ser_time: {:?}\ndes_com_time: {:?}\nXXX\nser_time: {:?}\ncom_time: {:?}\ndes_ser_time: {:?}\ndes_com_time: {:?}\n===",
         //serialized.len(),compresse.len(),  write_without-o, write_com-o, read_without, read_com,ser_time, com_time, des_ser_time, des_com_time);
 
@@ -267,10 +267,11 @@ async fn main() {
     }
     
     use rand::thread_rng;
-use rand::seq::SliceRandom;
-end.shuffle(&mut thread_rng());
-    //thread::sleep(time::Duration::from_secs(1000));
+    use rand::seq::SliceRandom;
+    end.shuffle(&mut thread_rng());
+    thread::sleep(time::Duration::from_secs(100));
     let mut to_print=vec![];
+    
     for mut e in end {
         let key=&e.key;
         let value = get_value::<KeyType, ValueType>(&old_reader, TABLE_NAME, &key);
@@ -295,6 +296,54 @@ end.shuffle(&mut thread_rng());
     for r in to_print.iter(){
         println!("{:#?}", r);
     }
+
+    let mut total_space_ser=0;
+    let mut total_space_com=0;
+    let mut space_average=0f64;
+    let mut ser_average=0f64;
+    let mut des_average=0f64;
+    let mut total_ser=0;
+    let mut total_com=0;
+    let mut total_des_ser=0;
+    let mut total_des_com=0;
+    let mut old_ser_average=0f64;
+    let mut old_des_average=0f64;
+    for r in to_print.iter(){
+        total_space_ser+=r.ser_size;
+        total_space_com+=r.com_size;
+        space_average+=r.ser_size as f64 /r.com_size as f64;
+        ser_average+=r.com_time as f64/r.ser_time as f64;
+        des_average+=r.des_com_time as f64/r.des_ser_time as f64;
+        total_ser+=r.ser_time;
+        total_com+=r.com_time;
+        total_des_com+=r.des_com_time;
+        total_des_ser+=r.des_ser_time;
+
+        old_ser_average+=r.old_com_time as f64/r.old_ser_time as f64;
+        old_des_average+=r.old_des_com_time as f64/r.old_des_ser_time as f64;
+    }
+    let len=to_print.len() as f64;
+    space_average/=len;
+    ser_average/=len;
+    des_average/=len;
+    old_ser_average/=len;
+    old_des_average/=len;
+
+    println!("total_objects: {}", len);
+    println!("total_space_ser: {}", total_space_ser);
+    println!("total_space_com: {}", total_space_com);
+    println!("total space ratio: {}", total_space_ser as f64 / total_space_com as f64);
+    println!("space_average: {}", space_average);
+    println!("total_ser: {}", total_ser);
+    println!("total_com: {}", total_com);
+    println!("total write ratio: {}", total_com as f64 / total_ser as f64);
+    println!("total_des_ser: {}", total_des_ser);
+    println!("total_des_com: {}", total_des_com);
+    println!("total read ratio: {}", total_des_com as f64 / total_des_ser as f64);
+    println!("ser_average: {}", ser_average);
+    println!("des_average: {}", des_average);
+    println!("old_ser_average: {}", old_ser_average);
+    println!("old_des_average: {}", old_des_average);
 
 
     // use rand::Rng;
