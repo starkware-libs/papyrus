@@ -4,7 +4,10 @@ use itertools::chain;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use crate::{append_sub_config_name, ser_param, ParamPath, SerdeConfig, SerializedParam};
+use crate::{
+    append_sub_config_name, ser_param, update_dumped_config, ParamPath, SerdeConfig,
+    SerializedParam,
+};
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct InnerConfig {
@@ -82,4 +85,43 @@ fn dump_and_load_config() {
     assert_eq!(dump, expected);
     let loaded_config = OuterConfig::load(&dump).unwrap();
     assert_eq!(loaded_config, outer_config);
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub struct TypicalConfig {
+    pub a: usize,
+    pub b: String,
+    pub c: Option<bool>,
+}
+
+impl SerdeConfig for TypicalConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from([
+            ser_param("a", &self.a, "This is a."),
+            ser_param("b", &self.b, "This is b."),
+            ser_param("c", &self.c, "This is c."),
+        ])
+    }
+}
+
+#[test]
+fn test_update_dumped_config() {
+    let dumped_config = TypicalConfig { a: 1, b: "2".to_owned(), c: Some(true) }.dump();
+    let params_map_0 = BTreeMap::from([
+        ("a".to_owned(), "1234".to_owned()),
+        ("b".to_owned(), "/abc".to_owned()),
+        ("c".to_owned(), "".to_owned()),
+    ]);
+    let config_map_0 = update_dumped_config(dumped_config, params_map_0).unwrap();
+
+    assert_eq!(json!(1234), config_map_0["a"].value);
+    assert_eq!(json!("/abc"), config_map_0["b"].value);
+    assert!(config_map_0["c"].value.is_null());
+
+    // Updating 'c' from null to bool.
+    let params_map_1 = BTreeMap::from([("c".to_owned(), "true".to_owned())]);
+    let config_map_1 = update_dumped_config(config_map_0, params_map_1);
+    let config_map_1 = config_map_1.as_ref().unwrap();
+    let c_value = &config_map_1.get("c").unwrap().value;
+    assert!(c_value.as_bool().unwrap());
 }
