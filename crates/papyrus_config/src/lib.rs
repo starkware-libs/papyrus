@@ -3,12 +3,14 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::ops::IndexMut;
 
+use clap::parser::MatchesError;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 pub type ParamPath = String;
 pub type Description = String;
 
+pub mod command;
 #[cfg(test)]
 #[path = "config_test.rs"]
 mod config_test;
@@ -25,6 +27,8 @@ pub struct SerializedParam {
 pub enum SubConfigError {
     #[error(transparent)]
     MissingParam(#[from] serde_json::Error),
+    #[error(transparent)]
+    Matches(#[from] MatchesError),
 }
 /// Serialization and deserialization for configs.
 /// For an explanation of `for<'a> Deserialize<'a>` see

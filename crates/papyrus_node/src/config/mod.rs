@@ -80,6 +80,12 @@ pub fn dump_default_config_to_file(file_path: &str) {
     writer.flush().expect("flushing failed");
 }
 
+pub fn node_command() -> Command {
+    Command::new("Papyrus")
+        .version(VERSION_FULL)
+        .about("Papyrus is a StarkNet full node written in Rust.")
+}
+
 impl Config {
     pub fn load_from_builder(args: Vec<String>) -> Result<Self, ConfigError> {
         ConfigBuilder::build(args)
@@ -139,9 +145,7 @@ impl ConfigBuilder {
     // Builds the applications command-line interface.
     fn prepare_command(mut self, args: Vec<String>) -> Result<Self, ConfigError> {
         self.args = Some(
-            Command::new("Papyrus",)
-            .version(VERSION_FULL)
-            .about("Papyrus is a StarkNet full node written in Rust.")
+            node_command()
             .args(&[
                 arg!(-f --config_file [path] "Optionally sets a config file to use").value_parser(value_parser!(PathBuf)),
                 arg!(-c --chain_id [name] "Optionally sets chain id to use"),
