@@ -3,7 +3,9 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use crate::{append_sub_config_name, ParamPath, SerdeConfig, SerializedParam};
+use crate::{
+    append_sub_config_name, update_dumped_config, ParamPath, SerdeConfig, SerializedParam,
+};
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct InnerConfig {
@@ -89,4 +91,49 @@ fn dump_and_load_config() {
     assert_eq!(dump, expected);
     let loaded_config = OuterConfig::load(&dump).unwrap();
     assert_eq!(loaded_config, outer_config);
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub struct TypicalConfig {
+    pub a: usize,
+    pub b: String,
+    pub c: Option<bool>,
+}
+
+impl SerdeConfig for TypicalConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from([
+            (
+                "a".to_owned(),
+                SerializedParam { description: "This is a.".to_owned(), value: json!(self.a) },
+            ),
+            (
+                "b".to_owned(),
+                SerializedParam { description: "This is b.".to_owned(), value: json!(self.b) },
+            ),
+            (
+                "c".to_owned(),
+                SerializedParam { description: "This is c.".to_owned(), value: json!(self.c) },
+            ),
+        ])
+    }
+}
+
+#[test]
+fn test_update_dumped_config() {
+    let dumped_config = TypicalConfig { a: 1, b: "2".to_owned(), c: Some(true) }.dump();
+    let params_map = BTreeMap::from([
+        ("a".to_owned(), "1234".to_owned()),
+        ("b".to_owned(), "/abc".to_owned()),
+        ("c".to_owned(), "".to_owned()),
+    ]);
+    let updated_config_map = update_dumped_config(dumped_config, params_map).unwrap();
+
+    assert_eq!(json!(1234), updated_config_map["a"].value);
+    assert_eq!(json!("/abc"), updated_config_map["b"].value);
+    assert!(updated_config_map["c"].value.is_null());
+
+    let new_params_map = BTreeMap::from([("c".to_owned(), "true".to_owned())]);
+    let revert_config_map = update_dumped_config(updated_config_map, new_params_map);
+    assert!(revert_config_map.as_ref().unwrap().get("c").unwrap().value.as_bool().unwrap());
 }
