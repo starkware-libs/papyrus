@@ -6,7 +6,7 @@ rustLogLevel: "papyrus=DEBUG"
 # The Docker image (including any tag and repository name)
 image:
   repository: us.gcr.io/starkware-dev/papyrus-backup
-  tag: dev
+  tag: 0.1.2-alpha
 services: []
 # Persistent volume claim variables for a papyrus pod.
 pvc:
