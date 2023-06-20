@@ -1,8 +1,3 @@
-ignore:
-  - "crates/test_utils"
-  - "crates/papyrus_load_test"
-  - "crates/papyrus_node/src/bin/*integration_test.rs"
-  - "crates/**/*test*.rs"
 coverage:
   status:
     project:
