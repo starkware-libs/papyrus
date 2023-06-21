@@ -1,6 +1,7 @@
 use std::panic;
 
 use assert_matches::assert_matches;
+use camelpaste::paste;
 use futures_util::future::join_all;
 use hyper::{header, Body, Request};
 use jsonrpsee::core::client::ClientT;
@@ -12,10 +13,15 @@ use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
+use starknet_api::deprecated_contract_class::{
+    EventAbiEntry, FunctionAbiEntryWithType, StructAbiEntry,
+};
+use test_utils::{get_rng, GetTestInstance};
 use tower::BoxError;
 
 use crate::api::version_config::{LATEST_VERSION_ID, VERSION_CONFIG};
 use crate::api::JsonRpcError;
+use crate::deprecated_contract_class::ContractClassAbiEntryWithType;
 use crate::middleware::proxy_request;
 use crate::test_utils::get_test_gateway_config;
 use crate::{get_block_status, run_server, SERVER_MAX_BODY_SIZE};
@@ -134,3 +140,27 @@ fn get_block_status_test() {
     assert_eq!(get_block_status(&txn, BlockNumber(1)).unwrap(), BlockStatus::AcceptedOnL2);
     assert_eq!(get_block_status(&txn, BlockNumber(2)).unwrap(), BlockStatus::AcceptedOnL2);
 }
+
+// macro to generate a test that creates a ContractClassAbiEntry with a variant based on the given
+// variant input and call try_into().unwrap()
+macro_rules! test_contract_class_abi_entry_with_type {
+    ($variant:ident, $variant_inner:ident) => {
+        paste! {
+            #[tokio::test]
+            #[allow(non_snake_case)]
+            async fn [<ContractClassAbiEntryWithType_from_api_ContractClassAbiEntry_ $variant:lower>]() {
+                let mut rng = get_rng();
+                let _: ContractClassAbiEntryWithType =
+                    starknet_api::deprecated_contract_class::ContractClassAbiEntry::$variant(
+                        $variant_inner::get_test_instance(&mut rng),
+                    )
+                    .try_into()
+                    .unwrap();
+            }
+        }
+    };
+}
+
+test_contract_class_abi_entry_with_type!(Event, EventAbiEntry);
+test_contract_class_abi_entry_with_type!(Function, FunctionAbiEntryWithType);
+test_contract_class_abi_entry_with_type!(Struct, StructAbiEntry);

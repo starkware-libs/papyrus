@@ -26,6 +26,7 @@ url.workspace = true
 
 [dev-dependencies]
 assert_matches.workspace = true
+camelpaste.workspace = true
 hex.workspace = true
 jsonschema.workspace = true
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
