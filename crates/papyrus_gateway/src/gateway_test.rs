@@ -139,6 +139,28 @@ fn get_block_status_test() {
     assert_eq!(get_block_status(&txn, BlockNumber(0)).unwrap(), BlockStatus::AcceptedOnL1);
     assert_eq!(get_block_status(&txn, BlockNumber(1)).unwrap(), BlockStatus::AcceptedOnL2);
     assert_eq!(get_block_status(&txn, BlockNumber(2)).unwrap(), BlockStatus::AcceptedOnL2);
+
+#[tokio::test]
+async fn test_contractclassabientrywithtype_from_api_contractclassabientry() {
+    let mut rng = get_rng();
+    let _: ContractClassAbiEntryWithType =
+        starknet_api::deprecated_contract_class::ContractClassAbiEntry::Event(
+            EventAbiEntry::get_test_instance(&mut rng),
+        )
+        .try_into()
+        .unwrap();
+    let _: ContractClassAbiEntryWithType =
+        starknet_api::deprecated_contract_class::ContractClassAbiEntry::Function(
+            FunctionAbiEntryWithType::get_test_instance(&mut rng),
+        )
+        .try_into()
+        .unwrap();
+    let _: ContractClassAbiEntryWithType =
+        starknet_api::deprecated_contract_class::ContractClassAbiEntry::Struct(
+            StructAbiEntry::get_test_instance(&mut rng),
+        )
+        .try_into()
+        .unwrap();
 }
 
 // macro to generate a test that creates a ContractClassAbiEntry with a variant based on the given
