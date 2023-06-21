@@ -14,7 +14,7 @@ use mockall::automock;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{Block, BlockHash, BlockNumber};
+use starknet_api::block::{Block, BlockBody, BlockHash, BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::{ContractClass, StateDiff};
@@ -100,21 +100,16 @@ pub enum CentralError {
 #[async_trait]
 pub trait CentralSourceTrait {
     async fn get_block_marker(&self) -> Result<BlockNumber, CentralError>;
-    fn stream_new_blocks(
-        &self,
-        initial_block_number: BlockNumber,
-        up_to_block_number: BlockNumber,
-    ) -> BlocksStream<'_>;
     fn stream_new_block_headers(
         &self,
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
-    ) -> BlocksStream<'_>;
+    ) -> BlockHeadersStream<'_>;
     fn stream_new_block_bodies(
         &self,
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
-    ) -> BlocksStream<'_>;
+    ) -> BlockBodiessStream<'_>;
     fn stream_state_updates(
         &self,
         initial_block_number: BlockNumber,
@@ -133,7 +128,10 @@ pub trait CentralSourceTrait {
     ) -> CompiledClassesStream<'_>;
 }
 
-pub(crate) type BlocksStream<'a> = BoxStream<'a, Result<(BlockNumber, Block), CentralError>>;
+pub(crate) type BlockHeadersStream<'a> =
+    BoxStream<'a, Result<(BlockNumber, BlockHeader), CentralError>>;
+pub(crate) type BlockBodiessStream<'a> =
+    BoxStream<'a, Result<(BlockNumber, BlockBody), CentralError>>;
 type CentralStateUpdate =
     (BlockNumber, BlockHash, StateDiff, IndexMap<ClassHash, DeprecatedContractClass>);
 pub(crate) type StateUpdatesStream<'a> = BoxStream<'a, CentralResult<CentralStateUpdate>>;
@@ -180,13 +178,12 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
         .boxed()
     }
 
-    // TODO(shahak): rename.
     // Returns a stream of blocks downloaded from the central source.
-    fn stream_new_blocks(
+    fn stream_new_block_headers(
         &self,
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
-    ) -> BlocksStream<'_> {
+    ) -> BlockHeadersStream<'_> {
         stream! {
             // TODO(dan): add explanation.
             let mut res =
@@ -198,7 +195,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                     client_to_central_block(current_block_number, maybe_client_block);
                 match maybe_central_block {
                     Ok(block) => {
-                        yield Ok((current_block_number, block));
+                        yield Ok((current_block_number, block.header));
                     }
                     Err(err) => {
                         yield (Err(err));
@@ -211,21 +208,32 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
     }
 
     // Returns a stream of blocks downloaded from the central source.
-    fn stream_new_block_headers(
-        &self,
-        initial_block_number: BlockNumber,
-        up_to_block_number: BlockNumber,
-    ) -> BlocksStream<'_> {
-        self.stream_new_blocks(initial_block_number, up_to_block_number)
-    }
-
-    // Returns a stream of blocks downloaded from the central source.
     fn stream_new_block_bodies(
         &self,
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
-    ) -> BlocksStream<'_> {
-        self.stream_new_blocks(initial_block_number, up_to_block_number)
+    ) -> BlockBodiessStream<'_> {
+        stream! {
+            // TODO(dan): add explanation.
+            let mut res =
+                futures_util::stream::iter(initial_block_number.iter_up_to(up_to_block_number))
+                    .map(|bn| async move { (bn, self.starknet_client.block(bn).await) })
+                    .buffered(self.concurrent_requests);
+            while let Some((current_block_number, maybe_client_block)) = res.next().await {
+                let maybe_central_block =
+                    client_to_central_block(current_block_number, maybe_client_block);
+                match maybe_central_block {
+                    Ok(block) => {
+                        yield Ok((current_block_number, block.body));
+                    }
+                    Err(err) => {
+                        yield (Err(err));
+                        return;
+                    }
+                }
+            }
+        }
+        .boxed()
     }
 
     // Returns a stream of compiled classes downloaded from the central source.
