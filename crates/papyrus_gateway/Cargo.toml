@@ -32,3 +32,4 @@ papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 test_utils = { path = "../test_utils" }
 starknet_api = { workspace = true, features = ["testing"] }
 indexmap = { workspace = true, features = ["serde"] }
+camelpaste = "0.1.0"
