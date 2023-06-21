@@ -9,7 +9,7 @@ use crate::{StorageError, StorageWriter};
 
 #[tokio::test]
 async fn append_header() {
-    let (reader, mut writer) = get_test_storage();
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
 
     // Check for MarkerMismatch error  when trying to append the wrong block number.
     if let Err(err) =
@@ -51,14 +51,14 @@ async fn append_header() {
 
 #[tokio::test]
 async fn revert_non_existing_header_fails() {
-    let (_, mut writer) = get_test_storage();
+    let ((_, mut writer), _temp_dir) = get_test_storage();
     let (_, deleted_data) = writer.begin_rw_txn().unwrap().revert_header(BlockNumber(5)).unwrap();
     assert!(deleted_data.is_none());
 }
 
 #[tokio::test]
 async fn revert_last_header_success() {
-    let (_, mut writer) = get_test_storage();
+    let ((_, mut writer), _temp_dir) = get_test_storage();
     writer
         .begin_rw_txn()
         .unwrap()
@@ -71,7 +71,7 @@ async fn revert_last_header_success() {
 
 #[tokio::test]
 async fn revert_old_header_fails() {
-    let (_, mut writer) = get_test_storage();
+    let ((_, mut writer), _temp_dir) = get_test_storage();
     append_2_headers(&mut writer);
     let (_, deleted_data) = writer.begin_rw_txn().unwrap().revert_header(BlockNumber(0)).unwrap();
     assert!(deleted_data.is_none());
@@ -79,7 +79,7 @@ async fn revert_old_header_fails() {
 
 #[tokio::test]
 async fn revert_header_updates_marker() {
-    let (reader, mut writer) = get_test_storage();
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
     append_2_headers(&mut writer);
 
     // Verify that the header marker before revert is 2.
@@ -91,7 +91,7 @@ async fn revert_header_updates_marker() {
 
 #[tokio::test]
 async fn get_reverted_header_returns_none() {
-    let (reader, mut writer) = get_test_storage();
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
     append_2_headers(&mut writer);
 
     // Verify that we can get block 1's header before the revert.
@@ -103,7 +103,7 @@ async fn get_reverted_header_returns_none() {
 
 #[tokio::test]
 async fn get_reverted_block_number_by_hash_returns_none() {
-    let (reader, mut writer) = get_test_storage();
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
     append_2_headers(&mut writer);
 
     let block_hash = BlockHash(stark_felt!("0x1"));

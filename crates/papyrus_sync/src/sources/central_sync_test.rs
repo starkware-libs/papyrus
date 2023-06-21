@@ -91,7 +91,7 @@ async fn sync_empty_chain() {
     // Mock central without any block.
     let mut mock = MockCentralSourceTrait::new();
     mock.expect_get_block_marker().returning(|| Ok(BlockNumber(0)));
-    let (reader, writer) = get_test_storage();
+    let ((reader, writer), _temp_dir) = get_test_storage();
     let sync_future = run_sync(reader.clone(), writer, mock);
 
     // Check that the header marker is 0.
@@ -154,7 +154,7 @@ async fn sync_happy_flow() {
         state_stream
     });
     mock.expect_get_block_hash().returning(|bn| Ok(Some(create_block_hash(bn, false))));
-    let (reader, writer) = get_test_storage();
+    let ((reader, writer), _temp_dir) = get_test_storage();
     let sync_future = run_sync(reader.clone(), writer, mock);
 
     // Check that the storage reached N_BLOCKS within MAX_TIME_TO_SYNC_MS.
@@ -190,7 +190,7 @@ async fn sync_happy_flow() {
 #[tokio::test]
 async fn sync_with_revert() {
     let _ = simple_logger::init_with_env();
-    let (reader, writer) = get_test_storage();
+    let ((reader, writer), _temp_dir) = get_test_storage();
 
     // Once the sync reaches N_BLOCKS_BEFORE_REVERT, the check_storage thread will set this flag to
     // true to mark the central to simulate a revert, and for the check_storage to start checking

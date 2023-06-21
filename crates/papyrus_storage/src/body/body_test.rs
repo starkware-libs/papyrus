@@ -10,7 +10,7 @@ use crate::{StorageError, StorageWriter};
 
 #[tokio::test]
 async fn append_body() {
-    let (reader, mut writer) = get_test_storage();
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
     let body = get_test_block(10, None, None, None).body;
     let txs = body.transactions;
     let tx_outputs = body.transaction_outputs;
@@ -139,14 +139,14 @@ async fn append_body() {
 
 #[tokio::test]
 async fn revert_non_existing_body_fails() {
-    let (_, mut writer) = get_test_storage();
+    let ((_, mut writer), _temp_dir) = get_test_storage();
     let (_, deleted_data) = writer.begin_rw_txn().unwrap().revert_body(BlockNumber(5)).unwrap();
     assert!(deleted_data.is_none());
 }
 
 #[tokio::test]
 async fn revert_last_body_success() {
-    let (_, mut writer) = get_test_storage();
+    let ((_, mut writer), _temp_dir) = get_test_storage();
     writer
         .begin_rw_txn()
         .unwrap()
@@ -159,7 +159,7 @@ async fn revert_last_body_success() {
 
 #[tokio::test]
 async fn revert_old_body_fails() {
-    let (_, mut writer) = get_test_storage();
+    let ((_, mut writer), _temp_dir) = get_test_storage();
     append_2_bodies(&mut writer);
     let (_, deleted_data) = writer.begin_rw_txn().unwrap().revert_body(BlockNumber(0)).unwrap();
     assert!(deleted_data.is_none());
@@ -167,7 +167,7 @@ async fn revert_old_body_fails() {
 
 #[tokio::test]
 async fn revert_body_updates_marker() {
-    let (reader, mut writer) = get_test_storage();
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
     append_2_bodies(&mut writer);
 
     // Verify that the body marker before revert is 2.
@@ -179,7 +179,7 @@ async fn revert_body_updates_marker() {
 
 #[tokio::test]
 async fn get_reverted_body_returns_none() {
-    let (reader, mut writer) = get_test_storage();
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
     append_2_bodies(&mut writer);
 
     // Verify that we can get block 1's transactions before the revert.
@@ -211,7 +211,7 @@ async fn get_reverted_body_returns_none() {
 
 #[tokio::test]
 async fn revert_transactions() {
-    let (reader, mut writer) = get_test_storage();
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
     let body = get_test_body(10, None, None, None);
     writer
         .begin_rw_txn()
