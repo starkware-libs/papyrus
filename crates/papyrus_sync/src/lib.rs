@@ -243,8 +243,8 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         // parent hash to the current hash.
         self.verify_parent_block_hash(block_number, &block_header)?;
 
-        debug!("Storing block.");
-        trace!("Block data: {block_header:#?}");
+        debug!("Storing block header.");
+        trace!("Block header data: {block_header:#?}");
         self.writer.begin_rw_txn()?.append_header(block_number, &block_header)?.commit()?;
         Ok(())
     }
@@ -255,8 +255,8 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         block_number: BlockNumber,
         block_body: BlockBody,
     ) -> StateSyncResult {
-        debug!("Storing block.");
-        trace!("Block data: {block_body:#?}");
+        debug!("Storing block body.");
+        trace!("Block body data: {block_body:#?}");
         self.writer.begin_rw_txn()?.append_body(block_number, block_body)?.commit()?;
         Ok(())
     }
