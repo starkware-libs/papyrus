@@ -41,7 +41,7 @@ fn append_state_diff_declared_classes() {
         ..Default::default()
     };
 
-    let (_, mut writer) = get_test_storage();
+    let ((_, mut writer), _temp_dir) = get_test_storage();
     let mut txn = writer.begin_rw_txn().unwrap();
     txn = txn.append_state_diff(BlockNumber(0), diff0, IndexMap::new()).unwrap();
     txn = txn.append_state_diff(BlockNumber(1), diff1.clone(), IndexMap::new()).unwrap();
@@ -129,7 +129,7 @@ fn append_state_diff_replaced_classes() {
         ..Default::default()
     };
 
-    let (_, mut writer) = get_test_storage();
+    let ((_, mut writer), _temp_dir) = get_test_storage();
     let mut txn = writer.begin_rw_txn().unwrap();
     txn = txn.append_state_diff(BlockNumber(0), diff0, IndexMap::new()).unwrap();
     txn = txn.append_state_diff(BlockNumber(1), diff1, IndexMap::new()).unwrap();
@@ -197,7 +197,7 @@ fn append_state_diff() {
         replaced_classes: IndexMap::from([(c0, cl1)]),
     };
 
-    let (_, mut writer) = get_test_storage();
+    let ((_, mut writer), _temp_dir) = get_test_storage();
     let mut txn = writer.begin_rw_txn().unwrap();
     assert_eq!(txn.get_state_diff(BlockNumber(0)).unwrap(), None);
     assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap(), None);
@@ -271,7 +271,7 @@ fn append_state_diff() {
 
 #[test]
 fn revert_non_existing_state_diff() {
-    let (_, mut writer) = get_test_storage();
+    let ((_, mut writer), _temp_dir) = get_test_storage();
 
     let block_number = BlockNumber(5);
     let (_, deleted_data) = writer.begin_rw_txn().unwrap().revert_state_diff(block_number).unwrap();
@@ -280,7 +280,7 @@ fn revert_non_existing_state_diff() {
 
 #[tokio::test]
 async fn revert_last_state_diff_success() {
-    let (_, mut writer) = get_test_storage();
+    let ((_, mut writer), _temp_dir) = get_test_storage();
     let state_diff = get_test_state_diff();
     writer
         .begin_rw_txn()
@@ -296,7 +296,7 @@ async fn revert_last_state_diff_success() {
 
 #[tokio::test]
 async fn revert_old_state_diff_fails() {
-    let (_, mut writer) = get_test_storage();
+    let ((_, mut writer), _temp_dir) = get_test_storage();
     append_2_state_diffs(&mut writer);
     let (_, deleted_data) =
         writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(0)).unwrap();
@@ -305,7 +305,7 @@ async fn revert_old_state_diff_fails() {
 
 #[tokio::test]
 async fn revert_state_diff_updates_marker() {
-    let (reader, mut writer) = get_test_storage();
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
     append_2_state_diffs(&mut writer);
 
     // Verify that the state marker before revert is 2.
@@ -318,7 +318,7 @@ async fn revert_state_diff_updates_marker() {
 
 #[tokio::test]
 async fn get_reverted_state_diff_returns_none() {
-    let (reader, mut writer) = get_test_storage();
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
     append_2_state_diffs(&mut writer);
 
     // Verify that we can get block 1's state before the revert.
@@ -366,7 +366,7 @@ fn revert_doesnt_delete_previously_declared_classes() {
         replaced_classes: indexmap! {},
     };
 
-    let (reader, mut writer) = get_test_storage();
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
     writer
         .begin_rw_txn()
         .unwrap()
@@ -431,7 +431,7 @@ fn revert_state() {
         replaced_classes: IndexMap::from([(*contract0, class1)]),
     };
 
-    let (reader, mut writer) = get_test_storage();
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
     writer
         .begin_rw_txn()
         .unwrap()
@@ -500,7 +500,7 @@ fn revert_state() {
 
 #[test]
 fn get_nonce_key_serialization() {
-    let (reader, mut writer) = get_test_storage();
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
     let contract_address = ContractAddress(patricia_key!("0x11"));
 
     for block_number in 0..(1 << 8) + 1 {
@@ -552,7 +552,7 @@ fn get_nonce_key_serialization() {
 
 #[test]
 fn replace_class() {
-    let (reader, mut writer) = get_test_storage();
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
     let contract_address = ContractAddress(patricia_key!("0x0"));
 
     let class_hash0 = ClassHash(stark_felt!("0x0"));

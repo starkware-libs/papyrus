@@ -18,7 +18,7 @@ const TEST_VERSION: &str = "1.2.3-dev";
 
 // TODO(dan): consider using a proper fixture.
 fn setup_app() -> Router {
-    let (storage_reader, _) = test_utils::get_test_storage();
+    let ((storage_reader, _), _temp_dir) = test_utils::get_test_storage();
     app(
         storage_reader,
         TEST_VERSION,
@@ -99,7 +99,7 @@ async fn without_metrics() {
 #[tokio::test]
 async fn with_metrics() {
     // Creates an app with prometheus handle.
-    let (storage_reader, _) = test_utils::get_test_storage();
+    let ((storage_reader, _), _temp_dir) = test_utils::get_test_storage();
     let prometheus_handle = PrometheusBuilder::new().install_recorder().unwrap();
     let app =
         app(storage_reader, TEST_VERSION, serde_json::Value::default(), Some(prometheus_handle));

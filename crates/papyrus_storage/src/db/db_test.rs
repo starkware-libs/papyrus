@@ -1,9 +1,11 @@
+use tempfile::TempDir;
+
 use crate::db::{open_env, DbReader, DbWriter};
 use crate::test_utils::get_test_config;
 
-fn get_test_env() -> (DbReader, DbWriter) {
-    let config = get_test_config();
-    open_env(config).expect("Failed to open environment.")
+fn get_test_env() -> ((DbReader, DbWriter), TempDir) {
+    let (config, temp_dir) = get_test_config();
+    (open_env(config).expect("Failed to open environment."), temp_dir)
 }
 
 #[test]
@@ -14,7 +16,7 @@ fn open_env_scenario() {
 #[test]
 fn txns_scenarios() {
     // Create an environment and a table.
-    let (reader, mut writer) = get_test_env();
+    let ((reader, mut writer), _temp_dir) = get_test_env();
     let table_id = writer.create_table::<[u8; 3], [u8; 5]>("table").unwrap();
 
     // Snapshot state by creating a read txn.
@@ -55,7 +57,7 @@ fn txns_scenarios() {
 
 fn table_stats() {
     // Create an environment and a table.
-    let (reader, mut writer) = get_test_env();
+    let ((reader, mut writer), _temp_dir) = get_test_env();
     let table_id = writer.create_table::<[u8; 3], [u8; 5]>("table").unwrap();
 
     // Empty table stats.
