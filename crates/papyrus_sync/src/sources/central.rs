@@ -109,7 +109,7 @@ pub trait CentralSourceTrait {
         &self,
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
-    ) -> BlockBodiessStream<'_>;
+    ) -> BlockBodiesStream<'_>;
     fn stream_state_updates(
         &self,
         initial_block_number: BlockNumber,
@@ -130,7 +130,7 @@ pub trait CentralSourceTrait {
 
 pub(crate) type BlockHeadersStream<'a> =
     BoxStream<'a, Result<(BlockNumber, BlockHeader), CentralError>>;
-pub(crate) type BlockBodiessStream<'a> =
+pub(crate) type BlockBodiesStream<'a> =
     BoxStream<'a, Result<(BlockNumber, BlockBody), CentralError>>;
 type CentralStateUpdate =
     (BlockNumber, BlockHash, StateDiff, IndexMap<ClassHash, DeprecatedContractClass>);
@@ -212,7 +212,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
         &self,
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
-    ) -> BlockBodiessStream<'_> {
+    ) -> BlockBodiesStream<'_> {
         stream! {
             // TODO(dan): add explanation.
             let mut res =
