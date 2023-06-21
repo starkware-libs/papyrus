@@ -59,10 +59,6 @@ impl Default for GatewayConfig {
 }
 
 impl SerdeConfig for GatewayConfig {
-    fn config_name() -> String {
-        String::from("GatewayConfig")
-    }
-
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         BTreeMap::from_iter([
             (

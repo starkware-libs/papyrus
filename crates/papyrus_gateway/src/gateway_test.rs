@@ -109,7 +109,7 @@ async fn test_version_middleware() {
 /// Regression test which checks that the default config hasn't changed as well as dumping/parsing
 /// configs.
 fn test_dump_default_config() {
-    let dumped_default_gateway = GatewayConfig::default().dump_sub_config();
+    let dumped_default_gateway = GatewayConfig::default().dump();
     insta::assert_json_snapshot!(dumped_default_gateway);
 
     let path = get_absolute_path(DEFAULT_CONFIG_FILE);
