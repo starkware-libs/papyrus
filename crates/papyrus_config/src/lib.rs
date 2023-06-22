@@ -30,6 +30,7 @@ pub enum SubConfigError {
 /// For an explanation of `for<'a> Deserialize<'a>` see https://doc.rust-lang.org/nomicon/hrtb.html.
 pub trait SerdeConfig: for<'a> Deserialize<'a> + Serialize + Sized {
     /// Serializes the config into flatten JSON.
+    /// Note, in the case of a None sub configs, its elements will not included in the flatten map.
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam>;
 
     /// Deserializes the config from flatten JSON.

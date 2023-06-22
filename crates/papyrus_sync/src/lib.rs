@@ -5,6 +5,7 @@ mod sync_test;
 mod sources;
 
 use std::cmp::min;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -12,6 +13,7 @@ use async_stream::try_stream;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use indexmap::IndexMap;
+use papyrus_config::{ParamPath, SerdeConfig, SerializedParam};
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
@@ -19,6 +21,7 @@ use papyrus_storage::ommer::{OmmerStorageReader, OmmerStorageWriter};
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
@@ -27,12 +30,53 @@ use tracing::{debug, error, info, instrument, trace, warn};
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct SyncConfig {
     pub block_propagation_sleep_duration: Duration,
     pub recoverable_error_sleep_duration: Duration,
     pub blocks_max_stream_size: u32,
     pub state_updates_max_stream_size: u32,
+}
+
+impl SerdeConfig for SyncConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from_iter([
+            (
+                String::from("block_propagation_sleep_duration"),
+                SerializedParam {
+                    description: String::from(
+                        "Time before checking for a new block after the node is synchronized.",
+                    ),
+                    value: json!(self.block_propagation_sleep_duration),
+                },
+            ),
+            (
+                String::from("recoverable_error_sleep_duration"),
+                SerializedParam {
+                    description: String::from(
+                        "Waiting time before restarting synchronization after a recoverable error.",
+                    ),
+                    value: json!(self.recoverable_error_sleep_duration),
+                },
+            ),
+            (
+                String::from("blocks_max_stream_size"),
+                SerializedParam {
+                    description: String::from("Max amount of blocks to download in a stream."),
+                    value: json!(self.blocks_max_stream_size),
+                },
+            ),
+            (
+                String::from("state_updates_max_stream_size"),
+                SerializedParam {
+                    description: String::from(
+                        "Max amount of state updates to download in a stream.",
+                    ),
+                    value: json!(self.state_updates_max_stream_size),
+                },
+            ),
+        ])
+    }
 }
 
 impl Default for SyncConfig {
