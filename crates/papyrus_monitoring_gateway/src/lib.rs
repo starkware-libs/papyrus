@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod gateway_test;
 
+use std::collections::BTreeMap;
 use std::fmt::Display;
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -11,13 +12,15 @@ use axum::routing::get;
 use axum::{Json, Router};
 use metrics_exporter_prometheus::{BuildError, PrometheusBuilder, PrometheusHandle};
 use metrics_process::Collector;
+use papyrus_config::{ParamPath, SerdeConfig, SerializedParam};
 use papyrus_storage::{DbTablesStats, StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tracing::{debug, instrument};
 
 const MONITORING_PREFIX: &str = "monitoring";
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct MonitoringGatewayConfig {
     pub server_address: String,
     pub collect_metrics: bool,
@@ -25,7 +28,31 @@ pub struct MonitoringGatewayConfig {
 
 impl Default for MonitoringGatewayConfig {
     fn default() -> Self {
-        MonitoringGatewayConfig { server_address: String::from("0.0.0.0:8081") }
+        MonitoringGatewayConfig {
+            server_address: String::from("0.0.0.0:8081"),
+            collect_metrics: false,
+        }
+    }
+}
+
+impl SerdeConfig for MonitoringGatewayConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from_iter([
+            (
+                String::from("server_address"),
+                SerializedParam {
+                    description: String::from("node's monitoring server."),
+                    value: json!(self.server_address),
+                },
+            ),
+            (
+                String::from("collect_metrics"),
+                SerializedParam {
+                    description: String::from("If true, collect metrics for the package."),
+                    value: json!(false),
+                },
+            ),
+        ])
     }
 }
 

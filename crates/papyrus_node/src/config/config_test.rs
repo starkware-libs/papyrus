@@ -1,19 +1,24 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::env::{self, args};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use papyrus_config::{SerdeConfig, SerializedParam};
+use serde_json::{Map, Value};
 use starknet_api::core::ChainId;
 use tempfile::NamedTempFile;
 use test_utils::get_absolute_path;
 
+use super::dump_default_config_to_file;
 use crate::config::{Config, ConfigBuilder};
+
+const DEFAULT_CONFIG_FILE: &str = "config/default_config.json";
 
 #[test]
 fn load_default_config() {
     env::set_current_dir(get_absolute_path("")).expect("Couldn't set working dir.");
     // TODO(spapini): Move the config closer.
-    Config::load(vec![]).expect("Failed to load the config.");
+    Config::load_from_builder(vec![]).expect("Failed to load the config.");
 }
 
 #[test]
@@ -119,4 +124,36 @@ central:
         ("NAME_3".to_string(), "VALUE_3".to_string()),
     ]);
     assert_eq!(builder.config.central.http_headers.unwrap(), target_http_headers);
+}
+
+#[test]
+// Regression test which checks that the default config hasn't changed as well as dumping/parsing
+// configs.
+fn test_dump_default_config() {
+    let dumped_default_config = Config::default().dump();
+    insta::assert_json_snapshot!(dumped_default_config);
+
+    let path = get_absolute_path(DEFAULT_CONFIG_FILE);
+    let file = std::fs::File::open(path).unwrap();
+    let deserialized_default_config: Map<String, Value> = serde_json::from_reader(file).unwrap();
+
+    let mut deserialized_map: BTreeMap<String, SerializedParam> = BTreeMap::new();
+    for (key, value) in deserialized_default_config {
+        deserialized_map.insert(
+            key.to_owned(),
+            SerializedParam {
+                description: value["description"].as_str().unwrap().to_owned(),
+                value: value["value"].to_owned(),
+            },
+        );
+    }
+
+    assert_eq!(deserialized_map, dumped_default_config);
+}
+
+#[test]
+fn test_dump_and_load() {
+    let default_config = Config::default();
+    let loaded_config = Config::load(&default_config.dump()).unwrap();
+    assert_eq!(loaded_config, default_config);
 }
