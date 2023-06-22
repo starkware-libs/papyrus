@@ -2,17 +2,20 @@
 #[path = "retry_test.rs"]
 mod retry_test;
 
+use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::iter::Take;
 use std::time::Duration;
 
+use papyrus_config::{ParamPath, SerdeConfig, SerializedParam};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tokio_retry::strategy::ExponentialBackoff;
 use tokio_retry::{Action, Condition, RetryIf};
 use tracing::debug;
 
 /// A configuration for the retry mechanism.
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct RetryConfig {
     /// The initial waiting time in milliseconds.
     pub retry_base_millis: u64,
@@ -20,6 +23,39 @@ pub struct RetryConfig {
     pub retry_max_delay_millis: u64,
     /// The maximum number of retries.
     pub max_retries: usize,
+}
+
+impl SerdeConfig for RetryConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from_iter([
+            (
+                String::from("retry_base_millis"),
+                SerializedParam {
+                    description: String::from(
+                        "Base waiting time after a failed request. After that, the time increases \
+                         exponentially.",
+                    ),
+                    value: json!(self.retry_base_millis),
+                },
+            ),
+            (
+                String::from("retry_max_delay_millis"),
+                SerializedParam {
+                    description: String::from("Max waiting time after a failed request."),
+                    value: json!(self.retry_max_delay_millis),
+                },
+            ),
+            (
+                String::from("max_retries"),
+                SerializedParam {
+                    description: String::from(
+                        "Maximum number of retries before the node stops retrying.",
+                    ),
+                    value: json!(self.max_retries),
+                },
+            ),
+        ])
+    }
 }
 
 /// A utility for retrying actions with a configurable backoff and error filter. Uses an

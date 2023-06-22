@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::panic;
 
 use assert_matches::assert_matches;
@@ -24,8 +23,6 @@ use starknet_api::transaction::{
     InvokeTransactionOutput, L1HandlerTransactionOutput, Transaction,
 };
 use test_utils::{get_absolute_path, get_rng, GetTestInstance};
-use tower::BoxError;
-
 use crate::api::version_config::{LATEST_VERSION_ID, VERSION_CONFIG};
 use crate::api::JsonRpcError;
 use crate::deprecated_contract_class::{ContractClassAbiEntryType, ContractClassAbiEntryWithType};
@@ -116,6 +113,7 @@ async fn test_version_middleware() {
         panic!("expected failure got: {res:?}");
     };
 }
+<<<<<<< HEAD
 
 #[test]
 <<<<<<< HEAD
@@ -270,3 +268,5 @@ fn test_dump_default_config() {
     assert_eq!(deserialized_map, dumped_default_gateway);
 }
 >>>>>>> Add dump trait for sub configs. (#723)
+=======
+>>>>>>> Implement SerdeConfig trate for the rest configs. (#764)
