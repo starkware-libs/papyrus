@@ -2,6 +2,9 @@
 
 rustLogLevel: "debug"
 
+image:
+  tag: dev
+
 pvc:
   size: 1Gi
   storageClass: standard-rwo
