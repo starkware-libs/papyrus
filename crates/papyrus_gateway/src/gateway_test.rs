@@ -10,6 +10,10 @@ use jsonrpsee::core::{Error, RpcResult};
 use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
+use papyrus_storage::body::events::{
+    ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput, ThinDeployTransactionOutput,
+    ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
+};
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
@@ -144,6 +148,30 @@ fn get_block_status_test() {
     assert_eq!(get_block_status(&txn, BlockNumber(0)).unwrap(), BlockStatus::AcceptedOnL1);
     assert_eq!(get_block_status(&txn, BlockNumber(1)).unwrap(), BlockStatus::AcceptedOnL2);
     assert_eq!(get_block_status(&txn, BlockNumber(2)).unwrap(), BlockStatus::AcceptedOnL2);
+}
+
+#[tokio::test]
+async fn test_from_thin_transaction_output() {
+    let thin_output = ThinTransactionOutput::Declare(ThinDeclareTransactionOutput::default());
+    let output = TransactionOutput::from_thin_transaction_output(thin_output, vec![]);
+    assert_matches!(output, TransactionOutput::Declare(_));
+
+    let thin_output = ThinTransactionOutput::Deploy(ThinDeployTransactionOutput::default());
+    let output = TransactionOutput::from_thin_transaction_output(thin_output, vec![]);
+    assert_matches!(output, TransactionOutput::Deploy(_));
+
+    let thin_output =
+        ThinTransactionOutput::DeployAccount(ThinDeployAccountTransactionOutput::default());
+    let output = TransactionOutput::from_thin_transaction_output(thin_output, vec![]);
+    assert_matches!(output, TransactionOutput::DeployAccount(_));
+
+    let thin_output = ThinTransactionOutput::Invoke(ThinInvokeTransactionOutput::default());
+    let output = TransactionOutput::from_thin_transaction_output(thin_output, vec![]);
+    assert_matches!(output, TransactionOutput::Invoke(_));
+
+    let thin_output = ThinTransactionOutput::L1Handler(ThinL1HandlerTransactionOutput::default());
+    let output = TransactionOutput::from_thin_transaction_output(thin_output, vec![]);
+    assert_matches!(output, TransactionOutput::L1Handler(_));
 }
 
 #[tokio::test]
