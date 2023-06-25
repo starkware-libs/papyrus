@@ -25,7 +25,7 @@ use tower::BoxError;
 
 use crate::api::version_config::{LATEST_VERSION_ID, VERSION_CONFIG};
 use crate::api::JsonRpcError;
-use crate::deprecated_contract_class::ContractClassAbiEntryWithType;
+use crate::deprecated_contract_class::ContractClassAbiEntryType;
 use crate::middleware::proxy_request;
 use crate::test_utils::get_test_gateway_config;
 use crate::transaction::{TransactionOutput, TransactionReceipt};
@@ -166,7 +166,24 @@ async fn test_contractclassabientrywithtype_from_api_contractclassabientry() {
         )
         .try_into()
         .unwrap();
+
+macro_rules! test_ContractClassAbiEntryType_from_FunctionAbiEntryType {
+    ($variant:ident) => {
+        paste! {
+            #[tokio::test]
+            #[allow(non_snake_case)]
+            async fn [< ContractClassAbiEntryType_from_FunctionAbiEntryType_ $variant:lower>]() {
+                let _: ContractClassAbiEntryType =
+                starknet_api::deprecated_contract_class::FunctionAbiEntryType::$variant
+                    .try_into()
+                    .unwrap();
+            }
+        }
+    };
 }
+test_ContractClassAbiEntryType_from_FunctionAbiEntryType!(Constructor);
+test_ContractClassAbiEntryType_from_FunctionAbiEntryType!(L1Handler);
+test_ContractClassAbiEntryType_from_FunctionAbiEntryType!(Function);
 
 // macro to generate a test that creates a ContractClassAbiEntry with a variant based on the given
 // variant input and call try_into().unwrap()
