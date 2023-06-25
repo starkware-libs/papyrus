@@ -18,7 +18,7 @@ use tower::BoxError;
 
 use crate::api::version_config::{LATEST_VERSION_ID, VERSION_CONFIG};
 use crate::api::JsonRpcError;
-use crate::deprecated_contract_class::ContractClassAbiEntryWithType;
+use crate::deprecated_contract_class::{ContractClassAbiEntryType, ContractClassAbiEntryWithType};
 use crate::middleware::proxy_request;
 use crate::test_utils::get_test_gateway_config;
 use crate::{run_server, SERVER_MAX_BODY_SIZE};
@@ -125,4 +125,18 @@ async fn test_contractclassabientrywithtype_from_api_contractclassabientry() {
         )
         .try_into()
         .unwrap();
+}
+
+#[tokio::test]
+async fn test_contractclassabientrytype_from_functionabientrytype() {
+    let _: ContractClassAbiEntryType =
+        starknet_api::deprecated_contract_class::FunctionAbiEntryType::Constructor
+            .try_into()
+            .unwrap();
+    let _: ContractClassAbiEntryType =
+        starknet_api::deprecated_contract_class::FunctionAbiEntryType::L1Handler
+            .try_into()
+            .unwrap();
+    let _: ContractClassAbiEntryType =
+        starknet_api::deprecated_contract_class::FunctionAbiEntryType::Function.try_into().unwrap();
 }
