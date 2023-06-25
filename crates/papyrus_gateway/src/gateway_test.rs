@@ -1,6 +1,7 @@
 use std::panic;
 
 use assert_matches::assert_matches;
+use camelpaste::paste;
 use futures_util::future::join_all;
 use hyper::{header, Body, Request};
 use jsonrpsee::core::client::ClientT;
@@ -9,13 +10,19 @@ use jsonrpsee::core::{Error, RpcResult};
 use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_storage::test_utils::get_test_storage;
-use starknet_api::block::BlockNumber;
+use starknet_api::block::{BlockHeader, BlockNumber};
+use starknet_api::transaction::{
+    DeclareTransactionOutput, DeployAccountTransactionOutput, DeployTransactionOutput,
+    InvokeTransactionOutput, L1HandlerTransactionOutput, Transaction,
+};
+use test_utils::{get_rng, GetTestInstance};
 use tower::BoxError;
 
 use crate::api::version_config::{LATEST_VERSION_ID, VERSION_CONFIG};
 use crate::api::JsonRpcError;
 use crate::middleware::proxy_request;
 use crate::test_utils::get_test_gateway_config;
+use crate::transaction::{TransactionOutput, TransactionReceipt};
 use crate::{run_server, SERVER_MAX_BODY_SIZE};
 
 #[tokio::test]
@@ -98,3 +105,32 @@ async fn test_version_middleware() {
         panic!("expected failure got: {res:?}");
     };
 }
+
+macro_rules! test_recipe_from_transtaction_output {
+    ($variant:ident, $recipe_type:ident) => {
+        paste! {
+            #[tokio::test]
+            async fn [<test_recipe_from_transtaction_output_ $variant:lower>]() {
+                let mut rng = get_rng();
+                let block_header = BlockHeader::default();
+                let transaction = Transaction::$variant(
+                    starknet_api::transaction::[<$variant Transaction>]::get_test_instance(&mut rng),
+                );
+                let output = TransactionOutput::$variant([<$variant TransactionOutput>]::default());
+                let receipt = TransactionReceipt::from_transaction_output(
+                    output,
+                    &transaction,
+                    block_header.block_hash,
+                    block_header.block_number,
+                );
+                assert_matches!(receipt, TransactionReceipt::$recipe_type(_));
+            }
+        }
+    }
+}
+
+test_recipe_from_transtaction_output!(Declare, Common);
+test_recipe_from_transtaction_output!(Invoke, Common);
+test_recipe_from_transtaction_output!(L1Handler, Common);
+test_recipe_from_transtaction_output!(Deploy, Deploy);
+test_recipe_from_transtaction_output!(DeployAccount, Deploy);
