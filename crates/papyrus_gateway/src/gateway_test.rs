@@ -1,6 +1,7 @@
 use std::panic;
 
 use assert_matches::assert_matches;
+use camelpaste::paste;
 use futures_util::future::join_all;
 use hyper::{header, Body, Request};
 use jsonrpsee::core::client::ClientT;
@@ -10,15 +11,11 @@ use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_storage::test_utils::get_test_storage;
 use starknet_api::block::BlockNumber;
-use starknet_api::deprecated_contract_class::{
-    EventAbiEntry, FunctionAbiEntryWithType, StructAbiEntry,
-};
-use test_utils::{get_rng, GetTestInstance};
 use tower::BoxError;
 
 use crate::api::version_config::{LATEST_VERSION_ID, VERSION_CONFIG};
 use crate::api::JsonRpcError;
-use crate::deprecated_contract_class::ContractClassAbiEntryWithType;
+use crate::deprecated_contract_class::ContractClassAbiEntryType;
 use crate::middleware::proxy_request;
 use crate::test_utils::get_test_gateway_config;
 use crate::{run_server, SERVER_MAX_BODY_SIZE};
@@ -104,25 +101,21 @@ async fn test_version_middleware() {
     };
 }
 
-#[tokio::test]
-async fn test_contractclassabientrywithtype_from_api_contractclassabientry() {
-    let mut rng = get_rng();
-    let _: ContractClassAbiEntryWithType =
-        starknet_api::deprecated_contract_class::ContractClassAbiEntry::Event(
-            EventAbiEntry::get_test_instance(&mut rng),
-        )
-        .try_into()
-        .unwrap();
-    let _: ContractClassAbiEntryWithType =
-        starknet_api::deprecated_contract_class::ContractClassAbiEntry::Function(
-            FunctionAbiEntryWithType::get_test_instance(&mut rng),
-        )
-        .try_into()
-        .unwrap();
-    let _: ContractClassAbiEntryWithType =
-        starknet_api::deprecated_contract_class::ContractClassAbiEntry::Struct(
-            StructAbiEntry::get_test_instance(&mut rng),
-        )
-        .try_into()
-        .unwrap();
+macro_rules! test_ContractClassAbiEntryType_from_FunctionAbiEntryType {
+    ($variant:ident) => {
+        paste! {
+            #[tokio::test]
+            #[allow(non_snake_case)]
+            async fn [< ContractClassAbiEntryType_from_FunctionAbiEntryType_ $variant:lower>]() {
+                let _: ContractClassAbiEntryType =
+                starknet_api::deprecated_contract_class::FunctionAbiEntryType::$variant
+                    .try_into()
+                    .unwrap();
+            }
+        }
+    };
 }
+
+test_ContractClassAbiEntryType_from_FunctionAbiEntryType!(Constructor);
+test_ContractClassAbiEntryType_from_FunctionAbiEntryType!(L1Handler);
+test_ContractClassAbiEntryType_from_FunctionAbiEntryType!(Function);
