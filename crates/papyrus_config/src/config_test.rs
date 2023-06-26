@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use crate::{append_sub_config_name, ParamPath, SerdeConfig, SerializedParam};
+use crate::{append_sub_config_name, ser_param, ParamPath, SerdeConfig, SerializedParam};
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct InnerConfig {
@@ -12,10 +12,7 @@ pub struct InnerConfig {
 
 impl SerdeConfig for InnerConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
-        BTreeMap::from([(
-            "a".to_owned(),
-            SerializedParam { description: "This is a.".to_owned(), value: json!(self.a) },
-        )])
+        BTreeMap::from([ser_param("a", &self.a, "This is a.")])
     }
 }
 
@@ -26,10 +23,7 @@ pub struct OptionalConfig {
 
 impl SerdeConfig for OptionalConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
-        BTreeMap::from([(
-            "o".to_owned(),
-            SerializedParam { description: "This is o.".to_owned(), value: json!(self.o) },
-        )])
+        BTreeMap::from([ser_param("o", &self.o, "This is o.")])
     }
 }
 
@@ -43,25 +37,22 @@ pub struct OuterConfig {
 
 impl SerdeConfig for OuterConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
-        BTreeMap::from([(
-            "b".to_owned(),
-            SerializedParam { description: "This is b.".to_owned(), value: json!(self.b) },
-        )])
-        .into_iter()
-        .chain(append_sub_config_name(self.inner.dump(), "inner"))
-        .chain(match &self.some_optional {
-            None => BTreeMap::new(),
-            Some(optional_config) => {
-                append_sub_config_name(optional_config.dump(), "some_optional")
-            }
-        })
-        .chain(match &self.none_optional {
-            None => BTreeMap::new(),
-            Some(optional_config) => {
-                append_sub_config_name(optional_config.dump(), "none_optional")
-            }
-        })
-        .collect()
+        BTreeMap::from([ser_param("b", &self.b, "This is b.")])
+            .into_iter()
+            .chain(append_sub_config_name(self.inner.dump(), "inner"))
+            .chain(match &self.some_optional {
+                None => BTreeMap::new(),
+                Some(optional_config) => {
+                    append_sub_config_name(optional_config.dump(), "some_optional")
+                }
+            })
+            .chain(match &self.none_optional {
+                None => BTreeMap::new(),
+                Some(optional_config) => {
+                    append_sub_config_name(optional_config.dump(), "none_optional")
+                }
+            })
+            .collect()
     }
 }
 

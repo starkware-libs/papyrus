@@ -62,6 +62,14 @@ pub fn append_sub_config_name(
     )
 }
 
+pub fn ser_param<T: Serialize>(
+    name: &str,
+    value: &T,
+    description: &str,
+) -> (String, SerializedParam) {
+    (name.to_owned(), SerializedParam { description: description.to_owned(), value: json!(value) })
+}
+
 pub fn dump_to_file<T: SerdeConfig>(config: &T, file_path: &str) {
     let dumped = config.dump();
     let file = File::create(file_path).expect("creating failed");

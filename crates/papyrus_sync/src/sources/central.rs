@@ -11,11 +11,11 @@ use futures_util::StreamExt;
 use indexmap::IndexMap;
 #[cfg(test)]
 use mockall::automock;
-use papyrus_config::{append_sub_config_name, ParamPath, SerdeConfig, SerializedParam};
+use papyrus_config::{append_sub_config_name, ser_param, ParamPath, SerdeConfig, SerializedParam};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
@@ -56,32 +56,14 @@ impl Default for CentralSourceConfig {
 impl SerdeConfig for CentralSourceConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         BTreeMap::from_iter([
-            (
-                String::from("concurrent_requests"),
-                SerializedParam {
-                    description: String::from(
-                        "Maximum number of concurrent requests to Starknet feeder-gateway for \
-                         getting a type of data (for example, blocks).",
-                    ),
-                    value: json!(self.concurrent_requests),
-                },
+            ser_param(
+                "concurrent_requests",
+                &self.concurrent_requests,
+                "Maximum number of concurrent requests to Starknet feeder-gateway for getting a \
+                 type of data (for example, blocks).",
             ),
-            (
-                String::from("url"),
-                SerializedParam {
-                    description: String::from(
-                        "Starknet feeder-gateway URL. It should match chain_id.",
-                    ),
-                    value: json!(self.url),
-                },
-            ),
-            (
-                String::from("http_headers"),
-                SerializedParam {
-                    description: String::from("Optional headers for SN-client."),
-                    value: json!(self.http_headers),
-                },
-            ),
+            ser_param("url", &self.url, "Starknet feeder-gateway URL. It should match chain_id."),
+            ser_param("http_headers", &self.http_headers, "Optional headers for SN-client."),
         ])
         .into_iter()
         .chain(append_sub_config_name(self.retry_config.dump(), "retry_config"))
