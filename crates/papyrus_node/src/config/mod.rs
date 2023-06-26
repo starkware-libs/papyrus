@@ -13,6 +13,7 @@ use std::{env, fs, io};
 
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
 use file_config::FileConfigFormat;
+use itertools::chain;
 use papyrus_config::{
     append_sub_config_name, ParamPath, SerdeConfig, SerializedParam, DEFAULT_CHAIN_ID,
 };
@@ -57,16 +58,17 @@ impl Default for Config {
 
 impl SerdeConfig for Config {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
-        append_sub_config_name(self.central.dump(), "central")
-            .into_iter()
-            .chain(append_sub_config_name(self.gateway.dump(), "gateway"))
-            .chain(append_sub_config_name(self.monitoring_gateway.dump(), "monitoring_gateway"))
-            .chain(append_sub_config_name(self.storage.dump(), "storage"))
-            .chain(match self.sync {
+        chain!(
+            append_sub_config_name(self.central.dump(), "central"),
+            append_sub_config_name(self.gateway.dump(), "gateway"),
+            append_sub_config_name(self.monitoring_gateway.dump(), "monitoring_gateway"),
+            append_sub_config_name(self.storage.dump(), "storage"),
+            match self.sync {
                 None => BTreeMap::new(),
                 Some(sync_config) => append_sub_config_name(sync_config.dump(), "sync"),
-            })
-            .collect()
+            },
+        )
+        .collect()
     }
 }
 

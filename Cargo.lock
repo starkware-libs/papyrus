@@ -3867,6 +3867,7 @@ dependencies = [
 name = "papyrus_config"
 version = "0.1.0"
 dependencies = [
+ "itertools",
  "serde",
  "serde_json",
  "thiserror",
@@ -3948,6 +3949,7 @@ dependencies = [
  "const_format",
  "futures-util",
  "insta",
+ "itertools",
  "jsonrpsee",
  "libmdbx",
  "papyrus_base_layer",
@@ -4029,6 +4031,7 @@ dependencies = [
  "futures-util",
  "hex",
  "indexmap",
+ "itertools",
  "libmdbx",
  "mockall",
  "papyrus_config",

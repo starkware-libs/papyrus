@@ -24,7 +24,6 @@ use papyrus_storage::db::TransactionKind;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageReader, StorageTxn};
 use serde::{Deserialize, Serialize};
-
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ChainId;
 use tracing::{debug, error, info, instrument};
