@@ -7,9 +7,8 @@ use std::fmt::Debug;
 use std::iter::Take;
 use std::time::Duration;
 
-use papyrus_config::{ParamPath, SerdeConfig, SerializedParam};
+use papyrus_config::{ser_param, ParamPath, SerdeConfig, SerializedParam};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use tokio_retry::strategy::ExponentialBackoff;
 use tokio_retry::{Action, Condition, RetryIf};
 use tracing::debug;
@@ -28,31 +27,21 @@ pub struct RetryConfig {
 impl SerdeConfig for RetryConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         BTreeMap::from_iter([
-            (
-                String::from("retry_base_millis"),
-                SerializedParam {
-                    description: String::from(
-                        "Base waiting time after a failed request. After that, the time increases \
-                         exponentially.",
-                    ),
-                    value: json!(self.retry_base_millis),
-                },
+            ser_param(
+                "retry_base_millis",
+                &self.retry_base_millis,
+                "Base waiting time after a failed request. After that, the time increases \
+                 exponentially.",
             ),
-            (
-                String::from("retry_max_delay_millis"),
-                SerializedParam {
-                    description: String::from("Max waiting time after a failed request."),
-                    value: json!(self.retry_max_delay_millis),
-                },
+            ser_param(
+                "retry_max_delay_millis",
+                &self.retry_max_delay_millis,
+                "Max waiting time after a failed request.",
             ),
-            (
-                String::from("max_retries"),
-                SerializedParam {
-                    description: String::from(
-                        "Maximum number of retries before the node stops retrying.",
-                    ),
-                    value: json!(self.max_retries),
-                },
+            ser_param(
+                "max_retries",
+                &self.max_retries,
+                "Maximum number of retries before the node stops retrying.",
             ),
         ])
     }

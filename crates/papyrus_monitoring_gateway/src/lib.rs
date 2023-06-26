@@ -12,10 +12,10 @@ use axum::routing::get;
 use axum::{Json, Router};
 use metrics_exporter_prometheus::{BuildError, PrometheusBuilder, PrometheusHandle};
 use metrics_process::Collector;
-use papyrus_config::{ParamPath, SerdeConfig, SerializedParam};
+use papyrus_config::{ser_param, ParamPath, SerdeConfig, SerializedParam};
 use papyrus_storage::{DbTablesStats, StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+
 use tracing::{debug, instrument};
 
 const MONITORING_PREFIX: &str = "monitoring";
@@ -38,19 +38,11 @@ impl Default for MonitoringGatewayConfig {
 impl SerdeConfig for MonitoringGatewayConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         BTreeMap::from_iter([
-            (
-                String::from("server_address"),
-                SerializedParam {
-                    description: String::from("node's monitoring server."),
-                    value: json!(self.server_address),
-                },
-            ),
-            (
-                String::from("collect_metrics"),
-                SerializedParam {
-                    description: String::from("If true, collect metrics for the package."),
-                    value: json!(false),
-                },
+            ser_param("server_address", &self.server_address, "node's monitoring server."),
+            ser_param(
+                "collect_metrics",
+                &self.collect_metrics,
+                "If true, collect metrics for the package.",
             ),
         ])
     }

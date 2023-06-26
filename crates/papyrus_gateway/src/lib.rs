@@ -19,7 +19,7 @@ use jsonrpsee::server::{ServerBuilder, ServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
 use jsonrpsee::types::ErrorObjectOwned;
-use papyrus_config::{ParamPath, SerdeConfig, SerializedParam, DEFAULT_CHAIN_ID};
+use papyrus_config::{ser_param, ParamPath, SerdeConfig, SerializedParam, DEFAULT_CHAIN_ID};
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::db::TransactionKind;
@@ -28,6 +28,9 @@ use papyrus_storage::{StorageReader, StorageTxn};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use starknet_api::block::{BlockNumber, BlockStatus};
+
+use starknet_api::block::BlockNumber;
+>>>>>>> Define and use ser_param for config dump.
 use starknet_api::core::ChainId;
 use tracing::{debug, error, info, instrument};
 
@@ -63,34 +66,10 @@ impl Default for GatewayConfig {
 impl SerdeConfig for GatewayConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         BTreeMap::from_iter([
-            (
-                String::from("chain_id"),
-                SerializedParam {
-                    description: String::from("The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id."),
-                    value: json!(self.chain_id),
-                }
-            ),
-            (
-                String::from("server_address"),
-                SerializedParam {
-                    description: String::from("IP:PORT of the node`s JSON-RPC server."),
-                    value: json!(self.server_address),
-                }
-            ),
-            (
-                String::from("max_events_chunk_size"),
-                SerializedParam {
-                    description: String::from("Maximum chunk size supported by the node in get_events requests."),
-                    value: json!(self.max_events_chunk_size),
-                }
-            ),
-            (
-                String::from("max_events_keys"),
-                SerializedParam {
-                    description: String::from("Maximum number of keys supported by the node in get_events requests."),
-                    value: json!(self.max_events_keys),
-                }
-            ),
+            ser_param("chain_id", &self.chain_id, "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id."),
+            ser_param("server_address", &self.server_address, "IP:PORT of the node`s JSON-RPC server."),
+            ser_param("max_events_chunk_size", &self.max_events_chunk_size, "Maximum chunk size supported by the node in get_events requests."),
+            ser_param("max_events_keys", &self.max_events_keys, "Maximum number of keys supported by the node in get_events requests."),
         ])
     }
 }

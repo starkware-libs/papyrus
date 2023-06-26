@@ -47,6 +47,10 @@
     "description": "node's monitoring server.",
     "value": "0.0.0.0:8081"
   },
+  "storage.db_config.chain_id": {
+    "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
+    "value": "SN_MAIN"
+  },
   "storage.db_config.growth_step": {
     "description": "The growth step in bytes, must be greater than zero to allow the database to grow.",
     "value": 67108864
@@ -59,7 +63,7 @@
     "description": "The minimum size of the node's storage in bytes.",
     "value": 1048576
   },
-  "storage.db_config.path": {
+  "storage.db_config.path_prefix": {
     "description": "Path of the node's storage directory, the storage file path will be <path>/<chain_id>. The path is not created automatically.",
     "value": "./data"
   },

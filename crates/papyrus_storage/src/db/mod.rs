@@ -11,10 +11,9 @@ use std::result;
 use std::sync::Arc;
 
 use libmdbx::{Cursor, DatabaseFlags, Geometry, WriteFlags, WriteMap};
-use papyrus_config::{ParamPath, SerdeConfig, SerializedParam};
+use papyrus_config::{ser_param, ParamPath, SerdeConfig, SerializedParam};
 use serde::{Deserialize, Serialize};
 use starknet_api::core::ChainId;
-use serde_json::json;
 
 use crate::db::serialization::{StorageSerde, StorageSerdeEx};
 
@@ -58,48 +57,32 @@ impl Default for DbConfig {
 impl SerdeConfig for DbConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         BTreeMap::from_iter([
-            (
-                String::from("path"),
-                SerializedParam {
-                    description: String::from(
-                        "Prefix of the path of the node's storage directory, the storage file path \
-                        will be <path_prefix>/<chain_id>. The path is not created automatically.",
-                    ),
-                    value: json!(self.path_prefix),
-                },
+            ser_param(
+                "path_prefix",
+                &self.path,
+                "Prefix of the path of the node's storage directory, the storage file path \
+                will be <path_prefix>/<chain_id>. The path is not created automatically.",
             ),
-            (
-                String::from("chain_id"),
-                SerializedParam {
-                    description: String::from(
-                        "Path of the node's storage directory, the storage file path will be <path>/<chain_id>. The path is not created automatically.",
-                    ),
-                    value: json!(self.chain_id),
-                },
+            ser_param(
+                "chain_id",
+                &self.chain_id,
+                "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
             ),
-            (
-                String::from("min_size"),
-                SerializedParam {
-                    description: String::from("The minimum size of the node's storage in bytes."),
-                    value: json!(self.min_size),
-                },
+            ser_param(
+                "min_size",
+                &self.min_size,
+                "The minimum size of the node's storage in bytes.",
             ),
-            (
-                String::from("max_size"),
-                SerializedParam {
-                    description: String::from("The maximum size of the node's storage in bytes."),
-                    value: json!(self.max_size),
-                },
+            ser_param(
+                "max_size",
+                &self.max_size,
+                "The maximum size of the node's storage in bytes.",
             ),
-            (
-                String::from("growth_step"),
-                SerializedParam {
-                    description: String::from(
-                        "The growth step in bytes, must be greater than zero to allow the \
-                         database to grow.",
-                    ),
-                    value: json!(self.growth_step),
-                },
+            ser_param(
+                "growth_step",
+                &self.growth_step,
+                "The growth step in bytes, must be greater than zero to allow the database to \
+                 grow.",
             ),
         ])
     }
