@@ -9,3 +9,4 @@ serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+itertools.workspace = { version = "0.10.5" }
