@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use itertools::chain;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -37,22 +38,23 @@ pub struct OuterConfig {
 
 impl SerdeConfig for OuterConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
-        BTreeMap::from([ser_param("b", &self.b, "This is b.")])
-            .into_iter()
-            .chain(append_sub_config_name(self.inner.dump(), "inner"))
-            .chain(match &self.some_optional {
+        chain!(
+            BTreeMap::from([ser_param("b", &self.b, "This is b.")]),
+            append_sub_config_name(self.inner.dump(), "inner"),
+            match &self.some_optional {
                 None => BTreeMap::new(),
                 Some(optional_config) => {
                     append_sub_config_name(optional_config.dump(), "some_optional")
                 }
-            })
-            .chain(match &self.none_optional {
+            },
+            match &self.none_optional {
                 None => BTreeMap::new(),
                 Some(optional_config) => {
                     append_sub_config_name(optional_config.dump(), "none_optional")
                 }
-            })
-            .collect()
+            },
+        )
+        .collect()
     }
 }
 
