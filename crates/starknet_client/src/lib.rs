@@ -273,9 +273,8 @@ impl StarknetClient {
         block_number: Option<BlockNumber>,
     ) -> ClientResult<Option<Block>> {
         let mut url = self.urls.get_block.clone();
-        if let Some(block_number) = block_number {
-            url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.to_string());
-        }
+        let block_number = block_number.map(|bn| bn.to_string()).unwrap_or(String::from("latest"));
+        url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, block_number.as_str());
 
         let response = self.request_with_retry(url).await;
         match response {
