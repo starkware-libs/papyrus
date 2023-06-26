@@ -27,7 +27,8 @@ pub enum SubConfigError {
     MissingParam(#[from] serde_json::Error),
 }
 /// Serialization and deserialization for configs.
-/// For an explanation of `for<'a> Deserialize<'a>` see https://doc.rust-lang.org/nomicon/hrtb.html.
+/// For an explanation of `for<'a> Deserialize<'a>` see
+/// `<https://doc.rust-lang.org/nomicon/hrtb.html>`.
 pub trait SerdeConfig: for<'a> Deserialize<'a> + Serialize + Sized {
     /// Serializes the config into flatten JSON.
     /// Note, in the case of a None sub configs, its elements will not included in the flatten map.
