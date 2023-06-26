@@ -15,7 +15,6 @@ use metrics_process::Collector;
 use papyrus_config::{ser_param, ParamPath, SerdeConfig, SerializedParam};
 use papyrus_storage::{DbTablesStats, StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
-
 use tracing::{debug, instrument};
 
 const MONITORING_PREFIX: &str = "monitoring";

@@ -28,9 +28,6 @@ use papyrus_storage::{StorageReader, StorageTxn};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use starknet_api::block::{BlockNumber, BlockStatus};
-
-use starknet_api::block::BlockNumber;
->>>>>>> Define and use ser_param for config dump.
 use starknet_api::core::ChainId;
 use tracing::{debug, error, info, instrument};
 

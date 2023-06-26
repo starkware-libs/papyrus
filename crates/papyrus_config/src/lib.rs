@@ -62,6 +62,8 @@ pub fn append_sub_config_name(
     )
 }
 
+/// Serializes a single param of a config.
+/// The returned pair is designed to be an input to a dumped config map.
 pub fn ser_param<T: Serialize>(
     name: &str,
     value: &T,
