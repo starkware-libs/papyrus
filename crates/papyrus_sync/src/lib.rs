@@ -110,13 +110,13 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 }
                 // A recoverable error occurred. Sleep and try syncing again.
                 Err(err) if is_recoverable(&err) => {
-                    warn!("{}", err);
+                    warn!("Recoverable error encountered while syncing, error: {}", err);
                     tokio::time::sleep(self.config.recoverable_error_sleep_duration).await;
                     continue;
                 }
                 // Unrecoverable errors.
                 Err(err) => {
-                    error!("{}", err);
+                    error!("Fatal error while syncing: {}", err);
                     return Err(err);
                 }
                 Ok(_) => {
