@@ -45,7 +45,7 @@ fn add_version_to_method_name_in_body(
             let Some(stripped_method) = strip_starknet_from_method(body.method.as_ref()) else {
                 return Err(BoxError::from("Method name has unexpected format"))
             };
-            body.method = format!("starknet_{}_{}", prefix, stripped_method).into();
+            body.method = format!("starknet_{prefix}_{stripped_method}").into();
             Ok(body)
         })
         .collect::<Result<Vec<_>, _>>() else { return Err(BoxError::from("Method name has unexpected format")) };
