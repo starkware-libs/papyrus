@@ -154,6 +154,7 @@ const GET_COMPILED_CLASS_BY_CLASS_HASH_URL: &str =
     "feeder_gateway/get_compiled_class_by_class_hash";
 const GET_STATE_UPDATE_URL: &str = "feeder_gateway/get_state_update";
 const BLOCK_NUMBER_QUERY: &str = "blockNumber";
+const LATEST_BLOCK_NUMBER: &str = "latest";
 const CLASS_HASH_QUERY: &str = "classHash";
 
 impl StarknetUrls {
@@ -273,9 +274,9 @@ impl StarknetClient {
         block_number: Option<BlockNumber>,
     ) -> ClientResult<Option<Block>> {
         let mut url = self.urls.get_block.clone();
-        if let Some(block_number) = block_number {
-            url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.to_string());
-        }
+        let block_number =
+            block_number.map(|bn| bn.to_string()).unwrap_or(String::from(LATEST_BLOCK_NUMBER));
+        url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, block_number.as_str());
 
         let response = self.request_with_retry(url).await;
         match response {
