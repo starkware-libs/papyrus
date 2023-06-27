@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use cairo_lang_casm::hints::Hint;
+use cairo_lang_casm::hints::CoreHintBase;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ContractAddress;
 use starknet_api::hash::StarkHash;
@@ -76,6 +76,7 @@ fn block_number_endianness() {
 // storage migration is needed.
 #[test]
 fn hint_modified() {
-    let hint_schema = schemars::schema_for!(Hint);
+    // Only CoreHintBase is being used in programs (StarknetHint is for tests).
+    let hint_schema = schemars::schema_for!(CoreHintBase);
     insta::assert_yaml_snapshot!(hint_schema);
 }
