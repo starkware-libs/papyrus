@@ -6,7 +6,7 @@ rustLogLevel: "info"
 # The Docker image (including any tag and repository name)
 image:
   repository: ghcr.io/starkware-libs/papyrus
-  tag: dev
+  tag: 0.1.2-alpha
   pullPolicy: Always
 
 node:
