@@ -47,7 +47,7 @@ async fn call_proxy_request_get_method_in_out(uri: String) -> Result<(String, St
     let method_name = "myMethod";
     let params = serde_json::from_str(r#"[{"myParam": "myValue"}]"#).unwrap();
     let request_body = jsonrpsee::types::Request::new(
-        format!("starknet_{}", method_name).into(),
+        format!("starknet_{method_name}").into(),
         Some(params),
         jsonrpsee::types::Id::Number(0),
     );
@@ -82,10 +82,10 @@ async fn test_version_middleware() {
     let mut handles = Vec::new();
     for (path, expected_version) in path_options {
         let future = async move {
-            let uri = format!("{}{}", base_uri, path);
+            let uri = format!("{base_uri}{path}");
             let (in_method, out_method) = call_proxy_request_get_method_in_out(uri).await.unwrap();
             {
-                assert_eq!(format!("starknet_{}_{}", expected_version, in_method), out_method);
+                assert_eq!(format!("starknet_{expected_version}_{in_method}"), out_method);
             };
         };
         let handle = tokio::spawn(future);
@@ -93,8 +93,8 @@ async fn test_version_middleware() {
     }
     let _res = join_all(handles).await;
     let unknown_version = "not_a_valid_version";
-    let bad_uri = format!("{}/{}", base_uri, unknown_version);
+    let bad_uri = format!("{base_uri}/{unknown_version}");
     if let Ok(res) = call_proxy_request_get_method_in_out(bad_uri).await {
-        panic!("expected failure got: {:?}", res);
+        panic!("expected failure got: {res:?}");
     };
 }
