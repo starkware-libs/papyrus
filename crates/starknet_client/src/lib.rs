@@ -200,7 +200,11 @@ impl StarknetClient {
         Ok(StarknetClient {
             urls: StarknetUrls::new(url_str)?,
             http_headers: header_map,
-            internal_client: Client::builder().user_agent(app_user_agent).build()?,
+            internal_client: Client::builder()
+                // FIXME: Workaround for an hyper bug - https://github.com/hyperium/hyper/issues/2312.
+                .pool_max_idle_per_host(0)
+                .user_agent(app_user_agent)
+                .build()?,
             retry_config,
         })
     }
