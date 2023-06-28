@@ -20,7 +20,7 @@ use crate::{run_server, SERVER_MAX_BODY_SIZE};
 
 #[tokio::test]
 async fn run_server_no_blocks() {
-    let (storage_reader, _) = get_test_storage();
+    let ((storage_reader, _), _temp_dir) = get_test_storage();
     let gateway_config = get_test_gateway_config();
     let (addr, _handle) = run_server(&gateway_config, storage_reader).await.unwrap();
     let client = HttpClientBuilder::default().build(format!("http://{addr:?}")).unwrap();

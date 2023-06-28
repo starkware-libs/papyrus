@@ -1510,7 +1510,7 @@ async fn get_events_invalid_ct() {
 
 #[tokio::test]
 async fn serialize_returns_valid_json() {
-    let (storage_reader, mut storage_writer) = get_test_storage();
+    let ((storage_reader, mut storage_writer), _temp_dir) = get_test_storage();
     let mut rng = get_rng();
     let parent_block = starknet_api::block::Block::default();
     let block = starknet_api::block::Block {

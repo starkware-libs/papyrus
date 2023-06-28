@@ -11,7 +11,7 @@ use crate::StorageError;
 fn append_casm() {
     let casm_json = read_json_file("compiled_class.json");
     let expected_casm: CasmContractClass = serde_json::from_value(casm_json).unwrap();
-    let (reader, mut writer) = get_test_storage();
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
 
     writer
         .begin_rw_txn()
@@ -27,7 +27,7 @@ fn append_casm() {
 
 #[test]
 fn casm_rewrite() {
-    let (_, mut writer) = get_test_storage();
+    let ((_, mut writer), _temp_dir) = get_test_storage();
 
     writer
         .begin_rw_txn()
