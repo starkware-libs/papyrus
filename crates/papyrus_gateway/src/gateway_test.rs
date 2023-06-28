@@ -8,15 +8,17 @@ use jsonrpsee::core::http_helpers::read_body;
 use jsonrpsee::core::{Error, RpcResult};
 use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::types::ErrorObjectOwned;
+use papyrus_storage::base_layer::BaseLayerStorageWriter;
+use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
-use starknet_api::block::BlockNumber;
+use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
 use tower::BoxError;
 
 use crate::api::version_config::{LATEST_VERSION_ID, VERSION_CONFIG};
 use crate::api::JsonRpcError;
 use crate::middleware::proxy_request;
 use crate::test_utils::get_test_gateway_config;
-use crate::{run_server, SERVER_MAX_BODY_SIZE};
+use crate::{get_block_status, run_server, SERVER_MAX_BODY_SIZE};
 
 #[tokio::test]
 async fn run_server_no_blocks() {
@@ -97,4 +99,38 @@ async fn test_version_middleware() {
     if let Ok(res) = call_proxy_request_get_method_in_out(bad_uri).await {
         panic!("expected failure got: {res:?}");
     };
+}
+
+#[test]
+fn get_block_status_test() {
+    let (reader, mut writer) = get_test_storage().0;
+
+    for block_number in 0..2 {
+        let header = BlockHeader {
+            block_number: BlockNumber(block_number),
+            block_hash: BlockHash(block_number.into()),
+            ..Default::default()
+        };
+        writer
+            .begin_rw_txn()
+            .unwrap()
+            .append_header(header.block_number, &header)
+            .unwrap()
+            .commit()
+            .unwrap();
+    }
+
+    // update the base_layer_tip_marker to BlockNumber(1).
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .update_base_layer_tip_marker(&BlockNumber(1))
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    let txn = reader.begin_ro_txn().unwrap();
+    assert_eq!(get_block_status(&txn, BlockNumber(0)).unwrap(), BlockStatus::AcceptedOnL1);
+    assert_eq!(get_block_status(&txn, BlockNumber(1)).unwrap(), BlockStatus::AcceptedOnL2);
+    assert_eq!(get_block_status(&txn, BlockNumber(2)).unwrap(), BlockStatus::AcceptedOnL2);
 }
