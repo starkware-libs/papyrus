@@ -5,7 +5,7 @@ use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::StorageReader;
-use starknet_api::block::{BlockNumber, BlockStatus};
+use starknet_api::block::BlockNumber;
 use starknet_api::core::{ChainId, ClassHash, ContractAddress, GlobalRoot, Nonce};
 use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 use starknet_api::state::{StateNumber, StorageKey};
@@ -22,12 +22,12 @@ use crate::api::{BlockHashOrNumber, ContinuationToken, JsonRpcError, JsonRpcServ
 use crate::block::Block;
 use crate::state::StateUpdate;
 use crate::transaction::{
-    Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
+    Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus,
     TransactionWithType, Transactions,
 };
 use crate::{
-    get_block_header_by_number, get_block_number, get_block_txs_by_number, get_latest_block_number,
-    internal_server_error, ContinuationTokenAsStruct,
+    get_block_header_by_number, get_block_number, get_block_status, get_block_txs_by_number,
+    get_latest_block_number, internal_server_error, ContinuationTokenAsStruct,
 };
 
 /// Rpc server.
@@ -60,27 +60,25 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
     fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> RpcResult<Block> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
+        let status = get_block_status(&txn, block_number)?;
         let header = get_block_header_by_number(&txn, block_number)?;
         let transactions = get_block_txs_by_number(&txn, block_number)?;
         let transaction_hashes: Vec<TransactionHash> =
             transactions.iter().map(|transaction| transaction.transaction_hash()).collect();
 
-        Ok(Block {
-            status: BlockStatus::AcceptedOnL2,
-            header,
-            transactions: Transactions::Hashes(transaction_hashes),
-        })
+        Ok(Block { status, header, transactions: Transactions::Hashes(transaction_hashes) })
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
     fn get_block_w_full_transactions(&self, block_id: BlockId) -> RpcResult<Block> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
+        let status = get_block_status(&txn, block_number)?;
         let header = get_block_header_by_number(&txn, block_number)?;
         let transactions = get_block_txs_by_number(&txn, block_number)?;
 
         Ok(Block {
-            status: BlockStatus::AcceptedOnL2,
+            status,
             header,
             transactions: Transactions::Full(
                 transactions.into_iter().map(TransactionWithType::from).collect(),
@@ -204,6 +202,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
 
         let block_number = transaction_index.0;
+        let status = get_block_status(&txn, block_number)?;
         let header =
             get_block_header_by_number(&txn, block_number).map_err(internal_server_error)?;
 
@@ -231,7 +230,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
                 header.block_hash,
                 block_number,
             ),
-            status: TransactionStatus::default(),
+            status: status.into(),
         })
     }
 
