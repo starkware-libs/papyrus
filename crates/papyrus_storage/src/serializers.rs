@@ -218,7 +218,7 @@ auto_storage_serde! {
         Body = 1,
         State = 2,
         CompiledClass = 3,
-        BaseLayerTip = 4,
+        BaseLayerBlock = 4,
     }
     pub struct MessageToL1 {
         pub to_address: EthAddress,

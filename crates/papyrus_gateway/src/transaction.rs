@@ -293,17 +293,6 @@ impl From<BlockStatus> for TransactionStatus {
     }
 }
 
-impl From<TransactionStatus> for BlockStatus {
-    fn from(status: TransactionStatus) -> Self {
-        match status {
-            TransactionStatus::AcceptedOnL1 => BlockStatus::AcceptedOnL1,
-            TransactionStatus::AcceptedOnL2 => BlockStatus::AcceptedOnL2,
-            TransactionStatus::Pending => BlockStatus::Pending,
-            TransactionStatus::Rejected => BlockStatus::Rejected,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct TransactionReceiptWithStatus {
     pub status: TransactionStatus,
