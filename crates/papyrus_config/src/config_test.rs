@@ -6,7 +6,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::command::update_config_map_by_command;
-use crate::{append_sub_config_name, load, ser_param, ParamPath, SerializeConfig, SerializedParam};
+use crate::{
+    append_sub_config_name, load, ser_param, update_config_map_by_pointers, ParamPath,
+    SerializeConfig, SerializedParam,
+};
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct InnerConfig {
@@ -114,4 +117,16 @@ fn test_update_dumped_config() {
     assert_eq!(json!(1234), dumped_config["a"].value);
     assert_eq!(json!("15"), dumped_config["b"].value);
     assert_eq!(json!(true), dumped_config["c"].value);
+}
+
+#[test]
+fn test_replace_pointers() {
+    let mut config_map = BTreeMap::from([ser_param("a", &json!(5), "This is a.")]);
+    let pointers_map =
+        BTreeMap::from([("b".to_owned(), "a".to_owned()), ("c".to_owned(), "a".to_owned())]);
+    update_config_map_by_pointers(&mut config_map, &pointers_map).unwrap();
+    assert_eq!(config_map["a"], config_map["b"]);
+    assert_eq!(config_map["a"], config_map["c"]);
+
+    assert!(update_config_map_by_pointers(&mut BTreeMap::default(), &pointers_map).is_err());
 }

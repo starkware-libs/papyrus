@@ -1,10 +1,13 @@
 use std::collections::{BTreeMap, HashMap};
 use std::env::{self, args};
-use std::io::Write;
+use std::fs::File;
+use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 use papyrus_config::command::update_config_map_by_command;
-use papyrus_config::{load, SerializeConfig, SerializedParam};
+use papyrus_config::{
+    dump_to_file, get_maps_from_raw_json, load, SerializeConfig, SerializedParam,
+};
 use serde_json::{json, Map, Value};
 use starknet_api::core::ChainId;
 use tempfile::NamedTempFile;
@@ -137,19 +140,9 @@ fn test_dump_default_config() {
     let path = get_absolute_path(DEFAULT_CONFIG_FILE);
     let file = std::fs::File::open(path).unwrap();
     let deserialized_default_config: Map<String, Value> = serde_json::from_reader(file).unwrap();
+    let (config_map, _) = get_maps_from_raw_json(deserialized_default_config);
 
-    let mut deserialized_map: BTreeMap<String, SerializedParam> = BTreeMap::new();
-    for (key, value) in deserialized_default_config {
-        deserialized_map.insert(
-            key.to_owned(),
-            SerializedParam {
-                description: value["description"].as_str().unwrap().to_owned(),
-                value: value["value"].to_owned(),
-            },
-        );
-    }
-
-    assert_eq!(deserialized_map, dumped_default_config);
+    assert_eq!(config_map, dumped_default_config);
 }
 
 #[test]
