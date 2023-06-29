@@ -290,7 +290,7 @@ pub enum MarkerKind {
     Body,
     State,
     CompiledClass,
-    BaseLayerTip,
+    BaseLayerBlock,
 }
 
 pub type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;

@@ -124,7 +124,7 @@ fn get_block_status_test() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .update_base_layer_tip_marker(&BlockNumber(1))
+        .update_base_layer_block_marker(&BlockNumber(1))
         .unwrap()
         .commit()
         .unwrap();
