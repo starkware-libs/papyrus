@@ -16,6 +16,7 @@ pub mod command;
 mod config_test;
 
 pub const DEFAULT_CHAIN_ID: &str = "SN_MAIN";
+pub const POINTER_PREFIX: &str = "$";
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SerializedParam {
@@ -33,6 +34,8 @@ pub enum SubConfigError {
     CommandMatches(#[from] MatchesError),
     #[error("Insert a new param is not allowed.")]
     ParamNotFound { param_path: String },
+    #[error("{target_param} is not found.")]
+    PointerTargetNotFound { target_param: String },
 }
 /// Serialization for configs.
 pub trait SerializeConfig {
@@ -101,4 +104,33 @@ pub fn dump_to_file<T: SerializeConfig>(config: &T, file_path: &str) {
     let mut writer = BufWriter::new(file);
     serde_json::to_writer_pretty(&mut writer, &dumped).expect("writing failed");
     writer.flush().expect("flushing failed");
+}
+
+/// Replaces param pointers (strings start with '$') with the values of the pointer target.
+fn replace_pointer_param(
+    config_map: &BTreeMap<ParamPath, SerializedParam>,
+    serialized_param: &SerializedParam,
+) -> Result<SerializedParam, SubConfigError> {
+    let Some(str_path) = serialized_param.value.as_str() else {
+        return Ok(serialized_param.clone());
+    };
+    let Some(path_target) = str_path.strip_prefix(POINTER_PREFIX)  else {
+        return Ok(serialized_param.clone());
+    };
+    match config_map.get(path_target) {
+        None => Err(SubConfigError::PointerTargetNotFound { target_param: str_path.to_string() }),
+        Some(serialized_param_target) => Ok(serialized_param_target.clone()),
+    }
+}
+
+/// Sets values for the pointer params in the config.
+pub fn replace_pointers(
+    config_map: &BTreeMap<ParamPath, SerializedParam>,
+) -> Result<BTreeMap<ParamPath, SerializedParam>, SubConfigError> {
+    let mut new_config_map = BTreeMap::<ParamPath, SerializedParam>::new();
+    for (param_path, serialized_param) in config_map.iter() {
+        new_config_map
+            .insert(param_path.to_string(), replace_pointer_param(config_map, serialized_param)?);
+    }
+    Ok(new_config_map)
 }

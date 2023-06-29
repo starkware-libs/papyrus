@@ -6,7 +6,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::command::update_config_map_by_command;
-use crate::{append_sub_config_name, load, ser_param, ParamPath, SerializeConfig, SerializedParam};
+use crate::{
+    append_sub_config_name, load, replace_pointers, ser_param, ParamPath, SerializeConfig,
+    SerializedParam, POINTER_PREFIX,
+};
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct InnerConfig {
@@ -114,4 +117,20 @@ fn test_update_dumped_config() {
     assert_eq!(json!(1234), dumped_config["a"].value);
     assert_eq!(json!("15"), dumped_config["b"].value);
     assert_eq!(json!(true), dumped_config["c"].value);
+}
+
+#[test]
+fn test_replace_pointers() {
+    let map = BTreeMap::from([
+        ser_param("a", &json!(5), "This is a."),
+        ser_param("b", &json!(format!("{}a", POINTER_PREFIX)), "Pointer to a."),
+        ser_param("c", &json!(format!("{}a", POINTER_PREFIX)), "Pointer to a."),
+    ]);
+    let new_map = replace_pointers(&map).unwrap();
+    assert_eq!(new_map["a"], new_map["b"]);
+    assert_eq!(new_map["a"], new_map["c"]);
+
+    let invalid_map =
+        BTreeMap::from([ser_param("b", &json!(format!("{}a", POINTER_PREFIX)), "Pointer to a.")]);
+    assert!(replace_pointers(&invalid_map).is_err());
 }
