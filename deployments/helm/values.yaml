@@ -21,14 +21,19 @@ starknet:
   central_url: https://alpha-mainnet.starknet.io
   additional_headers: # optional addtional headers for SN communication
 
-# The default resources for the pod.
-resources:
-  limits:
-    cpu: "1"
-    memory: 1Gi
-  requests:
-    cpu: 500m
-    memory: 1Gi
+deployment:
+  # Optional - nodeSelector
+  node_selector:
+  # Optional - tolerations
+  tolerations:
+  # The default resources for a pod.
+  resources:
+    limits:
+      cpu: "1"
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
 
 # Service variables for a papyrus pod.
 services:

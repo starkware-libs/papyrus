@@ -33,6 +33,14 @@ spec:
             name: {{ template "papyrus.name" . }}-run
             defaultMode: 0777
         {{- end }}
+      {{- with .Values.deployment.node_selector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.deployment.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
       - name: {{ template "papyrus.name" . }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -44,11 +52,11 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         resources:
           limits:
-            cpu: {{ .Values.resources.limits.cpu | quote }}
-            memory: {{ .Values.resources.limits.memory }}
+            cpu: {{ .Values.deployment.resources.limits.cpu | quote }}
+            memory: {{ .Values.deployment.resources.limits.memory }}
           requests:
-            cpu: {{ .Values.resources.requests.cpu | quote}}
-            memory: {{ .Values.resources.requests.memory }}
+            cpu: {{ .Values.deployment.resources.requests.cpu | quote}}
+            memory: {{ .Values.deployment.resources.requests.memory }}
         {{- if not .Values.backup.enabled }}
         {{- if .Values.services }}
         ports:
