@@ -3827,6 +3827,7 @@ dependencies = [
 name = "papyrus_config"
 version = "0.1.0"
 dependencies = [
+ "assert_matches",
  "clap",
  "itertools",
  "serde",
@@ -3913,6 +3914,7 @@ dependencies = [
  "insta",
  "itertools",
  "jsonrpsee",
+ "lazy_static",
  "libmdbx",
  "papyrus_base_layer",
  "papyrus_config",

@@ -23,9 +23,13 @@
     "description": "Starknet feeder-gateway URL. It should match chain_id.",
     "value": "https://alpha-mainnet.starknet.io/"
   },
-  "gateway.chain_id": {
+  "chain_id": {
     "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
     "value": "SN_MAIN"
+  },
+  "gateway.chain_id": {
+    "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
+    "pointer_target": "chain_id"
   },
   "gateway.max_events_chunk_size": {
     "description": "Maximum chunk size supported by the node in get_events requests.",
@@ -49,7 +53,7 @@
   },
   "storage.db_config.chain_id": {
     "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
-    "value": "SN_MAIN"
+    "pointer_target": "chain_id"
   },
   "storage.db_config.growth_step": {
     "description": "The growth step in bytes, must be greater than zero to allow the database to grow.",

@@ -5,7 +5,7 @@ use std::time::Duration;
 use clap::parser::MatchesError;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 
 pub type ParamPath = String;
 pub type Description = String;
@@ -23,6 +23,12 @@ pub struct SerializedParam {
     pub value: Value,
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub struct PointerParam {
+    pub description: String,
+    pub pointer_target: ParamPath,
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum SubConfigError {
     #[error(transparent)]
@@ -33,6 +39,10 @@ pub enum SubConfigError {
     CommandMatches(#[from] MatchesError),
     #[error("Insert a new param is not allowed.")]
     ParamNotFound { param_path: String },
+    #[error("{target_param} is not found.")]
+    PointerTargetNotFound { target_param: String },
+    #[error("{pointing_param} is not found.")]
+    PointerSourceNotFound { pointing_param: String },
 }
 /// Serialization for configs.
 pub trait SerializeConfig {
@@ -59,7 +69,7 @@ pub fn load<T: for<'a> Deserialize<'a>>(
     Ok(serde_json::from_value(nested_map)?)
 }
 
-pub fn update_config_map(
+fn update_config_map(
     config_map: &mut BTreeMap<ParamPath, SerializedParam>,
     param_path: &str,
     new_value: Value,
@@ -133,4 +143,85 @@ where
         map.insert(split[0].to_string(), split[1].to_string());
     }
     Ok(Some(map))
+}
+
+fn get_serialized_param(
+    param_path: &ParamPath,
+    json_map: &Map<String, Value>,
+) -> Result<SerializedParam, SubConfigError> {
+    if let Some(json_value) = json_map.get(param_path) {
+        Ok(serde_json::from_value::<SerializedParam>(json_value.clone())?)
+    } else {
+        Err(SubConfigError::PointerSourceNotFound { pointing_param: param_path.to_owned() })
+    }
+}
+
+/// Takes a config map and a vector of {target param, target description, and vector of params that
+/// will point to it}.
+/// Adds to the map the target params with value of one of the params that points to it.
+/// Replaces the value of the pointers to contain only the name of the target they point to.
+pub fn combine_config_map_and_pointers(
+    config_map: BTreeMap<ParamPath, SerializedParam>,
+    pointers: Vec<(ParamPath, String, Vec<ParamPath>)>,
+) -> Result<Value, SubConfigError> {
+    let mut json_val = serde_json::to_value(config_map).unwrap();
+    let json_map: &mut serde_json::Map<std::string::String, serde_json::Value> =
+        json_val.as_object_mut().unwrap();
+
+    for (target_param, target_description, pointing_params_vec) in pointers {
+        let first_pointing_serialized_param =
+            get_serialized_param(pointing_params_vec.first().unwrap(), json_map)?;
+        json_map.insert(
+            target_param.clone(),
+            json!(SerializedParam {
+                description: target_description,
+                value: first_pointing_serialized_param.value
+            }),
+        );
+
+        for pointing_param in pointing_params_vec {
+            let pointing_serialized_param = get_serialized_param(&pointing_param, json_map)?;
+            json_map.remove(&pointing_param);
+            json_map.insert(
+                pointing_param,
+                json!(PointerParam {
+                    description: pointing_serialized_param.description,
+                    pointer_target: target_param.to_owned()
+                }),
+            );
+        }
+    }
+    Ok(json_val)
+}
+
+/// Separates a json map into config map of the raw values and pointers map.
+pub fn get_maps_from_raw_json(
+    json_map: Map<String, Value>,
+) -> (BTreeMap<ParamPath, SerializedParam>, BTreeMap<ParamPath, ParamPath>) {
+    let mut config_map: BTreeMap<String, SerializedParam> = BTreeMap::new();
+    let mut pointers_map: BTreeMap<String, ParamPath> = BTreeMap::new();
+    for (param_path, stored_param) in json_map {
+        if let Ok(ser_param) = serde_json::from_value::<SerializedParam>(stored_param.clone()) {
+            config_map.insert(param_path.to_owned(), ser_param);
+        } else if let Ok(pointer_param) = serde_json::from_value::<PointerParam>(stored_param) {
+            pointers_map.insert(param_path.to_owned(), pointer_param.pointer_target);
+        } else {
+            unreachable!("Invalid type in the json config map")
+        }
+    }
+    (config_map, pointers_map)
+}
+
+/// Sets values in the config map to the params in the pointers map.
+pub fn update_config_map_by_pointers(
+    config_map: &mut BTreeMap<ParamPath, SerializedParam>,
+    pointers_map: &BTreeMap<ParamPath, ParamPath>,
+) -> Result<(), SubConfigError> {
+    for (param_path, target_param_path) in pointers_map {
+        let Some(serialized_param_target) = config_map.get(target_param_path) else {
+            return Err(SubConfigError::PointerTargetNotFound { target_param: target_param_path.to_owned() });
+        };
+        config_map.insert(param_path.to_owned(), serialized_param_target.clone());
+    }
+    Ok(())
 }
