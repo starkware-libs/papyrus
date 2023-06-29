@@ -189,7 +189,7 @@ impl ConfigBuilder {
                 }
 
                 if let Some(storage_path) = args.try_get_one::<PathBuf>("storage")? {
-                    self.config.storage.db_config.path = storage_path.to_owned();
+                    self.config.storage.db_config.path_prefix = storage_path.to_owned();
                 }
 
                 if let Some(http_headers) = args.try_get_one::<String>("http_headers")? {
@@ -230,7 +230,7 @@ impl ConfigBuilder {
     fn propagate_chain_id(mut self) -> Self {
         self.config.gateway.chain_id = self.chain_id.clone();
         // Assuming a valid path.
-        self.config.storage.db_config.path.push(self.chain_id.0.as_str());
+        self.config.storage.db_config.chain_id = self.chain_id.clone();
         self
     }
 }

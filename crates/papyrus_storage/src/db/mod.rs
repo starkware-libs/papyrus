@@ -10,8 +10,9 @@ use std::result;
 use std::sync::Arc;
 
 use libmdbx::{Cursor, DatabaseFlags, Geometry, WriteFlags, WriteMap};
-use papyrus_config::{ser_param, ParamPath, SerdeConfig, SerializedParam};
+use papyrus_config::{ser_param, ParamPath, SerdeConfig, SerializedParam, DEFAULT_CHAIN_ID};
 use serde::{Deserialize, Serialize};
+use starknet_api::core::ChainId;
 
 use crate::db::serialization::{StorageSerde, StorageSerdeEx};
 
@@ -33,7 +34,8 @@ type DbValueType<'env> = Cow<'env, [u8]>;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct DbConfig {
-    pub path: PathBuf,
+    pub path_prefix: PathBuf,
+    pub chain_id: ChainId,
     pub min_size: usize,
     pub max_size: usize,
     pub growth_step: isize,
@@ -42,7 +44,8 @@ pub struct DbConfig {
 impl Default for DbConfig {
     fn default() -> Self {
         DbConfig {
-            path: PathBuf::from("./data"),
+            path_prefix: PathBuf::from("./data"),
+            chain_id: ChainId(DEFAULT_CHAIN_ID.to_string()),
             min_size: 1 << 20,    // 1MB
             max_size: 1 << 40,    // 1TB
             growth_step: 1 << 26, // 64MB
@@ -54,10 +57,15 @@ impl SerdeConfig for DbConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         BTreeMap::from_iter([
             ser_param(
-                "path",
-                &self.path,
-                "Path of the node's storage directory, the storage file path will be \
-                 <path>/<chain_id>. The path is not created automatically.",
+                "path_prefix",
+                &self.path_prefix,
+                "Prefix of the path of the node's storage directory, the storage file path will be \
+                 <path_prefix>/<chain_id>. The path is not created automatically.",
+            ),
+            ser_param(
+                "chain_id",
+                &self.chain_id,
+                "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
             ),
             ser_param(
                 "min_size",
@@ -79,6 +87,11 @@ impl SerdeConfig for DbConfig {
     }
 }
 
+impl DbConfig {
+    fn path(&self) -> PathBuf {
+        self.path_prefix.join(self.chain_id.0.as_str())
+    }
+}
 /// A single table statistics.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbTableStats {
@@ -114,7 +127,7 @@ pub(crate) fn open_env(config: DbConfig) -> Result<(DbReader, DbWriter)> {
                 ..Default::default()
             })
             .set_max_dbs(MAX_DBS)
-            .open(&config.path)?,
+            .open(&config.path())?,
     );
     Ok((DbReader { env: env.clone() }, DbWriter { env }))
 }

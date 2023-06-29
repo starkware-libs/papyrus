@@ -41,9 +41,9 @@ monitoring_gateway:
 # Node's storage configuration.
 storage:
     db:
-        # Path of the node's storage directory, the storage file path will be <path>/<chain_id>.
+        # Prefix of the path of the node's storage directory, the storage file path will be <path_prefix>/<chain_id>.
         # The path is not created automatically.
-        path: ./data
+        path_prefix: ./data
         # The minimum size of the node's storage in bytes.
         min_size: 1048576 # 1MB
         # The maximum size of the node's storage in bytes.
