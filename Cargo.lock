@@ -3876,6 +3876,7 @@ dependencies = [
  "anyhow",
  "assert_matches",
  "base64 0.13.1",
+ "camelpaste",
  "futures",
  "futures-util",
  "hex",
