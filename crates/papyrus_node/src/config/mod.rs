@@ -18,7 +18,7 @@ use papyrus_storage::StorageConfig;
 use papyrus_sync::{CentralSourceConfig, SyncConfig};
 use serde::{Deserialize, Serialize};
 use starknet_api::core::ChainId;
-use starknet_client::RetryConfig;
+use starknet_reader_client::RetryConfig;
 
 use crate::version::VERSION_FULL;
 
