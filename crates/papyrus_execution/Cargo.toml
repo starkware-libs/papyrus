@@ -1,0 +1,20 @@
+[package]
+name = "papyrus_execution"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+blockifier.workspace = true
+cairo-vm.workspace = true
+papyrus_storage = { path = "../papyrus_storage" }
+starknet_api.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+cairo-lang-starknet.workspace = true
+cairo-lang-casm.workspace = true
+cairo-lang-utils.workspace = true
+indexmap = { workspace = true, features = ["serde"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+test_utils = { path = "../test_utils" }
