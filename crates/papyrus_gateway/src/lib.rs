@@ -116,7 +116,7 @@ fn get_block_status<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
     block_number: BlockNumber,
 ) -> Result<BlockStatus, ErrorObjectOwned> {
-    let base_layer_tip = txn.get_base_layer_tip_marker().map_err(internal_server_error)?;
+    let base_layer_tip = txn.get_base_layer_block_marker().map_err(internal_server_error)?;
     let status = if block_number < base_layer_tip {
         BlockStatus::AcceptedOnL1
     } else {
