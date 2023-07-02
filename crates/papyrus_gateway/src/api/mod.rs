@@ -50,6 +50,10 @@ pub enum JsonRpcError {
     NoBlocks,
     #[error("Contract not found.")]
     ContractNotFound = 20,
+    #[error("Invalid message selector.")]
+    InvalidMessageSelector = 21,
+    #[error("Invalid call data.")]
+    InvalidCallData = 22,
     #[error("Block not found.")]
     BlockNotFound = 24,
     #[error("Transaction hash not found.")]
@@ -64,6 +68,8 @@ pub enum JsonRpcError {
     InvalidContinuationToken = 33,
     #[error("Too many keys provided in a filter.")]
     TooManyKeysInFilter = 34,
+    #[error("Contract error.")]
+    ContractError = 40,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
