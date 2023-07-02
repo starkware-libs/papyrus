@@ -14,7 +14,7 @@ use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContract
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass as sn_api_ContractClass, StateDiff, StorageKey};
 use starknet_api::{patricia_key, stark_felt};
-use starknet_client::{
+use starknet_reader_client::{
     Block, ClientError, ContractClass, DeclaredClassHashEntry, DeployedContract,
     GenericContractClass, GlobalRoot, MockStarknetClientTrait, ReplacedClass, StateUpdate,
     StorageEntry,
@@ -212,7 +212,7 @@ async fn stream_state_updates() {
         compiled_class_hash: compiled_class_hash2,
     };
 
-    let client_state_diff1 = starknet_client::StateDiff {
+    let client_state_diff1 = starknet_reader_client::StateDiff {
         storage_diffs: IndexMap::from([(contract_address1, vec![StorageEntry { key, value }])]),
         deployed_contracts: vec![
             DeployedContract { address: contract_address1, class_hash: class_hash2 },
@@ -226,7 +226,7 @@ async fn stream_state_updates() {
             class_hash: class_hash4,
         }],
     };
-    let client_state_diff2 = starknet_client::StateDiff::default();
+    let client_state_diff2 = starknet_reader_client::StateDiff::default();
 
     let block_state_update1 = StateUpdate {
         block_hash: block_hash1,
