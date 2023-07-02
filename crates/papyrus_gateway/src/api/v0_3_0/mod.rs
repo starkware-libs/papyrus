@@ -2,10 +2,10 @@ use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
 use papyrus_proc_macros::versioned_rpc;
 use starknet_api::block::BlockNumber;
-use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::StorageKey;
-use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
+use starknet_api::transaction::{Calldata, TransactionHash, TransactionOffsetInBlock};
 
 use super::{BlockHashAndNumber, BlockId, EventFilter, EventsChunk, GatewayContractClass};
 use crate::block::Block;
@@ -109,4 +109,14 @@ pub trait JsonRpc {
     /// Returns all events matching the given filter.
     #[method(name = "getEvents")]
     fn get_events(&self, filter: EventFilter) -> RpcResult<EventsChunk>;
+
+    /// Calls a function in a contract and returns the return value
+    #[method(name = "call")]
+    fn call(
+        &self,
+        contract_address: ContractAddress,
+        entry_point_selector: EntryPointSelector,
+        calldata: Calldata,
+        block_id: BlockId,
+    ) -> RpcResult<Vec<StarkFelt>>;
 }
