@@ -27,3 +27,8 @@ fn validate_load_and_dump<TransactionType: for<'a> Deserialize<'a> + Serialize>(
     let json_value: serde_json::Value = serde_json::from_str(&json_str).unwrap();
     assert_eq!(json_value, dump_result.unwrap());
 }
+
+#[test]
+fn load_and_dump_deploy_account_same_string() {
+    validate_load_and_dump::<DeployAccountTransaction>("deploy_account.json");
+}
