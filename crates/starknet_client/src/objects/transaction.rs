@@ -229,6 +229,9 @@ impl From<DeployAccountTransaction> for starknet_api::transaction::DeployAccount
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct IntermediateInvokeTransaction {
     pub calldata: Calldata,
+    // In early versions of starknet, the `sender_address` field was originally named
+    // `contract_address`.
+    #[serde(alias = "contract_address")]
     pub sender_address: ContractAddress,
     pub entry_point_selector: Option<EntryPointSelector>,
     #[serde(default)]

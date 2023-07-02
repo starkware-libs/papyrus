@@ -21,6 +21,13 @@ fn load_invoke_transaction_succeeds() {
 }
 
 #[test]
+fn load_invoke_with_contract_address_transaction_succeeds() {
+    let json_str: String = read_resource_file("invoke_transaction.json");
+    let json_str = json_str.replace("sender_address", "contract_address");
+    assert_ok!(serde_json::from_str::<IntermediateInvokeTransaction>(&json_str));
+}
+
+#[test]
 fn load_l1_handler_transaction_succeeds() {
     assert_ok!(serde_json::from_str::<L1HandlerTransaction>(&read_resource_file(
         "invoke_transaction_l1_handler.json"
