@@ -23,7 +23,7 @@ starknet:
 
 deployment:
   # Optional - nodeSelector
-  node_selector:
+  nodeSelector:
   # Optional - tolerations
   tolerations:
   # The default resources for a pod.
