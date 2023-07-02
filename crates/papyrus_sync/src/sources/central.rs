@@ -19,7 +19,7 @@ use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::{ContractClass, StateDiff};
 use starknet_api::StarknetApiError;
-use starknet_client::{
+use starknet_reader_client::{
     ClientCreationError, ClientError, GenericContractClass, RetryConfig, StarknetClient,
     StarknetClientTrait,
 };

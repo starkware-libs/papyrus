@@ -11,7 +11,7 @@ use papyrus_storage::StorageReader;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 use starknet_api::state::{StateDiff, StateNumber};
-use starknet_client::{ClientResult, StarknetClientTrait, StateUpdate};
+use starknet_reader_client::{ClientResult, StarknetClientTrait, StateUpdate};
 use tracing::log::trace;
 use tracing::{debug, instrument};
 

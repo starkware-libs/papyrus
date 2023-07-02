@@ -26,7 +26,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 serde_yaml.workspace = true
 starknet_api.workspace = true
-starknet_client = { path = "../starknet_client" }
+starknet_reader_client = { path = "../starknet_reader_client" }
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
 tokio-stream.workspace = true

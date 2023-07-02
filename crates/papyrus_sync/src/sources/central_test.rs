@@ -14,7 +14,7 @@ use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContract
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass as sn_api_ContractClass, StateDiff, StorageKey};
 use starknet_api::{patricia_key, stark_felt};
-use starknet_client::{
+use starknet_reader_client::{
     Block, ClientError, ContractClass, DeclaredClassHashEntry, DeployedContract,
     GenericContractClass, GlobalRoot, MockStarknetClientTrait, ReplacedClass, StateUpdate,
     StorageEntry,
