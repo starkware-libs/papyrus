@@ -8,6 +8,8 @@ mod state;
 #[cfg(test)]
 mod test_utils;
 mod transaction;
+#[cfg(test)]
+mod transaction_test;
 
 use std::fmt::Display;
 use std::net::SocketAddr;
