@@ -1,18 +1,25 @@
+use std::vec;
+
 use assert_matches::assert_matches;
+use camelpaste::paste;
 use starknet_api::core::{ContractAddress, PatriciaKey};
 use starknet_api::hash::StarkHash;
 use starknet_api::patricia_key;
 use starknet_api::transaction::{EventIndexInTransactionOutput, TransactionOffsetInBlock};
 use test_utils::get_test_block;
 
-use crate::body::events::{EventIndex, EventsReader};
+use crate::body::events::{
+    EventIndex, EventsReader, ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput,
+    ThinDeployTransactionOutput, ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput,
+    ThinTransactionOutput,
+};
 use crate::body::{BodyStorageWriter, TransactionIndex};
 use crate::header::HeaderStorageWriter;
 use crate::test_utils::get_test_storage;
 
 #[tokio::test]
 async fn iter_events_by_key() {
-    let (storage_reader, mut storage_writer) = get_test_storage();
+    let ((storage_reader, mut storage_writer), _temp_dir) = get_test_storage();
     let from_addresses =
         vec![ContractAddress(patricia_key!("0x22")), ContractAddress(patricia_key!("0x23"))];
     let block = get_test_block(2, Some(5), Some(from_addresses), None);
@@ -61,7 +68,7 @@ async fn iter_events_by_key() {
 
 #[tokio::test]
 async fn iter_events_by_index() {
-    let (storage_reader, mut storage_writer) = get_test_storage();
+    let ((storage_reader, mut storage_writer), _temp_dir) = get_test_storage();
     let block = get_test_block(2, Some(5), None, None);
     let block_number = block.header.block_number;
     storage_writer
@@ -101,7 +108,7 @@ async fn iter_events_by_index() {
 
 #[tokio::test]
 async fn revert_events() {
-    let (storage_reader, mut storage_writer) = get_test_storage();
+    let ((storage_reader, mut storage_writer), _temp_dir) = get_test_storage();
     let block = get_test_block(2, Some(5), None, None);
     let block_number = block.header.block_number;
     storage_writer
@@ -175,3 +182,30 @@ async fn revert_events() {
         }
     }
 }
+
+/// macro for testing events_contract_addresses on all the variants of ThinTransactionOutput
+macro_rules! test_events_contract_addresses_macro {
+    ($variant:ident, $variant_input:ident) => {
+        paste! {
+            #[tokio::test]
+            async fn [<events_contract_addresses_ $variant:lower>]() {
+                let event_contract_address_1 = ContractAddress(patricia_key!("0x12"));
+                let event_contract_address_2 = ContractAddress(patricia_key!("0x17"));
+                let output = $variant_input {
+                    events_contract_addresses: vec![event_contract_address_1, event_contract_address_2],
+                    ..Default::default()
+                };
+                let output = ThinTransactionOutput::$variant(output);
+                let res = output.events_contract_addresses();
+                assert_eq!(res[0], event_contract_address_1);
+                assert_eq!(res[1], event_contract_address_2);
+            }
+        }
+    };
+}
+
+test_events_contract_addresses_macro!(Declare, ThinDeclareTransactionOutput);
+test_events_contract_addresses_macro!(Deploy, ThinDeployTransactionOutput);
+test_events_contract_addresses_macro!(DeployAccount, ThinDeployAccountTransactionOutput);
+test_events_contract_addresses_macro!(Invoke, ThinInvokeTransactionOutput);
+test_events_contract_addresses_macro!(L1Handler, ThinL1HandlerTransactionOutput);

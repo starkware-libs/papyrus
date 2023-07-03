@@ -1009,6 +1009,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "camelpaste"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02d88a780e6aa14b75d7be99f374d8b5c315aaf9c12ada1e2b1cb281468584c9"
+
+[[package]]
 name = "camino"
 version = "1.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3870,6 +3876,7 @@ dependencies = [
  "anyhow",
  "assert_matches",
  "base64 0.13.1",
+ "camelpaste",
  "futures",
  "futures-util",
  "hex",
@@ -3976,6 +3983,7 @@ dependencies = [
  "cairo-lang-casm",
  "cairo-lang-starknet",
  "cairo-lang-utils",
+ "camelpaste",
  "flate2",
  "futures-util",
  "indexmap",
@@ -5391,7 +5399,8 @@ dependencies = [
 [[package]]
 name = "starknet_api"
 version = "0.1.0"
-source = "git+https://github.com/starkware-libs/starknet-api?rev=a4c78ff#a4c78ff11e8b661eb8824e6d5adb2cbd36e77a2a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f0bba8e26911c7ca40f38589c32d2d41bc6f82769cd3fde03c69ddcfe002c33"
 dependencies = [
  "cairo-lang-starknet",
  "derive_more",

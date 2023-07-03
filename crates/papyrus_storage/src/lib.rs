@@ -6,6 +6,7 @@
 //!
 //! [`Starknet`]: https://starknet.io/
 
+pub mod base_layer;
 pub mod body;
 pub mod compiled_class;
 pub mod compression_utils;
@@ -289,6 +290,7 @@ pub enum MarkerKind {
     Body,
     State,
     CompiledClass,
+    BaseLayerBlock,
 }
 
 pub type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;

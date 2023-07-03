@@ -83,6 +83,7 @@ impl Transaction {
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(deny_unknown_fields)]
 pub struct L1HandlerTransaction {
     pub transaction_hash: TransactionHash,
     pub version: TransactionVersion,
@@ -108,6 +109,7 @@ impl From<L1HandlerTransaction> for starknet_api::transaction::L1HandlerTransact
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct IntermediateDeclareTransaction {
     pub class_hash: ClassHash,
     pub compiled_class_hash: Option<CompiledClassHash>,
@@ -171,6 +173,7 @@ impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::Decl
 }
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct DeployTransaction {
     pub contract_address: ContractAddress,
     pub contract_address_salt: ContractAddressSalt,
@@ -196,6 +199,7 @@ impl From<DeployTransaction> for starknet_api::transaction::DeployTransaction {
 }
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct DeployAccountTransaction {
     pub contract_address: ContractAddress,
     pub contract_address_salt: ContractAddressSalt,
@@ -227,8 +231,12 @@ impl From<DeployAccountTransaction> for starknet_api::transaction::DeployAccount
 }
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct IntermediateInvokeTransaction {
     pub calldata: Calldata,
+    // In early versions of starknet, the `sender_address` field was originally named
+    // `contract_address`.
+    #[serde(alias = "contract_address")]
     pub sender_address: ContractAddress,
     pub entry_point_selector: Option<EntryPointSelector>,
     #[serde(default)]

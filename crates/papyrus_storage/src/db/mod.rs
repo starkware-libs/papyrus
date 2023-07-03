@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use libmdbx::{Cursor, DatabaseFlags, Geometry, WriteFlags, WriteMap};
 use serde::{Deserialize, Serialize};
+use starknet_api::core::ChainId;
 
 use crate::db::serialization::{StorageSerde, StorageSerdeEx};
 
@@ -31,10 +32,17 @@ type DbValueType<'env> = Cow<'env, [u8]>;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct DbConfig {
-    pub path: PathBuf,
+    pub path_prefix: PathBuf,
+    pub chain_id: ChainId,
     pub min_size: usize,
     pub max_size: usize,
     pub growth_step: isize,
+}
+
+impl DbConfig {
+    fn path(&self) -> PathBuf {
+        self.path_prefix.join(self.chain_id.0.as_str())
+    }
 }
 
 /// A single table statistics.
@@ -72,7 +80,7 @@ pub(crate) fn open_env(config: DbConfig) -> Result<(DbReader, DbWriter)> {
                 ..Default::default()
             })
             .set_max_dbs(MAX_DBS)
-            .open(&config.path)?,
+            .open(&config.path())?,
     );
     Ok((DbReader { env: env.clone() }, DbWriter { env }))
 }

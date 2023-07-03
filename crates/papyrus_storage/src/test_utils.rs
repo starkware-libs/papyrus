@@ -1,12 +1,12 @@
 use rand::Rng;
 use rand_chacha::ChaCha8Rng;
 use starknet_api::block::{BlockHash, BlockNumber};
-use starknet_api::core::ContractAddress;
+use starknet_api::core::{ChainId, ContractAddress};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::transaction::{
     EventIndexInTransactionOutput, Fee, MessageToL1, TransactionOffsetInBlock,
 };
-use tempfile::tempdir;
+use tempfile::{tempdir, TempDir};
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
 
 use crate::body::events::{
@@ -22,19 +22,29 @@ use crate::{
     StorageWriter,
 };
 
-pub fn get_test_config() -> DbConfig {
+/// Returns a db config and the temporary directory that holds this db.
+/// The TempDir object is returned as a handler for the lifetime of this object (the temp
+/// directory), thus make sure the directory won't be destroyed. The caller should propagate the
+/// TempDir object until it is no longer needed. When the TempDir object is dropped, the directory
+/// is deleted.
+pub fn get_test_config() -> (DbConfig, TempDir) {
     let dir = tempdir().unwrap();
     println!("{dir:?}");
-    DbConfig {
-        path: dir.path().to_path_buf(),
-        min_size: 1 << 20,    // 1MB
-        max_size: 1 << 35,    // 32GB
-        growth_step: 1 << 26, // 64MB
-    }
+    (
+        DbConfig {
+            path_prefix: dir.path().to_path_buf(),
+            chain_id: ChainId("".to_owned()),
+            min_size: 1 << 20,    // 1MB
+            max_size: 1 << 35,    // 32GB
+            growth_step: 1 << 26, // 64MB
+        },
+        dir,
+    )
 }
-pub fn get_test_storage() -> (StorageReader, StorageWriter) {
-    let config = get_test_config();
-    open_storage(config).unwrap()
+
+pub fn get_test_storage() -> ((StorageReader, StorageWriter), TempDir) {
+    let (config, temp_dir) = get_test_config();
+    ((open_storage(config).unwrap()), temp_dir)
 }
 
 auto_impl_get_test_instance! {

@@ -1,4 +1,4 @@
-use assert::assert_ok;
+use assert::{assert_err, assert_ok};
 
 use super::super::test_utils::read_resource::read_resource_file;
 use super::transaction::{
@@ -21,6 +21,13 @@ fn load_invoke_transaction_succeeds() {
 }
 
 #[test]
+fn load_invoke_with_contract_address_transaction_succeeds() {
+    let json_str: String = read_resource_file("invoke_transaction.json");
+    let json_str = json_str.replace("sender_address", "contract_address");
+    assert_ok!(serde_json::from_str::<IntermediateInvokeTransaction>(&json_str));
+}
+
+#[test]
 fn load_l1_handler_transaction_succeeds() {
     assert_ok!(serde_json::from_str::<L1HandlerTransaction>(&read_resource_file(
         "invoke_transaction_l1_handler.json"
@@ -40,6 +47,22 @@ fn load_transaction_succeeds() {
         ["deploy_transaction.json", "invoke_transaction.json", "declare_transaction.json"]
     {
         assert_ok!(serde_json::from_str::<Transaction>(&read_resource_file(file_name)));
+    }
+}
+
+#[test]
+fn load_transaction_unknown_field_fails() {
+    for file_name in
+        ["deploy_transaction.json", "invoke_transaction.json", "declare_transaction.json"]
+    {
+        let mut json_value: serde_json::Value =
+            serde_json::from_str(&read_resource_file(file_name)).unwrap();
+        json_value
+            .as_object_mut()
+            .unwrap()
+            .insert("unknown_field".to_string(), serde_json::Value::Null);
+        let json_str = serde_json::to_string(&json_value).unwrap();
+        assert_err!(serde_json::from_str::<Transaction>(&json_str));
     }
 }
 

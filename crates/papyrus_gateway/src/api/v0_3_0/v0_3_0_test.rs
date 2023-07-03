@@ -8,6 +8,7 @@ use jsonrpsee::core::params::ObjectParams;
 use jsonrpsee::core::Error;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonschema::JSONSchema;
+use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::body::{BodyStorageWriter, TransactionIndex};
 use papyrus_storage::header::HeaderStorageWriter;
@@ -248,6 +249,23 @@ async fn get_block_w_full_transactions() {
         .unwrap();
     assert_eq!(block, expected_block);
 
+    // Ask for a block that was accepted on L1.
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .update_base_layer_block_marker(&expected_block.header.block_number.next())
+        .unwrap()
+        .commit()
+        .unwrap();
+    let block = module
+        .call::<_, Block>(
+            "starknet_V0_3_0_getBlockWithTxs",
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header.block_hash))],
+        )
+        .await
+        .unwrap();
+    assert_eq!(block.status, BlockStatus::AcceptedOnL1);
+
     // Ask for an invalid block hash.
     let err = module
         .call::<_, Block>(
@@ -328,6 +346,23 @@ async fn get_block_w_transaction_hashes() {
         .await
         .unwrap();
     assert_eq!(block, expected_block);
+
+    // Ask for a block that was accepted on L1.
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .update_base_layer_block_marker(&expected_block.header.block_number.next())
+        .unwrap()
+        .commit()
+        .unwrap();
+    let block = module
+        .call::<_, Block>(
+            "starknet_V0_3_0_getBlockWithTxHashes",
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header.block_hash))],
+        )
+        .await
+        .unwrap();
+    assert_eq!(block.status, BlockStatus::AcceptedOnL1);
 
     // Ask for an invalid block hash.
     let err = module
@@ -532,7 +567,7 @@ async fn get_transaction_receipt() {
             block.header.block_hash,
             block.header.block_number,
         ),
-        status: TransactionStatus::default(),
+        status: TransactionStatus::AcceptedOnL2,
     };
     let res = module
         .call::<_, TransactionReceiptWithStatus>(
@@ -548,6 +583,23 @@ async fn get_transaction_receipt() {
         serde_json::to_string(&res).unwrap(),
         serde_json::to_string(&expected_receipt).unwrap(),
     );
+
+    // Ask for a transaction in a block that was accepted on L1.
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .update_base_layer_block_marker(&block.header.block_number.next())
+        .unwrap()
+        .commit()
+        .unwrap();
+    let res = module
+        .call::<_, TransactionReceiptWithStatus>(
+            "starknet_V0_3_0_getTransactionReceipt",
+            [transaction.transaction_hash()],
+        )
+        .await
+        .unwrap();
+    assert_eq!(res.status, TransactionStatus::AcceptedOnL1);
 
     // Ask for an invalid transaction.
     let err = module
@@ -1510,7 +1562,7 @@ async fn get_events_invalid_ct() {
 
 #[tokio::test]
 async fn serialize_returns_valid_json() {
-    let (storage_reader, mut storage_writer) = get_test_storage();
+    let ((storage_reader, mut storage_writer), _temp_dir) = get_test_storage();
     let mut rng = get_rng();
     let parent_block = starknet_api::block::Block::default();
     let block = starknet_api::block::Block {

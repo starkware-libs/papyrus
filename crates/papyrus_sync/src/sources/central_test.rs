@@ -33,10 +33,11 @@ async fn last_block_number() {
     const EXPECTED_LAST_BLOCK_NUMBER: BlockNumber = BlockNumber(9);
     mock.expect_block_number().times(1).returning(|| Ok(Some(EXPECTED_LAST_BLOCK_NUMBER)));
 
+    let ((reader, _), _temp_dir) = get_test_storage();
     let central_source = GenericCentralSource {
         starknet_client: Arc::new(mock),
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
-        storage_reader: get_test_storage().0,
+        storage_reader: reader,
     };
 
     let last_block_number = central_source.get_block_marker().await.unwrap().prev().unwrap();
@@ -56,10 +57,11 @@ async fn stream_block_headers() {
             .times(1)
             .returning(|_block_number| Ok(Some(Block::default())));
     }
+    let ((reader, _), _temp_dir) = get_test_storage();
     let central_source = GenericCentralSource {
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
         starknet_client: Arc::new(mock),
-        storage_reader: get_test_storage().0,
+        storage_reader: reader,
     };
 
     let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
@@ -91,10 +93,11 @@ async fn stream_block_headers_some_are_missing() {
         .with(predicate::eq(BlockNumber(MISSING_BLOCK_NUMBER)))
         .times(1)
         .returning(|_| Ok(None));
+    let ((reader, _), _temp_dir) = get_test_storage();
     let central_source = GenericCentralSource {
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
         starknet_client: Arc::new(mock),
-        storage_reader: get_test_storage().0,
+        storage_reader: reader,
     };
 
     let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
@@ -138,10 +141,11 @@ async fn stream_block_headers_error() {
             Err(ClientError::BadResponseStatus { code: CODE, message: String::from(MESSAGE) })
         },
     );
+    let ((reader, _), _temp_dir) = get_test_storage();
     let central_source = GenericCentralSource {
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
         starknet_client: Arc::new(mock),
-        storage_reader: get_test_storage().0,
+        storage_reader: reader,
     };
 
     let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
@@ -272,11 +276,11 @@ async fn stream_state_updates() {
     mock.expect_class_by_hash().with(predicate::eq(class_hash3)).times(1).returning(move |_x| {
         Ok(Some(GenericContractClass::Cairo0ContractClass(contract_class3_clone.clone())))
     });
-
+    let ((reader, _), _temp_dir) = get_test_storage();
     let central_source = GenericCentralSource {
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
         starknet_client: Arc::new(mock),
-        storage_reader: get_test_storage().0,
+        storage_reader: reader,
     };
     let initial_block_num = BlockNumber(START_BLOCK_NUMBER);
 
@@ -343,7 +347,7 @@ async fn stream_state_updates() {
 
 #[tokio::test]
 async fn stream_compiled_classes() {
-    let (reader, mut writer) = get_test_storage();
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
     writer.begin_rw_txn().unwrap().append_state_diff(
         BlockNumber(0),
         StateDiff {

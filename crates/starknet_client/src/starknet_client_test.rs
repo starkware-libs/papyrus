@@ -48,9 +48,8 @@ fn new_urls() {
 async fn get_block_number() {
     let starknet_client =
         StarknetClient::new(&mockito::server_url(), None, NODE_VERSION, get_test_config()).unwrap();
-
     // There are blocks in Starknet.
-    let mock_block = mock("GET", "/feeder_gateway/get_block")
+    let mock_block = mock("GET", "/feeder_gateway/get_block?blockNumber=latest")
         .with_status(200)
         .with_body(read_resource_file("block.json"))
         .create();
@@ -60,8 +59,10 @@ async fn get_block_number() {
 
     // There are no blocks in Starknet.
     let body = r#"{"code": "StarknetErrorCode.BLOCK_NOT_FOUND", "message": "Block number -1 was not found."}"#;
-    let mock_no_block =
-        mock("GET", "/feeder_gateway/get_block").with_status(500).with_body(body).create();
+    let mock_no_block = mock("GET", "/feeder_gateway/get_block?blockNumber=latest")
+        .with_status(500)
+        .with_body(body)
+        .create();
     let block_number = starknet_client.block_number().await.unwrap();
     mock_no_block.assert();
     assert!(block_number.is_none());
@@ -329,7 +330,7 @@ async fn retry_error_codes() {
         (StatusCode::SERVICE_UNAVAILABLE, RetryErrorCode::ServiceUnavailable),
         (StatusCode::GATEWAY_TIMEOUT, RetryErrorCode::Timeout),
     ] {
-        let mock = mock("GET", "/feeder_gateway/get_block")
+        let mock = mock("GET", "/feeder_gateway/get_block?blockNumber=latest")
             .with_status(status_code.as_u16().into())
             .expect(5)
             .create();

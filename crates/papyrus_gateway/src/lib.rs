@@ -8,6 +8,8 @@ mod state;
 #[cfg(test)]
 mod test_utils;
 mod transaction;
+#[cfg(test)]
+mod transaction_test;
 
 use std::fmt::Display;
 use std::net::SocketAddr;
@@ -16,13 +18,14 @@ use jsonrpsee::server::{ServerBuilder, ServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
 use jsonrpsee::types::ErrorObjectOwned;
+use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::db::TransactionKind;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageReader, StorageTxn};
 use serde::{Deserialize, Serialize};
-use starknet_api::block::BlockNumber;
+use starknet_api::block::{BlockNumber, BlockStatus};
 use starknet_api::core::ChainId;
 use tracing::{debug, error, info, instrument};
 
@@ -111,6 +114,19 @@ fn get_block_txs_by_number<Mode: TransactionKind>(
     Ok(transactions.into_iter().map(Transaction::from).collect())
 }
 
+fn get_block_status<Mode: TransactionKind>(
+    txn: &StorageTxn<'_, Mode>,
+    block_number: BlockNumber,
+) -> Result<BlockStatus, ErrorObjectOwned> {
+    let base_layer_tip = txn.get_base_layer_block_marker().map_err(internal_server_error)?;
+    let status = if block_number < base_layer_tip {
+        BlockStatus::AcceptedOnL1
+    } else {
+        BlockStatus::AcceptedOnL2
+    };
+
+    Ok(status)
+}
 struct ContinuationTokenAsStruct(EventIndex);
 
 impl ContinuationToken {

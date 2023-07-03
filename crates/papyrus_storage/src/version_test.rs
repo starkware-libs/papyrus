@@ -6,7 +6,7 @@ use crate::{StorageError, STORAGE_VERSION};
 
 #[tokio::test]
 async fn version() {
-    let (reader, mut writer) = get_test_storage();
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
 
     // No version initially - use crate version.
     let version = reader.begin_ro_txn().unwrap().get_version().unwrap();
