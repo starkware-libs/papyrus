@@ -1,0 +1,14 @@
+[package]
+name = "starknet_writer_client"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license-file.workspace = true
+
+[dependencies]
+starknet_api.workspace = true
+serde = { workspace = true, features = ["derive"] }
+
+[dev-dependencies]
+assert.workspace = true
+serde_json = { workspace = true, features = ["arbitrary_precision"] }

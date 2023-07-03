@@ -5439,6 +5439,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "starknet_writer_client"
+version = "0.1.0-alpha"
+dependencies = [
+ "assert",
+ "serde",
+ "serde_json",
+ "starknet_api",
+]
+
+[[package]]
 name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
