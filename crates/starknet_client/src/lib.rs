@@ -1,4 +1,4 @@
-//! Client implementation for [`starknet`] gateway.
+//! Client implementation for [`starknet`] feeder gateway.
 //!
 //! [`starknet`]: https://starknet.io/
 
