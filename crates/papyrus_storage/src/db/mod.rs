@@ -2,7 +2,6 @@
 mod db_test;
 pub mod serialization;
 
-use papyrus_config::DEFAULT_CHAIN_ID;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
@@ -11,7 +10,7 @@ use std::result;
 use std::sync::Arc;
 
 use libmdbx::{Cursor, DatabaseFlags, Geometry, WriteFlags, WriteMap};
-use papyrus_config::{ser_param, ParamPath, SerdeConfig, SerializedParam};
+use papyrus_config::{ser_param, ParamPath, SerdeConfig, SerializedParam, DEFAULT_CHAIN_ID};
 use serde::{Deserialize, Serialize};
 use starknet_api::core::ChainId;
 
@@ -59,7 +58,7 @@ impl SerdeConfig for DbConfig {
         BTreeMap::from_iter([
             ser_param(
                 "path_prefix",
-                &self.path,
+                &self.path_prefix,
                 "Prefix of the path of the node's storage directory, the storage file path \
                 will be <path_prefix>/<chain_id>. The path is not created automatically.",
             ),
