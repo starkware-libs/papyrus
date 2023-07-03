@@ -448,29 +448,30 @@ async fn sync_with_revert() {
 async fn test_unrecoverable_sync_error_flow() {
     let _ = simple_logger::init_with_env();
 
+    const BLOCK_NUMBER: BlockNumber = BlockNumber(1);
+    const WRONG_BLOCK_NUMBER: BlockNumber = BlockNumber(2);
+
     // Mock central with one block but return wrong header.
     let mut mock = MockCentralSourceTrait::new();
-    mock.expect_get_block_marker().returning(|| Ok(BlockNumber(1)));
+    mock.expect_get_block_marker().returning(|| Ok(BLOCK_NUMBER));
     mock.expect_stream_new_blocks().returning(move |_, _| {
         let blocks_stream: BlocksStream<'_> = stream! {
-            let block_number = BlockNumber(1);
             let header = BlockHeader {
-                    block_number,
-                    block_hash: create_block_hash(block_number, false),
-                    parent_hash: create_block_hash(block_number.prev().unwrap_or_default(), false),
+                    block_number: BLOCK_NUMBER,
+                    block_hash: create_block_hash(BLOCK_NUMBER, false),
+                    parent_hash: create_block_hash(BLOCK_NUMBER.prev().unwrap_or_default(), false),
                     ..BlockHeader::default()
                 };
-            yield Ok((block_number, Block { header, body: BlockBody::default() }));
+            yield Ok((BLOCK_NUMBER, Block { header, body: BlockBody::default() }));
         }
         .boxed();
         blocks_stream
     });
     mock.expect_stream_state_updates().returning(move |_, _| {
         let state_stream: StateUpdatesStream<'_> = stream! {
-            let block_number = BlockNumber(1);
             yield Ok((
-                block_number,
-                create_block_hash(block_number, false),
+                BLOCK_NUMBER,
+                create_block_hash(BLOCK_NUMBER, false),
                 StateDiff::default(),
                 IndexMap::new(),
             ));
