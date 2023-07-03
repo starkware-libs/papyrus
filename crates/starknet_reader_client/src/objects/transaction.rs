@@ -27,13 +27,18 @@ fn tx_v2() -> TransactionVersion {
 
 // TODO(dan): consider extracting common fields out (version, hash, type).
 #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
-#[serde(untagged)]
+#[serde(tag = "type")]
 // Note: When deserializing an untagged enum, no variant can be a prefix of variants to follow.
 pub enum Transaction {
+    #[serde(rename = "DECLARE")]
     Declare(IntermediateDeclareTransaction),
+    #[serde(rename = "DEPLOY_ACCOUNT")]
     DeployAccount(DeployAccountTransaction),
+    #[serde(rename = "DEPLOY")]
     Deploy(DeployTransaction),
+    #[serde(rename = "INVOKE_FUNCTION")]
     Invoke(IntermediateInvokeTransaction),
+    #[serde(rename = "L1_HANDLER")]
     L1Handler(L1HandlerTransaction),
 }
 
@@ -73,11 +78,11 @@ impl Transaction {
 
     pub fn transaction_type(&self) -> TransactionType {
         match self {
-            Transaction::Declare(tx) => tx.r#type,
-            Transaction::Deploy(tx) => tx.r#type,
-            Transaction::DeployAccount(tx) => tx.r#type,
-            Transaction::Invoke(tx) => tx.r#type,
-            Transaction::L1Handler(tx) => tx.r#type,
+            Transaction::Declare(_) => TransactionType::Declare,
+            Transaction::Deploy(_) => TransactionType::Deploy,
+            Transaction::DeployAccount(_) => TransactionType::DeployAccount,
+            Transaction::Invoke(_) => TransactionType::InvokeFunction,
+            Transaction::L1Handler(_) => TransactionType::L1Handler,
         }
     }
 }
@@ -92,7 +97,6 @@ pub struct L1HandlerTransaction {
     pub contract_address: ContractAddress,
     pub entry_point_selector: EntryPointSelector,
     pub calldata: Calldata,
-    pub r#type: TransactionType,
 }
 
 impl From<L1HandlerTransaction> for starknet_api::transaction::L1HandlerTransaction {
@@ -119,7 +123,6 @@ pub struct IntermediateDeclareTransaction {
     pub version: TransactionVersion,
     pub transaction_hash: TransactionHash,
     pub signature: TransactionSignature,
-    pub r#type: TransactionType,
 }
 
 impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransaction {
@@ -182,7 +185,6 @@ pub struct DeployTransaction {
     pub transaction_hash: TransactionHash,
     #[serde(default)]
     pub version: TransactionVersion,
-    pub r#type: TransactionType,
 }
 
 impl From<DeployTransaction> for starknet_api::transaction::DeployTransaction {
@@ -211,7 +213,6 @@ pub struct DeployAccountTransaction {
     pub transaction_hash: TransactionHash,
     #[serde(default)]
     pub version: TransactionVersion,
-    pub r#type: TransactionType,
 }
 
 impl From<DeployAccountTransaction> for starknet_api::transaction::DeployAccountTransaction {
@@ -245,7 +246,6 @@ pub struct IntermediateInvokeTransaction {
     pub signature: TransactionSignature,
     pub transaction_hash: TransactionHash,
     pub version: TransactionVersion,
-    pub r#type: TransactionType,
 }
 
 impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::InvokeTransaction {
