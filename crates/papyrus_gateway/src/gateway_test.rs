@@ -9,11 +9,9 @@ use jsonrpsee::core::http_helpers::read_body;
 use jsonrpsee::core::{Error, RpcResult};
 use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::types::ErrorObjectOwned;
-use papyrus_config::{SerdeConfig, SerializedParam};
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
-use serde_json::{Map, Value};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
 use starknet_api::deprecated_contract_class::{
     EventAbiEntry, FunctionAbiEntryWithType, StructAbiEntry,
@@ -22,16 +20,16 @@ use starknet_api::transaction::{
     DeclareTransactionOutput, DeployAccountTransactionOutput, DeployTransactionOutput,
     InvokeTransactionOutput, L1HandlerTransactionOutput, Transaction,
 };
-use test_utils::{get_absolute_path, get_rng, GetTestInstance};
+use test_utils::{get_rng, GetTestInstance};
+use tower::BoxError;
+
 use crate::api::version_config::{LATEST_VERSION_ID, VERSION_CONFIG};
 use crate::api::JsonRpcError;
 use crate::deprecated_contract_class::{ContractClassAbiEntryType, ContractClassAbiEntryWithType};
 use crate::middleware::proxy_request;
 use crate::test_utils::get_test_gateway_config;
 use crate::transaction::{TransactionOutput, TransactionReceipt};
-use crate::{get_block_status, run_server, GatewayConfig, SERVER_MAX_BODY_SIZE};
-
-const DEFAULT_CONFIG_FILE: &str = "config/default_config.json";
+use crate::{get_block_status, run_server, SERVER_MAX_BODY_SIZE};
 
 #[tokio::test]
 async fn run_server_no_blocks() {
@@ -113,10 +111,8 @@ async fn test_version_middleware() {
         panic!("expected failure got: {res:?}");
     };
 }
-<<<<<<< HEAD
 
 #[test]
-<<<<<<< HEAD
 fn get_block_status_test() {
     let (reader, mut writer) = get_test_storage().0;
 
@@ -243,30 +239,3 @@ test_recipe_from_transtaction_output!(Invoke, Common);
 test_recipe_from_transtaction_output!(L1Handler, Common);
 test_recipe_from_transtaction_output!(Deploy, Deploy);
 test_recipe_from_transtaction_output!(DeployAccount, Deploy);
-=======
-/// Regression test which checks that the default config hasn't changed as well as dumping/parsing
-/// configs.
-fn test_dump_default_config() {
-    let dumped_default_gateway = GatewayConfig::default().dump();
-    insta::assert_json_snapshot!(dumped_default_gateway);
-
-    let path = get_absolute_path(DEFAULT_CONFIG_FILE);
-    let file = std::fs::File::open(path).unwrap();
-    let deserialized_default_config: Map<String, Value> = serde_json::from_reader(file).unwrap();
-
-    let mut deserialized_map: BTreeMap<String, SerializedParam> = BTreeMap::new();
-    for (key, value) in deserialized_default_config {
-        deserialized_map.insert(
-            key.to_owned(),
-            SerializedParam {
-                description: value["description"].as_str().unwrap().to_owned(),
-                value: value["value"].to_owned(),
-            },
-        );
-    }
-
-    assert_eq!(deserialized_map, dumped_default_gateway);
-}
->>>>>>> Add dump trait for sub configs. (#723)
-=======
->>>>>>> Implement SerdeConfig trate for the rest configs. (#764)
