@@ -18,7 +18,7 @@ use starknet_api::transaction::{Fee, TransactionHash, TransactionSignature, Tran
 use starknet_api::{patricia_key, stark_felt};
 
 use super::objects::state::StateUpdate;
-use super::objects::transaction::{IntermediateDeclareTransaction, TransactionType};
+use super::objects::transaction::IntermediateDeclareTransaction;
 use super::test_utils::read_resource::read_resource_file;
 use super::test_utils::retry::get_test_config;
 use super::{
@@ -83,7 +83,6 @@ async fn declare_tx_serde() {
             "0x2f2ef64daffdc72bf33b34ad024891691b8eb1d0ab70cc7f8fb71f6fd5e1f22"
         )),
         signature: TransactionSignature(vec![]),
-        r#type: TransactionType::Declare,
     };
     let raw_declare_tx = serde_json::to_string(&declare_tx).unwrap();
     assert_eq!(declare_tx, serde_json::from_str(&raw_declare_tx).unwrap());
