@@ -474,7 +474,7 @@ fn stream_new_block_headers<TCentralSource: CentralSourceTrait + Sync + Send>(
                 continue;
             }
             let up_to = min(last_block_number, BlockNumber(header_marker.0 + max_stream_size as u64));
-            debug!("Downloading blocks [{} - {}).", header_marker, up_to);
+            debug!("Downloading block headers [{} - {}).", header_marker, up_to);
             let block_stream =
                 central_source.stream_new_block_headers(header_marker, up_to).fuse();
             pin_mut!(block_stream);
@@ -507,7 +507,7 @@ fn stream_new_block_bodies<TCentralSource: CentralSourceTrait + Sync + Send>(
                 continue;
             }
             let up_to = min(last_block_number, BlockNumber(body_marker.0 + max_stream_size as u64));
-            debug!("Downloading blocks [{} - {}).", body_marker, up_to);
+            debug!("Downloading block bodies [{} - {}).", body_marker, up_to);
             let block_stream =
                 central_source.stream_new_block_bodies(body_marker, up_to).fuse();
             pin_mut!(block_stream);

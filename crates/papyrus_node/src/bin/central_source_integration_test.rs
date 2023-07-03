@@ -29,18 +29,33 @@ async fn main() {
         central_source.get_block_marker().await.expect("Central get block marker");
     let initial_block_number = BlockNumber(last_block_number.0 - STREAM_LENGTH);
 
-    let mut block_marker = initial_block_number;
+    let mut block_header_marker = initial_block_number;
     let block_header_stream =
-        central_source.stream_new_block_headers(block_marker, last_block_number).fuse();
+        central_source.stream_new_block_headers(block_header_marker, last_block_number).fuse();
     pin_mut!(block_header_stream);
     while let Some(Ok((block_number, _block))) = block_header_stream.next().await {
         assert!(
-            block_marker == block_number,
-            "Expected block number ({block_marker}) does not match the result ({block_number}).",
+            block_header_marker == block_number,
+            "Expected block number ({block_header_marker}) does not match the result \
+             ({block_number}).",
         );
-        block_marker = block_marker.next();
+        block_header_marker = block_header_marker.next();
     }
-    assert!(block_marker == last_block_number);
+    assert!(block_header_marker == last_block_number);
+
+    let mut block_body_marker = initial_block_number;
+    let block_header_stream =
+        central_source.stream_new_block_bodies(block_body_marker, last_block_number).fuse();
+    pin_mut!(block_header_stream);
+    while let Some(Ok((block_number, _block))) = block_header_stream.next().await {
+        assert!(
+            block_body_marker == block_number,
+            "Expected block number ({block_body_marker}) does not match the result \
+             ({block_number}).",
+        );
+        block_body_marker = block_body_marker.next();
+    }
+    assert!(block_body_marker == last_block_number);
 
     let mut state_marker = initial_block_number;
     let state_update_stream =
