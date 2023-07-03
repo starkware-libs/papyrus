@@ -448,12 +448,15 @@ async fn sync_with_revert() {
 async fn test_unrecoverable_sync_error_flow() {
     let _ = simple_logger::init_with_env();
 
+    const BLOCK_NUMBER: BlockNumber = BlockNumber(1);
+    const WRONG_BLOCK_NUMBER: BlockNumber = BlockNumber(2);
+
     // Mock central with one block but return wrong header.
     let mut mock = MockCentralSourceTrait::new();
-    mock.expect_get_block_marker().returning(|| Ok(BlockNumber(1)));
+    mock.expect_get_block_marker().returning(|| Ok(BLOCK_NUMBER));
     mock.expect_stream_new_blocks().returning(move |_, _| {
         let blocks_stream: BlocksStream<'_> = stream! {
-            let block_number = BlockNumber(1);
+            let block_number = BLOCK_NUMBER;
             let header = BlockHeader {
                     block_number,
                     block_hash: create_block_hash(block_number, false),
@@ -467,7 +470,7 @@ async fn test_unrecoverable_sync_error_flow() {
     });
     mock.expect_stream_state_updates().returning(move |_, _| {
         let state_stream: StateUpdatesStream<'_> = stream! {
-            let block_number = BlockNumber(1);
+            let block_number = BLOCK_NUMBER;
             yield Ok((
                 block_number,
                 create_block_hash(block_number, false),
