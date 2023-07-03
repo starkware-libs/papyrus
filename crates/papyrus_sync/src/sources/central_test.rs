@@ -407,3 +407,34 @@ async fn stream_compiled_classes() {
         assert_eq!(compiled_class, expected_compiled_class);
     }
 }
+
+#[tokio::test]
+async fn stream_block_bodies() {
+    const START_BLOCK_NUMBER: u64 = 5;
+    const END_BLOCK_NUMBER: u64 = 9;
+    let mut mock = MockStarknetClientTrait::new();
+
+    // We need to perform all the mocks before moving the mock into central_source.
+    for i in START_BLOCK_NUMBER..END_BLOCK_NUMBER {
+        mock.expect_block()
+            .with(predicate::eq(BlockNumber(i)))
+            .times(1)
+            .returning(|_block_number| Ok(Some(Block::default())));
+    }
+    let ((reader, _), _temp_dir) = get_test_storage();
+    let central_source = GenericCentralSource {
+        concurrent_requests: TEST_CONCURRENT_REQUESTS,
+        starknet_client: Arc::new(mock),
+        storage_reader: reader,
+    };
+
+    let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
+    let stream =
+        central_source.stream_new_block_bodies(expected_block_num, BlockNumber(END_BLOCK_NUMBER));
+    pin_mut!(stream);
+    while let Some(Ok((block_number, _block))) = stream.next().await {
+        assert_eq!(expected_block_num, block_number);
+        expected_block_num = expected_block_num.next();
+    }
+    assert_eq!(expected_block_num, BlockNumber(END_BLOCK_NUMBER));
+}
