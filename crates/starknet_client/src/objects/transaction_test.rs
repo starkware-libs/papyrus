@@ -67,6 +67,24 @@ fn load_transaction_unknown_field_fails() {
 }
 
 #[test]
+fn load_transaction_wrong_type_fails() {
+    for (file_name, new_type) in [
+        ("deploy_transaction.json", "INVOKE_FUNCTION"),
+        ("invoke_transaction.json", "DECLARE"),
+        ("declare_transaction.json", "DEPLOY"),
+    ] {
+        let mut json_value: serde_json::Value =
+            serde_json::from_str(&read_resource_file(file_name)).unwrap();
+        json_value
+            .as_object_mut()
+            .unwrap()
+            .insert("type".to_string(), serde_json::Value::String(new_type.to_string()));
+        let json_str = serde_json::to_string(&json_value).unwrap();
+        assert_err!(serde_json::from_str::<Transaction>(&json_str));
+    }
+}
+
+#[test]
 fn load_transaction_receipt_succeeds() {
     for file_name in [
         "transaction_receipt.json",
