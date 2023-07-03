@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use assert_matches::assert_matches;
 use async_stream::stream;
 use async_trait::async_trait;
 use futures::StreamExt;
@@ -8,7 +9,7 @@ use indexmap::IndexMap;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
-use papyrus_storage::{StorageReader, StorageWriter};
+use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::{Block, BlockBody, BlockHash, BlockHeader, BlockNumber};
 use starknet_api::hash::StarkFelt;
 use starknet_api::stark_felt;
@@ -18,10 +19,13 @@ use tracing::{debug, error};
 
 use super::central::BlocksStream;
 use crate::sources::central::{CompiledClassesStream, MockCentralSourceTrait, StateUpdatesStream};
-use crate::{CentralError, CentralSourceTrait, GenericStateSync, StateSyncResult, SyncConfig};
+use crate::{
+    CentralError, CentralSourceTrait, GenericStateSync, StateSyncError, StateSyncResult, SyncConfig,
+};
 
-const SYNC_SLEEP_DURATION: Duration = Duration::from_millis(100);
-const DURATION_BEFORE_CHECKING_STORAGE: Duration = Duration::from_millis(100);
+const SLEEP_DURATION_INT: u32 = 1000 * 1000 * 100;
+const SYNC_SLEEP_DURATION: Duration = Duration::new(0, SLEEP_DURATION_INT); // 100ms
+const DURATION_BEFORE_CHECKING_STORAGE: Duration = SYNC_SLEEP_DURATION.saturating_mul(2); // 200ms twice the sleep duration of the sync loop.
 const MAX_CHECK_STORAGE_ITERATIONS: u8 = 3;
 const STREAM_SIZE: u32 = 1000;
 
@@ -45,7 +49,7 @@ async fn check_storage(
         debug!("== Checking predicate on storage ({}/{}). ==", i + 1, MAX_CHECK_STORAGE_ITERATIONS);
         match predicate(&reader) {
             CheckStoragePredicateResult::InProgress => {
-                debug!("== Cechk finished, test still in progress. ==");
+                debug!("== Check finished, test still in progress. ==");
                 interval.tick().await;
             }
             CheckStoragePredicateResult::Passed => {
@@ -450,29 +454,30 @@ async fn sync_with_revert() {
 async fn test_unrecoverable_sync_error_flow() {
     let _ = simple_logger::init_with_env();
 
+    const BLOCK_NUMBER: BlockNumber = BlockNumber(1);
+    const WRONG_BLOCK_NUMBER: BlockNumber = BlockNumber(2);
+
     // Mock central with one block but return wrong header.
     let mut mock = MockCentralSourceTrait::new();
-    mock.expect_get_block_marker().returning(|| Ok(BlockNumber(1)));
+    mock.expect_get_block_marker().returning(|| Ok(BLOCK_NUMBER));
     mock.expect_stream_new_blocks().returning(move |_, _| {
         let blocks_stream: BlocksStream<'_> = stream! {
-            let block_number = BlockNumber(1);
             let header = BlockHeader {
-                    block_number,
-                    block_hash: create_block_hash(block_number, false),
-                    parent_hash: create_block_hash(block_number.prev().unwrap_or_default(), false),
+                    block_number: BLOCK_NUMBER,
+                    block_hash: create_block_hash(BLOCK_NUMBER, false),
+                    parent_hash: create_block_hash(BLOCK_NUMBER.prev().unwrap_or_default(), false),
                     ..BlockHeader::default()
                 };
-            yield Ok((block_number, Block { header, body: BlockBody::default() }));
+            yield Ok((BLOCK_NUMBER, Block { header, body: BlockBody::default() }));
         }
         .boxed();
         blocks_stream
     });
     mock.expect_stream_state_updates().returning(move |_, _| {
         let state_stream: StateUpdatesStream<'_> = stream! {
-            let block_number = BlockNumber(1);
             yield Ok((
-                block_number,
-                create_block_hash(block_number, false),
+                BLOCK_NUMBER,
+                create_block_hash(BLOCK_NUMBER, false),
                 StateDiff::default(),
                 IndexMap::new(),
             ));
@@ -480,7 +485,7 @@ async fn test_unrecoverable_sync_error_flow() {
         .boxed();
         state_stream
     });
-    // make get_block_hash return an hash for the wrong block number
+    // make get_block_hash return a hash for the wrong block number
     mock.expect_get_block_hash()
         .returning(|_| Ok(Some(create_block_hash(WRONG_BLOCK_NUMBER, false))));
 
@@ -488,6 +493,11 @@ async fn test_unrecoverable_sync_error_flow() {
     let sync_future = run_sync(reader.clone(), writer, mock);
     let sync_res = tokio::join! {sync_future};
     assert!(sync_res.0.is_err());
+    // expect sync to raise the unrecoverable error it gets. In this case a DB Inconsistency error.
+    assert_matches!(
+        sync_res.0.unwrap_err(),
+        StateSyncError::StorageError(StorageError::DBInconsistency { msg: _ })
+    );
 }
 
 fn create_block_hash(bn: BlockNumber, is_reverted_block: bool) -> BlockHash {
