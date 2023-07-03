@@ -95,19 +95,6 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         info!("State sync started.");
         loop {
             match self.sync_while_ok().await {
-                Err(StateSyncError::ParentBlockHashMismatch {
-                    block_number,
-                    expected_parent_block_hash,
-                    stored_parent_block_hash,
-                }) => {
-                    // A revert detected, log and restart sync loop.
-                    info!(
-                        "Detected revert while processing block {}. Parent hash of the incoming \
-                         block is {}, current block hash is {}.",
-                        block_number, expected_parent_block_hash, stored_parent_block_hash
-                    );
-                    continue;
-                }
                 // A recoverable error occurred. Sleep and try syncing again.
                 Err(err) if is_recoverable(&err) => {
                     warn!("Recoverable error encountered while syncing, error: {}", err);
@@ -138,6 +125,19 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                     block_number: _,
                     block_hash: _,
                 } => true,
+                StateSyncError::ParentBlockHashMismatch {
+                    block_number,
+                    expected_parent_block_hash,
+                    stored_parent_block_hash,
+                } => {
+                    // A revert detected, log and restart sync loop.
+                    info!(
+                        "Detected revert while processing block {}. Parent hash of the incoming \
+                         block is {}, current block hash is {}.",
+                        block_number, expected_parent_block_hash, stored_parent_block_hash
+                    );
+                    true
+                }
                 _ => false,
             }
         }
