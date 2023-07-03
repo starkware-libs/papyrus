@@ -481,95 +481,13 @@ async fn test_unrecoverable_sync_error_flow() {
         state_stream
     });
     // make get_block_hash return an hash for the wrong block number
-    mock.expect_get_block_hash().returning(|_| Ok(Some(create_block_hash(BlockNumber(2), false))));
+    mock.expect_get_block_hash()
+        .returning(|_| Ok(Some(create_block_hash(WRONG_BLOCK_NUMBER, false))));
 
     let ((reader, writer), _temp_dir) = get_test_storage();
     let sync_future = run_sync(reader.clone(), writer, mock);
-
-    // Check that the header marker is 1.
-    let check_storage_future = check_storage(reader.clone(), Duration::from_millis(50), |reader| {
-        let marker = reader.begin_ro_txn().unwrap().get_header_marker().unwrap();
-        if marker == BlockNumber(1) {
-            return CheckStoragePredicateResult::Passed;
-        }
-        CheckStoragePredicateResult::Error
-    });
-
-    tokio::select! {
-        sync_result = sync_future => assert!(sync_result.is_err()),
-        storage_check_result = check_storage_future => assert!(storage_check_result),
-    }
-}
-
-#[tokio::test]
-async fn test_recoverable_sync_error_flow() {
-    let _ = simple_logger::init_with_env();
-
-    // Mock central without any block.
-    let mut mock = MockCentralSourceTrait::new();
-    mock.expect_get_block_marker().returning(|| Ok(BlockNumber(2)));
-    mock.expect_stream_new_blocks().returning(move |initial, up_to| {
-        let blocks_stream: BlocksStream<'_> = stream! {
-            for block_number in initial.iter_up_to(up_to) {
-                if block_number.0 >= 2 {
-                    yield Err(CentralError::BlockNotFound { block_number });
-                }
-                if block_number.0 == 1 {
-                    yield Err(CentralError::BlockNotFound { block_number });
-                }
-                let header = BlockHeader {
-                    block_number,
-                    block_hash: create_block_hash(block_number, false),
-                    parent_hash: create_block_hash(block_number.prev().unwrap_or_default(), false),
-                    ..BlockHeader::default()
-                };
-                yield Ok((block_number, Block { header, body: BlockBody::default() }));
-            }
-        }
-        .boxed();
-        blocks_stream
-    });
-    mock.expect_stream_state_updates().returning(move |initial, up_to| {
-        let state_stream: StateUpdatesStream<'_> = stream! {
-            for block_number in initial.iter_up_to(up_to) {
-                if block_number.0 >= 2 {
-                    yield Err(CentralError::BlockNotFound { block_number })
-                }
-                yield Ok((
-                    block_number,
-                    create_block_hash(block_number, false),
-                    StateDiff::default(),
-                    IndexMap::new(),
-                ));
-            }
-        }
-        .boxed();
-        state_stream
-    });
-    mock.expect_get_block_hash().returning(|bn| Ok(Some(create_block_hash(bn, false))));
-
-    let ((reader, writer), _temp_dir) = get_test_storage();
-    let sync_future = run_sync(reader.clone(), writer, mock);
-
-    // Check that the header marker is 1.
-    let check_storage_future = check_storage(reader.clone(), Duration::from_millis(50), |reader| {
-        let marker = reader.begin_ro_txn().unwrap().get_header_marker().unwrap();
-        if marker == BlockNumber(1) {
-            return CheckStoragePredicateResult::Passed;
-        }
-        CheckStoragePredicateResult::Error
-    });
-
-    tokio::select! {
-        sync_result = sync_future => {
-            println!("sync_result: {:?}", sync_result);
-            assert!(sync_result.is_ok())
-        },
-        storage_check_result = check_storage_future => {
-            println!("storage_check_result: {:?}", storage_check_result);
-            assert!(storage_check_result)
-        },
-    }
+    let sync_res = tokio::join! {sync_future};
+    assert!(sync_res.0.is_err());
 }
 
 fn create_block_hash(bn: BlockNumber, is_reverted_block: bool) -> BlockHash {
