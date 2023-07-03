@@ -5443,9 +5443,11 @@ name = "starknet_writer_client"
 version = "0.1.0-alpha"
 dependencies = [
  "assert",
+ "assert_matches",
  "serde",
  "serde_json",
  "starknet_api",
+ "test_utils",
 ]
 
 [[package]]
