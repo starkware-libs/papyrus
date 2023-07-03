@@ -19,7 +19,7 @@ use jsonrpsee::server::{ServerBuilder, ServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
 use jsonrpsee::types::ErrorObjectOwned;
-use papyrus_config::{ser_param, ParamPath, SerdeConfig, SerializedParam, DEFAULT_CHAIN_ID};
+use papyrus_config::{ser_param, ParamPath, SerializeConfig, SerializedParam, DEFAULT_CHAIN_ID};
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::body::BodyStorageReader;
@@ -60,7 +60,7 @@ impl Default for GatewayConfig {
     }
 }
 
-impl SerdeConfig for GatewayConfig {
+impl SerializeConfig for GatewayConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         BTreeMap::from_iter([
             ser_param("chain_id", &self.chain_id, "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id."),
