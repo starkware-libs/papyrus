@@ -120,11 +120,8 @@ impl From<StorageConfig> for Storage {
 
 impl From<DbConfig> for Db {
     fn from(config: DbConfig) -> Self {
-        // Remove the chain_id from the path.
-        let mut path = config.path;
-        path.pop();
         Db {
-            path: Some(path),
+            path_prefix: Some(config.path_prefix),
             min_size: Some(config.min_size),
             max_size: Some(config.max_size),
             growth_step: Some(config.growth_step),
@@ -259,7 +256,7 @@ impl Storage {
 #[derive(Serialize, Deserialize, PartialEq, Debug)]
 #[serde(deny_unknown_fields)]
 struct Db {
-    path: Option<PathBuf>,
+    path_prefix: Option<PathBuf>,
     min_size: Option<usize>,
     max_size: Option<usize>,
     growth_step: Option<isize>,
@@ -267,8 +264,8 @@ struct Db {
 
 impl Db {
     fn update_db(self, config: &mut DbConfig) {
-        if let Some(path) = self.path {
-            config.path = path;
+        if let Some(path_prefix) = self.path_prefix {
+            config.path_prefix = path_prefix;
         }
         if let Some(min_size) = self.min_size {
             config.min_size = min_size;

@@ -1,7 +1,7 @@
 use rand::Rng;
 use rand_chacha::ChaCha8Rng;
 use starknet_api::block::{BlockHash, BlockNumber};
-use starknet_api::core::ContractAddress;
+use starknet_api::core::{ChainId, ContractAddress};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::transaction::{
     EventIndexInTransactionOutput, Fee, MessageToL1, TransactionOffsetInBlock,
@@ -32,7 +32,8 @@ pub fn get_test_config() -> (DbConfig, TempDir) {
     println!("{dir:?}");
     (
         DbConfig {
-            path: dir.path().to_path_buf(),
+            path_prefix: dir.path().to_path_buf(),
+            chain_id: ChainId("".to_owned()),
             min_size: 1 << 20,    // 1MB
             max_size: 1 << 35,    // 32GB
             growth_step: 1 << 26, // 64MB
