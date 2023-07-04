@@ -55,9 +55,9 @@ spec:
         {{- if not .Values.backup.enabled }}
         args:
         - --chain_id
-        - {{ .Values.starknet.chain_id }}
+        - {{ .Values.starknet.chainId }}
         - --central_url
-        - {{ .Values.starknet.central_url }}
+        - {{ .Values.starknet.centralUrl }}
         {{- if .Values.services }}
         ports:
         - containerPort: {{ .Values.services.rpc.port }}
