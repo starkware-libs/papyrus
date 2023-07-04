@@ -3,12 +3,6 @@
 # The verbosity level of logs ("debug", "info", "error", etc.)
 rustLogLevel: "info"
 
-# The Docker image (including any tag and repository name)
-image:
-  repository: ghcr.io/starkware-libs/papyrus
-  tag: 0.1.2-alpha
-  pullPolicy: Always
-
 node:
   # Number of concurrent requests to the SN feeder gateway
   concurrent_fg_requests: 50
@@ -22,6 +16,12 @@ starknet:
   additional_headers: # optional addtional headers for SN communication
 
 deployment:
+  # The container image
+  image:
+    repository: ghcr.io/starkware-libs/papyrus
+    tag: 0.1.2-alpha
+  # The container's pullPolicy
+  pullPolicy: Always
   # Optional - nodeSelector
   nodeSelector:
   # Optional - tolerations
