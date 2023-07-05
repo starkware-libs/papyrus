@@ -261,7 +261,10 @@ impl StarknetClient {
         };
         match code {
             StatusCode::OK => Ok(message),
-            StatusCode::INTERNAL_SERVER_ERROR => {
+            // TODO(Omri): The error code returned from SN changed from error 500 to error 400. For
+            // now, keeping both options. In the future, remove the '500' (INTERNAL_SERVER_ERROR)
+            // option.
+            StatusCode::INTERNAL_SERVER_ERROR | StatusCode::BAD_REQUEST => {
                 let starknet_error: StarknetError = serde_json::from_str(&message)?;
                 Err(ClientError::StarknetError(starknet_error))
             }
