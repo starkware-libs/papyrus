@@ -271,8 +271,7 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
             transaction_hash: invoke_tx.transaction_hash,
             max_fee: invoke_tx.max_fee,
             signature: invoke_tx.signature,
-            nonce: invoke_tx.nonce.unwrap_or_default(),
-            sender_address: invoke_tx.sender_address,
+            contract_address: invoke_tx.sender_address,
             entry_point_selector: invoke_tx.entry_point_selector.ok_or(
                 ClientError::BadTransaction {
                     tx_hash: invoke_tx.transaction_hash,
