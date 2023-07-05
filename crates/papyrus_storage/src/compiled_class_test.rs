@@ -1,5 +1,6 @@
 use assert_matches::assert_matches;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+use pretty_assertions::assert_eq;
 use starknet_api::core::ClassHash;
 use test_utils::read_json_file;
 
@@ -40,9 +41,10 @@ fn casm_rewrite() {
     let Err(err) = writer
         .begin_rw_txn()
         .unwrap()
-        .append_casm(&ClassHash::default(), &CasmContractClass::default())  else {
-            panic!("Unexpected Ok.");
-        };
+        .append_casm(&ClassHash::default(), &CasmContractClass::default())
+    else {
+        panic!("Unexpected Ok.");
+    };
 
     assert_matches!(err, StorageError::CompiledClassReWrite{class_hash} if class_hash == ClassHash::default());
 }
