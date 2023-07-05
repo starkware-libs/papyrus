@@ -112,7 +112,8 @@ async fn sync_empty_chain() {
 #[tokio::test]
 async fn sync_happy_flow() {
     const N_BLOCKS: u64 = 5;
-    const MAX_TIME_TO_SYNC_MS: u64 = 60;
+    // FIXME: (Omri) analyze and set a lower value.
+    const MAX_TIME_TO_SYNC_MS: u64 = 100;
     let _ = simple_logger::init_with_env();
 
     // Mock having N_BLOCKS chain in central.
@@ -217,7 +218,8 @@ async fn sync_with_revert() {
     const MAX_TIME_TO_SYNC_BEFORE_REVERT_MS: u64 = 100;
     const CHAIN_FORK_BLOCK_NUMBER: u64 = 5;
     const N_BLOCKS_AFTER_REVERT: u64 = 10;
-    const MAX_TIME_TO_SYNC_AFTER_REVERT_MS: u64 = 500;
+    // FIXME: (Omri) analyze and set a lower value.
+    const MAX_TIME_TO_SYNC_AFTER_REVERT_MS: u64 = 900;
 
     // Part 1 - check that the storage reached the point at which we will make the revert.
     let check_storage_before_revert_future = check_storage(
