@@ -30,4 +30,5 @@ assert.workspace = true
 assert_matches.workspace = true
 mockall.workspace = true
 mockito.workspace = true
+pretty_assertions.workspace = true
 starknet_api = { workspace = true, features = ["testing"] }

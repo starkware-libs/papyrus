@@ -2,6 +2,7 @@ use std::vec;
 
 use assert_matches::assert_matches;
 use camelpaste::paste;
+use pretty_assertions::assert_eq;
 use starknet_api::core::{ContractAddress, PatriciaKey};
 use starknet_api::hash::StarkHash;
 use starknet_api::patricia_key;

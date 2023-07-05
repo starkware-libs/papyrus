@@ -1,4 +1,5 @@
 use assert_matches::assert_matches;
+use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use starknet_api::hash::StarkFelt;
 use starknet_api::stark_felt;

@@ -1,3 +1,4 @@
+use pretty_assertions::assert_eq;
 use tempfile::TempDir;
 
 use crate::db::{open_env, DbReader, DbWriter};

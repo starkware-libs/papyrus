@@ -1,5 +1,7 @@
 use std::sync::{Arc, Mutex};
 
+use pretty_assertions::assert_eq;
+
 use super::Retry;
 use crate::test_utils::retry::get_test_config;
 
