@@ -81,7 +81,6 @@ pub struct InvokeTransactionV0 {
     pub max_fee: Fee,
     pub version: TransactionVersion,
     pub signature: TransactionSignature,
-    pub nonce: Nonce,
     pub contract_address: ContractAddress,
     pub entry_point_selector: EntryPointSelector,
     pub calldata: Calldata,
@@ -94,8 +93,7 @@ impl From<starknet_api::transaction::InvokeTransactionV0> for InvokeTransactionV
             max_fee: tx.max_fee,
             version: tx_v0(),
             signature: tx.signature,
-            nonce: tx.nonce,
-            contract_address: tx.sender_address,
+            contract_address: tx.contract_address,
             entry_point_selector: tx.entry_point_selector,
             calldata: tx.calldata,
         }
