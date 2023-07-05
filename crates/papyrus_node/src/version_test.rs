@@ -1,3 +1,5 @@
+use pretty_assertions::assert_eq;
+
 #[test]
 fn version() {
     let expected_version =

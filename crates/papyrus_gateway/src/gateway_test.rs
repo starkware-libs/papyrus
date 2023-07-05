@@ -12,6 +12,7 @@ use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
+use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
 use starknet_api::deprecated_contract_class::{
     EventAbiEntry, FunctionAbiEntryWithType, StructAbiEntry,

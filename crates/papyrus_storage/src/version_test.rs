@@ -1,4 +1,5 @@
 use assert_matches::assert_matches;
+use pretty_assertions::assert_eq;
 
 use crate::test_utils::get_test_storage;
 use crate::version::{StorageVersionError, Version, VersionStorageReader, VersionStorageWriter};

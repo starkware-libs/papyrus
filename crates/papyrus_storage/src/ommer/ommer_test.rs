@@ -1,4 +1,5 @@
 use indexmap::IndexMap;
+use pretty_assertions::assert_eq;
 use starknet_api::block::BlockHeader;
 use starknet_api::state::ThinStateDiff;
 use starknet_api::transaction::{EventContent, TransactionOutput};

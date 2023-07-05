@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
 use cairo_lang_casm::hints::CoreHintBase;
+use pretty_assertions::assert_eq;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ContractAddress;
 use starknet_api::hash::StarkHash;
