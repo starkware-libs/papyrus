@@ -1,5 +1,12 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
-use starknet_api::core::{ClassHash, Nonce};
+use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
+use starknet_api::deprecated_contract_class::{
+    EntryPoint as DeprecatedEntryPoint, EntryPointType as DeprecatedEntryPointType, EventAbiEntry,
+    FunctionAbiEntry, StructAbiEntry,
+};
+use starknet_api::state::{EntryPoint, EntryPointType};
 use starknet_api::transaction::{
     Calldata, ContractAddressSalt, Fee, TransactionSignature, TransactionVersion,
 };
@@ -9,6 +16,12 @@ use starknet_api::transaction::{
 pub enum Transaction {
     #[serde(rename = "DEPLOY_ACCOUNT")]
     DeployAccount(DeployAccountTransaction),
+    #[serde(rename = "INVOKE_FUNCTION")]
+    Invoke(InvokeTransaction),
+    #[serde(rename = "DEPRECATED_DECLARE")]
+    DeclareV1(DeclareV1Transaction),
+    #[serde(rename = "DECLARE")]
+    DeclareV2(DeclareV2Transaction),
 }
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
@@ -22,4 +35,79 @@ pub struct DeployAccountTransaction {
     pub signature: TransactionSignature,
     #[serde(default)]
     pub version: TransactionVersion,
+}
+
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct InvokeTransaction {
+    pub calldata: Calldata,
+    pub sender_address: ContractAddress,
+    #[serde(default)]
+    pub nonce: Nonce,
+    pub max_fee: Fee,
+    pub signature: TransactionSignature,
+    pub version: TransactionVersion,
+}
+
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct DeclareV1Transaction {
+    pub contract_class: ContractClassV1,
+    pub sender_address: ContractAddress,
+    pub nonce: Nonce,
+    pub max_fee: Fee,
+    pub version: TransactionVersion,
+    pub signature: TransactionSignature,
+}
+
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct DeclareV2Transaction {
+    pub contract_class: ContractClassV2,
+    pub compiled_class_hash: CompiledClassHash,
+    pub sender_address: ContractAddress,
+    pub nonce: Nonce,
+    pub max_fee: Fee,
+    pub version: TransactionVersion,
+    pub signature: TransactionSignature,
+}
+
+// The only difference between this and ContractClass in starknet_api is in the program.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct ContractClassV1 {
+    pub abi: Option<Vec<DeprecatedContractClassAbiEntry>>,
+    // The program is compressed.
+    // TODO(shahak): Create a struct for a compressed value.
+    pub program: String,
+    pub entry_points_by_type: HashMap<DeprecatedEntryPointType, Vec<DeprecatedEntryPoint>>,
+}
+
+// The only difference between this and ContractClass in the gateway is in the sierra_program.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct ContractClassV2 {
+    // The sierra_program is compressed.
+    // TODO(shahak): Create a struct for a compressed value.
+    pub sierra_program: String,
+    pub contract_class_version: String,
+    pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
+    pub abi: String,
+}
+
+// The differences between this and ContractClassAbiEntry in starknet_api are:
+// 1. This enum is tagged.
+// 2. There are variants for Constructor and L1Handler.
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+#[serde(tag = "type")]
+pub enum DeprecatedContractClassAbiEntry {
+    #[serde(rename = "event")]
+    Event(EventAbiEntry),
+    #[serde(rename = "function")]
+    Function(FunctionAbiEntry),
+    #[serde(rename = "constructor")]
+    Constructor(FunctionAbiEntry),
+    #[serde(rename = "l1_handler")]
+    L1Handler(FunctionAbiEntry),
+    #[serde(rename = "struct")]
+    Struct(StructAbiEntry),
 }

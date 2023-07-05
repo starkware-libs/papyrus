@@ -23,3 +23,24 @@ fn load_and_dump_deploy_account_same_string() {
         assert_matches!(transaction, Transaction::DeployAccount(_));
     });
 }
+
+#[test]
+fn load_and_dump_invoke_same_string() {
+    validate_load_and_dump("invoke.json", |transaction| {
+        assert_matches!(transaction, Transaction::Invoke(_));
+    });
+}
+
+#[test]
+fn load_and_dump_declare_v1_same_string() {
+    validate_load_and_dump("declare_v1.json", |transaction| {
+        assert_matches!(transaction, Transaction::DeclareV1(_));
+    });
+}
+
+#[test]
+fn load_and_dump_declare_v2_same_string() {
+    validate_load_and_dump("declare_v2.json", |transaction| {
+        assert_matches!(transaction, Transaction::DeclareV2(_));
+    });
+}
