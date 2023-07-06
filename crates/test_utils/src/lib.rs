@@ -55,10 +55,15 @@ use starknet_api::transaction::{
 // GENERIC TEST UTIL FUNCTIONS
 //////////////////////////////////////////////////////////////////////////
 
-pub async fn send_request(address: SocketAddr, method: &str, params: &str) -> serde_json::Value {
+pub async fn send_request(
+    address: SocketAddr,
+    method: &str,
+    params: &str,
+    version: &str,
+) -> serde_json::Value {
     let client = Client::new();
     let res_str = client
-        .post(format!("http://{address:?}"))
+        .post(format!("http://{address:?}/rpc/{version}"))
         .header("Content-Type", "application/json")
         .body(format!(r#"{{"jsonrpc":"2.0","id":"1","method":"{method}","params":[{params}]}}"#))
         .send()
