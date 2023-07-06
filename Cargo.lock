@@ -5517,9 +5517,9 @@ dependencies = [
 
 [[package]]
 name = "starknet_api"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f0bba8e26911c7ca40f38589c32d2d41bc6f82769cd3fde03c69ddcfe002c33"
+checksum = "ac39a98628f1eb5d004145a64df0f90ac40bb416f95003f7807edde91f8f913a"
 dependencies = [
  "cairo-lang-starknet",
  "derive_more",
