@@ -52,7 +52,7 @@ pub struct InvokeTransaction {
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct DeclareV1Transaction {
-    pub contract_class: ContractClassV1,
+    pub contract_class: DeprecatedContractClass,
     pub sender_address: ContractAddress,
     pub nonce: Nonce,
     pub max_fee: Fee,
@@ -63,7 +63,7 @@ pub struct DeclareV1Transaction {
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct DeclareV2Transaction {
-    pub contract_class: ContractClassV2,
+    pub contract_class: ContractClass,
     pub compiled_class_hash: CompiledClassHash,
     pub sender_address: ContractAddress,
     pub nonce: Nonce,
@@ -74,7 +74,7 @@ pub struct DeclareV2Transaction {
 
 // The only difference between this and ContractClass in starknet_api is in the program.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct ContractClassV1 {
+pub struct DeprecatedContractClass {
     pub abi: Option<Vec<DeprecatedContractClassAbiEntry>>,
     // The program is compressed.
     // TODO(shahak): Create a struct for a compressed value.
@@ -84,7 +84,7 @@ pub struct ContractClassV1 {
 
 // The only difference between this and ContractClass in the gateway is in the sierra_program.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct ContractClassV2 {
+pub struct ContractClass {
     // The sierra_program is compressed.
     // TODO(shahak): Create a struct for a compressed value.
     pub sierra_program: String,
