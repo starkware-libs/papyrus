@@ -45,14 +45,14 @@ fn get_test_casm() -> CasmContractClass {
 }
 
 fn prepare_storage(mut storage_writer: StorageWriter) {
-    let class_hash0 = ClassHash(StarkFelt::from(2u128));
+    let class_hash0 = ClassHash(2u128.into());
     let address0 = ContractAddress(patricia_key!(CONTRACT_ADDRESS));
     // The class is not used in the execution, so it can be default.
     let class0 = ContractClass::default();
     let casm0 = get_test_casm();
     let compiled_class_hash0 = CompiledClassHash(StarkHash::default());
 
-    let class_hash1 = ClassHash(StarkFelt::from(1u128));
+    let class_hash1 = ClassHash(1u128.into());
     let class1 = get_test_deprecated_contract_class();
     let address1 = ContractAddress(patricia_key!(DEPRECATED_CONTRACT_ADDRESS));
 
