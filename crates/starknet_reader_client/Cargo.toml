@@ -1,5 +1,5 @@
 [package]
-name = "starknet_client"
+name = "starknet_reader_client"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true

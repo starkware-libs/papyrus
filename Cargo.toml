@@ -12,7 +12,7 @@ members = [
     "crates/papyrus_proc_macros",
     "crates/papyrus_storage",
     "crates/papyrus_sync",
-    "crates/starknet_client",
+    "crates/starknet_reader_client",
     "crates/starknet_writer_client",
     "crates/test_utils",
 ]
