@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use assert_matches::assert_matches;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use mockito::mock;
+use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};

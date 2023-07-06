@@ -23,4 +23,5 @@ url.workspace = true
 http-body = { version = "0.4.5" }
 metrics.workspace = true
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
+pretty_assertions.workspace = true
 tower = { workspace = true, features = ["util"] }

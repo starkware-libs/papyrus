@@ -2,6 +2,7 @@ use std::fs::File;
 use std::process::Command;
 
 use ethers::utils::{Ganache, GanacheInstance};
+use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::hash::StarkFelt;
 use starknet_api::stark_felt;

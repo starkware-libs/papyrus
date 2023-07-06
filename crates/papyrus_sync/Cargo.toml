@@ -32,5 +32,6 @@ simple_logger.workspace = true
 assert_matches.workspace = true
 mockall.workspace = true
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
+pretty_assertions.workspace = true
 starknet_reader_client = { path = "../starknet_reader_client", features = ["testing"] }
 starknet_api = { workspace = true, features = ["testing"] }
