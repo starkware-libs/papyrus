@@ -2,7 +2,7 @@
 // To run this load test, run locally a node and then run:
 //      cargo run -r -p papyrus_load_test -- -t 5m -H http://127.0.0.1:8080
 // To create the files of requests run:
-//      cargo run -r -p papyrus_load_test -- --create_files 127.0.0.1:8080
+//      cargo run -r -p papyrus_load_test -- --create_files 127.0.0.1:8080 --version_id V0_3_0
 // For more options run:
 //      cargo run -r -p papyrus_load_test -- --help
 
@@ -17,13 +17,14 @@ use serde::Serialize;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args: Vec<String> = env::args().collect();
+    let version_id = &args[4];
     if args.len() > 1 && args[1].eq("--create_files") {
-        create_files(&args[2]).await;
+        create_files(&args[2], version_id).await;
         return Ok(());
     }
 
     let metrics = GooseAttack::initialize()?
-        .register_scenario(scenarios::general_request())
+        .register_scenario(scenarios::general_request(version_id))
         .execute()
         .await?;
 

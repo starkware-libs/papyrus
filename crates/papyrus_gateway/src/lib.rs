@@ -33,7 +33,7 @@ use crate::api::{
     get_methods_from_supported_apis, BlockHashOrNumber, BlockId, ContinuationToken, JsonRpcError,
     Tag,
 };
-use crate::middleware::proxy_request;
+use crate::middleware::{deny_requests_with_unsupported_path, proxy_rpc_request};
 
 /// Maximum size of a supported transaction body - 10MB.
 pub const SERVER_MAX_BODY_SIZE: u32 = 10 * 1024 * 1024;
@@ -131,7 +131,11 @@ pub async fn run_server(
     // TODO(dvir): set the logger only if we want to collect metrics.
     let server = ServerBuilder::default()
         .max_request_body_size(SERVER_MAX_BODY_SIZE)
-        .set_middleware(tower::ServiceBuilder::new().filter_async(proxy_request))
+        .set_middleware(
+            tower::ServiceBuilder::new()
+                .filter_async(deny_requests_with_unsupported_path)
+                .filter_async(proxy_rpc_request),
+        )
         .set_logger(MetricLogger::new(&methods))
         .build(&config.server_address)
         .await?;
