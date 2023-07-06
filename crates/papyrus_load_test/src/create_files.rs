@@ -95,52 +95,62 @@ const BLOCK_RANGE_AND_CONTRACT_ADDRESS_COUNT: usize =
     get_args_count(BLOCK_RANGE_AND_CONTRACT_ADDRESS_WEIGHT);
 
 // Creates the files to run the load test.
-pub async fn create_files(node_address: &str) {
+pub async fn create_files(node_address: &str, version_id: &str) {
     let node_socket = node_address.parse::<SocketAddr>().unwrap();
-    last_block_number(node_socket).await;
+    last_block_number(node_socket, version_id).await;
     let block_number =
         tokio::spawn(create_file("block_number.txt", BLOCK_NUMBER_COUNT, get_block_number_args));
+    let version_id = version_id.to_owned();
+    let version_id_clone = version_id.clone();
     let block_hash = tokio::spawn(create_file("block_hash.txt", BLOCK_HASH_COUNT, move || {
-        get_block_hash_args(node_socket)
+        get_block_hash_args(node_socket, version_id_clone.clone())
     }));
+    let version_id_clone = version_id.clone();
     let transaction_hash =
         tokio::spawn(create_file("transaction_hash.txt", TRANSACTION_HASH_COUNT, move || {
-            get_transaction_hash_args(node_socket)
+            get_transaction_hash_args(node_socket, version_id_clone.clone())
         }));
+    let version_id_clone = version_id.clone();
     let block_hash_and_transaction_index = tokio::spawn(create_file(
         "block_hash_and_transaction_index.txt",
         BLOCK_HASH_AND_TRANSACTION_INDEX_COUNT,
-        move || get_block_hash_and_transaction_index_args(node_socket),
+        move || get_block_hash_and_transaction_index_args(node_socket, version_id_clone.clone()),
     ));
+    let version_id_clone = version_id.clone();
     let block_number_and_transaction_index = tokio::spawn(create_file(
         "block_number_and_transaction_index.txt",
         BLOCK_NUMBER_AND_TRANSACTION_INDEX_COUNT,
-        move || get_block_number_and_transaction_index_args(node_socket),
+        move || get_block_number_and_transaction_index_args(node_socket, version_id_clone.clone()),
     ));
+    let version_id_clone = version_id.clone();
     let block_number_and_contract_address = tokio::spawn(create_file(
         "block_number_and_contract_address.txt",
         BLOCK_NUMBER_AND_CONTRACT_ADDRESS_COUNT,
-        move || get_block_number_and_contract_address_args(node_socket),
+        move || get_block_number_and_contract_address_args(node_socket, version_id_clone.clone()),
     ));
+    let version_id_clone = version_id.clone();
     let block_hash_and_contract_address = tokio::spawn(create_file(
         "block_hash_and_contract_address.txt",
         BLOCK_HASH_AND_CONTRACT_ADDRESS_COUNT,
-        move || get_block_hash_and_contract_address_args(node_socket),
+        move || get_block_hash_and_contract_address_args(node_socket, version_id_clone.clone()),
     ));
+    let version_id_clone = version_id.clone();
     let block_number_and_class_hash = tokio::spawn(create_file(
         "block_number_and_class_hash.txt",
         BLOCK_NUMBER_AND_CLASS_HASH_COUNT,
-        move || get_block_number_and_class_hash_args(node_socket),
+        move || get_block_number_and_class_hash_args(node_socket, version_id_clone.clone()),
     ));
+    let version_id_clone = version_id.clone();
     let block_hash_and_class_hash = tokio::spawn(create_file(
         "block_hash_and_class_hash.txt",
         BLOCK_HASH_AND_CLASS_HASH_COUNT,
-        move || get_block_hash_and_class_hash_args(node_socket),
+        move || get_block_hash_and_class_hash_args(node_socket, version_id_clone.clone()),
     ));
+    let version_id_clone = version_id.clone();
     let block_range_and_contract_address = tokio::spawn(create_file(
         "block_range_and_contract_address.txt",
         BLOCK_RANGE_AND_CONTRACT_ADDRESS_COUNT,
-        move || get_block_range_and_contract_address_args(node_socket),
+        move || get_block_range_and_contract_address_args(node_socket, version_id_clone.clone()),
     ));
     tokio::try_join!(
         block_number,
@@ -182,15 +192,20 @@ where
     file.write_all(to_write.as_bytes()).unwrap();
 }
 
-pub async fn get_block_with_tx_hashes(node_address: SocketAddr, block_number: u64) -> jsonVal {
+pub async fn get_block_with_tx_hashes(
+    node_address: SocketAddr,
+    block_number: u64,
+    version_id: String,
+) -> jsonVal {
     let params = format!("{{ \"block_number\": {block_number} }}");
-    send_request(node_address, "starknet_getBlockWithTxHashes", &params).await
+    send_request(node_address, "starknet_getBlockWithTxHashes", &params, version_id.as_str()).await
 }
 
 // Creates the file last_block_number.txt. Write to the file the last block number for the load
 // test.
-async fn last_block_number(node_address: SocketAddr) {
-    let last_block_number = &send_request(node_address, "starknet_blockNumber", "").await["result"];
+async fn last_block_number(node_address: SocketAddr, version_id: &str) {
+    let last_block_number =
+        &send_request(node_address, "starknet_blockNumber", "", version_id).await["result"];
     let mut file = File::create(path_in_resources("last_block_number.txt")).unwrap();
     file.write_all(last_block_number.to_string().as_bytes()).unwrap();
 }
@@ -200,9 +215,13 @@ pub async fn get_block_number_args() -> Vec<String> {
     vec![get_random_block_number().to_string()]
 }
 
-pub async fn get_block_hash_by_block_number(block_number: u64, node_address: SocketAddr) -> String {
-    let response =
-        &get_block_with_tx_hashes(node_address, block_number).await["result"]["block_hash"];
+pub async fn get_block_hash_by_block_number(
+    block_number: u64,
+    node_address: SocketAddr,
+    version_id: String,
+) -> String {
+    let response = &get_block_with_tx_hashes(node_address, block_number, version_id).await
+        ["result"]["block_hash"];
     let block_hash = match response {
         jsonVal::String(block_hash) => block_hash,
         _ => unreachable!(),
@@ -211,17 +230,20 @@ pub async fn get_block_hash_by_block_number(block_number: u64, node_address: Soc
 }
 
 // Returns a vector with a random block hash.
-pub async fn get_block_hash_args(node_address: SocketAddr) -> Vec<String> {
+pub async fn get_block_hash_args(node_address: SocketAddr, version_id: String) -> Vec<String> {
     let block_number = get_random_block_number();
-    let block_hash = get_block_hash_by_block_number(block_number, node_address).await;
+    let block_hash = get_block_hash_by_block_number(block_number, node_address, version_id).await;
     vec![block_hash]
 }
 
 // Returns a vector with a random transaction hash.
-pub async fn get_transaction_hash_args(node_address: SocketAddr) -> Vec<String> {
+pub async fn get_transaction_hash_args(
+    node_address: SocketAddr,
+    version_id: String,
+) -> Vec<String> {
     let block_number = get_random_block_number();
-    let response =
-        &get_block_with_tx_hashes(node_address, block_number).await["result"]["transactions"];
+    let response = &get_block_with_tx_hashes(node_address, block_number, version_id).await
+        ["result"]["transactions"];
     let trans_list = match response {
         jsonVal::Array(transactions) => transactions,
         _ => unreachable!("The gateway returns the transaction hashes as a vector."),
@@ -238,10 +260,16 @@ pub async fn get_transaction_hash_args(node_address: SocketAddr) -> Vec<String> 
 pub async fn get_transaction_count_by_block_number(
     block_number: u64,
     node_address: SocketAddr,
+    version_id: String,
 ) -> u64 {
     let params = format!("{{ \"block_number\": {block_number} }}");
-    let response =
-        &send_request(node_address, "starknet_getBlockTransactionCount", &params).await["result"];
+    let response = &send_request(
+        node_address,
+        "starknet_getBlockTransactionCount",
+        &params,
+        version_id.as_str(),
+    )
+    .await["result"];
     let trans_count = match response {
         jsonVal::Number(count) => count,
         _ => unreachable!(),
@@ -250,27 +278,39 @@ pub async fn get_transaction_count_by_block_number(
 }
 
 // Returns a vector with a random block hash and transaction index in this block.
-pub async fn get_block_hash_and_transaction_index_args(node_address: SocketAddr) -> Vec<String> {
+pub async fn get_block_hash_and_transaction_index_args(
+    node_address: SocketAddr,
+    version_id: String,
+) -> Vec<String> {
     let block_number = get_random_block_number();
-    let block_hash = get_block_hash_by_block_number(block_number, node_address).await;
-    let trans_count = get_transaction_count_by_block_number(block_number, node_address).await;
+    let block_hash =
+        get_block_hash_by_block_number(block_number, node_address, version_id.clone()).await;
+    let trans_count =
+        get_transaction_count_by_block_number(block_number, node_address, version_id).await;
     let random_index = rand::thread_rng().gen_range(0..trans_count);
     vec![block_hash, random_index.to_string()]
 }
 
 // Returns a vector with a random block number and transaction index in this block.
-pub async fn get_block_number_and_transaction_index_args(node_address: SocketAddr) -> Vec<String> {
+pub async fn get_block_number_and_transaction_index_args(
+    node_address: SocketAddr,
+    version_id: String,
+) -> Vec<String> {
     let block_number = get_random_block_number();
-    let trans_count = get_transaction_count_by_block_number(block_number, node_address).await;
+    let trans_count =
+        get_transaction_count_by_block_number(block_number, node_address, version_id).await;
     let random_index = rand::thread_rng().gen_range(0..trans_count);
     vec![block_number.to_string(), random_index.to_string()]
 }
 
 // Returns a vector with a random block number and contract address of a contract which was deployed
 // before the block.
-pub async fn get_block_number_and_contract_address_args(node_address: SocketAddr) -> Vec<String> {
+pub async fn get_block_number_and_contract_address_args(
+    node_address: SocketAddr,
+    version_id: String,
+) -> Vec<String> {
     let (block_number, contract_address) =
-        get_random_block_number_and_contract_address(node_address).await;
+        get_random_block_number_and_contract_address(node_address, version_id).await;
     // A block number which in it the contract was already deployed.
     let after_block_number = rand::thread_rng().gen_range(block_number..=get_last_block_number());
     vec![after_block_number.to_string(), contract_address]
@@ -278,12 +318,16 @@ pub async fn get_block_number_and_contract_address_args(node_address: SocketAddr
 
 // Returns a vector with a random block hash and contract address of a contract which was deployed
 // before the block.
-pub async fn get_block_hash_and_contract_address_args(node_address: SocketAddr) -> Vec<String> {
+pub async fn get_block_hash_and_contract_address_args(
+    node_address: SocketAddr,
+    version_id: String,
+) -> Vec<String> {
     let (block_number, contract_address) =
-        get_random_block_number_and_contract_address(node_address).await;
+        get_random_block_number_and_contract_address(node_address, version_id.clone()).await;
     // A block number which in it the contract was already deployed.
     let after_block_number = rand::thread_rng().gen_range(block_number..=get_last_block_number());
-    let after_block_hash = get_block_hash_by_block_number(after_block_number, node_address).await;
+    let after_block_hash =
+        get_block_hash_by_block_number(after_block_number, node_address, version_id).await;
     vec![after_block_hash, contract_address]
 }
 
@@ -291,11 +335,16 @@ pub async fn get_block_hash_and_contract_address_args(node_address: SocketAddr) 
 // in this block.
 pub async fn get_random_block_number_and_contract_address(
     node_address: SocketAddr,
+    version_id: String,
 ) -> (u64, String) {
     loop {
         let block_number = get_random_block_number();
-        let contract_address =
-            get_random_contract_address_deployed_in_block(block_number, node_address).await;
+        let contract_address = get_random_contract_address_deployed_in_block(
+            block_number,
+            node_address,
+            version_id.clone(),
+        )
+        .await;
         if let Some(contract_address) = contract_address {
             return (block_number, contract_address);
         }
@@ -307,10 +356,12 @@ pub async fn get_random_block_number_and_contract_address(
 pub async fn get_random_contract_address_deployed_in_block(
     block_number: u64,
     node_address: SocketAddr,
+    version_id: String,
 ) -> Option<String> {
     let params = format!("{{ \"block_number\": {block_number} }}");
-    let response = &send_request(node_address, "starknet_getStateUpdate", &params).await["result"]
-        ["state_diff"]["deployed_contracts"];
+    let response =
+        &send_request(node_address, "starknet_getStateUpdate", &params, version_id.as_str()).await
+            ["result"]["state_diff"]["deployed_contracts"];
     let contract_list = match response {
         jsonVal::Array(contract_list) => contract_list,
         _ => unreachable!("The gateway returns the deployed contracts as a vector."),
@@ -336,8 +387,12 @@ pub async fn get_random_contract_address_deployed_in_block(
 
 // Returns a vector with a random block number and class hash of a class which was declared
 // before the block.
-pub async fn get_block_number_and_class_hash_args(node_address: SocketAddr) -> Vec<String> {
-    let (block_number, class_hash) = get_random_block_number_and_class_hash(node_address).await;
+pub async fn get_block_number_and_class_hash_args(
+    node_address: SocketAddr,
+    version_id: String,
+) -> Vec<String> {
+    let (block_number, class_hash) =
+        get_random_block_number_and_class_hash(node_address, version_id).await;
     // A block number which in it the class was already declared.
     let after_block_number = rand::thread_rng().gen_range(block_number..=get_last_block_number());
     vec![after_block_number.to_string(), class_hash]
@@ -345,20 +400,30 @@ pub async fn get_block_number_and_class_hash_args(node_address: SocketAddr) -> V
 
 // Returns a vector with a random block hash and class hash of a class which was declared
 // before the block.
-pub async fn get_block_hash_and_class_hash_args(node_address: SocketAddr) -> Vec<String> {
-    let (block_number, class_hash) = get_random_block_number_and_class_hash(node_address).await;
+pub async fn get_block_hash_and_class_hash_args(
+    node_address: SocketAddr,
+    version_id: String,
+) -> Vec<String> {
+    let (block_number, class_hash) =
+        get_random_block_number_and_class_hash(node_address, version_id.clone()).await;
     // A block number which in it the class was already declared.
     let after_block_number = rand::thread_rng().gen_range(block_number..=get_last_block_number());
-    let after_block_hash = get_block_hash_by_block_number(after_block_number, node_address).await;
+    let after_block_hash =
+        get_block_hash_by_block_number(after_block_number, node_address, version_id).await;
     vec![after_block_hash, class_hash]
 }
 
 // Returns a vector with a random block number and class hash of a class which was declared
 // in this block.
-pub async fn get_random_block_number_and_class_hash(node_address: SocketAddr) -> (u64, String) {
+pub async fn get_random_block_number_and_class_hash(
+    node_address: SocketAddr,
+    version_id: String,
+) -> (u64, String) {
     loop {
         let block_number = get_random_block_number();
-        let class_hash = get_random_class_hash_declared_in_block(block_number, node_address).await;
+        let class_hash =
+            get_random_class_hash_declared_in_block(block_number, node_address, version_id.clone())
+                .await;
         if let Some(class_hash) = class_hash {
             return (block_number, class_hash);
         }
@@ -370,13 +435,15 @@ pub async fn get_random_block_number_and_class_hash(node_address: SocketAddr) ->
 pub async fn get_random_class_hash_declared_in_block(
     block_number: u64,
     node_address: SocketAddr,
+    version_id: String,
 ) -> Option<String> {
     let params = format!("{{ \"block_number\": {block_number} }}");
     let mut declared_classes = Vec::<jsonVal>::new();
     // Cairo 1 classes.
-    let classes = &mut send_request(node_address, "starknet_getStateUpdate", &params).await
-        ["result"]["state_diff"]["declared_classes"]
-        .take();
+    let classes =
+        &mut send_request(node_address, "starknet_getStateUpdate", &params, version_id.as_str())
+            .await["result"]["state_diff"]["declared_classes"]
+            .take();
     // Cairo 1 declared classes returns as a couple of "class_hash" and "compiled_class_hash".
     let mut classes = classes
         .as_array_mut()
@@ -386,9 +453,10 @@ pub async fn get_random_class_hash_declared_in_block(
         .collect();
     declared_classes.append(&mut classes);
     // Cairo 0 classes.
-    let classes = &mut send_request(node_address, "starknet_getStateUpdate", &params).await
-        ["result"]["state_diff"]["deprecated_declared_classes"]
-        .take();
+    let classes =
+        &mut send_request(node_address, "starknet_getStateUpdate", &params, version_id.as_str())
+            .await["result"]["state_diff"]["deprecated_declared_classes"]
+            .take();
     declared_classes.append(classes.as_array_mut().unwrap());
 
     if declared_classes.is_empty() {
@@ -401,9 +469,12 @@ pub async fn get_random_class_hash_declared_in_block(
 
 // Returns a vector with a block range (from_block_number, to_block_number) and contract address of
 // a contract that was already deployed in this range.
-pub async fn get_block_range_and_contract_address_args(node_address: SocketAddr) -> Vec<String> {
+pub async fn get_block_range_and_contract_address_args(
+    node_address: SocketAddr,
+    version_id: String,
+) -> Vec<String> {
     let (block_number, contract_address) =
-        get_random_block_number_and_contract_address(node_address).await;
+        get_random_block_number_and_contract_address(node_address, version_id).await;
     let from_block = rand::thread_rng().gen_range(block_number..=get_last_block_number());
     let to_block = rand::thread_rng().gen_range(from_block..=get_last_block_number());
     vec![from_block.to_string(), to_block.to_string(), contract_address]

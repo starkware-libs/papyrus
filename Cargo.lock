@@ -3982,6 +3982,7 @@ dependencies = [
  "pretty_assertions",
  "prometheus-parse",
  "rand_chacha",
+ "regex",
  "serde",
  "serde_json",
  "starknet_api",
