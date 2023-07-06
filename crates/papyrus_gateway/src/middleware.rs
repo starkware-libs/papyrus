@@ -1,8 +1,10 @@
 use hyper::{Body, Request};
 use jsonrpsee::core::http_helpers::read_body;
+use regex::Regex;
 use tower::BoxError;
+use tracing::debug;
 
-use crate::api::version_config::{VersionState, LATEST_VERSION_ID, VERSION_CONFIG};
+use crate::api::version_config::{VersionState, VERSION_CONFIG};
 use crate::SERVER_MAX_BODY_SIZE;
 
 /// [`Tower`] middleware intended to proxy method requests to the right version of the API.
@@ -14,7 +16,8 @@ use crate::SERVER_MAX_BODY_SIZE;
 /// * req - [`hyper::Request`] object passed by the server.
 ///
 /// [`Tower`]: https://crates.io/crates/tower
-pub(crate) async fn proxy_request(req: Request<Body>) -> Result<Request<Body>, BoxError> {
+pub(crate) async fn proxy_rpc_request(req: Request<Body>) -> Result<Request<Body>, BoxError> {
+    debug!("proxy_rpc_request -> Request received: {:?}", req);
     let uri = &req.uri().clone();
     let prefix = get_version_as_prefix(uri.path())?;
     let (parts, body) = req.into_parts();
@@ -32,6 +35,20 @@ pub(crate) async fn proxy_request(req: Request<Body>) -> Result<Request<Body>, B
         }
     }?;
     Ok(Request::from_parts(parts, new_body.into()))
+}
+
+pub(crate) async fn deny_requests_with_unsupported_path(
+    req: Request<Body>,
+) -> Result<Request<Body>, BoxError> {
+    debug!("deny_requests_with_unsupported_path -> Request received: {:?}", req);
+    let uri = &req.uri().clone();
+    match is_supported_path(uri.path()) {
+        true => Ok(req),
+        false => {
+            println!("Unsupported path for request {:?}", uri);
+            Err(BoxError::from("Unsupported path for request"))
+        }
+    }
 }
 
 fn add_version_to_method_name_in_body(
@@ -64,22 +81,25 @@ fn strip_starknet_from_method(method: &str) -> Option<&str> {
 }
 
 fn get_version_as_prefix(path: &str) -> Result<&str, BoxError> {
-    let prefix = match path {
-        "/" | "" => LATEST_VERSION_ID,
-        path => {
-            // get the version name from the path (should be something like "http://host:port/version_id")
-            let Some(version) = path.split('/').collect::<Vec<_>>().pop() else {
-                return Err(BoxError::from("Invalid path format"));
-            };
-            let Some((version_id, _)) =
-                // find a matching version in the version config
-                VERSION_CONFIG.iter().find(|(verison_id, version_state)| {
-                    *verison_id == version && *version_state != VersionState::Deprecated
-                }) else {
-                return Err(BoxError::from("Invalid path, couldn't find matching version"));
-            };
-            *version_id
-        }
+    // get the version name from the path (should be something like "http://host:port/rpc/version_id")
+    let uri_components = &mut path.split('/').collect::<Vec<_>>();
+    let Some(version) = uri_components.get(2) else {
+        return Err(BoxError::from("Invalid path format"));
     };
-    Ok(prefix)
+    let Some((version_id, _)) =
+        // find a matching version in the version config
+        VERSION_CONFIG.iter().find(|(verison_id, version_state)| {
+            *verison_id == *version && *version_state != VersionState::Deprecated
+        }) else {
+        return Err(BoxError::from("Invalid path, couldn't find matching version"));
+    };
+    Ok(*version_id)
+}
+
+fn is_supported_path(path: &str) -> bool {
+    let re = Regex::new(r"^\/rpc\/V[0-9]_[0-9]_[0-9]$").unwrap();
+    match path {
+        "/" | "" => false,
+        path => re.is_match(path),
+    }
 }

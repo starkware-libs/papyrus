@@ -24,10 +24,10 @@ use starknet_api::transaction::{
 use test_utils::{get_rng, GetTestInstance};
 use tower::BoxError;
 
-use crate::api::version_config::{LATEST_VERSION_ID, VERSION_CONFIG};
+use crate::api::version_config::VERSION_CONFIG;
 use crate::api::JsonRpcError;
 use crate::deprecated_contract_class::{ContractClassAbiEntryType, ContractClassAbiEntryWithType};
-use crate::middleware::proxy_request;
+use crate::middleware::proxy_rpc_request;
 use crate::test_utils::get_test_gateway_config;
 use crate::transaction::{TransactionOutput, TransactionReceipt};
 use crate::{get_block_status, run_server, SERVER_MAX_BODY_SIZE};
@@ -69,7 +69,7 @@ async fn call_proxy_request_get_method_in_out(uri: String) -> Result<(String, St
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(serde_json::to_string(&request_body).unwrap()))
         .unwrap();
-    match proxy_request(req_no_version).await {
+    match proxy_rpc_request(req_no_version).await {
         Ok(res) => {
             let get_json_rpc_body = get_json_rpc_body(res).await;
             let body = serde_json::from_slice::<jsonrpsee::types::Request<'_>>(&get_json_rpc_body)
@@ -86,10 +86,8 @@ async fn call_proxy_request_get_method_in_out(uri: String) -> Result<(String, St
 
 #[tokio::test]
 async fn test_version_middleware() {
-    let base_uri = "http://localhost:8080";
-    let latest_version = LATEST_VERSION_ID.to_string();
-    let mut path_options =
-        vec![("".to_string(), latest_version.clone()), ("/".to_string(), latest_version.clone())];
+    let base_uri = "http://localhost:8080/rpc/";
+    let mut path_options = vec![];
     VERSION_CONFIG.iter().for_each(|(version_id, _)| {
         path_options.push((format!("/{}", *version_id), (*version_id).to_string()))
     });

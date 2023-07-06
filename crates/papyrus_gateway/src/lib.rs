@@ -34,7 +34,7 @@ use crate::api::{
     Tag,
 };
 use crate::block::BlockHeader;
-use crate::middleware::proxy_request;
+use crate::middleware::{deny_requests_with_unsupported_path, proxy_rpc_request};
 use crate::transaction::Transaction;
 
 /// Maximum size of a supported transaction body - 10MB.
@@ -150,7 +150,11 @@ pub async fn run_server(
     debug!("Starting gateway.");
     let server = ServerBuilder::default()
         .max_request_body_size(SERVER_MAX_BODY_SIZE)
-        .set_middleware(tower::ServiceBuilder::new().filter_async(proxy_request))
+        .set_middleware(
+            tower::ServiceBuilder::new()
+                .filter_async(deny_requests_with_unsupported_path)
+                .filter_async(proxy_rpc_request),
+        )
         .build(&config.server_address)
         .await?;
     let addr = server.local_addr()?;
