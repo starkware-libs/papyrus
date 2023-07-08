@@ -43,13 +43,8 @@ spec:
       {{- end }}
       containers:
       - name: {{ template "papyrus.name" . }}
-        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-        args:
-        - --chain_id
-        - {{ .Values.starknet.chain_id }}
-        - --central_url
-        - {{ .Values.starknet.central_url }}
-        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        image: "{{ .Values.deployment.image.repository }}:{{ .Values.deployment.image.tag }}"
+        imagePullPolicy: {{ .Values.deployment.pullPolicy }}
         resources:
           limits:
             cpu: {{ .Values.deployment.resources.limits.cpu | quote }}
@@ -58,6 +53,11 @@ spec:
             cpu: {{ .Values.deployment.resources.requests.cpu | quote}}
             memory: {{ .Values.deployment.resources.requests.memory }}
         {{- if not .Values.backup.enabled }}
+        args:
+        - --chain_id
+        - {{ .Values.starknet.chainId }}
+        - --central_url
+        - {{ .Values.starknet.centralUrl }}
         {{- if .Values.services }}
         ports:
         - containerPort: {{ .Values.services.rpc.port }}

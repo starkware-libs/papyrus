@@ -4,9 +4,10 @@
 rustLogLevel: "papyrus=DEBUG"
 
 # The Docker image (including any tag and repository name)
-image:
-  repository: us.gcr.io/starkware-dev/papyrus-backup
-  tag: 0.1.2-alpha
+deployment:
+  image:
+    repository: us.gcr.io/starkware-dev/papyrus-backup
+    tag: 0.1.2-alpha
 services: []
 # Persistent volume claim variables for a papyrus pod.
 pvc:
@@ -16,5 +17,5 @@ pvc:
 backup:
   enabled: true
   aws:
-    s3_bucket_name: papyrus-backup
-    s3_bucket_region: us-east-2
+    s3BucketName: papyrus-backup
+    s3BucketRegion: us-east-2
