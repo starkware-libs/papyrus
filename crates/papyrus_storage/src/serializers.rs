@@ -51,7 +51,7 @@ use crate::body::events::{
     ThinDeployTransactionOutput, ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput,
     ThinTransactionOutput,
 };
-use crate::body::TransactionIndex;
+use crate::body::{StarknetVersion, TransactionIndex};
 use crate::compression_utils::{
     compress, decompress, decompress_from_reader, serialize_and_compress,
 };
@@ -252,6 +252,7 @@ auto_storage_serde! {
         pub param: TypedParameter,
         pub offset: usize,
     }
+    pub struct StarknetVersion(pub String);
     pub struct ThinDeclareTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,

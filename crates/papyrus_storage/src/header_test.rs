@@ -4,6 +4,7 @@ use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use starknet_api::hash::StarkFelt;
 use starknet_api::stark_felt;
 
+use crate::body::StarknetVersion;
 use crate::header::{HeaderStorageReader, HeaderStorageWriter};
 use crate::test_utils::get_test_storage;
 use crate::{StorageError, StorageWriter};
@@ -35,7 +36,7 @@ async fn append_header() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_header(BlockNumber(0), &BlockHeader::default())
+        .append_header(BlockNumber(0), &BlockHeader::default(), StarknetVersion::default())
         .unwrap()
         .commit()
         .unwrap();
@@ -64,7 +65,7 @@ async fn revert_last_header_success() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_header(BlockNumber(0), &BlockHeader::default())
+        .append_header(BlockNumber(0), &BlockHeader::default(), StarknetVersion::default())
         .unwrap()
         .commit()
         .unwrap();
@@ -128,13 +129,91 @@ fn append_2_headers(writer: &mut StorageWriter) {
         .append_header(
             BlockNumber(0),
             &BlockHeader { block_hash: BlockHash(stark_felt!("0x0")), ..BlockHeader::default() },
+            StarknetVersion::default(),
         )
         .unwrap()
         .append_header(
             BlockNumber(1),
             &BlockHeader { block_hash: BlockHash(stark_felt!("0x1")), ..BlockHeader::default() },
+            StarknetVersion::default(),
         )
         .unwrap()
         .commit()
         .unwrap();
+}
+
+#[tokio::test]
+async fn starknet_version() {
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
+
+    let initial_starknet_version =
+        reader.begin_ro_txn().unwrap().get_starknet_version(BlockNumber(0)).unwrap();
+    assert!(initial_starknet_version.is_none());
+
+    fn block_header(hash: u8) -> BlockHeader {
+        BlockHeader { block_hash: BlockHash(stark_felt!(hash)), ..BlockHeader::default() }
+    }
+
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(BlockNumber(0), &block_header(0), StarknetVersion::default())
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    let block_0_starknet_version =
+        reader.begin_ro_txn().unwrap().get_starknet_version(BlockNumber(0)).unwrap();
+    assert_eq!(block_0_starknet_version.unwrap(), StarknetVersion::default());
+
+    let block_1_starknet_version =
+        reader.begin_ro_txn().unwrap().get_starknet_version(BlockNumber(1)).unwrap();
+    assert!(block_1_starknet_version.is_none());
+
+    let second_version = StarknetVersion("second_version".to_string());
+    let yet_another_version = StarknetVersion("yet_another_version".to_string());
+
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(BlockNumber(1), &block_header(1), StarknetVersion::default())
+        .unwrap()
+        .append_header(BlockNumber(2), &block_header(2), second_version.clone())
+        .unwrap()
+        .append_header(BlockNumber(3), &block_header(3), second_version.clone())
+        .unwrap()
+        .append_header(BlockNumber(4), &block_header(4), yet_another_version.clone())
+        .unwrap()
+        .append_header(BlockNumber(5), &block_header(5), yet_another_version.clone())
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    let block_0_starknet_version =
+        reader.begin_ro_txn().unwrap().get_starknet_version(BlockNumber(0)).unwrap();
+    assert_eq!(block_0_starknet_version.unwrap(), StarknetVersion::default());
+
+    let block_1_starknet_version =
+        reader.begin_ro_txn().unwrap().get_starknet_version(BlockNumber(1)).unwrap();
+    assert_eq!(block_1_starknet_version.unwrap(), StarknetVersion::default());
+
+    let block_2_starknet_version =
+        reader.begin_ro_txn().unwrap().get_starknet_version(BlockNumber(2)).unwrap();
+    assert_eq!(block_2_starknet_version.unwrap(), second_version);
+
+    let block_3_starknet_version =
+        reader.begin_ro_txn().unwrap().get_starknet_version(BlockNumber(3)).unwrap();
+    assert_eq!(block_3_starknet_version.unwrap(), second_version);
+
+    let block_4_starknet_version =
+        reader.begin_ro_txn().unwrap().get_starknet_version(BlockNumber(4)).unwrap();
+    assert_eq!(block_4_starknet_version.unwrap(), yet_another_version);
+
+    let block_5_starknet_version =
+        reader.begin_ro_txn().unwrap().get_starknet_version(BlockNumber(5)).unwrap();
+    assert_eq!(block_5_starknet_version.unwrap(), yet_another_version);
+
+    let block_6_starknet_version =
+        reader.begin_ro_txn().unwrap().get_starknet_version(BlockNumber(6)).unwrap();
+    assert!(block_6_starknet_version.is_none());
 }
