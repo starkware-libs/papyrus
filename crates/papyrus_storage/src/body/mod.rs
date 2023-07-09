@@ -3,6 +3,8 @@
 mod body_test;
 pub mod events;
 
+use std::fmt::Display;
+
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockBody, BlockNumber};
 use starknet_api::core::ContractAddress;
@@ -24,6 +26,9 @@ type EventsTable<'env> = TableHandle<'env, EventsTableKey, EventContent>;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub struct StarknetVersion(pub String);
 
 pub trait BodyStorageReader {
     // The block number marker is the first block number that doesn't exist yet.
@@ -348,4 +353,16 @@ fn update_marker<'env>(
     // Advance marker.
     markers_table.upsert(txn, &MarkerKind::Body, &block_number.next())?;
     Ok(())
+}
+
+impl Default for StarknetVersion {
+    fn default() -> Self {
+        Self("0.0.0".to_string())
+    }
+}
+
+impl Display for StarknetVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }

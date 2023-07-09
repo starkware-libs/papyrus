@@ -5,6 +5,7 @@ mod header_test;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use tracing::debug;
 
+use crate::body::StarknetVersion;
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
@@ -20,6 +21,12 @@ pub trait HeaderStorageReader {
         &self,
         block_hash: &BlockHash,
     ) -> StorageResult<Option<BlockNumber>>;
+
+    /// Returns the StarkNet version at the given block number.
+    fn get_starknet_version(
+        &self,
+        block_number: BlockNumber,
+    ) -> StorageResult<Option<StarknetVersion>>;
 }
 
 pub trait HeaderStorageWriter
@@ -31,6 +38,7 @@ where
         self,
         block_number: BlockNumber,
         block_header: &BlockHeader,
+        starknet_version: StarknetVersion,
     ) -> StorageResult<Self>;
 
     fn revert_header(self, block_number: BlockNumber)
@@ -57,6 +65,28 @@ impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode>
         let block_number = block_hash_to_number_table.get(&self.txn, block_hash)?;
         Ok(block_number)
     }
+
+    fn get_starknet_version(
+        &self,
+        block_number: BlockNumber,
+    ) -> StorageResult<Option<StarknetVersion>> {
+        if block_number >= self.get_header_marker()? {
+            return Ok(None);
+        }
+
+        let starknet_version_table = self.txn.open_table(&self.tables.starknet_version)?;
+        let mut cursor = starknet_version_table.cursor(&self.txn)?;
+        cursor.lower_bound(&block_number.next())?;
+        let res = cursor.prev()?;
+
+        match res {
+            Some((_block_number, starknet_version)) => Ok(Some(starknet_version)),
+            None => unreachable!(
+                "Since block_number >= self.get_header_marker(), starknet_version_table should \
+                 have at least a single mapping."
+            ),
+        }
+    }
 }
 
 impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
@@ -64,9 +94,11 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
         self,
         block_number: BlockNumber,
         block_header: &BlockHeader,
+        starknet_version: StarknetVersion,
     ) -> StorageResult<Self> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let headers_table = self.txn.open_table(&self.tables.headers)?;
+        let starknet_version_table = self.txn.open_table(&self.tables.starknet_version)?;
         let block_hash_to_number_table = self.txn.open_table(&self.tables.block_hash_to_number)?;
 
         update_marker(&self.txn, &markers_table, block_number)?;
@@ -76,6 +108,15 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
 
         // Write mapping.
         update_hash_mapping(&self.txn, &block_hash_to_number_table, block_header, block_number)?;
+
+        // Write StarkNet version if needed.
+        update_starknet_version(
+            &self.txn,
+            &starknet_version_table,
+            starknet_version,
+            &block_number,
+        )?;
+
         Ok(self)
     }
 
@@ -107,6 +148,26 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
         headers_table.delete(&self.txn, &block_number)?;
         block_hash_to_number_table.delete(&self.txn, &reverted_header.block_hash)?;
         Ok((self, Some(reverted_header)))
+    }
+}
+
+fn update_starknet_version(
+    txn: &DbTransaction<'_, RW>,
+    starknet_version_table: &TableHandle<'_, BlockNumber, StarknetVersion>,
+    starknet_version: StarknetVersion,
+    block_number: &BlockNumber,
+) -> StorageResult<()> {
+    let mut cursor = starknet_version_table.cursor(txn)?;
+    cursor.lower_bound(block_number)?;
+    let res = cursor.prev()?;
+
+    match res {
+        Some((_block_number, last_starknet_version))
+            if last_starknet_version == starknet_version =>
+        {
+            Ok(())
+        }
+        _ => Ok(starknet_version_table.insert(txn, block_number, &starknet_version)?),
     }
 }
 

@@ -11,6 +11,7 @@ use futures_util::StreamExt;
 use indexmap::IndexMap;
 #[cfg(test)]
 use mockall::automock;
+use papyrus_storage::body::StarknetVersion;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
@@ -123,7 +124,8 @@ pub trait CentralSourceTrait {
     ) -> CompiledClassesStream<'_>;
 }
 
-pub(crate) type BlocksStream<'a> = BoxStream<'a, Result<(BlockNumber, Block), CentralError>>;
+pub(crate) type BlocksStream<'a> =
+    BoxStream<'a, Result<(BlockNumber, Block, StarknetVersion), CentralError>>;
 type CentralStateUpdate =
     (BlockNumber, BlockHash, StateDiff, IndexMap<ClassHash, DeprecatedContractClass>);
 pub(crate) type StateUpdatesStream<'a> = BoxStream<'a, CentralResult<CentralStateUpdate>>;
@@ -187,8 +189,8 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                 let maybe_central_block =
                     client_to_central_block(current_block_number, maybe_client_block);
                 match maybe_central_block {
-                    Ok(block) => {
-                        yield Ok((current_block_number, block));
+                    Ok(block_and_version) => {
+                        yield Ok((current_block_number, block_and_version.0, block_and_version.1));
                     }
                     Err(err) => {
                         yield (Err(err));
@@ -265,12 +267,21 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
 fn client_to_central_block(
     current_block_number: BlockNumber,
     maybe_client_block: Result<Option<starknet_reader_client::Block>, ClientError>,
-) -> CentralResult<Block> {
+) -> CentralResult<(Block, StarknetVersion)> {
     let res = match maybe_client_block {
         Ok(Some(block)) => {
             debug!("Received new block {current_block_number} with hash {}.", block.block_hash);
             trace!("Block: {block:#?}.");
-            Block::try_from(block).map_err(|err| CentralError::ClientError(Arc::new(err)))
+            let starknet_version = StarknetVersion(
+                block
+                    .starknet_version
+                    .as_ref()
+                    .map_or("0.0.0".to_string(), |version| version.clone()),
+            );
+            Ok((
+                Block::try_from(block).map_err(|err| CentralError::ClientError(Arc::new(err)))?,
+                starknet_version,
+            ))
         }
         Ok(None) => Err(CentralError::BlockNotFound { block_number: current_block_number }),
         Err(err) => Err(CentralError::ClientError(Arc::new(err))),
