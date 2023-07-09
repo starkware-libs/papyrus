@@ -69,7 +69,7 @@ async fn stream_block_headers() {
     let stream =
         central_source.stream_new_blocks(expected_block_num, BlockNumber(END_BLOCK_NUMBER));
     pin_mut!(stream);
-    while let Some(Ok((block_number, _block))) = stream.next().await {
+    while let Some(Ok((block_number, _block, _starknet_version))) = stream.next().await {
         assert_eq!(expected_block_num, block_number);
         expected_block_num = expected_block_num.next();
     }

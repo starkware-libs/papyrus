@@ -39,6 +39,7 @@ impl From<GlobalRoot> for starknet_api::core::GlobalRoot {
 
 /// A block as returned by the starknet gateway.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct Block {
     pub block_hash: BlockHash,
     pub block_number: BlockNumber,
@@ -52,6 +53,8 @@ pub struct Block {
     pub timestamp: BlockTimestamp,
     pub transactions: Vec<Transaction>,
     pub transaction_receipts: Vec<TransactionReceipt>,
+    // Optional since old blocks don't include this field.
+    pub starknet_version: Option<String>,
 }
 
 /// Errors that might be encountered while converting the client representation of a [`Block`] to a

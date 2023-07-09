@@ -70,6 +70,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use body::events::EventIndex;
+use body::StarknetVersion;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use db::DbTableStats;
 use ommer::{OmmerEventKey, OmmerTransactionKey};
@@ -124,6 +125,7 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
         transaction_outputs: db_writer.create_table("transaction_outputs")?,
         transactions: db_writer.create_table("transactions")?,
+        starknet_version: db_writer.create_table("starknet_version")?,
         storage_version: db_writer.create_table("storage_version")?,
     });
     let reader = StorageReader { db_reader, tables: tables.clone() };
@@ -248,6 +250,7 @@ struct_field_names! {
         transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
         transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
         transactions: TableIdentifier<TransactionIndex, Transaction>,
+        starknet_version: TableIdentifier<BlockNumber, StarknetVersion>,
         storage_version: TableIdentifier<String, Version>
     }
 }
