@@ -5,6 +5,7 @@ use async_stream::stream;
 use async_trait::async_trait;
 use futures::StreamExt;
 use indexmap::IndexMap;
+use papyrus_storage::body::StarknetVersion;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
@@ -131,7 +132,7 @@ async fn sync_happy_flow() {
                     parent_hash: create_block_hash(block_number.prev().unwrap_or_default(), false),
                     ..BlockHeader::default()
                 };
-                yield Ok((block_number, Block { header, body: BlockBody::default() }));
+                yield Ok((block_number, Block { header, body: BlockBody::default() }, StarknetVersion("starknet_version".to_string())));
             }
         }
         .boxed();
@@ -375,7 +376,7 @@ async fn sync_with_revert() {
                             block_hash: create_block_hash(i, false),
                             parent_hash: create_block_hash(i.prev().unwrap_or_default(), false),
                             ..BlockHeader::default()};
-                        yield Ok((i,Block{header, body: BlockBody::default()}));
+                        yield Ok((i,Block{header, body: BlockBody::default()}, StarknetVersion("starknet_version".to_string())));
                     }
                 }
                 .boxed(),
@@ -389,7 +390,7 @@ async fn sync_with_revert() {
                             block_hash: create_block_hash(i, i.0 >= CHAIN_FORK_BLOCK_NUMBER),
                             parent_hash: create_block_hash(i.prev().unwrap_or_default(), i.0 > CHAIN_FORK_BLOCK_NUMBER),
                             ..BlockHeader::default()};
-                        yield Ok((i, Block{header, body: BlockBody::default()}));
+                        yield Ok((i, Block{header, body: BlockBody::default()}, StarknetVersion("starknet_version".to_string())));
                     }
                 }
                 .boxed(),

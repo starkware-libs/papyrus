@@ -12,7 +12,7 @@ use async_stream::try_stream;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use indexmap::IndexMap;
-use papyrus_storage::body::BodyStorageWriter;
+use papyrus_storage::body::{BodyStorageWriter, StarknetVersion};
 use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::ommer::{OmmerStorageReader, OmmerStorageWriter};
@@ -72,6 +72,7 @@ pub enum SyncEvent {
     BlockAvailable {
         block_number: BlockNumber,
         block: Block,
+        starknet_version: StarknetVersion,
     },
     StateDiffAvailable {
         block_number: BlockNumber,
@@ -191,8 +192,8 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     // Tries to store the incoming data.
     async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult {
         match sync_event {
-            SyncEvent::BlockAvailable { block_number, block } => {
-                self.store_block(block_number, block)
+            SyncEvent::BlockAvailable { block_number, block, starknet_version } => {
+                self.store_block(block_number, block, starknet_version)
             }
             SyncEvent::StateDiffAvailable {
                 block_number,
@@ -214,7 +215,12 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     }
 
     #[instrument(skip(self, block), level = "debug", fields(block_hash = %block.header.block_hash), err)]
-    fn store_block(&mut self, block_number: BlockNumber, block: Block) -> StateSyncResult {
+    fn store_block(
+        &mut self,
+        block_number: BlockNumber,
+        block: Block,
+        starknet_version: StarknetVersion,
+    ) -> StateSyncResult {
         // Assuming the central source is trusted, detect reverts by comparing the incoming block's
         // parent hash to the current hash.
         self.verify_parent_block_hash(block_number, &block)?;
@@ -223,7 +229,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         trace!("Block data: {block:#?}");
         self.writer
             .begin_rw_txn()?
-            .append_header(block_number, &block.header)?
+            .append_header(block_number, &block.header, starknet_version)?
             .append_body(block_number, block.body)?
             .commit()?;
         Ok(())
@@ -447,8 +453,8 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
                 central_source.stream_new_blocks(header_marker, up_to).fuse();
             pin_mut!(block_stream);
             while let Some(maybe_block) = block_stream.next().await {
-                let (block_number, block) = maybe_block?;
-                yield SyncEvent::BlockAvailable { block_number, block };
+                let (block_number, block, starknet_version) = maybe_block?;
+                yield SyncEvent::BlockAvailable { block_number, block , starknet_version};
             }
         }
     }

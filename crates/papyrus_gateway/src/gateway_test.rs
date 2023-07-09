@@ -10,6 +10,7 @@ use jsonrpsee::core::{Error, RpcResult};
 use jsonrpsee::http_client::HttpClientBuilder;
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
+use papyrus_storage::body::StarknetVersion;
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use pretty_assertions::assert_eq;
@@ -126,7 +127,7 @@ fn get_block_status_test() {
         writer
             .begin_rw_txn()
             .unwrap()
-            .append_header(header.block_number, &header)
+            .append_header(header.block_number, &header, StarknetVersion::default())
             .unwrap()
             .commit()
             .unwrap();
