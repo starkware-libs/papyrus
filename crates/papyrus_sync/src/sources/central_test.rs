@@ -67,7 +67,7 @@ async fn stream_block_headers() {
 
     let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
     let stream =
-        central_source.stream_new_block_headers(expected_block_num, BlockNumber(END_BLOCK_NUMBER));
+        central_source.stream_new_blocks(expected_block_num, BlockNumber(END_BLOCK_NUMBER));
     pin_mut!(stream);
     while let Some(Ok((block_number, _block))) = stream.next().await {
         assert_eq!(expected_block_num, block_number);
@@ -103,7 +103,7 @@ async fn stream_block_headers_some_are_missing() {
 
     let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
     let stream =
-        central_source.stream_new_block_headers(expected_block_num, BlockNumber(END_BLOCK_NUMBER));
+        central_source.stream_new_blocks(expected_block_num, BlockNumber(END_BLOCK_NUMBER));
     pin_mut!(stream);
     while let Some(block_tuple) = stream.next().await {
         if expected_block_num == BlockNumber(MISSING_BLOCK_NUMBER) {
@@ -151,7 +151,7 @@ async fn stream_block_headers_error() {
 
     let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
     let stream =
-        central_source.stream_new_block_headers(expected_block_num, BlockNumber(END_BLOCK_NUMBER));
+        central_source.stream_new_blocks(expected_block_num, BlockNumber(END_BLOCK_NUMBER));
     pin_mut!(stream);
     while let Some(block_tuple) = stream.next().await {
         if expected_block_num == BlockNumber(ERROR_BLOCK_NUMBER) {
