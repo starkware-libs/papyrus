@@ -13,7 +13,9 @@ use async_stream::try_stream;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use indexmap::IndexMap;
-use papyrus_config::{ser_param, ParamPath, SerializeConfig, SerializedParam};
+use papyrus_config::{
+    deserialize_seconds_to_duration, ser_param, ParamPath, SerializeConfig, SerializedParam,
+};
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
@@ -31,7 +33,9 @@ pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, Centra
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct SyncConfig {
+    #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub block_propagation_sleep_duration: Duration,
+    #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub recoverable_error_sleep_duration: Duration,
     pub blocks_max_stream_size: u32,
     pub state_updates_max_stream_size: u32,
@@ -42,13 +46,14 @@ impl SerializeConfig for SyncConfig {
         BTreeMap::from_iter([
             ser_param(
                 "block_propagation_sleep_duration",
-                &self.block_propagation_sleep_duration,
-                "Time before checking for a new block after the node is synchronized.",
+                &self.block_propagation_sleep_duration.as_secs(),
+                "Time in seconds before checking for a new block after the node is synchronized.",
             ),
             ser_param(
                 "recoverable_error_sleep_duration",
-                &self.recoverable_error_sleep_duration,
-                "Waiting time before restarting synchronization after a recoverable error.",
+                &self.recoverable_error_sleep_duration.as_secs(),
+                "Waiting time in seconds before restarting synchronization after a recoverable \
+                 error.",
             ),
             ser_param(
                 "blocks_max_stream_size",

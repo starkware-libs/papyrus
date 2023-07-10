@@ -2,9 +2,10 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::ops::IndexMut;
+use std::time::Duration;
 
 use clap::parser::MatchesError;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
 
 pub type ParamPath = String;
@@ -93,6 +94,14 @@ pub fn ser_param<T: Serialize>(
     description: &str,
 ) -> (String, SerializedParam) {
     (name.to_owned(), SerializedParam { description: description.to_owned(), value: json!(value) })
+}
+
+pub fn deserialize_seconds_to_duration<'de, D>(de: D) -> Result<Duration, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let secs: u64 = Deserialize::deserialize(de)?;
+    Ok(Duration::from_secs(secs))
 }
 
 pub fn dump_to_file<T: SerializeConfig>(config: &T, file_path: &str) {

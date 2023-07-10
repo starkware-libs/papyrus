@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::time::Duration;
 
 use clap::Command;
 use itertools::chain;
@@ -6,7 +7,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::command::update_config_map_by_command;
-use crate::{append_sub_config_name, load, ser_param, ParamPath, SerializeConfig, SerializedParam};
+use crate::{
+    append_sub_config_name, deserialize_seconds_to_duration, load, ser_param, ParamPath,
+    SerializeConfig, SerializedParam,
+};
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct InnerConfig {
@@ -88,7 +92,8 @@ fn dump_and_load_config() {
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct TypicalConfig {
-    pub a: usize,
+    #[serde(deserialize_with = "deserialize_seconds_to_duration")]
+    pub a: Duration,
     pub b: String,
     pub c: bool,
 }
@@ -96,7 +101,7 @@ pub struct TypicalConfig {
 impl SerializeConfig for TypicalConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         BTreeMap::from([
-            ser_param("a", &self.a, "This is a."),
+            ser_param("a", &self.a.as_secs(), "This is a as seconds."),
             ser_param("b", &self.b, "This is b."),
             ser_param("c", &self.c, "This is c."),
         ])
@@ -106,7 +111,8 @@ impl SerializeConfig for TypicalConfig {
 #[test]
 fn test_update_dumped_config() {
     let command = Command::new("Testing");
-    let mut dumped_config = TypicalConfig { a: 1, b: "bbb".to_owned(), c: false }.dump();
+    let mut dumped_config =
+        TypicalConfig { a: Duration::from_secs(1), b: "bbb".to_owned(), c: false }.dump();
     let args = vec!["Testing", "--a", "1234", "--b", "15", "--c", "true"];
 
     update_config_map_by_command(&mut dumped_config, command, args).unwrap();
@@ -114,4 +120,7 @@ fn test_update_dumped_config() {
     assert_eq!(json!(1234), dumped_config["a"].value);
     assert_eq!(json!("15"), dumped_config["b"].value);
     assert_eq!(json!(true), dumped_config["c"].value);
+
+    let loaded_config: TypicalConfig = load(&dumped_config).unwrap();
+    assert_eq!(Duration::from_secs(1234), loaded_config.a);
 }
