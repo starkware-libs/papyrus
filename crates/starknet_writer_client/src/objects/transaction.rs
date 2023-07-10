@@ -85,9 +85,9 @@ pub struct DeprecatedContractClass {
 // The only difference between this and ContractClass in the gateway is in the sierra_program.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ContractClass {
-    // The sierra_program is compressed.
-    // TODO(shahak): Create a struct for a compressed value.
-    pub sierra_program: String,
+    // TODO(shahak): Create a struct for a compressed base64 value.
+    #[serde(rename = "sierra_program")]
+    pub compressed_sierra_program: String,
     pub contract_class_version: String,
     pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
     pub abi: String,
