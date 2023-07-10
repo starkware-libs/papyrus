@@ -22,6 +22,9 @@ use starknet_reader_client::RetryConfig;
 
 use crate::version::VERSION_FULL;
 
+// TODO(dvir): move this to config. It is here only because in one of the tests we need to use it.
+const BASE_LAYER_SLEEP_DURATION: Duration = Duration::from_secs(300); // 5 minutes
+
 // The path of the default configuration file, provided as part of the crate.
 const CONFIG_FILE: &str = "config/config.yaml";
 
@@ -115,6 +118,7 @@ impl Default for ConfigBuilder {
                 },
                 sync: Some(SyncConfig {
                     block_propagation_sleep_duration: Duration::from_secs(10),
+                    base_layer_propagation_sleep_duration: BASE_LAYER_SLEEP_DURATION,
                     recoverable_error_sleep_duration: Duration::from_secs(10),
                     blocks_max_stream_size: 1000,
                     state_updates_max_stream_size: 1000,

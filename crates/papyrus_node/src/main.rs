@@ -1,15 +1,23 @@
 use std::env::args;
 
+use papyrus_base_layer::ethereum_base_layer_contract::{
+    EthereumBaseLayerConfig, EthereumBaseLayerContract,
+};
 use papyrus_gateway::run_server;
 use papyrus_monitoring_gateway::MonitoringServer;
 use papyrus_node::config::Config;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_storage::{open_storage, StorageReader, StorageWriter};
-use papyrus_sync::{CentralError, CentralSource, StateSync, StateSyncError};
+use papyrus_sync::{BaseLayerError, CentralError, CentralSource, StateSync, StateSyncError};
 use tracing::info;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
+
+// TODO(dvir): add to config.
+// Base layer node configuration.
+const BASE_LAYER_NODE_URL: &str = "https://mainnet.infura.io/v3/no_default_value";
+const BASE_LAYER_CONTRACT_ADDRESS: &str = "0xc662c410C0ECf747543f5bA90660f6ABeBD9C8c4";
 
 // TODO(yair): Add to config.
 const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
@@ -44,12 +52,23 @@ async fn run_threads(config: Config) -> anyhow::Result<()> {
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
     ) -> Result<(), StateSyncError> {
-        let Some(sync_config) = config.sync else {return Ok(())};
+        let Some(sync_config) = config.sync else { return Ok(()) };
         let central_source =
             CentralSource::new(config.central.clone(), VERSION_FULL, storage_reader.clone())
                 .map_err(CentralError::ClientCreation)?;
-        let mut sync =
-            StateSync::new(sync_config, central_source, storage_reader.clone(), storage_writer);
+        let base_layer_config = EthereumBaseLayerConfig {
+            node_url: BASE_LAYER_NODE_URL.to_string(),
+            starknet_contract_address: BASE_LAYER_CONTRACT_ADDRESS.to_string(),
+        };
+        let base_layer_source = EthereumBaseLayerContract::new(base_layer_config)
+            .map_err(|e| BaseLayerError::BaseLayerContractError(Box::new(e)))?;
+        let mut sync = StateSync::new(
+            sync_config,
+            central_source,
+            base_layer_source,
+            storage_reader.clone(),
+            storage_writer,
+        );
         sync.run().await
     }
 }
