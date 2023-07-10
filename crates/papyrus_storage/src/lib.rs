@@ -9,14 +9,23 @@
 //! [`StorageReader`] and use them to create [`StorageTxn`] instances. The actual
 //! functionality is implemented on the transaction in multiple traits.
 //!
-//! ```rust
-//! use papyrus_storage::{open_storage, StorageReader, StorageWriter, StorageResult};
+//! ```
+//! use papyrus_storage::open_storage;
 //! use papyrus_storage::db::DbConfig;
 //! use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};    // Import the header API.
 //! use starknet_api::block::{BlockHeader, BlockNumber};
+//! use starknet_api::core::ChainId;
 //!
-//! let db_config: DbConfig;
-//! let (reader, writer) = open_storage(db_config).unwrap();
+//! # let dir_handle = tempfile::tempdir().unwrap();
+//! # let dir = dir_handle.path().to_path_buf();
+//! let db_config = DbConfig {
+//!     path_prefix: dir,
+//!     chain_id: ChainId("SN_MAIN".to_owned()),
+//!     min_size: 1 << 20,    // 1MB
+//!     max_size: 1 << 35,    // 32GB
+//!     growth_step: 1 << 26, // 64MB
+//! };
+//! let (reader, mut writer) = open_storage(db_config).unwrap();
 //! writer
 //!     .begin_rw_txn()?                                            // Start a RW transaction.
 //!     .append_header(BlockNumber(0), &BlockHeader::default())?    // Append a header.
@@ -24,6 +33,7 @@
 //!
 //! let header = reader.begin_ro_txn()?.get_block_header(BlockNumber(0))?;  // Read the header.
 //! assert_eq!(header, Some(BlockHeader::default()));
+//! # Ok::<(), papyrus_storage::StorageError>(())
 //! ```
 //!
 //! [`Starknet`]: https://starknet.io/
@@ -71,7 +81,7 @@ use crate::db::{
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::{VersionStorageReader, VersionStorageWriter};
 
-/// The current version of the storage crate.
+/// The current version of the storage code.
 /// Whenever a breaking change is introduced, the version is incremented and a storage
 /// migration is required for existing storages.
 pub const STORAGE_VERSION: Version = Version(2);
