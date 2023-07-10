@@ -319,16 +319,6 @@ auto_storage_serde! {
     pub struct TransactionVersion(pub StarkFelt);
     pub struct Version(pub u32);
 
-    // Casm related structs.
-    pub struct CasmContractClass {
-        pub prime: BigUint,
-        pub compiler_version: String,
-        pub bytecode: Vec<BigUintAsHex>,
-        pub hints: Vec<(usize, Vec<Hint>)>,
-        pub pythonic_hints: Option<Vec<(usize, Vec<String>)>>,
-        pub entry_points_by_type: CasmContractEntryPoints,
-    }
-
     pub struct CasmContractEntryPoints {
         pub external: Vec<CasmContractEntryPoint>,
         pub l1_handler: Vec<CasmContractEntryPoint>,
@@ -803,3 +793,37 @@ impl StorageSerde for DeprecatedContractClass {
 }
 #[cfg(test)]
 create_storage_serde_test!(DeprecatedContractClass);
+
+impl StorageSerde for CasmContractClass {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        let mut to_compress: Vec<u8> = Vec::new();
+        self.prime.serialize_into(&mut to_compress)?;
+        self.compiler_version.serialize_into(&mut to_compress)?;
+        self.bytecode.serialize_into(&mut to_compress)?;
+        self.hints.serialize_into(&mut to_compress)?;
+        self.pythonic_hints.serialize_into(&mut to_compress)?;
+        self.entry_points_by_type.serialize_into(&mut to_compress)?;
+
+        let compressed = compress(to_compress.as_slice())?;
+        compressed.serialize_into(res)?;
+
+        Ok(())
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        let compressed_data = Vec::<u8>::deserialize_from(bytes)?;
+        let data = decompress(compressed_data.as_slice()).ok()?;
+        let data = &mut data.as_slice();
+        Some(Self {
+            prime: BigUint::deserialize_from(data)?,
+            compiler_version: String::deserialize_from(data)?,
+            bytecode: Vec::<BigUintAsHex>::deserialize_from(data)?,
+            hints: Vec::<(usize, Vec<Hint>)>::deserialize_from(data)?,
+            pythonic_hints: Option::<Vec<(usize, Vec<String>)>>::deserialize_from(data)?,
+            entry_points_by_type: CasmContractEntryPoints::deserialize_from(data)?,
+        })
+    }
+}
+
+#[cfg(test)]
+create_storage_serde_test!(CasmContractClass);
