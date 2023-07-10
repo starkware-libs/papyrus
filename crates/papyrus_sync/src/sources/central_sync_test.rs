@@ -9,14 +9,14 @@ use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{StorageReader, StorageWriter};
-use starknet_api::block::{BlockBody, BlockHash, BlockHeader, BlockNumber};
+use starknet_api::block::{Block, BlockBody, BlockHash, BlockHeader, BlockNumber};
 use starknet_api::hash::StarkFelt;
 use starknet_api::stark_felt;
 use starknet_api::state::StateDiff;
 use tokio::sync::Mutex;
 use tracing::{debug, error};
 
-use super::central::{BlockBodiesStream, BlockHeadersStream};
+use super::central::BlocksStream;
 use crate::sources::central::{CompiledClassesStream, MockCentralSourceTrait, StateUpdatesStream};
 use crate::{CentralError, CentralSourceTrait, GenericStateSync, StateSyncResult, SyncConfig};
 
@@ -119,8 +119,8 @@ async fn sync_happy_flow() {
     // Mock having N_BLOCKS chain in central.
     let mut mock = MockCentralSourceTrait::new();
     mock.expect_get_block_marker().returning(|| Ok(BlockNumber(N_BLOCKS)));
-    mock.expect_stream_new_block_headers().returning(move |initial, up_to| {
-        let block_headers_stream: BlockHeadersStream<'_> = stream! {
+    mock.expect_stream_new_blocks().returning(move |initial, up_to| {
+        let blocks_stream: BlocksStream<'_> = stream! {
             for block_number in initial.iter_up_to(up_to) {
                 if block_number.0 >= N_BLOCKS {
                     yield Err(CentralError::BlockNotFound { block_number });
@@ -131,20 +131,11 @@ async fn sync_happy_flow() {
                     parent_hash: create_block_hash(block_number.prev().unwrap_or_default(), false),
                     ..BlockHeader::default()
                 };
-                yield Ok((block_number, header));
+                yield Ok((block_number, Block { header, body: BlockBody::default() }));
             }
         }
         .boxed();
-        block_headers_stream
-    });
-    mock.expect_stream_new_block_bodies().returning(move |initial, up_to| {
-        let block_bodies_stream: BlockBodiesStream<'_> = stream! {
-            for block_number in initial.iter_up_to(up_to) {
-                yield Ok((block_number, BlockBody::default() ));
-            }
-        }
-        .boxed();
-        block_bodies_stream
+        blocks_stream
     });
     mock.expect_stream_state_updates().returning(move |initial, up_to| {
         let state_stream: StateUpdatesStream<'_> = stream! {
@@ -368,11 +359,11 @@ async fn sync_with_revert() {
             }
         }
 
-        fn stream_new_block_headers(
+        fn stream_new_blocks(
             &self,
             initial_block_number: BlockNumber,
             up_to_block_number: BlockNumber,
-        ) -> BlockHeadersStream<'_> {
+        ) -> BlocksStream<'_> {
             match self.revert_happend() {
                 false => stream! {
                     for i in initial_block_number.iter_up_to(up_to_block_number) {
@@ -384,7 +375,7 @@ async fn sync_with_revert() {
                             block_hash: create_block_hash(i, false),
                             parent_hash: create_block_hash(i.prev().unwrap_or_default(), false),
                             ..BlockHeader::default()};
-                        yield Ok((i, header));
+                        yield Ok((i,Block{header, body: BlockBody::default()}));
                     }
                 }
                 .boxed(),
@@ -398,24 +389,11 @@ async fn sync_with_revert() {
                             block_hash: create_block_hash(i, i.0 >= CHAIN_FORK_BLOCK_NUMBER),
                             parent_hash: create_block_hash(i.prev().unwrap_or_default(), i.0 > CHAIN_FORK_BLOCK_NUMBER),
                             ..BlockHeader::default()};
-                        yield Ok((i, header));
+                        yield Ok((i, Block{header, body: BlockBody::default()}));
                     }
                 }
                 .boxed(),
             }
-        }
-
-        fn stream_new_block_bodies(
-            &self,
-            initial_block_number: BlockNumber,
-            up_to_block_number: BlockNumber,
-        ) -> BlockBodiesStream<'_> {
-            stream! {
-                for i in initial_block_number.iter_up_to(up_to_block_number) {
-                    yield Ok((i, BlockBody::default()));
-                }
-            }
-            .boxed()
         }
 
         fn stream_state_updates(
