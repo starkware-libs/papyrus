@@ -272,7 +272,11 @@ checksum = "16e62a023e7c117e27523144c5d2459f4397fcc3cab0085af8e2224f643a0193"
 dependencies = [
  "proc-macro2",
  "quote",
+<<<<<<< HEAD
  "syn 2.0.26",
+=======
+ "syn 2.0.25",
+>>>>>>> Sync base layer marker.
 ]
 
 [[package]]
@@ -283,7 +287,11 @@ checksum = "a564d521dd56509c4c47480d00b80ee55f7e385ae48db5744c67ad50c92d2ebf"
 dependencies = [
  "proc-macro2",
  "quote",
+<<<<<<< HEAD
  "syn 2.0.26",
+=======
+ "syn 2.0.25",
+>>>>>>> Sync base layer marker.
 ]
 
 [[package]]
@@ -621,9 +629,15 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-casm"
+<<<<<<< HEAD
 version = "2.1.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c3b6b34b912d2b95084ee7fbd4b85c36105adf63c2bd521c4c38d625300488f"
+=======
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffe86abd9f988018b39e1e41b467608ad9596ff466f141d41ffecc29a483c2f4"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "cairo-lang-utils",
  "indoc",
@@ -638,9 +652,15 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-compiler"
+<<<<<<< HEAD
 version = "2.1.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1fdc25d854fdefed50357497a372449e8260518d0d1d8e3fe919e6df34d42a1"
+=======
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "220a48cb861ea7dac60f50e7aea044d7c0936ea602f64479e9577d4c4bed5c9e"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "anyhow",
  "cairo-lang-defs",
@@ -663,18 +683,30 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-debug"
+<<<<<<< HEAD
 version = "2.1.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cbdd66e992e76847d92fbd693450b908945bdf78d341b11f5d72d6c14273afd1"
+=======
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4bd06a99f5ac52f466a64fbdd0615baddb078b9e0cb97fdc7575faea916a66b5"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "cairo-lang-utils",
 ]
 
 [[package]]
 name = "cairo-lang-defs"
+<<<<<<< HEAD
 version = "2.1.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ad00621f022382bdab293f642f175e95bbaf343d42b9eab0a1f823f926808099"
+=======
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b8512ee5f8b3a2a18c7ffbaa23a815e56d9f8737ba0d3a0d5dcbf9b2fcbe96b"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "cairo-lang-debug",
  "cairo-lang-diagnostics",
@@ -690,9 +722,15 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-diagnostics"
+<<<<<<< HEAD
 version = "2.1.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cc8531cfa24bc9751092ac180d0c5afa4fe4c115548d8ed3c483797cc5612d34"
+=======
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0a351f6441a55ce70b7ba62814670d0c154b2fdc4a7453387b71027a8440da2"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "cairo-lang-debug",
  "cairo-lang-filesystem",
@@ -703,9 +741,15 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-eq-solver"
+<<<<<<< HEAD
 version = "2.1.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "24e826a4314d86cd2770dca08c0780a7a2130cb451c1456eef28890d893cac82"
+=======
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "824ee8e225355e09ac57f537a9612049e4367b2bd3934d0591559bf87337cdbe"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "cairo-lang-utils",
  "good_lp",
@@ -715,9 +759,15 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-filesystem"
+<<<<<<< HEAD
 version = "2.1.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd3ba56ffff9c8e8bc011d8f9b93a66a7218667f77f7e5901f6eb3192c48350e"
+=======
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1da7ceb69b84fb8b0d6e4d4648c4f2218feddcf0b9929094358b2bd3b2603ef0"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "cairo-lang-debug",
  "cairo-lang-utils",
@@ -729,9 +779,15 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-lowering"
+<<<<<<< HEAD
 version = "2.1.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1009e0130f2a936ce00472356d1bbdf131eb1bd95904efc8ad02204aebf3ac8"
+=======
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a70fb2960cc39ceee250090109f9df05b26f781dab8c0ba48b6fd6f663858587"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "cairo-lang-debug",
  "cairo-lang-defs",
@@ -754,9 +810,15 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-parser"
+<<<<<<< HEAD
 version = "2.1.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "59e96a998c0d873e2e9cdf574882a063e8695a627ad19c4b9357db767bbdb64c"
+=======
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "48c44c66f5aeb3d80189f4f2fd0bc6872b4c6f5cc25002402dc6e85561d2cc53"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "cairo-lang-diagnostics",
  "cairo-lang-filesystem",
@@ -775,9 +837,15 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-plugins"
+<<<<<<< HEAD
 version = "2.1.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "35998a2921161b64f268ce6293b351ddbfea127f2632b378ebe68f22ce7f262b"
+=======
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d0acfa9aca2811c5df6d72a160c4168fd6cc53eb3c3f966c933e791b0f91ce01"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "cairo-lang-defs",
  "cairo-lang-diagnostics",
@@ -795,9 +863,15 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-proc-macros"
+<<<<<<< HEAD
 version = "2.1.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "991981359e104160e13d2a3503467b4de44b75b38c566102c304ecd02f396a61"
+=======
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e5ce4ad906f6491bc82eaae14eea6a96755d651a8809fc1adb53feb99bcc55a"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "cairo-lang-debug",
  "quote",
@@ -806,9 +880,15 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-project"
+<<<<<<< HEAD
 version = "2.1.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "20948110870e2fdfdacb3c8ade01d7726973f00eede80ffe1613d80dea6edba7"
+=======
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46f7c638a2a30010071a176396c29bc065701f353f2c3205b96f03463b54721c"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "cairo-lang-filesystem",
  "cairo-lang-utils",
@@ -820,9 +900,15 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-semantic"
+<<<<<<< HEAD
 version = "2.1.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3738e1d1cc5b3cd696b8534dfdbf274695f76bf68c000f406b91f38bee9931e"
+=======
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb3e68af88e60a1e30776877b0a3a346a21a3d15c54c9f8ace844e0652b1036f"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "cairo-lang-debug",
  "cairo-lang-defs",
@@ -843,9 +929,15 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-sierra"
+<<<<<<< HEAD
 version = "2.1.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc3d4aa91e7597e70023ff1b5e331053ef5c0cd7c74c4e8e4141b9454487c7b8"
+=======
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3e4ccc934f2d4a063f7f72554d422e724134925c981cd0e592b4defb73ca103a"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "cairo-lang-utils",
  "const-fnv1a-hash",
@@ -866,9 +958,15 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-sierra-ap-change"
+<<<<<<< HEAD
 version = "2.1.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "84aec8f04ddf903c1d48940b60fbb760ba483c6eac58bbb21d4b3163e03cf7c5"
+=======
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad6e742ec576f773c9d6c4f1e4be6fbe9f1e5b470cd374f27f5c82e15c151b85"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "cairo-lang-eq-solver",
  "cairo-lang-sierra",
@@ -880,9 +978,15 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-sierra-gas"
+<<<<<<< HEAD
 version = "2.1.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "365f895f6c6d828eaf992b6dad7f41493827d65e4eafa0de5014af013e22ade7"
+=======
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2dc4e1b3793f639724f59f34eb4007253a91d5179de8b2ab2c511c6c5d56155c"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "cairo-lang-eq-solver",
  "cairo-lang-sierra",
@@ -894,9 +998,15 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-sierra-generator"
+<<<<<<< HEAD
 version = "2.1.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b52fe30efab4d85c388bb18b423bafcbd9b6a117fdacdc77e647dfd4f257017"
+=======
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "20c323c6f656398254f9404126c4a60e0a5234214255590288783eb323f6f187"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "cairo-lang-debug",
  "cairo-lang-defs",
@@ -920,9 +1030,15 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-sierra-to-casm"
+<<<<<<< HEAD
 version = "2.1.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d66ffe7a758f18092e013bea5e7eba8fa7a3e314f66c80ed9056a533deb6eb3"
+=======
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b26fffdbf578f9aaf00d74001ac93cad4a713b510642161a0594f1403a59c543"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "assert_matches",
  "cairo-felt",
@@ -952,9 +1068,15 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-starknet"
+<<<<<<< HEAD
 version = "2.1.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d21f8c2a7654262df386c1cf6cdffe614d35d01e2c8bc37e5b30c0ffc05c9a78"
+=======
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c63e026127221a7bb5b5081b631eeef552a99cbdae76414dced7a224694afeaa"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "anyhow",
  "cairo-felt",
@@ -993,9 +1115,15 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-syntax"
+<<<<<<< HEAD
 version = "2.1.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f5b464ac5257455a773d00569aef590a156f4e60d940ce6bca1d27f8fa1d26f6"
+=======
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6b48a1c67679bc19165c2ce45b38e7bc7ce5a4fbb004a07f60361f99b618e73"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "cairo-lang-debug",
  "cairo-lang-filesystem",
@@ -1010,9 +1138,15 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-syntax-codegen"
+<<<<<<< HEAD
 version = "2.1.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c108224d2b83d3c912bdb52f62953e5e7983a05de857a2e93f7a8ebc813921b0"
+=======
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b2102b91819a7638f1efb39379351578a296d042de53f7492684eeb47c3a844"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "genco",
  "xshell",
@@ -1020,9 +1154,15 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-utils"
+<<<<<<< HEAD
 version = "2.1.0-rc0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a42999459cdd0fae64986fdfb3b7fb8e7488ad733d83f81424d1f498a97ebfd1"
+=======
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25d0873d45a7f6020fa39ebda1386a20d328bf5e448056d5a507641d0bfde0cf"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "indexmap 2.0.0",
  "itertools 0.11.0",
@@ -1136,7 +1276,34 @@ dependencies = [
 name = "clap"
 version = "4.3.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+<<<<<<< HEAD
 checksum = "5fd304a20bff958a57f04c4e96a2e7594cc4490a0e809cbd48bb6437edaa452d"
+=======
+checksum = "4ea181bf566f71cb9a5d17a59e1871af638180a18fb0035c92ae62b705207123"
+dependencies = [
+ "atty",
+ "bitflags 1.3.2",
+ "clap_derive 3.2.25",
+ "clap_lex 0.2.4",
+ "indexmap 1.9.3",
+ "once_cell",
+ "strsim",
+ "termcolor",
+ "textwrap",
+]
+
+[[package]]
+name = "clap"
+<<<<<<< HEAD
+version = "4.3.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f644d0dac522c8b05ddc39aaaccc5b136d5dc4ff216610c5641e3be5becf56c"
+=======
+version = "4.3.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1640e5cc7fb47dbb8338fd471b105e7ed6c3cb2aeb00c2e067127ffd3764a05d"
+>>>>>>> Sync base layer marker.
+>>>>>>> Sync base layer marker.
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -1145,9 +1312,21 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
+<<<<<<< HEAD
 version = "4.3.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "01c6a3f08f1fe5662a35cfe393aec09c4df95f60ee93b7556505260f75eee9e1"
+=======
+<<<<<<< HEAD
+version = "4.3.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af410122b9778e024f9e0fb35682cc09cc3f85cad5e8d3ba8f47a9702df6e73d"
+=======
+version = "4.3.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98c59138d527eeaf9b53f35a77fcc1fad9d883116070c63d5de1c7dc7b00c72b"
+>>>>>>> Sync base layer marker.
+>>>>>>> Sync base layer marker.
 dependencies = [
  "anstream",
  "anstyle",
@@ -1164,7 +1343,11 @@ dependencies = [
  "heck 0.4.1",
  "proc-macro2",
  "quote",
+<<<<<<< HEAD
  "syn 2.0.26",
+=======
+ "syn 2.0.25",
+>>>>>>> Sync base layer marker.
 ]
 
 [[package]]
@@ -1837,8 +2020,13 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+<<<<<<< HEAD
  "syn 2.0.26",
  "toml",
+=======
+ "syn 2.0.25",
+ "toml 0.7.6",
+>>>>>>> Sync base layer marker.
  "walkdir",
 ]
 
@@ -1855,7 +2043,11 @@ dependencies = [
  "proc-macro2",
  "quote",
  "serde_json",
+<<<<<<< HEAD
  "syn 2.0.26",
+=======
+ "syn 2.0.25",
+>>>>>>> Sync base layer marker.
 ]
 
 [[package]]
@@ -1880,8 +2072,13 @@ dependencies = [
  "rlp",
  "serde",
  "serde_json",
+<<<<<<< HEAD
  "strum 0.25.0",
  "syn 2.0.26",
+=======
+ "strum",
+ "syn 2.0.25",
+>>>>>>> Sync base layer marker.
  "tempfile",
  "thiserror",
  "tiny-keccak",
@@ -2251,7 +2448,11 @@ checksum = "89ca545a94061b6365f2c7355b4b32bd20df3ff95f02da9329b34ccc3bd6ee72"
 dependencies = [
  "proc-macro2",
  "quote",
+<<<<<<< HEAD
  "syn 2.0.26",
+=======
+ "syn 2.0.25",
+>>>>>>> Sync base layer marker.
 ]
 
 [[package]]
@@ -2825,9 +3026,15 @@ dependencies = [
 
 [[package]]
 name = "indoc"
+<<<<<<< HEAD
 version = "2.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c785eefb63ebd0e33416dfcb8d6da0bf27ce752843a45632a67bf10d4d4b5c4"
+=======
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "761cde40c27e2a9877f8c928fd248b7eec9dd48623dd514b256858ca593fbba7"
+>>>>>>> Sync base layer marker.
 
 [[package]]
 name = "inout"
@@ -2890,8 +3097,16 @@ version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb0889898416213fab133e1d33a0e5858a48177452750691bde3666d0fdbaf8b"
 dependencies = [
+<<<<<<< HEAD
  "hermit-abi",
+=======
+ "hermit-abi 0.3.2",
+<<<<<<< HEAD
+>>>>>>> Sync base layer marker.
  "rustix 0.38.4",
+=======
+ "rustix 0.38.3",
+>>>>>>> Sync base layer marker.
  "windows-sys 0.48.0",
 ]
 
@@ -2924,9 +3139,15 @@ dependencies = [
 
 [[package]]
 name = "itoa"
+<<<<<<< HEAD
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af150ab688ff2122fcef229be89cb50dd66af9e01a4ff320cc137eecc9bacc38"
+=======
+version = "1.0.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62b02a5381cc465bd3041d84623d0fa3b66738b52b8e2fc3bab8ad63ab032f4a"
+>>>>>>> Sync base layer marker.
 
 [[package]]
 name = "jobserver"
@@ -3112,7 +3333,15 @@ dependencies = [
  "anyhow",
  "base64 0.21.2",
  "bytecount",
+<<<<<<< HEAD
  "clap",
+=======
+<<<<<<< HEAD
+ "clap 4.3.15",
+=======
+ "clap 4.3.11",
+>>>>>>> Sync base layer marker.
+>>>>>>> Sync base layer marker.
  "fancy-regex",
  "fraction",
  "getrandom",
@@ -3406,7 +3635,11 @@ checksum = "ddece26afd34c31585c74a4db0630c376df271c285d682d1e55012197830b6df"
 dependencies = [
  "proc-macro2",
  "quote",
+<<<<<<< HEAD
  "syn 2.0.26",
+=======
+ "syn 2.0.25",
+>>>>>>> Sync base layer marker.
 ]
 
 [[package]]
@@ -3750,7 +3983,11 @@ dependencies = [
  "proc-macro-crate",
  "proc-macro2",
  "quote",
+<<<<<<< HEAD
  "syn 2.0.26",
+=======
+ "syn 2.0.25",
+>>>>>>> Sync base layer marker.
 ]
 
 [[package]]
@@ -3837,7 +4074,11 @@ checksum = "a948666b637a0f465e8564c73e89d4dde00d72d4d473cc972f390fc3dcee7d9c"
 dependencies = [
  "proc-macro2",
  "quote",
+<<<<<<< HEAD
  "syn 2.0.26",
+=======
+ "syn 2.0.25",
+>>>>>>> Sync base layer marker.
 ]
 
 [[package]]
@@ -4035,7 +4276,11 @@ name = "papyrus_proc_macros"
 version = "0.0.3"
 dependencies = [
  "quote",
+<<<<<<< HEAD
  "syn 2.0.26",
+=======
+ "syn 2.0.25",
+>>>>>>> Sync base layer marker.
 ]
 
 [[package]]
@@ -4092,8 +4337,15 @@ dependencies = [
  "itertools 0.10.5",
  "libmdbx",
  "mockall",
+<<<<<<< HEAD
  "papyrus_common",
+=======
+<<<<<<< HEAD
+>>>>>>> Sync base layer marker.
  "papyrus_config",
+=======
+ "papyrus_base_layer",
+>>>>>>> Sync base layer marker.
  "papyrus_storage",
  "pretty_assertions",
  "reqwest",
@@ -4196,9 +4448,15 @@ dependencies = [
 
 [[package]]
 name = "paste"
+<<<<<<< HEAD
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "de3145af08024dea9fa9914f381a17b8fc6034dfb00f3a84013f7ff43f29ed4c"
+=======
+version = "1.0.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4b27ab7be369122c218afc2079489cdcb4b517c0a3fc386ff11e1fedfcc2b35"
+>>>>>>> Sync base layer marker.
 
 [[package]]
 name = "path-clean"
@@ -4296,7 +4554,11 @@ dependencies = [
  "phf_shared 0.11.2",
  "proc-macro2",
  "quote",
+<<<<<<< HEAD
  "syn 2.0.26",
+=======
+ "syn 2.0.25",
+>>>>>>> Sync base layer marker.
 ]
 
 [[package]]
@@ -4340,7 +4602,11 @@ checksum = "ec2e072ecce94ec471b13398d5402c188e76ac03cf74dd1a975161b23a3f6d9c"
 dependencies = [
  "proc-macro2",
  "quote",
+<<<<<<< HEAD
  "syn 2.0.26",
+=======
+ "syn 2.0.25",
+>>>>>>> Sync base layer marker.
 ]
 
 [[package]]
@@ -4436,7 +4702,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92139198957b410250d43fad93e630d956499a625c527eda65175c8680f83387"
 dependencies = [
  "proc-macro2",
+<<<<<<< HEAD
  "syn 2.0.26",
+=======
+ "syn 2.0.25",
+>>>>>>> Sync base layer marker.
 ]
 
 [[package]]
@@ -4489,9 +4759,15 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
+<<<<<<< HEAD
 version = "1.0.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "18fb31db3f9bddb2ea821cde30a9f70117e3f119938b5ee630b7403aa6e2ead9"
+=======
+version = "1.0.64"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "78803b62cbf1f46fde80d7c0e803111524b9877184cfe7c3033659490ac7a7da"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "unicode-ident",
 ]
@@ -4507,6 +4783,7 @@ dependencies = [
  "hex",
  "lazy_static",
  "rustix 0.36.15",
+<<<<<<< HEAD
 ]
 
 [[package]]
@@ -4519,6 +4796,8 @@ dependencies = [
  "itertools 0.10.5",
  "once_cell",
  "regex",
+=======
+>>>>>>> Sync base layer marker.
 ]
 
 [[package]]
@@ -4678,8 +4957,13 @@ checksum = "b2eae68fc220f7cf2532e4494aded17545fce192d59cd996e0fe7887f4ceb575"
 dependencies = [
  "aho-corasick",
  "memchr",
+<<<<<<< HEAD
  "regex-automata 0.3.3",
  "regex-syntax 0.7.4",
+=======
+ "regex-automata 0.3.2",
+ "regex-syntax 0.7.3",
+>>>>>>> Sync base layer marker.
 ]
 
 [[package]]
@@ -4693,6 +4977,7 @@ dependencies = [
 
 [[package]]
 name = "regex-automata"
+<<<<<<< HEAD
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39354c10dd07468c2e73926b23bb9c2caca74c5501e38a35da70406f1d923310"
@@ -4700,6 +4985,15 @@ dependencies = [
  "aho-corasick",
  "memchr",
  "regex-syntax 0.7.4",
+=======
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83d3daa6976cffb758ec878f108ba0e062a45b2d6ca3a2cca965338855476caf"
+dependencies = [
+ "aho-corasick 1.0.2",
+ "memchr",
+ "regex-syntax 0.7.3",
+>>>>>>> Sync base layer marker.
 ]
 
 [[package]]
@@ -4710,9 +5004,15 @@ checksum = "f162c6dd7b008981e4d40210aca20b4bd0f9b60ca9271061b07f78537722f2e1"
 
 [[package]]
 name = "regex-syntax"
+<<<<<<< HEAD
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5ea92a5b6195c6ef2a0295ea818b312502c6fc94dde986c5553242e18fd4ce2"
+=======
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ab07dc67230e4a4718e70fd5c20055a4334b121f1f9db8fe63ef39ce9b8c846"
+>>>>>>> Sync base layer marker.
 
 [[package]]
 name = "relative-path"
@@ -4888,9 +5188,15 @@ dependencies = [
 
 [[package]]
 name = "rustix"
+<<<<<<< HEAD
 version = "0.38.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0a962918ea88d644592894bc6dc55acc6c0956488adcebbfb6e273506b7fd6e5"
+=======
+version = "0.38.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac5ffa1efe7548069688cd7028f32591853cd7b5b756d41bcffd2353e4fc75b4"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "bitflags 2.3.3",
  "errno 0.3.1",
@@ -4901,9 +5207,15 @@ dependencies = [
 
 [[package]]
 name = "rustls"
+<<<<<<< HEAD
 version = "0.21.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "79ea77c539259495ce8ca47f53e66ae0330a8819f67e23ac96ca02f50e7b7d36"
+=======
+version = "0.21.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b19faa85ecb5197342b54f987b142fb3e30d0c90da40f80ef4fa9a726e6676ed"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "log",
  "ring",
@@ -4954,6 +5266,7 @@ dependencies = [
 
 [[package]]
 name = "rustversion"
+<<<<<<< HEAD
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ffc183a10b4478d04cbbbfc96d0873219d962dd5accaff2ffbd4ceb7df837f4"
@@ -4963,6 +5276,17 @@ name = "ryu"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ad4cc8da4ef723ed60bced201181d83791ad433213d8c24efffda1eec85d741"
+=======
+version = "1.0.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc31bd9b61a32c31f9650d18add92aa83a49ba979c143eefd27fe7177b05bd5f"
+
+[[package]]
+name = "ryu"
+version = "1.0.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe232bdf6be8c8de797b22184ee71118d63780ea42ac85b61d1baa6d3b782ae9"
+>>>>>>> Sync base layer marker.
 
 [[package]]
 name = "salsa"
@@ -5182,7 +5506,11 @@ checksum = "389894603bd18c46fa56231694f8d827779c0951a667087194cf9de94ed24682"
 dependencies = [
  "proc-macro2",
  "quote",
+<<<<<<< HEAD
  "syn 2.0.26",
+=======
+ "syn 2.0.25",
+>>>>>>> Sync base layer marker.
 ]
 
 [[package]]
@@ -5198,9 +5526,15 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
+<<<<<<< HEAD
 version = "1.0.103"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d03b412469450d4404fe8499a268edd7f8b79fecb074b0d812ad64ca21f4031b"
+=======
+version = "1.0.100"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f1e14e89be7aa4c4b78bdbdc9eb5bf8517829a600ae8eaa39a6e1d960b5185c"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "itoa",
  "ryu",
@@ -5209,9 +5543,15 @@ dependencies = [
 
 [[package]]
 name = "serde_path_to_error"
+<<<<<<< HEAD
 version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4beec8bce849d58d06238cb50db2e1c417cfeafa4c63f692b15c82b7c80f8335"
+=======
+version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8acc4422959dd87a76cb117c191dcbffc20467f06c9100b76721dab370f24d3a"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "itoa",
  "serde",
@@ -5685,9 +6025,15 @@ dependencies = [
 
 [[package]]
 name = "syn"
+<<<<<<< HEAD
 version = "2.0.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "45c3457aacde3c65315de5031ec191ce46604304d2446e803d71ade03308d970"
+=======
+version = "2.0.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15e3fc8c0c74267e2df136e5e5fb656a464158aa57624053375eb9c8c6e25ae2"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5767,7 +6113,11 @@ dependencies = [
  "proc-macro2",
  "quote",
  "regex",
+<<<<<<< HEAD
  "syn 2.0.26",
+=======
+ "syn 2.0.25",
+>>>>>>> Sync base layer marker.
  "which",
 ]
 
@@ -5809,7 +6159,11 @@ checksum = "463fe12d7993d3b327787537ce8dd4dfa058de32fc2b195ef3cde03dc4771e8f"
 dependencies = [
  "proc-macro2",
  "quote",
+<<<<<<< HEAD
  "syn 2.0.26",
+=======
+ "syn 2.0.25",
+>>>>>>> Sync base layer marker.
 ]
 
 [[package]]
@@ -5914,7 +6268,11 @@ checksum = "630bdcf245f78637c13ec01ffae6187cca34625e8c63150d424b59e55af2675e"
 dependencies = [
  "proc-macro2",
  "quote",
+<<<<<<< HEAD
  "syn 2.0.26",
+=======
+ "syn 2.0.25",
+>>>>>>> Sync base layer marker.
 ]
 
 [[package]]
@@ -6003,6 +6361,18 @@ dependencies = [
 
 [[package]]
 name = "toml"
+<<<<<<< HEAD
+=======
+version = "0.4.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "758664fc71a3a69038656bee8b6be6477d2a6c315a6b81f7081f591bffa4111f"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "toml"
+>>>>>>> Sync base layer marker.
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c17e963a819c331dcacd7ab957d80bc2b9a9c1e71c804826d2f283dd65306542"
@@ -6024,9 +6394,15 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
+<<<<<<< HEAD
 version = "0.19.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8123f27e969974a3dfba720fdb560be359f57b44302d280ba72e76a74480e8a"
+=======
+version = "0.19.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c500344a19072298cd05a7224b3c0c629348b78692bf48466c5238656e315a78"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "indexmap 2.0.0",
  "serde",
@@ -6089,7 +6465,11 @@ checksum = "5f4f31f56159e98206da9efd823404b79b6ef3143b4a7ab76e67b1751b25a4ab"
 dependencies = [
  "proc-macro2",
  "quote",
+<<<<<<< HEAD
  "syn 2.0.26",
+=======
+ "syn 2.0.25",
+>>>>>>> Sync base layer marker.
 ]
 
 [[package]]
@@ -6222,9 +6602,15 @@ checksum = "92888ba5573ff080736b3648696b70cafad7d250551175acbaa4e0385b3e1460"
 
 [[package]]
 name = "unicode-ident"
+<<<<<<< HEAD
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "301abaae475aa91687eb82514b328ab47a211a533026cb25fc3e519b86adfc3c"
+=======
+version = "1.0.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "22049a19f4a68748a168c0fc439f9516686aa045927ff767eca0a85101fb6e73"
+>>>>>>> Sync base layer marker.
 
 [[package]]
 name = "unicode-normalization"
@@ -6362,7 +6748,11 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "quote",
+<<<<<<< HEAD
  "syn 2.0.26",
+=======
+ "syn 2.0.25",
+>>>>>>> Sync base layer marker.
  "wasm-bindgen-shared",
 ]
 
@@ -6396,7 +6786,11 @@ checksum = "54681b18a46765f095758388f2d0cf16eb8d4169b639ab575a8f5693af210c7b"
 dependencies = [
  "proc-macro2",
  "quote",
+<<<<<<< HEAD
  "syn 2.0.26",
+=======
+ "syn 2.0.25",
+>>>>>>> Sync base layer marker.
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]
@@ -6645,9 +7039,15 @@ checksum = "1a515f5799fe4961cb532f983ce2b23082366b898e52ffbce459c86f67c8378a"
 
 [[package]]
 name = "winnow"
+<<<<<<< HEAD
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "81fac9742fd1ad1bd9643b991319f72dd031016d44b77039a26977eb667141e7"
+=======
+version = "0.4.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "81a2094c43cc94775293eaa0e499fbc30048a6d824ac82c0351a8c0bf9112529"
+>>>>>>> Sync base layer marker.
 dependencies = [
  "memchr",
 ]
@@ -6745,7 +7145,11 @@ checksum = "ce36e65b0d2999d2aafac989fb249189a141aee1f53c612c1f37d72631959f69"
 dependencies = [
  "proc-macro2",
  "quote",
+<<<<<<< HEAD
  "syn 2.0.26",
+=======
+ "syn 2.0.25",
+>>>>>>> Sync base layer marker.
 ]
 
 [[package]]

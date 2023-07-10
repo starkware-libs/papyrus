@@ -17,6 +17,7 @@ use papyrus_common::SyncingState;
 use papyrus_config::converters::deserialize_milliseconds_to_duration;
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, SerializedParam};
+use papyrus_storage::base_layer::{BaseLayerStorageReader, BaseLayerStorageWriter};
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter, StarknetVersion};
@@ -24,6 +25,7 @@ use papyrus_storage::ommer::{OmmerStorageReader, OmmerStorageWriter};
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
+use sources::{BaseLayerSource, BaseLayerSourceTrait};
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
@@ -31,12 +33,15 @@ use starknet_api::state::StateDiff;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, instrument, trace, warn};
 
-pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
-
+pub use self::sources::{
+    BaseLayerError, CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait,
+};
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct SyncConfig {
     #[serde(deserialize_with = "deserialize_milliseconds_to_duration")]
     pub block_propagation_sleep_duration: Duration,
+    #[serde(deserialize_with = "deserialize_milliseconds_to_duration")]
+    base_layer_propagation_sleep_duration: Duration,
     #[serde(deserialize_with = "deserialize_milliseconds_to_duration")]
     pub recoverable_error_sleep_duration: Duration,
     pub blocks_max_stream_size: u32,
@@ -51,6 +56,11 @@ impl SerializeConfig for SyncConfig {
                 &self.block_propagation_sleep_duration.as_millis(),
                 "Time in milliseconds before checking for a new block after the node is \
                  synchronized.",
+            ),
+            ser_param(
+                "base_layer_propagation_sleep_duration",
+                &self.base_layer_propagation_sleep_duration.as_millis(),
+                "Time in milliseconds to poll the base layer to get the latest proved block.",
             ),
             ser_param(
                 "recoverable_error_sleep_duration",
@@ -76,6 +86,7 @@ impl Default for SyncConfig {
     fn default() -> Self {
         SyncConfig {
             block_propagation_sleep_duration: Duration::from_secs(10),
+            base_layer_propagation_sleep_duration: Duration::from_secs(300), // 5 minutes
             recoverable_error_sleep_duration: Duration::from_secs(10),
             blocks_max_stream_size: 1000,
             state_updates_max_stream_size: 1000,
@@ -89,6 +100,7 @@ pub struct GenericStateSync<TCentralSource: CentralSourceTrait + Sync + Send> {
     config: SyncConfig,
     shared_syncing_state: Arc<RwLock<SyncingState>>,
     central_source: Arc<TCentralSource>,
+    base_layer_source: Arc<TBaseLayerSource>,
     reader: StorageReader,
     writer: StorageWriter,
 }
@@ -115,9 +127,26 @@ pub enum StateSyncError {
          matching header (neither in the ommer headers)."
     )]
     StateDiffWithoutMatchingHeader { block_number: BlockNumber, block_hash: BlockHash },
+    #[error(
+        "Header for block {block_number} doesn't found when trying to store base layer block. Can \
+         be caused because base layer reorg or l2 reverts."
+    )]
+    BaseLayerBlockWithoutMatchingHeader { block_number: BlockNumber },
+    #[error(transparent)]
+    BaseLayerSourceError(#[from] BaseLayerError),
+    #[error(
+        "For {block_number} base layer and l2 doesn't match. Base layer hash: {base_layer_hash}, \
+         L2 hash: {l2_hash}. Can be caused because base layer reorg or l2 reverts."
+    )]
+    BaseLayerHashMismatch {
+        block_number: BlockNumber,
+        base_layer_hash: BlockHash,
+        l2_hash: BlockHash,
+    },
 }
 
 #[allow(clippy::large_enum_variant)]
+#[cfg_attr(test, derive(Debug))]
 pub enum SyncEvent {
     BlockAvailable {
         block_number: BlockNumber,
@@ -139,9 +168,17 @@ pub enum SyncEvent {
         compiled_class_hash: CompiledClassHash,
         compiled_class: CasmContractClass,
     },
+    NewBaseLayerBlock {
+        block_number: BlockNumber,
+        block_hash: BlockHash,
+    },
 }
 
-impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSync<TCentralSource> {
+impl<
+    TCentralSource: CentralSourceTrait + Sync + Send + 'static,
+    TBaseLayerSource: BaseLayerSourceTrait + Sync + Send,
+> GenericStateSync<TCentralSource, TBaseLayerSource>
+{
     pub async fn run(&mut self) -> StateSyncResult {
         info!("State sync started.");
         loop {
@@ -167,6 +204,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         fn is_recoverable(err: &StateSyncError) -> bool {
             match err {
                 StateSyncError::CentralSourceError(_) => true,
+                StateSyncError::BaseLayerSourceError(_) => true,
                 StateSyncError::StorageError(storage_err)
                     if matches!(storage_err, StorageError::InnerError(_)) =>
                 {
@@ -189,6 +227,8 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                     );
                     true
                 }
+                StateSyncError::BaseLayerHashMismatch { .. } => true,
+                StateSyncError::BaseLayerBlockWithoutMatchingHeader { .. } => true,
                 _ => false,
             }
         }
@@ -224,7 +264,13 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             self.config.state_updates_max_stream_size,
         )
         .fuse();
-        pin_mut!(block_stream, state_diff_stream, compiled_class_stream);
+        let base_layer_block_stream = stream_new_base_layer_block(
+            self.reader.clone(),
+            self.base_layer_source.clone(),
+            self.config.base_layer_propagation_sleep_duration,
+        )
+        .fuse();
+        pin_mut!(block_stream, state_diff_stream, compiled_class_stream, base_layer_block_stream);
 
         loop {
             debug!("Selecting between block sync and state diff sync.");
@@ -232,6 +278,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
               res = block_stream.next() => res,
               res = state_diff_stream.next() => res,
               res = compiled_class_stream.next() => res,
+              res = base_layer_block_stream.next() => res,
               complete => break,
             }
             .expect("Received None as a sync event.")?;
@@ -263,6 +310,9 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 compiled_class_hash,
                 compiled_class,
             } => self.store_compiled_class(class_hash, compiled_class_hash, compiled_class),
+            SyncEvent::NewBaseLayerBlock { block_number, block_hash } => {
+                self.store_base_layer_block(block_number, block_hash)
+            }
         }
     }
 
@@ -344,6 +394,34 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         }
     }
 
+    #[instrument(skip(self), level = "debug", err)]
+    // In case of a mismatch between the base layer and l2, an error will be returned, then the
+    // sync will revert blocks if needed based on the l2 central source. This approach works as long
+    // as l2 is trusted so all the reverts can be detect by using it.
+    fn store_base_layer_block(
+        &mut self,
+        block_number: BlockNumber,
+        block_hash: BlockHash,
+    ) -> StateSyncResult {
+        let txn = self.writer.begin_rw_txn()?;
+        // Missing header can be because of a base layer reorg, the matching header may be reverted.
+        let expected_hash = txn
+            .get_block_header(block_number)?
+            .ok_or(StateSyncError::BaseLayerBlockWithoutMatchingHeader { block_number })?
+            .block_hash;
+        // Can be caused because base layer reorg or l2 reverts.
+        if expected_hash != block_hash {
+            return Err(StateSyncError::BaseLayerHashMismatch {
+                block_number,
+                base_layer_hash: block_hash,
+                l2_hash: expected_hash,
+            });
+        }
+        debug!("Storing base layer block. Block number: {block_number}");
+        txn.update_base_layer_block_marker(&block_number.next())?.commit()?;
+        Ok(())
+    }
+
     // Compares the block's parent hash to the stored block.
     fn verify_parent_block_hash(
         &self,
@@ -402,6 +480,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         debug!("Reverting block.");
         let mut txn = self.writer.begin_rw_txn()?;
 
+        txn = txn.try_revert_base_layer_marker(block_number)?;
         let res = txn.revert_header(block_number)?;
         txn = res.0;
         let mut reverted_block_hash: Option<BlockHash> = None;
@@ -567,13 +646,14 @@ pub fn sort_state_diff(diff: &mut StateDiff) {
     }
 }
 
-pub type StateSync = GenericStateSync<CentralSource>;
+pub type StateSync = GenericStateSync<CentralSource, BaseLayerSource>;
 
 impl StateSync {
     pub fn new(
         config: SyncConfig,
         shared_syncing_state: Arc<RwLock<SyncingState>>,
         central_source: CentralSource,
+        base_layer_source: BaseLayerSource,
         reader: StorageReader,
         writer: StorageWriter,
     ) -> Self {
@@ -581,6 +661,7 @@ impl StateSync {
             config,
             shared_syncing_state,
             central_source: Arc::new(central_source),
+            base_layer_source: Arc::new(base_layer_source),
             reader,
             writer,
         }
@@ -633,6 +714,36 @@ fn stream_new_compiled_classes<TCentralSource: CentralSourceTrait + Sync + Send>
                     compiled_class,
                 };
             }
+        }
+    }
+}
+
+fn stream_new_base_layer_block<TBaseLayerSource: BaseLayerSourceTrait + Sync>(
+    reader: StorageReader,
+    base_layer_source: Arc<TBaseLayerSource>,
+    base_layer_propagation_sleep_duration: Duration,
+) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
+    try_stream! {
+        loop{
+            let txn = reader.begin_ro_txn()?;
+            let header_marker = txn.get_header_marker()?;
+            let base_layer_block_marker = txn.get_base_layer_block_marker()?;
+            if let Some((block_number, block_hash)) = base_layer_source.latest_proved_block().await? {
+                if block_number<base_layer_block_marker{
+                    debug!("Base layer syncing reached the last known block proved on the base layer, waiting for blockchain to advance.");
+                }
+                else if header_marker<=block_number{
+                    debug!("Sync is behind the base layer tip, waiting for sync to advance.");
+                }
+                else{
+                    debug!("Returns a block from the base layer. Block number: {block_number}.");
+                    yield SyncEvent::NewBaseLayerBlock {block_number, block_hash }
+                }
+            }
+            else{
+                debug!("No blocks were proved on the base layer, waiting for blockchain to advance.");
+            }
+            tokio::time::sleep(base_layer_propagation_sleep_duration).await;
         }
     }
 }

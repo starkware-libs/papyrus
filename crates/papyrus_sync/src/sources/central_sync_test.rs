@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use indexmap::IndexMap;
 use papyrus_common::SyncingState;
-use papyrus_storage::header::{HeaderStorageReader, StarknetVersion};
+use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter, StarknetVersion};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
@@ -18,17 +18,24 @@ use starknet_api::state::StateDiff;
 use tokio::sync::{Mutex, RwLock};
 use tracing::{debug, error};
 
-use super::central::BlocksStream;
-use crate::sources::central::{CompiledClassesStream, MockCentralSourceTrait, StateUpdatesStream};
+use super::BaseLayerSourceTrait;
+use crate::sources::base_layer::MockBaseLayerSourceTrait;
+use crate::sources::central::{
+    BlocksStream, CompiledClassesStream, MockCentralSourceTrait, StateUpdatesStream,
+};
 use crate::{
-    CentralError, CentralSourceTrait, GenericStateSync, StateSyncError, StateSyncResult, SyncConfig,
+    stream_new_base_layer_block, CentralError, CentralSourceTrait, GenericStateSync,
+    StateSyncError, StateSyncResult, SyncConfig, SyncEvent,
 };
 
 const SYNC_SLEEP_DURATION: Duration = Duration::from_millis(100); // 100ms
+const BASE_LAYER_SLEEP_DURATION: Duration = Duration::from_millis(10); // 10ms
 const DURATION_BEFORE_CHECKING_STORAGE: Duration = SYNC_SLEEP_DURATION.saturating_mul(2); // 200ms twice the sleep duration of the sync loop.
 const MAX_CHECK_STORAGE_ITERATIONS: u8 = 3;
 const STREAM_SIZE: u32 = 1000;
 const STARKNET_VERSION: &str = "starknet_version";
+
+// TODO(dvir): consider adding a test for mismatch between the base layer and l2.
 
 enum CheckStoragePredicateResult {
     InProgress,
@@ -72,16 +79,19 @@ async fn run_sync(
     reader: StorageReader,
     writer: StorageWriter,
     central: impl CentralSourceTrait + Send + Sync + 'static,
+    base_layer: impl BaseLayerSourceTrait + Send + Sync,
 ) -> StateSyncResult {
     let mut state_sync = GenericStateSync {
         config: SyncConfig {
             block_propagation_sleep_duration: SYNC_SLEEP_DURATION,
+            base_layer_propagation_sleep_duration: BASE_LAYER_SLEEP_DURATION,
             recoverable_error_sleep_duration: SYNC_SLEEP_DURATION,
             blocks_max_stream_size: STREAM_SIZE,
             state_updates_max_stream_size: STREAM_SIZE,
         },
         shared_syncing_state: Arc::new(RwLock::new(SyncingState::default())),
         central_source: Arc::new(central),
+        base_layer_source: Arc::new(base_layer),
         reader,
         writer,
     };
@@ -95,10 +105,15 @@ async fn sync_empty_chain() {
     let _ = simple_logger::init_with_env();
 
     // Mock central without any block.
-    let mut mock = MockCentralSourceTrait::new();
-    mock.expect_get_block_marker().returning(|| Ok(BlockNumber(0)));
+    let mut central_mock = MockCentralSourceTrait::new();
+    central_mock.expect_get_block_marker().returning(|| Ok(BlockNumber(0)));
+
+    // Mock base_layer without any block.
+    let mut base_layer_mock = MockBaseLayerSourceTrait::new();
+    base_layer_mock.expect_latest_proved_block().returning(|| Ok(None));
+
     let ((reader, writer), _temp_dir) = get_test_storage();
-    let sync_future = run_sync(reader.clone(), writer, mock);
+    let sync_future = run_sync(reader.clone(), writer, central_mock, base_layer_mock);
 
     // Check that the header marker is 0.
     let check_storage_future = check_storage(reader.clone(), Duration::from_millis(50), |reader| {
@@ -119,13 +134,13 @@ async fn sync_empty_chain() {
 async fn sync_happy_flow() {
     const N_BLOCKS: u64 = 5;
     // FIXME: (Omri) analyze and set a lower value.
-    const MAX_TIME_TO_SYNC_MS: u64 = 100;
+    const MAX_TIME_TO_SYNC_MS: u64 = 1000;
     let _ = simple_logger::init_with_env();
 
     // Mock having N_BLOCKS chain in central.
-    let mut mock = MockCentralSourceTrait::new();
-    mock.expect_get_block_marker().returning(|| Ok(BlockNumber(N_BLOCKS)));
-    mock.expect_stream_new_blocks().returning(move |initial, up_to| {
+    let mut central_mock = MockCentralSourceTrait::new();
+    central_mock.expect_get_block_marker().returning(|| Ok(BlockNumber(N_BLOCKS)));
+    central_mock.expect_stream_new_blocks().returning(move |initial, up_to| {
         let blocks_stream: BlocksStream<'_> = stream! {
             for block_number in initial.iter_up_to(up_to) {
                 if block_number.0 >= N_BLOCKS {
@@ -143,7 +158,7 @@ async fn sync_happy_flow() {
         .boxed();
         blocks_stream
     });
-    mock.expect_stream_state_updates().returning(move |initial, up_to| {
+    central_mock.expect_stream_state_updates().returning(move |initial, up_to| {
         let state_stream: StateUpdatesStream<'_> = stream! {
             for block_number in initial.iter_up_to(up_to) {
                 if block_number.0 >= N_BLOCKS {
@@ -160,9 +175,28 @@ async fn sync_happy_flow() {
         .boxed();
         state_stream
     });
-    mock.expect_get_block_hash().returning(|bn| Ok(Some(create_block_hash(bn, false))));
+    central_mock.expect_get_block_hash().returning(|bn| Ok(Some(create_block_hash(bn, false))));
+
+    // TODO(dvir): find a better way to do this.
+    let mut base_layer_mock = MockBaseLayerSourceTrait::new();
+    let mut base_layer_call_counter = 0;
+    base_layer_mock.expect_latest_proved_block().returning(move || {
+        base_layer_call_counter += 1;
+        Ok(match base_layer_call_counter {
+            1 => None,
+            2 => Some((
+                BlockNumber(N_BLOCKS - 2),
+                create_block_hash(BlockNumber(N_BLOCKS - 2), false),
+            )),
+            _ => Some((
+                BlockNumber(N_BLOCKS - 1),
+                create_block_hash(BlockNumber(N_BLOCKS - 1), false),
+            )),
+        })
+    });
+
     let ((reader, writer), _temp_dir) = get_test_storage();
-    let sync_future = run_sync(reader.clone(), writer, mock);
+    let sync_future = run_sync(reader.clone(), writer, central_mock, base_layer_mock);
 
     // Check that the storage reached N_BLOCKS within MAX_TIME_TO_SYNC_MS.
     let check_storage_future =
@@ -178,13 +212,23 @@ async fn sync_happy_flow() {
 
             let state_marker = reader.begin_ro_txn().unwrap().get_state_marker().unwrap();
             debug!("State marker currently at {}", state_marker);
-
             if state_marker < BlockNumber(N_BLOCKS) {
                 return CheckStoragePredicateResult::InProgress;
             }
             if state_marker > BlockNumber(N_BLOCKS) {
                 return CheckStoragePredicateResult::Error;
             }
+
+            let base_layer_marker =
+                reader.begin_ro_txn().unwrap().get_base_layer_block_marker().unwrap();
+            debug!("Base layer marker currently at {base_layer_marker}");
+            if base_layer_marker < BlockNumber(N_BLOCKS) {
+                return CheckStoragePredicateResult::InProgress;
+            }
+            if base_layer_marker > BlockNumber(N_BLOCKS) {
+                return CheckStoragePredicateResult::Error;
+            }
+
             CheckStoragePredicateResult::Passed
         });
 
@@ -207,7 +251,9 @@ async fn sync_with_revert() {
     // Prepare sync thread with mocked central source that will perform a revert once the
     // reverted_mutex is true.
     let mock = MockedCentralWithRevert { reverted: reverted_mutex.clone() };
-    let sync_future = run_sync(reader.clone(), writer, mock);
+    let mut base_layer_mock = MockBaseLayerSourceTrait::new();
+    base_layer_mock.expect_latest_proved_block().returning(|| Ok(None));
+    let sync_future = run_sync(reader.clone(), writer, mock, base_layer_mock);
 
     // Prepare functions that check that the sync worked up to N_BLOCKS_BEFORE_REVERT and then
     // reacted correctly to the revert.
@@ -512,4 +558,145 @@ fn create_block_hash(bn: BlockNumber, is_reverted_block: bool) -> BlockHash {
     } else {
         BlockHash(stark_felt!(format!("0x{}", bn.0).as_str()))
     }
+}
+
+// Adds to the storage 'headers_num' headers.
+fn add_headers(headers_num: u64, writer: &mut StorageWriter) {
+    for i in 0..headers_num {
+        let header = BlockHeader {
+            block_number: BlockNumber(i),
+            block_hash: BlockHash(i.into()),
+            ..BlockHeader::default()
+        };
+        writer
+            .begin_rw_txn()
+            .unwrap()
+            .append_header(BlockNumber(i), &header)
+            .unwrap()
+            .commit()
+            .unwrap();
+    }
+}
+
+#[tokio::test]
+async fn stream_new_base_layer_block_test_header_marker() {
+    let (reader, mut writer) = get_test_storage().0;
+
+    // Header marker points to to block number 5.
+    add_headers(5, &mut writer);
+
+    // TODO(dvir): find a better way to do it.
+    // Base layer after the header marker, skip 5 and 10 and return only 1 and 4.
+    let block_numbers = vec![5, 1, 10, 4];
+    let mut iter = block_numbers.into_iter().map(|bn| (BlockNumber(bn), BlockHash::default()));
+    let mut mock = MockBaseLayerSourceTrait::new();
+    mock.expect_latest_proved_block().times(4).returning(move || Ok(iter.next()));
+    let mut stream =
+        stream_new_base_layer_block(reader, Arc::new(mock), Duration::from_millis(0)).boxed();
+
+    let event = stream.next().await.unwrap().unwrap();
+    assert_matches!(event, SyncEvent::NewBaseLayerBlock { block_number: BlockNumber(1), .. });
+
+    let event = stream.next().await.unwrap().unwrap();
+    assert_matches!(event, SyncEvent::NewBaseLayerBlock { block_number: BlockNumber(4), .. });
+}
+
+#[tokio::test]
+async fn stream_new_base_layer_block_test_base_layer_marker() {
+    let (reader, mut writer) = get_test_storage().0;
+
+    // Header marker points to to block number 12.
+    add_headers(12, &mut writer);
+
+    // Base layer marker points to to block number 5.
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .update_base_layer_block_marker(&BlockNumber(5))
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    // If base layer marker is not behind the real base layer then no blocks should be returned.
+    let block_numbers = vec![5, 1, 10, 4];
+    let mut iter = block_numbers.into_iter().map(|bn| (BlockNumber(bn), BlockHash::default()));
+    let mut mock = MockBaseLayerSourceTrait::new();
+    mock.expect_latest_proved_block().times(3).returning(move || Ok(iter.next()));
+    let mut stream =
+        stream_new_base_layer_block(reader, Arc::new(mock), Duration::from_millis(0)).boxed();
+
+    let event = stream.next().await.unwrap().unwrap();
+    assert_matches!(event, SyncEvent::NewBaseLayerBlock { block_number: BlockNumber(5), .. });
+
+    let event = stream.next().await.unwrap().unwrap();
+    assert_matches!(event, SyncEvent::NewBaseLayerBlock { block_number: BlockNumber(10), .. });
+}
+
+#[tokio::test]
+async fn stream_new_base_layer_block_no_blocks_on_base_layer() {
+    let (reader, mut writer) = get_test_storage().0;
+
+    // Header marker points to to block number 5.
+    add_headers(5, &mut writer);
+
+    // In the first polling of the base layer no blocks were found, in the second polling a block
+    // was found.
+    let mut values = vec![None, Some((BlockNumber(1), BlockHash::default()))].into_iter();
+    let mut mock = MockBaseLayerSourceTrait::new();
+    mock.expect_latest_proved_block().times(2).returning(move || Ok(values.next().unwrap()));
+
+    let mut stream =
+        stream_new_base_layer_block(reader, Arc::new(mock), Duration::from_millis(0)).boxed();
+
+    let event = stream.next().await.unwrap().unwrap();
+    assert_matches!(event, SyncEvent::NewBaseLayerBlock { block_number: BlockNumber(1), .. });
+}
+
+#[test]
+fn store_base_layer_block_test() {
+    let (reader, mut writer) = get_test_storage().0;
+
+    let header_hash = BlockHash(stark_felt!("0x0"));
+    let header = BlockHeader {
+        block_number: BlockNumber(0),
+        block_hash: header_hash,
+        ..BlockHeader::default()
+    };
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(BlockNumber(0), &header)
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    let mut gen_state_sync = GenericStateSync {
+        config: SyncConfig {
+            block_propagation_sleep_duration: SYNC_SLEEP_DURATION,
+            base_layer_propagation_sleep_duration: BASE_LAYER_SLEEP_DURATION,
+            recoverable_error_sleep_duration: SYNC_SLEEP_DURATION,
+            blocks_max_stream_size: STREAM_SIZE,
+            state_updates_max_stream_size: STREAM_SIZE,
+        },
+        central_source: Arc::new(MockCentralSourceTrait::new()),
+        base_layer_source: Arc::new(MockBaseLayerSourceTrait::new()),
+        reader,
+        writer,
+    };
+
+    // Trying to store a block without a header in the storage.
+    let res = gen_state_sync.store_base_layer_block(BlockNumber(1), BlockHash::default());
+    assert_matches!(res, Err(StateSyncError::BaseLayerBlockWithoutMatchingHeader { .. }));
+
+    // Trying to store a block with mismatching header.
+    let res =
+        gen_state_sync.store_base_layer_block(BlockNumber(0), BlockHash(stark_felt!("0x666")));
+    assert_matches!(res, Err(StateSyncError::BaseLayerHashMismatch { .. }));
+
+    // Happy flow.
+    let res = gen_state_sync.store_base_layer_block(BlockNumber(0), header_hash);
+    assert!(res.is_ok());
+    let base_layer_marker =
+        gen_state_sync.reader.begin_ro_txn().unwrap().get_base_layer_block_marker().unwrap();
+    assert_eq!(base_layer_marker, BlockNumber(1));
 }
