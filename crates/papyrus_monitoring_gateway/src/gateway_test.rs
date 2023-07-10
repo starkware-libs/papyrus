@@ -8,6 +8,7 @@ use http_body::combinators::UnsyncBoxBody;
 use metrics::{absolute_counter, describe_counter, register_counter};
 use metrics_exporter_prometheus::PrometheusBuilder;
 use papyrus_storage::{table_names, test_utils};
+use pretty_assertions::assert_eq;
 use serde_json::{json, Value};
 use tower::ServiceExt;
 

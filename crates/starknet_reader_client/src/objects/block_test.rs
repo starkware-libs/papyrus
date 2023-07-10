@@ -1,6 +1,7 @@
 use assert::assert_ok;
 use assert_matches::assert_matches;
 use indexmap::IndexMap;
+use pretty_assertions::assert_eq;
 use starknet_api::block::BlockHash;
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};

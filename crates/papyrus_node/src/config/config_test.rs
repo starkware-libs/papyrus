@@ -3,6 +3,7 @@ use std::env::{self, args};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use pretty_assertions::assert_eq;
 use starknet_api::core::ChainId;
 use tempfile::NamedTempFile;
 use test_utils::get_absolute_path;
