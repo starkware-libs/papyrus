@@ -285,7 +285,7 @@ pub struct DbTablesStats {
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
-pub enum MarkerKind {
+pub(crate) enum MarkerKind {
     Header,
     Body,
     State,
@@ -293,4 +293,4 @@ pub enum MarkerKind {
     BaseLayerBlock,
 }
 
-pub type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
+pub(crate) type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
