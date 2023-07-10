@@ -1,5 +1,8 @@
 mod api;
 mod block;
+mod broadcasted_transaction;
+#[cfg(test)]
+mod broadcasted_transaction_test;
 mod deprecated_contract_class;
 #[cfg(test)]
 mod gateway_test;

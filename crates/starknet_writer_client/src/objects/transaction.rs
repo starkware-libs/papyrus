@@ -75,6 +75,8 @@ pub struct DeclareV2Transaction {
 // The only difference between this and ContractClass in starknet_api is in the program.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct DeprecatedContractClass {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub abi: Option<Vec<DeprecatedContractClassAbiEntry>>,
     // The program is compressed.
     // TODO(shahak): Create a struct for a compressed value.
