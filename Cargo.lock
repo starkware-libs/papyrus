@@ -3976,6 +3976,7 @@ dependencies = [
  "serde",
  "serde_json",
  "starknet_api",
+ "starknet_writer_client",
  "test_utils",
  "thiserror",
  "tokio",

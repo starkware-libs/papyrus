@@ -15,6 +15,7 @@ jsonrpsee = { workspace = true, features = ["full"] }
 metrics.workspace = true
 papyrus_proc_macros = { path = "../papyrus_proc_macros"}
 papyrus_storage = { path = "../papyrus_storage" }
+starknet_writer_client = { path = "../starknet_writer_client" }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 starknet_api.workspace = true
