@@ -20,8 +20,8 @@ use super::central::BlocksStream;
 use crate::sources::central::{CompiledClassesStream, MockCentralSourceTrait, StateUpdatesStream};
 use crate::{CentralError, CentralSourceTrait, GenericStateSync, StateSyncResult, SyncConfig};
 
-const SYNC_SLEEP_DURATION: Duration = Duration::new(0, 1000 * 1000 * 100); // 100ms
-const DURATION_BEFORE_CHECKING_STORAGE: Duration = Duration::new(0, 1000 * 1000 * 100); // 100ms
+const SYNC_SLEEP_DURATION: Duration = Duration::from_millis(100);
+const DURATION_BEFORE_CHECKING_STORAGE: Duration = Duration::from_millis(100);
 const MAX_CHECK_STORAGE_ITERATIONS: u8 = 3;
 const STREAM_SIZE: u32 = 1000;
 
