@@ -18,6 +18,13 @@ where
 {
     // To enforce that no commit happen after a failure, we consume and return Self on success.
     fn update_base_layer_block_marker(self, block_number: &BlockNumber) -> StorageResult<Self>;
+
+    // When reverting a block, if the base layer marker points to the block afterward, revert the
+    // marker.
+    fn try_revert_base_layer_marker(
+        self,
+        reverted_block_number: BlockNumber,
+    ) -> StorageResult<Self>;
 }
 
 impl<'env, Mode: TransactionKind> BaseLayerStorageReader for StorageTxn<'env, Mode> {
@@ -32,5 +39,18 @@ impl<'env> BaseLayerStorageWriter for StorageTxn<'env, RW> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         markers_table.upsert(&self.txn, &MarkerKind::BaseLayerBlock, block_number)?;
         Ok(self)
+    }
+
+    fn try_revert_base_layer_marker(
+        self,
+        reverted_block_number: BlockNumber,
+    ) -> StorageResult<Self> {
+        let cur_marker = self.get_base_layer_block_marker()?;
+        // Revert only if we revert a block that is the last block in the base layer we know about.
+        if cur_marker == reverted_block_number.next() {
+            Ok(self.update_base_layer_block_marker(&reverted_block_number)?)
+        } else {
+            Ok(self)
+        }
     }
 }

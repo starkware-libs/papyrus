@@ -15,6 +15,7 @@ futures.workspace = true
 hex.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
+papyrus_base_layer = { path = "../papyrus_base_layer" }
 papyrus_storage = { path = "../papyrus_storage" }
 reqwest = { workspace = true, features = ["json", "blocking"] }
 serde = { workspace = true, features = ["derive"] }
