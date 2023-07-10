@@ -1,5 +1,18 @@
+//! Basic structs for interacting with the db.
+//!
+//! Low database layer for interaction with libmdbx.
+//!
+//! Assumptions:
+//! - The serialization is consistent across code versions (though, not necessarily across
+//!   machines).
+//! - The API is supposedly generic enough to easily replace the database library with other
+//! Berkley-like database implementations in which the following assumptions hold:
+//!     - The DB is transactional, sorted and has range-based search capabilities.
+
 #[cfg(test)]
 mod db_test;
+// TODO(yair): Make the serialization module pub(crate).
+#[doc(hidden)]
 pub mod serialization;
 
 use std::borrow::Cow;
@@ -14,12 +27,6 @@ use starknet_api::core::ChainId;
 
 use crate::db::serialization::{StorageSerde, StorageSerdeEx};
 
-// Low database layer for interaction with libmdbx. The API is supposedly generic enough to easily
-// replace the database library with other Berkley-like database implementations.
-//
-// Assumptions:
-// The serialization is consistent across code versions (though, not necessarily across machines).
-
 // Maximum number of Sub-Databases.
 const MAX_DBS: usize = 26;
 
@@ -30,17 +37,25 @@ type Environment = libmdbx::Environment<EnvironmentKind>;
 type DbKeyType<'env> = Cow<'env, [u8]>;
 type DbValueType<'env> = Cow<'env, [u8]>;
 
+/// The configuration of the database.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct DbConfig {
+    /// The path prefix of the database files. The final path is the path prefix followed by the
+    /// chain id.
     pub path_prefix: PathBuf,
+    /// The [chain id](https://docs.rs/starknet_api/latest/starknet_api/core/struct.ChainId.html) of the Starknet network.
     pub chain_id: ChainId,
+    /// The minimum size of the database.
     pub min_size: usize,
+    /// The maximum size of the database.
     pub max_size: usize,
+    /// The growth step of the database.
     pub growth_step: isize,
 }
 
 impl DbConfig {
-    fn path(&self) -> PathBuf {
+    /// Returns the path of the database (path prefix, followed by the chain id).
+    pub fn path(&self) -> PathBuf {
         self.path_prefix.join(self.chain_id.0.as_str())
     }
 }
@@ -48,6 +63,7 @@ impl DbConfig {
 /// A single table statistics.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbTableStats {
+    /// The name of the table.
     pub database: String,
     pub branch_pages: usize,
     pub depth: u32,
@@ -57,18 +73,22 @@ pub struct DbTableStats {
     pub page_size: u32,
 }
 
+/// An error that can occur when interacting with the database.
 #[derive(thiserror::Error, Debug)]
 pub enum DbError {
+    /// An error that occurred in the database library.
     #[error(transparent)]
     Inner(#[from] libmdbx::Error),
     #[error("Deserialization failed.")]
+    /// An error that occurred during deserialization.
     InnerDeserialization,
+    /// An error that occurred during serialization.
     #[error("Serialization failed.")]
     Serialization,
 }
 type Result<V> = result::Result<V, DbError>;
 
-/// Opens an MDBX environment and returns a reader and a writer to it.
+/// Tries to open an MDBX environment and returns a reader and a writer to it.
 /// There is a single non clonable writer instance, to make sure there is only one write transaction
 ///  at any given moment.
 pub(crate) fn open_env(config: DbConfig) -> Result<(DbReader, DbWriter)> {
@@ -143,6 +163,7 @@ impl<'a> DbWriteTransaction<'a> {
     }
 }
 
+#[doc(hidden)]
 // Transaction wrappers.
 pub trait TransactionKind {
     type Internal: libmdbx::TransactionKind;
@@ -162,13 +183,13 @@ impl<'a, Mode: TransactionKind> DbTransaction<'a, Mode> {
     }
 }
 
-pub struct TableIdentifier<K: StorageSerde, V: StorageSerde> {
+pub(crate) struct TableIdentifier<K: StorageSerde, V: StorageSerde> {
     name: &'static str,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
 }
 
-pub struct TableHandle<'env, K: StorageSerde, V: StorageSerde> {
+pub(crate) struct TableHandle<'env, K: StorageSerde, V: StorageSerde> {
     database: libmdbx::Database<'env>,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
@@ -283,12 +304,14 @@ impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'tx
     }
 }
 
+#[doc(hidden)]
 pub struct RO {}
 
 impl TransactionKind for RO {
     type Internal = libmdbx::RO;
 }
 
+#[doc(hidden)]
 pub struct RW {}
 
 impl TransactionKind for RW {
