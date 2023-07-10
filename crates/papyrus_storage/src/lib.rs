@@ -192,7 +192,7 @@ struct_field_names! {
 
 macro_rules! struct_field_names {
     (struct $name:ident { $($fname:ident : $ftype:ty),* }) => {
-        pub struct $name {
+        pub(crate) struct $name {
             $($fname : $ftype),*
         }
 
