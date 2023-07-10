@@ -26,6 +26,9 @@ use starknet_client::RetryConfig;
 
 use crate::version::VERSION_FULL;
 
+// TODO(dvir): move this to config. It is here only because in one of the tests we need to use it.
+const BASE_LAYER_SLEEP_DURATION: Duration = Duration::from_secs(300); // 5 minutes
+
 // The path of the default configuration file, provided as part of the crate.
 pub const DEFAULT_CONFIG_PATH: &str = "config/default_config.json";
 
