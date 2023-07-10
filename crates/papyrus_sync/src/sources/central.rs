@@ -13,7 +13,8 @@ use itertools::chain;
 #[cfg(test)]
 use mockall::automock;
 use papyrus_config::{
-    append_sub_config_name, ser_param, ParamPath, SerializeConfig, SerializedParam,
+    append_sub_config_name, deserialize_optional_map, ser_param, serialize_optional_map, ParamPath,
+    SerializeConfig, SerializedParam,
 };
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
@@ -36,6 +37,7 @@ pub type CentralResult<T> = Result<T, CentralError>;
 pub struct CentralSourceConfig {
     pub concurrent_requests: usize,
     pub url: String,
+    #[serde(deserialize_with = "deserialize_optional_map")]
     pub http_headers: Option<HashMap<String, String>>,
     pub retry_config: RetryConfig,
 }
@@ -65,7 +67,11 @@ impl SerializeConfig for CentralSourceConfig {
                  type of data (for example, blocks).",
             ),
             ser_param("url", &self.url, "Starknet feeder-gateway URL. It should match chain_id."),
-            ser_param("http_headers", &self.http_headers, "Optional headers for SN-client."),
+            ser_param(
+                "http_headers",
+                &serialize_optional_map(&self.http_headers),
+                "Optional headers for SN-client.",
+            ),
         ]);
         chain!(self_params_dump, append_sub_config_name(self.retry_config.dump(), "retry_config"))
             .collect()

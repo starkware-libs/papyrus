@@ -5,7 +5,7 @@
   },
   "central.http_headers": {
     "description": "Optional headers for SN-client.",
-    "value": null
+    "value": ""
   },
   "central.retry_config.max_retries": {
     "description": "Maximum number of retries before the node stops retrying.",
