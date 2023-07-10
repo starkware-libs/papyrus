@@ -6,9 +6,6 @@ repository.workspace = true
 license-file.workspace = true
 description = "A storage implementation for a Starknet node."
 
-[lib]
-doctest = false
-
 [features]
 default = ["starknet_api"]
 testing = [
