@@ -13,7 +13,7 @@ pub type Description = String;
 pub fn update_config_map_by_command(
     config_map: &mut BTreeMap<ParamPath, SerializedParam>,
     command: Command,
-    command_input: Vec<&str>,
+    command_input: Vec<String>,
 ) -> Result<(), SubConfigError> {
     let arg_match =
         command.args(build_args_parser(config_map)).try_get_matches_from(command_input)?;
