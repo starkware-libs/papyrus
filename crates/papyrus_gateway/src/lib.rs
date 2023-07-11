@@ -10,6 +10,7 @@ mod test_utils;
 mod transaction;
 #[cfg(test)]
 mod transaction_test;
+mod v0_3_0;
 
 use std::fmt::Display;
 use std::net::SocketAddr;
@@ -33,7 +34,6 @@ use crate::api::{
     get_methods_from_supported_apis, BlockHashOrNumber, BlockId, ContinuationToken, JsonRpcError,
     Tag,
 };
-use crate::block::BlockHeader;
 use crate::middleware::proxy_request;
 use crate::transaction::Transaction;
 
@@ -88,18 +88,6 @@ fn get_latest_block_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
 ) -> Result<Option<BlockNumber>, ErrorObjectOwned> {
     Ok(txn.get_header_marker().map_err(internal_server_error)?.prev())
-}
-
-fn get_block_header_by_number<Mode: TransactionKind>(
-    txn: &StorageTxn<'_, Mode>,
-    block_number: BlockNumber,
-) -> Result<BlockHeader, ErrorObjectOwned> {
-    let header = txn
-        .get_block_header(block_number)
-        .map_err(internal_server_error)?
-        .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
-
-    Ok(BlockHeader::from(header))
 }
 
 fn get_block_txs_by_number<Mode: TransactionKind>(
