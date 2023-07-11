@@ -1,3 +1,37 @@
+//! Interface for handling data related to Starknet [block headers](https://docs.rs/starknet_api/latest/starknet_api/block/struct.BlockHeader.html).
+//!
+//! The block header is the part of the block that contains metadata about the block.
+//! Import [`HeaderStorageReader`] and [`HeaderStorageWriter`] to read and write data related
+//! to the block headers using a [`StorageTxn`].
+//! # Example
+//! ```
+//! use papyrus_storage::open_storage;
+//! # use papyrus_storage::db::DbConfig;
+//! # use starknet_api::core::ChainId;
+//! use starknet_api::block::{Block, BlockNumber};
+//! use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
+//!
+//! # let dir_handle = tempfile::tempdir().unwrap();
+//! # let dir = dir_handle.path().to_path_buf();
+//! # let db_config = DbConfig {
+//! #     path_prefix: dir,
+//! #     chain_id: ChainId("SN_MAIN".to_owned()),
+//! #     min_size: 1 << 20,    // 1MB
+//! #     max_size: 1 << 35,    // 32GB
+//! #     growth_step: 1 << 26, // 64MB
+//! # };
+//! let block = Block::default();
+//! let (reader, mut writer) = open_storage(db_config)?;
+//! writer
+//!     .begin_rw_txn()?                                // Start a RW transaction.
+//!     .append_header(BlockNumber(0), &block.header)?  // Appending a block body will fail without matching header.
+//!     .commit()?;
+//!
+//! let header = reader.begin_ro_txn()?.get_block_header(BlockNumber(0))?;
+//! assert_eq!(header, Some(block.header));
+//! # Ok::<(), papyrus_storage::StorageError>(())
+//! ```
+
 #[cfg(test)]
 #[path = "header_test.rs"]
 mod header_test;
@@ -10,22 +44,26 @@ use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
 type BlockHashToNumberTable<'env> = TableHandle<'env, BlockHash, BlockNumber>;
 
+/// Interface for reading data related to the block headers.
 pub trait HeaderStorageReader {
-    // The block number marker is the first block number that doesn't exist yet.
+    /// The block marker is the first block number that doesn't exist yet.
     fn get_header_marker(&self) -> StorageResult<BlockNumber>;
-
+    /// Returns the header of the block with the given number.
     fn get_block_header(&self, block_number: BlockNumber) -> StorageResult<Option<BlockHeader>>;
 
+    /// Returns the block number of the block with the given hash.
     fn get_block_number_by_hash(
         &self,
         block_hash: &BlockHash,
     ) -> StorageResult<Option<BlockNumber>>;
 }
 
+/// Interface for writing data related to the block headers.
 pub trait HeaderStorageWriter
 where
     Self: Sized,
 {
+    /// Appends a header to the storage.
     // To enforce that no commit happen after a failure, we consume and return Self on success.
     fn append_header(
         self,
@@ -33,6 +71,7 @@ where
         block_header: &BlockHeader,
     ) -> StorageResult<Self>;
 
+    /// Removes a block header from the storage and returns the removed data.
     fn revert_header(self, block_number: BlockNumber)
     -> StorageResult<(Self, Option<BlockHeader>)>;
 }
