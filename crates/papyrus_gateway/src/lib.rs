@@ -1,6 +1,5 @@
 mod api;
 mod block;
-mod deprecated_contract_class;
 #[cfg(test)]
 mod gateway_test;
 mod middleware;
