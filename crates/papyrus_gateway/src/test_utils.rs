@@ -32,8 +32,11 @@ pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
     )
 }
 
-pub async fn get_starknet_spec_api_schema(component_names: &[&str]) -> JSONSchema {
-    let target = "./resources/starknet_api_openrpc.json";
+pub async fn get_starknet_spec_api_schema(
+    component_names: &[&str],
+    version_id: &str,
+) -> JSONSchema {
+    let target = format!("./resources/{}_starknet_api_openrpc.json", version_id);
     let text = std::fs::read_to_string(target).unwrap();
     let spec: serde_json::Value = serde_json::from_str(&text).unwrap();
 
