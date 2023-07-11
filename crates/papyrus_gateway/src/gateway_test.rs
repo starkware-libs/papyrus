@@ -26,10 +26,12 @@ use tower::BoxError;
 
 use crate::api::version_config::{LATEST_VERSION_ID, VERSION_CONFIG};
 use crate::api::JsonRpcError;
-use crate::deprecated_contract_class::{ContractClassAbiEntryType, ContractClassAbiEntryWithType};
 use crate::middleware::proxy_request;
 use crate::test_utils::get_test_gateway_config;
 use crate::transaction::{TransactionOutput, TransactionReceipt};
+use crate::v0_3_0::deprecated_contract_class::{
+    ContractClassAbiEntryType, ContractClassAbiEntryWithType,
+};
 use crate::{get_block_status, run_server, SERVER_MAX_BODY_SIZE};
 
 #[tokio::test]
