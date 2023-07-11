@@ -29,8 +29,9 @@ use starknet_client::RetryConfig;
 use crate::version::VERSION_FULL;
 
 // The path of the default configuration file, provided as part of the crate.
-const DEFAULT_CONFIG_FILE: &str = "config/default_config.json";
+pub const DEFAULT_CONFIG_FILE: &str = "config/default_config.json";
 
+// TODO(yoav) Rename to NodeConfig.
 /// The configurations of the various components of the node.
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct Config {
@@ -46,7 +47,6 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Config {
-            // TODO(yoav): Read the default values from a dump file.
             central: CentralSourceConfig::default(),
             gateway: GatewayConfig::default(),
             monitoring_gateway: MonitoringGatewayConfig::default(),
@@ -92,17 +92,10 @@ impl Config {
         let deserialized_default_config: Map<String, Value> =
             serde_json::from_reader(file).unwrap();
 
+        // TODO(yoav): Move to a separate function in 'Config' crate.
         let mut config_map: BTreeMap<String, SerializedParam> = deserialized_default_config
             .into_iter()
-            .map(|(key, value)| {
-                (
-                    key,
-                    SerializedParam {
-                        description: value["description"].as_str().unwrap().to_owned(),
-                        value: value["value"].to_owned(),
-                    },
-                )
-            })
+            .map(|(key, value)| (key, serde_json::from_value(value).unwrap()))
             .collect();
 
         update_config_map_by_command(&mut config_map, node_command(), args)?;
