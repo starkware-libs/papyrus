@@ -27,7 +27,6 @@ use test_utils::{
     get_rng, get_test_block, get_test_body, get_test_state_diff, send_request, GetTestInstance,
 };
 
-use crate::api::v0_3_0::v0_3_0_impl::JsonRpcServerV0_3_0Impl;
 use crate::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, EventsChunk,
     JsonRpcError, Tag,
@@ -35,6 +34,7 @@ use crate::api::{
 use crate::test_utils::{
     get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
 };
+use crate::v0_3_0::api::api_impl::JsonRpcServerV0_3_0Impl;
 use crate::v0_3_0::block::Block;
 use crate::v0_3_0::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use crate::v0_3_0::state::{ContractClass, StateUpdate, ThinStateDiff};
