@@ -99,6 +99,16 @@ pub enum GatewayContractClass {
     Sierra(ContractClass),
 }
 
+#[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+pub struct SyncStatus {
+    pub starting_block_hash: BlockHash,
+    pub starting_block_num: BlockNumber,
+    pub current_block_hash: BlockHash,
+    pub current_block_num: BlockNumber,
+    pub highest_block_hash: BlockHash,
+    pub highest_block_num: BlockNumber,
+}
+
 /// Returns a `Methods` object with all the methods from the supported APIs.
 /// Whenever adding a new API version we need to add the new version mapping here.
 pub fn get_methods_from_supported_apis(
