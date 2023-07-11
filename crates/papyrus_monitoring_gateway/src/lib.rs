@@ -105,7 +105,7 @@ fn app(
         )
         .route(
             format!("/{MONITORING_PREFIX}/alive").as_str(),
-            get(move || async { StatusCode::OK.to_string() }),
+            get(move || async { StatusCode::OK }),
         )
         .route(
             format!("/{MONITORING_PREFIX}/metrics").as_str(),
