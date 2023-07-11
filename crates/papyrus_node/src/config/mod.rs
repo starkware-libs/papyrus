@@ -29,7 +29,7 @@ use starknet_client::RetryConfig;
 use crate::version::VERSION_FULL;
 
 // The path of the default configuration file, provided as part of the crate.
-const DEFAULT_CONFIG_FILE: &str = "config/default_config.json";
+pub const DEFAULT_CONFIG_FILE: &str = "config/default_config.json";
 
 /// The configurations of the various components of the node.
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
