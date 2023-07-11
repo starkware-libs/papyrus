@@ -261,7 +261,7 @@ use struct_field_names;
 /// Error type for the storage crate.
 #[derive(thiserror::Error, Debug)]
 pub enum StorageError {
-    /// Errors related to the database.
+    /// Errors related to the underlying database.
     #[error(transparent)]
     InnerError(#[from] DbError),
     #[error("Marker mismatch (expected {expected}, found {found}).")]
