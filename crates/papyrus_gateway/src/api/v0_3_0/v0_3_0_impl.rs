@@ -20,12 +20,12 @@ use super::{
 };
 use crate::api::{BlockHashOrNumber, ContinuationToken, JsonRpcError, JsonRpcServerImpl};
 use crate::block::get_block_header_by_number;
-use crate::transaction::{
+use crate::v0_3_0::block::{Block, BlockHeader};
+use crate::v0_3_0::state::StateUpdate;
+use crate::v0_3_0::transaction::{
     Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus,
     TransactionWithType, Transactions,
 };
-use crate::v0_3_0::block::{Block, BlockHeader};
-use crate::v0_3_0::state::StateUpdate;
 use crate::{
     get_block_number, get_block_status, get_block_txs_by_number, get_latest_block_number,
     internal_server_error, ContinuationTokenAsStruct,

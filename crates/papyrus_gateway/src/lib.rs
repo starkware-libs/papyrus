@@ -6,9 +6,6 @@ mod gateway_test;
 mod middleware;
 #[cfg(test)]
 mod test_utils;
-mod transaction;
-#[cfg(test)]
-mod transaction_test;
 mod v0_3_0;
 
 use std::fmt::Display;
@@ -34,7 +31,7 @@ use crate::api::{
     Tag,
 };
 use crate::middleware::proxy_request;
-use crate::transaction::Transaction;
+use crate::v0_3_0::transaction::Transaction;
 
 /// Maximum size of a supported transaction body - 10MB.
 pub const SERVER_MAX_BODY_SIZE: u32 = 10 * 1024 * 1024;
