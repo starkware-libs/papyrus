@@ -5,7 +5,6 @@ mod gateway_metrics;
 #[cfg(test)]
 mod gateway_test;
 mod middleware;
-mod state;
 #[cfg(test)]
 mod test_utils;
 mod transaction;
