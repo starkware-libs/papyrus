@@ -10,15 +10,17 @@ use jsonrpsee::types::Params;
 use jsonrpsee::Methods;
 use metrics::{histogram, increment_counter, register_counter, register_histogram};
 
+// Name of the metrics.
 const INCOMING_REQUEST: &str = "gateway_incoming_requests";
 const FAILED_REQUESTS: &str = "gateway_failed_requests";
 const REQUEST_LATENCY: &str = "gateway_request_latency_seconds";
 
+// Labels for the metrics.
 const METHOD_LABEL: &str = "method";
 const VERSION_LABEL: &str = "version";
 const ILLEGAL_METHOD: &str = "illegal_method";
 
-// Register the metrics and returns a set of the methods.
+// Register the metrics and returns a set of the method names.
 fn init_metrics(methods: &Methods) -> HashSet<String> {
     let mut methods_set: HashSet<String> = HashSet::new();
     register_counter!(INCOMING_REQUEST, METHOD_LABEL => ILLEGAL_METHOD);
@@ -34,6 +36,7 @@ fn init_metrics(methods: &Methods) -> HashSet<String> {
 }
 #[derive(Clone)]
 pub(crate) struct MetricLogger {
+    // A set of all the method names the node support.
     methods_set: HashSet<String>,
 }
 
@@ -47,19 +50,6 @@ impl MetricLogger {
 impl Logger for MetricLogger {
     type Instant = Instant;
 
-    // Required methods
-    fn on_connect(&self, _remote_addr: SocketAddr, _request: &HttpRequest, _t: TransportProtocol) {}
-    fn on_request(&self, _transport: TransportProtocol) -> Self::Instant {
-        Instant::now()
-    }
-    fn on_call(
-        &self,
-        _method_name: &str,
-        _params: Params<'_>,
-        _kind: MethodKind,
-        _transport: TransportProtocol,
-    ) {
-    }
     fn on_result(
         &self,
         method_name: &str,
@@ -81,6 +71,23 @@ impl Logger for MetricLogger {
             increment_counter!(FAILED_REQUESTS, METHOD_LABEL => ILLEGAL_METHOD);
         }
     }
+
+    fn on_request(&self, _transport: TransportProtocol) -> Self::Instant {
+        Instant::now()
+    }
+
+    // Required methods.
+    fn on_connect(&self, _remote_addr: SocketAddr, _request: &HttpRequest, _t: TransportProtocol) {}
+
+    fn on_call(
+        &self,
+        _method_name: &str,
+        _params: Params<'_>,
+        _kind: MethodKind,
+        _transport: TransportProtocol,
+    ) {
+    }
+
     fn on_response(
         &self,
         _result: &str,
@@ -88,6 +95,7 @@ impl Logger for MetricLogger {
         _transport: TransportProtocol,
     ) {
     }
+
     fn on_disconnect(&self, _remote_addr: SocketAddr, _transport: TransportProtocol) {}
 }
 

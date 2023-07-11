@@ -83,7 +83,7 @@ fn logger_test() {
     );
 
     // Illegal method.
-    let bad_method_name = "starknet_V0_3_0_leonidas";
+    let bad_method_name = "starknet_V0_3_0_illegal_method";
     let (method, version) = get_method_and_version(bad_method_name);
     let bad_labels = vec![(METHOD_LABEL, method.as_str()), (VERSION_LABEL, version.as_str())];
     logger.on_result(bad_method_name, false, Instant::now(), TransportProtocol::Http);
