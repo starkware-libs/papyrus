@@ -415,6 +415,12 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
 
         Ok(EventsChunk { events: filtered_events, continuation_token: None })
     }
+
+    #[instrument(skip(self), level = "debug", err, ret)]
+    fn syncing(&self) -> RpcResult<bool> {
+        // TODO(omri): This is temporary. Implement syncing logic.
+        Ok(false)
+    }
 }
 
 impl JsonRpcServerImpl for JsonRpcServerV0_3_0Impl {
