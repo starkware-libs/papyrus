@@ -40,12 +40,13 @@ pub fn jsonrpc_request(method: &str, params: jsonVal) -> jsonVal {
 static LAST_BLOCK_NUMBER: OnceCell<u64> = OnceCell::new();
 // Returns the last block number for which this load test is relevant.
 pub fn get_last_block_number() -> u64 {
-    *LAST_BLOCK_NUMBER.get_or_init(|| {
-        fs::read_to_string(path_in_resources("last_block_number.txt"))
-            .unwrap()
-            .parse::<u64>()
-            .unwrap()
-    })
+    50_000
+    // *LAST_BLOCK_NUMBER.get_or_init(|| {
+    //     fs::read_to_string(path_in_resources("last_block_number.txt"))
+    //         .unwrap()
+    //         .parse::<u64>()
+    //         .unwrap()
+    // })
 }
 
 // Returns a random block from zero to the last block for which this load test is relevant.

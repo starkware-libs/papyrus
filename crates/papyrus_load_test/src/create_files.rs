@@ -25,7 +25,7 @@ use crate::{
 };
 
 // The limit on the storage size for request arguments.
-const STORAGE_SIZE_IN_BYTES: usize = 7000;
+const STORAGE_SIZE_IN_BYTES: usize = 70 * 50_000;
 // Average size of arguments to a request.
 const AVERAGE_ARGS_SIZE_IN_BYTES: usize = 70;
 // The number of arguments to requests we can save with the given storage size limit.
@@ -373,21 +373,21 @@ pub async fn get_random_class_hash_declared_in_block(
 ) -> Option<String> {
     let params = format!("{{ \"block_number\": {block_number} }}");
     let mut declared_classes = Vec::<jsonVal>::new();
-    // Cairo 1 classes.
-    let classes = &mut send_request(node_address, "starknet_getStateUpdate", &params).await
-        ["result"]["state_diff"]["declared_classes"]
-        .take();
-    // Cairo 1 declared classes returns as a couple of "class_hash" and "compiled_class_hash".
-    let mut classes = classes
-        .as_array_mut()
-        .unwrap()
-        .iter()
-        .map(|two_hashes| two_hashes["class_hash"].clone())
-        .collect();
-    declared_classes.append(&mut classes);
+    // // Cairo 1 classes.
+    // let classes = &mut send_request(node_address, "starknet_getStateUpdate", &params).await
+    //     ["result"]["state_diff"]["declared_classes"]
+    //     .take();
+    // // Cairo 1 declared classes returns as a couple of "class_hash" and "compiled_class_hash".
+    // let mut classes = classes
+    //     .as_array_mut()
+    //     .unwrap()
+    //     .iter()
+    //     .map(|two_hashes| two_hashes["class_hash"].clone())
+    //     .collect();
+    // declared_classes.append(&mut classes);
     // Cairo 0 classes.
     let classes = &mut send_request(node_address, "starknet_getStateUpdate", &params).await
-        ["result"]["state_diff"]["deprecated_declared_classes"]
+        ["result"]["state_diff"]["declared_contract_hashes"]
         .take();
     declared_classes.append(classes.as_array_mut().unwrap());
 
