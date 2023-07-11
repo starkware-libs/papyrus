@@ -42,6 +42,7 @@ use crate::api::{
 use crate::test_utils::{
     get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
 };
+use crate::version_config::VERSION_0_3_0;
 use crate::{run_server, ContinuationTokenAsStruct};
 
 #[tokio::test]
@@ -1609,16 +1610,19 @@ async fn serialize_returns_valid_json() {
     let gateway_config = get_test_gateway_config();
     let (server_address, _handle) = run_server(&gateway_config, storage_reader).await.unwrap();
 
-    let schema = get_starknet_spec_api_schema(&[
-        "BLOCK_WITH_TXS",
-        "BLOCK_WITH_TX_HASHES",
-        "STATE_UPDATE",
-        "CONTRACT_CLASS",
-        "DEPRECATED_CONTRACT_CLASS",
-        "TXN",
-        "TXN_RECEIPT",
-        "EVENTS_CHUNK",
-    ])
+    let schema = get_starknet_spec_api_schema(
+        &[
+            "BLOCK_WITH_TXS",
+            "BLOCK_WITH_TX_HASHES",
+            "STATE_UPDATE",
+            "CONTRACT_CLASS",
+            "DEPRECATED_CONTRACT_CLASS",
+            "TXN",
+            "TXN_RECEIPT",
+            "EVENTS_CHUNK",
+        ],
+        VERSION_0_3_0,
+    )
     .await;
     validate_state(&state_diff, server_address, &schema).await;
     validate_block(&block.header, server_address, &schema).await;
