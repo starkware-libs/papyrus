@@ -1,9 +1,5 @@
 pub mod v0_3_0;
 
-pub mod version_config;
-#[cfg(test)]
-mod version_config_test;
-
 use std::collections::HashSet;
 
 use jsonrpsee::{Methods, RpcModule};
@@ -18,6 +14,7 @@ use self::v0_3_0::JsonRpcV0_3_0Server;
 use crate::v0_3_0::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use crate::v0_3_0::state::ContractClass;
 use crate::v0_3_0::transaction::Event;
+use crate::version_config;
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum Tag {

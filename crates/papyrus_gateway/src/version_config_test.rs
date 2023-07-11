@@ -4,7 +4,7 @@ use assert_matches::assert_matches;
 use pretty_assertions::assert_eq;
 
 use super::version_config::VERSION_CONFIG;
-use crate::api::version_config::{VersionState, LATEST_VERSION_ID};
+use crate::version_config::{VersionState, LATEST_VERSION_ID};
 
 #[tokio::test]
 async fn validate_version_configuration() {

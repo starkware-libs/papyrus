@@ -8,6 +8,9 @@ mod middleware;
 mod test_utils;
 mod transaction;
 mod v0_3_0;
+mod version_config;
+#[cfg(test)]
+mod version_config_test;
 
 use std::fmt::Display;
 use std::net::SocketAddr;
