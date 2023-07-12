@@ -1,15 +1,16 @@
 mod api;
 mod block;
-mod deprecated_contract_class;
+mod gateway_metrics;
 #[cfg(test)]
 mod gateway_test;
 mod middleware;
-mod state;
 #[cfg(test)]
 mod test_utils;
 mod transaction;
+mod v0_3_0;
+mod version_config;
 #[cfg(test)]
-mod transaction_test;
+mod version_config_test;
 
 use std::fmt::Display;
 use std::net::SocketAddr;
@@ -20,7 +21,6 @@ use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::body::events::EventIndex;
-use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::db::TransactionKind;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageReader, StorageTxn};
@@ -33,9 +33,7 @@ use crate::api::{
     get_methods_from_supported_apis, BlockHashOrNumber, BlockId, ContinuationToken, JsonRpcError,
     Tag,
 };
-use crate::block::BlockHeader;
 use crate::middleware::proxy_request;
-use crate::transaction::Transaction;
 
 /// Maximum size of a supported transaction body - 10MB.
 pub const SERVER_MAX_BODY_SIZE: u32 = 10 * 1024 * 1024;
@@ -90,30 +88,6 @@ fn get_latest_block_number<Mode: TransactionKind>(
     Ok(txn.get_header_marker().map_err(internal_server_error)?.prev())
 }
 
-fn get_block_header_by_number<Mode: TransactionKind>(
-    txn: &StorageTxn<'_, Mode>,
-    block_number: BlockNumber,
-) -> Result<BlockHeader, ErrorObjectOwned> {
-    let header = txn
-        .get_block_header(block_number)
-        .map_err(internal_server_error)?
-        .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
-
-    Ok(BlockHeader::from(header))
-}
-
-fn get_block_txs_by_number<Mode: TransactionKind>(
-    txn: &StorageTxn<'_, Mode>,
-    block_number: BlockNumber,
-) -> Result<Vec<Transaction>, ErrorObjectOwned> {
-    let transactions = txn
-        .get_block_transactions(block_number)
-        .map_err(internal_server_error)?
-        .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
-
-    Ok(transactions.into_iter().map(Transaction::from).collect())
-}
-
 fn get_block_status<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
     block_number: BlockNumber,
@@ -141,25 +115,28 @@ impl ContinuationToken {
         Ok(Self(serde_json::to_string(&ct.0).map_err(internal_server_error)?))
     }
 }
-
+use gateway_metrics::MetricLogger;
 #[instrument(skip(storage_reader), level = "debug", err)]
 pub async fn run_server(
     config: &GatewayConfig,
     storage_reader: StorageReader,
 ) -> anyhow::Result<(SocketAddr, ServerHandle)> {
     debug!("Starting gateway.");
-    let server = ServerBuilder::default()
-        .max_request_body_size(SERVER_MAX_BODY_SIZE)
-        .set_middleware(tower::ServiceBuilder::new().filter_async(proxy_request))
-        .build(&config.server_address)
-        .await?;
-    let addr = server.local_addr()?;
     let methods = get_methods_from_supported_apis(
         &config.chain_id,
         storage_reader,
         config.max_events_chunk_size,
         config.max_events_keys,
     );
+    // TODO(dvir): set the logger only if we want to collect metrics.
+    let server = ServerBuilder::default()
+        .max_request_body_size(SERVER_MAX_BODY_SIZE)
+        .set_middleware(tower::ServiceBuilder::new().filter_async(proxy_request))
+        .set_logger(MetricLogger::new(&methods))
+        .build(&config.server_address)
+        .await?;
+    let addr = server.local_addr()?;
+
     let handle = server.start(methods)?;
     info!(local_address = %addr, "Gateway is running.");
     Ok((addr, handle))

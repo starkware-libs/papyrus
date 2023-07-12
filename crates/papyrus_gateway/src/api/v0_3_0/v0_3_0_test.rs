@@ -32,13 +32,13 @@ use crate::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, EventsChunk,
     JsonRpcError, SyncingState, Tag,
 };
-use crate::block::Block;
-use crate::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use crate::state::{ContractClass, StateUpdate, ThinStateDiff};
 use crate::test_utils::{
     get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
 };
-use crate::transaction::{
+use crate::v0_3_0::block::Block;
+use crate::v0_3_0::deprecated_contract_class::ContractClass as DeprecatedContractClass;
+use crate::v0_3_0::state::{ContractClass, StateUpdate, ThinStateDiff};
+use crate::v0_3_0::transaction::{
     Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
     TransactionWithType, Transactions,
 };

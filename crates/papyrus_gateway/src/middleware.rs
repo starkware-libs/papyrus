@@ -2,7 +2,7 @@ use hyper::{Body, Request};
 use jsonrpsee::core::http_helpers::read_body;
 use tower::BoxError;
 
-use crate::api::version_config::{VersionState, LATEST_VERSION_ID, VERSION_CONFIG};
+use crate::version_config::{VersionState, LATEST_VERSION_ID, VERSION_CONFIG};
 use crate::SERVER_MAX_BODY_SIZE;
 
 /// [`Tower`] middleware intended to proxy method requests to the right version of the API.
