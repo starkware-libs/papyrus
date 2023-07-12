@@ -60,7 +60,7 @@ fn transaction_with_constant_request(
         let request = request.clone();
         let version_id = version_id.clone();
         Box::pin(async move {
-            post_jsonrpc_request(user, &request, version_id).await?;
+            post_jsonrpc_request(user, &request, &version_id).await?;
 
             Ok(())
         })
@@ -77,7 +77,7 @@ fn random_request_transaction(requests: Vec<jsonVal>, version_id: &str) -> Trans
         let req = requests[index].clone();
         let version_id = version_id.to_owned();
         Box::pin(async move {
-            post_jsonrpc_request(user, &req, version_id).await?;
+            post_jsonrpc_request(user, &req, &version_id).await?;
 
             Ok(())
         })
