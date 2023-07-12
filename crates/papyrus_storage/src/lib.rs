@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 //! A storage implementation for a [`Starknet`] node.
 //!
 //! This crate provides a writing and reading interface for various Starknet data structures to a
@@ -47,6 +48,8 @@ pub mod compiled_class;
 pub mod compression_utils;
 pub mod db;
 pub mod header;
+// TODO(yair): Once decided whether to keep the ommer module, write its documentation or delete it.
+#[doc(hidden)]
 pub mod ommer;
 mod serializers;
 pub mod state;
@@ -54,6 +57,7 @@ mod version;
 
 #[cfg(any(feature = "testing", test))]
 #[path = "test_utils.rs"]
+#[doc(hidden)]
 pub mod test_utils;
 
 use std::collections::HashMap;
