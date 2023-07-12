@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use indexmap::IndexMap;
 use papyrus_storage::base_layer::{BaseLayerStorageReader, BaseLayerStorageWriter};
-use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
+use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter, StarknetVersion};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
@@ -541,7 +541,7 @@ async fn test_unrecoverable_sync_error_flow() {
         .returning(|_| Ok(Some(create_block_hash(WRONG_BLOCK_NUMBER, false))));
 
     let ((reader, writer), _temp_dir) = get_test_storage();
-    let sync_future = run_sync(reader.clone(), writer, mock);
+    let sync_future = run_sync(reader.clone(), writer, mock, MockBaseLayerSourceTrait::new());
     let sync_res = tokio::join! {sync_future};
     assert!(sync_res.0.is_err());
     // expect sync to raise the unrecoverable error it gets. In this case a DB Inconsistency error.
