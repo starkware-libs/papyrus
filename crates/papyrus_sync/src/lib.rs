@@ -25,7 +25,7 @@ use papyrus_storage::ommer::{OmmerStorageReader, OmmerStorageWriter};
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
-use sources::{BaseLayerSource, BaseLayerSourceTrait};
+use sources::BaseLayerSourceTrait;
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
@@ -34,7 +34,8 @@ use tokio::sync::RwLock;
 use tracing::{debug, error, info, instrument, trace, warn};
 
 pub use self::sources::{
-    BaseLayerError, CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait,
+    BaseLayerError, BaseLayerSource, CentralError, CentralSource, CentralSourceConfig,
+    CentralSourceTrait,
 };
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct SyncConfig {
@@ -128,7 +129,7 @@ pub enum StateSyncError {
     )]
     StateDiffWithoutMatchingHeader { block_number: BlockNumber, block_hash: BlockHash },
     #[error(
-        "Header for block {block_number} doesn't found when trying to store base layer block. Can \
+        "Header for block {block_number} wasn't found when trying to store base layer block. Can \
          be caused because base layer reorg or l2 reverts."
     )]
     BaseLayerBlockWithoutMatchingHeader { block_number: BlockNumber },
@@ -725,25 +726,25 @@ fn stream_new_base_layer_block<TBaseLayerSource: BaseLayerSourceTrait + Sync>(
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
         loop{
+            tokio::time::sleep(base_layer_propagation_sleep_duration).await;
             let txn = reader.begin_ro_txn()?;
             let header_marker = txn.get_header_marker()?;
             let base_layer_block_marker = txn.get_base_layer_block_marker()?;
-            if let Some((block_number, block_hash)) = base_layer_source.latest_proved_block().await? {
-                if block_number<base_layer_block_marker{
+            match base_layer_source.latest_proved_block().await?{
+                Some((block_number, _block_hash)) if block_number<base_layer_block_marker => {
                     debug!("Base layer syncing reached the last known block proved on the base layer, waiting for blockchain to advance.");
                 }
-                else if header_marker<=block_number{
+                Some((block_number, _block_hash)) if header_marker<=block_number => {
                     debug!("Sync is behind the base layer tip, waiting for sync to advance.");
                 }
-                else{
+                Some((block_number, block_hash)) => {
                     debug!("Returns a block from the base layer. Block number: {block_number}.");
                     yield SyncEvent::NewBaseLayerBlock {block_number, block_hash }
                 }
+                None => {
+                    debug!("No blocks were proved on the base layer, waiting for blockchain to advance.");
+                }
             }
-            else{
-                debug!("No blocks were proved on the base layer, waiting for blockchain to advance.");
-            }
-            tokio::time::sleep(base_layer_propagation_sleep_duration).await;
         }
     }
 }
