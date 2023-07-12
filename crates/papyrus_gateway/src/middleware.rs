@@ -37,17 +37,21 @@ pub(crate) async fn proxy_rpc_request(req: Request<Body>) -> Result<Request<Body
     Ok(Request::from_parts(parts, new_body.into()))
 }
 
+/// ['Tower`] middleware intended to deny requests with unsupported paths.
+/// supported paths are paths that starts with '/rpc/' followed by a supported version id.
+///
+/// # Arguments
+/// * req - [`hyper::Request`] object passed by the server.
+///
+/// [`Tower`]: https://crates.io/crates/tower
 pub(crate) async fn deny_requests_with_unsupported_path(
     req: Request<Body>,
 ) -> Result<Request<Body>, BoxError> {
     debug!("deny_requests_with_unsupported_path -> Request received: {:?}", req);
-    let uri = &req.uri().clone();
+    let uri = req.uri();
     match is_supported_path(uri.path()) {
         true => Ok(req),
-        false => {
-            println!("Unsupported path for request {:?}", uri);
-            Err(BoxError::from("Unsupported path for request"))
-        }
+        false => Err(BoxError::from("Unsupported path for request")),
     }
 }
 
@@ -97,7 +101,7 @@ fn get_version_as_prefix(path: &str) -> Result<&str, BoxError> {
 }
 
 fn is_supported_path(path: &str) -> bool {
-    let re = Regex::new(r"^\/rpc\/V[0-9]_[0-9]_[0-9]$").unwrap();
+    let re = Regex::new(r"^\/rpc\/V[0-9]+_[0-9]+_[0-9]+$").unwrap();
     match path {
         "/" | "" => false,
         path => re.is_match(path),

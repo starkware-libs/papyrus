@@ -16,7 +16,7 @@ type PostResult = Result<jsonVal, Box<TransactionError>>;
 pub async fn post_jsonrpc_request(
     user: &mut GooseUser,
     request: &jsonVal,
-    version_id: String,
+    version_id: &String,
 ) -> PostResult {
     let response = user
         .post_json(&format!("/rpc/{version_id}"), request)
