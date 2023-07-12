@@ -3,21 +3,19 @@ pub mod create_request;
 pub mod scenarios;
 pub mod transactions;
 
+use core::panic;
 use std::{env, fs};
 
 use goose::goose::{GooseUser, TransactionError};
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
 use rand::Rng;
 use serde::Deserialize;
 use serde_json::{json, Value as jsonVal};
 
 type PostResult = Result<jsonVal, Box<TransactionError>>;
 
-pub async fn post_jsonrpc_request(
-    user: &mut GooseUser,
-    request: &jsonVal,
-    version_id: &String,
-) -> PostResult {
+pub async fn post_jsonrpc_request(user: &mut GooseUser, request: &jsonVal) -> PostResult {
+    let version_id = &*VERSION_ID;
     let response = user
         .post_json(&format!("/rpc/{version_id}"), request)
         .await?
@@ -97,3 +95,8 @@ const GET_TRANSACTION_BY_BLOCK_ID_AND_INDEX_BY_HASH_WEIGHT: usize = 10;
 const GET_TRANSACTION_BY_BLOCK_ID_AND_INDEX_BY_NUMBER_WEIGHT: usize = 10;
 const GET_TRANSACTION_BY_HASH_WEIGHT: usize = 10;
 const GET_TRANSACTION_RECEIPT_WEIGHT: usize = 10;
+
+static VERSION_ID: Lazy<String> = Lazy::new(|| match std::env::var("VERSION_ID") {
+    Ok(version_id) => version_id,
+    Err(_) => panic!("VERSION_ID environment variable is not set"),
+});
