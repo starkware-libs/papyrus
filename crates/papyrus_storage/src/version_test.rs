@@ -21,16 +21,16 @@ async fn version() {
     assert_eq!(version.unwrap(), higher_version);
 
     // Fail to set a version which is not higher than the existing one.
-    if let Err(err) = writer.begin_rw_txn().unwrap().set_version(&higher_version) {
-        assert_matches!(
-            err,
-            StorageError::StorageVersionInconcistency(StorageVersionError::SetLowerVersion {
-                crate_version,
-                storage_version
-            })
-            if crate_version == higher_version && storage_version == higher_version
-        );
-    } else {
+    let Err(err) = writer.begin_rw_txn().unwrap().set_version(&higher_version) else {
         panic!("Unexpected Ok.");
     };
+
+    assert_matches!(
+        err,
+        StorageError::StorageVersionInconcistency(StorageVersionError::SetLowerVersion {
+            crate_version,
+            storage_version
+        })
+        if crate_version == higher_version && storage_version == higher_version
+    );
 }
