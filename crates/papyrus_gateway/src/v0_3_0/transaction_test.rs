@@ -32,6 +32,69 @@ gen_test_from_thin_transaction_output_macro!(DeployAccount);
 gen_test_from_thin_transaction_output_macro!(Invoke);
 gen_test_from_thin_transaction_output_macro!(L1Handler);
 
+#[tokio::test]
+async fn test_gateway_trascation_from_starknet_api_transaction() {
+    let mut rng = get_rng();
+
+    let inner_transaction = starknet_api::transaction::DeclareTransactionV0V1::default();
+    let transaction: crate::v0_3_0::transaction::Transaction = Transaction::Declare(
+        starknet_api::transaction::DeclareTransaction::V0(inner_transaction.clone()),
+    )
+    .try_into()
+    .unwrap();
+    assert_eq!(transaction.transaction_hash(), inner_transaction.transaction_hash);
+
+    let inner_transaction = starknet_api::transaction::DeclareTransactionV0V1::default();
+    let transaction: crate::v0_3_0::transaction::Transaction = Transaction::Declare(
+        starknet_api::transaction::DeclareTransaction::V1(inner_transaction.clone()),
+    )
+    .try_into()
+    .unwrap();
+    assert_eq!(transaction.transaction_hash(), inner_transaction.transaction_hash);
+
+    let inner_transaction = starknet_api::transaction::DeclareTransactionV2::default();
+    let transaction: crate::v0_3_0::transaction::Transaction = Transaction::Declare(
+        starknet_api::transaction::DeclareTransaction::V2(inner_transaction.clone()),
+    )
+    .try_into()
+    .unwrap();
+    assert_eq!(transaction.transaction_hash(), inner_transaction.transaction_hash);
+
+    let inner_transaction = starknet_api::transaction::InvokeTransactionV0::default();
+    let transaction: crate::v0_3_0::transaction::Transaction = Transaction::Invoke(
+        starknet_api::transaction::InvokeTransaction::V0(inner_transaction.clone()),
+    )
+    .try_into()
+    .unwrap();
+    assert_eq!(transaction.transaction_hash(), inner_transaction.transaction_hash);
+
+    let inner_transaction = starknet_api::transaction::InvokeTransactionV1::default();
+    let transaction: crate::v0_3_0::transaction::Transaction = Transaction::Invoke(
+        starknet_api::transaction::InvokeTransaction::V1(inner_transaction.clone()),
+    )
+    .try_into()
+    .unwrap();
+    assert_eq!(transaction.transaction_hash(), inner_transaction.transaction_hash);
+
+    let inner_transaction =
+        starknet_api::transaction::L1HandlerTransaction::get_test_instance(&mut rng);
+    let transaction: crate::v0_3_0::transaction::Transaction =
+        Transaction::L1Handler(inner_transaction.clone()).try_into().unwrap();
+    assert_eq!(transaction.transaction_hash(), inner_transaction.transaction_hash);
+
+    let inner_transaction =
+        starknet_api::transaction::DeployTransaction::get_test_instance(&mut rng);
+    let transaction: crate::v0_3_0::transaction::Transaction =
+        Transaction::Deploy(inner_transaction.clone()).try_into().unwrap();
+    assert_eq!(transaction.transaction_hash(), inner_transaction.transaction_hash);
+
+    let inner_transaction =
+        starknet_api::transaction::DeployAccountTransaction::get_test_instance(&mut rng);
+    let transaction: crate::v0_3_0::transaction::Transaction =
+        Transaction::DeployAccount(inner_transaction.clone()).try_into().unwrap();
+    assert_eq!(transaction.transaction_hash(), inner_transaction.transaction_hash);
+}
+
 macro_rules! test_recipe_from_transtaction_output {
     ($variant:ident, $recipe_type:ident) => {
         paste! {
