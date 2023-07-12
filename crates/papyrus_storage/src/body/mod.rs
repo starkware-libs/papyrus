@@ -29,7 +29,6 @@ pub trait BodyStorageReader {
     // The block number marker is the first block number that doesn't exist yet.
     fn get_body_marker(&self) -> StorageResult<BlockNumber>;
 
-    // TODO(spapini): get_transaction_by_hash.
     fn get_transaction(
         &self,
         transaction_index: TransactionIndex,
