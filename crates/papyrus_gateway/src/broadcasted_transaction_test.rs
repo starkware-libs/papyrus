@@ -1,24 +1,44 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use futures::executor::block_on;
+use rand_chacha::ChaCha8Rng;
+use starknet_api::core::{CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::{
     EntryPoint as DeprecatedEntryPoint, EntryPointType as DeprecatedEntryPointType, EventAbiEntry,
-    FunctionAbiEntry, StructAbiEntry, StructMember, TypedParameter,
+    FunctionAbiEntry, StructAbiEntry,
 };
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{EntryPoint, EntryPointType};
-use starknet_api::transaction::{Calldata, TransactionSignature};
+use starknet_api::transaction::{Fee, TransactionSignature, TransactionVersion};
 use starknet_writer_client::objects::transaction::{
     DeprecatedContractClass, DeprecatedContractClassAbiEntry,
 };
+use test_utils::{auto_impl_get_test_instance, get_rng, GetTestInstance};
 
 use crate::broadcasted_transaction::{
     BroadcastedDeclareTransaction, BroadcastedDeclareV2Transaction, BroadcastedTransaction,
     ClientDeclareV1Transaction, ClientDeployAccountTransaction, ClientInvokeTransaction,
 };
-use crate::state::ContractClass;
 use crate::test_utils::get_starknet_spec_api_schema;
+use crate::v0_3_0::state::ContractClass;
+
+auto_impl_get_test_instance! {
+    pub struct BroadcastedDeclareV2Transaction {
+        pub contract_class: ContractClass,
+        pub compiled_class_hash: CompiledClassHash,
+        pub sender_address: ContractAddress,
+        pub nonce: Nonce,
+        pub max_fee: Fee,
+        pub version: TransactionVersion,
+        pub signature: TransactionSignature,
+    }
+    pub struct ContractClass {
+        pub sierra_program: Vec<StarkFelt>,
+        pub contract_class_version: String,
+        pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
+        pub abi: String,
+    }
+}
 
 fn validate_tx_fits_rpc(tx: BroadcastedTransaction) {
     let schema = block_on(get_starknet_spec_api_schema(&["BROADCASTED_TXN"]));
@@ -27,79 +47,63 @@ fn validate_tx_fits_rpc(tx: BroadcastedTransaction) {
 
 #[test]
 fn deploy_account_fits_rpc() {
-    let tx = BroadcastedTransaction::DeployAccount(ClientDeployAccountTransaction {
-        constructor_calldata: Calldata(Arc::new(vec![StarkFelt::default()])),
-        signature: TransactionSignature(vec![StarkFelt::default()]),
-        ..Default::default()
-    });
+    let tx = BroadcastedTransaction::DeployAccount(
+        ClientDeployAccountTransaction::get_test_instance(&mut get_rng()),
+    );
     validate_tx_fits_rpc(tx);
 }
 
 #[test]
 fn invoke_fits_rpc() {
-    let tx = BroadcastedTransaction::Invoke(ClientInvokeTransaction {
-        calldata: Calldata(Arc::new(vec![StarkFelt::default()])),
-        signature: TransactionSignature(vec![StarkFelt::default()]),
-        ..Default::default()
-    });
+    let tx =
+        BroadcastedTransaction::Invoke(ClientInvokeTransaction::get_test_instance(&mut get_rng()));
     validate_tx_fits_rpc(tx);
 }
 
 #[test]
 fn declare_v1_fits_rpc() {
+    let mut rng = get_rng();
     for has_abi in [true, false] {
         let abi = if has_abi {
             Some(vec![
-                DeprecatedContractClassAbiEntry::Event(EventAbiEntry {
-                    keys: vec![TypedParameter::default()],
-                    data: vec![TypedParameter::default()],
-                    ..Default::default()
-                }),
-                DeprecatedContractClassAbiEntry::Function(FunctionAbiEntry {
-                    inputs: vec![TypedParameter::default()],
-                    outputs: vec![TypedParameter::default()],
-                    ..Default::default()
-                }),
-                DeprecatedContractClassAbiEntry::Constructor(FunctionAbiEntry {
-                    inputs: vec![TypedParameter::default()],
-                    outputs: vec![TypedParameter::default()],
-                    ..Default::default()
-                }),
-                DeprecatedContractClassAbiEntry::L1Handler(FunctionAbiEntry {
-                    inputs: vec![TypedParameter::default()],
-                    outputs: vec![TypedParameter::default()],
-                    ..Default::default()
-                }),
-                DeprecatedContractClassAbiEntry::Struct(StructAbiEntry {
-                    members: vec![StructMember::default()],
-                    // TODO(shahak) Change the default size of StructAbiEntry to be
-                    // non-zero.
-                    size: 1,
-                    ..Default::default()
-                }),
+                DeprecatedContractClassAbiEntry::Event(EventAbiEntry::get_test_instance(&mut rng)),
+                DeprecatedContractClassAbiEntry::Function(FunctionAbiEntry::get_test_instance(
+                    &mut rng,
+                )),
+                DeprecatedContractClassAbiEntry::Constructor(FunctionAbiEntry::get_test_instance(
+                    &mut rng,
+                )),
+                DeprecatedContractClassAbiEntry::L1Handler(FunctionAbiEntry::get_test_instance(
+                    &mut rng,
+                )),
+                DeprecatedContractClassAbiEntry::Struct(StructAbiEntry::get_test_instance(
+                    &mut rng,
+                )),
             ])
         } else {
             None
         };
         let tx = BroadcastedTransaction::Declare(BroadcastedDeclareTransaction::DeclareV1(
             ClientDeclareV1Transaction {
-                signature: TransactionSignature(vec![StarkFelt::default()]),
                 contract_class: DeprecatedContractClass {
                     abi,
                     entry_points_by_type: HashMap::from([
                         (
                             DeprecatedEntryPointType::Constructor,
-                            vec![DeprecatedEntryPoint::default()],
+                            vec![DeprecatedEntryPoint::get_test_instance(&mut rng)],
                         ),
-                        (DeprecatedEntryPointType::External, vec![DeprecatedEntryPoint::default()]),
+                        (
+                            DeprecatedEntryPointType::External,
+                            vec![DeprecatedEntryPoint::get_test_instance(&mut rng)],
+                        ),
                         (
                             DeprecatedEntryPointType::L1Handler,
-                            vec![DeprecatedEntryPoint::default()],
+                            vec![DeprecatedEntryPoint::get_test_instance(&mut rng)],
                         ),
                     ]),
-                    ..Default::default()
+                    ..GetTestInstance::get_test_instance(&mut rng)
                 },
-                ..Default::default()
+                ..GetTestInstance::get_test_instance(&mut rng)
             },
         ));
         validate_tx_fits_rpc(tx);
@@ -108,19 +112,18 @@ fn declare_v1_fits_rpc() {
 
 #[test]
 fn declare_v2_fits_rpc() {
+    let mut rng = get_rng();
     let tx = BroadcastedTransaction::Declare(BroadcastedDeclareTransaction::DeclareV2(
         BroadcastedDeclareV2Transaction {
-            signature: TransactionSignature(vec![StarkFelt::default()]),
             contract_class: ContractClass {
-                sierra_program: vec![StarkFelt::default()],
                 entry_points_by_type: HashMap::from([
-                    (EntryPointType::Constructor, vec![EntryPoint::default()]),
-                    (EntryPointType::External, vec![EntryPoint::default()]),
-                    (EntryPointType::L1Handler, vec![EntryPoint::default()]),
+                    (EntryPointType::Constructor, Vec::<EntryPoint>::get_test_instance(&mut rng)),
+                    (EntryPointType::External, Vec::<EntryPoint>::get_test_instance(&mut rng)),
+                    (EntryPointType::L1Handler, Vec::<EntryPoint>::get_test_instance(&mut rng)),
                 ]),
-                ..Default::default()
+                ..GetTestInstance::get_test_instance(&mut rng)
             },
-            ..Default::default()
+            ..GetTestInstance::get_test_instance(&mut rng)
         },
     ));
     validate_tx_fits_rpc(tx);
