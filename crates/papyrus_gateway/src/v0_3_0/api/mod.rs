@@ -7,16 +7,16 @@ use starknet_api::hash::StarkFelt;
 use starknet_api::state::StorageKey;
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 
-use super::{
+use super::block::Block;
+use super::state::StateUpdate;
+use super::transaction::{TransactionReceiptWithStatus, TransactionWithType};
+use crate::api::{
     BlockHashAndNumber, BlockId, EventFilter, EventsChunk, GatewayContractClass, SyncingState,
 };
-use crate::v0_3_0::block::Block;
-use crate::v0_3_0::state::StateUpdate;
-use crate::v0_3_0::transaction::{TransactionReceiptWithStatus, TransactionWithType};
 
-pub mod v0_3_0_impl;
+pub mod api_impl;
 #[cfg(test)]
-mod v0_3_0_test;
+mod test;
 
 #[versioned_rpc("V0_3_0")]
 pub trait JsonRpc {

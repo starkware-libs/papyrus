@@ -1,5 +1,3 @@
-pub mod v0_3_0;
-
 use std::collections::HashSet;
 
 use jsonrpsee::{Methods, RpcModule};
@@ -9,8 +7,9 @@ use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{ChainId, ContractAddress};
 use starknet_api::transaction::EventKey;
 
-use self::v0_3_0::v0_3_0_impl::JsonRpcServerV0_3_0Impl;
-use self::v0_3_0::JsonRpcV0_3_0Server;
+// todo: nevo - remove dependency on specific version
+use crate::v0_3_0::api::api_impl::JsonRpcServerV0_3_0Impl;
+use crate::v0_3_0::api::JsonRpcV0_3_0Server;
 use crate::v0_3_0::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use crate::v0_3_0::state::ContractClass;
 use crate::v0_3_0::transaction::Event;
