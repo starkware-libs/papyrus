@@ -20,13 +20,13 @@ use starknet_api::deprecated_contract_class::{
 use test_utils::{get_rng, GetTestInstance};
 use tower::BoxError;
 
-use crate::api::version_config::{LATEST_VERSION_ID, VERSION_CONFIG};
 use crate::api::JsonRpcError;
 use crate::middleware::proxy_request;
 use crate::test_utils::get_test_gateway_config;
 use crate::v0_3_0::deprecated_contract_class::{
     ContractClassAbiEntryType, ContractClassAbiEntryWithType,
 };
+use crate::version_config::{LATEST_VERSION_ID, VERSION_CONFIG};
 use crate::{get_block_status, run_server, SERVER_MAX_BODY_SIZE};
 
 #[tokio::test]
