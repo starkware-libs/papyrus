@@ -12,9 +12,9 @@ use async_stream::try_stream;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use indexmap::IndexMap;
-use papyrus_storage::body::{BodyStorageWriter, StarknetVersion};
+use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
-use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
+use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter, StarknetVersion};
 use papyrus_storage::ommer::{OmmerStorageReader, OmmerStorageWriter};
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
@@ -193,7 +193,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult {
         match sync_event {
             SyncEvent::BlockAvailable { block_number, block, starknet_version } => {
-                self.store_block(block_number, block, starknet_version)
+                self.store_block(block_number, block, &starknet_version)
             }
             SyncEvent::StateDiffAvailable {
                 block_number,
@@ -219,7 +219,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
         &mut self,
         block_number: BlockNumber,
         block: Block,
-        starknet_version: StarknetVersion,
+        starknet_version: &StarknetVersion,
     ) -> StateSyncResult {
         // Assuming the central source is trusted, detect reverts by comparing the incoming block's
         // parent hash to the current hash.

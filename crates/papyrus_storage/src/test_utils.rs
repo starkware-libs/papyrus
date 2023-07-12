@@ -7,14 +7,18 @@ use starknet_api::transaction::{
     EventIndexInTransactionOutput, Fee, MessageToL1, TransactionOffsetInBlock,
 };
 use tempfile::{tempdir, TempDir};
-use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
+use test_utils::{
+    auto_impl_get_test_instance, default_impl_get_test_instance, get_number_of_variants,
+    GetTestInstance,
+};
 
 use crate::body::events::{
     ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput, ThinDeployTransactionOutput,
     ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
 };
-use crate::body::{StarknetVersion, TransactionIndex};
+use crate::body::TransactionIndex;
 use crate::db::DbConfig;
+use crate::header::StarknetVersion;
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::Version;
 use crate::{
@@ -61,7 +65,6 @@ auto_impl_get_test_instance! {
     }
     struct OmmerTransactionKey(pub BlockHash, pub TransactionOffsetInBlock);
     struct OmmerEventKey(pub OmmerTransactionKey, pub EventIndexInTransactionOutput);
-    pub struct StarknetVersion(pub String);
     pub struct ThinDeclareTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
@@ -97,3 +100,5 @@ auto_impl_get_test_instance! {
     struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
     pub struct Version(pub u32);
 }
+
+default_impl_get_test_instance!(StarknetVersion);

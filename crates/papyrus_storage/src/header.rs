@@ -2,10 +2,13 @@
 #[path = "header_test.rs"]
 mod header_test;
 
+use std::fmt::Display;
+use std::sync::Arc;
+
+use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use tracing::debug;
 
-use crate::body::StarknetVersion;
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
@@ -38,12 +41,15 @@ where
         self,
         block_number: BlockNumber,
         block_header: &BlockHeader,
-        starknet_version: StarknetVersion,
+        starknet_version: &StarknetVersion,
     ) -> StorageResult<Self>;
 
     fn revert_header(self, block_number: BlockNumber)
     -> StorageResult<(Self, Option<BlockHeader>)>;
 }
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub struct StarknetVersion(pub Arc<str>);
 
 impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode> {
     fn get_header_marker(&self) -> StorageResult<BlockNumber> {
@@ -94,7 +100,7 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
         self,
         block_number: BlockNumber,
         block_header: &BlockHeader,
-        starknet_version: StarknetVersion,
+        starknet_version: &StarknetVersion,
     ) -> StorageResult<Self> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let headers_table = self.txn.open_table(&self.tables.headers)?;
@@ -154,7 +160,7 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
 fn update_starknet_version(
     txn: &DbTransaction<'_, RW>,
     starknet_version_table: &TableHandle<'_, BlockNumber, StarknetVersion>,
-    starknet_version: StarknetVersion,
+    starknet_version: &StarknetVersion,
     block_number: &BlockNumber,
 ) -> StorageResult<()> {
     let mut cursor = starknet_version_table.cursor(txn)?;
@@ -163,11 +169,11 @@ fn update_starknet_version(
 
     match res {
         Some((_block_number, last_starknet_version))
-            if last_starknet_version == starknet_version =>
+            if last_starknet_version == *starknet_version =>
         {
             Ok(())
         }
-        _ => Ok(starknet_version_table.insert(txn, block_number, &starknet_version)?),
+        _ => Ok(starknet_version_table.insert(txn, block_number, starknet_version)?),
     }
 }
 
@@ -202,4 +208,16 @@ fn update_marker<'env>(
     // Advance marker.
     markers_table.upsert(txn, &MarkerKind::Header, &block_number.next())?;
     Ok(())
+}
+
+impl Default for StarknetVersion {
+    fn default() -> Self {
+        Self(Arc::from("0.0.0"))
+    }
+}
+
+impl Display for StarknetVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }

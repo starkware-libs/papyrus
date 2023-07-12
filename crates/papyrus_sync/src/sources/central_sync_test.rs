@@ -6,8 +6,7 @@ use async_stream::stream;
 use async_trait::async_trait;
 use futures::StreamExt;
 use indexmap::IndexMap;
-use papyrus_storage::body::StarknetVersion;
-use papyrus_storage::header::HeaderStorageReader;
+use papyrus_storage::header::{HeaderStorageReader, StarknetVersion};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
@@ -28,6 +27,7 @@ const SYNC_SLEEP_DURATION: Duration = Duration::from_millis(100); // 100ms
 const DURATION_BEFORE_CHECKING_STORAGE: Duration = SYNC_SLEEP_DURATION.saturating_mul(2); // 200ms twice the sleep duration of the sync loop.
 const MAX_CHECK_STORAGE_ITERATIONS: u8 = 3;
 const STREAM_SIZE: u32 = 1000;
+const STARKNET_VERSION: &str = "starknet_version";
 
 enum CheckStoragePredicateResult {
     InProgress,
@@ -135,7 +135,7 @@ async fn sync_happy_flow() {
                     parent_hash: create_block_hash(block_number.prev().unwrap_or_default(), false),
                     ..BlockHeader::default()
                 };
-                yield Ok((block_number, Block { header, body: BlockBody::default() }, StarknetVersion("starknet_version".to_string())));
+                yield Ok((block_number, Block { header, body: BlockBody::default() }, StarknetVersion(Arc::from(STARKNET_VERSION))));
             }
         }
         .boxed();
@@ -379,7 +379,7 @@ async fn sync_with_revert() {
                             block_hash: create_block_hash(i, false),
                             parent_hash: create_block_hash(i.prev().unwrap_or_default(), false),
                             ..BlockHeader::default()};
-                        yield Ok((i,Block{header, body: BlockBody::default()}, StarknetVersion("starknet_version".to_string())));
+                        yield Ok((i,Block{header, body: BlockBody::default()}, StarknetVersion(Arc::from(STARKNET_VERSION))));
                     }
                 }
                 .boxed(),
@@ -393,7 +393,7 @@ async fn sync_with_revert() {
                             block_hash: create_block_hash(i, i.0 >= CHAIN_FORK_BLOCK_NUMBER),
                             parent_hash: create_block_hash(i.prev().unwrap_or_default(), i.0 > CHAIN_FORK_BLOCK_NUMBER),
                             ..BlockHeader::default()};
-                        yield Ok((i, Block{header, body: BlockBody::default()}, StarknetVersion("starknet_version".to_string())));
+                        yield Ok((i, Block{header, body: BlockBody::default()}, StarknetVersion(Arc::from(STARKNET_VERSION))));
                     }
                 }
                 .boxed(),
@@ -468,7 +468,11 @@ async fn test_unrecoverable_sync_error_flow() {
                     parent_hash: create_block_hash(BLOCK_NUMBER.prev().unwrap_or_default(), false),
                     ..BlockHeader::default()
                 };
-            yield Ok((BLOCK_NUMBER, Block { header, body: BlockBody::default() }));
+            yield Ok((
+                BLOCK_NUMBER,
+                Block { header, body: BlockBody::default()},
+                StarknetVersion(Arc::from(STARKNET_VERSION)),
+            ));
         }
         .boxed();
         blocks_stream

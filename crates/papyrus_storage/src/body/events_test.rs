@@ -14,8 +14,8 @@ use crate::body::events::{
     ThinDeployTransactionOutput, ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput,
     ThinTransactionOutput,
 };
-use crate::body::{BodyStorageWriter, StarknetVersion, TransactionIndex};
-use crate::header::HeaderStorageWriter;
+use crate::body::{BodyStorageWriter, TransactionIndex};
+use crate::header::{HeaderStorageWriter, StarknetVersion};
 use crate::test_utils::get_test_storage;
 
 #[tokio::test]
@@ -28,7 +28,7 @@ async fn iter_events_by_key() {
     storage_writer
         .begin_rw_txn()
         .unwrap()
-        .append_header(block_number, &block.header, StarknetVersion::default())
+        .append_header(block_number, &block.header, &StarknetVersion::default())
         .unwrap()
         .append_body(block_number, block.body.clone())
         .unwrap()
@@ -75,7 +75,7 @@ async fn iter_events_by_index() {
     storage_writer
         .begin_rw_txn()
         .unwrap()
-        .append_header(block_number, &block.header, StarknetVersion::default())
+        .append_header(block_number, &block.header, &StarknetVersion::default())
         .unwrap()
         .append_body(block_number, block.body.clone())
         .unwrap()
@@ -115,7 +115,7 @@ async fn revert_events() {
     storage_writer
         .begin_rw_txn()
         .unwrap()
-        .append_header(block_number, &block.header, StarknetVersion::default())
+        .append_header(block_number, &block.header, &StarknetVersion::default())
         .unwrap()
         .append_body(block_number, block.body.clone())
         .unwrap()
