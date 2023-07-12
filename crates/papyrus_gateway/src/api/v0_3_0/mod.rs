@@ -7,7 +7,9 @@ use starknet_api::hash::StarkFelt;
 use starknet_api::state::StorageKey;
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 
-use super::{BlockHashAndNumber, BlockId, EventFilter, EventsChunk, GatewayContractClass};
+use super::{
+    BlockHashAndNumber, BlockId, EventFilter, EventsChunk, GatewayContractClass, SyncingState,
+};
 use crate::block::Block;
 use crate::state::StateUpdate;
 use crate::transaction::{TransactionReceiptWithStatus, TransactionWithType};
@@ -110,7 +112,7 @@ pub trait JsonRpc {
     #[method(name = "getEvents")]
     fn get_events(&self, filter: EventFilter) -> RpcResult<EventsChunk>;
 
-    /// Gets the synching status of the node.
+    /// Returns the synching status of the node, or false if the node is not synching.
     #[method(name = "syncing")]
-    fn syncing(&self) -> RpcResult<bool>;
+    fn syncing(&self) -> RpcResult<SyncingState>;
 }

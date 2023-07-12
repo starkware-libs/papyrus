@@ -30,7 +30,7 @@ use test_utils::{
 use crate::api::v0_3_0::v0_3_0_impl::JsonRpcServerV0_3_0Impl;
 use crate::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, EventsChunk,
-    JsonRpcError, Tag,
+    JsonRpcError, SyncingState, Tag,
 };
 use crate::block::Block;
 use crate::deprecated_contract_class::ContractClass as DeprecatedContractClass;
@@ -130,8 +130,11 @@ async fn block_number() {
 async fn syncing() {
     let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
 
-    let res = module.call::<_, bool>("starknet_V0_3_0_syncing", ObjectParams::new()).await.unwrap();
-    assert_eq!(res, false);
+    let res = module
+        .call::<_, SyncingState>("starknet_V0_3_0_syncing", ObjectParams::new())
+        .await
+        .unwrap();
+    assert_eq!(res, SyncingState::IsSyncing(false));
 }
 
 #[tokio::test]

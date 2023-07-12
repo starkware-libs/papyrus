@@ -16,7 +16,7 @@ use tracing::instrument;
 
 use super::{
     BlockHashAndNumber, BlockId, EventFilter, EventsChunk, GatewayContractClass,
-    JsonRpcV0_3_0Server,
+    JsonRpcV0_3_0Server, SyncingState,
 };
 use crate::api::{BlockHashOrNumber, ContinuationToken, JsonRpcError, JsonRpcServerImpl};
 use crate::block::Block;
@@ -417,9 +417,9 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn syncing(&self) -> RpcResult<bool> {
+    fn syncing(&self) -> RpcResult<SyncingState> {
         // TODO(omri): This is temporary. Implement syncing logic.
-        Ok(false)
+        Ok(SyncingState::IsSyncing(false))
     }
 }
 
