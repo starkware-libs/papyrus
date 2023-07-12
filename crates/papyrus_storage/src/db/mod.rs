@@ -86,12 +86,12 @@ pub enum DbError {
     #[error("Serialization failed.")]
     Serialization,
 }
-type Result<V> = result::Result<V, DbError>;
+type DbResult<V> = result::Result<V, DbError>;
 
 /// Tries to open an MDBX environment and returns a reader and a writer to it.
 /// There is a single non clonable writer instance, to make sure there is only one write transaction
 ///  at any given moment.
-pub(crate) fn open_env(config: DbConfig) -> Result<(DbReader, DbWriter)> {
+pub(crate) fn open_env(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
     let env = Arc::new(
         Environment::new()
             .set_geometry(Geometry {
@@ -115,12 +115,12 @@ pub(crate) struct DbWriter {
 }
 
 impl DbReader {
-    pub(crate) fn begin_ro_txn(&self) -> Result<DbReadTransaction<'_>> {
+    pub(crate) fn begin_ro_txn(&self) -> DbResult<DbReadTransaction<'_>> {
         Ok(DbReadTransaction { txn: self.env.begin_ro_txn()? })
     }
 
     /// Returns statistics about a specific table in the database.
-    pub(crate) fn get_table_stats(&self, name: &str) -> Result<DbTableStats> {
+    pub(crate) fn get_table_stats(&self, name: &str) -> DbResult<DbTableStats> {
         let db_txn = self.begin_ro_txn()?;
         let database = db_txn.txn.open_db(Some(name))?;
         let stat = db_txn.txn.db_stat(&database)?;
@@ -139,14 +139,14 @@ impl DbReader {
 type DbReadTransaction<'env> = DbTransaction<'env, RO>;
 
 impl DbWriter {
-    pub(crate) fn begin_rw_txn(&mut self) -> Result<DbWriteTransaction<'_>> {
+    pub(crate) fn begin_rw_txn(&mut self) -> DbResult<DbWriteTransaction<'_>> {
         Ok(DbWriteTransaction { txn: self.env.begin_rw_txn()? })
     }
 
     pub(crate) fn create_table<K: StorageSerde, V: StorageSerde>(
         &mut self,
         name: &'static str,
-    ) -> Result<TableIdentifier<K, V>> {
+    ) -> DbResult<TableIdentifier<K, V>> {
         let txn = self.env.begin_rw_txn()?;
         txn.create_db(Some(name), DatabaseFlags::empty())?;
         txn.commit()?;
@@ -157,7 +157,7 @@ impl DbWriter {
 type DbWriteTransaction<'env> = DbTransaction<'env, RW>;
 
 impl<'a> DbWriteTransaction<'a> {
-    pub(crate) fn commit(self) -> Result<()> {
+    pub(crate) fn commit(self) -> DbResult<()> {
         self.txn.commit()?;
         Ok(())
     }
@@ -177,7 +177,7 @@ impl<'a, Mode: TransactionKind> DbTransaction<'a, Mode> {
     pub fn open_table<'env, K: StorageSerde, V: StorageSerde>(
         &'env self,
         table_id: &TableIdentifier<K, V>,
-    ) -> Result<TableHandle<'env, K, V>> {
+    ) -> DbResult<TableHandle<'env, K, V>> {
         let database = self.txn.open_db(Some(table_id.name))?;
         Ok(TableHandle { database, _key_type: PhantomData {}, _value_type: PhantomData {} })
     }
@@ -199,7 +199,7 @@ impl<'env, 'txn, K: StorageSerde, V: StorageSerde> TableHandle<'env, K, V> {
     pub(crate) fn cursor<Mode: TransactionKind>(
         &'env self,
         txn: &'txn DbTransaction<'env, Mode>,
-    ) -> Result<DbCursor<'txn, Mode, K, V>> {
+    ) -> DbResult<DbCursor<'txn, Mode, K, V>> {
         let cursor = txn.txn.cursor(&self.database)?;
         Ok(DbCursor { cursor, _key_type: PhantomData {}, _value_type: PhantomData {} })
     }
@@ -208,7 +208,7 @@ impl<'env, 'txn, K: StorageSerde, V: StorageSerde> TableHandle<'env, K, V> {
         &'env self,
         txn: &'env DbTransaction<'env, Mode>,
         key: &K,
-    ) -> Result<Option<V>> {
+    ) -> DbResult<Option<V>> {
         // TODO: Support zero-copy. This might require a return type of Cow<'env, ValueType>.
         let bin_key = key.serialize()?;
         let Some(bytes) = txn.txn.get::<Cow<'env, [u8]>>(&self.database, &bin_key)? else {
@@ -223,7 +223,7 @@ impl<'env, 'txn, K: StorageSerde, V: StorageSerde> TableHandle<'env, K, V> {
         txn: &DbTransaction<'env, RW>,
         key: &K,
         value: &V,
-    ) -> Result<()> {
+    ) -> DbResult<()> {
         let data = value.serialize()?;
         let bin_key = key.serialize()?;
         txn.txn.put(&self.database, bin_key, data, WriteFlags::UPSERT)?;
@@ -235,7 +235,7 @@ impl<'env, 'txn, K: StorageSerde, V: StorageSerde> TableHandle<'env, K, V> {
         txn: &DbTransaction<'env, RW>,
         key: &K,
         value: &V,
-    ) -> Result<()> {
+    ) -> DbResult<()> {
         let data = value.serialize()?;
         let bin_key = key.serialize()?;
         txn.txn.put(&self.database, bin_key, data, WriteFlags::NO_OVERWRITE)?;
@@ -243,7 +243,7 @@ impl<'env, 'txn, K: StorageSerde, V: StorageSerde> TableHandle<'env, K, V> {
     }
 
     #[allow(dead_code)]
-    pub(crate) fn delete(&'env self, txn: &DbTransaction<'env, RW>, key: &K) -> Result<()> {
+    pub(crate) fn delete(&'env self, txn: &DbTransaction<'env, RW>, key: &K) -> DbResult<()> {
         let bin_key = key.serialize()?;
         txn.txn.del(&self.database, bin_key, None)?;
         Ok(())
@@ -257,7 +257,7 @@ pub(crate) struct DbCursor<'txn, Mode: TransactionKind, K: StorageSerde, V: Stor
 }
 
 impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'txn, Mode, K, V> {
-    pub(crate) fn prev(&mut self) -> Result<Option<(K, V)>> {
+    pub(crate) fn prev(&mut self) -> DbResult<Option<(K, V)>> {
         let prev_cursor_res = self.cursor.prev::<DbKeyType<'_>, DbValueType<'_>>()?;
         match prev_cursor_res {
             None => Ok(None),
@@ -272,7 +272,7 @@ impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'tx
     }
 
     #[allow(clippy::should_implement_trait)]
-    pub(crate) fn next(&mut self) -> Result<Option<(K, V)>> {
+    pub(crate) fn next(&mut self) -> DbResult<Option<(K, V)>> {
         let prev_cursor_res = self.cursor.next::<DbKeyType<'_>, DbValueType<'_>>()?;
         match prev_cursor_res {
             None => Ok(None),
@@ -287,7 +287,7 @@ impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'tx
     }
 
     /// Position at first key greater than or equal to specified key.
-    pub(crate) fn lower_bound(&mut self, key: &K) -> Result<Option<(K, V)>> {
+    pub(crate) fn lower_bound(&mut self, key: &K) -> DbResult<Option<(K, V)>> {
         let key_bytes = key.serialize()?;
         let prev_cursor_res =
             self.cursor.set_range::<DbKeyType<'_>, DbValueType<'_>>(&key_bytes)?;
