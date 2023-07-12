@@ -57,8 +57,8 @@ where
     // To enforce that no commit happen after a failure, we consume and return Self on success.
     fn update_base_layer_block_marker(self, block_number: &BlockNumber) -> StorageResult<Self>;
 
-    // When reverting a block, if the base layer marker points to the block afterward, revert the
-    // marker.
+    /// When reverting a block, if the base layer marker points to the block afterward, revert the
+    /// marker.
     fn try_revert_base_layer_marker(
         self,
         reverted_block_number: BlockNumber,

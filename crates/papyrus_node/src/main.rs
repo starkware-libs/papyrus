@@ -1,15 +1,15 @@
 use std::env::args;
 
 use papyrus_config::ConfigError;
-use papyrus_base_layer::ethereum_base_layer_contract::{
-    EthereumBaseLayerConfig, EthereumBaseLayerContract,
-};
+use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
 use papyrus_gateway::run_server;
 use papyrus_monitoring_gateway::MonitoringServer;
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_storage::{open_storage, StorageReader, StorageWriter};
-use papyrus_sync::{BaseLayerError, CentralError, CentralSource, StateSync, StateSyncError};
+use papyrus_sync::{
+    BaseLayerError, BaseLayerSource, CentralError, CentralSource, StateSync, StateSyncError,
+};
 use tracing::info;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::prelude::*;
@@ -61,7 +61,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
             node_url: BASE_LAYER_NODE_URL.to_string(),
             starknet_contract_address: BASE_LAYER_CONTRACT_ADDRESS.to_string(),
         };
-        let base_layer_source = EthereumBaseLayerContract::new(base_layer_config)
+        let base_layer_source = BaseLayerSource::new(base_layer_config)
             .map_err(|e| BaseLayerError::BaseLayerContractError(Box::new(e)))?;
         let mut sync = StateSync::new(
             sync_config,
