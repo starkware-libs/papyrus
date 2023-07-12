@@ -3970,6 +3970,7 @@ dependencies = [
  "papyrus_proc_macros",
  "papyrus_storage",
  "pretty_assertions",
+ "rand_chacha",
  "serde",
  "serde_json",
  "starknet_api",
@@ -5565,6 +5566,8 @@ version = "0.1.0-alpha"
 dependencies = [
  "assert",
  "assert_matches",
+ "rand",
+ "rand_chacha",
  "serde",
  "serde_json",
  "starknet_api",

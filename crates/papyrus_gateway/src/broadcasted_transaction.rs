@@ -13,6 +13,8 @@ use crate::state::ContractClass;
 #[serde(tag = "type")]
 pub enum BroadcastedTransaction {
     #[serde(rename = "DECLARE")]
+    // Declare is not from the client because the broadcasted transaction of declare has slight
+    // alterations from the client declare.
     Declare(BroadcastedDeclareTransaction),
     #[serde(rename = "DEPLOY_ACCOUNT")]
     DeployAccount(ClientDeployAccountTransaction),
@@ -24,6 +26,8 @@ pub enum BroadcastedTransaction {
 #[serde(untagged)]
 pub enum BroadcastedDeclareTransaction {
     DeclareV1(ClientDeclareV1Transaction),
+    // DeclareV2 is not from the client because the broadcasted transaction of declare v2 has
+    // slight alterations from the client declare v2.
     DeclareV2(BroadcastedDeclareV2Transaction),
 }
 
