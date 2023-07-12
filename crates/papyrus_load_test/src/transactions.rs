@@ -36,31 +36,25 @@ create_get_transaction_function_with_requests_from_file! {
     get_events_without_address, "block_range_and_contract_address.txt";
 }
 
-pub fn block_number(version_id: &str) -> Transaction {
-    transaction_with_constant_request("blockNumber", "block_number", version_id)
+pub fn block_number() -> Transaction {
+    transaction_with_constant_request("blockNumber", "block_number")
 }
 
-pub fn block_hash_and_number(version_id: &str) -> Transaction {
-    transaction_with_constant_request("blockHashAndNumber", "block_hash_and_number", version_id)
+pub fn block_hash_and_number() -> Transaction {
+    transaction_with_constant_request("blockHashAndNumber", "block_hash_and_number")
 }
 
-pub fn chain_id(version_id: &str) -> Transaction {
-    transaction_with_constant_request("chainId", "chain_id", version_id)
+pub fn chain_id() -> Transaction {
+    transaction_with_constant_request("chainId", "chain_id")
 }
 
-fn transaction_with_constant_request(
-    method_name: &str,
-    transaction_name: &str,
-    version_id: &str,
-) -> Transaction {
+fn transaction_with_constant_request(method_name: &str, transaction_name: &str) -> Transaction {
     let method = String::from("starknet_") + method_name;
     let request = jsonrpc_request(&method, json!([]));
-    let version_id = version_id.to_owned();
     let func: TransactionFunction = Arc::new(move |user| {
         let request = request.clone();
-        let version_id = version_id.clone();
         Box::pin(async move {
-            post_jsonrpc_request(user, &request, &version_id).await?;
+            post_jsonrpc_request(user, &request).await?;
 
             Ok(())
         })
@@ -70,14 +64,12 @@ fn transaction_with_constant_request(
 
 // Returns a Transaction that each call choose a random request from the requests vector
 // and sends it to the node.
-fn random_request_transaction(requests: Vec<jsonVal>, version_id: &str) -> Transaction {
-    let version_id = version_id.to_owned();
+fn random_request_transaction(requests: Vec<jsonVal>) -> Transaction {
     let func: TransactionFunction = Arc::new(move |user| {
         let index: usize = rand::thread_rng().gen_range(0..requests.len());
         let req = requests[index].clone();
-        let version_id = version_id.to_owned();
         Box::pin(async move {
-            post_jsonrpc_request(user, &req, &version_id).await?;
+            post_jsonrpc_request(user, &req).await?;
 
             Ok(())
         })
@@ -108,9 +100,9 @@ fn create_requests_vector_from_file(
 macro_rules! create_get_transaction_function_with_requests_from_file {
     () => {};
     ($name:tt, $file_name:literal; $($rest:tt)*) => {
-        pub fn $name(version_id: &str) -> Transaction {
+        pub fn $name() -> Transaction {
             let requests = create_requests_vector_from_file($file_name, create_request::$name);
-            random_request_transaction(requests, version_id).set_name(stringify!($name))
+            random_request_transaction(requests).set_name(stringify!($name))
         }
         create_get_transaction_function_with_requests_from_file!($($rest)*);
     };

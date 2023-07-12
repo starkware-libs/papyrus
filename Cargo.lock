@@ -3991,6 +3991,7 @@ name = "papyrus_load_test"
 version = "0.1.0-alpha"
 dependencies = [
  "anyhow",
+ "assert_matches",
  "goose",
  "once_cell",
  "rand",
