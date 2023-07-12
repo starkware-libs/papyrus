@@ -32,6 +32,8 @@ hex.workspace = true
 jsonschema.workspace = true
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 pretty_assertions.workspace = true
+rand_chacha.workspace = true
 test_utils = { path = "../test_utils" }
 starknet_api = { workspace = true, features = ["testing"] }
+starknet_writer_client = { path = "../starknet_writer_client", features = ["testing"] }
 indexmap = { workspace = true, features = ["serde"] }

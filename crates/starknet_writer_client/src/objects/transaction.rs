@@ -72,19 +72,22 @@ pub struct DeclareV2Transaction {
     pub signature: TransactionSignature,
 }
 
-// The only difference between this and ContractClass in starknet_api is in the program.
+// The only difference between this and ContractClass in starknet_api (in the
+// deprecated_contract_class module) is in the program.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct DeprecatedContractClass {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
     pub abi: Option<Vec<DeprecatedContractClassAbiEntry>>,
     // The program is compressed.
-    // TODO(shahak): Create a struct for a compressed value.
-    pub program: String,
+    #[serde(rename = "program")]
+    // TODO(shahak): Create a struct for a compressed base64 value.
+    pub compressed_program: String,
     pub entry_points_by_type: HashMap<DeprecatedEntryPointType, Vec<DeprecatedEntryPoint>>,
 }
 
-// The only difference between this and ContractClass in the gateway is in the sierra_program.
+// The only difference between this and ContractClass in starknet_api is in the sierra_program and
+// in the version.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ContractClass {
     // TODO(shahak): Create a struct for a compressed base64 value.
@@ -112,4 +115,51 @@ pub enum DeprecatedContractClassAbiEntry {
     L1Handler(FunctionAbiEntry),
     #[serde(rename = "struct")]
     Struct(StructAbiEntry),
+}
+
+#[cfg(any(feature = "testing", test))]
+use rand::Rng;
+#[cfg(any(feature = "testing", test))]
+use rand_chacha::ChaCha8Rng;
+#[cfg(any(feature = "testing", test))]
+use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
+#[cfg(any(feature = "testing", test))]
+auto_impl_get_test_instance! {
+    pub struct DeployAccountTransaction {
+        pub contract_address_salt: ContractAddressSalt,
+        pub class_hash: ClassHash,
+        pub constructor_calldata: Calldata,
+        pub nonce: Nonce,
+        pub max_fee: Fee,
+        pub signature: TransactionSignature,
+        pub version: TransactionVersion,
+    }
+    pub struct InvokeTransaction {
+        pub calldata: Calldata,
+        pub sender_address: ContractAddress,
+        pub nonce: Nonce,
+        pub max_fee: Fee,
+        pub signature: TransactionSignature,
+        pub version: TransactionVersion,
+    }
+    pub struct DeclareV1Transaction {
+        pub contract_class: DeprecatedContractClass,
+        pub sender_address: ContractAddress,
+        pub nonce: Nonce,
+        pub max_fee: Fee,
+        pub version: TransactionVersion,
+        pub signature: TransactionSignature,
+    }
+    pub struct DeprecatedContractClass {
+        pub abi: Option<Vec<DeprecatedContractClassAbiEntry>>,
+        pub compressed_program: String,
+        pub entry_points_by_type: HashMap<DeprecatedEntryPointType, Vec<DeprecatedEntryPoint>>,
+    }
+    pub enum DeprecatedContractClassAbiEntry {
+        Event(EventAbiEntry) = 0,
+        Function(FunctionAbiEntry) = 1,
+        Constructor(FunctionAbiEntry) = 2,
+        L1Handler(FunctionAbiEntry) = 3,
+        Struct(StructAbiEntry) = 4,
+    }
 }

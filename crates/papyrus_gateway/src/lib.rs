@@ -1,6 +1,6 @@
 mod api;
 mod block;
-mod broadcasted_transaction;
+pub mod broadcasted_transaction;
 #[cfg(test)]
 mod broadcasted_transaction_test;
 mod deprecated_contract_class;
