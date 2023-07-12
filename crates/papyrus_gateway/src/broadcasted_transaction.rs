@@ -5,9 +5,9 @@ use starknet_writer_client::objects::transaction::{
     DeclareV1Transaction, DeployAccountTransaction, InvokeTransaction,
 };
 
-pub type ClientDeclareV1Transaction = DeclareV1Transaction;
-pub type ClientDeployAccountTransaction = DeployAccountTransaction;
-pub type ClientInvokeTransaction = InvokeTransaction;
+pub type BroadcastedDeclareV1Transaction = DeclareV1Transaction;
+pub type BroadcastedDeployAccountTransaction = DeployAccountTransaction;
+pub type BroadcastedInvokeTransaction = InvokeTransaction;
 
 use crate::v0_3_0::state::ContractClass;
 
@@ -19,15 +19,15 @@ pub enum BroadcastedTransaction {
     // alterations from the client declare.
     Declare(BroadcastedDeclareTransaction),
     #[serde(rename = "DEPLOY_ACCOUNT")]
-    DeployAccount(ClientDeployAccountTransaction),
+    DeployAccount(BroadcastedDeployAccountTransaction),
     #[serde(rename = "INVOKE")]
-    Invoke(ClientInvokeTransaction),
+    Invoke(BroadcastedInvokeTransaction),
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(untagged)]
 pub enum BroadcastedDeclareTransaction {
-    DeclareV1(ClientDeclareV1Transaction),
+    DeclareV1(BroadcastedDeclareV1Transaction),
     // DeclareV2 is not from the client because the broadcasted transaction of declare v2 has
     // slight alterations from the client declare v2.
     DeclareV2(BroadcastedDeclareV2Transaction),

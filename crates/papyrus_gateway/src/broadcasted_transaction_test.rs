@@ -16,8 +16,9 @@ use starknet_writer_client::objects::transaction::{
 use test_utils::{auto_impl_get_test_instance, get_rng, GetTestInstance};
 
 use crate::broadcasted_transaction::{
-    BroadcastedDeclareTransaction, BroadcastedDeclareV2Transaction, BroadcastedTransaction,
-    ClientDeclareV1Transaction, ClientDeployAccountTransaction, ClientInvokeTransaction,
+    BroadcastedDeclareTransaction, BroadcastedDeclareV1Transaction,
+    BroadcastedDeclareV2Transaction, BroadcastedDeployAccountTransaction,
+    BroadcastedInvokeTransaction, BroadcastedTransaction,
 };
 use crate::test_utils::get_starknet_spec_api_schema;
 use crate::v0_3_0::state::ContractClass;
@@ -48,15 +49,16 @@ fn validate_tx_fits_rpc(tx: BroadcastedTransaction) {
 #[test]
 fn deploy_account_fits_rpc() {
     let tx = BroadcastedTransaction::DeployAccount(
-        ClientDeployAccountTransaction::get_test_instance(&mut get_rng()),
+        BroadcastedDeployAccountTransaction::get_test_instance(&mut get_rng()),
     );
     validate_tx_fits_rpc(tx);
 }
 
 #[test]
 fn invoke_fits_rpc() {
-    let tx =
-        BroadcastedTransaction::Invoke(ClientInvokeTransaction::get_test_instance(&mut get_rng()));
+    let tx = BroadcastedTransaction::Invoke(BroadcastedInvokeTransaction::get_test_instance(
+        &mut get_rng(),
+    ));
     validate_tx_fits_rpc(tx);
 }
 
@@ -84,7 +86,7 @@ fn declare_v1_fits_rpc() {
             None
         };
         let tx = BroadcastedTransaction::Declare(BroadcastedDeclareTransaction::DeclareV1(
-            ClientDeclareV1Transaction {
+            BroadcastedDeclareV1Transaction {
                 contract_class: DeprecatedContractClass {
                     abi,
                     entry_points_by_type: HashMap::from([
