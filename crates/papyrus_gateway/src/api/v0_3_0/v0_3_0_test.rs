@@ -32,7 +32,6 @@ use crate::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, EventsChunk,
     JsonRpcError, Tag,
 };
-use crate::block::Block;
 use crate::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use crate::state::{ContractClass, StateUpdate, ThinStateDiff};
 use crate::test_utils::{
@@ -42,6 +41,7 @@ use crate::transaction::{
     Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
     TransactionWithType, Transactions,
 };
+use crate::v0_3_0::block::Block;
 use crate::{run_server, ContinuationTokenAsStruct};
 
 #[tokio::test]

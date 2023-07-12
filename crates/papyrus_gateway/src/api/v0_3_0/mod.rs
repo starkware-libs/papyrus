@@ -8,9 +8,9 @@ use starknet_api::state::StorageKey;
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 
 use super::{BlockHashAndNumber, BlockId, EventFilter, EventsChunk, GatewayContractClass};
-use crate::block::Block;
 use crate::state::StateUpdate;
 use crate::transaction::{TransactionReceiptWithStatus, TransactionWithType};
+use crate::v0_3_0::block::Block;
 
 pub mod v0_3_0_impl;
 #[cfg(test)]
