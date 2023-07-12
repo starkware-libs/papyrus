@@ -13,6 +13,7 @@ cairo-lang-casm.workspace = true
 cairo-lang-utils.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
 primitive-types.workspace = true
+prometheus-parse.workspace = true
 num-bigint.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true

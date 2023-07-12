@@ -3,7 +3,7 @@ use std::env;
 use std::fs::read_to_string;
 use std::hash::Hash;
 use std::net::SocketAddr;
-use std::ops::Index;
+use std::ops::{Deref, Index};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -18,6 +18,7 @@ use cairo_lang_utils::bigint::BigUintAsHex;
 use indexmap::IndexMap;
 use num_bigint::BigUint;
 use primitive_types::H160;
+use prometheus_parse::Value;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use reqwest::Client;
@@ -97,6 +98,27 @@ pub fn get_rng() -> ChaCha8Rng {
     // should still result in good, independent seeds to the returned PRNG.
     // This is not suitable for cryptography purposes.
     ChaCha8Rng::seed_from_u64(seed)
+}
+
+/// Use to get the value of a metric by name and labels.
+// If the data contains a metric with metric_name and labels returns its value else None.
+pub fn prometheus_is_contained(
+    data: String,
+    metric_name: &str,
+    labels: &[(&str, &str)],
+) -> Option<Value> {
+    // Converts labels to HashMap<String, String>.
+    let labels: HashMap<String, String> =
+        labels.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+
+    let lines: Vec<_> = data.lines().map(|s| Ok(s.to_owned())).collect();
+    let metrics = prometheus_parse::Scrape::parse(lines.into_iter()).unwrap();
+    for s in metrics.samples {
+        if s.metric == metric_name && s.labels.deref() == &labels {
+            return Some(s.value);
+        }
+    }
+    None
 }
 
 //////////////////////////////////////////////////////////////////////////
