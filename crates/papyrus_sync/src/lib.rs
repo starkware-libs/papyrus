@@ -658,6 +658,7 @@ fn stream_new_base_layer_block<TBaseLayerSource: BaseLayerSourceTrait + Sync>(
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
         loop{
+            tokio::time::sleep(base_layer_propagation_sleep_duration).await;
             let txn = reader.begin_ro_txn()?;
             let header_marker = txn.get_header_marker()?;
             let base_layer_block_marker = txn.get_base_layer_block_marker()?;
@@ -676,7 +677,6 @@ fn stream_new_base_layer_block<TBaseLayerSource: BaseLayerSourceTrait + Sync>(
             else{
                 debug!("No blocks were proved on the base layer, waiting for blockchain to advance.");
             }
-            tokio::time::sleep(base_layer_propagation_sleep_duration).await;
         }
     }
 }
