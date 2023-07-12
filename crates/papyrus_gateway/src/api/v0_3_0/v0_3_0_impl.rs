@@ -20,15 +20,16 @@ use super::{
 };
 use crate::api::{BlockHashOrNumber, ContinuationToken, JsonRpcError, JsonRpcServerImpl};
 use crate::block::get_block_header_by_number;
-use crate::transaction::{
-    Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus,
-    TransactionWithType, Transactions,
-};
+use crate::transaction::get_block_txs_by_number;
 use crate::v0_3_0::block::{Block, BlockHeader};
 use crate::v0_3_0::state::StateUpdate;
+use crate::v0_3_0::transaction::{
+    Event, Transaction, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus,
+    TransactionWithType, Transactions,
+};
 use crate::{
-    get_block_number, get_block_status, get_block_txs_by_number, get_latest_block_number,
-    internal_server_error, ContinuationTokenAsStruct,
+    get_block_number, get_block_status, get_latest_block_number, internal_server_error,
+    ContinuationTokenAsStruct,
 };
 
 /// Rpc server.
@@ -63,7 +64,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         let block_number = get_block_number(&txn, block_id)?;
         let status = get_block_status(&txn, block_number)?;
         let header = get_block_header_by_number(&txn, block_number)?;
-        let transactions = get_block_txs_by_number(&txn, block_number)?;
+        let transactions: Vec<Transaction> = get_block_txs_by_number(&txn, block_number)?;
         let transaction_hashes: Vec<TransactionHash> =
             transactions.iter().map(|transaction| transaction.transaction_hash()).collect();
 
@@ -76,7 +77,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         let block_number = get_block_number(&txn, block_id)?;
         let status = get_block_status(&txn, block_number)?;
         let header = get_block_header_by_number(&txn, block_number)?;
-        let transactions = get_block_txs_by_number(&txn, block_number)?;
+        let transactions: Vec<Transaction> = get_block_txs_by_number(&txn, block_number)?;
 
         Ok(Block {
             status,
@@ -151,7 +152,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
     fn get_block_transaction_count(&self, block_id: BlockId) -> RpcResult<usize> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
-        let transactions = get_block_txs_by_number(&txn, block_number)?;
+        let transactions: Vec<Transaction> = get_block_txs_by_number(&txn, block_number)?;
 
         Ok(transactions.len())
     }

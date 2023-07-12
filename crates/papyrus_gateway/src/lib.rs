@@ -7,8 +7,6 @@ mod middleware;
 #[cfg(test)]
 mod test_utils;
 mod transaction;
-#[cfg(test)]
-mod transaction_test;
 mod v0_3_0;
 
 use std::fmt::Display;
@@ -20,7 +18,6 @@ use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::body::events::EventIndex;
-use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::db::TransactionKind;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageReader, StorageTxn};
@@ -34,7 +31,6 @@ use crate::api::{
     Tag,
 };
 use crate::middleware::proxy_request;
-use crate::transaction::Transaction;
 
 /// Maximum size of a supported transaction body - 10MB.
 pub const SERVER_MAX_BODY_SIZE: u32 = 10 * 1024 * 1024;
@@ -87,18 +83,6 @@ fn get_latest_block_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
 ) -> Result<Option<BlockNumber>, ErrorObjectOwned> {
     Ok(txn.get_header_marker().map_err(internal_server_error)?.prev())
-}
-
-fn get_block_txs_by_number<Mode: TransactionKind>(
-    txn: &StorageTxn<'_, Mode>,
-    block_number: BlockNumber,
-) -> Result<Vec<Transaction>, ErrorObjectOwned> {
-    let transactions = txn
-        .get_block_transactions(block_number)
-        .map_err(internal_server_error)?
-        .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
-
-    Ok(transactions.into_iter().map(Transaction::from).collect())
 }
 
 fn get_block_status<Mode: TransactionKind>(
