@@ -16,8 +16,8 @@ use starknet_api::transaction::EventKey;
 use self::v0_3_0::v0_3_0_impl::JsonRpcServerV0_3_0Impl;
 use self::v0_3_0::JsonRpcV0_3_0Server;
 use crate::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use crate::state::ContractClass;
 use crate::transaction::Event;
+use crate::v0_3_0::state::ContractClass;
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum Tag {
