@@ -12,3 +12,4 @@ thiserror.workspace = true
 [dev-dependencies]
 assert_matches.workspace = true
 itertools.workspace = true
+test_utils = { path = "../test_utils" }
