@@ -6,12 +6,14 @@ use clap::Command;
 use itertools::chain;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use test_utils::get_absolute_path;
 
-use crate::command::update_config_map_by_command;
+use crate::command::{get_command_matches, update_config_map_by_command_args};
 use crate::{
     append_sub_config_name, combine_config_map_and_pointers, deserialize_milliseconds_to_duration,
-    get_maps_from_raw_json, load, ser_param, update_config_map_by_pointers, ParamPath,
-    PointerParam, SerializeConfig, SerializedParam, SubConfigError,
+    get_maps_from_raw_json, load, ser_param, update_config_map_by_custom_config,
+    update_config_map_by_pointers, ParamPath, PointerParam, SerializeConfig, SerializedParam,
+    SubConfigError,
 };
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
@@ -118,7 +120,8 @@ fn test_update_dumped_config() {
     let args = vec!["Testing", "--a", "1234", "--b", "15", "--c", "true"];
     let args: Vec<String> = args.into_iter().map(|s| s.to_owned()).collect();
 
-    update_config_map_by_command(&mut dumped_config, command, args).unwrap();
+    let arg_matches = get_command_matches(&dumped_config, command, args).unwrap();
+    update_config_map_by_command_args(&mut dumped_config, &arg_matches).unwrap();
 
     assert_eq!(json!(1234), dumped_config["a"].value);
     assert_eq!(json!("15"), dumped_config["b"].value);
@@ -172,4 +175,12 @@ fn test_replace_pointers() {
 
     let err = update_config_map_by_pointers(&mut BTreeMap::default(), &pointers_map).unwrap_err();
     assert_matches!(err, SubConfigError::PointerTargetNotFound { .. });
+}
+
+#[test]
+pub fn test_update_by_custom_config() {
+    let mut config_map = BTreeMap::from([ser_param("param_path", &json!("default value"), "This is a.")]);
+    let custom_config_path = get_absolute_path("config/custom_config_example.json");
+    update_config_map_by_custom_config(&mut config_map, &custom_config_path).unwrap();
+    assert_eq!(config_map["param_path"].value, json!("custom value"));
 }

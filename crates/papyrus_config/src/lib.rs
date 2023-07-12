@@ -1,5 +1,7 @@
 use std::collections::{BTreeMap, HashMap};
+use std::mem::discriminant;
 use std::ops::IndexMut;
+use std::path::PathBuf;
 use std::time::Duration;
 
 use clap::parser::MatchesError;
@@ -43,6 +45,8 @@ pub enum SubConfigError {
     PointerTargetNotFound { target_param: String },
     #[error("{pointing_param} is not found.")]
     PointerSourceNotFound { pointing_param: String },
+    #[error("Changing {param_path} type is not allowed.")]
+    ChangeParamType { param_path: String },
 }
 /// Serialization for configs.
 pub trait SerializeConfig {
@@ -77,6 +81,9 @@ fn update_config_map(
     let Some(serialized_param) = config_map.get_mut(param_path) else {
         return Err(SubConfigError::ParamNotFound{param_path: param_path.to_string()});
     };
+    if discriminant(&serialized_param.value) != discriminant(&new_value) {
+        return Err(SubConfigError::ChangeParamType { param_path: param_path.to_string() });
+    }
     serialized_param.value = new_value;
     Ok(())
 }
@@ -222,6 +229,19 @@ pub fn update_config_map_by_pointers(
             return Err(SubConfigError::PointerTargetNotFound { target_param: target_param_path.to_owned() });
         };
         config_map.insert(param_path.to_owned(), serialized_param_target.clone());
+    }
+    Ok(())
+}
+
+/// Updates the config map by param path to value custom json file.
+pub fn update_config_map_by_custom_config(
+    config_map: &mut BTreeMap<ParamPath, SerializedParam>,
+    custom_config_path: &PathBuf,
+) -> Result<(), SubConfigError> {
+    let file = std::fs::File::open(custom_config_path).unwrap();
+    let custom_config: Map<String, Value> = serde_json::from_reader(file).unwrap();
+    for (param_path, json_value) in custom_config {
+        update_config_map(config_map, param_path.as_str(), json_value)?;
     }
     Ok(())
 }
