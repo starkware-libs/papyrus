@@ -339,3 +339,18 @@ async fn retry_error_codes() {
         mock.assert();
     }
 }
+
+#[tokio::test]
+async fn state_update_with_empty_storage_diff() {
+    let starknet_client =
+        StarknetClient::new(&mockito::server_url(), None, NODE_VERSION, get_test_config()).unwrap();
+    let raw_state_update = read_resource_file("block_state_update_with_empty_storage_diff.json");
+    let mock =
+        mock("GET", &format!("/feeder_gateway/get_state_update?{BLOCK_NUMBER_QUERY}=123456")[..])
+            .with_status(200)
+            .with_body(&raw_state_update)
+            .create();
+    let state_update = starknet_client.state_update(BlockNumber(123456)).await.unwrap().unwrap();
+    mock.assert();
+    assert!(state_update.state_diff.storage_diffs.is_empty());
+}
