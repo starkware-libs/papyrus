@@ -11,11 +11,9 @@ use std::{env, fs, io};
 
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
 use itertools::chain;
-use papyrus_config::command::{get_command_matches, update_config_map_by_command_args};
 use papyrus_config::{
-    append_sub_config_name, get_maps_from_raw_json, load, update_config_map_by_custom_config,
-    update_config_map_by_pointers, ParamPath, SerializeConfig, SerializedParam, SubConfigError,
-    DEFAULT_CHAIN_ID,
+    append_sub_config_name, load_and_process_config, ParamPath, SerializeConfig, SerializedParam,
+    SubConfigError, DEFAULT_CHAIN_ID,
 };
 use papyrus_gateway::GatewayConfig;
 use papyrus_monitoring_gateway::MonitoringGatewayConfig;
@@ -30,7 +28,7 @@ use starknet_client::RetryConfig;
 use crate::version::VERSION_FULL;
 
 // The path of the default configuration file, provided as part of the crate.
-pub const DEFAULT_CONFIG_FILE: &str = "config/default_config.json";
+pub const DEFAULT_CONFIG_PATH: &str = "crates/papyrus_node/src/config/default_config.json";
 
 // TODO(yoav) Rename to NodeConfig.
 /// The configurations of the various components of the node.
@@ -89,18 +87,11 @@ pub fn node_command() -> Command {
 
 impl Config {
     pub fn load_and_process(args: Vec<String>) -> Result<Self, SubConfigError> {
-        let file = std::fs::File::open(Path::new(DEFAULT_CONFIG_FILE)).unwrap();
-        let deserialized_default_config: Map<String, Value> =
-            serde_json::from_reader(file).unwrap();
-
-        let (mut config_map, pointers_map) = get_maps_from_raw_json(deserialized_default_config);
-        let arg_matches = get_command_matches(&config_map, node_command(), args)?;
-        if let Some(custom_config_path) = arg_matches.try_get_one::<PathBuf>("config_file")? {
-            update_config_map_by_custom_config(&mut config_map, custom_config_path)?;
-        };
-        update_config_map_by_command_args(&mut config_map, &arg_matches)?;
-        update_config_map_by_pointers(&mut config_map, &pointers_map)?;
-        load(&config_map)
+        let path = Path::new(&env::var("CARGO_MANIFEST_DIR").unwrap())
+            .join("../..")
+            .join(DEFAULT_CONFIG_PATH);
+        let default_config_file = std::fs::File::open(path).unwrap();
+        load_and_process_config(default_config_file, node_command(), args)
     }
 
     pub fn get_config_representation(&self) -> Result<serde_json::Value, SubConfigError> {

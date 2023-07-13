@@ -3,16 +3,16 @@ use std::env::{self, args};
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
-use papyrus_config::command::{get_command_matches, update_config_map_by_command_args};
-use papyrus_config::{get_maps_from_raw_json, load, SerializeConfig, SerializedParam};
+use papyrus_config::{SerializeConfig, SerializedParam};
 use serde_json::{json, Map, Value};
 use starknet_api::core::ChainId;
 use tempfile::NamedTempFile;
 use test_utils::get_absolute_path;
 
 use super::dump_default_config_to_file;
-use crate::config::{node_command, Config, DEFAULT_CONFIG_FILE};
+use crate::config::{node_command, Config, DEFAULT_CONFIG_PATH};
 
 #[test]
 fn load_default_config() {
@@ -47,15 +47,7 @@ fn test_default_config_process() {
 }
 
 #[test]
-fn test_dump_and_load() {
-    let default_config = Config::default();
-    let loaded_config = load::<Config>(&default_config.dump()).unwrap();
-    assert_eq!(loaded_config, default_config);
-}
-
-#[test]
 fn test_update_dumped_config_by_command() {
-    let mut dumped_config = Config::default().dump();
     let args = vec![
         "Papyrus",
         "--gateway.max_events_keys",
@@ -64,8 +56,8 @@ fn test_update_dumped_config_by_command() {
         "/abc",
     ];
     let args: Vec<String> = args.into_iter().map(|s| s.to_owned()).collect();
-    let arg_matches = get_command_matches(&dumped_config, node_command(), args).unwrap();
-    update_config_map_by_command_args(&mut dumped_config, &arg_matches).unwrap();
-    assert_eq!(dumped_config["gateway.max_events_keys"].value, json!(1234));
-    assert_eq!(dumped_config["storage.db_config.path_prefix"].value, json!("/abc"));
+    let config = Config::load_and_process(args).unwrap();
+
+    assert_eq!(config.gateway.max_events_keys, 1234);
+    assert_eq!(config.storage.db_config.path_prefix.to_str(), Some("/abc"));
 }

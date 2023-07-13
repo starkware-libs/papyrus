@@ -183,7 +183,8 @@ fn test_replace_pointers() {
 pub fn test_update_by_custom_config() {
     let mut config_map =
         BTreeMap::from([ser_param("param_path", &json!("default value"), "This is a.")]);
-    let custom_config_path = get_absolute_path("config/custom_config_example.json");
+    let custom_config_path =
+        get_absolute_path("crates/papyrus_config/src/custom_config_example.json");
     update_config_map_by_custom_config(&mut config_map, &custom_config_path).unwrap();
     assert_eq!(config_map["param_path"].value, json!("custom value"));
 }

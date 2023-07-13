@@ -1,10 +1,25 @@
+//! Configuration utilities for a Starknet node.
+//!
+//! This crate divides into two parts: defining a default config and loading a custom config based
+//! on the default values.
+//!
+//! The default configuration is serialized into `default_config.json` file, you should never edit
+//! it manually.
+//! Before the node is running, the configuration may be updated by:
+//! a) a custom config file, given in the command line flag `config_file`, and
+//! b) environment variables and command line flags. The args are flattened and documented in
+//! `default_config.json` file. The environment variables should be set in uppercase.
+
 use std::collections::{BTreeMap, HashMap};
+use std::fs::File;
 use std::mem::discriminant;
 use std::ops::IndexMut;
 use std::path::PathBuf;
 use std::time::Duration;
 
 use clap::parser::MatchesError;
+use clap::Command;
+use command::{get_command_matches, update_config_map_by_command_args};
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Map, Value};
@@ -48,48 +63,17 @@ pub enum SubConfigError {
     #[error("Changing {param_path} type from {before} to {after} is not allowed.")]
     ChangeParamType { param_path: String, before: Value, after: Value },
 }
+
+////////////////////////////////////////////////////////////////////////
+//  Serialization utils for configs.
+////////////////////////////////////////////////////////////////////////
+
 /// Serialization for configs.
 pub trait SerializeConfig {
     /// Conversion of a configuration to a mapping of flattened parameters to their descriptions and
     /// values.
     /// Note, in the case of a None sub configs, its elements will not included in the flatten map.
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam>;
-}
-
-/// Deserializes config from flatten JSON.
-/// For an explanation of `for<'a> Deserialize<'a>` see
-/// `<https://doc.rust-lang.org/nomicon/hrtb.html>`.
-pub fn load<T: for<'a> Deserialize<'a>>(
-    config_dump: &BTreeMap<ParamPath, SerializedParam>,
-) -> Result<T, SubConfigError> {
-    let mut nested_map = json!({});
-    for (param_path, serialized_param) in config_dump {
-        let mut entry = &mut nested_map;
-        for config_name in param_path.split('.') {
-            entry = entry.index_mut(config_name);
-        }
-        *entry = serialized_param.value.clone();
-    }
-    Ok(serde_json::from_value(nested_map)?)
-}
-
-fn update_config_map(
-    config_map: &mut BTreeMap<ParamPath, SerializedParam>,
-    param_path: &str,
-    new_value: Value,
-) -> Result<(), SubConfigError> {
-    let Some(serialized_param) = config_map.get_mut(param_path) else {
-        return Err(SubConfigError::ParamNotFound{param_path: param_path.to_string()});
-    };
-    if discriminant(&serialized_param.value) != discriminant(&new_value) {
-        return Err(SubConfigError::ChangeParamType {
-            param_path: param_path.to_string(),
-            before: serialized_param.value.to_owned(),
-            after: new_value,
-        });
-    }
-    serialized_param.value = new_value;
-    Ok(())
 }
 
 /// Appends `sub_config_name` to the ParamPath for each entry in `sub_config_dump`.
@@ -114,57 +98,6 @@ pub fn ser_param<T: Serialize>(
     description: &str,
 ) -> (String, SerializedParam) {
     (name.to_owned(), SerializedParam { description: description.to_owned(), value: json!(value) })
-}
-
-pub fn deserialize_milliseconds_to_duration<'de, D>(de: D) -> Result<Duration, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let secs: u64 = Deserialize::deserialize(de)?;
-    Ok(Duration::from_millis(secs))
-}
-
-/// Serializes a map to "k1:v1 k2:v2" string structure.
-pub fn serialize_optional_map(optional_map: &Option<HashMap<String, String>>) -> String {
-    match optional_map {
-        None => "".to_owned(),
-        Some(map) => map.iter().map(|(k, v)| format!("{k}:{v}")).collect::<Vec<String>>().join(" "),
-    }
-}
-
-/// Deserializes a map from "k1:v1 k2:v2" string structure.
-pub fn deserialize_optional_map<'de, D>(de: D) -> Result<Option<HashMap<String, String>>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let raw_str: String = Deserialize::deserialize(de)?;
-    if raw_str.is_empty() {
-        return Ok(None);
-    }
-
-    let mut map = HashMap::new();
-    for raw_pair in raw_str.split(' ') {
-        let split: Vec<&str> = raw_pair.split(':').collect();
-        if split.len() != 2 {
-            return Err(D::Error::custom(format!(
-                "pair \"{}\" is not valid. The Expected format is name:value",
-                raw_pair
-            )));
-        }
-        map.insert(split[0].to_string(), split[1].to_string());
-    }
-    Ok(Some(map))
-}
-
-fn get_serialized_param(
-    param_path: &ParamPath,
-    json_map: &Map<String, Value>,
-) -> Result<SerializedParam, SubConfigError> {
-    if let Some(json_value) = json_map.get(param_path) {
-        Ok(serde_json::from_value::<SerializedParam>(json_value.clone())?)
-    } else {
-        Err(SubConfigError::PointerSourceNotFound { pointing_param: param_path.to_owned() })
-    }
 }
 
 /// Takes a config map and a vector of {target param, target description, and vector of params that
@@ -205,8 +138,41 @@ pub fn combine_config_map_and_pointers(
     Ok(json_val)
 }
 
+fn get_serialized_param(
+    param_path: &ParamPath,
+    json_map: &Map<String, Value>,
+) -> Result<SerializedParam, SubConfigError> {
+    if let Some(json_value) = json_map.get(param_path) {
+        Ok(serde_json::from_value::<SerializedParam>(json_value.clone())?)
+    } else {
+        Err(SubConfigError::PointerSourceNotFound { pointing_param: param_path.to_owned() })
+    }
+}
+
+////////////////////////////////////////////////////////////////////////
+//  Deserialization process for configs.
+////////////////////////////////////////////////////////////////////////
+
+pub fn load_and_process_config<T: for<'a> Deserialize<'a>>(
+    default_config_file: File,
+    command: Command,
+    args: Vec<String>,
+) -> Result<T, SubConfigError> {
+    let deserialized_default_config: Map<String, Value> =
+        serde_json::from_reader(default_config_file).unwrap();
+
+    let (mut config_map, pointers_map) = get_maps_from_raw_json(deserialized_default_config);
+    let arg_matches = get_command_matches(&config_map, command, args)?;
+    if let Some(custom_config_path) = arg_matches.try_get_one::<PathBuf>("config_file")? {
+        update_config_map_by_custom_config(&mut config_map, custom_config_path)?;
+    };
+    update_config_map_by_command_args(&mut config_map, &arg_matches)?;
+    update_config_map_by_pointers(&mut config_map, &pointers_map)?;
+    load(&config_map)
+}
+
 /// Separates a json map into config map of the raw values and pointers map.
-pub fn get_maps_from_raw_json(
+pub(crate) fn get_maps_from_raw_json(
     json_map: Map<String, Value>,
 ) -> (BTreeMap<ParamPath, SerializedParam>, BTreeMap<ParamPath, ParamPath>) {
     let mut config_map: BTreeMap<String, SerializedParam> = BTreeMap::new();
@@ -223,8 +189,21 @@ pub fn get_maps_from_raw_json(
     (config_map, pointers_map)
 }
 
+/// Updates the config map by param path to value custom json file.
+pub(crate) fn update_config_map_by_custom_config(
+    config_map: &mut BTreeMap<ParamPath, SerializedParam>,
+    custom_config_path: &PathBuf,
+) -> Result<(), SubConfigError> {
+    let file = std::fs::File::open(custom_config_path).unwrap();
+    let custom_config: Map<String, Value> = serde_json::from_reader(file).unwrap();
+    for (param_path, json_value) in custom_config {
+        update_config_map(config_map, param_path.as_str(), json_value)?;
+    }
+    Ok(())
+}
+
 /// Sets values in the config map to the params in the pointers map.
-pub fn update_config_map_by_pointers(
+pub(crate) fn update_config_map_by_pointers(
     config_map: &mut BTreeMap<ParamPath, SerializedParam>,
     pointers_map: &BTreeMap<ParamPath, ParamPath>,
 ) -> Result<(), SubConfigError> {
@@ -237,15 +216,82 @@ pub fn update_config_map_by_pointers(
     Ok(())
 }
 
-/// Updates the config map by param path to value custom json file.
-pub fn update_config_map_by_custom_config(
-    config_map: &mut BTreeMap<ParamPath, SerializedParam>,
-    custom_config_path: &PathBuf,
-) -> Result<(), SubConfigError> {
-    let file = std::fs::File::open(custom_config_path).unwrap();
-    let custom_config: Map<String, Value> = serde_json::from_reader(file).unwrap();
-    for (param_path, json_value) in custom_config {
-        update_config_map(config_map, param_path.as_str(), json_value)?;
+/// Deserializes config from flatten JSON.
+/// For an explanation of `for<'a> Deserialize<'a>` see
+/// `<https://doc.rust-lang.org/nomicon/hrtb.html>`.
+pub(crate) fn load<T: for<'a> Deserialize<'a>>(
+    config_dump: &BTreeMap<ParamPath, SerializedParam>,
+) -> Result<T, SubConfigError> {
+    let mut nested_map = json!({});
+    for (param_path, serialized_param) in config_dump {
+        let mut entry = &mut nested_map;
+        for config_name in param_path.split('.') {
+            entry = entry.index_mut(config_name);
+        }
+        *entry = serialized_param.value.clone();
     }
+    Ok(serde_json::from_value(nested_map)?)
+}
+
+fn update_config_map(
+    config_map: &mut BTreeMap<ParamPath, SerializedParam>,
+    param_path: &str,
+    new_value: Value,
+) -> Result<(), SubConfigError> {
+    let Some(serialized_param) = config_map.get_mut(param_path) else {
+        return Err(SubConfigError::ParamNotFound{param_path: param_path.to_string()});
+    };
+    if discriminant(&serialized_param.value) != discriminant(&new_value) {
+        return Err(SubConfigError::ChangeParamType {
+            param_path: param_path.to_string(),
+            before: serialized_param.value.to_owned(),
+            after: new_value,
+        });
+    }
+    serialized_param.value = new_value;
     Ok(())
+}
+
+////////////////////////////////////////////////////////////////////////
+//  Custom (De)serialization converters.
+////////////////////////////////////////////////////////////////////////
+
+pub fn deserialize_milliseconds_to_duration<'de, D>(de: D) -> Result<Duration, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let secs: u64 = Deserialize::deserialize(de)?;
+    Ok(Duration::from_millis(secs))
+}
+
+/// Serializes a map to "k1:v1 k2:v2" string structure.
+pub fn serialize_optional_map(optional_map: &Option<HashMap<String, String>>) -> String {
+    match optional_map {
+        None => "".to_owned(),
+        Some(map) => map.iter().map(|(k, v)| format!("{k}:{v}")).collect::<Vec<String>>().join(" "),
+    }
+}
+
+/// Deserializes a map from "k1:v1 k2:v2" string structure.
+pub fn deserialize_optional_map<'de, D>(de: D) -> Result<Option<HashMap<String, String>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let raw_str: String = Deserialize::deserialize(de)?;
+    if raw_str.is_empty() {
+        return Ok(None);
+    }
+
+    let mut map = HashMap::new();
+    for raw_pair in raw_str.split(' ') {
+        let split: Vec<&str> = raw_pair.split(':').collect();
+        if split.len() != 2 {
+            return Err(D::Error::custom(format!(
+                "pair \"{}\" is not valid. The Expected format is name:value",
+                raw_pair
+            )));
+        }
+        map.insert(split[0].to_string(), split[1].to_string());
+    }
+    Ok(Some(map))
 }

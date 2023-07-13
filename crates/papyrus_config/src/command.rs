@@ -20,7 +20,7 @@ pub fn get_command_matches(
 /// Takes matched arguments from the command line interface and env variables and updates the config
 /// map.
 /// Supports usize, bool and String.
-pub fn update_config_map_by_command_args(
+pub(crate) fn update_config_map_by_command_args(
     config_map: &mut BTreeMap<ParamPath, SerializedParam>,
     arg_match: &ArgMatches,
 ) -> Result<(), SubConfigError> {
