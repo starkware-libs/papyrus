@@ -12,10 +12,9 @@ use indexmap::IndexMap;
 use itertools::chain;
 #[cfg(test)]
 use mockall::automock;
-use papyrus_config::{
-    append_sub_config_name, deserialize_optional_map, ser_param, serialize_optional_map, ParamPath,
-    SerializeConfig, SerializedParam,
-};
+use papyrus_config::converters::{deserialize_optional_map, serialize_optional_map};
+use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
+use papyrus_config::{ParamPath, SerializedParam};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use serde::{Deserialize, Serialize};

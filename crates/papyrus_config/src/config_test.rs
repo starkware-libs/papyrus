@@ -10,12 +10,14 @@ use serde_json::json;
 use test_utils::get_absolute_path;
 
 use crate::command::{get_command_matches, update_config_map_by_command_args};
-use crate::{
-    append_sub_config_name, combine_config_map_and_pointers, deserialize_milliseconds_to_duration,
-    get_maps_from_raw_json, load, ser_param, update_config_map_by_custom_config,
-    update_config_map_by_pointers, ParamPath, PointerParam, SerializeConfig, SerializedParam,
-    SubConfigError,
+use crate::converters::deserialize_milliseconds_to_duration;
+use crate::dumping::{
+    append_sub_config_name, combine_config_map_and_pointers, ser_param, SerializeConfig,
 };
+use crate::loading::{
+    get_maps_from_raw_json, load, update_config_map_by_custom_config, update_config_map_by_pointers,
+};
+use crate::{ParamPath, PointerParam, SerializedParam, SubConfigError};
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct InnerConfig {
@@ -183,7 +185,8 @@ fn test_replace_pointers() {
 pub fn test_update_by_custom_config() {
     let mut config_map =
         BTreeMap::from([ser_param("param_path", &json!("default value"), "This is a.")]);
-    let custom_config_path = get_absolute_path("config/custom_config_example.json");
+    let custom_config_path =
+        get_absolute_path("crates/papyrus_config/resources/custom_config_example.json");
     update_config_map_by_custom_config(&mut config_map, &custom_config_path).unwrap();
     assert_eq!(config_map["param_path"].value, json!("custom value"));
 }

@@ -10,7 +10,8 @@ use std::result;
 use std::sync::Arc;
 
 use libmdbx::{Cursor, DatabaseFlags, Geometry, WriteFlags, WriteMap};
-use papyrus_config::{ser_param, ParamPath, SerializeConfig, SerializedParam, DEFAULT_CHAIN_ID};
+use papyrus_config::dumping::{ser_param, SerializeConfig, DEFAULT_CHAIN_ID};
+use papyrus_config::{ParamPath, SerializedParam};
 use serde::{Deserialize, Serialize};
 use starknet_api::core::ChainId;
 

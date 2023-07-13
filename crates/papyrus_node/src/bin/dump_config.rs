@@ -2,8 +2,9 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 
 use lazy_static::lazy_static;
-use papyrus_config::{combine_config_map_and_pointers, ParamPath, SerializeConfig};
-use papyrus_node::config::{Config, DEFAULT_CONFIG_FILE};
+use papyrus_config::dumping::{combine_config_map_and_pointers, SerializeConfig};
+use papyrus_config::ParamPath;
+use papyrus_node::config::{Config, DEFAULT_CONFIG_PATH};
 
 lazy_static! {
     /// Returns vector of (pointer target name, pointer target description, vec<pointer param path>) to
@@ -22,7 +23,7 @@ lazy_static! {
 fn main() {
     let dumped = Config::default().dump();
     let combined_map = combine_config_map_and_pointers(dumped, CONFIG_POINTERS.to_vec()).unwrap();
-    let file = File::create(DEFAULT_CONFIG_FILE).expect("creating failed");
+    let file = File::create(DEFAULT_CONFIG_PATH).expect("creating failed");
     let mut writer = BufWriter::new(file);
     serde_json::to_writer_pretty(&mut writer, &combined_map).expect("writing failed");
     writer.flush().expect("flushing failed");
