@@ -24,7 +24,7 @@ use std::path::PathBuf;
 use std::result;
 use std::sync::Arc;
 
-use libmdbx::{Cursor, DatabaseFlags, Geometry, WriteFlags, WriteMap};
+use libmdbx::{Cursor, Geometry, TableFlags, WriteFlags, WriteMap};
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, SerializedParam};
 use serde::{Deserialize, Serialize};
@@ -37,7 +37,7 @@ const MAX_DBS: usize = 27;
 
 // Note that NO_TLS mode is used by default.
 type EnvironmentKind = WriteMap;
-type Environment = libmdbx::Environment<EnvironmentKind>;
+type Environment = libmdbx::Database<EnvironmentKind>;
 
 type DbKeyType<'env> = Cow<'env, [u8]>;
 type DbValueType<'env> = Cow<'env, [u8]>;
@@ -151,7 +151,7 @@ pub(crate) fn open_env(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
                 growth_step: Some(config.growth_step),
                 ..Default::default()
             })
-            .set_max_dbs(MAX_DBS)
+            .set_max_tables(MAX_DBS)
             .open(&config.path())?,
     );
     Ok((DbReader { env: env.clone() }, DbWriter { env }))
@@ -174,8 +174,8 @@ impl DbReader {
     /// Returns statistics about a specific table in the database.
     pub(crate) fn get_table_stats(&self, name: &str) -> DbResult<DbTableStats> {
         let db_txn = self.begin_ro_txn()?;
-        let database = db_txn.txn.open_db(Some(name))?;
-        let stat = db_txn.txn.db_stat(&database)?;
+        let database = db_txn.txn.open_table(Some(name))?;
+        let stat = db_txn.txn.table_stat(&database)?;
         Ok(DbTableStats {
             database: format!("{database:?}"),
             branch_pages: stat.branch_pages(),
@@ -200,7 +200,7 @@ impl DbWriter {
         name: &'static str,
     ) -> DbResult<TableIdentifier<K, V>> {
         let txn = self.env.begin_rw_txn()?;
-        txn.create_db(Some(name), DatabaseFlags::empty())?;
+        txn.create_table(Some(name), TableFlags::empty())?;
         txn.commit()?;
         Ok(TableIdentifier { name, _key_type: PhantomData {}, _value_type: PhantomData {} })
     }
@@ -230,7 +230,7 @@ impl<'a, Mode: TransactionKind> DbTransaction<'a, Mode> {
         &'env self,
         table_id: &TableIdentifier<K, V>,
     ) -> DbResult<TableHandle<'env, K, V>> {
-        let database = self.txn.open_db(Some(table_id.name))?;
+        let database = self.txn.open_table(Some(table_id.name))?;
         Ok(TableHandle { database, _key_type: PhantomData {}, _value_type: PhantomData {} })
     }
 }
@@ -242,7 +242,7 @@ pub(crate) struct TableIdentifier<K: StorageSerde, V: StorageSerde> {
 }
 
 pub(crate) struct TableHandle<'env, K: StorageSerde, V: StorageSerde> {
-    database: libmdbx::Database<'env>,
+    database: libmdbx::Table<'env>,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
 }
