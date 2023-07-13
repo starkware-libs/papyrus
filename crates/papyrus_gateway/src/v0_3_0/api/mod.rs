@@ -1,6 +1,7 @@
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
 use papyrus_proc_macros::versioned_rpc;
+use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
@@ -8,9 +9,10 @@ use starknet_api::state::StorageKey;
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 
 use super::block::Block;
-use super::state::StateUpdate;
-use super::transaction::{TransactionReceiptWithStatus, TransactionWithType};
-use crate::api::{BlockHashAndNumber, BlockId, EventFilter, EventsChunk, GatewayContractClass};
+use super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
+use super::state::{ContractClass, StateUpdate};
+use super::transaction::{Event, TransactionReceiptWithStatus, TransactionWithType};
+use crate::api::{BlockHashAndNumber, BlockId, ContinuationToken, EventFilter};
 
 pub mod api_impl;
 #[cfg(test)]
@@ -109,4 +111,17 @@ pub trait JsonRpc {
     /// Returns all events matching the given filter.
     #[method(name = "getEvents")]
     fn get_events(&self, filter: EventFilter) -> RpcResult<EventsChunk>;
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum GatewayContractClass {
+    Cairo0(DeprecatedContractClass),
+    Sierra(ContractClass),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct EventsChunk {
+    pub events: Vec<Event>,
+    pub continuation_token: Option<ContinuationToken>,
 }
