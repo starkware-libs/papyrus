@@ -42,6 +42,7 @@ use crate::api::{
 use crate::test_utils::{
     get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
 };
+use crate::version_config::VERSION_0_3_0;
 use crate::{run_server, ContinuationTokenAsStruct};
 
 #[tokio::test]
