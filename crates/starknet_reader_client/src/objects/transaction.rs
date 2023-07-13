@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{
     ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, Nonce,
@@ -14,15 +15,10 @@ use starknet_api::transaction::{
 
 use crate::ClientError;
 
-// TODO(yair): Make these functions regular consts.
-fn tx_v0() -> TransactionVersion {
-    TransactionVersion(StarkFelt::try_from("0x0").expect("Unable to convert 0x0 to StarkFelt."))
-}
-fn tx_v1() -> TransactionVersion {
-    TransactionVersion(StarkFelt::try_from("0x1").expect("Unable to convert 0x1 to StarkFelt."))
-}
-fn tx_v2() -> TransactionVersion {
-    TransactionVersion(StarkFelt::try_from("0x2").expect("Unable to convert 0x2 to StarkFelt."))
+lazy_static! {
+    static ref TX_V0: TransactionVersion = TransactionVersion(StarkFelt::from(0u128));
+    static ref TX_V1: TransactionVersion = TransactionVersion(StarkFelt::from(1u128));
+    static ref TX_V2: TransactionVersion = TransactionVersion(StarkFelt::from(2u128));
 }
 
 // TODO(dan): consider extracting common fields out (version, hash, type).
@@ -127,9 +123,9 @@ impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::Decl
 
     fn try_from(declare_tx: IntermediateDeclareTransaction) -> Result<Self, ClientError> {
         match declare_tx.version {
-            v if v == tx_v0() => Ok(Self::V0(declare_tx.into())),
-            v if v == tx_v1() => Ok(Self::V1(declare_tx.into())),
-            v if v == tx_v2() => Ok(Self::V2(declare_tx.try_into()?)),
+            v if v == *TX_V0 => Ok(Self::V0(declare_tx.into())),
+            v if v == *TX_V1 => Ok(Self::V1(declare_tx.into())),
+            v if v == *TX_V2 => Ok(Self::V2(declare_tx.try_into()?)),
             _ => Err(ClientError::BadTransaction {
                 tx_hash: declare_tx.transaction_hash,
                 msg: format!("Declare version {:?} is not supported.", declare_tx.version),
@@ -253,8 +249,8 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
 
     fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ClientError> {
         match invoke_tx.version {
-            v if v == tx_v0() => Ok(Self::V0(invoke_tx.try_into()?)),
-            v if v == tx_v1() => Ok(Self::V1(invoke_tx.try_into()?)),
+            v if v == *TX_V0 => Ok(Self::V0(invoke_tx.try_into()?)),
+            v if v == *TX_V1 => Ok(Self::V1(invoke_tx.try_into()?)),
             _ => Err(ClientError::BadTransaction {
                 tx_hash: invoke_tx.transaction_hash,
                 msg: format!("Invoke version {:?} is not supported.", invoke_tx.version),
