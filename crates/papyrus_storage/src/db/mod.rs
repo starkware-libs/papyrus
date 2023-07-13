@@ -1,13 +1,15 @@
 //! Basic structs for interacting with the db.
 //!
-//! Low database layer for interaction with libmdbx.
+//! Low database layer for interaction with libmdbx. The API is supposedly generic enough to easily
+//! replace the database library with other Berkley-like database implementations.
 //!
 //! Assumptions:
+//! - The database is transactional with full ACID semantics.
+//! - The keys are always sorted and range lookups are supported.
+//!
+//! Guarantees:
 //! - The serialization is consistent across code versions (though, not necessarily across
 //!   machines).
-//! - The API is supposedly generic enough to easily replace the database library with other
-//! Berkley-like database implementations in which the following assumptions hold:
-//!     - The DB is transactional, sorted and has range-based search capabilities.
 
 #[cfg(test)]
 mod db_test;
