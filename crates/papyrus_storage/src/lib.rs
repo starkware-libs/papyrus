@@ -267,6 +267,7 @@ macro_rules! struct_field_names {
 use struct_field_names;
 
 /// Error type for the storage crate.
+#[allow(missing_docs)]
 #[derive(thiserror::Error, Debug)]
 pub enum StorageError {
     /// Errors related to the underlying database.
@@ -337,6 +338,7 @@ pub enum StorageError {
 pub type StorageResult<V> = std::result::Result<V, StorageError>;
 
 /// A struct for the configuration of the storage.
+#[allow(missing_docs)]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct StorageConfig {
     pub db_config: DbConfig,

@@ -100,6 +100,7 @@ impl<'txn, 'env> EventsReader<'txn, 'env> for StorageTxn<'env, RO> {
     }
 }
 
+#[allow(missing_docs)]
 /// A wrapper of two iterators [`EventIterByContractAddress`] and [`EventIterByEventIndex`].
 pub enum EventIter<'txn, 'env> {
     ByContractAddress(EventIterByContractAddress<'txn>),
@@ -253,6 +254,7 @@ impl<'txn, 'env> StorageTxn<'env, RO> {
     }
 }
 
+#[allow(missing_docs)]
 /// Each [`ThinTransactionOutput`] holds a list of event contract addresses so that given a thin
 /// transaction output we can get all its events from the events table (see
 /// [`get_transaction_events`](crate::body::BodyStorageReader::get_transaction_events) in
