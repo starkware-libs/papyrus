@@ -12,5 +12,5 @@ serde = { workspace = true, features = ["derive"] }
 [dev-dependencies]
 assert.workspace = true
 assert_matches.workspace = true
+papyrus_test_utils = { path = "../papyrus_test_utils" }
 serde_json = { workspace = true, features = ["arbitrary_precision"] }
-test_utils = { path = "../test_utils" }

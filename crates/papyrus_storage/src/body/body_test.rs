@@ -1,8 +1,8 @@
 use assert_matches::assert_matches;
+use papyrus_test_utils::{get_test_block, get_test_body};
 use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockBody, BlockNumber};
 use starknet_api::transaction::TransactionOffsetInBlock;
-use test_utils::{get_test_block, get_test_body};
 
 use crate::body::events::ThinTransactionOutput;
 use crate::body::{BodyStorageReader, BodyStorageWriter, TransactionIndex};

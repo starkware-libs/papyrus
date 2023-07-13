@@ -1,12 +1,12 @@
 use std::fmt::Debug;
 
 use cairo_lang_casm::hints::CoreHintBase;
+use papyrus_test_utils::{get_rng, GetTestInstance};
 use pretty_assertions::assert_eq;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ContractAddress;
 use starknet_api::hash::StarkHash;
 use starknet_api::state::StorageKey;
-use test_utils::{get_rng, GetTestInstance};
 
 use crate::db::serialization::StorageSerde;
 

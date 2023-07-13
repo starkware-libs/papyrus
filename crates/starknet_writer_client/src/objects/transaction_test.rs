@@ -1,6 +1,6 @@
 use assert::assert_ok;
 use assert_matches::assert_matches;
-use test_utils::read_json_file;
+use papyrus_test_utils::read_json_file;
 
 use crate::objects::transaction::Transaction;
 

@@ -32,8 +32,8 @@ hex.workspace = true
 jsonschema.workspace = true
 metrics-exporter-prometheus = { version = "0.12.1" }
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
+papyrus_test_utils = { path = "../papyrus_test_utils" }
 pretty_assertions.workspace = true
 prometheus-parse.workspace = true
-test_utils = { path = "../test_utils" }
 starknet_api = { workspace = true, features = ["testing"] }
 indexmap = { workspace = true, features = ["serde"] }

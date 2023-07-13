@@ -4,8 +4,8 @@ use std::time::Instant;
 use jsonrpsee::server::logger::{Logger, TransportProtocol};
 use jsonrpsee::Methods;
 use metrics_exporter_prometheus::PrometheusBuilder;
+use papyrus_test_utils::prometheus_is_contained;
 use prometheus_parse::Value::Counter;
-use test_utils::prometheus_is_contained;
 
 use crate::gateway_metrics::{
     get_method_and_version, MetricLogger, FAILED_REQUESTS, ILLEGAL_METHOD, INCOMING_REQUEST,

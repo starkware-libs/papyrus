@@ -12,7 +12,7 @@ testing = [
     "tempfile",
     "starknet_api/testing",
     "rand",
-    "test_utils",
+    "papyrus_test_utils",
     "rand_chacha",
 ]
 
@@ -27,6 +27,7 @@ indexmap = { workspace = true, features = ["serde"] }
 integer-encoding.workspace = true
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
 num-bigint.workspace = true
+papyrus_test_utils = { path = "../papyrus_test_utils", optional = true }
 primitive-types.workspace = true
 parity-scale-codec.workspace = true
 rand = { workspace = true, optional = true }
@@ -36,7 +37,6 @@ serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 starknet_api = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }
-test_utils = { path = "../test_utils", optional = true }
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
 tracing = { workspace = true, features = ["log"] }

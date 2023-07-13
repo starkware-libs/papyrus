@@ -12,13 +12,13 @@ members = [
     "crates/papyrus_proc_macros",
     "crates/papyrus_storage",
     "crates/papyrus_sync",
+    "crates/papyrus_test_utils",
     "crates/starknet_reader_client",
     "crates/starknet_writer_client",
-    "crates/test_utils",
 ]
 
 [workspace.package]
-version = "0.1.0-alpha"
+version = "0.0.1"
 edition = "2021"
 repository = "https://github.com/starkware-libs/papyrus/"
 license = "Apache-2.0"

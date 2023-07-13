@@ -4,12 +4,12 @@ use papyrus_storage::body::events::{
     ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput, ThinDeployTransactionOutput,
     ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
 };
+use papyrus_test_utils::{get_rng, GetTestInstance};
 use starknet_api::block::BlockHeader;
 use starknet_api::transaction::{
     DeclareTransactionOutput, DeployAccountTransactionOutput, DeployTransactionOutput,
     InvokeTransactionOutput, L1HandlerTransactionOutput, Transaction,
 };
-use test_utils::{get_rng, GetTestInstance};
 
 use crate::v0_3_0::transaction::{TransactionOutput, TransactionReceipt};
 

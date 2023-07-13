@@ -3,9 +3,9 @@ use std::future::Future;
 use std::io::Write;
 use std::net::SocketAddr;
 
+use papyrus_test_utils::send_request;
 use rand::Rng;
 use serde_json::Value as jsonVal;
-use test_utils::send_request;
 
 use crate::{
     get_last_block_number, get_random_block_number, path_in_resources,

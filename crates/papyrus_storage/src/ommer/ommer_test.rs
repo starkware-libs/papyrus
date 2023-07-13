@@ -1,9 +1,9 @@
 use indexmap::IndexMap;
+use papyrus_test_utils::{get_test_block, get_test_state_diff};
 use pretty_assertions::assert_eq;
 use starknet_api::block::BlockHeader;
 use starknet_api::state::ThinStateDiff;
 use starknet_api::transaction::{EventContent, TransactionOutput};
-use test_utils::{get_test_block, get_test_state_diff};
 
 use super::OmmerStorageReader;
 use crate::body::events::ThinTransactionOutput;

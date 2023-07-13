@@ -1,9 +1,11 @@
 [package]
-name = "test_utils"
+name = "papyrus_test_utils"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
 license-file.workspace = true
+description = "Test utilities for a Papyrus node."
+
 
 [features]
 

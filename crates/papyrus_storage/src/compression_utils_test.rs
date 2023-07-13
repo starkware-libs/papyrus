@@ -1,6 +1,6 @@
+use papyrus_test_utils::read_json_file;
 use pretty_assertions::assert_eq;
 use starknet_api::deprecated_contract_class::Program;
-use test_utils::read_json_file;
 
 use super::{compress, decompress, decompress_from_reader, serialize_and_compress};
 use crate::db::serialization::StorageSerde;

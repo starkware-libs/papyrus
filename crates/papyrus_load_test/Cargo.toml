@@ -9,9 +9,9 @@ license-file.workspace = true
 anyhow.workspace = true
 goose.workspace = true
 once_cell.workspace = true
+papyrus_test_utils = { path = "../papyrus_test_utils" }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-test_utils = { path = "../test_utils" }
 tokio.workspace = true
 rand.workspace = true
 reqwest.workspace = true

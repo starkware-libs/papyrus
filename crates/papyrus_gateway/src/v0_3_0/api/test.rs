@@ -14,6 +14,9 @@ use papyrus_storage::body::{BodyStorageWriter, TransactionIndex};
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
+use papyrus_test_utils::{
+    get_rng, get_test_block, get_test_body, get_test_state_diff, send_request, GetTestInstance,
+};
 use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
@@ -23,9 +26,6 @@ use starknet_api::transaction::{
     EventIndexInTransactionOutput, EventKey, Transaction, TransactionHash, TransactionOffsetInBlock,
 };
 use starknet_api::{patricia_key, stark_felt};
-use test_utils::{
-    get_rng, get_test_block, get_test_body, get_test_state_diff, send_request, GetTestInstance,
-};
 
 use super::super::block::Block;
 use super::super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
