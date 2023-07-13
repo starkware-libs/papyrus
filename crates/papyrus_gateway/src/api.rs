@@ -7,12 +7,8 @@ use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{ChainId, ContractAddress};
 use starknet_api::transaction::EventKey;
 
-// todo: nevo - remove dependency on specific version
 use crate::v0_3_0::api::api_impl::JsonRpcServerV0_3_0Impl;
 use crate::v0_3_0::api::JsonRpcV0_3_0Server;
-use crate::v0_3_0::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use crate::v0_3_0::state::ContractClass;
-use crate::v0_3_0::transaction::Event;
 use crate::version_config;
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -81,19 +77,6 @@ pub struct EventFilter {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ContinuationToken(pub String);
-
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-pub struct EventsChunk {
-    pub events: Vec<Event>,
-    pub continuation_token: Option<ContinuationToken>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(untagged)]
-pub enum GatewayContractClass {
-    Cairo0(DeprecatedContractClass),
-    Sierra(ContractClass),
-}
 
 /// Returns a `Methods` object with all the methods from the supported APIs.
 /// Whenever adding a new API version we need to add the new version mapping here.
