@@ -1,4 +1,47 @@
-//! This module contains types and functions for iterating over events from the storage.
+//! Interface for iterating over events from the storage.
+//!
+//! Events are part of the transaction output. Each transaction output holds an array of events.
+//! Import [`EventsReader`] to iterate over events using a read-only [`StorageTxn`].
+//!
+//! # Example
+//! ```
+//! use papyrus_storage::open_storage;
+//! use papyrus_storage::body::TransactionIndex;
+//! use papyrus_storage::body::events::{EventIndex, EventsReader};
+//! # use papyrus_storage::db::DbConfig;
+//! # use starknet_api::core::ChainId;
+//! # use starknet_api::block::BlockNumber;
+//! use starknet_api::core::ContractAddress;
+//! use starknet_api::transaction::TransactionOffsetInBlock;
+//! use starknet_api::transaction::EventIndexInTransactionOutput;
+//!
+//! # let dir_handle = tempfile::tempdir().unwrap();
+//! # let dir = dir_handle.path().to_path_buf();
+//! # let db_config = DbConfig {
+//! #     path_prefix: dir,
+//! #     chain_id: ChainId("SN_MAIN".to_owned()),
+//! #     min_size: 1 << 20,    // 1MB
+//! #     max_size: 1 << 35,    // 32GB
+//! #     growth_step: 1 << 26, // 64MB
+//! # };
+//! // The API allows read-only interactions with the events. To write events, use the body writer.
+//! let (reader, _) = open_storage(db_config)?;
+//! // iterate events from all contracts, starting from the first event in the first transaction.
+//! let event_index = EventIndex(
+//!     TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(0)),
+//!     EventIndexInTransactionOutput(0),
+//! );
+//! let txn = reader.begin_ro_txn()?; // The transaction must live longer than the iterator.
+//! let events_iterator = txn.iter_events(None, event_index, BlockNumber(0))?;
+//! for ((contract_address, event_index), event_content) in events_iterator {
+//!    // Do something with the event.
+//! }
+//! // iterate events from a specific contract.
+//! let contract_events_iterator = txn.iter_events(Some(ContractAddress::default()), event_index, BlockNumber(0))?;
+//! for ((contract_address, event_index), event_content) in contract_events_iterator {
+//!    // Do something with the event.
+//! }
+//! # Ok::<(), papyrus_storage::StorageError>(())
 #[cfg(test)]
 #[path = "events_test.rs"]
 mod events_test;
