@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use assert_matches::assert_matches;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+use indexmap::indexmap;
 use mockito::mock;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
@@ -344,11 +345,20 @@ async fn retry_error_codes() {
 async fn state_update_with_empty_storage_diff() {
     let starknet_client =
         StarknetClient::new(&mockito::server_url(), None, NODE_VERSION, get_test_config()).unwrap();
-    let raw_state_update = read_resource_file("block_state_update_with_empty_storage_diff.json");
+    let mut state_update = StateUpdate::default();
+    state_update.state_diff.storage_diffs = indexmap!(ContractAddress::default() => vec![]);
+
+    // The serialization of StateUpdate doesn't match the deserialization of StateUpdate (serialization adds "0x" to the old/new roots, while the deserialization expects unprefixed hex).
+    // Fix the serialization to match the deserialization.
+    // TODO(dvir): Make the serialization and deserialization match.
+    let mut json_value = serde_json::to_value(&state_update).unwrap();
+    json_value["old_root"] = serde_json::Value::String("0".to_string());
+    json_value["new_root"] = serde_json::Value::String("0".to_string());
+
     let mock =
         mock("GET", &format!("/feeder_gateway/get_state_update?{BLOCK_NUMBER_QUERY}=123456")[..])
             .with_status(200)
-            .with_body(&raw_state_update)
+            .with_body(serde_json::to_string(&json_value).unwrap())
             .create();
     let state_update = starknet_client.state_update(BlockNumber(123456)).await.unwrap().unwrap();
     mock.assert();
