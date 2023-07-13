@@ -14,6 +14,12 @@ use starknet_api::transaction::{
 };
 use tracing::instrument;
 
+use super::super::block::{Block, BlockHeader};
+use super::super::state::StateUpdate;
+use super::super::transaction::{
+    Event, Transaction, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus,
+    TransactionWithType, Transactions,
+};
 use super::{
     BlockHashAndNumber, BlockId, EventFilter, EventsChunk, GatewayContractClass,
     JsonRpcV0_3_0Server,
@@ -21,12 +27,6 @@ use super::{
 use crate::api::{BlockHashOrNumber, ContinuationToken, JsonRpcError, JsonRpcServerImpl};
 use crate::block::get_block_header_by_number;
 use crate::transaction::get_block_txs_by_number;
-use crate::v0_3_0::block::{Block, BlockHeader};
-use crate::v0_3_0::state::StateUpdate;
-use crate::v0_3_0::transaction::{
-    Event, Transaction, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus,
-    TransactionWithType, Transactions,
-};
 use crate::{
     get_block_number, get_block_status, get_latest_block_number, internal_server_error,
     ContinuationTokenAsStruct,
