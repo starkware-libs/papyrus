@@ -36,7 +36,7 @@ pub async fn get_starknet_spec_api_schema(
     component_names: &[&str],
     version_id: &str,
 ) -> JSONSchema {
-    let target = format!("./resources/{}_starknet_api_openrpc.json", version_id);
+    let target = format!("./resources/{version_id}_starknet_api_openrpc.json");
     let text = std::fs::read_to_string(target).unwrap();
     let spec: serde_json::Value = serde_json::from_str(&text).unwrap();
 
