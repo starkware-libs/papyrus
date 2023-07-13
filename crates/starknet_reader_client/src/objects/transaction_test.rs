@@ -2,10 +2,7 @@ use assert::{assert_err, assert_ok};
 use assert_matches::assert_matches;
 
 use super::super::test_utils::read_resource::read_resource_file;
-use super::transaction::{
-    DeployTransaction, IntermediateDeclareTransaction, IntermediateInvokeTransaction,
-    L1HandlerTransaction, Transaction, TransactionReceipt,
-};
+use super::transaction::{Transaction, TransactionReceipt};
 
 #[test]
 fn load_deploy_transaction_succeeds() {
@@ -25,9 +22,12 @@ fn load_invoke_transaction_succeeds() {
 
 #[test]
 fn load_invoke_with_contract_address_transaction_succeeds() {
-    let json_str: String = read_resource_file("invoke_transaction.json");
-    let json_str = json_str.replace("sender_address", "contract_address");
-    assert_matches!(serde_json::from_str::<Transaction>(&json_str), Ok(Transaction::Invoke(_)));
+    let mut json_val: serde_json::Value =
+        serde_json::from_str(&read_resource_file("invoke_transaction.json")).unwrap();
+    let object = json_val.as_object_mut().unwrap();
+    let sender_address_value = object.remove("sender_address").unwrap();
+    object.insert("contract_address".to_string(), sender_address_value);
+    assert_matches!(serde_json::from_value::<Transaction>(json_val), Ok(Transaction::Invoke(_)));
 }
 
 #[test]
@@ -75,7 +75,8 @@ fn load_transaction_unknown_field_fails() {
 
 #[test]
 fn load_transaction_wrong_type_fails() {
-    for (file_name, new_type) in [
+    for (file_name, new_wrong_type) in [
+        // The transaction has a type that doesn't match the type it is paired with.
         ("deploy_transaction.json", "INVOKE_FUNCTION"),
         ("invoke_transaction.json", "DECLARE"),
         ("declare_transaction.json", "DEPLOY"),
@@ -85,7 +86,7 @@ fn load_transaction_wrong_type_fails() {
         json_value
             .as_object_mut()
             .unwrap()
-            .insert("type".to_string(), serde_json::Value::String(new_type.to_string()));
+            .insert("type".to_string(), serde_json::Value::String(new_wrong_type.to_string()));
         let json_str = serde_json::to_string(&json_value).unwrap();
         assert_err!(serde_json::from_str::<Transaction>(&json_str));
     }
