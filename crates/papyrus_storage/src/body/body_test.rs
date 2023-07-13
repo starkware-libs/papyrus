@@ -40,29 +40,29 @@ async fn append_body() {
         .unwrap();
 
     // Check for MarkerMismatch error when trying to append the wrong block number.
-    if let Err(err) = writer.begin_rw_txn().unwrap().append_body(BlockNumber(5), body2.clone()) {
-        assert_matches!(
-            err,
-            StorageError::MarkerMismatch { expected, found }
-        if expected == BlockNumber(2) && found == BlockNumber(5));
-    } else {
+    let Err(err) = writer.begin_rw_txn().unwrap().append_body(BlockNumber(5), body2.clone()) else {
         panic!("Unexpected Ok.");
-    }
+    };
+
+    assert_matches!(
+        err,
+        StorageError::MarkerMismatch { expected, found }
+    if expected == BlockNumber(2) && found == BlockNumber(5));
 
     writer.begin_rw_txn().unwrap().append_body(BlockNumber(2), body2).unwrap().commit().unwrap();
 
-    if let Err(err) = writer.begin_rw_txn().unwrap().append_body(BlockNumber(3), body3) {
-        let expected_tx_index = TransactionIndex(BlockNumber(3), TransactionOffsetInBlock(1));
-        assert_matches!(
-            err,
-            StorageError::TransactionHashAlreadyExists {
-                tx_hash,
-                transaction_index
-            } if tx_hash == txs[0].transaction_hash() && transaction_index == expected_tx_index
-        );
-    } else {
+    let Err(err) = writer.begin_rw_txn().unwrap().append_body(BlockNumber(3), body3) else {
         panic!("Unexpected Ok.");
-    }
+    };
+
+    let expected_tx_index = TransactionIndex(BlockNumber(3), TransactionOffsetInBlock(1));
+    assert_matches!(
+        err,
+        StorageError::TransactionHashAlreadyExists {
+            tx_hash,
+            transaction_index
+        } if tx_hash == txs[0].transaction_hash() && transaction_index == expected_tx_index
+    );
 
     let txn = reader.begin_ro_txn().unwrap();
     // Check marker.

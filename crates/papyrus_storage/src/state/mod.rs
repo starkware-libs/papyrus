@@ -1,3 +1,51 @@
+//! Interface for handling data related to Starknet [state](https://docs.rs/starknet_api/latest/starknet_api/state/index.html).
+//!
+//! Import [`StateStorageReader`] and [`StateStorageWriter`] to read and write data related to state
+//! diffs using a [`StorageTxn`].
+//!
+//! See [`StateReader`] struct for querying specific data from the state.
+//!
+//! # Example
+//! ```
+//! use papyrus_storage::open_storage;
+//! use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
+//! # use indexmap::IndexMap;
+//! # use papyrus_storage::db::DbConfig;
+//! # use starknet_api::block::BlockNumber;
+//! # use starknet_api::core::{ChainId, ContractAddress};
+//! use starknet_api::state::{StateDiff, StateNumber, ThinStateDiff};
+//!
+//! # let dir_handle = tempfile::tempdir().unwrap();
+//! # let dir = dir_handle.path().to_path_buf();
+//! # let db_config = DbConfig {
+//! #     path_prefix: dir,
+//! #     chain_id: ChainId("SN_MAIN".to_owned()),
+//! #     min_size: 1 << 20,    // 1MB
+//! #     max_size: 1 << 35,    // 32GB
+//! #     growth_step: 1 << 26, // 64MB
+//! # };
+//! let state_diff = StateDiff::default();
+//! let (reader, mut writer) = open_storage(db_config)?;
+//! writer
+//!     .begin_rw_txn()?                                                    // Start a RW transaction.
+//!     .append_state_diff(BlockNumber(0), state_diff, IndexMap::new())?    // Append a state diff.
+//!     .commit()?;
+//!
+//! // Get the StateDiff stripped of the class definitions (ThinStateDiff).
+//! let thin_state_diff = reader.begin_ro_txn()?.get_state_diff(BlockNumber(0))?;
+//! assert_eq!(thin_state_diff, Some(ThinStateDiff::from(StateDiff::default())));
+//!
+//! # let contract_address = ContractAddress::default();
+//! // Get the class hash of a contract at a given state number.
+//! // The transaction must live at least as long as the state reader.
+//! let txn = reader.begin_ro_txn()?;
+//! let state_reader = txn.get_state_reader()?;
+//! let class_hash = state_reader
+//!     .get_class_hash_at(StateNumber::right_after_block(BlockNumber(0)), &contract_address)?;
+//! # Ok::<(), papyrus_storage::StorageError>(())
+//! ```
+
+#[doc(hidden)]
 pub mod data;
 #[cfg(test)]
 #[path = "state_test.rs"]
@@ -28,6 +76,7 @@ type ContractStorageTable<'env> =
     TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), StarkFelt>;
 type NoncesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumber), Nonce>;
 
+/// Interface for reading data related to the state.
 // Structure of state data:
 // * declared_classes_table: (class_hash) -> (block_num, contract_class). Each entry specifies at
 //   which block was this class declared and with what class definition. For Cairo 1 class
@@ -47,8 +96,11 @@ type NoncesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumber), Nonce
 //   nonce of `contract_address` was changed to `nonce`.
 
 pub trait StateStorageReader<Mode: TransactionKind> {
+    /// The state marker is the first block number that doesn't exist yet.
     fn get_state_marker(&self) -> StorageResult<BlockNumber>;
+    /// Returns the state diff at a given block number.
     fn get_state_diff(&self, block_number: BlockNumber) -> StorageResult<Option<ThinStateDiff>>;
+    /// Returns a state reader.
     fn get_state_reader(&self) -> StorageResult<StateReader<'_, Mode>>;
 }
 
@@ -59,10 +111,16 @@ type RevertedStateDiff = (
     IndexMap<ClassHash, CasmContractClass>,
 );
 
+/// Interface for writing data related to the state.
 pub trait StateStorageWriter
 where
     Self: Sized,
 {
+    /// Appends a state diff to the storage.
+    /// * Arg deployed_contract_class_definitions: Until Starknet version 0.11 users could
+    ///   implicitly
+    /// declare new classes by deploying contracts. To append a state diff with such classes, you
+    /// must pass the class definitions of the implicitly declared classes.
     // To enforce that no commit happen after a failure, we consume and return Self on success.
     fn append_state_diff(
         self,
@@ -77,6 +135,7 @@ where
         deployed_contract_class_definitions: IndexMap<ClassHash, DeprecatedContractClass>,
     ) -> StorageResult<Self>;
 
+    /// Removes a state diff from the storage and returns the removed data.
     fn revert_state_diff(
         self,
         block_number: BlockNumber,
