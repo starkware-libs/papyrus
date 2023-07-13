@@ -7,7 +7,7 @@ use papyrus_storage::body::events::{
 use starknet_api::transaction::Transaction;
 use test_utils::{get_rng, GetTestInstance};
 
-use crate::v0_3_0::transaction::TransactionOutput;
+use super::transaction::TransactionOutput;
 
 macro_rules! gen_test_from_thin_transaction_output_macro {
     ($variant: ident) => {
