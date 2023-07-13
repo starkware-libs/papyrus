@@ -3832,6 +3832,7 @@ dependencies = [
  "itertools",
  "serde",
  "serde_json",
+ "tempfile",
  "test_utils",
  "thiserror",
 ]

@@ -64,8 +64,9 @@ fn update_marker<'env>(
     // advancing it if the next blocks don't have declared classes.
     let mut block_number = markers_table.get(txn, &MarkerKind::CompiledClass)?.unwrap_or_default();
     loop {
-        let Some(state_diff) = state_diffs_table
-            .get(txn, &block_number)? else {break;};
+        let Some(state_diff) = state_diffs_table.get(txn, &block_number)? else {
+            break;
+        };
         if let Some((last_class_hash, _)) = state_diff.declared_classes.last() {
             // Not the last class in the state diff, keep the current marker.
             if last_class_hash != class_hash {

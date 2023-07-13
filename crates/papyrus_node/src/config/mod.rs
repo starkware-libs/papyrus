@@ -11,12 +11,9 @@ use std::{env, fs, io};
 
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
 use itertools::chain;
-use papyrus_config::command::{get_command_matches, update_config_map_by_command_args};
-use papyrus_config::{
-    append_sub_config_name, get_maps_from_raw_json, load, update_config_map_by_custom_config,
-    update_config_map_by_pointers, ParamPath, SerializeConfig, SerializedParam, SubConfigError,
-    DEFAULT_CHAIN_ID,
-};
+use papyrus_config::dumping::{append_sub_config_name, SerializeConfig};
+use papyrus_config::loading::load_and_process_config;
+use papyrus_config::{ParamPath, SerializedParam, SubConfigError};
 use papyrus_gateway::GatewayConfig;
 use papyrus_monitoring_gateway::MonitoringGatewayConfig;
 use papyrus_storage::db::DbConfig;
@@ -30,7 +27,7 @@ use starknet_client::RetryConfig;
 use crate::version::VERSION_FULL;
 
 // The path of the default configuration file, provided as part of the crate.
-pub const DEFAULT_CONFIG_FILE: &str = "config/default_config.json";
+pub const DEFAULT_CONFIG_PATH: &str = "config/default_config.json";
 
 // TODO(yoav) Rename to NodeConfig.
 /// The configurations of the various components of the node.
@@ -73,37 +70,28 @@ impl SerializeConfig for Config {
     }
 }
 
-pub fn dump_default_config_to_file(file_path: &str) {
-    let dumped = Config::default().dump();
-    let file = File::create(file_path).expect("creating failed");
-    let mut writer = BufWriter::new(file);
-    serde_json::to_writer_pretty(&mut writer, &dumped).expect("writing failed");
-    writer.flush().expect("flushing failed");
-}
-
-pub fn node_command() -> Command {
-    Command::new("Papyrus")
-        .version(VERSION_FULL)
-        .about("Papyrus is a StarkNet full node written in Rust.")
-}
-
 impl Config {
+    /// Creates a config object. Selects the values from the default file and from resources with
+    /// higher priority.
     pub fn load_and_process(args: Vec<String>) -> Result<Self, SubConfigError> {
-        let file = std::fs::File::open(Path::new(DEFAULT_CONFIG_FILE)).unwrap();
-        let deserialized_default_config: Map<String, Value> =
-            serde_json::from_reader(file).unwrap();
-
-        let (mut config_map, pointers_map) = get_maps_from_raw_json(deserialized_default_config);
-        let arg_matches = get_command_matches(&config_map, node_command(), args)?;
-        if let Some(custom_config_path) = arg_matches.try_get_one::<PathBuf>("config_file")? {
-            update_config_map_by_custom_config(&mut config_map, custom_config_path)?;
-        };
-        update_config_map_by_command_args(&mut config_map, &arg_matches)?;
-        update_config_map_by_pointers(&mut config_map, &pointers_map)?;
-        load(&config_map)
+        let path = Path::new(
+            &env::var("CARGO_MANIFEST_DIR").expect("Env var 'CARGO_MANIFEST_DIR' did not found"),
+        )
+        .join("../..")
+        .join(DEFAULT_CONFIG_PATH);
+        let default_config_file = std::fs::File::open(path)
+            .unwrap_or_else(|_| panic!("Failed to open file in {DEFAULT_CONFIG_PATH}"));
+        load_and_process_config(default_config_file, node_command(), args)
     }
 
     pub fn get_config_representation(&self) -> Result<serde_json::Value, SubConfigError> {
         Ok(serde_json::to_value(self)?)
     }
+}
+
+/// The command line interface of this node.
+pub fn node_command() -> Command {
+    Command::new("Papyrus")
+        .version(VERSION_FULL)
+        .about("Papyrus is a StarkNet full node written in Rust.")
 }

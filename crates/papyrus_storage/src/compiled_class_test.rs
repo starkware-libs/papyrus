@@ -40,9 +40,10 @@ fn casm_rewrite() {
     let Err(err) = writer
         .begin_rw_txn()
         .unwrap()
-        .append_casm(&ClassHash::default(), &CasmContractClass::default())  else {
-            panic!("Unexpected Ok.");
-        };
+        .append_casm(&ClassHash::default(), &CasmContractClass::default())
+    else {
+        panic!("Unexpected Ok.");
+    };
 
     assert_matches!(err, StorageError::CompiledClassReWrite{class_hash} if class_hash == ClassHash::default());
 }
