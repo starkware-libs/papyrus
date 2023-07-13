@@ -28,7 +28,6 @@ fn tx_v2() -> TransactionVersion {
 // TODO(dan): consider extracting common fields out (version, hash, type).
 #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(tag = "type")]
-// Note: When deserializing an untagged enum, no variant can be a prefix of variants to follow.
 pub enum Transaction {
     #[serde(rename = "DECLARE")]
     Declare(IntermediateDeclareTransaction),
