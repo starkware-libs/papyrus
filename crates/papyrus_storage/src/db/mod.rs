@@ -62,6 +62,7 @@ impl DbConfig {
     }
 }
 
+#[allow(missing_docs)]
 /// A single table statistics.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbTableStats {

@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 //! A storage implementation for a [`Starknet`] node.
 //!
 //! This crate provides a writing and reading interface for various Starknet data structures to a
@@ -51,6 +52,8 @@ pub mod compiled_class;
 pub mod compression_utils;
 pub mod db;
 pub mod header;
+// TODO(yair): Once decided whether to keep the ommer module, write its documentation or delete it.
+#[doc(hidden)]
 pub mod ommer;
 mod serializers;
 pub mod state;
@@ -58,6 +61,7 @@ mod version;
 
 #[cfg(any(feature = "testing", test))]
 #[path = "test_utils.rs"]
+#[doc(hidden)]
 pub mod test_utils;
 
 use std::collections::HashMap;
@@ -263,6 +267,7 @@ macro_rules! struct_field_names {
 use struct_field_names;
 
 /// Error type for the storage crate.
+#[allow(missing_docs)]
 #[derive(thiserror::Error, Debug)]
 pub enum StorageError {
     /// Errors related to the underlying database.
@@ -333,6 +338,7 @@ pub enum StorageError {
 pub type StorageResult<V> = std::result::Result<V, StorageError>;
 
 /// A struct for the configuration of the storage.
+#[allow(missing_docs)]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct StorageConfig {
     pub db_config: DbConfig,
