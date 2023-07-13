@@ -4,6 +4,10 @@
 //! database. Enables at most one writing operation and multiple reading operations concurrently.
 //! The underlying storage is implemented using the [`libmdbx`] crate.
 //!
+//! # Disclaimer
+//! This crate is still under development and is not keeping backwards compatibility with previous
+//! versions. Breaking changes are expected to happen in the near future.
+//!
 //! # Quick Start
 //! To use this crate, open a storage by calling [`open_storage`] to get a [`StorageWriter`] and a
 //! [`StorageReader`] and use them to create [`StorageTxn`] instances. The actual
