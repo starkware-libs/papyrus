@@ -3967,6 +3967,7 @@ dependencies = [
  "indexmap 1.9.3",
  "jsonrpsee",
  "jsonschema",
+ "lazy_static",
  "metrics",
  "metrics-exporter-prometheus",
  "papyrus_proc_macros",

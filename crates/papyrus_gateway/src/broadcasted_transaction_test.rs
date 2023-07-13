@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use futures::executor::block_on;
-use rand_chacha::ChaCha8Rng;
+use jsonschema::JSONSchema;
+use lazy_static::lazy_static;
 use starknet_api::core::{CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::{
     EntryPoint as DeprecatedEntryPoint, EntryPointType as DeprecatedEntryPointType, EventAbiEntry,
@@ -42,8 +43,11 @@ auto_impl_get_test_instance! {
 }
 
 fn validate_tx_fits_rpc(tx: BroadcastedTransaction) {
-    let schema = block_on(get_starknet_spec_api_schema(&["BROADCASTED_TXN"]));
-    assert!(schema.is_valid(&serde_json::to_value(tx).unwrap()));
+    lazy_static! {
+        static ref SCHEMA: JSONSchema =
+            block_on(get_starknet_spec_api_schema(&["BROADCASTED_TXN"]));
+    }
+    assert!(SCHEMA.is_valid(&serde_json::to_value(tx).unwrap()));
 }
 
 #[test]

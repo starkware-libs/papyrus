@@ -31,6 +31,7 @@ assert_matches.workspace = true
 camelpaste.workspace = true
 hex.workspace = true
 jsonschema.workspace = true
+lazy_static.workspace = true
 metrics-exporter-prometheus = { version = "0.12.1" }
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 pretty_assertions.workspace = true
