@@ -18,6 +18,7 @@ futures-util.workspace = true
 itertools.workspace = true
 jsonrpsee = { workspace = true, features = ["full"] }
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
+lazy_static.workspace = true
 papyrus_config = { path = "../papyrus_config" }
 papyrus_gateway = { path = "../papyrus_gateway" }
 papyrus_monitoring_gateway = { path = "../papyrus_monitoring_gateway" }

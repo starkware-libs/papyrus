@@ -13,8 +13,8 @@ use clap::{arg, value_parser, Arg, ArgMatches, Command};
 use itertools::chain;
 use papyrus_config::command::update_config_map_by_command;
 use papyrus_config::{
-    append_sub_config_name, load, ParamPath, SerializeConfig, SerializedParam, SubConfigError,
-    DEFAULT_CHAIN_ID,
+    append_sub_config_name, get_maps_from_raw_json, load, update_config_map_by_pointers, ParamPath,
+    SerializeConfig, SerializedParam, SubConfigError, DEFAULT_CHAIN_ID,
 };
 use papyrus_gateway::GatewayConfig;
 use papyrus_monitoring_gateway::MonitoringGatewayConfig;
@@ -92,13 +92,9 @@ impl Config {
         let deserialized_default_config: Map<String, Value> =
             serde_json::from_reader(file).unwrap();
 
-        // TODO(yoav): Move to a separate function in 'Config' crate.
-        let mut config_map: BTreeMap<String, SerializedParam> = deserialized_default_config
-            .into_iter()
-            .map(|(key, value)| (key, serde_json::from_value(value).unwrap()))
-            .collect();
-
+        let (mut config_map, pointers_map) = get_maps_from_raw_json(deserialized_default_config);
         update_config_map_by_command(&mut config_map, node_command(), args)?;
+        update_config_map_by_pointers(&mut config_map, &pointers_map)?;
         load(&config_map)
     }
 
