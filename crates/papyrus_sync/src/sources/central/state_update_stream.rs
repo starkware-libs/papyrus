@@ -138,7 +138,9 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
     // Adds more class downloading tasks.
     fn schedule_class_downloads(self: &mut std::pin::Pin<&mut Self>, should_poll_again: &mut bool) {
         while self.download_class_tasks.len() < MAX_CLASSES_TO_DOWNLOAD {
-            let Some(class_hash) = self.classes_to_download.pop_front() else { break; };
+            let Some(class_hash) = self.classes_to_download.pop_front() else {
+                break;
+            };
             let starknet_client = self.starknet_client.clone();
             let storage_reader = self.storage_reader.clone();
             self.download_class_tasks.push_back(Box::pin(download_class_if_necessary(
@@ -156,8 +158,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
         cx: &mut std::task::Context<'_>,
         should_poll_again: &mut bool,
     ) -> CentralResult<()> {
-        let Poll::Ready(Some(maybe_class)) =
-            self.download_class_tasks.poll_next_unpin(cx) else {
+        let Poll::Ready(Some(maybe_class)) = self.download_class_tasks.poll_next_unpin(cx) else {
             return Ok(());
         };
 
@@ -205,7 +206,8 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
         }
 
         let Poll::Ready(Some((block_number, maybe_state_update))) =
-            self.download_state_update_tasks.poll_next_unpin(cx) else {
+            self.download_state_update_tasks.poll_next_unpin(cx)
+        else {
             return Ok(());
         };
 
