@@ -66,11 +66,10 @@ fn append_state_diff_declared_classes() {
         r#type: FunctionAbiEntryType::Function,
         entry: FunctionAbiEntry { name: String::from("junk"), inputs: vec![], outputs: vec![] },
     })]);
-    if let Err(err) = txn.append_state_diff(BlockNumber(2), diff2, IndexMap::new()) {
-        assert_matches!(err, StorageError::ClassAlreadyExists { class_hash: _ });
-    } else {
+    let Err(err) = txn.append_state_diff(BlockNumber(2), diff2, IndexMap::new()) else {
         panic!("Unexpected Ok.");
-    }
+    };
+    assert_matches!(err, StorageError::ClassAlreadyExists { class_hash: _ });
 
     let txn = writer.begin_rw_txn().unwrap();
     let statetxn = txn.get_state_reader().unwrap();

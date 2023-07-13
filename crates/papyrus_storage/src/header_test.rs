@@ -12,18 +12,19 @@ use crate::{StorageError, StorageWriter};
 async fn append_header() {
     let ((reader, mut writer), _temp_dir) = get_test_storage();
 
-    // Check for MarkerMismatch error  when trying to append the wrong block number.
-    if let Err(err) =
-        writer.begin_rw_txn().unwrap().append_header(BlockNumber(5), &BlockHeader::default())
+    // Check for MarkerMismatch error when trying to append the wrong block number.
+    let Err(err) =
+        writer.begin_rw_txn().unwrap().append_header(BlockNumber(5), &BlockHeader::default()) else
     {
-        assert_matches!(
-            err,
-            StorageError::MarkerMismatch { expected, found }
-            if expected == BlockNumber(0) && found == BlockNumber(5)
-        );
-    } else {
         panic!("Unexpected Ok.");
-    }
+    };
+
+    assert_matches!(
+        err,
+        StorageError::MarkerMismatch { expected, found }
+        if expected == BlockNumber(0) && found == BlockNumber(5)
+    );
+
     // Check block hash.
     assert_eq!(
         reader.begin_ro_txn().unwrap().get_block_number_by_hash(&BlockHash::default()).unwrap(),
