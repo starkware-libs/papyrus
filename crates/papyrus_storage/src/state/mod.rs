@@ -261,13 +261,14 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         state_number: StateNumber,
         class_hash: &ClassHash,
     ) -> StorageResult<Option<ContractClass>> {
-        let Some(block_number) =
-            self.declared_classes_block_table.get(self.txn, class_hash)? else {return Ok(None)};
+        let Some(block_number) = self.declared_classes_block_table.get(self.txn, class_hash)?
+        else {
+            return Ok(None);
+        };
         if state_number.is_before(block_number) {
             return Ok(None);
         }
-        let Some(contract_class) =
-        self.declared_classes_table.get(self.txn, class_hash)? else {
+        let Some(contract_class) = self.declared_classes_table.get(self.txn, class_hash)? else {
             return Err(StorageError::DBInconsistency {
                 msg: "block number found in declared_classes_block_table but contract class is \
                       not found in declared_classes_table."
@@ -307,7 +308,9 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         state_number: StateNumber,
         class_hash: &ClassHash,
     ) -> StorageResult<Option<DeprecatedContractClass>> {
-        let Some(value) = self.deprecated_declared_classes_table.get(self.txn, class_hash)? else { return Ok(None) };
+        let Some(value) = self.deprecated_declared_classes_table.get(self.txn, class_hash)? else {
+            return Ok(None);
+        };
         if state_number.is_before(value.block_number) {
             return Ok(None);
         }

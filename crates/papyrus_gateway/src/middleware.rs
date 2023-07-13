@@ -43,12 +43,15 @@ fn add_version_to_method_name_in_body(
         .iter_mut()
         .map(|body| {
             let Some(stripped_method) = strip_starknet_from_method(body.method.as_ref()) else {
-                return Err(BoxError::from("Method name has unexpected format"))
+                return Err(BoxError::from("Method name has unexpected format"));
             };
             body.method = format!("starknet_{prefix}_{stripped_method}").into();
             Ok(body)
         })
-        .collect::<Result<Vec<_>, _>>() else { return Err(BoxError::from("Method name has unexpected format")) };
+        .collect::<Result<Vec<_>, _>>()
+    else {
+        return Err(BoxError::from("Method name has unexpected format"));
+    };
     let serialized = match is_single {
         true => serde_json::to_vec(&vec_body[0]),
         false => serde_json::to_vec(&vec_body),
