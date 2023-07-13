@@ -1,6 +1,4 @@
 use std::collections::{BTreeMap, HashMap};
-use std::fs::File;
-use std::io::{BufWriter, Write};
 use std::ops::IndexMut;
 use std::time::Duration;
 
@@ -135,12 +133,4 @@ where
         map.insert(split[0].to_string(), split[1].to_string());
     }
     Ok(Some(map))
-}
-
-pub fn dump_to_file<T: SerializeConfig>(config: &T, file_path: &str) {
-    let dumped = config.dump();
-    let file = File::create(file_path).expect("creating failed");
-    let mut writer = BufWriter::new(file);
-    serde_json::to_writer_pretty(&mut writer, &dumped).expect("writing failed");
-    writer.flush().expect("flushing failed");
 }

@@ -114,6 +114,7 @@ fn test_update_dumped_config() {
     let mut dumped_config =
         TypicalConfig { a: Duration::from_secs(1), b: "bbb".to_owned(), c: false }.dump();
     let args = vec!["Testing", "--a", "1234", "--b", "15", "--c", "true"];
+    let args: Vec<String> = args.into_iter().map(|s| s.to_owned()).collect();
 
     update_config_map_by_command(&mut dumped_config, command, args).unwrap();
 

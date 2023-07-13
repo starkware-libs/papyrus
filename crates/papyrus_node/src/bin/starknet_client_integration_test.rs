@@ -7,7 +7,7 @@ use starknet_client::{StarknetClient, StarknetClientTrait};
 
 #[tokio::main]
 async fn main() {
-    let config = Config::load_from_builder(vec![
+    let config = Config::load_and_process(vec![
         "--chain_id=SN_GOERLI".to_owned(),
         "--central_url=https://alpha4.starknet.io/".to_owned(),
     ])

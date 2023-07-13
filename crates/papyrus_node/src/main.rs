@@ -69,7 +69,7 @@ fn configure_tracing() {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let config = Config::load_from_builder(args().collect())?;
+    let config = Config::load_and_process(args().collect())?;
     configure_tracing();
     info!("Booting up.");
     run_threads(config).await
