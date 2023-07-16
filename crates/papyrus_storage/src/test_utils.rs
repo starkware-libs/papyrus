@@ -1,3 +1,5 @@
+//! Test utilities for the storage crate users.
+
 use starknet_api::core::ChainId;
 use tempfile::{tempdir, TempDir};
 
@@ -24,6 +26,8 @@ pub fn get_test_config() -> (DbConfig, TempDir) {
     )
 }
 
+/// Returns [`StorageReader`], [`StorageWriter`] and the temporary directory that holds a db for
+/// testing purposes.
 pub fn get_test_storage() -> ((StorageReader, StorageWriter), TempDir) {
     let (config, temp_dir) = get_test_config();
     ((open_storage(config).unwrap()), temp_dir)
