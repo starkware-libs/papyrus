@@ -76,6 +76,14 @@ impl Transaction {
             Transaction::L1Handler(tx) => tx.r#type,
         }
     }
+
+    pub fn contract_address(&self) -> Option<ContractAddress> {
+        match self {
+            Transaction::Deploy(tx) => Some(tx.contract_address),
+            Transaction::DeployAccount(tx) => Some(tx.contract_address),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -186,7 +194,6 @@ impl From<DeployTransaction> for starknet_api::transaction::DeployTransaction {
         starknet_api::transaction::DeployTransaction {
             transaction_hash: deploy_tx.transaction_hash,
             version: deploy_tx.version,
-            contract_address: deploy_tx.contract_address,
             constructor_calldata: deploy_tx.constructor_calldata,
             class_hash: deploy_tx.class_hash,
             contract_address_salt: deploy_tx.contract_address_salt,
@@ -215,7 +222,6 @@ impl From<DeployAccountTransaction> for starknet_api::transaction::DeployAccount
         starknet_api::transaction::DeployAccountTransaction {
             transaction_hash: deploy_tx.transaction_hash,
             version: deploy_tx.version,
-            contract_address: deploy_tx.contract_address,
             constructor_calldata: deploy_tx.constructor_calldata,
             class_hash: deploy_tx.class_hash,
             contract_address_salt: deploy_tx.contract_address_salt,
@@ -314,10 +320,11 @@ pub struct TransactionReceipt {
 impl TransactionReceipt {
     pub fn into_starknet_api_transaction_output(
         self,
-        tx_type: TransactionType,
+        transaction: &Transaction,
     ) -> TransactionOutput {
         let messages_sent = self.l2_to_l1_messages.into_iter().map(MessageToL1::from).collect();
-        match tx_type {
+        let contract_address = transaction.contract_address();
+        match transaction.transaction_type() {
             TransactionType::Declare => TransactionOutput::Declare(DeclareTransactionOutput {
                 actual_fee: self.actual_fee,
                 messages_sent,
@@ -327,12 +334,16 @@ impl TransactionReceipt {
                 actual_fee: self.actual_fee,
                 messages_sent,
                 events: self.events,
+                contract_address: contract_address
+                    .expect("Deploy transaction must have a contract address."),
             }),
             TransactionType::DeployAccount => {
                 TransactionOutput::DeployAccount(DeployAccountTransactionOutput {
                     actual_fee: self.actual_fee,
                     messages_sent,
                     events: self.events,
+                    contract_address: contract_address
+                        .expect("Deploy account transaction must have a contract address."),
                 })
             }
             TransactionType::InvokeFunction => TransactionOutput::Invoke(InvokeTransactionOutput {
