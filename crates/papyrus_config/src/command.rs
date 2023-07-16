@@ -17,7 +17,8 @@ pub fn get_command_matches(
     Ok(command.args(build_args_parser(config_map)).try_get_matches_from(command_input)?)
 }
 
-/// Takes matched arguments from the command line interface and updates the config map.
+/// Takes matched arguments from the command line interface and env variables and updates the config
+/// map.
 /// Supports usize, bool and String.
 pub fn update_config_map_by_command_args(
     config_map: &mut BTreeMap<ParamPath, SerializedParam>,
@@ -31,8 +32,8 @@ pub fn update_config_map_by_command_args(
     Ok(())
 }
 
-/// Builds the parser for the command line flags according to the types of the values in the config
-/// map.
+/// Builds the parser for the command line flags and env variables according to the types of the
+/// values in the config map.
 fn build_args_parser(config_map: &BTreeMap<ParamPath, SerializedParam>) -> Vec<Arg> {
     let mut args_parser = vec![
         // Custom_config_file_path.
@@ -51,6 +52,7 @@ fn build_args_parser(config_map: &BTreeMap<ParamPath, SerializedParam>) -> Vec<A
 
         let arg = Arg::new(param_path)
             .long(param_path)
+            .env(param_path.to_uppercase())
             .help(&serialized_param.description)
             .value_parser(clap_parser);
         args_parser.push(arg);

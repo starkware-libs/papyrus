@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::env;
 use std::time::Duration;
 
 use assert_matches::assert_matches;
@@ -117,7 +118,8 @@ fn test_update_dumped_config() {
     let command = Command::new("Testing");
     let mut dumped_config =
         TypicalConfig { a: Duration::from_secs(1), b: "bbb".to_owned(), c: false }.dump();
-    let args = vec!["Testing", "--a", "1234", "--b", "15", "--c", "true"];
+    let args = vec!["Testing", "--a", "1234", "--b", "15"];
+    env::set_var("C", "true");
     let args: Vec<String> = args.into_iter().map(|s| s.to_owned()).collect();
 
     let arg_matches = get_command_matches(&dumped_config, command, args).unwrap();
