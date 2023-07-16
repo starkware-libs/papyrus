@@ -5,9 +5,9 @@ use starknet_writer_client::objects::transaction::{
     DeclareV1Transaction, DeployAccountTransaction, InvokeTransaction,
 };
 
-// DeclareV2 is not from the client because the broadcasted transaction of declare v2 has
-// slight alterations from the client declare v2. We define our own BroadcastedDeclareV2Transaction
-// further below.
+// BroadcastedDeclareV2Transaction is not from starknet_writer_client because the broadcasted
+// declare v2 has slight alterations from the client declare v2. We define our own
+// BroadcastedDeclareV2Transaction further below.
 pub type BroadcastedDeclareV1Transaction = DeclareV1Transaction;
 pub type BroadcastedDeployAccountTransaction = DeployAccountTransaction;
 pub type BroadcastedInvokeTransaction = InvokeTransaction;
