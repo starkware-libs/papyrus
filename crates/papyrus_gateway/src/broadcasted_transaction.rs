@@ -1,8 +1,6 @@
 //! This module contains structs for representing a broadcasted transaction.
 //!
-//! A broadcasted transaction is a transaction that wasn't accepted yet to Starknet. It is used to
-//! represent either a transaction that the user wants to include into Starknet or a transaction
-//! that the user wants to simulate on top of the current Starknet state.
+//! A broadcasted transaction is a transaction that wasn't accepted yet to Starknet.
 //!
 //! The broadcasted transaction follows the same structure as described in the [`Starknet specs`]
 //!
