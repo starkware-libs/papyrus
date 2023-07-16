@@ -1,5 +1,3 @@
-use rand::Rng;
-use rand_chacha::ChaCha8Rng;
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{ChainId, ContractAddress};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;

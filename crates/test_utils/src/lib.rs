@@ -556,7 +556,7 @@ macro_rules! auto_impl_get_test_instance {
     // Tuple structs (no names associated with fields) - one field.
     ($(pub)? struct $name:ident($(pub)? $ty:ty); $($rest:tt)*) => {
         impl GetTestInstance for $name {
-            fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+            fn get_test_instance(rng: &mut rand_chacha::ChaCha8Rng) -> Self {
                 Self(<$ty>::get_test_instance(rng))
             }
         }
@@ -565,7 +565,7 @@ macro_rules! auto_impl_get_test_instance {
     // Tuple structs (no names associated with fields) - two fields.
     ($(pub)? struct $name:ident($(pub)? $ty0:ty, $(pub)? $ty1:ty) ; $($rest:tt)*) => {
         impl GetTestInstance for $name {
-            fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+            fn get_test_instance(rng: &mut rand_chacha::ChaCha8Rng) -> Self {
                 Self(<$ty0>::get_test_instance(rng), <$ty1>::get_test_instance(rng))
             }
         }
@@ -574,7 +574,7 @@ macro_rules! auto_impl_get_test_instance {
     // Structs with public fields.
     ($(pub)? struct $name:ident { $(pub $field:ident : $ty:ty ,)* } $($rest:tt)*) => {
         impl GetTestInstance for $name {
-            fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+            fn get_test_instance(rng: &mut rand_chacha::ChaCha8Rng) -> Self {
                 Self {
                     $(
                         $field: <$ty>::get_test_instance(rng),
@@ -587,7 +587,7 @@ macro_rules! auto_impl_get_test_instance {
     // Tuples - two elements.
     (($ty0:ty, $ty1:ty) ; $($rest:tt)*) => {
         impl GetTestInstance for ($ty0, $ty1) {
-            fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+            fn get_test_instance(rng: &mut rand_chacha::ChaCha8Rng) -> Self {
                 (
                     <$ty0>::get_test_instance(rng),
                     <$ty1>::get_test_instance(rng),
@@ -599,7 +599,7 @@ macro_rules! auto_impl_get_test_instance {
     // Tuples - three elements.
     (($ty0:ty, $ty1:ty, $ty2:ty) ; $($rest:tt)*) => {
         impl GetTestInstance for ($ty0, $ty1, $ty2) {
-            fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+            fn get_test_instance(rng: &mut rand_chacha::ChaCha8Rng) -> Self {
                 (
                     <$ty0>::get_test_instance(rng),
                     <$ty1>::get_test_instance(rng),
@@ -612,7 +612,8 @@ macro_rules! auto_impl_get_test_instance {
     // enums.
     ($(pub)? enum $name:ident { $($variant:ident $( ($ty:ty) )? = $num:expr ,)* } $($rest:tt)*) => {
         impl GetTestInstance for $name {
-            fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+            fn get_test_instance(rng: &mut rand_chacha::ChaCha8Rng) -> Self {
+                use rand::Rng;
                 let variant = rng.gen_range(0..get_number_of_variants!(enum $name { $($variant $( ($ty) )? = $num ,)* }));
                 match variant {
                     $(
@@ -639,7 +640,7 @@ macro_rules! auto_impl_get_test_instance {
 macro_rules! default_impl_get_test_instance {
     ($name:path) => {
         impl GetTestInstance for $name {
-            fn get_test_instance(_rng: &mut ChaCha8Rng) -> Self {
+            fn get_test_instance(_rng: &mut rand_chacha::ChaCha8Rng) -> Self {
                 Self::default()
             }
         }

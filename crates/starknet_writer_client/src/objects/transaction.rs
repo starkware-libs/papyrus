@@ -72,17 +72,21 @@ pub struct DeclareV2Transaction {
     pub signature: TransactionSignature,
 }
 
-// The only difference between this and ContractClass in starknet_api is in the program.
+// The only difference between this and ContractClass in starknet_api (in the
+// deprecated_contract_class module) is in the program.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct DeprecatedContractClass {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub abi: Option<Vec<DeprecatedContractClassAbiEntry>>,
-    // The program is compressed.
-    // TODO(shahak): Create a struct for a compressed value.
-    pub program: String,
+    #[serde(rename = "program")]
+    // TODO(shahak): Create a struct for a compressed base64 value.
+    pub compressed_program: String,
     pub entry_points_by_type: HashMap<DeprecatedEntryPointType, Vec<DeprecatedEntryPoint>>,
 }
 
-// The only difference between this and ContractClass in the gateway is in the sierra_program.
+// The only difference between this and ContractClass in starknet_api is in the sierra_program and
+// in the version.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ContractClass {
     // TODO(shahak): Create a struct for a compressed base64 value.

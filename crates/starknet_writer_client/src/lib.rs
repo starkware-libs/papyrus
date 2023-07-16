@@ -2,4 +2,4 @@
 //!
 //! [`starknet`]: https://starknet.io/
 
-mod objects;
+pub mod objects;

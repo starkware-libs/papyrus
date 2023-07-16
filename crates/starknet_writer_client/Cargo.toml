@@ -5,12 +5,24 @@ edition.workspace = true
 repository.workspace = true
 license-file.workspace = true
 
+[features]
+testing = [
+    "rand",
+    "rand_chacha",
+    "test_utils",
+]
+
 [dependencies]
+rand = { workspace = true, optional = true }
+rand_chacha = { workspace = true, optional = true }
 starknet_api.workspace = true
 serde = { workspace = true, features = ["derive"] }
+test_utils = { path = "../test_utils", optional = true }
 
 [dev-dependencies]
 assert.workspace = true
 assert_matches.workspace = true
+rand.workspace = true
+rand_chacha.workspace = true
 serde_json = { workspace = true, features = ["arbitrary_precision"] }
 test_utils = { path = "../test_utils" }
