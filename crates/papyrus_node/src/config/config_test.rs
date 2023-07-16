@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
-use papyrus_config::command::update_config_map_by_command;
+use papyrus_config::command::{get_command_matches, update_config_map_by_command_args};
 use papyrus_config::{get_maps_from_raw_json, load, SerializeConfig, SerializedParam};
 use serde_json::{json, Map, Value};
 use starknet_api::core::ChainId;
@@ -64,7 +64,8 @@ fn test_update_dumped_config_by_command() {
         "/abc",
     ];
     let args: Vec<String> = args.into_iter().map(|s| s.to_owned()).collect();
-    update_config_map_by_command(&mut dumped_config, node_command(), args).unwrap();
+    let arg_matches = get_command_matches(&dumped_config, node_command(), args).unwrap();
+    update_config_map_by_command_args(&mut dumped_config, &arg_matches).unwrap();
     assert_eq!(dumped_config["gateway.max_events_keys"].value, json!(1234));
     assert_eq!(dumped_config["storage.db_config.path_prefix"].value, json!("/abc"));
 }

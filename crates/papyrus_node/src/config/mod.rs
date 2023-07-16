@@ -11,10 +11,11 @@ use std::{env, fs, io};
 
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
 use itertools::chain;
-use papyrus_config::command::update_config_map_by_command;
+use papyrus_config::command::{get_command_matches, update_config_map_by_command_args};
 use papyrus_config::{
-    append_sub_config_name, get_maps_from_raw_json, load, update_config_map_by_pointers, ParamPath,
-    SerializeConfig, SerializedParam, SubConfigError, DEFAULT_CHAIN_ID,
+    append_sub_config_name, get_maps_from_raw_json, load, update_config_map_by_custom_config,
+    update_config_map_by_pointers, ParamPath, SerializeConfig, SerializedParam, SubConfigError,
+    DEFAULT_CHAIN_ID,
 };
 use papyrus_gateway::GatewayConfig;
 use papyrus_monitoring_gateway::MonitoringGatewayConfig;
@@ -93,7 +94,11 @@ impl Config {
             serde_json::from_reader(file).unwrap();
 
         let (mut config_map, pointers_map) = get_maps_from_raw_json(deserialized_default_config);
-        update_config_map_by_command(&mut config_map, node_command(), args)?;
+        let arg_matches = get_command_matches(&config_map, node_command(), args)?;
+        if let Some(custom_config_path) = arg_matches.try_get_one::<PathBuf>("config_file")? {
+            update_config_map_by_custom_config(&mut config_map, custom_config_path)?;
+        };
+        update_config_map_by_command_args(&mut config_map, &arg_matches)?;
         update_config_map_by_pointers(&mut config_map, &pointers_map)?;
         load(&config_map)
     }
