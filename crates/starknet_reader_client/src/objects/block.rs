@@ -174,8 +174,7 @@ impl TryFrom<Block> for starknet_api::block::Block {
                 ));
             }
 
-            let tx_output =
-                receipt.into_starknet_api_transaction_output(transaction.transaction_type());
+            let tx_output = receipt.into_starknet_api_transaction_output(transaction);
             transaction_outputs.push(tx_output);
         }
 
