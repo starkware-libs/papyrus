@@ -11,6 +11,7 @@ use crate::body::events::{
     ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
 };
 use crate::body::TransactionIndex;
+use crate::header::StarknetVersion;
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::Version;
 use crate::{EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey};
@@ -29,6 +30,7 @@ auto_impl_get_test_instance! {
     }
     struct OmmerTransactionKey(pub BlockHash, pub TransactionOffsetInBlock);
     struct OmmerEventKey(pub OmmerTransactionKey, pub EventIndexInTransactionOutput);
+    pub struct StarknetVersion(pub String);
     pub struct ThinDeclareTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,

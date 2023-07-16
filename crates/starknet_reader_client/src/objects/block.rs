@@ -1,9 +1,9 @@
 use std::ops::Index;
 
 use serde::{Deserialize, Serialize};
-#[cfg(doc)]
-use starknet_api::block::Block as starknet_api_block;
-use starknet_api::block::{BlockHash, BlockNumber, BlockTimestamp, GasPrice};
+use starknet_api::block::{
+    Block as starknet_api_block, BlockHash, BlockNumber, BlockTimestamp, GasPrice,
+};
 use starknet_api::core::ContractAddress;
 use starknet_api::hash::StarkHash;
 use starknet_api::serde_utils::NonPrefixedBytesAsHex;
@@ -53,8 +53,9 @@ pub struct Block {
     pub timestamp: BlockTimestamp,
     pub transactions: Vec<Transaction>,
     pub transaction_receipts: Vec<TransactionReceipt>,
-    // Optional since old blocks don't include this field.
-    pub starknet_version: Option<String>,
+    // Default since old blocks don't include this field.
+    #[serde(default)]
+    pub starknet_version: String,
 }
 
 /// Errors that might be encountered while converting the client representation of a [`Block`] to a
@@ -114,18 +115,18 @@ pub enum TransactionReceiptsError {
     },
 }
 
-/// Converts the client representation of [`Block`] to a [`starknet_api`][`Block`].
-impl TryFrom<Block> for starknet_api::block::Block {
-    type Error = ClientError;
-
-    fn try_from(block: Block) -> ClientResult<Self> {
+/// Converts the client representation of [`Block`] to a tuple of a starknet_api
+/// [Block](`starknet_api_block`) and String representing the Starknet version corresponding to
+/// that block.
+impl Block {
+    pub fn to_starknet_api_block_and_version(self) -> ClientResult<(starknet_api_block, String)> {
         // Check that the number of receipts is the same as the number of transactions.
-        let num_of_txs = block.transactions.len();
-        let num_of_receipts = block.transaction_receipts.len();
+        let num_of_txs = self.transactions.len();
+        let num_of_receipts = self.transaction_receipts.len();
         if num_of_txs != num_of_receipts {
             return Err(ClientError::TransactionReceiptsError(
                 TransactionReceiptsError::WrongNumberOfReceipts {
-                    block_number: block.block_number,
+                    block_number: self.block_number,
                     num_of_txs,
                     num_of_receipts,
                 },
@@ -134,15 +135,15 @@ impl TryFrom<Block> for starknet_api::block::Block {
 
         // Get the transaction outputs.
         let mut transaction_outputs = vec![];
-        for (i, receipt) in block.transaction_receipts.into_iter().enumerate() {
-            let transaction = block.transactions.index(i);
+        for (i, receipt) in self.transaction_receipts.into_iter().enumerate() {
+            let transaction = self.transactions.index(i);
 
             // Check that the transaction index that appears in the receipt is the same as the
             // index of the transaction.
             if i != receipt.transaction_index.0 {
                 return Err(ClientError::TransactionReceiptsError(
                     TransactionReceiptsError::MismatchTransactionIndex {
-                        block_number: block.block_number,
+                        block_number: self.block_number,
                         tx_index: TransactionOffsetInBlock(i),
                         tx_hash: transaction.transaction_hash(),
                         receipt_tx_index: receipt.transaction_index,
@@ -155,7 +156,7 @@ impl TryFrom<Block> for starknet_api::block::Block {
             if transaction.transaction_hash() != receipt.transaction_hash {
                 return Err(ClientError::TransactionReceiptsError(
                     TransactionReceiptsError::MismatchTransactionHash {
-                        block_number: block.block_number,
+                        block_number: self.block_number,
                         tx_index: TransactionOffsetInBlock(i),
                         tx_hash: transaction.transaction_hash(),
                         receipt_tx_hash: receipt.transaction_hash,
@@ -169,7 +170,7 @@ impl TryFrom<Block> for starknet_api::block::Block {
             {
                 return Err(ClientError::TransactionReceiptsError(
                     TransactionReceiptsError::MismatchFields {
-                        block_number: block.block_number,
+                        block_number: self.block_number,
                         tx_index: TransactionOffsetInBlock(i),
                         tx_hash: transaction.transaction_hash(),
                         tx_type: transaction.transaction_type(),
@@ -186,7 +187,7 @@ impl TryFrom<Block> for starknet_api::block::Block {
         // Note: This cannot happen before getting the transaction outputs since we need to borrow
         // the block transactions inside the for loop for the transaction type (TransactionType is
         // defined in starknet_client therefore starknet_api::Transaction cannot return it).
-        let transactions: Vec<_> = block
+        let transactions: Vec<_> = self
             .transactions
             .into_iter()
             .map(starknet_api::transaction::Transaction::try_from)
@@ -194,18 +195,18 @@ impl TryFrom<Block> for starknet_api::block::Block {
 
         // Get the header.
         let header = starknet_api::block::BlockHeader {
-            block_hash: block.block_hash,
-            parent_hash: block.parent_block_hash,
-            block_number: block.block_number,
-            gas_price: block.gas_price,
-            state_root: block.state_root.into(),
-            sequencer: block.sequencer_address,
-            timestamp: block.timestamp,
+            block_hash: self.block_hash,
+            parent_hash: self.parent_block_hash,
+            block_number: self.block_number,
+            gas_price: self.gas_price,
+            state_root: self.state_root.into(),
+            sequencer: self.sequencer_address,
+            timestamp: self.timestamp,
         };
 
         let body = starknet_api::block::BlockBody { transactions, transaction_outputs };
 
-        Ok(Self { header, body })
+        Ok((starknet_api_block { header, body }, self.starknet_version))
     }
 }
 
