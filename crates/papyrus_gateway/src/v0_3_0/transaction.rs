@@ -299,54 +299,7 @@ pub struct TransactionReceiptWithStatus {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-#[serde(untagged)]
-pub enum TransactionReceipt {
-    Deploy(DeployTransactionReceipt),
-    Common(CommonTransactionReceipt),
-}
-
-impl TransactionReceipt {
-    pub fn from_transaction_output(
-        output: TransactionOutput,
-        transaction: &starknet_api::transaction::Transaction,
-        block_hash: BlockHash,
-        block_number: BlockNumber,
-    ) -> Self {
-        let common = CommonTransactionReceipt {
-            transaction_hash: transaction.transaction_hash(),
-            r#type: output.r#type(),
-            block_hash,
-            block_number,
-            output,
-        };
-
-        match transaction {
-            starknet_api::transaction::Transaction::DeployAccount(tx) => {
-                Self::Deploy(DeployTransactionReceipt {
-                    common,
-                    contract_address: tx.contract_address,
-                })
-            }
-            starknet_api::transaction::Transaction::Deploy(tx) => {
-                Self::Deploy(DeployTransactionReceipt {
-                    common,
-                    contract_address: tx.contract_address,
-                })
-            }
-            _ => Self::Common(common),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct DeployTransactionReceipt {
-    #[serde(flatten)]
-    pub common: CommonTransactionReceipt,
-    pub contract_address: ContractAddress,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct CommonTransactionReceipt {
+pub struct TransactionReceipt {
     pub transaction_hash: TransactionHash,
     pub r#type: TransactionType,
     pub block_hash: BlockHash,
@@ -358,9 +311,9 @@ pub struct CommonTransactionReceipt {
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(untagged)]
 pub enum TransactionOutput {
-    Declare(DeclareTransactionOutput),
     Deploy(DeployTransactionOutput),
     DeployAccount(DeployAccountTransactionOutput),
+    Declare(DeclareTransactionOutput),
     Invoke(InvokeTransactionOutput),
     L1Handler(L1HandlerTransactionOutput),
 }
@@ -383,6 +336,7 @@ impl TransactionOutput {
                     actual_fee: thin_deploy.actual_fee,
                     messages_sent: thin_deploy.messages_sent,
                     events,
+                    contract_address: thin_deploy.contract_address,
                 })
             }
             ThinTransactionOutput::DeployAccount(thin_deploy) => {
@@ -390,6 +344,7 @@ impl TransactionOutput {
                     actual_fee: thin_deploy.actual_fee,
                     messages_sent: thin_deploy.messages_sent,
                     events,
+                    contract_address: thin_deploy.contract_address,
                 })
             }
             ThinTransactionOutput::Invoke(thin_invoke) => {
