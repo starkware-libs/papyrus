@@ -1,3 +1,11 @@
+//! This module contains all the different transactions that can be added to [`Starknet`] via the
+//! gateway.
+//!
+//! Each transaction can be serialized into a JSON object that the gateway can receive through the
+//! `add_transaction` HTTP method.
+//!
+//! [`Starknet`]: https://starknet.io/
+
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
@@ -11,6 +19,9 @@ use starknet_api::transaction::{
     Calldata, ContractAddressSalt, Fee, TransactionSignature, TransactionVersion,
 };
 
+/// A generic transaction that can be added to Starknet. When the transaction is serialized into a
+/// JSON object, it must be in the format that the Starknet gateway expects in the
+/// `add_transaction` HTTP method.
 #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(tag = "type")]
 pub enum Transaction {
@@ -24,6 +35,7 @@ pub enum Transaction {
     DeclareV2(DeclareV2Transaction),
 }
 
+/// A deploy account transaction that can be added to Starknet through the Starknet gateway.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct DeployAccountTransaction {
@@ -33,22 +45,24 @@ pub struct DeployAccountTransaction {
     pub nonce: Nonce,
     pub max_fee: Fee,
     pub signature: TransactionSignature,
-    #[serde(default)]
     pub version: TransactionVersion,
 }
 
+/// An invoke account transaction that can be added to Starknet through the Starknet gateway.
+/// The invoke is a V1 transaction.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct InvokeTransaction {
     pub calldata: Calldata,
     pub sender_address: ContractAddress,
-    #[serde(default)]
     pub nonce: Nonce,
     pub max_fee: Fee,
     pub signature: TransactionSignature,
     pub version: TransactionVersion,
 }
 
+/// A declare transaction of a Cairo-v0 (deprecated) contract class that can be added to Starknet
+/// through the Starknet gateway.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct DeclareV1Transaction {
@@ -60,6 +74,8 @@ pub struct DeclareV1Transaction {
     pub signature: TransactionSignature,
 }
 
+/// A declare transaction of a Cairo-v1 contract class that can be added to Starknet through the
+/// Starknet gateway.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct DeclareV2Transaction {
@@ -72,8 +88,8 @@ pub struct DeclareV2Transaction {
     pub signature: TransactionSignature,
 }
 
-// The only difference between this and ContractClass in starknet_api (in the
-// deprecated_contract_class module) is in the program.
+// The structs that are implemented here are the structs that have deviations from starknet_api.
+
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct DeprecatedContractClass {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -85,8 +101,6 @@ pub struct DeprecatedContractClass {
     pub entry_points_by_type: HashMap<DeprecatedEntryPointType, Vec<DeprecatedEntryPoint>>,
 }
 
-// The only difference between this and ContractClass in starknet_api is in the sierra_program and
-// in the version.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ContractClass {
     // TODO(shahak): Create a struct for a compressed base64 value.
@@ -97,9 +111,6 @@ pub struct ContractClass {
     pub abi: String,
 }
 
-// The differences between this and ContractClassAbiEntry in starknet_api are:
-// 1. This enum is tagged.
-// 2. There are variants for Constructor and L1Handler.
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 #[serde(tag = "type")]
