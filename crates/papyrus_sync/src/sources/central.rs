@@ -11,7 +11,7 @@ use futures_util::StreamExt;
 use indexmap::IndexMap;
 #[cfg(test)]
 use mockall::automock;
-use papyrus_storage::body::StarknetVersion;
+use papyrus_storage::header::StarknetVersion;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
@@ -272,22 +272,15 @@ fn client_to_central_block(
         Ok(Some(block)) => {
             debug!("Received new block {current_block_number} with hash {}.", block.block_hash);
             trace!("Block: {block:#?}.");
-            let starknet_version = StarknetVersion(
-                block
-                    .starknet_version
-                    .as_ref()
-                    .map_or("0.0.0".to_string(), |version| version.clone()),
-            );
-            Ok((
-                Block::try_from(block).map_err(|err| CentralError::ClientError(Arc::new(err)))?,
-                starknet_version,
-            ))
+            Ok(block
+                .to_starknet_api_block_and_version()
+                .map_err(|err| CentralError::ClientError(Arc::new(err)))?)
         }
         Ok(None) => Err(CentralError::BlockNotFound { block_number: current_block_number }),
         Err(err) => Err(CentralError::ClientError(Arc::new(err))),
     };
     match res {
-        Ok(block) => Ok(block),
+        Ok((block, version_string)) => Ok((block, StarknetVersion(version_string))),
         Err(err) => {
             debug!("Received error for block {}: {:?}.", current_block_number, err);
             Err(err)

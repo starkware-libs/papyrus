@@ -105,16 +105,16 @@ fn load_block_state_update_succeeds() {
 }
 
 #[tokio::test]
-async fn try_into_starknet_api() {
+async fn to_starknet_api_block_and_version() {
     let raw_block = read_resource_file("block.json");
     let block: Block = serde_json::from_str(&raw_block).unwrap();
     let expected_num_of_tx_outputs = block.transactions.len();
-    let starknet_api_block = starknet_api::block::Block::try_from(block).unwrap();
+    let (starknet_api_block, _version) = block.to_starknet_api_block_and_version().unwrap();
     assert_eq!(expected_num_of_tx_outputs, starknet_api_block.body.transaction_outputs.len());
 
     let mut err_block: Block = serde_json::from_str(&raw_block).unwrap();
     err_block.transaction_receipts.pop();
-    let err = starknet_api::block::Block::try_from(err_block).unwrap_err();
+    let err = err_block.to_starknet_api_block_and_version().unwrap_err();
     assert_matches!(
         err,
         ClientError::TransactionReceiptsError(TransactionReceiptsError::WrongNumberOfReceipts {
@@ -126,7 +126,7 @@ async fn try_into_starknet_api() {
 
     let mut err_block: Block = serde_json::from_str(&raw_block).unwrap();
     err_block.transaction_receipts[0].transaction_index = TransactionOffsetInBlock(1);
-    let err = starknet_api::block::Block::try_from(err_block).unwrap_err();
+    let err = err_block.to_starknet_api_block_and_version().unwrap_err();
     assert_matches!(
         err,
         ClientError::TransactionReceiptsError(TransactionReceiptsError::MismatchTransactionIndex {
@@ -139,7 +139,7 @@ async fn try_into_starknet_api() {
 
     let mut err_block: Block = serde_json::from_str(&raw_block).unwrap();
     err_block.transaction_receipts[0].transaction_hash = TransactionHash(stark_felt!("0x4"));
-    let err = starknet_api::block::Block::try_from(err_block).unwrap_err();
+    let err = err_block.to_starknet_api_block_and_version().unwrap_err();
     assert_matches!(
         err,
         ClientError::TransactionReceiptsError(TransactionReceiptsError::MismatchTransactionHash {
@@ -156,7 +156,7 @@ async fn try_into_starknet_api() {
         transaction_hash: err_block.transactions[0].transaction_hash(),
         ..err_block.transaction_receipts[4].clone()
     };
-    let err = starknet_api::block::Block::try_from(err_block).unwrap_err();
+    let err = err_block.to_starknet_api_block_and_version().unwrap_err();
     assert_matches!(
         err,
         ClientError::TransactionReceiptsError(TransactionReceiptsError::MismatchFields {

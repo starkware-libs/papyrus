@@ -36,10 +36,12 @@
 #[path = "header_test.rs"]
 mod header_test;
 
+use std::fmt::Display;
+
+use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use tracing::debug;
 
-use crate::body::StarknetVersion;
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
@@ -58,7 +60,7 @@ pub trait HeaderStorageReader {
         block_hash: &BlockHash,
     ) -> StorageResult<Option<BlockNumber>>;
 
-    /// Returns the StarkNet version at the given block number.
+    /// Returns the Starknet version at the given block number.
     fn get_starknet_version(
         &self,
         block_number: BlockNumber,
@@ -76,13 +78,23 @@ where
         self,
         block_number: BlockNumber,
         block_header: &BlockHeader,
-        starknet_version: StarknetVersion,
+    ) -> StorageResult<Self>;
+
+    /// Update the starknet version if needed.
+    fn update_starknet_version(
+        self,
+        block_number: &BlockNumber,
+        starknet_version: &StarknetVersion,
     ) -> StorageResult<Self>;
 
     /// Removes a block header from the storage and returns the removed data.
     fn revert_header(self, block_number: BlockNumber)
     -> StorageResult<(Self, Option<BlockHeader>)>;
 }
+
+/// A version of the Starknet protocol used when creating a block.
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub struct StarknetVersion(pub String);
 
 impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode> {
     fn get_header_marker(&self) -> StorageResult<BlockNumber> {
@@ -133,11 +145,9 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
         self,
         block_number: BlockNumber,
         block_header: &BlockHeader,
-        starknet_version: StarknetVersion,
     ) -> StorageResult<Self> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let headers_table = self.txn.open_table(&self.tables.headers)?;
-        let starknet_version_table = self.txn.open_table(&self.tables.starknet_version)?;
         let block_hash_to_number_table = self.txn.open_table(&self.tables.block_hash_to_number)?;
 
         update_marker(&self.txn, &markers_table, block_number)?;
@@ -148,14 +158,26 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
         // Write mapping.
         update_hash_mapping(&self.txn, &block_hash_to_number_table, block_header, block_number)?;
 
-        // Write StarkNet version if needed.
-        update_starknet_version(
-            &self.txn,
-            &starknet_version_table,
-            starknet_version,
-            &block_number,
-        )?;
+        Ok(self)
+    }
 
+    fn update_starknet_version(
+        self,
+        block_number: &BlockNumber,
+        starknet_version: &StarknetVersion,
+    ) -> StorageResult<Self> {
+        let starknet_version_table = self.txn.open_table(&self.tables.starknet_version)?;
+        let mut cursor = starknet_version_table.cursor(&self.txn)?;
+        cursor.lower_bound(block_number)?;
+        let res = cursor.prev()?;
+
+        match res {
+            Some((_block_number, last_starknet_version))
+                if last_starknet_version == *starknet_version => {}
+            _ => {
+                starknet_version_table.insert(&self.txn, block_number, starknet_version)?;
+            }
+        }
         Ok(self)
     }
 
@@ -190,26 +212,6 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
     }
 }
 
-fn update_starknet_version(
-    txn: &DbTransaction<'_, RW>,
-    starknet_version_table: &TableHandle<'_, BlockNumber, StarknetVersion>,
-    starknet_version: StarknetVersion,
-    block_number: &BlockNumber,
-) -> StorageResult<()> {
-    let mut cursor = starknet_version_table.cursor(txn)?;
-    cursor.lower_bound(block_number)?;
-    let res = cursor.prev()?;
-
-    match res {
-        Some((_block_number, last_starknet_version))
-            if last_starknet_version == starknet_version =>
-        {
-            Ok(())
-        }
-        _ => Ok(starknet_version_table.insert(txn, block_number, &starknet_version)?),
-    }
-}
-
 fn update_hash_mapping<'env>(
     txn: &DbTransaction<'env, RW>,
     block_hash_to_number_table: &'env BlockHashToNumberTable<'env>,
@@ -241,4 +243,16 @@ fn update_marker<'env>(
     // Advance marker.
     markers_table.upsert(txn, &MarkerKind::Header, &block_number.next())?;
     Ok(())
+}
+
+impl Default for StarknetVersion {
+    fn default() -> Self {
+        Self("0.0.0".to_string())
+    }
+}
+
+impl Display for StarknetVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }

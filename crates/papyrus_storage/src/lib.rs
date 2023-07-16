@@ -17,7 +17,7 @@
 //! ```
 //! use papyrus_storage::open_storage;
 //! use papyrus_storage::db::DbConfig;
-//! use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};    // Import the header API.
+//! use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter, StarknetVersion};    // Import the header API.
 //! use starknet_api::block::{BlockHeader, BlockNumber};
 //! use starknet_api::core::ChainId;
 //!
@@ -70,7 +70,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use body::events::EventIndex;
-use body::StarknetVersion;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use db::DbTableStats;
 use ommer::{OmmerEventKey, OmmerTransactionKey};
@@ -89,6 +88,7 @@ use crate::db::{
     open_env, DbConfig, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier,
     TransactionKind, RO, RW,
 };
+use crate::header::StarknetVersion;
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::{VersionStorageReader, VersionStorageWriter};
 

@@ -51,11 +51,12 @@ use crate::body::events::{
     ThinDeployTransactionOutput, ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput,
     ThinTransactionOutput,
 };
-use crate::body::{StarknetVersion, TransactionIndex};
+use crate::body::TransactionIndex;
 use crate::compression_utils::{
     compress, decompress, decompress_from_reader, serialize_and_compress,
 };
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
+use crate::header::StarknetVersion;
 use crate::ommer::{OmmerEventKey, OmmerTransactionKey};
 #[cfg(test)]
 use crate::serializers::serializers_test::{create_storage_serde_test, StorageSerdeTest};
@@ -824,6 +825,3 @@ impl StorageSerde for CasmContractClass {
         })
     }
 }
-
-#[cfg(test)]
-create_storage_serde_test!(CasmContractClass);
