@@ -33,7 +33,7 @@ rand = { workspace = true, optional = true }
 rand_chacha = { workspace = true, optional = true }
 reqwest = { workspace = true, features = ["json", "blocking"] }
 serde = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
+serde_json = { workspace = true, features = ["arbitrary_precision"] }
 starknet_api = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }
 test_utils = { path = "../test_utils", optional = true }
