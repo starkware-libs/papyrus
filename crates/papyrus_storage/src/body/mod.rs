@@ -69,8 +69,6 @@ pub trait BodyStorageReader {
     /// The body marker is the first block number that doesn't exist yet.
     fn get_body_marker(&self) -> StorageResult<BlockNumber>;
 
-    // TODO(spapini): get_transaction_by_hash.
-
     /// Returns the transaction at the given index.
     fn get_transaction(
         &self,
