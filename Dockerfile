@@ -64,7 +64,7 @@ ENV ID=1000
 WORKDIR /app
 # Copy the node executable and its config.
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/papyrus_node /app/target/release/papyrus_node
-COPY config/ /app/config
+COPY config/ /app/crates/papyrus_node/resources/
 
 # Copy the load test executable and its resources.
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/papyrus_load_test /app/target/release/papyrus_load_test
