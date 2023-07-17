@@ -1,11 +1,14 @@
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use jsonrpsee::{Methods, RpcModule};
+use papyrus_common::SyncingState;
 use papyrus_storage::StorageReader;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{ChainId, ContractAddress};
 use starknet_api::transaction::EventKey;
+use tokio::sync::Mutex;
 
 // todo: nevo - remove dependency on specific version
 use crate::v0_3_0::api::api_impl::JsonRpcServerV0_3_0Impl;
@@ -102,6 +105,7 @@ pub fn get_methods_from_supported_apis(
     storage_reader: StorageReader,
     max_events_chunk_size: usize,
     max_events_keys: usize,
+    sync_status: &Arc<Mutex<Option<SyncingState>>>,
 ) -> Methods {
     let mut methods: Methods = Methods::new();
     version_config::VERSION_CONFIG
@@ -116,6 +120,7 @@ pub fn get_methods_from_supported_apis(
                         storage_reader: storage_reader.clone(),
                         max_events_chunk_size,
                         max_events_keys,
+                        sync_status: sync_status.clone(),
                     }),
                     _ => None,
                 },
@@ -135,6 +140,7 @@ pub trait JsonRpcServerImpl: Sized {
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,
+        sync_status: Arc<Mutex<Option<SyncingState>>>,
     ) -> Self;
 
     fn into(self) -> RpcModule<Self>;

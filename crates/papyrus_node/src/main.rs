@@ -1,11 +1,14 @@
 use std::env::args;
+use std::sync::Arc;
 
+use papyrus_common::SyncingState;
 use papyrus_gateway::run_server;
 use papyrus_monitoring_gateway::MonitoringServer;
 use papyrus_node::config::Config;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_storage::{open_storage, StorageReader, StorageWriter};
 use papyrus_sync::{CentralError, CentralSource, StateSync, StateSyncError};
+use tokio::sync::Mutex;
 use tracing::info;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::prelude::*;
@@ -27,11 +30,13 @@ async fn run_threads(config: Config) -> anyhow::Result<()> {
     let monitoring_server_handle = monitoring_server.spawn_server().await;
 
     // JSON-RPC server.
-    let (_, server_handle) = run_server(&config.gateway, storage_reader.clone()).await?;
+    let sync_status = Arc::new(Mutex::new(Option::<SyncingState>::None));
+    let (_, server_handle) =
+        run_server(&config.gateway, &sync_status, storage_reader.clone()).await?;
     let server_handle_future = tokio::spawn(server_handle.stopped());
 
     // Sync task.
-    let sync_future = run_sync(config, storage_reader.clone(), storage_writer);
+    let sync_future = run_sync(config, sync_status, storage_reader.clone(), storage_writer);
     let sync_handle = tokio::spawn(sync_future);
 
     let (_, _, sync_result) =
@@ -41,6 +46,7 @@ async fn run_threads(config: Config) -> anyhow::Result<()> {
 
     async fn run_sync(
         config: Config,
+        sync_status: Arc<Mutex<Option<SyncingState>>>,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
     ) -> Result<(), StateSyncError> {
@@ -48,8 +54,13 @@ async fn run_threads(config: Config) -> anyhow::Result<()> {
         let central_source =
             CentralSource::new(config.central.clone(), VERSION_FULL, storage_reader.clone())
                 .map_err(CentralError::ClientCreation)?;
-        let mut sync =
-            StateSync::new(sync_config, central_source, storage_reader.clone(), storage_writer);
+        let mut sync = StateSync::new(
+            sync_config,
+            sync_status,
+            central_source,
+            storage_reader.clone(),
+            storage_writer,
+        );
         sync.run().await
     }
 }
