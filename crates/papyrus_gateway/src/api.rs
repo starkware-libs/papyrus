@@ -102,6 +102,7 @@ pub fn get_methods_from_supported_apis(
     storage_reader: StorageReader,
     max_events_chunk_size: usize,
     max_events_keys: usize,
+    collect_metrics: bool,
 ) -> Methods {
     let mut methods: Methods = Methods::new();
     version_config::VERSION_CONFIG
@@ -116,6 +117,7 @@ pub fn get_methods_from_supported_apis(
                         storage_reader: storage_reader.clone(),
                         max_events_chunk_size,
                         max_events_keys,
+                        collect_metrics,
                     }),
                     _ => None,
                 },
@@ -135,6 +137,7 @@ pub trait JsonRpcServerImpl: Sized {
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,
+        collect_metrics: bool,
     ) -> Self;
 
     fn into(self) -> RpcModule<Self>;

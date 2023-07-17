@@ -46,6 +46,7 @@ pub struct GatewayConfig {
     pub server_address: String,
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
+    pub collect_metrics: bool,
 }
 
 impl From<JsonRpcError> for ErrorObjectOwned {
@@ -130,17 +131,26 @@ pub async fn run_server(
         storage_reader,
         config.max_events_chunk_size,
         config.max_events_keys,
+        config.collect_metrics,
     );
-    // TODO(dvir): set the logger only if we want to collect metrics.
-    let server = ServerBuilder::default()
+    let addr;
+    let handle;
+    let server_builder = ServerBuilder::default()
         .max_request_body_size(SERVER_MAX_BODY_SIZE)
-        .set_middleware(tower::ServiceBuilder::new().filter_async(proxy_request))
-        .set_logger(MetricLogger::new(&methods))
-        .build(&config.server_address)
-        .await?;
-    let addr = server.local_addr()?;
+        .set_middleware(tower::ServiceBuilder::new().filter_async(proxy_request));
 
-    let handle = server.start(methods)?;
+    if config.collect_metrics {
+        let server = server_builder
+            .set_logger(MetricLogger::new(&methods))
+            .build(&config.server_address)
+            .await?;
+        addr = server.local_addr()?;
+        handle = server.start(methods)?;
+    } else {
+        let server = server_builder.build(&config.server_address).await?;
+        addr = server.local_addr()?;
+        handle = server.start(methods)?;
+    }
     info!(local_address = %addr, "Gateway is running.");
     Ok((addr, handle))
 }

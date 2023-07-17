@@ -38,6 +38,7 @@ pub struct JsonRpcServerV0_3_0Impl {
     pub storage_reader: StorageReader,
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
+    pub collect_metrics: bool,
 }
 
 #[async_trait]
@@ -426,8 +427,9 @@ impl JsonRpcServerImpl for JsonRpcServerV0_3_0Impl {
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,
+        collect_metrics: bool,
     ) -> Self {
-        Self { chain_id, storage_reader, max_events_chunk_size, max_events_keys }
+        Self { chain_id, storage_reader, max_events_chunk_size, max_events_keys, collect_metrics }
     }
 
     fn into(self) -> RpcModule<Self> {

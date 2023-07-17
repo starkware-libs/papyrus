@@ -30,6 +30,8 @@ gateway:
     max_events_chunk_size: 1000
     # Maximum number of keys supported by the node in get_events requests.
     max_events_keys: 100
+    # If true, collect metrics for the package.
+    collect_metrics: false
 
 # Monitoring server.
 monitoring_gateway:

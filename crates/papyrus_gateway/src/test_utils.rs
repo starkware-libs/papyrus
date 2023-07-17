@@ -13,6 +13,7 @@ pub fn get_test_gateway_config() -> GatewayConfig {
         server_address: String::from("127.0.0.1:0"),
         max_events_chunk_size: 10,
         max_events_keys: 10,
+        collect_metrics: false,
     }
 }
 
@@ -26,6 +27,7 @@ pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
             storage_reader,
             config.max_events_chunk_size,
             config.max_events_keys,
+            config.collect_metrics,
         )
         .into(),
         storage_writer,
