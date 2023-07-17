@@ -101,6 +101,6 @@ fn get_version_as_prefix(path: &str) -> Result<&str, BoxError> {
 }
 
 fn is_supported_path(path: &str) -> bool {
-    let re = Regex::new(r"^\/rpc\/V[0-9]+_[0-9]+_[0-9]+$").unwrap();
+    let re = Regex::new(r"^\/rpc\/V[0-9]+_[0-9]+_[0-9]+$").expect("should be a valid regex");
     re.is_match(path)
 }
