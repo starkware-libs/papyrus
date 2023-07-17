@@ -38,11 +38,13 @@ auto_impl_get_test_instance! {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
+        pub contract_address: ContractAddress,
     }
     pub struct ThinDeployAccountTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
+        pub contract_address: ContractAddress,
     }
     pub struct ThinInvokeTransactionOutput {
         pub actual_fee: Fee,
