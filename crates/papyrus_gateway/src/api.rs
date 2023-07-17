@@ -1,6 +1,8 @@
 use std::collections::HashSet;
+use std::sync::{Arc, Mutex};
 
 use jsonrpsee::{Methods, RpcModule};
+use papyrus_common::SyncingState;
 use papyrus_storage::StorageReader;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
@@ -87,6 +89,7 @@ pub fn get_methods_from_supported_apis(
     storage_reader: StorageReader,
     max_events_chunk_size: usize,
     max_events_keys: usize,
+    shared_syncing_state: &Arc<Mutex<SyncingState>>,
 ) -> Methods {
     let mut methods: Methods = Methods::new();
     version_config::VERSION_CONFIG
@@ -101,6 +104,7 @@ pub fn get_methods_from_supported_apis(
                         storage_reader: storage_reader.clone(),
                         max_events_chunk_size,
                         max_events_keys,
+                        shared_syncing_state: shared_syncing_state.clone(),
                     }),
                     _ => None,
                 },
@@ -120,6 +124,7 @@ pub trait JsonRpcServerImpl: Sized {
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,
+        shared_syncing_state: Arc<Mutex<SyncingState>>,
     ) -> Self;
 
     fn into_rpc_module(self) -> RpcModule<Self>;

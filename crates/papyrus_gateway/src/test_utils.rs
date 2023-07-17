@@ -1,5 +1,8 @@
+use std::sync::{Arc, Mutex};
+
 use jsonrpsee::server::RpcModule;
 use jsonschema::JSONSchema;
+use papyrus_common::SyncingState;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
 use starknet_api::core::ChainId;
@@ -17,16 +20,22 @@ pub fn get_test_gateway_config() -> GatewayConfig {
     }
 }
 
+pub(crate) fn get_test_syncing_state() -> Arc<Mutex<SyncingState>> {
+    Arc::new(Mutex::new(SyncingState::default()))
+}
+
 pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
 -> (RpcModule<T>, StorageWriter) {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
     let config = get_test_gateway_config();
+    let shared_syncing_state = get_test_syncing_state();
     (
         T::new(
             config.chain_id,
             storage_reader,
             config.max_events_chunk_size,
             config.max_events_keys,
+            shared_syncing_state,
         )
         .into_rpc_module(),
         storage_writer,
