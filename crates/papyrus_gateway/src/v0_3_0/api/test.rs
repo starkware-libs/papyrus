@@ -8,6 +8,7 @@ use jsonrpsee::core::params::ObjectParams;
 use jsonrpsee::core::Error;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonschema::JSONSchema;
+use papyrus_common::SyncingState;
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::body::{BodyStorageWriter, TransactionIndex};
@@ -37,7 +38,7 @@ use super::super::transaction::{
 use super::api_impl::JsonRpcServerV0_3_0Impl;
 use crate::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, EventsChunk,
-    JsonRpcError, SyncingState, Tag,
+    JsonRpcError, Tag,
 };
 use crate::test_utils::{
     get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
@@ -134,7 +135,7 @@ async fn syncing() {
         .call::<_, SyncingState>("starknet_V0_3_0_syncing", ObjectParams::new())
         .await
         .unwrap();
-    assert_eq!(res, SyncingState::IsSyncing(false));
+    assert_eq!(res, SyncingState::Synced(false));
 }
 
 #[tokio::test]

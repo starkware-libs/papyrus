@@ -3955,6 +3955,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "papyrus_common"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "starknet_api",
+]
+
+[[package]]
 name = "papyrus_gateway"
 version = "0.0.1"
 dependencies = [
@@ -3972,6 +3980,7 @@ dependencies = [
  "lazy_static",
  "metrics",
  "metrics-exporter-prometheus",
+ "papyrus_common",
  "papyrus_proc_macros",
  "papyrus_storage",
  "pretty_assertions",

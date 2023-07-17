@@ -1,6 +1,7 @@
 use jsonrpsee::core::{async_trait, RpcResult};
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
+use papyrus_common::SyncingState;
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
 use papyrus_storage::state::StateStorageReader;
@@ -16,7 +17,7 @@ use tracing::instrument;
 
 use super::{
     BlockHashAndNumber, BlockId, EventFilter, EventsChunk, GatewayContractClass,
-    JsonRpcV0_3_0Server, SyncingState,
+    JsonRpcV0_3_0Server,
 };
 use crate::api::{BlockHashOrNumber, ContinuationToken, JsonRpcError, JsonRpcServerImpl};
 use crate::block::get_block_header_by_number;
@@ -422,7 +423,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     fn syncing(&self) -> RpcResult<SyncingState> {
         // TODO(omri): This is temporary. Implement syncing logic.
-        Ok(SyncingState::IsSyncing(false))
+        Ok(SyncingState::Synced(false))
     }
 }
 

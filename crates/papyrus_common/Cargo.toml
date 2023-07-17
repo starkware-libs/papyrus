@@ -1,0 +1,10 @@
+[package]
+name = "papyrus_common"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license-file.workspace = true
+
+[dependencies]
+serde.workspace = true
+starknet_api.workspace = true

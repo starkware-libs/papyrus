@@ -1,5 +1,6 @@
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
+use papyrus_common::SyncingState;
 use papyrus_proc_macros::versioned_rpc;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
@@ -10,9 +11,7 @@ use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 use super::block::Block;
 use super::state::StateUpdate;
 use super::transaction::{TransactionReceiptWithStatus, TransactionWithType};
-use crate::api::{
-    BlockHashAndNumber, BlockId, EventFilter, EventsChunk, GatewayContractClass, SyncingState,
-};
+use crate::api::{BlockHashAndNumber, BlockId, EventFilter, EventsChunk, GatewayContractClass};
 
 pub mod api_impl;
 #[cfg(test)]
