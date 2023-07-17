@@ -1,3 +1,6 @@
+pub mod response;
+#[cfg(test)]
+mod response_test;
 #[cfg(any(feature = "testing", test))]
 pub mod test_utils;
 pub mod transaction;
