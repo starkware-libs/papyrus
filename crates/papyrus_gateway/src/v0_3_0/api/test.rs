@@ -20,7 +20,7 @@ use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::StateDiff;
 use starknet_api::transaction::{
-    EventIndexInTransactionOutput, EventKey, Transaction, TransactionHash, TransactionOffsetInBlock,
+    EventIndexInTransactionOutput, EventKey, TransactionHash, TransactionOffsetInBlock,
 };
 use starknet_api::{patricia_key, stark_felt};
 use test_utils::{
@@ -32,8 +32,8 @@ use super::super::block::Block;
 use super::super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::super::state::{ContractClass, StateUpdate, ThinStateDiff};
 use super::super::transaction::{
-    Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
-    TransactionWithType, Transactions,
+    Event, Transaction, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus,
+    TransactionStatus, Transactions,
 };
 use super::api_impl::JsonRpcServerV0_3_0Impl;
 use crate::api::{
@@ -1067,17 +1067,17 @@ async fn get_transaction_by_hash() {
 
     let expected_transaction = block.body.transactions.index(0);
     let res = module
-        .call::<_, TransactionWithType>(
+        .call::<_, Transaction>(
             "starknet_V0_3_0_getTransactionByHash",
             [expected_transaction.transaction_hash()],
         )
         .await
         .unwrap();
-    assert_eq!(res, TransactionWithType::from(expected_transaction.clone()));
+    assert_eq!(res, Transaction::from(expected_transaction.clone()));
 
     // Ask for an invalid transaction.
     let err = module
-        .call::<_, TransactionWithType>(
+        .call::<_, Transaction>(
             "starknet_V0_3_0_getTransactionByHash",
             [TransactionHash(StarkHash::from(1_u8))],
         )
@@ -1109,27 +1109,27 @@ async fn get_transaction_by_block_id_and_index() {
 
     // Get transaction by block hash.
     let res = module
-        .call::<_, TransactionWithType>(
+        .call::<_, Transaction>(
             "starknet_V0_3_0_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash)), 0),
         )
         .await
         .unwrap();
-    assert_eq!(res, TransactionWithType::from(expected_transaction.clone()));
+    assert_eq!(res, Transaction::from(expected_transaction.clone()));
 
     // Get transaction by block number.
     let res = module
-        .call::<_, TransactionWithType>(
+        .call::<_, Transaction>(
             "starknet_V0_3_0_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(block.header.block_number)), 0),
         )
         .await
         .unwrap();
-    assert_eq!(res, TransactionWithType::from(expected_transaction.clone()));
+    assert_eq!(res, Transaction::from(expected_transaction.clone()));
 
     // Ask for an invalid block hash.
     let err = module
-        .call::<_, TransactionWithType>(
+        .call::<_, Transaction>(
             "starknet_V0_3_0_getTransactionByBlockIdAndIndex",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
@@ -1148,7 +1148,7 @@ async fn get_transaction_by_block_id_and_index() {
 
     // Ask for an invalid block number.
     let err = module
-        .call::<_, TransactionWithType>(
+        .call::<_, Transaction>(
             "starknet_V0_3_0_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), 0),
         )
@@ -1162,7 +1162,7 @@ async fn get_transaction_by_block_id_and_index() {
 
     // Ask for an invalid transaction index.
     let err = module
-        .call::<_, TransactionWithType>(
+        .call::<_, Transaction>(
             "starknet_V0_3_0_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash)), 1),
         )
@@ -1691,7 +1691,11 @@ async fn validate_block(header: &BlockHeader, server_address: SocketAddr, schema
     assert!(schema.validate(&res["result"]).is_ok(), "Block with transaction hashes is not valid.");
 }
 
-async fn validate_transaction(tx: &Transaction, server_address: SocketAddr, schema: &JSONSchema) {
+async fn validate_transaction(
+    tx: &starknet_api::transaction::Transaction,
+    server_address: SocketAddr,
+    schema: &JSONSchema,
+) {
     let res = send_request(
         server_address,
         "starknet_getTransactionByBlockIdAndIndex",
