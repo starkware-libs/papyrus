@@ -59,9 +59,11 @@ mod serializers;
 pub mod state;
 mod version;
 
+#[cfg(test)]
+mod test_instances;
+
 #[cfg(any(feature = "testing", test))]
 #[path = "test_utils.rs"]
-#[doc(hidden)]
 pub mod test_utils;
 
 use std::collections::HashMap;

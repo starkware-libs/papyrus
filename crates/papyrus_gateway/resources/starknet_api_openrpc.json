@@ -1452,7 +1452,11 @@
                                 "description": "The address of the account contract sending the declaration transaction",
                                 "$ref": "#/components/schemas/ADDRESS"
                             }
-                        }
+                        },
+                        "required": [
+                            "contract_class",
+                            "sender_address"
+                        ]
                     }
                 ]
             },
@@ -1741,8 +1745,39 @@
                                 "$ref": "#/components/schemas/INVOKE_TXN_V0"
                             },
                             {
-                                "$ref": "#/components/schemas/INVOKE_TXN_V1"
+                                "$ref": "#/components/schemas/BROADCASTED_INVOKE_TXN_V1"
                             }
+                        ]
+                    }
+                ]
+            },
+            "BROADCASTED_INVOKE_TXN_V1": {
+                "title": "Invoke transaction V1",
+                "description": "initiates a transaction from a given account",
+                "allOf": [
+                    {
+                        "title": "Common transaction properties",
+                        "$ref": "#/components/schemas/BROADCASTED_TXN_COMMON_PROPERTIES"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "sender_address": {
+                                "title": "sender address",
+                                "$ref": "#/components/schemas/ADDRESS"
+                            },
+                            "calldata": {
+                                "type": "array",
+                                "title": "calldata",
+                                "description": "The data expected by the account's `execute` function (in most usecases, this includes the called contract address and a function selector)",
+                                "items": {
+                                    "$ref": "#/components/schemas/FELT"
+                                }
+                            }
+                        },
+                        "required": [
+                            "sender_address",
+                            "calldata"
                         ]
                     }
                 ]
