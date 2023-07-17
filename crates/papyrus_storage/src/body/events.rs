@@ -100,12 +100,14 @@ pub struct EventIterByEventIndex<'txn, 'env> {
 
 impl EventIterByEventIndex<'_, '_> {
     fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
-        let Some((tx_index, tx_output)) = &self.tx_current else {return Ok(None)};
+        let Some((tx_index, tx_output)) = &self.tx_current else { return Ok(None) };
         let Some(address) =
-            tx_output.events_contract_addresses_as_ref().
-            get(self.event_index_in_tx_current.0) else {return Ok(None)};
+            tx_output.events_contract_addresses_as_ref().get(self.event_index_in_tx_current.0)
+        else {
+            return Ok(None);
+        };
         let key = (*address, EventIndex(*tx_index, self.event_index_in_tx_current));
-        let Some(content) = self.events_table.get(self.txn, &key)? else {return Ok(None)};
+        let Some(content) = self.events_table.get(self.txn, &key)? else { return Ok(None) };
         self.event_index_in_tx_current.0 += 1;
         self.find_next_event_by_event_index()?;
         Ok(Some((key, content)))
@@ -237,6 +239,7 @@ pub struct ThinDeployTransactionOutput {
     pub actual_fee: Fee,
     pub messages_sent: Vec<MessageToL1>,
     pub events_contract_addresses: Vec<ContractAddress>,
+    pub contract_address: ContractAddress,
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -244,6 +247,7 @@ pub struct ThinDeployAccountTransactionOutput {
     pub actual_fee: Fee,
     pub messages_sent: Vec<MessageToL1>,
     pub events_contract_addresses: Vec<ContractAddress>,
+    pub contract_address: ContractAddress,
 }
 
 impl From<TransactionOutput> for ThinTransactionOutput {
@@ -263,6 +267,7 @@ impl From<TransactionOutput> for ThinTransactionOutput {
                     actual_fee: tx_output.actual_fee,
                     messages_sent: tx_output.messages_sent,
                     events_contract_addresses,
+                    contract_address: tx_output.contract_address,
                 })
             }
             TransactionOutput::DeployAccount(tx_output) => {
@@ -270,6 +275,7 @@ impl From<TransactionOutput> for ThinTransactionOutput {
                     actual_fee: tx_output.actual_fee,
                     messages_sent: tx_output.messages_sent,
                     events_contract_addresses,
+                    contract_address: tx_output.contract_address,
                 })
             }
             TransactionOutput::Invoke(tx_output) => {

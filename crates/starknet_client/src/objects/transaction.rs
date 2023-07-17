@@ -187,7 +187,6 @@ impl From<DeployTransaction> for starknet_api::transaction::DeployTransaction {
         starknet_api::transaction::DeployTransaction {
             transaction_hash: deploy_tx.transaction_hash,
             version: deploy_tx.version,
-            contract_address: deploy_tx.contract_address,
             constructor_calldata: deploy_tx.constructor_calldata,
             class_hash: deploy_tx.class_hash,
             contract_address_salt: deploy_tx.contract_address_salt,
@@ -215,7 +214,6 @@ impl From<DeployAccountTransaction> for starknet_api::transaction::DeployAccount
         starknet_api::transaction::DeployAccountTransaction {
             transaction_hash: deploy_tx.transaction_hash,
             version: deploy_tx.version,
-            contract_address: deploy_tx.contract_address,
             constructor_calldata: deploy_tx.constructor_calldata,
             class_hash: deploy_tx.class_hash,
             contract_address_salt: deploy_tx.contract_address_salt,
@@ -263,8 +261,7 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
             transaction_hash: invoke_tx.transaction_hash,
             max_fee: invoke_tx.max_fee,
             signature: invoke_tx.signature,
-            nonce: invoke_tx.nonce.unwrap_or_default(),
-            sender_address: invoke_tx.sender_address,
+            contract_address: invoke_tx.sender_address,
             entry_point_selector: invoke_tx.entry_point_selector.ok_or(
                 ClientError::BadTransaction {
                     tx_hash: invoke_tx.transaction_hash,
@@ -311,39 +308,39 @@ pub struct TransactionReceipt {
 impl TransactionReceipt {
     pub fn into_starknet_api_transaction_output(
         self,
-        tx_type: TransactionType,
+        transaction: &Transaction,
     ) -> TransactionOutput {
         let messages_sent = self.l2_to_l1_messages.into_iter().map(MessageToL1::from).collect();
-        match tx_type {
-            TransactionType::Declare => TransactionOutput::Declare(DeclareTransactionOutput {
+        match transaction {
+            Transaction::Declare(_) => TransactionOutput::Declare(DeclareTransactionOutput {
                 actual_fee: self.actual_fee,
                 messages_sent,
                 events: self.events,
             }),
-            TransactionType::Deploy => TransactionOutput::Deploy(DeployTransactionOutput {
+            Transaction::Deploy(tx) => TransactionOutput::Deploy(DeployTransactionOutput {
                 actual_fee: self.actual_fee,
                 messages_sent,
                 events: self.events,
+                contract_address: tx.contract_address,
             }),
-            TransactionType::DeployAccount => {
+            Transaction::DeployAccount(tx) => {
                 TransactionOutput::DeployAccount(DeployAccountTransactionOutput {
                     actual_fee: self.actual_fee,
                     messages_sent,
                     events: self.events,
+                    contract_address: tx.contract_address,
                 })
             }
-            TransactionType::InvokeFunction => TransactionOutput::Invoke(InvokeTransactionOutput {
+            Transaction::Invoke(_) => TransactionOutput::Invoke(InvokeTransactionOutput {
                 actual_fee: self.actual_fee,
                 messages_sent,
                 events: self.events,
             }),
-            TransactionType::L1Handler => {
-                TransactionOutput::L1Handler(L1HandlerTransactionOutput {
-                    actual_fee: self.actual_fee,
-                    messages_sent,
-                    events: self.events,
-                })
-            }
+            Transaction::L1Handler(_) => TransactionOutput::L1Handler(L1HandlerTransactionOutput {
+                actual_fee: self.actual_fee,
+                messages_sent,
+                events: self.events,
+            }),
         }
     }
 }

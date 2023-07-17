@@ -2,7 +2,8 @@ use papyrus_storage::body::events::ThinTransactionOutput;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
 use starknet_api::core::{
-    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, Nonce,
+    calculate_contract_address, ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector,
+    Nonce,
 };
 use starknet_api::hash::StarkFelt;
 use starknet_api::transaction::{
@@ -81,7 +82,6 @@ pub struct InvokeTransactionV0 {
     pub max_fee: Fee,
     pub version: TransactionVersion,
     pub signature: TransactionSignature,
-    pub nonce: Nonce,
     pub contract_address: ContractAddress,
     pub entry_point_selector: EntryPointSelector,
     pub calldata: Calldata,
@@ -94,8 +94,7 @@ impl From<starknet_api::transaction::InvokeTransactionV0> for InvokeTransactionV
             max_fee: tx.max_fee,
             version: tx_v0(),
             signature: tx.signature,
-            nonce: tx.nonce,
-            contract_address: tx.sender_address,
+            contract_address: tx.contract_address,
             entry_point_selector: tx.entry_point_selector,
             calldata: tx.calldata,
         }
@@ -324,16 +323,24 @@ impl TransactionReceipt {
 
         match transaction {
             starknet_api::transaction::Transaction::DeployAccount(tx) => {
-                Self::Deploy(DeployTransactionReceipt {
-                    common,
-                    contract_address: tx.contract_address,
-                })
+                let contract_address = calculate_contract_address(
+                    tx.contract_address_salt,
+                    tx.class_hash,
+                    &tx.constructor_calldata,
+                    ContractAddress::default(),
+                )
+                .expect("Unable to calculate contract address.");
+                Self::Deploy(DeployTransactionReceipt { common, contract_address })
             }
             starknet_api::transaction::Transaction::Deploy(tx) => {
-                Self::Deploy(DeployTransactionReceipt {
-                    common,
-                    contract_address: tx.contract_address,
-                })
+                let contract_address = calculate_contract_address(
+                    tx.contract_address_salt,
+                    tx.class_hash,
+                    &tx.constructor_calldata,
+                    ContractAddress::default(),
+                )
+                .expect("Unable to calculate contract address.");
+                Self::Deploy(DeployTransactionReceipt { common, contract_address })
             }
             _ => Self::Common(common),
         }
@@ -385,6 +392,7 @@ impl TransactionOutput {
                     actual_fee: thin_deploy.actual_fee,
                     messages_sent: thin_deploy.messages_sent,
                     events,
+                    contract_address: thin_deploy.contract_address,
                 })
             }
             ThinTransactionOutput::DeployAccount(thin_deploy) => {
@@ -392,6 +400,7 @@ impl TransactionOutput {
                     actual_fee: thin_deploy.actual_fee,
                     messages_sent: thin_deploy.messages_sent,
                     events,
+                    contract_address: thin_deploy.contract_address,
                 })
             }
             ThinTransactionOutput::Invoke(thin_invoke) => {

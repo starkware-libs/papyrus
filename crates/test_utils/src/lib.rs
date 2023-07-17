@@ -334,7 +334,6 @@ auto_impl_get_test_instance! {
         pub signature: TransactionSignature,
         pub nonce: Nonce,
         pub class_hash: ClassHash,
-        pub contract_address: ContractAddress,
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
     }
@@ -342,7 +341,6 @@ auto_impl_get_test_instance! {
         pub transaction_hash: TransactionHash,
         pub version: TransactionVersion,
         pub class_hash: ClassHash,
-        pub contract_address: ContractAddress,
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
     }
@@ -404,8 +402,7 @@ auto_impl_get_test_instance! {
         pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
         pub signature: TransactionSignature,
-        pub nonce: Nonce,
-        pub sender_address: ContractAddress,
+        pub contract_address: ContractAddress,
         pub entry_point_selector: EntryPointSelector,
         pub calldata: Calldata,
     }
