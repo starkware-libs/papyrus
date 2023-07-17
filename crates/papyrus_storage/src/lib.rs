@@ -1,5 +1,5 @@
 #![warn(missing_docs)]
-//! A storage implementation for a [`Starknet`] node.
+//! A storage implementation for a [`Starknet`] full-node.
 //!
 //! This crate provides a writing and reading interface for various Starknet data structures to a
 //! database. Enables at most one writing operation and multiple reading operations concurrently.
