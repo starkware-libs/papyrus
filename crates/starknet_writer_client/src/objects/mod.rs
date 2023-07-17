@@ -1,3 +1,4 @@
+pub mod error;
 pub mod response;
 #[cfg(test)]
 mod response_test;
