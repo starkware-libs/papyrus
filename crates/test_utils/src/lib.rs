@@ -47,8 +47,8 @@ use starknet_api::transaction::{
     EventContent, EventData, EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction,
     InvokeTransactionOutput, InvokeTransactionV0, InvokeTransactionV1, L1HandlerTransaction,
     L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, MessageToL1, MessageToL2,
-    Transaction, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
-    TransactionSignature, TransactionVersion,
+    Transaction, TransactionExecutionStatus, TransactionHash, TransactionOffsetInBlock,
+    TransactionOutput, TransactionSignature, TransactionVersion,
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -160,14 +160,16 @@ fn get_rand_test_body_with_events(
 ) -> BlockBody {
     let mut transactions = vec![];
     let mut transaction_outputs = vec![];
+    let mut transaction_execution_status = vec![];
     for i in 0..transaction_count {
         let mut transaction = Transaction::get_test_instance(rng);
         set_transaction_hash(&mut transaction, TransactionHash(StarkHash::from(i as u128)));
         let transaction_output = get_test_transaction_output(&transaction);
         transactions.push(transaction);
         transaction_outputs.push(transaction_output);
+        transaction_execution_status.push(TransactionExecutionStatus::default());
     }
-    let mut body = BlockBody { transactions, transaction_outputs };
+    let mut body = BlockBody { transactions, transaction_outputs, transaction_execution_status };
     for tx_output in &mut body.transaction_outputs {
         let mut events = vec![];
         for _ in 0..events_per_tx {
@@ -498,6 +500,10 @@ auto_impl_get_test_instance! {
         DeployAccount(DeployAccountTransaction) = 2,
         Invoke(InvokeTransaction) = 3,
         L1Handler(L1HandlerTransaction) = 4,
+    }
+    pub enum TransactionExecutionStatus {
+        Succeeded = 0,
+        Reverted = 1,
     }
     pub struct TransactionHash(pub StarkHash);
     pub struct TransactionOffsetInBlock(pub usize);

@@ -16,8 +16,8 @@ pub fn get_test_gateway_config() -> GatewayConfig {
     }
 }
 
-pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
--> (RpcModule<T>, StorageWriter) {
+pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>(
+) -> (RpcModule<T>, StorageWriter) {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
     let config = get_test_gateway_config();
     (
@@ -27,7 +27,7 @@ pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
             config.max_events_chunk_size,
             config.max_events_keys,
         )
-        .into(),
+        .into_rpc_module(),
         storage_writer,
     )
 }

@@ -42,3 +42,4 @@ test_utils = { path = "../test_utils" }
 starknet_api = { workspace = true, features = ["testing"] }
 starknet_writer_client = { path = "../starknet_writer_client", features = ["testing"] }
 indexmap = { workspace = true, features = ["serde"] }
+tracing-test = "0.2.4"

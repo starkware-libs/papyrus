@@ -1,8 +1,5 @@
 mod api;
 mod block;
-pub mod broadcasted_transaction;
-#[cfg(test)]
-mod broadcasted_transaction_test;
 mod gateway_metrics;
 #[cfg(test)]
 mod gateway_test;
@@ -11,6 +8,7 @@ mod middleware;
 mod test_utils;
 mod transaction;
 mod v0_3_0;
+mod v0_4_0;
 mod version_config;
 #[cfg(test)]
 mod version_config_test;
