@@ -1,5 +1,7 @@
 use std::env::args;
+use std::sync::{Arc, Mutex};
 
+use papyrus_common::SyncingState;
 use papyrus_gateway::run_server;
 use papyrus_monitoring_gateway::MonitoringServer;
 use papyrus_node::config::Config;
@@ -27,11 +29,14 @@ async fn run_threads(config: Config) -> anyhow::Result<()> {
     let monitoring_server_handle = monitoring_server.spawn_server().await;
 
     // JSON-RPC server.
-    let (_, server_handle) = run_server(&config.gateway, storage_reader.clone()).await?;
+    let shared_syncing_state = Arc::new(Mutex::new(SyncingState::default()));
+    let (_, server_handle) =
+        run_server(&config.gateway, &shared_syncing_state, storage_reader.clone()).await?;
     let server_handle_future = tokio::spawn(server_handle.stopped());
 
     // Sync task.
-    let sync_future = run_sync(config, storage_reader.clone(), storage_writer);
+    let sync_future =
+        run_sync(config, shared_syncing_state, storage_reader.clone(), storage_writer);
     let sync_handle = tokio::spawn(sync_future);
 
     let (_, _, sync_result) =
@@ -41,6 +46,7 @@ async fn run_threads(config: Config) -> anyhow::Result<()> {
 
     async fn run_sync(
         config: Config,
+        shared_syncing_state: Arc<Mutex<SyncingState>>,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
     ) -> Result<(), StateSyncError> {
@@ -48,8 +54,13 @@ async fn run_threads(config: Config) -> anyhow::Result<()> {
         let central_source =
             CentralSource::new(config.central.clone(), VERSION_FULL, storage_reader.clone())
                 .map_err(CentralError::ClientCreation)?;
-        let mut sync =
-            StateSync::new(sync_config, central_source, storage_reader.clone(), storage_writer);
+        let mut sync = StateSync::new(
+            sync_config,
+            shared_syncing_state,
+            central_source,
+            storage_reader.clone(),
+            storage_writer,
+        );
         sync.run().await
     }
 }

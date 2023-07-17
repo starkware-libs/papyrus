@@ -17,12 +17,14 @@ mod version_config_test;
 
 use std::fmt::Display;
 use std::net::SocketAddr;
+use std::sync::{Arc, Mutex};
 
 use gateway_metrics::MetricLogger;
 use jsonrpsee::server::{ServerBuilder, ServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
 use jsonrpsee::types::ErrorObjectOwned;
+use papyrus_common::SyncingState;
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::db::TransactionKind;
@@ -124,6 +126,7 @@ impl ContinuationToken {
 #[instrument(skip(storage_reader), level = "debug", err)]
 pub async fn run_server(
     config: &GatewayConfig,
+    shared_syncing_state: &Arc<Mutex<SyncingState>>,
     storage_reader: StorageReader,
 ) -> anyhow::Result<(SocketAddr, ServerHandle)> {
     debug!("Starting gateway.");
@@ -132,6 +135,7 @@ pub async fn run_server(
         storage_reader,
         config.max_events_chunk_size,
         config.max_events_keys,
+        shared_syncing_state,
     );
     let addr;
     let handle;

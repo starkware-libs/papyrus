@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::ops::Index;
+use std::sync::{Arc, Mutex};
 
 use assert_matches::assert_matches;
 use indexmap::IndexMap;
@@ -8,6 +9,7 @@ use jsonrpsee::core::params::ObjectParams;
 use jsonrpsee::core::Error;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonschema::JSONSchema;
+use papyrus_common::SyncingState;
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::body::{BodyStorageWriter, TransactionIndex};
@@ -1617,7 +1619,9 @@ async fn serialize_returns_valid_json() {
         .unwrap();
 
     let gateway_config = get_test_gateway_config();
-    let (server_address, _handle) = run_server(&gateway_config, storage_reader).await.unwrap();
+    let shared_syncing_state = Arc::new(Mutex::new(SyncingState::default()));
+    let (server_address, _handle) =
+        run_server(&gateway_config, &shared_syncing_state, storage_reader).await.unwrap();
 
     let schema = get_starknet_spec_api_schema(
         &[
