@@ -9,7 +9,7 @@ use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 
 use super::block::Block;
 use super::state::StateUpdate;
-use super::transaction::{TransactionReceiptWithStatus, TransactionWithType};
+use super::transaction::{Transaction, TransactionReceiptWithStatus};
 use crate::api::{BlockHashAndNumber, BlockId, EventFilter, EventsChunk, GatewayContractClass};
 
 pub mod api_impl;
@@ -45,10 +45,7 @@ pub trait JsonRpc {
 
     /// Gets the details of a submitted transaction.
     #[method(name = "getTransactionByHash")]
-    fn get_transaction_by_hash(
-        &self,
-        transaction_hash: TransactionHash,
-    ) -> RpcResult<TransactionWithType>;
+    fn get_transaction_by_hash(&self, transaction_hash: TransactionHash) -> RpcResult<Transaction>;
 
     /// Gets the details of a transaction by a given block id and index.
     #[method(name = "getTransactionByBlockIdAndIndex")]
@@ -56,7 +53,7 @@ pub trait JsonRpc {
         &self,
         block_id: BlockId,
         index: TransactionOffsetInBlock,
-    ) -> RpcResult<TransactionWithType>;
+    ) -> RpcResult<Transaction>;
 
     /// Gets the number of transactions in a block given a block id.
     #[method(name = "getBlockTransactionCount")]

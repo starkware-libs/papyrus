@@ -25,7 +25,7 @@ use crate::v0_3_0::block::{Block, BlockHeader};
 use crate::v0_3_0::state::StateUpdate;
 use crate::v0_3_0::transaction::{
     Event, Transaction, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus,
-    TransactionWithType, Transactions,
+    Transactions,
 };
 use crate::{
     get_block_number, get_block_status, get_latest_block_number, internal_server_error,
@@ -79,13 +79,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         let header = get_block_header_by_number(&txn, block_number)?;
         let transactions: Vec<Transaction> = get_block_txs_by_number(&txn, block_number)?;
 
-        Ok(Block {
-            status,
-            header,
-            transactions: Transactions::Full(
-                transactions.into_iter().map(TransactionWithType::from).collect(),
-            ),
-        })
+        Ok(Block { status, header, transactions: Transactions::Full(transactions) })
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
@@ -112,10 +106,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_transaction_by_hash(
-        &self,
-        transaction_hash: TransactionHash,
-    ) -> RpcResult<TransactionWithType> {
+    fn get_transaction_by_hash(&self, transaction_hash: TransactionHash) -> RpcResult<Transaction> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let transaction_index = txn
@@ -128,7 +119,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
 
-        Ok(TransactionWithType::from(transaction))
+        Ok(transaction.into())
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
@@ -136,7 +127,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         &self,
         block_id: BlockId,
         index: TransactionOffsetInBlock,
-    ) -> RpcResult<TransactionWithType> {
+    ) -> RpcResult<Transaction> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
 
@@ -145,7 +136,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::InvalidTransactionIndex))?;
 
-        Ok(TransactionWithType::from(transaction))
+        Ok(transaction.into())
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
