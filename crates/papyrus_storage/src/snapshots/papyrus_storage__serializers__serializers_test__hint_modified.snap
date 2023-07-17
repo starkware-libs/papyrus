@@ -106,7 +106,7 @@ definitions:
               remainder:
                 $ref: "#/definitions/CellRef"
         additionalProperties: false
-      - description: "Divides dividend_low<<128+dividend_high by divisor_low<<128+divisor_high. Splits the remainder to 128bit words: remainder_low and remainder_high. Splits the quotient and the divisor to 128bit words. The lower 128 bits of the quotient are written to quotient0 and quotient1. The lower 128 bits of the divisor are written to divisor0 and divisor1. If the divisor is greater than 2^128, the upper 128 bits of the divisor are written to extra0 and extra1. In this case, quotient must be lower than 2^128. Otherwise, the upper 128 bits of the quotient are written to extra0 and extra1."
+      - description: "Divides dividend (represented by 2 128bit limbs) by divisor (represented by 2 128bit limbs). Returns the quotient (represented by 2 128bit limbs) and remainder (represented by 2 128bit limbs). In all cases - `name`0 is the least significant limb."
         type: object
         required:
           - Uint256DivMod
@@ -114,42 +114,30 @@ definitions:
           Uint256DivMod:
             type: object
             required:
-              - dividend_high
-              - dividend_low
+              - dividend0
+              - dividend1
               - divisor0
               - divisor1
-              - divisor_high
-              - divisor_low
-              - extra0
-              - extra1
               - quotient0
               - quotient1
-              - remainder_high
-              - remainder_low
+              - remainder0
+              - remainder1
             properties:
-              dividend_low:
+              dividend0:
                 $ref: "#/definitions/ResOperand"
-              dividend_high:
+              dividend1:
                 $ref: "#/definitions/ResOperand"
-              divisor_low:
+              divisor0:
                 $ref: "#/definitions/ResOperand"
-              divisor_high:
+              divisor1:
                 $ref: "#/definitions/ResOperand"
               quotient0:
                 $ref: "#/definitions/CellRef"
               quotient1:
                 $ref: "#/definitions/CellRef"
-              divisor0:
+              remainder0:
                 $ref: "#/definitions/CellRef"
-              divisor1:
-                $ref: "#/definitions/CellRef"
-              extra0:
-                $ref: "#/definitions/CellRef"
-              extra1:
-                $ref: "#/definitions/CellRef"
-              remainder_low:
-                $ref: "#/definitions/CellRef"
-              remainder_high:
+              remainder1:
                 $ref: "#/definitions/CellRef"
         additionalProperties: false
       - description: "Divides dividend (represented by 4 128bit limbs) by divisor (represented by 2 128bit limbs). Returns the quotient (represented by 4 128bit limbs) and remainder (represented by 2 128bit limbs). In all cases - `name`0 is the least significant limb."
@@ -742,149 +730,26 @@ definitions:
         additionalProperties: false
       - type: object
         required:
-          - SetBlockNumber
+          - Cheatcode
         properties:
-          SetBlockNumber:
+          Cheatcode:
             type: object
             required:
-              - value
+              - input_end
+              - input_start
+              - output_end
+              - output_start
+              - selector
             properties:
-              value:
+              selector:
+                $ref: "#/definitions/BigInt"
+              input_start:
                 $ref: "#/definitions/ResOperand"
-        additionalProperties: false
-      - type: object
-        required:
-          - SetBlockTimestamp
-        properties:
-          SetBlockTimestamp:
-            type: object
-            required:
-              - value
-            properties:
-              value:
+              input_end:
                 $ref: "#/definitions/ResOperand"
-        additionalProperties: false
-      - type: object
-        required:
-          - SetCallerAddress
-        properties:
-          SetCallerAddress:
-            type: object
-            required:
-              - value
-            properties:
-              value:
-                $ref: "#/definitions/ResOperand"
-        additionalProperties: false
-      - type: object
-        required:
-          - SetContractAddress
-        properties:
-          SetContractAddress:
-            type: object
-            required:
-              - value
-            properties:
-              value:
-                $ref: "#/definitions/ResOperand"
-        additionalProperties: false
-      - type: object
-        required:
-          - SetSequencerAddress
-        properties:
-          SetSequencerAddress:
-            type: object
-            required:
-              - value
-            properties:
-              value:
-                $ref: "#/definitions/ResOperand"
-        additionalProperties: false
-      - type: object
-        required:
-          - SetVersion
-        properties:
-          SetVersion:
-            type: object
-            required:
-              - value
-            properties:
-              value:
-                $ref: "#/definitions/ResOperand"
-        additionalProperties: false
-      - type: object
-        required:
-          - SetAccountContractAddress
-        properties:
-          SetAccountContractAddress:
-            type: object
-            required:
-              - value
-            properties:
-              value:
-                $ref: "#/definitions/ResOperand"
-        additionalProperties: false
-      - type: object
-        required:
-          - SetMaxFee
-        properties:
-          SetMaxFee:
-            type: object
-            required:
-              - value
-            properties:
-              value:
-                $ref: "#/definitions/ResOperand"
-        additionalProperties: false
-      - type: object
-        required:
-          - SetTransactionHash
-        properties:
-          SetTransactionHash:
-            type: object
-            required:
-              - value
-            properties:
-              value:
-                $ref: "#/definitions/ResOperand"
-        additionalProperties: false
-      - type: object
-        required:
-          - SetChainId
-        properties:
-          SetChainId:
-            type: object
-            required:
-              - value
-            properties:
-              value:
-                $ref: "#/definitions/ResOperand"
-        additionalProperties: false
-      - type: object
-        required:
-          - SetNonce
-        properties:
-          SetNonce:
-            type: object
-            required:
-              - value
-            properties:
-              value:
-                $ref: "#/definitions/ResOperand"
-        additionalProperties: false
-      - type: object
-        required:
-          - SetSignature
-        properties:
-          SetSignature:
-            type: object
-            required:
-              - end
-              - start
-            properties:
-              start:
-                $ref: "#/definitions/ResOperand"
-              end:
-                $ref: "#/definitions/ResOperand"
+              output_start:
+                $ref: "#/definitions/CellRef"
+              output_end:
+                $ref: "#/definitions/CellRef"
         additionalProperties: false
 
