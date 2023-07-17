@@ -564,7 +564,6 @@ async fn get_transaction_receipt() {
     let expected_receipt = TransactionReceiptWithStatus {
         receipt: TransactionReceipt {
             transaction_hash,
-            r#type: output.r#type(),
             block_hash: block.header.block_hash,
             block_number: block.header.block_number,
             output,

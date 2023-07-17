@@ -214,13 +214,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         let output = TransactionOutput::from_thin_transaction_output(thin_tx_output, events);
 
         Ok(TransactionReceiptWithStatus {
-            receipt: TransactionReceipt {
-                transaction_hash,
-                r#type: output.r#type(),
-                block_hash,
-                block_number,
-                output,
-            },
+            receipt: TransactionReceipt { transaction_hash, block_hash, block_number, output },
             status: status.into(),
         })
     }
