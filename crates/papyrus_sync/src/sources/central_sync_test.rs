@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use assert_matches::assert_matches;
@@ -6,6 +6,7 @@ use async_stream::stream;
 use async_trait::async_trait;
 use futures::StreamExt;
 use indexmap::IndexMap;
+use papyrus_common::SyncingState;
 use papyrus_storage::header::{HeaderStorageReader, StarknetVersion};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
@@ -79,6 +80,7 @@ async fn run_sync(
             blocks_max_stream_size: STREAM_SIZE,
             state_updates_max_stream_size: STREAM_SIZE,
         },
+        shared_syncing_state: Arc::new(RwLock::new(SyncingState::default())),
         central_source: Arc::new(central),
         reader,
         writer,
