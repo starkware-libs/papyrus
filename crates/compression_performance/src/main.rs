@@ -120,59 +120,27 @@ pub fn get_db_config() -> DbConfig {
     }
 }
 
+use starknet_api::state::ContractClass;
+
 // Key and value type of the table we currently use.
 type KeyType = ClassHash;
-type ValueType = IndexedDeprecatedContractClass;
+type ValueType = ContractClass;
 
 // Number of keys to read from the database.
 const KEY_LIMIT: usize = 10; //usize::MAX;
 // Table name.
-const TABLE_NAME: &str = "deprecated_declared_classes";
+const TABLE_NAME: &str = "declared_classes";
 
 #[tokio::main]
 async fn main() {
-    // let tra_idx=TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(0));
+
     let (storage_reader_data, _storage_writer) = open_storage(get_db_config()).unwrap();
     let keys_vec = get_keys_list::<KeyType, ValueType>(
         &storage_reader_data,
         TABLE_NAME,
-        //&(ContractAddress::default(), EventIndex(tra_idx, EventIndexInTransactionOutput(0))),
-        //&BlockNumber(0),
-        //&tra_idx,
         &ClassHash(stark_felt!("0x0")),
         KEY_LIMIT,
     );
-
-    let mut results = Vec::new();
-    for key in keys_vec {
-        let value = get_value::<KeyType, ValueType>(&storage_reader_data, TABLE_NAME, &key);
-        let cur = CompressionResult::new(value.contract_class.program);
-        results.push(cur);
-    }
-
-    let total_values = results.len();
-    let mut com_bigger = 0;
-    let mut des_com_bigger = 0;
-    let mut sum_com = 0;
-    let mut sum_ser = 0;
-    for s in results.iter() {
-        sum_com += s.com_size;
-        sum_ser += s.ser_size;
-        if s.com_size >= s.ser_size {
-            com_bigger += 1;
-        }
-        if s.des_com_time >= s.des_ser_time {
-            des_com_bigger += 1;
-        }
-        s.print_fields();
-    }
-
-    println!("total_values: {}", total_values);
-    println!("com_bigger: {}", com_bigger);
-    println!("des_com_bigger: {}", des_com_bigger);
-
-    println!();
-    println!("sum_ser size: {}", sum_ser);
-    println!("sum_com size: {}", sum_com);
-    println!("ratio: {}", sum_ser as f64 / sum_com as f64);
+    println!("keys_vec.len(): {}", keys_vec.len());
+    println!("{:#?}", keys_vec);
 }
