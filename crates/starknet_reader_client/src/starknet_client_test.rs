@@ -8,7 +8,7 @@ use reqwest::StatusCode;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
-    ContractClass as DeprecatedContractClass, ContractClassAbiEntry,
+    CommonFunctionAbiEntry, ContractClass as DeprecatedContractClass, ContractClassAbiEntry,
     EntryPoint as DeprecatedEntryPoint, EntryPointOffset,
     EntryPointType as DeprecatedEntryPointType, FunctionAbiEntry, FunctionAbiEntryType,
     FunctionAbiEntryWithType, Program, TypedParameter,
@@ -172,14 +172,14 @@ async fn deprecated_contract_class() {
     let expected_contract_class = DeprecatedContractClass {
         abi: Some(vec![ContractClassAbiEntry::Function(FunctionAbiEntryWithType {
             r#type: FunctionAbiEntryType::Constructor,
-            entry: FunctionAbiEntry {
+            entry: FunctionAbiEntry::WithoutStateMutability(CommonFunctionAbiEntry {
                 name: "constructor".to_string(),
                 inputs: vec![TypedParameter {
                     name: "implementation".to_string(),
                     r#type: "felt".to_string(),
                 }],
                 outputs: vec![],
-            },
+            }),
         })]),
         program: Program {
             attributes: serde_json::Value::Array(vec![serde_json::json!(1234)]),

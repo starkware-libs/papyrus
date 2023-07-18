@@ -5,8 +5,8 @@ use pretty_assertions::assert_eq;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
-    ContractClass as DeprecatedContractClass, ContractClassAbiEntry, FunctionAbiEntry,
-    FunctionAbiEntryType, FunctionAbiEntryWithType,
+    CommonFunctionAbiEntry, ContractClass as DeprecatedContractClass, ContractClassAbiEntry,
+    FunctionAbiEntry, FunctionAbiEntryType, FunctionAbiEntryWithType,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey, ThinStateDiff};
@@ -64,7 +64,11 @@ fn append_state_diff_declared_classes() {
     let (_, class) = diff2.deprecated_declared_classes.iter_mut().next().unwrap();
     class.abi = Some(vec![ContractClassAbiEntry::Function(FunctionAbiEntryWithType {
         r#type: FunctionAbiEntryType::Function,
-        entry: FunctionAbiEntry { name: String::from("junk"), inputs: vec![], outputs: vec![] },
+        entry: FunctionAbiEntry::WithoutStateMutability(CommonFunctionAbiEntry {
+            name: String::from("junk"),
+            inputs: vec![],
+            outputs: vec![],
+        }),
     })]);
     let Err(err) = txn.append_state_diff(BlockNumber(2), diff2, IndexMap::new()) else {
         panic!("Unexpected Ok.");

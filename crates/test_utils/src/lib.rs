@@ -29,11 +29,11 @@ use starknet_api::core::{
     ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, GlobalRoot, Nonce,
 };
 use starknet_api::deprecated_contract_class::{
-    ContractClass as DeprecatedContractClass, ContractClassAbiEntry,
+    CommonFunctionAbiEntry, ContractClass as DeprecatedContractClass, ContractClassAbiEntry,
     EntryPoint as DeprecatedEntryPoint, EntryPointOffset,
     EntryPointType as DeprecatedEntryPointType, EventAbiEntry, FunctionAbiEntry,
-    FunctionAbiEntryType, FunctionAbiEntryWithType, Program, StructAbiEntry, StructMember,
-    TypedParameter,
+    FunctionAbiEntryType, FunctionAbiEntryWithStateMutability, FunctionAbiEntryWithType,
+    FunctionStateMutability, Program, StructAbiEntry, StructMember, TypedParameter,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::stark_felt;
@@ -321,6 +321,11 @@ auto_impl_get_test_instance! {
         pub program: Program,
         pub entry_points_by_type: HashMap<DeprecatedEntryPointType, Vec<DeprecatedEntryPoint>>,
     }
+    pub struct CommonFunctionAbiEntry {
+        pub name: String,
+        pub inputs: Vec<TypedParameter>,
+        pub outputs: Vec<TypedParameter>,
+    }
     pub enum ContractClassAbiEntry {
         Event(EventAbiEntry) = 0,
         Function(FunctionAbiEntryWithType) = 1,
@@ -399,19 +404,25 @@ auto_impl_get_test_instance! {
     pub struct EventIndexInTransactionOutput(pub usize);
     pub struct EventKey(pub StarkFelt);
     pub struct Fee(pub u128);
-    pub struct FunctionAbiEntry {
-        pub name: String,
-        pub inputs: Vec<TypedParameter>,
-        pub outputs: Vec<TypedParameter>,
+    pub enum FunctionAbiEntry {
+        WithStateMutability(FunctionAbiEntryWithStateMutability) = 0,
+        WithoutStateMutability(CommonFunctionAbiEntry) = 1,
     }
     pub enum FunctionAbiEntryType {
         Constructor = 0,
         L1Handler = 1,
         Function = 2,
     }
+    pub struct FunctionAbiEntryWithStateMutability {
+        pub common: CommonFunctionAbiEntry,
+        pub state_mutability: FunctionStateMutability,
+    }
     pub struct FunctionAbiEntryWithType {
         pub r#type: FunctionAbiEntryType,
         pub entry: FunctionAbiEntry,
+    }
+    pub enum FunctionStateMutability {
+        View = 0,
     }
     pub struct GasPrice(pub u128);
     pub struct GlobalRoot(pub StarkHash);
