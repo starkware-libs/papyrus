@@ -1,6 +1,9 @@
-//! Client implementation for [`starknet`] feeder gateway.
+//! Client implementation for the [`Starknet`] feeder gateway.
 //!
-//! [`starknet`]: https://starknet.io/
+//! This client can read data from [`Starknet`] about the current state
+//! (e.g accepted blocks, contracts, classes).
+//!
+//! [`Starknet`]: https://starknet.io/
 
 mod objects;
 pub mod retry;

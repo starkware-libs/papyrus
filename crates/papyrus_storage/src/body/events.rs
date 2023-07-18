@@ -342,6 +342,8 @@ pub struct ThinDeployTransactionOutput {
     pub messages_sent: Vec<MessageToL1>,
     /// The contract addresses of the events emitted by the transaction.
     pub events_contract_addresses: Vec<ContractAddress>,
+    /// The contract address of the deployed contract.
+    pub contract_address: ContractAddress,
 }
 
 /// A thin version of
@@ -355,6 +357,8 @@ pub struct ThinDeployAccountTransactionOutput {
     pub messages_sent: Vec<MessageToL1>,
     /// The contract addresses of the events emitted by the transaction.
     pub events_contract_addresses: Vec<ContractAddress>,
+    /// The contract address of the deployed contract.
+    pub contract_address: ContractAddress,
 }
 
 impl From<TransactionOutput> for ThinTransactionOutput {
@@ -374,6 +378,7 @@ impl From<TransactionOutput> for ThinTransactionOutput {
                     actual_fee: tx_output.actual_fee,
                     messages_sent: tx_output.messages_sent,
                     events_contract_addresses,
+                    contract_address: tx_output.contract_address,
                 })
             }
             TransactionOutput::DeployAccount(tx_output) => {
@@ -381,6 +386,7 @@ impl From<TransactionOutput> for ThinTransactionOutput {
                     actual_fee: tx_output.actual_fee,
                     messages_sent: tx_output.messages_sent,
                     events_contract_addresses,
+                    contract_address: tx_output.contract_address,
                 })
             }
             TransactionOutput::Invoke(tx_output) => {

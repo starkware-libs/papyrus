@@ -120,7 +120,6 @@ auto_storage_serde! {
         pub signature: TransactionSignature,
         pub nonce: Nonce,
         pub class_hash: ClassHash,
-        pub contract_address: ContractAddress,
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
     }
@@ -128,7 +127,6 @@ auto_storage_serde! {
         pub transaction_hash: TransactionHash,
         pub version: TransactionVersion,
         pub class_hash: ClassHash,
-        pub contract_address: ContractAddress,
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
     }
@@ -261,11 +259,13 @@ auto_storage_serde! {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
+        pub contract_address: ContractAddress,
     }
     pub struct ThinDeployAccountTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
+        pub contract_address: ContractAddress,
     }
     pub struct TypedParameter {
         pub name: String,
