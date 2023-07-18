@@ -56,6 +56,7 @@ use crate::compression_utils::{
     compress, decompress, decompress_from_reader, serialize_and_compress,
 };
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
+use crate::header::StarknetVersion;
 use crate::ommer::{OmmerEventKey, OmmerTransactionKey};
 #[cfg(test)]
 use crate::serializers::serializers_test::{create_storage_serde_test, StorageSerdeTest};
@@ -250,6 +251,7 @@ auto_storage_serde! {
         pub param: TypedParameter,
         pub offset: usize,
     }
+    pub struct StarknetVersion(pub String);
     pub struct ThinDeclareTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
@@ -823,6 +825,3 @@ impl StorageSerde for CasmContractClass {
         })
     }
 }
-
-#[cfg(test)]
-create_storage_serde_test!(CasmContractClass);
