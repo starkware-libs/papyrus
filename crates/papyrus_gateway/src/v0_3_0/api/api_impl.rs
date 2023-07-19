@@ -207,13 +207,9 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
 
         let block_number = transaction_index.0;
         let status = get_block_status(&txn, block_number)?;
-        let header: BlockHeader =
-            get_block_header_by_number(&txn, block_number).map_err(internal_server_error)?;
-
-        let transaction = txn
-            .get_transaction(transaction_index)
+        let block_hash = get_block_header_by_number::<_, BlockHeader>(&txn, block_number)
             .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
+            .block_hash;
 
         let thin_tx_output = txn
             .get_transaction_output(transaction_index)
@@ -228,12 +224,13 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         let output = TransactionOutput::from_thin_transaction_output(thin_tx_output, events);
 
         Ok(TransactionReceiptWithStatus {
-            receipt: TransactionReceipt::from_transaction_output(
-                output,
-                &transaction,
-                header.block_hash,
+            receipt: TransactionReceipt {
+                transaction_hash,
+                r#type: output.r#type(),
+                block_hash,
                 block_number,
-            ),
+                output,
+            },
             status: status.into(),
         })
     }

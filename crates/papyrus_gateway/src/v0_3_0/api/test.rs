@@ -571,21 +571,22 @@ async fn get_transaction_receipt() {
         .commit()
         .unwrap();
 
-    let transaction = block.body.transactions.index(0);
+    let transaction_hash = block.body.transactions.index(0).transaction_hash();
     let output = TransactionOutput::from(block.body.transaction_outputs.index(0).clone());
     let expected_receipt = TransactionReceiptWithStatus {
-        receipt: TransactionReceipt::from_transaction_output(
+        receipt: TransactionReceipt {
+            transaction_hash,
+            r#type: output.r#type(),
+            block_hash: block.header.block_hash,
+            block_number: block.header.block_number,
             output,
-            transaction,
-            block.header.block_hash,
-            block.header.block_number,
-        ),
+        },
         status: TransactionStatus::AcceptedOnL2,
     };
     let res = module
         .call::<_, TransactionReceiptWithStatus>(
             "starknet_V0_3_0_getTransactionReceipt",
-            [transaction.transaction_hash()],
+            [transaction_hash],
         )
         .await
         .unwrap();
@@ -608,7 +609,7 @@ async fn get_transaction_receipt() {
     let res = module
         .call::<_, TransactionReceiptWithStatus>(
             "starknet_V0_3_0_getTransactionReceipt",
-            [transaction.transaction_hash()],
+            [transaction_hash],
         )
         .await
         .unwrap();

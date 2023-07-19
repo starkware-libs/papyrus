@@ -36,6 +36,9 @@
 #[path = "header_test.rs"]
 mod header_test;
 
+use std::fmt::Display;
+
+use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use tracing::debug;
 
@@ -56,6 +59,12 @@ pub trait HeaderStorageReader {
         &self,
         block_hash: &BlockHash,
     ) -> StorageResult<Option<BlockNumber>>;
+
+    /// Returns the Starknet version at the given block number.
+    fn get_starknet_version(
+        &self,
+        block_number: BlockNumber,
+    ) -> StorageResult<Option<StarknetVersion>>;
 }
 
 /// Interface for writing data related to the block headers.
@@ -71,10 +80,21 @@ where
         block_header: &BlockHeader,
     ) -> StorageResult<Self>;
 
+    /// Update the starknet version if needed.
+    fn update_starknet_version(
+        self,
+        block_number: &BlockNumber,
+        starknet_version: &StarknetVersion,
+    ) -> StorageResult<Self>;
+
     /// Removes a block header from the storage and returns the removed data.
     fn revert_header(self, block_number: BlockNumber)
     -> StorageResult<(Self, Option<BlockHeader>)>;
 }
+
+/// A version of the Starknet protocol used when creating a block.
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+pub struct StarknetVersion(pub String);
 
 impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode> {
     fn get_header_marker(&self) -> StorageResult<BlockNumber> {
@@ -96,6 +116,28 @@ impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode>
         let block_number = block_hash_to_number_table.get(&self.txn, block_hash)?;
         Ok(block_number)
     }
+
+    fn get_starknet_version(
+        &self,
+        block_number: BlockNumber,
+    ) -> StorageResult<Option<StarknetVersion>> {
+        if block_number >= self.get_header_marker()? {
+            return Ok(None);
+        }
+
+        let starknet_version_table = self.txn.open_table(&self.tables.starknet_version)?;
+        let mut cursor = starknet_version_table.cursor(&self.txn)?;
+        cursor.lower_bound(&block_number.next())?;
+        let res = cursor.prev()?;
+
+        match res {
+            Some((_block_number, starknet_version)) => Ok(Some(starknet_version)),
+            None => unreachable!(
+                "Since block_number >= self.get_header_marker(), starknet_version_table should \
+                 have at least a single mapping."
+            ),
+        }
+    }
 }
 
 impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
@@ -115,6 +157,27 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
 
         // Write mapping.
         update_hash_mapping(&self.txn, &block_hash_to_number_table, block_header, block_number)?;
+
+        Ok(self)
+    }
+
+    fn update_starknet_version(
+        self,
+        block_number: &BlockNumber,
+        starknet_version: &StarknetVersion,
+    ) -> StorageResult<Self> {
+        let starknet_version_table = self.txn.open_table(&self.tables.starknet_version)?;
+        let mut cursor = starknet_version_table.cursor(&self.txn)?;
+        cursor.lower_bound(block_number)?;
+        let res = cursor.prev()?;
+
+        match res {
+            Some((_block_number, last_starknet_version))
+                if last_starknet_version == *starknet_version => {}
+            _ => {
+                starknet_version_table.insert(&self.txn, block_number, starknet_version)?;
+            }
+        }
         Ok(self)
     }
 
@@ -180,4 +243,16 @@ fn update_marker<'env>(
     // Advance marker.
     markers_table.upsert(txn, &MarkerKind::Header, &block_number.next())?;
     Ok(())
+}
+
+impl Default for StarknetVersion {
+    fn default() -> Self {
+        Self("0.0.0".to_string())
+    }
+}
+
+impl Display for StarknetVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }

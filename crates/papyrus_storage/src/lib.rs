@@ -1,5 +1,5 @@
 #![warn(missing_docs)]
-//! A storage implementation for a [`Starknet`] node.
+//! A storage implementation for a [`Starknet`] full-node.
 //!
 //! This crate provides a writing and reading interface for various Starknet data structures to a
 //! database. Enables at most one writing operation and multiple reading operations concurrently.
@@ -17,7 +17,7 @@
 //! ```
 //! use papyrus_storage::open_storage;
 //! use papyrus_storage::db::DbConfig;
-//! use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};    // Import the header API.
+//! use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter, StarknetVersion};    // Import the header API.
 //! use starknet_api::block::{BlockHeader, BlockNumber};
 //! use starknet_api::core::ChainId;
 //!
@@ -88,6 +88,7 @@ use crate::db::{
     open_env, DbConfig, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier,
     TransactionKind, RO, RW,
 };
+use crate::header::StarknetVersion;
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::{VersionStorageReader, VersionStorageWriter};
 
@@ -124,6 +125,7 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
         transaction_outputs: db_writer.create_table("transaction_outputs")?,
         transactions: db_writer.create_table("transactions")?,
+        starknet_version: db_writer.create_table("starknet_version")?,
         storage_version: db_writer.create_table("storage_version")?,
     });
     let reader = StorageReader { db_reader, tables: tables.clone() };
@@ -248,6 +250,7 @@ struct_field_names! {
         transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
         transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
         transactions: TableIdentifier<TransactionIndex, Transaction>,
+        starknet_version: TableIdentifier<BlockNumber, StarknetVersion>,
         storage_version: TableIdentifier<String, Version>
     }
 }

@@ -102,7 +102,7 @@ definitions:
               remainder:
                 $ref: "#/definitions/CellRef"
         additionalProperties: false
-      - description: "Divides dividend_low<<128+dividend_high by divisor_low<<128+divisor_high. Splits the remainder to 128bit words: remainder_low and remainder_high. Splits the quotient and the divisor to 128bit words. The lower 128 bits of the quotient are written to quotient0 and quotient1. The lower 128 bits of the divisor are written to divisor0 and divisor1. If the divisor is greater than 2^128, the upper 128 bits of the divisor are written to extra0 and extra1. In this case, quotient must be lower than 2^128. Otherwise, the upper 128 bits of the quotient are written to extra0 and extra1."
+      - description: "Divides dividend (represented by 2 128bit limbs) by divisor (represented by 2 128bit limbs). Returns the quotient (represented by 2 128bit limbs) and remainder (represented by 2 128bit limbs). In all cases - `name`0 is the least significant limb."
         type: object
         required:
           - Uint256DivMod
@@ -110,42 +110,30 @@ definitions:
           Uint256DivMod:
             type: object
             required:
-              - dividend_high
-              - dividend_low
+              - dividend0
+              - dividend1
               - divisor0
               - divisor1
-              - divisor_high
-              - divisor_low
-              - extra0
-              - extra1
               - quotient0
               - quotient1
-              - remainder_high
-              - remainder_low
+              - remainder0
+              - remainder1
             properties:
-              dividend_low:
+              dividend0:
                 $ref: "#/definitions/ResOperand"
-              dividend_high:
+              dividend1:
                 $ref: "#/definitions/ResOperand"
-              divisor_low:
+              divisor0:
                 $ref: "#/definitions/ResOperand"
-              divisor_high:
+              divisor1:
                 $ref: "#/definitions/ResOperand"
               quotient0:
                 $ref: "#/definitions/CellRef"
               quotient1:
                 $ref: "#/definitions/CellRef"
-              divisor0:
+              remainder0:
                 $ref: "#/definitions/CellRef"
-              divisor1:
-                $ref: "#/definitions/CellRef"
-              extra0:
-                $ref: "#/definitions/CellRef"
-              extra1:
-                $ref: "#/definitions/CellRef"
-              remainder_low:
-                $ref: "#/definitions/CellRef"
-              remainder_high:
+              remainder1:
                 $ref: "#/definitions/CellRef"
         additionalProperties: false
       - description: "Divides dividend (represented by 4 128bit limbs) by divisor (represented by 2 128bit limbs). Returns the quotient (represented by 4 128bit limbs) and remainder (represented by 2 128bit limbs). In all cases - `name`0 is the least significant limb."
