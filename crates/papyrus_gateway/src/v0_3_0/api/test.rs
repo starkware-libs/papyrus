@@ -130,12 +130,11 @@ async fn block_number() {
 #[tokio::test]
 async fn syncing() {
     let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
-
     let res = module
-        .call::<_, SyncingState>("starknet_V0_3_0_syncing", ObjectParams::new())
+        .call::<_, serde_json::Map<String, _>>("starknet_V0_3_0_syncing", ObjectParams::new())
         .await
         .unwrap();
-    assert_eq!(res, SyncingState::Synced(false));
+    assert_eq!(res["Synced"], false);
 }
 
 #[tokio::test]
