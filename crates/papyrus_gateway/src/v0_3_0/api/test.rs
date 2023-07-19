@@ -8,7 +8,6 @@ use jsonrpsee::core::params::ObjectParams;
 use jsonrpsee::core::Error;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonschema::JSONSchema;
-use papyrus_common::SyncingState;
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::body::{BodyStorageWriter, TransactionIndex};
@@ -130,12 +129,8 @@ async fn block_number() {
 #[tokio::test]
 async fn syncing() {
     let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
-
-    let res = module
-        .call::<_, SyncingState>("starknet_V0_3_0_syncing", ObjectParams::new())
-        .await
-        .unwrap();
-    assert_eq!(res, SyncingState::Synced(false));
+    let res = module.call::<_, bool>("starknet_V0_3_0_syncing", ObjectParams::new()).await.unwrap();
+    assert_eq!(res, false);
 }
 
 #[tokio::test]

@@ -1,13 +1,28 @@
+use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
 
-#[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq)]
 pub enum SyncingState {
-    Synced(bool),
+    Synced,
     SyncStatus(SyncStatus),
 }
 
-// TODO(yoav): add a test that verifies that the serialization conforms to the spec.
+impl serde::Serialize for SyncingState {
+    // Serializes Synced variant into false (not syncing), and SyncStatus into its content.
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Self::Synced => serializer.serialize_bool(false),
+            Self::SyncStatus(sync_status) => sync_status.serialize(serializer),
+        }
+    }
+}
+
+// TODO(yoav): Add a test that verifies that the serialization conforms to the spec.
+
 /// The status of the synchronization progress. The hash and the number of:
 /// * the block from which the synchronization started,
 /// * the currently syncing block,
