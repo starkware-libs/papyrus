@@ -20,7 +20,7 @@ spec:
             name: {{ template "papyrus.name" . }}-rpc
             port:
               number: {{ .Values.services.rpc.port }}
-        path: /
+        path: /rpc
         pathType: {{ .Values.ingress.pathType }}
       - backend:
           service:
