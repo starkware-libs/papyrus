@@ -427,7 +427,7 @@ impl JsonRpcServerImpl for JsonRpcServerV0_3_0Impl {
         Self { chain_id, storage_reader, max_events_chunk_size, max_events_keys }
     }
 
-    fn into(self) -> RpcModule<Self> {
+    fn into_rpc_module(self) -> RpcModule<Self> {
         self.into_rpc()
     }
 }
