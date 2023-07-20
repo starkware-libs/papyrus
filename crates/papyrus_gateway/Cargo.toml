@@ -5,6 +5,9 @@ edition.workspace = true
 repository.workspace = true
 license-file.workspace = true
 
+[package.metadata.cargo-udeps.ignore]
+development = ["tracing-test"]
+
 [dependencies]
 anyhow.workspace = true
 base64.workspace = true
@@ -40,6 +43,7 @@ pretty_assertions.workspace = true
 prometheus-parse.workspace = true
 rand_chacha.workspace = true
 test_utils = { path = "../test_utils" }
+tracing-test = "0.2.4"
 starknet_api = { workspace = true, features = ["testing"] }
 starknet_writer_client = { path = "../starknet_writer_client", features = ["testing"] }
 indexmap = { workspace = true, features = ["serde"] }
