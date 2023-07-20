@@ -2,6 +2,24 @@ use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::ops::Index;
 
+use super::super::api::EventsChunk;
+use super::super::block::Block;
+use super::super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
+use super::super::state::{ContractClass, StateUpdate, ThinStateDiff};
+use super::super::transaction::{
+    Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
+    TransactionWithType, Transactions,
+};
+use super::api_impl::JsonRpcServerV0_3_0Impl;
+use crate::api::{
+    BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcError,
+    Tag,
+};
+use crate::test_utils::{
+    get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
+};
+use crate::version_config::VERSION_0_3_0;
+use crate::{run_server, ContinuationTokenAsStruct};
 use assert_matches::assert_matches;
 use indexmap::IndexMap;
 use jsonrpsee::core::params::ObjectParams;
@@ -26,25 +44,6 @@ use starknet_api::{patricia_key, stark_felt};
 use test_utils::{
     get_rng, get_test_block, get_test_body, get_test_state_diff, send_request, GetTestInstance,
 };
-
-use super::super::api::EventsChunk;
-use super::super::block::Block;
-use super::super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use super::super::state::{ContractClass, StateUpdate, ThinStateDiff};
-use super::super::transaction::{
-    Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
-    TransactionWithType, Transactions,
-};
-use super::api_impl::JsonRpcServerV0_3_0Impl;
-use crate::api::{
-    BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcError,
-    Tag,
-};
-use crate::test_utils::{
-    get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
-};
-use crate::version_config::VERSION_0_3_0;
-use crate::{run_server, ContinuationTokenAsStruct};
 
 #[tokio::test]
 async fn chain_id() {
