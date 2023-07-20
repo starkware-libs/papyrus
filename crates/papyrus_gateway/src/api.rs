@@ -60,12 +60,6 @@ pub enum JsonRpcError {
     TooManyKeysInFilter = 34,
 }
 
-#[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct BlockHashAndNumber {
-    pub block_hash: BlockHash,
-    pub block_number: BlockNumber,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct EventFilter {
     pub from_block: Option<BlockId>,
