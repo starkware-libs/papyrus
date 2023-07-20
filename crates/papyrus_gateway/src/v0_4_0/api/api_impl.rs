@@ -1,7 +1,6 @@
 use jsonrpsee::core::{async_trait, RpcResult};
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
-use papyrus_common::SyncingState;
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
 use papyrus_storage::state::StateStorageReader;
@@ -23,7 +22,7 @@ use super::super::transaction::{
 };
 use super::{
     BlockHashAndNumber, BlockId, EventFilter, EventsChunk, GatewayContractClass,
-    JsonRpcV0_3_0Server,
+    JsonRpcV0_4_0Server,
 };
 use crate::api::{BlockHashOrNumber, ContinuationToken, JsonRpcError, JsonRpcServerImpl};
 use crate::block::get_block_header_by_number;
@@ -34,7 +33,7 @@ use crate::{
 };
 
 /// Rpc server.
-pub struct JsonRpcServerV0_3_0Impl {
+pub struct JsonRpcServerV0_4_0Impl {
     pub chain_id: ChainId,
     pub storage_reader: StorageReader,
     pub max_events_chunk_size: usize,
@@ -42,7 +41,7 @@ pub struct JsonRpcServerV0_3_0Impl {
 }
 
 #[async_trait]
-impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
+impl JsonRpcV0_4_0Server for JsonRpcServerV0_4_0Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     fn block_number(&self) -> RpcResult<BlockNumber> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
@@ -124,12 +123,12 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
 
-        let transaction = txn
+        let (transaction, _) = txn
             .get_transaction(transaction_index)
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
 
-        Ok(TransactionWithType::from(transaction.0))
+        Ok(TransactionWithType::from(transaction))
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
@@ -141,12 +140,12 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
 
-        let transaction = txn
+        let (transaction, _) = txn
             .get_transaction(TransactionIndex(block_number, index))
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::InvalidTransactionIndex))?;
 
-        Ok(TransactionWithType::from(transaction.0))
+        Ok(TransactionWithType::from(transaction))
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
@@ -211,6 +210,11 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
             .map_err(internal_server_error)?
             .block_hash;
 
+        let (_, transaction_execution_status) = txn
+            .get_transaction(transaction_index)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
+
         let thin_tx_output = txn
             .get_transaction_output(transaction_index)
             .map_err(internal_server_error)?
@@ -223,8 +227,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
 
         let output = TransactionOutput::from_thin_transaction_output(thin_tx_output, events);
 
-        // todo: nevo - check what the expected behavior is when the transaction is reverted
-        // todo: nevo - check the meaning of the rejected status
+        // todo: nevo - check what to do with the missing finality statuses of block (rejected & pending)
         Ok(TransactionReceiptWithStatus {
             receipt: TransactionReceipt {
                 transaction_hash,
@@ -233,7 +236,8 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
                 block_number,
                 output,
             },
-            status: status.into(),
+            finality_status: status.into(),
+            execution_status: transaction_execution_status,
         })
     }
 
@@ -402,14 +406,14 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
                 }
                 let header: BlockHeader = get_block_header_by_number(&txn, block_number)
                     .map_err(internal_server_error)?;
-                let transaction = txn
+                let (transaction, _) = txn
                     .get_transaction(event_index.0)
                     .map_err(internal_server_error)?
                     .ok_or_else(|| internal_server_error("Unknown internal error."))?;
                 let emitted_event = Event {
                     block_hash: header.block_hash,
                     block_number,
-                    transaction_hash: transaction.0.transaction_hash(),
+                    transaction_hash: transaction.transaction_hash(),
                     event: starknet_api::transaction::Event { from_address, content },
                 };
                 filtered_events.push(emitted_event);
@@ -418,15 +422,9 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
 
         Ok(EventsChunk { events: filtered_events, continuation_token: None })
     }
-
-    #[instrument(skip(self), level = "debug", err, ret)]
-    fn syncing(&self) -> RpcResult<SyncingState> {
-        // TODO(omri): This is temporary. Implement syncing logic.
-        Ok(SyncingState::Synced)
-    }
 }
 
-impl JsonRpcServerImpl for JsonRpcServerV0_3_0Impl {
+impl JsonRpcServerImpl for JsonRpcServerV0_4_0Impl {
     fn new(
         chain_id: ChainId,
         storage_reader: StorageReader,
