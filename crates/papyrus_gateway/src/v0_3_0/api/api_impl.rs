@@ -3,7 +3,7 @@ use std::sync::Arc;
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
-use papyrus_common::SyncingState;
+use papyrus_common::{BlockHashAndNumber, SyncingState};
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
 use papyrus_storage::state::StateStorageReader;
@@ -25,9 +25,7 @@ use super::super::transaction::{
     Event, Transaction, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus,
     TransactionWithHash, Transactions,
 };
-use super::{
-    BlockHashAndNumber, BlockId, EventFilter, EventsChunk, GatewayContractClass, JsonRpcV0_3Server,
-};
+use super::{BlockId, EventFilter, EventsChunk, GatewayContractClass, JsonRpcV0_3Server};
 use crate::api::{BlockHashOrNumber, ContinuationToken, JsonRpcError, JsonRpcServerImpl};
 use crate::block::get_block_header_by_number;
 use crate::transaction::{get_block_tx_hashes_by_number, get_block_txs_by_number};
