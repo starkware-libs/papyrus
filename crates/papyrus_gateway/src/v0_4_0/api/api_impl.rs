@@ -1,4 +1,4 @@
-use jsonrpsee::core::RpcResult;
+use jsonrpsee::core::{async_trait, RpcResult};
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
 use papyrus_common::SyncingState;
@@ -23,7 +23,7 @@ use super::super::transaction::{
 };
 use super::{
     BlockHashAndNumber, BlockId, EventFilter, EventsChunk, GatewayContractClass,
-    JsonRpcV0_3_0Server,
+    JsonRpcV0_4_0Server,
 };
 use crate::api::{BlockHashOrNumber, ContinuationToken, JsonRpcError, JsonRpcServerImpl};
 use crate::block::get_block_header_by_number;
@@ -34,14 +34,15 @@ use crate::{
 };
 
 /// Rpc server.
-pub struct JsonRpcServerV0_3_0Impl {
+pub struct JsonRpcServerV0_4_0Impl {
     pub chain_id: ChainId,
     pub storage_reader: StorageReader,
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
 }
 
-impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
+#[async_trait]
+impl JsonRpcV0_4_0Server for JsonRpcServerV0_4_0Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     fn block_number(&self) -> RpcResult<BlockNumber> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
@@ -218,6 +219,11 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
             .map_err(internal_server_error)?
             .block_hash;
 
+        let (_, transaction_execution_status) = txn
+            .get_transaction(transaction_index)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
+
         let thin_tx_output = txn
             .get_transaction_output(transaction_index)
             .map_err(internal_server_error)?
@@ -230,11 +236,12 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
 
         let output = TransactionOutput::from_thin_transaction_output(thin_tx_output, events);
 
-        // todo: nevo - check what the expected behavior is when the transaction is reverted
-        // todo: nevo - check the meaning of the rejected status
+        // todo: nevo - check what to do with the missing finality statuses of block (rejected &
+        // pending)
         Ok(TransactionReceiptWithStatus {
             receipt: TransactionReceipt { transaction_hash, block_hash, block_number, output },
-            status: status.into(),
+            finality_status: status.into(),
+            execution_status: transaction_execution_status,
         })
     }
 
@@ -427,7 +434,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
     }
 }
 
-impl JsonRpcServerImpl for JsonRpcServerV0_3_0Impl {
+impl JsonRpcServerImpl for JsonRpcServerV0_4_0Impl {
     fn new(
         chain_id: ChainId,
         storage_reader: StorageReader,
