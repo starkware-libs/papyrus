@@ -123,7 +123,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
 
-        let transaction = txn
+        let (transaction, _) = txn
             .get_transaction(transaction_index)
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
@@ -140,7 +140,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
 
-        let transaction = txn
+        let (transaction, _) = txn
             .get_transaction(TransactionIndex(block_number, index))
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::InvalidTransactionIndex))?;
@@ -399,7 +399,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
                 }
                 let header: BlockHeader = get_block_header_by_number(&txn, block_number)
                     .map_err(internal_server_error)?;
-                let transaction = txn
+                let (transaction, _) = txn
                     .get_transaction(event_index.0)
                     .map_err(internal_server_error)?
                     .ok_or_else(|| internal_server_error("Unknown internal error."))?;
