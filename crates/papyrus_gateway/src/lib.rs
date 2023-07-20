@@ -11,6 +11,7 @@ mod middleware;
 mod test_utils;
 mod transaction;
 mod v0_3_0;
+mod v0_4_0;
 mod version_config;
 #[cfg(test)]
 mod version_config_test;
