@@ -18,6 +18,7 @@ mod version_config_test;
 use std::fmt::Display;
 use std::net::SocketAddr;
 
+use gateway_metrics::MetricLogger;
 use jsonrpsee::server::{ServerBuilder, ServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
@@ -46,6 +47,7 @@ pub struct GatewayConfig {
     pub server_address: String,
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
+    pub collect_metrics: bool,
 }
 
 impl From<JsonRpcError> for ErrorObjectOwned {
@@ -118,7 +120,7 @@ impl ContinuationToken {
         Ok(Self(serde_json::to_string(&ct.0).map_err(internal_server_error)?))
     }
 }
-use gateway_metrics::MetricLogger;
+
 #[instrument(skip(storage_reader), level = "debug", err)]
 pub async fn run_server(
     config: &GatewayConfig,
@@ -131,20 +133,27 @@ pub async fn run_server(
         config.max_events_chunk_size,
         config.max_events_keys,
     );
-    // TODO(dvir): set the logger only if we want to collect metrics.
-    let server = ServerBuilder::default()
-        .max_request_body_size(SERVER_MAX_BODY_SIZE)
-        .set_middleware(
+    let addr;
+    let handle;
+    let server_builder =
+        ServerBuilder::default().max_request_body_size(SERVER_MAX_BODY_SIZE).set_middleware(
             tower::ServiceBuilder::new()
                 .filter_async(deny_requests_with_unsupported_path)
                 .filter_async(proxy_rpc_request),
-        )
-        .set_logger(MetricLogger::new(&methods))
-        .build(&config.server_address)
-        .await?;
-    let addr = server.local_addr()?;
+        );
 
-    let handle = server.start(methods)?;
+    if config.collect_metrics {
+        let server = server_builder
+            .set_logger(MetricLogger::new(&methods))
+            .build(&config.server_address)
+            .await?;
+        addr = server.local_addr()?;
+        handle = server.start(methods)?;
+    } else {
+        let server = server_builder.build(&config.server_address).await?;
+        addr = server.local_addr()?;
+        handle = server.start(methods)?;
+    }
     info!(local_address = %addr, "Gateway is running.");
     Ok((addr, handle))
 }
