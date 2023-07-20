@@ -23,6 +23,7 @@ use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::StateDiff;
+use starknet_api::transaction::Transaction;
 use tracing::{debug, error, info, instrument, trace, warn};
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
@@ -362,7 +363,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             if let Some((transactions, transaction_outputs, events)) = res.1 {
                 txn = txn.insert_ommer_body(
                     header.block_hash,
-                    &transactions,
+                    &transactions.into_iter().map(|(tx, _)| tx).collect::<Vec<Transaction>>(),
                     &transaction_outputs,
                     events.as_slice(),
                 )?;

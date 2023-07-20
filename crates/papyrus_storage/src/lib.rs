@@ -78,7 +78,9 @@ use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StorageKey, ThinStateDiff};
-use starknet_api::transaction::{EventContent, Transaction, TransactionHash};
+use starknet_api::transaction::{
+    EventContent, Transaction, TransactionExecutionStatus, TransactionHash,
+};
 use tracing::debug;
 use version::{StorageVersionError, Version};
 
@@ -249,8 +251,8 @@ struct_field_names! {
         state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
         transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
         transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
-        transactions: TableIdentifier<TransactionIndex, Transaction>,
         starknet_version: TableIdentifier<BlockNumber, StarknetVersion>,
+        transactions: TableIdentifier<TransactionIndex, (Transaction, TransactionExecutionStatus)>,
         storage_version: TableIdentifier<String, Version>
     }
 }

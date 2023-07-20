@@ -15,19 +15,23 @@ async fn append_body() {
     let body = get_test_block(10, None, None, None).body;
     let txs = body.transactions;
     let tx_outputs = body.transaction_outputs;
+    let tx_exec_sts = body.transaction_execution_status;
 
     let body0 = BlockBody {
         transactions: vec![txs[0].clone()],
         transaction_outputs: vec![tx_outputs[0].clone()],
+        transaction_execution_status: vec![tx_exec_sts[0].clone()],
     };
     let body1 = BlockBody::default();
     let body2 = BlockBody {
         transactions: vec![txs[1].clone(), txs[2].clone()],
         transaction_outputs: vec![tx_outputs[1].clone(), tx_outputs[2].clone()],
+        transaction_execution_status: vec![tx_exec_sts[1].clone(), tx_exec_sts[2].clone()],
     };
     let body3 = BlockBody {
         transactions: vec![txs[3].clone(), txs[0].clone()],
         transaction_outputs: vec![tx_outputs[3].clone(), tx_outputs[0].clone()],
+        transaction_execution_status: vec![tx_exec_sts[3].clone(), tx_exec_sts[0].clone()],
     };
     writer
         .begin_rw_txn()
@@ -79,7 +83,7 @@ async fn append_body() {
     ];
 
     for (block_number, tx_offset, original_index) in tx_cases {
-        let expected_tx = original_index.map(|i| txs[i].clone());
+        let expected_tx = original_index.map(|i| (txs[i].clone(), tx_exec_sts[i].clone()));
         assert_eq!(
             txn.get_transaction(TransactionIndex(block_number, tx_offset)).unwrap(),
             expected_tx
@@ -114,11 +118,17 @@ async fn append_body() {
     );
 
     // Check block transactions.
-    assert_eq!(txn.get_block_transactions(BlockNumber(0)).unwrap(), Some(vec![txs[0].clone()]));
+    assert_eq!(
+        txn.get_block_transactions(BlockNumber(0)).unwrap(),
+        Some(vec![(txs[0].clone(), tx_exec_sts[0].clone())])
+    );
     assert_eq!(txn.get_block_transactions(BlockNumber(1)).unwrap(), Some(vec![]));
     assert_eq!(
         txn.get_block_transactions(BlockNumber(2)).unwrap(),
-        Some(vec![txs[1].clone(), txs[2].clone()])
+        Some(vec![
+            (txs[1].clone(), tx_exec_sts[1].clone()),
+            (txs[2].clone(), tx_exec_sts[2].clone())
+        ])
     );
     assert_eq!(txn.get_block_transactions(BlockNumber(3)).unwrap(), None);
 
