@@ -6,11 +6,15 @@
 //!
 //! [`Starknet specs`]: https://github.com/starkware-libs/starknet-specs/blob/master/api/starknet_api_openrpc.json
 
+use papyrus_storage::compression_utils::serialize_and_compress;
+use papyrus_storage::db::serialization::{StorageSerde, StorageSerdeError};
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::transaction::{Fee, TransactionSignature, TransactionVersion};
 use starknet_writer_client::objects::transaction::{
-    DeclareV1Transaction, DeployAccountTransaction, InvokeTransaction,
+    ContractClass as ClientContractClass, DeclareV1Transaction,
+    DeclareV2Transaction as ClientDeclareV2Transaction, DeployAccountTransaction,
+    InvokeTransaction, Transaction as ClientTransaction,
 };
 
 use crate::v0_3_0::state::ContractClass;
@@ -90,4 +94,48 @@ pub struct BroadcastedDeclareV2Transaction {
     pub max_fee: Fee,
     pub version: TransactionVersion,
     pub signature: TransactionSignature,
+}
+
+impl TryFrom<BroadcastedTransaction> for ClientTransaction {
+    type Error = ConversionError;
+
+    fn try_from(value: BroadcastedTransaction) -> Result<Self, Self::Error> {
+        match value {
+            BroadcastedTransaction::DeployAccount(deploy_account) => {
+                Ok(Self::DeployAccount(deploy_account))
+            }
+            BroadcastedTransaction::Invoke(invoke) => Ok(Self::Invoke(invoke)),
+            BroadcastedTransaction::Declare(declare) => match declare {
+                BroadcastedDeclareTransaction::DeclareV1(declare_v1) => {
+                    Ok(Self::DeclareV1(declare_v1))
+                }
+                BroadcastedDeclareTransaction::DeclareV2(declare_v2) => {
+                    Ok(Self::DeclareV2(ClientDeclareV2Transaction {
+                        contract_class: ClientContractClass {
+                            compressed_sierra_program: compress(
+                                &declare_v2.contract_class.sierra_program,
+                            )?,
+                            contract_class_version: declare_v2
+                                .contract_class
+                                .contract_class_version,
+                            entry_points_by_type: declare_v2.contract_class.entry_points_by_type,
+                            abi: declare_v2.contract_class.abi,
+                        },
+                        compiled_class_hash: declare_v2.compiled_class_hash,
+                        sender_address: declare_v2.sender_address,
+                        nonce: declare_v2.nonce,
+                        max_fee: declare_v2.max_fee,
+                        version: declare_v2.version,
+                        signature: declare_v2.signature,
+                    }))
+                }
+            },
+        }
+    }
+}
+
+pub type ConversionError = StorageSerdeError;
+
+fn compress<T: StorageSerde>(value: &T) -> Result<String, ConversionError> {
+    Ok(base64::encode(serialize_and_compress(value)?))
 }
