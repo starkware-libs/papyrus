@@ -13,7 +13,7 @@ use async_stream::try_stream;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use indexmap::IndexMap;
-use papyrus_common::SyncingState;
+use papyrus_common::{BlockHashAndNumber, SyncStatus, SyncingState};
 use papyrus_config::converters::deserialize_milliseconds_to_duration;
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, SerializedParam};
@@ -147,13 +147,17 @@ pub enum SyncEvent {
         compiled_class_hash: CompiledClassHash,
         compiled_class: CasmContractClass,
     },
+    SyncingStateAvailable {
+        syncing_state: SyncingState,
+    },
 }
 
 impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSync<TCentralSource> {
     pub async fn run(&mut self) -> StateSyncResult {
         info!("State sync started.");
+        let starting_block = get_current_block(&self.reader)?;
         loop {
-            match self.sync_while_ok().await {
+            match self.sync_while_ok(starting_block.to_owned()).await {
                 // A recoverable error occurred. Sleep and try syncing again.
                 Err(err) if is_recoverable(&err) => {
                     warn!("Recoverable error encountered while syncing, error: {}", err);
@@ -206,9 +210,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     //  1. If needed, revert blocks from the end of the chain.
     //  2. Create infinite block and state diff streams to fetch data from the central source.
     //  3. Fetch data from the streams with unblocking wait while there is no new data.
-    async fn sync_while_ok(&mut self) -> StateSyncResult {
-        // TODO(yoav): Set actual values for the sync status.
-        *self.shared_syncing_state.write().await = SyncingState::Synced;
+    async fn sync_while_ok(&mut self, starting_block: BlockHashAndNumber) -> StateSyncResult {
         self.handle_block_reverts().await?;
         let block_stream = stream_new_blocks(
             self.reader.clone(),
@@ -232,7 +234,14 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
             self.config.state_updates_max_stream_size,
         )
         .fuse();
-        pin_mut!(block_stream, state_diff_stream, compiled_class_stream);
+        let syncing_state_stream = stream_syncing_state(
+            self.reader.clone(),
+            self.central_source.clone(),
+            self.config.syncing_state_sleep_duration,
+            starting_block,
+        )
+        .fuse();
+        pin_mut!(block_stream, state_diff_stream, compiled_class_stream, syncing_state_stream);
 
         loop {
             debug!("Selecting between block sync and state diff sync.");
@@ -240,6 +249,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
               res = block_stream.next() => res,
               res = state_diff_stream.next() => res,
               res = compiled_class_stream.next() => res,
+              res = syncing_state_stream.next() => res,
               complete => break,
             }
             .expect("Received None as a sync event.")?;
@@ -271,6 +281,10 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
                 compiled_class_hash,
                 compiled_class,
             } => self.store_compiled_class(class_hash, compiled_class_hash, compiled_class),
+            SyncEvent::SyncingStateAvailable { syncing_state } => {
+                *self.shared_syncing_state.write().await = syncing_state;
+                Ok(())
+            }
         }
     }
 
@@ -603,19 +617,7 @@ fn stream_new_compiled_classes<TCentralSource: CentralSourceTrait + Sync + Send>
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
         loop {
-            let txn = reader.begin_ro_txn()?;
-            let mut from = txn.get_compiled_class_marker()?;
-            let state_marker = txn.get_state_marker()?;
-            // Avoid starting streams from blocks without declared classes.
-            while from < state_marker {
-                let state_diff = txn.get_state_diff(from)?.expect("Expecting to have state diff up to the marker.");
-                if state_diff.declared_classes.is_empty() {
-                    from = from.next();
-                }
-                else {
-                    break;
-                }
-            }
+            let (from, state_marker) = get_declared_class_range(&reader)?;
 
             if from == state_marker {
                 debug!(
@@ -643,4 +645,99 @@ fn stream_new_compiled_classes<TCentralSource: CentralSourceTrait + Sync + Send>
             }
         }
     }
+}
+
+fn stream_syncing_state<TCentralSource: CentralSourceTrait + Sync + Send>(
+    reader: StorageReader,
+    central_source: Arc<TCentralSource>,
+    syncing_state_sleep_duration: Duration,
+    starting_block: BlockHashAndNumber,
+) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
+    try_stream! {
+        loop {
+            let syncing_state = get_syncing_state(&reader, &central_source, &starting_block).await?;
+            yield SyncEvent::SyncingStateAvailable{ syncing_state};
+            debug!("Syncing state was updated.");
+            tokio::time::sleep(syncing_state_sleep_duration).await;
+        }
+    }
+}
+
+// Gets the last fully synced block (block hash and number).
+fn get_current_block(reader: &StorageReader) -> Result<BlockHashAndNumber, StateSyncError> {
+    let Some(current_block_number) = get_declared_class_range(reader)?.0.prev() else {
+        // Arbitrary value when we have no blocks.
+        return Ok(BlockHashAndNumber{block_hash: BlockHash::default(), block_number: BlockNumber(0)})
+    };
+    let current_block_hash = get_block_hash(reader, current_block_number)?;
+    Ok(BlockHashAndNumber { block_hash: current_block_hash, block_number: current_block_number })
+}
+
+// Compares the highest known block to the highest fully synced block and return the syncing
+// state.
+async fn get_syncing_state<TCentralSource: CentralSourceTrait + Sync + Send>(
+    reader: &StorageReader,
+    central_source: &Arc<TCentralSource>,
+    starting_block: &BlockHashAndNumber,
+) -> Result<SyncingState, StateSyncError> {
+    let current_block = get_current_block(reader)?;
+
+    let highest_block = loop {
+        let Some(highest_block_number) = central_source.get_block_marker().await?.prev() else {
+            return Ok(SyncingState::Synced);
+        };
+        let highest_block_hash_opt = central_source.get_block_hash(highest_block_number).await?;
+        if let Some(highest_block_hash) = highest_block_hash_opt {
+            break BlockHashAndNumber {
+                block_hash: highest_block_hash,
+                block_number: highest_block_number,
+            };
+        }
+    };
+
+    if highest_block.block_number == current_block.block_number {
+        return Ok(SyncingState::Synced);
+    }
+    let sync_status = SyncStatus {
+        starting_block_hash: starting_block.block_hash,
+        starting_block_num: starting_block.block_number,
+        current_block_hash: current_block.block_hash,
+        current_block_num: current_block.block_number,
+        highest_block_hash: highest_block.block_hash,
+        highest_block_num: highest_block.block_number,
+    };
+    Ok(SyncingState::SyncStatus(sync_status))
+}
+
+// Gets a block hash from the storage by a block number.
+fn get_block_hash(
+    reader: &StorageReader,
+    block_number: BlockNumber,
+) -> Result<BlockHash, StateSyncError> {
+    let txn = reader.begin_ro_txn()?;
+    let Some(block_header) = txn.get_block_header(block_number)? else {
+        panic!("Expecting to have header of block {}", block_number)
+    };
+    Ok(block_header.block_hash)
+}
+
+// Returns the range of blocks with declared classes, from the first unsynced block with declared
+// classes to the marker of the state diffs.
+fn get_declared_class_range(
+    reader: &StorageReader,
+) -> Result<(BlockNumber, BlockNumber), StateSyncError> {
+    let txn = reader.begin_ro_txn()?;
+    let mut from = txn.get_compiled_class_marker()?;
+    let state_marker = txn.get_state_marker()?;
+    // Avoid starting the range from blocks without declared classes.
+    while from < state_marker {
+        let state_diff =
+            txn.get_state_diff(from)?.expect("Expecting to have state diff up to the marker.");
+        if state_diff.declared_classes.is_empty() {
+            from = from.next();
+        } else {
+            break;
+        }
+    }
+    Ok((from, state_marker))
 }
