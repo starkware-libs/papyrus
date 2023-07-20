@@ -9,6 +9,8 @@ use starknet_api::transaction::EventKey;
 
 use crate::v0_3_0::api::api_impl::JsonRpcServerV0_3_0Impl;
 use crate::v0_3_0::api::JsonRpcV0_3_0Server;
+use crate::v0_4_0::api::api_impl::JsonRpcServerV0_4_0Impl;
+use crate::v0_4_0::api::JsonRpcV0_4_0Server;
 use crate::version_config;
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -93,19 +95,33 @@ pub fn get_methods_from_supported_apis(
             let (version_id, version_state) = version_config;
             match version_state {
                 version_config::VersionState::Deprecated => None,
-                version_config::VersionState::Supported => match *version_id {
-                    version_config::VERSION_0_3_0 => Some(JsonRpcServerV0_3_0Impl {
-                        chain_id: chain_id.clone(),
-                        storage_reader: storage_reader.clone(),
-                        max_events_chunk_size,
-                        max_events_keys,
-                    }),
-                    _ => None,
-                },
+                version_config::VersionState::Supported => {
+                    let methods = match *version_id {
+                        version_config::VERSION_0_3_0 => Into::<Methods>::into(
+                            JsonRpcServerV0_3_0Impl::new(
+                                chain_id.clone(),
+                                storage_reader.clone(),
+                                max_events_chunk_size,
+                                max_events_keys,
+                            )
+                            .into_rpc(),
+                        ),
+                        version_config::VERSION_0_4_0 => Into::<Methods>::into(
+                            JsonRpcServerV0_4_0Impl::new(
+                                chain_id.clone(),
+                                storage_reader.clone(),
+                                max_events_chunk_size,
+                                max_events_keys,
+                            )
+                            .into_rpc(),
+                        ),
+                        _ => Methods::new(),
+                    };
+                    Some(methods)
+                }
             }
         })
-        .map(|rpc_module| rpc_module.into_rpc().into())
-        .fold(&mut methods, |methods, new_methods: Methods| {
+        .fold(&mut methods, |methods, new_methods| {
             let _res = methods.merge(new_methods);
             methods
         });
