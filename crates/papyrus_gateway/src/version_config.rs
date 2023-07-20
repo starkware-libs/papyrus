@@ -13,5 +13,7 @@ pub enum VersionState {
 }
 
 /// latest version must be set as supported
-pub const VERSION_CONFIG: &[(&str, VersionState)] = &[(VERSION_0_3_0, VersionState::Supported)];
+pub const VERSION_CONFIG: &[(&str, VersionState)] =
+    &[(VERSION_0_3_0, VersionState::Supported), (VERSION_0_4_0, VersionState::Supported)];
 pub const VERSION_0_3_0: &str = "V0_3_0";
+pub const VERSION_0_4_0: &str = "V0_4_0";
