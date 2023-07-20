@@ -77,7 +77,7 @@ serde = "1.0.130"
 serde_json = "1.0.81"
 serde_yaml = "0.9.16"
 simple_logger = "4.0.0"
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "ecc9b6946ef13003da202838e4124a9ad2efabb0" }
+starknet_api = {git = "https://github.com/starkware-libs/starknet-api", rev="5c24bdd"}
 tempfile = "3.3.0"
 thiserror = "1.0.31"
 tokio = "1.18.2"
