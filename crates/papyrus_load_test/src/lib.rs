@@ -6,7 +6,7 @@ pub mod transactions;
 use std::{env, fs};
 
 use goose::goose::{GooseUser, TransactionError};
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
 use rand::Rng;
 use serde::Deserialize;
 use serde_json::{json, Value as jsonVal};
@@ -14,7 +14,12 @@ use serde_json::{json, Value as jsonVal};
 type PostResult = Result<jsonVal, Box<TransactionError>>;
 
 pub async fn post_jsonrpc_request(user: &mut GooseUser, request: &jsonVal) -> PostResult {
-    let response = user.post_json("", request).await?.response.map_err(|e| Box::new(e.into()))?;
+    let version_id = &*RPC_VERSION_ID;
+    let response = user
+        .post_json(&format!("/rpc/{version_id}"), request)
+        .await?
+        .response
+        .map_err(|e| Box::new(e.into()))?;
     // The purpose of this struct and the line afterward is to report on failed requests.
     // The "response.json::<TransactionReceiptResponse>" deserialize the body of response to
     // TransactionReceiptResponse. If the response is an error, the result field doesn't exist in
@@ -89,3 +94,8 @@ const GET_TRANSACTION_BY_BLOCK_ID_AND_INDEX_BY_HASH_WEIGHT: usize = 10;
 const GET_TRANSACTION_BY_BLOCK_ID_AND_INDEX_BY_NUMBER_WEIGHT: usize = 10;
 const GET_TRANSACTION_BY_HASH_WEIGHT: usize = 10;
 const GET_TRANSACTION_RECEIPT_WEIGHT: usize = 10;
+
+static RPC_VERSION_ID: Lazy<String> = Lazy::new(|| match std::env::var("VERSION_ID") {
+    Ok(version_id) => version_id,
+    Err(_) => unreachable!("VERSION_ID environment variable is not set"),
+});

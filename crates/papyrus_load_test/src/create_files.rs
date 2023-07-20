@@ -21,7 +21,7 @@ use crate::{
     GET_STORAGE_AT_BY_HASH_WEIGHT, GET_STORAGE_AT_BY_NUMBER_WEIGHT,
     GET_TRANSACTION_BY_BLOCK_ID_AND_INDEX_BY_HASH_WEIGHT,
     GET_TRANSACTION_BY_BLOCK_ID_AND_INDEX_BY_NUMBER_WEIGHT, GET_TRANSACTION_BY_HASH_WEIGHT,
-    GET_TRANSACTION_RECEIPT_WEIGHT,
+    GET_TRANSACTION_RECEIPT_WEIGHT, RPC_VERSION_ID,
 };
 
 // The limit on the storage size for request arguments.
@@ -184,13 +184,16 @@ where
 
 pub async fn get_block_with_tx_hashes(node_address: SocketAddr, block_number: u64) -> jsonVal {
     let params = format!("{{ \"block_number\": {block_number} }}");
-    send_request(node_address, "starknet_getBlockWithTxHashes", &params).await
+    send_request(node_address, "starknet_getBlockWithTxHashes", &params, (*RPC_VERSION_ID).as_str())
+        .await
 }
 
 // Creates the file last_block_number.txt. Write to the file the last block number for the load
 // test.
 async fn last_block_number(node_address: SocketAddr) {
-    let last_block_number = &send_request(node_address, "starknet_blockNumber", "").await["result"];
+    let last_block_number =
+        &send_request(node_address, "starknet_blockNumber", "", (*RPC_VERSION_ID).as_str()).await
+            ["result"];
     let mut file = File::create(path_in_resources("last_block_number.txt")).unwrap();
     file.write_all(last_block_number.to_string().as_bytes()).unwrap();
 }
@@ -240,8 +243,13 @@ pub async fn get_transaction_count_by_block_number(
     node_address: SocketAddr,
 ) -> u64 {
     let params = format!("{{ \"block_number\": {block_number} }}");
-    let response =
-        &send_request(node_address, "starknet_getBlockTransactionCount", &params).await["result"];
+    let response = &send_request(
+        node_address,
+        "starknet_getBlockTransactionCount",
+        &params,
+        (*RPC_VERSION_ID).as_str(),
+    )
+    .await["result"];
     let trans_count = match response {
         jsonVal::Number(count) => count,
         _ => unreachable!(),
@@ -309,8 +317,9 @@ pub async fn get_random_contract_address_deployed_in_block(
     node_address: SocketAddr,
 ) -> Option<String> {
     let params = format!("{{ \"block_number\": {block_number} }}");
-    let response = &send_request(node_address, "starknet_getStateUpdate", &params).await["result"]
-        ["state_diff"]["deployed_contracts"];
+    let response =
+        &send_request(node_address, "starknet_getStateUpdate", &params, (*RPC_VERSION_ID).as_str())
+            .await["result"]["state_diff"]["deployed_contracts"];
     let contract_list = match response {
         jsonVal::Array(contract_list) => contract_list,
         _ => unreachable!("The gateway returns the deployed contracts as a vector."),
@@ -374,8 +383,13 @@ pub async fn get_random_class_hash_declared_in_block(
     let params = format!("{{ \"block_number\": {block_number} }}");
     let mut declared_classes = Vec::<jsonVal>::new();
     // Cairo 1 classes.
-    let classes = &mut send_request(node_address, "starknet_getStateUpdate", &params).await
-        ["result"]["state_diff"]["declared_classes"]
+    let classes = &mut send_request(
+        node_address,
+        "starknet_getStateUpdate",
+        &params,
+        (*RPC_VERSION_ID).as_str(),
+    )
+    .await["result"]["state_diff"]["declared_classes"]
         .take();
     // Cairo 1 declared classes returns as a couple of "class_hash" and "compiled_class_hash".
     let mut classes = classes
@@ -386,8 +400,13 @@ pub async fn get_random_class_hash_declared_in_block(
         .collect();
     declared_classes.append(&mut classes);
     // Cairo 0 classes.
-    let classes = &mut send_request(node_address, "starknet_getStateUpdate", &params).await
-        ["result"]["state_diff"]["deprecated_declared_classes"]
+    let classes = &mut send_request(
+        node_address,
+        "starknet_getStateUpdate",
+        &params,
+        (*RPC_VERSION_ID).as_str(),
+    )
+    .await["result"]["state_diff"]["deprecated_declared_classes"]
         .take();
     declared_classes.append(classes.as_array_mut().unwrap());
 

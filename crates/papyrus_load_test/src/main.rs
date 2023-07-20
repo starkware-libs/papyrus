@@ -1,4 +1,5 @@
 // This code is inspired by the pathfinder load test.
+// first set the env variable VERSION_ID to the version of the node you want to test.
 // To run this load test, run locally a node and then run:
 //      cargo run -r -p papyrus_load_test -- -t 5m -H http://127.0.0.1:8080
 // To create the files of requests run:
@@ -9,6 +10,7 @@
 use std::env;
 use std::fs::File;
 
+use assert_matches::assert_matches;
 use goose::{util, GooseAttack};
 use papyrus_load_test::create_files::create_files;
 use papyrus_load_test::scenarios;
@@ -17,6 +19,7 @@ use serde::Serialize;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args: Vec<String> = env::args().collect();
+    assert_matches!(std::env::var("VERSION_ID"), Ok(_));
     if args.len() > 1 && args[1].eq("--create_files") {
         create_files(&args[2]).await;
         return Ok(());
