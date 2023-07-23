@@ -39,12 +39,19 @@ fn insert_body_to_ommer() {
     let (thin_tx_outputs, transaction_outputs_events): (Vec<_>, Vec<_>) =
         block.body.transaction_outputs.into_iter().map(split_tx_output).unzip();
 
+    let tx_and_status = block
+        .body
+        .transactions
+        .into_iter()
+        .zip(block.body.transaction_execution_statuses)
+        .collect::<Vec<_>>();
+
     writer
         .begin_rw_txn()
         .unwrap()
         .insert_ommer_body(
             block.header.block_hash,
-            &block.body.transactions,
+            &tx_and_status,
             &thin_tx_outputs,
             &transaction_outputs_events,
         )
