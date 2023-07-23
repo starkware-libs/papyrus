@@ -2,7 +2,7 @@ use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
 
-/// The sync state is already synced or syncing.
+/// Represents the syncing status of the node.
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq)]
 pub enum SyncingState {
     Synced,
