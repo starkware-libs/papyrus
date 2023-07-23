@@ -1,9 +1,3 @@
-pub mod v0_3_0;
-
-pub mod version_config;
-#[cfg(test)]
-mod version_config_test;
-
 use std::collections::HashSet;
 
 use jsonrpsee::{Methods, RpcModule};
@@ -13,11 +7,9 @@ use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{ChainId, ContractAddress};
 use starknet_api::transaction::EventKey;
 
-use self::v0_3_0::v0_3_0_impl::JsonRpcServerV0_3_0Impl;
-use self::v0_3_0::JsonRpcV0_3_0Server;
-use crate::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use crate::state::ContractClass;
-use crate::transaction::Event;
+use crate::v0_3_0::api::api_impl::JsonRpcServerV0_3_0Impl;
+use crate::v0_3_0::api::JsonRpcV0_3_0Server;
+use crate::version_config;
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub enum Tag {
@@ -85,19 +77,6 @@ pub struct EventFilter {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ContinuationToken(pub String);
-
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-pub struct EventsChunk {
-    pub events: Vec<Event>,
-    pub continuation_token: Option<ContinuationToken>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(untagged)]
-pub enum GatewayContractClass {
-    Cairo0(DeprecatedContractClass),
-    Sierra(ContractClass),
-}
 
 /// Returns a `Methods` object with all the methods from the supported APIs.
 /// Whenever adding a new API version we need to add the new version mapping here.

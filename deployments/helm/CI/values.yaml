@@ -2,13 +2,13 @@
 
 rustLogLevel: "debug"
 
-image:
-  tag: dev
+deployment:
+  image:
+    tag: dev
 
 pvc:
   size: 1Gi
   storageClass: standard-rwo
-
 # Configure Ingress.
 # ingress:
 #   enabled: true

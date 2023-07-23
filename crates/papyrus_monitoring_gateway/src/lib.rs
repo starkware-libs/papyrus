@@ -42,7 +42,7 @@ impl SerializeConfig for MonitoringGatewayConfig {
             ser_param(
                 "collect_metrics",
                 &self.collect_metrics,
-                "If true, collect metrics for the package.",
+                "If true, collect metrics for the monitoring gateway.",
             ),
         ])
     }
@@ -130,7 +130,7 @@ fn app(
         )
         .route(
             format!("/{MONITORING_PREFIX}/alive").as_str(),
-            get(move || async { StatusCode::OK }),
+            get(move || async { StatusCode::OK.to_string() }),
         )
         .route(
             format!("/{MONITORING_PREFIX}/metrics").as_str(),

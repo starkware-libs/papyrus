@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
 use cairo_lang_casm::hints::CoreHintBase;
+use pretty_assertions::assert_eq;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ContractAddress;
 use starknet_api::hash::StarkHash;
@@ -79,4 +80,13 @@ fn hint_modified() {
     // Only CoreHintBase is being used in programs (StarknetHint is for tests).
     let hint_schema = schemars::schema_for!(CoreHintBase);
     insta::assert_yaml_snapshot!(hint_schema);
+}
+
+#[test]
+fn serialization_precision() {
+    let input =
+        "{\"value\":244116128358498188146337218061232635775543270890529169229936851982759783745}";
+    let serialized = serde_json::from_str::<serde_json::Value>(input).unwrap();
+    let deserialized = serde_json::to_string(&serialized).unwrap();
+    assert_eq!(input, deserialized);
 }

@@ -11,7 +11,7 @@ use papyrus_storage::StorageReader;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 use starknet_api::state::{StateDiff, StateNumber};
-use starknet_client::{ClientResult, StarknetClientTrait, StateUpdate};
+use starknet_reader_client::{ClientResult, StarknetClientTrait, StateUpdate};
 use tracing::log::trace;
 use tracing::{debug, instrument};
 
@@ -237,7 +237,7 @@ fn client_to_central_state_update(
     match maybe_client_state_update {
         Ok((state_update, mut declared_classes)) => {
             // Destruct the state diff to avoid partial move.
-            let starknet_client::StateDiff {
+            let starknet_reader_client::StateDiff {
                 storage_diffs,
                 deployed_contracts,
                 declared_classes: declared_class_hashes,

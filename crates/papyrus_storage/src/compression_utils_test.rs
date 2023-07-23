@@ -1,3 +1,4 @@
+use pretty_assertions::assert_eq;
 use starknet_api::deprecated_contract_class::Program;
 use test_utils::read_json_file;
 

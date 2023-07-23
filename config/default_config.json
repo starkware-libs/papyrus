@@ -1,7 +1,7 @@
 {
   "central.concurrent_requests": {
     "description": "Maximum number of concurrent requests to Starknet feeder-gateway for getting a type of data (for example, blocks).",
-    "value": 300
+    "value": 10
   },
   "central.http_headers": {
     "description": "'k1:v1 k2:v2 ...' headers for SN-client.",
@@ -31,6 +31,10 @@
     "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
     "pointer_target": "chain_id"
   },
+  "gateway.collect_metrics": {
+    "description": "If true, collect metrics for the gateway.",
+    "value": false
+  },
   "gateway.max_events_chunk_size": {
     "description": "Maximum chunk size supported by the node in get_events requests.",
     "value": 1000
@@ -44,7 +48,7 @@
     "value": "0.0.0.0:8080"
   },
   "monitoring_gateway.collect_metrics": {
-    "description": "If true, collect metrics for the package.",
+    "description": "If true, collect metrics for the monitoring gateway.",
     "value": false
   },
   "monitoring_gateway.server_address": {

@@ -17,7 +17,6 @@ use serde_json::{json, Map, Value};
 
 use crate::{command, ConfigError, ParamPath, PointerParam, SerializedParam};
 
-
 /// Deserializes config from flatten JSON.
 /// For an explanation of `for<'a> Deserialize<'a>` see
 /// `<https://doc.rust-lang.org/nomicon/hrtb.html>`.

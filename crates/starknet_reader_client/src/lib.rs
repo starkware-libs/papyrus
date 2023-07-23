@@ -1,6 +1,9 @@
-//! Client implementation for [`starknet`] gateway.
+//! Client implementation for the [`Starknet`] feeder gateway.
 //!
-//! [`starknet`]: https://starknet.io/
+//! This client can read data from [`Starknet`] about the current state
+//! (e.g accepted blocks, contracts, classes).
+//!
+//! [`Starknet`]: https://starknet.io/
 
 mod objects;
 pub mod retry;
@@ -261,7 +264,10 @@ impl StarknetClient {
         };
         match code {
             StatusCode::OK => Ok(message),
-            StatusCode::INTERNAL_SERVER_ERROR => {
+            // TODO(Omri): The error code returned from SN changed from error 500 to error 400. For
+            // now, keeping both options. In the future, remove the '500' (INTERNAL_SERVER_ERROR)
+            // option.
+            StatusCode::INTERNAL_SERVER_ERROR | StatusCode::BAD_REQUEST => {
                 let starknet_error: StarknetError = serde_json::from_str(&message)?;
                 Err(ClientError::StarknetError(starknet_error))
             }

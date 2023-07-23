@@ -22,7 +22,7 @@ use papyrus_sync::{CentralSourceConfig, SyncConfig};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use starknet_api::core::ChainId;
-use starknet_client::RetryConfig;
+use starknet_reader_client::RetryConfig;
 
 use crate::version::VERSION_FULL;
 

@@ -56,6 +56,7 @@ use crate::compression_utils::{
     compress, decompress, decompress_from_reader, serialize_and_compress,
 };
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
+use crate::header::StarknetVersion;
 use crate::ommer::{OmmerEventKey, OmmerTransactionKey};
 #[cfg(test)]
 use crate::serializers::serializers_test::{create_storage_serde_test, StorageSerdeTest};
@@ -120,7 +121,6 @@ auto_storage_serde! {
         pub signature: TransactionSignature,
         pub nonce: Nonce,
         pub class_hash: ClassHash,
-        pub contract_address: ContractAddress,
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
     }
@@ -128,7 +128,6 @@ auto_storage_serde! {
         pub transaction_hash: TransactionHash,
         pub version: TransactionVersion,
         pub class_hash: ClassHash,
-        pub contract_address: ContractAddress,
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
     }
@@ -198,8 +197,7 @@ auto_storage_serde! {
         pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
         pub signature: TransactionSignature,
-        pub nonce: Nonce,
-        pub sender_address: ContractAddress,
+        pub contract_address: ContractAddress,
         pub entry_point_selector: EntryPointSelector,
         pub calldata: Calldata,
     }
@@ -253,6 +251,7 @@ auto_storage_serde! {
         pub param: TypedParameter,
         pub offset: usize,
     }
+    pub struct StarknetVersion(pub String);
     pub struct ThinDeclareTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
@@ -262,11 +261,13 @@ auto_storage_serde! {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
+        pub contract_address: ContractAddress,
     }
     pub struct ThinDeployAccountTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
+        pub contract_address: ContractAddress,
     }
     pub struct TypedParameter {
         pub name: String,
@@ -318,16 +319,6 @@ auto_storage_serde! {
     pub struct TransactionSignature(pub Vec<StarkFelt>);
     pub struct TransactionVersion(pub StarkFelt);
     pub struct Version(pub u32);
-
-    // Casm related structs.
-    pub struct CasmContractClass {
-        pub prime: BigUint,
-        pub compiler_version: String,
-        pub bytecode: Vec<BigUintAsHex>,
-        pub hints: Vec<(usize, Vec<Hint>)>,
-        pub pythonic_hints: Option<Vec<(usize, Vec<String>)>>,
-        pub entry_points_by_type: CasmContractEntryPoints,
-    }
 
     pub struct CasmContractEntryPoints {
         pub external: Vec<CasmContractEntryPoint>,
@@ -803,3 +794,34 @@ impl StorageSerde for DeprecatedContractClass {
 }
 #[cfg(test)]
 create_storage_serde_test!(DeprecatedContractClass);
+
+impl StorageSerde for CasmContractClass {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        let mut to_compress: Vec<u8> = Vec::new();
+        self.prime.serialize_into(&mut to_compress)?;
+        self.compiler_version.serialize_into(&mut to_compress)?;
+        self.bytecode.serialize_into(&mut to_compress)?;
+        self.hints.serialize_into(&mut to_compress)?;
+        self.pythonic_hints.serialize_into(&mut to_compress)?;
+        self.entry_points_by_type.serialize_into(&mut to_compress)?;
+
+        let compressed = compress(to_compress.as_slice())?;
+        compressed.serialize_into(res)?;
+
+        Ok(())
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        let compressed_data = Vec::<u8>::deserialize_from(bytes)?;
+        let data = decompress(compressed_data.as_slice()).ok()?;
+        let data = &mut data.as_slice();
+        Some(Self {
+            prime: BigUint::deserialize_from(data)?,
+            compiler_version: String::deserialize_from(data)?,
+            bytecode: Vec::<BigUintAsHex>::deserialize_from(data)?,
+            hints: Vec::<(usize, Vec<Hint>)>::deserialize_from(data)?,
+            pythonic_hints: Option::<Vec<(usize, Vec<String>)>>::deserialize_from(data)?,
+            entry_points_by_type: CasmContractEntryPoints::deserialize_from(data)?,
+        })
+    }
+}

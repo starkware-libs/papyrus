@@ -1,7 +1,6 @@
 use std::panic;
 
 use assert_matches::assert_matches;
-use camelpaste::paste;
 use futures_util::future::join_all;
 use hyper::{header, Body, Request};
 use jsonrpsee::core::client::ClientT;
@@ -12,23 +11,14 @@ use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
+use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
-use starknet_api::deprecated_contract_class::{
-    EventAbiEntry, FunctionAbiEntryWithType, StructAbiEntry,
-};
-use starknet_api::transaction::{
-    DeclareTransactionOutput, DeployAccountTransactionOutput, DeployTransactionOutput,
-    InvokeTransactionOutput, L1HandlerTransactionOutput, Transaction,
-};
-use test_utils::{get_rng, GetTestInstance};
 use tower::BoxError;
 
-use crate::api::version_config::{LATEST_VERSION_ID, VERSION_CONFIG};
 use crate::api::JsonRpcError;
-use crate::deprecated_contract_class::{ContractClassAbiEntryType, ContractClassAbiEntryWithType};
-use crate::middleware::proxy_request;
+use crate::middleware::proxy_rpc_request;
 use crate::test_utils::get_test_gateway_config;
-use crate::transaction::{TransactionOutput, TransactionReceipt};
+use crate::version_config::VERSION_CONFIG;
 use crate::{get_block_status, run_server, SERVER_MAX_BODY_SIZE};
 
 #[tokio::test]
@@ -68,7 +58,7 @@ async fn call_proxy_request_get_method_in_out(uri: String) -> Result<(String, St
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(serde_json::to_string(&request_body).unwrap()))
         .unwrap();
-    match proxy_request(req_no_version).await {
+    match proxy_rpc_request(req_no_version).await {
         Ok(res) => {
             let get_json_rpc_body = get_json_rpc_body(res).await;
             let body = serde_json::from_slice::<jsonrpsee::types::Request<'_>>(&get_json_rpc_body)
@@ -85,10 +75,8 @@ async fn call_proxy_request_get_method_in_out(uri: String) -> Result<(String, St
 
 #[tokio::test]
 async fn test_version_middleware() {
-    let base_uri = "http://localhost:8080";
-    let latest_version = LATEST_VERSION_ID.to_string();
-    let mut path_options =
-        vec![("".to_string(), latest_version.clone()), ("/".to_string(), latest_version.clone())];
+    let base_uri = "http://localhost:8080/rpc/";
+    let mut path_options = vec![];
     VERSION_CONFIG.iter().for_each(|(version_id, _)| {
         path_options.push((format!("/{}", *version_id), (*version_id).to_string()))
     });
@@ -145,97 +133,3 @@ fn get_block_status_test() {
     assert_eq!(get_block_status(&txn, BlockNumber(1)).unwrap(), BlockStatus::AcceptedOnL2);
     assert_eq!(get_block_status(&txn, BlockNumber(2)).unwrap(), BlockStatus::AcceptedOnL2);
 }
-
-#[tokio::test]
-async fn test_contractclassabientrywithtype_from_api_contractclassabientry() {
-    let mut rng = get_rng();
-    let _: ContractClassAbiEntryWithType =
-        starknet_api::deprecated_contract_class::ContractClassAbiEntry::Event(
-            EventAbiEntry::get_test_instance(&mut rng),
-        )
-        .try_into()
-        .unwrap();
-    let _: ContractClassAbiEntryWithType =
-        starknet_api::deprecated_contract_class::ContractClassAbiEntry::Function(
-            FunctionAbiEntryWithType::get_test_instance(&mut rng),
-        )
-        .try_into()
-        .unwrap();
-    let _: ContractClassAbiEntryWithType =
-        starknet_api::deprecated_contract_class::ContractClassAbiEntry::Struct(
-            StructAbiEntry::get_test_instance(&mut rng),
-        )
-        .try_into()
-        .unwrap();
-}
-
-macro_rules! test_ContractClassAbiEntryType_from_FunctionAbiEntryType {
-    ($variant:ident) => {
-        paste! {
-            #[tokio::test]
-            #[allow(non_snake_case)]
-            async fn [< ContractClassAbiEntryType_from_FunctionAbiEntryType_ $variant:lower>]() {
-                let _: ContractClassAbiEntryType =
-                starknet_api::deprecated_contract_class::FunctionAbiEntryType::$variant
-                    .try_into()
-                    .unwrap();
-            }
-        }
-    };
-}
-test_ContractClassAbiEntryType_from_FunctionAbiEntryType!(Constructor);
-test_ContractClassAbiEntryType_from_FunctionAbiEntryType!(L1Handler);
-test_ContractClassAbiEntryType_from_FunctionAbiEntryType!(Function);
-
-// macro to generate a test that creates a ContractClassAbiEntry with a variant based on the given
-// variant input and call try_into().unwrap()
-macro_rules! test_contract_class_abi_entry_with_type {
-    ($variant:ident, $variant_inner:ident) => {
-        paste! {
-            #[tokio::test]
-            #[allow(non_snake_case)]
-            async fn [<ContractClassAbiEntryWithType_from_api_ContractClassAbiEntry_ $variant:lower>]() {
-                let mut rng = get_rng();
-                let _: ContractClassAbiEntryWithType =
-                    starknet_api::deprecated_contract_class::ContractClassAbiEntry::$variant(
-                        $variant_inner::get_test_instance(&mut rng),
-                    )
-                    .try_into()
-                    .unwrap();
-            }
-        }
-    };
-}
-
-test_contract_class_abi_entry_with_type!(Event, EventAbiEntry);
-test_contract_class_abi_entry_with_type!(Function, FunctionAbiEntryWithType);
-test_contract_class_abi_entry_with_type!(Struct, StructAbiEntry);
-
-macro_rules! test_recipe_from_transtaction_output {
-    ($variant:ident, $recipe_type:ident) => {
-        paste! {
-            #[tokio::test]
-            async fn [<test_recipe_from_transtaction_output_ $variant:lower>]() {
-                let mut rng = get_rng();
-                let block_header = BlockHeader::default();
-                let transaction = Transaction::$variant(
-                    starknet_api::transaction::[<$variant Transaction>]::get_test_instance(&mut rng),
-                );
-                let output = TransactionOutput::$variant([<$variant TransactionOutput>]::default());
-                let receipt = TransactionReceipt::from_transaction_output(
-                    output,
-                    &transaction,
-                    block_header.block_hash,
-                    block_header.block_number,
-                );
-                assert_matches!(receipt, TransactionReceipt::$recipe_type(_));
-            }
-        }
-    }
-}
-
-test_recipe_from_transtaction_output!(Declare, Common);
-test_recipe_from_transtaction_output!(Invoke, Common);
-test_recipe_from_transtaction_output!(L1Handler, Common);
-test_recipe_from_transtaction_output!(Deploy, Deploy);
-test_recipe_from_transtaction_output!(DeployAccount, Deploy);

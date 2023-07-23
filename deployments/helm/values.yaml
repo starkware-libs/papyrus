@@ -3,32 +3,37 @@
 # The verbosity level of logs ("debug", "info", "error", etc.)
 rustLogLevel: "info"
 
-# The Docker image (including any tag and repository name)
-image:
-  repository: ghcr.io/starkware-libs/papyrus
-  tag: 0.1.2-alpha
-  pullPolicy: Always
-
 node:
   # Number of concurrent requests to the SN feeder gateway
-  concurrent_fg_requests: 50
+  concurrentFgRequests: 50
 
 starknet:
-  chain_id: SN_MAIN # possible values: SN_MAIN, SN_GOERLI
+  chainId: SN_MAIN # possible values: SN_MAIN, SN_GOERLI
   # feeder-gateway url
   # SN_MAIN: https://alpha-mainnet.starknet.io
   # SN_GOERLI: https://alpha4.starknet.io
-  central_url: https://alpha-mainnet.starknet.io
-  additional_headers: # optional addtional headers for SN communication
+  centralUrl: https://alpha-mainnet.starknet.io
+  additionalHeaders: # optional addtional headers for SN communication
 
-# The default resources for the pod.
-resources:
-  limits:
-    cpu: "1"
-    memory: 1Gi
-  requests:
-    cpu: 500m
-    memory: 1Gi
+deployment:
+  # The container image
+  image:
+    repository: ghcr.io/starkware-libs/papyrus
+    tag: 0.1.2-alpha
+  # The container's pullPolicy
+  pullPolicy: Always
+  # Optional - nodeSelector
+  nodeSelector:
+  # Optional - tolerations
+  tolerations:
+  # The default resources for a pod.
+  resources:
+    limits:
+      cpu: "1"
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
 
 # Service variables for a papyrus pod.
 services:
@@ -73,10 +78,10 @@ ingress:
 # Backup mode
 backup:
   enabled: false
-  sleep_interval: 6h
+  sleepInterval: 6h
   compress: false
   aws:
-    s3_bucket_name: my-backup-bucket-name
-    s3_bucket_region: my-backup-bucket-region
-    access_key_id: my aws_access_key_id
-    secret_access_key: my aws_secret_access_key
+    s3BucketName: my-backup-bucket-name
+    s3BucketRegion: my-backup-bucket-region
+    accessKeyId: my aws_access_key_id
+    secretAccessKey: my aws_secret_access_key

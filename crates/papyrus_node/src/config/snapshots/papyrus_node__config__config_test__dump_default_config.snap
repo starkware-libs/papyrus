@@ -6,7 +6,7 @@ expression: dumped_default_config
   "central.concurrent_requests": {
     "description": "Maximum number of concurrent requests to Starknet feeder-gateway for getting a type of data (for example, blocks).",
     "value": {
-      "$serde_json::private::Number": "300"
+      "$serde_json::private::Number": "10"
     }
   },
   "central.http_headers": {
@@ -39,6 +39,10 @@ expression: dumped_default_config
     "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
     "value": "SN_MAIN"
   },
+  "gateway.collect_metrics": {
+    "description": "If true, collect metrics for the gateway.",
+    "value": false
+  },
   "gateway.max_events_chunk_size": {
     "description": "Maximum chunk size supported by the node in get_events requests.",
     "value": {
@@ -56,7 +60,7 @@ expression: dumped_default_config
     "value": "0.0.0.0:8080"
   },
   "monitoring_gateway.collect_metrics": {
-    "description": "If true, collect metrics for the package.",
+    "description": "If true, collect metrics for the monitoring gateway.",
     "value": false
   },
   "monitoring_gateway.server_address": {

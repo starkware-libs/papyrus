@@ -6,15 +6,15 @@ metadata:
     {{- include "papyrus.labels" . | nindent 4 }}
 data:
   RUST_LOG: {{ .Values.rustLogLevel }}
-  CHAIN_ID: {{ .Values.starknet.chain_id }}
-  CENTRAL_URL: {{ .Values.starknet.central_url }}
-  CONCURRENT_REQUESTS: {{ .Values.node.concurrent_fg_requests | quote }}
-  {{- if .Values.starknet.additional_headers }}
-  ADDITIONAL_HEADER: {{ .Values.starknet.additional_headers }}
+  CHAIN_ID: {{ .Values.starknet.chainId }}
+  CENTRAL_URL: {{ .Values.starknet.centralUrl }}
+  CONCURRENT_REQUESTS: {{ .Values.node.concurrentFgRequests | quote }}
+  {{- if .Values.starknet.additionalHeaders }}
+  ADDITIONAL_HEADER: {{ .Values.starknet.additionalHeaders }}
   {{- end }}
   {{- if .Values.backup.enabled }}
-  SLEEP_INTERVAL: {{ .Values.backup.sleep_interval }}
-  S3_BUCKET_NAME: {{ .Values.backup.aws.s3_bucket_name }}
+  SLEEP_INTERVAL: {{ .Values.backup.sleepInterval }}
+  S3_BUCKET_NAME: {{ .Values.backup.aws.s3BucketName }}
   PAPYRUS_VERSION: {{ .Values.image.tag | quote }}
   COMPRESS_BACKUP: {{ .Values.backup.compress | quote }}
   {{- end }}

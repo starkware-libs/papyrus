@@ -7,6 +7,7 @@ use indexmap::{indexmap, IndexMap};
 use mockall::predicate;
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
+use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
@@ -14,7 +15,7 @@ use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContract
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass as sn_api_ContractClass, StateDiff, StorageKey};
 use starknet_api::{patricia_key, stark_felt};
-use starknet_client::{
+use starknet_reader_client::{
     Block, ClientError, ContractClass, DeclaredClassHashEntry, DeployedContract,
     GenericContractClass, GlobalRoot, MockStarknetClientTrait, ReplacedClass, StateUpdate,
     StorageEntry,
@@ -68,7 +69,7 @@ async fn stream_block_headers() {
     let stream =
         central_source.stream_new_blocks(expected_block_num, BlockNumber(END_BLOCK_NUMBER));
     pin_mut!(stream);
-    while let Some(Ok((block_number, _block))) = stream.next().await {
+    while let Some(Ok((block_number, _block, _starknet_version))) = stream.next().await {
         assert_eq!(expected_block_num, block_number);
         expected_block_num = expected_block_num.next();
     }
@@ -212,7 +213,7 @@ async fn stream_state_updates() {
         compiled_class_hash: compiled_class_hash2,
     };
 
-    let client_state_diff1 = starknet_client::StateDiff {
+    let client_state_diff1 = starknet_reader_client::StateDiff {
         storage_diffs: IndexMap::from([(contract_address1, vec![StorageEntry { key, value }])]),
         deployed_contracts: vec![
             DeployedContract { address: contract_address1, class_hash: class_hash2 },
@@ -226,7 +227,7 @@ async fn stream_state_updates() {
             class_hash: class_hash4,
         }],
     };
-    let client_state_diff2 = starknet_client::StateDiff::default();
+    let client_state_diff2 = starknet_reader_client::StateDiff::default();
 
     let block_state_update1 = StateUpdate {
         block_hash: block_hash1,
@@ -288,12 +289,12 @@ async fn stream_state_updates() {
         central_source.stream_state_updates(initial_block_num, BlockNumber(END_BLOCK_NUMBER));
     pin_mut!(stream);
 
+    let Some(Ok(state_diff_tuple)) = stream.next().await else {
+        panic!("Match of streamed state_update failed!");
+    };
     let (current_block_num, current_block_hash, state_diff, deployed_contract_class_definitions) =
-        if let Some(Ok(state_diff_tuple)) = stream.next().await {
-            state_diff_tuple
-        } else {
-            panic!("Match of streamed state_update failed!");
-        };
+        state_diff_tuple;
+
     assert_eq!(initial_block_num, current_block_num);
     assert_eq!(block_hash1, current_block_hash);
     assert_eq!(
@@ -332,12 +333,11 @@ async fn stream_state_updates() {
     assert_eq!(IndexMap::from([(contract_address1, nonce1)]), state_diff.nonces);
     assert_eq!(IndexMap::from([(contract_address3, class_hash4)]), state_diff.replaced_classes);
 
-    let (current_block_num, current_block_hash, state_diff, _deployed_classes) =
-        if let Some(Ok(state_diff_tuple)) = stream.next().await {
-            state_diff_tuple
-        } else {
-            panic!("Match of streamed state_update failed!");
-        };
+    let Some(Ok(state_diff_tuple)) = stream.next().await else {
+        panic!("Match of streamed state_update failed!");
+    };
+    let (current_block_num, current_block_hash, state_diff, _deployed_classes) = state_diff_tuple;
+
     assert_eq!(initial_block_num.next(), current_block_num);
     assert_eq!(block_hash2, current_block_hash);
     assert_eq!(state_diff, starknet_api::state::StateDiff::default());

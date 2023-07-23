@@ -12,12 +12,13 @@ members = [
     "crates/papyrus_proc_macros",
     "crates/papyrus_storage",
     "crates/papyrus_sync",
-    "crates/starknet_client",
+    "crates/starknet_reader_client",
+    "crates/starknet_writer_client",
     "crates/test_utils",
 ]
 
 [workspace.package]
-version = "0.1.0-alpha"
+version = "0.0.1"
 edition = "2021"
 repository = "https://github.com/starkware-libs/papyrus/"
 license = "Apache-2.0"
@@ -32,9 +33,9 @@ async-trait = "0.1.56"
 axum = "0.6.12"
 base64 = "0.13.0"
 byteorder = "1.4.3"
-cairo-lang-starknet = "2.0.0-rc1"
-cairo-lang-casm = "2.0.0-rc1"
-cairo-lang-utils = "2.0.0-rc1"
+cairo-lang-starknet = "2.1.0-rc0"
+cairo-lang-casm = "2.1.0-rc0"
+cairo-lang-utils = "2.1.0-rc0"
 camelpaste = "0.1.0"
 clap = { version = "4.3.10", features = ["env"] }
 const_format = "0.2.30"
@@ -65,8 +66,11 @@ os_info = "3.6.0"
 paste = "1.0.9"
 primitive-types = { version = "0.12.1", features = ["serde"] }
 parity-scale-codec = "3.5.0"
+pretty_assertions = "1.3.0"
+prometheus-parse = "0.2.4"
 rand = "0.8.5"
 rand_chacha = "0.3.1"
+regex = "1.9.0"
 reqwest = "0.11"
 rustc-hex = "2.1.0"
 schemars = { version = "0.8.12", features = ["preserve_order"] }
@@ -74,7 +78,7 @@ serde = "1.0.130"
 serde_json = "1.0.81"
 serde_yaml = "0.9.16"
 simple_logger = "4.0.0"
-starknet_api = "0.1.0"
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "ecc9b6946ef13003da202838e4124a9ad2efabb0" }
 tempfile = "3.3.0"
 thiserror = "1.0.31"
 tokio = "1.18.2"

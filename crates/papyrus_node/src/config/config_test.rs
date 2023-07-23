@@ -8,6 +8,7 @@ use std::str::FromStr;
 use papyrus_config::dumping::SerializeConfig;
 use papyrus_config::SerializedParam;
 use serde_json::{json, Map, Value};
+use pretty_assertions::assert_eq;
 use starknet_api::core::ChainId;
 use tempfile::NamedTempFile;
 use test_utils::get_absolute_path;

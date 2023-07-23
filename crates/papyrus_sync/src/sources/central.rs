@@ -15,6 +15,7 @@ use mockall::automock;
 use papyrus_config::converters::{deserialize_optional_map, serialize_optional_map};
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, SerializedParam};
+use papyrus_storage::header::StarknetVersion;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
@@ -23,7 +24,7 @@ use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::{ContractClass, StateDiff};
 use starknet_api::StarknetApiError;
-use starknet_client::{
+use starknet_reader_client::{
     ClientCreationError, ClientError, GenericContractClass, RetryConfig, StarknetClient,
     StarknetClientTrait,
 };
@@ -44,7 +45,7 @@ pub struct CentralSourceConfig {
 impl Default for CentralSourceConfig {
     fn default() -> Self {
         CentralSourceConfig {
-            concurrent_requests: 300,
+            concurrent_requests: 10,
             url: String::from("https://alpha-mainnet.starknet.io/"),
             http_headers: None,
             retry_config: RetryConfig {
@@ -165,7 +166,8 @@ pub trait CentralSourceTrait {
     ) -> CompiledClassesStream<'_>;
 }
 
-pub(crate) type BlocksStream<'a> = BoxStream<'a, Result<(BlockNumber, Block), CentralError>>;
+pub(crate) type BlocksStream<'a> =
+    BoxStream<'a, Result<(BlockNumber, Block, StarknetVersion), CentralError>>;
 type CentralStateUpdate =
     (BlockNumber, BlockHash, StateDiff, IndexMap<ClassHash, DeprecatedContractClass>);
 pub(crate) type StateUpdatesStream<'a> = BoxStream<'a, CentralResult<CentralStateUpdate>>;
@@ -229,8 +231,8 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
                 let maybe_central_block =
                     client_to_central_block(current_block_number, maybe_client_block);
                 match maybe_central_block {
-                    Ok(block) => {
-                        yield Ok((current_block_number, block));
+                    Ok(block_and_version) => {
+                        yield Ok((current_block_number, block_and_version.0, block_and_version.1));
                     }
                     Err(err) => {
                         yield (Err(err));
@@ -306,19 +308,21 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
 
 fn client_to_central_block(
     current_block_number: BlockNumber,
-    maybe_client_block: Result<Option<starknet_client::Block>, ClientError>,
-) -> CentralResult<Block> {
+    maybe_client_block: Result<Option<starknet_reader_client::Block>, ClientError>,
+) -> CentralResult<(Block, StarknetVersion)> {
     let res = match maybe_client_block {
         Ok(Some(block)) => {
             debug!("Received new block {current_block_number} with hash {}.", block.block_hash);
             trace!("Block: {block:#?}.");
-            Block::try_from(block).map_err(|err| CentralError::ClientError(Arc::new(err)))
+            Ok(block
+                .to_starknet_api_block_and_version()
+                .map_err(|err| CentralError::ClientError(Arc::new(err)))?)
         }
         Ok(None) => Err(CentralError::BlockNotFound { block_number: current_block_number }),
         Err(err) => Err(CentralError::ClientError(Arc::new(err))),
     };
     match res {
-        Ok(block) => Ok(block),
+        Ok((block, version_string)) => Ok((block, StarknetVersion(version_string))),
         Err(err) => {
             debug!("Received error for block {}: {:?}.", current_block_number, err);
             Err(err)

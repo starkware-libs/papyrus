@@ -3,7 +3,7 @@ use std::env;
 use std::fs::read_to_string;
 use std::hash::Hash;
 use std::net::SocketAddr;
-use std::ops::Index;
+use std::ops::{Deref, Index};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -18,6 +18,7 @@ use cairo_lang_utils::bigint::BigUintAsHex;
 use indexmap::IndexMap;
 use num_bigint::BigUint;
 use primitive_types::H160;
+use prometheus_parse::Value;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use reqwest::Client;
@@ -54,10 +55,15 @@ use starknet_api::transaction::{
 // GENERIC TEST UTIL FUNCTIONS
 //////////////////////////////////////////////////////////////////////////
 
-pub async fn send_request(address: SocketAddr, method: &str, params: &str) -> serde_json::Value {
+pub async fn send_request(
+    address: SocketAddr,
+    method: &str,
+    params: &str,
+    version: &str,
+) -> serde_json::Value {
     let client = Client::new();
     let res_str = client
-        .post(format!("http://{address:?}"))
+        .post(format!("http://{address:?}/rpc/{version}"))
         .header("Content-Type", "application/json")
         .body(format!(r#"{{"jsonrpc":"2.0","id":"1","method":"{method}","params":[{params}]}}"#))
         .send()
@@ -97,6 +103,27 @@ pub fn get_rng() -> ChaCha8Rng {
     // should still result in good, independent seeds to the returned PRNG.
     // This is not suitable for cryptography purposes.
     ChaCha8Rng::seed_from_u64(seed)
+}
+
+/// Use to get the value of a metric by name and labels.
+// If the data contains a metric with metric_name and labels returns its value else None.
+pub fn prometheus_is_contained(
+    data: String,
+    metric_name: &str,
+    labels: &[(&str, &str)],
+) -> Option<Value> {
+    // Converts labels to HashMap<String, String>.
+    let labels: HashMap<String, String> =
+        labels.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
+
+    let lines: Vec<_> = data.lines().map(|s| Ok(s.to_owned())).collect();
+    let metrics = prometheus_parse::Scrape::parse(lines.into_iter()).unwrap();
+    for s in metrics.samples {
+        if s.metric == metric_name && s.labels.deref() == &labels {
+            return Some(s.value);
+        }
+    }
+    None
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -333,7 +360,6 @@ auto_impl_get_test_instance! {
         pub signature: TransactionSignature,
         pub nonce: Nonce,
         pub class_hash: ClassHash,
-        pub contract_address: ContractAddress,
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
     }
@@ -341,7 +367,6 @@ auto_impl_get_test_instance! {
         pub transaction_hash: TransactionHash,
         pub version: TransactionVersion,
         pub class_hash: ClassHash,
-        pub contract_address: ContractAddress,
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
     }
@@ -403,8 +428,7 @@ auto_impl_get_test_instance! {
         pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
         pub signature: TransactionSignature,
-        pub nonce: Nonce,
-        pub sender_address: ContractAddress,
+        pub contract_address: ContractAddress,
         pub entry_point_selector: EntryPointSelector,
         pub calldata: Calldata,
     }
@@ -535,7 +559,7 @@ macro_rules! auto_impl_get_test_instance {
     // Tuple structs (no names associated with fields) - one field.
     ($(pub)? struct $name:ident($(pub)? $ty:ty); $($rest:tt)*) => {
         impl GetTestInstance for $name {
-            fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+            fn get_test_instance(rng: &mut rand_chacha::ChaCha8Rng) -> Self {
                 Self(<$ty>::get_test_instance(rng))
             }
         }
@@ -544,7 +568,7 @@ macro_rules! auto_impl_get_test_instance {
     // Tuple structs (no names associated with fields) - two fields.
     ($(pub)? struct $name:ident($(pub)? $ty0:ty, $(pub)? $ty1:ty) ; $($rest:tt)*) => {
         impl GetTestInstance for $name {
-            fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+            fn get_test_instance(rng: &mut rand_chacha::ChaCha8Rng) -> Self {
                 Self(<$ty0>::get_test_instance(rng), <$ty1>::get_test_instance(rng))
             }
         }
@@ -553,7 +577,7 @@ macro_rules! auto_impl_get_test_instance {
     // Structs with public fields.
     ($(pub)? struct $name:ident { $(pub $field:ident : $ty:ty ,)* } $($rest:tt)*) => {
         impl GetTestInstance for $name {
-            fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+            fn get_test_instance(rng: &mut rand_chacha::ChaCha8Rng) -> Self {
                 Self {
                     $(
                         $field: <$ty>::get_test_instance(rng),
@@ -566,7 +590,7 @@ macro_rules! auto_impl_get_test_instance {
     // Tuples - two elements.
     (($ty0:ty, $ty1:ty) ; $($rest:tt)*) => {
         impl GetTestInstance for ($ty0, $ty1) {
-            fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+            fn get_test_instance(rng: &mut rand_chacha::ChaCha8Rng) -> Self {
                 (
                     <$ty0>::get_test_instance(rng),
                     <$ty1>::get_test_instance(rng),
@@ -578,7 +602,7 @@ macro_rules! auto_impl_get_test_instance {
     // Tuples - three elements.
     (($ty0:ty, $ty1:ty, $ty2:ty) ; $($rest:tt)*) => {
         impl GetTestInstance for ($ty0, $ty1, $ty2) {
-            fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+            fn get_test_instance(rng: &mut rand_chacha::ChaCha8Rng) -> Self {
                 (
                     <$ty0>::get_test_instance(rng),
                     <$ty1>::get_test_instance(rng),
@@ -591,7 +615,8 @@ macro_rules! auto_impl_get_test_instance {
     // enums.
     ($(pub)? enum $name:ident { $($variant:ident $( ($ty:ty) )? = $num:expr ,)* } $($rest:tt)*) => {
         impl GetTestInstance for $name {
-            fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+            fn get_test_instance(rng: &mut rand_chacha::ChaCha8Rng) -> Self {
+                use rand::Rng;
                 let variant = rng.gen_range(0..get_number_of_variants!(enum $name { $($variant $( ($ty) )? = $num ,)* }));
                 match variant {
                     $(
@@ -618,7 +643,7 @@ macro_rules! auto_impl_get_test_instance {
 macro_rules! default_impl_get_test_instance {
     ($name:path) => {
         impl GetTestInstance for $name {
-            fn get_test_instance(_rng: &mut ChaCha8Rng) -> Self {
+            fn get_test_instance(_rng: &mut rand_chacha::ChaCha8Rng) -> Self {
                 Self::default()
             }
         }

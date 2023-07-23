@@ -1,5 +1,5 @@
 [package]
-name = "starknet_client"
+name = "starknet_reader_client"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
@@ -13,6 +13,7 @@ async-trait.workspace = true
 cairo-lang-starknet.workspace = true
 http.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
+lazy_static.workspace = true
 mockall = { workspace = true, optional = true }
 os_info.workspace = true
 papyrus_config = { path = "../papyrus_config" }
@@ -31,4 +32,5 @@ assert.workspace = true
 assert_matches.workspace = true
 mockall.workspace = true
 mockito.workspace = true
+pretty_assertions.workspace = true
 starknet_api = { workspace = true, features = ["testing"] }

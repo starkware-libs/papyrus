@@ -1,3 +1,41 @@
+//! Interface for handling data related to Starknet [block bodies](https://docs.rs/starknet_api/latest/starknet_api/block/struct.BlockBody.html).
+//!
+//! The block body is the part of the block that contains the transactions and the transaction
+//! outputs.
+//! Import [`BodyStorageReader`] and [`BodyStorageWriter`] to read and write data related
+//! to the block bodies using a [`StorageTxn`].
+//!
+//! See [`events`] module for the interface for handling events.
+//!
+//!  # Example
+//! ```
+//! use papyrus_storage::open_storage;
+//! # use papyrus_storage::db::DbConfig;
+//! # use starknet_api::core::ChainId;
+//! use starknet_api::block::{Block, BlockNumber};
+//! use papyrus_storage::body::{BodyStorageReader, BodyStorageWriter};
+//!
+//! # let dir_handle = tempfile::tempdir().unwrap();
+//! # let dir = dir_handle.path().to_path_buf();
+//! # let db_config = DbConfig {
+//! #     path_prefix: dir,
+//! #     chain_id: ChainId("SN_MAIN".to_owned()),
+//! #     min_size: 1 << 20,    // 1MB
+//! #     max_size: 1 << 35,    // 32GB
+//! #     growth_step: 1 << 26, // 64MB
+//! # };
+//! let block = Block::default();
+//! let (reader, mut writer) = open_storage(db_config)?;
+//! writer
+//!     .begin_rw_txn()?                                // Start a RW transaction.
+//!     .append_body(BlockNumber(0), block.body)?       // Append the block body (consumes the body at the current version).
+//!     .commit()?;
+//!
+//! let stored_body_transactions = reader.begin_ro_txn()?.get_block_transactions(BlockNumber(0))?;
+//! assert_eq!(stored_body_transactions, Some(Block::default().body.transactions));
+//! # Ok::<(), papyrus_storage::StorageError>(())
+//! ```
+
 #[cfg(test)]
 #[path = "body_test.rs"]
 mod body_test;
@@ -22,39 +60,46 @@ type TransactionHashToIdxTable<'env> = TableHandle<'env, TransactionHash, Transa
 type EventsTableKey = (ContractAddress, EventIndex);
 type EventsTable<'env> = TableHandle<'env, EventsTableKey, EventContent>;
 
+/// The index of a transaction in a block.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
 
+/// Interface for reading data related to the block body.
 pub trait BodyStorageReader {
-    // The block number marker is the first block number that doesn't exist yet.
+    /// The body marker is the first block number that doesn't exist yet.
     fn get_body_marker(&self) -> StorageResult<BlockNumber>;
 
-    // TODO(spapini): get_transaction_by_hash.
+    /// Returns the transaction at the given index.
     fn get_transaction(
         &self,
         transaction_index: TransactionIndex,
     ) -> StorageResult<Option<Transaction>>;
 
+    /// Returns the transaction output at the given index.
     fn get_transaction_output(
         &self,
         transaction_index: TransactionIndex,
     ) -> StorageResult<Option<ThinTransactionOutput>>;
 
+    /// Returns the events of the transaction output at the given index.
     fn get_transaction_events(
         &self,
         transaction_index: TransactionIndex,
     ) -> StorageResult<Option<Vec<Event>>>;
 
+    /// Returns the index of the transaction with the given hash.
     fn get_transaction_idx_by_hash(
         &self,
         tx_hash: &TransactionHash,
     ) -> StorageResult<Option<TransactionIndex>>;
 
+    /// Returns the transactions of the block with the given number.
     fn get_block_transactions(
         &self,
         block_number: BlockNumber,
     ) -> StorageResult<Option<Vec<Transaction>>>;
 
+    /// Returns the transaction outputs of the block with the given number.
     fn get_block_transaction_outputs(
         &self,
         block_number: BlockNumber,
@@ -63,13 +108,19 @@ pub trait BodyStorageReader {
 
 type RevertedBlockBody = (Vec<Transaction>, Vec<ThinTransactionOutput>, Vec<Vec<EventContent>>);
 
+/// Interface for updating data related to the block body.
 pub trait BodyStorageWriter
 where
     Self: Sized,
 {
+    /// Appends a block body to the storage.
     // To enforce that no commit happen after a failure, we consume and return Self on success.
+    // The body is consumed to avoid unnecessary copying while converting transaction outputs into
+    // thin transaction outputs.
+    // TODO(yair): make this work without consuming the body.
     fn append_body(self, block_number: BlockNumber, block_body: BlockBody) -> StorageResult<Self>;
 
+    /// Removes a block body from the storage and returns the removed data.
     fn revert_body(
         self,
         block_number: BlockNumber,

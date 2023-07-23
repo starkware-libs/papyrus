@@ -1,20 +1,23 @@
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
+use papyrus_common::SyncingState;
 use papyrus_proc_macros::versioned_rpc;
+use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::StorageKey;
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 
-use super::{BlockHashAndNumber, BlockId, EventFilter, EventsChunk, GatewayContractClass};
-use crate::block::Block;
-use crate::state::StateUpdate;
-use crate::transaction::{TransactionReceiptWithStatus, TransactionWithType};
+use super::block::Block;
+use super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
+use super::state::{ContractClass, StateUpdate};
+use super::transaction::{Event, TransactionReceiptWithStatus, TransactionWithType};
+use crate::api::{BlockHashAndNumber, BlockId, ContinuationToken, EventFilter};
 
-pub mod v0_3_0_impl;
+pub mod api_impl;
 #[cfg(test)]
-mod v0_3_0_test;
+mod test;
 
 #[versioned_rpc("V0_3_0")]
 pub trait JsonRpc {
@@ -109,4 +112,21 @@ pub trait JsonRpc {
     /// Returns all events matching the given filter.
     #[method(name = "getEvents")]
     fn get_events(&self, filter: EventFilter) -> RpcResult<EventsChunk>;
+
+    /// Returns the synching status of the node, or false if the node is not synching.
+    #[method(name = "syncing")]
+    fn syncing(&self) -> RpcResult<SyncingState>;
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum GatewayContractClass {
+    Cairo0(DeprecatedContractClass),
+    Sierra(ContractClass),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct EventsChunk {
+    pub events: Vec<Event>,
+    pub continuation_token: Option<ContinuationToken>,
 }

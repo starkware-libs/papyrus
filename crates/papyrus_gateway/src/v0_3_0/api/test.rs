@@ -14,6 +14,7 @@ use papyrus_storage::body::{BodyStorageWriter, TransactionIndex};
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
+use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
@@ -26,21 +27,23 @@ use test_utils::{
     get_rng, get_test_block, get_test_body, get_test_state_diff, send_request, GetTestInstance,
 };
 
-use crate::api::v0_3_0::v0_3_0_impl::JsonRpcServerV0_3_0Impl;
-use crate::api::{
-    BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, EventsChunk,
-    JsonRpcError, Tag,
-};
-use crate::block::Block;
-use crate::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use crate::state::{ContractClass, StateUpdate, ThinStateDiff};
-use crate::test_utils::{
-    get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
-};
-use crate::transaction::{
+use super::super::api::EventsChunk;
+use super::super::block::Block;
+use super::super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
+use super::super::state::{ContractClass, StateUpdate, ThinStateDiff};
+use super::super::transaction::{
     Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
     TransactionWithType, Transactions,
 };
+use super::api_impl::JsonRpcServerV0_3_0Impl;
+use crate::api::{
+    BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcError,
+    Tag,
+};
+use crate::test_utils::{
+    get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
+};
+use crate::version_config::VERSION_0_3_0;
 use crate::{run_server, ContinuationTokenAsStruct};
 
 #[tokio::test]
@@ -123,6 +126,13 @@ async fn block_number() {
         .await
         .unwrap();
     assert_eq!(block_number, BlockNumber(0));
+}
+
+#[tokio::test]
+async fn syncing() {
+    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+    let res = module.call::<_, bool>("starknet_V0_3_0_syncing", ObjectParams::new()).await.unwrap();
+    assert_eq!(res, false);
 }
 
 #[tokio::test]
@@ -558,21 +568,22 @@ async fn get_transaction_receipt() {
         .commit()
         .unwrap();
 
-    let transaction = block.body.transactions.index(0);
+    let transaction_hash = block.body.transactions.index(0).transaction_hash();
     let output = TransactionOutput::from(block.body.transaction_outputs.index(0).clone());
     let expected_receipt = TransactionReceiptWithStatus {
-        receipt: TransactionReceipt::from_transaction_output(
+        receipt: TransactionReceipt {
+            transaction_hash,
+            r#type: output.r#type(),
+            block_hash: block.header.block_hash,
+            block_number: block.header.block_number,
             output,
-            transaction,
-            block.header.block_hash,
-            block.header.block_number,
-        ),
+        },
         status: TransactionStatus::AcceptedOnL2,
     };
     let res = module
         .call::<_, TransactionReceiptWithStatus>(
             "starknet_V0_3_0_getTransactionReceipt",
-            [transaction.transaction_hash()],
+            [transaction_hash],
         )
         .await
         .unwrap();
@@ -595,7 +606,7 @@ async fn get_transaction_receipt() {
     let res = module
         .call::<_, TransactionReceiptWithStatus>(
             "starknet_V0_3_0_getTransactionReceipt",
-            [transaction.transaction_hash()],
+            [transaction_hash],
         )
         .await
         .unwrap();
@@ -1608,16 +1619,19 @@ async fn serialize_returns_valid_json() {
     let gateway_config = get_test_gateway_config();
     let (server_address, _handle) = run_server(&gateway_config, storage_reader).await.unwrap();
 
-    let schema = get_starknet_spec_api_schema(&[
-        "BLOCK_WITH_TXS",
-        "BLOCK_WITH_TX_HASHES",
-        "STATE_UPDATE",
-        "CONTRACT_CLASS",
-        "DEPRECATED_CONTRACT_CLASS",
-        "TXN",
-        "TXN_RECEIPT",
-        "EVENTS_CHUNK",
-    ])
+    let schema = get_starknet_spec_api_schema(
+        &[
+            "BLOCK_WITH_TXS",
+            "BLOCK_WITH_TX_HASHES",
+            "STATE_UPDATE",
+            "CONTRACT_CLASS",
+            "DEPRECATED_CONTRACT_CLASS",
+            "TXN",
+            "TXN_RECEIPT",
+            "EVENTS_CHUNK",
+        ],
+        VERSION_0_3_0,
+    )
     .await;
     validate_state(&state_diff, server_address, &schema).await;
     validate_block(&block.header, server_address, &schema).await;
@@ -1625,8 +1639,13 @@ async fn serialize_returns_valid_json() {
 }
 
 async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, schema: &JSONSchema) {
-    let res =
-        send_request(server_address, "starknet_getStateUpdate", r#"{"block_number": 1}"#).await;
+    let res = send_request(
+        server_address,
+        "starknet_getStateUpdate",
+        r#"{"block_number": 1}"#,
+        VERSION_0_3_0,
+    )
+    .await;
     assert!(schema.validate(&res["result"]).is_ok(), "State update is not valid.");
 
     let (address, _) = state_diff.deployed_contracts.get_index(0).unwrap();
@@ -1634,6 +1653,7 @@ async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, sche
         server_address,
         "starknet_getClassAt",
         format!(r#"{{"block_number": 1}}, "0x{}""#, hex::encode(address.0.key().bytes())).as_str(),
+        VERSION_0_3_0,
     )
     .await;
     assert!(schema.validate(&res["result"]).is_ok(), "Class is not valid.");
@@ -1645,20 +1665,27 @@ async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, sche
         server_address,
         "starknet_getClassAt",
         format!(r#"{{"block_number": 1}}, "0x{}""#, hex::encode(address.0.key().bytes())).as_str(),
+        VERSION_0_3_0,
     )
     .await;
     assert!(schema.validate(&res["result"]).is_ok(), "Class is not valid.");
 }
 
 async fn validate_block(header: &BlockHeader, server_address: SocketAddr, schema: &JSONSchema) {
-    let res =
-        send_request(server_address, "starknet_getBlockWithTxs", r#"{"block_number": 1}"#).await;
+    let res = send_request(
+        server_address,
+        "starknet_getBlockWithTxs",
+        r#"{"block_number": 1}"#,
+        VERSION_0_3_0,
+    )
+    .await;
     assert!(schema.validate(&res["result"]).is_ok(), "Block with transactions is not valid.");
 
     let res = send_request(
         server_address,
         "starknet_getBlockWithTxHashes",
         format!(r#"{{"block_hash": "0x{}"}}"#, hex::encode(header.block_hash.0.bytes())).as_str(),
+        VERSION_0_3_0,
     )
     .await;
     assert!(schema.validate(&res["result"]).is_ok(), "Block with transaction hashes is not valid.");
@@ -1669,6 +1696,7 @@ async fn validate_transaction(tx: &Transaction, server_address: SocketAddr, sche
         server_address,
         "starknet_getTransactionByBlockIdAndIndex",
         r#"{"block_number": 1}, 0"#,
+        VERSION_0_3_0,
     )
     .await;
     assert!(schema.validate(&res["result"]).is_ok(), "Transaction is not valid.");
@@ -1677,6 +1705,7 @@ async fn validate_transaction(tx: &Transaction, server_address: SocketAddr, sche
         server_address,
         "starknet_getTransactionByHash",
         format!(r#""0x{}""#, hex::encode(tx.transaction_hash().0.bytes())).as_str(),
+        VERSION_0_3_0,
     )
     .await;
     assert!(schema.validate(&res["result"]).is_ok(), "Transaction is not valid.");
@@ -1685,10 +1714,13 @@ async fn validate_transaction(tx: &Transaction, server_address: SocketAddr, sche
         server_address,
         "starknet_getTransactionReceipt",
         format!(r#""0x{}""#, hex::encode(tx.transaction_hash().0.bytes())).as_str(),
+        VERSION_0_3_0,
     )
     .await;
     assert!(schema.validate(&res["result"]).is_ok(), "Transaction receipt is not valid.");
 
-    let res = send_request(server_address, "starknet_getEvents", r#"{"chunk_size": 2}"#).await;
+    let res =
+        send_request(server_address, "starknet_getEvents", r#"{"chunk_size": 2}"#, VERSION_0_3_0)
+            .await;
     assert!(schema.validate(&res["result"]).is_ok(), "Events are not valid.");
 }

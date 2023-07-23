@@ -1,20 +1,25 @@
 mod api;
 mod block;
-mod deprecated_contract_class;
+pub mod broadcasted_transaction;
+#[cfg(test)]
+mod broadcasted_transaction_test;
+mod gateway_metrics;
 #[cfg(test)]
 mod gateway_test;
 mod middleware;
-mod state;
 #[cfg(test)]
 mod test_utils;
 mod transaction;
+mod v0_3_0;
+mod version_config;
 #[cfg(test)]
-mod transaction_test;
+mod version_config_test;
 
 use std::collections::BTreeMap;
 use std::fmt::Display;
 use std::net::SocketAddr;
 
+use gateway_metrics::MetricLogger;
 use jsonrpsee::server::{ServerBuilder, ServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
@@ -23,7 +28,6 @@ use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, SerializedParam};
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::body::events::EventIndex;
-use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::db::TransactionKind;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageReader, StorageTxn};
@@ -36,9 +40,7 @@ use crate::api::{
     get_methods_from_supported_apis, BlockHashOrNumber, BlockId, ContinuationToken, JsonRpcError,
     Tag,
 };
-use crate::block::BlockHeader;
-use crate::middleware::proxy_request;
-use crate::transaction::Transaction;
+use crate::middleware::{deny_requests_with_unsupported_path, proxy_rpc_request};
 
 /// Maximum size of a supported transaction body - 10MB.
 pub const SERVER_MAX_BODY_SIZE: u32 = 10 * 1024 * 1024;
@@ -48,6 +50,7 @@ pub struct GatewayConfig {
     pub server_address: String,
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
+    pub collect_metrics: bool,
 }
 
 impl Default for GatewayConfig {
@@ -57,6 +60,7 @@ impl Default for GatewayConfig {
             server_address: String::from("0.0.0.0:8080"),
             max_events_chunk_size: 1000,
             max_events_keys: 100,
+            collect_metrics: false,
         }
     }
 }
@@ -68,6 +72,7 @@ impl SerializeConfig for GatewayConfig {
             ser_param("server_address", &self.server_address, "IP:PORT of the node`s JSON-RPC server."),
             ser_param("max_events_chunk_size", &self.max_events_chunk_size, "Maximum chunk size supported by the node in get_events requests."),
             ser_param("max_events_keys", &self.max_events_keys, "Maximum number of keys supported by the node in get_events requests."),
+            ser_param("collect_metrics", &self.collect_metrics, "If true, collect metrics for the gateway."),
         ])
     }
 }
@@ -115,30 +120,6 @@ fn get_latest_block_number<Mode: TransactionKind>(
     Ok(txn.get_header_marker().map_err(internal_server_error)?.prev())
 }
 
-fn get_block_header_by_number<Mode: TransactionKind>(
-    txn: &StorageTxn<'_, Mode>,
-    block_number: BlockNumber,
-) -> Result<BlockHeader, ErrorObjectOwned> {
-    let header = txn
-        .get_block_header(block_number)
-        .map_err(internal_server_error)?
-        .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
-
-    Ok(BlockHeader::from(header))
-}
-
-fn get_block_txs_by_number<Mode: TransactionKind>(
-    txn: &StorageTxn<'_, Mode>,
-    block_number: BlockNumber,
-) -> Result<Vec<Transaction>, ErrorObjectOwned> {
-    let transactions = txn
-        .get_block_transactions(block_number)
-        .map_err(internal_server_error)?
-        .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
-
-    Ok(transactions.into_iter().map(Transaction::from).collect())
-}
-
 fn get_block_status<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
     block_number: BlockNumber,
@@ -173,19 +154,33 @@ pub async fn run_server(
     storage_reader: StorageReader,
 ) -> anyhow::Result<(SocketAddr, ServerHandle)> {
     debug!("Starting gateway.");
-    let server = ServerBuilder::default()
-        .max_request_body_size(SERVER_MAX_BODY_SIZE)
-        .set_middleware(tower::ServiceBuilder::new().filter_async(proxy_request))
-        .build(&config.server_address)
-        .await?;
-    let addr = server.local_addr()?;
     let methods = get_methods_from_supported_apis(
         &config.chain_id,
         storage_reader,
         config.max_events_chunk_size,
         config.max_events_keys,
     );
-    let handle = server.start(methods)?;
+    let addr;
+    let handle;
+    let server_builder =
+        ServerBuilder::default().max_request_body_size(SERVER_MAX_BODY_SIZE).set_middleware(
+            tower::ServiceBuilder::new()
+                .filter_async(deny_requests_with_unsupported_path)
+                .filter_async(proxy_rpc_request),
+        );
+
+    if config.collect_metrics {
+        let server = server_builder
+            .set_logger(MetricLogger::new(&methods))
+            .build(&config.server_address)
+            .await?;
+        addr = server.local_addr()?;
+        handle = server.start(methods)?;
+    } else {
+        let server = server_builder.build(&config.server_address).await?;
+        addr = server.local_addr()?;
+        handle = server.start(methods)?;
+    }
     info!(local_address = %addr, "Gateway is running.");
     Ok((addr, handle))
 }

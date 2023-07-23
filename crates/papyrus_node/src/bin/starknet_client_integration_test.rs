@@ -3,7 +3,7 @@ use papyrus_node::version::VERSION_FULL;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 use starknet_api::hash::StarkHash;
-use starknet_client::{StarknetClient, StarknetClientTrait};
+use starknet_reader_client::{StarknetClient, StarknetClientTrait};
 
 #[tokio::main]
 async fn main() {

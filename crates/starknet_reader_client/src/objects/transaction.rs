@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{
     ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, Nonce,
@@ -14,26 +15,25 @@ use starknet_api::transaction::{
 
 use crate::ClientError;
 
-// TODO(yair): Make these functions regular consts.
-fn tx_v0() -> TransactionVersion {
-    TransactionVersion(StarkFelt::try_from("0x0").expect("Unable to convert 0x0 to StarkFelt."))
-}
-fn tx_v1() -> TransactionVersion {
-    TransactionVersion(StarkFelt::try_from("0x1").expect("Unable to convert 0x1 to StarkFelt."))
-}
-fn tx_v2() -> TransactionVersion {
-    TransactionVersion(StarkFelt::try_from("0x2").expect("Unable to convert 0x2 to StarkFelt."))
+lazy_static! {
+    static ref TX_V0: TransactionVersion = TransactionVersion(StarkFelt::from(0u128));
+    static ref TX_V1: TransactionVersion = TransactionVersion(StarkFelt::from(1u128));
+    static ref TX_V2: TransactionVersion = TransactionVersion(StarkFelt::from(2u128));
 }
 
 // TODO(dan): consider extracting common fields out (version, hash, type).
 #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
-#[serde(untagged)]
-// Note: When deserializing an untagged enum, no variant can be a prefix of variants to follow.
+#[serde(tag = "type")]
 pub enum Transaction {
+    #[serde(rename = "DECLARE")]
     Declare(IntermediateDeclareTransaction),
+    #[serde(rename = "DEPLOY_ACCOUNT")]
     DeployAccount(DeployAccountTransaction),
+    #[serde(rename = "DEPLOY")]
     Deploy(DeployTransaction),
+    #[serde(rename = "INVOKE_FUNCTION")]
     Invoke(IntermediateInvokeTransaction),
+    #[serde(rename = "L1_HANDLER")]
     L1Handler(L1HandlerTransaction),
 }
 
@@ -73,11 +73,19 @@ impl Transaction {
 
     pub fn transaction_type(&self) -> TransactionType {
         match self {
-            Transaction::Declare(tx) => tx.r#type,
-            Transaction::Deploy(tx) => tx.r#type,
-            Transaction::DeployAccount(tx) => tx.r#type,
-            Transaction::Invoke(tx) => tx.r#type,
-            Transaction::L1Handler(tx) => tx.r#type,
+            Transaction::Declare(_) => TransactionType::Declare,
+            Transaction::Deploy(_) => TransactionType::Deploy,
+            Transaction::DeployAccount(_) => TransactionType::DeployAccount,
+            Transaction::Invoke(_) => TransactionType::InvokeFunction,
+            Transaction::L1Handler(_) => TransactionType::L1Handler,
+        }
+    }
+
+    pub fn contract_address(&self) -> Option<ContractAddress> {
+        match self {
+            Transaction::Deploy(tx) => Some(tx.contract_address),
+            Transaction::DeployAccount(tx) => Some(tx.contract_address),
+            _ => None,
         }
     }
 }
@@ -92,7 +100,6 @@ pub struct L1HandlerTransaction {
     pub contract_address: ContractAddress,
     pub entry_point_selector: EntryPointSelector,
     pub calldata: Calldata,
-    pub r#type: TransactionType,
 }
 
 impl From<L1HandlerTransaction> for starknet_api::transaction::L1HandlerTransaction {
@@ -119,7 +126,6 @@ pub struct IntermediateDeclareTransaction {
     pub version: TransactionVersion,
     pub transaction_hash: TransactionHash,
     pub signature: TransactionSignature,
-    pub r#type: TransactionType,
 }
 
 impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransaction {
@@ -127,9 +133,9 @@ impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::Decl
 
     fn try_from(declare_tx: IntermediateDeclareTransaction) -> Result<Self, ClientError> {
         match declare_tx.version {
-            v if v == tx_v0() => Ok(Self::V0(declare_tx.into())),
-            v if v == tx_v1() => Ok(Self::V1(declare_tx.into())),
-            v if v == tx_v2() => Ok(Self::V2(declare_tx.try_into()?)),
+            v if v == *TX_V0 => Ok(Self::V0(declare_tx.into())),
+            v if v == *TX_V1 => Ok(Self::V1(declare_tx.into())),
+            v if v == *TX_V2 => Ok(Self::V2(declare_tx.try_into()?)),
             _ => Err(ClientError::BadTransaction {
                 tx_hash: declare_tx.transaction_hash,
                 msg: format!("Declare version {:?} is not supported.", declare_tx.version),
@@ -182,7 +188,6 @@ pub struct DeployTransaction {
     pub transaction_hash: TransactionHash,
     #[serde(default)]
     pub version: TransactionVersion,
-    pub r#type: TransactionType,
 }
 
 impl From<DeployTransaction> for starknet_api::transaction::DeployTransaction {
@@ -190,7 +195,6 @@ impl From<DeployTransaction> for starknet_api::transaction::DeployTransaction {
         starknet_api::transaction::DeployTransaction {
             transaction_hash: deploy_tx.transaction_hash,
             version: deploy_tx.version,
-            contract_address: deploy_tx.contract_address,
             constructor_calldata: deploy_tx.constructor_calldata,
             class_hash: deploy_tx.class_hash,
             contract_address_salt: deploy_tx.contract_address_salt,
@@ -211,7 +215,6 @@ pub struct DeployAccountTransaction {
     pub transaction_hash: TransactionHash,
     #[serde(default)]
     pub version: TransactionVersion,
-    pub r#type: TransactionType,
 }
 
 impl From<DeployAccountTransaction> for starknet_api::transaction::DeployAccountTransaction {
@@ -219,7 +222,6 @@ impl From<DeployAccountTransaction> for starknet_api::transaction::DeployAccount
         starknet_api::transaction::DeployAccountTransaction {
             transaction_hash: deploy_tx.transaction_hash,
             version: deploy_tx.version,
-            contract_address: deploy_tx.contract_address,
             constructor_calldata: deploy_tx.constructor_calldata,
             class_hash: deploy_tx.class_hash,
             contract_address_salt: deploy_tx.contract_address_salt,
@@ -245,7 +247,6 @@ pub struct IntermediateInvokeTransaction {
     pub signature: TransactionSignature,
     pub transaction_hash: TransactionHash,
     pub version: TransactionVersion,
-    pub r#type: TransactionType,
 }
 
 impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::InvokeTransaction {
@@ -253,8 +254,8 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
 
     fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ClientError> {
         match invoke_tx.version {
-            v if v == tx_v0() => Ok(Self::V0(invoke_tx.try_into()?)),
-            v if v == tx_v1() => Ok(Self::V1(invoke_tx.try_into()?)),
+            v if v == *TX_V0 => Ok(Self::V0(invoke_tx.try_into()?)),
+            v if v == *TX_V1 => Ok(Self::V1(invoke_tx.try_into()?)),
             _ => Err(ClientError::BadTransaction {
                 tx_hash: invoke_tx.transaction_hash,
                 msg: format!("Invoke version {:?} is not supported.", invoke_tx.version),
@@ -271,8 +272,7 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
             transaction_hash: invoke_tx.transaction_hash,
             max_fee: invoke_tx.max_fee,
             signature: invoke_tx.signature,
-            nonce: invoke_tx.nonce.unwrap_or_default(),
-            sender_address: invoke_tx.sender_address,
+            contract_address: invoke_tx.sender_address,
             entry_point_selector: invoke_tx.entry_point_selector.ok_or(
                 ClientError::BadTransaction {
                     tx_hash: invoke_tx.transaction_hash,
@@ -319,10 +319,11 @@ pub struct TransactionReceipt {
 impl TransactionReceipt {
     pub fn into_starknet_api_transaction_output(
         self,
-        tx_type: TransactionType,
+        transaction: &Transaction,
     ) -> TransactionOutput {
         let messages_sent = self.l2_to_l1_messages.into_iter().map(MessageToL1::from).collect();
-        match tx_type {
+        let contract_address = transaction.contract_address();
+        match transaction.transaction_type() {
             TransactionType::Declare => TransactionOutput::Declare(DeclareTransactionOutput {
                 actual_fee: self.actual_fee,
                 messages_sent,
@@ -332,12 +333,16 @@ impl TransactionReceipt {
                 actual_fee: self.actual_fee,
                 messages_sent,
                 events: self.events,
+                contract_address: contract_address
+                    .expect("Deploy transaction must have a contract address."),
             }),
             TransactionType::DeployAccount => {
                 TransactionOutput::DeployAccount(DeployAccountTransactionOutput {
                     actual_fee: self.actual_fee,
                     messages_sent,
                     events: self.events,
+                    contract_address: contract_address
+                        .expect("Deploy account transaction must have a contract address."),
                 })
             }
             TransactionType::InvokeFunction => TransactionOutput::Invoke(InvokeTransactionOutput {

@@ -867,7 +867,7 @@
                     },
                     "starting_block_num": {
                         "description": "The number (height) of the block from which the sync started",
-                        "$ref": "#/components/schemas/NUM_AS_HEX"
+                        "$ref": "#/components/schemas/BLOCK_NUMBER"
                     },
                     "current_block_hash": {
                         "description": "The hash of the current block being synchronized",
@@ -875,7 +875,7 @@
                     },
                     "current_block_num": {
                         "description": "The number (height) of the current block being synchronized",
-                        "$ref": "#/components/schemas/NUM_AS_HEX"
+                        "$ref": "#/components/schemas/BLOCK_NUMBER"
                     },
                     "highest_block_hash": {
                         "description": "The hash of the estimated highest block to be synchronized",
@@ -883,7 +883,7 @@
                     },
                     "highest_block_num": {
                         "description": "The number (height) of the estimated highest block to be synchronized",
-                        "$ref": "#/components/schemas/NUM_AS_HEX"
+                        "$ref": "#/components/schemas/BLOCK_NUMBER"
                     }
                 },
                 "required": [
@@ -1452,7 +1452,11 @@
                                 "description": "The address of the account contract sending the declaration transaction",
                                 "$ref": "#/components/schemas/ADDRESS"
                             }
-                        }
+                        },
+                        "required": [
+                            "contract_class",
+                            "sender_address"
+                        ]
                     }
                 ]
             },
@@ -1606,37 +1610,89 @@
                 ]
             },
             "INVOKE_TXN_V0": {
-                "title": "version 0 invoke transaction",
+                "title": "Invoke transaction V0",
                 "description": "invokes a specific function in the desired contract (not necessarily an account)",
-                "$ref": "#/components/schemas/FUNCTION_CALL"
-            },
-            "INVOKE_TXN_V1": {
-                "title": "version 1 invoke transaction",
-                "description": "initiates a transaction from a given account",
-                "type": "object",
                 "properties": {
-                    "sender_address": {
+                    "max_fee": {
+                        "title": "Max fee",
+                        "$ref": "#/components/schemas/FELT",
+                        "description": "The maximal fee that can be charged for including the transaction"
+                    },
+                    "version": {
+                        "title": "Version",
+                        "description": "Version of the transaction scheme",
+                        "$ref": "#/components/schemas/NUM_AS_HEX"
+                    },
+                    "signature": {
+                        "title": "Signature",
+                        "$ref": "#/components/schemas/SIGNATURE"
+                    },
+                    "transaction_hash": {
+                        "title": "Transaction hash",
+                        "$ref": "#/components/schemas/TXN_HASH",
+                        "description": "The hash identifying the transaction"
+                    },
+                    "contract_address": {
+                        "title": "Contract address",
                         "$ref": "#/components/schemas/ADDRESS"
                     },
+                    "entry_point_selector": {
+                        "title": "Entry point selector",
+                        "$ref": "#/components/schemas/FELT"
+                    },
                     "calldata": {
+                        "title": "Calldata",
                         "type": "array",
-                        "description": "The data expected by the account's `execute` function (in most usecases, this includes the called contract address and a function selector)",
+                        "description": "The parameters passed to the function",
                         "items": {
                             "$ref": "#/components/schemas/FELT"
                         }
                     }
                 },
                 "required": [
-                    "sender_address",
-                    "calldata"
+                    "contract_address",
+                    "entry_point_selector",
+                    "calldata",
+                    "max_fee",
+                    "version",
+                    "signature",
+                    "transaction_hash"
+                ]
+            },
+            "INVOKE_TXN_V1": {
+                "title": "Invoke transaction V1",
+                "description": "initiates a transaction from a given account",
+                "allOf": [
+                    {
+                        "title": "Common transaction properties",
+                        "$ref": "#/components/schemas/COMMON_TXN_PROPERTIES"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "sender_address": {
+                                "title": "sender address",
+                                "$ref": "#/components/schemas/ADDRESS"
+                            },
+                            "calldata": {
+                                "type": "array",
+                                "title": "calldata",
+                                "description": "The data expected by the account's `execute` function (in most usecases, this includes the called contract address and a function selector)",
+                                "items": {
+                                    "$ref": "#/components/schemas/FELT"
+                                }
+                            }
+                        },
+                        "required": [
+                            "sender_address",
+                            "calldata"
+                        ]
+                    }
                 ]
             },
             "INVOKE_TXN": {
                 "title": "Initiate a transaction from an account",
                 "allOf": [
-                    {
-                        "$ref": "#/components/schemas/COMMON_TXN_PROPERTIES"
-                    },
                     {
                         "type": "object",
                         "properties": {
@@ -1689,8 +1745,39 @@
                                 "$ref": "#/components/schemas/INVOKE_TXN_V0"
                             },
                             {
-                                "$ref": "#/components/schemas/INVOKE_TXN_V1"
+                                "$ref": "#/components/schemas/BROADCASTED_INVOKE_TXN_V1"
                             }
+                        ]
+                    }
+                ]
+            },
+            "BROADCASTED_INVOKE_TXN_V1": {
+                "title": "Invoke transaction V1",
+                "description": "initiates a transaction from a given account",
+                "allOf": [
+                    {
+                        "title": "Common transaction properties",
+                        "$ref": "#/components/schemas/BROADCASTED_TXN_COMMON_PROPERTIES"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "sender_address": {
+                                "title": "sender address",
+                                "$ref": "#/components/schemas/ADDRESS"
+                            },
+                            "calldata": {
+                                "type": "array",
+                                "title": "calldata",
+                                "description": "The data expected by the account's `execute` function (in most usecases, this includes the called contract address and a function selector)",
+                                "items": {
+                                    "$ref": "#/components/schemas/FELT"
+                                }
+                            }
+                        },
+                        "required": [
+                            "sender_address",
+                            "calldata"
                         ]
                     }
                 ]

@@ -13,8 +13,12 @@ futures-util.workspace = true
 hyper = { workspace = true, features = ["full"] }
 jsonrpsee = { workspace = true, features = ["full"] }
 papyrus_config = { path = "../papyrus_config" }
+metrics.workspace = true
+papyrus_common = { path = "../papyrus_common"}
 papyrus_proc_macros = { path = "../papyrus_proc_macros"}
-papyrus_storage = { path = "../papyrus_storage" }
+papyrus_storage = { path = "../papyrus_storage", version = "0.0.1" }
+starknet_writer_client = { path = "../starknet_writer_client" }
+regex = {workspace = true}
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 starknet_api.workspace = true
@@ -30,7 +34,13 @@ assert_matches.workspace = true
 camelpaste.workspace = true
 hex.workspace = true
 jsonschema.workspace = true
+lazy_static.workspace = true
+metrics-exporter-prometheus = { version = "0.12.1" }
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
+pretty_assertions.workspace = true
+prometheus-parse.workspace = true
+rand_chacha.workspace = true
 test_utils = { path = "../test_utils" }
 starknet_api = { workspace = true, features = ["testing"] }
+starknet_writer_client = { path = "../starknet_writer_client", features = ["testing"] }
 indexmap = { workspace = true, features = ["serde"] }

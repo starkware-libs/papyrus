@@ -1,7 +1,6 @@
 use lazy_static::lazy_static;
-use papyrus_config::dumping::ser_param;
-use papyrus_config::{dumping::SerializeConfig, SerializedParam};
-use papyrus_config::ParamPath;
+use papyrus_config::dumping::{ser_param, SerializeConfig};
+use papyrus_config::{ParamPath, SerializedParam};
 use papyrus_node::config::{NodeConfig, DEFAULT_CONFIG_PATH};
 use starknet_api::core::ChainId;
 
