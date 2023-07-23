@@ -29,10 +29,9 @@ use crate::version::VERSION_FULL;
 // The path of the default configuration file, provided as part of the crate.
 pub const DEFAULT_CONFIG_PATH: &str = "config/default_config.json";
 
-// TODO(yoav) Rename to NodeConfig.
 /// The configurations of the various components of the node.
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
-pub struct Config {
+pub struct NodeConfig {
     pub gateway: GatewayConfig,
     pub central: CentralSourceConfig,
     pub monitoring_gateway: MonitoringGatewayConfig,
@@ -42,9 +41,9 @@ pub struct Config {
 }
 
 // Default configuration values.
-impl Default for Config {
+impl Default for NodeConfig {
     fn default() -> Self {
-        Config {
+        NodeConfig {
             central: CentralSourceConfig::default(),
             gateway: GatewayConfig::default(),
             monitoring_gateway: MonitoringGatewayConfig::default(),
@@ -54,7 +53,7 @@ impl Default for Config {
     }
 }
 
-impl SerializeConfig for Config {
+impl SerializeConfig for NodeConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         chain!(
             append_sub_config_name(self.central.dump(), "central"),
@@ -70,7 +69,7 @@ impl SerializeConfig for Config {
     }
 }
 
-impl Config {
+impl NodeConfig {
     /// Creates a config object. Selects the values from the default file and from resources with
     /// higher priority.
     pub fn load_and_process(args: Vec<String>) -> Result<Self, ConfigError> {

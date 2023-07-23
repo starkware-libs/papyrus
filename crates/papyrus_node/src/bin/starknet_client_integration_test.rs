@@ -1,4 +1,4 @@
-use papyrus_node::config::Config;
+use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
@@ -7,7 +7,7 @@ use starknet_client::{StarknetClient, StarknetClientTrait};
 
 #[tokio::main]
 async fn main() {
-    let config = Config::load_and_process(vec![
+    let config = NodeConfig::load_and_process(vec![
         "--chain_id=SN_GOERLI".to_owned(),
         "--central_url=https://alpha4.starknet.io/".to_owned(),
     ])
