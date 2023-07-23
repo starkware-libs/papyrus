@@ -1,6 +1,6 @@
 mod state_update_stream;
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use async_stream::stream;
@@ -9,8 +9,12 @@ use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use futures::stream::BoxStream;
 use futures_util::StreamExt;
 use indexmap::IndexMap;
+use itertools::chain;
 #[cfg(test)]
 use mockall::automock;
+use papyrus_config::converters::{deserialize_optional_map, serialize_optional_map};
+use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
+use papyrus_config::{ParamPath, SerializedParam};
 use papyrus_storage::header::StarknetVersion;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
@@ -29,13 +33,51 @@ use tracing::{debug, trace};
 use self::state_update_stream::StateUpdateStream;
 
 pub type CentralResult<T> = Result<T, CentralError>;
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct CentralSourceConfig {
     pub concurrent_requests: usize,
     pub url: String,
+    #[serde(deserialize_with = "deserialize_optional_map")]
     pub http_headers: Option<HashMap<String, String>>,
     pub retry_config: RetryConfig,
 }
+
+impl Default for CentralSourceConfig {
+    fn default() -> Self {
+        CentralSourceConfig {
+            concurrent_requests: 10,
+            url: String::from("https://alpha-mainnet.starknet.io/"),
+            http_headers: None,
+            retry_config: RetryConfig {
+                retry_base_millis: 30,
+                retry_max_delay_millis: 30000,
+                max_retries: 10,
+            },
+        }
+    }
+}
+
+impl SerializeConfig for CentralSourceConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        let self_params_dump = BTreeMap::from_iter([
+            ser_param(
+                "concurrent_requests",
+                &self.concurrent_requests,
+                "Maximum number of concurrent requests to Starknet feeder-gateway for getting a \
+                 type of data (for example, blocks).",
+            ),
+            ser_param("url", &self.url, "Starknet feeder-gateway URL. It should match chain_id."),
+            ser_param(
+                "http_headers",
+                &serialize_optional_map(&self.http_headers),
+                "'k1:v1 k2:v2 ...' headers for SN-client.",
+            ),
+        ]);
+        chain!(self_params_dump, append_sub_config_name(self.retry_config.dump(), "retry_config"))
+            .collect()
+    }
+}
+
 pub struct GenericCentralSource<TStarknetClient: StarknetClientTrait + Send + Sync> {
     pub concurrent_requests: usize,
     pub starknet_client: Arc<TStarknetClient>,

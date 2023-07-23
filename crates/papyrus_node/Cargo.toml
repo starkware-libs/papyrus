@@ -11,12 +11,15 @@ normal = ["papyrus_base_layer"]
 [dependencies]
 anyhow.workspace = true
 async-stream.workspace = true
-clap = { version = "3.2.19", features = ["derive"] }
+clap = { workspace = true, features = ["derive"] }
 const_format.workspace = true
 papyrus_base_layer = { path = "../papyrus_base_layer" }
 futures-util.workspace = true
+itertools.workspace = true
 jsonrpsee = { workspace = true, features = ["full"] }
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
+lazy_static.workspace = true
+papyrus_config = { path = "../papyrus_config" }
 papyrus_gateway = { path = "../papyrus_gateway" }
 papyrus_monitoring_gateway = { path = "../papyrus_monitoring_gateway" }
 papyrus_storage = { path = "../papyrus_storage", version = "0.0.1" }
@@ -36,5 +39,6 @@ url.workspace = true
 
 [dev-dependencies]
 pretty_assertions.workspace = true
+insta = { workspace = true, features = ["json"] }
 tempfile.workspace = true
 test_utils = { path = "../test_utils" }

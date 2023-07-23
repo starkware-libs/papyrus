@@ -5,6 +5,7 @@ mod sync_test;
 mod sources;
 
 use std::cmp::min;
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -12,6 +13,9 @@ use async_stream::try_stream;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use indexmap::IndexMap;
+use papyrus_config::converters::deserialize_milliseconds_to_duration;
+use papyrus_config::dumping::{ser_param, SerializeConfig};
+use papyrus_config::{ParamPath, SerializedParam};
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter, StarknetVersion};
@@ -27,12 +31,54 @@ use tracing::{debug, error, info, instrument, trace, warn};
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
 
-#[derive(Clone, Copy, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct SyncConfig {
+    #[serde(deserialize_with = "deserialize_milliseconds_to_duration")]
     pub block_propagation_sleep_duration: Duration,
+    #[serde(deserialize_with = "deserialize_milliseconds_to_duration")]
     pub recoverable_error_sleep_duration: Duration,
     pub blocks_max_stream_size: u32,
     pub state_updates_max_stream_size: u32,
+}
+
+impl SerializeConfig for SyncConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from_iter([
+            ser_param(
+                "block_propagation_sleep_duration",
+                &self.block_propagation_sleep_duration.as_millis(),
+                "Time in milliseconds before checking for a new block after the node is \
+                 synchronized.",
+            ),
+            ser_param(
+                "recoverable_error_sleep_duration",
+                &self.recoverable_error_sleep_duration.as_millis(),
+                "Waiting time in milliseconds before restarting synchronization after a \
+                 recoverable error.",
+            ),
+            ser_param(
+                "blocks_max_stream_size",
+                &self.blocks_max_stream_size,
+                "Max amount of blocks to download in a stream.",
+            ),
+            ser_param(
+                "state_updates_max_stream_size",
+                &self.state_updates_max_stream_size,
+                "Max amount of state updates to download in a stream.",
+            ),
+        ])
+    }
+}
+
+impl Default for SyncConfig {
+    fn default() -> Self {
+        SyncConfig {
+            block_propagation_sleep_duration: Duration::from_secs(10),
+            recoverable_error_sleep_duration: Duration::from_secs(10),
+            blocks_max_stream_size: 1000,
+            state_updates_max_stream_size: 1000,
+        }
+    }
 }
 
 // Orchestrates specific network interfaces (e.g. central, p2p, l1) and writes to Storage.
