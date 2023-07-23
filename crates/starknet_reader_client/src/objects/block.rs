@@ -133,8 +133,9 @@ impl Block {
             ));
         }
 
-        // Get the transaction outputs.
+        // Get the transaction outputs and execution statuses.
         let mut transaction_outputs = vec![];
+        let mut transaction_execution_statuses = vec![];
         for (i, receipt) in self.transaction_receipts.into_iter().enumerate() {
             let transaction = self.transactions.index(i);
 
@@ -178,6 +179,7 @@ impl Block {
                 ));
             }
 
+            transaction_execution_statuses.push(receipt.execution_status.clone());
             let tx_output = receipt.into_starknet_api_transaction_output(transaction);
             transaction_outputs.push(tx_output);
         }
@@ -203,8 +205,6 @@ impl Block {
             timestamp: self.timestamp,
         };
 
-        // todo: replace this with acctual data once sync is implemented.
-        let transaction_execution_statuses = vec![];
         let body = starknet_api::block::BlockBody {
             transactions,
             transaction_outputs,
