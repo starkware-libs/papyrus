@@ -9,8 +9,9 @@ use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::{
     Calldata, ContractAddressSalt, DeclareTransactionOutput, DeployAccountTransactionOutput,
     DeployTransactionOutput, EthAddress, Event, Fee, InvokeTransactionOutput,
-    L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, MessageToL1, TransactionHash,
-    TransactionOffsetInBlock, TransactionOutput, TransactionSignature, TransactionVersion,
+    L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, MessageToL1,
+    TransactionExecutionStatus, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
+    TransactionSignature, TransactionVersion,
 };
 
 use crate::ClientError;
@@ -314,6 +315,8 @@ pub struct TransactionReceipt {
     #[serde(default)]
     pub execution_resources: ExecutionResources,
     pub actual_fee: Fee,
+    #[serde(default)]
+    pub execution_status: TransactionExecutionStatus,
 }
 
 impl TransactionReceipt {
