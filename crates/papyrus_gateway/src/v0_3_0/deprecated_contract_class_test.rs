@@ -4,9 +4,7 @@ use starknet_api::deprecated_contract_class::{
 };
 use test_utils::{get_rng, GetTestInstance};
 
-use crate::v0_3_0::deprecated_contract_class::{
-    ContractClassAbiEntryType, ContractClassAbiEntryWithType,
-};
+use super::deprecated_contract_class::{ContractClassAbiEntryType, ContractClassAbiEntryWithType};
 
 macro_rules! test_ContractClassAbiEntryType_from_FunctionAbiEntryType {
     ($variant:ident) => {
