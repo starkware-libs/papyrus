@@ -314,8 +314,8 @@ auto_storage_serde! {
         L1Handler(L1HandlerTransaction) = 4,
     }
     pub enum TransactionExecutionStatus {
-        Succeeded=0,
-        Reverted=1,
+        Succeeded = 0,
+        Reverted = 1,
     }
     pub struct TransactionHash(pub StarkHash);
     struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);

@@ -503,8 +503,8 @@ auto_impl_get_test_instance! {
         L1Handler(L1HandlerTransaction) = 4,
     }
     pub enum TransactionExecutionStatus {
-        Succeeded=0,
-        Reverted=1,
+        Succeeded = 0,
+        Reverted = 1,
     }
     pub struct TransactionHash(pub StarkHash);
     pub struct TransactionOffsetInBlock(pub usize);
