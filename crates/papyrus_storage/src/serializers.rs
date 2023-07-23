@@ -42,8 +42,8 @@ use starknet_api::transaction::{
     DeclareTransactionV2, DeployAccountTransaction, DeployTransaction, EthAddress, EventContent,
     EventData, EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction,
     InvokeTransactionV0, InvokeTransactionV1, L1HandlerTransaction, L1ToL2Payload, L2ToL1Payload,
-    MessageToL1, MessageToL2, Transaction, TransactionHash, TransactionOffsetInBlock,
-    TransactionSignature, TransactionVersion,
+    MessageToL1, MessageToL2, Transaction, TransactionExecutionStatus, TransactionHash,
+    TransactionOffsetInBlock, TransactionSignature, TransactionVersion,
 };
 
 use crate::body::events::{
@@ -313,6 +313,10 @@ auto_storage_serde! {
         Invoke(InvokeTransaction) = 3,
         L1Handler(L1HandlerTransaction) = 4,
     }
+    pub enum TransactionExecutionStatus {
+        Succeeded=0,
+        Reverted=1,
+    }
     pub struct TransactionHash(pub StarkHash);
     struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
     pub struct TransactionOffsetInBlock(pub usize);
@@ -350,6 +354,7 @@ auto_storage_serde! {
     (ContractAddress, OmmerEventKey);
     (ContractAddress, StorageKey, BlockHash);
     (ContractAddress, StorageKey, BlockNumber);
+    (Transaction, TransactionExecutionStatus);
     (usize, Vec<Hint>);
     (usize, Vec<String>);
 }
