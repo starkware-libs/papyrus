@@ -2,7 +2,7 @@ use std::env::args;
 
 use papyrus_gateway::run_server;
 use papyrus_monitoring_gateway::MonitoringServer;
-use papyrus_node::config::Config;
+use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_storage::{open_storage, StorageReader, StorageWriter};
 use papyrus_sync::{CentralError, CentralSource, StateSync, StateSyncError};
@@ -14,7 +14,7 @@ use tracing_subscriber::{fmt, EnvFilter};
 // TODO(yair): Add to config.
 const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
 
-async fn run_threads(config: Config) -> anyhow::Result<()> {
+async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     let (storage_reader, storage_writer) = open_storage(config.storage.db_config.clone())?;
 
     // Monitoring server.
@@ -40,7 +40,7 @@ async fn run_threads(config: Config) -> anyhow::Result<()> {
     return Ok(());
 
     async fn run_sync(
-        config: Config,
+        config: NodeConfig,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
     ) -> Result<(), StateSyncError> {
@@ -69,7 +69,7 @@ fn configure_tracing() {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let config = Config::load_and_process(args().collect())?;
+    let config = NodeConfig::load_and_process(args().collect())?;
     configure_tracing();
     info!("Booting up.");
     run_threads(config).await

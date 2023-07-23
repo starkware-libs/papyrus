@@ -1,7 +1,7 @@
 use std::{env, fs};
 
 use futures_util::pin_mut;
-use papyrus_node::config::Config;
+use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_storage::open_storage;
 use papyrus_sync::{CentralSource, CentralSourceTrait};
@@ -16,7 +16,7 @@ async fn main() {
     path.push("data");
     let _ = fs::remove_dir_all(path.clone());
     fs::create_dir_all(path.clone()).expect("Should make a temporary `data` directory");
-    let config = Config::load_and_process(vec![
+    let config = NodeConfig::load_and_process(vec![
         "--chain_id=SN_GOERLI".to_owned(),
         "--central_url=https://alpha4.starknet.io/".to_owned(),
         format!("--storage={}", path.display()),

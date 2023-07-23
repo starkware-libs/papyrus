@@ -2,7 +2,7 @@ use lazy_static::lazy_static;
 use papyrus_config::dumping::ser_param;
 use papyrus_config::{dumping::SerializeConfig, SerializedParam};
 use papyrus_config::ParamPath;
-use papyrus_node::config::{Config, DEFAULT_CONFIG_PATH};
+use papyrus_node::config::{NodeConfig, DEFAULT_CONFIG_PATH};
 use starknet_api::core::ChainId;
 
 lazy_static! {
@@ -23,7 +23,7 @@ lazy_static! {
 /// Updates the default config file by:
 /// cargo run --bin dump_config -q
 fn main() {
-    Config::default()
+    NodeConfig::default()
         .dump_to_file(&CONFIG_POINTERS, DEFAULT_CONFIG_PATH)
         .expect("dump to file error");
 }
