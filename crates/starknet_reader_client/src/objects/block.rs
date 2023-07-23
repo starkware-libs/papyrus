@@ -9,7 +9,9 @@ use starknet_api::hash::StarkHash;
 use starknet_api::serde_utils::NonPrefixedBytesAsHex;
 #[cfg(doc)]
 use starknet_api::transaction::TransactionOutput as starknet_api_transaction_output;
-use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
+use starknet_api::transaction::{
+    TransactionExecutionStatus, TransactionHash, TransactionOffsetInBlock,
+};
 use starknet_api::StarknetApiError;
 
 use crate::objects::transaction::{
@@ -56,6 +58,7 @@ pub struct Block {
     // Default since old blocks don't include this field.
     #[serde(default)]
     pub starknet_version: String,
+    pub transaction_execution_status: Vec<TransactionExecutionStatus>,
 }
 
 /// Errors that might be encountered while converting the client representation of a [`Block`] to a
@@ -71,6 +74,17 @@ pub enum TransactionReceiptsError {
         num_of_receipts
     )]
     WrongNumberOfReceipts { block_number: BlockNumber, num_of_txs: usize, num_of_receipts: usize },
+    #[error(
+        "In block number {} there are {} transactions and {} transaction execution results.",
+        block_number,
+        num_of_txs,
+        num_of_exec_results
+    )]
+    WrongNumberOfExecResults {
+        block_number: BlockNumber,
+        num_of_txs: usize,
+        num_of_exec_results: usize,
+    },
     #[error(
         "In block number {}, transaction in index {:?} with hash {:?} and type {:?} has a receipt \
          with mismatched fields.",
@@ -123,6 +137,7 @@ impl Block {
         // Check that the number of receipts is the same as the number of transactions.
         let num_of_txs = self.transactions.len();
         let num_of_receipts = self.transaction_receipts.len();
+        let num_of_exec_results = self.transaction_execution_status.len();
         if num_of_txs != num_of_receipts {
             return Err(ClientError::TransactionReceiptsError(
                 TransactionReceiptsError::WrongNumberOfReceipts {
@@ -132,9 +147,19 @@ impl Block {
                 },
             ));
         }
+        if num_of_txs != num_of_exec_results {
+            return Err(ClientError::TransactionReceiptsError(
+                TransactionReceiptsError::WrongNumberOfExecResults {
+                    block_number: self.block_number,
+                    num_of_txs,
+                    num_of_exec_results,
+                },
+            ));
+        }
 
-        // Get the transaction outputs.
+        // Get the transaction outputs and execution results.
         let mut transaction_outputs = vec![];
+        let mut transaction_execution_status = vec![];
         for (i, receipt) in self.transaction_receipts.into_iter().enumerate() {
             let transaction = self.transactions.index(i);
 
@@ -180,6 +205,8 @@ impl Block {
 
             let tx_output = receipt.into_starknet_api_transaction_output(transaction);
             transaction_outputs.push(tx_output);
+
+            transaction_execution_status.push(self.transaction_execution_status.index(i).clone());
         }
 
         // Get the transactions.

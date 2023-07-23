@@ -42,8 +42,8 @@ use starknet_api::transaction::{
     DeclareTransactionV2, DeployAccountTransaction, DeployTransaction, EthAddress, EventContent,
     EventData, EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction,
     InvokeTransactionV0, InvokeTransactionV1, L1HandlerTransaction, L1ToL2Payload, L2ToL1Payload,
-    MessageToL1, MessageToL2, Transaction, TransactionHash, TransactionOffsetInBlock,
-    TransactionSignature, TransactionVersion,
+    MessageToL1, MessageToL2, Transaction, TransactionExecutionStatus, TransactionHash,
+    TransactionOffsetInBlock, TransactionSignature, TransactionVersion,
 };
 
 use crate::body::events::{
@@ -319,6 +319,10 @@ auto_storage_serde! {
     pub struct TransactionSignature(pub Vec<StarkFelt>);
     pub struct TransactionVersion(pub StarkFelt);
     pub struct Version(pub u32);
+    pub enum TransactionExecutionStatus {
+        Succeeded = 0,
+        Reverted = 1,
+    }
 
     pub struct CasmContractEntryPoints {
         pub external: Vec<CasmContractEntryPoint>,
@@ -352,6 +356,7 @@ auto_storage_serde! {
     (ContractAddress, StorageKey, BlockNumber);
     (usize, Vec<Hint>);
     (usize, Vec<String>);
+    (Transaction, TransactionExecutionStatus);
 }
 
 ////////////////////////////////////////////////////////////////////////
