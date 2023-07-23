@@ -19,5 +19,5 @@ pub fn get_block_txs_by_number<
         .map_err(internal_server_error)?
         .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
 
-    Ok(transactions.into_iter().map(Transaction::from).collect())
+    Ok(transactions.into_iter().map(|(tx, _)| Transaction::from(tx)).collect())
 }
