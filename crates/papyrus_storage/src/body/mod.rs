@@ -334,7 +334,7 @@ fn write_transactions<'env>(
     for index in 0..block_body.transactions.len() {
         let tx_offset_in_block = TransactionOffsetInBlock(index);
         let transaction_index = TransactionIndex(block_number, tx_offset_in_block);
-        // A transaction most have execution status.
+        // A transaction must have an execution status.
         let tx = block_body.transactions[index].clone();
         let exec_status = block_body.transaction_execution_statuses[index].clone();
         update_tx_hash_mapping(txn, transaction_hash_to_idx_table, &tx, transaction_index)?;
