@@ -133,9 +133,7 @@ async fn get_block_transaction_count() {
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
     let transaction_count = 5;
-    println!("BEFORE GET TEST BLOCK");
     let block = get_test_block(transaction_count, None, None, None);
-    println!("AFTER GET TEST BLOCK");
     storage_writer
         .begin_rw_txn()
         .unwrap()
