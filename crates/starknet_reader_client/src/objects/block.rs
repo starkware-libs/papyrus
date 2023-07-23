@@ -203,7 +203,12 @@ impl Block {
             timestamp: self.timestamp,
         };
 
-        let body = starknet_api::block::BlockBody { transactions, transaction_outputs };
+        let transaction_execution_status = vec![];
+        let body = starknet_api::block::BlockBody {
+            transactions,
+            transaction_outputs,
+            transaction_execution_status,
+        };
 
         Ok((starknet_api_block { header, body }, self.starknet_version))
     }
