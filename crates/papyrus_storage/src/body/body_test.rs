@@ -103,7 +103,7 @@ async fn append_body() {
         )
     }
 
-    // Check transaction hash.
+    // Check transaction index by hash.
     assert_eq!(
         txn.get_transaction_idx_by_hash(&txs[0].transaction_hash()).unwrap(),
         Some(TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(0)))
@@ -115,6 +115,32 @@ async fn append_body() {
     assert_eq!(
         txn.get_transaction_idx_by_hash(&txs[2].transaction_hash()).unwrap(),
         Some(TransactionIndex(BlockNumber(2), TransactionOffsetInBlock(1)))
+    );
+
+    // Check transaction hash by index.
+    assert_eq!(
+        txn.get_transaction_hash_by_idx(&TransactionIndex(
+            BlockNumber(0),
+            TransactionOffsetInBlock(0)
+        ))
+        .unwrap(),
+        Some(txs[0].transaction_hash())
+    );
+    assert_eq!(
+        txn.get_transaction_hash_by_idx(&TransactionIndex(
+            BlockNumber(2),
+            TransactionOffsetInBlock(0)
+        ))
+        .unwrap(),
+        Some(txs[1].transaction_hash())
+    );
+    assert_eq!(
+        txn.get_transaction_hash_by_idx(&TransactionIndex(
+            BlockNumber(2),
+            TransactionOffsetInBlock(1)
+        ))
+        .unwrap(),
+        Some(txs[2].transaction_hash())
     );
 
     // Check block transactions.
@@ -242,6 +268,10 @@ async fn revert_transactions() {
             reader.begin_ro_txn().unwrap().get_transaction_idx_by_hash(&tx_hash).unwrap().unwrap(),
             tx_index
         );
+        assert_eq!(
+            reader.begin_ro_txn().unwrap().get_transaction_hash_by_idx(&tx_index).unwrap().unwrap(),
+            tx_hash
+        );
     }
     assert!(
         reader.begin_ro_txn().unwrap().get_block_transactions(BlockNumber(0)).unwrap().is_some()
@@ -266,6 +296,14 @@ async fn revert_transactions() {
         assert!(reader.begin_ro_txn().unwrap().get_transaction_events(tx_index).unwrap().is_none());
         assert!(
             reader.begin_ro_txn().unwrap().get_transaction_idx_by_hash(&tx_hash).unwrap().is_none()
+        );
+        assert!(
+            reader
+                .begin_ro_txn()
+                .unwrap()
+                .get_transaction_hash_by_idx(&tx_index)
+                .unwrap()
+                .is_none()
         );
     }
     assert!(

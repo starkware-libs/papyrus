@@ -30,7 +30,7 @@ use starknet_api::core::ChainId;
 use crate::db::serialization::{StorageSerde, StorageSerdeEx};
 
 // Maximum number of Sub-Databases.
-const MAX_DBS: usize = 26;
+const MAX_DBS: usize = 27;
 
 // Note that NO_TLS mode is used by default.
 type EnvironmentKind = WriteMap;
