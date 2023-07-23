@@ -14,8 +14,8 @@ async fn append_header() {
 
     // Check for MarkerMismatch error when trying to append the wrong block number.
     let Err(err) =
-        writer.begin_rw_txn().unwrap().append_header(BlockNumber(5), &BlockHeader::default()) else
-    {
+        writer.begin_rw_txn().unwrap().append_header(BlockNumber(5), &BlockHeader::default())
+    else {
         panic!("Unexpected Ok.");
     };
 

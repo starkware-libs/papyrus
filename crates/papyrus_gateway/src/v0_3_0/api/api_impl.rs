@@ -1,6 +1,7 @@
 use jsonrpsee::core::{async_trait, RpcResult};
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
+use papyrus_common::SyncingState;
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
 use papyrus_storage::state::StateStorageReader;
@@ -414,6 +415,12 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         }
 
         Ok(EventsChunk { events: filtered_events, continuation_token: None })
+    }
+
+    #[instrument(skip(self), level = "debug", err, ret)]
+    fn syncing(&self) -> RpcResult<SyncingState> {
+        // TODO(omri): This is temporary. Implement syncing logic.
+        Ok(SyncingState::Synced)
     }
 }
 

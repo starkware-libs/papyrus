@@ -1,5 +1,6 @@
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
+use papyrus_common::SyncingState;
 use papyrus_proc_macros::versioned_rpc;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
@@ -111,6 +112,10 @@ pub trait JsonRpc {
     /// Returns all events matching the given filter.
     #[method(name = "getEvents")]
     fn get_events(&self, filter: EventFilter) -> RpcResult<EventsChunk>;
+
+    /// Returns the synching status of the node, or false if the node is not synching.
+    #[method(name = "syncing")]
+    fn syncing(&self) -> RpcResult<SyncingState>;
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

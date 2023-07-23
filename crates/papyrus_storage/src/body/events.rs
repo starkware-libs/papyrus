@@ -164,12 +164,14 @@ impl EventIterByEventIndex<'_, '_> {
     /// # Errors
     /// Returns [`StorageError`](crate::StorageError) if there was an error.
     fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
-        let Some((tx_index, tx_output)) = &self.tx_current else {return Ok(None)};
+        let Some((tx_index, tx_output)) = &self.tx_current else { return Ok(None) };
         let Some(address) =
-            tx_output.events_contract_addresses_as_ref().
-            get(self.event_index_in_tx_current.0) else {return Ok(None)};
+            tx_output.events_contract_addresses_as_ref().get(self.event_index_in_tx_current.0)
+        else {
+            return Ok(None);
+        };
         let key = (*address, EventIndex(*tx_index, self.event_index_in_tx_current));
-        let Some(content) = self.events_table.get(self.txn, &key)? else {return Ok(None)};
+        let Some(content) = self.events_table.get(self.txn, &key)? else { return Ok(None) };
         self.event_index_in_tx_current.0 += 1;
         self.find_next_event_by_event_index()?;
         Ok(Some((key, content)))

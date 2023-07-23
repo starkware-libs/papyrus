@@ -129,6 +129,13 @@ async fn block_number() {
 }
 
 #[tokio::test]
+async fn syncing() {
+    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+    let res = module.call::<_, bool>("starknet_V0_3_0_syncing", ObjectParams::new()).await.unwrap();
+    assert_eq!(res, false);
+}
+
+#[tokio::test]
 async fn get_block_transaction_count() {
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
