@@ -1,18 +1,21 @@
-use std::fs::File;
-use std::io::{BufWriter, Write};
-
 use lazy_static::lazy_static;
-use papyrus_config::{combine_config_map_and_pointers, ParamPath, SerializeConfig};
-use papyrus_node::config::{Config, DEFAULT_CONFIG_FILE};
+use papyrus_config::dumping::ser_param;
+use papyrus_config::{dumping::SerializeConfig, SerializedParam};
+use papyrus_config::ParamPath;
+use papyrus_node::config::{Config, DEFAULT_CONFIG_PATH};
+use starknet_api::core::ChainId;
 
 lazy_static! {
-    /// Returns vector of (pointer target name, pointer target description, vec<pointer param path>) to
-    /// be applied on the dumped node config.
-    /// The configu updates will be performed on the shared pointer targets, and finally, the values
+    /// Returns vector of (pointer target name, pointer target serialized param, vec<pointer param path>)
+    /// to be applied on the dumped node config.
+    /// The config updates will be performed on the shared pointer targets, and finally, the values
     /// will be propagated to the pointer params.
-    static ref CONFIG_POINTERS: Vec<(ParamPath, String, Vec<ParamPath>)> = vec![(
-        "chain_id".to_owned(),
-        "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.".to_owned(),
+    static ref CONFIG_POINTERS: Vec<((ParamPath, SerializedParam), Vec<ParamPath>)> = vec![(
+        ser_param(
+            "chain_id",
+            &ChainId("SN_MAIN".to_string()),
+            "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
+        ),
         vec!["storage.db_config.chain_id".to_owned(), "gateway.chain_id".to_owned()],
     )];
 }
@@ -20,10 +23,7 @@ lazy_static! {
 /// Updates the default config file by:
 /// cargo run --bin dump_config -q
 fn main() {
-    let dumped = Config::default().dump();
-    let combined_map = combine_config_map_and_pointers(dumped, CONFIG_POINTERS.to_vec()).unwrap();
-    let file = File::create(DEFAULT_CONFIG_FILE).expect("creating failed");
-    let mut writer = BufWriter::new(file);
-    serde_json::to_writer_pretty(&mut writer, &combined_map).expect("writing failed");
-    writer.flush().expect("flushing failed");
+    Config::default()
+        .dump_to_file(&CONFIG_POINTERS, DEFAULT_CONFIG_PATH)
+        .expect("dump to file error");
 }
