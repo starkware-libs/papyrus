@@ -27,6 +27,7 @@ use test_utils::{
     get_rng, get_test_block, get_test_body, get_test_state_diff, send_request, GetTestInstance,
 };
 
+use super::super::api::EventsChunk;
 use super::super::block::Block;
 use super::super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::super::state::{ContractClass, StateUpdate, ThinStateDiff};
@@ -36,8 +37,8 @@ use super::super::transaction::{
 };
 use super::api_impl::JsonRpcServerV0_3_0Impl;
 use crate::api::{
-    BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, EventsChunk,
-    JsonRpcError, Tag,
+    BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcError,
+    Tag,
 };
 use crate::test_utils::{
     get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
@@ -1618,16 +1619,19 @@ async fn serialize_returns_valid_json() {
     let gateway_config = get_test_gateway_config();
     let (server_address, _handle) = run_server(&gateway_config, storage_reader).await.unwrap();
 
-    let schema = get_starknet_spec_api_schema(&[
-        "BLOCK_WITH_TXS",
-        "BLOCK_WITH_TX_HASHES",
-        "STATE_UPDATE",
-        "CONTRACT_CLASS",
-        "DEPRECATED_CONTRACT_CLASS",
-        "TXN",
-        "TXN_RECEIPT",
-        "EVENTS_CHUNK",
-    ])
+    let schema = get_starknet_spec_api_schema(
+        &[
+            "BLOCK_WITH_TXS",
+            "BLOCK_WITH_TX_HASHES",
+            "STATE_UPDATE",
+            "CONTRACT_CLASS",
+            "DEPRECATED_CONTRACT_CLASS",
+            "TXN",
+            "TXN_RECEIPT",
+            "EVENTS_CHUNK",
+        ],
+        VERSION_0_3_0,
+    )
     .await;
     validate_state(&state_diff, server_address, &schema).await;
     validate_block(&block.header, server_address, &schema).await;

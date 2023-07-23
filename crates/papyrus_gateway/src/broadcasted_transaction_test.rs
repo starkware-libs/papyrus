@@ -23,6 +23,7 @@ use crate::broadcasted_transaction::{
 };
 use crate::test_utils::get_starknet_spec_api_schema;
 use crate::v0_3_0::state::ContractClass;
+use crate::version_config::VERSION_0_3_0;
 
 auto_impl_get_test_instance! {
     pub struct BroadcastedDeclareV2Transaction {
@@ -45,7 +46,7 @@ auto_impl_get_test_instance! {
 fn validate_tx_fits_rpc(tx: BroadcastedTransaction) {
     lazy_static! {
         static ref SCHEMA: JSONSchema =
-            block_on(get_starknet_spec_api_schema(&["BROADCASTED_TXN"]));
+            block_on(get_starknet_spec_api_schema(&["BROADCASTED_TXN"], VERSION_0_3_0));
     }
     assert!(SCHEMA.is_valid(&serde_json::to_value(tx).unwrap()));
 }

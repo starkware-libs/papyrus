@@ -13,6 +13,7 @@ pub fn get_test_gateway_config() -> GatewayConfig {
         server_address: String::from("127.0.0.1:0"),
         max_events_chunk_size: 10,
         max_events_keys: 10,
+        collect_metrics: false,
     }
 }
 
@@ -32,8 +33,11 @@ pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
     )
 }
 
-pub async fn get_starknet_spec_api_schema(component_names: &[&str]) -> JSONSchema {
-    let target = "./resources/starknet_api_openrpc.json";
+pub async fn get_starknet_spec_api_schema(
+    component_names: &[&str],
+    version_id: &str,
+) -> JSONSchema {
+    let target = format!("./resources/{version_id}_starknet_api_openrpc.json");
     let text = std::fs::read_to_string(target).unwrap();
     let spec: serde_json::Value = serde_json::from_str(&text).unwrap();
 

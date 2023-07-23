@@ -99,6 +99,7 @@ impl Default for ConfigBuilder {
                     server_address: String::from("0.0.0.0:8080"),
                     max_events_chunk_size: 1000,
                     max_events_keys: 100,
+                    collect_metrics: false,
                 },
                 monitoring_gateway: MonitoringGatewayConfig {
                     server_address: String::from("0.0.0.0:8081"),
