@@ -128,7 +128,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
 
-        Ok(TransactionWithType::from(transaction))
+        Ok(TransactionWithType::from(transaction.0))
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
@@ -145,7 +145,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::InvalidTransactionIndex))?;
 
-        Ok(TransactionWithType::from(transaction))
+        Ok(TransactionWithType::from(transaction.0))
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
@@ -406,7 +406,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
                 let emitted_event = Event {
                     block_hash: header.block_hash,
                     block_number,
-                    transaction_hash: transaction.transaction_hash(),
+                    transaction_hash: transaction.0.transaction_hash(),
                     event: starknet_api::transaction::Event { from_address, content },
                 };
                 filtered_events.push(emitted_event);
