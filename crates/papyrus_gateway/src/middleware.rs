@@ -91,6 +91,8 @@ fn get_version_as_prefix(path: &str) -> Result<&str, BoxError> {
     // get the version name from the path (should be something like "http://host:port/rpc/version_id")
     let uri_components = &mut path.split('/').collect::<Vec<_>>();
     let Some(version) = uri_components.get(2) else {
+        // as long as 'deny_requests_with_unsupported_path' middleware is used, this should never happen
+        // but for safety we return an error and not unreachable!()
         return Err(BoxError::from("Invalid path format"));
     };
     let Some((version_id, _)) =
@@ -98,7 +100,7 @@ fn get_version_as_prefix(path: &str) -> Result<&str, BoxError> {
         VERSION_CONFIG.iter().find(|(verison_id, version_state)| {
             *verison_id == *version && *version_state != VersionState::Deprecated
         }) else {
-        return Err(BoxError::from("Invalid path, couldn't find matching version"));
+        return Err(BoxError::from(format!("Invalid path, couldn't find matching version for version_id: {version}")));
     };
     Ok(*version_id)
 }
