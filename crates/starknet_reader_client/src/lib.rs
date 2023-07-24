@@ -42,44 +42,12 @@ pub use crate::objects::transaction::TransactionReceipt;
 /// A [`Result`] in which the error is a [`ClientError`].
 pub type ClientResult<T> = Result<T, ClientError>;
 
-/// Methods for querying starknet.
-#[cfg_attr(any(test, feature = "testing"), automock)]
-#[async_trait]
-pub trait StarknetClientTrait {
-    /// Returns the last block number in the system, returning [`None`] in case there are no blocks
-    /// in the system.
-    async fn block_number(&self) -> ClientResult<Option<BlockNumber>>;
-    /// Returns a [`Block`] corresponding to `block_number`, returning [`None`] in case no such
-    /// block exists in the system.
-    async fn block(&self, block_number: BlockNumber) -> ClientResult<Option<Block>>;
-    /// Returns a [`GenericContractClass`] corresponding to `class_hash`.
-    async fn class_by_hash(
-        &self,
-        class_hash: ClassHash,
-    ) -> ClientResult<Option<GenericContractClass>>;
-    /// Returns a [`CasmContractClass`] corresponding to `class_hash`.
-    async fn compiled_class_by_hash(
-        &self,
-        class_hash: ClassHash,
-    ) -> ClientResult<Option<CasmContractClass>>;
-    /// Returns a [`starknet_client`][`StateUpdate`] corresponding to `block_number`.
-    async fn state_update(&self, block_number: BlockNumber) -> ClientResult<Option<StateUpdate>>;
-}
-
+// TODO(shahak) Rename to StarknetClient once StarknetClient gets renamed.
 /// A starknet client.
-pub struct StarknetClient {
-    urls: StarknetUrls,
+struct StarknetBaseClient {
     http_headers: HeaderMap,
     internal_client: Client,
     retry_config: RetryConfig,
-}
-
-#[derive(Clone, Debug)]
-struct StarknetUrls {
-    get_block: Url,
-    get_contract_by_hash: Url,
-    get_compiled_class_by_class_hash: Url,
-    get_state_update: Url,
 }
 
 /// Error codes returned by the starknet gateway.
@@ -151,42 +119,19 @@ pub enum ClientError {
     BadTransaction { tx_hash: TransactionHash, msg: String },
 }
 
-const GET_BLOCK_URL: &str = "feeder_gateway/get_block";
-const GET_CONTRACT_BY_HASH_URL: &str = "feeder_gateway/get_class_by_hash";
-const GET_COMPILED_CLASS_BY_CLASS_HASH_URL: &str =
-    "feeder_gateway/get_compiled_class_by_class_hash";
-const GET_STATE_UPDATE_URL: &str = "feeder_gateway/get_state_update";
-const BLOCK_NUMBER_QUERY: &str = "blockNumber";
-const LATEST_BLOCK_NUMBER: &str = "latest";
-const CLASS_HASH_QUERY: &str = "classHash";
-
-impl StarknetUrls {
-    fn new(url_str: &str) -> Result<Self, ClientCreationError> {
-        let base_url = Url::parse(url_str)?;
-        Ok(StarknetUrls {
-            get_block: base_url.join(GET_BLOCK_URL)?,
-            get_contract_by_hash: base_url.join(GET_CONTRACT_BY_HASH_URL)?,
-            get_compiled_class_by_class_hash: base_url
-                .join(GET_COMPILED_CLASS_BY_CLASS_HASH_URL)?,
-            get_state_update: base_url.join(GET_STATE_UPDATE_URL)?,
-        })
-    }
-}
-
 impl Display for StarknetError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{self:?}")
     }
 }
 
-impl StarknetClient {
+impl StarknetBaseClient {
     /// Creates a new client for a starknet gateway at `url_str` with retry_config [`RetryConfig`].
     pub fn new(
-        url_str: &str,
         http_headers: Option<HashMap<String, String>>,
         node_version: &'static str,
         retry_config: RetryConfig,
-    ) -> Result<StarknetClient, ClientCreationError> {
+    ) -> Result<Self, ClientCreationError> {
         let header_map = match http_headers {
             Some(inner) => (&inner).try_into()?,
             None => HeaderMap::new(),
@@ -200,8 +145,7 @@ impl StarknetClient {
             product_version = node_version,
             system_information = system_information
         );
-        Ok(StarknetClient {
-            urls: StarknetUrls::new(url_str)?,
+        Ok(StarknetBaseClient {
             http_headers: header_map,
             internal_client: Client::builder().user_agent(app_user_agent).build()?,
             retry_config,
@@ -242,7 +186,7 @@ impl StarknetClient {
         Self::get_retry_error_code(err).is_some()
     }
 
-    async fn request_with_retry(&self, url: Url) -> Result<String, ClientError> {
+    pub async fn request_with_retry(&self, url: Url) -> Result<String, ClientError> {
         Retry::new(&self.retry_config)
             .start_with_condition(|| self.request(url.clone()), Self::should_retry)
             .await
@@ -274,6 +218,79 @@ impl StarknetClient {
             _ => Err(ClientError::BadResponseStatus { code, message }),
         }
     }
+}
+
+/// Methods for querying starknet.
+#[cfg_attr(any(test, feature = "testing"), automock)]
+#[async_trait]
+pub trait StarknetClientTrait {
+    /// Returns the last block number in the system, returning [`None`] in case there are no blocks
+    /// in the system.
+    async fn block_number(&self) -> ClientResult<Option<BlockNumber>>;
+    /// Returns a [`Block`] corresponding to `block_number`, returning [`None`] in case no such
+    /// block exists in the system.
+    async fn block(&self, block_number: BlockNumber) -> ClientResult<Option<Block>>;
+    /// Returns a [`GenericContractClass`] corresponding to `class_hash`.
+    async fn class_by_hash(
+        &self,
+        class_hash: ClassHash,
+    ) -> ClientResult<Option<GenericContractClass>>;
+    /// Returns a [`CasmContractClass`] corresponding to `class_hash`.
+    async fn compiled_class_by_hash(
+        &self,
+        class_hash: ClassHash,
+    ) -> ClientResult<Option<CasmContractClass>>;
+    /// Returns a [`starknet_client`][`StateUpdate`] corresponding to `block_number`.
+    async fn state_update(&self, block_number: BlockNumber) -> ClientResult<Option<StateUpdate>>;
+}
+
+pub struct StarknetClient {
+    urls: StarknetUrls,
+    client: StarknetBaseClient,
+}
+
+#[derive(Clone, Debug)]
+struct StarknetUrls {
+    get_block: Url,
+    get_contract_by_hash: Url,
+    get_compiled_class_by_class_hash: Url,
+    get_state_update: Url,
+}
+
+const GET_BLOCK_URL: &str = "feeder_gateway/get_block";
+const GET_CONTRACT_BY_HASH_URL: &str = "feeder_gateway/get_class_by_hash";
+const GET_COMPILED_CLASS_BY_CLASS_HASH_URL: &str =
+    "feeder_gateway/get_compiled_class_by_class_hash";
+const GET_STATE_UPDATE_URL: &str = "feeder_gateway/get_state_update";
+const BLOCK_NUMBER_QUERY: &str = "blockNumber";
+const LATEST_BLOCK_NUMBER: &str = "latest";
+const CLASS_HASH_QUERY: &str = "classHash";
+
+impl StarknetUrls {
+    fn new(url_str: &str) -> Result<Self, ClientCreationError> {
+        let base_url = Url::parse(url_str)?;
+        Ok(StarknetUrls {
+            get_block: base_url.join(GET_BLOCK_URL)?,
+            get_contract_by_hash: base_url.join(GET_CONTRACT_BY_HASH_URL)?,
+            get_compiled_class_by_class_hash: base_url
+                .join(GET_COMPILED_CLASS_BY_CLASS_HASH_URL)?,
+            get_state_update: base_url.join(GET_STATE_UPDATE_URL)?,
+        })
+    }
+}
+
+impl StarknetClient {
+    pub fn new(
+        url_str: &str,
+        http_headers: Option<HashMap<String, String>>,
+        node_version: &'static str,
+        retry_config: RetryConfig,
+    ) -> Result<Self, ClientCreationError> {
+        Ok(StarknetClient {
+            urls: StarknetUrls::new(url_str)?,
+            client: StarknetBaseClient::new(http_headers, node_version, retry_config)?,
+        })
+    }
 
     async fn request_block(
         &self,
@@ -284,7 +301,7 @@ impl StarknetClient {
             block_number.map(|bn| bn.to_string()).unwrap_or(String::from(LATEST_BLOCK_NUMBER));
         url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, block_number.as_str());
 
-        let response = self.request_with_retry(url).await;
+        let response = self.client.request_with_retry(url).await;
         match response {
             Ok(raw_block) => {
                 let block: Block = serde_json::from_str(&raw_block)?;
@@ -320,7 +337,7 @@ impl StarknetClientTrait for StarknetClient {
         let class_hash = serde_json::to_string(&class_hash)?;
         url.query_pairs_mut()
             .append_pair(CLASS_HASH_QUERY, &class_hash.as_str()[1..class_hash.len() - 1]);
-        let response = self.request_with_retry(url).await;
+        let response = self.client.request_with_retry(url).await;
         match response {
             Ok(raw_contract_class) => Ok(Some(serde_json::from_str(&raw_contract_class)?)),
             Err(ClientError::StarknetError(StarknetError {
@@ -337,7 +354,7 @@ impl StarknetClientTrait for StarknetClient {
     async fn state_update(&self, block_number: BlockNumber) -> ClientResult<Option<StateUpdate>> {
         let mut url = self.urls.get_state_update.clone();
         url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.to_string());
-        let response = self.request_with_retry(url).await;
+        let response = self.client.request_with_retry(url).await;
         match response {
             Ok(raw_state_update) => {
                 let state_update: StateUpdate = serde_json::from_str(&raw_state_update)?;
@@ -406,7 +423,7 @@ impl StarknetClientTrait for StarknetClient {
         let class_hash = serde_json::to_string(&class_hash)?;
         url.query_pairs_mut()
             .append_pair(CLASS_HASH_QUERY, &class_hash.as_str()[1..class_hash.len() - 1]);
-        let response = self.request_with_retry(url).await;
+        let response = self.client.request_with_retry(url).await;
         match response {
             Ok(raw_compiled_class) => Ok(Some(serde_json::from_str(&raw_compiled_class)?)),
             Err(ClientError::StarknetError(StarknetError {
