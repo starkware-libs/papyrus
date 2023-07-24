@@ -28,11 +28,11 @@
 //! let (reader, mut writer) = open_storage(db_config)?;
 //! writer
 //!     .begin_rw_txn()?                                // Start a RW transaction.
-//!     .append_body(BlockNumber(0), block.body)?       // Append the block body (consumes the body at the current version).
+//!     .append_body(BlockNumber(0), block.body.clone())?       // Append the block body (consumes the body at the current version).
 //!     .commit()?;
 //!
 //! let stored_body_transactions = reader.begin_ro_txn()?.get_block_transactions(BlockNumber(0))?;
-//! let expected_transactions_with_exec_statuses = Block::default().body.transactions.into_iter().zip(Block::default().body.transaction_execution_statuses.into_iter()).collect::<Vec<_>>();
+//! let expected_transactions_with_exec_statuses = block.body.transactions.iter().cloned().zip(block.body.transaction_execution_statuses.iter().cloned()).collect::<Vec<_>>();
 //! assert_eq!(stored_body_transactions, Some(expected_transactions_with_exec_statuses));
 //! # Ok::<(), papyrus_storage::StorageError>(())
 //! ```
@@ -120,6 +120,9 @@ where
     Self: Sized,
 {
     /// Appends a block body to the storage.
+    /// # Panics
+    /// This function will panic if block_body contains transaction hashes and receipts of different
+    /// lengths.
     // To enforce that no commit happen after a failure, we consume and return Self on success.
     // The body is consumed to avoid unnecessary copying while converting transaction outputs into
     // thin transaction outputs.
@@ -325,6 +328,8 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
     }
 }
 
+// This function will panic if block_body contains transaction hashes and receipts of different
+// lengths.
 fn write_transactions<'env>(
     block_body: &BlockBody,
     txn: &DbTransaction<'env, RW>,
