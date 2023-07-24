@@ -120,5 +120,5 @@ pub trait JsonRpcServerImpl: Sized {
         max_events_keys: usize,
     ) -> Self;
 
-    fn into(self) -> RpcModule<Self>;
+    fn into_rpc_module(self) -> RpcModule<Self>;
 }
