@@ -26,7 +26,7 @@ fn tx_v2() -> TransactionVersion {
 #[serde(untagged)]
 pub enum Transactions {
     Hashes(Vec<TransactionHash>),
-    Full(Vec<TransactionWithType>),
+    Full(Vec<Transaction>),
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -133,12 +133,17 @@ pub enum InvokeTransaction {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
-#[serde(untagged)]
+#[serde(tag = "type")]
 pub enum Transaction {
+    #[serde(rename = "DECLARE")]
     Declare(DeclareTransaction),
+    #[serde(rename = "DEPLOY_ACCOUNT")]
     DeployAccount(DeployAccountTransaction),
+    #[serde(rename = "DEPLOY")]
     Deploy(DeployTransaction),
+    #[serde(rename = "INVOKE")]
     Invoke(InvokeTransaction),
+    #[serde(rename = "L1_HANDLER")]
     L1Handler(L1HandlerTransaction),
 }
 
@@ -208,58 +213,6 @@ impl From<starknet_api::transaction::Transaction> for Transaction {
     }
 }
 
-#[derive(
-    Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord, Default,
-)]
-pub enum TransactionType {
-    #[serde(rename(deserialize = "DECLARE", serialize = "DECLARE"))]
-    Declare,
-    #[serde(rename(deserialize = "DEPLOY", serialize = "DEPLOY"))]
-    Deploy,
-    #[serde(rename(deserialize = "DEPLOY_ACCOUNT", serialize = "DEPLOY_ACCOUNT"))]
-    DeployAccount,
-    #[serde(rename(deserialize = "INVOKE", serialize = "INVOKE"))]
-    #[default]
-    Invoke,
-    #[serde(rename(deserialize = "L1_HANDLER", serialize = "L1_HANDLER"))]
-    L1Handler,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct TransactionWithType {
-    pub r#type: TransactionType,
-    #[serde(flatten)]
-    pub transaction: Transaction,
-}
-
-impl From<Transaction> for TransactionWithType {
-    fn from(transaction: Transaction) -> Self {
-        match transaction {
-            Transaction::Declare(_) => {
-                TransactionWithType { r#type: TransactionType::Declare, transaction }
-            }
-            Transaction::Deploy(_) => {
-                TransactionWithType { r#type: TransactionType::Deploy, transaction }
-            }
-            Transaction::DeployAccount(_) => {
-                TransactionWithType { r#type: TransactionType::DeployAccount, transaction }
-            }
-            Transaction::Invoke(_) => {
-                TransactionWithType { r#type: TransactionType::Invoke, transaction }
-            }
-            Transaction::L1Handler(_) => {
-                TransactionWithType { r#type: TransactionType::L1Handler, transaction }
-            }
-        }
-    }
-}
-
-impl From<starknet_api::transaction::Transaction> for TransactionWithType {
-    fn from(transaction: starknet_api::transaction::Transaction) -> Self {
-        Self::from(Transaction::from(transaction))
-    }
-}
-
 /// A transaction status in StarkNet.
 #[derive(
     Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord, Default,
@@ -301,7 +254,6 @@ pub struct TransactionReceiptWithStatus {
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct TransactionReceipt {
     pub transaction_hash: TransactionHash,
-    pub r#type: TransactionType,
     pub block_hash: BlockHash,
     pub block_number: BlockNumber,
     #[serde(flatten)]
@@ -309,12 +261,17 @@ pub struct TransactionReceipt {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-#[serde(untagged)]
+#[serde(tag = "type")]
 pub enum TransactionOutput {
-    Deploy(DeployTransactionOutput),
-    DeployAccount(DeployAccountTransactionOutput),
+    #[serde(rename = "DECLARE")]
     Declare(DeclareTransactionOutput),
+    #[serde(rename = "DEPLOY")]
+    Deploy(DeployTransactionOutput),
+    #[serde(rename = "DEPLOY_ACCOUNT")]
+    DeployAccount(DeployAccountTransactionOutput),
+    #[serde(rename = "INVOKE")]
     Invoke(InvokeTransactionOutput),
+    #[serde(rename = "L1_HANDLER")]
     L1Handler(L1HandlerTransactionOutput),
 }
 
@@ -361,16 +318,6 @@ impl TransactionOutput {
                     events,
                 })
             }
-        }
-    }
-
-    pub fn r#type(&self) -> TransactionType {
-        match self {
-            TransactionOutput::Declare(_) => TransactionType::Declare,
-            TransactionOutput::Deploy(_) => TransactionType::Deploy,
-            TransactionOutput::DeployAccount(_) => TransactionType::DeployAccount,
-            TransactionOutput::Invoke(_) => TransactionType::Invoke,
-            TransactionOutput::L1Handler(_) => TransactionType::L1Handler,
         }
     }
 }
