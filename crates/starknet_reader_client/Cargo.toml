@@ -16,6 +16,7 @@ indexmap = { workspace = true, features = ["serde"] }
 lazy_static.workspace = true
 mockall = { workspace = true, optional = true }
 os_info.workspace = true
+papyrus_config = { path = "../papyrus_config" }
 reqwest = { workspace = true, features = ["json", "blocking"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["arbitrary_precision"] }
