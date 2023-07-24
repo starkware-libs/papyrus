@@ -7,6 +7,7 @@ use std::ops::{Deref, Index};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use assert::assert_ok;
 use cairo_lang_casm::hints::{CoreHint, CoreHintBase, Hint};
 use cairo_lang_casm::operand::{
     BinOpOperand, CellRef, DerefOrImmediate, Operation, Register, ResOperand,
@@ -22,6 +23,7 @@ use prometheus_parse::Value;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use reqwest::Client;
+use serde::{Deserialize, Serialize};
 use starknet_api::block::{
     Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
 };
@@ -87,6 +89,19 @@ pub fn read_json_file(path_in_resource_dir: &str) -> serde_json::Value {
         .join(path_in_resource_dir);
     let json_str = read_to_string(path.to_str().unwrap()).unwrap();
     serde_json::from_str(&json_str).unwrap()
+}
+
+pub fn validate_load_and_dump<T: Serialize + for<'a> Deserialize<'a>, F: Fn(&T)>(
+    path_in_resource_dir: &str,
+    validate_object: F,
+) {
+    let json_value = read_json_file(path_in_resource_dir);
+    let load_result = serde_json::from_value::<T>(json_value.clone());
+    assert_ok!(load_result);
+    validate_object(load_result.as_ref().unwrap());
+    let dump_result = serde_json::to_value(&(load_result.unwrap()));
+    assert_ok!(dump_result);
+    assert_eq!(json_value, dump_result.unwrap());
 }
 
 /// Used in random test to create a random generator, see for example storage_serde_test.

@@ -5578,7 +5578,6 @@ dependencies = [
 name = "starknet_writer_client"
 version = "0.0.1"
 dependencies = [
- "assert",
  "assert_matches",
  "rand",
  "rand_chacha",
@@ -5783,6 +5782,7 @@ dependencies = [
 name = "test_utils"
 version = "0.0.1"
 dependencies = [
+ "assert",
  "cairo-lang-casm",
  "cairo-lang-starknet",
  "cairo-lang-utils",
