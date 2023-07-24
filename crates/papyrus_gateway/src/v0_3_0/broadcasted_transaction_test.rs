@@ -16,13 +16,13 @@ use starknet_writer_client::objects::transaction::{
 };
 use test_utils::{auto_impl_get_test_instance, get_rng, GetTestInstance};
 
-use crate::broadcasted_transaction::{
+use super::broadcasted_transaction::{
     BroadcastedDeclareTransaction, BroadcastedDeclareV1Transaction,
     BroadcastedDeclareV2Transaction, BroadcastedDeployAccountTransaction,
     BroadcastedInvokeTransaction, BroadcastedTransaction,
 };
+use super::state::ContractClass;
 use crate::test_utils::get_starknet_spec_api_schema;
-use crate::v0_3_0::state::ContractClass;
 use crate::version_config::VERSION_0_3_0;
 
 auto_impl_get_test_instance! {

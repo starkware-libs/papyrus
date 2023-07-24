@@ -20,7 +20,6 @@ serde = { workspace = true, features = ["derive"] }
 test_utils = { path = "../test_utils", optional = true }
 
 [dev-dependencies]
-assert.workspace = true
 assert_matches.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true

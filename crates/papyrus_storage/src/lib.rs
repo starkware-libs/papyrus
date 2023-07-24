@@ -66,13 +66,15 @@ mod test_instances;
 #[path = "test_utils.rs"]
 pub mod test_utils;
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use body::events::EventIndex;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use db::DbTableStats;
 use ommer::{OmmerEventKey, OmmerTransactionKey};
+use papyrus_config::dumping::{append_sub_config_name, SerializeConfig};
+use papyrus_config::{ParamPath, SerializedParam};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
@@ -346,9 +348,15 @@ pub type StorageResult<V> = std::result::Result<V, StorageError>;
 
 /// A struct for the configuration of the storage.
 #[allow(missing_docs)]
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Debug, Deserialize, Clone, Default, PartialEq)]
 pub struct StorageConfig {
     pub db_config: DbConfig,
+}
+
+impl SerializeConfig for StorageConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        append_sub_config_name(self.db_config.dump(), "db_config")
+    }
 }
 
 /// A struct for the statistics of the tables in the database.

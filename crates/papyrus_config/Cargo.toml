@@ -1,0 +1,19 @@
+[package]
+name = "papyrus_config"
+version = "0.1.0"
+edition = "2021"
+
+[package.metadata.cargo-udeps.ignore]
+development = ["tempfile"]  # Dependency of a doc-test
+
+[dependencies]
+clap = { workspace = true, features = ["string"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+assert_matches.workspace = true
+itertools.workspace = true
+tempfile.workspace = true
+test_utils = { path = "../test_utils" }

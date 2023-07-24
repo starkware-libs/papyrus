@@ -1,8 +1,5 @@
 mod api;
 mod block;
-pub mod broadcasted_transaction;
-#[cfg(test)]
-mod broadcasted_transaction_test;
 mod gateway_metrics;
 #[cfg(test)]
 mod gateway_test;
@@ -15,6 +12,7 @@ mod version_config;
 #[cfg(test)]
 mod version_config_test;
 
+use std::collections::BTreeMap;
 use std::fmt::Display;
 use std::net::SocketAddr;
 
@@ -23,6 +21,8 @@ use jsonrpsee::server::{ServerBuilder, ServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
 use jsonrpsee::types::ErrorObjectOwned;
+use papyrus_config::dumping::{ser_param, SerializeConfig};
+use papyrus_config::{ParamPath, SerializedParam};
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::db::TransactionKind;
@@ -41,13 +41,37 @@ use crate::middleware::{deny_requests_with_unsupported_path, proxy_rpc_request};
 
 /// Maximum size of a supported transaction body - 10MB.
 pub const SERVER_MAX_BODY_SIZE: u32 = 10 * 1024 * 1024;
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct GatewayConfig {
     pub chain_id: ChainId,
     pub server_address: String,
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
     pub collect_metrics: bool,
+}
+
+impl Default for GatewayConfig {
+    fn default() -> Self {
+        GatewayConfig {
+            chain_id: ChainId("SN_MAIN".to_string()),
+            server_address: String::from("0.0.0.0:8080"),
+            max_events_chunk_size: 1000,
+            max_events_keys: 100,
+            collect_metrics: false,
+        }
+    }
+}
+
+impl SerializeConfig for GatewayConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from_iter([
+            ser_param("chain_id", &self.chain_id, "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id."),
+            ser_param("server_address", &self.server_address, "IP:PORT of the node`s JSON-RPC server."),
+            ser_param("max_events_chunk_size", &self.max_events_chunk_size, "Maximum chunk size supported by the node in get_events requests."),
+            ser_param("max_events_keys", &self.max_events_keys, "Maximum number of keys supported by the node in get_events requests."),
+            ser_param("collect_metrics", &self.collect_metrics, "If true, collect metrics for the gateway."),
+        ])
+    }
 }
 
 impl From<JsonRpcError> for ErrorObjectOwned {

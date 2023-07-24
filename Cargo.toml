@@ -37,7 +37,7 @@ cairo-lang-starknet = "2.1.0-rc0"
 cairo-lang-casm = "2.1.0-rc0"
 cairo-lang-utils = "2.1.0-rc0"
 camelpaste = "0.1.0"
-clap = "3.2.19"
+clap = { version = "4.3.10", features = ["env"] }
 const_format = "0.2.30"
 ethers = "2.0.3"
 flate2 = "1.0.24"
@@ -51,6 +51,7 @@ hyper = { version = "0.14", features = ["full"] }
 indexmap = "1.9.2"
 insta = { version = "1.29.0", features = ["yaml"] }
 integer-encoding = "3.0.4"
+itertools = "0.10.5"
 jsonrpsee = "0.18.1"
 jsonschema = "0.17.0"
 lazy_static = "1.4.0"

@@ -13,7 +13,7 @@ use starknet_writer_client::objects::transaction::{
     DeclareV1Transaction, DeployAccountTransaction, InvokeTransaction,
 };
 
-use crate::v0_3_0::state::ContractClass;
+use super::state::ContractClass;
 
 /// A generic broadcasted transaction.
 ///

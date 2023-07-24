@@ -298,17 +298,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "atty"
-version = "0.2.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9b39be18770d11421cdb1b9947a45dd3f37e93092cbf377614828a319d5fee8"
-dependencies = [
- "hermit-abi 0.1.19",
- "libc",
- "winapi",
-]
-
-[[package]]
 name = "auto_impl"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1145,29 +1134,12 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.2.25"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ea181bf566f71cb9a5d17a59e1871af638180a18fb0035c92ae62b705207123"
-dependencies = [
- "atty",
- "bitflags 1.3.2",
- "clap_derive 3.2.25",
- "clap_lex 0.2.4",
- "indexmap 1.9.3",
- "once_cell",
- "strsim",
- "termcolor",
- "textwrap",
-]
-
-[[package]]
-name = "clap"
 version = "4.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f644d0dac522c8b05ddc39aaaccc5b136d5dc4ff216610c5641e3be5becf56c"
 dependencies = [
  "clap_builder",
- "clap_derive 4.3.12",
+ "clap_derive",
  "once_cell",
 ]
 
@@ -1179,21 +1151,8 @@ checksum = "af410122b9778e024f9e0fb35682cc09cc3f85cad5e8d3ba8f47a9702df6e73d"
 dependencies = [
  "anstream",
  "anstyle",
- "clap_lex 0.5.0",
+ "clap_lex",
  "strsim",
-]
-
-[[package]]
-name = "clap_derive"
-version = "3.2.25"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae6371b8bdc8b7d3959e9cf7b22d4435ef3e79e138688421ec654acf8c81b008"
-dependencies = [
- "heck 0.4.1",
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
 ]
 
 [[package]]
@@ -1206,15 +1165,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.26",
-]
-
-[[package]]
-name = "clap_lex"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2850f2f5a82cbf437dd5af4d49848fbdfc27c157c3d010345776f952765261c5"
-dependencies = [
- "os_str_bytes",
 ]
 
 [[package]]
@@ -2626,15 +2576,6 @@ checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
 
 [[package]]
 name = "hermit-abi"
-version = "0.1.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
-dependencies = [
- "libc",
-]
-
-[[package]]
-name = "hermit-abi"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "443144c8cdadd93ebf52ddb4056d257f5b52c04d3c804e657d19eb73fc33668b"
@@ -2932,7 +2873,7 @@ version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eae7b9aee968036d54dce06cebaefd919e4472e753296daccd6d344e3e2df0c2"
 dependencies = [
- "hermit-abi 0.3.2",
+ "hermit-abi",
  "libc",
  "windows-sys 0.48.0",
 ]
@@ -2949,7 +2890,7 @@ version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb0889898416213fab133e1d33a0e5858a48177452750691bde3666d0fdbaf8b"
 dependencies = [
- "hermit-abi 0.3.2",
+ "hermit-abi",
  "rustix 0.38.4",
  "windows-sys 0.48.0",
 ]
@@ -3171,7 +3112,7 @@ dependencies = [
  "anyhow",
  "base64 0.21.2",
  "bytecount",
- "clap 4.3.15",
+ "clap",
  "fancy-regex",
  "fraction",
  "getrandom",
@@ -3787,7 +3728,7 @@ version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4161fcb6d602d4d2081af7c3a45852d875a03dd337a6bfdd6e06407b61342a43"
 dependencies = [
- "hermit-abi 0.3.2",
+ "hermit-abi",
  "libc",
 ]
 
@@ -3929,12 +3870,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "os_str_bytes"
-version = "6.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d5d9eb14b174ee9aa2ef96dc2b94637a2d4b6e7cb873c7e171f0c20c6cf3eac"
-
-[[package]]
 name = "overload"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3968,6 +3903,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "papyrus_config"
+version = "0.1.0"
+dependencies = [
+ "assert_matches",
+ "clap",
+ "itertools 0.10.5",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "test_utils",
+ "thiserror",
+]
+
+[[package]]
 name = "papyrus_gateway"
 version = "0.0.1"
 dependencies = [
@@ -3986,6 +3935,7 @@ dependencies = [
  "metrics",
  "metrics-exporter-prometheus",
  "papyrus_common",
+ "papyrus_config",
  "papyrus_proc_macros",
  "papyrus_storage",
  "pretty_assertions",
@@ -4032,6 +3982,7 @@ dependencies = [
  "metrics",
  "metrics-exporter-prometheus",
  "metrics-process",
+ "papyrus_config",
  "papyrus_storage",
  "pretty_assertions",
  "serde",
@@ -4048,12 +3999,16 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "async-stream",
- "clap 3.2.25",
+ "clap",
  "const_format",
  "futures-util",
+ "insta",
+ "itertools 0.10.5",
  "jsonrpsee",
+ "lazy_static",
  "libmdbx",
  "papyrus_base_layer",
+ "papyrus_config",
  "papyrus_gateway",
  "papyrus_monitoring_gateway",
  "papyrus_storage",
@@ -4062,7 +4017,6 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "serde_yaml",
  "starknet_api",
  "starknet_reader_client",
  "tempfile",
@@ -4101,6 +4055,7 @@ dependencies = [
  "libmdbx",
  "num-bigint",
  "num-traits 0.2.15",
+ "papyrus_config",
  "parity-scale-codec",
  "paste",
  "pretty_assertions",
@@ -4133,8 +4088,10 @@ dependencies = [
  "futures-util",
  "hex",
  "indexmap 1.9.3",
+ "itertools 0.10.5",
  "libmdbx",
  "mockall",
+ "papyrus_config",
  "papyrus_storage",
  "pretty_assertions",
  "reqwest",
@@ -5280,19 +5237,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_yaml"
-version = "0.9.24"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd5f51e3fdb5b9cdd1577e1cb7a733474191b1aca6a72c2e50913241632c1180"
-dependencies = [
- "indexmap 2.0.0",
- "itoa",
- "ryu",
- "serde",
- "unsafe-libyaml",
-]
-
-[[package]]
 name = "sha-1"
 version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5617,6 +5561,7 @@ dependencies = [
  "mockall",
  "mockito",
  "os_info",
+ "papyrus_config",
  "pretty_assertions",
  "reqwest",
  "serde",
@@ -5633,7 +5578,6 @@ dependencies = [
 name = "starknet_writer_client"
 version = "0.0.1"
 dependencies = [
- "assert",
  "assert_matches",
  "rand",
  "rand_chacha",
@@ -5838,6 +5782,7 @@ dependencies = [
 name = "test_utils"
 version = "0.0.1"
 dependencies = [
+ "assert",
  "cairo-lang-casm",
  "cairo-lang-starknet",
  "cairo-lang-utils",
@@ -5853,12 +5798,6 @@ dependencies = [
  "starknet_api",
  "tracing",
 ]
-
-[[package]]
-name = "textwrap"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "222a222a5bfe1bba4a77b45ec488a741b3cb8872e5e499451fd7d0129c9c7c3d"
 
 [[package]]
 name = "thiserror"
@@ -6314,12 +6253,6 @@ name = "unicode-xid"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f962df74c8c05a667b5ee8bcf162993134c104e96440b663c8daa176dc772d8c"
-
-[[package]]
-name = "unsafe-libyaml"
-version = "0.2.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f28467d3e1d3c6586d8f25fa243f544f5800fec42d97032474e17222c2b75cfa"
 
 [[package]]
 name = "untrusted"
