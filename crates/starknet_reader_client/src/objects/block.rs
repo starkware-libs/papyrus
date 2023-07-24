@@ -203,7 +203,13 @@ impl Block {
             timestamp: self.timestamp,
         };
 
-        let body = starknet_api::block::BlockBody { transactions, transaction_outputs };
+        // todo: replace this with acctual data once sync is implemented.
+        let transaction_execution_statuses = vec![];
+        let body = starknet_api::block::BlockBody {
+            transactions,
+            transaction_outputs,
+            transaction_execution_statuses,
+        };
 
         Ok((starknet_api_block { header, body }, self.starknet_version))
     }

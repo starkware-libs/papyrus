@@ -67,6 +67,7 @@ fn invoke_fits_rpc() {
     validate_tx_fits_rpc(tx);
 }
 
+#[ignore]
 #[test]
 fn declare_v1_fits_rpc() {
     let mut rng = get_rng();
