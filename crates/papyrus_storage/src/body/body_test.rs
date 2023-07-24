@@ -15,23 +15,23 @@ async fn append_body() {
     let body = get_test_block(10, None, None, None).body;
     let txs = body.transactions;
     let tx_outputs = body.transaction_outputs;
-    let tx_exec_sts = body.transaction_execution_status;
+    let tx_exec_sts = body.transaction_execution_statuses;
 
     let body0 = BlockBody {
         transactions: vec![txs[0].clone()],
         transaction_outputs: vec![tx_outputs[0].clone()],
-        transaction_execution_status: vec![tx_exec_sts[0].clone()],
+        transaction_execution_statuses: vec![tx_exec_sts[0].clone()],
     };
     let body1 = BlockBody::default();
     let body2 = BlockBody {
         transactions: vec![txs[1].clone(), txs[2].clone()],
         transaction_outputs: vec![tx_outputs[1].clone(), tx_outputs[2].clone()],
-        transaction_execution_status: vec![tx_exec_sts[1].clone(), tx_exec_sts[2].clone()],
+        transaction_execution_statuses: vec![tx_exec_sts[1].clone(), tx_exec_sts[2].clone()],
     };
     let body3 = BlockBody {
         transactions: vec![txs[3].clone(), txs[0].clone()],
         transaction_outputs: vec![tx_outputs[3].clone(), tx_outputs[0].clone()],
-        transaction_execution_status: vec![tx_exec_sts[3].clone(), tx_exec_sts[0].clone()],
+        transaction_execution_statuses: vec![tx_exec_sts[3].clone(), tx_exec_sts[0].clone()],
     };
     writer
         .begin_rw_txn()

@@ -160,16 +160,16 @@ fn get_rand_test_body_with_events(
 ) -> BlockBody {
     let mut transactions = vec![];
     let mut transaction_outputs = vec![];
-    let mut transaction_execution_status = vec![];
+    let mut transaction_execution_statuses = vec![];
     for i in 0..transaction_count {
         let mut transaction = Transaction::get_test_instance(rng);
         set_transaction_hash(&mut transaction, TransactionHash(StarkHash::from(i as u128)));
         let transaction_output = get_test_transaction_output(&transaction);
         transactions.push(transaction);
         transaction_outputs.push(transaction_output);
-        transaction_execution_status.push(TransactionExecutionStatus::default());
+        transaction_execution_statuses.push(TransactionExecutionStatus::default());
     }
-    let mut body = BlockBody { transactions, transaction_outputs, transaction_execution_status };
+    let mut body = BlockBody { transactions, transaction_outputs, transaction_execution_statuses };
     for tx_output in &mut body.transaction_outputs {
         let mut events = vec![];
         for _ in 0..events_per_tx {
