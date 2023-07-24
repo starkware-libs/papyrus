@@ -83,7 +83,10 @@ async fn append_body() {
     ];
 
     for (block_number, tx_offset, original_index) in tx_cases {
-        let expected_tx = original_index.map(|i| (txs[i].clone(), exec_statuses[i].clone()));
+        let expected_tx: Option<(
+            starknet_api::transaction::Transaction,
+            starknet_api::transaction::TransactionExecutionStatus,
+        )> = original_index.map(|i| (txs[i].clone(), tx_exec_sts[i].clone()));
         assert_eq!(
             txn.get_transaction(TransactionIndex(block_number, tx_offset)).unwrap(),
             expected_tx
@@ -120,14 +123,14 @@ async fn append_body() {
     // Check block transactions.
     assert_eq!(
         txn.get_block_transactions(BlockNumber(0)).unwrap(),
-        Some(vec![(txs[0].clone(), exec_statuses[0].clone())])
+        Some(vec![(txs[0].clone(), tx_exec_sts[0].clone())])
     );
     assert_eq!(txn.get_block_transactions(BlockNumber(1)).unwrap(), Some(vec![]));
     assert_eq!(
         txn.get_block_transactions(BlockNumber(2)).unwrap(),
         Some(vec![
-            (txs[1].clone(), exec_statuses[1].clone()),
-            (txs[2].clone(), exec_statuses[2].clone())
+            (txs[1].clone(), tx_exec_sts[1].clone()),
+            (txs[2].clone(), tx_exec_sts[2].clone())
         ])
     );
     assert_eq!(txn.get_block_transactions(BlockNumber(3)).unwrap(), None);

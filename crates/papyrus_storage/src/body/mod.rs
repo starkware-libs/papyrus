@@ -32,7 +32,8 @@
 //!     .commit()?;
 //!
 //! let stored_body_transactions = reader.begin_ro_txn()?.get_block_transactions(BlockNumber(0))?;
-//! assert_eq!(stored_body_transactions, Some(Block::default().body.transactions));
+//! let expected_transactions_with_exec_statuses = Block::default().body.transactions.into_iter().zip(Block::default().body.transaction_execution_statuses.into_iter()).collect::<Vec<_>>();
+//! assert_eq!(stored_body_transactions, Some(expected_transactions_with_exec_statuses));
 //! # Ok::<(), papyrus_storage::StorageError>(())
 //! ```
 
