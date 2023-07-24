@@ -15,22 +15,26 @@ async fn append_body() {
     let body = get_test_block(10, None, None, None).body;
     let txs = body.transactions;
     let tx_outputs = body.transaction_outputs;
+    let tx_hashes = body.transaction_hashes;
     let tx_exec_sts = body.transaction_execution_statuses;
 
     let body0 = BlockBody {
         transactions: vec![txs[0].clone()],
         transaction_outputs: vec![tx_outputs[0].clone()],
+        transaction_hashes: vec![tx_hashes[0]],
         transaction_execution_statuses: vec![tx_exec_sts[0].clone()],
     };
     let body1 = BlockBody::default();
     let body2 = BlockBody {
         transactions: vec![txs[1].clone(), txs[2].clone()],
         transaction_outputs: vec![tx_outputs[1].clone(), tx_outputs[2].clone()],
+        transaction_hashes: vec![tx_hashes[1], tx_hashes[2]],
         transaction_execution_statuses: vec![tx_exec_sts[1].clone(), tx_exec_sts[2].clone()],
     };
     let body3 = BlockBody {
         transactions: vec![txs[3].clone(), txs[0].clone()],
         transaction_outputs: vec![tx_outputs[3].clone(), tx_outputs[0].clone()],
+        transaction_hashes: vec![tx_hashes[3], tx_hashes[0]],
         transaction_execution_statuses: vec![tx_exec_sts[3].clone(), tx_exec_sts[0].clone()],
     };
     writer
@@ -65,7 +69,7 @@ async fn append_body() {
         StorageError::TransactionHashAlreadyExists {
             tx_hash,
             transaction_index
-        } if tx_hash == txs[0].transaction_hash() && transaction_index == expected_tx_index
+        } if tx_hash == tx_hashes[0] && transaction_index == expected_tx_index
     );
 
     let txn = reader.begin_ro_txn().unwrap();
@@ -105,15 +109,15 @@ async fn append_body() {
 
     // Check transaction index by hash.
     assert_eq!(
-        txn.get_transaction_idx_by_hash(&txs[0].transaction_hash()).unwrap(),
+        txn.get_transaction_idx_by_hash(&tx_hashes[0]).unwrap(),
         Some(TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(0)))
     );
     assert_eq!(
-        txn.get_transaction_idx_by_hash(&txs[1].transaction_hash()).unwrap(),
+        txn.get_transaction_idx_by_hash(&tx_hashes[1]).unwrap(),
         Some(TransactionIndex(BlockNumber(2), TransactionOffsetInBlock(0)))
     );
     assert_eq!(
-        txn.get_transaction_idx_by_hash(&txs[2].transaction_hash()).unwrap(),
+        txn.get_transaction_idx_by_hash(&tx_hashes[2]).unwrap(),
         Some(TransactionIndex(BlockNumber(2), TransactionOffsetInBlock(1)))
     );
 
@@ -124,7 +128,7 @@ async fn append_body() {
             TransactionOffsetInBlock(0)
         ))
         .unwrap(),
-        Some(txs[0].transaction_hash())
+        Some(tx_hashes[0])
     );
     assert_eq!(
         txn.get_transaction_hash_by_idx(&TransactionIndex(
@@ -132,7 +136,7 @@ async fn append_body() {
             TransactionOffsetInBlock(0)
         ))
         .unwrap(),
-        Some(txs[1].transaction_hash())
+        Some(tx_hashes[1])
     );
     assert_eq!(
         txn.get_transaction_hash_by_idx(&TransactionIndex(
@@ -140,7 +144,7 @@ async fn append_body() {
             TransactionOffsetInBlock(1)
         ))
         .unwrap(),
-        Some(txs[2].transaction_hash())
+        Some(tx_hashes[2])
     );
 
     // Check block transactions.
@@ -157,6 +161,15 @@ async fn append_body() {
         ])
     );
     assert_eq!(txn.get_block_transactions(BlockNumber(3)).unwrap(), None);
+
+    // Check block transaction hashes.
+    assert_eq!(txn.get_block_transaction_hashes(BlockNumber(0)).unwrap(), Some(vec![tx_hashes[0]]));
+    assert_eq!(txn.get_block_transaction_hashes(BlockNumber(1)).unwrap(), Some(vec![]));
+    assert_eq!(
+        txn.get_block_transaction_hashes(BlockNumber(2)).unwrap(),
+        Some(vec![tx_hashes[1], tx_hashes[2]])
+    );
+    assert_eq!(txn.get_block_transaction_hashes(BlockNumber(3)).unwrap(), None);
 
     // Check block transaction outputs.
     assert_eq!(
@@ -227,6 +240,14 @@ async fn get_reverted_body_returns_none() {
         reader
             .begin_ro_txn()
             .unwrap()
+            .get_block_transaction_hashes(BlockNumber(1))
+            .unwrap()
+            .is_some()
+    );
+    assert!(
+        reader
+            .begin_ro_txn()
+            .unwrap()
             .get_block_transaction_outputs(BlockNumber(1))
             .unwrap()
             .is_some()
@@ -235,6 +256,14 @@ async fn get_reverted_body_returns_none() {
     writer.begin_rw_txn().unwrap().revert_body(BlockNumber(1)).unwrap().0.commit().unwrap();
     assert!(
         reader.begin_ro_txn().unwrap().get_block_transactions(BlockNumber(1)).unwrap().is_none()
+    );
+    assert!(
+        reader
+            .begin_ro_txn()
+            .unwrap()
+            .get_block_transaction_hashes(BlockNumber(1))
+            .unwrap()
+            .is_none()
     );
     assert!(
         reader
@@ -259,7 +288,7 @@ async fn revert_transactions() {
         .unwrap();
 
     // Verify the data exists before revert.
-    for (offset, tx_hash) in body.transactions.iter().map(|tx| tx.transaction_hash()).enumerate() {
+    for (offset, tx_hash) in body.transaction_hashes.clone().into_iter().enumerate() {
         let tx_index = TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(offset));
 
         assert!(reader.begin_ro_txn().unwrap().get_transaction(tx_index).unwrap().is_some());
@@ -280,6 +309,14 @@ async fn revert_transactions() {
         reader
             .begin_ro_txn()
             .unwrap()
+            .get_block_transaction_hashes(BlockNumber(0))
+            .unwrap()
+            .is_some()
+    );
+    assert!(
+        reader
+            .begin_ro_txn()
+            .unwrap()
             .get_block_transaction_outputs(BlockNumber(0))
             .unwrap()
             .is_some()
@@ -288,7 +325,7 @@ async fn revert_transactions() {
     writer.begin_rw_txn().unwrap().revert_body(BlockNumber(0)).unwrap().0.commit().unwrap();
 
     // Check that all the transactions were deleted.
-    for (offset, tx_hash) in body.transactions.iter().map(|tx| tx.transaction_hash()).enumerate() {
+    for (offset, tx_hash) in body.transaction_hashes.into_iter().enumerate() {
         let tx_index = TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(offset));
 
         assert!(reader.begin_ro_txn().unwrap().get_transaction(tx_index).unwrap().is_none());
@@ -308,6 +345,14 @@ async fn revert_transactions() {
     }
     assert!(
         reader.begin_ro_txn().unwrap().get_block_transactions(BlockNumber(0)).unwrap().is_none()
+    );
+    assert!(
+        reader
+            .begin_ro_txn()
+            .unwrap()
+            .get_block_transaction_hashes(BlockNumber(0))
+            .unwrap()
+            .is_none()
     );
     assert!(
         reader

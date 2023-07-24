@@ -98,7 +98,6 @@ auto_storage_serde! {
         V2(DeclareTransactionV2) = 2,
     }
     pub struct DeclareTransactionV0V1 {
-        pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
         pub signature: TransactionSignature,
         pub nonce: Nonce,
@@ -106,7 +105,6 @@ auto_storage_serde! {
         pub sender_address: ContractAddress,
     }
     pub struct DeclareTransactionV2 {
-        pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
         pub signature: TransactionSignature,
         pub nonce: Nonce,
@@ -115,7 +113,6 @@ auto_storage_serde! {
         pub sender_address: ContractAddress,
     }
     pub struct DeployAccountTransaction {
-        pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
         pub version: TransactionVersion,
         pub signature: TransactionSignature,
@@ -125,7 +122,6 @@ auto_storage_serde! {
         pub constructor_calldata: Calldata,
     }
     pub struct DeployTransaction {
-        pub transaction_hash: TransactionHash,
         pub version: TransactionVersion,
         pub class_hash: ClassHash,
         pub contract_address_salt: ContractAddressSalt,
@@ -194,7 +190,6 @@ auto_storage_serde! {
         V1(InvokeTransactionV1) = 1,
     }
     pub struct InvokeTransactionV0 {
-        pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
         pub signature: TransactionSignature,
         pub contract_address: ContractAddress,
@@ -202,7 +197,6 @@ auto_storage_serde! {
         pub calldata: Calldata,
     }
     pub struct InvokeTransactionV1 {
-        pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
         pub signature: TransactionSignature,
         pub nonce: Nonce,
@@ -279,7 +273,6 @@ auto_storage_serde! {
         pub events_contract_addresses: Vec<ContractAddress>,
     }
     pub struct L1HandlerTransaction {
-        pub transaction_hash: TransactionHash,
         pub version: TransactionVersion,
         pub nonce: Nonce,
         pub contract_address: ContractAddress,

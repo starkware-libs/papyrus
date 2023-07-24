@@ -106,7 +106,6 @@ pub struct L1HandlerTransaction {
 impl From<L1HandlerTransaction> for starknet_api::transaction::L1HandlerTransaction {
     fn from(l1_handler_tx: L1HandlerTransaction) -> Self {
         starknet_api::transaction::L1HandlerTransaction {
-            transaction_hash: l1_handler_tx.transaction_hash,
             version: l1_handler_tx.version,
             nonce: l1_handler_tx.nonce,
             contract_address: l1_handler_tx.contract_address,
@@ -148,7 +147,6 @@ impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::Decl
 impl From<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransactionV0V1 {
     fn from(declare_tx: IntermediateDeclareTransaction) -> Self {
         Self {
-            transaction_hash: declare_tx.transaction_hash,
             max_fee: declare_tx.max_fee,
             signature: declare_tx.signature,
             nonce: declare_tx.nonce,
@@ -163,7 +161,6 @@ impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::Decl
 
     fn try_from(declare_tx: IntermediateDeclareTransaction) -> Result<Self, ClientError> {
         Ok(Self {
-            transaction_hash: declare_tx.transaction_hash,
             max_fee: declare_tx.max_fee,
             signature: declare_tx.signature,
             nonce: declare_tx.nonce,
@@ -194,7 +191,6 @@ pub struct DeployTransaction {
 impl From<DeployTransaction> for starknet_api::transaction::DeployTransaction {
     fn from(deploy_tx: DeployTransaction) -> Self {
         starknet_api::transaction::DeployTransaction {
-            transaction_hash: deploy_tx.transaction_hash,
             version: deploy_tx.version,
             constructor_calldata: deploy_tx.constructor_calldata,
             class_hash: deploy_tx.class_hash,
@@ -221,7 +217,6 @@ pub struct DeployAccountTransaction {
 impl From<DeployAccountTransaction> for starknet_api::transaction::DeployAccountTransaction {
     fn from(deploy_tx: DeployAccountTransaction) -> Self {
         starknet_api::transaction::DeployAccountTransaction {
-            transaction_hash: deploy_tx.transaction_hash,
             version: deploy_tx.version,
             constructor_calldata: deploy_tx.constructor_calldata,
             class_hash: deploy_tx.class_hash,
@@ -270,7 +265,6 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
 
     fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ClientError> {
         Ok(Self {
-            transaction_hash: invoke_tx.transaction_hash,
             max_fee: invoke_tx.max_fee,
             signature: invoke_tx.signature,
             contract_address: invoke_tx.sender_address,
@@ -291,7 +285,6 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
     fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ClientError> {
         // TODO(yair): Consider asserting that entry_point_selector is None.
         Ok(Self {
-            transaction_hash: invoke_tx.transaction_hash,
             max_fee: invoke_tx.max_fee,
             signature: invoke_tx.signature,
             nonce: invoke_tx.nonce.ok_or(ClientError::BadTransaction {

@@ -43,6 +43,7 @@ use crate::api::{
 use crate::test_utils::{
     get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
 };
+use crate::v0_3_0::transaction::TransactionWithHash;
 use crate::version_config::VERSION_0_3_0;
 use crate::{run_server, ContinuationTokenAsStruct};
 
@@ -225,11 +226,14 @@ async fn get_block_w_full_transactions() {
         .commit()
         .unwrap();
 
-    let expected_transaction = block.body.transactions.index(0);
+    let expected_transaction = TransactionWithHash {
+        transaction: block.body.transactions.index(0).clone().into(),
+        transaction_hash: *block.body.transaction_hashes.index(0),
+    };
     let expected_block = Block {
         status: BlockStatus::AcceptedOnL2,
         header: block.header.into(),
-        transactions: Transactions::Full(vec![expected_transaction.clone().into()]),
+        transactions: Transactions::Full(vec![expected_transaction]),
     };
 
     // Get block by hash.
@@ -323,11 +327,10 @@ async fn get_block_w_transaction_hashes() {
         .commit()
         .unwrap();
 
-    let expected_transaction = block.body.transactions.index(0);
     let expected_block = Block {
         status: BlockStatus::AcceptedOnL2,
         header: block.header.into(),
-        transactions: Transactions::Hashes(vec![expected_transaction.transaction_hash()]),
+        transactions: Transactions::Hashes(vec![*block.body.transaction_hashes.index(0)]),
     };
 
     // Get block by hash.
@@ -568,7 +571,7 @@ async fn get_transaction_receipt() {
         .commit()
         .unwrap();
 
-    let transaction_hash = block.body.transactions.index(0).transaction_hash();
+    let transaction_hash = *block.body.transaction_hashes.index(0);
     let output = TransactionOutput::from(block.body.transaction_outputs.index(0).clone());
     let expected_receipt = TransactionReceiptWithStatus {
         receipt: TransactionReceipt {
@@ -1068,7 +1071,7 @@ async fn get_transaction_by_hash() {
     let res = module
         .call::<_, Transaction>(
             "starknet_V0_3_0_getTransactionByHash",
-            [expected_transaction.transaction_hash()],
+            [*block.body.transaction_hashes.index(0)],
         )
         .await
         .unwrap();
@@ -1305,7 +1308,7 @@ async fn get_events_chunk_size_2_with_address() {
     let mut emitted_events = vec![];
     let mut emitted_event_indices = vec![];
     for (tx_i, tx_output) in block.body.transaction_outputs.iter().enumerate() {
-        let transaction_hash = block.body.transactions.index(tx_i).transaction_hash();
+        let transaction_hash = *block.body.transaction_hashes.index(tx_i);
         for (event_i, event) in tx_output.events().iter().enumerate() {
             if let Some(key) = event.content.keys.get(0) {
                 if filter_keys.get(key).is_some() && event.from_address == address {
@@ -1386,7 +1389,7 @@ async fn get_events_chunk_size_2_without_address() {
     let mut emitted_events = vec![];
     let mut emitted_event_indices = vec![];
     for (tx_i, tx_output) in block.body.transaction_outputs.iter().enumerate() {
-        let transaction_hash = block.body.transactions.index(tx_i).transaction_hash();
+        let transaction_hash = *block.body.transaction_hashes.index(tx_i);
         for (event_i, event) in tx_output.events().iter().enumerate() {
             if let Some(key) = event.content.keys.get(0) {
                 if filter_keys.get(key).is_some() {
@@ -1634,7 +1637,7 @@ async fn serialize_returns_valid_json() {
     .await;
     validate_state(&state_diff, server_address, &schema).await;
     validate_block(&block.header, server_address, &schema).await;
-    validate_transaction(block.body.transactions.index(0), server_address, &schema).await;
+    validate_transaction(block.body.transaction_hashes.index(0), server_address, &schema).await;
 }
 
 async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, schema: &JSONSchema) {
@@ -1691,7 +1694,7 @@ async fn validate_block(header: &BlockHeader, server_address: SocketAddr, schema
 }
 
 async fn validate_transaction(
-    tx: &starknet_api::transaction::Transaction,
+    tx_hash: &TransactionHash,
     server_address: SocketAddr,
     schema: &JSONSchema,
 ) {
@@ -1707,7 +1710,7 @@ async fn validate_transaction(
     let res = send_request(
         server_address,
         "starknet_getTransactionByHash",
-        format!(r#""0x{}""#, hex::encode(tx.transaction_hash().0.bytes())).as_str(),
+        format!(r#""0x{}""#, hex::encode(tx_hash.0.bytes())).as_str(),
         VERSION_0_3_0,
     )
     .await;
@@ -1716,7 +1719,7 @@ async fn validate_transaction(
     let res = send_request(
         server_address,
         "starknet_getTransactionReceipt",
-        format!(r#""0x{}""#, hex::encode(tx.transaction_hash().0.bytes())).as_str(),
+        format!(r#""0x{}""#, hex::encode(tx_hash.0.bytes())).as_str(),
         VERSION_0_3_0,
     )
     .await;

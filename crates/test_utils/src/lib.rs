@@ -175,16 +175,22 @@ fn get_rand_test_body_with_events(
 ) -> BlockBody {
     let mut transactions = vec![];
     let mut transaction_outputs = vec![];
+    let mut transaction_hashes = vec![];
     let mut transaction_execution_statuses = vec![];
     for i in 0..transaction_count {
-        let mut transaction = Transaction::get_test_instance(rng);
-        set_transaction_hash(&mut transaction, TransactionHash(StarkHash::from(i as u128)));
+        let transaction = Transaction::get_test_instance(rng);
+        transaction_hashes.push(TransactionHash(StarkHash::from(i as u128)));
         let transaction_output = get_test_transaction_output(&transaction);
         transactions.push(transaction);
         transaction_outputs.push(transaction_output);
         transaction_execution_statuses.push(TransactionExecutionStatus::default());
     }
-    let mut body = BlockBody { transactions, transaction_outputs, transaction_execution_statuses };
+    let mut body = BlockBody {
+        transactions,
+        transaction_outputs,
+        transaction_hashes,
+        transaction_execution_statuses,
+    };
     for tx_output in &mut body.transaction_outputs {
         let mut events = vec![];
         for _ in 0..events_per_tx {
@@ -237,22 +243,22 @@ fn set_events(tx: &mut TransactionOutput, events: Vec<Event>) {
     }
 }
 
-fn set_transaction_hash(tx: &mut Transaction, hash: TransactionHash) {
-    match tx {
-        Transaction::Declare(tx) => match tx {
-            DeclareTransaction::V0(tx) => tx.transaction_hash = hash,
-            DeclareTransaction::V1(tx) => tx.transaction_hash = hash,
-            DeclareTransaction::V2(tx) => tx.transaction_hash = hash,
-        },
-        Transaction::Deploy(tx) => tx.transaction_hash = hash,
-        Transaction::DeployAccount(tx) => tx.transaction_hash = hash,
-        Transaction::Invoke(tx) => match tx {
-            InvokeTransaction::V0(tx) => tx.transaction_hash = hash,
-            InvokeTransaction::V1(tx) => tx.transaction_hash = hash,
-        },
-        Transaction::L1Handler(tx) => tx.transaction_hash = hash,
-    }
-}
+// fn set_transaction_hash(tx: &mut Transaction, hash: TransactionHash) {
+//     match tx {
+//         Transaction::Declare(tx) => match tx {
+//             DeclareTransaction::V0(tx) => tx.transaction_hash = hash,
+//             DeclareTransaction::V1(tx) => tx.transaction_hash = hash,
+//             DeclareTransaction::V2(tx) => tx.transaction_hash = hash,
+//         },
+//         Transaction::Deploy(tx) => tx.transaction_hash = hash,
+//         Transaction::DeployAccount(tx) => tx.transaction_hash = hash,
+//         Transaction::Invoke(tx) => match tx {
+//             InvokeTransaction::V0(tx) => tx.transaction_hash = hash,
+//             InvokeTransaction::V1(tx) => tx.transaction_hash = hash,
+//         },
+//         Transaction::L1Handler(tx) => tx.transaction_hash = hash,
+//     }
+// }
 
 //////////////////////////////////////////////////////////////////////////
 /// EXTERNAL FUNCTIONS - REMOVE DUPLICATIONS
@@ -354,7 +360,6 @@ auto_impl_get_test_instance! {
         V2(DeclareTransactionV2) = 2,
     }
     pub struct DeclareTransactionV0V1 {
-        pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
         pub signature: TransactionSignature,
         pub nonce: Nonce,
@@ -362,7 +367,6 @@ auto_impl_get_test_instance! {
         pub sender_address: ContractAddress,
     }
     pub struct DeclareTransactionV2 {
-        pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
         pub signature: TransactionSignature,
         pub nonce: Nonce,
@@ -371,7 +375,6 @@ auto_impl_get_test_instance! {
         pub sender_address: ContractAddress,
     }
     pub struct DeployAccountTransaction {
-        pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
         pub version: TransactionVersion,
         pub signature: TransactionSignature,
@@ -381,7 +384,6 @@ auto_impl_get_test_instance! {
         pub constructor_calldata: Calldata,
     }
     pub struct DeployTransaction {
-        pub transaction_hash: TransactionHash,
         pub version: TransactionVersion,
         pub class_hash: ClassHash,
         pub contract_address_salt: ContractAddressSalt,
@@ -442,7 +444,6 @@ auto_impl_get_test_instance! {
         V1(InvokeTransactionV1) = 1,
     }
     pub struct InvokeTransactionV0 {
-        pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
         pub signature: TransactionSignature,
         pub contract_address: ContractAddress,
@@ -450,7 +451,6 @@ auto_impl_get_test_instance! {
         pub calldata: Calldata,
     }
     pub struct InvokeTransactionV1 {
-        pub transaction_hash: TransactionHash,
         pub max_fee: Fee,
         pub signature: TransactionSignature,
         pub nonce: Nonce,
@@ -458,7 +458,6 @@ auto_impl_get_test_instance! {
         pub calldata: Calldata,
     }
     pub struct L1HandlerTransaction {
-        pub transaction_hash: TransactionHash,
         pub version: TransactionVersion,
         pub nonce: Nonce,
         pub contract_address: ContractAddress,
