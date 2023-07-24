@@ -12,7 +12,7 @@ use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 use super::block::Block;
 use super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::state::{ContractClass, StateUpdate};
-use super::transaction::{Event, TransactionReceiptWithStatus, Transaction};
+use super::transaction::{Event, Transaction, TransactionReceiptWithStatus};
 use crate::api::{BlockHashAndNumber, BlockId, ContinuationToken, EventFilter};
 
 pub mod api_impl;

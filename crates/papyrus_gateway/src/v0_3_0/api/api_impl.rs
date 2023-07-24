@@ -19,7 +19,7 @@ use super::super::block::{Block, BlockHeader};
 use super::super::state::StateUpdate;
 use super::super::transaction::{
     Event, Transaction, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus,
-    TransactionWithType, Transactions,
+    Transactions,
 };
 use super::{
     BlockHashAndNumber, BlockId, EventFilter, EventsChunk, GatewayContractClass,
