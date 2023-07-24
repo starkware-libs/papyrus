@@ -27,7 +27,8 @@ use super::{
 };
 use crate::api::{BlockHashOrNumber, ContinuationToken, JsonRpcError, JsonRpcServerImpl};
 use crate::block::get_block_header_by_number;
-use crate::transaction::get_block_txs_by_number;
+use crate::transaction::{get_block_tx_hashes_by_number, get_block_txs_by_number};
+use crate::v0_3_0::transaction::TransactionWithHash;
 use crate::{
     get_block_number, get_block_status, get_latest_block_number, internal_server_error,
     ContinuationTokenAsStruct,
@@ -65,9 +66,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         let block_number = get_block_number(&txn, block_id)?;
         let status = get_block_status(&txn, block_number)?;
         let header = get_block_header_by_number(&txn, block_number)?;
-        let transactions: Vec<Transaction> = get_block_txs_by_number(&txn, block_number)?;
-        let transaction_hashes: Vec<TransactionHash> =
-            transactions.iter().map(|transaction| transaction.transaction_hash()).collect();
+        let transaction_hashes = get_block_tx_hashes_by_number(&txn, block_number)?;
 
         Ok(Block { status, header, transactions: Transactions::Hashes(transaction_hashes) })
     }
@@ -78,9 +77,20 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         let block_number = get_block_number(&txn, block_id)?;
         let status = get_block_status(&txn, block_number)?;
         let header = get_block_header_by_number(&txn, block_number)?;
-        let transactions: Vec<Transaction> = get_block_txs_by_number(&txn, block_number)?;
+        // TODO(dvir): consider create a vector of (transaction, transaction_index) first and get
+        // the transaction hashes by the index.
+        let transactions = get_block_txs_by_number(&txn, block_number)?;
+        let transaction_hashes = get_block_tx_hashes_by_number(&txn, block_number)?;
+        let transactions_with_hash = transactions
+            .into_iter()
+            .zip(transaction_hashes)
+            .map(|(transaction, transaction_hash)| TransactionWithHash {
+                transaction,
+                transaction_hash,
+            })
+            .collect();
 
-        Ok(Block { status, header, transactions: Transactions::Full(transactions) })
+        Ok(Block { status, header, transactions: Transactions::Full(transactions_with_hash) })
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
@@ -107,7 +117,10 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_transaction_by_hash(&self, transaction_hash: TransactionHash) -> RpcResult<Transaction> {
+    fn get_transaction_by_hash(
+        &self,
+        transaction_hash: TransactionHash,
+    ) -> RpcResult<TransactionWithHash> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let transaction_index = txn
@@ -115,12 +128,12 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
 
-        let transaction = txn
+        let (transaction, _execution_status) = txn
             .get_transaction(transaction_index)
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
 
-        Ok(transaction.0.into())
+        Ok(TransactionWithHash { transaction: transaction.into(), transaction_hash })
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
@@ -128,16 +141,21 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
         &self,
         block_id: BlockId,
         index: TransactionOffsetInBlock,
-    ) -> RpcResult<Transaction> {
+    ) -> RpcResult<TransactionWithHash> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
 
-        let transaction = txn
-            .get_transaction(TransactionIndex(block_number, index))
+        let tx_index = TransactionIndex(block_number, index);
+        let (transaction, _execution_status) = txn
+            .get_transaction(tx_index)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::InvalidTransactionIndex))?;
+        let transaction_hash = txn
+            .get_transaction_hash_by_idx(&tx_index)
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::InvalidTransactionIndex))?;
 
-        Ok(transaction.0.into())
+        Ok(TransactionWithHash { transaction: transaction.into(), transaction_hash })
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
@@ -385,14 +403,14 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
                 }
                 let header: BlockHeader = get_block_header_by_number(&txn, block_number)
                     .map_err(internal_server_error)?;
-                let transaction = txn
-                    .get_transaction(event_index.0)
+                let transaction_hash = txn
+                    .get_transaction_hash_by_idx(&event_index.0)
                     .map_err(internal_server_error)?
                     .ok_or_else(|| internal_server_error("Unknown internal error."))?;
                 let emitted_event = Event {
                     block_hash: header.block_hash,
                     block_number,
-                    transaction_hash: transaction.0.transaction_hash(),
+                    transaction_hash,
                     event: starknet_api::transaction::Event { from_address, content },
                 };
                 filtered_events.push(emitted_event);
