@@ -26,7 +26,7 @@ fn tx_v2() -> TransactionVersion {
 #[serde(untagged)]
 pub enum Transactions {
     Hashes(Vec<TransactionHash>),
-    Full(Vec<Transaction>),
+    Full(Vec<TransactionWithHash>),
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -37,7 +37,6 @@ pub struct DeclareTransactionV0V1 {
     pub nonce: Nonce,
     pub max_fee: Fee,
     pub version: TransactionVersion,
-    pub transaction_hash: TransactionHash,
     pub signature: TransactionSignature,
 }
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -48,7 +47,6 @@ pub struct DeclareTransactionV2 {
     pub nonce: Nonce,
     pub max_fee: Fee,
     pub version: TransactionVersion,
-    pub transaction_hash: TransactionHash,
     pub signature: TransactionSignature,
 }
 
@@ -61,7 +59,6 @@ impl From<starknet_api::transaction::DeclareTransactionV2> for DeclareTransactio
             nonce: tx.nonce,
             max_fee: tx.max_fee,
             version: tx_v2(),
-            transaction_hash: tx.transaction_hash,
             signature: tx.signature,
         }
     }
@@ -77,7 +74,6 @@ pub enum DeclareTransaction {
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct InvokeTransactionV0 {
-    pub transaction_hash: TransactionHash,
     pub max_fee: Fee,
     pub version: TransactionVersion,
     pub signature: TransactionSignature,
@@ -89,7 +85,6 @@ pub struct InvokeTransactionV0 {
 impl From<starknet_api::transaction::InvokeTransactionV0> for InvokeTransactionV0 {
     fn from(tx: starknet_api::transaction::InvokeTransactionV0) -> Self {
         Self {
-            transaction_hash: tx.transaction_hash,
             max_fee: tx.max_fee,
             version: tx_v0(),
             signature: tx.signature,
@@ -102,7 +97,6 @@ impl From<starknet_api::transaction::InvokeTransactionV0> for InvokeTransactionV
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct InvokeTransactionV1 {
-    pub transaction_hash: TransactionHash,
     pub max_fee: Fee,
     pub version: TransactionVersion,
     pub signature: TransactionSignature,
@@ -114,7 +108,6 @@ pub struct InvokeTransactionV1 {
 impl From<starknet_api::transaction::InvokeTransactionV1> for InvokeTransactionV1 {
     fn from(tx: starknet_api::transaction::InvokeTransactionV1) -> Self {
         Self {
-            transaction_hash: tx.transaction_hash,
             max_fee: tx.max_fee,
             version: tx_v1(),
             signature: tx.signature,
@@ -132,6 +125,13 @@ pub enum InvokeTransaction {
     Version1(InvokeTransactionV1),
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct TransactionWithHash {
+    pub transaction_hash: TransactionHash,
+    #[serde(flatten)]
+    pub transaction: Transaction,
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 #[serde(tag = "type")]
 pub enum Transaction {
@@ -147,21 +147,6 @@ pub enum Transaction {
     L1Handler(L1HandlerTransaction),
 }
 
-impl Transaction {
-    pub fn transaction_hash(&self) -> TransactionHash {
-        match self {
-            Transaction::Declare(DeclareTransaction::Version0(tx)) => tx.transaction_hash,
-            Transaction::Declare(DeclareTransaction::Version1(tx)) => tx.transaction_hash,
-            Transaction::Declare(DeclareTransaction::Version2(tx)) => tx.transaction_hash,
-            Transaction::Deploy(tx) => tx.transaction_hash,
-            Transaction::DeployAccount(tx) => tx.transaction_hash,
-            Transaction::Invoke(InvokeTransaction::Version0(tx)) => tx.transaction_hash,
-            Transaction::Invoke(InvokeTransaction::Version1(tx)) => tx.transaction_hash,
-            Transaction::L1Handler(tx) => tx.transaction_hash,
-        }
-    }
-}
-
 impl From<starknet_api::transaction::Transaction> for Transaction {
     fn from(tx: starknet_api::transaction::Transaction) -> Self {
         match tx {
@@ -173,7 +158,6 @@ impl From<starknet_api::transaction::Transaction> for Transaction {
                         nonce: tx.nonce,
                         max_fee: tx.max_fee,
                         version: tx_v0(),
-                        transaction_hash: tx.transaction_hash,
                         signature: tx.signature,
                     }))
                 }
@@ -184,7 +168,6 @@ impl From<starknet_api::transaction::Transaction> for Transaction {
                         nonce: tx.nonce,
                         max_fee: tx.max_fee,
                         version: tx_v1(),
-                        transaction_hash: tx.transaction_hash,
                         signature: tx.signature,
                     }))
                 }
