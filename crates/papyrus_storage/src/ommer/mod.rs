@@ -8,7 +8,8 @@ use starknet_api::block::{BlockHash, BlockHeader};
 use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, ThinStateDiff};
 use starknet_api::transaction::{
-    EventContent, EventIndexInTransactionOutput, Transaction, TransactionOffsetInBlock,
+    EventContent, EventIndexInTransactionOutput, Transaction, TransactionExecutionStatus,
+    TransactionOffsetInBlock,
 };
 
 use crate::body::events::ThinTransactionOutput;
@@ -49,7 +50,7 @@ where
     fn insert_ommer_body(
         self,
         block_hash: BlockHash,
-        transactions: &[Transaction],
+        transactions: &[(Transaction, TransactionExecutionStatus)],
         thin_transaction_outputs: &[ThinTransactionOutput],
         transaction_outputs_events: &[Vec<EventContent>],
     ) -> StorageResult<Self>;
@@ -82,7 +83,7 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
     fn insert_ommer_body(
         self,
         block_hash: BlockHash,
-        transactions: &[Transaction],
+        transactions: &[(Transaction, TransactionExecutionStatus)],
         thin_transaction_outputs: &[ThinTransactionOutput],
         transaction_outputs_events: &[Vec<EventContent>],
     ) -> StorageResult<Self> {
