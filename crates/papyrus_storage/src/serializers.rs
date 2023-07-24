@@ -30,8 +30,8 @@ use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass, ContractClassAbiEntry,
     EntryPoint as DeprecatedEntryPoint, EntryPointOffset,
     EntryPointType as DeprecatedEntryPointType, EventAbiEntry, FunctionAbiEntry,
-    FunctionAbiEntryType, FunctionAbiEntryWithType, Program, StructAbiEntry, StructMember,
-    TypedParameter,
+    FunctionAbiEntryType, FunctionAbiEntryWithType, FunctionStateMutability, Program,
+    StructAbiEntry, StructMember, TypedParameter,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{
@@ -172,6 +172,7 @@ auto_storage_serde! {
         pub name: String,
         pub inputs: Vec<TypedParameter>,
         pub outputs: Vec<TypedParameter>,
+        pub state_mutability: Option<FunctionStateMutability>,
     }
     pub enum FunctionAbiEntryType {
         Constructor = 0,
@@ -181,6 +182,9 @@ auto_storage_serde! {
     pub struct FunctionAbiEntryWithType {
         pub r#type: FunctionAbiEntryType,
         pub entry: FunctionAbiEntry,
+    }
+    pub enum FunctionStateMutability {
+        View = 0,
     }
     pub struct GasPrice(pub u128);
     pub struct GlobalRoot(pub StarkHash);

@@ -64,7 +64,12 @@ fn append_state_diff_declared_classes() {
     let (_, class) = diff2.deprecated_declared_classes.iter_mut().next().unwrap();
     class.abi = Some(vec![ContractClassAbiEntry::Function(FunctionAbiEntryWithType {
         r#type: FunctionAbiEntryType::Function,
-        entry: FunctionAbiEntry { name: String::from("junk"), inputs: vec![], outputs: vec![] },
+        entry: FunctionAbiEntry {
+            name: String::from("junk"),
+            inputs: vec![],
+            outputs: vec![],
+            state_mutability: None,
+        },
     })]);
     let Err(err) = txn.append_state_diff(BlockNumber(2), diff2, IndexMap::new()) else {
         panic!("Unexpected Ok.");
