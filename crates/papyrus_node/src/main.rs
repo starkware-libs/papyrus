@@ -1,5 +1,6 @@
 use std::env::args;
 
+use papyrus_config::ConfigError;
 use papyrus_gateway::run_server;
 use papyrus_monitoring_gateway::MonitoringServer;
 use papyrus_node::config::NodeConfig;
@@ -69,8 +70,11 @@ fn configure_tracing() {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let config = NodeConfig::load_and_process(args().collect())?;
+    let config = NodeConfig::load_and_process(args().collect());
+    if let Err(ConfigError::CommandInput(clap_err)) = config {
+        clap_err.exit();
+    }
     configure_tracing();
     info!("Booting up.");
-    run_threads(config).await
+    run_threads(config?).await
 }
