@@ -99,7 +99,7 @@ pub trait BodyStorageReader {
     /// Returns the transaction hash with the given transaction index.
     fn get_transaction_hash_by_idx(
         &self,
-        tx_hash: &TransactionIndex,
+        tx_index: &TransactionIndex,
     ) -> StorageResult<Option<TransactionHash>>;
 
     /// Returns the transactions and their execution status of the block with the given number.
@@ -204,11 +204,11 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
 
     fn get_transaction_hash_by_idx(
         &self,
-        tx_hash: &TransactionIndex,
+        tx_index: &TransactionIndex,
     ) -> StorageResult<Option<TransactionHash>> {
         let transaction_idx_to_hash_table =
             self.txn.open_table(&self.tables.transaction_idx_to_hash)?;
-        let idx = transaction_idx_to_hash_table.get(&self.txn, tx_hash)?;
+        let idx = transaction_idx_to_hash_table.get(&self.txn, tx_index)?;
         Ok(idx)
     }
 
