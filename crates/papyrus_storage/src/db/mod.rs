@@ -18,12 +18,15 @@ mod db_test;
 pub mod serialization;
 
 use std::borrow::Cow;
+use std::collections::BTreeMap;
 use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::result;
 use std::sync::Arc;
 
 use libmdbx::{Cursor, DatabaseFlags, Geometry, WriteFlags, WriteMap};
+use papyrus_config::dumping::{ser_param, SerializeConfig};
+use papyrus_config::{ParamPath, SerializedParam};
 use serde::{Deserialize, Serialize};
 use starknet_api::core::ChainId;
 
@@ -40,7 +43,7 @@ type DbKeyType<'env> = Cow<'env, [u8]>;
 type DbValueType<'env> = Cow<'env, [u8]>;
 
 /// The configuration of the database.
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct DbConfig {
     /// The path prefix of the database files. The final path is the path prefix followed by the
     /// chain id.
@@ -53,6 +56,52 @@ pub struct DbConfig {
     pub max_size: usize,
     /// The growth step of the database.
     pub growth_step: isize,
+}
+
+impl Default for DbConfig {
+    fn default() -> Self {
+        DbConfig {
+            path_prefix: PathBuf::from("./data"),
+            chain_id: ChainId("SN_MAIN".to_string()),
+            min_size: 1 << 20,    // 1MB
+            max_size: 1 << 40,    // 1TB
+            growth_step: 1 << 26, // 64MB
+        }
+    }
+}
+
+impl SerializeConfig for DbConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from_iter([
+            ser_param(
+                "path_prefix",
+                &self.path_prefix,
+                "Prefix of the path of the node's storage directory, the storage file path \
+                will be <path_prefix>/<chain_id>. The path is not created automatically.",
+            ),
+            ser_param(
+                "chain_id",
+                &self.chain_id,
+                "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
+            ),
+            ser_param(
+                "min_size",
+                &self.min_size,
+                "The minimum size of the node's storage in bytes.",
+            ),
+            ser_param(
+                "max_size",
+                &self.max_size,
+                "The maximum size of the node's storage in bytes.",
+            ),
+            ser_param(
+                "growth_step",
+                &self.growth_step,
+                "The growth step in bytes, must be greater than zero to allow the database to \
+                 grow.",
+            ),
+        ])
+    }
 }
 
 impl DbConfig {
