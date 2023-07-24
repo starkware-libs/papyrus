@@ -28,7 +28,7 @@ pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
             config.max_events_chunk_size,
             config.max_events_keys,
         )
-        .into(),
+        .into_rpc_module(),
         storage_writer,
     )
 }
