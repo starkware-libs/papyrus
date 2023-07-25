@@ -17,6 +17,10 @@ use papyrus_storage::test_utils::get_test_storage;
 use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
+use starknet_api::deprecated_contract_class::{
+    ContractClassAbiEntry, FunctionAbiEntry, FunctionAbiEntryType, FunctionAbiEntryWithType,
+    FunctionStateMutability,
+};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::StateDiff;
 use starknet_api::transaction::{
@@ -1735,4 +1739,90 @@ async fn validate_transaction(
         send_request(server_address, "starknet_getEvents", r#"{"chunk_size": 2}"#, VERSION_0_3_0)
             .await;
     assert!(schema.validate(&res["result"]).is_ok(), "Events are not valid.");
+}
+
+// This test checks that the deprecated contract class is returned with the correct state mutability
+// field in the function abi entry. If there is no stateMutability field, the gateway should return
+// an answer without this field at all, and if it is present, it should be returned as is.
+#[tokio::test]
+async fn get_deprecated_class_state_mutability() {
+    // Without state mutability.
+    let function_abi_without_state_mutability =
+        FunctionAbiEntry { state_mutability: None, ..Default::default() };
+    let function_abi_without_state_mutability =
+        ContractClassAbiEntry::Function(FunctionAbiEntryWithType {
+            entry: function_abi_without_state_mutability,
+            r#type: FunctionAbiEntryType::Function,
+        });
+    let class_without_state_mutability = starknet_api::deprecated_contract_class::ContractClass {
+        abi: Some(vec![function_abi_without_state_mutability]),
+        ..Default::default()
+    };
+
+    // With state mutability.
+    let function_abi_with_state_mutability = FunctionAbiEntry {
+        state_mutability: Some(FunctionStateMutability::View),
+        ..Default::default()
+    };
+    let function_abi_with_state_mutability =
+        ContractClassAbiEntry::Function(FunctionAbiEntryWithType {
+            entry: function_abi_with_state_mutability,
+            r#type: FunctionAbiEntryType::Function,
+        });
+    let class_with_state_mutability = starknet_api::deprecated_contract_class::ContractClass {
+        abi: Some(vec![function_abi_with_state_mutability]),
+        ..Default::default()
+    };
+
+    let state_diff = StateDiff {
+        deprecated_declared_classes: IndexMap::from([
+            (ClassHash(stark_felt!("0x0")), class_without_state_mutability),
+            (ClassHash(stark_felt!("0x1")), class_with_state_mutability),
+        ]),
+        ..Default::default()
+    };
+
+    let (module, mut storage_writer) =
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+    let header = BlockHeader::default();
+
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(header.block_number, &header)
+        .unwrap()
+        .append_state_diff(header.block_number, state_diff, IndexMap::new())
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    // Get class without state mutability.
+    let res = module
+        .call::<_, DeprecatedContractClass>(
+            "starknet_V0_3_0_getClass",
+            (
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)),
+                ClassHash(stark_felt!("0x0")),
+            ),
+        )
+        .await
+        .unwrap();
+    let res_as_value = serde_json::to_value(res).unwrap();
+    let entry = res_as_value["abi"][0].as_object().unwrap();
+    assert!(!entry.contains_key("stateMutability"));
+
+    // Get class with state mutability.
+    let res = module
+        .call::<_, DeprecatedContractClass>(
+            "starknet_V0_3_0_getClass",
+            (
+                BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)),
+                ClassHash(stark_felt!("0x1")),
+            ),
+        )
+        .await
+        .unwrap();
+    let res_as_value = serde_json::to_value(res).unwrap();
+    let entry = res_as_value["abi"][0].as_object().unwrap();
+    assert_eq!(entry.get("stateMutability").unwrap().as_str().unwrap(), "view");
 }

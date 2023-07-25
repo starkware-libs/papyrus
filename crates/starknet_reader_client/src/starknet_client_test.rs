@@ -180,6 +180,7 @@ async fn deprecated_contract_class() {
                     r#type: "felt".to_string(),
                 }],
                 outputs: vec![],
+                state_mutability: None,
             },
         })]),
         program: Program {
