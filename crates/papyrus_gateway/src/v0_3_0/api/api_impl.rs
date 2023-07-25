@@ -6,12 +6,13 @@ use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::StorageReader;
-use starknet_api::block::BlockNumber;
+use starknet_api::block::{BlockNumber, BlockStatus};
 use starknet_api::core::{ChainId, ClassHash, ContractAddress, GlobalRoot, Nonce};
 use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
-    EventIndexInTransactionOutput, TransactionHash, TransactionOffsetInBlock,
+    EventIndexInTransactionOutput, TransactionExecutionStatus, TransactionHash,
+    TransactionOffsetInBlock,
 };
 use tracing::instrument;
 
@@ -214,9 +215,29 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
 
         let block_number = transaction_index.0;
         let status = get_block_status(&txn, block_number)?;
+
+        // rejected blocks should not be a part of the API so we early return here.
+        // this assumption also holds for the conversion from block status to transaction status
+        // where we set rejected blocks to unreachable.
+        if status == BlockStatus::Rejected {
+            return Err(ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
+        }
+
         let block_hash = get_block_header_by_number::<_, BlockHeader>(&txn, block_number)
             .map_err(internal_server_error)?
             .block_hash;
+
+        let (_, transaction_execution_status) = txn
+            .get_transaction(transaction_index)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
+
+        // starting from starknet v0.12.1 blocks can have reverted transactions (transactions that
+        // failed execution). RPC API v0.3 does not support these transactions therefore we
+        // return here with an error.
+        if transaction_execution_status == TransactionExecutionStatus::Reverted {
+            return Err(ErrorObjectOwned::from(JsonRpcError::TransactionReverted))?;
+        }
 
         let thin_tx_output = txn
             .get_transaction_output(transaction_index)
