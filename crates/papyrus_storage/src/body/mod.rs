@@ -124,6 +124,7 @@ pub trait BodyStorageReader {
 type RevertedBlockBody = (
     Vec<(Transaction, TransactionExecutionStatus)>,
     Vec<ThinTransactionOutput>,
+    Vec<TransactionHash>,
     Vec<Vec<EventContent>>,
 );
 
@@ -348,14 +349,13 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
         let transaction_outputs = self
             .get_block_transaction_outputs(block_number)?
             .expect("Missing transaction outputs for block {block_number}.");
+        let transaction_hashes = self
+            .get_block_transaction_hashes(block_number)?
+            .expect("Missing transaction hashes for block {block_number}.");
 
         // Delete the transactions data.
         let mut events = vec![];
-        for (offset, tx_output) in transaction_outputs
-            .iter()
-            // .zip(transactions.iter().map(|(tx, _exec_status)| tx.transaction_hash()))
-            .enumerate()
-        {
+        for (offset, tx_output) in transaction_outputs.iter().enumerate() {
             let tx_index = TransactionIndex(block_number, TransactionOffsetInBlock(offset));
             let tx_hash = self
                 .get_transaction_hash_by_idx(&tx_index)?
@@ -381,7 +381,7 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
         }
 
         markers_table.upsert(&self.txn, &MarkerKind::Body, &block_number)?;
-        Ok((self, Some((transactions, transaction_outputs, events))))
+        Ok((self, Some((transactions, transaction_outputs, transaction_hashes, events))))
     }
 }
 

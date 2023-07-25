@@ -405,7 +405,7 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
 
             let res = txn.revert_body(block_number)?;
             txn = res.0;
-            if let Some((transactions, transaction_outputs, events)) = res.1 {
+            if let Some((transactions, transaction_outputs, _transaction_hashes, events)) = res.1 {
                 txn = txn.insert_ommer_body(
                     header.block_hash,
                     &transactions,
