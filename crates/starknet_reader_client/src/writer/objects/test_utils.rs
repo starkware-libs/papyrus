@@ -10,7 +10,7 @@ use starknet_api::transaction::{
 };
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
 
-use crate::objects::transaction::{
+use super::transaction::{
     DeclareV1Transaction, DeployAccountTransaction, DeprecatedContractClass,
     DeprecatedContractClassAbiEntry, InvokeTransaction,
 };

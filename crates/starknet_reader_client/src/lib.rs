@@ -11,6 +11,8 @@ pub mod retry;
 mod starknet_client_test;
 #[cfg(test)]
 mod test_utils;
+pub mod writer;
+
 use std::collections::HashMap;
 use std::fmt::{self, Display, Formatter};
 
@@ -357,7 +359,10 @@ impl StarknetClientTrait for StarknetClient {
         let response = self.client.request_with_retry(url).await;
         match response {
             Ok(raw_state_update) => {
-                let state_update: StateUpdate = serde_json::from_str(&raw_state_update)?;
+                let mut state_update: StateUpdate = serde_json::from_str(&raw_state_update)?;
+                // Remove empty storage diffs. The feeder gateway sometimes returns an empty storage
+                // diff.
+                state_update.state_diff.storage_diffs.retain(|_k, v| !v.is_empty());
                 Ok(Some(state_update))
             }
             Err(ClientError::StarknetError(err)) if matches!(err, StarknetError { code, message: _ } if code == StarknetErrorCode::BlockNotFound) => {
