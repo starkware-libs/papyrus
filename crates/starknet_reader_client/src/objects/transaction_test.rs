@@ -7,7 +7,7 @@ use super::transaction::{Transaction, TransactionReceipt};
 #[test]
 fn load_deploy_transaction_succeeds() {
     assert_matches!(
-        serde_json::from_str::<Transaction>(&read_resource_file("deploy_transaction.json")),
+        serde_json::from_str::<Transaction>(&read_resource_file("reader/deploy_transaction.json")),
         Ok(Transaction::Deploy(_))
     );
 }
@@ -15,7 +15,7 @@ fn load_deploy_transaction_succeeds() {
 #[test]
 fn load_invoke_transaction_succeeds() {
     assert_matches!(
-        serde_json::from_str::<Transaction>(&read_resource_file("invoke_transaction.json")),
+        serde_json::from_str::<Transaction>(&read_resource_file("reader/invoke_transaction.json")),
         Ok(Transaction::Invoke(_))
     );
 }
@@ -23,7 +23,7 @@ fn load_invoke_transaction_succeeds() {
 #[test]
 fn load_invoke_with_contract_address_transaction_succeeds() {
     let mut json_val: serde_json::Value =
-        serde_json::from_str(&read_resource_file("invoke_transaction.json")).unwrap();
+        serde_json::from_str(&read_resource_file("reader/invoke_transaction.json")).unwrap();
     let object = json_val.as_object_mut().unwrap();
     let sender_address_value = object.remove("sender_address").unwrap();
     object.insert("contract_address".to_string(), sender_address_value);
@@ -34,7 +34,7 @@ fn load_invoke_with_contract_address_transaction_succeeds() {
 fn load_l1_handler_transaction_succeeds() {
     assert_matches!(
         serde_json::from_str::<Transaction>(&read_resource_file(
-            "invoke_transaction_l1_handler.json"
+            "reader/invoke_transaction_l1_handler.json"
         )),
         Ok(Transaction::L1Handler(_))
     );
@@ -43,25 +43,29 @@ fn load_l1_handler_transaction_succeeds() {
 #[test]
 fn load_declare_transaction_succeeds() {
     assert_matches!(
-        serde_json::from_str::<Transaction>(&read_resource_file("declare_transaction.json")),
+        serde_json::from_str::<Transaction>(&read_resource_file("reader/declare_transaction.json")),
         Ok(Transaction::Declare(_))
     );
 }
 
 #[test]
 fn load_transaction_succeeds() {
-    for file_name in
-        ["deploy_transaction.json", "invoke_transaction.json", "declare_transaction.json"]
-    {
+    for file_name in [
+        "reader/deploy_transaction.json",
+        "reader/invoke_transaction.json",
+        "reader/declare_transaction.json",
+    ] {
         assert_ok!(serde_json::from_str::<Transaction>(&read_resource_file(file_name)));
     }
 }
 
 #[test]
 fn load_transaction_unknown_field_fails() {
-    for file_name in
-        ["deploy_transaction.json", "invoke_transaction.json", "declare_transaction.json"]
-    {
+    for file_name in [
+        "reader/deploy_transaction.json",
+        "reader/invoke_transaction.json",
+        "reader/declare_transaction.json",
+    ] {
         let mut json_value: serde_json::Value =
             serde_json::from_str(&read_resource_file(file_name)).unwrap();
         json_value
@@ -77,9 +81,9 @@ fn load_transaction_unknown_field_fails() {
 fn load_transaction_wrong_type_fails() {
     for (file_name, new_wrong_type) in [
         // The transaction has a type that doesn't match the type it is paired with.
-        ("deploy_transaction.json", "INVOKE_FUNCTION"),
-        ("invoke_transaction.json", "DECLARE"),
-        ("declare_transaction.json", "DEPLOY"),
+        ("reader/deploy_transaction.json", "INVOKE_FUNCTION"),
+        ("reader/invoke_transaction.json", "DECLARE"),
+        ("reader/declare_transaction.json", "DEPLOY"),
     ] {
         let mut json_value: serde_json::Value =
             serde_json::from_str(&read_resource_file(file_name)).unwrap();
@@ -95,9 +99,9 @@ fn load_transaction_wrong_type_fails() {
 #[test]
 fn load_transaction_receipt_succeeds() {
     for file_name in [
-        "transaction_receipt.json",
-        "transaction_receipt_without_l1_to_l2.json",
-        "transaction_receipt_without_l1_to_l2_nonce.json",
+        "reader/transaction_receipt.json",
+        "reader/transaction_receipt_without_l1_to_l2.json",
+        "reader/transaction_receipt_without_l1_to_l2_nonce.json",
     ] {
         assert_ok!(serde_json::from_str::<TransactionReceipt>(&read_resource_file(file_name)));
     }
