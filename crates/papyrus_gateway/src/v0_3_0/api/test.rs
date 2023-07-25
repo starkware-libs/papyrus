@@ -32,8 +32,8 @@ use super::super::block::Block;
 use super::super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::super::state::{ContractClass, StateUpdate, ThinStateDiff};
 use super::super::transaction::{
-    Event, Transaction, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus,
-    TransactionStatus, Transactions,
+    Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
+    Transactions,
 };
 use super::api_impl::JsonRpcServerV0_3_0Impl;
 use crate::api::{
@@ -227,7 +227,7 @@ async fn get_block_w_full_transactions() {
         .unwrap();
 
     let expected_transaction = TransactionWithHash {
-        transaction: block.body.transactions.index(0).clone().into(),
+        transaction: block.body.transactions[0].clone().into(),
         transaction_hash: block.body.transaction_hashes[0],
     };
     let expected_block = Block {
@@ -1067,19 +1067,22 @@ async fn get_transaction_by_hash() {
         .commit()
         .unwrap();
 
-    let expected_transaction = block.body.transactions.index(0);
+    let expected_transaction = TransactionWithHash {
+        transaction: block.body.transactions[0].clone().into(),
+        transaction_hash: block.body.transaction_hashes[0],
+    };
     let res = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionWithHash>(
             "starknet_V0_3_0_getTransactionByHash",
             [block.body.transaction_hashes[0]],
         )
         .await
         .unwrap();
-    assert_eq!(res, Transaction::from(expected_transaction.clone()));
+    assert_eq!(res, expected_transaction);
 
     // Ask for an invalid transaction.
     let err = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionWithHash>(
             "starknet_V0_3_0_getTransactionByHash",
             [TransactionHash(StarkHash::from(1_u8))],
         )
@@ -1107,31 +1110,34 @@ async fn get_transaction_by_block_id_and_index() {
         .commit()
         .unwrap();
 
-    let expected_transaction = block.body.transactions.index(0);
+    let expected_transaction = TransactionWithHash {
+        transaction: block.body.transactions[0].clone().into(),
+        transaction_hash: block.body.transaction_hashes[0],
+    };
 
     // Get transaction by block hash.
     let res = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionWithHash>(
             "starknet_V0_3_0_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash)), 0),
         )
         .await
         .unwrap();
-    assert_eq!(res, Transaction::from(expected_transaction.clone()));
+    assert_eq!(res, expected_transaction);
 
     // Get transaction by block number.
     let res = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionWithHash>(
             "starknet_V0_3_0_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(block.header.block_number)), 0),
         )
         .await
         .unwrap();
-    assert_eq!(res, Transaction::from(expected_transaction.clone()));
+    assert_eq!(res, expected_transaction);
 
     // Ask for an invalid block hash.
     let err = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionWithHash>(
             "starknet_V0_3_0_getTransactionByBlockIdAndIndex",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
@@ -1150,7 +1156,7 @@ async fn get_transaction_by_block_id_and_index() {
 
     // Ask for an invalid block number.
     let err = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionWithHash>(
             "starknet_V0_3_0_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), 0),
         )
@@ -1164,7 +1170,7 @@ async fn get_transaction_by_block_id_and_index() {
 
     // Ask for an invalid transaction index.
     let err = module
-        .call::<_, Transaction>(
+        .call::<_, TransactionWithHash>(
             "starknet_V0_3_0_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash)), 1),
         )
