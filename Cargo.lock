@@ -5533,11 +5533,7 @@ dependencies = [
 [[package]]
 name = "starknet_api"
 version = "0.2.0"
-<<<<<<< HEAD
-source = "git+https://github.com/starkware-libs/starknet-api?rev=c9509574052493081120b0a435315f2f83cb6166#c9509574052493081120b0a435315f2f83cb6166"
-=======
-source = "git+https://github.com/starkware-libs/starknet-api?rev=faab85ad4fecff408683ca4e2e708df7a87b98dd#faab85ad4fecff408683ca4e2e708df7a87b98dd"
->>>>>>> Bump starknet api version to include state mutability field in the FunctionAbiEntry.
+source = "git+https://github.com/starkware-libs/starknet-api?rev=49d1d22ced17228e393eb305ee9e83fcc8bbe338#49d1d22ced17228e393eb305ee9e83fcc8bbe338"
 dependencies = [
  "cairo-lang-starknet",
  "derive_more",
