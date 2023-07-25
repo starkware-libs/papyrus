@@ -6,7 +6,7 @@ use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::StorageReader;
-use starknet_api::block::BlockNumber;
+use starknet_api::block::{BlockNumber, BlockStatus};
 use starknet_api::core::{ChainId, ClassHash, ContractAddress, GlobalRoot, Nonce};
 use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 use starknet_api::state::{StateNumber, StorageKey};
@@ -215,6 +215,11 @@ impl JsonRpcV0_4_0Server for JsonRpcServerV0_4_0Impl {
 
         let block_number = transaction_index.0;
         let status = get_block_status(&txn, block_number)?;
+
+        if status == BlockStatus::Rejected {
+            return Err(ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
+        }
+
         let block_hash = get_block_header_by_number::<_, BlockHeader>(&txn, block_number)
             .map_err(internal_server_error)?
             .block_hash;
@@ -236,8 +241,6 @@ impl JsonRpcV0_4_0Server for JsonRpcServerV0_4_0Impl {
 
         let output = TransactionOutput::from_thin_transaction_output(thin_tx_output, events);
 
-        // todo: nevo - check what to do with the missing finality statuses of block (rejected &
-        // pending)
         Ok(TransactionReceiptWithStatus {
             receipt: TransactionReceipt { transaction_hash, block_hash, block_number, output },
             finality_status: status.into(),
