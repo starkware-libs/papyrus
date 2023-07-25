@@ -2455,6 +2455,10 @@
                 "code": 28,
                 "message": "Class hash not found"
             },
+            "TRANSACTION_REVERTED": {
+                "code": 29,
+                "message": "Transaction reverted"
+            },
             "PAGE_SIZE_TOO_BIG": {
                 "code": 31,
                 "message": "Requested page size is too big"

@@ -50,6 +50,8 @@ pub enum JsonRpcError {
     InvalidTransactionIndex = 27,
     #[error("Class hash not found.")]
     ClassHashNotFound = 28,
+    #[error("Transaction reverted.")]
+    TransactionReverted = 29,
     #[error("Requested page size is too big.")]
     PageSizeTooBig = 31,
     #[error("The supplied continuation token is invalid or unknown.")]

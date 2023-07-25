@@ -222,7 +222,10 @@ impl From<BlockStatus> for TransactionStatus {
             BlockStatus::AcceptedOnL1 => TransactionStatus::AcceptedOnL1,
             BlockStatus::AcceptedOnL2 => TransactionStatus::AcceptedOnL2,
             BlockStatus::Pending => TransactionStatus::Pending,
-            BlockStatus::Rejected => TransactionStatus::Rejected,
+            // we convert the block status to transaction status only in the creation of
+            // TransactionReceiptWithStatus before that we verify that the block is not
+            // rejected so this conversion should never happen
+            BlockStatus::Rejected => unreachable!("Rejected blocks are not returned by the API"),
         }
     }
 }
