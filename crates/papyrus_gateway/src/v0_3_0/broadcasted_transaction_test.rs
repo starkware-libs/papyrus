@@ -11,7 +11,7 @@ use starknet_api::deprecated_contract_class::{
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{EntryPoint, EntryPointType};
 use starknet_api::transaction::{Fee, TransactionSignature, TransactionVersion};
-use starknet_writer_client::objects::transaction::{
+use starknet_reader_client::writer::objects::transaction::{
     DeprecatedContractClass, DeprecatedContractClassAbiEntry,
 };
 use test_utils::{auto_impl_get_test_instance, get_rng, GetTestInstance};
