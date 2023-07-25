@@ -125,6 +125,14 @@ docker run --rm --name papyrus\
 For more information, see [Docker's documentation](https://docs.docker.com/config/containers/resource_constraints/#limit-a-containers-access-to-memory).
 
 
+## sending API requests to the node
+API requests are sent to the path `/rpc/<starknet-rpc-version-id>`.
+Current supported versions are:
+* V0_3_0
+* V0_4_0
+Assuming the node is exposed at `local-host:8080` one might send requests via curl with:
+`curl --location 'localhost:8080/rpc/V0_3_0' --header 'Content-Type: application/json' --data '{"jsonrpc":"2.0","id":0,"method":"starknet_blockHashAndNumber"}'`
+
 ## Endpoints
 
 | Endpoint                                   | Supported          |
@@ -152,6 +160,10 @@ For more information, see [Docker's documentation](https://docs.docker.com/confi
 | `starknet_getTransactionReceipt`           | :heavy_check_mark: |
 | `starknet_pendingTransactions`             | :x:                |
 | `starknet_syncing`                         | :x:                |
+
+## Deployment
+We provide a helm chart for deploying the node to a kubernetes cluster.
+It is located under the deployments folder.
 
 ## Roadmap
 
