@@ -108,6 +108,12 @@ pub trait BodyStorageReader {
         block_number: BlockNumber,
     ) -> StorageResult<Option<Vec<(Transaction, TransactionExecutionStatus)>>>;
 
+    /// Returns the transaction hashes of the block with the given number.
+    fn get_block_transaction_hashes(
+        &self,
+        block_number: BlockNumber,
+    ) -> StorageResult<Option<Vec<TransactionHash>>>;
+
     /// Returns the transaction outputs of the block with the given number.
     fn get_block_transaction_outputs(
         &self,
@@ -118,6 +124,7 @@ pub trait BodyStorageReader {
 type RevertedBlockBody = (
     Vec<(Transaction, TransactionExecutionStatus)>,
     Vec<ThinTransactionOutput>,
+    Vec<TransactionHash>,
     Vec<Vec<EventContent>>,
 );
 
@@ -212,6 +219,8 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         Ok(idx)
     }
 
+    // TODO(dvir): Try to avoid the code duplication in get_block_transactions,
+    // get_block_transaction_hashes, and get_block_transaction_outputs.
     fn get_block_transactions(
         &self,
         block_number: BlockNumber,
@@ -221,6 +230,29 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         }
         let transactions_table = self.txn.open_table(&self.tables.transactions)?;
         let mut cursor = transactions_table.cursor(&self.txn)?;
+        let mut current =
+            cursor.lower_bound(&TransactionIndex(block_number, TransactionOffsetInBlock(0)))?;
+        let mut res = Vec::new();
+        while let Some((TransactionIndex(current_block_number, _), tx)) = current {
+            if current_block_number != block_number {
+                break;
+            }
+            res.push(tx);
+            current = cursor.next()?;
+        }
+        Ok(Some(res))
+    }
+
+    fn get_block_transaction_hashes(
+        &self,
+        block_number: BlockNumber,
+    ) -> StorageResult<Option<Vec<TransactionHash>>> {
+        if self.get_body_marker()? <= block_number {
+            return Ok(None);
+        }
+        let transaction_idx_to_hash_table =
+            self.txn.open_table(&self.tables.transaction_idx_to_hash)?;
+        let mut cursor = transaction_idx_to_hash_table.cursor(&self.txn)?;
         let mut current =
             cursor.lower_bound(&TransactionIndex(block_number, TransactionOffsetInBlock(0)))?;
         let mut res = Vec::new();
@@ -317,15 +349,17 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
         let transaction_outputs = self
             .get_block_transaction_outputs(block_number)?
             .expect("Missing transaction outputs for block {block_number}.");
+        let transaction_hashes = self
+            .get_block_transaction_hashes(block_number)?
+            .expect("Missing transaction hashes for block {block_number}.");
 
         // Delete the transactions data.
         let mut events = vec![];
-        for (offset, (tx_output, tx_hash)) in transaction_outputs
-            .iter()
-            .zip(transactions.iter().map(|(tx, _exec_status)| tx.transaction_hash()))
-            .enumerate()
-        {
+        for (offset, tx_output) in transaction_outputs.iter().enumerate() {
             let tx_index = TransactionIndex(block_number, TransactionOffsetInBlock(offset));
+            let tx_hash = self
+                .get_transaction_hash_by_idx(&tx_index)?
+                .expect("Missing transaction hash for transaction index {tx_index}.");
             let mut tx_events = vec![];
             for (index, from_address) in
                 tx_output.events_contract_addresses_as_ref().iter().enumerate()
@@ -347,7 +381,7 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
         }
 
         markers_table.upsert(&self.txn, &MarkerKind::Body, &block_number)?;
-        Ok((self, Some((transactions, transaction_outputs, events))))
+        Ok((self, Some((transactions, transaction_outputs, transaction_hashes, events))))
     }
 }
 
@@ -364,6 +398,7 @@ fn write_transactions<'env>(
     for index in 0..block_body.transactions.len() {
         let tx_offset_in_block = TransactionOffsetInBlock(index);
         let transaction_index = TransactionIndex(block_number, tx_offset_in_block);
+        let transaction_hash = block_body.transaction_hashes[index];
         // A transaction must have an execution status.
         let tx = block_body.transactions[index].clone();
         let exec_status = block_body.transaction_execution_statuses[index].clone();
@@ -371,7 +406,7 @@ fn write_transactions<'env>(
             txn,
             transaction_hash_to_idx_table,
             transaction_idx_to_hash_table,
-            &tx,
+            transaction_hash,
             transaction_index,
         )?;
         transactions_table.insert(txn, &transaction_index, &(tx, exec_status))?;
@@ -416,11 +451,10 @@ fn update_tx_hash_mapping<'env>(
     txn: &DbTransaction<'env, RW>,
     transaction_hash_to_idx_table: &'env TransactionHashToIdxTable<'env>,
     transaction_idx_to_hash_table: &'env TransactionIdxToHashTable<'env>,
-    tx: &Transaction,
+    tx_hash: TransactionHash,
     transaction_index: TransactionIndex,
 ) -> Result<(), StorageError> {
-    let tx_hash = tx.transaction_hash();
-    let res = transaction_hash_to_idx_table.insert(txn, &tx.transaction_hash(), &transaction_index);
+    let res = transaction_hash_to_idx_table.insert(txn, &tx_hash, &transaction_index);
     res.map_err(|err| match err {
         DbError::Inner(libmdbx::Error::KeyExist) => {
             StorageError::TransactionHashAlreadyExists { tx_hash, transaction_index }
