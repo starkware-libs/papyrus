@@ -21,14 +21,14 @@ use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 #[cfg(any(feature = "testing", test))]
 use mockall::automock;
 use reqwest::header::HeaderMap;
-use reqwest::{Client, StatusCode};
+use reqwest::{Client, RequestBuilder, StatusCode};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::transaction::TransactionHash;
 use starknet_api::StarknetApiError;
-use tracing::debug;
+use tracing::{debug, warn};
 use url::Url;
 
 pub use self::objects::block::{Block, GlobalRoot, TransactionReceiptsError};
@@ -48,7 +48,7 @@ pub type ClientResult<T> = Result<T, ClientError>;
 /// A starknet client.
 struct StarknetBaseClient {
     http_headers: HeaderMap,
-    internal_client: Client,
+    pub internal_client: Client,
     retry_config: RetryConfig,
 }
 
@@ -127,6 +127,15 @@ impl Display for StarknetError {
     }
 }
 
+// A wrapper error for request_with_retry to handle the case that clone failed.
+#[derive(thiserror::Error, Debug)]
+enum RequestWithRetryError {
+    #[error("Request is unclonable.")]
+    CloneError,
+    #[error(transparent)]
+    ClientError(#[from] ClientError),
+}
+
 impl StarknetBaseClient {
     /// Creates a new client for a starknet gateway at `url_str` with retry_config [`RetryConfig`].
     pub fn new(
@@ -184,23 +193,46 @@ impl StarknetBaseClient {
         }
     }
 
-    fn should_retry(err: &ClientError) -> bool {
-        Self::get_retry_error_code(err).is_some()
+    fn should_retry(err: &RequestWithRetryError) -> bool {
+        match err {
+            RequestWithRetryError::ClientError(err) => Self::get_retry_error_code(err).is_some(),
+            RequestWithRetryError::CloneError => false,
+        }
     }
 
-    pub async fn request_with_retry(&self, url: Url) -> Result<String, ClientError> {
-        Retry::new(&self.retry_config)
-            .start_with_condition(|| self.request(url.clone()), Self::should_retry)
-            .await
-            .map_err(|err| {
-                Self::get_retry_error_code(&err)
-                    .map(|code| ClientError::RetryError { code, message: err.to_string() })
-                    .unwrap_or(err)
-            })
+    pub async fn request_with_retry(
+        &self,
+        request_builder: RequestBuilder,
+    ) -> ClientResult<String> {
+        let res = Retry::new(&self.retry_config)
+            .start_with_condition(
+                || async {
+                    match request_builder.try_clone() {
+                        Some(request_builder) => self
+                            .request(request_builder)
+                            .await
+                            .map_err(|err| RequestWithRetryError::ClientError(err)),
+                        None => Err(RequestWithRetryError::CloneError),
+                    }
+                },
+                Self::should_retry,
+            )
+            .await;
+
+        match res {
+            Ok(string) => Ok(string),
+            Err(RequestWithRetryError::ClientError(err)) => Err(Self::get_retry_error_code(&err)
+                .map(|code| ClientError::RetryError { code, message: err.to_string() })
+                .unwrap_or(err)),
+            Err(RequestWithRetryError::CloneError) => {
+                warn!("Starknet client got an unclonable request. Can't retry upon failure.");
+                self.request(request_builder).await
+            }
+        }
     }
 
-    async fn request(&self, url: Url) -> ClientResult<String> {
-        let res = self.internal_client.get(url).headers(self.http_headers.clone()).send().await;
+    async fn request(&self, request_builder: RequestBuilder) -> ClientResult<String> {
+        let res = request_builder.headers(self.http_headers.clone()).send().await;
         let (code, message) = match res {
             Ok(response) => (response.status(), response.text().await?),
             Err(err) => {
@@ -294,6 +326,10 @@ impl StarknetClient {
         })
     }
 
+    async fn request_with_retry_url(&self, url: Url) -> ClientResult<String> {
+        self.client.request_with_retry(self.client.internal_client.get(url)).await
+    }
+
     async fn request_block(
         &self,
         block_number: Option<BlockNumber>,
@@ -303,7 +339,7 @@ impl StarknetClient {
             block_number.map(|bn| bn.to_string()).unwrap_or(String::from(LATEST_BLOCK_NUMBER));
         url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, block_number.as_str());
 
-        let response = self.client.request_with_retry(url).await;
+        let response = self.request_with_retry_url(url).await;
         match response {
             Ok(raw_block) => {
                 let block: Block = serde_json::from_str(&raw_block)?;
@@ -339,7 +375,7 @@ impl StarknetClientTrait for StarknetClient {
         let class_hash = serde_json::to_string(&class_hash)?;
         url.query_pairs_mut()
             .append_pair(CLASS_HASH_QUERY, &class_hash.as_str()[1..class_hash.len() - 1]);
-        let response = self.client.request_with_retry(url).await;
+        let response = self.request_with_retry_url(url).await;
         match response {
             Ok(raw_contract_class) => Ok(Some(serde_json::from_str(&raw_contract_class)?)),
             Err(ClientError::StarknetError(StarknetError {
@@ -356,7 +392,7 @@ impl StarknetClientTrait for StarknetClient {
     async fn state_update(&self, block_number: BlockNumber) -> ClientResult<Option<StateUpdate>> {
         let mut url = self.urls.get_state_update.clone();
         url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.to_string());
-        let response = self.client.request_with_retry(url).await;
+        let response = self.request_with_retry_url(url).await;
         match response {
             Ok(raw_state_update) => {
                 let mut state_update: StateUpdate = serde_json::from_str(&raw_state_update)?;
@@ -428,7 +464,7 @@ impl StarknetClientTrait for StarknetClient {
         let class_hash = serde_json::to_string(&class_hash)?;
         url.query_pairs_mut()
             .append_pair(CLASS_HASH_QUERY, &class_hash.as_str()[1..class_hash.len() - 1]);
-        let response = self.client.request_with_retry(url).await;
+        let response = self.request_with_retry_url(url).await;
         match response {
             Ok(raw_compiled_class) => Ok(Some(serde_json::from_str(&raw_compiled_class)?)),
             Err(ClientError::StarknetError(StarknetError {
