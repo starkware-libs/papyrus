@@ -52,6 +52,7 @@ use starknet_api::transaction::{
 use tracing::debug;
 
 use crate::body::events::{EventIndex, ThinTransactionOutput};
+use crate::db::serialization::StorageSerde;
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
@@ -219,62 +220,45 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         Ok(idx)
     }
 
-    // TODO(dvir): Try to avoid the code duplication in get_block_transactions,
-    // get_block_transaction_hashes, and get_block_transaction_outputs.
     fn get_block_transactions(
         &self,
         block_number: BlockNumber,
     ) -> StorageResult<Option<Vec<(Transaction, TransactionExecutionStatus)>>> {
-        if self.get_body_marker()? <= block_number {
-            return Ok(None);
-        }
         let transactions_table = self.txn.open_table(&self.tables.transactions)?;
-        let mut cursor = transactions_table.cursor(&self.txn)?;
-        let mut current =
-            cursor.lower_bound(&TransactionIndex(block_number, TransactionOffsetInBlock(0)))?;
-        let mut res = Vec::new();
-        while let Some((TransactionIndex(current_block_number, _), tx)) = current {
-            if current_block_number != block_number {
-                break;
-            }
-            res.push(tx);
-            current = cursor.next()?;
-        }
-        Ok(Some(res))
+        self.get_transactions_in_block(block_number, transactions_table)
     }
 
     fn get_block_transaction_hashes(
         &self,
         block_number: BlockNumber,
     ) -> StorageResult<Option<Vec<TransactionHash>>> {
-        if self.get_body_marker()? <= block_number {
-            return Ok(None);
-        }
         let transaction_idx_to_hash_table =
             self.txn.open_table(&self.tables.transaction_idx_to_hash)?;
-        let mut cursor = transaction_idx_to_hash_table.cursor(&self.txn)?;
-        let mut current =
-            cursor.lower_bound(&TransactionIndex(block_number, TransactionOffsetInBlock(0)))?;
-        let mut res = Vec::new();
-        while let Some((TransactionIndex(current_block_number, _), tx)) = current {
-            if current_block_number != block_number {
-                break;
-            }
-            res.push(tx);
-            current = cursor.next()?;
-        }
-        Ok(Some(res))
+        self.get_transactions_in_block(block_number, transaction_idx_to_hash_table)
     }
 
     fn get_block_transaction_outputs(
         &self,
         block_number: BlockNumber,
     ) -> StorageResult<Option<Vec<ThinTransactionOutput>>> {
+        let transaction_outputs_table = self.txn.open_table(&self.tables.transaction_outputs)?;
+        self.get_transactions_in_block(block_number, transaction_outputs_table)
+    }
+}
+
+impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
+    // Helper function to get from 'table' all the values of entries with transaction index in
+    // 'block_number'. The returned values are ordered by the transaction offset in block in
+    // ascending order.
+    fn get_transactions_in_block<V: StorageSerde>(
+        &self,
+        block_number: BlockNumber,
+        table: TableHandle<'env, TransactionIndex, V>,
+    ) -> StorageResult<Option<Vec<V>>> {
         if self.get_body_marker()? <= block_number {
             return Ok(None);
         }
-        let transaction_outputs_table = self.txn.open_table(&self.tables.transaction_outputs)?;
-        let mut cursor = transaction_outputs_table.cursor(&self.txn)?;
+        let mut cursor = table.cursor(&self.txn)?;
         let mut current =
             cursor.lower_bound(&TransactionIndex(block_number, TransactionOffsetInBlock(0)))?;
         let mut res = Vec::new();
