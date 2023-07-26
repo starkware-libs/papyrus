@@ -1,6 +1,6 @@
 use std::ops::Index;
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 use starknet_api::block::{
     Block as starknet_api_block, BlockHash, BlockNumber, BlockTimestamp, GasPrice,
 };
@@ -17,11 +17,18 @@ use crate::objects::transaction::{
 };
 use crate::{ClientError, ClientResult};
 
-#[derive(
-    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
+#[derive(Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, PartialOrd, Ord)]
 #[serde(try_from = "NonPrefixedBytesAsHex<32_usize>")]
 pub struct GlobalRoot(pub StarkHash);
+
+impl Serialize for GlobalRoot {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.0.to_string()[2..])
+    }
+}
 
 // We don't use the regular StarkHash deserialization since the Starknet sequencer returns the
 // global root hash as a hex string without a "0x" prefix.
