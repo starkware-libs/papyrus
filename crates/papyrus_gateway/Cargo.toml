@@ -16,7 +16,7 @@ metrics.workspace = true
 papyrus_common = { path = "../papyrus_common"}
 papyrus_config = { path = "../papyrus_config" }
 papyrus_proc_macros = { path = "../papyrus_proc_macros"}
-papyrus_storage = { path = "../papyrus_storage", version = "0.0.1" }
+papyrus_storage = { path = "../papyrus_storage", version = "0.0.2" }
 starknet_writer_client = { path = "../starknet_writer_client" }
 regex = {workspace = true}
 serde = { workspace = true, features = ["derive"] }
