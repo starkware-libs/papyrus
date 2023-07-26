@@ -95,8 +95,8 @@ fn get_version_as_prefix(path: &str) -> Result<&str, BoxError> {
     };
     let Some((version_id, _)) =
         // find a matching version in the version config
-        VERSION_CONFIG.iter().find(|(verison_id, version_state)| {
-            *verison_id == *version && *version_state != VersionState::Deprecated
+        VERSION_CONFIG.iter().find(|(version_id, version_state)| {
+            (*version_id == *version || (*version_id).to_lowercase() == *version) && *version_state != VersionState::Deprecated
         }) else {
         return Err(BoxError::from("Invalid path, couldn't find matching version"));
     };
@@ -104,6 +104,6 @@ fn get_version_as_prefix(path: &str) -> Result<&str, BoxError> {
 }
 
 fn is_supported_path(path: &str) -> bool {
-    let re = Regex::new(r"^\/rpc\/V[0-9]+_[0-9]+_[0-9]+$").expect("should be a valid regex");
+    let re = Regex::new(r"^\/rpc\/[Vv][0-9]+_[0-9]+_[0-9]+$").expect("should be a valid regex");
     re.is_match(path)
 }
