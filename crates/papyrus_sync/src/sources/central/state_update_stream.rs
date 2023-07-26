@@ -11,7 +11,8 @@ use papyrus_storage::StorageReader;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 use starknet_api::state::{StateDiff, StateNumber};
-use starknet_reader_client::{ClientResult, StarknetClientTrait, StateUpdate};
+use starknet_client::reader::{StarknetReader, StateUpdate};
+use starknet_client::ClientResult;
 use tracing::log::trace;
 use tracing::{debug, instrument};
 
@@ -27,7 +28,7 @@ const CLASSES_INITIAL_CAPACITY: usize = MAX_STATE_UPDATES_TO_STORE_IN_MEMORY * 5
 type TasksQueue<T> = FuturesOrdered<Pin<Box<dyn Future<Output = T> + Send>>>;
 type NumberOfClasses = usize;
 
-pub(crate) struct StateUpdateStream<TStarknetClient: StarknetClientTrait + Send + 'static> {
+pub(crate) struct StateUpdateStream<TStarknetClient: StarknetReader + Send + 'static> {
     initial_block_number: BlockNumber,
     up_to_block_number: BlockNumber,
     starknet_client: Arc<TStarknetClient>,
@@ -40,7 +41,7 @@ pub(crate) struct StateUpdateStream<TStarknetClient: StarknetClientTrait + Send 
     downloaded_classes: VecDeque<ApiContractClass>,
 }
 
-impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> Stream
+impl<TStarknetClient: StarknetReader + Send + Sync + 'static> Stream
     for StateUpdateStream<TStarknetClient>
 {
     type Item = CentralResult<CentralStateUpdate>;
@@ -80,9 +81,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> Stream
     }
 }
 
-impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static>
-    StateUpdateStream<TStarknetClient>
-{
+impl<TStarknetClient: StarknetReader + Send + Sync + 'static> StateUpdateStream<TStarknetClient> {
     pub fn new(
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
@@ -237,7 +236,7 @@ fn client_to_central_state_update(
     match maybe_client_state_update {
         Ok((state_update, mut declared_classes)) => {
             // Destruct the state diff to avoid partial move.
-            let starknet_reader_client::StateDiff {
+            let starknet_client::reader::StateDiff {
                 storage_diffs,
                 deployed_contracts,
                 declared_classes: declared_class_hashes,
@@ -321,7 +320,7 @@ fn client_to_central_state_update(
 // First tries to retrieve the class from the storage.
 // If not found in the storage, the class is downloaded.
 #[instrument(skip(starknet_client, storage_reader), level = "debug", err)]
-async fn download_class_if_necessary<TStarknetClient: StarknetClientTrait>(
+async fn download_class_if_necessary<TStarknetClient: StarknetReader>(
     class_hash: ClassHash,
     starknet_client: Arc<TStarknetClient>,
     storage_reader: StorageReader,

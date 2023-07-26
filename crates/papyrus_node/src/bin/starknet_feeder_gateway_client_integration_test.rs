@@ -3,7 +3,7 @@ use papyrus_node::version::VERSION_FULL;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 use starknet_api::hash::StarkHash;
-use starknet_reader_client::{StarknetClient, StarknetClientTrait};
+use starknet_client::reader::{StarknetFeederGatewayClient, StarknetReader};
 
 #[tokio::main]
 async fn main() {
@@ -12,9 +12,13 @@ async fn main() {
         "--central.url=https://alpha4.starknet.io/".to_owned(),
     ])
     .expect("Load config");
-    let starknet_client =
-        StarknetClient::new(&config.central.url, None, VERSION_FULL, config.central.retry_config)
-            .expect("Create new client");
+    let starknet_client = StarknetFeederGatewayClient::new(
+        &config.central.url,
+        None,
+        VERSION_FULL,
+        config.central.retry_config,
+    )
+    .expect("Create new client");
 
     // Get the last block.
     // Last block.
