@@ -395,18 +395,10 @@ async fn state_update_with_empty_storage_diff() {
     let mut state_update = StateUpdate::default();
     state_update.state_diff.storage_diffs = indexmap!(ContractAddress::default() => vec![]);
 
-    // The serialization of StateUpdate doesn't match the deserialization of StateUpdate
-    // (serialization adds "0x" to the old/new roots, while the deserialization expects unprefixed
-    // hex). Fix the serialization to match the deserialization.
-    // TODO(dvir): Make the serialization and deserialization match.
-    let mut json_value = serde_json::to_value(&state_update).unwrap();
-    json_value["old_root"] = serde_json::Value::String("0".to_string());
-    json_value["new_root"] = serde_json::Value::String("0".to_string());
-
     let mock =
         mock("GET", &format!("/feeder_gateway/get_state_update?{BLOCK_NUMBER_QUERY}=123456")[..])
             .with_status(200)
-            .with_body(serde_json::to_string(&json_value).unwrap())
+            .with_body(serde_json::to_string(&state_update).unwrap())
             .create();
     let state_update = starknet_client.state_update(BlockNumber(123456)).await.unwrap().unwrap();
     mock.assert();
