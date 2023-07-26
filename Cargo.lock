@@ -4185,8 +4185,9 @@ dependencies = [
 
 [[package]]
 name = "papyrus_execution"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
+ "assert_matches",
  "blockifier",
  "cairo-lang-casm",
  "cairo-lang-starknet",
