@@ -22,7 +22,7 @@ reqwest = { workspace = true, features = ["json", "blocking"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 starknet_api.workspace = true
-starknet_reader_client = { path = "../starknet_reader_client" }
+starknet_client = { path = "../starknet_client" }
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
 tokio-stream.workspace = true
@@ -35,5 +35,5 @@ assert_matches.workspace = true
 mockall.workspace = true
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 pretty_assertions.workspace = true
-starknet_reader_client = { path = "../starknet_reader_client", features = ["testing"] }
+starknet_client = { path = "../starknet_client", features = ["testing"] }
 starknet_api = { workspace = true, features = ["testing"] }

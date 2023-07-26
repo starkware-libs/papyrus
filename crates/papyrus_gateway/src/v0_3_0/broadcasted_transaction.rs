@@ -9,7 +9,7 @@
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::transaction::{Fee, TransactionSignature, TransactionVersion};
-use starknet_reader_client::writer::objects::transaction::{
+use starknet_client::writer::objects::transaction::{
     DeclareV1Transaction, DeployAccountTransaction, InvokeTransaction,
 };
 
