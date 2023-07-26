@@ -78,7 +78,8 @@ async fn test_version_middleware() {
     let base_uri = "http://localhost:8080/rpc/";
     let mut path_options = vec![];
     VERSION_CONFIG.iter().for_each(|(version_id, _)| {
-        path_options.push((format!("/{}", *version_id), (*version_id).to_string()))
+        path_options.push((format!("/{}", *version_id), (*version_id).to_string()));
+        path_options.push((format!("/{}", (*version_id).to_lowercase()), (*version_id).to_string()))
     });
     let mut handles = Vec::new();
     for (path, expected_version) in path_options {
