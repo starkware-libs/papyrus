@@ -11,6 +11,8 @@ pub mod retry;
 mod starknet_client_test;
 #[cfg(test)]
 mod test_utils;
+pub mod writer;
+
 use std::collections::HashMap;
 use std::fmt::{self, Display, Formatter};
 

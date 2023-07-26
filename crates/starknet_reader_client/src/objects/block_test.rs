@@ -21,7 +21,7 @@ use crate::ClientError;
 
 #[test]
 fn load_block_succeeds() {
-    assert_ok!(serde_json::from_str::<Block>(&read_resource_file("block.json")));
+    assert_ok!(serde_json::from_str::<Block>(&read_resource_file("reader/block.json")));
 }
 
 #[test]
@@ -99,14 +99,14 @@ fn load_block_state_update_succeeds() {
     };
     assert_eq!(
         expected_state_update,
-        serde_json::from_str::<StateUpdate>(&read_resource_file("block_state_update.json"))
+        serde_json::from_str::<StateUpdate>(&read_resource_file("reader/block_state_update.json"))
             .unwrap()
     )
 }
 
 #[tokio::test]
 async fn to_starknet_api_block_and_version() {
-    let raw_block = read_resource_file("block.json");
+    let raw_block = read_resource_file("reader/block.json");
     let block: Block = serde_json::from_str(&raw_block).unwrap();
     let expected_num_of_tx_outputs = block.transactions.len();
     let (starknet_api_block, _version) = block.to_starknet_api_block_and_version().unwrap();

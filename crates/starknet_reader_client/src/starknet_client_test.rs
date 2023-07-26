@@ -53,7 +53,7 @@ async fn get_block_number() {
     // There are blocks in Starknet.
     let mock_block = mock("GET", "/feeder_gateway/get_block?blockNumber=latest")
         .with_status(200)
-        .with_body(read_resource_file("block.json"))
+        .with_body(read_resource_file("reader/block.json"))
         .create();
     let block_number = starknet_client.block_number().await.unwrap();
     mock_block.assert();
@@ -94,7 +94,7 @@ async fn declare_tx_serde() {
 async fn state_update() {
     let starknet_client =
         StarknetClient::new(&mockito::server_url(), None, NODE_VERSION, get_test_config()).unwrap();
-    let raw_state_update = read_resource_file("block_state_update.json");
+    let raw_state_update = read_resource_file("reader/block_state_update.json");
     let mock =
         mock("GET", &format!("/feeder_gateway/get_state_update?{BLOCK_NUMBER_QUERY}=123456")[..])
             .with_status(200)
@@ -148,7 +148,7 @@ async fn contract_class() {
          {CLASS_HASH_QUERY}=0x4e70b19333ae94bd958625f7b61ce9eec631653597e68645e13780061b2136c")[..],
         )
         .with_status(200)
-        .with_body(read_resource_file("contract_class.json"))
+        .with_body(read_resource_file("reader/contract_class.json"))
         .create();
     let contract_class = starknet_client
         .class_by_hash(ClassHash(stark_felt!(
@@ -230,7 +230,7 @@ async fn deprecated_contract_class() {
          {CLASS_HASH_QUERY}=0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17")[..],
         )
         .with_status(200)
-        .with_body(read_resource_file("deprecated_contract_class.json"))
+        .with_body(read_resource_file("reader/deprecated_contract_class.json"))
         .create();
     let contract_class = starknet_client
         .class_by_hash(ClassHash(stark_felt!(
@@ -262,7 +262,7 @@ async fn deprecated_contract_class() {
 async fn get_block() {
     let starknet_client =
         StarknetClient::new(&mockito::server_url(), None, NODE_VERSION, get_test_config()).unwrap();
-    let raw_block = read_resource_file("block.json");
+    let raw_block = read_resource_file("reader/block.json");
     let mock_block = mock("GET", &format!("/feeder_gateway/get_block?{BLOCK_NUMBER_QUERY}=20")[..])
         .with_status(200)
         .with_body(&raw_block)
@@ -287,7 +287,7 @@ async fn get_block() {
 async fn compiled_class_by_hash() {
     let starknet_client =
         StarknetClient::new(&mockito::server_url(), None, NODE_VERSION, get_test_config()).unwrap();
-    let raw_casm_contract_class = read_resource_file("casm_contract_class.json");
+    let raw_casm_contract_class = read_resource_file("reader/casm_contract_class.json");
     let mock_casm_contract_class = mock(
         "GET",
         &format!("/feeder_gateway/get_compiled_class_by_class_hash?{CLASS_HASH_QUERY}=0x7")[..],

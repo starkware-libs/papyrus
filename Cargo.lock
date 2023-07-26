@@ -3945,7 +3945,7 @@ dependencies = [
  "serde",
  "serde_json",
  "starknet_api",
- "starknet_writer_client",
+ "starknet_reader_client",
  "test_utils",
  "thiserror",
  "tokio",
@@ -5564,28 +5564,18 @@ dependencies = [
  "os_info",
  "papyrus_config",
  "pretty_assertions",
+ "rand",
+ "rand_chacha",
  "reqwest",
  "serde",
  "serde_json",
  "starknet_api",
+ "test_utils",
  "thiserror",
  "tokio",
  "tokio-retry",
  "tracing",
  "url",
-]
-
-[[package]]
-name = "starknet_writer_client"
-version = "0.0.2"
-dependencies = [
- "assert_matches",
- "rand",
- "rand_chacha",
- "serde",
- "serde_json",
- "starknet_api",
- "test_utils",
 ]
 
 [[package]]
