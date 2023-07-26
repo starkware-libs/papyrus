@@ -4,13 +4,14 @@ version.workspace = true
 edition.workspace = true
 repository.workspace = true
 license-file.workspace = true
+description = "A library for handling app configuration."
 
 [package.metadata.cargo-udeps.ignore]
 development = ["tempfile"]  # Dependency of a doc-test
 
 [dependencies]
-clap = { workspace = true, features = ["string"] }
-serde.workspace = true
+clap = { workspace = true, features = ["env", "string"] }
+serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 thiserror.workspace = true
 

@@ -11,7 +11,7 @@ normal = ["papyrus_base_layer"]
 [dependencies]
 anyhow.workspace = true
 async-stream.workspace = true
-clap = { workspace = true, features = ["derive"] }
+clap = { workspace = true }
 const_format.workspace = true
 papyrus_base_layer = { path = "../papyrus_base_layer" }
 futures-util.workspace = true

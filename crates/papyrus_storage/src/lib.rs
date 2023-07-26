@@ -251,7 +251,6 @@ struct_field_names! {
         ommer_state_diffs: TableIdentifier<BlockHash, ThinStateDiff>,
         ommer_transaction_outputs: TableIdentifier<OmmerTransactionKey, ThinTransactionOutput>,
         ommer_transactions: TableIdentifier<OmmerTransactionKey, (Transaction, TransactionExecutionStatus)>,
-        // TODO(dvir): consider whether to add a table for ommer_transaction_hashes.
         state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
         transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
         transaction_idx_to_hash: TableIdentifier<TransactionIndex, TransactionHash>,

@@ -6,7 +6,12 @@ repository.workspace = true
 license-file.workspace = true
 
 [features]
-testing = ["mockall"]
+testing = [
+    "mockall",
+    "rand",
+    "rand_chacha",
+    "test_utils",
+]
 
 [dependencies]
 async-trait.workspace = true
@@ -17,10 +22,13 @@ lazy_static.workspace = true
 mockall = { workspace = true, optional = true }
 os_info.workspace = true
 papyrus_config = { path = "../papyrus_config" }
+rand = { workspace = true, optional = true }
+rand_chacha = { workspace = true, optional = true }
 reqwest = { workspace = true, features = ["json", "blocking"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["arbitrary_precision"] }
 starknet_api.workspace = true
+test_utils = { path = "../test_utils", optional = true }
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
 tokio-retry.workspace = true
@@ -32,5 +40,8 @@ assert.workspace = true
 assert_matches.workspace = true
 mockall.workspace = true
 mockito.workspace = true
+rand.workspace = true
+rand_chacha.workspace = true
 pretty_assertions.workspace = true
 starknet_api = { workspace = true, features = ["testing"] }
+test_utils = { path = "../test_utils" }

@@ -13,7 +13,6 @@ members = [
     "crates/papyrus_storage",
     "crates/papyrus_sync",
     "crates/starknet_reader_client",
-    "crates/starknet_writer_client",
     "crates/test_utils",
 ]
 
@@ -37,7 +36,7 @@ cairo-lang-starknet = "2.1.0-rc0"
 cairo-lang-casm = "2.1.0-rc0"
 cairo-lang-utils = "2.1.0-rc0"
 camelpaste = "0.1.0"
-clap = { version = "4.3.10", features = ["env"] }
+clap = { version = "4.3.10" }
 const_format = "0.2.30"
 ethers = "2.0.3"
 flate2 = "1.0.24"
