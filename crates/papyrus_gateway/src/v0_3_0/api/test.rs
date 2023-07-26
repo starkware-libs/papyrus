@@ -37,7 +37,7 @@ use super::super::deprecated_contract_class::ContractClass as DeprecatedContract
 use super::super::state::{ContractClass, StateUpdate, ThinStateDiff};
 use super::super::transaction::{
     Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
-    Transactions,
+    TransactionWithHash, Transactions,
 };
 use super::api_impl::JsonRpcServerV0_3_0Impl;
 use crate::api::{
@@ -47,7 +47,6 @@ use crate::api::{
 use crate::test_utils::{
     get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
 };
-use crate::v0_3_0::transaction::TransactionWithHash;
 use crate::version_config::VERSION_0_3_0;
 use crate::{run_server, ContinuationTokenAsStruct};
 
