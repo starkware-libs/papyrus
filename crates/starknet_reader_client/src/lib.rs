@@ -26,7 +26,7 @@ use starknet_api::core::ClassHash;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::transaction::TransactionHash;
 use starknet_api::StarknetApiError;
-use tracing::{debug, warn};
+use tracing::{debug, instrument, warn};
 use url::Url;
 
 pub use self::objects::block::{Block, GlobalRoot, TransactionReceiptsError};
@@ -198,6 +198,7 @@ impl StarknetBaseClient {
         }
     }
 
+    #[instrument(skip(self), level = "warn")]
     // If the request_builder is unclonable, the function will not retry the request upon failure.
     pub async fn request_with_retry(
         &self,
