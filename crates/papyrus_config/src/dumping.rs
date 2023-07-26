@@ -15,15 +15,24 @@
 //!     "pointer_target": "target_param_path"
 //! }
 //! ```
+//!
+//! //! Supports flags for optional params and sub-configs:
+//! ```json
+//! "conf1.conf2.#is_none": {
+//!     "description": ""Flag for an optional field.",
+//!     "value": true
+//! }
+//! ```
 
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 
+use itertools::chain;
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 
-use crate::{ConfigError, ParamPath, PointerParam, SerializedParam};
+use crate::{ConfigError, ParamPath, PointerParam, SerializedParam, IS_NONE_MARK};
 
 /// Serialization for configs.
 pub trait SerializeConfig {
@@ -74,6 +83,55 @@ pub fn ser_param<T: Serialize>(
     description: &str,
 ) -> (String, SerializedParam) {
     (name.to_owned(), SerializedParam { description: description.to_owned(), value: json!(value) })
+}
+
+/// Serializes optional sub config.
+pub fn ser_optional_sub_config<T: SerializeConfig + Default>(
+    optional_config: &Option<T>,
+    name: &str,
+) -> BTreeMap<ParamPath, SerializedParam> {
+    chain!(
+        BTreeMap::from_iter([ser_is_param_none(name, optional_config.is_none())]),
+        append_sub_config_name(
+            match optional_config {
+                None => T::default().dump(),
+                Some(config) => config.dump(),
+            },
+            name,
+        ),
+    )
+    .collect()
+}
+
+/// Serializes optional param.
+pub fn ser_optional_param<T: Serialize>(
+    optional_param: &Option<T>,
+    default_value: T,
+    name: &str,
+    description: &str,
+) -> BTreeMap<ParamPath, SerializedParam> {
+    BTreeMap::from([
+        ser_is_param_none(name, optional_param.is_none()),
+        ser_param(
+            name,
+            match optional_param {
+                Some(param) => param,
+                None => &default_value,
+            },
+            description,
+        ),
+    ])
+}
+
+/// Serializes is_none flag for a param.
+pub fn ser_is_param_none(name: &str, is_none: bool) -> (String, SerializedParam) {
+    (
+        format!("{name}{IS_NONE_MARK}"),
+        SerializedParam {
+            description: "Flag for an optional field".to_owned(),
+            value: json!(is_none),
+        },
+    )
 }
 
 // Takes a config map and a vector of {target param, serialized pointer, and vector of params that

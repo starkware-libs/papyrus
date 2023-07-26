@@ -15,7 +15,7 @@ use command::{get_command_matches, update_config_map_by_command_args};
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
 
-use crate::{command, ConfigError, ParamPath, PointerParam, SerializedParam};
+use crate::{command, ConfigError, ParamPath, PointerParam, SerializedParam, IS_NONE_MARK};
 
 /// Deserializes config from flatten JSON.
 /// For an explanation of `for<'a> Deserialize<'a>` see
@@ -24,7 +24,8 @@ pub fn load<T: for<'a> Deserialize<'a>>(
     config_dump: &BTreeMap<ParamPath, SerializedParam>,
 ) -> Result<T, ConfigError> {
     let mut nested_map = json!({});
-    for (param_path, serialized_param) in config_dump {
+    // Iterates in reverse order, to give higher priority to higher entries in the nested map.
+    for (param_path, serialized_param) in config_dump.iter().rev() {
         let mut entry = &mut nested_map;
         for config_name in param_path.split('.') {
             entry = entry.index_mut(config_name);
@@ -51,6 +52,7 @@ pub fn load_and_process_config<T: for<'a> Deserialize<'a>>(
     };
     update_config_map_by_command_args(&mut config_map, &arg_matches)?;
     update_config_map_by_pointers(&mut config_map, &pointers_map)?;
+    update_optional_values(&mut config_map);
     load(&config_map)
 }
 
@@ -99,6 +101,27 @@ pub(crate) fn update_config_map_by_pointers(
         config_map.insert(param_path.to_owned(), serialized_param_target.clone());
     }
     Ok(())
+}
+
+// Removes the none marks, and sets null for the params marked as None.
+pub(crate) fn update_optional_values(config_map: &mut BTreeMap<ParamPath, SerializedParam>) {
+    let optional_params: Vec<_> = config_map
+        .keys()
+        .filter(|param_path| param_path.ends_with(IS_NONE_MARK))
+        .map(|param_path| param_path.to_owned())
+        .collect();
+    for optional_param in optional_params {
+        let serialized_optional_param = config_map.remove(&optional_param).unwrap();
+        if serialized_optional_param.value == json!(true) {
+            config_map.insert(
+                optional_param.strip_suffix(IS_NONE_MARK).unwrap().to_owned(),
+                SerializedParam {
+                    description: serialized_optional_param.description,
+                    value: Value::Null,
+                },
+            );
+        }
+    }
 }
 
 pub(crate) fn update_config_map(
