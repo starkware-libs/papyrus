@@ -26,7 +26,7 @@ use starknet_api::core::ClassHash;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::transaction::TransactionHash;
 use starknet_api::StarknetApiError;
-use tracing::{debug, warn};
+use tracing::{debug, instrument, warn};
 use url::Url;
 
 pub use self::objects::block::{Block, GlobalRoot, TransactionReceiptsError};
@@ -358,14 +358,17 @@ impl StarknetClient {
 
 #[async_trait]
 impl StarknetClientTrait for StarknetClient {
+    #[instrument(skip(self), level = "warn")]
     async fn block_number(&self) -> ClientResult<Option<BlockNumber>> {
         Ok(self.request_block(None).await?.map(|block| block.block_number))
     }
 
+    #[instrument(skip(self), level = "warn")]
     async fn block(&self, block_number: BlockNumber) -> ClientResult<Option<Block>> {
         self.request_block(Some(block_number)).await
     }
 
+    #[instrument(skip(self), level = "warn")]
     async fn class_by_hash(
         &self,
         class_hash: ClassHash,
@@ -388,6 +391,7 @@ impl StarknetClientTrait for StarknetClient {
         }
     }
 
+    #[instrument(skip(self), level = "warn")]
     async fn state_update(&self, block_number: BlockNumber) -> ClientResult<Option<StateUpdate>> {
         let mut url = self.urls.get_state_update.clone();
         url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.to_string());
@@ -413,6 +417,7 @@ impl StarknetClientTrait for StarknetClient {
         }
     }
 
+    #[instrument(skip(self), level = "warn")]
     async fn compiled_class_by_hash(
         &self,
         class_hash: ClassHash,
