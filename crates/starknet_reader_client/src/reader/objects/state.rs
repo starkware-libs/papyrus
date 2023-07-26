@@ -7,7 +7,7 @@ use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{EntryPoint, EntryPointType, StorageKey};
 
-use crate::GlobalRoot;
+use crate::reader::GlobalRoot;
 
 /// A state update derived from a single block as returned by the starknet gateway.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]

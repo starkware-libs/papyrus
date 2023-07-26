@@ -12,7 +12,7 @@ use starknet_api::transaction::TransactionOutput as starknet_api_transaction_out
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 use starknet_api::StarknetApiError;
 
-use crate::objects::transaction::{
+use crate::reader::objects::transaction::{
     L1ToL2Message, Transaction, TransactionReceipt, TransactionType,
 };
 use crate::{ClientError, ClientResult};

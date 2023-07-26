@@ -15,7 +15,7 @@ use super::state::{
     DeclaredClassHashEntry, DeployedContract, StateDiff, StateUpdate, StorageEntry,
 };
 use super::transaction::TransactionReceipt;
-use crate::objects::state::ReplacedClass;
+use crate::reader::objects::state::ReplacedClass;
 use crate::test_utils::read_resource::read_resource_file;
 use crate::ClientError;
 
