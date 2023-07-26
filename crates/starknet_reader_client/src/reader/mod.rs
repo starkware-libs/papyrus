@@ -1,7 +1,39 @@
+// TODO(shahak) Make private once ClientError is refactored and doesn't depend on the reader
+// module.
+pub(crate) mod objects;
+#[cfg(test)]
+mod starknet_feeder_gateway_client_test;
+
+use std::collections::HashMap;
+
+use async_trait::async_trait;
+use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+#[cfg(any(feature = "testing", test))]
+use mockall::automock;
+use serde::{Deserialize, Serialize};
+use starknet_api::block::BlockNumber;
+use starknet_api::core::ClassHash;
+use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
+use tracing::{debug, instrument};
+use url::Url;
+
+pub use crate::reader::objects::block::{Block, GlobalRoot, TransactionReceiptsError};
+pub use crate::reader::objects::state::{
+    ContractClass, DeclaredClassHashEntry, DeployedContract, ReplacedClass, StateDiff, StateUpdate,
+    StorageEntry,
+};
+#[cfg(doc)]
+pub use crate::reader::objects::transaction::TransactionReceipt;
+use crate::retry::RetryConfig;
+use crate::{
+    ClientCreationError, ClientError, ClientResult, StarknetClient, StarknetError,
+    StarknetErrorCode,
+};
+
 /// Methods for querying starknet.
 #[cfg_attr(any(test, feature = "testing"), automock)]
 #[async_trait]
-pub trait StarknetClientTrait {
+pub trait StarknetReader {
     /// Returns the last block number in the system, returning [`None`] in case there are no blocks
     /// in the system.
     async fn block_number(&self) -> ClientResult<Option<BlockNumber>>;
@@ -22,9 +54,9 @@ pub trait StarknetClientTrait {
     async fn state_update(&self, block_number: BlockNumber) -> ClientResult<Option<StateUpdate>>;
 }
 
-pub struct StarknetClient {
+pub struct StarknetFeederGatewayClient {
     urls: StarknetUrls,
-    client: StarknetBaseClient,
+    client: StarknetClient,
 }
 
 #[derive(Clone, Debug)]
@@ -57,16 +89,16 @@ impl StarknetUrls {
     }
 }
 
-impl StarknetClient {
+impl StarknetFeederGatewayClient {
     pub fn new(
         url_str: &str,
         http_headers: Option<HashMap<String, String>>,
         node_version: &'static str,
         retry_config: RetryConfig,
     ) -> Result<Self, ClientCreationError> {
-        Ok(StarknetClient {
+        Ok(StarknetFeederGatewayClient {
             urls: StarknetUrls::new(url_str)?,
-            client: StarknetBaseClient::new(http_headers, node_version, retry_config)?,
+            client: StarknetClient::new(http_headers, node_version, retry_config)?,
         })
     }
 
@@ -102,7 +134,7 @@ impl StarknetClient {
 }
 
 #[async_trait]
-impl StarknetClientTrait for StarknetClient {
+impl StarknetReader for StarknetFeederGatewayClient {
     #[instrument(skip(self), level = "warn")]
     async fn block_number(&self) -> ClientResult<Option<BlockNumber>> {
         Ok(self.request_block(None).await?.map(|block| block.block_number))

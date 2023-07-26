@@ -19,15 +19,15 @@ use starknet_api::state::{EntryPoint, EntryPointType, FunctionIndex};
 use starknet_api::transaction::{Fee, TransactionHash, TransactionSignature, TransactionVersion};
 use starknet_api::{patricia_key, stark_felt};
 
-use super::objects::state::StateUpdate;
-use super::objects::transaction::IntermediateDeclareTransaction;
-use super::test_utils::read_resource::read_resource_file;
-use super::test_utils::retry::get_test_config;
-use super::{
-    Block, ClientError, RetryErrorCode, StarknetClient, StarknetClientTrait, BLOCK_NUMBER_QUERY,
-    CLASS_HASH_QUERY, GET_BLOCK_URL, GET_STATE_UPDATE_URL,
+use crate::reader::objects::state::StateUpdate;
+use crate::reader::objects::transaction::IntermediateDeclareTransaction;
+use crate::reader::{
+    Block, ContractClass, GenericContractClass, StarknetFeederGatewayClient, StarknetReader,
+    BLOCK_NUMBER_QUERY, CLASS_HASH_QUERY, GET_BLOCK_URL, GET_STATE_UPDATE_URL,
 };
-use crate::{ContractClass, GenericContractClass};
+use crate::test_utils::read_resource::read_resource_file;
+use crate::test_utils::retry::get_test_config;
+use crate::{ClientError, RetryErrorCode};
 
 const NODE_VERSION: &str = "NODE VERSION";
 
@@ -35,7 +35,8 @@ const NODE_VERSION: &str = "NODE VERSION";
 fn new_urls() {
     let url_base_str = "https://url";
     let starknet_client =
-        StarknetClient::new(url_base_str, None, NODE_VERSION, get_test_config()).unwrap();
+        StarknetFeederGatewayClient::new(url_base_str, None, NODE_VERSION, get_test_config())
+            .unwrap();
     assert_eq!(
         starknet_client.urls.get_block.as_str(),
         url_base_str.to_string() + "/" + GET_BLOCK_URL
@@ -48,8 +49,13 @@ fn new_urls() {
 
 #[tokio::test]
 async fn get_block_number() {
-    let starknet_client =
-        StarknetClient::new(&mockito::server_url(), None, NODE_VERSION, get_test_config()).unwrap();
+    let starknet_client = StarknetFeederGatewayClient::new(
+        &mockito::server_url(),
+        None,
+        NODE_VERSION,
+        get_test_config(),
+    )
+    .unwrap();
     // There are blocks in Starknet.
     let mock_block = mock("GET", "/feeder_gateway/get_block?blockNumber=latest")
         .with_status(200)
@@ -92,8 +98,13 @@ async fn declare_tx_serde() {
 
 #[tokio::test]
 async fn state_update() {
-    let starknet_client =
-        StarknetClient::new(&mockito::server_url(), None, NODE_VERSION, get_test_config()).unwrap();
+    let starknet_client = StarknetFeederGatewayClient::new(
+        &mockito::server_url(),
+        None,
+        NODE_VERSION,
+        get_test_config(),
+    )
+    .unwrap();
     let raw_state_update = read_resource_file("reader/block_state_update.json");
     let mock =
         mock("GET", &format!("/feeder_gateway/get_state_update?{BLOCK_NUMBER_QUERY}=123456")[..])
@@ -117,8 +128,13 @@ async fn serialization_precision() {
 
 #[tokio::test]
 async fn contract_class() {
-    let starknet_client =
-        StarknetClient::new(&mockito::server_url(), None, NODE_VERSION, get_test_config()).unwrap();
+    let starknet_client = StarknetFeederGatewayClient::new(
+        &mockito::server_url(),
+        None,
+        NODE_VERSION,
+        get_test_config(),
+    )
+    .unwrap();
     let expected_contract_class = ContractClass {
         sierra_program: vec![
             stark_felt!("0x302e312e30"),
@@ -168,8 +184,13 @@ async fn contract_class() {
 
 #[tokio::test]
 async fn deprecated_contract_class() {
-    let starknet_client =
-        StarknetClient::new(&mockito::server_url(), None, NODE_VERSION, get_test_config()).unwrap();
+    let starknet_client = StarknetFeederGatewayClient::new(
+        &mockito::server_url(),
+        None,
+        NODE_VERSION,
+        get_test_config(),
+    )
+    .unwrap();
     let expected_contract_class = DeprecatedContractClass {
         abi: Some(vec![ContractClassAbiEntry::Function(FunctionAbiEntryWithType {
             r#type: FunctionAbiEntryType::Constructor,
@@ -260,8 +281,13 @@ async fn deprecated_contract_class() {
 
 #[tokio::test]
 async fn get_block() {
-    let starknet_client =
-        StarknetClient::new(&mockito::server_url(), None, NODE_VERSION, get_test_config()).unwrap();
+    let starknet_client = StarknetFeederGatewayClient::new(
+        &mockito::server_url(),
+        None,
+        NODE_VERSION,
+        get_test_config(),
+    )
+    .unwrap();
     let raw_block = read_resource_file("reader/block.json");
     let mock_block = mock("GET", &format!("/feeder_gateway/get_block?{BLOCK_NUMBER_QUERY}=20")[..])
         .with_status(200)
@@ -285,8 +311,13 @@ async fn get_block() {
 }
 #[tokio::test]
 async fn compiled_class_by_hash() {
-    let starknet_client =
-        StarknetClient::new(&mockito::server_url(), None, NODE_VERSION, get_test_config()).unwrap();
+    let starknet_client = StarknetFeederGatewayClient::new(
+        &mockito::server_url(),
+        None,
+        NODE_VERSION,
+        get_test_config(),
+    )
+    .unwrap();
     let raw_casm_contract_class = read_resource_file("reader/casm_contract_class.json");
     let mock_casm_contract_class = mock(
         "GET",
@@ -308,8 +339,13 @@ async fn compiled_class_by_hash() {
 
 #[tokio::test]
 async fn block_unserializable() {
-    let starknet_client =
-        StarknetClient::new(&mockito::server_url(), None, NODE_VERSION, get_test_config()).unwrap();
+    let starknet_client = StarknetFeederGatewayClient::new(
+        &mockito::server_url(),
+        None,
+        NODE_VERSION,
+        get_test_config(),
+    )
+    .unwrap();
     let body =
         r#"{"block_hash": "0x3f65ef25e87a83d92f32f5e4869a33580f9db47ec980c1ff27bdb5151914de5"}"#;
     let mock = mock("GET", "/feeder_gateway/get_block?blockNumber=20")
@@ -323,8 +359,13 @@ async fn block_unserializable() {
 
 #[tokio::test]
 async fn retry_error_codes() {
-    let starknet_client =
-        StarknetClient::new(&mockito::server_url(), None, NODE_VERSION, get_test_config()).unwrap();
+    let starknet_client = StarknetFeederGatewayClient::new(
+        &mockito::server_url(),
+        None,
+        NODE_VERSION,
+        get_test_config(),
+    )
+    .unwrap();
     for (status_code, error_code) in [
         (StatusCode::TEMPORARY_REDIRECT, RetryErrorCode::Redirect),
         (StatusCode::REQUEST_TIMEOUT, RetryErrorCode::Timeout),
@@ -344,8 +385,13 @@ async fn retry_error_codes() {
 
 #[tokio::test]
 async fn state_update_with_empty_storage_diff() {
-    let starknet_client =
-        StarknetClient::new(&mockito::server_url(), None, NODE_VERSION, get_test_config()).unwrap();
+    let starknet_client = StarknetFeederGatewayClient::new(
+        &mockito::server_url(),
+        None,
+        NODE_VERSION,
+        get_test_config(),
+    )
+    .unwrap();
     let mut state_update = StateUpdate::default();
     state_update.state_diff.storage_diffs = indexmap!(ContractAddress::default() => vec![]);
 

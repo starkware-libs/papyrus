@@ -5,10 +5,8 @@
 //!
 //! [`Starknet`]: https://starknet.io/
 
-mod objects;
+pub mod reader;
 pub mod retry;
-#[cfg(test)]
-mod starknet_client_test;
 #[cfg(test)]
 mod test_utils;
 pub mod writer;
@@ -16,37 +14,22 @@ pub mod writer;
 use std::collections::HashMap;
 use std::fmt::{self, Display, Formatter};
 
-use async_trait::async_trait;
-use cairo_lang_starknet::casm_contract_class::CasmContractClass;
-#[cfg(any(feature = "testing", test))]
-use mockall::automock;
 use reqwest::header::HeaderMap;
 use reqwest::{Client, RequestBuilder, StatusCode};
 use serde::{Deserialize, Serialize};
-use starknet_api::block::BlockNumber;
-use starknet_api::core::ClassHash;
-use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::transaction::TransactionHash;
 use starknet_api::StarknetApiError;
-use tracing::{debug, instrument, warn};
-use url::Url;
+use tracing::warn;
 
-pub use self::objects::block::{Block, GlobalRoot, TransactionReceiptsError};
-pub use self::objects::state::{
-    ContractClass, DeclaredClassHashEntry, DeployedContract, ReplacedClass, StateDiff, StateUpdate,
-    StorageEntry,
-};
+pub use self::reader::objects::block::TransactionReceiptsError;
 use self::retry::Retry;
 pub use self::retry::RetryConfig;
-#[cfg(doc)]
-pub use crate::objects::transaction::TransactionReceipt;
 
 /// A [`Result`] in which the error is a [`ClientError`].
 pub type ClientResult<T> = Result<T, ClientError>;
 
-// TODO(shahak) Rename to StarknetClient once StarknetClient gets renamed.
 /// A starknet client.
-struct StarknetBaseClient {
+struct StarknetClient {
     http_headers: HeaderMap,
     pub internal_client: Client,
     retry_config: RetryConfig,
@@ -136,7 +119,7 @@ enum RequestWithRetryError {
     ClientError(#[from] ClientError),
 }
 
-impl StarknetBaseClient {
+impl StarknetClient {
     /// Creates a new client for a starknet gateway at `url_str` with retry_config [`RetryConfig`].
     pub fn new(
         http_headers: Option<HashMap<String, String>>,
@@ -156,7 +139,7 @@ impl StarknetBaseClient {
             product_version = node_version,
             system_information = system_information
         );
-        Ok(StarknetBaseClient {
+        Ok(StarknetClient {
             http_headers: header_map,
             internal_client: Client::builder().user_agent(app_user_agent).build()?,
             retry_config,

@@ -1,8 +1,8 @@
 use assert::{assert_err, assert_ok};
 use assert_matches::assert_matches;
 
-use super::super::test_utils::read_resource::read_resource_file;
 use super::transaction::{Transaction, TransactionReceipt};
+use crate::test_utils::read_resource::read_resource_file;
 
 #[test]
 fn load_deploy_transaction_succeeds() {
