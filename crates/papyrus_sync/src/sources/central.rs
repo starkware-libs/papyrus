@@ -24,10 +24,8 @@ use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::{ContractClass, StateDiff};
 use starknet_api::StarknetApiError;
-use starknet_reader_client::{
-    ClientCreationError, ClientError, GenericContractClass, RetryConfig, StarknetClient,
-    StarknetClientTrait,
-};
+use starknet_client::reader::{GenericContractClass, StarknetFeederGatewayClient, StarknetReader};
+use starknet_client::{ClientCreationError, ClientError, RetryConfig};
 use tracing::{debug, trace};
 
 use self::state_update_stream::StateUpdateStream;
@@ -78,7 +76,7 @@ impl SerializeConfig for CentralSourceConfig {
     }
 }
 
-pub struct GenericCentralSource<TStarknetClient: StarknetClientTrait + Send + Sync> {
+pub struct GenericCentralSource<TStarknetClient: StarknetReader + Send + Sync> {
     pub concurrent_requests: usize,
     pub starknet_client: Arc<TStarknetClient>,
     pub storage_reader: StorageReader,
@@ -175,7 +173,7 @@ type CentralCompiledClass = (ClassHash, CompiledClassHash, CasmContractClass);
 pub(crate) type CompiledClassesStream<'a> = BoxStream<'a, CentralResult<CentralCompiledClass>>;
 
 #[async_trait]
-impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSourceTrait
+impl<TStarknetClient: StarknetReader + Send + Sync + 'static> CentralSourceTrait
     for GenericCentralSource<TStarknetClient>
 {
     // Returns the block number of the latest block from the central source.
@@ -308,7 +306,7 @@ impl<TStarknetClient: StarknetClientTrait + Send + Sync + 'static> CentralSource
 
 fn client_to_central_block(
     current_block_number: BlockNumber,
-    maybe_client_block: Result<Option<starknet_reader_client::Block>, ClientError>,
+    maybe_client_block: Result<Option<starknet_client::reader::Block>, ClientError>,
 ) -> CentralResult<(Block, StarknetVersion)> {
     let res = match maybe_client_block {
         Ok(Some(block)) => {
@@ -330,7 +328,7 @@ fn client_to_central_block(
     }
 }
 
-pub type CentralSource = GenericCentralSource<StarknetClient>;
+pub type CentralSource = GenericCentralSource<StarknetFeederGatewayClient>;
 
 impl CentralSource {
     pub fn new(
@@ -338,7 +336,7 @@ impl CentralSource {
         node_version: &'static str,
         storage_reader: StorageReader,
     ) -> Result<CentralSource, ClientCreationError> {
-        let starknet_client = StarknetClient::new(
+        let starknet_client = StarknetFeederGatewayClient::new(
             &config.url,
             config.http_headers,
             node_version,

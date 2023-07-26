@@ -15,11 +15,11 @@ use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContract
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass as sn_api_ContractClass, StateDiff, StorageKey};
 use starknet_api::{patricia_key, stark_felt};
-use starknet_reader_client::{
-    Block, ClientError, ContractClass, DeclaredClassHashEntry, DeployedContract,
-    GenericContractClass, GlobalRoot, MockStarknetClientTrait, ReplacedClass, StateUpdate,
-    StorageEntry,
+use starknet_client::reader::{
+    Block, ContractClass, DeclaredClassHashEntry, DeployedContract, GenericContractClass,
+    GlobalRoot, MockStarknetReader, ReplacedClass, StateUpdate, StorageEntry,
 };
+use starknet_client::ClientError;
 use tokio_stream::StreamExt;
 
 use crate::sources::central::{CentralError, CentralSourceTrait, GenericCentralSource};
@@ -28,7 +28,7 @@ const TEST_CONCURRENT_REQUESTS: usize = 300;
 
 #[tokio::test]
 async fn last_block_number() {
-    let mut mock = MockStarknetClientTrait::new();
+    let mut mock = MockStarknetReader::new();
 
     // We need to perform all the mocks before moving the mock into central_source.
     const EXPECTED_LAST_BLOCK_NUMBER: BlockNumber = BlockNumber(9);
@@ -49,7 +49,7 @@ async fn last_block_number() {
 async fn stream_block_headers() {
     const START_BLOCK_NUMBER: u64 = 5;
     const END_BLOCK_NUMBER: u64 = 9;
-    let mut mock = MockStarknetClientTrait::new();
+    let mut mock = MockStarknetReader::new();
 
     // We need to perform all the mocks before moving the mock into central_source.
     for i in START_BLOCK_NUMBER..END_BLOCK_NUMBER {
@@ -81,7 +81,7 @@ async fn stream_block_headers_some_are_missing() {
     const START_BLOCK_NUMBER: u64 = 5;
     const END_BLOCK_NUMBER: u64 = 13;
     const MISSING_BLOCK_NUMBER: u64 = 9;
-    let mut mock = MockStarknetClientTrait::new();
+    let mut mock = MockStarknetReader::new();
 
     // We need to perform all the mocks before moving the mock into central_source.
     for i in START_BLOCK_NUMBER..MISSING_BLOCK_NUMBER {
@@ -126,7 +126,7 @@ async fn stream_block_headers_error() {
     const START_BLOCK_NUMBER: u64 = 5;
     const END_BLOCK_NUMBER: u64 = 13;
     const ERROR_BLOCK_NUMBER: u64 = 9;
-    let mut mock = MockStarknetClientTrait::new();
+    let mut mock = MockStarknetReader::new();
     const CODE: StatusCode = StatusCode::NOT_FOUND;
     const MESSAGE: &str = "msg";
 
@@ -213,7 +213,7 @@ async fn stream_state_updates() {
         compiled_class_hash: compiled_class_hash2,
     };
 
-    let client_state_diff1 = starknet_reader_client::StateDiff {
+    let client_state_diff1 = starknet_client::reader::StateDiff {
         storage_diffs: IndexMap::from([(contract_address1, vec![StorageEntry { key, value }])]),
         deployed_contracts: vec![
             DeployedContract { address: contract_address1, class_hash: class_hash2 },
@@ -227,7 +227,7 @@ async fn stream_state_updates() {
             class_hash: class_hash4,
         }],
     };
-    let client_state_diff2 = starknet_reader_client::StateDiff::default();
+    let client_state_diff2 = starknet_client::reader::StateDiff::default();
 
     let block_state_update1 = StateUpdate {
         block_hash: block_hash1,
@@ -242,7 +242,7 @@ async fn stream_state_updates() {
         state_diff: client_state_diff2,
     };
 
-    let mut mock = MockStarknetClientTrait::new();
+    let mut mock = MockStarknetReader::new();
     let block_state_update1_clone = block_state_update1.clone();
     mock.expect_state_update()
         .with(predicate::eq(BlockNumber(START_BLOCK_NUMBER)))
@@ -379,7 +379,7 @@ async fn stream_compiled_classes() {
     ).unwrap().commit().unwrap();
 
     let felts: Vec<_> = (0..4).map(|i| stark_felt!(format!("0x{i}").as_str())).collect();
-    let mut mock = MockStarknetClientTrait::new();
+    let mut mock = MockStarknetReader::new();
     for felt in felts.clone() {
         mock.expect_compiled_class_by_hash()
             .with(predicate::eq(ClassHash(felt)))
