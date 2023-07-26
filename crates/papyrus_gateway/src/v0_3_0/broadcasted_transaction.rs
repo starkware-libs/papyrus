@@ -7,11 +7,11 @@
 //! [`Starknet specs`]: https://github.com/starkware-libs/starknet-specs/blob/master/api/starknet_api_openrpc.json
 
 use serde::{Deserialize, Serialize};
-use starknet_api::core::{CompiledClassHash, ContractAddress, Nonce};
-use starknet_api::transaction::{Fee, TransactionSignature, TransactionVersion};
-use starknet_reader_client::writer::objects::transaction::{
-    DeclareV1Transaction, DeployAccountTransaction, InvokeTransaction,
+use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
+use starknet_api::transaction::{
+    Calldata, ContractAddressSalt, Fee, TransactionSignature, TransactionVersion,
 };
+use starknet_reader_client::writer::objects::transaction::DeprecatedContractClass;
 
 use super::state::ContractClass;
 
@@ -50,7 +50,17 @@ pub enum BroadcastedDeclareTransaction {
 /// [`Starknet specs`].
 ///
 /// [`Starknet specs`]: https://github.com/starkware-libs/starknet-specs/blob/master/api/starknet_api_openrpc.json
-pub type BroadcastedDeployAccountTransaction = DeployAccountTransaction;
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct BroadcastedDeployAccountTransaction {
+    pub contract_address_salt: ContractAddressSalt,
+    pub class_hash: ClassHash,
+    pub constructor_calldata: Calldata,
+    pub nonce: Nonce,
+    pub max_fee: Fee,
+    pub signature: TransactionSignature,
+    pub version: TransactionVersion,
+}
 
 /// A broadcasted invoke transaction.
 ///
@@ -59,21 +69,34 @@ pub type BroadcastedDeployAccountTransaction = DeployAccountTransaction;
 /// type BROADCASTED_INVOKE_TXN_V1.
 ///
 /// [`Starknet specs`]: https://github.com/starkware-libs/starknet-specs/blob/master/api/starknet_api_openrpc.json
-pub type BroadcastedInvokeTransaction = InvokeTransaction;
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct BroadcastedInvokeTransaction {
+    pub calldata: Calldata,
+    pub sender_address: ContractAddress,
+    pub nonce: Nonce,
+    pub max_fee: Fee,
+    pub signature: TransactionSignature,
+    pub version: TransactionVersion,
+}
 
-// BroadcastedDeclareV2Transaction is not from starknet_writer_client because the broadcasted
-// declare v2 has slight alterations from the client declare v2. We define our own
-// BroadcastedDeclareV2Transaction further below.
 /// A broadcasted declare transaction of a Cairo-v0 contract.
 ///
 /// This transaction is equivalent to the component BROADCASTED_DECLARE_TXN_V1 in the
 /// [`Starknet specs`].
 ///
 /// [`Starknet specs`]: https://github.com/starkware-libs/starknet-specs/blob/master/api/starknet_api_openrpc.json
-pub type BroadcastedDeclareV1Transaction = DeclareV1Transaction;
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct BroadcastedDeclareV1Transaction {
+    pub contract_class: DeprecatedContractClass,
+    pub sender_address: ContractAddress,
+    pub nonce: Nonce,
+    pub max_fee: Fee,
+    pub version: TransactionVersion,
+    pub signature: TransactionSignature,
+}
 
-// The only difference between this and DeclareV2Transaction in starknet_writer_client is the
-// type of contract_class.
 /// A broadcasted declare transaction of a Cairo-v1 contract.
 ///
 /// This transaction is equivalent to the component BROADCASTED_DECLARE_TXN_V2 in the
