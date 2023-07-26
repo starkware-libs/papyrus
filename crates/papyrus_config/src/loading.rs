@@ -12,19 +12,20 @@ use std::path::PathBuf;
 
 use clap::Command;
 use command::{get_command_matches, update_config_map_by_command_args};
+use itertools::any;
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
 
-use crate::{command, ConfigError, ParamPath, PointerParam, SerializedParam};
+use crate::{command, ConfigError, ParamPath, PointerParam, SerializedParam, IS_NONE_MARK};
 
 /// Deserializes config from flatten JSON.
 /// For an explanation of `for<'a> Deserialize<'a>` see
 /// `<https://doc.rust-lang.org/nomicon/hrtb.html>`.
 pub fn load<T: for<'a> Deserialize<'a>>(
-    config_dump: &BTreeMap<ParamPath, SerializedParam>,
+    config_map: &BTreeMap<ParamPath, SerializedParam>,
 ) -> Result<T, ConfigError> {
     let mut nested_map = json!({});
-    for (param_path, serialized_param) in config_dump {
+    for (param_path, serialized_param) in config_map {
         let mut entry = &mut nested_map;
         for config_name in param_path.split('.') {
             entry = entry.index_mut(config_name);
@@ -51,6 +52,7 @@ pub fn load_and_process_config<T: for<'a> Deserialize<'a>>(
     };
     update_config_map_by_command_args(&mut config_map, &arg_matches)?;
     update_config_map_by_pointers(&mut config_map, &pointers_map)?;
+    update_optional_values(&mut config_map);
     load(&config_map)
 }
 
@@ -99,6 +101,33 @@ pub(crate) fn update_config_map_by_pointers(
         config_map.insert(param_path.to_owned(), serialized_param_target.clone());
     }
     Ok(())
+}
+
+// Removes the none marks, and sets null for the params marked as None instead of the inner params.
+pub(crate) fn update_optional_values(config_map: &mut BTreeMap<ParamPath, SerializedParam>) {
+    let optional_params: Vec<_> = config_map
+        .keys()
+        .filter_map(|param_path| param_path.strip_suffix(&format!(".{}", IS_NONE_MARK)))
+        .map(|param_path| param_path.to_owned())
+        .collect();
+    let mut none_params = vec![];
+    for optional_param in optional_params {
+        let serialized_optional_param =
+            config_map.remove(&format!("{}.{}", optional_param, IS_NONE_MARK)).unwrap();
+        if serialized_optional_param.value == json!(true) {
+            none_params.push(optional_param);
+        }
+    }
+    // Remove param paths that start with any None param.
+    config_map.retain(|param_path, _| {
+        !any(&none_params, |none_param| param_path.starts_with(none_param))
+    });
+    for none_param in none_params {
+        config_map.insert(
+            none_param,
+            SerializedParam { description: "None param".to_owned(), value: Value::Null },
+        );
+    }
 }
 
 pub(crate) fn update_config_map(

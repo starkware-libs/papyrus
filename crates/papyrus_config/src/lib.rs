@@ -43,6 +43,8 @@ use clap::parser::MatchesError;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+pub(crate) const IS_NONE_MARK: &str = "#is_none";
+
 /// A nested path of a configuration parameter.
 pub type ParamPath = String;
 /// A description of a configuration parameter.
