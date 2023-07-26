@@ -10,8 +10,8 @@ description = "A library for handling app configuration."
 development = ["tempfile"]  # Dependency of a doc-test
 
 [dependencies]
-clap = { workspace = true, features = ["string"] }
-serde.workspace = true
+clap = { workspace = true, features = ["env", "string"] }
+serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 thiserror.workspace = true
 
