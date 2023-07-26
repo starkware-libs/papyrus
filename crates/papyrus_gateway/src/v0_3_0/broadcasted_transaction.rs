@@ -11,7 +11,7 @@ use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::transaction::{
     Calldata, ContractAddressSalt, Fee, TransactionSignature, TransactionVersion,
 };
-use starknet_reader_client::writer::objects::transaction::DeprecatedContractClass;
+use starknet_client::writer::objects::transaction::DeprecatedContractClass;
 
 use super::state::ContractClass;
 
