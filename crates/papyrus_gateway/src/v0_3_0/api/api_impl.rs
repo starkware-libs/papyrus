@@ -1,4 +1,4 @@
-use jsonrpsee::core::{async_trait, RpcResult};
+use jsonrpsee::core::RpcResult;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
 use papyrus_common::SyncingState;
@@ -42,7 +42,6 @@ pub struct JsonRpcServerV0_3_0Impl {
     pub max_events_keys: usize,
 }
 
-#[async_trait]
 impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     fn block_number(&self) -> RpcResult<BlockNumber> {
