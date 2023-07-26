@@ -19,23 +19,52 @@ use starknet_api::transaction::{
     Calldata, ContractAddressSalt, Fee, TransactionSignature, TransactionVersion,
 };
 
-/// A generic transaction that can be added to Starknet. When the transaction is serialized into a
-/// JSON object, it must be in the format that the Starknet gateway expects in the
-/// `add_transaction` HTTP method.
-#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
-#[serde(tag = "type")]
-pub enum Transaction {
+// Each transaction type has a field called `type`. This field needs to be of a type that
+// serializes to/deserializes from a constant string.
+//
+// The reason we don't solve this by having an enum of a generic transaction and let serde generate
+// the `type` field through #[serde(tag)] is because we want to serialize/deserialize from the
+// structs of the specific transaction types.
+
+/// The type field of a deploy account transaction. This enum serializes/deserializes into a
+/// constant string.
+#[derive(Debug, Deserialize, Serialize, Default, Clone, Copy, Eq, PartialEq)]
+pub enum DeployAccountType {
     #[serde(rename = "DEPLOY_ACCOUNT")]
-    DeployAccount(DeployAccountTransaction),
+    #[default]
+    DeployAccount,
+}
+
+/// The type field of an invoke transaction. This enum serializes/deserializes into a constant
+/// string.
+#[derive(Debug, Deserialize, Serialize, Default, Clone, Copy, Eq, PartialEq)]
+pub enum InvokeType {
     #[serde(rename = "INVOKE_FUNCTION")]
-    Invoke(InvokeTransaction),
+    #[default]
+    Invoke,
+}
+
+/// The type field of a declare V1 transaction. This enum serializes/deserializes into a constant
+/// string.
+#[derive(Debug, Deserialize, Serialize, Default, Clone, Copy, Eq, PartialEq)]
+pub enum DeclareV1Type {
     #[serde(rename = "DEPRECATED_DECLARE")]
-    DeclareV1(DeclareV1Transaction),
+    #[default]
+    DeclareV1,
+}
+
+/// The type field of a declare V2 transaction. This enum serializes/deserializes into a constant
+/// string.
+#[derive(Debug, Deserialize, Serialize, Default, Clone, Copy, Eq, PartialEq)]
+pub enum DeclareV2Type {
     #[serde(rename = "DECLARE")]
-    DeclareV2(DeclareV2Transaction),
+    #[default]
+    DeclareV2,
 }
 
 /// A deploy account transaction that can be added to Starknet through the Starknet gateway.
+/// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
+/// HTTP method.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct DeployAccountTransaction {
@@ -46,10 +75,13 @@ pub struct DeployAccountTransaction {
     pub max_fee: Fee,
     pub signature: TransactionSignature,
     pub version: TransactionVersion,
+    pub r#type: DeployAccountType,
 }
 
 /// An invoke account transaction that can be added to Starknet through the Starknet gateway.
 /// The invoke is a V1 transaction.
+/// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
+/// HTTP method.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct InvokeTransaction {
@@ -59,10 +91,13 @@ pub struct InvokeTransaction {
     pub max_fee: Fee,
     pub signature: TransactionSignature,
     pub version: TransactionVersion,
+    pub r#type: InvokeType,
 }
 
 /// A declare transaction of a Cairo-v0 (deprecated) contract class that can be added to Starknet
 /// through the Starknet gateway.
+/// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
+/// HTTP method.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct DeclareV1Transaction {
@@ -72,10 +107,13 @@ pub struct DeclareV1Transaction {
     pub max_fee: Fee,
     pub version: TransactionVersion,
     pub signature: TransactionSignature,
+    pub r#type: DeclareV1Type,
 }
 
 /// A declare transaction of a Cairo-v1 contract class that can be added to Starknet through the
 /// Starknet gateway.
+/// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
+/// HTTP method.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct DeclareV2Transaction {
@@ -86,6 +124,17 @@ pub struct DeclareV2Transaction {
     pub max_fee: Fee,
     pub version: TransactionVersion,
     pub signature: TransactionSignature,
+    pub r#type: DeclareV2Type,
+}
+
+/// A declare transaction that can be added to Starknet through the Starknet gateway.
+/// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
+/// HTTP method.
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(untagged)]
+pub enum DeclareTransaction {
+    DeclareV1(DeclareV1Transaction),
+    DeclareV2(DeclareV2Transaction),
 }
 
 // The structs that are implemented here are the structs that have deviations from starknet_api.

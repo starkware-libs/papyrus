@@ -14,15 +14,6 @@ pub enum SuccessfulStarknetErrorCode {
     TransactionReceived,
 }
 
-/// The response of adding a transaction through the Starknet gateway successfully.
-#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
-#[serde(untagged)]
-pub enum AddTransactionResponse {
-    DeclareResponse(DeclareResponse),
-    DeployAccountResponse(DeployAccountResponse),
-    InvokeResponse(InvokeResponse),
-}
-
 /// The response of adding a declare transaction through the Starknet gateway successfully.
 #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]

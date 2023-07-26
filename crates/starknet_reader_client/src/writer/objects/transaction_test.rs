@@ -1,32 +1,25 @@
-use assert_matches::assert_matches;
 use test_utils::validate_load_and_dump;
 
-use crate::writer::objects::transaction::Transaction;
+use crate::writer::objects::transaction::{
+    DeclareV1Transaction, DeclareV2Transaction, DeployAccountTransaction, InvokeTransaction,
+};
 
 #[test]
 fn load_and_dump_deploy_account_same_string() {
-    validate_load_and_dump("writer/deploy_account.json", |transaction| {
-        assert_matches!(transaction, Transaction::DeployAccount(_));
-    });
+    validate_load_and_dump::<DeployAccountTransaction>("writer/deploy_account.json");
 }
 
 #[test]
 fn load_and_dump_invoke_same_string() {
-    validate_load_and_dump("writer/invoke.json", |transaction| {
-        assert_matches!(transaction, Transaction::Invoke(_));
-    });
+    validate_load_and_dump::<InvokeTransaction>("writer/invoke.json");
 }
 
 #[test]
 fn load_and_dump_declare_v1_same_string() {
-    validate_load_and_dump("writer/declare_v1.json", |transaction| {
-        assert_matches!(transaction, Transaction::DeclareV1(_));
-    });
+    validate_load_and_dump::<DeclareV1Transaction>("writer/declare_v1.json");
 }
 
 #[test]
 fn load_and_dump_declare_v2_same_string() {
-    validate_load_and_dump("writer/declare_v2.json", |transaction| {
-        assert_matches!(transaction, Transaction::DeclareV2(_));
-    });
+    validate_load_and_dump::<DeclareV2Transaction>("writer/declare_v2.json");
 }
