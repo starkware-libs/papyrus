@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use clap::{arg, value_parser, Arg, ArgMatches, Command};
+use clap::{value_parser, Arg, ArgMatches, Command};
 use serde_json::{json, Value};
 
 use crate::loading::update_config_map;
@@ -35,7 +35,10 @@ pub(crate) fn update_config_map_by_command_args(
 fn build_args_parser(config_map: &BTreeMap<ParamPath, SerializedParam>) -> Vec<Arg> {
     let mut args_parser = vec![
         // Custom_config_file_path.
-        arg!(-f --config_file [path] "Optionally sets a config file to use")
+        Arg::new("config_file")
+            .long("config_file")
+            .short('f')
+            .help("Optionally sets a config file to use")
             .value_parser(value_parser!(PathBuf)),
     ];
 
