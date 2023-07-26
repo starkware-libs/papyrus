@@ -1,7 +1,7 @@
 use assert_matches::assert_matches;
 use test_utils::validate_load_and_dump;
 
-use super::response::AddTransactionResponse;
+use crate::writer::objects::response::AddTransactionResponse;
 
 #[test]
 fn load_and_dump_deploy_account_same_string() {
