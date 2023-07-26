@@ -3,14 +3,16 @@ use std::collections::HashMap;
 use futures::executor::block_on;
 use jsonschema::JSONSchema;
 use lazy_static::lazy_static;
-use starknet_api::core::{CompiledClassHash, ContractAddress, Nonce};
+use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::{
     EntryPoint as DeprecatedEntryPoint, EntryPointType as DeprecatedEntryPointType, EventAbiEntry,
     FunctionAbiEntry, StructAbiEntry,
 };
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{EntryPoint, EntryPointType};
-use starknet_api::transaction::{Fee, TransactionSignature, TransactionVersion};
+use starknet_api::transaction::{
+    Calldata, ContractAddressSalt, Fee, TransactionSignature, TransactionVersion,
+};
 use starknet_reader_client::writer::objects::transaction::{
     DeprecatedContractClass, DeprecatedContractClassAbiEntry,
 };
@@ -26,6 +28,31 @@ use crate::test_utils::get_starknet_spec_api_schema;
 use crate::version_config::VERSION_0_3_0;
 
 auto_impl_get_test_instance! {
+    pub struct BroadcastedDeployAccountTransaction {
+        pub contract_address_salt: ContractAddressSalt,
+        pub class_hash: ClassHash,
+        pub constructor_calldata: Calldata,
+        pub nonce: Nonce,
+        pub max_fee: Fee,
+        pub signature: TransactionSignature,
+        pub version: TransactionVersion,
+    }
+    pub struct BroadcastedInvokeTransaction {
+        pub calldata: Calldata,
+        pub sender_address: ContractAddress,
+        pub nonce: Nonce,
+        pub max_fee: Fee,
+        pub signature: TransactionSignature,
+        pub version: TransactionVersion,
+    }
+    pub struct BroadcastedDeclareV1Transaction {
+        pub contract_class: DeprecatedContractClass,
+        pub sender_address: ContractAddress,
+        pub nonce: Nonce,
+        pub max_fee: Fee,
+        pub version: TransactionVersion,
+        pub signature: TransactionSignature,
+    }
     pub struct BroadcastedDeclareV2Transaction {
         pub contract_class: ContractClass,
         pub compiled_class_hash: CompiledClassHash,
