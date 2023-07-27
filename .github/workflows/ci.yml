@@ -176,10 +176,10 @@ jobs:
 
   check-starknet_api-dependency:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' # this step is only run if the pr is to the main branch
+    if: github.base_ref == 'main' # this step is only run if the pr is to the main branch
     steps:
       - uses: actions/checkout@v2
         with:
           toolchain: stable
       - run: sudo apt-get install jq
-      - run: ./check_starknet_api.sh # this script checks that if the starknet_api dependency is by git rev then this rev (commit) is on main
+      - run: ./check_starknet_api_version_dependency.sh # this script checks that if the starknet_api dependency is by git rev then this rev (commit) is on main
