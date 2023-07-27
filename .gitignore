@@ -2,3 +2,5 @@
 /logs
 /target
 /.vscode
+# Git hooks
+/.husky
