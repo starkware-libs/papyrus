@@ -20,7 +20,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install commitlint
-        run: npm install -g @commitlint/cli @commitlint/config-conventional
+        run: npm install --global @commitlint/cli @commitlint/config-conventional
 
       - name: Validate current commit (last commit) with commitlint
         if: github.event_name == 'push'
