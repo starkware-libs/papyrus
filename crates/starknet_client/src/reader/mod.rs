@@ -1,3 +1,6 @@
+//! This module contains clients that can read data from [`Starknet`].
+//!
+//! [`Starknet`]: https://starknet.io/
 // TODO(shahak) Make private once ClientError is refactored and doesn't depend on the reader
 // module.
 pub(crate) mod objects;
@@ -30,7 +33,9 @@ use crate::{
     StarknetErrorCode,
 };
 
-/// Methods for querying starknet.
+/// A trait describing an object that can communicate with [`Starknet`] and read data from it.
+///
+/// [`Starknet`]: https://starknet.io/
 #[cfg_attr(any(test, feature = "testing"), automock)]
 #[async_trait]
 pub trait StarknetReader {
@@ -54,6 +59,9 @@ pub trait StarknetReader {
     async fn state_update(&self, block_number: BlockNumber) -> ClientResult<Option<StateUpdate>>;
 }
 
+/// A client for the [`Starknet`] feeder gateway.
+///
+/// [`Starknet`]: https://starknet.io/
 pub struct StarknetFeederGatewayClient {
     urls: StarknetUrls,
     client: StarknetClient,
