@@ -1,7 +1,6 @@
-//! Client implementation for the [`Starknet`] feeder gateway.
+//! This crate contains clients that can communicate with [`Starknet`] through the various
+//! endpoints [`Starknet`] has.
 //!
-//! This client can read data from [`Starknet`] about the current state
-//! (e.g accepted blocks, contracts, classes).
 //!
 //! [`Starknet`]: https://starknet.io/
 
