@@ -22,7 +22,7 @@ lazy_static.workspace = true
 papyrus_config = { path = "../papyrus_config" }
 papyrus_gateway = { path = "../papyrus_gateway" }
 papyrus_monitoring_gateway = { path = "../papyrus_monitoring_gateway" }
-papyrus_storage = { path = "../papyrus_storage", version = "0.0.2" }
+papyrus_storage = { path = "../papyrus_storage", version = "0.0.3" }
 papyrus_sync = { path = "../papyrus_sync" }
 reqwest = { workspace = true, features = ["json", "blocking"] }
 serde = { workspace = true, features = ["derive"] }

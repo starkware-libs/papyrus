@@ -2,7 +2,7 @@
 
 ## Description
 
-papyrus-config is a flexible and powerful layered configuration system designed specifically for Papyrus, a Starknet full-node. This system allows you to easily manage configurations for your Papyrus node by leveraging various sources and providing additional helpful features.
+papyrus-config is a flexible and powerful layered configuration system designed specifically for Papyrus, a Starknet node. This system allows you to easily manage configurations for your Papyrus node by leveraging various sources and providing additional helpful features.
 
 ## Configuration sources
 
