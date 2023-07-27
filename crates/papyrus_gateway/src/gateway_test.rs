@@ -13,7 +13,9 @@ use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use pretty_assertions::assert_eq;
+use rand::seq::SliceRandom;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
+use test_utils::get_rng;
 use tower::BoxError;
 
 use crate::api::JsonRpcError;
@@ -121,8 +123,12 @@ async fn test_version_middleware() {
     let base_uri = "http://localhost:8080/rpc/";
     let mut path_options = vec![];
     VERSION_CONFIG.iter().for_each(|(version_id, _)| {
-        path_options.push(((*version_id).to_string(), (*version_id).to_string()));
-        path_options.push(((*version_id).to_lowercase(), (*version_id).to_string()))
+        // add version name with capital V
+        path_options.push((version_id.name.to_string(), version_id.name.to_string()));
+        // add version name with lower case v
+        path_options.push((version_id.name.to_lowercase(), version_id.name.to_string()));
+        // add version name with patch version
+        path_options.push((version_id.to_string(), version_id.name.to_string()));
     });
 
     // test all versions with single and batch requests
@@ -151,7 +157,13 @@ async fn test_version_middleware() {
         }
     });
     let unknown_version = "not_a_valid_version";
-    let bad_uri = format!("{base_uri}/{unknown_version}");
+    let bad_uri = format!("{base_uri}{unknown_version}");
+    if let Ok(res) = call_proxy_request_get_method_in_out(bad_uri, false).await {
+        panic!("expected failure got: {res:?}");
+    };
+    let version_id = VERSION_CONFIG.choose(&mut get_rng()).unwrap().0;
+    let newer_version_then_we_have = format!("{}_{}", version_id.name, version_id.patch + 1);
+    let bad_uri = format!("{base_uri}{newer_version_then_we_have}");
     if let Ok(res) = call_proxy_request_get_method_in_out(bad_uri, false).await {
         panic!("expected failure got: {res:?}");
     };

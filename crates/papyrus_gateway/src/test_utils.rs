@@ -5,6 +5,7 @@ use papyrus_storage::StorageWriter;
 use starknet_api::core::ChainId;
 
 use crate::api::JsonRpcServerImpl;
+use crate::version_config::VersionId;
 use crate::GatewayConfig;
 
 pub fn get_test_gateway_config() -> GatewayConfig {
@@ -35,7 +36,7 @@ pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
 
 pub async fn get_starknet_spec_api_schema(
     component_names: &[&str],
-    version_id: &str,
+    version_id: &VersionId,
 ) -> JSONSchema {
     let target = format!("./resources/{version_id}_starknet_api_openrpc.json");
     let text = std::fs::read_to_string(target).unwrap();

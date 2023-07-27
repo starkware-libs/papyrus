@@ -19,7 +19,7 @@ pub mod api_impl;
 #[cfg(test)]
 mod test;
 
-#[versioned_rpc("V0_3_0")]
+#[versioned_rpc("V0_3")]
 pub trait JsonRpc {
     /// Gets the most recent accepted block number.
     #[method(name = "blockNumber")]
