@@ -91,24 +91,32 @@ fn strip_starknet_from_method(method: &str) -> Option<&str> {
 fn get_version_as_prefix(path: &str) -> Result<&str, BoxError> {
     // get the version name from the path (should be something like "http://host:port/rpc/version_id")
     let uri_components = &mut path.split('/').collect::<Vec<_>>();
-    let Some(version) = uri_components.get(2) else {
+    let Some(temp_version) = uri_components.get(2) else {
         // as long as 'deny_requests_with_unsupported_path' middleware is used, this should never happen
         // but for safety we return an error and not unreachable!()
         let msg = format!("Invalid path format: {}", path);
         debug!(msg);
         return Err(BoxError::from(msg));
     };
+    let version_comps = temp_version.split('_').collect::<Vec<_>>();
+    let mut patch_num = 0;
+    if version_comps.len() == 3 {
+        // if the version is of the form "V0_0_1" we store the path num to check that our latest
+        // supported patch version is at least the requested version.
+        patch_num = version_comps[2].parse::<u8>().map_err(BoxError::from)?;
+    }
+    let version = format!("{}_{}", version_comps[0], version_comps[1]);
     let Some((version_id, _)) =
         // find a matching version in the version config
         VERSION_CONFIG.iter().find(|(version_id, version_state)| {
-            (*version_id == *version || (*version_id).to_lowercase() == *version) && *version_state != VersionState::Deprecated
+            (version_id.name == version || version_id.name.to_lowercase() == version) && *version_state != VersionState::Deprecated && patch_num <= version_id.patch
         }) else {
         return Err(BoxError::from(format!("Invalid path, couldn't find matching version for version_id: {version}")));
     };
-    Ok(*version_id)
+    Ok(version_id.name)
 }
 
 fn is_supported_path(path: &str) -> bool {
-    let re = Regex::new(r"^\/rpc\/[Vv][0-9]+_[0-9]+_[0-9]+$").expect("should be a valid regex");
+    let re = Regex::new(r"^\/rpc\/[Vv][0-9]+_[0-9]+(_[0-9]+)?$").expect("should be a valid regex");
     re.is_match(path)
 }
