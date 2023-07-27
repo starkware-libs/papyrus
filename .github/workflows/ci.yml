@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dan/ci/fix-commitlint]
   pull_request:
     types:
       - opened
@@ -20,11 +20,11 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install commitlint
-        run: npm install -g @commitlint/cli @commitlint/config-conventional
+        run: npm install --global @commitlint/cli @commitlint/config-conventional
 
       - name: Validate current commit (last commit) with commitlint
         if: github.event_name == 'push'
-        run: commitlint --from=${{ github.event.before }} --to=${{ github.sha }} --verbose
+        run: commitlint --from HEAD~1 --verbose
 
       - name: Validate PR commits with commitlint
         if: github.event_name == 'pull_request'
