@@ -1,25 +1,18 @@
-use assert_matches::assert_matches;
 use test_utils::validate_load_and_dump;
 
-use crate::writer::objects::response::AddTransactionResponse;
+use crate::writer::objects::response::{DeclareResponse, DeployAccountResponse, InvokeResponse};
 
 #[test]
 fn load_and_dump_deploy_account_same_string() {
-    validate_load_and_dump("writer/deploy_account_response.json", |response| {
-        assert_matches!(response, AddTransactionResponse::DeployAccountResponse(_));
-    });
+    validate_load_and_dump::<DeployAccountResponse>("writer/deploy_account_response.json");
 }
 
 #[test]
 fn load_and_dump_invoke_same_string() {
-    validate_load_and_dump("writer/invoke_response.json", |response| {
-        assert_matches!(response, AddTransactionResponse::InvokeResponse(_));
-    });
+    validate_load_and_dump::<InvokeResponse>("writer/invoke_response.json");
 }
 
 #[test]
-fn load_and_dump_declare_v1_same_string() {
-    validate_load_and_dump("writer/declare_response.json", |response| {
-        assert_matches!(response, AddTransactionResponse::DeclareResponse(_));
-    });
+fn load_and_dump_declare_same_string() {
+    validate_load_and_dump::<DeclareResponse>("writer/declare_response.json");
 }
