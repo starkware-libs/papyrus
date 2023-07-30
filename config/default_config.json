@@ -31,9 +31,13 @@
     "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
     "pointer_target": "chain_id"
   },
-  "gateway.collect_metrics": {
-    "description": "If true, collect metrics for the gateway.",
+  "collect_metrics": {
+    "description": "If true, collect metrics for the package.",
     "value": false
+  },
+  "gateway.collect_metrics": {
+    "description": "If true, collect metrics for the package.",
+    "pointer_target": "collect_metrics"
   },
   "gateway.max_events_chunk_size": {
     "description": "Maximum chunk size supported by the node in get_events requests.",
@@ -48,8 +52,8 @@
     "value": "0.0.0.0:8080"
   },
   "monitoring_gateway.collect_metrics": {
-    "description": "If true, collect metrics for the monitoring gateway.",
-    "value": false
+    "description": "If true, collect metrics for the package.",
+    "pointer_target": "collect_metrics"
   },
   "monitoring_gateway.server_address": {
     "description": "node's monitoring server.",
