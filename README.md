@@ -69,7 +69,7 @@ cargo run --release --package papyrus_node --bin papyrus_node
 In case both are provided, the command-line arguments take precedence.
 The default path for the configuration file is `config/config.yaml`. You can override this path
 using the `--config_file` command-line argument.
-See the default [configuration file](config/config.yaml) for available options.
+See the default [configuration file](config/default_config.json) for available options.
 Note that the configuration file can be partial or even empty.
 You can check the available command-line arguments by running:
 
