@@ -17,6 +17,10 @@ spec:
       maxSurge: 1
   template:
     metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/monitoring/metrics"
+        prometheus.io/port: {{ .Values.services.monitoring.port | quote }}
       labels:
         app: papyrus
         {{- include "papyrus.selectorLabels" . | nindent 8 }}
