@@ -28,7 +28,8 @@ use starknet_api::block::{
     Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
 };
 use starknet_api::core::{
-    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, GlobalRoot, Nonce,
+    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, EthAddress, GlobalRoot,
+    Nonce,
 };
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass, ContractClassAbiEntry,
@@ -43,9 +44,9 @@ use starknet_api::state::{
     ContractClass, EntryPoint, EntryPointType, FunctionIndex, StateDiff, StorageKey, ThinStateDiff,
 };
 use starknet_api::transaction::{
-    Calldata, ContractAddressSalt, DeclareTransaction, DeclareTransactionOutput,
+    AccountParams, Calldata, ContractAddressSalt, DeclareTransaction, DeclareTransactionOutput,
     DeclareTransactionV0V1, DeclareTransactionV2, DeployAccountTransaction,
-    DeployAccountTransactionOutput, DeployTransaction, DeployTransactionOutput, EthAddress, Event,
+    DeployAccountTransactionOutput, DeployTransaction, DeployTransactionOutput, Event,
     EventContent, EventData, EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction,
     InvokeTransactionOutput, InvokeTransactionV0, InvokeTransactionV1, L1HandlerTransaction,
     L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, MessageToL1, MessageToL2,
@@ -339,25 +340,19 @@ auto_impl_get_test_instance! {
         V2(DeclareTransactionV2) = 2,
     }
     pub struct DeclareTransactionV0V1 {
-        pub max_fee: Fee,
-        pub signature: TransactionSignature,
-        pub nonce: Nonce,
+        pub account_params: AccountParams,
         pub class_hash: ClassHash,
         pub sender_address: ContractAddress,
     }
     pub struct DeclareTransactionV2 {
-        pub max_fee: Fee,
-        pub signature: TransactionSignature,
-        pub nonce: Nonce,
+        pub account_params: AccountParams,
         pub class_hash: ClassHash,
         pub compiled_class_hash: CompiledClassHash,
         pub sender_address: ContractAddress,
     }
     pub struct DeployAccountTransaction {
-        pub max_fee: Fee,
+        pub account_params: AccountParams,
         pub version: TransactionVersion,
-        pub signature: TransactionSignature,
-        pub nonce: Nonce,
         pub class_hash: ClassHash,
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
@@ -434,9 +429,7 @@ auto_impl_get_test_instance! {
         pub calldata: Calldata,
     }
     pub struct InvokeTransactionV1 {
-        pub max_fee: Fee,
-        pub signature: TransactionSignature,
-        pub nonce: Nonce,
+        pub account_params: AccountParams,
         pub sender_address: ContractAddress,
         pub calldata: Calldata,
     }
@@ -689,6 +682,15 @@ impl<K: GetTestInstance + Eq + Hash, V: GetTestInstance> GetTestInstance for Ind
         let v = V::get_test_instance(rng);
         res.insert(k, v);
         res
+    }
+}
+impl GetTestInstance for AccountParams {
+    fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+        Self {
+            max_fee: <Fee>::get_test_instance(rng),
+            signature: <TransactionSignature>::get_test_instance(rng),
+            nonce: <Nonce>::get_test_instance(rng),
+        }
     }
 }
 

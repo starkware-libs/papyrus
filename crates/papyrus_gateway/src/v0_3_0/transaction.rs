@@ -52,14 +52,15 @@ pub struct DeclareTransactionV2 {
 
 impl From<starknet_api::transaction::DeclareTransactionV2> for DeclareTransactionV2 {
     fn from(tx: starknet_api::transaction::DeclareTransactionV2) -> Self {
+        let v2_tx = starknet_api::transaction::DeclareTransaction::V2(tx.clone());
         Self {
             class_hash: tx.class_hash,
             compiled_class_hash: tx.compiled_class_hash,
             sender_address: tx.sender_address,
-            nonce: tx.nonce,
-            max_fee: tx.max_fee,
+            nonce: v2_tx.nonce(),
+            max_fee: v2_tx.max_fee(),
             version: tx_v2(),
-            signature: tx.signature,
+            signature: v2_tx.signature(),
         }
     }
 }
@@ -107,11 +108,12 @@ pub struct InvokeTransactionV1 {
 
 impl From<starknet_api::transaction::InvokeTransactionV1> for InvokeTransactionV1 {
     fn from(tx: starknet_api::transaction::InvokeTransactionV1) -> Self {
+        let v1_tx = starknet_api::transaction::InvokeTransaction::V1(tx.clone());
         Self {
-            max_fee: tx.max_fee,
+            max_fee: v1_tx.max_fee(),
             version: tx_v1(),
-            signature: tx.signature,
-            nonce: tx.nonce,
+            signature: v1_tx.signature(),
+            nonce: v1_tx.nonce().unwrap(),
             sender_address: tx.sender_address,
             calldata: tx.calldata,
         }
@@ -152,23 +154,25 @@ impl From<starknet_api::transaction::Transaction> for Transaction {
         match tx {
             starknet_api::transaction::Transaction::Declare(declare_tx) => match declare_tx {
                 starknet_api::transaction::DeclareTransaction::V0(tx) => {
+                    let v0_tx = starknet_api::transaction::DeclareTransaction::V0(tx.clone());
                     Self::Declare(DeclareTransaction::Version0(DeclareTransactionV0V1 {
                         class_hash: tx.class_hash,
                         sender_address: tx.sender_address,
-                        nonce: tx.nonce,
-                        max_fee: tx.max_fee,
+                        nonce: v0_tx.nonce(),
+                        max_fee: v0_tx.max_fee(),
                         version: tx_v0(),
-                        signature: tx.signature,
+                        signature: v0_tx.signature(),
                     }))
                 }
                 starknet_api::transaction::DeclareTransaction::V1(tx) => {
+                    let v1_tx = starknet_api::transaction::DeclareTransaction::V1(tx.clone());
                     Self::Declare(DeclareTransaction::Version0(DeclareTransactionV0V1 {
                         class_hash: tx.class_hash,
                         sender_address: tx.sender_address,
-                        nonce: tx.nonce,
-                        max_fee: tx.max_fee,
+                        nonce: v1_tx.nonce(),
+                        max_fee: v1_tx.max_fee(),
                         version: tx_v1(),
-                        signature: tx.signature,
+                        signature: v1_tx.signature(),
                     }))
                 }
                 starknet_api::transaction::DeclareTransaction::V2(tx) => {
