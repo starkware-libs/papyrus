@@ -11,6 +11,7 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use tracing::instrument;
 use url::Url;
 
 use crate::writer::objects::response::{DeclareResponse, DeployAccountResponse, InvokeResponse};
@@ -58,10 +59,12 @@ pub struct StarknetGatewayClient {
 
 #[async_trait]
 impl StarknetWriter for StarknetGatewayClient {
+    #[instrument(skip(self), level = "warn")]
     async fn add_invoke_transaction(&self, tx: &InvokeTransaction) -> ClientResult<InvokeResponse> {
         self.add_transaction(&tx).await
     }
 
+    #[instrument(skip(self), level = "warn")]
     async fn add_deploy_account_transaction(
         &self,
         tx: &DeployAccountTransaction,
@@ -69,6 +72,7 @@ impl StarknetWriter for StarknetGatewayClient {
         self.add_transaction(&tx).await
     }
 
+    #[instrument(skip(self), level = "warn")]
     async fn add_declare_transaction(
         &self,
         tx: &DeclareTransaction,
