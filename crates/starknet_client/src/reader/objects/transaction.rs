@@ -3,12 +3,12 @@ use std::collections::HashMap;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{
-    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, Nonce,
+    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, EthAddress, Nonce,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::{
-    Calldata, ContractAddressSalt, DeclareTransactionOutput, DeployAccountTransactionOutput,
-    DeployTransactionOutput, EthAddress, Event, Fee, InvokeTransactionOutput,
+    AccountParams, Calldata, ContractAddressSalt, DeclareTransactionOutput,
+    DeployAccountTransactionOutput, DeployTransactionOutput, Event, Fee, InvokeTransactionOutput,
     L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, MessageToL1,
     TransactionExecutionStatus, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
     TransactionSignature, TransactionVersion,
@@ -147,9 +147,11 @@ impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::Decl
 impl From<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransactionV0V1 {
     fn from(declare_tx: IntermediateDeclareTransaction) -> Self {
         Self {
-            max_fee: declare_tx.max_fee,
-            signature: declare_tx.signature,
-            nonce: declare_tx.nonce,
+            account_params: AccountParams {
+                max_fee: declare_tx.max_fee,
+                signature: declare_tx.signature,
+                nonce: declare_tx.nonce,
+            },
             class_hash: declare_tx.class_hash,
             sender_address: declare_tx.sender_address,
         }
@@ -161,9 +163,11 @@ impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::Decl
 
     fn try_from(declare_tx: IntermediateDeclareTransaction) -> Result<Self, ReaderClientError> {
         Ok(Self {
-            max_fee: declare_tx.max_fee,
-            signature: declare_tx.signature,
-            nonce: declare_tx.nonce,
+            account_params: AccountParams {
+                max_fee: declare_tx.max_fee,
+                signature: declare_tx.signature,
+                nonce: declare_tx.nonce,
+            },
             class_hash: declare_tx.class_hash,
             compiled_class_hash: declare_tx.compiled_class_hash.ok_or(
                 ReaderClientError::BadTransaction {
@@ -221,9 +225,11 @@ impl From<DeployAccountTransaction> for starknet_api::transaction::DeployAccount
             constructor_calldata: deploy_tx.constructor_calldata,
             class_hash: deploy_tx.class_hash,
             contract_address_salt: deploy_tx.contract_address_salt,
-            max_fee: deploy_tx.max_fee,
-            signature: deploy_tx.signature,
-            nonce: deploy_tx.nonce,
+            account_params: AccountParams {
+                max_fee: deploy_tx.max_fee,
+                signature: deploy_tx.signature,
+                nonce: deploy_tx.nonce,
+            },
         }
     }
 }
@@ -285,12 +291,14 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
     fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ReaderClientError> {
         // TODO(yair): Consider asserting that entry_point_selector is None.
         Ok(Self {
-            max_fee: invoke_tx.max_fee,
-            signature: invoke_tx.signature,
-            nonce: invoke_tx.nonce.ok_or(ReaderClientError::BadTransaction {
-                tx_hash: invoke_tx.transaction_hash,
-                msg: "Invoke V1 must contain nonce field.".to_string(),
-            })?,
+            account_params: AccountParams {
+                max_fee: invoke_tx.max_fee,
+                signature: invoke_tx.signature,
+                nonce: invoke_tx.nonce.ok_or(ReaderClientError::BadTransaction {
+                    tx_hash: invoke_tx.transaction_hash,
+                    msg: "Invoke V1 must contain nonce field.".to_string(),
+                })?,
+            },
             sender_address: invoke_tx.sender_address,
             calldata: invoke_tx.calldata,
         })
