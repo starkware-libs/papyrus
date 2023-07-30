@@ -357,8 +357,11 @@ pub struct DbTablesStats {
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
-// A marker is the first block number that doesn't exist yet.
-// Invariant: BaseLayerBlock marker is smaller or equal to the Header marker.
+// A marker is the first block number for which the corresponding data doesn't exist yet.
+// Invariants:
+// - CompiledClass <= State <= Header
+// - Body <= Header
+// - BaseLayerBlock <= Header
 pub(crate) enum MarkerKind {
     Header,
     Body,

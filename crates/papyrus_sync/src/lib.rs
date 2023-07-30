@@ -12,7 +12,7 @@ use async_stream::try_stream;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use indexmap::IndexMap;
-use papyrus_storage::base_layer::{BaseLayerStorageReader, BaseLayerStorageWriter};
+use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter, StarknetVersion};
@@ -75,16 +75,13 @@ pub enum StateSyncError {
          matching header (neither in the ommer headers)."
     )]
     StateDiffWithoutMatchingHeader { block_number: BlockNumber, block_hash: BlockHash },
-    #[error(
-        "Header for block {block_number} wasn't found when trying to store base layer block. Can \
-         be caused because base layer reorg or l2 reverts."
-    )]
+    #[error("Header for block {block_number} wasn't found when trying to store base layer block.")]
     BaseLayerBlockWithoutMatchingHeader { block_number: BlockNumber },
     #[error(transparent)]
     BaseLayerSourceError(#[from] BaseLayerError),
     #[error(
         "For {block_number} base layer and l2 doesn't match. Base layer hash: {base_layer_hash}, \
-         L2 hash: {l2_hash}. Can be caused because base layer reorg or l2 reverts."
+         L2 hash: {l2_hash}."
     )]
     BaseLayerHashMismatch {
         block_number: BlockNumber,
@@ -662,6 +659,7 @@ fn stream_new_compiled_classes<TCentralSource: CentralSourceTrait + Sync + Send>
     }
 }
 
+// TODO(dvir): consider combine this function and store_base_layer_block.
 fn stream_new_base_layer_block<TBaseLayerSource: BaseLayerSourceTrait + Sync>(
     reader: StorageReader,
     base_layer_source: Arc<TBaseLayerSource>,
@@ -672,11 +670,7 @@ fn stream_new_base_layer_block<TBaseLayerSource: BaseLayerSourceTrait + Sync>(
             tokio::time::sleep(base_layer_propagation_sleep_duration).await;
             let txn = reader.begin_ro_txn()?;
             let header_marker = txn.get_header_marker()?;
-            let base_layer_block_marker = txn.get_base_layer_block_marker()?;
             match base_layer_source.latest_proved_block().await?{
-                Some((block_number, _block_hash)) if block_number<base_layer_block_marker => {
-                    debug!("Base layer syncing reached the last known block proved on the base layer, waiting for blockchain to advance.");
-                }
                 Some((block_number, _block_hash)) if header_marker<=block_number => {
                     debug!("Sync is behind the base layer tip, waiting for sync to advance.");
                 }
