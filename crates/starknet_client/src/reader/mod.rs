@@ -173,17 +173,17 @@ impl StarknetFeederGatewayClient {
 
 #[async_trait]
 impl StarknetReader for StarknetFeederGatewayClient {
-    #[instrument(skip(self), level = "warn")]
+    #[instrument(skip(self), level = "debug")]
     async fn block_number(&self) -> ReaderClientResult<Option<BlockNumber>> {
         Ok(self.request_block(None).await?.map(|block| block.block_number))
     }
 
-    #[instrument(skip(self), level = "warn")]
+    #[instrument(skip(self), level = "debug")]
     async fn block(&self, block_number: BlockNumber) -> ReaderClientResult<Option<Block>> {
         self.request_block(Some(block_number)).await
     }
 
-    #[instrument(skip(self), level = "warn")]
+    #[instrument(skip(self), level = "debug")]
     async fn class_by_hash(
         &self,
         class_hash: ClassHash,
@@ -200,7 +200,7 @@ impl StarknetReader for StarknetFeederGatewayClient {
         )
     }
 
-    #[instrument(skip(self), level = "warn")]
+    #[instrument(skip(self), level = "debug")]
     async fn state_update(
         &self,
         block_number: BlockNumber,
@@ -226,7 +226,7 @@ impl StarknetReader for StarknetFeederGatewayClient {
         })
     }
 
-    #[instrument(skip(self), level = "warn")]
+    #[instrument(skip(self), level = "debug")]
     async fn compiled_class_by_hash(
         &self,
         class_hash: ClassHash,

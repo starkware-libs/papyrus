@@ -67,7 +67,7 @@ pub struct StarknetGatewayClient {
 
 #[async_trait]
 impl StarknetWriter for StarknetGatewayClient {
-    #[instrument(skip(self), level = "warn")]
+    #[instrument(skip(self), level = "debug")]
     async fn add_invoke_transaction(
         &self,
         tx: &InvokeTransaction,
@@ -75,7 +75,7 @@ impl StarknetWriter for StarknetGatewayClient {
         self.add_transaction(&tx).await
     }
 
-    #[instrument(skip(self), level = "warn")]
+    #[instrument(skip(self), level = "debug")]
     async fn add_deploy_account_transaction(
         &self,
         tx: &DeployAccountTransaction,
@@ -83,7 +83,7 @@ impl StarknetWriter for StarknetGatewayClient {
         self.add_transaction(&tx).await
     }
 
-    #[instrument(skip(self), level = "warn")]
+    #[instrument(skip(self), level = "debug")]
     async fn add_declare_transaction(
         &self,
         tx: &DeclareTransaction,
