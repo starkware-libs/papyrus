@@ -1,3 +1,7 @@
+// config compiler to support no_coverage feature when running coverage in nightly mode within this
+// crate
+#![cfg_attr(coverage_nightly, feature(no_coverage))]
+
 use lazy_static::lazy_static;
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, SerializedParam};
@@ -21,6 +25,7 @@ lazy_static! {
 
 /// Updates the default config file by:
 /// cargo run --bin dump_config -q
+#[cfg_attr(coverage_nightly, no_coverage)]
 fn main() {
     NodeConfig::default()
         .dump_to_file(&CONFIG_POINTERS, DEFAULT_CONFIG_PATH)

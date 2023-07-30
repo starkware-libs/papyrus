@@ -1,3 +1,6 @@
+// config compiler to support no_coverage feature when running coverage in nightly mode within this
+// crate
+#![cfg_attr(coverage_nightly, feature(no_coverage))]
 #[cfg(test)]
 mod gateway_test;
 
@@ -49,6 +52,7 @@ impl SerializeConfig for MonitoringGatewayConfig {
 }
 
 impl Display for MonitoringGatewayConfig {
+    #[cfg_attr(coverage_nightly, no_coverage)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self:?}")
     }
