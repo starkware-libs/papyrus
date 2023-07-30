@@ -15,7 +15,7 @@ use starknet_api::StarknetApiError;
 use crate::reader::objects::transaction::{
     L1ToL2Message, Transaction, TransactionReceipt, TransactionType,
 };
-use crate::{ClientError, ClientResult};
+use crate::reader::{ReaderClientError, ReaderClientResult};
 
 #[derive(
     Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
@@ -119,12 +119,14 @@ pub enum TransactionReceiptsError {
 /// [Block](`starknet_api_block`) and String representing the Starknet version corresponding to
 /// that block.
 impl Block {
-    pub fn to_starknet_api_block_and_version(self) -> ClientResult<(starknet_api_block, String)> {
+    pub fn to_starknet_api_block_and_version(
+        self,
+    ) -> ReaderClientResult<(starknet_api_block, String)> {
         // Check that the number of receipts is the same as the number of transactions.
         let num_of_txs = self.transactions.len();
         let num_of_receipts = self.transaction_receipts.len();
         if num_of_txs != num_of_receipts {
-            return Err(ClientError::TransactionReceiptsError(
+            return Err(ReaderClientError::TransactionReceiptsError(
                 TransactionReceiptsError::WrongNumberOfReceipts {
                     block_number: self.block_number,
                     num_of_txs,
@@ -143,7 +145,7 @@ impl Block {
             // Check that the transaction index that appears in the receipt is the same as the
             // index of the transaction.
             if i != receipt.transaction_index.0 {
-                return Err(ClientError::TransactionReceiptsError(
+                return Err(ReaderClientError::TransactionReceiptsError(
                     TransactionReceiptsError::MismatchTransactionIndex {
                         block_number: self.block_number,
                         tx_index: TransactionOffsetInBlock(i),
@@ -156,7 +158,7 @@ impl Block {
             // Check that the transaction hash that appears in the receipt is the same as in the
             // transaction.
             if transaction.transaction_hash() != receipt.transaction_hash {
-                return Err(ClientError::TransactionReceiptsError(
+                return Err(ReaderClientError::TransactionReceiptsError(
                     TransactionReceiptsError::MismatchTransactionHash {
                         block_number: self.block_number,
                         tx_index: TransactionOffsetInBlock(i),
@@ -170,7 +172,7 @@ impl Block {
             if transaction.transaction_type() != TransactionType::L1Handler
                 && receipt.l1_to_l2_consumed_message != L1ToL2Message::default()
             {
-                return Err(ClientError::TransactionReceiptsError(
+                return Err(ReaderClientError::TransactionReceiptsError(
                     TransactionReceiptsError::MismatchFields {
                         block_number: self.block_number,
                         tx_index: TransactionOffsetInBlock(i),
@@ -194,7 +196,7 @@ impl Block {
             .transactions
             .into_iter()
             .map(starknet_api::transaction::Transaction::try_from)
-            .collect::<Result<_, ClientError>>()?;
+            .collect::<Result<_, ReaderClientError>>()?;
 
         // Get the header.
         let header = starknet_api::block::BlockHeader {

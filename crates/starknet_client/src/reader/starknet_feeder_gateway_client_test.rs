@@ -22,8 +22,8 @@ use starknet_api::{patricia_key, stark_felt};
 use crate::reader::objects::state::StateUpdate;
 use crate::reader::objects::transaction::IntermediateDeclareTransaction;
 use crate::reader::{
-    Block, ContractClass, GenericContractClass, StarknetFeederGatewayClient, StarknetReader,
-    BLOCK_NUMBER_QUERY, CLASS_HASH_QUERY, GET_BLOCK_URL, GET_STATE_UPDATE_URL,
+    Block, ContractClass, GenericContractClass, ReaderClientError, StarknetFeederGatewayClient,
+    StarknetReader, BLOCK_NUMBER_QUERY, CLASS_HASH_QUERY, GET_BLOCK_URL, GET_STATE_UPDATE_URL,
 };
 use crate::test_utils::read_resource::read_resource_file;
 use crate::test_utils::retry::get_test_config;
@@ -354,7 +354,7 @@ async fn block_unserializable() {
         .create();
     let error = starknet_client.block(BlockNumber(20)).await.unwrap_err();
     mock.assert();
-    assert_matches!(error, ClientError::SerdeError(_));
+    assert_matches!(error, ReaderClientError::ClientError(ClientError::SerdeError(_)));
 }
 
 #[tokio::test]
@@ -378,7 +378,7 @@ async fn retry_error_codes() {
             .expect(5)
             .create();
         let error = starknet_client.block_number().await.unwrap_err();
-        assert_matches!(error, ClientError::RetryError { code, message: _ } if code == error_code);
+        assert_matches!(error, ReaderClientError::ClientError(ClientError::RetryError { code, message: _ }) if code == error_code);
         mock.assert();
     }
 }
