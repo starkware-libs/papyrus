@@ -2,7 +2,7 @@ use hyper::{Body, Request};
 use jsonrpsee::core::http_helpers::read_body;
 use regex::Regex;
 use tower::BoxError;
-use tracing::debug;
+use tracing::{debug, instrument};
 
 use crate::version_config::{VersionState, VERSION_CONFIG};
 use crate::SERVER_MAX_BODY_SIZE;
@@ -87,18 +87,23 @@ fn strip_starknet_from_method(method: &str) -> Option<&str> {
     split_method_name.get(1).copied()
 }
 
+#[instrument(level = "debug", err)]
 fn get_version_as_prefix(path: &str) -> Result<&str, BoxError> {
     // get the version name from the path (should be something like "http://host:port/rpc/version_id")
     let uri_components = &mut path.split('/').collect::<Vec<_>>();
     let Some(version) = uri_components.get(2) else {
-        return Err(BoxError::from("Invalid path format"));
+        // as long as 'deny_requests_with_unsupported_path' middleware is used, this should never happen
+        // but for safety we return an error and not unreachable!()
+        let msg = format!("Invalid path format: {}", path);
+        debug!(msg);
+        return Err(BoxError::from(msg));
     };
     let Some((version_id, _)) =
         // find a matching version in the version config
         VERSION_CONFIG.iter().find(|(version_id, version_state)| {
             (*version_id == *version || (*version_id).to_lowercase() == *version) && *version_state != VersionState::Deprecated
         }) else {
-        return Err(BoxError::from("Invalid path, couldn't find matching version"));
+        return Err(BoxError::from(format!("Invalid path, couldn't find matching version for version_id: {version}")));
     };
     Ok(*version_id)
 }
