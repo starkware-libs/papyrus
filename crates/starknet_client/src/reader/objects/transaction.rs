@@ -14,7 +14,7 @@ use starknet_api::transaction::{
     TransactionSignature, TransactionVersion,
 };
 
-use crate::ClientError;
+use crate::reader::ReaderClientError;
 
 lazy_static! {
     static ref TX_V0: TransactionVersion = TransactionVersion(StarkFelt::from(0u128));
@@ -39,8 +39,8 @@ pub enum Transaction {
 }
 
 impl TryFrom<Transaction> for starknet_api::transaction::Transaction {
-    type Error = ClientError;
-    fn try_from(tx: Transaction) -> Result<Self, ClientError> {
+    type Error = ReaderClientError;
+    fn try_from(tx: Transaction) -> Result<Self, ReaderClientError> {
         match tx {
             Transaction::Declare(declare_tx) => {
                 Ok(starknet_api::transaction::Transaction::Declare(declare_tx.try_into()?))
@@ -129,14 +129,14 @@ pub struct IntermediateDeclareTransaction {
 }
 
 impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransaction {
-    type Error = ClientError;
+    type Error = ReaderClientError;
 
-    fn try_from(declare_tx: IntermediateDeclareTransaction) -> Result<Self, ClientError> {
+    fn try_from(declare_tx: IntermediateDeclareTransaction) -> Result<Self, ReaderClientError> {
         match declare_tx.version {
             v if v == *TX_V0 => Ok(Self::V0(declare_tx.into())),
             v if v == *TX_V1 => Ok(Self::V1(declare_tx.into())),
             v if v == *TX_V2 => Ok(Self::V2(declare_tx.try_into()?)),
-            _ => Err(ClientError::BadTransaction {
+            _ => Err(ReaderClientError::BadTransaction {
                 tx_hash: declare_tx.transaction_hash,
                 msg: format!("Declare version {:?} is not supported.", declare_tx.version),
             }),
@@ -157,16 +157,16 @@ impl From<IntermediateDeclareTransaction> for starknet_api::transaction::Declare
 }
 
 impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransactionV2 {
-    type Error = ClientError;
+    type Error = ReaderClientError;
 
-    fn try_from(declare_tx: IntermediateDeclareTransaction) -> Result<Self, ClientError> {
+    fn try_from(declare_tx: IntermediateDeclareTransaction) -> Result<Self, ReaderClientError> {
         Ok(Self {
             max_fee: declare_tx.max_fee,
             signature: declare_tx.signature,
             nonce: declare_tx.nonce,
             class_hash: declare_tx.class_hash,
             compiled_class_hash: declare_tx.compiled_class_hash.ok_or(
-                ClientError::BadTransaction {
+                ReaderClientError::BadTransaction {
                     tx_hash: declare_tx.transaction_hash,
                     msg: "Declare V2 must contain compiled_class_hash field.".to_string(),
                 },
@@ -246,13 +246,13 @@ pub struct IntermediateInvokeTransaction {
 }
 
 impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::InvokeTransaction {
-    type Error = ClientError;
+    type Error = ReaderClientError;
 
-    fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ClientError> {
+    fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ReaderClientError> {
         match invoke_tx.version {
             v if v == *TX_V0 => Ok(Self::V0(invoke_tx.try_into()?)),
             v if v == *TX_V1 => Ok(Self::V1(invoke_tx.try_into()?)),
-            _ => Err(ClientError::BadTransaction {
+            _ => Err(ReaderClientError::BadTransaction {
                 tx_hash: invoke_tx.transaction_hash,
                 msg: format!("Invoke version {:?} is not supported.", invoke_tx.version),
             }),
@@ -261,15 +261,15 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
 }
 
 impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::InvokeTransactionV0 {
-    type Error = ClientError;
+    type Error = ReaderClientError;
 
-    fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ClientError> {
+    fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ReaderClientError> {
         Ok(Self {
             max_fee: invoke_tx.max_fee,
             signature: invoke_tx.signature,
             contract_address: invoke_tx.sender_address,
             entry_point_selector: invoke_tx.entry_point_selector.ok_or(
-                ClientError::BadTransaction {
+                ReaderClientError::BadTransaction {
                     tx_hash: invoke_tx.transaction_hash,
                     msg: "Invoke V0 must contain entry_point_selector field.".to_string(),
                 },
@@ -280,14 +280,14 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
 }
 
 impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::InvokeTransactionV1 {
-    type Error = ClientError;
+    type Error = ReaderClientError;
 
-    fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ClientError> {
+    fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ReaderClientError> {
         // TODO(yair): Consider asserting that entry_point_selector is None.
         Ok(Self {
             max_fee: invoke_tx.max_fee,
             signature: invoke_tx.signature,
-            nonce: invoke_tx.nonce.ok_or(ClientError::BadTransaction {
+            nonce: invoke_tx.nonce.ok_or(ReaderClientError::BadTransaction {
                 tx_hash: invoke_tx.transaction_hash,
                 msg: "Invoke V1 must contain nonce field.".to_string(),
             })?,

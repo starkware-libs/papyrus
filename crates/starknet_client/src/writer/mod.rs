@@ -17,7 +17,12 @@ use crate::writer::objects::response::{DeclareResponse, DeployAccountResponse, I
 use crate::writer::objects::transaction::{
     DeclareTransaction, DeployAccountTransaction, InvokeTransaction,
 };
-use crate::{ClientCreationError, ClientResult, RetryConfig, StarknetClient};
+use crate::{ClientCreationError, ClientError, RetryConfig, StarknetClient};
+
+/// Errors that may be returned from a reader client.
+pub type WriterClientError = ClientError;
+
+pub type WriterClientResult<T> = Result<T, WriterClientError>;
 
 /// A trait describing an object that can communicate with [`Starknet`] and make changes to it.
 ///
@@ -27,7 +32,10 @@ pub trait StarknetWriter {
     /// Add an invoke transaction to [`Starknet`].
     ///
     /// [`Starknet`]: https://starknet.io/
-    async fn add_invoke_transaction(&self, tx: &InvokeTransaction) -> ClientResult<InvokeResponse>;
+    async fn add_invoke_transaction(
+        &self,
+        tx: &InvokeTransaction,
+    ) -> WriterClientResult<InvokeResponse>;
 
     /// Add a declare transaction to [`Starknet`].
     ///
@@ -35,7 +43,7 @@ pub trait StarknetWriter {
     async fn add_declare_transaction(
         &self,
         tx: &DeclareTransaction,
-    ) -> ClientResult<DeclareResponse>;
+    ) -> WriterClientResult<DeclareResponse>;
 
     /// Add a deploy account transaction to [`Starknet`].
     ///
@@ -43,7 +51,7 @@ pub trait StarknetWriter {
     async fn add_deploy_account_transaction(
         &self,
         tx: &DeployAccountTransaction,
-    ) -> ClientResult<DeployAccountResponse>;
+    ) -> WriterClientResult<DeployAccountResponse>;
 }
 
 const ADD_TRANSACTION_URL_SUFFIX: &str = "gateway/add_transaction";
@@ -58,21 +66,24 @@ pub struct StarknetGatewayClient {
 
 #[async_trait]
 impl StarknetWriter for StarknetGatewayClient {
-    async fn add_invoke_transaction(&self, tx: &InvokeTransaction) -> ClientResult<InvokeResponse> {
+    async fn add_invoke_transaction(
+        &self,
+        tx: &InvokeTransaction,
+    ) -> WriterClientResult<InvokeResponse> {
         self.add_transaction(&tx).await
     }
 
     async fn add_deploy_account_transaction(
         &self,
         tx: &DeployAccountTransaction,
-    ) -> ClientResult<DeployAccountResponse> {
+    ) -> WriterClientResult<DeployAccountResponse> {
         self.add_transaction(&tx).await
     }
 
     async fn add_declare_transaction(
         &self,
         tx: &DeclareTransaction,
-    ) -> ClientResult<DeclareResponse> {
+    ) -> WriterClientResult<DeclareResponse> {
         self.add_transaction(&tx).await
     }
 }
@@ -93,7 +104,7 @@ impl StarknetGatewayClient {
     async fn add_transaction<Transaction: Serialize, Response: for<'a> Deserialize<'a>>(
         &self,
         tx: &Transaction,
-    ) -> ClientResult<Response> {
+    ) -> WriterClientResult<Response> {
         let response: String = self
             .client
             .request_with_retry(
