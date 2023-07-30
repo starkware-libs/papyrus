@@ -23,8 +23,8 @@ use starknet_api::block::{
     BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
 };
 use starknet_api::core::{
-    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, GlobalRoot, Nonce,
-    PatriciaKey,
+    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, EthAddress, GlobalRoot,
+    Nonce, PatriciaKey,
 };
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass, ContractClassAbiEntry,
@@ -38,11 +38,11 @@ use starknet_api::state::{
     ContractClass, EntryPoint, EntryPointType, FunctionIndex, StorageKey, ThinStateDiff,
 };
 use starknet_api::transaction::{
-    Calldata, ContractAddressSalt, DeclareTransaction, DeclareTransactionV0V1,
-    DeclareTransactionV2, DeployAccountTransaction, DeployTransaction, EthAddress, EventContent,
-    EventData, EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction,
-    InvokeTransactionV0, InvokeTransactionV1, L1HandlerTransaction, L1ToL2Payload, L2ToL1Payload,
-    MessageToL1, MessageToL2, Transaction, TransactionExecutionStatus, TransactionHash,
+    AccountParams, Calldata, ContractAddressSalt, DeclareTransaction, DeclareTransactionV0V1,
+    DeclareTransactionV2, DeployAccountTransaction, DeployTransaction, EventContent, EventData,
+    EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction, InvokeTransactionV0,
+    InvokeTransactionV1, L1HandlerTransaction, L1ToL2Payload, L2ToL1Payload, MessageToL1,
+    MessageToL2, Transaction, TransactionExecutionStatus, TransactionHash,
     TransactionOffsetInBlock, TransactionSignature, TransactionVersion,
 };
 
@@ -98,25 +98,19 @@ auto_storage_serde! {
         V2(DeclareTransactionV2) = 2,
     }
     pub struct DeclareTransactionV0V1 {
-        pub max_fee: Fee,
-        pub signature: TransactionSignature,
-        pub nonce: Nonce,
+        pub account_params: AccountParams,
         pub class_hash: ClassHash,
         pub sender_address: ContractAddress,
     }
     pub struct DeclareTransactionV2 {
-        pub max_fee: Fee,
-        pub signature: TransactionSignature,
-        pub nonce: Nonce,
+        pub account_params: AccountParams,
         pub class_hash: ClassHash,
         pub compiled_class_hash: CompiledClassHash,
         pub sender_address: ContractAddress,
     }
     pub struct DeployAccountTransaction {
-        pub max_fee: Fee,
+        pub account_params: AccountParams,
         pub version: TransactionVersion,
-        pub signature: TransactionSignature,
-        pub nonce: Nonce,
         pub class_hash: ClassHash,
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
@@ -201,9 +195,7 @@ auto_storage_serde! {
         pub calldata: Calldata,
     }
     pub struct InvokeTransactionV1 {
-        pub max_fee: Fee,
-        pub signature: TransactionSignature,
-        pub nonce: Nonce,
+        pub account_params: AccountParams,
         pub sender_address: ContractAddress,
         pub calldata: Calldata,
     }
@@ -546,6 +538,27 @@ impl StorageSerde for StorageKey {
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         StorageKey::try_from(StarkHash::deserialize(bytes)?).ok()
+    }
+}
+
+impl StorageSerde for AccountParams {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        // Serialize each field into the provided writer
+        self.max_fee.serialize_into(res)?;
+        self.nonce.serialize_into(res)?;
+        self.signature.serialize_into(res)?;
+
+        Ok(())
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        // Read bytes for each field and reconstruct the struct
+
+        Some(Self {
+            max_fee: <Fee>::deserialize_from(bytes)?,
+            signature: <TransactionSignature>::deserialize_from(bytes)?,
+            nonce: <Nonce>::deserialize_from(bytes)?,
+        })
     }
 }
 
