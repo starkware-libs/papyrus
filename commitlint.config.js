@@ -22,6 +22,7 @@ const Configuration = {
             'base_layer',
             'common',
             'config',
+            'execution',
             'JSON-RPC',
             'load_test',
             'monitoring',
