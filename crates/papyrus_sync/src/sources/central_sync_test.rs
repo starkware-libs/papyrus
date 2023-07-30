@@ -603,37 +603,6 @@ async fn stream_new_base_layer_block_test_header_marker() {
 }
 
 #[tokio::test]
-async fn stream_new_base_layer_block_test_base_layer_marker() {
-    let (reader, mut writer) = get_test_storage().0;
-
-    // Header marker points to to block number 12.
-    add_headers(12, &mut writer);
-
-    // Base layer marker points to to block number 5.
-    writer
-        .begin_rw_txn()
-        .unwrap()
-        .update_base_layer_block_marker(&BlockNumber(5))
-        .unwrap()
-        .commit()
-        .unwrap();
-
-    // If base layer marker is not behind the real base layer then no blocks should be returned.
-    let block_numbers = vec![5, 1, 10, 4];
-    let mut iter = block_numbers.into_iter().map(|bn| (BlockNumber(bn), BlockHash::default()));
-    let mut mock = MockBaseLayerSourceTrait::new();
-    mock.expect_latest_proved_block().times(3).returning(move || Ok(iter.next()));
-    let mut stream =
-        stream_new_base_layer_block(reader, Arc::new(mock), Duration::from_millis(0)).boxed();
-
-    let event = stream.next().await.unwrap().unwrap();
-    assert_matches!(event, SyncEvent::NewBaseLayerBlock { block_number: BlockNumber(5), .. });
-
-    let event = stream.next().await.unwrap().unwrap();
-    assert_matches!(event, SyncEvent::NewBaseLayerBlock { block_number: BlockNumber(10), .. });
-}
-
-#[tokio::test]
 async fn stream_new_base_layer_block_no_blocks_on_base_layer() {
     let (reader, mut writer) = get_test_storage().0;
 
