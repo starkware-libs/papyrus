@@ -1,4 +1,4 @@
-//! This module contains clients that can request changes to [`Starknet`].
+//! This module contains client that can request changes to [`Starknet`].
 //!
 //! [`Starknet`]: https://starknet.io/
 

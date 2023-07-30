@@ -1,4 +1,4 @@
-//! This module contains clients that can read data from [`Starknet`].
+//! This module contains client that can read data from [`Starknet`].
 //!
 //! [`Starknet`]: https://starknet.io/
 // TODO(shahak) Make private once ClientError is refactored and doesn't depend on the reader
