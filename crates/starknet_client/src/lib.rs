@@ -1,3 +1,7 @@
+// config compiler to support no_coverage feature when running coverage in nightly mode within this
+// crate
+#![cfg_attr(coverage_nightly, feature(no_coverage))]
+
 //! This crate contains clients that can communicate with [`Starknet`] through the various
 //! endpoints [`Starknet`] has.
 //!

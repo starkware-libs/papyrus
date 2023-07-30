@@ -33,10 +33,12 @@ enum Metadata {
     Stable,
 }
 
+#[cfg_attr(coverage_nightly, no_coverage)]
 const fn version_str() -> &'static str {
     const_format::concatcp!(VERSION_MAJOR, ".", VERSION_MINOR, ".", VERSION_PATCH)
 }
 
+#[cfg_attr(coverage_nightly, no_coverage)]
 const fn full_version_str() -> &'static str {
     match VERSION_META {
         Metadata::Dev => const_format::concatcp!(VERSION, "-", DEV_VERSION_META),
