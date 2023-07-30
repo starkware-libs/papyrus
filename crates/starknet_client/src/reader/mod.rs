@@ -143,17 +143,17 @@ impl StarknetFeederGatewayClient {
 
 #[async_trait]
 impl StarknetReader for StarknetFeederGatewayClient {
-    #[instrument(skip(self), level = "warn")]
+    #[instrument(skip(self), level = "debug")]
     async fn block_number(&self) -> ClientResult<Option<BlockNumber>> {
         Ok(self.request_block(None).await?.map(|block| block.block_number))
     }
 
-    #[instrument(skip(self), level = "warn")]
+    #[instrument(skip(self), level = "debug")]
     async fn block(&self, block_number: BlockNumber) -> ClientResult<Option<Block>> {
         self.request_block(Some(block_number)).await
     }
 
-    #[instrument(skip(self), level = "warn")]
+    #[instrument(skip(self), level = "debug")]
     async fn class_by_hash(
         &self,
         class_hash: ClassHash,
@@ -176,7 +176,7 @@ impl StarknetReader for StarknetFeederGatewayClient {
         }
     }
 
-    #[instrument(skip(self), level = "warn")]
+    #[instrument(skip(self), level = "debug")]
     async fn state_update(&self, block_number: BlockNumber) -> ClientResult<Option<StateUpdate>> {
         let mut url = self.urls.get_state_update.clone();
         url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.to_string());
@@ -202,7 +202,7 @@ impl StarknetReader for StarknetFeederGatewayClient {
         }
     }
 
-    #[instrument(skip(self), level = "warn")]
+    #[instrument(skip(self), level = "debug")]
     async fn compiled_class_by_hash(
         &self,
         class_hash: ClassHash,
