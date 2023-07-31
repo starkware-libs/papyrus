@@ -77,6 +77,7 @@ async fn run_sync(
         config: SyncConfig {
             block_propagation_sleep_duration: SYNC_SLEEP_DURATION,
             recoverable_error_sleep_duration: SYNC_SLEEP_DURATION,
+            syncing_state_sleep_duration: SYNC_SLEEP_DURATION,
             blocks_max_stream_size: STREAM_SIZE,
             state_updates_max_stream_size: STREAM_SIZE,
         },
