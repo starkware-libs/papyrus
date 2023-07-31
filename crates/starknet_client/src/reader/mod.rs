@@ -2,6 +2,7 @@
 //!
 //! [`Starknet`]: https://starknet.io/
 
+mod error;
 mod objects;
 #[cfg(test)]
 mod starknet_feeder_gateway_client_test;
@@ -16,12 +17,12 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::transaction::TransactionHash;
-use starknet_api::StarknetApiError;
 use tracing::{debug, instrument};
 use url::Url;
 
-pub use crate::reader::objects::block::{Block, GlobalRoot, TransactionReceiptsError};
+pub use crate::reader::error::ReaderClientError;
+use crate::reader::error::{ReaderStarknetError, ReaderStarknetErrorCode};
+pub use crate::reader::objects::block::{Block, GlobalRoot};
 pub use crate::reader::objects::state::{
     ContractClass, DeclaredClassHashEntry, DeployedContract, ReplacedClass, StateDiff, StateUpdate,
     StorageEntry,
@@ -29,10 +30,7 @@ pub use crate::reader::objects::state::{
 #[cfg(doc)]
 pub use crate::reader::objects::transaction::TransactionReceipt;
 use crate::retry::RetryConfig;
-use crate::{
-    ClientCreationError, ClientError, RetryErrorCode, StarknetClient, StarknetError,
-    StarknetErrorCode, StatusCode,
-};
+use crate::{ClientCreationError, StarknetClient};
 
 pub type ReaderClientResult<T> = Result<T, ReaderClientError>;
 
@@ -135,7 +133,7 @@ impl StarknetFeederGatewayClient {
         let response = self.request_with_retry_url(url).await;
         load_object_from_response(
             response,
-            StarknetErrorCode::BlockNotFound,
+            ReaderStarknetErrorCode::BlockNotFound,
             format!("Failed to get block number {:?} from starknet server.", block_number),
         )
     }
@@ -165,7 +163,7 @@ impl StarknetReader for StarknetFeederGatewayClient {
         let response = self.request_with_retry_url(url).await;
         load_object_from_response(
             response,
-            StarknetErrorCode::UndeclaredClass,
+            ReaderStarknetErrorCode::UndeclaredClass,
             format!("Failed to get class with hash {:?} from starknet server.", class_hash),
         )
     }
@@ -180,7 +178,7 @@ impl StarknetReader for StarknetFeederGatewayClient {
         let response = self.request_with_retry_url(url).await;
         load_object_from_response(
             response,
-            StarknetErrorCode::BlockNotFound,
+            ReaderStarknetErrorCode::BlockNotFound,
             format!(
                 "Failed to get state update for block number {} from starknet server.",
                 block_number
@@ -250,7 +248,7 @@ impl StarknetReader for StarknetFeederGatewayClient {
         let response = self.request_with_retry_url(url).await;
         load_object_from_response(
             response,
-            StarknetErrorCode::UndeclaredClass,
+            ReaderStarknetErrorCode::UndeclaredClass,
             format!(
                 "Failed to get compiled class with hash {:?} from starknet server.",
                 class_hash
@@ -259,20 +257,19 @@ impl StarknetReader for StarknetFeederGatewayClient {
     }
 }
 
-/// Load an object from a json string response. If there was a StarknetError with
+/// Load an object from a json string response. If there was a ReaderStarknetError with
 /// `none_error_code`, return None. If there was a different error, log `error_message`.
 fn load_object_from_response<Object: for<'a> Deserialize<'a>>(
     response: ReaderClientResult<String>,
-    none_error_code: StarknetErrorCode,
+    none_error_code: ReaderStarknetErrorCode,
     error_message: String,
 ) -> ReaderClientResult<Option<Object>> {
     match response {
         Ok(raw_object) => Ok(Some(serde_json::from_str(&raw_object)?)),
-        Err(ReaderClientError::StarknetError(StarknetError { code: error_code, message: _ }))
-            if error_code == none_error_code =>
-        {
-            Ok(None)
-        }
+        Err(ReaderClientError::StarknetError(ReaderStarknetError {
+            code: error_code,
+            message: _,
+        })) if error_code == none_error_code => Ok(None),
         Err(err) => {
             debug!(error_message);
             Err(err)

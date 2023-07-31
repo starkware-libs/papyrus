@@ -6,20 +6,20 @@
 
 pub mod reader;
 pub mod retry;
+pub mod starknet_error;
 #[cfg(test)]
 mod test_utils;
 pub mod writer;
 
 use std::collections::HashMap;
-use std::fmt::{self, Display, Formatter};
 
 use reqwest::header::HeaderMap;
 use reqwest::{Client, RequestBuilder, StatusCode};
-use serde::{Deserialize, Serialize};
 use tracing::warn;
 
 use self::retry::Retry;
 pub use self::retry::RetryConfig;
+pub use self::starknet_error::{StarknetError, StarknetErrorCode};
 
 /// A [`Result`] in which the error is a [`ClientError`].
 type ClientResult<T> = Result<T, ClientError>;
