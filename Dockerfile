@@ -70,6 +70,8 @@ COPY config/ /app/config
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/papyrus_load_test /app/target/release/papyrus_load_test
 COPY crates/papyrus_load_test/resources/ /app/crates/papyrus_load_test/resources
 
+ENV CARGO_WORKSPACE_DIR=/app
+
 RUN set -ex; \
     apk update; \
     apk add --no-cache tini; \
