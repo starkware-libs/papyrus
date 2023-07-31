@@ -106,5 +106,9 @@
   "sync.state_updates_max_stream_size": {
     "description": "Max amount of state updates to download in a stream.",
     "value": 1000
+  },
+  "sync.syncing_state_update_interval": {
+    "description": "Waiting time in milliseconds before updating the syncing state.",
+    "value": 60000
   }
 }

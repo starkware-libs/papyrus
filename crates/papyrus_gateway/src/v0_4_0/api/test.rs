@@ -8,6 +8,7 @@ use jsonrpsee::core::params::ObjectParams;
 use jsonrpsee::core::Error;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonschema::JSONSchema;
+use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::body::{BodyStorageWriter, TransactionIndex};
@@ -41,10 +42,7 @@ use super::super::transaction::{
     TransactionReceiptWithStatus, TransactionWithHash, Transactions,
 };
 use super::api_impl::JsonRpcServerV0_4Impl;
-use crate::api::{
-    BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcError,
-    Tag,
-};
+use crate::api::{BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcError, Tag};
 use crate::test_utils::{
     get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
     get_test_syncing_state, validate_schema, SpecFile,
