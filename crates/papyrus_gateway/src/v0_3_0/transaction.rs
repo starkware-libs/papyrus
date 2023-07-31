@@ -152,7 +152,7 @@ impl From<starknet_api::transaction::Transaction> for Transaction {
         match tx {
             starknet_api::transaction::Transaction::Declare(declare_tx) => match declare_tx {
                 starknet_api::transaction::DeclareTransaction::V0(tx) => {
-                    Self::Declare(DeclareTransaction::Version0(DeclareTransactionV0V1 {
+                    Self::Declare(DeclareTransaction::Version1(DeclareTransactionV0V1 {
                         class_hash: tx.class_hash,
                         sender_address: tx.sender_address,
                         nonce: tx.nonce,
