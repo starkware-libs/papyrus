@@ -58,6 +58,8 @@ pub enum JsonRpcError {
     InvalidContinuationToken = 33,
     #[error("Too many keys provided in a filter.")]
     TooManyKeysInFilter = 34,
+    #[error("Contract error.")]
+    ContractError = 40,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]

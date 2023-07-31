@@ -2,16 +2,19 @@ use jsonrpsee::core::{async_trait, RpcResult};
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
 use papyrus_common::SyncingState;
+use papyrus_execution::{execute_call, ExecutionError};
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::StorageReader;
 use starknet_api::block::BlockNumber;
-use starknet_api::core::{ChainId, ClassHash, ContractAddress, GlobalRoot, Nonce};
+use starknet_api::core::{
+    ChainId, ClassHash, ContractAddress, EntryPointSelector, GlobalRoot, Nonce,
+};
 use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
-    EventIndexInTransactionOutput, TransactionHash, TransactionOffsetInBlock,
+    Calldata, EventIndexInTransactionOutput, TransactionHash, TransactionOffsetInBlock,
 };
 use tracing::instrument;
 
@@ -432,6 +435,31 @@ impl JsonRpcV0_4_0Server for JsonRpcServerV0_4_0Impl {
         // TODO(omri): This is temporary. Implement syncing logic.
         Ok(SyncingState::Synced)
     }
+
+    #[instrument(skip(self), level = "debug", err, ret)]
+    fn call(
+        &self,
+        contract_address: ContractAddress,
+        entry_point_selector: EntryPointSelector,
+        calldata: Calldata,
+        block_id: BlockId,
+    ) -> RpcResult<Vec<StarkFelt>> {
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let block_number = get_block_number(&txn, block_id)?;
+        let state_number = StateNumber::right_after_block(block_number);
+        match execute_call(
+            &txn,
+            &self.chain_id,
+            state_number,
+            &contract_address,
+            entry_point_selector,
+            calldata,
+        ) {
+            Ok(res) => Ok(res.retdata.0),
+            Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
+            Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
+        }
+    }
 }
 
 impl JsonRpcServerImpl for JsonRpcServerV0_4_0Impl {
@@ -446,5 +474,17 @@ impl JsonRpcServerImpl for JsonRpcServerV0_4_0Impl {
 
     fn into_rpc_module(self) -> RpcModule<Self> {
         self.into_rpc()
+    }
+}
+
+impl TryFrom<ExecutionError> for JsonRpcError {
+    type Error = ErrorObjectOwned;
+    fn try_from(value: ExecutionError) -> Result<Self, Self::Error> {
+        match value {
+            ExecutionError::NotSynced { .. } => Ok(Self::BlockNotFound),
+            ExecutionError::ContractNotFound { .. } => Ok(Self::ContractNotFound),
+            // All other execution errors are considered contract errors.
+            _ => Ok(Self::ContractError),
+        }
     }
 }
