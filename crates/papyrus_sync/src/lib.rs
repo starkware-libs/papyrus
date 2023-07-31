@@ -99,7 +99,10 @@ impl Default for SyncConfig {
 
 // Orchestrates specific network interfaces (e.g. central, p2p, l1) and writes to Storage and shared
 // memory.
-pub struct GenericStateSync<TCentralSource: CentralSourceTrait + Sync + Send> {
+pub struct GenericStateSync<
+    TCentralSource: CentralSourceTrait + Sync + Send,
+    TBaseLayerSource: BaseLayerSourceTrait + Sync + Send,
+> {
     config: SyncConfig,
     shared_syncing_state: Arc<RwLock<SyncingState>>,
     central_source: Arc<TCentralSource>,

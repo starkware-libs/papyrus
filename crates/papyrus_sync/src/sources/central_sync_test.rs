@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use futures::StreamExt;
 use indexmap::IndexMap;
 use papyrus_common::SyncingState;
-use papyrus_storage::base_layer::{BaseLayerStorageReader, BaseLayerStorageWriter};
+use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter, StarknetVersion};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
@@ -649,6 +649,7 @@ fn store_base_layer_block_test() {
             blocks_max_stream_size: STREAM_SIZE,
             state_updates_max_stream_size: STREAM_SIZE,
         },
+        shared_syncing_state: Arc::new(RwLock::new(SyncingState::default())),
         central_source: Arc::new(MockCentralSourceTrait::new()),
         base_layer_source: Arc::new(MockBaseLayerSourceTrait::new()),
         reader,
