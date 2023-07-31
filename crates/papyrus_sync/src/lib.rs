@@ -39,6 +39,8 @@ pub struct SyncConfig {
     pub block_propagation_sleep_duration: Duration,
     #[serde(deserialize_with = "deserialize_milliseconds_to_duration")]
     pub recoverable_error_sleep_duration: Duration,
+    #[serde(deserialize_with = "deserialize_milliseconds_to_duration")]
+    pub syncing_state_sleep_duration: Duration,
     pub blocks_max_stream_size: u32,
     pub state_updates_max_stream_size: u32,
 }
@@ -59,6 +61,11 @@ impl SerializeConfig for SyncConfig {
                  recoverable error.",
             ),
             ser_param(
+                "syncing_state_sleep_duration",
+                &self.syncing_state_sleep_duration.as_millis(),
+                "Waiting time in milliseconds before updating the syncing state.",
+            ),
+            ser_param(
                 "blocks_max_stream_size",
                 &self.blocks_max_stream_size,
                 "Max amount of blocks to download in a stream.",
@@ -77,6 +84,7 @@ impl Default for SyncConfig {
         SyncConfig {
             block_propagation_sleep_duration: Duration::from_secs(10),
             recoverable_error_sleep_duration: Duration::from_secs(10),
+            syncing_state_sleep_duration: Duration::from_secs(60),
             blocks_max_stream_size: 1000,
             state_updates_max_stream_size: 1000,
         }
