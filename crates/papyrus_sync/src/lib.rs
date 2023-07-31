@@ -33,16 +33,18 @@ use starknet_api::state::StateDiff;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, instrument, trace, warn};
 
+// TODO(dvir): remove pub use, make the modules public and make inner functions private.
 pub use self::sources::{
-    BaseLayerError, BaseLayerSource, CentralError, CentralSource, CentralSourceConfig,
-    CentralSourceTrait,
+    BaseLayerError, CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait,
+    EthereumBaseLayerSource,
 };
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct SyncConfig {
     #[serde(deserialize_with = "deserialize_milliseconds_to_duration")]
     pub block_propagation_sleep_duration: Duration,
+    // TODO(dvir): make this from seconds.
     #[serde(deserialize_with = "deserialize_milliseconds_to_duration")]
-    base_layer_propagation_sleep_duration: Duration,
+    pub base_layer_propagation_sleep_duration: Duration,
     #[serde(deserialize_with = "deserialize_milliseconds_to_duration")]
     pub recoverable_error_sleep_duration: Duration,
     pub blocks_max_stream_size: u32,
@@ -144,7 +146,7 @@ pub enum StateSyncError {
 }
 
 #[allow(clippy::large_enum_variant)]
-#[cfg_attr(test, derive(Debug))]
+#[derive(Debug)]
 pub enum SyncEvent {
     BlockAvailable {
         block_number: BlockNumber,
@@ -644,14 +646,14 @@ pub fn sort_state_diff(diff: &mut StateDiff) {
     }
 }
 
-pub type StateSync = GenericStateSync<CentralSource, BaseLayerSource>;
+pub type StateSync = GenericStateSync<CentralSource, EthereumBaseLayerSource>;
 
 impl StateSync {
     pub fn new(
         config: SyncConfig,
         shared_syncing_state: Arc<RwLock<SyncingState>>,
         central_source: CentralSource,
-        base_layer_source: BaseLayerSource,
+        base_layer_source: EthereumBaseLayerSource,
         reader: StorageReader,
         writer: StorageWriter,
     ) -> Self {

@@ -5,7 +5,7 @@ use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerContract;
 use papyrus_base_layer::BaseLayerContract;
 use starknet_api::block::{BlockHash, BlockNumber};
 
-pub type BaseLayerSource = EthereumBaseLayerContract;
+pub type EthereumBaseLayerSource = EthereumBaseLayerContract;
 
 #[derive(thiserror::Error, Debug)]
 pub enum BaseLayerError {

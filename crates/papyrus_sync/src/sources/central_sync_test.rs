@@ -19,11 +19,11 @@ use starknet_api::state::StateDiff;
 use tokio::sync::{Mutex, RwLock};
 use tracing::{debug, error};
 
-use super::BaseLayerSourceTrait;
 use crate::sources::base_layer::MockBaseLayerSourceTrait;
 use crate::sources::central::{
     BlocksStream, CompiledClassesStream, MockCentralSourceTrait, StateUpdatesStream,
 };
+use crate::sources::BaseLayerSourceTrait;
 use crate::{
     stream_new_base_layer_block, CentralError, CentralSourceTrait, GenericStateSync,
     StateSyncError, StateSyncResult, SyncConfig, SyncEvent,
@@ -36,6 +36,7 @@ const MAX_CHECK_STORAGE_ITERATIONS: u8 = 3;
 const STREAM_SIZE: u32 = 1000;
 const STARKNET_VERSION: &str = "starknet_version";
 
+// TODO(dvir): separate this file to flow tests and unit tests.
 // TODO(dvir): consider adding a test for mismatch between the base layer and l2.
 
 enum CheckStoragePredicateResult {
@@ -135,7 +136,7 @@ async fn sync_empty_chain() {
 async fn sync_happy_flow() {
     const N_BLOCKS: u64 = 5;
     // FIXME: (Omri) analyze and set a lower value.
-    const MAX_TIME_TO_SYNC_MS: u64 = 1000;
+    const MAX_TIME_TO_SYNC_MS: u64 = 800;
     let _ = simple_logger::init_with_env();
 
     // Mock having N_BLOCKS chain in central.

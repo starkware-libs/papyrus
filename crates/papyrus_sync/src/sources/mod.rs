@@ -6,7 +6,7 @@ mod central_sync_test;
 mod central_test;
 
 pub use base_layer::{
-    BaseLayerError, BaseLayerSource, BaseLayerSourceErrorTrait, BaseLayerSourceTrait,
+    BaseLayerError, BaseLayerSourceErrorTrait, BaseLayerSourceTrait, EthereumBaseLayerSource,
 };
 pub use central::{
     CentralError, CentralResult, CentralSource, CentralSourceConfig, CentralSourceTrait,
