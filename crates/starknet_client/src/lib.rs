@@ -31,26 +31,6 @@ struct StarknetClient {
     retry_config: RetryConfig,
 }
 
-/// Error codes returned by the starknet gateway.
-#[derive(Copy, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
-pub enum StarknetErrorCode {
-    #[serde(rename = "StarknetErrorCode.BLOCK_NOT_FOUND")]
-    BlockNotFound = 0,
-    #[serde(rename = "StarknetErrorCode.OUT_OF_RANGE_CLASS_HASH")]
-    OutOfRangeClassHash = 26,
-    #[serde(rename = "StarkErrorCode.MALFORMED_REQUEST")]
-    MalformedRequest = 32,
-    #[serde(rename = "StarknetErrorCode.UNDECLARED_CLASS")]
-    UndeclaredClass = 44,
-}
-
-/// A client error wrapping error codes returned by the starknet gateway.
-#[derive(thiserror::Error, Debug, Deserialize, Serialize)]
-pub struct StarknetError {
-    pub code: StarknetErrorCode,
-    pub message: String,
-}
-
 /// Errors that might be encountered while creating the client.
 #[derive(thiserror::Error, Debug)]
 pub enum ClientCreationError {
@@ -90,12 +70,6 @@ pub enum ClientError {
     /// A client error representing errors returned by the starknet client.
     #[error(transparent)]
     StarknetError(#[from] StarknetError),
-}
-
-impl Display for StarknetError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{self:?}")
-    }
 }
 
 // A wrapper error for request_with_retry to handle the case that clone failed.
