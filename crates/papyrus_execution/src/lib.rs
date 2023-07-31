@@ -3,7 +3,7 @@
 #[cfg(test)]
 #[path = "execution_test.rs"]
 mod execution_test;
-mod execution_utils;
+pub mod execution_utils;
 mod state_reader;
 #[cfg(test)]
 #[path = "state_reader_test.rs"]
