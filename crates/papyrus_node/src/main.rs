@@ -9,6 +9,7 @@ use papyrus_monitoring_gateway::MonitoringServer;
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_storage::{open_storage, StorageReader, StorageWriter};
+use papyrus_sync::syncing_state::periodically_update_syncing_state;
 use papyrus_sync::{
     BaseLayerError, CentralError, CentralSource, EthereumBaseLayerSource, StateSync, StateSyncError,
 };
@@ -62,9 +63,18 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         storage_writer: StorageWriter,
     ) -> Result<(), StateSyncError> {
         let Some(sync_config) = config.sync else { return Ok(()) };
-        let central_source =
+        let central_source = Arc::new(
             CentralSource::new(config.central.clone(), VERSION_FULL, storage_reader.clone())
-                .map_err(CentralError::ClientCreation)?;
+                .map_err(CentralError::ClientCreation)?,
+        );
+        tokio::spawn({
+            periodically_update_syncing_state(
+                storage_reader.clone(),
+                central_source.clone(),
+                sync_config.syncing_state_update_interval,
+                shared_syncing_state.clone(),
+            )
+        });
         let base_layer_config = EthereumBaseLayerConfig {
             node_url: BASE_LAYER_NODE_URL.to_string(),
             starknet_contract_address: BASE_LAYER_CONTRACT_ADDRESS.to_string(),

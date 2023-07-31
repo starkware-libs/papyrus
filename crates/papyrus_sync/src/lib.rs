@@ -3,6 +3,7 @@
 mod sync_test;
 
 mod sources;
+pub mod syncing_state;
 
 use std::cmp::min;
 use std::collections::BTreeMap;
@@ -48,6 +49,8 @@ pub struct SyncConfig {
     pub base_layer_propagation_sleep_duration: Duration,
     #[serde(deserialize_with = "deserialize_milliseconds_to_duration")]
     pub recoverable_error_sleep_duration: Duration,
+    #[serde(deserialize_with = "deserialize_milliseconds_to_duration")]
+    pub syncing_state_update_interval: Duration,
     pub blocks_max_stream_size: u32,
     pub state_updates_max_stream_size: u32,
 }
@@ -73,6 +76,11 @@ impl SerializeConfig for SyncConfig {
                  recoverable error.",
             ),
             ser_param(
+                "syncing_state_update_interval",
+                &self.syncing_state_update_interval.as_millis(),
+                "Waiting time in milliseconds before updating the syncing state.",
+            ),
+            ser_param(
                 "blocks_max_stream_size",
                 &self.blocks_max_stream_size,
                 "Max amount of blocks to download in a stream.",
@@ -92,6 +100,7 @@ impl Default for SyncConfig {
             block_propagation_sleep_duration: Duration::from_secs(10),
             base_layer_propagation_sleep_duration: Duration::from_secs(300), // 5 minutes
             recoverable_error_sleep_duration: Duration::from_secs(10),
+            syncing_state_update_interval: Duration::from_secs(60),
             blocks_max_stream_size: 1000,
             state_updates_max_stream_size: 1000,
         }
@@ -100,6 +109,7 @@ impl Default for SyncConfig {
 
 // Orchestrates specific network interfaces (e.g. central, p2p, l1) and writes to Storage and shared
 // memory.
+#[allow(dead_code)]
 pub struct GenericStateSync<
     TCentralSource: CentralSourceTrait + Sync + Send,
     TBaseLayerSource: BaseLayerSourceTrait + Sync + Send,
@@ -243,8 +253,6 @@ impl<
     //  2. Create infinite block and state diff streams to fetch data from the central source.
     //  3. Fetch data from the streams with unblocking wait while there is no new data.
     async fn sync_while_ok(&mut self) -> StateSyncResult {
-        // TODO(yoav): Set actual values for the sync status.
-        *self.shared_syncing_state.write().await = SyncingState::Synced;
         self.handle_block_reverts().await?;
         let block_stream = stream_new_blocks(
             self.reader.clone(),
@@ -656,7 +664,7 @@ impl StateSync {
     pub fn new(
         config: SyncConfig,
         shared_syncing_state: Arc<RwLock<SyncingState>>,
-        central_source: CentralSource,
+        central_source: Arc<CentralSource>,
         base_layer_source: EthereumBaseLayerSource,
         reader: StorageReader,
         writer: StorageWriter,
@@ -664,7 +672,7 @@ impl StateSync {
         Self {
             config,
             shared_syncing_state,
-            central_source: Arc::new(central_source),
+            central_source,
             base_layer_source: Arc::new(base_layer_source),
             reader,
             writer,
@@ -680,19 +688,7 @@ fn stream_new_compiled_classes<TCentralSource: CentralSourceTrait + Sync + Send>
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
         loop {
-            let txn = reader.begin_ro_txn()?;
-            let mut from = txn.get_compiled_class_marker()?;
-            let state_marker = txn.get_state_marker()?;
-            // Avoid starting streams from blocks without declared classes.
-            while from < state_marker {
-                let state_diff = txn.get_state_diff(from)?.expect("Expecting to have state diff up to the marker.");
-                if state_diff.declared_classes.is_empty() {
-                    from = from.next();
-                }
-                else {
-                    break;
-                }
-            }
+            let (from, state_marker) = get_declared_class_range(&reader)?;
 
             if from == state_marker {
                 debug!(
@@ -747,4 +743,25 @@ fn stream_new_base_layer_block<TBaseLayerSource: BaseLayerSourceTrait + Sync>(
             }
         }
     }
+}
+
+// Returns the range of blocks with declared classes, from the first unsynced block with declared
+// classes to the marker of the state diffs.
+fn get_declared_class_range(
+    reader: &StorageReader,
+) -> Result<(BlockNumber, BlockNumber), StateSyncError> {
+    let txn = reader.begin_ro_txn()?;
+    let mut from = txn.get_compiled_class_marker()?;
+    let state_marker = txn.get_state_marker()?;
+    // Avoid starting the range from blocks without declared classes.
+    while from < state_marker {
+        let state_diff =
+            txn.get_state_diff(from)?.expect("Expecting to have state diff up to the marker.");
+        if state_diff.declared_classes.is_empty() {
+            from = from.next();
+        } else {
+            break;
+        }
+    }
+    Ok((from, state_marker))
 }

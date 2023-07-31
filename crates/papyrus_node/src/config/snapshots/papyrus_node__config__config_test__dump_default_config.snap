@@ -122,5 +122,11 @@ expression: dumped_default_config
     "value": {
       "$serde_json::private::Number": "1000"
     }
+  },
+  "sync.syncing_state_update_interval": {
+    "description": "Waiting time in milliseconds before updating the syncing state.",
+    "value": {
+      "$serde_json::private::Number": "60000"
+    }
   }
 }
