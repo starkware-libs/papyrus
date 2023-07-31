@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
@@ -14,6 +16,7 @@ use starknet_api::transaction::{
     EventIndexInTransactionOutput, TransactionExecutionStatus, TransactionHash,
     TransactionOffsetInBlock,
 };
+use tokio::sync::RwLock;
 use tracing::instrument;
 
 use super::super::block::{Block, BlockHeader};
@@ -40,6 +43,7 @@ pub struct JsonRpcServerV0_3_0Impl {
     pub storage_reader: StorageReader,
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
+    pub shared_syncing_state: Arc<RwLock<SyncingState>>,
 }
 
 impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
@@ -454,8 +458,15 @@ impl JsonRpcServerImpl for JsonRpcServerV0_3_0Impl {
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,
+        shared_syncing_state: Arc<RwLock<SyncingState>>,
     ) -> Self {
-        Self { chain_id, storage_reader, max_events_chunk_size, max_events_keys }
+        Self {
+            chain_id,
+            storage_reader,
+            max_events_chunk_size,
+            max_events_keys,
+            shared_syncing_state,
+        }
     }
 
     fn into_rpc_module(self) -> RpcModule<Self> {

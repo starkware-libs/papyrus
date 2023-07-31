@@ -22,13 +22,19 @@ impl serde::Serialize for SyncingState {
     }
 }
 
+impl Default for SyncingState {
+    fn default() -> Self {
+        Self::SyncStatus(SyncStatus::default())
+    }
+}
+
 // TODO(yoav): Add a test that verifies that the serialization conforms to the spec.
 
 /// The status of the synchronization progress. The hash and the number of:
 /// * the block from which the synchronization started,
 /// * the currently syncing block,
 /// * the highest known block.
-#[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct SyncStatus {
     pub starting_block_hash: BlockHash,
     pub starting_block_num: BlockNumber,

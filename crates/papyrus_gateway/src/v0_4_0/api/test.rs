@@ -47,6 +47,7 @@ use crate::api::{
 };
 use crate::test_utils::{
     get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
+    get_test_syncing_state,
 };
 use crate::version_config::VERSION_0_4_0;
 use crate::{run_server, ContinuationTokenAsStruct};
@@ -1631,7 +1632,8 @@ async fn serialize_returns_valid_json() {
         .unwrap();
 
     let gateway_config = get_test_gateway_config();
-    let (server_address, _handle) = run_server(&gateway_config, storage_reader).await.unwrap();
+    let (server_address, _handle) =
+        run_server(&gateway_config, get_test_syncing_state(), storage_reader).await.unwrap();
 
     let schema = get_starknet_spec_api_schema(
         &[

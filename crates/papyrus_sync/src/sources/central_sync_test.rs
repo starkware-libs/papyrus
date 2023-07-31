@@ -6,6 +6,7 @@ use async_stream::stream;
 use async_trait::async_trait;
 use futures::StreamExt;
 use indexmap::IndexMap;
+use papyrus_common::SyncingState;
 use papyrus_storage::header::{HeaderStorageReader, StarknetVersion};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
@@ -14,7 +15,7 @@ use starknet_api::block::{Block, BlockBody, BlockHash, BlockHeader, BlockNumber}
 use starknet_api::hash::StarkFelt;
 use starknet_api::stark_felt;
 use starknet_api::state::StateDiff;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 use tracing::{debug, error};
 
 use super::central::BlocksStream;
@@ -79,6 +80,7 @@ async fn run_sync(
             blocks_max_stream_size: STREAM_SIZE,
             state_updates_max_stream_size: STREAM_SIZE,
         },
+        shared_syncing_state: Arc::new(RwLock::new(SyncingState::default())),
         central_source: Arc::new(central),
         reader,
         writer,

@@ -13,6 +13,7 @@ use async_stream::try_stream;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use indexmap::IndexMap;
+use papyrus_common::SyncingState;
 use papyrus_config::converters::deserialize_milliseconds_to_duration;
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, SerializedParam};
@@ -27,6 +28,7 @@ use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::StateDiff;
+use tokio::sync::RwLock;
 use tracing::{debug, error, info, instrument, trace, warn};
 
 pub use self::sources::{CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait};
@@ -81,9 +83,11 @@ impl Default for SyncConfig {
     }
 }
 
-// Orchestrates specific network interfaces (e.g. central, p2p, l1) and writes to Storage.
+// Orchestrates specific network interfaces (e.g. central, p2p, l1) and writes to Storage and shared
+// memory.
 pub struct GenericStateSync<TCentralSource: CentralSourceTrait + Sync + Send> {
     config: SyncConfig,
+    shared_syncing_state: Arc<RwLock<SyncingState>>,
     central_source: Arc<TCentralSource>,
     reader: StorageReader,
     writer: StorageWriter,
@@ -195,6 +199,8 @@ impl<TCentralSource: CentralSourceTrait + Sync + Send + 'static> GenericStateSyn
     //  2. Create infinite block and state diff streams to fetch data from the central source.
     //  3. Fetch data from the streams with unblocking wait while there is no new data.
     async fn sync_while_ok(&mut self) -> StateSyncResult {
+        // TODO(yoav): Set actual values for the sync status.
+        *self.shared_syncing_state.write().await = SyncingState::Synced;
         self.handle_block_reverts().await?;
         let block_stream = stream_new_blocks(
             self.reader.clone(),
@@ -566,11 +572,18 @@ pub type StateSync = GenericStateSync<CentralSource>;
 impl StateSync {
     pub fn new(
         config: SyncConfig,
+        shared_syncing_state: Arc<RwLock<SyncingState>>,
         central_source: CentralSource,
         reader: StorageReader,
         writer: StorageWriter,
     ) -> Self {
-        Self { config, central_source: Arc::new(central_source), reader, writer }
+        Self {
+            config,
+            shared_syncing_state,
+            central_source: Arc::new(central_source),
+            reader,
+            writer,
+        }
     }
 }
 
