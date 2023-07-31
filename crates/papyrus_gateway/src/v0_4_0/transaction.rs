@@ -217,6 +217,9 @@ impl From<BlockStatus> for TransactionFinalityStatus {
             BlockStatus::AcceptedOnL1 => TransactionFinalityStatus::AcceptedOnL1,
             BlockStatus::AcceptedOnL2 => TransactionFinalityStatus::AcceptedOnL2,
             BlockStatus::Pending => TransactionFinalityStatus::AcceptedOnL2, /* for backward compatibility pending transactions are considered accepted on L2 */
+            // we convert the block status to transaction status only in the creation of
+            // TransactionReceiptWithStatus before that we verify that the block is not
+            // rejected so this conversion should never happen
             BlockStatus::Rejected => unreachable!("Rejected blocks are not returned by the API"),
         }
     }
