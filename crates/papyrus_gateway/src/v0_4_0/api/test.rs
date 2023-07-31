@@ -3,7 +3,9 @@ use std::net::SocketAddr;
 use std::ops::Index;
 
 use assert_matches::assert_matches;
-use indexmap::IndexMap;
+use blockifier::abi::abi_utils::selector_from_name;
+use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+use indexmap::{indexmap, IndexMap};
 use jsonrpsee::core::params::ObjectParams;
 use jsonrpsee::core::Error;
 use jsonrpsee::types::ErrorObjectOwned;
@@ -11,25 +13,28 @@ use jsonschema::JSONSchema;
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::body::{BodyStorageWriter, TransactionIndex};
+use papyrus_storage::compiled_class::CasmStorageWriter;
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
+use papyrus_storage::StorageWriter;
 use pretty_assertions::assert_eq;
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
-use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
+use starknet_api::block::{BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus};
+use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
-    ContractClassAbiEntry, FunctionAbiEntry, FunctionAbiEntryType, FunctionAbiEntryWithType,
-    FunctionStateMutability,
+    ContractClass as SN_API_DeprecatedContractClass, ContractClassAbiEntry, FunctionAbiEntry,
+    FunctionAbiEntryType, FunctionAbiEntryWithType, FunctionStateMutability,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::StateDiff;
 use starknet_api::transaction::{
-    EventIndexInTransactionOutput, EventKey, TransactionExecutionStatus, TransactionHash,
+    Calldata, EventIndexInTransactionOutput, EventKey, TransactionExecutionStatus, TransactionHash,
     TransactionOffsetInBlock,
 };
-use starknet_api::{patricia_key, stark_felt};
+use starknet_api::{calldata, patricia_key, stark_felt};
 use test_utils::{
-    get_rng, get_test_block, get_test_body, get_test_state_diff, send_request, GetTestInstance,
+    get_rng, get_test_block, get_test_body, get_test_state_diff, read_json_file, send_request,
+    GetTestInstance,
 };
 
 use super::super::api::EventsChunk;
@@ -1827,4 +1832,105 @@ async fn get_deprecated_class_state_mutability() {
     let res_as_value = serde_json::to_value(res).unwrap();
     let entry = res_as_value["abi"][0].as_object().unwrap();
     assert_eq!(entry.get("stateMutability").unwrap().as_str().unwrap(), "view");
+}
+
+#[tokio::test]
+async fn execution() {
+    let (module, storage_writer) =
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4_0Impl>();
+
+    prepare_storage_for_execution(storage_writer);
+
+    let address = ContractAddress(patricia_key!("0x1"));
+    let key = stark_felt!(1234_u16);
+    let value = stark_felt!(18_u8);
+
+    let res = module
+        .call::<_, Vec<StarkFelt>>(
+            "starknet_V0_4_0_call",
+            (
+                address,
+                selector_from_name("test_storage_read_write"),
+                calldata![key, value],
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
+            ),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(res, vec![value]);
+
+    // Calling a non-existent function.
+    let err = module
+        .call::<_, Vec<StarkFelt>>(
+            "starknet_V0_4_0_call",
+            (
+                address,
+                selector_from_name("aaa"),
+                calldata![key, value],
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
+            ),
+        )
+        .await
+        .unwrap_err();
+
+    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
+        JsonRpcError::InvalidMessageSelector as i32,
+        JsonRpcError::InvalidMessageSelector.to_string(),
+        None::<()>,
+    ));
+
+    // todo(yair): check more errors once they are properly propagated.
+}
+
+fn prepare_storage_for_execution(mut storage_writer: StorageWriter) {
+    let class_hash1 = ClassHash(1u128.into());
+    let class1 = serde_json::from_value::<SN_API_DeprecatedContractClass>(read_json_file(
+        "deprecated_class.json",
+    ))
+    .unwrap();
+    let address1 = ContractAddress(patricia_key!("0x1"));
+
+    let class_hash2 = ClassHash(StarkFelt::from(2u128));
+    let address2 = ContractAddress(patricia_key!("0x2"));
+    // The class is not used in the execution, so it can be default.
+    let class2 = starknet_api::state::ContractClass::default();
+    let casm = serde_json::from_value::<CasmContractClass>(read_json_file("casm.json")).unwrap();
+    let compiled_class_hash = CompiledClassHash(StarkHash::default());
+
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(BlockNumber(0), &BlockHeader::default())
+        .unwrap()
+        .append_body(BlockNumber(0), BlockBody::default())
+        .unwrap()
+        .append_state_diff(
+            BlockNumber(0),
+            StateDiff {
+                deployed_contracts: indexmap!(
+                    address1 => class_hash1,
+                    address2 => class_hash2
+                ),
+                storage_diffs: indexmap!(),
+                declared_classes: indexmap!(
+                    class_hash2 =>
+                    (compiled_class_hash, class2)
+                ),
+                deprecated_declared_classes: indexmap!(
+                    class_hash1 => class1
+                ),
+                nonces: indexmap!(
+                    address1 => Nonce::default(),
+                    address2 => Nonce::default()
+                ),
+                replaced_classes: indexmap!(),
+            },
+            indexmap!(),
+        )
+        .unwrap()
+        .append_casm(&class_hash2, &casm)
+        .unwrap()
+        .commit()
+        .unwrap();
 }
