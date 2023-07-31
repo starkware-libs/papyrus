@@ -1,3 +1,5 @@
+use std::fmt;
+
 #[derive(Eq, PartialEq, Hash)]
 /// Labels the jsonRPC versions we have such that there can be multiple versions that are supported,
 /// and there can be multiple versions that are deprecated.
@@ -12,8 +14,20 @@ pub enum VersionState {
     Deprecated,
 }
 
+#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
+pub struct VersionId {
+    pub name: &'static str,
+    pub patch: u8,
+}
+
+impl fmt::Display for VersionId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}_{}", self.name, self.patch)
+    }
+}
+
 /// latest version must be set as supported
-pub const VERSION_CONFIG: &[(&str, VersionState)] =
-    &[(VERSION_0_3_0, VersionState::Supported), (VERSION_0_4_0, VersionState::Supported)];
-pub const VERSION_0_3_0: &str = "V0_3_0";
-pub const VERSION_0_4_0: &str = "V0_4_0";
+pub const VERSION_CONFIG: &[(VersionId, VersionState)] =
+    &[(VERSION_0_3, VersionState::Supported), (VERSION_0_4, VersionState::Supported)];
+pub const VERSION_0_3: VersionId = VersionId { name: "V0_3", patch: 0 };
+pub const VERSION_0_4: VersionId = VersionId { name: "V0_4", patch: 0 };

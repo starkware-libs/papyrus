@@ -26,8 +26,7 @@ use super::super::transaction::{
     TransactionWithHash, Transactions,
 };
 use super::{
-    BlockHashAndNumber, BlockId, EventFilter, EventsChunk, GatewayContractClass,
-    JsonRpcV0_3_0Server,
+    BlockHashAndNumber, BlockId, EventFilter, EventsChunk, GatewayContractClass, JsonRpcV0_3Server,
 };
 use crate::api::{BlockHashOrNumber, ContinuationToken, JsonRpcError, JsonRpcServerImpl};
 use crate::block::get_block_header_by_number;
@@ -38,7 +37,7 @@ use crate::{
 };
 
 /// Rpc server.
-pub struct JsonRpcServerV0_3_0Impl {
+pub struct JsonRpcServerV0_3Impl {
     pub chain_id: ChainId,
     pub storage_reader: StorageReader,
     pub max_events_chunk_size: usize,
@@ -46,7 +45,7 @@ pub struct JsonRpcServerV0_3_0Impl {
     pub shared_syncing_state: Arc<RwLock<SyncingState>>,
 }
 
-impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
+impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     fn block_number(&self) -> RpcResult<BlockNumber> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
@@ -452,7 +451,7 @@ impl JsonRpcV0_3_0Server for JsonRpcServerV0_3_0Impl {
     }
 }
 
-impl JsonRpcServerImpl for JsonRpcServerV0_3_0Impl {
+impl JsonRpcServerImpl for JsonRpcServerV0_3Impl {
     fn new(
         chain_id: ChainId,
         storage_reader: StorageReader,
