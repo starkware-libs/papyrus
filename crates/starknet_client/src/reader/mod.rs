@@ -2,6 +2,7 @@
 //!
 //! [`Starknet`]: https://starknet.io/
 
+mod error;
 mod objects;
 #[cfg(test)]
 mod starknet_feeder_gateway_client_test;
@@ -16,12 +17,12 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::transaction::TransactionHash;
-use starknet_api::StarknetApiError;
 use tracing::{debug, instrument};
 use url::Url;
 
-pub use crate::reader::objects::block::{Block, GlobalRoot, TransactionReceiptsError};
+pub use crate::reader::error::ReaderClientError;
+use crate::reader::error::{ReaderStarknetError, ReaderStarknetErrorCode};
+pub use crate::reader::objects::block::{Block, GlobalRoot};
 pub use crate::reader::objects::state::{
     ContractClass, DeclaredClassHashEntry, DeployedContract, ReplacedClass, StateDiff, StateUpdate,
     StorageEntry,
@@ -29,40 +30,7 @@ pub use crate::reader::objects::state::{
 #[cfg(doc)]
 pub use crate::reader::objects::transaction::TransactionReceipt;
 use crate::retry::RetryConfig;
-use crate::{
-    ClientCreationError, ClientError, RetryErrorCode, StarknetClient, StarknetError,
-    StarknetErrorCode, StatusCode,
-};
-
-/// Errors that may be returned from a reader client.
-#[derive(thiserror::Error, Debug)]
-pub enum ReaderClientError {
-    // The variants of ClientError are duplicated here so that the user won't need to know about
-    // ClientError.
-    /// A client error representing bad status http responses.
-    #[error("Bad response status code: {:?} message: {:?}.", code, message)]
-    BadResponseStatus { code: StatusCode, message: String },
-    /// A client error representing http request errors.
-    #[error(transparent)]
-    RequestError(#[from] reqwest::Error),
-    /// A client error representing errors that might be solved by retrying mechanism.
-    #[error("Retry error code: {:?}, message: {:?}.", code, message)]
-    RetryError { code: RetryErrorCode, message: String },
-    /// A client error representing deserialization errors.
-    #[error(transparent)]
-    SerdeError(#[from] serde_json::Error),
-    /// A client error representing errors returned by the starknet client.
-    #[error(transparent)]
-    StarknetError(#[from] StarknetError),
-    /// A client error representing errors from [`starknet_api`].
-    #[error(transparent)]
-    StarknetApiError(#[from] StarknetApiError),
-    /// A client error representing transaction receipts errors.
-    #[error(transparent)]
-    TransactionReceiptsError(#[from] TransactionReceiptsError),
-    #[error("Invalid transaction: {:?}, error: {:?}.", tx_hash, msg)]
-    BadTransaction { tx_hash: TransactionHash, msg: String },
-}
+use crate::{ClientCreationError, StarknetClient};
 
 pub type ReaderClientResult<T> = Result<T, ReaderClientError>;
 
@@ -165,7 +133,7 @@ impl StarknetFeederGatewayClient {
         let response = self.request_with_retry_url(url).await;
         load_object_from_response(
             response,
-            StarknetErrorCode::BlockNotFound,
+            ReaderStarknetErrorCode::BlockNotFound,
             format!("Failed to get block number {:?} from starknet server.", block_number),
         )
     }
@@ -173,17 +141,17 @@ impl StarknetFeederGatewayClient {
 
 #[async_trait]
 impl StarknetReader for StarknetFeederGatewayClient {
-    #[instrument(skip(self), level = "warn")]
+    #[instrument(skip(self), level = "debug")]
     async fn block_number(&self) -> ReaderClientResult<Option<BlockNumber>> {
         Ok(self.request_block(None).await?.map(|block| block.block_number))
     }
 
-    #[instrument(skip(self), level = "warn")]
+    #[instrument(skip(self), level = "debug")]
     async fn block(&self, block_number: BlockNumber) -> ReaderClientResult<Option<Block>> {
         self.request_block(Some(block_number)).await
     }
 
-    #[instrument(skip(self), level = "warn")]
+    #[instrument(skip(self), level = "debug")]
     async fn class_by_hash(
         &self,
         class_hash: ClassHash,
@@ -195,12 +163,12 @@ impl StarknetReader for StarknetFeederGatewayClient {
         let response = self.request_with_retry_url(url).await;
         load_object_from_response(
             response,
-            StarknetErrorCode::UndeclaredClass,
+            ReaderStarknetErrorCode::UndeclaredClass,
             format!("Failed to get class with hash {:?} from starknet server.", class_hash),
         )
     }
 
-    #[instrument(skip(self), level = "warn")]
+    #[instrument(skip(self), level = "debug")]
     async fn state_update(
         &self,
         block_number: BlockNumber,
@@ -210,7 +178,7 @@ impl StarknetReader for StarknetFeederGatewayClient {
         let response = self.request_with_retry_url(url).await;
         load_object_from_response(
             response,
-            StarknetErrorCode::BlockNotFound,
+            ReaderStarknetErrorCode::BlockNotFound,
             format!(
                 "Failed to get state update for block number {} from starknet server.",
                 block_number
@@ -226,7 +194,7 @@ impl StarknetReader for StarknetFeederGatewayClient {
         })
     }
 
-    #[instrument(skip(self), level = "warn")]
+    #[instrument(skip(self), level = "debug")]
     async fn compiled_class_by_hash(
         &self,
         class_hash: ClassHash,
@@ -280,7 +248,7 @@ impl StarknetReader for StarknetFeederGatewayClient {
         let response = self.request_with_retry_url(url).await;
         load_object_from_response(
             response,
-            StarknetErrorCode::UndeclaredClass,
+            ReaderStarknetErrorCode::UndeclaredClass,
             format!(
                 "Failed to get compiled class with hash {:?} from starknet server.",
                 class_hash
@@ -289,39 +257,22 @@ impl StarknetReader for StarknetFeederGatewayClient {
     }
 }
 
-/// Load an object from a json string response. If there was a StarknetError with
+/// Load an object from a json string response. If there was a ReaderStarknetError with
 /// `none_error_code`, return None. If there was a different error, log `error_message`.
 fn load_object_from_response<Object: for<'a> Deserialize<'a>>(
     response: ReaderClientResult<String>,
-    none_error_code: StarknetErrorCode,
+    none_error_code: ReaderStarknetErrorCode,
     error_message: String,
 ) -> ReaderClientResult<Option<Object>> {
     match response {
         Ok(raw_object) => Ok(Some(serde_json::from_str(&raw_object)?)),
-        Err(ReaderClientError::StarknetError(StarknetError { code: error_code, message: _ }))
-            if error_code == none_error_code =>
-        {
-            Ok(None)
-        }
+        Err(ReaderClientError::StarknetError(ReaderStarknetError {
+            code: error_code,
+            message: _,
+        })) if error_code == none_error_code => Ok(None),
         Err(err) => {
             debug!(error_message);
             Err(err)
-        }
-    }
-}
-
-impl From<ClientError> for ReaderClientError {
-    fn from(error: ClientError) -> Self {
-        match error {
-            ClientError::BadResponseStatus { code, message } => {
-                ReaderClientError::BadResponseStatus { code, message }
-            }
-            ClientError::RequestError(err) => ReaderClientError::RequestError(err),
-            ClientError::RetryError { code, message } => {
-                ReaderClientError::RetryError { code, message }
-            }
-            ClientError::SerdeError(err) => ReaderClientError::SerdeError(err),
-            ClientError::StarknetError(err) => ReaderClientError::StarknetError(err),
         }
     }
 }

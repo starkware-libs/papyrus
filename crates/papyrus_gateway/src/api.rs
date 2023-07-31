@@ -10,8 +10,8 @@ use starknet_api::core::{ChainId, ContractAddress};
 use starknet_api::transaction::EventKey;
 use tokio::sync::RwLock;
 
-use crate::v0_3_0::api::api_impl::JsonRpcServerV0_3_0Impl;
-use crate::v0_3_0::api::JsonRpcV0_3_0Server;
+use crate::v0_3_0::api::api_impl::JsonRpcServerV0_3Impl;
+use crate::v0_3_0::api::JsonRpcV0_3Server;
 use crate::version_config;
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -96,11 +96,11 @@ pub fn get_methods_from_supported_apis(
     version_config::VERSION_CONFIG
         .iter()
         .filter_map(|version_config| {
-            let (version_id, version_state) = version_config;
+            let (version, version_state) = version_config;
             match version_state {
                 version_config::VersionState::Deprecated => None,
-                version_config::VersionState::Supported => match *version_id {
-                    version_config::VERSION_0_3_0 => Some(JsonRpcServerV0_3_0Impl {
+                version_config::VersionState::Supported => match *version {
+                    version_config::VERSION_0_3 => Some(JsonRpcServerV0_3Impl {
                         chain_id: chain_id.clone(),
                         storage_reader: storage_reader.clone(),
                         max_events_chunk_size,

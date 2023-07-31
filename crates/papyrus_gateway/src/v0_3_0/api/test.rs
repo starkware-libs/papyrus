@@ -39,7 +39,7 @@ use super::super::transaction::{
     Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
     TransactionWithHash, Transactions,
 };
-use super::api_impl::JsonRpcServerV0_3_0Impl;
+use super::api_impl::JsonRpcServerV0_3Impl;
 use crate::api::{
     BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcError,
     Tag,
@@ -48,15 +48,14 @@ use crate::test_utils::{
     get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
     get_test_syncing_state,
 };
-use crate::version_config::VERSION_0_3_0;
+use crate::version_config::VERSION_0_3;
 use crate::{run_server, ContinuationTokenAsStruct};
 
 #[tokio::test]
 async fn chain_id() {
-    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
 
-    let res =
-        module.call::<_, String>("starknet_V0_3_0_chainId", ObjectParams::new()).await.unwrap();
+    let res = module.call::<_, String>("starknet_V0_3_chainId", ObjectParams::new()).await.unwrap();
     // The result should be equal to the result of the following python code
     // hex(int.from_bytes(b'SN_GOERLI', byteorder="big", signed=False))
     // taken from starknet documentation:
@@ -67,11 +66,11 @@ async fn chain_id() {
 #[tokio::test]
 async fn block_hash_and_number() {
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
 
     // No blocks yet.
     let err = module
-        .call::<_, BlockHashAndNumber>("starknet_V0_3_0_blockHashAndNumber", ObjectParams::new())
+        .call::<_, BlockHashAndNumber>("starknet_V0_3_blockHashAndNumber", ObjectParams::new())
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
@@ -90,7 +89,7 @@ async fn block_hash_and_number() {
         .commit()
         .unwrap();
     let block_hash_and_number = module
-        .call::<_, BlockHashAndNumber>("starknet_V0_3_0_blockHashAndNumber", ObjectParams::new())
+        .call::<_, BlockHashAndNumber>("starknet_V0_3_blockHashAndNumber", ObjectParams::new())
         .await
         .unwrap();
     assert_eq!(
@@ -105,11 +104,11 @@ async fn block_hash_and_number() {
 #[tokio::test]
 async fn block_number() {
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
 
     // No blocks yet.
     let err = module
-        .call::<_, BlockNumber>("starknet_V0_3_0_blockNumber", ObjectParams::new())
+        .call::<_, BlockNumber>("starknet_V0_3_blockNumber", ObjectParams::new())
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
@@ -127,7 +126,7 @@ async fn block_number() {
         .commit()
         .unwrap();
     let block_number = module
-        .call::<_, BlockNumber>("starknet_V0_3_0_blockNumber", ObjectParams::new())
+        .call::<_, BlockNumber>("starknet_V0_3_blockNumber", ObjectParams::new())
         .await
         .unwrap();
     assert_eq!(block_number, BlockNumber(0));
@@ -135,15 +134,15 @@ async fn block_number() {
 
 #[tokio::test]
 async fn syncing() {
-    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
-    let res = module.call::<_, bool>("starknet_V0_3_0_syncing", ObjectParams::new()).await.unwrap();
+    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
+    let res = module.call::<_, bool>("starknet_V0_3_syncing", ObjectParams::new()).await.unwrap();
     assert_eq!(res, false);
 }
 
 #[tokio::test]
 async fn get_block_transaction_count() {
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let transaction_count = 5;
     let block = get_test_block(transaction_count, None, None, None);
     storage_writer
@@ -159,7 +158,7 @@ async fn get_block_transaction_count() {
     // Get block by hash.
     let res = module
         .call::<_, usize>(
-            "starknet_V0_3_0_getBlockTransactionCount",
+            "starknet_V0_3_getBlockTransactionCount",
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash))],
         )
         .await
@@ -169,7 +168,7 @@ async fn get_block_transaction_count() {
     // Get block by number.
     let res = module
         .call::<_, usize>(
-            "starknet_V0_3_0_getBlockTransactionCount",
+            "starknet_V0_3_getBlockTransactionCount",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(block.header.block_number))],
         )
         .await
@@ -178,7 +177,7 @@ async fn get_block_transaction_count() {
 
     // Ask for the latest block.
     let res = module
-        .call::<_, usize>("starknet_V0_3_0_getBlockTransactionCount", [BlockId::Tag(Tag::Latest)])
+        .call::<_, usize>("starknet_V0_3_getBlockTransactionCount", [BlockId::Tag(Tag::Latest)])
         .await
         .unwrap();
     assert_eq!(res, transaction_count);
@@ -186,7 +185,7 @@ async fn get_block_transaction_count() {
     // Ask for an invalid block hash.
     let err = module
         .call::<_, usize>(
-            "starknet_V0_3_0_getBlockTransactionCount",
+            "starknet_V0_3_getBlockTransactionCount",
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             ))))],
@@ -202,7 +201,7 @@ async fn get_block_transaction_count() {
     // Ask for an invalid block number.
     let err = module
         .call::<_, usize>(
-            "starknet_V0_3_0_getBlockTransactionCount",
+            "starknet_V0_3_getBlockTransactionCount",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))],
         )
         .await
@@ -217,7 +216,7 @@ async fn get_block_transaction_count() {
 #[tokio::test]
 async fn get_block_w_full_transactions() {
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
 
     let block = get_test_block(1, None, None, None);
     storage_writer
@@ -243,7 +242,7 @@ async fn get_block_w_full_transactions() {
     // Get block by hash.
     let block = module
         .call::<_, Block>(
-            "starknet_V0_3_0_getBlockWithTxs",
+            "starknet_V0_3_getBlockWithTxs",
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header.block_hash))],
         )
         .await
@@ -253,7 +252,7 @@ async fn get_block_w_full_transactions() {
     // Get block by number.
     let block = module
         .call::<_, Block>(
-            "starknet_V0_3_0_getBlockWithTxs",
+            "starknet_V0_3_getBlockWithTxs",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(expected_block.header.block_number))],
         )
         .await
@@ -262,7 +261,7 @@ async fn get_block_w_full_transactions() {
 
     // Ask for the latest block.
     let block = module
-        .call::<_, Block>("starknet_V0_3_0_getBlockWithTxs", [BlockId::Tag(Tag::Latest)])
+        .call::<_, Block>("starknet_V0_3_getBlockWithTxs", [BlockId::Tag(Tag::Latest)])
         .await
         .unwrap();
     assert_eq!(block, expected_block);
@@ -277,7 +276,7 @@ async fn get_block_w_full_transactions() {
         .unwrap();
     let block = module
         .call::<_, Block>(
-            "starknet_V0_3_0_getBlockWithTxs",
+            "starknet_V0_3_getBlockWithTxs",
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header.block_hash))],
         )
         .await
@@ -287,7 +286,7 @@ async fn get_block_w_full_transactions() {
     // Ask for an invalid block hash.
     let err = module
         .call::<_, Block>(
-            "starknet_V0_3_0_getBlockWithTxs",
+            "starknet_V0_3_getBlockWithTxs",
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             ))))],
@@ -303,7 +302,7 @@ async fn get_block_w_full_transactions() {
     // Ask for an invalid block number.
     let err = module
         .call::<_, Block>(
-            "starknet_V0_3_0_getBlockWithTxs",
+            "starknet_V0_3_getBlockWithTxs",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))],
         )
         .await
@@ -318,7 +317,7 @@ async fn get_block_w_full_transactions() {
 #[tokio::test]
 async fn get_block_w_transaction_hashes() {
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
 
     let block = get_test_block(1, None, None, None);
     storage_writer
@@ -340,7 +339,7 @@ async fn get_block_w_transaction_hashes() {
     // Get block by hash.
     let block = module
         .call::<_, Block>(
-            "starknet_V0_3_0_getBlockWithTxHashes",
+            "starknet_V0_3_getBlockWithTxHashes",
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header.block_hash))],
         )
         .await
@@ -350,7 +349,7 @@ async fn get_block_w_transaction_hashes() {
     // Get block by number.
     let block = module
         .call::<_, Block>(
-            "starknet_V0_3_0_getBlockWithTxHashes",
+            "starknet_V0_3_getBlockWithTxHashes",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(expected_block.header.block_number))],
         )
         .await
@@ -359,7 +358,7 @@ async fn get_block_w_transaction_hashes() {
 
     // Ask for the latest block.
     let block = module
-        .call::<_, Block>("starknet_V0_3_0_getBlockWithTxHashes", [BlockId::Tag(Tag::Latest)])
+        .call::<_, Block>("starknet_V0_3_getBlockWithTxHashes", [BlockId::Tag(Tag::Latest)])
         .await
         .unwrap();
     assert_eq!(block, expected_block);
@@ -374,7 +373,7 @@ async fn get_block_w_transaction_hashes() {
         .unwrap();
     let block = module
         .call::<_, Block>(
-            "starknet_V0_3_0_getBlockWithTxHashes",
+            "starknet_V0_3_getBlockWithTxHashes",
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header.block_hash))],
         )
         .await
@@ -384,7 +383,7 @@ async fn get_block_w_transaction_hashes() {
     // Ask for an invalid block hash.
     let err = module
         .call::<_, Block>(
-            "starknet_V0_3_0_getBlockWithTxHashes",
+            "starknet_V0_3_getBlockWithTxHashes",
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             ))))],
@@ -400,7 +399,7 @@ async fn get_block_w_transaction_hashes() {
     // Ask for an invalid block number.
     let err = module
         .call::<_, Block>(
-            "starknet_V0_3_0_getBlockWithTxHashes",
+            "starknet_V0_3_getBlockWithTxHashes",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))],
         )
         .await
@@ -415,7 +414,7 @@ async fn get_block_w_transaction_hashes() {
 #[tokio::test]
 async fn get_class() {
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let parent_header = BlockHeader::default();
     let header = BlockHeader {
         block_hash: BlockHash(stark_felt!("0x1")),
@@ -449,7 +448,7 @@ async fn get_class() {
     // Get class by block hash.
     let res = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_V0_3_0_getClass",
+            "starknet_V0_3_getClass",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *class_hash),
         )
         .await
@@ -459,7 +458,7 @@ async fn get_class() {
     // Get class by block number.
     let res = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_V0_3_0_getClass",
+            "starknet_V0_3_getClass",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *class_hash),
         )
         .await
@@ -469,7 +468,7 @@ async fn get_class() {
     // Ask for an invalid class hash.
     let err = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_V0_3_0_getClass",
+            "starknet_V0_3_getClass",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
                 ClassHash(stark_felt!("0x7")),
@@ -491,7 +490,7 @@ async fn get_class() {
     // Get class by block hash.
     let res = module
         .call::<_, ContractClass>(
-            "starknet_V0_3_0_getClass",
+            "starknet_V0_3_getClass",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *class_hash),
         )
         .await
@@ -501,7 +500,7 @@ async fn get_class() {
     // Get class by block number.
     let res = module
         .call::<_, ContractClass>(
-            "starknet_V0_3_0_getClass",
+            "starknet_V0_3_getClass",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *class_hash),
         )
         .await
@@ -512,7 +511,7 @@ async fn get_class() {
     // Ask for an invalid class hash in the given block.
     let err = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_V0_3_0_getClass",
+            "starknet_V0_3_getClass",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_header.block_number)),
                 *class_hash,
@@ -529,7 +528,7 @@ async fn get_class() {
     // Ask for an invalid block hash.
     let err = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_V0_3_0_getClass",
+            "starknet_V0_3_getClass",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
@@ -548,7 +547,7 @@ async fn get_class() {
     // Ask for an invalid block number.
     let err = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_V0_3_0_getClass",
+            "starknet_V0_3_getClass",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))), *class_hash),
         )
         .await
@@ -563,7 +562,7 @@ async fn get_class() {
 #[tokio::test]
 async fn get_transaction_receipt() {
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let block = get_test_block(1, None, None, None);
     storage_writer
         .begin_rw_txn()
@@ -588,7 +587,7 @@ async fn get_transaction_receipt() {
     };
     let res = module
         .call::<_, TransactionReceiptWithStatus>(
-            "starknet_V0_3_0_getTransactionReceipt",
+            "starknet_V0_3_getTransactionReceipt",
             [transaction_hash],
         )
         .await
@@ -611,7 +610,7 @@ async fn get_transaction_receipt() {
         .unwrap();
     let res = module
         .call::<_, TransactionReceiptWithStatus>(
-            "starknet_V0_3_0_getTransactionReceipt",
+            "starknet_V0_3_getTransactionReceipt",
             [transaction_hash],
         )
         .await
@@ -621,7 +620,7 @@ async fn get_transaction_receipt() {
     // Ask for an invalid transaction.
     let err = module
         .call::<_, TransactionReceiptWithStatus>(
-            "starknet_V0_3_0_getTransactionReceipt",
+            "starknet_V0_3_getTransactionReceipt",
             [TransactionHash(StarkHash::from(1_u8))],
         )
         .await
@@ -636,7 +635,7 @@ async fn get_transaction_receipt() {
 #[tokio::test]
 async fn get_class_at() {
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let parent_header = BlockHeader::default();
     let header = BlockHeader {
         block_hash: BlockHash(stark_felt!("0x1")),
@@ -675,7 +674,7 @@ async fn get_class_at() {
     // Get class by block hash.
     let res = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_V0_3_0_getClassAt",
+            "starknet_V0_3_getClassAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address),
         )
         .await
@@ -685,7 +684,7 @@ async fn get_class_at() {
     // Get class by block number.
     let res = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_V0_3_0_getClassAt",
+            "starknet_V0_3_getClassAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *address),
         )
         .await
@@ -702,7 +701,7 @@ async fn get_class_at() {
     // Get class by block hash.
     let res = module
         .call::<_, ContractClass>(
-            "starknet_V0_3_0_getClassAt",
+            "starknet_V0_3_getClassAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address),
         )
         .await
@@ -712,7 +711,7 @@ async fn get_class_at() {
     // Get class by block number.
     let res = module
         .call::<_, ContractClass>(
-            "starknet_V0_3_0_getClassAt",
+            "starknet_V0_3_getClassAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *address),
         )
         .await
@@ -723,7 +722,7 @@ async fn get_class_at() {
     // Ask for an invalid contract.
     let err = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_V0_3_0_getClassAt",
+            "starknet_V0_3_getClassAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
                 ContractAddress(patricia_key!("0x12")),
@@ -740,7 +739,7 @@ async fn get_class_at() {
     // Ask for an invalid contract in the given block.
     let err = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_V0_3_0_getClassAt",
+            "starknet_V0_3_getClassAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_header.block_number)),
                 *address,
@@ -757,7 +756,7 @@ async fn get_class_at() {
     // Ask for an invalid block hash.
     let err = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_V0_3_0_getClassAt",
+            "starknet_V0_3_getClassAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
@@ -776,7 +775,7 @@ async fn get_class_at() {
     // Ask for an invalid block number.
     let err = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_V0_3_0_getClassAt",
+            "starknet_V0_3_getClassAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))), *address),
         )
         .await
@@ -791,7 +790,7 @@ async fn get_class_at() {
 #[tokio::test]
 async fn get_class_hash_at() {
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let header = BlockHeader::default();
     let diff = get_test_state_diff();
     storage_writer
@@ -809,7 +808,7 @@ async fn get_class_hash_at() {
     // Get class hash by block hash.
     let res = module
         .call::<_, ClassHash>(
-            "starknet_V0_3_0_getClassHashAt",
+            "starknet_V0_3_getClassHashAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address),
         )
         .await
@@ -819,7 +818,7 @@ async fn get_class_hash_at() {
     // Get class hash by block number.
     let res = module
         .call::<_, ClassHash>(
-            "starknet_V0_3_0_getClassHashAt",
+            "starknet_V0_3_getClassHashAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *address),
         )
         .await
@@ -829,7 +828,7 @@ async fn get_class_hash_at() {
     // Ask for an invalid contract.
     let err = module
         .call::<_, ClassHash>(
-            "starknet_V0_3_0_getClassHashAt",
+            "starknet_V0_3_getClassHashAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
                 ContractAddress(patricia_key!("0x12")),
@@ -846,7 +845,7 @@ async fn get_class_hash_at() {
     // Ask for an invalid block hash.
     let err = module
         .call::<_, ClassHash>(
-            "starknet_V0_3_0_getClassHashAt",
+            "starknet_V0_3_getClassHashAt",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
@@ -865,7 +864,7 @@ async fn get_class_hash_at() {
     // Ask for an invalid block number.
     let err = module
         .call::<_, ClassHash>(
-            "starknet_V0_3_0_getClassHashAt",
+            "starknet_V0_3_getClassHashAt",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), *address),
         )
         .await
@@ -880,7 +879,7 @@ async fn get_class_hash_at() {
 #[tokio::test]
 async fn get_nonce() {
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let header = BlockHeader::default();
     let diff = get_test_state_diff();
     storage_writer
@@ -898,7 +897,7 @@ async fn get_nonce() {
     // Get class hash by block hash.
     let res = module
         .call::<_, Nonce>(
-            "starknet_V0_3_0_getNonce",
+            "starknet_V0_3_getNonce",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address),
         )
         .await
@@ -908,7 +907,7 @@ async fn get_nonce() {
     // Get class hash by block number.
     let res = module
         .call::<_, Nonce>(
-            "starknet_V0_3_0_getNonce",
+            "starknet_V0_3_getNonce",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *address),
         )
         .await
@@ -918,7 +917,7 @@ async fn get_nonce() {
     // Ask for an invalid contract.
     let err = module
         .call::<_, Nonce>(
-            "starknet_V0_3_0_getNonce",
+            "starknet_V0_3_getNonce",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
                 ContractAddress(patricia_key!("0x31")),
@@ -935,7 +934,7 @@ async fn get_nonce() {
     // Ask for an invalid block hash.
     let err = module
         .call::<_, Nonce>(
-            "starknet_V0_3_0_getNonce",
+            "starknet_V0_3_getNonce",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
@@ -954,7 +953,7 @@ async fn get_nonce() {
     // Ask for an invalid block number.
     let err = module
         .call::<_, Nonce>(
-            "starknet_V0_3_0_getNonce",
+            "starknet_V0_3_getNonce",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), *address),
         )
         .await
@@ -969,7 +968,7 @@ async fn get_nonce() {
 #[tokio::test]
 async fn get_storage_at() {
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let header = BlockHeader::default();
     let diff = get_test_state_diff();
     storage_writer
@@ -988,7 +987,7 @@ async fn get_storage_at() {
     // Get storage by block hash.
     let res = module
         .call::<_, StarkFelt>(
-            "starknet_V0_3_0_getStorageAt",
+            "starknet_V0_3_getStorageAt",
             (*address, *key, BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))),
         )
         .await
@@ -998,7 +997,7 @@ async fn get_storage_at() {
     // Get storage by block number.
     let res = module
         .call::<_, StarkFelt>(
-            "starknet_V0_3_0_getStorageAt",
+            "starknet_V0_3_getStorageAt",
             (*address, *key, BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))),
         )
         .await
@@ -1008,7 +1007,7 @@ async fn get_storage_at() {
     // Ask for an invalid contract.
     let err = module
         .call::<_, StarkFelt>(
-            "starknet_V0_3_0_getStorageAt",
+            "starknet_V0_3_getStorageAt",
             (
                 ContractAddress(patricia_key!("0x12")),
                 key,
@@ -1026,7 +1025,7 @@ async fn get_storage_at() {
     // Ask for an invalid block hash.
     let err = module
         .call::<_, StarkFelt>(
-            "starknet_V0_3_0_getStorageAt",
+            "starknet_V0_3_getStorageAt",
             (
                 *address,
                 key,
@@ -1046,7 +1045,7 @@ async fn get_storage_at() {
     // Ask for an invalid block number.
     let err = module
         .call::<_, StarkFelt>(
-            "starknet_V0_3_0_getStorageAt",
+            "starknet_V0_3_getStorageAt",
             (*address, key, BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))),
         )
         .await
@@ -1061,7 +1060,7 @@ async fn get_storage_at() {
 #[tokio::test]
 async fn get_transaction_by_hash() {
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let block = get_test_block(1, None, None, None);
     storage_writer
         .begin_rw_txn()
@@ -1077,7 +1076,7 @@ async fn get_transaction_by_hash() {
     };
     let res = module
         .call::<_, TransactionWithHash>(
-            "starknet_V0_3_0_getTransactionByHash",
+            "starknet_V0_3_getTransactionByHash",
             [block.body.transaction_hashes[0]],
         )
         .await
@@ -1087,7 +1086,7 @@ async fn get_transaction_by_hash() {
     // Ask for an invalid transaction.
     let err = module
         .call::<_, TransactionWithHash>(
-            "starknet_V0_3_0_getTransactionByHash",
+            "starknet_V0_3_getTransactionByHash",
             [TransactionHash(StarkHash::from(1_u8))],
         )
         .await
@@ -1102,7 +1101,7 @@ async fn get_transaction_by_hash() {
 #[tokio::test]
 async fn get_transaction_by_block_id_and_index() {
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let block = get_test_block(1, None, None, None);
     storage_writer
         .begin_rw_txn()
@@ -1122,7 +1121,7 @@ async fn get_transaction_by_block_id_and_index() {
     // Get transaction by block hash.
     let res = module
         .call::<_, TransactionWithHash>(
-            "starknet_V0_3_0_getTransactionByBlockIdAndIndex",
+            "starknet_V0_3_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash)), 0),
         )
         .await
@@ -1132,7 +1131,7 @@ async fn get_transaction_by_block_id_and_index() {
     // Get transaction by block number.
     let res = module
         .call::<_, TransactionWithHash>(
-            "starknet_V0_3_0_getTransactionByBlockIdAndIndex",
+            "starknet_V0_3_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(block.header.block_number)), 0),
         )
         .await
@@ -1142,7 +1141,7 @@ async fn get_transaction_by_block_id_and_index() {
     // Ask for an invalid block hash.
     let err = module
         .call::<_, TransactionWithHash>(
-            "starknet_V0_3_0_getTransactionByBlockIdAndIndex",
+            "starknet_V0_3_getTransactionByBlockIdAndIndex",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                     "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
@@ -1161,7 +1160,7 @@ async fn get_transaction_by_block_id_and_index() {
     // Ask for an invalid block number.
     let err = module
         .call::<_, TransactionWithHash>(
-            "starknet_V0_3_0_getTransactionByBlockIdAndIndex",
+            "starknet_V0_3_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), 0),
         )
         .await
@@ -1175,7 +1174,7 @@ async fn get_transaction_by_block_id_and_index() {
     // Ask for an invalid transaction index.
     let err = module
         .call::<_, TransactionWithHash>(
-            "starknet_V0_3_0_getTransactionByBlockIdAndIndex",
+            "starknet_V0_3_getTransactionByBlockIdAndIndex",
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash)), 1),
         )
         .await
@@ -1190,7 +1189,7 @@ async fn get_transaction_by_block_id_and_index() {
 #[tokio::test]
 async fn get_state_update() {
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let parent_header = BlockHeader::default();
     let header = BlockHeader {
         block_hash: BlockHash(stark_felt!("0x1")),
@@ -1227,7 +1226,7 @@ async fn get_state_update() {
     // Get state update by block hash.
     let res = module
         .call::<_, StateUpdate>(
-            "starknet_V0_3_0_getStateUpdate",
+            "starknet_V0_3_getStateUpdate",
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))],
         )
         .await
@@ -1237,7 +1236,7 @@ async fn get_state_update() {
     // Get state update by block number.
     let res = module
         .call::<_, StateUpdate>(
-            "starknet_V0_3_0_getStateUpdate",
+            "starknet_V0_3_getStateUpdate",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))],
         )
         .await
@@ -1247,7 +1246,7 @@ async fn get_state_update() {
     // Ask for an invalid block hash.
     let err = module
         .call::<_, StateUpdate>(
-            "starknet_V0_3_0_getStateUpdate",
+            "starknet_V0_3_getStateUpdate",
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             ))))],
@@ -1263,7 +1262,7 @@ async fn get_state_update() {
     // Ask for an invalid block number.
     let err = module
         .call::<_, StateUpdate>(
-            "starknet_V0_3_0_getStateUpdate",
+            "starknet_V0_3_getStateUpdate",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2)))],
         )
         .await
@@ -1278,7 +1277,7 @@ async fn get_state_update() {
 #[tokio::test]
 async fn get_events_chunk_size_2_with_address() {
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let address = ContractAddress(patricia_key!("0x22"));
     let key0 = EventKey(stark_felt!("0x6"));
     let key1 = EventKey(stark_felt!("0x7"));
@@ -1339,7 +1338,7 @@ async fn get_events_chunk_size_2_with_address() {
 
     for (i, chunk) in emitted_events.chunks(chunk_size).enumerate() {
         let res = module
-            .call::<_, EventsChunk>("starknet_V0_3_0_getEvents", [filter.clone()])
+            .call::<_, EventsChunk>("starknet_V0_3_getEvents", [filter.clone()])
             .await
             .unwrap();
         assert_eq!(res.events, chunk);
@@ -1362,7 +1361,7 @@ async fn get_events_chunk_size_2_with_address() {
 #[tokio::test]
 async fn get_events_chunk_size_2_without_address() {
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let key0 = EventKey(stark_felt!("0x6"));
     let key1 = EventKey(stark_felt!("0x7"));
     let block = get_test_block(
@@ -1420,7 +1419,7 @@ async fn get_events_chunk_size_2_without_address() {
 
     for (i, chunk) in emitted_events.chunks(chunk_size).enumerate() {
         let res = module
-            .call::<_, EventsChunk>("starknet_V0_3_0_getEvents", [filter.clone()])
+            .call::<_, EventsChunk>("starknet_V0_3_getEvents", [filter.clone()])
             .await
             .unwrap();
         assert_eq!(res.events, chunk);
@@ -1442,7 +1441,7 @@ async fn get_events_chunk_size_2_without_address() {
 
 #[tokio::test]
 async fn get_events_page_size_too_big() {
-    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
 
     // Create the filter.
     let filter = EventFilter {
@@ -1454,8 +1453,7 @@ async fn get_events_page_size_too_big() {
         keys: vec![],
     };
 
-    let err =
-        module.call::<_, EventsChunk>("starknet_V0_3_0_getEvents", [filter]).await.unwrap_err();
+    let err = module.call::<_, EventsChunk>("starknet_V0_3_getEvents", [filter]).await.unwrap_err();
     assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::PageSizeTooBig as i32,
         JsonRpcError::PageSizeTooBig.to_string(),
@@ -1465,7 +1463,7 @@ async fn get_events_page_size_too_big() {
 
 #[tokio::test]
 async fn get_events_too_many_keys() {
-    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let keys = (0..get_test_gateway_config().max_events_keys + 1)
         .map(|i| HashSet::from([EventKey(StarkFelt::from(i as u128))]))
         .collect();
@@ -1480,8 +1478,7 @@ async fn get_events_too_many_keys() {
         keys,
     };
 
-    let err =
-        module.call::<_, EventsChunk>("starknet_V0_3_0_getEvents", [filter]).await.unwrap_err();
+    let err = module.call::<_, EventsChunk>("starknet_V0_3_getEvents", [filter]).await.unwrap_err();
     assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::TooManyKeysInFilter as i32,
         JsonRpcError::TooManyKeysInFilter.to_string(),
@@ -1491,7 +1488,7 @@ async fn get_events_too_many_keys() {
 
 #[tokio::test]
 async fn get_events_no_blocks() {
-    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
 
     // Create the filter.
     let filter = EventFilter {
@@ -1503,14 +1500,14 @@ async fn get_events_no_blocks() {
         keys: vec![],
     };
 
-    let res = module.call::<_, EventsChunk>("starknet_V0_3_0_getEvents", [filter]).await.unwrap();
+    let res = module.call::<_, EventsChunk>("starknet_V0_3_getEvents", [filter]).await.unwrap();
     assert_eq!(res, EventsChunk { events: vec![], continuation_token: None });
 }
 
 #[tokio::test]
 async fn get_events_no_blocks_in_filter() {
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let parent_block = starknet_api::block::Block::default();
     let block = starknet_api::block::Block {
         header: BlockHeader {
@@ -1545,14 +1542,14 @@ async fn get_events_no_blocks_in_filter() {
         keys: vec![],
     };
 
-    let res = module.call::<_, EventsChunk>("starknet_V0_3_0_getEvents", [filter]).await.unwrap();
+    let res = module.call::<_, EventsChunk>("starknet_V0_3_getEvents", [filter]).await.unwrap();
     assert_eq!(res, EventsChunk { events: vec![], continuation_token: None });
 }
 
 #[tokio::test]
 async fn get_events_invalid_ct() {
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let block = starknet_api::block::Block::default();
     storage_writer
         .begin_rw_txn()
@@ -1574,8 +1571,7 @@ async fn get_events_invalid_ct() {
         keys: vec![],
     };
 
-    let err =
-        module.call::<_, EventsChunk>("starknet_V0_3_0_getEvents", [filter]).await.unwrap_err();
+    let err = module.call::<_, EventsChunk>("starknet_V0_3_getEvents", [filter]).await.unwrap_err();
     assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
         JsonRpcError::InvalidContinuationToken as i32,
         JsonRpcError::InvalidContinuationToken.to_string(),
@@ -1643,7 +1639,7 @@ async fn serialize_returns_valid_json() {
             "TXN_RECEIPT",
             "EVENTS_CHUNK",
         ],
-        VERSION_0_3_0,
+        &VERSION_0_3,
     )
     .await;
     validate_state(&state_diff, server_address, &schema).await;
@@ -1656,7 +1652,7 @@ async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, sche
         server_address,
         "starknet_getStateUpdate",
         r#"{"block_number": 1}"#,
-        VERSION_0_3_0,
+        VERSION_0_3.name,
     )
     .await;
     assert!(schema.validate(&res["result"]).is_ok(), "State update is not valid.");
@@ -1666,7 +1662,7 @@ async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, sche
         server_address,
         "starknet_getClassAt",
         format!(r#"{{"block_number": 1}}, "0x{}""#, hex::encode(address.0.key().bytes())).as_str(),
-        VERSION_0_3_0,
+        VERSION_0_3.name,
     )
     .await;
     assert!(schema.validate(&res["result"]).is_ok(), "Class is not valid.");
@@ -1678,7 +1674,7 @@ async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, sche
         server_address,
         "starknet_getClassAt",
         format!(r#"{{"block_number": 1}}, "0x{}""#, hex::encode(address.0.key().bytes())).as_str(),
-        VERSION_0_3_0,
+        VERSION_0_3.name,
     )
     .await;
     assert!(schema.validate(&res["result"]).is_ok(), "Class is not valid.");
@@ -1689,7 +1685,7 @@ async fn validate_block(header: &BlockHeader, server_address: SocketAddr, schema
         server_address,
         "starknet_getBlockWithTxs",
         r#"{"block_number": 1}"#,
-        VERSION_0_3_0,
+        VERSION_0_3.name,
     )
     .await;
     assert!(schema.validate(&res["result"]).is_ok(), "Block with transactions is not valid.");
@@ -1698,7 +1694,7 @@ async fn validate_block(header: &BlockHeader, server_address: SocketAddr, schema
         server_address,
         "starknet_getBlockWithTxHashes",
         format!(r#"{{"block_hash": "0x{}"}}"#, hex::encode(header.block_hash.0.bytes())).as_str(),
-        VERSION_0_3_0,
+        VERSION_0_3.name,
     )
     .await;
     assert!(schema.validate(&res["result"]).is_ok(), "Block with transaction hashes is not valid.");
@@ -1713,7 +1709,7 @@ async fn validate_transaction(
         server_address,
         "starknet_getTransactionByBlockIdAndIndex",
         r#"{"block_number": 1}, 0"#,
-        VERSION_0_3_0,
+        VERSION_0_3.name,
     )
     .await;
     assert!(schema.validate(&res["result"]).is_ok(), "Transaction is not valid.");
@@ -1722,7 +1718,7 @@ async fn validate_transaction(
         server_address,
         "starknet_getTransactionByHash",
         format!(r#""0x{}""#, hex::encode(tx_hash.0.bytes())).as_str(),
-        VERSION_0_3_0,
+        VERSION_0_3.name,
     )
     .await;
     assert!(schema.validate(&res["result"]).is_ok(), "Transaction is not valid.");
@@ -1731,14 +1727,18 @@ async fn validate_transaction(
         server_address,
         "starknet_getTransactionReceipt",
         format!(r#""0x{}""#, hex::encode(tx_hash.0.bytes())).as_str(),
-        VERSION_0_3_0,
+        VERSION_0_3.name,
     )
     .await;
     assert!(schema.validate(&res["result"]).is_ok(), "Transaction receipt is not valid.");
 
-    let res =
-        send_request(server_address, "starknet_getEvents", r#"{"chunk_size": 2}"#, VERSION_0_3_0)
-            .await;
+    let res = send_request(
+        server_address,
+        "starknet_getEvents",
+        r#"{"chunk_size": 2}"#,
+        VERSION_0_3.name,
+    )
+    .await;
     assert!(schema.validate(&res["result"]).is_ok(), "Events are not valid.");
 }
 
@@ -1784,7 +1784,7 @@ async fn get_deprecated_class_state_mutability() {
     };
 
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3_0Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let header = BlockHeader::default();
 
     storage_writer
@@ -1800,7 +1800,7 @@ async fn get_deprecated_class_state_mutability() {
     // Get class without state mutability.
     let res = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_V0_3_0_getClass",
+            "starknet_V0_3_getClass",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)),
                 ClassHash(stark_felt!("0x0")),
@@ -1815,7 +1815,7 @@ async fn get_deprecated_class_state_mutability() {
     // Get class with state mutability.
     let res = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_V0_3_0_getClass",
+            "starknet_V0_3_getClass",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)),
                 ClassHash(stark_felt!("0x1")),

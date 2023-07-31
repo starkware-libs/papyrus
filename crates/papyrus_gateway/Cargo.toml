@@ -44,3 +44,4 @@ test_utils = { path = "../test_utils" }
 starknet_api = { workspace = true, features = ["testing"] }
 starknet_client = { path = "../starknet_client", features = ["testing"] }
 indexmap = { workspace = true, features = ["serde"] }
+rand.workspace = true

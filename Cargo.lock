@@ -3940,6 +3940,7 @@ dependencies = [
  "papyrus_storage",
  "pretty_assertions",
  "prometheus-parse",
+ "rand",
  "rand_chacha",
  "regex",
  "serde",
