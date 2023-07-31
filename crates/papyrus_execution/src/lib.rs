@@ -14,6 +14,7 @@ use std::sync::Arc;
 
 use blockifier::abi::constants::{INITIAL_GAS_COST, N_STEPS_RESOURCE};
 use blockifier::block_context::BlockContext;
+use blockifier::execution::contract_class::ContractClass as BlockifierContractClass;
 use blockifier::execution::entry_point::{
     CallEntryPoint, CallExecution, CallType as BlockifierCallType, EntryPointExecutionContext,
     ExecutionResources,
@@ -22,7 +23,10 @@ use blockifier::execution::errors::{EntryPointExecutionError, PreExecutionError}
 use blockifier::state::cached_state::CachedState;
 use blockifier::state::errors::StateError;
 use blockifier::transaction::errors::TransactionExecutionError;
-use blockifier::transaction::objects::AccountTransactionContext;
+use blockifier::transaction::objects::{AccountTransactionContext, TransactionExecutionInfo};
+use blockifier::transaction::transaction_execution::Transaction as BlockifierTransaction;
+use blockifier::transaction::transactions::ExecutableTransaction;
+use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use cairo_vm::types::errors::program_errors::ProgramError;
 use cairo_vm::vm::runners::builtin_runner::{
     BITWISE_BUILTIN_NAME, EC_OP_BUILTIN_NAME, HASH_BUILTIN_NAME, OUTPUT_BUILTIN_NAME,
@@ -36,9 +40,14 @@ use papyrus_storage::{StorageError, StorageTxn};
 use starknet_api::block::{BlockNumber, BlockTimestamp, GasPrice};
 use starknet_api::core::{ChainId, ContractAddress, EntryPointSelector};
 // TODO: merge multiple EntryPointType structs in SN_API into one.
-use starknet_api::deprecated_contract_class::EntryPointType;
+use starknet_api::deprecated_contract_class::{
+    ContractClass as DeprecatedContractClass, EntryPointType,
+};
 use starknet_api::state::StateNumber;
-use starknet_api::transaction::Calldata;
+use starknet_api::transaction::{
+    Calldata, DeclareTransaction, DeclareTransactionV0V1, DeclareTransactionV2,
+    DeployAccountTransaction, Fee, InvokeTransaction, Transaction, TransactionHash,
+};
 use state_reader::ExecutionStateReader;
 
 /// Result type for execution functions.
@@ -51,7 +60,8 @@ const VALIDATE_TX_MAX_N_STEPS: u32 = 1_000_000;
 const MAX_RECURSION_DEPTH: usize = 50;
 
 lazy_static! {
-    static ref VM_RESOURCE_FEE_COST: Arc<HashMap<String, f64>> = Arc::new(HashMap::from([
+    // TODO(yair): get real values.
+    static ref VM_RESOURCE_FEE_COST: Arc<HashMap<String, f64>> =  Arc::new(HashMap::from([
         (N_STEPS_RESOURCE.to_string(), 1_f64),
         (HASH_BUILTIN_NAME.to_string(), 1_f64),
         (RANGE_CHECK_BUILTIN_NAME.to_string(), 1_f64),
@@ -62,8 +72,9 @@ lazy_static! {
         (EC_OP_BUILTIN_NAME.to_string(), 1_f64),
     ]));
 }
+
 #[allow(missing_docs)]
-// TODO(yair): arrange the errors into
+// TODO(yair): arrange the errors into a normal error type.
 /// The error type for the execution module.
 #[derive(thiserror::Error, Debug)]
 pub enum ExecutionError {
@@ -190,5 +201,136 @@ fn create_block_context(
         validate_max_n_steps: VALIDATE_TX_MAX_N_STEPS,
         max_recursion_depth: MAX_RECURSION_DEPTH,
         gas_price: gas_price.0,
+    }
+}
+
+/// The transaction input to be executed.
+// TODO(yair): This should use broadcasted transactions instead of regular transactions, but the
+// blockifier expects regular transactions. Consider changing the blockifier to use broadcasted txs.
+#[allow(missing_docs)]
+#[derive(Clone, Debug)]
+pub enum ExecutableTransactionInput {
+    Invoke(InvokeTransaction),
+    // todo(yair): Do we need to support V0?
+    DeclareV0(DeclareTransactionV0V1, DeprecatedContractClass),
+    DeclareV1(DeclareTransactionV0V1, DeprecatedContractClass),
+    DeclareV2(DeclareTransactionV2, CasmContractClass),
+    Deploy(DeployAccountTransaction),
+}
+
+/// Returns the fee estimation for a series of transactions.
+// TODO(yair): Consider removing this function and implemening it in the gateway.
+pub fn estimate_fee(
+    txs: Vec<ExecutableTransactionInput>,
+    chain_id: &ChainId,
+    storage_txn: &StorageTxn<'_, RO>,
+    state_number: StateNumber,
+) -> ExecutionResult<Vec<Fee>> {
+    execute_transactions(
+        txs,
+        chain_id,
+        storage_txn,
+        state_number,
+        &ContractAddress::default(),
+        false,
+        false,
+    )?
+    .into_iter()
+    .map(|tx_execution_info| Ok(tx_execution_info.actual_fee))
+    .collect()
+}
+
+// Executes a series of transactions and returns the execution results.
+fn execute_transactions(
+    txs: Vec<ExecutableTransactionInput>,
+    chain_id: &ChainId,
+    storage_txn: &StorageTxn<'_, RO>,
+    state_number: StateNumber,
+    fee_contract_address: &ContractAddress,
+    charge_fee: bool,
+    validate: bool,
+) -> ExecutionResult<Vec<TransactionExecutionInfo>> {
+    verify_node_synced(storage_txn, state_number)?;
+    let header = storage_txn
+        .get_block_header(block_before(state_number))?
+        .expect("Should have block header.");
+
+    let mut cached_state =
+        CachedState::new(ExecutionStateReader { txn: storage_txn, state_number });
+    let block_context = create_block_context(
+        chain_id.clone(),
+        block_before(state_number),
+        header.timestamp,
+        header.gas_price,
+        &header.sequencer,
+        fee_contract_address,
+    );
+
+    let mut res = Vec::new();
+    for tx in txs {
+        let blockifier_tx = BlockifierTransaction::try_from(tx)?;
+        let tx_execution_info =
+            blockifier_tx.execute(&mut cached_state, &block_context, charge_fee, validate)?;
+        res.push(tx_execution_info);
+    }
+
+    Ok(res)
+}
+
+impl TryFrom<ExecutableTransactionInput> for BlockifierTransaction {
+    type Error = ExecutionError;
+
+    fn try_from(tx: ExecutableTransactionInput) -> Result<Self, Self::Error> {
+        match tx {
+            ExecutableTransactionInput::Invoke(invoke_tx) => Ok(BlockifierTransaction::from_api(
+                Transaction::Invoke(invoke_tx),
+                TransactionHash::default(),
+                None,
+                None,
+                None,
+            )?),
+
+            ExecutableTransactionInput::Deploy(deploy_acc_tx) => {
+                Ok(BlockifierTransaction::from_api(
+                    Transaction::DeployAccount(deploy_acc_tx),
+                    TransactionHash::default(),
+                    None,
+                    None,
+                    None,
+                )?)
+            }
+
+            ExecutableTransactionInput::DeclareV0(declare_tx, deprecated_class) => {
+                let class_v0 = BlockifierContractClass::V0(deprecated_class.try_into()?);
+                Ok(BlockifierTransaction::from_api(
+                    Transaction::Declare(DeclareTransaction::V0(declare_tx)),
+                    TransactionHash::default(),
+                    Some(class_v0),
+                    None,
+                    None,
+                )?)
+            }
+            ExecutableTransactionInput::DeclareV1(declare_tx, deprecated_class) => {
+                let class_v0 = BlockifierContractClass::V0(deprecated_class.try_into()?);
+                Ok(BlockifierTransaction::from_api(
+                    Transaction::Declare(DeclareTransaction::V1(declare_tx)),
+                    TransactionHash::default(),
+                    Some(class_v0),
+                    None,
+                    None,
+                )?)
+            }
+
+            ExecutableTransactionInput::DeclareV2(declare_tx, compiled_class) => {
+                let class_v1 = BlockifierContractClass::V1(compiled_class.try_into()?);
+                Ok(BlockifierTransaction::from_api(
+                    Transaction::Declare(DeclareTransaction::V2(declare_tx)),
+                    TransactionHash::default(),
+                    Some(class_v1),
+                    None,
+                    None,
+                )?)
+            }
+        }
     }
 }
