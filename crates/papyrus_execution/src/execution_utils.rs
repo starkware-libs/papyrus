@@ -1,3 +1,7 @@
+//! Utilities for executing contracts and transactions.
+
+// Expose the tool for creating entry point selectors from function names.
+pub use blockifier::abi::abi_utils::selector_from_name;
 use blockifier::execution::contract_class::{
     ContractClass as BlockifierContractClass, ContractClassV0, ContractClassV1,
 };
@@ -12,7 +16,7 @@ use thiserror::Error;
 
 // An error that can occur during the use of the execution utils.
 #[derive(Debug, Error)]
-pub enum ExecutionUtilsError {
+pub(crate) enum ExecutionUtilsError {
     #[error(transparent)]
     ProgramError(#[from] ProgramError),
     #[error(transparent)]
@@ -21,7 +25,7 @@ pub enum ExecutionUtilsError {
     CasmTableNotSynced,
 }
 
-pub fn get_contract_class(
+pub(crate) fn get_contract_class(
     txn: &StorageTxn<'_, RO>,
     class_hash: &ClassHash,
     state_number: StateNumber,
