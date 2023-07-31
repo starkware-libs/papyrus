@@ -21,7 +21,18 @@ use crate::writer::objects::transaction::{
 use crate::{ClientCreationError, ClientError, RetryConfig, StarknetClient};
 
 /// Errors that may be returned from a writer client.
-pub type WriterClientError = ClientError;
+#[derive(thiserror::Error, Debug)]
+pub enum WriterClientError {
+    /// A client error representing errors from the base StarknetClient.
+    #[error(transparent)]
+    ClientError(#[from] ClientError),
+    /// A client error representing deserialization errors.
+    /// Note: [`ClientError`] contains SerdeError as well. The difference is that this variant is
+    /// responsible for serde errors coming from [`StarknetWriter`] and ClientError::SerdeError
+    /// is responsible for serde errors coming from StarknetClient.
+    #[error(transparent)]
+    SerdeError(#[from] serde_json::Error),
+}
 
 pub type WriterClientResult<T> = Result<T, WriterClientError>;
 
