@@ -104,9 +104,9 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - run:
-          wget https://github.com/est31/cargo-udeps/releases/download/v0.1.71/cargo-udeps-v0.1.71-x86_64-unknown-linux-gnu.tar.gz;
-          tar -xzf cargo-udeps-v0.1.71-x86_64-unknown-linux-gnu.tar.gz;
-          cargo-udeps-v0.1.71-x86_64-unknown-linux-gnu/cargo-udeps udeps --all-targets
+          wget https://github.com/est31/cargo-udeps/releases/download/v0.1.35/cargo-udeps-v0.1.35-x86_64-unknown-linux-gnu.tar.gz;
+          tar -xzf cargo-udeps-v0.1.35-x86_64-unknown-linux-gnu.tar.gz;
+          cargo-udeps-v0.1.35-x86_64-unknown-linux-gnu/cargo-udeps udeps --all-targets
         env:
           RUSTUP_TOOLCHAIN: nightly-2023-04-25
 
