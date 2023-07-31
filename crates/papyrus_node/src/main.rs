@@ -1,7 +1,7 @@
 use std::env::args;
 
-use papyrus_config::ConfigError;
 use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
+use papyrus_config::ConfigError;
 use papyrus_gateway::run_server;
 use papyrus_monitoring_gateway::MonitoringServer;
 use papyrus_node::config::NodeConfig;
