@@ -16,8 +16,8 @@ use super::state::{
 };
 use super::transaction::TransactionReceipt;
 use crate::reader::objects::state::ReplacedClass;
+use crate::reader::ReaderClientError;
 use crate::test_utils::read_resource::read_resource_file;
-use crate::ClientError;
 
 #[test]
 fn load_block_succeeds() {
@@ -117,11 +117,13 @@ async fn to_starknet_api_block_and_version() {
     let err = err_block.to_starknet_api_block_and_version().unwrap_err();
     assert_matches!(
         err,
-        ClientError::TransactionReceiptsError(TransactionReceiptsError::WrongNumberOfReceipts {
-            block_number: _,
-            num_of_txs: _,
-            num_of_receipts: _,
-        })
+        ReaderClientError::TransactionReceiptsError(
+            TransactionReceiptsError::WrongNumberOfReceipts {
+                block_number: _,
+                num_of_txs: _,
+                num_of_receipts: _,
+            }
+        )
     );
 
     let mut err_block: Block = serde_json::from_str(&raw_block).unwrap();
@@ -129,12 +131,14 @@ async fn to_starknet_api_block_and_version() {
     let err = err_block.to_starknet_api_block_and_version().unwrap_err();
     assert_matches!(
         err,
-        ClientError::TransactionReceiptsError(TransactionReceiptsError::MismatchTransactionIndex {
-            block_number: _,
-            tx_index: _,
-            tx_hash: _,
-            receipt_tx_index: _,
-        })
+        ReaderClientError::TransactionReceiptsError(
+            TransactionReceiptsError::MismatchTransactionIndex {
+                block_number: _,
+                tx_index: _,
+                tx_hash: _,
+                receipt_tx_index: _,
+            }
+        )
     );
 
     let mut err_block: Block = serde_json::from_str(&raw_block).unwrap();
@@ -142,12 +146,14 @@ async fn to_starknet_api_block_and_version() {
     let err = err_block.to_starknet_api_block_and_version().unwrap_err();
     assert_matches!(
         err,
-        ClientError::TransactionReceiptsError(TransactionReceiptsError::MismatchTransactionHash {
-            block_number: _,
-            tx_index: _,
-            tx_hash: _,
-            receipt_tx_hash: _,
-        })
+        ReaderClientError::TransactionReceiptsError(
+            TransactionReceiptsError::MismatchTransactionHash {
+                block_number: _,
+                tx_index: _,
+                tx_hash: _,
+                receipt_tx_hash: _,
+            }
+        )
     );
 
     let mut err_block: Block = serde_json::from_str(&raw_block).unwrap();
@@ -159,7 +165,7 @@ async fn to_starknet_api_block_and_version() {
     let err = err_block.to_starknet_api_block_and_version().unwrap_err();
     assert_matches!(
         err,
-        ClientError::TransactionReceiptsError(TransactionReceiptsError::MismatchFields {
+        ReaderClientError::TransactionReceiptsError(TransactionReceiptsError::MismatchFields {
             block_number: _,
             tx_index: _,
             tx_hash: _,

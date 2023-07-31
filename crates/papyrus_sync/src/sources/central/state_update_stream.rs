@@ -11,8 +11,7 @@ use papyrus_storage::StorageReader;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 use starknet_api::state::{StateDiff, StateNumber};
-use starknet_client::reader::{StarknetReader, StateUpdate};
-use starknet_client::ClientResult;
+use starknet_client::reader::{ReaderClientResult, StarknetReader, StateUpdate};
 use tracing::log::trace;
 use tracing::{debug, instrument};
 
@@ -33,7 +32,7 @@ pub(crate) struct StateUpdateStream<TStarknetClient: StarknetReader + Send + 'st
     up_to_block_number: BlockNumber,
     starknet_client: Arc<TStarknetClient>,
     storage_reader: StorageReader,
-    download_state_update_tasks: TasksQueue<(BlockNumber, ClientResult<Option<StateUpdate>>)>,
+    download_state_update_tasks: TasksQueue<(BlockNumber, ReaderClientResult<Option<StateUpdate>>)>,
     // Contains NumberOfClasses so we don't need to calculate it from the StateUpdate.
     downloaded_state_updates: VecDeque<(BlockNumber, NumberOfClasses, StateUpdate)>,
     classes_to_download: VecDeque<ClassHash>,

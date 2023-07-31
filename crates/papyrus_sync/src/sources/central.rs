@@ -24,8 +24,10 @@ use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::{ContractClass, StateDiff};
 use starknet_api::StarknetApiError;
-use starknet_client::reader::{GenericContractClass, StarknetFeederGatewayClient, StarknetReader};
-use starknet_client::{ClientCreationError, ClientError, RetryConfig};
+use starknet_client::reader::{
+    GenericContractClass, ReaderClientError, StarknetFeederGatewayClient, StarknetReader,
+};
+use starknet_client::{ClientCreationError, RetryConfig};
 use tracing::{debug, trace};
 
 use self::state_update_stream::StateUpdateStream;
@@ -120,7 +122,7 @@ pub enum CentralError {
     #[error(transparent)]
     ClientCreation(#[from] ClientCreationError),
     #[error(transparent)]
-    ClientError(#[from] Arc<ClientError>),
+    ClientError(#[from] Arc<ReaderClientError>),
     #[error("Could not find a state update.")]
     StateUpdateNotFound,
     #[error("Could not find a class definitions.")]
@@ -306,7 +308,7 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> CentralSourceTrait
 
 fn client_to_central_block(
     current_block_number: BlockNumber,
-    maybe_client_block: Result<Option<starknet_client::reader::Block>, ClientError>,
+    maybe_client_block: Result<Option<starknet_client::reader::Block>, ReaderClientError>,
 ) -> CentralResult<(Block, StarknetVersion)> {
     let res = match maybe_client_block {
         Ok(Some(block)) => {

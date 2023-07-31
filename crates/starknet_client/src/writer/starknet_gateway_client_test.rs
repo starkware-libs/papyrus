@@ -6,8 +6,7 @@ use serde::{Deserialize, Serialize};
 use test_utils::read_json_file;
 
 use crate::test_utils::retry::get_test_config;
-use crate::writer::{StarknetGatewayClient, StarknetWriter};
-use crate::ClientError;
+use crate::writer::{StarknetGatewayClient, StarknetWriter, WriterClientError};
 
 const NODE_VERSION: &str = "NODE VERSION";
 
@@ -15,7 +14,7 @@ async fn test_add_transaction<
     Transaction: Serialize + for<'a> Deserialize<'a>,
     Response: for<'a> Deserialize<'a> + Debug + Eq,
     F: FnOnce(StarknetGatewayClient, Transaction) -> Fut,
-    Fut: Future<Output = Result<Response, ClientError>>,
+    Fut: Future<Output = Result<Response, WriterClientError>>,
 >(
     resource_file_transaction_path: &str,
     resource_file_response_path: &str,

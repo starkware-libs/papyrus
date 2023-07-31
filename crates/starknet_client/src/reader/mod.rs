@@ -1,9 +1,8 @@
 //! This module contains client that can read data from [`Starknet`].
 //!
 //! [`Starknet`]: https://starknet.io/
-// TODO(shahak) Make private once ClientError is refactored and doesn't depend on the reader
-// module.
-pub(crate) mod objects;
+
+mod objects;
 #[cfg(test)]
 mod starknet_feeder_gateway_client_test;
 
@@ -17,6 +16,8 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
+use starknet_api::transaction::TransactionHash;
+use starknet_api::StarknetApiError;
 use tracing::{debug, instrument};
 use url::Url;
 
@@ -29,9 +30,41 @@ pub use crate::reader::objects::state::{
 pub use crate::reader::objects::transaction::TransactionReceipt;
 use crate::retry::RetryConfig;
 use crate::{
-    ClientCreationError, ClientError, ClientResult, StarknetClient, StarknetError,
-    StarknetErrorCode,
+    ClientCreationError, ClientError, RetryErrorCode, StarknetClient, StarknetError,
+    StarknetErrorCode, StatusCode,
 };
+
+/// Errors that may be returned from a reader client.
+#[derive(thiserror::Error, Debug)]
+pub enum ReaderClientError {
+    // The variants of ClientError are duplicated here so that the user won't need to know about
+    // ClientError.
+    /// A client error representing bad status http responses.
+    #[error("Bad response status code: {:?} message: {:?}.", code, message)]
+    BadResponseStatus { code: StatusCode, message: String },
+    /// A client error representing http request errors.
+    #[error(transparent)]
+    RequestError(#[from] reqwest::Error),
+    /// A client error representing errors that might be solved by retrying mechanism.
+    #[error("Retry error code: {:?}, message: {:?}.", code, message)]
+    RetryError { code: RetryErrorCode, message: String },
+    /// A client error representing deserialization errors.
+    #[error(transparent)]
+    SerdeError(#[from] serde_json::Error),
+    /// A client error representing errors returned by the starknet client.
+    #[error(transparent)]
+    StarknetError(#[from] StarknetError),
+    /// A client error representing errors from [`starknet_api`].
+    #[error(transparent)]
+    StarknetApiError(#[from] StarknetApiError),
+    /// A client error representing transaction receipts errors.
+    #[error(transparent)]
+    TransactionReceiptsError(#[from] TransactionReceiptsError),
+    #[error("Invalid transaction: {:?}, error: {:?}.", tx_hash, msg)]
+    BadTransaction { tx_hash: TransactionHash, msg: String },
+}
+
+pub type ReaderClientResult<T> = Result<T, ReaderClientError>;
 
 /// A trait describing an object that can communicate with [`Starknet`] and read data from it.
 ///
@@ -41,22 +74,25 @@ use crate::{
 pub trait StarknetReader {
     /// Returns the last block number in the system, returning [`None`] in case there are no blocks
     /// in the system.
-    async fn block_number(&self) -> ClientResult<Option<BlockNumber>>;
+    async fn block_number(&self) -> ReaderClientResult<Option<BlockNumber>>;
     /// Returns a [`Block`] corresponding to `block_number`, returning [`None`] in case no such
     /// block exists in the system.
-    async fn block(&self, block_number: BlockNumber) -> ClientResult<Option<Block>>;
+    async fn block(&self, block_number: BlockNumber) -> ReaderClientResult<Option<Block>>;
     /// Returns a [`GenericContractClass`] corresponding to `class_hash`.
     async fn class_by_hash(
         &self,
         class_hash: ClassHash,
-    ) -> ClientResult<Option<GenericContractClass>>;
+    ) -> ReaderClientResult<Option<GenericContractClass>>;
     /// Returns a [`CasmContractClass`] corresponding to `class_hash`.
     async fn compiled_class_by_hash(
         &self,
         class_hash: ClassHash,
-    ) -> ClientResult<Option<CasmContractClass>>;
+    ) -> ReaderClientResult<Option<CasmContractClass>>;
     /// Returns a [`starknet_client`][`StateUpdate`] corresponding to `block_number`.
-    async fn state_update(&self, block_number: BlockNumber) -> ClientResult<Option<StateUpdate>>;
+    async fn state_update(
+        &self,
+        block_number: BlockNumber,
+    ) -> ReaderClientResult<Option<StateUpdate>>;
 }
 
 /// A client for the [`Starknet`] feeder gateway.
@@ -110,46 +146,40 @@ impl StarknetFeederGatewayClient {
         })
     }
 
-    async fn request_with_retry_url(&self, url: Url) -> ClientResult<String> {
-        self.client.request_with_retry(self.client.internal_client.get(url)).await
+    async fn request_with_retry_url(&self, url: Url) -> ReaderClientResult<String> {
+        self.client
+            .request_with_retry(self.client.internal_client.get(url))
+            .await
+            .map_err(Into::<ReaderClientError>::into)
     }
 
     async fn request_block(
         &self,
         block_number: Option<BlockNumber>,
-    ) -> ClientResult<Option<Block>> {
+    ) -> ReaderClientResult<Option<Block>> {
         let mut url = self.urls.get_block.clone();
         let block_number =
             block_number.map(|bn| bn.to_string()).unwrap_or(String::from(LATEST_BLOCK_NUMBER));
         url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, block_number.as_str());
 
         let response = self.request_with_retry_url(url).await;
-        match response {
-            Ok(raw_block) => {
-                let block: Block = serde_json::from_str(&raw_block)?;
-                Ok(Some(block))
-            }
-            Err(ClientError::StarknetError(StarknetError {
-                code: StarknetErrorCode::BlockNotFound,
-                message: _,
-            })) => Ok(None),
-            Err(err) => {
-                debug!("Failed to get block number {:?} from starknet server.", block_number);
-                Err(err)
-            }
-        }
+        load_object_from_response(
+            response,
+            StarknetErrorCode::BlockNotFound,
+            format!("Failed to get block number {:?} from starknet server.", block_number),
+        )
     }
 }
 
 #[async_trait]
 impl StarknetReader for StarknetFeederGatewayClient {
     #[instrument(skip(self), level = "warn")]
-    async fn block_number(&self) -> ClientResult<Option<BlockNumber>> {
+    async fn block_number(&self) -> ReaderClientResult<Option<BlockNumber>> {
         Ok(self.request_block(None).await?.map(|block| block.block_number))
     }
 
     #[instrument(skip(self), level = "warn")]
-    async fn block(&self, block_number: BlockNumber) -> ClientResult<Option<Block>> {
+    async fn block(&self, block_number: BlockNumber) -> ReaderClientResult<Option<Block>> {
         self.request_block(Some(block_number)).await
     }
 
@@ -157,56 +187,50 @@ impl StarknetReader for StarknetFeederGatewayClient {
     async fn class_by_hash(
         &self,
         class_hash: ClassHash,
-    ) -> ClientResult<Option<GenericContractClass>> {
+    ) -> ReaderClientResult<Option<GenericContractClass>> {
         let mut url = self.urls.get_contract_by_hash.clone();
         let class_hash = serde_json::to_string(&class_hash)?;
         url.query_pairs_mut()
             .append_pair(CLASS_HASH_QUERY, &class_hash.as_str()[1..class_hash.len() - 1]);
         let response = self.request_with_retry_url(url).await;
-        match response {
-            Ok(raw_contract_class) => Ok(Some(serde_json::from_str(&raw_contract_class)?)),
-            Err(ClientError::StarknetError(StarknetError {
-                code: StarknetErrorCode::UndeclaredClass,
-                message: _,
-            })) => Ok(None),
-            Err(err) => {
-                debug!("Failed to get class with hash {:?} from starknet server.", class_hash);
-                Err(err)
-            }
-        }
+        load_object_from_response(
+            response,
+            StarknetErrorCode::UndeclaredClass,
+            format!("Failed to get class with hash {:?} from starknet server.", class_hash),
+        )
     }
 
     #[instrument(skip(self), level = "warn")]
-    async fn state_update(&self, block_number: BlockNumber) -> ClientResult<Option<StateUpdate>> {
+    async fn state_update(
+        &self,
+        block_number: BlockNumber,
+    ) -> ReaderClientResult<Option<StateUpdate>> {
         let mut url = self.urls.get_state_update.clone();
         url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.to_string());
         let response = self.request_with_retry_url(url).await;
-        match response {
-            Ok(raw_state_update) => {
-                let mut state_update: StateUpdate = serde_json::from_str(&raw_state_update)?;
-                // Remove empty storage diffs. The feeder gateway sometimes returns an empty storage
-                // diff.
+        load_object_from_response(
+            response,
+            StarknetErrorCode::BlockNotFound,
+            format!(
+                "Failed to get state update for block number {} from starknet server.",
+                block_number
+            ),
+        )
+        .map(|option| {
+            option.map(|mut state_update: StateUpdate| {
+                // Remove empty storage diffs. The feeder gateway sometimes returns an empty
+                // storage diff.
                 state_update.state_diff.storage_diffs.retain(|_k, v| !v.is_empty());
-                Ok(Some(state_update))
-            }
-            Err(ClientError::StarknetError(err)) if matches!(err, StarknetError { code, message: _ } if code == StarknetErrorCode::BlockNotFound) => {
-                Ok(None)
-            }
-            Err(err) => {
-                debug!(
-                    "Failed to get state update for block number {} from starknet server.",
-                    block_number
-                );
-                Err(err)
-            }
-        }
+                state_update
+            })
+        })
     }
 
     #[instrument(skip(self), level = "warn")]
     async fn compiled_class_by_hash(
         &self,
         class_hash: ClassHash,
-    ) -> ClientResult<Option<CasmContractClass>> {
+    ) -> ReaderClientResult<Option<CasmContractClass>> {
         debug!("Got compiled_class_by_hash {} from starknet server.", class_hash);
         // FIXME: Remove the following default CasmContractClass once integration environment gets
         // regenesissed.
@@ -254,19 +278,50 @@ impl StarknetReader for StarknetFeederGatewayClient {
         url.query_pairs_mut()
             .append_pair(CLASS_HASH_QUERY, &class_hash.as_str()[1..class_hash.len() - 1]);
         let response = self.request_with_retry_url(url).await;
-        match response {
-            Ok(raw_compiled_class) => Ok(Some(serde_json::from_str(&raw_compiled_class)?)),
-            Err(ClientError::StarknetError(StarknetError {
-                code: StarknetErrorCode::UndeclaredClass,
-                message: _,
-            })) => Ok(None),
-            Err(err) => {
-                debug!(
-                    "Failed to get compiled class with hash {:?} from starknet server.",
-                    class_hash
-                );
-                Err(err)
+        load_object_from_response(
+            response,
+            StarknetErrorCode::UndeclaredClass,
+            format!(
+                "Failed to get compiled class with hash {:?} from starknet server.",
+                class_hash
+            ),
+        )
+    }
+}
+
+/// Load an object from a json string response. If there was a StarknetError with
+/// `none_error_code`, return None. If there was a different error, log `error_message`.
+fn load_object_from_response<Object: for<'a> Deserialize<'a>>(
+    response: ReaderClientResult<String>,
+    none_error_code: StarknetErrorCode,
+    error_message: String,
+) -> ReaderClientResult<Option<Object>> {
+    match response {
+        Ok(raw_object) => Ok(Some(serde_json::from_str(&raw_object)?)),
+        Err(ReaderClientError::StarknetError(StarknetError { code: error_code, message: _ }))
+            if error_code == none_error_code =>
+        {
+            Ok(None)
+        }
+        Err(err) => {
+            debug!(error_message);
+            Err(err)
+        }
+    }
+}
+
+impl From<ClientError> for ReaderClientError {
+    fn from(error: ClientError) -> Self {
+        match error {
+            ClientError::BadResponseStatus { code, message } => {
+                ReaderClientError::BadResponseStatus { code, message }
             }
+            ClientError::RequestError(err) => ReaderClientError::RequestError(err),
+            ClientError::RetryError { code, message } => {
+                ReaderClientError::RetryError { code, message }
+            }
+            ClientError::SerdeError(err) => ReaderClientError::SerdeError(err),
+            ClientError::StarknetError(err) => ReaderClientError::StarknetError(err),
         }
     }
 }

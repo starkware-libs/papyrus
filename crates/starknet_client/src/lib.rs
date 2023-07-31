@@ -16,16 +16,13 @@ use std::fmt::{self, Display, Formatter};
 use reqwest::header::HeaderMap;
 use reqwest::{Client, RequestBuilder, StatusCode};
 use serde::{Deserialize, Serialize};
-use starknet_api::transaction::TransactionHash;
-use starknet_api::StarknetApiError;
 use tracing::warn;
 
-pub use self::reader::objects::block::TransactionReceiptsError;
 use self::retry::Retry;
 pub use self::retry::RetryConfig;
 
 /// A [`Result`] in which the error is a [`ClientError`].
-pub type ClientResult<T> = Result<T, ClientError>;
+type ClientResult<T> = Result<T, ClientError>;
 
 /// A starknet client.
 struct StarknetClient {
@@ -75,7 +72,7 @@ pub enum RetryErrorCode {
     Disconnect,
 }
 
-/// Errors that may be returned by the client.
+/// Errors that may be returned by a reader or writer client.
 #[derive(thiserror::Error, Debug)]
 pub enum ClientError {
     /// A client error representing bad status http responses.
@@ -90,17 +87,9 @@ pub enum ClientError {
     /// A client error representing deserialization errors.
     #[error(transparent)]
     SerdeError(#[from] serde_json::Error),
-    /// A client error representing errors from [`starknet_api`].
-    #[error(transparent)]
-    StarknetApiError(#[from] StarknetApiError),
     /// A client error representing errors returned by the starknet client.
     #[error(transparent)]
     StarknetError(#[from] StarknetError),
-    /// A client error representing transaction receipts errors.
-    #[error(transparent)]
-    TransactionReceiptsError(#[from] TransactionReceiptsError),
-    #[error("Invalid transaction: {:?}, error: {:?}.", tx_hash, msg)]
-    BadTransaction { tx_hash: TransactionHash, msg: String },
 }
 
 impl Display for StarknetError {

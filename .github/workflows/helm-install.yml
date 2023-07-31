@@ -46,7 +46,7 @@ jobs:
           --create-namespace
 
       - name: Wait for papyrus pods to be ready
-        run: kubectl --namespace papyrus rollout status deployment papyrus-${UNIQE_ID}
+        run: kubectl --namespace papyrus rollout status deployment papyrus-${UNIQE_ID} --timeout 5m
 
       - name: Clean the deployment
         if: always()
