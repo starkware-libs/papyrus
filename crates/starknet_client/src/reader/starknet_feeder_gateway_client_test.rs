@@ -27,7 +27,7 @@ use crate::reader::{
 };
 use crate::test_utils::read_resource::read_resource_file;
 use crate::test_utils::retry::get_test_config;
-use crate::RetryErrorCode;
+use crate::{ClientError, RetryErrorCode};
 
 const NODE_VERSION: &str = "NODE VERSION";
 
@@ -378,7 +378,7 @@ async fn retry_error_codes() {
             .expect(5)
             .create();
         let error = starknet_client.block_number().await.unwrap_err();
-        assert_matches!(error, ReaderClientError::RetryError { code, message: _ } if code == error_code);
+        assert_matches!(error, ReaderClientError::ClientError(ClientError::RetryError { code, message: _ }) if code == error_code);
         mock.assert();
     }
 }

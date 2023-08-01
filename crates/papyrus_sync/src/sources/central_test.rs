@@ -19,6 +19,7 @@ use starknet_client::reader::{
     Block, ContractClass, DeclaredClassHashEntry, DeployedContract, GenericContractClass,
     GlobalRoot, MockStarknetReader, ReaderClientError, ReplacedClass, StateUpdate, StorageEntry,
 };
+use starknet_client::ClientError;
 use tokio_stream::StreamExt;
 
 use crate::sources::central::{CentralError, CentralSourceTrait, GenericCentralSource};
@@ -138,7 +139,10 @@ async fn stream_block_headers_error() {
     }
     mock.expect_block().with(predicate::eq(BlockNumber(ERROR_BLOCK_NUMBER))).times(1).returning(
         |_block_number| {
-            Err(ReaderClientError::BadResponseStatus { code: CODE, message: String::from(MESSAGE) })
+            Err(ReaderClientError::ClientError(ClientError::BadResponseStatus {
+                code: CODE,
+                message: String::from(MESSAGE),
+            }))
         },
     );
     let ((reader, _), _temp_dir) = get_test_storage();
@@ -158,7 +162,7 @@ async fn stream_block_headers_error() {
                 block_tuple,
                 Err(CentralError::ClientError(err_ptr))
                 if match &*err_ptr {
-                    ReaderClientError::BadResponseStatus { code, message } =>
+                    ReaderClientError::ClientError(ClientError::BadResponseStatus { code, message }) =>
                         code == &CODE && message == MESSAGE,
                     _ => false,
                 }
