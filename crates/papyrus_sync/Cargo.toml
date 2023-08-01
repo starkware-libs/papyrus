@@ -17,6 +17,7 @@ indexmap = { workspace = true, features = ["serde"] }
 itertools.workspace = true
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
 papyrus_storage = { path = "../papyrus_storage", version = "0.0.3" }
+papyrus_base_layer = { path = "../papyrus_base_layer" }
 papyrus_common = { path = "../papyrus_common" }
 papyrus_config = { path = "../papyrus_config" }
 reqwest = { workspace = true, features = ["json", "blocking"] }
