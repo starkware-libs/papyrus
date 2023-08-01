@@ -9,6 +9,19 @@ const NODE_VERSION: &str = "NODE VERSION";
 const URL_SUFFIX: &str = "/query";
 
 #[tokio::test]
+async fn request_with_retry_positive_flow() {
+    const BODY: &str = "body";
+    let starknet_client = StarknetClient::new(None, NODE_VERSION, get_test_config()).unwrap();
+    let mock = mock("GET", URL_SUFFIX).with_status(200).with_body(BODY).create();
+    let mut url = mockito::server_url().clone();
+    url.push_str(URL_SUFFIX);
+    let result =
+        starknet_client.request_with_retry(starknet_client.internal_client.get(&url)).await;
+    assert_eq!(result.unwrap(), BODY);
+    mock.assert();
+}
+
+#[tokio::test]
 async fn request_with_retry_max_retries_reached() {
     let starknet_client = StarknetClient::new(None, NODE_VERSION, get_test_config()).unwrap();
     for (status_code, error_code) in [
@@ -30,5 +43,32 @@ async fn request_with_retry_max_retries_reached() {
             result, Err(ClientError::RetryError { code, message: _ }) if code == error_code
         );
         mock.assert();
+    }
+}
+
+#[tokio::test]
+async fn request_with_retry_success_on_retry() {
+    const BODY: &str = "body";
+    assert_ne!(0, MAX_RETRIES);
+    let starknet_client = StarknetClient::new(None, NODE_VERSION, get_test_config()).unwrap();
+    for status_code in [
+        StatusCode::TEMPORARY_REDIRECT,
+        StatusCode::REQUEST_TIMEOUT,
+        StatusCode::TOO_MANY_REQUESTS,
+        StatusCode::SERVICE_UNAVAILABLE,
+        StatusCode::GATEWAY_TIMEOUT,
+    ] {
+        let mock_failure = mock("GET", URL_SUFFIX)
+            .with_status(status_code.as_u16().into())
+            .expect(MAX_RETRIES)
+            .create();
+        let mock_success = mock("GET", URL_SUFFIX).with_status(200).with_body(BODY).create();
+        let mut url = mockito::server_url().clone();
+        url.push_str(URL_SUFFIX);
+        let result =
+            starknet_client.request_with_retry(starknet_client.internal_client.get(&url)).await;
+        assert_eq!(result.unwrap(), BODY);
+        mock_failure.assert();
+        mock_success.assert();
     }
 }
