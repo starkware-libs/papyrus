@@ -8,7 +8,7 @@ license-file.workspace = true
 [dependencies]
 anyhow.workspace = true
 assert_matches.workspace = true
-goose.workspace = true
+goose = "0.17.0"
 once_cell.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
