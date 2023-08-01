@@ -5,7 +5,6 @@ use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use indexmap::indexmap;
 use mockito::mock;
 use pretty_assertions::assert_eq;
-use reqwest::StatusCode;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
@@ -27,7 +26,6 @@ use crate::reader::{
 };
 use crate::test_utils::read_resource::read_resource_file;
 use crate::test_utils::retry::get_test_config;
-use crate::{ClientError, RetryErrorCode};
 
 const NODE_VERSION: &str = "NODE VERSION";
 
