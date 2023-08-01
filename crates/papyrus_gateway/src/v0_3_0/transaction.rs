@@ -1,5 +1,5 @@
 use papyrus_storage::body::events::ThinTransactionOutput;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
 use starknet_api::core::{
     ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, Nonce,
@@ -67,9 +67,22 @@ impl From<starknet_api::transaction::DeclareTransactionV2> for DeclareTransactio
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 #[serde(untagged)]
 pub enum DeclareTransaction {
+    #[serde(deserialize_with = "declare_v0_deserialize")]
     Version0(DeclareTransactionV0V1),
     Version1(DeclareTransactionV0V1),
     Version2(DeclareTransactionV2),
+}
+
+fn declare_v0_deserialize<'de, D>(deserializer: D) -> Result<DeclareTransactionV0V1, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let v0v1: DeclareTransactionV0V1 = Deserialize::deserialize(deserializer)?;
+    if v0v1.version == tx_v0() {
+        Ok(v0v1)
+    } else {
+        Err(serde::de::Error::custom("Invalid version value"))
+    }
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
