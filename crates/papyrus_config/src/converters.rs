@@ -42,8 +42,17 @@ pub fn deserialize_milliseconds_to_duration<'de, D>(de: D) -> Result<Duration, D
 where
     D: Deserializer<'de>,
 {
+    let millis: u64 = Deserialize::deserialize(de)?;
+    Ok(Duration::from_millis(millis))
+}
+
+/// Deserializes seconds to duration object.
+pub fn deserialize_seconds_to_duration<'de, D>(de: D) -> Result<Duration, D::Error>
+where
+    D: Deserializer<'de>,
+{
     let secs: u64 = Deserialize::deserialize(de)?;
-    Ok(Duration::from_millis(secs))
+    Ok(Duration::from_secs(secs))
 }
 
 /// Serializes a map to "k1:v1 k2:v2" string structure.
