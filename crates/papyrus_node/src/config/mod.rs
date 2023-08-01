@@ -11,6 +11,7 @@ use std::{env, fs, io};
 
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
 use itertools::chain;
+use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
 use papyrus_config::dumping::{append_sub_config_name, SerializeConfig};
 use papyrus_config::loading::load_and_process_config;
 use papyrus_config::{ConfigError, ParamPath, SerializedParam};
@@ -34,6 +35,7 @@ pub const DEFAULT_CONFIG_PATH: &str = "config/default_config.json";
 pub struct NodeConfig {
     pub gateway: GatewayConfig,
     pub central: CentralSourceConfig,
+    pub base_layer: EthereumBaseLayerConfig,
     pub monitoring_gateway: MonitoringGatewayConfig,
     pub storage: StorageConfig,
     /// None if the syncing should be disabled.
@@ -45,6 +47,7 @@ impl Default for NodeConfig {
     fn default() -> Self {
         NodeConfig {
             central: CentralSourceConfig::default(),
+            base_layer: EthereumBaseLayerConfig::default(),
             gateway: GatewayConfig::default(),
             monitoring_gateway: MonitoringGatewayConfig::default(),
             storage: StorageConfig::default(),
@@ -57,6 +60,7 @@ impl SerializeConfig for NodeConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         chain!(
             append_sub_config_name(self.central.dump(), "central"),
+            append_sub_config_name(self.base_layer.dump(), "base_layer"),
             append_sub_config_name(self.gateway.dump(), "gateway"),
             append_sub_config_name(self.monitoring_gateway.dump(), "monitoring_gateway"),
             append_sub_config_name(self.storage.dump(), "storage"),

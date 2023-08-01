@@ -8,7 +8,9 @@ license-file.workspace = true
 [dependencies]
 async-trait.workspace = true
 ethers.workspace = true
+papyrus_config = { path = "../papyrus_config" }
 rustc-hex.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 starknet_api.workspace = true
 thiserror.workspace = true

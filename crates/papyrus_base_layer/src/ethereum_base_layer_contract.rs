@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -6,6 +7,9 @@ use ethers::contract::Contract;
 use ethers::prelude::{AbiError, Address, ContractError, Http, Middleware, Provider};
 use ethers::providers::ProviderError;
 use ethers::types::{I256, U256};
+use papyrus_config::dumping::{ser_param, SerializeConfig};
+use papyrus_config::{ParamPath, SerializedParam};
+use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::hash::StarkHash;
 use starknet_api::StarknetApiError;
@@ -31,10 +35,38 @@ pub enum EthereumBaseLayerError {
     StarknetApi(#[from] StarknetApiError),
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct EthereumBaseLayerConfig {
     // TODO(yair): consider using types.
     pub node_url: String,
     pub starknet_contract_address: String,
+}
+
+impl SerializeConfig for EthereumBaseLayerConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from_iter([
+            ser_param(
+                "node_url",
+                &self.node_url,
+                "Ethereum node URL. No default value for this parameter. The given value is a \
+                 schema to match to Infura node, but any other node can be used.",
+            ),
+            ser_param(
+                "starknet_contract_address",
+                &self.starknet_contract_address,
+                "Starknet contract address in ethereum.",
+            ),
+        ])
+    }
+}
+
+impl Default for EthereumBaseLayerConfig {
+    fn default() -> Self {
+        Self {
+            node_url: "https://mainnet.infura.io/v3/<your_api_key>".to_string(),
+            starknet_contract_address: "0xc662c410C0ECf747543f5bA90660f6ABeBD9C8c4".to_string(),
+        }
+    }
 }
 
 pub struct EthereumBaseLayerContract {
