@@ -44,6 +44,8 @@ jobs:
       - run: npm install -g ganache@7.4.3
       - run: |
           cargo test
+        env:
+          SEED: 0
 
   build-load-test:
     runs-on: ${{ matrix.os }}
