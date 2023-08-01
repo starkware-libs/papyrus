@@ -4093,6 +4093,7 @@ dependencies = [
  "itertools 0.10.5",
  "libmdbx",
  "mockall",
+ "papyrus_base_layer",
  "papyrus_common",
  "papyrus_config",
  "papyrus_storage",

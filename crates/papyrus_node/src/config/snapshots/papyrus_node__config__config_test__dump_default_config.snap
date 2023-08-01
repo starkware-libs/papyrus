@@ -93,6 +93,12 @@ expression: dumped_default_config
     "description": "Prefix of the path of the node's storage directory, the storage file path will be <path_prefix>/<chain_id>. The path is not created automatically.",
     "value": "./data"
   },
+  "sync.base_layer_propagation_sleep_duration": {
+    "description": "Time in milliseconds to poll the base layer to get the latest proved block.",
+    "value": {
+      "$serde_json::private::Number": "300000"
+    }
+  },
   "sync.block_propagation_sleep_duration": {
     "description": "Time in milliseconds before checking for a new block after the node is synchronized.",
     "value": {

@@ -1,6 +1,7 @@
 use std::env::args;
 use std::sync::Arc;
 
+use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
 use papyrus_common::SyncingState;
 use papyrus_config::ConfigError;
 use papyrus_gateway::run_server;
@@ -8,12 +9,19 @@ use papyrus_monitoring_gateway::MonitoringServer;
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_storage::{open_storage, StorageReader, StorageWriter};
-use papyrus_sync::{CentralError, CentralSource, StateSync, StateSyncError};
+use papyrus_sync::{
+    BaseLayerError, CentralError, CentralSource, EthereumBaseLayerSource, StateSync, StateSyncError,
+};
 use tokio::sync::RwLock;
 use tracing::info;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
+
+// TODO(dvir): add to config.
+// Base layer node configuration.
+const BASE_LAYER_NODE_URL: &str = "https://mainnet.infura.io/v3/no_default_value";
+const BASE_LAYER_CONTRACT_ADDRESS: &str = "0xc662c410C0ECf747543f5bA90660f6ABeBD9C8c4";
 
 // TODO(yair): Add to config.
 const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
@@ -57,10 +65,17 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         let central_source =
             CentralSource::new(config.central.clone(), VERSION_FULL, storage_reader.clone())
                 .map_err(CentralError::ClientCreation)?;
+        let base_layer_config = EthereumBaseLayerConfig {
+            node_url: BASE_LAYER_NODE_URL.to_string(),
+            starknet_contract_address: BASE_LAYER_CONTRACT_ADDRESS.to_string(),
+        };
+        let base_layer_source = EthereumBaseLayerSource::new(base_layer_config)
+            .map_err(|e| BaseLayerError::BaseLayerContractError(Box::new(e)))?;
         let mut sync = StateSync::new(
             sync_config,
             shared_syncing_state,
             central_source,
+            base_layer_source,
             storage_reader.clone(),
             storage_writer,
         );
