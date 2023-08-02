@@ -22,6 +22,7 @@ const Configuration = {
             'base_layer',
             'common',
             'config',
+            'execution',
             'helm',
             'JSON-RPC',
             'load_test',
