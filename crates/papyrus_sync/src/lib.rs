@@ -2,6 +2,9 @@
 #[path = "sync_test.rs"]
 mod sync_test;
 
+#[cfg(test)]
+mod syncing_state_test;
+
 mod sources;
 pub mod syncing_state;
 
