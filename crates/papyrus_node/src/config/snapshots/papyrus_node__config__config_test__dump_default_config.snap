@@ -94,9 +94,9 @@ expression: dumped_default_config
     "value": "./data"
   },
   "sync.base_layer_propagation_sleep_duration": {
-    "description": "Time in milliseconds to poll the base layer to get the latest proved block.",
+    "description": "Time in seconds to poll the base layer to get the latest proved block.",
     "value": {
-      "$serde_json::private::Number": "300000"
+      "$serde_json::private::Number": "300"
     }
   },
   "sync.block_propagation_sleep_duration": {

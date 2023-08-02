@@ -14,7 +14,9 @@ use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use indexmap::IndexMap;
 use papyrus_common::SyncingState;
-use papyrus_config::converters::deserialize_milliseconds_to_duration;
+use papyrus_config::converters::{
+    deserialize_milliseconds_to_duration, deserialize_seconds_to_duration,
+};
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, SerializedParam};
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
@@ -42,8 +44,7 @@ pub use self::sources::{
 pub struct SyncConfig {
     #[serde(deserialize_with = "deserialize_milliseconds_to_duration")]
     pub block_propagation_sleep_duration: Duration,
-    // TODO(dvir): make this from seconds.
-    #[serde(deserialize_with = "deserialize_milliseconds_to_duration")]
+    #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub base_layer_propagation_sleep_duration: Duration,
     #[serde(deserialize_with = "deserialize_milliseconds_to_duration")]
     pub recoverable_error_sleep_duration: Duration,
@@ -62,8 +63,8 @@ impl SerializeConfig for SyncConfig {
             ),
             ser_param(
                 "base_layer_propagation_sleep_duration",
-                &self.base_layer_propagation_sleep_duration.as_millis(),
-                "Time in milliseconds to poll the base layer to get the latest proved block.",
+                &self.base_layer_propagation_sleep_duration.as_secs(),
+                "Time in seconds to poll the base layer to get the latest proved block.",
             ),
             ser_param(
                 "recoverable_error_sleep_duration",

@@ -16,6 +16,14 @@ lazy_static! {
             "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
         ),
         vec!["storage.db_config.chain_id".to_owned(), "gateway.chain_id".to_owned()],
+    ),
+    (
+        ser_param(
+            "collect_metrics",
+            &false,
+            "If true, collect metrics for the node.",
+        ),
+        vec!["gateway.collect_metrics".to_owned(), "monitoring_gateway.collect_metrics".to_owned()],
     )];
 }
 

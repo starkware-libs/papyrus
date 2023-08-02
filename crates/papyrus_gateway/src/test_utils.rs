@@ -5,6 +5,7 @@ use jsonschema::JSONSchema;
 use papyrus_common::SyncingState;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
+use serde_json::Value;
 use starknet_api::core::ChainId;
 use tokio::sync::RwLock;
 
@@ -67,4 +68,11 @@ pub async fn get_starknet_spec_api_schema(
         .with_document("file:///spec.json".to_owned(), spec)
         .compile(&schema)
         .unwrap()
+}
+
+// TODO(nevo): Schmea validates null as valid for an unknown reason.
+// Investigate in the future and remove this function (use is_valid directly)
+pub fn validate_schema(schema: &JSONSchema, res: Value) -> bool {
+    let result = &res["result"];
+    result != &Value::Null && schema.is_valid(result)
 }
