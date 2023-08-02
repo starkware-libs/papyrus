@@ -1732,9 +1732,13 @@ async fn validate_transaction(
     .await;
     assert!(validate_schema(schema, res), "Transaction receipt is not valid.");
 
-    let res =
-        send_request(server_address, "starknet_getEvents", r#"{"chunk_size": 2}"#, VERSION_0_3_0)
-            .await;
+    let res = send_request(
+        server_address,
+        "starknet_getEvents",
+        r#"{"chunk_size": 2}"#,
+        VERSION_0_3.name,
+    )
+    .await;
     assert!(validate_schema(schema, res), "Events are not valid.");
 }
 

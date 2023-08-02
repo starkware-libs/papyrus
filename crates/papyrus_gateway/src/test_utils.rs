@@ -70,8 +70,8 @@ pub async fn get_starknet_spec_api_schema(
         .unwrap()
 }
 
-// todo: nevo - schmea validates null as valid for an unknown reason should investigate in the
-// future and remove this function (use is_valid directly)
+// TODO(nevo): Schmea validates null as valid for an unknown reason.
+// Investigate in the future and remove this function (use is_valid directly)
 pub fn validate_schema(schema: &JSONSchema, res: Value) -> bool {
     let result = &res["result"];
     result != &Value::Null && schema.is_valid(result)
