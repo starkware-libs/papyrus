@@ -27,7 +27,7 @@ pub async fn get_status_and_update_syncing_state<
 }
 
 // Updates the shared syncing state with the new status.
-async fn update_syncing_state(
+pub(crate) async fn update_syncing_state(
     shared_syncing_state: Arc<RwLock<SyncingState>>,
     current_block: BlockHashAndNumber,
     highest_block: BlockHashAndNumber,
