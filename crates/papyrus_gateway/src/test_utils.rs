@@ -46,6 +46,13 @@ pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
     )
 }
 
+// TODO(nevo): Schmea validates null as valid for an unknown reason.
+// Investigate in the future and remove this function (use is_valid directly)
+pub fn validate_schema(schema: &JSONSchema, res: Value) -> bool {
+    let result = &res["result"];
+    result != &Value::Null && schema.is_valid(result)
+}
+
 #[derive(Clone, Copy, Display)]
 pub enum SpecFile {
     #[display(fmt = "starknet_api_openrpc.json")]
@@ -55,6 +62,7 @@ pub enum SpecFile {
     #[display(fmt = "starknet_write_api.json")]
     StarknetWriteApi,
 }
+
 
 pub async fn get_starknet_spec_api_schema(
     file_to_component_names: &[(SpecFile, &[&str])],
@@ -85,11 +93,4 @@ pub async fn get_starknet_spec_api_schema(
     let schema = serde_json::from_str(&components).unwrap();
 
     options.compile(&schema).unwrap()
-}
-
-// TODO(nevo): Schmea validates null as valid for an unknown reason.
-// Investigate in the future and remove this function (use is_valid directly)
-pub fn validate_schema(schema: &JSONSchema, res: Value) -> bool {
-    let result = &res["result"];
-    result != &Value::Null && schema.is_valid(result)
 }
