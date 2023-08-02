@@ -1,7 +1,7 @@
 {
     "openrpc": "1.0.0-rc1",
     "info": {
-        "version": "0.50.0",
+        "version": "0.4.0",
         "title": "StarkNet Node API",
         "license": {}
     },
@@ -189,7 +189,23 @@
                 "name": "result",
                 "schema": {
                     "title": "Transaction",
-                    "$ref": "#/components/schemas/TXN"
+                    "allOf": [
+                        {
+                            "$ref": "#/components/schemas/TXN"
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "transaction_hash": {
+                                    "title": "transaction hash",
+                                    "$ref": "#/components/schemas/TXN_HASH"
+                                }
+                            },
+                            "required": [
+                                "transaction_hash"
+                            ]
+                        }
+                    ]
                 }
             },
             "errors": [
@@ -227,7 +243,23 @@
                 "name": "transactionResult",
                 "schema": {
                     "title": "Transaction",
-                    "$ref": "#/components/schemas/TXN"
+                    "allOf": [
+                        {
+                            "$ref": "#/components/schemas/TXN"
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "transaction_hash": {
+                                    "title": "transaction hash",
+                                    "$ref": "#/components/schemas/TXN_HASH"
+                                }
+                            },
+                            "required": [
+                                "transaction_hash"
+                            ]
+                        }
+                    ]
                 }
             },
             "errors": [
@@ -664,7 +696,23 @@
                     "type": "array",
                     "title": "Pending Transactions",
                     "items": {
-                        "$ref": "#/components/schemas/TXN"
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/TXN"
+                            },
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "transaction_hash": {
+                                        "title": "transaction hash",
+                                        "$ref": "#/components/schemas/TXN_HASH"
+                                    }
+                                },
+                                "required": [
+                                    "transaction_hash"
+                                ]
+                            }
+                        ]
                     }
                 }
             }
@@ -1260,18 +1308,23 @@
                         "items": {
                             "title": "transactions in block",
                             "type": "object",
-                            "properties": {
-                                "transaction": {
+                            "allOf": [
+                                {
                                     "title": "transaction",
                                     "$ref": "#/components/schemas/TXN"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "transaction_hash": {
+                                            "title": "transaction hash",
+                                            "$ref": "#/components/schemas/TXN_HASH"
+                                        }
+                                    },
+                                    "required": [
+                                        "transaction_hash"
+                                    ]
                                 }
-                            },
-                            "transaction_hash": {
-                                "title": "transaction hash",
-                                "$ref": "#/components/schemas/TXN_HASH"
-                            },
-                            "required": [
-                                "transaction_hash"
                             ]
                         }
                     }
@@ -1536,12 +1589,92 @@
                 "title": "Declare transaction",
                 "oneOf": [
                     {
+                        "title": "Declare transaction V0",
+                        "$ref": "#/components/schemas/DECLARE_TXN_V0"
+                    },
+                    {
                         "title": "Declare transaction V1",
                         "$ref": "#/components/schemas/DECLARE_TXN_V1"
                     },
                     {
                         "title": "Declare transaction V2",
                         "$ref": "#/components/schemas/DECLARE_TXN_V2"
+                    }
+                ]
+            },
+            "DECLARE_TXN_V0": {
+                "title": "Declare Contract Transaction V0",
+                "description": "Declare Contract Transaction V0",
+                "allOf": [
+                    {
+                        "type": "object",
+                        "title": "Declare txn v0",
+                        "properties": {
+                            "type": {
+                                "title": "Declare",
+                                "type": "string",
+                                "enum": [
+                                    "DECLARE"
+                                ]
+                            },
+                            "max_fee": {
+                                "title": "Max fee",
+                                "$ref": "#/components/schemas/FELT",
+                                "description": "The maximal fee that can be charged for including the transaction"
+                            },
+                            "version": {
+                                "title": "Version",
+                                "description": "Version of the transaction scheme",
+                                "type": "string",
+                                "enum": [
+                                    "0x0"
+                                ]
+                            },
+                            "signature": {
+                                "title": "Signature",
+                                "$ref": "#/components/schemas/SIGNATURE"
+                            }
+                        },
+                        "required": [
+                            "type",
+                            "max_fee",
+                            "version",
+                            "signature"
+                        ]
+                    },
+                    {
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "title": "ContractClass",
+                                "description": "The class to be declared. Expected to be included for all methods involving execution (estimateFee, simulateTransactions)",
+                                "properties": {
+                                    "contract_class": {
+                                        "title": "Contract class",
+                                        "description": "The class to be declared",
+                                        "$ref": "#/components/schemas/DEPRECATED_CONTRACT_CLASS"
+                                    }
+                                },
+                                "required": [
+                                    "contract_class"
+                                ]
+                            },
+                            {
+                                "type": "object",
+                                "title": "ClassHash",
+                                "description": "The hash of the declared class. Responses to getBlock and getTransaction are expected to include the hash rather than the full definition",
+                                "properties": {
+                                    "class_hash": {
+                                        "title": "Class hash",
+                                        "description": "The hash of the declared class",
+                                        "$ref": "#/components/schemas/FELT"
+                                    }
+                                },
+                                "required": [
+                                    "class_hash"
+                                ]
+                            }
+                        ]
                     }
                 ]
             },
@@ -1573,7 +1706,10 @@
                             "version": {
                                 "title": "Version",
                                 "description": "Version of the transaction scheme",
-                                "$ref": "#/components/schemas/NUM_AS_HEX"
+                                "type": "string",
+                                "enum": [
+                                    "0x1"
+                                ]
                             },
                             "signature": {
                                 "title": "Signature",
@@ -1605,7 +1741,10 @@
                                         "description": "The class to be declared",
                                         "$ref": "#/components/schemas/DEPRECATED_CONTRACT_CLASS"
                                     }
-                                }
+                                },
+                                "required": [
+                                    "contract_class"
+                                ]
                             },
                             {
                                 "type": "object",
@@ -1617,7 +1756,10 @@
                                         "description": "The hash of the declared class",
                                         "$ref": "#/components/schemas/FELT"
                                     }
-                                }
+                                },
+                                "required": [
+                                    "class_hash"
+                                ]
                             }
                         ]
                     }
@@ -1643,6 +1785,11 @@
                                 "description": "The address of the account contract sending the declaration transaction",
                                 "$ref": "#/components/schemas/ADDRESS"
                             },
+                            "compiled_class_hash": {
+                                "title": "Compiled class hash",
+                                "description": "The hash of the Cairo assembly resulting from the Sierra compilation",
+                                "$ref": "#/components/schemas/FELT"
+                            },
                             "max_fee": {
                                 "title": "Max fee",
                                 "$ref": "#/components/schemas/FELT",
@@ -1651,7 +1798,10 @@
                             "version": {
                                 "title": "Version",
                                 "description": "Version of the transaction scheme",
-                                "$ref": "#/components/schemas/NUM_AS_HEX"
+                                "type": "string",
+                                "enum": [
+                                    "0x2"
+                                ]
                             },
                             "signature": {
                                 "title": "Signature",
@@ -1665,6 +1815,7 @@
                         "required": [
                             "type",
                             "sender_address",
+                            "compiled_class_hash",
                             "max_fee",
                             "version",
                             "signature",
@@ -1683,7 +1834,10 @@
                                         "description": "The class to be declared",
                                         "$ref": "#/components/schemas/CONTRACT_CLASS"
                                     }
-                                }
+                                },
+                                "required": [
+                                    "contract_class"
+                                ]
                             },
                             {
                                 "type": "object",
@@ -1695,7 +1849,10 @@
                                         "description": "The hash of the declared class",
                                         "$ref": "#/components/schemas/FELT"
                                     }
-                                }
+                                },
+                                "required": [
+                                    "class_hash"
+                                ]
                             }
                         ]
                     }
@@ -1813,6 +1970,13 @@
                 "title": "Invoke transaction V0",
                 "description": "invokes a specific function in the desired contract (not necessarily an account)",
                 "properties": {
+                    "type": {
+                        "title": "Type",
+                        "type": "string",
+                        "enum": [
+                            "INVOKE"
+                        ]
+                    },
                     "max_fee": {
                         "title": "Max fee",
                         "$ref": "#/components/schemas/FELT",
@@ -1821,7 +1985,10 @@
                     "version": {
                         "title": "Version",
                         "description": "Version of the transaction scheme",
-                        "$ref": "#/components/schemas/NUM_AS_HEX"
+                        "type": "string",
+                        "enum": [
+                            "0x0"
+                        ]
                     },
                     "signature": {
                         "title": "Signature",
@@ -1845,6 +2012,7 @@
                     }
                 },
                 "required": [
+                    "type",
                     "contract_address",
                     "entry_point_selector",
                     "calldata",
@@ -1860,6 +2028,13 @@
                     {
                         "type": "object",
                         "properties": {
+                            "type": {
+                                "title": "Type",
+                                "type": "string",
+                                "enum": [
+                                    "INVOKE"
+                                ]
+                            },
                             "sender_address": {
                                 "title": "sender address",
                                 "$ref": "#/components/schemas/ADDRESS"
@@ -1880,7 +2055,10 @@
                             "version": {
                                 "title": "Version",
                                 "description": "Version of the transaction scheme",
-                                "$ref": "#/components/schemas/NUM_AS_HEX"
+                                "type": "string",
+                                "enum": [
+                                    "0x1"
+                                ]
                             },
                             "signature": {
                                 "title": "Signature",
@@ -1892,6 +2070,7 @@
                             }
                         },
                         "required": [
+                            "type",
                             "sender_address",
                             "calldata",
                             "max_fee",
@@ -1905,35 +2084,14 @@
             "INVOKE_TXN": {
                 "title": "Invoke transaction",
                 "description": "Initiate a transaction from an account",
-                "allOf": [
+                "oneOf": [
                     {
-                        "type": "object",
-                        "title": "Type",
-                        "properties": {
-                            "type": {
-                                "title": "Type",
-                                "type": "string",
-                                "enum": [
-                                    "INVOKE"
-                                ]
-                            }
-                        },
-                        "required": [
-                            "type"
-                        ]
+                        "title": "Invoke transaction V0",
+                        "$ref": "#/components/schemas/INVOKE_TXN_V0"
                     },
                     {
-                        "title": "Invoke transaction properties",
-                        "oneOf": [
-                            {
-                                "title": "Invoke transaction V0",
-                                "$ref": "#/components/schemas/INVOKE_TXN_V0"
-                            },
-                            {
-                                "title": "Invoke transaction V1",
-                                "$ref": "#/components/schemas/INVOKE_TXN_V1"
-                            }
-                        ]
+                        "title": "Invoke transaction V1",
+                        "$ref": "#/components/schemas/INVOKE_TXN_V1"
                     }
                 ]
             },
@@ -1945,11 +2103,6 @@
                         "title": "L1 handler transaction",
                         "description": "a call to an l1_handler on an L2 contract induced by a message from L1",
                         "properties": {
-                            "transaction_hash": {
-                                "title": "Transaction hash",
-                                "$ref": "#/components/schemas/TXN_HASH",
-                                "description": "The hash identifying the transaction"
-                            },
                             "version": {
                                 "title": "Version",
                                 "description": "Version of the transaction scheme",
@@ -1969,7 +2122,6 @@
                             }
                         },
                         "required": [
-                            "transaction_hash",
                             "version",
                             "type",
                             "nonce"
