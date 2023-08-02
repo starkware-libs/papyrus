@@ -1,7 +1,6 @@
 use std::env::args;
 use std::sync::Arc;
 
-use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
 use papyrus_common::SyncingState;
 use papyrus_config::ConfigError;
 use papyrus_gateway::run_server;
@@ -17,11 +16,6 @@ use tracing::info;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
-
-// TODO(dvir): add to config.
-// Base layer node configuration.
-const BASE_LAYER_NODE_URL: &str = "https://mainnet.infura.io/v3/no_default_value";
-const BASE_LAYER_CONTRACT_ADDRESS: &str = "0xc662c410C0ECf747543f5bA90660f6ABeBD9C8c4";
 
 // TODO(yair): Add to config.
 const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
@@ -63,13 +57,9 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     ) -> Result<(), StateSyncError> {
         let Some(sync_config) = config.sync else { return Ok(()) };
         let central_source =
-            CentralSource::new(config.central.clone(), VERSION_FULL, storage_reader.clone())
+            CentralSource::new(config.central, VERSION_FULL, storage_reader.clone())
                 .map_err(CentralError::ClientCreation)?;
-        let base_layer_config = EthereumBaseLayerConfig {
-            node_url: BASE_LAYER_NODE_URL.to_string(),
-            starknet_contract_address: BASE_LAYER_CONTRACT_ADDRESS.to_string(),
-        };
-        let base_layer_source = EthereumBaseLayerSource::new(base_layer_config)
+        let base_layer_source = EthereumBaseLayerSource::new(config.base_layer)
             .map_err(|e| BaseLayerError::BaseLayerContractError(Box::new(e)))?;
         let mut sync = StateSync::new(
             sync_config,
