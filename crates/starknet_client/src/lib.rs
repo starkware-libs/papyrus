@@ -21,7 +21,7 @@ use tracing::warn;
 
 use self::retry::Retry;
 pub use self::retry::RetryConfig;
-pub use self::starknet_error::{StarknetError, StarknetErrorCode};
+pub use self::starknet_error::{KnownStarknetErrorCode, StarknetError, StarknetErrorCode};
 
 /// A [`Result`] in which the error is a [`ClientError`].
 type ClientResult<T> = Result<T, ClientError>;
@@ -136,6 +136,11 @@ impl StarknetClient {
                 }
             }
 
+            ClientError::StarknetError(StarknetError {
+                code:
+                    StarknetErrorCode::KnownErrorCode(KnownStarknetErrorCode::TransactionLimitExceeded),
+                message: _,
+            }) => Some(RetryErrorCode::TooManyRequests),
             _ => None,
         }
     }
