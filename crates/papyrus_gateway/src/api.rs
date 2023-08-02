@@ -12,6 +12,8 @@ use tokio::sync::RwLock;
 
 use crate::v0_3_0::api::api_impl::JsonRpcServerV0_3Impl;
 use crate::v0_3_0::api::JsonRpcV0_3Server;
+use crate::v0_4_0::api::api_impl::JsonRpcServerV0_4Impl;
+use crate::v0_4_0::api::JsonRpcV0_4Server;
 use crate::version_config;
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -99,20 +101,35 @@ pub fn get_methods_from_supported_apis(
             let (version, version_state) = version_config;
             match version_state {
                 version_config::VersionState::Deprecated => None,
-                version_config::VersionState::Supported => match *version {
-                    version_config::VERSION_0_3 => Some(JsonRpcServerV0_3Impl {
-                        chain_id: chain_id.clone(),
-                        storage_reader: storage_reader.clone(),
-                        max_events_chunk_size,
-                        max_events_keys,
-                        shared_syncing_state: shared_syncing_state.clone(),
-                    }),
-                    _ => None,
-                },
+                version_config::VersionState::Supported => {
+                    let methods = match *version {
+                        version_config::VERSION_0_3 => Into::<Methods>::into(
+                            JsonRpcServerV0_3Impl::new(
+                                chain_id.clone(),
+                                storage_reader.clone(),
+                                max_events_chunk_size,
+                                max_events_keys,
+                                shared_syncing_state.clone(),
+                            )
+                            .into_rpc(),
+                        ),
+                        version_config::VERSION_0_4 => Into::<Methods>::into(
+                            JsonRpcServerV0_4Impl::new(
+                                chain_id.clone(),
+                                storage_reader.clone(),
+                                max_events_chunk_size,
+                                max_events_keys,
+                                shared_syncing_state.clone(),
+                            )
+                            .into_rpc(),
+                        ),
+                        _ => Methods::new(),
+                    };
+                    Some(methods)
+                }
             }
         })
-        .map(|rpc_module| rpc_module.into_rpc().into())
-        .fold(&mut methods, |methods, new_methods: Methods| {
+        .fold(&mut methods, |methods, new_methods| {
             let _res = methods.merge(new_methods);
             methods
         });

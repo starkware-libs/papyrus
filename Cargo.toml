@@ -5,6 +5,7 @@ resolver = "2"
 
 members = [
     "crates/papyrus_base_layer",
+    "crates/papyrus_execution",
     "crates/papyrus_gateway",
     "crates/papyrus_load_test",
     "crates/papyrus_monitoring_gateway",
@@ -31,10 +32,12 @@ async-stream = "0.3.3"
 async-trait = "0.1.56"
 axum = "0.6.12"
 base64 = "0.13.0"
+blockifier = "0.1.0-rc1"
 byteorder = "1.4.3"
 cairo-lang-starknet = "2.1.0-rc0"
 cairo-lang-casm = "2.1.0-rc0"
 cairo-lang-utils = "2.1.0-rc0"
+cairo-vm = "0.8.2"
 camelpaste = "0.1.0"
 clap = { version = "4.3.10" }
 const_format = "0.2.30"
@@ -54,7 +57,7 @@ itertools = "0.10.5"
 jsonrpsee = "0.18.1"
 jsonschema = "0.17.0"
 lazy_static = "1.4.0"
-libmdbx = ">=0.1.5,<0.1.8"
+libmdbx = "0.3.5"
 metrics = "0.21.0"
 mockall = "0.11.2"
 mockito = "0.31.0"

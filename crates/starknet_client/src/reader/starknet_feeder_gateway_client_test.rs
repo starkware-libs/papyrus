@@ -5,7 +5,6 @@ use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use indexmap::indexmap;
 use mockito::mock;
 use pretty_assertions::assert_eq;
-use reqwest::StatusCode;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
@@ -27,7 +26,6 @@ use crate::reader::{
 };
 use crate::test_utils::read_resource::read_resource_file;
 use crate::test_utils::retry::get_test_config;
-use crate::{ClientError, RetryErrorCode};
 
 const NODE_VERSION: &str = "NODE VERSION";
 
@@ -355,32 +353,6 @@ async fn block_unserializable() {
     let error = starknet_client.block(BlockNumber(20)).await.unwrap_err();
     mock.assert();
     assert_matches!(error, ReaderClientError::SerdeError(_));
-}
-
-#[tokio::test]
-async fn retry_error_codes() {
-    let starknet_client = StarknetFeederGatewayClient::new(
-        &mockito::server_url(),
-        None,
-        NODE_VERSION,
-        get_test_config(),
-    )
-    .unwrap();
-    for (status_code, error_code) in [
-        (StatusCode::TEMPORARY_REDIRECT, RetryErrorCode::Redirect),
-        (StatusCode::REQUEST_TIMEOUT, RetryErrorCode::Timeout),
-        (StatusCode::TOO_MANY_REQUESTS, RetryErrorCode::TooManyRequests),
-        (StatusCode::SERVICE_UNAVAILABLE, RetryErrorCode::ServiceUnavailable),
-        (StatusCode::GATEWAY_TIMEOUT, RetryErrorCode::Timeout),
-    ] {
-        let mock = mock("GET", "/feeder_gateway/get_block?blockNumber=latest")
-            .with_status(status_code.as_u16().into())
-            .expect(5)
-            .create();
-        let error = starknet_client.block_number().await.unwrap_err();
-        assert_matches!(error, ReaderClientError::ClientError(ClientError::RetryError { code, message: _ }) if code == error_code);
-        mock.assert();
-    }
 }
 
 #[tokio::test]

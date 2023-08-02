@@ -6,6 +6,8 @@
 
 pub mod reader;
 pub mod retry;
+#[cfg(test)]
+mod starknet_client_test;
 pub mod starknet_error;
 #[cfg(test)]
 mod test_utils;
