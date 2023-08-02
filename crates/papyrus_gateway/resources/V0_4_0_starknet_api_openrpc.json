@@ -1314,14 +1314,17 @@
                                     "$ref": "#/components/schemas/TXN"
                                 },
                                 {
-                                    "transaction_hash": {
-                                        "title": "transaction hash",
-                                        "$ref": "#/components/schemas/TXN_HASH"
-                                    }
+                                    "type": "object",
+                                    "properties": {
+                                        "transaction_hash": {
+                                            "title": "transaction hash",
+                                            "$ref": "#/components/schemas/TXN_HASH"
+                                        }
+                                    },
+                                    "required": [
+                                        "transaction_hash"
+                                    ]
                                 }
-                            ],
-                            "required": [
-                                "transaction_hash"
                             ]
                         }
                     }
