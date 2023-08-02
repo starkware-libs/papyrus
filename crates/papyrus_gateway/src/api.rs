@@ -11,9 +11,7 @@ use starknet_api::transaction::EventKey;
 use tokio::sync::RwLock;
 
 use crate::v0_3_0::api::api_impl::JsonRpcServerV0_3Impl;
-use crate::v0_3_0::api::JsonRpcV0_3Server;
 use crate::v0_4_0::api::api_impl::JsonRpcServerV0_4Impl;
-use crate::v0_4_0::api::JsonRpcV0_4Server;
 use crate::version_config;
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -95,6 +93,13 @@ pub fn get_methods_from_supported_apis(
     shared_syncing_state: Arc<RwLock<SyncingState>>,
 ) -> Methods {
     let mut methods: Methods = Methods::new();
+    let server_gen = JsonRpcServerImplGenerator {
+        chain_id: chain_id.clone(),
+        storage_reader: storage_reader.clone(),
+        max_events_chunk_size,
+        max_events_keys,
+        shared_syncing_state: shared_syncing_state.clone(),
+    };
     version_config::VERSION_CONFIG
         .iter()
         .filter_map(|version_config| {
@@ -103,26 +108,12 @@ pub fn get_methods_from_supported_apis(
                 version_config::VersionState::Deprecated => None,
                 version_config::VersionState::Supported => {
                     let methods = match *version {
-                        version_config::VERSION_0_3 => Into::<Methods>::into(
-                            JsonRpcServerV0_3Impl::new(
-                                chain_id.clone(),
-                                storage_reader.clone(),
-                                max_events_chunk_size,
-                                max_events_keys,
-                                shared_syncing_state.clone(),
-                            )
-                            .into_rpc(),
-                        ),
-                        version_config::VERSION_0_4 => Into::<Methods>::into(
-                            JsonRpcServerV0_4Impl::new(
-                                chain_id.clone(),
-                                storage_reader.clone(),
-                                max_events_chunk_size,
-                                max_events_keys,
-                                shared_syncing_state.clone(),
-                            )
-                            .into_rpc(),
-                        ),
+                        version_config::VERSION_0_3 => {
+                            server_gen.clone().generator::<JsonRpcServerV0_3Impl>()
+                        }
+                        version_config::VERSION_0_4 => {
+                            server_gen.clone().generator::<JsonRpcServerV0_4Impl>()
+                        }
                         _ => Methods::new(),
                     };
                     Some(methods)
@@ -146,4 +137,47 @@ pub trait JsonRpcServerImpl: Sized {
     ) -> Self;
 
     fn into_rpc_module(self) -> RpcModule<Self>;
+}
+
+#[derive(Clone)]
+struct JsonRpcServerImplGenerator {
+    chain_id: ChainId,
+    storage_reader: StorageReader,
+    max_events_chunk_size: usize,
+    max_events_keys: usize,
+    shared_syncing_state: Arc<RwLock<SyncingState>>,
+}
+impl JsonRpcServerImplGenerator {
+    fn get_params(self) -> (ChainId, StorageReader, usize, usize, Arc<RwLock<SyncingState>>) {
+        (
+            self.chain_id,
+            self.storage_reader,
+            self.max_events_chunk_size,
+            self.max_events_keys,
+            self.shared_syncing_state,
+        )
+    }
+
+    fn generator<T>(self) -> Methods
+    where
+        T: JsonRpcServerImpl,
+    {
+        let (
+            chain_id,
+            storage_reader,
+            max_events_chunk_size,
+            max_events_keys,
+            shared_syncing_state,
+        ) = self.get_params();
+        Into::<Methods>::into(
+            T::new(
+                chain_id,
+                storage_reader,
+                max_events_chunk_size,
+                max_events_keys,
+                shared_syncing_state,
+            )
+            .into_rpc_module(),
+        )
+    }
 }
