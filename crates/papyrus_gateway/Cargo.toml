@@ -32,6 +32,7 @@ url.workspace = true
 [dev-dependencies]
 assert_matches.workspace = true
 camelpaste.workspace = true
+derive_more = { version = "0.99.16" }
 hex.workspace = true
 jsonschema.workspace = true
 lazy_static.workspace = true

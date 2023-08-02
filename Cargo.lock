@@ -4208,6 +4208,7 @@ dependencies = [
  "assert_matches",
  "base64 0.13.1",
  "camelpaste",
+ "derive_more",
  "futures",
  "futures-util",
  "hex",

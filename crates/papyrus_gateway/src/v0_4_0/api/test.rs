@@ -47,7 +47,7 @@ use crate::api::{
 };
 use crate::test_utils::{
     get_starknet_spec_api_schema, get_test_gateway_config, get_test_rpc_server_and_storage_writer,
-    get_test_syncing_state, validate_schema,
+    get_test_syncing_state, validate_schema, SpecFile,
 };
 use crate::version_config::VERSION_0_4;
 use crate::{run_server, ContinuationTokenAsStruct};
@@ -1632,16 +1632,19 @@ async fn serialize_returns_valid_json() {
         run_server(&gateway_config, get_test_syncing_state(), storage_reader).await.unwrap();
 
     let schema = get_starknet_spec_api_schema(
-        &[
-            "BLOCK_WITH_TXS",
-            "BLOCK_WITH_TX_HASHES",
-            "STATE_UPDATE",
-            "CONTRACT_CLASS",
-            "DEPRECATED_CONTRACT_CLASS",
-            "TXN",
-            "TXN_RECEIPT",
-            "EVENTS_CHUNK",
-        ],
+        &[(
+            SpecFile::StarknetApiOpenrpc,
+            &[
+                "BLOCK_WITH_TXS",
+                "BLOCK_WITH_TX_HASHES",
+                "STATE_UPDATE",
+                "CONTRACT_CLASS",
+                "DEPRECATED_CONTRACT_CLASS",
+                "TXN",
+                "TXN_RECEIPT",
+                "EVENTS_CHUNK",
+            ],
+        )],
         &VERSION_0_4,
     )
     .await;
