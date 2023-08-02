@@ -1,5 +1,9 @@
 use crate::retry::RetryConfig;
 
+pub const MAX_RETRIES: usize = 4;
+
 pub fn get_test_config() -> RetryConfig {
-    RetryConfig { retry_base_millis: 3, retry_max_delay_millis: 40, max_retries: 4 }
+    // Taking the fastest config possible (except for MAX_RETRIES which we want to be a bit bigger
+    // to test the functionality).
+    RetryConfig { retry_base_millis: 0, retry_max_delay_millis: 0, max_retries: MAX_RETRIES }
 }
