@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use derive_more::Display;
 use jsonrpsee::server::RpcModule;
 use jsonschema::JSONSchema;
 use papyrus_common::SyncingState;
@@ -45,29 +46,45 @@ pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
     )
 }
 
+#[derive(Clone, Copy, Display)]
+pub enum SpecFile {
+    #[display(fmt = "starknet_api_openrpc.json")]
+    StarknetApiOpenrpc,
+    // TODO(shahak): Remove allow(dead_code) once we use this variant.
+    #[allow(dead_code)]
+    #[display(fmt = "starknet_write_api.json")]
+    StarknetWriteApi,
+}
+
 pub async fn get_starknet_spec_api_schema(
-    component_names: &[&str],
+    file_to_component_names: &[(SpecFile, &[&str])],
     version_id: &VersionId,
 ) -> JSONSchema {
-    let target = format!("./resources/{version_id}_starknet_api_openrpc.json");
-    let text = std::fs::read_to_string(target).unwrap();
-    let spec: serde_json::Value = serde_json::from_str(&text).unwrap();
+    let mut options = JSONSchema::options();
+    for entry in std::fs::read_dir(format!("./resources/{version_id}")).unwrap() {
+        let path = entry.unwrap().path();
+        let spec_str = std::fs::read_to_string(path.clone()).unwrap();
+        let spec: serde_json::Value = serde_json::from_str(&spec_str).unwrap();
+        let file_name = path.file_name().unwrap().to_str().unwrap();
+        options.with_document(format!("file:///api/{file_name}"), spec);
+    }
 
     let mut components = String::from(r#"{"anyOf": ["#);
-    for component in component_names {
-        components +=
-            &format!(r##"{{"$ref": "file:///spec.json#/components/schemas/{component}"}}"##);
-        if Some(component) != component_names.last() {
-            components += ", ";
+    const SEPARATOR: &str = ", ";
+    for (file_name, component_names) in file_to_component_names {
+        for component in *component_names {
+            components += &format!(
+                r##"{{"$ref": "file:///api/{file_name}#/components/schemas/{component}"}}"##,
+            );
+            components += SEPARATOR;
         }
     }
+    // Remove the last separator.
+    components.truncate(components.len() - SEPARATOR.len());
     components += r#"], "unevaluatedProperties": false}"#;
     let schema = serde_json::from_str(&components).unwrap();
 
-    JSONSchema::options()
-        .with_document("file:///spec.json".to_owned(), spec)
-        .compile(&schema)
-        .unwrap()
+    options.compile(&schema).unwrap()
 }
 
 // TODO(nevo): Schmea validates null as valid for an unknown reason.

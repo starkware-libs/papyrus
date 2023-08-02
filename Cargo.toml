@@ -41,6 +41,7 @@ cairo-vm = "0.8.2"
 camelpaste = "0.1.0"
 clap = { version = "4.3.10" }
 const_format = "0.2.30"
+derive_more = "0.99.16"
 ethers = "2.0.3"
 flate2 = "1.0.24"
 futures = "0.3.21"
