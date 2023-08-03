@@ -160,3 +160,12 @@ fn test_update_by_custom_config() {
     update_config_map_by_custom_config(&mut config_map, &custom_config_path).unwrap();
     assert_eq!(config_map["param_path"].value, json!("custom value"));
 }
+
+#[test]
+fn serialization_precision() {
+    let input =
+        "{\"value\":244116128358498188146337218061232635775543270890529169229936851982759783745}";
+    let serialized = serde_json::from_str::<serde_json::Value>(input).unwrap();
+    let deserialized = serde_json::to_string(&serialized).unwrap();
+    assert_eq!(input, deserialized);
+}
