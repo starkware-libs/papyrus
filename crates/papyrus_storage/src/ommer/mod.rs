@@ -8,8 +8,8 @@ use starknet_api::block::{BlockHash, BlockHeader};
 use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, ThinStateDiff};
 use starknet_api::transaction::{
-    EventContent, EventIndexInTransactionOutput, Transaction, TransactionExecutionStatus,
-    TransactionOffsetInBlock,
+    self, EventContent, EventIndexInTransactionOutput, Transaction, TransactionExecutionStatus,
+    TransactionHash, TransactionOffsetInBlock,
 };
 
 use crate::body::events::ThinTransactionOutput;
@@ -53,6 +53,7 @@ where
         transactions: &[(Transaction, TransactionExecutionStatus)],
         thin_transaction_outputs: &[ThinTransactionOutput],
         transaction_outputs_events: &[Vec<EventContent>],
+        transaction_hashes: &[TransactionHash],
     ) -> StorageResult<Self>;
 
     fn insert_ommer_state_diff(
@@ -86,18 +87,23 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
         transactions: &[(Transaction, TransactionExecutionStatus)],
         thin_transaction_outputs: &[ThinTransactionOutput],
         transaction_outputs_events: &[Vec<EventContent>],
+        transaction_hashes: &[TransactionHash],
     ) -> StorageResult<Self> {
         assert!(transactions.len() == thin_transaction_outputs.len());
         assert!(transactions.len() == transaction_outputs_events.len());
 
         let ommer_transactions_table = self.txn.open_table(&self.tables.ommer_transactions)?;
+        let ommer_trancations_idx_to_meta_table =
+            self.txn.open_table(&self.tables.ommer_transactions_idx_to_meta)?;
         let ommer_transaction_outputs_table =
             self.txn.open_table(&self.tables.ommer_transaction_outputs)?;
         let ommer_events_table = self.txn.open_table(&self.tables.ommer_events)?;
 
         for idx in 0..transactions.len() {
             let tx_index = OmmerTransactionKey(block_hash, TransactionOffsetInBlock(idx));
-            ommer_transactions_table.insert(&self.txn, &tx_index, &transactions[idx]).map_err(
+            let (tx, tx_exec_status) = &transactions[idx];
+            let tx_hash = transaction_hashes[idx];
+            ommer_transactions_table.insert(&self.txn, &tx_index, &tx).map_err(
                 |err| match err {
                     DbError::Inner(libmdbx::Error::KeyExist) => {
                         StorageError::OmmerTransactionKeyAlreadyExists { tx_key: tx_index }
@@ -105,6 +111,14 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
                     err => err.into(),
                 },
             )?;
+            ommer_trancations_idx_to_meta_table
+                .insert(&self.txn, &tx_index, &(tx_hash, tx_exec_status.clone()))
+                .map_err(|err| match err {
+                    DbError::Inner(libmdbx::Error::KeyExist) => {
+                        StorageError::OmmerTransactionKeyAlreadyExists { tx_key: tx_index }
+                    }
+                    err => err.into(),
+                })?;
             ommer_transaction_outputs_table
                 .insert(&self.txn, &tx_index, &thin_transaction_outputs[idx])
                 .map_err(|err| match err {

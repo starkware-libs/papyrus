@@ -56,11 +56,11 @@ use crate::db::serialization::StorageSerde;
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
-type TransactionsTable<'env> =
-    TableHandle<'env, TransactionIndex, (Transaction, TransactionExecutionStatus)>;
+type TransactionsTable<'env> = TableHandle<'env, TransactionIndex, Transaction>;
 type TransactionOutputsTable<'env> = TableHandle<'env, TransactionIndex, ThinTransactionOutput>;
 type TransactionHashToIdxTable<'env> = TableHandle<'env, TransactionHash, TransactionIndex>;
-type TransactionIdxToHashTable<'env> = TableHandle<'env, TransactionIndex, TransactionHash>;
+type TransactionIdxToMetaTable<'env> =
+    TableHandle<'env, TransactionIndex, (TransactionHash, TransactionExecutionStatus)>;
 type EventsTableKey = (ContractAddress, EventIndex);
 type EventsTable<'env> = TableHandle<'env, EventsTableKey, EventContent>;
 
@@ -77,7 +77,7 @@ pub trait BodyStorageReader {
     fn get_transaction(
         &self,
         transaction_index: TransactionIndex,
-    ) -> StorageResult<Option<(Transaction, TransactionExecutionStatus)>>;
+    ) -> StorageResult<Option<Transaction>>;
 
     /// Returns the transaction output at the given index.
     fn get_transaction_output(
@@ -98,22 +98,22 @@ pub trait BodyStorageReader {
     ) -> StorageResult<Option<TransactionIndex>>;
 
     /// Returns the transaction hash with the given transaction index.
-    fn get_transaction_hash_by_idx(
+    fn get_transaction_meta_by_idx(
         &self,
         tx_index: &TransactionIndex,
-    ) -> StorageResult<Option<TransactionHash>>;
+    ) -> StorageResult<Option<(TransactionHash, TransactionExecutionStatus)>>;
 
     /// Returns the transactions and their execution status of the block with the given number.
     fn get_block_transactions(
         &self,
         block_number: BlockNumber,
-    ) -> StorageResult<Option<Vec<(Transaction, TransactionExecutionStatus)>>>;
+    ) -> StorageResult<Option<Vec<Transaction>>>;
 
     /// Returns the transaction hashes of the block with the given number.
-    fn get_block_transaction_hashes(
+    fn get_block_transaction_metas(
         &self,
         block_number: BlockNumber,
-    ) -> StorageResult<Option<Vec<TransactionHash>>>;
+    ) -> StorageResult<Option<Vec<(TransactionHash, TransactionExecutionStatus)>>>;
 
     /// Returns the transaction outputs of the block with the given number.
     fn get_block_transaction_outputs(
@@ -123,9 +123,9 @@ pub trait BodyStorageReader {
 }
 
 type RevertedBlockBody = (
-    Vec<(Transaction, TransactionExecutionStatus)>,
+    Vec<Transaction>,
     Vec<ThinTransactionOutput>,
-    Vec<TransactionHash>,
+    Vec<(TransactionHash, TransactionExecutionStatus)>,
     Vec<Vec<EventContent>>,
 );
 
@@ -160,7 +160,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
     fn get_transaction(
         &self,
         transaction_index: TransactionIndex,
-    ) -> StorageResult<Option<(Transaction, TransactionExecutionStatus)>> {
+    ) -> StorageResult<Option<Transaction>> {
         let transactions_table = self.txn.open_table(&self.tables.transactions)?;
         let transaction = transactions_table.get(&self.txn, &transaction_index)?;
         Ok(transaction)
@@ -210,31 +210,31 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         Ok(idx)
     }
 
-    fn get_transaction_hash_by_idx(
+    fn get_transaction_meta_by_idx(
         &self,
         tx_index: &TransactionIndex,
-    ) -> StorageResult<Option<TransactionHash>> {
-        let transaction_idx_to_hash_table =
-            self.txn.open_table(&self.tables.transaction_idx_to_hash)?;
-        let idx = transaction_idx_to_hash_table.get(&self.txn, tx_index)?;
+    ) -> StorageResult<Option<(TransactionHash, TransactionExecutionStatus)>> {
+        let transaction_idx_to_meta_table =
+            self.txn.open_table(&self.tables.transaction_idx_to_meta)?;
+        let idx = transaction_idx_to_meta_table.get(&self.txn, tx_index)?;
         Ok(idx)
     }
 
     fn get_block_transactions(
         &self,
         block_number: BlockNumber,
-    ) -> StorageResult<Option<Vec<(Transaction, TransactionExecutionStatus)>>> {
+    ) -> StorageResult<Option<Vec<Transaction>>> {
         let transactions_table = self.txn.open_table(&self.tables.transactions)?;
         self.get_transactions_in_block(block_number, transactions_table)
     }
 
-    fn get_block_transaction_hashes(
+    fn get_block_transaction_metas(
         &self,
         block_number: BlockNumber,
-    ) -> StorageResult<Option<Vec<TransactionHash>>> {
-        let transaction_idx_to_hash_table =
-            self.txn.open_table(&self.tables.transaction_idx_to_hash)?;
-        self.get_transactions_in_block(block_number, transaction_idx_to_hash_table)
+    ) -> StorageResult<Option<Vec<(TransactionHash, TransactionExecutionStatus)>>> {
+        let transaction_idx_to_meta_table =
+            self.txn.open_table(&self.tables.transaction_idx_to_meta)?;
+        self.get_transactions_in_block(block_number, transaction_idx_to_meta_table)
     }
 
     fn get_block_transaction_outputs(
@@ -282,7 +282,7 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
         let transaction_hash_to_idx_table =
             self.txn.open_table(&self.tables.transaction_hash_to_idx)?;
         let transaction_idx_to_hash_table =
-            self.txn.open_table(&self.tables.transaction_idx_to_hash)?;
+            self.txn.open_table(&self.tables.transaction_idx_to_meta)?;
 
         update_marker(&self.txn, &markers_table, block_number)?;
         write_transactions(
@@ -314,7 +314,7 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
         let transaction_hash_to_idx_table =
             self.txn.open_table(&self.tables.transaction_hash_to_idx)?;
         let transaction_idx_to_hash_table =
-            self.txn.open_table(&self.tables.transaction_idx_to_hash)?;
+            self.txn.open_table(&self.tables.transaction_idx_to_meta)?;
         let events_table = self.txn.open_table(&self.tables.events)?;
 
         // Assert that body marker equals the reverted block number + 1
@@ -333,16 +333,16 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
         let transaction_outputs = self
             .get_block_transaction_outputs(block_number)?
             .expect("Missing transaction outputs for block {block_number}.");
-        let transaction_hashes = self
-            .get_block_transaction_hashes(block_number)?
+        let transaction_metas = self
+            .get_block_transaction_metas(block_number)?
             .expect("Missing transaction hashes for block {block_number}.");
 
         // Delete the transactions data.
         let mut events = vec![];
         for (offset, tx_output) in transaction_outputs.iter().enumerate() {
             let tx_index = TransactionIndex(block_number, TransactionOffsetInBlock(offset));
-            let tx_hash = self
-                .get_transaction_hash_by_idx(&tx_index)?
+            let tx_meta = self
+                .get_transaction_meta_by_idx(&tx_index)?
                 .expect("Missing transaction hash for transaction index {tx_index}.");
             let mut tx_events = vec![];
             for (index, from_address) in
@@ -360,12 +360,12 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
             events.push(tx_events);
             transactions_table.delete(&self.txn, &tx_index)?;
             transaction_outputs_table.delete(&self.txn, &tx_index)?;
-            transaction_hash_to_idx_table.delete(&self.txn, &tx_hash)?;
+            transaction_hash_to_idx_table.delete(&self.txn, &tx_meta.0)?;
             transaction_idx_to_hash_table.delete(&self.txn, &tx_index)?;
         }
 
         markers_table.upsert(&self.txn, &MarkerKind::Body, &block_number)?;
-        Ok((self, Some((transactions, transaction_outputs, transaction_hashes, events))))
+        Ok((self, Some((transactions, transaction_outputs, transaction_metas, events))))
     }
 }
 
@@ -376,7 +376,7 @@ fn write_transactions<'env>(
     txn: &DbTransaction<'env, RW>,
     transactions_table: &'env TransactionsTable<'env>,
     transaction_hash_to_idx_table: &'env TransactionHashToIdxTable<'env>,
-    transaction_idx_to_hash_table: &'env TransactionIdxToHashTable<'env>,
+    transaction_idx_to_meta_table: &'env TransactionIdxToMetaTable<'env>,
     block_number: BlockNumber,
 ) -> StorageResult<()> {
     for index in 0..block_body.transactions.len() {
@@ -389,11 +389,12 @@ fn write_transactions<'env>(
         update_tx_hash_mapping(
             txn,
             transaction_hash_to_idx_table,
-            transaction_idx_to_hash_table,
+            transaction_idx_to_meta_table,
             transaction_hash,
             transaction_index,
+            exec_status,
         )?;
-        transactions_table.insert(txn, &transaction_index, &(tx, exec_status))?;
+        transactions_table.insert(txn, &transaction_index, &tx)?;
     }
     Ok(())
 }
@@ -434,9 +435,10 @@ fn write_events<'env>(
 fn update_tx_hash_mapping<'env>(
     txn: &DbTransaction<'env, RW>,
     transaction_hash_to_idx_table: &'env TransactionHashToIdxTable<'env>,
-    transaction_idx_to_hash_table: &'env TransactionIdxToHashTable<'env>,
+    transaction_idx_to_meta_table: &'env TransactionIdxToMetaTable<'env>,
     tx_hash: TransactionHash,
     transaction_index: TransactionIndex,
+    tx_exec_status: TransactionExecutionStatus,
 ) -> Result<(), StorageError> {
     let res = transaction_hash_to_idx_table.insert(txn, &tx_hash, &transaction_index);
     res.map_err(|err| match err {
@@ -445,7 +447,7 @@ fn update_tx_hash_mapping<'env>(
         }
         err => err.into(),
     })?;
-    transaction_idx_to_hash_table.insert(txn, &transaction_index, &tx_hash)?;
+    transaction_idx_to_meta_table.insert(txn, &transaction_index, &(tx_hash, tx_exec_status))?;
     Ok(())
 }
 

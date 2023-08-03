@@ -54,6 +54,7 @@ fn insert_body_to_ommer() {
             &tx_and_status,
             &thin_tx_outputs,
             &transaction_outputs_events,
+            &block.body.transaction_hashes,
         )
         .unwrap()
         .commit()

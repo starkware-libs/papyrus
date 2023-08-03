@@ -179,9 +179,9 @@ pub enum SyncEvent {
 }
 
 impl<
-    TCentralSource: CentralSourceTrait + Sync + Send + 'static,
-    TBaseLayerSource: BaseLayerSourceTrait + Sync + Send,
-> GenericStateSync<TCentralSource, TBaseLayerSource>
+        TCentralSource: CentralSourceTrait + Sync + Send + 'static,
+        TBaseLayerSource: BaseLayerSourceTrait + Sync + Send,
+    > GenericStateSync<TCentralSource, TBaseLayerSource>
 {
     pub async fn run(&mut self) -> StateSyncResult {
         info!("State sync started.");
@@ -494,12 +494,20 @@ impl<
 
             let res = txn.revert_body(block_number)?;
             txn = res.0;
-            if let Some((transactions, transaction_outputs, _transaction_hashes, events)) = res.1 {
+            if let Some((transactions, transaction_outputs, transaction_metas, events)) = res.1 {
                 txn = txn.insert_ommer_body(
                     header.block_hash,
-                    &transactions,
+                    &transactions
+                        .iter()
+                        .zip(transaction_metas)
+                        .map(|(tx, tx_meta)| (*tx, tx_meta.1.clone()))
+                        .collect::<Vec<_>>(),
                     &transaction_outputs,
                     events.as_slice(),
+                    &transaction_metas
+                        .iter()
+                        .map(|(tx_hash, _tx_exex_sts)| *tx_hash)
+                        .collect::<Vec<_>>(),
                 )?;
             }
 
