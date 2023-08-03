@@ -8,7 +8,7 @@ use futures::StreamExt;
 use indexmap::IndexMap;
 use papyrus_common::SyncingState;
 use papyrus_storage::base_layer::BaseLayerStorageReader;
-use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter, StarknetVersion};
+use papyrus_storage::header::{HeaderStorageReader, StarknetVersion};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
@@ -25,8 +25,7 @@ use crate::sources::central::{
 };
 use crate::sources::BaseLayerSourceTrait;
 use crate::{
-    stream_new_base_layer_block, CentralError, CentralSourceTrait, GenericStateSync,
-    StateSyncError, StateSyncResult, SyncConfig, SyncEvent,
+    CentralError, CentralSourceTrait, GenericStateSync, StateSyncError, StateSyncResult, SyncConfig,
 };
 
 const SYNC_SLEEP_DURATION: Duration = Duration::from_millis(100); // 100ms
@@ -560,115 +559,4 @@ fn create_block_hash(bn: BlockNumber, is_reverted_block: bool) -> BlockHash {
     } else {
         BlockHash(stark_felt!(format!("0x{}", bn.0).as_str()))
     }
-}
-
-// Adds to the storage 'headers_num' headers.
-fn add_headers(headers_num: u64, writer: &mut StorageWriter) {
-    for i in 0..headers_num {
-        let header = BlockHeader {
-            block_number: BlockNumber(i),
-            block_hash: BlockHash(i.into()),
-            ..BlockHeader::default()
-        };
-        writer
-            .begin_rw_txn()
-            .unwrap()
-            .append_header(BlockNumber(i), &header)
-            .unwrap()
-            .commit()
-            .unwrap();
-    }
-}
-
-#[tokio::test]
-async fn stream_new_base_layer_block_test_header_marker() {
-    let (reader, mut writer) = get_test_storage().0;
-
-    // Header marker points to to block number 5.
-    add_headers(5, &mut writer);
-
-    // TODO(dvir): find a better way to do it.
-    // Base layer after the header marker, skip 5 and 10 and return only 1 and 4.
-    let block_numbers = vec![5, 1, 10, 4];
-    let mut iter = block_numbers.into_iter().map(|bn| (BlockNumber(bn), BlockHash::default()));
-    let mut mock = MockBaseLayerSourceTrait::new();
-    mock.expect_latest_proved_block().times(4).returning(move || Ok(iter.next()));
-    let mut stream =
-        stream_new_base_layer_block(reader, Arc::new(mock), Duration::from_millis(0)).boxed();
-
-    let event = stream.next().await.unwrap().unwrap();
-    assert_matches!(event, SyncEvent::NewBaseLayerBlock { block_number: BlockNumber(1), .. });
-
-    let event = stream.next().await.unwrap().unwrap();
-    assert_matches!(event, SyncEvent::NewBaseLayerBlock { block_number: BlockNumber(4), .. });
-}
-
-#[tokio::test]
-async fn stream_new_base_layer_block_no_blocks_on_base_layer() {
-    let (reader, mut writer) = get_test_storage().0;
-
-    // Header marker points to to block number 5.
-    add_headers(5, &mut writer);
-
-    // In the first polling of the base layer no blocks were found, in the second polling a block
-    // was found.
-    let mut values = vec![None, Some((BlockNumber(1), BlockHash::default()))].into_iter();
-    let mut mock = MockBaseLayerSourceTrait::new();
-    mock.expect_latest_proved_block().times(2).returning(move || Ok(values.next().unwrap()));
-
-    let mut stream =
-        stream_new_base_layer_block(reader, Arc::new(mock), Duration::from_millis(0)).boxed();
-
-    let event = stream.next().await.unwrap().unwrap();
-    assert_matches!(event, SyncEvent::NewBaseLayerBlock { block_number: BlockNumber(1), .. });
-}
-
-#[test]
-fn store_base_layer_block_test() {
-    let (reader, mut writer) = get_test_storage().0;
-
-    let header_hash = BlockHash(stark_felt!("0x0"));
-    let header = BlockHeader {
-        block_number: BlockNumber(0),
-        block_hash: header_hash,
-        ..BlockHeader::default()
-    };
-    writer
-        .begin_rw_txn()
-        .unwrap()
-        .append_header(BlockNumber(0), &header)
-        .unwrap()
-        .commit()
-        .unwrap();
-
-    let mut gen_state_sync = GenericStateSync {
-        config: SyncConfig {
-            block_propagation_sleep_duration: SYNC_SLEEP_DURATION,
-            base_layer_propagation_sleep_duration: BASE_LAYER_SLEEP_DURATION,
-            recoverable_error_sleep_duration: SYNC_SLEEP_DURATION,
-            blocks_max_stream_size: STREAM_SIZE,
-            state_updates_max_stream_size: STREAM_SIZE,
-        },
-        shared_syncing_state: Arc::new(RwLock::new(SyncingState::default())),
-        central_source: Arc::new(MockCentralSourceTrait::new()),
-        base_layer_source: Arc::new(MockBaseLayerSourceTrait::new()),
-        reader,
-        writer,
-    };
-
-    // Trying to store a block without a header in the storage.
-    let res = gen_state_sync.store_base_layer_block(BlockNumber(1), BlockHash::default());
-    assert_matches!(res, Err(StateSyncError::BaseLayerBlockWithoutMatchingHeader { .. }));
-
-    // Trying to store a block with mismatching header.
-    let res =
-        gen_state_sync.store_base_layer_block(BlockNumber(0), BlockHash(stark_felt!("0x666")));
-    assert_matches!(res, Err(StateSyncError::BaseLayerHashMismatch { .. }));
-
-    // Happy flow.
-    let res = gen_state_sync.store_base_layer_block(BlockNumber(0), header_hash);
-    assert!(res.is_ok());
-    let base_layer_marker =
-        gen_state_sync.reader.begin_ro_txn().unwrap().get_base_layer_block_marker().unwrap();
-    assert_eq!(base_layer_marker, BlockNumber(1));
 }
