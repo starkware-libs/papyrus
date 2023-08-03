@@ -7,10 +7,10 @@ use starknet_api::core::{ClassHash, ContractAddress};
 use starknet_api::transaction::TransactionHash;
 
 /// A Starknet error code that reports success.
-#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub enum SuccessfulStarknetErrorCode {
     #[serde(rename = "TRANSACTION_RECEIVED")]
-    // TODO(shahak) Add number.
+    #[default]
     TransactionReceived,
 }
 
