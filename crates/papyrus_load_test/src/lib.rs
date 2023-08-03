@@ -1,3 +1,7 @@
+#[cfg(test)]
+#[path = "precision_test.rs"]
+mod precision_test;
+
 pub mod create_files;
 pub mod create_request;
 pub mod scenarios;

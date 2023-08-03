@@ -10,8 +10,9 @@ anyhow.workspace = true
 assert_matches.workspace = true
 goose = "0.17.0"
 once_cell.workspace = true
+pretty_assertions.workspace = true
 serde = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
+serde_json = { workspace = true, features = ["arbitrary_precision"]}
 test_utils = { path = "../test_utils" }
 tokio.workspace = true
 rand.workspace = true
