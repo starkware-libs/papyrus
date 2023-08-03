@@ -19,11 +19,11 @@ jsonrpsee = { workspace = true, features = ["full"] }
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
 lazy_static.workspace = true
 papyrus_base_layer = { path = "../papyrus_base_layer" }
-papyrus_config = { path = "../papyrus_config" }
+papyrus_config = { git = "https://github.com/starkware-libs/papyrus", rev = "960765e"  }
 papyrus_common = { path = "../papyrus_common" }
 papyrus_gateway = { path = "../papyrus_gateway" }
 papyrus_monitoring_gateway = { path = "../papyrus_monitoring_gateway" }
-papyrus_storage = { path = "../papyrus_storage", version = "0.0.3" }
+papyrus_storage = { git = "https://github.com/starkware-libs/papyrus", branch = "mohammad/Separate_papyrus_storage_for_SN_API_new_version_base_branch" }
 papyrus_sync = { path = "../papyrus_sync" }
 reqwest = { workspace = true, features = ["json", "blocking"] }
 serde = { workspace = true, features = ["derive"] }
