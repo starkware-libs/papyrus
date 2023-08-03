@@ -39,6 +39,6 @@ url.workspace = true
 
 [dev-dependencies]
 pretty_assertions.workspace = true
-insta = { workspace = true, features = ["json"] }
+insta = { workspace = true, features = ["json", "yaml"] }
 tempfile.workspace = true
 test_utils = { path = "../test_utils" }
