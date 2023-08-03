@@ -23,8 +23,8 @@ use starknet_api::block::{
     BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
 };
 use starknet_api::core::{
-    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, GlobalRoot, Nonce,
-    PatriciaKey,
+    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, EthAddress, GlobalRoot,
+    Nonce, PatriciaKey,
 };
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass, ContractClassAbiEntry,
@@ -38,11 +38,11 @@ use starknet_api::state::{
     ContractClass, EntryPoint, EntryPointType, FunctionIndex, StorageKey, ThinStateDiff,
 };
 use starknet_api::transaction::{
-    Calldata, ContractAddressSalt, DeclareTransaction, DeclareTransactionV0V1,
-    DeclareTransactionV2, DeployAccountTransaction, DeployTransaction, EthAddress, EventContent,
-    EventData, EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction,
-    InvokeTransactionV0, InvokeTransactionV1, L1HandlerTransaction, L1ToL2Payload, L2ToL1Payload,
-    MessageToL1, MessageToL2, Transaction, TransactionExecutionStatus, TransactionHash,
+    AccountParams, Calldata, ContractAddressSalt, DeclareTransaction, DeclareTransactionV0V1,
+    DeclareTransactionV2, DeployAccountTransaction, DeployTransaction, EventContent, EventData,
+    EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction, InvokeTransactionV0,
+    InvokeTransactionV1, L1HandlerTransaction, L1ToL2Payload, L2ToL1Payload, MessageToL1,
+    MessageToL2, Transaction, TransactionExecutionStatus, TransactionHash,
     TransactionOffsetInBlock, TransactionSignature, TransactionVersion,
 };
 
@@ -65,6 +65,11 @@ use crate::version::Version;
 use crate::MarkerKind;
 
 auto_storage_serde! {
+    pub struct AccountParams {
+        pub max_fee: Fee,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+    }
     pub struct BlockHash(pub StarkHash);
     pub struct BlockHeader {
         pub block_hash: BlockHash,
@@ -98,25 +103,18 @@ auto_storage_serde! {
         V2(DeclareTransactionV2) = 2,
     }
     pub struct DeclareTransactionV0V1 {
-        pub max_fee: Fee,
-        pub signature: TransactionSignature,
-        pub nonce: Nonce,
+        pub account_params: AccountParams,
         pub class_hash: ClassHash,
         pub sender_address: ContractAddress,
     }
     pub struct DeclareTransactionV2 {
-        pub max_fee: Fee,
-        pub signature: TransactionSignature,
-        pub nonce: Nonce,
+        pub account_params: AccountParams,
         pub class_hash: ClassHash,
         pub compiled_class_hash: CompiledClassHash,
         pub sender_address: ContractAddress,
     }
     pub struct DeployAccountTransaction {
-        pub max_fee: Fee,
-        pub version: TransactionVersion,
-        pub signature: TransactionSignature,
-        pub nonce: Nonce,
+        pub account_params: AccountParams,
         pub class_hash: ClassHash,
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
@@ -201,9 +199,7 @@ auto_storage_serde! {
         pub calldata: Calldata,
     }
     pub struct InvokeTransactionV1 {
-        pub max_fee: Fee,
-        pub signature: TransactionSignature,
-        pub nonce: Nonce,
+        pub account_params: AccountParams,
         pub sender_address: ContractAddress,
         pub calldata: Calldata,
     }
