@@ -4170,14 +4170,12 @@ dependencies = [
 [[package]]
 name = "papyrus_config"
 version = "0.0.3"
+source = "git+https://github.com/starkware-libs/papyrus?rev=71742c0#71742c0bea212be188df1927acf2aa2c5d50828f"
 dependencies = [
- "assert_matches",
  "clap",
  "itertools 0.10.5",
  "serde",
  "serde_json",
- "tempfile",
- "test_utils",
  "thiserror",
 ]
 
@@ -4331,35 +4329,26 @@ dependencies = [
 [[package]]
 name = "papyrus_storage"
 version = "0.0.3"
+source = "git+https://github.com/starkware-libs/papyrus?rev=71742c0#71742c0bea212be188df1927acf2aa2c5d50828f"
 dependencies = [
- "assert_matches",
  "byteorder",
  "cairo-lang-casm",
  "cairo-lang-starknet",
  "cairo-lang-utils",
- "camelpaste",
  "flate2",
  "futures-util",
  "indexmap 1.9.3",
- "insta",
  "integer-encoding",
  "libmdbx",
  "num-bigint",
- "num-traits 0.2.16",
  "papyrus_config",
  "parity-scale-codec",
- "paste",
- "pretty_assertions",
  "primitive-types",
- "rand",
- "rand_chacha",
  "reqwest",
- "schemars",
  "serde",
  "serde_json",
  "starknet_api",
  "tempfile",
- "test_utils",
  "thiserror",
  "tokio",
  "tracing",
