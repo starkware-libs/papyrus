@@ -4172,14 +4172,11 @@ dependencies = [
 [[package]]
 name = "papyrus_config"
 version = "0.0.3"
+source = "git+https://github.com/starkware-libs/papyrus?rev=960765e#960765eb0b74196f65e82bbb0fc3e536db38c064"
 dependencies = [
- "assert_matches",
  "clap",
- "itertools 0.10.5",
  "serde",
  "serde_json",
- "tempfile",
- "test_utils",
  "thiserror",
 ]
 
@@ -4210,6 +4207,8 @@ dependencies = [
  "anyhow",
  "assert_matches",
  "base64 0.13.1",
+ "cairo-lang-casm",
+ "cairo-lang-starknet",
  "camelpaste",
  "derive_more",
  "futures",
@@ -4224,6 +4223,7 @@ dependencies = [
  "metrics-exporter-prometheus",
  "papyrus_common",
  "papyrus_config",
+ "papyrus_execution",
  "papyrus_proc_macros",
  "papyrus_storage",
  "pretty_assertions",
@@ -4330,35 +4330,26 @@ dependencies = [
 [[package]]
 name = "papyrus_storage"
 version = "0.0.3"
+source = "git+https://github.com/starkware-libs/papyrus?rev=960765e#960765eb0b74196f65e82bbb0fc3e536db38c064"
 dependencies = [
- "assert_matches",
  "byteorder",
  "cairo-lang-casm",
  "cairo-lang-starknet",
  "cairo-lang-utils",
- "camelpaste",
  "flate2",
  "futures-util",
  "indexmap 1.9.3",
- "insta",
  "integer-encoding",
  "libmdbx",
  "num-bigint",
- "num-traits 0.2.15",
  "papyrus_config",
  "parity-scale-codec",
- "paste",
- "pretty_assertions",
  "primitive-types",
- "rand",
- "rand_chacha",
  "reqwest",
- "schemars",
  "serde",
  "serde_json",
  "starknet_api",
  "tempfile",
- "test_utils",
  "thiserror",
  "tokio",
  "tracing",

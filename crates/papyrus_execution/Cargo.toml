@@ -11,7 +11,7 @@ blockifier.workspace = true
 cairo-lang-starknet.workspace = true
 cairo-vm.workspace = true
 lazy_static.workspace = true
-papyrus_storage = { path = "../papyrus_storage"}
+papyrus_storage = { git = "https://github.com/starkware-libs/papyrus", rev = "960765e" }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["arbitrary_precision"]}
 starknet_api.workspace = true
@@ -22,5 +22,5 @@ assert_matches.workspace = true
 cairo-lang-casm.workspace = true
 cairo-lang-utils.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
-papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
+papyrus_storage = { git = "https://github.com/starkware-libs/papyrus", rev = "960765e" , features = ["testing"] }
 test_utils = { path = "../test_utils" }
