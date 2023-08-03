@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod precision_test;
+
 use std::collections::HashMap;
 use std::env;
 use std::fs::read_to_string;

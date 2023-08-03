@@ -27,7 +27,7 @@ papyrus_storage = { path = "../papyrus_storage", version = "0.0.4" }
 papyrus_sync = { path = "../papyrus_sync" }
 reqwest = { workspace = true, features = ["json", "blocking"] }
 serde = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
+serde_json = { workspace = true, features = ["arbitrary_precision"]}
 starknet_api.workspace = true
 starknet_client = { path = "../starknet_client" }
 thiserror.workspace = true
