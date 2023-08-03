@@ -23,7 +23,7 @@ integer-encoding.workspace = true
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
 num-bigint.workspace = true
 primitive-types.workspace = true
-papyrus_config = { path = "../papyrus_config", version = "0.0.3" }
+papyrus_config = { git = "https://github.com/starkware-libs/papyrus", rev = "77211ef"  }
 parity-scale-codec.workspace = true
 reqwest = { workspace = true, features = ["json", "blocking"] }
 serde = { workspace = true, features = ["derive"] }
@@ -47,3 +47,7 @@ rand_chacha.workspace = true
 schemars = {workspace = true, features = ["preserve_order"] }
 tempfile = { workspace = true}
 test_utils = { path = "../test_utils"}
+
+[patch.crates-io]
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "a481d59" }
+
