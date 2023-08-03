@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{ClassHash, ContractAddress};
 use starknet_api::transaction::TransactionHash;
+use starknet_client::writer::objects::response::{
+    DeclareResponse, DeployAccountResponse, InvokeResponse,
+};
 
 #[cfg(test)]
 #[path = "write_api_result_test.rs"]
@@ -24,4 +27,22 @@ pub struct AddDeclareOkResult {
 pub struct AddDeployAccountOkResult {
     pub transaction_hash: TransactionHash,
     pub contract_address: ContractAddress,
+}
+
+impl From<InvokeResponse> for AddInvokeOkResult {
+    fn from(response: InvokeResponse) -> Self {
+        Self { transaction_hash: response.transaction_hash }
+    }
+}
+
+impl From<DeclareResponse> for AddDeclareOkResult {
+    fn from(response: DeclareResponse) -> Self {
+        Self { transaction_hash: response.transaction_hash, class_hash: response.class_hash }
+    }
+}
+
+impl From<DeployAccountResponse> for AddDeployAccountOkResult {
+    fn from(response: DeployAccountResponse) -> Self {
+        Self { transaction_hash: response.transaction_hash, contract_address: response.address }
+    }
 }
