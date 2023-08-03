@@ -14,9 +14,9 @@ hyper = { workspace = true, features = ["full"] }
 jsonrpsee = { workspace = true, features = ["full"] }
 metrics.workspace = true
 papyrus_common = { path = "../papyrus_common"}
-papyrus_config = { path = "../papyrus_config" }
+papyrus_config = { git = "https://github.com/starkware-libs/papyrus", tag = "v0.0.3" }
 papyrus_proc_macros = { path = "../papyrus_proc_macros"}
-papyrus_storage = { path = "../papyrus_storage", version = "0.0.3" }
+papyrus_storage = {git = "https://github.com/starkware-libs/papyrus", tag = "v0.0.3"}
 starknet_reader_client = { path = "../starknet_reader_client" }
 regex = {workspace = true}
 serde = { workspace = true, features = ["derive"] }
@@ -36,7 +36,7 @@ hex.workspace = true
 jsonschema.workspace = true
 lazy_static.workspace = true
 metrics-exporter-prometheus = { version = "0.12.1" }
-papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
+papyrus_storage = { git = "https://github.com/starkware-libs/papyrus", tag = "v0.0.3", features = ["testing"] }
 pretty_assertions.workspace = true
 prometheus-parse.workspace = true
 rand_chacha.workspace = true
