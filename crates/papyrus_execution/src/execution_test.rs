@@ -18,8 +18,8 @@ use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContract
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass, StateDiff, StateNumber};
 use starknet_api::transaction::{
-    Calldata, DeclareTransactionV0V1, DeclareTransactionV2, DeployAccountTransaction, Fee,
-    InvokeTransaction, InvokeTransactionV1, TransactionVersion,
+    AccountParams, Calldata, DeclareTransactionV0V1, DeclareTransactionV2,
+    DeployAccountTransaction, Fee, InvokeTransaction, InvokeTransactionV1, TransactionVersion,
 };
 use starknet_api::{calldata, patricia_key, stark_felt};
 use test_utils::read_json_file;
@@ -342,9 +342,12 @@ impl TxsScenarioBuilder {
         ];
         let tx = ExecutableTransactionInput::Invoke(InvokeTransaction::V1(InvokeTransactionV1 {
             calldata,
-            max_fee: Fee(MAX_FEE),
+            account_params: AccountParams {
+                max_fee: Fee(MAX_FEE),
+                nonce: self.next_nonce(sender_address),
+                ..Default::default()
+            },
             sender_address,
-            nonce: self.next_nonce(sender_address),
             ..Default::default()
         }));
         self.txs.push(tx);
@@ -354,9 +357,12 @@ impl TxsScenarioBuilder {
     pub fn declare_deprecated_class(mut self, sender_address: ContractAddress) -> Self {
         let tx = ExecutableTransactionInput::DeclareV1(
             DeclareTransactionV0V1 {
-                max_fee: Fee(MAX_FEE),
+                account_params: AccountParams {
+                    max_fee: Fee(MAX_FEE),
+                    nonce: self.next_nonce(sender_address),
+                    ..Default::default()
+                },
                 sender_address,
-                nonce: self.next_nonce(sender_address),
                 class_hash: self.next_class_hash(),
                 ..Default::default()
             },
@@ -369,9 +375,12 @@ impl TxsScenarioBuilder {
     pub fn declare_class(mut self, sender_address: ContractAddress) -> TxsScenarioBuilder {
         let tx = ExecutableTransactionInput::DeclareV2(
             DeclareTransactionV2 {
-                max_fee: Fee(MAX_FEE),
+                account_params: AccountParams {
+                    max_fee: Fee(MAX_FEE),
+                    nonce: self.next_nonce(sender_address),
+                    ..Default::default()
+                },
                 sender_address,
-                nonce: self.next_nonce(sender_address),
                 class_hash: self.next_class_hash(),
                 ..Default::default()
             },
@@ -383,8 +392,11 @@ impl TxsScenarioBuilder {
 
     pub fn deploy_account(mut self, contract_address: ContractAddress) -> TxsScenarioBuilder {
         let tx = ExecutableTransactionInput::Deploy(DeployAccountTransaction {
-            max_fee: Fee(MAX_FEE),
-            nonce: self.next_nonce(contract_address), // Is it right?
+            account_params: AccountParams {
+                max_fee: Fee(MAX_FEE),
+                nonce: self.next_nonce(contract_address), // Is it right?
+                ..Default::default()
+            },
             class_hash: ClassHash(StarkHash::try_from(ACCOUNT_CLASS_HASH).unwrap()),
             version: TransactionVersion(1_u128.into()),
             ..Default::default()

@@ -184,9 +184,9 @@ impl From<starknet_api::transaction::DeployAccountTransaction> for DeployAccount
             contract_address_salt: tx.contract_address_salt,
             class_hash: tx.class_hash,
             constructor_calldata: tx.constructor_calldata,
-            nonce: tx.nonce,
-            max_fee: tx.max_fee,
-            signature: tx.signature,
+            nonce: tx.account_params.nonce,
+            max_fee: tx.account_params.max_fee,
+            signature: tx.account_params.signature,
             version: tx.version,
             r#type: DeployAccountType::default(),
         }

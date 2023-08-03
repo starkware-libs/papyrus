@@ -58,10 +58,10 @@ impl From<starknet_api::transaction::DeclareTransactionV2> for DeclareTransactio
             class_hash: tx.class_hash,
             compiled_class_hash: tx.compiled_class_hash,
             sender_address: tx.sender_address,
-            nonce: tx.nonce,
-            max_fee: tx.max_fee,
+            nonce: tx.account_params.nonce,
+            max_fee: tx.account_params.max_fee,
             version: tx_v2(),
-            signature: tx.signature,
+            signature: tx.account_params.signature,
         }
     }
 }
@@ -123,10 +123,10 @@ pub struct InvokeTransactionV1 {
 impl From<starknet_api::transaction::InvokeTransactionV1> for InvokeTransactionV1 {
     fn from(tx: starknet_api::transaction::InvokeTransactionV1) -> Self {
         Self {
-            max_fee: tx.max_fee,
+            max_fee: tx.account_params.max_fee,
             version: tx_v1(),
-            signature: tx.signature,
-            nonce: tx.nonce,
+            signature: tx.account_params.signature,
+            nonce: tx.account_params.nonce,
             sender_address: tx.sender_address,
             calldata: tx.calldata,
         }
@@ -184,20 +184,20 @@ impl From<starknet_api::transaction::Transaction> for Transaction {
                     Self::Declare(DeclareTransaction::Version0(DeclareTransactionV0V1 {
                         class_hash: tx.class_hash,
                         sender_address: tx.sender_address,
-                        nonce: tx.nonce,
-                        max_fee: tx.max_fee,
+                        nonce: tx.account_params.nonce,
+                        max_fee: tx.account_params.max_fee,
                         version: tx_v0(),
-                        signature: tx.signature,
+                        signature: tx.account_params.signature,
                     }))
                 }
                 starknet_api::transaction::DeclareTransaction::V1(tx) => {
                     Self::Declare(DeclareTransaction::Version1(DeclareTransactionV0V1 {
                         class_hash: tx.class_hash,
                         sender_address: tx.sender_address,
-                        nonce: tx.nonce,
-                        max_fee: tx.max_fee,
+                        nonce: tx.account_params.nonce,
+                        max_fee: tx.account_params.max_fee,
                         version: tx_v1(),
-                        signature: tx.signature,
+                        signature: tx.account_params.signature,
                     }))
                 }
                 starknet_api::transaction::DeclareTransaction::V2(tx) => {
