@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use blockifier::abi::abi_utils::selector_from_name;
 use blockifier::execution::entry_point::Retdata;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use indexmap::indexmap;
@@ -20,6 +19,7 @@ use starknet_api::{calldata, patricia_key, stark_felt};
 use test_utils::read_json_file;
 
 use crate::execute_call;
+use crate::execution_utils::selector_from_name;
 
 const CHAIN_ID: &str = "TEST_CHAIN_ID";
 const GAS_PRICE: GasPrice = GasPrice(100 * u128::pow(10, 9)); // Given in units of wei.

@@ -4,10 +4,10 @@ use papyrus_common::SyncingState;
 use papyrus_proc_macros::versioned_rpc;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
-use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::StorageKey;
-use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
+use starknet_api::transaction::{Calldata, TransactionHash, TransactionOffsetInBlock};
 
 use super::block::Block;
 use super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
@@ -116,6 +116,17 @@ pub trait JsonRpc {
     /// Returns the synching status of the node, or false if the node is not synching.
     #[method(name = "syncing")]
     fn syncing(&self) -> RpcResult<SyncingState>;
+
+    /// Executes the entry point of the contract at the given address with the given calldata,
+    /// returns the result (Retdata).
+    #[method(name = "call")]
+    fn call(
+        &self,
+        contract_address: ContractAddress,
+        entry_point_selector: EntryPointSelector,
+        calldata: Calldata,
+        block_id: BlockId,
+    ) -> RpcResult<Vec<StarkFelt>>;
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
