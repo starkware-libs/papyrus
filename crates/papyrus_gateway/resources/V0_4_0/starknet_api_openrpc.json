@@ -532,7 +532,7 @@
                             "oneOf": [
                                 {
                                     "title": "Declare transaction",
-                                    "$ref": "#/components/schemas/DECLARE_TXN"
+                                    "$ref": "#/components/schemas/BROADCASTED_DECLARE_TXN"
                                 },
                                 {
                                     "title": "Invoke transaction",
@@ -1718,6 +1718,11 @@
                             "nonce": {
                                 "title": "Nonce",
                                 "$ref": "#/components/schemas/FELT"
+                            },
+                            "class_hash": {
+                                "title": "Class hash",
+                                "description": "The hash of the declared class",
+                                "$ref": "#/components/schemas/FELT"
                             }
                         },
                         "required": [
@@ -1726,41 +1731,8 @@
                             "max_fee",
                             "version",
                             "signature",
-                            "nonce"
-                        ]
-                    },
-                    {
-                        "oneOf": [
-                            {
-                                "type": "object",
-                                "title": "ContractClass",
-                                "description": "The class to be declared. Expected to be included for all methods involving execution (estimateFee, simulateTransactions)",
-                                "properties": {
-                                    "contract_class": {
-                                        "title": "Contract class",
-                                        "description": "The class to be declared",
-                                        "$ref": "#/components/schemas/DEPRECATED_CONTRACT_CLASS"
-                                    }
-                                },
-                                "required": [
-                                    "contract_class"
-                                ]
-                            },
-                            {
-                                "type": "object",
-                                "title": "ClassHash",
-                                "description": "The hash of the declared class. Responses to getBlock and getTransaction are expected to include the hash rather than the full definition",
-                                "properties": {
-                                    "class_hash": {
-                                        "title": "Class hash",
-                                        "description": "The hash of the declared class",
-                                        "$ref": "#/components/schemas/FELT"
-                                    }
-                                },
-                                "required": [
-                                    "class_hash"
-                                ]
-                            }
+                            "nonce",
+                            "class_hash"
                         ]
                     }
                 ]
@@ -1810,6 +1782,11 @@
                             "nonce": {
                                 "title": "Nonce",
                                 "$ref": "#/components/schemas/FELT"
+                            },
+                            "class_hash": {
+                                "title": "Class hash",
+                                "description": "The hash of the declared class",
+                                "$ref": "#/components/schemas/FELT"
                             }
                         },
                         "required": [
@@ -1819,41 +1796,133 @@
                             "max_fee",
                             "version",
                             "signature",
-                            "nonce"
+                            "nonce",
+                            "class_hash"
                         ]
+                    }
+                ]
+            },
+            "BROADCASTED_DECLARE_TXN": {
+                "title": "Broadcasted declare transaction",
+                "oneOf": [
+                    {
+                        "title": "Broadcasted declare transaction V1",
+                        "$ref": "#/components/schemas/BROADCASTED_DECLARE_TXN_V1"
                     },
                     {
-                        "oneOf": [
-                            {
-                                "type": "object",
-                                "title": "ContractClass",
-                                "description": "The class to be declared. Expected to be included for all methods involving execution (estimateFee, simulateTransactions)",
-                                "properties": {
-                                    "contract_class": {
-                                        "title": "Contract class",
-                                        "description": "The class to be declared",
-                                        "$ref": "#/components/schemas/CONTRACT_CLASS"
-                                    }
-                                },
-                                "required": [
-                                    "contract_class"
+                        "title": "Broadcasted declare transaction V2",
+                        "$ref": "#/components/schemas/BROADCASTED_DECLARE_TXN_V2"
+                    }
+                ]
+            },
+            "BROADCASTED_DECLARE_TXN_V1": {
+                "title": "Broadcasted declare contract transaction V1",
+                "allOf": [
+                    {
+                        "type": "object",
+                        "title": "Declare txn v1",
+                        "properties": {
+                            "type": {
+                                "title": "Declare",
+                                "type": "string",
+                                "enum": [
+                                    "DECLARE"
                                 ]
                             },
-                            {
-                                "type": "object",
-                                "title": "ClassHash",
-                                "description": "The hash of the declared class. Responses to getBlock and getTransaction are expected to include the hash rather than the full definition",
-                                "properties": {
-                                    "class_hash": {
-                                        "title": "Class hash",
-                                        "description": "The hash of the declared class",
-                                        "$ref": "#/components/schemas/FELT"
-                                    }
-                                },
-                                "required": [
-                                    "class_hash"
+                            "max_fee": {
+                                "title": "Max fee",
+                                "$ref": "#/components/schemas/FELT",
+                                "description": "The maximal fee that can be charged for including the transaction"
+                            },
+                            "version": {
+                                "title": "Version",
+                                "description": "Version of the transaction scheme",
+                                "type": "string",
+                                "enum": [
+                                    "0x1"
                                 ]
+                            },
+                            "signature": {
+                                "title": "Signature",
+                                "$ref": "#/components/schemas/SIGNATURE"
+                            },
+                            "contract_class": {
+                                "title": "Contract class",
+                                "description": "The class to be declared",
+                                "$ref": "#/components/schemas/DEPRECATED_CONTRACT_CLASS"
                             }
+                        },
+                        "required": [
+                            "type",
+                            "max_fee",
+                            "version",
+                            "signature",
+                            "contract_class"
+                        ]
+                    }
+                ]
+            },
+            "BROADCASTED_DECLARE_TXN_V2": {
+                "title": "Broadcasted declare Transaction V2",
+                "description": "Broadcasted declare Contract Transaction V2",
+                "allOf": [
+                    {
+                        "type": "object",
+                        "title": "Declare txn v2",
+                        "properties": {
+                            "type": {
+                                "title": "Declare",
+                                "type": "string",
+                                "enum": [
+                                    "DECLARE"
+                                ]
+                            },
+                            "sender_address": {
+                                "title": "Sender address",
+                                "description": "The address of the account contract sending the declaration transaction",
+                                "$ref": "#/components/schemas/ADDRESS"
+                            },
+                            "compiled_class_hash": {
+                                "title": "Compiled class hash",
+                                "description": "The hash of the Cairo assembly resulting from the Sierra compilation",
+                                "$ref": "#/components/schemas/FELT"
+                            },
+                            "max_fee": {
+                                "title": "Max fee",
+                                "$ref": "#/components/schemas/FELT",
+                                "description": "The maximal fee that can be charged for including the transaction"
+                            },
+                            "version": {
+                                "title": "Version",
+                                "description": "Version of the transaction scheme",
+                                "type": "string",
+                                "enum": [
+                                    "0x2"
+                                ]
+                            },
+                            "signature": {
+                                "title": "Signature",
+                                "$ref": "#/components/schemas/SIGNATURE"
+                            },
+                            "nonce": {
+                                "title": "Nonce",
+                                "$ref": "#/components/schemas/FELT"
+                            },
+                            "contract_class": {
+                                "title": "Contract class",
+                                "description": "The class to be declared",
+                                "$ref": "#/components/schemas/CONTRACT_CLASS"
+                            }
+                        },
+                        "required": [
+                            "type",
+                            "sender_address",
+                            "compiled_class_hash",
+                            "max_fee",
+                            "version",
+                            "signature",
+                            "nonce",
+                            "contract_class"
                         ]
                     }
                 ]
