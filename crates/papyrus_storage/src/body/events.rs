@@ -50,7 +50,8 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ContractAddress;
 use starknet_api::transaction::{
-    EventContent, EventIndexInTransactionOutput, Fee, MessageToL1, TransactionOutput,
+    EventContent, EventIndexInTransactionOutput, Fee, MessageToL1, TransactionExecutionStatus,
+    TransactionOutput,
 };
 
 use crate::body::{EventsTable, EventsTableKey, TransactionIndex};
@@ -164,7 +165,7 @@ impl EventIterByEventIndex<'_, '_> {
     /// # Errors
     /// Returns [`StorageError`](crate::StorageError) if there was an error.
     fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
-        let Some((tx_index, tx_output)) = &self.tx_current else { return Ok(None) };
+        let Some((tx_index, (tx_output, _execution_status))) = &self.tx_current else { return Ok(None) };
         let Some(address) =
             tx_output.events_contract_addresses_as_ref().get(self.event_index_in_tx_current.0)
         else {
@@ -185,7 +186,7 @@ impl EventIterByEventIndex<'_, '_> {
     /// # Errors
     /// Returns [`StorageError`](crate::StorageError) if there was an error.
     fn find_next_event_by_event_index(&mut self) -> StorageResult<()> {
-        while let Some((tx_index, tx_output)) = &self.tx_current {
+        while let Some((tx_index, (tx_output, _execution_status))) = &self.tx_current {
             if tx_index.0 > self.to_block_number {
                 self.tx_current = None;
                 break;
@@ -414,7 +415,8 @@ type EventsTableKeyValue = (EventsTableKey, EventContent);
 /// A cursor of the events table.
 type EventsTableCursor<'txn> = DbCursor<'txn, RO, EventsTableKey, EventContent>;
 /// A key-value pair of the transaction outputs table.
-type TransactionOutputsKeyValue = (TransactionIndex, ThinTransactionOutput);
+type TransactionOutputsKeyValue =
+    (TransactionIndex, (ThinTransactionOutput, TransactionExecutionStatus));
 /// A cursor of the transaction outputs table.
 type TransactionOutputsTableCursor<'txn> =
-    DbCursor<'txn, RO, TransactionIndex, ThinTransactionOutput>;
+    DbCursor<'txn, RO, TransactionIndex, (ThinTransactionOutput, TransactionExecutionStatus)>;
