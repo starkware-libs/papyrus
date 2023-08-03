@@ -130,7 +130,7 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
 
-        let (transaction, _execution_status) = txn
+        let transaction = txn
             .get_transaction(transaction_index)
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
@@ -148,7 +148,7 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
         let block_number = get_block_number(&txn, block_id)?;
 
         let tx_index = TransactionIndex(block_number, index);
-        let (transaction, _execution_status) = txn
+        let transaction = txn
             .get_transaction(tx_index)
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::InvalidTransactionIndex))?;
@@ -230,8 +230,8 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
             .map_err(internal_server_error)?
             .block_hash;
 
-        let (_, transaction_execution_status) = txn
-            .get_transaction(transaction_index)
+        let (thin_tx_output, transaction_execution_status) = txn
+            .get_transaction_output(transaction_index)
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
 
@@ -241,11 +241,6 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
         if transaction_execution_status == TransactionExecutionStatus::Reverted {
             return Err(ErrorObjectOwned::from(JsonRpcError::TransactionReverted))?;
         }
-
-        let thin_tx_output = txn
-            .get_transaction_output(transaction_index)
-            .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
 
         let events = txn
             .get_transaction_events(transaction_index)
