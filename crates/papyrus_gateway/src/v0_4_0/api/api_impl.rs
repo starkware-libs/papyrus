@@ -130,7 +130,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
 
-        let (transaction, _execution_status) = txn
+        let transaction = txn
             .get_transaction(transaction_index)
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
@@ -148,7 +148,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let block_number = get_block_number(&txn, block_id)?;
 
         let tx_index = TransactionIndex(block_number, index);
-        let (transaction, _execution_status) = txn
+        let transaction = txn
             .get_transaction(tx_index)
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::InvalidTransactionIndex))?;
@@ -230,12 +230,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             .map_err(internal_server_error)?
             .block_hash;
 
-        let (_, transaction_execution_status) = txn
-            .get_transaction(transaction_index)
-            .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
-
-        let thin_tx_output = txn
+        let (thin_tx_output, execution_status) = txn
             .get_transaction_output(transaction_index)
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
@@ -250,7 +245,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         Ok(TransactionReceiptWithStatus {
             receipt: TransactionReceipt { transaction_hash, block_hash, block_number, output },
             finality_status: status.into(),
-            execution_status: transaction_execution_status,
+            execution_status,
         })
     }
 

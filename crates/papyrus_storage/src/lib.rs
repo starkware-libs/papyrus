@@ -249,13 +249,13 @@ struct_field_names! {
         ommer_headers: TableIdentifier<BlockHash, BlockHeader>,
         ommer_nonces: TableIdentifier<(ContractAddress, BlockHash), Nonce>,
         ommer_state_diffs: TableIdentifier<BlockHash, ThinStateDiff>,
-        ommer_transaction_outputs: TableIdentifier<OmmerTransactionKey, ThinTransactionOutput>,
-        ommer_transactions: TableIdentifier<OmmerTransactionKey, (Transaction, TransactionExecutionStatus)>,
+        ommer_transaction_outputs: TableIdentifier<OmmerTransactionKey, (ThinTransactionOutput, TransactionExecutionStatus)>,
+        ommer_transactions: TableIdentifier<OmmerTransactionKey, Transaction>,
         state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
         transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
         transaction_idx_to_hash: TableIdentifier<TransactionIndex, TransactionHash>,
-        transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
-        transactions: TableIdentifier<TransactionIndex, (Transaction, TransactionExecutionStatus)>,
+        transaction_outputs: TableIdentifier<TransactionIndex, (ThinTransactionOutput, TransactionExecutionStatus)>,
+        transactions: TableIdentifier<TransactionIndex, Transaction>,
         starknet_version: TableIdentifier<BlockNumber, StarknetVersion>,
         storage_version: TableIdentifier<String, Version>
     }

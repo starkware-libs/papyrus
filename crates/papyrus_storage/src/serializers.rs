@@ -351,7 +351,7 @@ auto_storage_serde! {
     (ContractAddress, OmmerEventKey);
     (ContractAddress, StorageKey, BlockHash);
     (ContractAddress, StorageKey, BlockNumber);
-    (Transaction, TransactionExecutionStatus);
+    (ThinTransactionOutput, TransactionExecutionStatus);
     (usize, Vec<Hint>);
     (usize, Vec<String>);
 }

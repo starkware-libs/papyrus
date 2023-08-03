@@ -50,8 +50,8 @@ where
     fn insert_ommer_body(
         self,
         block_hash: BlockHash,
-        transactions: &[(Transaction, TransactionExecutionStatus)],
-        thin_transaction_outputs: &[ThinTransactionOutput],
+        transactions: &[Transaction],
+        thin_transaction_outputs: &[(ThinTransactionOutput, TransactionExecutionStatus)],
         transaction_outputs_events: &[Vec<EventContent>],
     ) -> StorageResult<Self>;
 
@@ -83,8 +83,8 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
     fn insert_ommer_body(
         self,
         block_hash: BlockHash,
-        transactions: &[(Transaction, TransactionExecutionStatus)],
-        thin_transaction_outputs: &[ThinTransactionOutput],
+        transactions: &[Transaction],
+        thin_transaction_outputs: &[(ThinTransactionOutput, TransactionExecutionStatus)],
         transaction_outputs_events: &[Vec<EventContent>],
     ) -> StorageResult<Self> {
         assert!(transactions.len() == thin_transaction_outputs.len());
@@ -116,7 +116,7 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
             let events = &transaction_outputs_events[idx];
             for (event_offset, (event, address)) in events
                 .iter()
-                .zip(thin_transaction_outputs[idx].events_contract_addresses_as_ref().iter())
+                .zip(thin_transaction_outputs[idx].0.events_contract_addresses_as_ref().iter())
                 .enumerate()
             {
                 let event_key =
