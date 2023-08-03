@@ -46,6 +46,13 @@ pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
     )
 }
 
+// TODO(nevo): Schmea validates null as valid for an unknown reason.
+// Investigate in the future and remove this function (use is_valid directly)
+pub fn validate_schema(schema: &JSONSchema, res: Value) -> bool {
+    let result = &res["result"];
+    result != &Value::Null && schema.is_valid(result)
+}
+
 #[derive(Clone, Copy, Display)]
 pub enum SpecFile {
     #[display(fmt = "starknet_api_openrpc.json")]
@@ -56,8 +63,43 @@ pub enum SpecFile {
     StarknetWriteApi,
 }
 
-pub async fn get_starknet_spec_api_schema(
+// TODO(shahak): Make non-async.
+pub async fn get_starknet_spec_api_schema_for_components(
     file_to_component_names: &[(SpecFile, &[&str])],
+    version_id: &VersionId,
+) -> JSONSchema {
+    get_starknet_spec_api_schema(
+        file_to_component_names.iter().flat_map(|(file, component_names)| {
+            component_names
+                .iter()
+                .map(move |component| format!("file:///api/{file}#/components/schemas/{component}"))
+        }),
+        version_id,
+    )
+}
+
+// TODO(shahak): Remove allow(dead_code) once we use this variant.
+#[allow(dead_code)]
+pub fn get_starknet_spec_api_schema_for_method_results(
+    file_to_methods: &[(SpecFile, &[&str])],
+    version_id: &VersionId,
+) -> JSONSchema {
+    get_starknet_spec_api_schema(
+        file_to_methods.iter().flat_map(|(file, methods)| {
+            let spec_str =
+                std::fs::read_to_string(format!("./resources/{version_id}/{file}")).unwrap();
+            let spec: serde_json::Value = serde_json::from_str(&spec_str).unwrap();
+            methods.iter().map(move |method| {
+                let index = get_method_index(&spec, method);
+                format!("file:///api/{file}#/methods/{index}/result")
+            })
+        }),
+        version_id,
+    )
+}
+
+fn get_starknet_spec_api_schema<Refs: IntoIterator<Item = String>>(
+    refs: Refs,
     version_id: &VersionId,
 ) -> JSONSchema {
     let mut options = JSONSchema::options();
@@ -69,27 +111,26 @@ pub async fn get_starknet_spec_api_schema(
         options.with_document(format!("file:///api/{file_name}"), spec);
     }
 
-    let mut components = String::from(r#"{"anyOf": ["#);
+    let mut refs_schema_str = String::from(r#"{"anyOf": ["#);
     const SEPARATOR: &str = ", ";
-    for (file_name, component_names) in file_to_component_names {
-        for component in *component_names {
-            components += &format!(
-                r##"{{"$ref": "file:///api/{file_name}#/components/schemas/{component}"}}"##,
-            );
-            components += SEPARATOR;
-        }
+    for ref_str in refs {
+        refs_schema_str += &format!(r##"{{"$ref": "{ref_str}"}}"##,);
+        refs_schema_str += SEPARATOR;
     }
     // Remove the last separator.
-    components.truncate(components.len() - SEPARATOR.len());
-    components += r#"], "unevaluatedProperties": false}"#;
-    let schema = serde_json::from_str(&components).unwrap();
+    refs_schema_str.truncate(refs_schema_str.len() - SEPARATOR.len());
+    refs_schema_str += r#"], "unevaluatedProperties": false}"#;
+    let refs_schema = serde_json::from_str(&refs_schema_str).unwrap();
 
-    options.compile(&schema).unwrap()
+    options.compile(&refs_schema).unwrap()
 }
 
-// TODO(nevo): Schmea validates null as valid for an unknown reason.
-// Investigate in the future and remove this function (use is_valid directly)
-pub fn validate_schema(schema: &JSONSchema, res: Value) -> bool {
-    let result = &res["result"];
-    result != &Value::Null && schema.is_valid(result)
+fn get_method_index(spec: &serde_json::Value, method: &str) -> usize {
+    let methods_json_arr = spec.as_object().unwrap().get("methods").unwrap().as_array().unwrap();
+    for (i, method_object) in methods_json_arr.iter().enumerate() {
+        if method_object.as_object().unwrap().get("name").unwrap() == method {
+            return i;
+        }
+    }
+    panic!("Method {method} doesn't exist");
 }

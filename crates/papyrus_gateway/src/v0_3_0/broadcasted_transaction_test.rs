@@ -24,7 +24,7 @@ use super::broadcasted_transaction::{
     BroadcastedInvokeTransaction, BroadcastedTransaction,
 };
 use super::state::ContractClass;
-use crate::test_utils::{get_starknet_spec_api_schema, SpecFile};
+use crate::test_utils::{get_starknet_spec_api_schema_for_components, SpecFile};
 use crate::version_config::VERSION_0_3;
 
 auto_impl_get_test_instance! {
@@ -72,7 +72,7 @@ auto_impl_get_test_instance! {
 
 fn validate_tx_fits_rpc(tx: BroadcastedTransaction) {
     lazy_static! {
-        static ref SCHEMA: JSONSchema = block_on(get_starknet_spec_api_schema(
+        static ref SCHEMA: JSONSchema = block_on(get_starknet_spec_api_schema_for_components(
             &[(SpecFile::StarknetApiOpenrpc, &["BROADCASTED_TXN"])],
             &VERSION_0_3
         ));
