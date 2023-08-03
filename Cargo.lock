@@ -627,11 +627,11 @@ dependencies = [
 [[package]]
 name = "blockifier"
 version = "0.1.0-rc2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eeb21c83979cc9be7d9ed350b3234fa7fe47494a56c78effe0ba63a4f3fb465f"
+source = "git+https://github.com/starkware-libs/blockifier?branch=mohammad/export_account_transaction_fields#8173224b375c151e0b6a0435ed5a4ff84f4381ba"
 dependencies = [
  "ark-ff",
  "ark-secp256k1",
+ "cached",
  "cairo-felt",
  "cairo-lang-casm",
  "cairo-lang-runner",
@@ -729,6 +729,42 @@ dependencies = [
  "libc",
  "pkg-config",
 ]
+
+[[package]]
+name = "cached"
+version = "0.44.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b195e4fbc4b6862bbd065b991a34750399c119797efff72492f28a5864de8700"
+dependencies = [
+ "async-trait",
+ "cached_proc_macro",
+ "cached_proc_macro_types",
+ "futures",
+ "hashbrown 0.13.1",
+ "instant",
+ "once_cell",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
+name = "cached_proc_macro"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b48814962d2fd604c50d2b9433c2a41a0ab567779ee2c02f7fba6eca1221f082"
+dependencies = [
+ "cached_proc_macro_types",
+ "darling",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "cached_proc_macro_types"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a4f925191b4367301851c6d99b09890311d74b0d43f274c0b34c86d308a3663"
 
 [[package]]
 name = "cairo-felt"
@@ -1662,6 +1698,41 @@ checksum = "2a011bbe2c35ce9c1f143b7af6f94f29a167beb4cd1d29e6740ce836f723120e"
 dependencies = [
  "nix",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "darling"
+version = "0.14.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b750cb3417fd1b327431a470f388520309479ab0bf5e323505daf0290cd3850"
+dependencies = [
+ "darling_core",
+ "darling_macro",
+]
+
+[[package]]
+name = "darling_core"
+version = "0.14.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "109c1ca6e6b7f82cc233a97004ea8ed7ca123a9af07a8230878fcfda9b158bf0"
+dependencies = [
+ "fnv",
+ "ident_case",
+ "proc-macro2",
+ "quote",
+ "strsim",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "darling_macro"
+version = "0.14.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4aab4dbc9f7611d8b55048a3a16d2d010c2c8334e46304b40ac1cc14bf3b48e"
+dependencies = [
+ "darling_core",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -2930,6 +3001,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "25a2bc672d1148e28034f176e01fffebb08b35768468cc954630da77a1449005"
 
 [[package]]
+name = "ident_case"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
+
+[[package]]
 name = "idna"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4172,21 +4249,19 @@ dependencies = [
 [[package]]
 name = "papyrus_config"
 version = "0.0.3"
+source = "git+https://github.com/starkware-libs/papyrus?rev=834bdbe#834bdbe49d03c3ae733ed833c78151cf976757ea"
 dependencies = [
- "assert_matches",
  "clap",
- "itertools 0.10.5",
  "serde",
  "serde_json",
- "tempfile",
- "test_utils",
  "thiserror",
 ]
 
 [[package]]
 name = "papyrus_execution"
-version = "0.1.0"
+version = "0.0.3"
 dependencies = [
+ "assert_matches",
  "blockifier",
  "cairo-lang-casm",
  "cairo-lang-starknet",
@@ -4209,6 +4284,8 @@ dependencies = [
  "anyhow",
  "assert_matches",
  "base64 0.13.1",
+ "cairo-lang-casm",
+ "cairo-lang-starknet",
  "camelpaste",
  "derive_more",
  "futures",
@@ -4223,6 +4300,7 @@ dependencies = [
  "metrics-exporter-prometheus",
  "papyrus_common",
  "papyrus_config",
+ "papyrus_execution",
  "papyrus_proc_macros",
  "papyrus_storage",
  "pretty_assertions",
@@ -4329,35 +4407,26 @@ dependencies = [
 [[package]]
 name = "papyrus_storage"
 version = "0.0.3"
+source = "git+https://github.com/starkware-libs/papyrus?branch=mohammad/Separate_papyrus_storage_for_SN_API_new_version_base_branch#9df79377a37b79cab9ca9756ae825e88b063977e"
 dependencies = [
- "assert_matches",
  "byteorder",
  "cairo-lang-casm",
  "cairo-lang-starknet",
  "cairo-lang-utils",
- "camelpaste",
  "flate2",
  "futures-util",
  "indexmap 1.9.3",
- "insta",
  "integer-encoding",
  "libmdbx",
  "num-bigint",
- "num-traits 0.2.15",
  "papyrus_config",
  "parity-scale-codec",
- "paste",
- "pretty_assertions",
  "primitive-types",
- "rand",
- "rand_chacha",
  "reqwest",
- "schemars",
  "serde",
  "serde_json",
  "starknet_api",
  "tempfile",
- "test_utils",
  "thiserror",
  "tokio",
  "tracing",
@@ -5824,8 +5893,7 @@ dependencies = [
 [[package]]
 name = "starknet_api"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edfe4732113f66de3d6e9fc77f713b934cfd4b24d43887ca8cbfbe9462ed9119"
+source = "git+https://github.com/starkware-libs/starknet-api?rev=d34e997#d34e997682ae8ade17eaa549860361c38f1b0598"
 dependencies = [
  "cairo-lang-starknet",
  "derive_more",

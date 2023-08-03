@@ -11,7 +11,7 @@ members = [
     "crates/papyrus_monitoring_gateway",
     "crates/papyrus_node",
     "crates/papyrus_proc_macros",
-    "crates/papyrus_storage",
+#    "crates/papyrus_storage",
     "crates/papyrus_sync",
     "crates/starknet_client",
     "crates/test_utils",
@@ -90,3 +90,7 @@ tracing = "0.1.37"
 tracing-subscriber = "0.3.16"
 tower = "0.4"
 url = "2.2.2"
+
+[patch.crates-io]
+blockifier = { git = "https://github.com/starkware-libs/blockifier", branch = "mohammad/export_account_transaction_fields" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "d34e997" }
