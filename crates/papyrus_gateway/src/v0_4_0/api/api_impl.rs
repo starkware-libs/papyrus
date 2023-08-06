@@ -18,6 +18,7 @@ use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
     Calldata, EventIndexInTransactionOutput, TransactionHash, TransactionOffsetInBlock,
 };
+use starknet_client::writer::StarknetWriter;
 use tokio::sync::RwLock;
 use tracing::instrument;
 
@@ -45,6 +46,7 @@ pub struct JsonRpcServerV0_4Impl {
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
     pub shared_syncing_state: Arc<RwLock<SyncingState>>,
+    pub writer_client: Arc<dyn StarknetWriter>,
 }
 
 #[async_trait]
@@ -473,6 +475,7 @@ impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
         max_events_chunk_size: usize,
         max_events_keys: usize,
         shared_syncing_state: Arc<RwLock<SyncingState>>,
+        writer_client: Arc<dyn StarknetWriter>,
     ) -> Self {
         Self {
             chain_id,
@@ -480,6 +483,7 @@ impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
             max_events_chunk_size,
             max_events_keys,
             shared_syncing_state,
+            writer_client,
         }
     }
 
