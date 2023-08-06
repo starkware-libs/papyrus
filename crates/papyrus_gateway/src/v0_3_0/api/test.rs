@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::ops::Index;
+use std::sync::Arc;
 
 use assert_matches::assert_matches;
 use indexmap::IndexMap;
@@ -28,6 +29,7 @@ use starknet_api::transaction::{
     EventIndexInTransactionOutput, EventKey, TransactionHash, TransactionOffsetInBlock,
 };
 use starknet_api::{patricia_key, stark_felt};
+use starknet_client::writer::MockStarknetWriter;
 use test_utils::{
     get_rng, get_test_block, get_test_body, get_test_state_diff, send_request, GetTestInstance,
 };
@@ -41,13 +43,20 @@ use super::super::transaction::{
     TransactionWithHash, Transactions,
 };
 use super::api_impl::JsonRpcServerV0_3Impl;
-use crate::api::{BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcError, Tag};
+use crate::api::{
+    BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcError, JsonRpcServerImpl,
+    Tag,
+};
+use crate::syncing_state::SyncStatus;
 use crate::test_utils::{
-    get_starknet_spec_api_schema_for_components, get_test_gateway_config, get_test_highest_block,
-    get_test_rpc_server_and_storage_writer, validate_schema, SpecFile,
+    get_starknet_spec_api_schema_for_components, get_starknet_spec_api_schema_for_method_results,
+    get_test_gateway_config, get_test_highest_block, get_test_rpc_server_and_storage_writer,
+    raw_call, validate_schema, SpecFile,
 };
 use crate::version_config::VERSION_0_3;
 use crate::{run_server, ContinuationTokenAsStruct};
+
+const NODE_VERSION: &str = "NODE VERSION";
 
 #[tokio::test]
 async fn chain_id() {
@@ -132,9 +141,37 @@ async fn block_number() {
 
 #[tokio::test]
 async fn syncing() {
-    let (module, _, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
-    let res = module.call::<_, bool>("starknet_V0_3_syncing", ObjectParams::new()).await.unwrap();
-    assert_eq!(res, false);
+    let method_name = "starknet_syncing";
+    let result_schema = get_starknet_spec_api_schema_for_method_results(
+        &[(SpecFile::StarknetApiOpenrpc, &[method_name])],
+        &VERSION_0_3,
+    );
+
+    let ((storage_reader, _), _temp_dir) = get_test_storage();
+    let config = get_test_gateway_config();
+    let shared_highest_block = get_test_highest_block();
+    let module = JsonRpcServerV0_3Impl::new(
+        config.chain_id,
+        storage_reader,
+        config.max_events_chunk_size,
+        config.max_events_keys,
+        BlockHashAndNumber::default(),
+        shared_highest_block.clone(),
+        Arc::new(MockStarknetWriter::new()),
+    )
+    .into_rpc_module();
+
+    let (json_response_0, result_0) =
+        raw_call::<_, bool>(&module, "starknet_V0_3_syncing", "").await;
+    assert!(validate_schema(&result_schema, json_response_0));
+    assert_eq!(result_0, false);
+
+    *shared_highest_block.write().await =
+        Some(BlockHashAndNumber { block_number: BlockNumber(5), ..Default::default() });
+    let (json_response_1, result_1) =
+        raw_call::<_, SyncStatus>(&module, "starknet_V0_3_syncing", "").await;
+    assert!(validate_schema(&result_schema, json_response_1), "Syncing state is not valid.");
+    assert_eq!(result_1, SyncStatus { highest_block_num: BlockNumber(5), ..Default::default() });
 }
 
 #[tokio::test]
@@ -1624,7 +1661,7 @@ async fn serialize_returns_valid_json() {
 
     let gateway_config = get_test_gateway_config();
     let (server_address, _handle) =
-        run_server(&gateway_config, get_test_highest_block(), storage_reader, "NODE VERSION")
+        run_server(&gateway_config, get_test_highest_block(), storage_reader, NODE_VERSION)
             .await
             .unwrap();
 

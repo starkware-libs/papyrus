@@ -90,6 +90,7 @@ pub fn get_methods_from_supported_apis(
     storage_reader: StorageReader,
     max_events_chunk_size: usize,
     max_events_keys: usize,
+    starting_block: BlockHashAndNumber,
     shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
     starknet_writer: Arc<dyn StarknetWriter>,
 ) -> Methods {
@@ -99,6 +100,7 @@ pub fn get_methods_from_supported_apis(
         storage_reader,
         max_events_chunk_size,
         max_events_keys,
+        starting_block,
         shared_highest_block: shared_highest_block.clone(),
         starknet_writer,
     };
@@ -135,6 +137,7 @@ pub trait JsonRpcServerImpl: Sized {
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,
+        starting_block: BlockHashAndNumber,
         shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
         starknet_writer: Arc<dyn StarknetWriter>,
     ) -> Self;
@@ -148,6 +151,7 @@ struct JsonRpcServerImplGenerator {
     storage_reader: StorageReader,
     max_events_chunk_size: usize,
     max_events_keys: usize,
+    starting_block: BlockHashAndNumber,
     shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
     // TODO(shahak): Change this struct to be with a generic type of StarknetWriter.
     starknet_writer: Arc<dyn StarknetWriter>,
@@ -158,6 +162,7 @@ type JsonRpcServerImplParams = (
     StorageReader,
     usize,
     usize,
+    BlockHashAndNumber,
     Arc<RwLock<Option<BlockHashAndNumber>>>,
     Arc<dyn StarknetWriter>,
 );
@@ -169,6 +174,7 @@ impl JsonRpcServerImplGenerator {
             self.storage_reader,
             self.max_events_chunk_size,
             self.max_events_keys,
+            self.starting_block,
             self.shared_highest_block,
             self.starknet_writer,
         )
@@ -183,6 +189,7 @@ impl JsonRpcServerImplGenerator {
             storage_reader,
             max_events_chunk_size,
             max_events_keys,
+            starting_block,
             shared_highest_block,
             starknet_writer,
         ) = self.get_params();
@@ -192,6 +199,7 @@ impl JsonRpcServerImplGenerator {
                 storage_reader,
                 max_events_chunk_size,
                 max_events_keys,
+                starting_block,
                 shared_highest_block,
                 starknet_writer,
             )
