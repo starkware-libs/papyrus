@@ -135,12 +135,8 @@ pub trait JsonRpcServerImpl: Sized {
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,
-<<<<<<< HEAD
-        shared_syncing_state: Arc<RwLock<SyncingState>>,
-        starknet_writer: Arc<dyn StarknetWriter>,
-=======
         shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
->>>>>>> refactor(sync): share highest block RwLock between the sync and the gateway
+        starknet_writer: Arc<dyn StarknetWriter>,
     ) -> Self;
 
     fn into_rpc_module(self) -> RpcModule<Self>;
@@ -152,37 +148,29 @@ struct JsonRpcServerImplGenerator {
     storage_reader: StorageReader,
     max_events_chunk_size: usize,
     max_events_keys: usize,
-<<<<<<< HEAD
-    shared_syncing_state: Arc<RwLock<SyncingState>>,
+    shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
     // TODO(shahak): Change this struct to be with a generic type of StarknetWriter.
     starknet_writer: Arc<dyn StarknetWriter>,
-=======
-    shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
->>>>>>> refactor(sync): share highest block RwLock between the sync and the gateway
 }
 
-type JsonRpcServerImplParams =
-    (ChainId, StorageReader, usize, usize, Arc<RwLock<SyncingState>>, Arc<dyn StarknetWriter>);
+type JsonRpcServerImplParams = (
+    ChainId,
+    StorageReader,
+    usize,
+    usize,
+    Arc<RwLock<Option<BlockHashAndNumber>>>,
+    Arc<dyn StarknetWriter>,
+);
 
 impl JsonRpcServerImplGenerator {
-<<<<<<< HEAD
     fn get_params(self) -> JsonRpcServerImplParams {
-=======
-    fn get_params(
-        self,
-    ) -> (ChainId, StorageReader, usize, usize, Arc<RwLock<Option<BlockHashAndNumber>>>) {
->>>>>>> refactor(sync): share highest block RwLock between the sync and the gateway
         (
             self.chain_id,
             self.storage_reader,
             self.max_events_chunk_size,
             self.max_events_keys,
-<<<<<<< HEAD
-            self.shared_syncing_state,
-            self.starknet_writer,
-=======
             self.shared_highest_block,
->>>>>>> refactor(sync): share highest block RwLock between the sync and the gateway
+            self.starknet_writer,
         )
     }
 
@@ -195,12 +183,8 @@ impl JsonRpcServerImplGenerator {
             storage_reader,
             max_events_chunk_size,
             max_events_keys,
-<<<<<<< HEAD
-            shared_syncing_state,
-            starknet_writer,
-=======
             shared_highest_block,
->>>>>>> refactor(sync): share highest block RwLock between the sync and the gateway
+            starknet_writer,
         ) = self.get_params();
         Into::<Methods>::into(
             T::new(
@@ -208,12 +192,8 @@ impl JsonRpcServerImplGenerator {
                 storage_reader,
                 max_events_chunk_size,
                 max_events_keys,
-<<<<<<< HEAD
-                shared_syncing_state,
-                starknet_writer,
-=======
                 shared_highest_block,
->>>>>>> refactor(sync): share highest block RwLock between the sync and the gateway
+                starknet_writer,
             )
             .into_rpc_module(),
         )
