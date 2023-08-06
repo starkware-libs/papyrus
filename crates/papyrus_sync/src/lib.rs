@@ -577,13 +577,14 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
     try_stream! {
         loop {
             let header_marker = reader.begin_ro_txn()?.get_header_marker()?;
-            let last_block_number = central_source.get_block_marker().await?;
-            if header_marker == last_block_number {
+            let latest_block = central_source.get_latest_block().await?;
+            let block_marker = latest_block.map_or(BlockNumber::default(), |block| block.block_number.next());
+            if header_marker == block_marker {
                 debug!("Blocks syncing reached the last known block, waiting for blockchain to advance.");
                 tokio::time::sleep(block_propagation_sleep_duration).await;
                 continue;
             }
-            let up_to = min(last_block_number, BlockNumber(header_marker.0 + max_stream_size as u64));
+            let up_to = min(block_marker, BlockNumber(header_marker.0 + max_stream_size as u64));
             debug!("Downloading blocks [{} - {}).", header_marker, up_to);
             let block_stream =
                 central_source.stream_new_blocks(header_marker, up_to).fuse();

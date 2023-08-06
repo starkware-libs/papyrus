@@ -22,7 +22,7 @@ async fn main() {
 
     // Get the last block.
     // Last block.
-    starknet_client.block_number().await.expect("").unwrap();
+    starknet_client.latest_block().await.expect("").unwrap();
 
     // Get a block.
     // First block, the original definitions.
