@@ -20,7 +20,7 @@ use tower::BoxError;
 
 use crate::api::JsonRpcError;
 use crate::middleware::proxy_rpc_request;
-use crate::test_utils::{get_test_gateway_config, get_test_syncing_state};
+use crate::test_utils::{get_test_gateway_config, get_test_highest_block};
 use crate::version_config::VERSION_CONFIG;
 use crate::{get_block_status, run_server, SERVER_MAX_BODY_SIZE};
 
@@ -28,11 +28,9 @@ use crate::{get_block_status, run_server, SERVER_MAX_BODY_SIZE};
 async fn run_server_no_blocks() {
     let ((storage_reader, _), _temp_dir) = get_test_storage();
     let gateway_config = get_test_gateway_config();
-    let shared_syncing_state = get_test_syncing_state();
+    let shared_highest_block = get_test_highest_block();
     let (addr, _handle) =
-        run_server(&gateway_config, shared_syncing_state, storage_reader, "NODE VERSION")
-            .await
-            .unwrap();
+        run_server(&gateway_config, shared_highest_block, storage_reader, "NODE VERSION").await.unwrap();
     let client = HttpClientBuilder::default().build(format!("http://{addr:?}")).unwrap();
     let res: Result<RpcResult<BlockNumber>, Error> =
         client.request("starknet_blockNumber", [""]).await;

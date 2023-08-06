@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use jsonrpsee::{Methods, RpcModule};
-use papyrus_common::SyncingState;
+use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::StorageReader;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
@@ -69,12 +69,6 @@ pub enum JsonRpcError {
     PendingBlocksNotSupported = 41,
 }
 
-#[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct BlockHashAndNumber {
-    pub block_hash: BlockHash,
-    pub block_number: BlockNumber,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct EventFilter {
     pub from_block: Option<BlockId>,
@@ -96,7 +90,7 @@ pub fn get_methods_from_supported_apis(
     storage_reader: StorageReader,
     max_events_chunk_size: usize,
     max_events_keys: usize,
-    shared_syncing_state: Arc<RwLock<SyncingState>>,
+    shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
     starknet_writer: Arc<dyn StarknetWriter>,
 ) -> Methods {
     let mut methods: Methods = Methods::new();
@@ -105,7 +99,7 @@ pub fn get_methods_from_supported_apis(
         storage_reader,
         max_events_chunk_size,
         max_events_keys,
-        shared_syncing_state,
+        shared_highest_block: shared_highest_block.clone(),
         starknet_writer,
     };
     version_config::VERSION_CONFIG
@@ -141,8 +135,12 @@ pub trait JsonRpcServerImpl: Sized {
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,
+<<<<<<< HEAD
         shared_syncing_state: Arc<RwLock<SyncingState>>,
         starknet_writer: Arc<dyn StarknetWriter>,
+=======
+        shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
+>>>>>>> refactor(sync): share highest block RwLock between the sync and the gateway
     ) -> Self;
 
     fn into_rpc_module(self) -> RpcModule<Self>;
@@ -154,23 +152,37 @@ struct JsonRpcServerImplGenerator {
     storage_reader: StorageReader,
     max_events_chunk_size: usize,
     max_events_keys: usize,
+<<<<<<< HEAD
     shared_syncing_state: Arc<RwLock<SyncingState>>,
     // TODO(shahak): Change this struct to be with a generic type of StarknetWriter.
     starknet_writer: Arc<dyn StarknetWriter>,
+=======
+    shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
+>>>>>>> refactor(sync): share highest block RwLock between the sync and the gateway
 }
 
 type JsonRpcServerImplParams =
     (ChainId, StorageReader, usize, usize, Arc<RwLock<SyncingState>>, Arc<dyn StarknetWriter>);
 
 impl JsonRpcServerImplGenerator {
+<<<<<<< HEAD
     fn get_params(self) -> JsonRpcServerImplParams {
+=======
+    fn get_params(
+        self,
+    ) -> (ChainId, StorageReader, usize, usize, Arc<RwLock<Option<BlockHashAndNumber>>>) {
+>>>>>>> refactor(sync): share highest block RwLock between the sync and the gateway
         (
             self.chain_id,
             self.storage_reader,
             self.max_events_chunk_size,
             self.max_events_keys,
+<<<<<<< HEAD
             self.shared_syncing_state,
             self.starknet_writer,
+=======
+            self.shared_highest_block,
+>>>>>>> refactor(sync): share highest block RwLock between the sync and the gateway
         )
     }
 
@@ -183,8 +195,12 @@ impl JsonRpcServerImplGenerator {
             storage_reader,
             max_events_chunk_size,
             max_events_keys,
+<<<<<<< HEAD
             shared_syncing_state,
             starknet_writer,
+=======
+            shared_highest_block,
+>>>>>>> refactor(sync): share highest block RwLock between the sync and the gateway
         ) = self.get_params();
         Into::<Methods>::into(
             T::new(
@@ -192,8 +208,12 @@ impl JsonRpcServerImplGenerator {
                 storage_reader,
                 max_events_chunk_size,
                 max_events_keys,
+<<<<<<< HEAD
                 shared_syncing_state,
                 starknet_writer,
+=======
+                shared_highest_block,
+>>>>>>> refactor(sync): share highest block RwLock between the sync and the gateway
             )
             .into_rpc_module(),
         )

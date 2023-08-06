@@ -4,7 +4,7 @@ use std::sync::Arc;
 use derive_more::Display;
 use jsonrpsee::server::RpcModule;
 use jsonschema::JSONSchema;
-use papyrus_common::SyncingState;
+use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
 use serde_json::Value;
@@ -27,15 +27,15 @@ pub fn get_test_gateway_config() -> GatewayConfig {
     }
 }
 
-pub(crate) fn get_test_syncing_state() -> Arc<RwLock<SyncingState>> {
-    Arc::new(RwLock::new(SyncingState::default()))
+pub(crate) fn get_test_highest_block() -> Arc<RwLock<Option<BlockHashAndNumber>>> {
+    Arc::new(RwLock::new(None))
 }
 
 pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
 -> (RpcModule<T>, StorageWriter, Arc<MockStarknetWriter>) {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
     let config = get_test_gateway_config();
-    let shared_syncing_state = get_test_syncing_state();
+    let shared_highest_block = get_test_highest_block();
     let mock_starknet_writer = Arc::new(MockStarknetWriter::new());
     (
         T::new(
@@ -43,7 +43,7 @@ pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
             storage_reader,
             config.max_events_chunk_size,
             config.max_events_keys,
-            shared_syncing_state,
+            shared_highest_block,
             mock_starknet_writer.clone(),
         )
         .into_rpc_module(),

@@ -23,7 +23,7 @@ use jsonrpsee::server::{ServerBuilder, ServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
 use jsonrpsee::types::ErrorObjectOwned;
-use papyrus_common::SyncingState;
+use papyrus_common::BlockHashAndNumber;
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, SerializedParam};
 use papyrus_storage::base_layer::BaseLayerStorageReader;
@@ -176,7 +176,7 @@ impl ContinuationToken {
 #[instrument(skip(storage_reader), level = "debug", err)]
 pub async fn run_server(
     config: &GatewayConfig,
-    shared_syncing_state: Arc<RwLock<SyncingState>>,
+    shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
     storage_reader: StorageReader,
     node_version: &'static str,
 ) -> anyhow::Result<(SocketAddr, ServerHandle)> {
@@ -186,7 +186,7 @@ pub async fn run_server(
         storage_reader,
         config.max_events_chunk_size,
         config.max_events_keys,
-        shared_syncing_state,
+        shared_highest_block,
         Arc::new(StarknetGatewayClient::new(
             &config.starknet_url,
             None,

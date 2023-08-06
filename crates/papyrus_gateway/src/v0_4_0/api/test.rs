@@ -9,6 +9,7 @@ use jsonrpsee::core::params::ObjectParams;
 use jsonrpsee::core::Error;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonschema::JSONSchema;
+use papyrus_common::BlockHashAndNumber;
 use papyrus_execution::execution_utils::selector_from_name;
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::events::EventIndex;
@@ -46,13 +47,10 @@ use super::super::transaction::{
     TransactionReceiptWithStatus, TransactionWithHash, Transactions,
 };
 use super::api_impl::JsonRpcServerV0_4Impl;
-use crate::api::{
-    BlockHashAndNumber, BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcError,
-    Tag,
-};
+use crate::api::{BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcError, Tag};
 use crate::test_utils::{
-    get_starknet_spec_api_schema_for_components, get_test_gateway_config,
-    get_test_rpc_server_and_storage_writer, get_test_syncing_state, validate_schema, SpecFile,
+    get_starknet_spec_api_schema_for_components, get_test_gateway_config, get_test_highest_block,
+    get_test_rpc_server_and_storage_writer, validate_schema, SpecFile,
 };
 use crate::version_config::VERSION_0_4;
 use crate::{run_server, ContinuationTokenAsStruct};
@@ -1634,9 +1632,7 @@ async fn serialize_returns_valid_json() {
 
     let gateway_config = get_test_gateway_config();
     let (server_address, _handle) =
-        run_server(&gateway_config, get_test_syncing_state(), storage_reader, "NODE VERSION")
-            .await
-            .unwrap();
+        run_server(&gateway_config, get_test_highest_block(), storage_reader, "NODE VERSION").await.unwrap();
 
     let schema = get_starknet_spec_api_schema_for_components(
         &[(

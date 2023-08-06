@@ -4,7 +4,6 @@ use std::time::Duration;
 use assert_matches::assert_matches;
 use futures_util::StreamExt;
 use indexmap::IndexMap;
-use papyrus_common::SyncingState;
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
@@ -172,7 +171,7 @@ fn store_base_layer_block_test() {
 
     let mut gen_state_sync = GenericStateSync {
         config: SyncConfig::default(),
-        shared_syncing_state: Arc::new(RwLock::new(SyncingState::default())),
+        shared_highest_block: Arc::new(RwLock::new(None)),
         central_source: Arc::new(MockCentralSourceTrait::new()),
         base_layer_source: Arc::new(MockBaseLayerSourceTrait::new()),
         reader,
