@@ -158,7 +158,7 @@ async fn test_get_block(
     }
 
     // Get the last block.
-    starknet_client.block_number().await.unwrap().unwrap();
+    starknet_client.latest_block().await.unwrap().unwrap();
     // Not existing block.
     assert!(starknet_client.block(BlockNumber(u64::MAX)).await.unwrap().is_none());
 }

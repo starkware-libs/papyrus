@@ -59,9 +59,9 @@ async fn get_block_number() {
         .with_status(200)
         .with_body(read_resource_file("reader/block.json"))
         .create();
-    let block_number = starknet_client.block_number().await.unwrap();
+    let latest_block = starknet_client.latest_block().await.unwrap();
     mock_block.assert();
-    assert_eq!(block_number.unwrap(), BlockNumber(273466));
+    assert_eq!(latest_block.unwrap().block_number, BlockNumber(273466));
 
     // There are no blocks in Starknet.
     let body = r#"{"code": "StarknetErrorCode.BLOCK_NOT_FOUND", "message": "Block number -1 was not found."}"#;
@@ -69,9 +69,9 @@ async fn get_block_number() {
         .with_status(500)
         .with_body(body)
         .create();
-    let block_number = starknet_client.block_number().await.unwrap();
+    let latest_block = starknet_client.latest_block().await.unwrap();
     mock_no_block.assert();
-    assert!(block_number.is_none());
+    assert!(latest_block.is_none());
 }
 
 #[tokio::test]

@@ -31,8 +31,10 @@ async fn last_block_number() {
     let mut mock = MockStarknetReader::new();
 
     // We need to perform all the mocks before moving the mock into central_source.
-    const EXPECTED_LAST_BLOCK_NUMBER: BlockNumber = BlockNumber(9);
-    mock.expect_block_number().times(1).returning(|| Ok(Some(EXPECTED_LAST_BLOCK_NUMBER)));
+    const EXPECTED_LAST_BLOCK_NUMBER: BlockNumber = BlockNumber(0);
+    mock.expect_latest_block().times(1).returning(|| {
+        Ok(Some(Block { block_number: EXPECTED_LAST_BLOCK_NUMBER, ..Default::default() }))
+    });
 
     let ((reader, _), _temp_dir) = get_test_storage();
     let central_source = GenericCentralSource {
@@ -41,7 +43,7 @@ async fn last_block_number() {
         storage_reader: reader,
     };
 
-    let last_block_number = central_source.get_block_marker().await.unwrap().prev().unwrap();
+    let last_block_number = central_source.get_latest_block().await.unwrap().unwrap().block_number;
     assert_eq!(last_block_number, EXPECTED_LAST_BLOCK_NUMBER);
 }
 
