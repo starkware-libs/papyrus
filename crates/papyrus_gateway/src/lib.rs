@@ -24,7 +24,7 @@ use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_common::SyncingState;
-use papyrus_config::dumping::{ser_param, SerializeConfig};
+use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, SerializedParam};
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::body::events::EventIndex;
@@ -34,6 +34,8 @@ use papyrus_storage::{StorageReader, StorageTxn};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockStatus};
 use starknet_api::core::ChainId;
+use starknet_client::writer::StarknetGatewayClient;
+use starknet_client::RetryConfig;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, instrument};
 
@@ -52,6 +54,8 @@ pub struct GatewayConfig {
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
     pub collect_metrics: bool,
+    pub starknet_url: String,
+    pub starknet_gateway_retry_config: RetryConfig,
 }
 
 impl Default for GatewayConfig {
@@ -62,19 +66,31 @@ impl Default for GatewayConfig {
             max_events_chunk_size: 1000,
             max_events_keys: 100,
             collect_metrics: false,
+            starknet_url: String::from("https://alpha-mainnet.starknet.io/"),
+            starknet_gateway_retry_config: RetryConfig {
+                retry_base_millis: 50,
+                retry_max_delay_millis: 1000,
+                max_retries: 5,
+            },
         }
     }
 }
 
 impl SerializeConfig for GatewayConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
-        BTreeMap::from_iter([
+        let mut self_params_dump = BTreeMap::from_iter([
             ser_param("chain_id", &self.chain_id, "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id."),
             ser_param("server_address", &self.server_address, "IP:PORT of the node`s JSON-RPC server."),
             ser_param("max_events_chunk_size", &self.max_events_chunk_size, "Maximum chunk size supported by the node in get_events requests."),
             ser_param("max_events_keys", &self.max_events_keys, "Maximum number of keys supported by the node in get_events requests."),
             ser_param("collect_metrics", &self.collect_metrics, "If true, collect metrics for the gateway."),
-        ])
+            ser_param("starknet_url", &self.starknet_url, "URL for communicating with Starknet in write_api methods."),
+        ]);
+        self_params_dump.append(&mut append_sub_config_name(
+            self.starknet_gateway_retry_config.dump(),
+            "starknet_gateway_retry_config",
+        ));
+        self_params_dump
     }
 }
 
@@ -154,6 +170,7 @@ pub async fn run_server(
     config: &GatewayConfig,
     shared_syncing_state: Arc<RwLock<SyncingState>>,
     storage_reader: StorageReader,
+    node_version: &'static str,
 ) -> anyhow::Result<(SocketAddr, ServerHandle)> {
     debug!("Starting gateway.");
     let methods = get_methods_from_supported_apis(
@@ -162,6 +179,12 @@ pub async fn run_server(
         config.max_events_chunk_size,
         config.max_events_keys,
         shared_syncing_state,
+        Arc::new(StarknetGatewayClient::new(
+            &config.starknet_url,
+            None,
+            node_version,
+            config.starknet_gateway_retry_config,
+        )?),
     );
     let addr;
     let handle;
