@@ -5,7 +5,6 @@
 //! * Default config file.
 
 use std::collections::BTreeMap;
-use std::fs::File;
 use std::mem::discriminant;
 use std::ops::IndexMut;
 use std::path::PathBuf;
@@ -37,12 +36,12 @@ pub fn load<T: for<'a> Deserialize<'a>>(
 /// Deserializes a json config file, updates the values by the given arguments for the command, and
 /// set values for the pointers.
 pub fn load_and_process_config<T: for<'a> Deserialize<'a>>(
-    default_config_file: File,
+    default_config_string: &str,
     command: Command,
     args: Vec<String>,
 ) -> Result<T, ConfigError> {
     let deserialized_default_config: Map<String, Value> =
-        serde_json::from_reader(default_config_file).unwrap();
+        serde_json::from_str(default_config_string).unwrap();
 
     let (mut config_map, pointers_map) = get_maps_from_raw_json(deserialized_default_config);
     let arg_matches = get_command_matches(&config_map, command, args)?;

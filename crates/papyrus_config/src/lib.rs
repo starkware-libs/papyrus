@@ -5,7 +5,7 @@
 //!
 //! ```
 //! use std::collections::BTreeMap;
-//! use std::fs::File;
+//! use std::fs;
 //! use std::path::Path;
 //!
 //! use clap::Command;
@@ -29,9 +29,10 @@
 //! let dir = TempDir::new().unwrap();
 //! let file_path = dir.path().join("config.json");
 //! ConfigExample { key: 42 }.dump_to_file(&vec![], file_path.to_str().unwrap());
-//! let file = File::open(file_path).unwrap();
+//! let dumped_config = fs::read_to_string(file_path).unwrap();
+//! let dumped_config: &str = dumped_config.as_str();
 //! let loaded_config = load_and_process_config::<ConfigExample>(
-//!     file,
+//!     dumped_config,
 //!     Command::new("Program"),
 //!     vec!["Program".to_owned(), "--key".to_owned(), "770".to_owned()],
 //! )
