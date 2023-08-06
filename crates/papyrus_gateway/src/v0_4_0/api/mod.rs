@@ -21,6 +21,7 @@ pub mod api_impl;
 mod test;
 
 #[versioned_rpc("V0_4")]
+#[async_trait]
 pub trait JsonRpc {
     /// Gets the most recent accepted block number.
     #[method(name = "blockNumber")]
@@ -116,7 +117,7 @@ pub trait JsonRpc {
 
     /// Returns the synching status of the node, or false if the node is not synching.
     #[method(name = "syncing")]
-    fn syncing(&self) -> RpcResult<SyncingState>;
+    async fn syncing(&self) -> RpcResult<SyncingState>;
 
     /// Executes the entry point of the contract at the given address with the given calldata,
     /// returns the result (Retdata).

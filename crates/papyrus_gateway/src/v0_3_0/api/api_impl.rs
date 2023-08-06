@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use async_trait::async_trait;
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
@@ -29,7 +30,7 @@ use super::super::transaction::{
 use super::{BlockId, EventFilter, EventsChunk, GatewayContractClass, JsonRpcV0_3Server};
 use crate::api::{BlockHashOrNumber, ContinuationToken, JsonRpcError, JsonRpcServerImpl};
 use crate::block::get_block_header_by_number;
-use crate::syncing_state::SyncingState;
+use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
 use crate::transaction::{get_block_tx_hashes_by_number, get_block_txs_by_number};
 use crate::{
     get_block_number, get_block_status, get_latest_block_number, internal_server_error,
@@ -42,9 +43,11 @@ pub struct JsonRpcServerV0_3Impl {
     pub storage_reader: StorageReader,
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
+    pub starting_block: BlockHashAndNumber,
     pub shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
 }
 
+#[async_trait]
 impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     fn block_number(&self) -> RpcResult<BlockNumber> {
@@ -440,9 +443,23 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn syncing(&self) -> RpcResult<SyncingState> {
-        // TODO(omri): This is temporary. Implement syncing logic.
-        Ok(SyncingState::Synced)
+    async fn syncing(&self) -> RpcResult<SyncingState> {
+        let Some(highest_block) = *self.shared_highest_block.read().await else {
+            return Ok(SyncingState::Synced)
+        };
+        let current_block =
+            get_last_synced_block(self.storage_reader.clone()).map_err(internal_server_error)?;
+        if highest_block.block_number <= current_block.block_number {
+            return Ok(SyncingState::Synced);
+        }
+        Ok(SyncingState::SyncStatus(SyncStatus {
+            starting_block_hash: self.starting_block.block_hash,
+            starting_block_num: self.starting_block.block_number,
+            current_block_hash: current_block.block_hash,
+            current_block_num: current_block.block_number,
+            highest_block_hash: highest_block.block_hash,
+            highest_block_num: highest_block.block_number,
+        }))
     }
 }
 
@@ -452,6 +469,7 @@ impl JsonRpcServerImpl for JsonRpcServerV0_3Impl {
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,
+        starting_block: BlockHashAndNumber,
         shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
         // TODO(shahak): Put this parameter inside Self once write_api is supported in v0.3.0
         _: Arc<dyn StarknetWriter>,
@@ -461,6 +479,7 @@ impl JsonRpcServerImpl for JsonRpcServerV0_3Impl {
             storage_reader,
             max_events_chunk_size,
             max_events_keys,
+            starting_block,
             shared_highest_block,
         }
     }
