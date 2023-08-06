@@ -361,7 +361,7 @@ impl<
             // Info the user on syncing the block once all the data is stored.
             info!("Added block {} with hash {}.", block_number, block_hash);
         } else {
-            todo!("Insert to ommer table.");
+            debug!("TODO: Insert reverted state diff to ommer table.");
         }
         Ok(())
     }
@@ -377,7 +377,7 @@ impl<
         let is_reverted_class =
             txn.get_state_reader()?.get_class_definition_block_number(&class_hash)?.is_none();
         if is_reverted_class {
-            todo!("Insert to ommer table.");
+            debug!("TODO: Insert reverted compiled class to ommer table.");
         }
         match txn.append_casm(&class_hash, &compiled_class) {
             Ok(txn) => {
