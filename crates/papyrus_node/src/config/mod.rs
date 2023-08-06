@@ -12,7 +12,7 @@ use std::{env, fs, io};
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
 use itertools::chain;
 use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
-use papyrus_config::dumping::{append_sub_config_name, SerializeConfig};
+use papyrus_config::dumping::{append_sub_config_name, ser_optional_sub_config, SerializeConfig};
 use papyrus_config::loading::load_and_process_config;
 use papyrus_config::{ConfigError, ParamPath, SerializedParam};
 use papyrus_gateway::GatewayConfig;
@@ -64,10 +64,7 @@ impl SerializeConfig for NodeConfig {
             append_sub_config_name(self.gateway.dump(), "gateway"),
             append_sub_config_name(self.monitoring_gateway.dump(), "monitoring_gateway"),
             append_sub_config_name(self.storage.dump(), "storage"),
-            match self.sync {
-                None => BTreeMap::new(),
-                Some(sync_config) => append_sub_config_name(sync_config.dump(), "sync"),
-            },
+            ser_optional_sub_config(&self.sync, "sync"),
         )
         .collect()
     }
