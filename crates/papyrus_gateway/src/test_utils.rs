@@ -7,6 +7,7 @@ use jsonschema::JSONSchema;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
+use serde::Deserialize;
 use serde_json::Value;
 use starknet_api::core::ChainId;
 use starknet_client::writer::MockStarknetWriter;
@@ -43,6 +44,7 @@ pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
             storage_reader,
             config.max_events_chunk_size,
             config.max_events_keys,
+            BlockHashAndNumber::default(),
             shared_highest_block,
             mock_starknet_writer.clone(),
         )
@@ -50,6 +52,27 @@ pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
         storage_writer,
         mock_starknet_writer,
     )
+}
+
+// Call a method on the `RPC module` without having to spin up a server.
+// Returns the raw `result field` in JSON-RPC response and the deserialized result if successful.
+pub async fn raw_call<R: JsonRpcServerImpl, T: for<'a> Deserialize<'a>>(
+    module: &RpcModule<R>,
+    method: &str,
+    params: &str,
+) -> Option<(Value, T)> {
+    let req = format!(r#"{{"jsonrpc":"2.0","id":"1","method":"{method}","params":[{params}]}}"#);
+    let (resp_wrapper, _) = module.raw_json_request(req.as_str(), 1).await.expect("request format");
+    if !resp_wrapper.success {
+        return None;
+    }
+
+    let json_resp: Value = serde_json::from_str(&resp_wrapper.result).unwrap();
+    let result = serde_json::from_value::<T>(
+        json_resp.get("result").expect("response should have result field").to_owned(),
+    )
+    .expect("result should match the target type");
+    Some((json_resp, result))
 }
 
 // TODO(nevo): Schmea validates null as valid for an unknown reason.
