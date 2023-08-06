@@ -20,6 +20,7 @@ use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
 use pretty_assertions::assert_eq;
+use serde_json::json;
 use starknet_api::block::{BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
@@ -48,12 +49,16 @@ use super::super::transaction::{
 };
 use super::api_impl::JsonRpcServerV0_4Impl;
 use crate::api::{BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcError, Tag};
+use crate::syncing_state::SyncStatus;
 use crate::test_utils::{
-    get_starknet_spec_api_schema_for_components, get_test_gateway_config, get_test_highest_block,
-    get_test_rpc_server_and_storage_writer, validate_schema, SpecFile,
+    get_starknet_spec_api_schema_for_components, get_starknet_spec_api_schema_for_method_results,
+    get_test_gateway_config, get_test_highest_block, get_test_rpc_server_and_storage_writer,
+    validate_schema, SpecFile,
 };
 use crate::version_config::VERSION_0_4;
 use crate::{run_server, ContinuationTokenAsStruct};
+
+const NODE_VERSION: &str = "NODE VERSION";
 
 #[tokio::test]
 async fn chain_id() {
@@ -138,9 +143,31 @@ async fn block_number() {
 
 #[tokio::test]
 async fn syncing() {
-    let (module, _, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
-    let res = module.call::<_, bool>("starknet_V0_4_syncing", ObjectParams::new()).await.unwrap();
-    assert_eq!(res, false);
+    let method_name = "starknet_syncing";
+    let ((storage_reader, _), _temp_dir) = get_test_storage();
+    let gateway_config = get_test_gateway_config();
+    let shared_highest_block = get_test_highest_block();
+    let (server_address, _handle) =
+        run_server(&gateway_config, shared_highest_block.clone(), storage_reader, NODE_VERSION)
+            .await
+            .unwrap();
+
+    let result_schema = get_starknet_spec_api_schema_for_method_results(
+        &[(SpecFile::StarknetApiOpenrpc, &[method_name])],
+        &VERSION_0_4,
+    );
+    let res_0 = send_request(server_address, method_name, "", VERSION_0_4.name).await;
+    assert_eq!(res_0["result"], json!(false));
+    assert!(validate_schema(&result_schema, res_0), "Syncing state is not valid.");
+
+    *shared_highest_block.write().await =
+        Some(BlockHashAndNumber { block_number: BlockNumber(5), ..Default::default() });
+    let res_1 = send_request(server_address, method_name, "", VERSION_0_4.name).await;
+    assert_eq!(
+        res_1["result"],
+        json!(SyncStatus { highest_block_num: BlockNumber(5), ..Default::default() })
+    );
+    assert!(validate_schema(&result_schema, res_1), "Syncing state is not valid.");
 }
 
 #[tokio::test]
@@ -1632,7 +1659,7 @@ async fn serialize_returns_valid_json() {
 
     let gateway_config = get_test_gateway_config();
     let (server_address, _handle) =
-        run_server(&gateway_config, get_test_highest_block(), storage_reader, "NODE VERSION")
+        run_server(&gateway_config, get_test_highest_block(), storage_reader, NODE_VERSION)
             .await
             .unwrap();
 

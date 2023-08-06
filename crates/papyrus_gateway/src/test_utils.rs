@@ -43,6 +43,7 @@ pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
             storage_reader,
             config.max_events_chunk_size,
             config.max_events_keys,
+            BlockHashAndNumber::default(),
             shared_highest_block,
             mock_starknet_writer.clone(),
         )

@@ -116,7 +116,7 @@ pub trait JsonRpc {
 
     /// Returns the synching status of the node, or false if the node is not synching.
     #[method(name = "syncing")]
-    fn syncing(&self) -> RpcResult<SyncingState>;
+    async fn syncing(&self) -> RpcResult<SyncingState>;
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
