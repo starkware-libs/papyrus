@@ -1,3 +1,7 @@
+use papyrus_common::BlockHashAndNumber;
+use papyrus_storage::compiled_class::CasmStorageReader;
+use papyrus_storage::header::HeaderStorageReader;
+use papyrus_storage::{StorageReader, StorageResult};
 use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
@@ -28,8 +32,6 @@ impl Default for SyncingState {
     }
 }
 
-// TODO(yoav): Add a test that verifies that the serialization conforms to the spec.
-
 /// The status of the synchronization progress. The hash and the number of:
 /// * the block from which the synchronization started,
 /// * the currently syncing block,
@@ -42,4 +44,16 @@ pub struct SyncStatus {
     pub current_block_num: BlockNumber,
     pub highest_block_hash: BlockHash,
     pub highest_block_num: BlockNumber,
+}
+
+pub(crate) fn get_last_synced_block(
+    storage_reader: StorageReader,
+) -> StorageResult<BlockHashAndNumber> {
+    let txn = storage_reader.begin_ro_txn()?;
+    let Some(block_number) = txn.get_compiled_class_marker()?.prev() else {
+        return Ok(BlockHashAndNumber::default())
+    };
+    let block_hash =
+        txn.get_block_header(block_number)?.expect("No header for last compiled class").block_hash;
+    Ok(BlockHashAndNumber { block_hash, block_number })
 }
