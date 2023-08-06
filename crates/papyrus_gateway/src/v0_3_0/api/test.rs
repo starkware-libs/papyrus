@@ -1624,7 +1624,9 @@ async fn serialize_returns_valid_json() {
 
     let gateway_config = get_test_gateway_config();
     let (server_address, _handle) =
-        run_server(&gateway_config, get_test_highest_block(), storage_reader, "NODE VERSION").await.unwrap();
+        run_server(&gateway_config, get_test_highest_block(), storage_reader, "NODE VERSION")
+            .await
+            .unwrap();
 
     let schema = get_starknet_spec_api_schema_for_components(
         &[(
