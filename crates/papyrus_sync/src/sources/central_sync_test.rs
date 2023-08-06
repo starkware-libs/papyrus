@@ -6,7 +6,7 @@ use async_stream::stream;
 use async_trait::async_trait;
 use futures::StreamExt;
 use indexmap::IndexMap;
-use papyrus_common::SyncingState;
+use papyrus_common::{BlockHashAndNumber, SyncingState};
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::header::{HeaderStorageReader, StarknetVersion};
 use papyrus_storage::state::StateStorageReader;
@@ -107,7 +107,7 @@ async fn sync_empty_chain() {
 
     // Mock central without any block.
     let mut central_mock = MockCentralSourceTrait::new();
-    central_mock.expect_get_block_marker().returning(|| Ok(BlockNumber(0)));
+    central_mock.expect_get_latest_block().returning(|| Ok(None));
 
     // Mock base_layer without any block.
     let mut base_layer_mock = MockBaseLayerSourceTrait::new();
@@ -134,13 +134,19 @@ async fn sync_empty_chain() {
 #[tokio::test]
 async fn sync_happy_flow() {
     const N_BLOCKS: u64 = 5;
+    const LATEST_BLOCK_NUMBER: BlockNumber = BlockNumber(N_BLOCKS - 1);
     // FIXME: (Omri) analyze and set a lower value.
     const MAX_TIME_TO_SYNC_MS: u64 = 800;
     let _ = simple_logger::init_with_env();
 
     // Mock having N_BLOCKS chain in central.
     let mut central_mock = MockCentralSourceTrait::new();
-    central_mock.expect_get_block_marker().returning(|| Ok(BlockNumber(N_BLOCKS)));
+    central_mock.expect_get_latest_block().returning(|| {
+        Ok(Some(BlockHashAndNumber {
+            block_number: LATEST_BLOCK_NUMBER,
+            block_hash: create_block_hash(LATEST_BLOCK_NUMBER, false),
+        }))
+    });
     central_mock.expect_stream_new_blocks().returning(move |initial, up_to| {
         let blocks_stream: BlocksStream<'_> = stream! {
             for block_number in initial.iter_up_to(up_to) {
@@ -380,12 +386,18 @@ async fn sync_with_revert() {
 
     #[async_trait]
     impl CentralSourceTrait for MockedCentralWithRevert {
-        async fn get_block_marker(&self) -> Result<BlockNumber, CentralError> {
+        async fn get_latest_block(&self) -> Result<Option<BlockHashAndNumber>, CentralError> {
             let already_reverted = self.revert_happend();
-            match already_reverted {
-                false => Ok(BlockNumber(N_BLOCKS_BEFORE_REVERT)),
-                true => Ok(BlockNumber(N_BLOCKS_AFTER_REVERT)),
+            let block_number = match already_reverted {
+                false => BlockNumber(N_BLOCKS_BEFORE_REVERT),
+                true => BlockNumber(N_BLOCKS_AFTER_REVERT),
             }
+            .prev()
+            .unwrap();
+            Ok(Some(BlockHashAndNumber {
+                block_hash: create_block_hash(block_number, already_reverted),
+                block_number,
+            }))
         }
 
         async fn get_block_hash(
@@ -503,12 +515,18 @@ async fn sync_with_revert() {
 async fn test_unrecoverable_sync_error_flow() {
     let _ = simple_logger::init_with_env();
 
+    const LATEST_BLOCK_NUMBER: BlockNumber = BlockNumber(0);
     const BLOCK_NUMBER: BlockNumber = BlockNumber(1);
     const WRONG_BLOCK_NUMBER: BlockNumber = BlockNumber(2);
 
     // Mock central with one block but return wrong header.
     let mut mock = MockCentralSourceTrait::new();
-    mock.expect_get_block_marker().returning(|| Ok(BLOCK_NUMBER));
+    mock.expect_get_latest_block().returning(|| {
+        Ok(Some(BlockHashAndNumber {
+            block_number: LATEST_BLOCK_NUMBER,
+            block_hash: create_block_hash(LATEST_BLOCK_NUMBER, false),
+        }))
+    });
     mock.expect_stream_new_blocks().returning(move |_, _| {
         let blocks_stream: BlocksStream<'_> = stream! {
             let header = BlockHeader {

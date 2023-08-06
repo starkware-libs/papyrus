@@ -25,8 +25,13 @@ async fn main() {
     let (storage_reader, _) = open_storage(config.storage.db_config).expect("Open storage");
     let central_source = CentralSource::new(config.central, VERSION_FULL, storage_reader)
         .expect("Create new client");
-    let last_block_number =
-        central_source.get_block_marker().await.expect("Central get block marker");
+    let last_block_number = central_source
+        .get_latest_block()
+        .await
+        .expect("Central get latest_block")
+        .expect("No blocks in central")
+        .block_number
+        .next();
     let initial_block_number = BlockNumber(last_block_number.0 - STREAM_LENGTH);
 
     let mut block_marker = initial_block_number;
