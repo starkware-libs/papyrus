@@ -11,6 +11,7 @@ base64.workspace = true
 futures.workspace = true
 futures-util.workspace = true
 hyper = { workspace = true, features = ["full"] }
+itertools.workspace = true
 jsonrpsee = { workspace = true, features = ["full"] }
 metrics.workspace = true
 papyrus_common = { path = "../papyrus_common"}

@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{ChainId, ContractAddress};
 use starknet_api::transaction::EventKey;
+use starknet_client::writer::StarknetWriter;
 use tokio::sync::RwLock;
 
 use crate::v0_3_0::api::api_impl::JsonRpcServerV0_3Impl;
@@ -93,6 +94,7 @@ pub fn get_methods_from_supported_apis(
     max_events_chunk_size: usize,
     max_events_keys: usize,
     shared_syncing_state: Arc<RwLock<SyncingState>>,
+    starknet_writer: Arc<dyn StarknetWriter>,
 ) -> Methods {
     let mut methods: Methods = Methods::new();
     let server_gen = JsonRpcServerImplGenerator {
@@ -101,6 +103,7 @@ pub fn get_methods_from_supported_apis(
         max_events_chunk_size,
         max_events_keys,
         shared_syncing_state: shared_syncing_state.clone(),
+        starknet_writer,
     };
     version_config::VERSION_CONFIG
         .iter()
@@ -136,6 +139,7 @@ pub trait JsonRpcServerImpl: Sized {
         max_events_chunk_size: usize,
         max_events_keys: usize,
         shared_syncing_state: Arc<RwLock<SyncingState>>,
+        starknet_writer: Arc<dyn StarknetWriter>,
     ) -> Self;
 
     fn into_rpc_module(self) -> RpcModule<Self>;
@@ -148,15 +152,21 @@ struct JsonRpcServerImplGenerator {
     max_events_chunk_size: usize,
     max_events_keys: usize,
     shared_syncing_state: Arc<RwLock<SyncingState>>,
+    starknet_writer: Arc<dyn StarknetWriter>,
 }
+
+type JsonRpcServerImplParams =
+    (ChainId, StorageReader, usize, usize, Arc<RwLock<SyncingState>>, Arc<dyn StarknetWriter>);
+
 impl JsonRpcServerImplGenerator {
-    fn get_params(self) -> (ChainId, StorageReader, usize, usize, Arc<RwLock<SyncingState>>) {
+    fn get_params(self) -> JsonRpcServerImplParams {
         (
             self.chain_id,
             self.storage_reader,
             self.max_events_chunk_size,
             self.max_events_keys,
             self.shared_syncing_state,
+            self.starknet_writer,
         )
     }
 
@@ -170,6 +180,7 @@ impl JsonRpcServerImplGenerator {
             max_events_chunk_size,
             max_events_keys,
             shared_syncing_state,
+            starknet_writer,
         ) = self.get_params();
         Into::<Methods>::into(
             T::new(
@@ -178,6 +189,7 @@ impl JsonRpcServerImplGenerator {
                 max_events_chunk_size,
                 max_events_keys,
                 shared_syncing_state,
+                starknet_writer,
             )
             .into_rpc_module(),
         )

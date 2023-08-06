@@ -55,9 +55,29 @@
     "description": "Maximum number of keys supported by the node in get_events requests.",
     "value": 100
   },
+  "gateway.starknet_gateway_retry_config.max_retries": {
+    "description": "Maximum number of retries before the node stops retrying.",
+    "value": 5
+  },
+  "gateway.starknet_gateway_retry_config.retry_base_millis": {
+    "description": "Base waiting time after a failed request. After that, the time increases exponentially.",
+    "value": 50
+  },
+  "gateway.starknet_gateway_retry_config.retry_max_delay_millis": {
+    "description": "Max waiting time after a failed request.",
+    "value": 1000
+  },
   "gateway.server_address": {
     "description": "IP:PORT of the node`s JSON-RPC server.",
     "value": "0.0.0.0:8080"
+  },
+  "gateway.starknet_url": {
+    "description": "URL for communicating with Starknet in write_api methods.",
+    "value": "https://alpha-mainnet.starknet.io/"
+  },
+  "gateway.starknet_gateway_http_headers": {
+    "description": "HTTP headers for communicating with the Starknet gateway in write_api methods.",
+    "value": ""
   },
   "monitoring_gateway.collect_metrics": {
     "description": "If true, collect metrics for the node.",
