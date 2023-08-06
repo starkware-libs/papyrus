@@ -37,7 +37,7 @@ use tracing::{debug, error, info, instrument, trace, warn};
 
 // TODO(dvir): remove pub use, make the modules public and make inner functions private.
 pub use self::sources::{
-    BaseLayerError, CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait,
+    BaseLayerSourceError, CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait,
     EthereumBaseLayerSource,
 };
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
@@ -137,7 +137,7 @@ pub enum StateSyncError {
     #[error("Header for block {block_number} wasn't found when trying to store base layer block.")]
     BaseLayerBlockWithoutMatchingHeader { block_number: BlockNumber },
     #[error(transparent)]
-    BaseLayerSourceError(#[from] BaseLayerError),
+    BaseLayerSourceError(#[from] BaseLayerSourceError),
     #[error(
         "For {block_number} base layer and l2 doesn't match. Base layer hash: {base_layer_hash}, \
          L2 hash: {l2_hash}."
@@ -361,7 +361,7 @@ impl<
             // Info the user on syncing the block once all the data is stored.
             info!("Added block {} with hash {}.", block_number, block_hash);
         } else {
-            todo!("Insert to ommer table.");
+            debug!("TODO: Insert reverted state diff to ommer table.");
         }
         Ok(())
     }
@@ -377,7 +377,7 @@ impl<
         let is_reverted_class =
             txn.get_state_reader()?.get_class_definition_block_number(&class_hash)?.is_none();
         if is_reverted_class {
-            todo!("Insert to ommer table.");
+            debug!("TODO: Insert reverted compiled class to ommer table.");
         }
         match txn.append_casm(&class_hash, &compiled_class) {
             Ok(txn) => {
@@ -729,20 +729,26 @@ fn stream_new_base_layer_block<TBaseLayerSource: BaseLayerSourceTrait + Sync>(
     base_layer_propagation_sleep_duration: Duration,
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
-        loop{
+        loop {
             tokio::time::sleep(base_layer_propagation_sleep_duration).await;
             let txn = reader.begin_ro_txn()?;
             let header_marker = txn.get_header_marker()?;
-            match base_layer_source.latest_proved_block().await?{
-                Some((block_number, _block_hash)) if header_marker<=block_number => {
-                    debug!("Sync is behind the base layer tip, waiting for sync to advance.");
+            match base_layer_source.latest_proved_block().await? {
+                Some((block_number, _block_hash)) if header_marker <= block_number => {
+                    debug!(
+                        "Sync headers ({header_marker}) is behind the base layer tip \
+                         ({block_number}), waiting for sync to advance."
+                    );
                 }
                 Some((block_number, block_hash)) => {
                     debug!("Returns a block from the base layer. Block number: {block_number}.");
-                    yield SyncEvent::NewBaseLayerBlock {block_number, block_hash }
+                    yield SyncEvent::NewBaseLayerBlock { block_number, block_hash }
                 }
                 None => {
-                    debug!("No blocks were proved on the base layer, waiting for blockchain to advance.");
+                    debug!(
+                        "No blocks were proved on the base layer, waiting for blockchain to \
+                         advance."
+                    );
                 }
             }
         }

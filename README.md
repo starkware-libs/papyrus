@@ -65,17 +65,19 @@ cargo run --release --package papyrus_node --bin papyrus_node
 
 ### Configuration
 
-`Papyrus` supports configuration from command-line arguments and a configuration yaml file.
-In case both are provided, the command-line arguments take precedence.
-The default path for the configuration file is `config/config.yaml`. You can override this path
-using the `--config_file` command-line argument.
-See the default [configuration file](config/default_config.json) for available options.
-Note that the configuration file can be partial or even empty.
-You can check the available command-line arguments by running:
+`Papyrus` default [configuration file](config/default_config.json) documents all the available parameters,
+including pointers to common values and `#is_none` flags for optional parameters.
+
+You can override the default with your own key-value configuration json file, by providing a path to the
+`--config_file` command-line argument. Note that the configuration file can be partial or even empty.
+Alternatively, You can specify environment variables and command-line arguments.
+See the available command-line arguments by running:
 
 ```bash
 cargo run --release --package papyrus_node --bin papyrus_node -- --help
 ```
+
+See [here](crates/papyrus_config/README.md) for more information.
 
 ## Running `papyrus` with Docker
 

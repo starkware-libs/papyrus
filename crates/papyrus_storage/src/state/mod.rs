@@ -428,6 +428,9 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             &declared_classes_block_table,
         )?;
 
+        // Advance compiled class marker.
+        update_compiled_class_marker(&self.txn, &markers_table, &state_diffs_table)?;
+
         // Write deprecated declared classes.
         if !deployed_contract_class_definitions.is_empty() {
             // TODO(anatg): Remove this after regenesis.
@@ -551,6 +554,28 @@ fn update_marker<'env>(
 
     // Advance marker.
     markers_table.upsert(txn, &MarkerKind::State, &block_number.next())?;
+    Ok(())
+}
+
+// Advance compiled class marker next to all blocks that don't have declared classes.
+fn update_compiled_class_marker<'env>(
+    txn: &DbTransaction<'env, RW>,
+    markers_table: &'env MarkersTable<'env>,
+    state_diffs_table: &'env TableHandle<'_, BlockNumber, ThinStateDiff>,
+) -> StorageResult<()> {
+    let state_marker = markers_table.get(txn, &MarkerKind::State)?.unwrap_or_default();
+    let mut compiled_class_marker =
+        markers_table.get(txn, &MarkerKind::CompiledClass)?.unwrap_or_default();
+    while compiled_class_marker < state_marker {
+        let state_diff = state_diffs_table
+            .get(txn, &compiled_class_marker)?
+            .unwrap_or_else(|| panic!("Missing state diff for block {}", compiled_class_marker));
+        if !state_diff.declared_classes.is_empty() {
+            break;
+        }
+        compiled_class_marker = compiled_class_marker.next();
+        markers_table.upsert(txn, &MarkerKind::CompiledClass, &compiled_class_marker)?;
+    }
     Ok(())
 }
 

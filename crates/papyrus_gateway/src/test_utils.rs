@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::sync::Arc;
 
 use derive_more::Display;
@@ -84,12 +85,38 @@ pub fn get_starknet_spec_api_schema_for_method_results(
 ) -> JSONSchema {
     get_starknet_spec_api_schema(
         file_to_methods.iter().flat_map(|(file, methods)| {
-            let spec_str =
-                std::fs::read_to_string(format!("./resources/{version_id}/{file}")).unwrap();
-            let spec: serde_json::Value = serde_json::from_str(&spec_str).unwrap();
+            let spec: serde_json::Value = read_spec(format!("./resources/{version_id}/{file}"));
+
             methods.iter().map(move |method| {
                 let index = get_method_index(&spec, method);
                 format!("file:///api/{file}#/methods/{index}/result")
+            })
+        }),
+        version_id,
+    )
+}
+
+// TODO(shahak): Remove allow(dead_code) once we use this function.
+#[allow(dead_code)]
+pub fn get_starknet_spec_api_schema_for_method_errors(
+    file_to_methods: &[(SpecFile, &[&str])],
+    version_id: &VersionId,
+) -> JSONSchema {
+    get_starknet_spec_api_schema(
+        file_to_methods.iter().flat_map(|(file, methods)| {
+            let spec: serde_json::Value = read_spec(format!("./resources/{version_id}/{file}"));
+
+            methods.iter().flat_map(move |method| {
+                let index = get_method_index(&spec, method);
+                let method_json_obj =
+                    spec.as_object().unwrap().get("methods").unwrap().as_array().unwrap()[index]
+                        .as_object()
+                        .unwrap();
+                let errors_len = method_json_obj.get("errors").unwrap().as_array().unwrap().len();
+
+                (0..errors_len).map(move |error_index| {
+                    format!("file:///api/{file}#/methods/{index}/errors/{error_index}")
+                })
             })
         }),
         version_id,
@@ -121,6 +148,11 @@ fn get_starknet_spec_api_schema<Refs: IntoIterator<Item = String>>(
     let refs_schema = serde_json::from_str(&refs_schema_str).unwrap();
 
     options.compile(&refs_schema).unwrap()
+}
+
+fn read_spec<P: AsRef<Path>>(path: P) -> serde_json::Value {
+    let spec_str = std::fs::read_to_string(path).unwrap();
+    serde_json::from_str(&spec_str).unwrap()
 }
 
 fn get_method_index(spec: &serde_json::Value, method: &str) -> usize {
