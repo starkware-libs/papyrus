@@ -37,7 +37,7 @@ use tracing::{debug, error, info, instrument, trace, warn};
 
 // TODO(dvir): remove pub use, make the modules public and make inner functions private.
 pub use self::sources::{
-    BaseLayerError, CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait,
+    BaseLayerSourceError, CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait,
     EthereumBaseLayerSource,
 };
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
@@ -137,7 +137,7 @@ pub enum StateSyncError {
     #[error("Header for block {block_number} wasn't found when trying to store base layer block.")]
     BaseLayerBlockWithoutMatchingHeader { block_number: BlockNumber },
     #[error(transparent)]
-    BaseLayerSourceError(#[from] BaseLayerError),
+    BaseLayerSourceError(#[from] BaseLayerSourceError),
     #[error(
         "For {block_number} base layer and l2 doesn't match. Base layer hash: {base_layer_hash}, \
          L2 hash: {l2_hash}."

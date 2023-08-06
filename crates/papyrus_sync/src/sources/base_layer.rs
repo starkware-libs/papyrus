@@ -8,9 +8,11 @@ use starknet_api::block::{BlockHash, BlockNumber};
 pub type EthereumBaseLayerSource = EthereumBaseLayerContract;
 
 #[derive(thiserror::Error, Debug)]
-pub enum BaseLayerError {
+pub enum BaseLayerSourceError {
     #[error("Base layer error: {0}")]
     BaseLayerContractError(Box<dyn BaseLayerSourceErrorTrait>),
+    #[error("Base layer source creation error: {0}.")]
+    BaseLayerSourceCreationError(String),
 }
 
 pub trait BaseLayerSourceErrorTrait: std::error::Error + Sync + Send {}
@@ -20,8 +22,9 @@ impl<Error: std::error::Error + Sync + Send> BaseLayerSourceErrorTrait for Error
 #[cfg_attr(test, automock)]
 #[async_trait]
 pub trait BaseLayerSourceTrait {
-    async fn latest_proved_block(&self)
-    -> Result<Option<(BlockNumber, BlockHash)>, BaseLayerError>;
+    async fn latest_proved_block(
+        &self,
+    ) -> Result<Option<(BlockNumber, BlockHash)>, BaseLayerSourceError>;
 }
 
 #[async_trait]
@@ -32,9 +35,9 @@ impl<
 {
     async fn latest_proved_block(
         &self,
-    ) -> Result<Option<(BlockNumber, BlockHash)>, BaseLayerError> {
+    ) -> Result<Option<(BlockNumber, BlockHash)>, BaseLayerSourceError> {
         self.latest_proved_block(None)
             .await
-            .map_err(|e| BaseLayerError::BaseLayerContractError(Box::new(e)))
+            .map_err(|e| BaseLayerSourceError::BaseLayerContractError(Box::new(e)))
     }
 }

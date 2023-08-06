@@ -8,7 +8,7 @@ mod central_test;
 #[cfg(test)]
 pub(crate) use base_layer::MockBaseLayerSourceTrait;
 pub use base_layer::{
-    BaseLayerError, BaseLayerSourceErrorTrait, BaseLayerSourceTrait, EthereumBaseLayerSource,
+    BaseLayerSourceError, BaseLayerSourceErrorTrait, BaseLayerSourceTrait, EthereumBaseLayerSource,
 };
 #[cfg(test)]
 pub(crate) use central::MockCentralSourceTrait;
