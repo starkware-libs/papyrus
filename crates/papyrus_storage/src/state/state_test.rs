@@ -275,6 +275,15 @@ fn append_state_diff() {
 }
 
 #[test]
+fn test_update_compiled_class_marker() {
+    let ((_, mut writer), _temp_dir) = get_test_storage();
+    let mut txn = writer.begin_rw_txn().unwrap();
+    // Append an empty state diff.
+    txn = txn.append_state_diff(BlockNumber(0), StateDiff::default(), IndexMap::new()).unwrap();
+    assert_eq!(txn.get_compiled_class_marker().unwrap(), BlockNumber(1));
+}
+
+#[test]
 fn revert_non_existing_state_diff() {
     let ((_, mut writer), _temp_dir) = get_test_storage();
 
