@@ -729,20 +729,26 @@ fn stream_new_base_layer_block<TBaseLayerSource: BaseLayerSourceTrait + Sync>(
     base_layer_propagation_sleep_duration: Duration,
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
-        loop{
+        loop {
             tokio::time::sleep(base_layer_propagation_sleep_duration).await;
             let txn = reader.begin_ro_txn()?;
             let header_marker = txn.get_header_marker()?;
-            match base_layer_source.latest_proved_block().await?{
-                Some((block_number, _block_hash)) if header_marker<=block_number => {
-                    debug!("Sync is behind the base layer tip, waiting for sync to advance.");
+            match base_layer_source.latest_proved_block().await? {
+                Some((block_number, _block_hash)) if header_marker <= block_number => {
+                    debug!(
+                        "Sync headers ({header_marker}) is behind the base layer tip \
+                         ({block_number}), waiting for sync to advance."
+                    );
                 }
                 Some((block_number, block_hash)) => {
                     debug!("Returns a block from the base layer. Block number: {block_number}.");
-                    yield SyncEvent::NewBaseLayerBlock {block_number, block_hash }
+                    yield SyncEvent::NewBaseLayerBlock { block_number, block_hash }
                 }
                 None => {
-                    debug!("No blocks were proved on the base layer, waiting for blockchain to advance.");
+                    debug!(
+                        "No blocks were proved on the base layer, waiting for blockchain to \
+                         advance."
+                    );
                 }
             }
         }
