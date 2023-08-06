@@ -79,8 +79,6 @@ pub async fn get_starknet_spec_api_schema_for_components(
     )
 }
 
-// TODO(shahak): Remove allow(dead_code) once we use this variant.
-#[allow(dead_code)]
 pub fn get_starknet_spec_api_schema_for_method_results(
     file_to_methods: &[(SpecFile, &[&str])],
     version_id: &VersionId,
