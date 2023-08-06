@@ -13,7 +13,7 @@ use async_stream::try_stream;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use indexmap::IndexMap;
-use papyrus_common::SyncingState;
+use papyrus_common::BlockHashAndNumber;
 use papyrus_config::converters::{
     deserialize_milliseconds_to_duration, deserialize_seconds_to_duration,
 };
@@ -105,7 +105,7 @@ pub struct GenericStateSync<
     TBaseLayerSource: BaseLayerSourceTrait + Sync + Send,
 > {
     config: SyncConfig,
-    shared_syncing_state: Arc<RwLock<SyncingState>>,
+    shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
     central_source: Arc<TCentralSource>,
     base_layer_source: Arc<TBaseLayerSource>,
     reader: StorageReader,
@@ -244,11 +244,11 @@ impl<
     //  3. Fetch data from the streams with unblocking wait while there is no new data.
     async fn sync_while_ok(&mut self) -> StateSyncResult {
         // TODO(yoav): Set actual values for the sync status.
-        *self.shared_syncing_state.write().await = SyncingState::Synced;
         self.handle_block_reverts().await?;
         let block_stream = stream_new_blocks(
             self.reader.clone(),
             self.central_source.clone(),
+            self.shared_highest_block.clone(),
             self.config.block_propagation_sleep_duration,
             self.config.blocks_max_stream_size,
         )
@@ -571,14 +571,18 @@ impl<
 fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
+    shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
     block_propagation_sleep_duration: Duration,
     max_stream_size: u32,
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
         loop {
             let header_marker = reader.begin_ro_txn()?.get_header_marker()?;
-            let latest_block = central_source.get_latest_block().await?;
-            let central_block_marker = latest_block.map_or(BlockNumber::default(), |block| block.block_number.next());
+            let latest_central_block = central_source.get_latest_block().await?;
+            *shared_highest_block.write().await = latest_central_block;
+            let central_block_marker = latest_central_block.map_or(
+                BlockNumber::default(), |block| block.block_number.next()
+            );
             if header_marker == central_block_marker {
                 debug!("Blocks syncing reached the last known block, waiting for blockchain to advance.");
                 tokio::time::sleep(block_propagation_sleep_duration).await;
@@ -656,7 +660,7 @@ pub type StateSync = GenericStateSync<CentralSource, EthereumBaseLayerSource>;
 impl StateSync {
     pub fn new(
         config: SyncConfig,
-        shared_syncing_state: Arc<RwLock<SyncingState>>,
+        shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
         central_source: CentralSource,
         base_layer_source: EthereumBaseLayerSource,
         reader: StorageReader,
@@ -664,7 +668,7 @@ impl StateSync {
     ) -> Self {
         Self {
             config,
-            shared_syncing_state,
+            shared_highest_block,
             central_source: Arc::new(central_source),
             base_layer_source: Arc::new(base_layer_source),
             reader,
