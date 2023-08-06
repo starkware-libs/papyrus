@@ -110,7 +110,7 @@ fn get_block_number<Mode: TransactionKind>(
         BlockId::Tag(Tag::Latest) => get_latest_block_number(txn)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?,
         BlockId::Tag(Tag::Pending) => {
-            todo!("Pending tag is not supported yet.")
+            return Err(ErrorObjectOwned::from(JsonRpcError::PendingBlocksNotSupported));
         }
     })
 }
