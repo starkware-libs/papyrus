@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use jsonrpsee::{Methods, RpcModule};
-use papyrus_common::SyncingState;
+use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::StorageReader;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
@@ -68,12 +68,6 @@ pub enum JsonRpcError {
     PendingBlocksNotSupported = 41,
 }
 
-#[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct BlockHashAndNumber {
-    pub block_hash: BlockHash,
-    pub block_number: BlockNumber,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct EventFilter {
     pub from_block: Option<BlockId>,
@@ -95,7 +89,7 @@ pub fn get_methods_from_supported_apis(
     storage_reader: StorageReader,
     max_events_chunk_size: usize,
     max_events_keys: usize,
-    shared_syncing_state: Arc<RwLock<SyncingState>>,
+    shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
 ) -> Methods {
     let mut methods: Methods = Methods::new();
     let server_gen = JsonRpcServerImplGenerator {
@@ -103,7 +97,7 @@ pub fn get_methods_from_supported_apis(
         storage_reader: storage_reader.clone(),
         max_events_chunk_size,
         max_events_keys,
-        shared_syncing_state: shared_syncing_state.clone(),
+        shared_highest_block: shared_highest_block.clone(),
     };
     version_config::VERSION_CONFIG
         .iter()
@@ -138,7 +132,7 @@ pub trait JsonRpcServerImpl: Sized {
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,
-        shared_syncing_state: Arc<RwLock<SyncingState>>,
+        shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
     ) -> Self;
 
     fn into_rpc_module(self) -> RpcModule<Self>;
@@ -150,16 +144,18 @@ struct JsonRpcServerImplGenerator {
     storage_reader: StorageReader,
     max_events_chunk_size: usize,
     max_events_keys: usize,
-    shared_syncing_state: Arc<RwLock<SyncingState>>,
+    shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
 }
 impl JsonRpcServerImplGenerator {
-    fn get_params(self) -> (ChainId, StorageReader, usize, usize, Arc<RwLock<SyncingState>>) {
+    fn get_params(
+        self,
+    ) -> (ChainId, StorageReader, usize, usize, Arc<RwLock<Option<BlockHashAndNumber>>>) {
         (
             self.chain_id,
             self.storage_reader,
             self.max_events_chunk_size,
             self.max_events_keys,
-            self.shared_syncing_state,
+            self.shared_highest_block,
         )
     }
 
@@ -172,7 +168,7 @@ impl JsonRpcServerImplGenerator {
             storage_reader,
             max_events_chunk_size,
             max_events_keys,
-            shared_syncing_state,
+            shared_highest_block,
         ) = self.get_params();
         Into::<Methods>::into(
             T::new(
@@ -180,7 +176,7 @@ impl JsonRpcServerImplGenerator {
                 storage_reader,
                 max_events_chunk_size,
                 max_events_keys,
-                shared_syncing_state,
+                shared_highest_block,
             )
             .into_rpc_module(),
         )

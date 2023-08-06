@@ -44,7 +44,7 @@ pub struct JsonRpcServerV0_4Impl {
     pub storage_reader: StorageReader,
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
-    pub shared_syncing_state: Arc<RwLock<SyncingState>>,
+    pub shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
 }
 
 #[async_trait]
@@ -472,14 +472,14 @@ impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,
-        shared_syncing_state: Arc<RwLock<SyncingState>>,
+        shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
     ) -> Self {
         Self {
             chain_id,
             storage_reader,
             max_events_chunk_size,
             max_events_keys,
-            shared_syncing_state,
+            shared_highest_block,
         }
     }
 
