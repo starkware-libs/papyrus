@@ -9,6 +9,7 @@ use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
 use serde_json::Value;
 use starknet_api::core::ChainId;
+use starknet_client::writer::MockStarknetWriter;
 use tokio::sync::RwLock;
 
 use crate::api::JsonRpcServerImpl;
@@ -22,6 +23,7 @@ pub fn get_test_gateway_config() -> GatewayConfig {
         max_events_chunk_size: 10,
         max_events_keys: 10,
         collect_metrics: false,
+        ..Default::default()
     }
 }
 
@@ -30,10 +32,11 @@ pub(crate) fn get_test_syncing_state() -> Arc<RwLock<SyncingState>> {
 }
 
 pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
--> (RpcModule<T>, StorageWriter) {
+-> (RpcModule<T>, StorageWriter, Arc<MockStarknetWriter>) {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
     let config = get_test_gateway_config();
     let shared_syncing_state = get_test_syncing_state();
+    let mock_starknet_writer = Arc::new(MockStarknetWriter::new());
     (
         T::new(
             config.chain_id,
@@ -41,9 +44,11 @@ pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
             config.max_events_chunk_size,
             config.max_events_keys,
             shared_syncing_state,
+            mock_starknet_writer.clone(),
         )
         .into_rpc_module(),
         storage_writer,
+        mock_starknet_writer,
     )
 }
 

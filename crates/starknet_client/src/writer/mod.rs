@@ -10,6 +10,8 @@ mod starknet_gateway_client_test;
 use std::collections::HashMap;
 
 use async_trait::async_trait;
+#[cfg(any(feature = "testing", test))]
+use mockall::automock;
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 use url::Url;
@@ -39,8 +41,9 @@ pub type WriterClientResult<T> = Result<T, WriterClientError>;
 /// A trait describing an object that can communicate with [`Starknet`] and make changes to it.
 ///
 /// [`Starknet`]: https://starknet.io/
+#[cfg_attr(any(test, feature = "testing"), automock)]
 #[async_trait]
-pub trait StarknetWriter {
+pub trait StarknetWriter: Sync + Send + 'static {
     /// Add an invoke transaction to [`Starknet`].
     ///
     /// [`Starknet`]: https://starknet.io/
