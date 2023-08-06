@@ -4285,6 +4285,7 @@ version = "0.0.4"
 dependencies = [
  "anyhow",
  "assert_matches",
+ "async-trait",
  "base64 0.13.1",
  "cairo-lang-casm",
  "cairo-lang-starknet",

@@ -40,6 +40,7 @@ use tracing::{debug, error, info, instrument};
 
 use crate::api::get_methods_from_supported_apis;
 use crate::middleware::{deny_requests_with_unsupported_path, proxy_rpc_request};
+use crate::syncing_state::get_last_synced_block;
 
 /// Maximum size of a supported transaction body - 10MB.
 pub const SERVER_MAX_BODY_SIZE: u32 = 10 * 1024 * 1024;
@@ -131,12 +132,14 @@ pub async fn run_server(
     storage_reader: StorageReader,
     node_version: &'static str,
 ) -> anyhow::Result<(SocketAddr, ServerHandle)> {
+    let starting_block = get_last_synced_block(storage_reader.clone())?;
     debug!("Starting gateway.");
     let methods = get_methods_from_supported_apis(
         &config.chain_id,
         storage_reader,
         config.max_events_chunk_size,
         config.max_events_keys,
+        starting_block,
         shared_highest_block,
         Arc::new(StarknetGatewayClient::new(
             &config.starknet_url,
