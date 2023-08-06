@@ -43,3 +43,9 @@ pub struct SyncStatus {
     pub highest_block_hash: BlockHash,
     pub highest_block_num: BlockNumber,
 }
+
+#[derive(Copy, Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+pub struct BlockHashAndNumber {
+    pub block_hash: BlockHash,
+    pub block_number: BlockNumber,
+}

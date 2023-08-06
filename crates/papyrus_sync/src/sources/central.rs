@@ -12,6 +12,7 @@ use indexmap::IndexMap;
 use itertools::chain;
 #[cfg(test)]
 use mockall::automock;
+use papyrus_common::BlockHashAndNumber;
 use papyrus_config::converters::{deserialize_optional_map, serialize_optional_map};
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, SerializedParam};
@@ -142,7 +143,7 @@ pub enum CentralError {
 #[cfg_attr(test, automock)]
 #[async_trait]
 pub trait CentralSourceTrait {
-    async fn get_block_marker(&self) -> Result<BlockNumber, CentralError>;
+    async fn get_latest_block(&self) -> Result<Option<BlockHashAndNumber>, CentralError>;
     fn stream_new_blocks(
         &self,
         initial_block_number: BlockNumber,
@@ -178,13 +179,14 @@ pub(crate) type CompiledClassesStream<'a> = BoxStream<'a, CentralResult<CentralC
 impl<TStarknetClient: StarknetReader + Send + Sync + 'static> CentralSourceTrait
     for GenericCentralSource<TStarknetClient>
 {
-    // Returns the block number of the latest block from the central source.
-    async fn get_block_marker(&self) -> Result<BlockNumber, CentralError> {
-        self.starknet_client
-            .block_number()
-            .await
-            .map_err(Arc::new)?
-            .map_or(Ok(BlockNumber::default()), |block_number| Ok(block_number.next()))
+    // Returns the block hash and the block number of the latest block from the central source.
+    async fn get_latest_block(&self) -> Result<Option<BlockHashAndNumber>, CentralError> {
+        self.starknet_client.latest_block().await.map_err(Arc::new)?.map_or(Ok(None), |block| {
+            Ok(Some(BlockHashAndNumber {
+                block_hash: block.block_hash,
+                block_number: block.block_number,
+            }))
+        })
     }
 
     // Returns the current block hash of the given block number from the central source.

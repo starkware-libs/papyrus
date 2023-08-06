@@ -62,9 +62,9 @@ pub type ReaderClientResult<T> = Result<T, ReaderClientError>;
 #[cfg_attr(any(test, feature = "testing"), automock)]
 #[async_trait]
 pub trait StarknetReader {
-    /// Returns the last block number in the system, returning [`None`] in case there are no blocks
-    /// in the system.
-    async fn block_number(&self) -> ReaderClientResult<Option<BlockNumber>>;
+    /// Returns the last block in the system, returning [`None`] in case there are no blocks in the
+    /// system.
+    async fn latest_block(&self) -> ReaderClientResult<Option<Block>>;
     /// Returns a [`Block`] corresponding to `block_number`, returning [`None`] in case no such
     /// block exists in the system.
     async fn block(&self, block_number: BlockNumber) -> ReaderClientResult<Option<Block>>;
@@ -164,8 +164,8 @@ impl StarknetFeederGatewayClient {
 #[async_trait]
 impl StarknetReader for StarknetFeederGatewayClient {
     #[instrument(skip(self), level = "debug")]
-    async fn block_number(&self) -> ReaderClientResult<Option<BlockNumber>> {
-        Ok(self.request_block(None).await?.map(|block| block.block_number))
+    async fn latest_block(&self) -> ReaderClientResult<Option<Block>> {
+        Ok(self.request_block(None).await?)
     }
 
     #[instrument(skip(self), level = "debug")]
