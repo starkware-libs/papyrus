@@ -1643,8 +1643,7 @@ async fn serialize_returns_valid_json() {
             ],
         )],
         &VERSION_0_3,
-    )
-    .await;
+    );
     validate_state(&state_diff, server_address, &schema).await;
     validate_block(&block.header, server_address, &schema).await;
     validate_transaction(block.body.transaction_hashes.index(0), server_address, &schema).await;

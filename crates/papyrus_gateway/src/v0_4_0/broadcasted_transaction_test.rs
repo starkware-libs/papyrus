@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use futures::executor::block_on;
 use jsonschema::JSONSchema;
 use lazy_static::lazy_static;
 use starknet_api::core::{CompiledClassHash, ContractAddress, Nonce};
@@ -26,10 +25,10 @@ use crate::version_config::VERSION_0_4;
 
 fn validate_tx_fits_rpc(tx: BroadcastedDeclareTransaction) {
     lazy_static! {
-        static ref SCHEMA: JSONSchema = block_on(get_starknet_spec_api_schema_for_components(
+        static ref SCHEMA: JSONSchema = get_starknet_spec_api_schema_for_components(
             &[(SpecFile::StarknetApiOpenrpc, &["DECLARE_TXN"])],
             &VERSION_0_4
-        ));
+        );
     }
     assert!(SCHEMA.is_valid(&serde_json::to_value(tx).unwrap()));
 }
