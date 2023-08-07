@@ -19,7 +19,7 @@ pub(crate) fn get_command_matches(
 // map.
 // Supports usize, bool and String.
 pub(crate) fn update_config_map_by_command_args(
-    config_map: &mut BTreeMap<ParamPath, SerializedParam>,
+    config_map: &mut BTreeMap<ParamPath, Value>,
     arg_match: &ArgMatches,
 ) -> Result<(), ConfigError> {
     for param_path_id in arg_match.ids() {
@@ -64,11 +64,11 @@ fn build_args_parser(config_map: &BTreeMap<ParamPath, SerializedParam>) -> Vec<A
 
 // Converts clap arg_matches into json values.
 fn get_arg_by_type(
-    config_map: &BTreeMap<ParamPath, SerializedParam>,
+    config_map: &BTreeMap<ParamPath, Value>,
     arg_match: &ArgMatches,
     param_path: &str,
 ) -> Result<Value, ConfigError> {
-    match config_map[param_path].value {
+    match config_map[param_path] {
         Value::Number(_) => Ok(json!(arg_match.try_get_one::<usize>(param_path)?)),
         Value::Bool(_) => Ok(json!(arg_match.try_get_one::<bool>(param_path)?)),
         Value::String(_) => Ok(json!(arg_match.try_get_one::<String>(param_path)?)),

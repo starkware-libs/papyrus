@@ -9,24 +9,17 @@
 //! use std::time::Duration;
 //!
 //! use papyrus_config::converters::deserialize_milliseconds_to_duration;
-//! use papyrus_config::dumping::{ser_param, SerializeConfig};
 //! use papyrus_config::loading::load;
-//! use papyrus_config::{ParamPath, SerializedParam};
-//! use serde::{Deserialize, Serialize};
+//! use serde::Deserialize;
+//! use serde_json::json;
 //!
-//! #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+//! #[derive(Clone, Deserialize, Debug, PartialEq)]
 //! struct DurationConfig {
 //!     #[serde(deserialize_with = "deserialize_milliseconds_to_duration")]
 //!     dur: Duration,
 //! }
 //!
-//! impl SerializeConfig for DurationConfig {
-//!     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
-//!         BTreeMap::from([ser_param("dur", &self.dur.as_millis(), "Dur as milliseconds.")])
-//!     }
-//! }
-//!
-//! let dumped_config = DurationConfig { dur: Duration::from_secs(1) }.dump();
+//! let dumped_config = BTreeMap::from([("dur".to_owned(), json!(1000))]);
 //! let loaded_config = load::<DurationConfig>(&dumped_config).unwrap();
 //! assert_eq!(loaded_config.dur.as_secs(), 1);
 //! ```
