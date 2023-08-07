@@ -67,6 +67,28 @@ expression: dumped_default_config
     "description": "IP:PORT of the node`s JSON-RPC server.",
     "value": "0.0.0.0:8080"
   },
+  "gateway.starknet_gateway_retry_config.max_retries": {
+    "description": "For communicating with Starknet gateway, maximum number of retries before the node stops retrying.",
+    "value": {
+      "$serde_json::private::Number": "5"
+    }
+  },
+  "gateway.starknet_gateway_retry_config.retry_base_millis": {
+    "description": "For communicating with Starknet gateway, base waiting time after a failed request. After that, the time increases exponentially.",
+    "value": {
+      "$serde_json::private::Number": "50"
+    }
+  },
+  "gateway.starknet_gateway_retry_config.retry_max_delay_millis": {
+    "description": "For communicating with Starknet gateway, max waiting time after a failed request.",
+    "value": {
+      "$serde_json::private::Number": "1000"
+    }
+  },
+  "gateway.starknet_url": {
+    "description": "URL for communicating with Starknet in write_api methods.",
+    "value": "https://alpha-mainnet.starknet.io/"
+  },
   "monitoring_gateway.collect_metrics": {
     "description": "If true, collect metrics for the monitoring gateway.",
     "value": false

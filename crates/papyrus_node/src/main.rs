@@ -37,8 +37,13 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     // The sync is the only writer of the syncing state.
     let shared_syncing_state = Arc::new(RwLock::new(SyncingState::default()));
     // JSON-RPC server.
-    let (_, server_handle) =
-        run_server(&config.gateway, shared_syncing_state.clone(), storage_reader.clone()).await?;
+    let (_, server_handle) = run_server(
+        &config.gateway,
+        shared_syncing_state.clone(),
+        storage_reader.clone(),
+        VERSION_FULL,
+    )
+    .await?;
     let server_handle_future = tokio::spawn(server_handle.stopped());
 
     // Sync task.

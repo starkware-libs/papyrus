@@ -30,7 +30,9 @@ async fn run_server_no_blocks() {
     let gateway_config = get_test_gateway_config();
     let shared_syncing_state = get_test_syncing_state();
     let (addr, _handle) =
-        run_server(&gateway_config, shared_syncing_state, storage_reader).await.unwrap();
+        run_server(&gateway_config, shared_syncing_state, storage_reader, "NODE VERSION")
+            .await
+            .unwrap();
     let client = HttpClientBuilder::default().build(format!("http://{addr:?}")).unwrap();
     let res: Result<RpcResult<BlockNumber>, Error> =
         client.request("starknet_blockNumber", [""]).await;

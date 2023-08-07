@@ -53,7 +53,7 @@ use crate::{run_server, ContinuationTokenAsStruct};
 
 #[tokio::test]
 async fn chain_id() {
-    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
+    let (module, _, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
 
     let res = module.call::<_, String>("starknet_V0_3_chainId", ObjectParams::new()).await.unwrap();
     // The result should be equal to the result of the following python code
@@ -65,7 +65,7 @@ async fn chain_id() {
 
 #[tokio::test]
 async fn block_hash_and_number() {
-    let (module, mut storage_writer) =
+    let (module, mut storage_writer, _) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
 
     // No blocks yet.
@@ -103,7 +103,7 @@ async fn block_hash_and_number() {
 
 #[tokio::test]
 async fn block_number() {
-    let (module, mut storage_writer) =
+    let (module, mut storage_writer, _) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
 
     // No blocks yet.
@@ -134,14 +134,14 @@ async fn block_number() {
 
 #[tokio::test]
 async fn syncing() {
-    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
+    let (module, _, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let res = module.call::<_, bool>("starknet_V0_3_syncing", ObjectParams::new()).await.unwrap();
     assert_eq!(res, false);
 }
 
 #[tokio::test]
 async fn get_block_transaction_count() {
-    let (module, mut storage_writer) =
+    let (module, mut storage_writer, _) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let transaction_count = 5;
     let block = get_test_block(transaction_count, None, None, None);
@@ -215,7 +215,7 @@ async fn get_block_transaction_count() {
 
 #[tokio::test]
 async fn get_block_w_full_transactions() {
-    let (module, mut storage_writer) =
+    let (module, mut storage_writer, _) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
 
     let block = get_test_block(1, None, None, None);
@@ -316,7 +316,7 @@ async fn get_block_w_full_transactions() {
 
 #[tokio::test]
 async fn get_block_w_transaction_hashes() {
-    let (module, mut storage_writer) =
+    let (module, mut storage_writer, _) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
 
     let block = get_test_block(1, None, None, None);
@@ -413,7 +413,7 @@ async fn get_block_w_transaction_hashes() {
 
 #[tokio::test]
 async fn get_class() {
-    let (module, mut storage_writer) =
+    let (module, mut storage_writer, _) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let parent_header = BlockHeader::default();
     let header = BlockHeader {
@@ -561,7 +561,7 @@ async fn get_class() {
 
 #[tokio::test]
 async fn get_transaction_receipt() {
-    let (module, mut storage_writer) =
+    let (module, mut storage_writer, _) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let block = get_test_block(1, None, None, None);
     storage_writer
@@ -634,7 +634,7 @@ async fn get_transaction_receipt() {
 
 #[tokio::test]
 async fn get_class_at() {
-    let (module, mut storage_writer) =
+    let (module, mut storage_writer, _) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let parent_header = BlockHeader::default();
     let header = BlockHeader {
@@ -789,7 +789,7 @@ async fn get_class_at() {
 
 #[tokio::test]
 async fn get_class_hash_at() {
-    let (module, mut storage_writer) =
+    let (module, mut storage_writer, _) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let header = BlockHeader::default();
     let diff = get_test_state_diff();
@@ -878,7 +878,7 @@ async fn get_class_hash_at() {
 
 #[tokio::test]
 async fn get_nonce() {
-    let (module, mut storage_writer) =
+    let (module, mut storage_writer, _) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let header = BlockHeader::default();
     let diff = get_test_state_diff();
@@ -967,7 +967,7 @@ async fn get_nonce() {
 
 #[tokio::test]
 async fn get_storage_at() {
-    let (module, mut storage_writer) =
+    let (module, mut storage_writer, _) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let header = BlockHeader::default();
     let diff = get_test_state_diff();
@@ -1059,7 +1059,7 @@ async fn get_storage_at() {
 
 #[tokio::test]
 async fn get_transaction_by_hash() {
-    let (module, mut storage_writer) =
+    let (module, mut storage_writer, _) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let block = get_test_block(1, None, None, None);
     storage_writer
@@ -1100,7 +1100,7 @@ async fn get_transaction_by_hash() {
 
 #[tokio::test]
 async fn get_transaction_by_block_id_and_index() {
-    let (module, mut storage_writer) =
+    let (module, mut storage_writer, _) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let block = get_test_block(1, None, None, None);
     storage_writer
@@ -1188,7 +1188,7 @@ async fn get_transaction_by_block_id_and_index() {
 
 #[tokio::test]
 async fn get_state_update() {
-    let (module, mut storage_writer) =
+    let (module, mut storage_writer, _) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let parent_header = BlockHeader::default();
     let header = BlockHeader {
@@ -1276,7 +1276,7 @@ async fn get_state_update() {
 
 #[tokio::test]
 async fn get_events_chunk_size_2_with_address() {
-    let (module, mut storage_writer) =
+    let (module, mut storage_writer, _) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let address = ContractAddress(patricia_key!("0x22"));
     let key0 = EventKey(stark_felt!("0x6"));
@@ -1360,7 +1360,7 @@ async fn get_events_chunk_size_2_with_address() {
 
 #[tokio::test]
 async fn get_events_chunk_size_2_without_address() {
-    let (module, mut storage_writer) =
+    let (module, mut storage_writer, _) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let key0 = EventKey(stark_felt!("0x6"));
     let key1 = EventKey(stark_felt!("0x7"));
@@ -1441,7 +1441,7 @@ async fn get_events_chunk_size_2_without_address() {
 
 #[tokio::test]
 async fn get_events_page_size_too_big() {
-    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
+    let (module, _, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
 
     // Create the filter.
     let filter = EventFilter {
@@ -1463,7 +1463,7 @@ async fn get_events_page_size_too_big() {
 
 #[tokio::test]
 async fn get_events_too_many_keys() {
-    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
+    let (module, _, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let keys = (0..get_test_gateway_config().max_events_keys + 1)
         .map(|i| HashSet::from([EventKey(StarkFelt::from(i as u128))]))
         .collect();
@@ -1488,7 +1488,7 @@ async fn get_events_too_many_keys() {
 
 #[tokio::test]
 async fn get_events_no_blocks() {
-    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
+    let (module, _, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
 
     // Create the filter.
     let filter = EventFilter {
@@ -1506,7 +1506,7 @@ async fn get_events_no_blocks() {
 
 #[tokio::test]
 async fn get_events_no_blocks_in_filter() {
-    let (module, mut storage_writer) =
+    let (module, mut storage_writer, _) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let parent_block = starknet_api::block::Block::default();
     let block = starknet_api::block::Block {
@@ -1548,7 +1548,7 @@ async fn get_events_no_blocks_in_filter() {
 
 #[tokio::test]
 async fn get_events_invalid_ct() {
-    let (module, mut storage_writer) =
+    let (module, mut storage_writer, _) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let block = starknet_api::block::Block::default();
     storage_writer
@@ -1626,7 +1626,9 @@ async fn serialize_returns_valid_json() {
 
     let gateway_config = get_test_gateway_config();
     let (server_address, _handle) =
-        run_server(&gateway_config, get_test_syncing_state(), storage_reader).await.unwrap();
+        run_server(&gateway_config, get_test_syncing_state(), storage_reader, "NODE VERSION")
+            .await
+            .unwrap();
 
     let schema = get_starknet_spec_api_schema_for_components(
         &[(
@@ -1785,7 +1787,7 @@ async fn get_deprecated_class_state_mutability() {
         ..Default::default()
     };
 
-    let (module, mut storage_writer) =
+    let (module, mut storage_writer, _) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
     let header = BlockHeader::default();
 

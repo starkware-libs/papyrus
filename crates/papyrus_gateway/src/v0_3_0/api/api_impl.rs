@@ -16,6 +16,7 @@ use starknet_api::transaction::{
     EventIndexInTransactionOutput, TransactionExecutionStatus, TransactionHash,
     TransactionOffsetInBlock,
 };
+use starknet_client::writer::StarknetWriter;
 use tokio::sync::RwLock;
 use tracing::instrument;
 
@@ -453,6 +454,8 @@ impl JsonRpcServerImpl for JsonRpcServerV0_3Impl {
         max_events_chunk_size: usize,
         max_events_keys: usize,
         shared_syncing_state: Arc<RwLock<SyncingState>>,
+        // TODO(shahak): Put this parameter inside Self once write_api is supported in v0.3.0
+        _: Arc<dyn StarknetWriter>,
     ) -> Self {
         Self {
             chain_id,
