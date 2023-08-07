@@ -64,8 +64,7 @@ pub enum SpecFile {
     StarknetWriteApi,
 }
 
-// TODO(shahak): Make non-async.
-pub async fn get_starknet_spec_api_schema_for_components(
+pub fn get_starknet_spec_api_schema_for_components(
     file_to_component_names: &[(SpecFile, &[&str])],
     version_id: &VersionId,
 ) -> JSONSchema {
