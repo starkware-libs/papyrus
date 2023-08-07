@@ -8,7 +8,7 @@ license-file.workspace = true
 [dependencies]
 async-trait.workspace = true
 ethers.workspace = true
-papyrus_config = { git = "https://github.com/starkware-libs/papyrus", rev = "960765e"  }
+papyrus_config = { path = "../papyrus_config" }
 rustc-hex.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -24,3 +24,6 @@ starknet_api = { workspace = true, features = ["testing"] }
 tar = { version = "0.4.38" }
 tempfile.workspace = true
 test-with = { version = "0.9.3", default-features = false, features = ["executable"] }
+
+[patch.crates-io]
+papyrus_config = { git = "https://github.com/starkware-libs/papyrus", rev = "34d6328" }

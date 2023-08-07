@@ -22,7 +22,7 @@ indexmap = { workspace = true, features = ["serde"] }
 lazy_static.workspace = true
 mockall = { workspace = true, optional = true }
 os_info.workspace = true
-papyrus_config = { git = "https://github.com/starkware-libs/papyrus", rev = "960765e"  }
+papyrus_config = { path = "../papyrus_config" }
 rand = { workspace = true, optional = true }
 rand_chacha = { workspace = true, optional = true }
 reqwest = { workspace = true, features = ["json", "blocking"] }
@@ -46,3 +46,6 @@ rand_chacha.workspace = true
 pretty_assertions.workspace = true
 starknet_api = { workspace = true, features = ["testing"] }
 test_utils = { path = "../test_utils" }
+
+[patch.crates-io]
+papyrus_config = { git = "https://github.com/starkware-libs/papyrus", rev = "34d6328" }

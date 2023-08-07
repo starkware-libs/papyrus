@@ -14,10 +14,10 @@ hyper = { workspace = true, features = ["full"] }
 jsonrpsee = { workspace = true, features = ["full"] }
 metrics.workspace = true
 papyrus_common = { path = "../papyrus_common"}
-papyrus_config = { git = "https://github.com/starkware-libs/papyrus", rev = "960765e"  }
+papyrus_config = { path = "../papyrus_config" }
 papyrus_execution = { path = "../papyrus_execution" }
 papyrus_proc_macros = { path = "../papyrus_proc_macros"}
-papyrus_storage = { git = "https://github.com/starkware-libs/papyrus", rev = "960765e" }
+papyrus_storage = { path = "../papyrus_storage", version = "0.0.3" }
 starknet_client = { path = "../starknet_client" }
 regex = {workspace = true}
 serde = { workspace = true, features = ["derive"] }
@@ -40,7 +40,7 @@ hex.workspace = true
 jsonschema.workspace = true
 lazy_static.workspace = true
 metrics-exporter-prometheus = { version = "0.12.1" }
-papyrus_storage = { git = "https://github.com/starkware-libs/papyrus", rev = "960765e" , features = ["testing"] }
+papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 pretty_assertions.workspace = true
 prometheus-parse.workspace = true
 rand_chacha.workspace = true
@@ -49,3 +49,7 @@ starknet_api = { workspace = true, features = ["testing"] }
 starknet_client = { path = "../starknet_client", features = ["testing"] }
 indexmap = { workspace = true, features = ["serde"] }
 rand.workspace = true
+
+[patch.crates-io]
+papyrus_storage = { git = "https://github.com/starkware-libs/papyrus", rev = "34d6328" }
+papyrus_config = { git = "https://github.com/starkware-libs/papyrus", rev = "34d6328" }

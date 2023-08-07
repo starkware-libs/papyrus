@@ -19,11 +19,11 @@ jsonrpsee = { workspace = true, features = ["full"] }
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
 lazy_static.workspace = true
 papyrus_base_layer = { path = "../papyrus_base_layer" }
-papyrus_config = { git = "https://github.com/starkware-libs/papyrus", rev = "960765e"  }
+papyrus_config = { path = "../papyrus_config"  }
 papyrus_common = { path = "../papyrus_common" }
 papyrus_gateway = { path = "../papyrus_gateway" }
 papyrus_monitoring_gateway = { path = "../papyrus_monitoring_gateway" }
-papyrus_storage = { git = "https://github.com/starkware-libs/papyrus", rev = "960765e" }
+papyrus_storage = { path = "../papyrus_storage" }
 papyrus_sync = { path = "../papyrus_sync" }
 reqwest = { workspace = true, features = ["json", "blocking"] }
 serde = { workspace = true, features = ["derive"] }
@@ -42,3 +42,7 @@ pretty_assertions.workspace = true
 insta = { workspace = true, features = ["json"] }
 tempfile.workspace = true
 test_utils = { path = "../test_utils" }
+
+[patch.crates-io]
+papyrus_storage = { git = "https://github.com/starkware-libs/papyrus", rev = "34d6328" }
+papyrus_config = { git = "https://github.com/starkware-libs/papyrus", rev = "34d6328" }

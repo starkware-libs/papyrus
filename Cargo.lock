@@ -651,7 +651,7 @@ dependencies = [
  "serde_json",
  "sha3",
  "starknet-crypto",
- "starknet_api",
+ "starknet_api 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "strum 0.24.1",
  "strum_macros 0.24.3",
  "thiserror",
@@ -4152,7 +4152,7 @@ dependencies = [
  "rustc-hex",
  "serde",
  "serde_json",
- "starknet_api",
+ "starknet_api 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tar",
  "tempfile",
  "test-with",
@@ -4166,17 +4166,20 @@ name = "papyrus_common"
 version = "0.0.3"
 dependencies = [
  "serde",
- "starknet_api",
+ "starknet_api 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "papyrus_config"
 version = "0.0.3"
-source = "git+https://github.com/starkware-libs/papyrus?rev=960765e#960765eb0b74196f65e82bbb0fc3e536db38c064"
 dependencies = [
+ "assert_matches",
  "clap",
+ "itertools 0.10.5",
  "serde",
  "serde_json",
+ "tempfile",
+ "test_utils",
  "thiserror",
 ]
 
@@ -4195,7 +4198,7 @@ dependencies = [
  "papyrus_storage",
  "serde",
  "serde_json",
- "starknet_api",
+ "starknet_api 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils",
  "thiserror",
 ]
@@ -4233,7 +4236,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "starknet_api",
+ "starknet_api 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "starknet_client",
  "test_utils",
  "thiserror",
@@ -4307,7 +4310,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "starknet_api",
+ "starknet_api 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "starknet_client",
  "tempfile",
  "test_utils",
@@ -4330,26 +4333,35 @@ dependencies = [
 [[package]]
 name = "papyrus_storage"
 version = "0.0.3"
-source = "git+https://github.com/starkware-libs/papyrus?rev=960765e#960765eb0b74196f65e82bbb0fc3e536db38c064"
 dependencies = [
+ "assert_matches",
  "byteorder",
  "cairo-lang-casm",
  "cairo-lang-starknet",
  "cairo-lang-utils",
+ "camelpaste",
  "flate2",
  "futures-util",
  "indexmap 1.9.3",
+ "insta",
  "integer-encoding",
  "libmdbx",
  "num-bigint",
+ "num-traits 0.2.15",
  "papyrus_config",
  "parity-scale-codec",
+ "paste",
+ "pretty_assertions",
  "primitive-types",
+ "rand",
+ "rand_chacha",
  "reqwest",
+ "schemars",
  "serde",
  "serde_json",
- "starknet_api",
+ "starknet_api 0.3.0 (git+https://github.com/starkware-libs/starknet-api?rev=a481d59)",
  "tempfile",
+ "test_utils",
  "thiserror",
  "tokio",
  "tracing",
@@ -4381,7 +4393,7 @@ dependencies = [
  "serde",
  "serde_json",
  "simple_logger",
- "starknet_api",
+ "starknet_api 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "starknet_client",
  "thiserror",
  "tokio",
@@ -5832,6 +5844,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "starknet_api"
+version = "0.3.0"
+source = "git+https://github.com/starkware-libs/starknet-api?rev=a481d59#a481d59afdb82b3de3c4b334323b3b75cb184978"
+dependencies = [
+ "cairo-lang-starknet",
+ "derive_more",
+ "hex",
+ "indexmap 1.9.3",
+ "once_cell",
+ "primitive-types",
+ "serde",
+ "serde_json",
+ "starknet-crypto",
+ "thiserror",
+]
+
+[[package]]
 name = "starknet_client"
 version = "0.0.3"
 dependencies = [
@@ -5852,7 +5881,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "starknet_api",
+ "starknet_api 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils",
  "thiserror",
  "tokio",
@@ -6069,7 +6098,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "starknet_api",
+ "starknet_api 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tracing",
 ]
 
