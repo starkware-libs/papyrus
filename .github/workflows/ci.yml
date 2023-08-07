@@ -32,6 +32,25 @@ jobs:
         if: github.event_name != 'merge_group'
         run: echo "${{ github.event.pull_request.title }}" | commitlint --verbose
 
+  executable-run:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: Swatinem/rust-cache@v2
+
+      - run: mkdir data
+
+      - name: Build node
+        run: cargo build -r
+
+      - name: Run executable
+        run: >
+          target/release/papyrus_node --base_layer.node_url ${{ secrets.CI_BASE_LAYER_NODE_URL }}
+          & sleep 30 ; kill $!
+
   test:
     runs-on: ${{ matrix.os }}
     strategy:
