@@ -155,6 +155,7 @@ struct JsonRpcServerImplGenerator {
     max_events_chunk_size: usize,
     max_events_keys: usize,
     shared_syncing_state: Arc<RwLock<SyncingState>>,
+    // TODO(shahak): Change this struct to be with a generic type of StarknetWriter.
     starknet_writer: Arc<dyn StarknetWriter>,
 }
 
