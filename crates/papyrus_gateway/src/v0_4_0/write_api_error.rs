@@ -1,5 +1,6 @@
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use starknet_client::starknet_error::{KnownStarknetErrorCode, StarknetError, StarknetErrorCode};
 
 #[cfg(test)]
 #[path = "write_api_error_test.rs"]
@@ -45,6 +46,144 @@ pub enum AddDeployAccountError {
     DuplicateTx(DuplicateTx),
     UnsupportedTxVersion(UnsupportedTxVersion),
     UnexpectedError(UnexpectedError),
+}
+
+impl From<StarknetError> for AddInvokeError {
+    fn from(error: StarknetError) -> Self {
+        let StarknetErrorCode::KnownErrorCode(known_error_code) = error.code else {
+            return Self::UnexpectedError(UnexpectedError::Error(
+                ErrorCodeWithData { data: error.message, ..Default::default() }
+            ));
+        };
+        match known_error_code {
+            KnownStarknetErrorCode::DuplicatedTransaction => {
+                Self::DuplicateTx(DuplicateTx::Error(ErrorCode::default()))
+            }
+            KnownStarknetErrorCode::EntryPointNotFoundInContract => {
+                Self::NonAccount(NonAccount::Error(ErrorCode::default()))
+            }
+            KnownStarknetErrorCode::InsufficientAccountBalance => Self::InsufficientAccountBalance(
+                InsufficientAccountBalance::Error(ErrorCode::default()),
+            ),
+            KnownStarknetErrorCode::InsufficientMaxFee => {
+                Self::InsufficientMaxFee(InsufficientMaxFee::Error(ErrorCode::default()))
+            }
+            KnownStarknetErrorCode::InvalidTransactionNonce => {
+                Self::InvalidTransactionNonce(InvalidTransactionNonce::Error(ErrorCode::default()))
+            }
+            KnownStarknetErrorCode::InvalidTransactionVersion => {
+                Self::UnsupportedTxVersion(UnsupportedTxVersion::Error(ErrorCode::default()))
+            }
+            KnownStarknetErrorCode::ValidateFailure => {
+                Self::ValidationFailure(ValidationFailure::Error(ErrorCode::default()))
+            }
+            _ => Self::UnexpectedError(UnexpectedError::Error(ErrorCodeWithData {
+                data: error.message,
+                ..Default::default()
+            })),
+        }
+    }
+}
+
+impl From<StarknetError> for AddDeclareError {
+    fn from(error: StarknetError) -> Self {
+        let StarknetErrorCode::KnownErrorCode(known_error_code) = error.code else {
+            return Self::UnexpectedError(UnexpectedError::Error(
+                ErrorCodeWithData { data: error.message, ..Default::default() }
+            ));
+        };
+        match known_error_code {
+            KnownStarknetErrorCode::ClassAlreadyDeclared => {
+                Self::ClassAlreadyDeclared(ClassAlreadyDeclared::Error(ErrorCode::default()))
+            }
+            KnownStarknetErrorCode::CompilationFailed => {
+                Self::CompilationFailed(CompilationFailed::Error(ErrorCode::default()))
+            }
+            KnownStarknetErrorCode::ContractBytecodeSizeTooLarge => {
+                Self::ContractClassSizeIsTooLarge(ContractClassSizeIsTooLarge::Error(
+                    ErrorCode::default(),
+                ))
+            }
+            KnownStarknetErrorCode::ContractClassObjectSizeTooLarge => {
+                Self::ContractClassSizeIsTooLarge(ContractClassSizeIsTooLarge::Error(
+                    ErrorCode::default(),
+                ))
+            }
+            KnownStarknetErrorCode::DuplicatedTransaction => {
+                Self::DuplicateTx(DuplicateTx::Error(ErrorCode::default()))
+            }
+            KnownStarknetErrorCode::EntryPointNotFoundInContract => {
+                Self::NonAccount(NonAccount::Error(ErrorCode::default()))
+            }
+            KnownStarknetErrorCode::InsufficientAccountBalance => Self::InsufficientAccountBalance(
+                InsufficientAccountBalance::Error(ErrorCode::default()),
+            ),
+            KnownStarknetErrorCode::InsufficientMaxFee => {
+                Self::InsufficientMaxFee(InsufficientMaxFee::Error(ErrorCode::default()))
+            }
+            KnownStarknetErrorCode::InvalidCompiledClassHash => Self::CompiledClassHashMismatch(
+                CompiledClassHashMismatch::Error(ErrorCode::default()),
+            ),
+            KnownStarknetErrorCode::InvalidContractClassVersion => {
+                Self::UnsupportedContractClassVersion(UnsupportedContractClassVersion::Error(
+                    ErrorCode::default(),
+                ))
+            }
+            KnownStarknetErrorCode::InvalidTransactionNonce => {
+                Self::InvalidTransactionNonce(InvalidTransactionNonce::Error(ErrorCode::default()))
+            }
+            KnownStarknetErrorCode::InvalidTransactionVersion => {
+                Self::UnsupportedTxVersion(UnsupportedTxVersion::Error(ErrorCode::default()))
+            }
+            KnownStarknetErrorCode::ValidateFailure => {
+                Self::ValidationFailure(ValidationFailure::Error(ErrorCode::default()))
+            }
+            _ => Self::UnexpectedError(UnexpectedError::Error(ErrorCodeWithData {
+                data: error.message,
+                ..Default::default()
+            })),
+        }
+    }
+}
+
+impl From<StarknetError> for AddDeployAccountError {
+    fn from(error: StarknetError) -> Self {
+        let StarknetErrorCode::KnownErrorCode(known_error_code) = error.code else {
+            return Self::UnexpectedError(UnexpectedError::Error(
+                ErrorCodeWithData { data: error.message, ..Default::default() }
+            ));
+        };
+        match known_error_code {
+            KnownStarknetErrorCode::DuplicatedTransaction => {
+                Self::DuplicateTx(DuplicateTx::Error(ErrorCode::default()))
+            }
+            KnownStarknetErrorCode::EntryPointNotFoundInContract => {
+                Self::NonAccount(NonAccount::Error(ErrorCode::default()))
+            }
+            KnownStarknetErrorCode::InsufficientAccountBalance => Self::InsufficientAccountBalance(
+                InsufficientAccountBalance::Error(ErrorCode::default()),
+            ),
+            KnownStarknetErrorCode::InsufficientMaxFee => {
+                Self::InsufficientMaxFee(InsufficientMaxFee::Error(ErrorCode::default()))
+            }
+            KnownStarknetErrorCode::InvalidTransactionNonce => {
+                Self::InvalidTransactionNonce(InvalidTransactionNonce::Error(ErrorCode::default()))
+            }
+            KnownStarknetErrorCode::InvalidTransactionVersion => {
+                Self::UnsupportedTxVersion(UnsupportedTxVersion::Error(ErrorCode::default()))
+            }
+            KnownStarknetErrorCode::UndeclaredClass => {
+                Self::ClassHashNotFound(ClassHashNotFound::Error(ErrorCode::default()))
+            }
+            KnownStarknetErrorCode::ValidateFailure => {
+                Self::ValidationFailure(ValidationFailure::Error(ErrorCode::default()))
+            }
+            _ => Self::UnexpectedError(UnexpectedError::Error(ErrorCodeWithData {
+                data: error.message,
+                ..Default::default()
+            })),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
