@@ -190,7 +190,6 @@ pub async fn run_server(
         shared_highest_block,
         Arc::new(StarknetGatewayClient::new(
             &config.starknet_url,
-            None,
             node_version,
             config.starknet_gateway_retry_config,
         )?),

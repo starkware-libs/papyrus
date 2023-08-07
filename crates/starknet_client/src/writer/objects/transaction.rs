@@ -175,3 +175,20 @@ pub enum DeprecatedContractClassAbiEntry {
     #[serde(rename = "struct")]
     Struct(StructAbiEntry),
 }
+
+// The conversion is done here and not in papyrus_gateway because the gateway uses starknet_api for
+// DeployAccountTransaction.
+impl From<starknet_api::transaction::DeployAccountTransaction> for DeployAccountTransaction {
+    fn from(tx: starknet_api::transaction::DeployAccountTransaction) -> Self {
+        Self {
+            contract_address_salt: tx.contract_address_salt,
+            class_hash: tx.class_hash,
+            constructor_calldata: tx.constructor_calldata,
+            nonce: tx.nonce,
+            max_fee: tx.max_fee,
+            signature: tx.signature,
+            version: tx.version,
+            r#type: DeployAccountType::default(),
+        }
+    }
+}

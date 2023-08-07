@@ -14,6 +14,7 @@ use papyrus_sync::{
     StateSyncError,
 };
 use tokio::sync::RwLock;
+use tokio::task::JoinHandle;
 use tracing::info;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::prelude::*;
@@ -51,9 +52,31 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         run_sync(config, shared_highest_block, storage_reader.clone(), storage_writer);
     let sync_handle = tokio::spawn(sync_future);
 
-    let (_, _, sync_result) =
-        tokio::try_join!(server_handle_future, monitoring_server_handle, sync_handle)?;
-    sync_result?;
+    // TODO(dvir): refactor + better error handling.
+    async fn flatten_with_result<T: std::convert::Into<anyhow::Error>>(
+        handle: JoinHandle<Result<(), T>>,
+    ) -> anyhow::Result<()> {
+        match handle.await {
+            Ok(Ok(result)) => Ok(result),
+            Ok(Err(err)) => Err(err.into()),
+            Err(err) => Err(err.into()),
+        }
+    }
+
+    async fn flatten_server(handle: JoinHandle<()>) -> anyhow::Result<()> {
+        match handle.await {
+            Ok(_) => Ok(()),
+            Err(err) => Err(err.into()),
+        }
+    }
+
+    tokio::try_join!(
+        // We use flatten in order to try_join the inner result, not the join handle.
+        flatten_server(server_handle_future),
+        flatten_with_result(monitoring_server_handle),
+        flatten_with_result(sync_handle)
+    )?;
+
     return Ok(());
 
     async fn run_sync(
@@ -69,7 +92,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         // TODO(yoav, dvir): consider add config option for mandatory value.
         if config.base_layer.node_url == EthereumBaseLayerConfig::default().node_url {
             return Err(papyrus_sync::StateSyncError::BaseLayerSourceError(BaseLayerSourceError::BaseLayerSourceCreationError(
-                r#"No base layer node url was provided. You must override the config value "base_layer.node_url"."#.to_string(),
+                r#"No base layer node url was provided. You must override the config value "base_layer.node_url""#.to_string(),
             )));
         }
         let base_layer_source = EthereumBaseLayerSource::new(config.base_layer)
