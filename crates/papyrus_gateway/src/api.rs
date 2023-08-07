@@ -99,7 +99,7 @@ pub fn get_methods_from_supported_apis(
         storage_reader,
         max_events_chunk_size,
         max_events_keys,
-        shared_highest_block: shared_highest_block.clone(),
+        shared_highest_block,
         starknet_writer,
     };
     version_config::VERSION_CONFIG
