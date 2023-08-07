@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use jsonrpsee::{Methods, RpcModule};
-use papyrus_common::SyncingState;
+use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::StorageReader;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
@@ -69,12 +69,6 @@ pub enum JsonRpcError {
     PendingBlocksNotSupported = 41,
 }
 
-#[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-pub struct BlockHashAndNumber {
-    pub block_hash: BlockHash,
-    pub block_number: BlockNumber,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct EventFilter {
     pub from_block: Option<BlockId>,
@@ -96,7 +90,7 @@ pub fn get_methods_from_supported_apis(
     storage_reader: StorageReader,
     max_events_chunk_size: usize,
     max_events_keys: usize,
-    shared_syncing_state: Arc<RwLock<SyncingState>>,
+    shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
     starknet_writer: Arc<dyn StarknetWriter>,
 ) -> Methods {
     let mut methods: Methods = Methods::new();
@@ -105,7 +99,7 @@ pub fn get_methods_from_supported_apis(
         storage_reader,
         max_events_chunk_size,
         max_events_keys,
-        shared_syncing_state,
+        shared_highest_block: shared_highest_block.clone(),
         starknet_writer,
     };
     version_config::VERSION_CONFIG
@@ -141,7 +135,7 @@ pub trait JsonRpcServerImpl: Sized {
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,
-        shared_syncing_state: Arc<RwLock<SyncingState>>,
+        shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
         starknet_writer: Arc<dyn StarknetWriter>,
     ) -> Self;
 
@@ -154,13 +148,19 @@ struct JsonRpcServerImplGenerator {
     storage_reader: StorageReader,
     max_events_chunk_size: usize,
     max_events_keys: usize,
-    shared_syncing_state: Arc<RwLock<SyncingState>>,
+    shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
     // TODO(shahak): Change this struct to be with a generic type of StarknetWriter.
     starknet_writer: Arc<dyn StarknetWriter>,
 }
 
-type JsonRpcServerImplParams =
-    (ChainId, StorageReader, usize, usize, Arc<RwLock<SyncingState>>, Arc<dyn StarknetWriter>);
+type JsonRpcServerImplParams = (
+    ChainId,
+    StorageReader,
+    usize,
+    usize,
+    Arc<RwLock<Option<BlockHashAndNumber>>>,
+    Arc<dyn StarknetWriter>,
+);
 
 impl JsonRpcServerImplGenerator {
     fn get_params(self) -> JsonRpcServerImplParams {
@@ -169,7 +169,7 @@ impl JsonRpcServerImplGenerator {
             self.storage_reader,
             self.max_events_chunk_size,
             self.max_events_keys,
-            self.shared_syncing_state,
+            self.shared_highest_block,
             self.starknet_writer,
         )
     }
@@ -183,7 +183,7 @@ impl JsonRpcServerImplGenerator {
             storage_reader,
             max_events_chunk_size,
             max_events_keys,
-            shared_syncing_state,
+            shared_highest_block,
             starknet_writer,
         ) = self.get_params();
         Into::<Methods>::into(
@@ -192,7 +192,7 @@ impl JsonRpcServerImplGenerator {
                 storage_reader,
                 max_events_chunk_size,
                 max_events_keys,
-                shared_syncing_state,
+                shared_highest_block,
                 starknet_writer,
             )
             .into_rpc_module(),

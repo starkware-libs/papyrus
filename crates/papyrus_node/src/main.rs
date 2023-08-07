@@ -2,7 +2,7 @@ use std::env::args;
 use std::sync::Arc;
 
 use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
-use papyrus_common::SyncingState;
+use papyrus_common::BlockHashAndNumber;
 use papyrus_config::ConfigError;
 use papyrus_gateway::run_server;
 use papyrus_monitoring_gateway::MonitoringServer;
@@ -36,11 +36,11 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     let monitoring_server_handle = monitoring_server.spawn_server().await;
 
     // The sync is the only writer of the syncing state.
-    let shared_syncing_state = Arc::new(RwLock::new(SyncingState::default()));
+    let shared_highest_block = Arc::new(RwLock::new(None));
     // JSON-RPC server.
     let (_, server_handle) = run_server(
         &config.gateway,
-        shared_syncing_state.clone(),
+        shared_highest_block.clone(),
         storage_reader.clone(),
         VERSION_FULL,
     )
@@ -49,7 +49,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
 
     // Sync task.
     let sync_future =
-        run_sync(config, shared_syncing_state, storage_reader.clone(), storage_writer);
+        run_sync(config, shared_highest_block, storage_reader.clone(), storage_writer);
     let sync_handle = tokio::spawn(sync_future);
 
     // TODO(dvir): refactor + better error handling.
@@ -81,7 +81,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
 
     async fn run_sync(
         config: NodeConfig,
-        shared_syncing_state: Arc<RwLock<SyncingState>>,
+        shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
     ) -> Result<(), StateSyncError> {
@@ -99,7 +99,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
             .map_err(|e| BaseLayerSourceError::BaseLayerSourceCreationError(e.to_string()))?;
         let mut sync = StateSync::new(
             sync_config,
-            shared_syncing_state,
+            shared_highest_block,
             central_source,
             base_layer_source,
             storage_reader.clone(),

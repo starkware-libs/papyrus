@@ -6,7 +6,7 @@ use async_stream::stream;
 use async_trait::async_trait;
 use futures::StreamExt;
 use indexmap::IndexMap;
-use papyrus_common::{BlockHashAndNumber, SyncingState};
+use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::header::{HeaderStorageReader, StarknetVersion};
 use papyrus_storage::state::StateStorageReader;
@@ -90,7 +90,7 @@ async fn run_sync(
             blocks_max_stream_size: STREAM_SIZE,
             state_updates_max_stream_size: STREAM_SIZE,
         },
-        shared_syncing_state: Arc::new(RwLock::new(SyncingState::default())),
+        shared_highest_block: Arc::new(RwLock::new(None)),
         central_source: Arc::new(central),
         base_layer_source: Arc::new(base_layer),
         reader,

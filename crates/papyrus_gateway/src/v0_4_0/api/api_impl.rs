@@ -3,7 +3,6 @@ use std::sync::Arc;
 use jsonrpsee::core::{async_trait, RpcResult};
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
-use papyrus_common::SyncingState;
 use papyrus_execution::{execute_call, ExecutionError};
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
@@ -33,6 +32,7 @@ use super::{
 };
 use crate::api::{BlockHashOrNumber, ContinuationToken, JsonRpcError, JsonRpcServerImpl};
 use crate::block::get_block_header_by_number;
+use crate::syncing_state::SyncingState;
 use crate::transaction::{get_block_tx_hashes_by_number, get_block_txs_by_number};
 use crate::{
     get_block_number, get_block_status, get_latest_block_number, internal_server_error,
@@ -45,7 +45,7 @@ pub struct JsonRpcServerV0_4Impl {
     pub storage_reader: StorageReader,
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
-    pub shared_syncing_state: Arc<RwLock<SyncingState>>,
+    pub shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
     pub writer_client: Arc<dyn StarknetWriter>,
 }
 
@@ -474,7 +474,7 @@ impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,
-        shared_syncing_state: Arc<RwLock<SyncingState>>,
+        shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
         writer_client: Arc<dyn StarknetWriter>,
     ) -> Self {
         Self {
@@ -482,7 +482,7 @@ impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
             storage_reader,
             max_events_chunk_size,
             max_events_keys,
-            shared_syncing_state,
+            shared_highest_block,
             writer_client,
         }
     }

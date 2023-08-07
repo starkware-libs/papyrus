@@ -1,6 +1,6 @@
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
-use papyrus_common::SyncingState;
+use papyrus_common::BlockHashAndNumber;
 use papyrus_proc_macros::versioned_rpc;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
@@ -13,7 +13,8 @@ use super::block::Block;
 use super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::state::{ContractClass, StateUpdate};
 use super::transaction::{Event, TransactionReceiptWithStatus, TransactionWithHash};
-use crate::api::{BlockHashAndNumber, BlockId, ContinuationToken, EventFilter};
+use crate::api::{BlockId, ContinuationToken, EventFilter};
+use crate::syncing_state::SyncingState;
 
 pub mod api_impl;
 #[cfg(test)]
