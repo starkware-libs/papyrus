@@ -68,19 +68,19 @@ expression: dumped_default_config
     "value": "0.0.0.0:8080"
   },
   "gateway.starknet_gateway_retry_config.max_retries": {
-    "description": "Maximum number of retries before the node stops retrying.",
+    "description": "For communicating with Starknet gateway, maximum number of retries before the node stops retrying.",
     "value": {
       "$serde_json::private::Number": "5"
     }
   },
   "gateway.starknet_gateway_retry_config.retry_base_millis": {
-    "description": "Base waiting time after a failed request. After that, the time increases exponentially.",
+    "description": "For communicating with Starknet gateway, base waiting time after a failed request. After that, the time increases exponentially.",
     "value": {
       "$serde_json::private::Number": "50"
     }
   },
   "gateway.starknet_gateway_retry_config.retry_max_delay_millis": {
-    "description": "Max waiting time after a failed request.",
+    "description": "For communicating with Starknet gateway, max waiting time after a failed request.",
     "value": {
       "$serde_json::private::Number": "1000"
     }

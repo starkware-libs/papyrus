@@ -62,8 +62,10 @@ pub mod loading;
 /// A description and serialized JSON value of a configuration parameter.
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SerializedParam {
-    description: Description,
-    value: Value,
+    /// The description of the parameter.
+    pub description: Description,
+    /// The value of the parameter.
+    pub value: Value,
 }
 
 /// A description and the target from which to take the JSON value of a configuration parameter.

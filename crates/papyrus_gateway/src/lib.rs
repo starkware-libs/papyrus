@@ -86,10 +86,18 @@ impl SerializeConfig for GatewayConfig {
             ser_param("collect_metrics", &self.collect_metrics, "If true, collect metrics for the gateway."),
             ser_param("starknet_url", &self.starknet_url, "URL for communicating with Starknet in write_api methods."),
         ]);
-        self_params_dump.append(&mut append_sub_config_name(
+        let mut retry_config_dump = append_sub_config_name(
             self.starknet_gateway_retry_config.dump(),
             "starknet_gateway_retry_config",
-        ));
+        );
+        for param in retry_config_dump.values_mut() {
+            param.description = format!(
+                "For communicating with Starknet gateway, {}{}",
+                param.description[0..1].to_lowercase(),
+                &param.description[1..]
+            );
+        }
+        self_params_dump.append(&mut retry_config_dump);
         self_params_dump
     }
 }
