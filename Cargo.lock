@@ -4140,7 +4140,7 @@ checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 
 [[package]]
 name = "papyrus_base_layer"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "async-trait",
  "ethers",
@@ -4161,7 +4161,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_common"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "serde",
  "starknet_api",
@@ -4169,7 +4169,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_config"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "assert_matches",
  "clap",
@@ -4183,7 +4183,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_execution"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "assert_matches",
  "blockifier",
@@ -4203,7 +4203,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_gateway"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "anyhow",
  "assert_matches",
@@ -4247,7 +4247,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_load_test"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "anyhow",
  "assert_matches",
@@ -4263,7 +4263,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_monitoring_gateway"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "axum",
  "futures-util",
@@ -4285,7 +4285,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_node"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -4322,7 +4322,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_proc_macros"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "quote",
  "syn 2.0.28",
@@ -4330,7 +4330,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_storage"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "assert_matches",
  "byteorder",
@@ -4368,7 +4368,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_sync"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "assert_matches",
  "async-stream",
@@ -5829,7 +5829,7 @@ dependencies = [
 
 [[package]]
 name = "starknet_client"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "assert",
  "assert_matches",
@@ -6049,7 +6049,7 @@ dependencies = [
 
 [[package]]
 name = "test_utils"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "assert",
  "cairo-lang-casm",
