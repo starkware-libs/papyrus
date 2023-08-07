@@ -14,6 +14,7 @@ async-stream.workspace = true
 clap = { workspace = true }
 const_format.workspace = true
 futures-util.workspace = true
+hyper = { workspace = true, features = ["full"] }
 itertools.workspace = true
 jsonrpsee = { workspace = true, features = ["full"] }
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }

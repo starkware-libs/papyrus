@@ -1,6 +1,7 @@
 use std::env::args;
 use std::sync::Arc;
 
+use hyper::Error;
 use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
 use papyrus_common::SyncingState;
 use papyrus_config::ConfigError;
@@ -14,6 +15,7 @@ use papyrus_sync::{
     StateSyncError,
 };
 use tokio::sync::RwLock;
+use tokio::task::JoinHandle;
 use tracing::info;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::prelude::*;
@@ -51,9 +53,38 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         run_sync(config, shared_syncing_state, storage_reader.clone(), storage_writer);
     let sync_handle = tokio::spawn(sync_future);
 
-    let (_, _, sync_result) =
-        tokio::try_join!(server_handle_future, monitoring_server_handle, sync_handle)?;
-    sync_result?;
+    // TODO(dvir): refactor + better error handling.
+    async fn flatten_sync(handle: JoinHandle<Result<(), StateSyncError>>) -> anyhow::Result<()> {
+        match handle.await {
+            Ok(Ok(result)) => Ok(result),
+            Ok(Err(err)) => Err(err.into()),
+            Err(_) => Err(anyhow::anyhow!("Sync task panicked.")),
+        }
+    }
+
+    async fn flatten_monitoring_server(
+        handle: JoinHandle<Result<(), Error>>,
+    ) -> anyhow::Result<()> {
+        match handle.await {
+            Ok(Ok(result)) => Ok(result),
+            Ok(Err(err)) => Err(err.into()),
+            Err(_) => Err(anyhow::anyhow!("Monitoring gateway task panicked.")),
+        }
+    }
+
+    async fn flatten_server(handle: JoinHandle<()>) -> anyhow::Result<()> {
+        match handle.await {
+            Ok(_) => Ok(()),
+            Err(_) => Err(anyhow::anyhow!("JSON-RPC task panicked.")),
+        }
+    }
+
+    tokio::try_join!(
+        flatten_server(server_handle_future),
+        flatten_monitoring_server(monitoring_server_handle),
+        flatten_sync(sync_handle)
+    )?;
+
     return Ok(());
 
     async fn run_sync(
@@ -69,7 +100,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         // TODO(yoav, dvir): consider add config option for mandatory value.
         if config.base_layer.node_url == EthereumBaseLayerConfig::default().node_url {
             return Err(papyrus_sync::StateSyncError::BaseLayerSourceError(BaseLayerSourceError::BaseLayerSourceCreationError(
-                r#"No base layer node url was provided. You must override the config value "base_layer.node_url"."#.to_string(),
+                r#"No base layer node url was provided. You must override the config value "base_layer.node_url""#.to_string(),
             )));
         }
         let base_layer_source = EthereumBaseLayerSource::new(config.base_layer)
