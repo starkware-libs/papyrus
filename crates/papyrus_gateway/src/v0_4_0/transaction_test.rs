@@ -4,10 +4,24 @@ use papyrus_storage::body::events::{
     ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput, ThinDeployTransactionOutput,
     ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
 };
-use starknet_api::transaction::Transaction;
-use test_utils::{get_rng, GetTestInstance};
+use starknet_api::core::{ContractAddress, Nonce};
+use starknet_api::transaction::{
+    Calldata, Fee, Transaction, TransactionSignature, TransactionVersion,
+};
+use starknet_client::writer::objects::transaction as client_transaction;
+use test_utils::{auto_impl_get_test_instance, get_rng, GetTestInstance};
 
-use super::transaction::TransactionOutput;
+use super::transaction::{InvokeTransactionV1, TransactionOutput};
+auto_impl_get_test_instance! {
+    pub struct InvokeTransactionV1 {
+        pub max_fee: Fee,
+        pub version: TransactionVersion,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub sender_address: ContractAddress,
+        pub calldata: Calldata,
+    }
+}
 
 macro_rules! gen_test_from_thin_transaction_output_macro {
     ($variant: ident) => {
@@ -29,8 +43,8 @@ gen_test_from_thin_transaction_output_macro!(Invoke);
 gen_test_from_thin_transaction_output_macro!(L1Handler);
 
 // TODO: check the conversion against the expected GW transaction.
-#[tokio::test]
-async fn test_gateway_trascation_from_starknet_api_transaction() {
+#[test]
+fn test_gateway_trascation_from_starknet_api_transaction() {
     let mut rng = get_rng();
 
     let inner_transaction = starknet_api::transaction::DeclareTransactionV0V1::default();
@@ -77,4 +91,10 @@ async fn test_gateway_trascation_from_starknet_api_transaction() {
         starknet_api::transaction::DeployAccountTransaction::get_test_instance(&mut rng);
     let _transaction: super::transaction::Transaction =
         Transaction::DeployAccount(inner_transaction).try_into().unwrap();
+}
+
+#[test]
+fn test_invoke_transaction_to_client_transaction() {
+    let _invoke_transaction: client_transaction::InvokeTransaction =
+        InvokeTransactionV1::get_test_instance(&mut get_rng()).try_into().unwrap();
 }

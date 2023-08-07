@@ -11,6 +11,7 @@ use starknet_api::transaction::{
     L1HandlerTransactionOutput, TransactionExecutionStatus, TransactionHash, TransactionSignature,
     TransactionVersion,
 };
+use starknet_client::writer::objects::transaction as client_transaction;
 
 // TODO(yair): Make these functions regular consts.
 fn tx_v0() -> TransactionVersion {
@@ -128,6 +129,20 @@ impl From<starknet_api::transaction::InvokeTransactionV1> for InvokeTransactionV
             nonce: tx.nonce,
             sender_address: tx.sender_address,
             calldata: tx.calldata,
+        }
+    }
+}
+
+impl From<InvokeTransactionV1> for client_transaction::InvokeTransaction {
+    fn from(tx: InvokeTransactionV1) -> Self {
+        Self {
+            max_fee: tx.max_fee,
+            version: tx.version,
+            signature: tx.signature,
+            nonce: tx.nonce,
+            sender_address: tx.sender_address,
+            calldata: tx.calldata,
+            r#type: client_transaction::InvokeType::default(),
         }
     }
 }
