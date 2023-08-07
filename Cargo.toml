@@ -11,6 +11,7 @@ members = [
     "crates/papyrus_monitoring_gateway",
     "crates/papyrus_node",
     "crates/papyrus_proc_macros",
+    # TODO(Elin,10/08/2023): revert once upgrade is completed.
 #    "crates/papyrus_storage",
     "crates/papyrus_sync",
     "crates/starknet_client",

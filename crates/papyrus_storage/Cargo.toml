@@ -28,7 +28,7 @@ parity-scale-codec.workspace = true
 reqwest = { workspace = true, features = ["json", "blocking"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["arbitrary_precision"] }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "a481d59" }
+starknet_api.workspace = true
 tempfile = { workspace = true, optional = true }
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
