@@ -43,6 +43,7 @@ jobs:
           helm upgrade --install papyrus-${UNIQE_ID} deployments/helm/ \
           --namespace papyrus \
           --values deployments/helm/CI/values.yaml \
+          --set base_layer_node_url=${{ secrets.CI_BASE_LAYER_NODE_URL }} \
           --create-namespace
 
       - name: Wait for papyrus pods to be ready
