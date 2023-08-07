@@ -22,15 +22,15 @@ use crate::{command, ConfigError, ParamPath, PointerParam, SerializedParam, IS_N
 /// For an explanation of `for<'a> Deserialize<'a>` see
 /// `<https://doc.rust-lang.org/nomicon/hrtb.html>`.
 pub fn load<T: for<'a> Deserialize<'a>>(
-    config_map: &BTreeMap<ParamPath, SerializedParam>,
+    config_map: &BTreeMap<ParamPath, Value>,
 ) -> Result<T, ConfigError> {
     let mut nested_map = json!({});
-    for (param_path, serialized_param) in config_map {
+    for (param_path, value) in config_map {
         let mut entry = &mut nested_map;
         for config_name in param_path.split('.') {
             entry = entry.index_mut(config_name);
         }
-        *entry = serialized_param.value.clone();
+        *entry = value.clone();
     }
     Ok(serde_json::from_value(nested_map)?)
 }
@@ -45,8 +45,9 @@ pub fn load_and_process_config<T: for<'a> Deserialize<'a>>(
     let deserialized_default_config: Map<String, Value> =
         serde_json::from_reader(default_config_file).unwrap();
 
-    let (mut config_map, pointers_map) = get_maps_from_raw_json(deserialized_default_config);
-    let arg_matches = get_command_matches(&config_map, command, args)?;
+    let (default_config_map, pointers_map) = get_maps_from_raw_json(deserialized_default_config);
+    let arg_matches = get_command_matches(&default_config_map, command, args)?;
+    let mut config_map = remove_description(default_config_map);
     if let Some(custom_config_path) = arg_matches.try_get_one::<PathBuf>("config_file")? {
         update_config_map_by_custom_config(&mut config_map, custom_config_path)?;
     };
@@ -74,9 +75,19 @@ pub(crate) fn get_maps_from_raw_json(
     (config_map, pointers_map)
 }
 
+// Removes the description from the config map.
+pub(crate) fn remove_description(
+    config_map: BTreeMap<ParamPath, SerializedParam>,
+) -> BTreeMap<ParamPath, Value> {
+    config_map
+        .into_iter()
+        .map(|(param_path, serialized_param)| (param_path, serialized_param.value))
+        .collect()
+}
+
 // Updates the config map by param path to value custom json file.
 pub(crate) fn update_config_map_by_custom_config(
-    config_map: &mut BTreeMap<ParamPath, SerializedParam>,
+    config_map: &mut BTreeMap<ParamPath, Value>,
     custom_config_path: &PathBuf,
 ) -> Result<(), ConfigError> {
     let file = std::fs::File::open(custom_config_path).unwrap();
@@ -89,22 +100,22 @@ pub(crate) fn update_config_map_by_custom_config(
 
 // Sets values in the config map to the params in the pointers map.
 pub(crate) fn update_config_map_by_pointers(
-    config_map: &mut BTreeMap<ParamPath, SerializedParam>,
+    config_map: &mut BTreeMap<ParamPath, Value>,
     pointers_map: &BTreeMap<ParamPath, ParamPath>,
 ) -> Result<(), ConfigError> {
     for (param_path, target_param_path) in pointers_map {
-        let Some(serialized_param_target) = config_map.get(target_param_path) else {
+        let Some(target_value) = config_map.get(target_param_path) else {
             return Err(ConfigError::PointerTargetNotFound {
                 target_param: target_param_path.to_owned(),
             });
         };
-        config_map.insert(param_path.to_owned(), serialized_param_target.clone());
+        config_map.insert(param_path.to_owned(), target_value.clone());
     }
     Ok(())
 }
 
 // Removes the none marks, and sets null for the params marked as None instead of the inner params.
-pub(crate) fn update_optional_values(config_map: &mut BTreeMap<ParamPath, SerializedParam>) {
+pub(crate) fn update_optional_values(config_map: &mut BTreeMap<ParamPath, Value>) {
     let optional_params: Vec<_> = config_map
         .keys()
         .filter_map(|param_path| param_path.strip_suffix(&format!(".{}", IS_NONE_MARK)))
@@ -112,9 +123,8 @@ pub(crate) fn update_optional_values(config_map: &mut BTreeMap<ParamPath, Serial
         .collect();
     let mut none_params = vec![];
     for optional_param in optional_params {
-        let serialized_optional_param =
-            config_map.remove(&format!("{}.{}", optional_param, IS_NONE_MARK)).unwrap();
-        if serialized_optional_param.value == json!(true) {
+        let value = config_map.remove(&format!("{}.{}", optional_param, IS_NONE_MARK)).unwrap();
+        if value == json!(true) {
             none_params.push(optional_param);
         }
     }
@@ -123,28 +133,25 @@ pub(crate) fn update_optional_values(config_map: &mut BTreeMap<ParamPath, Serial
         !any(&none_params, |none_param| param_path.starts_with(none_param))
     });
     for none_param in none_params {
-        config_map.insert(
-            none_param,
-            SerializedParam { description: "None param".to_owned(), value: Value::Null },
-        );
+        config_map.insert(none_param, Value::Null);
     }
 }
 
 pub(crate) fn update_config_map(
-    config_map: &mut BTreeMap<ParamPath, SerializedParam>,
+    config_map: &mut BTreeMap<ParamPath, Value>,
     param_path: &str,
     new_value: Value,
 ) -> Result<(), ConfigError> {
-    let Some(serialized_param) = config_map.get_mut(param_path) else {
+    let Some(value) = config_map.get(param_path) else {
         return Err(ConfigError::ParamNotFound { param_path: param_path.to_string() });
     };
-    if discriminant(&serialized_param.value) != discriminant(&new_value) {
+    if discriminant(value) != discriminant(&new_value) {
         return Err(ConfigError::ChangeParamType {
             param_path: param_path.to_string(),
-            before: serialized_param.value.to_owned(),
+            before: value.to_owned(),
             after: new_value,
         });
     }
-    serialized_param.value = new_value;
+    config_map.insert(param_path.to_owned(), new_value);
     Ok(())
 }
