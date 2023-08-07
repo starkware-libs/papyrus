@@ -18,7 +18,6 @@ use crate::config::{node_command, NodeConfig, DEFAULT_CONFIG_PATH};
 #[test]
 fn load_default_config() {
     env::set_current_dir(get_absolute_path("")).expect("Couldn't set working dir.");
-    // TODO(spapini): Move the config closer.
     NodeConfig::load_and_process(vec![]).expect("Failed to load the config.");
 }
 
@@ -27,6 +26,7 @@ fn load_http_headers() {
     let args = vec!["Papyrus", "--central.http_headers", "NAME_1:VALUE_1 NAME_2:VALUE_2"];
     let args: Vec<String> = args.into_iter().map(|s| s.to_owned()).collect();
 
+    env::set_current_dir(get_absolute_path("")).expect("Couldn't set working dir.");
     let config = NodeConfig::load_and_process(args).unwrap();
     let target_http_headers = HashMap::from([
         ("NAME_1".to_string(), "VALUE_1".to_string()),

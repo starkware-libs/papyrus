@@ -100,10 +100,10 @@ pub fn get_methods_from_supported_apis(
     let mut methods: Methods = Methods::new();
     let server_gen = JsonRpcServerImplGenerator {
         chain_id: chain_id.clone(),
-        storage_reader: storage_reader.clone(),
+        storage_reader,
         max_events_chunk_size,
         max_events_keys,
-        shared_syncing_state: shared_syncing_state.clone(),
+        shared_syncing_state,
     };
     version_config::VERSION_CONFIG
         .iter()
