@@ -21,7 +21,7 @@ async fn run_add_transaction<
     add_transaction_function: F,
 ) -> WriterClientResult<Response> {
     let client =
-        StarknetGatewayClient::new(&mockito::server_url(), None, NODE_VERSION, get_test_config())
+        StarknetGatewayClient::new(&mockito::server_url(), NODE_VERSION, get_test_config())
             .unwrap();
     let tx_json_value = read_json_file(resource_file_transaction_path);
     let tx = serde_json::from_value::<Transaction>(tx_json_value.clone()).unwrap();

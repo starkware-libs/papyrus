@@ -109,13 +109,12 @@ impl StarknetWriter for StarknetGatewayClient {
 impl StarknetGatewayClient {
     pub fn new(
         starknet_url: &str,
-        http_headers: Option<HashMap<String, String>>,
         node_version: &'static str,
         retry_config: RetryConfig,
     ) -> Result<Self, ClientCreationError> {
         Ok(StarknetGatewayClient {
             add_transaction_url: Url::parse(starknet_url)?.join(ADD_TRANSACTION_URL_SUFFIX)?,
-            client: StarknetClient::new(http_headers, node_version, retry_config)?,
+            client: StarknetClient::new(None, node_version, retry_config)?,
         })
     }
 
