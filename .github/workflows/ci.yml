@@ -30,6 +30,22 @@ jobs:
         if: github.event_name == 'pull_request'
         run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
 
+  executable-run:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build node
+        uses: Swatinem/rust-cache@v2
+        run: cargo build -r
+
+      - name: Run executable
+        run: target/release/papyrus_node \
+          --base_layer.node_url ${{ secrets.CI_BASE_LAYER_NODE_URL }} & sleep 30 ; kill $!
+
   test:
     runs-on: ${{ matrix.os }}
     strategy:
