@@ -20,7 +20,7 @@ use tower::BoxError;
 
 use crate::middleware::proxy_rpc_request;
 use crate::test_utils::{get_test_gateway_config, get_test_highest_block};
-use crate::v0_4_0::error::JsonRpcError;
+use crate::v0_4_0::error::NO_BLOCKS;
 use crate::version_config::VERSION_CONFIG;
 use crate::{get_block_status, run_server, SERVER_MAX_BODY_SIZE};
 
@@ -36,7 +36,7 @@ async fn run_server_no_blocks() {
     let client = HttpClientBuilder::default().build(format!("http://{addr:?}")).unwrap();
     let res: Result<RpcResult<BlockNumber>, Error> =
         client.request("starknet_blockNumber", [""]).await;
-    let _expected_error = ErrorObjectOwned::from(JsonRpcError::NoBlocks);
+    let _expected_error = ErrorObjectOwned::from(NO_BLOCKS);
     match res {
         Err(err) => assert_matches!(err, _expected_error),
         Ok(_) => panic!("should error with no blocks"),

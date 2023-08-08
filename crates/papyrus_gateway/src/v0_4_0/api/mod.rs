@@ -18,7 +18,7 @@ use super::state::{ContractClass, StateUpdate};
 use super::transaction::{Event, TransactionReceiptWithStatus, TransactionWithHash};
 use crate::api::BlockId;
 use crate::syncing_state::SyncingState;
-use crate::v0_4_0::error::JsonRpcError;
+use crate::v0_4_0::error::INVALID_CONTINUATION_TOKEN;
 use crate::{internal_server_error, ContinuationTokenAsStruct};
 
 pub mod api_impl;
@@ -165,7 +165,7 @@ pub struct ContinuationToken(pub String);
 impl ContinuationToken {
     fn parse(&self) -> Result<ContinuationTokenAsStruct, ErrorObjectOwned> {
         let ct = serde_json::from_str(&self.0)
-            .map_err(|_| ErrorObjectOwned::from(JsonRpcError::InvalidContinuationToken))?;
+            .map_err(|_| ErrorObjectOwned::from(INVALID_CONTINUATION_TOKEN))?;
 
         Ok(ContinuationTokenAsStruct(ct))
     }
