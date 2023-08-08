@@ -103,41 +103,9 @@ impl SerializeConfig for GatewayConfig {
     }
 }
 
-impl From<JsonRpcError> for ErrorObjectOwned {
-    fn from(err: JsonRpcError) -> Self {
-        ErrorObjectOwned::owned(err as i32, err.to_string(), None::<()>)
-    }
-}
-
 fn internal_server_error(err: impl Display) -> ErrorObjectOwned {
     error!("{}: {}", INTERNAL_ERROR_MSG, err);
     ErrorObjectOwned::owned(InternalError.code(), INTERNAL_ERROR_MSG, None::<()>)
-}
-
-fn get_block_number<Mode: TransactionKind>(
-    txn: &StorageTxn<'_, Mode>,
-    block_id: BlockId,
-) -> Result<BlockNumber, ErrorObjectOwned> {
-    Ok(match block_id {
-        BlockId::HashOrNumber(BlockHashOrNumber::Hash(block_hash)) => txn
-            .get_block_number_by_hash(&block_hash)
-            .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?,
-        BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number)) => {
-            // Check that the block exists.
-            let last_block_number = get_latest_block_number(txn)?
-                .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
-            if block_number > last_block_number {
-                return Err(ErrorObjectOwned::from(JsonRpcError::BlockNotFound));
-            }
-            block_number
-        }
-        BlockId::Tag(Tag::Latest) => get_latest_block_number(txn)?
-            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?,
-        BlockId::Tag(Tag::Pending) => {
-            return Err(ErrorObjectOwned::from(JsonRpcError::PendingBlocksNotSupported));
-        }
-    })
 }
 
 fn get_latest_block_number<Mode: TransactionKind>(
@@ -160,19 +128,6 @@ fn get_block_status<Mode: TransactionKind>(
     Ok(status)
 }
 struct ContinuationTokenAsStruct(EventIndex);
-
-impl ContinuationToken {
-    fn parse(&self) -> Result<ContinuationTokenAsStruct, ErrorObjectOwned> {
-        let ct = serde_json::from_str(&self.0)
-            .map_err(|_| ErrorObjectOwned::from(JsonRpcError::InvalidContinuationToken))?;
-
-        Ok(ContinuationTokenAsStruct(ct))
-    }
-
-    fn new(ct: ContinuationTokenAsStruct) -> Result<Self, ErrorObjectOwned> {
-        Ok(Self(serde_json::to_string(&ct.0).map_err(internal_server_error)?))
-    }
-}
 
 #[instrument(skip(storage_reader), level = "debug", err)]
 pub async fn run_server(

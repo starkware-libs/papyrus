@@ -131,3 +131,30 @@ pub struct EventsChunk {
     pub events: Vec<Event>,
     pub continuation_token: Option<ContinuationToken>,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct EventFilter {
+    pub from_block: Option<BlockId>,
+    pub to_block: Option<BlockId>,
+    pub continuation_token: Option<ContinuationToken>,
+    pub chunk_size: usize,
+    pub address: Option<ContractAddress>,
+    #[serde(default)]
+    pub keys: Vec<HashSet<EventKey>>,
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Deserialize, Serialize)]
+pub struct ContinuationToken(pub String);
+
+impl ContinuationToken {
+    fn parse(&self) -> Result<ContinuationTokenAsStruct, ErrorObjectOwned> {
+        let ct = serde_json::from_str(&self.0)
+            .map_err(|_| ErrorObjectOwned::from(JsonRpcError::InvalidContinuationToken))?;
+
+        Ok(ContinuationTokenAsStruct(ct))
+    }
+
+    fn new(ct: ContinuationTokenAsStruct) -> Result<Self, ErrorObjectOwned> {
+        Ok(Self(serde_json::to_string(&ct.0).map_err(internal_server_error)?))
+    }
+}
