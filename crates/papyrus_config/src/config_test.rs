@@ -31,7 +31,7 @@ use crate::loading::{
     update_config_map_by_pointers,
     update_optional_values,
 };
-use crate::{ConfigError, ParamPath, PointerParam, SerializedContent, SerializedParam};
+use crate::{ConfigError, ParamPath, SerializedContent, SerializedParam};
 
 lazy_static! {
     static ref CUSTOM_CONFIG_PATH: PathBuf =
@@ -137,9 +137,9 @@ fn test_pointers_flow() {
     let stored_map = combine_config_map_and_pointers(config_map, &pointers).unwrap();
     assert_eq!(
         stored_map["a1"],
-        json!(PointerParam {
+        json!(SerializedParam {
             description: "This is a.".to_owned(),
-            pointer_target: "common_a".to_owned()
+            content: SerializedContent::PointerTarget("common_a".to_owned()),
         })
     );
     assert_eq!(stored_map["a2"], stored_map["a1"]);
