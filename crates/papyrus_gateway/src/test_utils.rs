@@ -54,8 +54,7 @@ pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
 
 // TODO(nevo): Schmea validates null as valid for an unknown reason.
 // Investigate in the future and remove this function (use is_valid directly)
-pub fn validate_schema(schema: &JSONSchema, res: Value) -> bool {
-    let result = &res["result"];
+pub fn validate_schema(schema: &JSONSchema, result: Value) -> bool {
     result != &Value::Null && schema.is_valid(result)
 }
 

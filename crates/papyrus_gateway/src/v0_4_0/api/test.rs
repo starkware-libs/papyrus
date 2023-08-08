@@ -1667,7 +1667,7 @@ async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, sche
         VERSION_0_4.name,
     )
     .await;
-    assert!(validate_schema(schema, res), "State update is not valid.");
+    assert!(validate_schema(schema, &res["result"]), "State update is not valid.");
 
     let (address, _) = state_diff.deployed_contracts.get_index(0).unwrap();
     let res = send_request(
@@ -1677,7 +1677,7 @@ async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, sche
         VERSION_0_4.name,
     )
     .await;
-    assert!(validate_schema(schema, res), "Class is not valid.");
+    assert!(validate_schema(schema, &res["result"]), "Class is not valid.");
 
     // TODO(dvir): Remove this after regenesis.
     // This checks the deployed deprecated class.
@@ -1689,7 +1689,7 @@ async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, sche
         VERSION_0_4.name,
     )
     .await;
-    assert!(validate_schema(schema, res), "Class is not valid.");
+    assert!(validate_schema(schema, &res["result"]), "Class is not valid.");
 }
 
 async fn validate_block(header: &BlockHeader, server_address: SocketAddr, schema: &JSONSchema) {
@@ -1700,7 +1700,7 @@ async fn validate_block(header: &BlockHeader, server_address: SocketAddr, schema
         VERSION_0_4.name,
     )
     .await;
-    assert!(validate_schema(schema, res), "Block with transactions is not valid.");
+    assert!(validate_schema(schema, &res["result"]), "Block with transactions is not valid.");
 
     let res = send_request(
         server_address,
@@ -1709,7 +1709,7 @@ async fn validate_block(header: &BlockHeader, server_address: SocketAddr, schema
         VERSION_0_4.name,
     )
     .await;
-    assert!(validate_schema(schema, res), "Block with transaction hashes is not valid.");
+    assert!(validate_schema(schema, &res["result"]), "Block with transaction hashes is not valid.");
 }
 
 async fn validate_transaction(
@@ -1724,7 +1724,7 @@ async fn validate_transaction(
         VERSION_0_4.name,
     )
     .await;
-    assert!(validate_schema(schema, res), "Transaction is not valid.");
+    assert!(validate_schema(schema, &res["result"]), "Transaction is not valid.");
 
     let res = send_request(
         server_address,
@@ -1733,7 +1733,7 @@ async fn validate_transaction(
         VERSION_0_4.name,
     )
     .await;
-    assert!(validate_schema(schema, res), "Transaction is not valid.");
+    assert!(validate_schema(schema, &res["result"]), "Transaction is not valid.");
 
     let res = send_request(
         server_address,
@@ -1742,7 +1742,7 @@ async fn validate_transaction(
         VERSION_0_4.name,
     )
     .await;
-    assert!(validate_schema(schema, res), "Transaction receipt is not valid.");
+    assert!(validate_schema(schema, &res["result"]), "Transaction receipt is not valid.");
 
     let res = send_request(
         server_address,
@@ -1751,7 +1751,7 @@ async fn validate_transaction(
         VERSION_0_4.name,
     )
     .await;
-    assert!(validate_schema(schema, res), "Events are not valid.");
+    assert!(validate_schema(schema, &res["result"]), "Events are not valid.");
 }
 
 // This test checks that the deprecated contract class is returned with the correct state mutability
