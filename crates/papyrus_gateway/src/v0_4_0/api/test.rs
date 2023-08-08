@@ -7,7 +7,6 @@ use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use indexmap::{indexmap, IndexMap};
 use jsonrpsee::core::params::ObjectParams;
 use jsonrpsee::core::Error;
-use jsonrpsee::types::ErrorObjectOwned;
 use jsonschema::JSONSchema;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_execution::execution_utils::selector_from_name;
@@ -79,11 +78,7 @@ async fn block_hash_and_number() {
         .call::<_, BlockHashAndNumber>("starknet_V0_4_blockHashAndNumber", ObjectParams::new())
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::NoBlocks as i32,
-        JsonRpcError::NoBlocks.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::NoBlocks.into());
 
     // Add a block and check again.
     let block = get_test_block(1, None, None, None);
@@ -117,11 +112,7 @@ async fn block_number() {
         .call::<_, BlockNumber>("starknet_V0_4_blockNumber", ObjectParams::new())
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::NoBlocks as i32,
-        JsonRpcError::NoBlocks.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::NoBlocks.into());
 
     // Add a block and check again.
     storage_writer
@@ -198,11 +189,7 @@ async fn get_block_transaction_count() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::BlockNotFound as i32,
-        JsonRpcError::BlockNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::BlockNotFound.into());
 
     // Ask for an invalid block number.
     let err = module
@@ -212,11 +199,7 @@ async fn get_block_transaction_count() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::BlockNotFound as i32,
-        JsonRpcError::BlockNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::BlockNotFound.into());
 }
 
 #[tokio::test]
@@ -299,11 +282,7 @@ async fn get_block_w_full_transactions() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::BlockNotFound as i32,
-        JsonRpcError::BlockNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::BlockNotFound.into());
 
     // Ask for an invalid block number.
     let err = module
@@ -313,11 +292,7 @@ async fn get_block_w_full_transactions() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::BlockNotFound as i32,
-        JsonRpcError::BlockNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::BlockNotFound.into());
 }
 
 #[tokio::test]
@@ -396,11 +371,7 @@ async fn get_block_w_transaction_hashes() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::BlockNotFound as i32,
-        JsonRpcError::BlockNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::BlockNotFound.into());
 
     // Ask for an invalid block number.
     let err = module
@@ -410,11 +381,7 @@ async fn get_block_w_transaction_hashes() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::BlockNotFound as i32,
-        JsonRpcError::BlockNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::BlockNotFound.into());
 }
 
 #[tokio::test]
@@ -482,11 +449,7 @@ async fn get_class() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::ClassHashNotFound as i32,
-        JsonRpcError::ClassHashNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::ClassHashNotFound.into());
 
     // New Class
     let (class_hash, (_compiled_class_hash, contract_class)) =
@@ -525,11 +488,7 @@ async fn get_class() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::ClassHashNotFound as i32,
-        JsonRpcError::ClassHashNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::ClassHashNotFound.into());
 
     // Ask for an invalid block hash.
     let err = module
@@ -544,11 +503,7 @@ async fn get_class() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::BlockNotFound as i32,
-        JsonRpcError::BlockNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::BlockNotFound.into());
 
     // Ask for an invalid block number.
     let err = module
@@ -558,11 +513,7 @@ async fn get_class() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::BlockNotFound as i32,
-        JsonRpcError::BlockNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::BlockNotFound.into());
 }
 
 #[tokio::test]
@@ -633,11 +584,7 @@ async fn get_transaction_receipt() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::TransactionHashNotFound as i32,
-        JsonRpcError::TransactionHashNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::TransactionHashNotFound.into());
 }
 
 #[tokio::test]
@@ -738,11 +685,7 @@ async fn get_class_at() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::ContractNotFound as i32,
-        JsonRpcError::ContractNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::ContractNotFound.into());
 
     // Ask for an invalid contract in the given block.
     let err = module
@@ -755,11 +698,7 @@ async fn get_class_at() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::ContractNotFound as i32,
-        JsonRpcError::ContractNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::ContractNotFound.into());
 
     // Ask for an invalid block hash.
     let err = module
@@ -774,11 +713,7 @@ async fn get_class_at() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::BlockNotFound as i32,
-        JsonRpcError::BlockNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::BlockNotFound.into());
 
     // Ask for an invalid block number.
     let err = module
@@ -788,11 +723,7 @@ async fn get_class_at() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::BlockNotFound as i32,
-        JsonRpcError::BlockNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::BlockNotFound.into());
 }
 
 #[tokio::test]
@@ -844,11 +775,7 @@ async fn get_class_hash_at() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::ContractNotFound as i32,
-        JsonRpcError::ContractNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::ContractNotFound.into());
 
     // Ask for an invalid block hash.
     let err = module
@@ -863,11 +790,7 @@ async fn get_class_hash_at() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::BlockNotFound as i32,
-        JsonRpcError::BlockNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::BlockNotFound.into());
 
     // Ask for an invalid block number.
     let err = module
@@ -877,11 +800,7 @@ async fn get_class_hash_at() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::BlockNotFound as i32,
-        JsonRpcError::BlockNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::BlockNotFound.into());
 }
 
 #[tokio::test]
@@ -933,11 +852,7 @@ async fn get_nonce() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::ContractNotFound as i32,
-        JsonRpcError::ContractNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::ContractNotFound.into());
 
     // Ask for an invalid block hash.
     let err = module
@@ -952,11 +867,7 @@ async fn get_nonce() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::BlockNotFound as i32,
-        JsonRpcError::BlockNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::BlockNotFound.into());
 
     // Ask for an invalid block number.
     let err = module
@@ -966,11 +877,7 @@ async fn get_nonce() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::BlockNotFound as i32,
-        JsonRpcError::BlockNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::BlockNotFound.into());
 }
 
 #[tokio::test]
@@ -1024,11 +931,7 @@ async fn get_storage_at() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::ContractNotFound as i32,
-        JsonRpcError::ContractNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::ContractNotFound.into());
 
     // Ask for an invalid block hash.
     let err = module
@@ -1044,11 +947,7 @@ async fn get_storage_at() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::BlockNotFound as i32,
-        JsonRpcError::BlockNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::BlockNotFound.into());
 
     // Ask for an invalid block number.
     let err = module
@@ -1058,11 +957,7 @@ async fn get_storage_at() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::BlockNotFound as i32,
-        JsonRpcError::BlockNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::BlockNotFound.into());
 }
 
 #[tokio::test]
@@ -1099,11 +994,7 @@ async fn get_transaction_by_hash() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::TransactionHashNotFound as i32,
-        JsonRpcError::TransactionHashNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::TransactionHashNotFound.into());
 }
 
 #[tokio::test]
@@ -1159,11 +1050,7 @@ async fn get_transaction_by_block_id_and_index() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::BlockNotFound as i32,
-        JsonRpcError::BlockNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::BlockNotFound.into());
 
     // Ask for an invalid block number.
     let err = module
@@ -1173,11 +1060,7 @@ async fn get_transaction_by_block_id_and_index() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::BlockNotFound as i32,
-        JsonRpcError::BlockNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::BlockNotFound.into());
 
     // Ask for an invalid transaction index.
     let err = module
@@ -1187,11 +1070,7 @@ async fn get_transaction_by_block_id_and_index() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::InvalidTransactionIndex as i32,
-        JsonRpcError::InvalidTransactionIndex.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::InvalidTransactionIndex.into());
 }
 
 #[tokio::test]
@@ -1261,11 +1140,7 @@ async fn get_state_update() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::BlockNotFound as i32,
-        JsonRpcError::BlockNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::BlockNotFound.into());
 
     // Ask for an invalid block number.
     let err = module
@@ -1275,11 +1150,7 @@ async fn get_state_update() {
         )
         .await
         .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::BlockNotFound as i32,
-        JsonRpcError::BlockNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::BlockNotFound.into());
 }
 
 #[tokio::test]
@@ -1462,11 +1333,7 @@ async fn get_events_page_size_too_big() {
     };
 
     let err = module.call::<_, EventsChunk>("starknet_V0_4_getEvents", [filter]).await.unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::PageSizeTooBig as i32,
-        JsonRpcError::PageSizeTooBig.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::PageSizeTooBig.into());
 }
 
 #[tokio::test]
@@ -1487,11 +1354,7 @@ async fn get_events_too_many_keys() {
     };
 
     let err = module.call::<_, EventsChunk>("starknet_V0_4_getEvents", [filter]).await.unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::TooManyKeysInFilter as i32,
-        JsonRpcError::TooManyKeysInFilter.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::TooManyKeysInFilter.into());
 }
 
 #[tokio::test]
@@ -1580,11 +1443,7 @@ async fn get_events_invalid_ct() {
     };
 
     let err = module.call::<_, EventsChunk>("starknet_V0_4_getEvents", [filter]).await.unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::InvalidContinuationToken as i32,
-        JsonRpcError::InvalidContinuationToken.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::InvalidContinuationToken.into());
 }
 
 #[tokio::test]
@@ -1880,11 +1739,7 @@ async fn execution_call() {
         .await
         .unwrap_err();
 
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::ContractNotFound as i32,
-        JsonRpcError::ContractNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::ContractNotFound.into());
 
     // Calling a non-existent block.
     let err = module
@@ -1900,11 +1755,7 @@ async fn execution_call() {
         .await
         .unwrap_err();
 
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::BlockNotFound as i32,
-        JsonRpcError::BlockNotFound.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::BlockNotFound.into());
 
     // Calling a non-existent function (contract error).
     let err = module
@@ -1920,11 +1771,7 @@ async fn execution_call() {
         .await
         .unwrap_err();
 
-    assert_matches!(err, Error::Call(err) if err == ErrorObjectOwned::owned(
-        JsonRpcError::ContractError as i32,
-        JsonRpcError::ContractError.to_string(),
-        None::<()>,
-    ));
+    assert_matches!(err, Error::Call(err) if err == JsonRpcError::ContractError.into());
 }
 
 fn prepare_storage_for_execution(mut storage_writer: StorageWriter) {
