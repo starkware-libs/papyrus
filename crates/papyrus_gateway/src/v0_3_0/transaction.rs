@@ -1,4 +1,8 @@
+use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_storage::body::events::ThinTransactionOutput;
+use papyrus_storage::body::BodyStorageReader;
+use papyrus_storage::db::TransactionKind;
+use papyrus_storage::StorageTxn;
 use serde::{Deserialize, Deserializer, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
 use starknet_api::core::{
@@ -10,6 +14,9 @@ use starknet_api::transaction::{
     DeployTransaction, DeployTransactionOutput, Fee, InvokeTransactionOutput, L1HandlerTransaction,
     L1HandlerTransactionOutput, TransactionHash, TransactionSignature, TransactionVersion,
 };
+
+use crate::internal_server_error;
+use crate::v0_3_0::error::JsonRpcError;
 
 // TODO(yair): Make these functions regular consts.
 fn tx_v0() -> TransactionVersion {
@@ -350,4 +357,31 @@ pub struct Event {
     pub transaction_hash: TransactionHash,
     #[serde(flatten)]
     pub event: starknet_api::transaction::Event,
+}
+
+pub fn get_block_txs_by_number<
+    Mode: TransactionKind,
+    Transaction: From<starknet_api::transaction::Transaction>,
+>(
+    txn: &StorageTxn<'_, Mode>,
+    block_number: BlockNumber,
+) -> Result<Vec<Transaction>, ErrorObjectOwned> {
+    let transactions = txn
+        .get_block_transactions(block_number)
+        .map_err(internal_server_error)?
+        .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
+
+    Ok(transactions.into_iter().map(Transaction::from).collect())
+}
+
+pub fn get_block_tx_hashes_by_number<Mode: TransactionKind>(
+    txn: &StorageTxn<'_, Mode>,
+    block_number: BlockNumber,
+) -> Result<Vec<TransactionHash>, ErrorObjectOwned> {
+    let transaction_hashes = txn
+        .get_block_transaction_hashes(block_number)
+        .map_err(internal_server_error)?
+        .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
+
+    Ok(transaction_hashes)
 }

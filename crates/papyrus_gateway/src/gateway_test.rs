@@ -18,9 +18,9 @@ use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
 use test_utils::get_rng;
 use tower::BoxError;
 
-use crate::api::JsonRpcError;
 use crate::middleware::proxy_rpc_request;
 use crate::test_utils::{get_test_gateway_config, get_test_highest_block};
+use crate::v0_4_0::error::JsonRpcError;
 use crate::version_config::VERSION_CONFIG;
 use crate::{get_block_status, run_server, SERVER_MAX_BODY_SIZE};
 

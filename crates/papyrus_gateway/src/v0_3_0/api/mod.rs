@@ -1,5 +1,8 @@
+use std::collections::HashSet;
+
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
+use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_proc_macros::versioned_rpc;
 use serde::{Deserialize, Serialize};
@@ -7,14 +10,16 @@ use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::StorageKey;
-use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
+use starknet_api::transaction::{EventKey, TransactionHash, TransactionOffsetInBlock};
 
 use super::block::Block;
 use super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::state::{ContractClass, StateUpdate};
 use super::transaction::{Event, TransactionReceiptWithStatus, TransactionWithHash};
-use crate::api::{BlockId, ContinuationToken, EventFilter};
+use crate::api::BlockId;
 use crate::syncing_state::SyncingState;
+use crate::v0_3_0::error::JsonRpcError;
+use crate::{internal_server_error, ContinuationTokenAsStruct};
 
 pub mod api_impl;
 #[cfg(test)]
@@ -130,4 +135,31 @@ pub enum GatewayContractClass {
 pub struct EventsChunk {
     pub events: Vec<Event>,
     pub continuation_token: Option<ContinuationToken>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+pub struct EventFilter {
+    pub from_block: Option<BlockId>,
+    pub to_block: Option<BlockId>,
+    pub continuation_token: Option<ContinuationToken>,
+    pub chunk_size: usize,
+    pub address: Option<ContractAddress>,
+    #[serde(default)]
+    pub keys: Vec<HashSet<EventKey>>,
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Deserialize, Serialize)]
+pub struct ContinuationToken(pub String);
+
+impl ContinuationToken {
+    fn parse(&self) -> Result<ContinuationTokenAsStruct, ErrorObjectOwned> {
+        let ct = serde_json::from_str(&self.0)
+            .map_err(|_| ErrorObjectOwned::from(JsonRpcError::InvalidContinuationToken))?;
+
+        Ok(ContinuationTokenAsStruct(ct))
+    }
+
+    fn new(ct: ContinuationTokenAsStruct) -> Result<Self, ErrorObjectOwned> {
+        Ok(Self(serde_json::to_string(&ct.0).map_err(internal_server_error)?))
+    }
 }

@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::sync::Arc;
 
 use jsonrpsee::{Methods, RpcModule};
@@ -6,8 +5,7 @@ use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::StorageReader;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
-use starknet_api::core::{ChainId, ContractAddress};
-use starknet_api::transaction::EventKey;
+use starknet_api::core::ChainId;
 use starknet_client::writer::StarknetWriter;
 use tokio::sync::RwLock;
 
@@ -39,49 +37,6 @@ pub enum BlockId {
     HashOrNumber(BlockHashOrNumber),
     Tag(Tag),
 }
-
-#[derive(thiserror::Error, Clone, Copy, Debug)]
-pub enum JsonRpcError {
-    #[error("There are no blocks.")]
-    NoBlocks,
-    #[error("Contract not found.")]
-    ContractNotFound = 20,
-    #[error("Block not found.")]
-    BlockNotFound = 24,
-    #[error("Transaction hash not found.")]
-    TransactionHashNotFound = 25,
-    #[error("Invalid transaction index in a block.")]
-    InvalidTransactionIndex = 27,
-    #[error("Class hash not found.")]
-    ClassHashNotFound = 28,
-    #[error("Transaction reverted.")]
-    TransactionReverted = 29,
-    #[error("Requested page size is too big.")]
-    PageSizeTooBig = 31,
-    #[error("The supplied continuation token is invalid or unknown.")]
-    InvalidContinuationToken = 33,
-    #[error("Too many keys provided in a filter.")]
-    TooManyKeysInFilter = 34,
-    #[error("Contract error.")]
-    ContractError = 40,
-    // TODO(dvir): delete this when start support pending blocks.
-    #[error("Currently, Papyrus doesn't support pending blocks.")]
-    PendingBlocksNotSupported = 41,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-pub struct EventFilter {
-    pub from_block: Option<BlockId>,
-    pub to_block: Option<BlockId>,
-    pub continuation_token: Option<ContinuationToken>,
-    pub chunk_size: usize,
-    pub address: Option<ContractAddress>,
-    #[serde(default)]
-    pub keys: Vec<HashSet<EventKey>>,
-}
-
-#[derive(Debug, Clone, Hash, PartialEq, Eq, Deserialize, Serialize)]
-pub struct ContinuationToken(pub String);
 
 /// Returns a `Methods` object with all the methods from the supported APIs.
 /// Whenever adding a new API version we need to add the new version mapping here.

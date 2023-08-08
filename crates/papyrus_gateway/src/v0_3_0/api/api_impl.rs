@@ -26,14 +26,16 @@ use super::super::transaction::{
     Event, Transaction, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus,
     TransactionWithHash, Transactions,
 };
-use super::{BlockId, EventFilter, EventsChunk, GatewayContractClass, JsonRpcV0_3Server};
-use crate::api::{BlockHashOrNumber, ContinuationToken, JsonRpcError, JsonRpcServerImpl};
-use crate::block::get_block_header_by_number;
+use super::{
+    BlockId, ContinuationToken, EventFilter, EventsChunk, GatewayContractClass, JsonRpcV0_3Server,
+};
+use crate::api::{BlockHashOrNumber, JsonRpcServerImpl};
 use crate::syncing_state::SyncingState;
-use crate::transaction::{get_block_tx_hashes_by_number, get_block_txs_by_number};
+use crate::v0_3_0::block::{get_block_header_by_number, get_block_number};
+use crate::v0_3_0::error::JsonRpcError;
+use crate::v0_3_0::transaction::{get_block_tx_hashes_by_number, get_block_txs_by_number};
 use crate::{
-    get_block_number, get_block_status, get_latest_block_number, internal_server_error,
-    ContinuationTokenAsStruct,
+    get_block_status, get_latest_block_number, internal_server_error, ContinuationTokenAsStruct,
 };
 
 /// Rpc server.
