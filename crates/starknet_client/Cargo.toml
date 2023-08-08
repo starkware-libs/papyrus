@@ -8,6 +8,7 @@ description = "A client implementation that can communicate with Starknet."
 
 [features]
 testing = [
+    "enum-iterator",
     "mockall",
     "rand",
     "rand_chacha",
@@ -17,6 +18,7 @@ testing = [
 [dependencies]
 async-trait.workspace = true
 cairo-lang-starknet.workspace = true
+enum-iterator = { workspace = true, optional = true }
 http.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
 lazy_static.workspace = true
@@ -39,6 +41,7 @@ url.workspace = true
 [dev-dependencies]
 assert.workspace = true
 assert_matches.workspace = true
+enum-iterator.workspace = true
 mockall.workspace = true
 mockito.workspace = true
 rand.workspace = true

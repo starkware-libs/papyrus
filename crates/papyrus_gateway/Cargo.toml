@@ -36,6 +36,7 @@ cairo-lang-casm.workspace = true
 cairo-lang-starknet.workspace = true
 camelpaste.workspace = true
 derive_more.workspace = true
+enum-iterator.workspace = true
 hex.workspace = true
 jsonschema.workspace = true
 lazy_static.workspace = true
