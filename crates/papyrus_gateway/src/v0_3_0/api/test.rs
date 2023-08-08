@@ -25,7 +25,7 @@ use starknet_api::deprecated_contract_class::{
     FunctionStateMutability,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::StateDiff;
+use starknet_api::state::{StateDiff, StorageKey};
 use starknet_api::transaction::{
     EventIndexInTransactionOutput,
     EventKey,
@@ -56,7 +56,7 @@ use super::super::transaction::{
     TransactionWithHash,
     Transactions,
 };
-use super::api_impl::JsonRpcServerV0_3Impl;
+use super::api_impl::{JsonRpcServerV0_3Impl, BLOCK_HASH_TABLE_CONTRACT_ADDRESS};
 use super::{ContinuationToken, EventFilter};
 use crate::api::{BlockHashOrNumber, BlockId, JsonRpcServerImpl, Tag};
 use crate::syncing_state::SyncStatus;
@@ -1111,6 +1111,35 @@ async fn get_storage_at() {
         JsonRpcError::BlockNotFound.to_string(),
         None::<()>,
     ));
+}
+
+#[tokio::test]
+async fn get_storage_at_block_hash_table_address() {
+    let (module, mut storage_writer) =
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
+    let header = BlockHeader::default();
+    let diff = get_test_state_diff();
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(header.block_number, &header)
+        .unwrap()
+        .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    //Ask for storage at address 1 - the block hash table contract address
+    let address = ContractAddress(patricia_key!(BLOCK_HASH_TABLE_CONTRACT_ADDRESS));
+    let key = StorageKey(patricia_key!("0x1001"));
+    let res = module
+       .call::<_, StarkFelt>(
+           "starknet_V0_3_getStorageAt",
+           (address, key, BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))),
+       )
+       .await
+       .unwrap();
+    assert_eq!(res, StarkFelt::default());
 }
 
 #[tokio::test]

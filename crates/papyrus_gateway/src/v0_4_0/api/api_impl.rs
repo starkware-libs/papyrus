@@ -17,8 +17,10 @@ use starknet_api::core::{
     EntryPointSelector,
     GlobalRoot,
     Nonce,
+    PatriciaKey,
 };
 use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
+use starknet_api::patricia_key;
 use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
     Calldata,
@@ -71,6 +73,7 @@ use crate::{
     internal_server_error,
     ContinuationTokenAsStruct,
 };
+pub const BLOCK_HASH_TABLE_CONTRACT_ADDRESS: &str = "0x1";
 
 /// Rpc server.
 pub struct JsonRpcServerV0_4Impl {
@@ -148,13 +151,19 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let state = StateNumber::right_after_block(block_number);
         let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
 
-        // Check that the contract exists.
-        state_reader
-            .get_class_hash_at(state, &contract_address)
-            .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(CONTRACT_NOT_FOUND))?;
-
-        state_reader.get_storage_at(state, &contract_address, &key).map_err(internal_server_error)
+        let res = state_reader
+            .get_storage_at(state, &contract_address, &key)
+            .map_err(internal_server_error);
+        if res == Ok(StarkFelt::default()) {
+            let address1 = ContractAddress(patricia_key!(BLOCK_HASH_TABLE_CONTRACT_ADDRESS));
+            if contract_address != address1 {
+                //check if the contract exists
+                state_reader.get_class_hash_at(state, &contract_address)
+                    .map_err(internal_server_error)?
+                    .ok_or_else(|| ErrorObjectOwned::from(CONTRACT_NOT_FOUND))?;
+            }
+        }
+        res
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
