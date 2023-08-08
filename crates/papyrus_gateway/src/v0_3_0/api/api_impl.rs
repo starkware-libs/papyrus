@@ -9,13 +9,14 @@ use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::StorageReader;
 use starknet_api::block::{BlockNumber, BlockStatus};
-use starknet_api::core::{ChainId, ClassHash, ContractAddress, GlobalRoot, Nonce};
+use starknet_api::core::{ChainId, ClassHash, ContractAddress, GlobalRoot, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
     EventIndexInTransactionOutput, TransactionExecutionStatus, TransactionHash,
     TransactionOffsetInBlock,
 };
+use starknet_api::{patricia_key};
 use tokio::sync::RwLock;
 use tracing::instrument;
 
@@ -35,6 +36,7 @@ use crate::{
     get_block_number, get_block_status, get_latest_block_number, internal_server_error,
     ContinuationTokenAsStruct,
 };
+pub const BLOCK_HASH_TABLE_CONTRACT_ADDRESS: &str = "0x1";
 
 /// Rpc server.
 pub struct JsonRpcServerV0_3Impl {
@@ -103,18 +105,19 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
         block_id: BlockId,
     ) -> RpcResult<StarkFelt> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-
         // Check that the block is valid and get the state number.
         let block_number = get_block_number(&txn, block_id)?;
         let state = StateNumber::right_after_block(block_number);
         let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
 
-        // Check that the contract exists.
-        state_reader
-            .get_class_hash_at(state, &contract_address)
-            .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::ContractNotFound))?;
-
+        let address1 = ContractAddress(patricia_key!(BLOCK_HASH_TABLE_CONTRACT_ADDRESS));
+        if contract_address != address1 {
+            // Check that the contract exists.
+            state_reader
+                .get_class_hash_at(state, &contract_address)
+                .map_err(internal_server_error)?
+                .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::ContractNotFound))?;
+        }
         state_reader.get_storage_at(state, &contract_address, &key).map_err(internal_server_error)
     }
 
