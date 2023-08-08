@@ -44,7 +44,9 @@ fn build_args_parser(config_map: &BTreeMap<ParamPath, SerializedParam>) -> Vec<A
     ];
 
     for (param_path, serialized_param) in config_map.iter() {
-        let SerializedContent::DefaultValue(value) = &serialized_param.content;
+        let SerializedContent::DefaultValue(value) = &serialized_param.content else {
+            continue;
+        };
         let clap_parser = match value {
             Value::Number(_) => clap::value_parser!(usize).into(),
             Value::Bool(_) => clap::value_parser!(bool),

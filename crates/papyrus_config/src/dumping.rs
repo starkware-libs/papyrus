@@ -31,16 +31,9 @@ use std::io::{BufWriter, Write};
 
 use itertools::chain;
 use serde::Serialize;
-use serde_json::{json, Map, Value};
+use serde_json::{json, Value};
 
-use crate::{
-    ConfigError,
-    ParamPath,
-    PointerParam,
-    SerializedContent,
-    SerializedParam,
-    IS_NONE_MARK,
-};
+use crate::{ConfigError, ParamPath, SerializedContent, SerializedParam, IS_NONE_MARK};
 
 /// Serialization for configs.
 pub trait SerializeConfig {
@@ -154,38 +147,25 @@ pub fn ser_is_param_none(name: &str, is_none: bool) -> (String, SerializedParam)
 // Adds to the map the target params.
 // Replaces the value of the pointers to contain only the name of the target they point to.
 pub(crate) fn combine_config_map_and_pointers(
-    config_map: BTreeMap<ParamPath, SerializedParam>,
+    mut config_map: BTreeMap<ParamPath, SerializedParam>,
     pointers: &Vec<((ParamPath, SerializedParam), Vec<ParamPath>)>,
 ) -> Result<Value, ConfigError> {
-    let mut json_val = serde_json::to_value(config_map).unwrap();
-    let json_map: &mut serde_json::Map<std::string::String, serde_json::Value> =
-        json_val.as_object_mut().unwrap();
-
     for ((target_param, serialized_pointer), pointing_params_vec) in pointers {
-        json_map.insert(target_param.clone(), json!(serialized_pointer));
+        config_map.insert(target_param.clone(), serialized_pointer.clone());
 
         for pointing_param in pointing_params_vec {
-            let pointing_serialized_param = get_serialized_param(pointing_param, json_map)?;
-            json_map.remove(pointing_param);
-            json_map.insert(
+            let pointing_serialized_param =
+                config_map.get(pointing_param).ok_or(ConfigError::PointerSourceNotFound {
+                    pointing_param: pointing_param.to_owned(),
+                })?;
+            config_map.insert(
                 pointing_param.to_owned(),
-                json!(PointerParam {
-                    description: pointing_serialized_param.description,
-                    pointer_target: target_param.to_owned()
-                }),
+                SerializedParam {
+                    description: pointing_serialized_param.description.clone(),
+                    content: SerializedContent::PointerTarget(target_param.to_owned()),
+                },
             );
         }
     }
-    Ok(json_val)
-}
-
-fn get_serialized_param(
-    param_path: &ParamPath,
-    json_map: &Map<String, Value>,
-) -> Result<SerializedParam, ConfigError> {
-    if let Some(json_value) = json_map.get(param_path) {
-        Ok(serde_json::from_value::<SerializedParam>(json_value.clone())?)
-    } else {
-        Err(ConfigError::PointerSourceNotFound { pointing_param: param_path.to_owned() })
-    }
+    Ok(json!(config_map))
 }
