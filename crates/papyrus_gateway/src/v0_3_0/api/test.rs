@@ -35,6 +35,7 @@ use test_utils::{
 use super::super::api::EventsChunk;
 use super::super::block::Block;
 use super::super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
+use super::super::error::JsonRpcError;
 use super::super::state::{ContractClass, StateUpdate, ThinStateDiff};
 use super::super::transaction::{
     Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
@@ -47,7 +48,6 @@ use crate::test_utils::{
     get_starknet_spec_api_schema_for_components, get_test_gateway_config, get_test_highest_block,
     get_test_rpc_server_and_storage_writer, validate_schema, SpecFile,
 };
-use crate::v0_3_0::error::JsonRpcError;
 use crate::version_config::VERSION_0_3;
 use crate::{run_server, ContinuationTokenAsStruct};
 

@@ -6,9 +6,9 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus, BlockTimestamp};
 use starknet_api::core::{ContractAddress, GlobalRoot};
 
+use super::error::JsonRpcError;
 use super::transaction::Transactions;
 use crate::api::{BlockHashOrNumber, BlockId, Tag};
-use crate::v0_3_0::error::JsonRpcError;
 use crate::{get_latest_block_number, internal_server_error};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]

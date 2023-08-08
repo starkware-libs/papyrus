@@ -15,8 +15,8 @@ use starknet_api::transaction::{
     L1HandlerTransactionOutput, TransactionHash, TransactionSignature, TransactionVersion,
 };
 
+use super::error::JsonRpcError;
 use crate::internal_server_error;
-use crate::v0_3_0::error::JsonRpcError;
 
 // TODO(yair): Make these functions regular consts.
 fn tx_v0() -> TransactionVersion {

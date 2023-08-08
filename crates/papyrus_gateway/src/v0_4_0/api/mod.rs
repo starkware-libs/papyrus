@@ -14,11 +14,11 @@ use starknet_api::transaction::{Calldata, EventKey, TransactionHash, Transaction
 
 use super::block::Block;
 use super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
+use super::error::JsonRpcError;
 use super::state::{ContractClass, StateUpdate};
 use super::transaction::{Event, TransactionReceiptWithStatus, TransactionWithHash};
 use crate::api::BlockId;
 use crate::syncing_state::SyncingState;
-use crate::v0_4_0::error::JsonRpcError;
 use crate::{internal_server_error, ContinuationTokenAsStruct};
 
 pub mod api_impl;

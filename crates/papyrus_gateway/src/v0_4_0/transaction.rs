@@ -17,8 +17,8 @@ use starknet_api::transaction::{
 };
 use starknet_client::writer::objects::transaction as client_transaction;
 
+use super::error::JsonRpcError;
 use crate::internal_server_error;
-use crate::v0_4_0::error::JsonRpcError;
 
 // TODO(yair): Make these functions regular consts.
 fn tx_v0() -> TransactionVersion {
