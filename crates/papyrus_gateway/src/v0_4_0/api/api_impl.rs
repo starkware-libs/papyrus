@@ -4,12 +4,12 @@ use async_trait::async_trait;
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
-use papyrus_execution::{execute_call, ExecutionError};
+use papyrus_execution::{estimate_fee as exec_estimate_fee, execute_call, ExecutionError};
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::StorageReader;
-use starknet_api::block::{BlockNumber, BlockStatus};
+use starknet_api::block::{BlockNumber, BlockStatus, GasPrice};
 use starknet_api::core::{
     ChainId,
     ClassHash,
@@ -29,9 +29,10 @@ use starknet_api::transaction::{
 use starknet_client::writer::{StarknetWriter, WriterClientError};
 use starknet_client::ClientError;
 use tokio::sync::RwLock;
-use tracing::instrument;
+use tracing::{instrument, trace};
 
 use super::super::block::{Block, BlockHeader};
+use super::super::broadcasted_transaction::BroadcastedTransaction;
 use super::super::state::StateUpdate;
 use super::super::transaction::{
     Event,
@@ -47,6 +48,7 @@ use super::{
     ContinuationToken,
     EventFilter,
     EventsChunk,
+    FeeEstimate,
     GatewayContractClass,
     JsonRpcV0_4Server,
 };
@@ -57,7 +59,6 @@ use crate::v0_4_0::error::{
     JsonRpcError,
     BLOCK_NOT_FOUND,
     CLASS_HASH_NOT_FOUND,
-    CONTRACT_ERROR,
     CONTRACT_NOT_FOUND,
     INVALID_TRANSACTION_INDEX,
     NO_BLOCKS,
@@ -560,6 +561,38 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             Err(err) => Err(internal_server_error(err)),
         }
     }
+
+    #[instrument(skip(self, transactions), level = "debug", err, ret)]
+    fn estimate_fee(
+        &self,
+        transactions: Vec<BroadcastedTransaction>,
+        block_id: BlockId,
+    ) -> RpcResult<Vec<FeeEstimate>> {
+        trace!("Estimating fee of transactions: {:#?}", transactions);
+        let executable_txns =
+            transactions.into_iter().map(|tx| tx.try_into()).collect::<Result<_, _>>()?;
+
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let block_number = get_block_number(&txn, block_id)?;
+        let state_number = StateNumber::right_after_block(block_number);
+
+        match exec_estimate_fee(executable_txns, &self.chain_id, &txn, state_number) {
+            Ok(fees) => Ok(fees
+                .into_iter()
+                .map(|(gas_price, overall_fee)| match gas_price {
+                    // If the gas price is 0, the transaction is free, wooho!
+                    GasPrice(0) => FeeEstimate::default(),
+                    _ => FeeEstimate {
+                        gas_consumed: (overall_fee.0 / gas_price.0).into(),
+                        gas_price,
+                        overall_fee,
+                    },
+                })
+                .collect()),
+            Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
+            Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
+        }
+    }
 }
 
 impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
@@ -585,17 +618,5 @@ impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
 
     fn into_rpc_module(self) -> RpcModule<Self> {
         self.into_rpc()
-    }
-}
-
-impl TryFrom<ExecutionError> for JsonRpcError {
-    type Error = ErrorObjectOwned;
-    fn try_from(value: ExecutionError) -> Result<Self, Self::Error> {
-        match value {
-            ExecutionError::NotSynced { .. } => Ok(BLOCK_NOT_FOUND),
-            ExecutionError::ContractNotFound { .. } => Ok(CONTRACT_NOT_FOUND),
-            // All other execution errors are considered contract errors.
-            _ => Ok(CONTRACT_ERROR),
-        }
     }
 }

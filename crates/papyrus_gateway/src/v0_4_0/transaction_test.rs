@@ -8,7 +8,7 @@ use papyrus_storage::body::events::{
     ThinL1HandlerTransactionOutput,
     ThinTransactionOutput,
 };
-use starknet_api::core::{ContractAddress, Nonce};
+use starknet_api::core::{ContractAddress, EntryPointSelector, Nonce};
 use starknet_api::transaction::{
     Calldata,
     Fee,
@@ -17,10 +17,24 @@ use starknet_api::transaction::{
     TransactionVersion,
 };
 use starknet_client::writer::objects::transaction as client_transaction;
-use test_utils::{auto_impl_get_test_instance, get_rng, GetTestInstance};
+use test_utils::{auto_impl_get_test_instance, get_number_of_variants, get_rng, GetTestInstance};
 
-use super::transaction::{InvokeTransactionV1, TransactionOutput};
+use super::transaction::{
+    InvokeTransaction, InvokeTransactionV0, InvokeTransactionV1, TransactionOutput,
+};
 auto_impl_get_test_instance! {
+    pub enum InvokeTransaction {
+        Version0(InvokeTransactionV0) = 0,
+        Version1(InvokeTransactionV1) = 1,
+    }
+    pub struct InvokeTransactionV0 {
+        pub max_fee: Fee,
+        pub version: TransactionVersion,
+        pub signature: TransactionSignature,
+        pub contract_address: ContractAddress,
+        pub entry_point_selector: EntryPointSelector,
+        pub calldata: Calldata,
+    }
     pub struct InvokeTransactionV1 {
         pub max_fee: Fee,
         pub version: TransactionVersion,
