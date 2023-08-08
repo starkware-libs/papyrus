@@ -8,6 +8,8 @@
 
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{CompiledClassHash, ContractAddress, Nonce};
+use starknet_api::deprecated_contract_class::ContractClass as API_DeprecatedContractClass;
+use starknet_api::state::ContractClass as API_ContractClass;
 use starknet_api::transaction::{Fee, TransactionSignature};
 use starknet_client::writer::objects::transaction::DeprecatedContractClass;
 
@@ -29,6 +31,18 @@ pub enum BroadcastedDeclareTransaction {
     V2(BroadcastedDeclareV2Transaction),
 }
 
+// TODO(yair): Remove everything with API_ prefix once the classes in the broadcasted declare
+// transactions are taken from SN_API instead of the writer client.
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+#[serde(tag = "version")]
+pub enum API_BroadcastedDeclareTransaction {
+    #[serde(rename = "0x1")]
+    V1(API_BroadcastedDeclareV1Transaction),
+    #[serde(rename = "0x2")]
+    V2(API_BroadcastedDeclareV2Transaction),
+}
+
 /// A broadcasted declare transaction of a Cairo-v0 contract.
 ///
 /// This transaction is equivalent to the component BROADCASTED_DECLARE_TXN_V1 in the
@@ -46,6 +60,17 @@ pub struct BroadcastedDeclareV1Transaction {
     pub signature: TransactionSignature,
 }
 
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct API_BroadcastedDeclareV1Transaction {
+    pub r#type: DeclareType,
+    pub contract_class: API_DeprecatedContractClass,
+    pub sender_address: ContractAddress,
+    pub nonce: Nonce,
+    pub max_fee: Fee,
+    pub signature: TransactionSignature,
+}
+
 /// A broadcasted declare transaction of a Cairo-v1 contract.
 ///
 /// This transaction is equivalent to the component BROADCASTED_DECLARE_TXN_V2 in the
@@ -57,6 +82,18 @@ pub struct BroadcastedDeclareV1Transaction {
 pub struct BroadcastedDeclareV2Transaction {
     pub r#type: DeclareType,
     pub contract_class: ContractClass,
+    pub compiled_class_hash: CompiledClassHash,
+    pub sender_address: ContractAddress,
+    pub nonce: Nonce,
+    pub max_fee: Fee,
+    pub signature: TransactionSignature,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq, Default)]
+#[serde(deny_unknown_fields)]
+pub struct API_BroadcastedDeclareV2Transaction {
+    pub r#type: DeclareType,
+    pub contract_class: API_ContractClass,
     pub compiled_class_hash: CompiledClassHash,
     pub sender_address: ContractAddress,
     pub nonce: Nonce,

@@ -3,16 +3,18 @@ use jsonrpsee::proc_macros::rpc;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_proc_macros::versioned_rpc;
 use serde::{Deserialize, Serialize};
-use starknet_api::block::BlockNumber;
+use starknet_api::block::{BlockNumber, GasPrice};
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::StorageKey;
-use starknet_api::transaction::{Calldata, TransactionHash, TransactionOffsetInBlock};
+use starknet_api::transaction::{Calldata, Fee, TransactionHash, TransactionOffsetInBlock};
 
 use super::block::Block;
 use super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::state::{ContractClass, StateUpdate};
-use super::transaction::{Event, TransactionReceiptWithStatus, TransactionWithHash};
+use super::transaction::{
+    BroadcastedTransaction, Event, TransactionReceiptWithStatus, TransactionWithHash,
+};
 use crate::api::{BlockId, ContinuationToken, EventFilter};
 use crate::syncing_state::SyncingState;
 
@@ -128,6 +130,14 @@ pub trait JsonRpc {
         calldata: Calldata,
         block_id: BlockId,
     ) -> RpcResult<Vec<StarkFelt>>;
+
+    /// Estimates the fee of a series of transactions.
+    #[method(name = "estimateFee")]
+    fn estimate_fee(
+        &self,
+        transactions: Vec<BroadcastedTransaction>,
+        block_id: BlockId,
+    ) -> RpcResult<Vec<FeeEstimate>>;
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -141,4 +151,11 @@ pub enum GatewayContractClass {
 pub struct EventsChunk {
     pub events: Vec<Event>,
     pub continuation_token: Option<ContinuationToken>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
+pub struct FeeEstimate {
+    pub gas_consumed: StarkFelt,
+    pub gas_price: GasPrice,
+    pub overall_fee: Fee,
 }

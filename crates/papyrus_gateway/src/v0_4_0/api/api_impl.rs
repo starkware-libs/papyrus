@@ -3,23 +3,26 @@ use std::sync::Arc;
 use jsonrpsee::core::{async_trait, RpcResult};
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
-use papyrus_execution::{execute_call, ExecutionError};
+use papyrus_execution::{
+    estimate_fee as exec_estimate_fee, execute_call, ExecutableTransactionInput, ExecutionError,
+};
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::StorageReader;
-use starknet_api::block::{BlockNumber, BlockStatus};
+use starknet_api::block::{BlockNumber, BlockStatus, GasPrice};
 use starknet_api::core::{
     ChainId, ClassHash, ContractAddress, EntryPointSelector, GlobalRoot, Nonce,
 };
 use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
-    Calldata, EventIndexInTransactionOutput, TransactionHash, TransactionOffsetInBlock,
+    Calldata, DeclareTransactionV0V1, EventIndexInTransactionOutput, TransactionHash,
+    TransactionOffsetInBlock,
 };
 use starknet_client::writer::StarknetWriter;
 use tokio::sync::RwLock;
-use tracing::instrument;
+use tracing::{instrument, trace};
 
 use super::super::block::{Block, BlockHeader};
 use super::super::state::StateUpdate;
@@ -28,12 +31,19 @@ use super::super::transaction::{
     TransactionWithHash, Transactions,
 };
 use super::{
-    BlockHashAndNumber, BlockId, EventFilter, EventsChunk, GatewayContractClass, JsonRpcV0_4Server,
+    BlockHashAndNumber, BlockId, EventFilter, EventsChunk, FeeEstimate, GatewayContractClass,
+    JsonRpcV0_4Server,
 };
 use crate::api::{BlockHashOrNumber, ContinuationToken, JsonRpcError, JsonRpcServerImpl};
 use crate::block::get_block_header_by_number;
 use crate::syncing_state::SyncingState;
 use crate::transaction::{get_block_tx_hashes_by_number, get_block_txs_by_number};
+use crate::v0_4_0::broadcasted_transaction::{
+    API_BroadcastedDeclareTransaction, API_BroadcastedDeclareV1Transaction,
+};
+use crate::v0_4_0::transaction::{
+    BroadcastedTransaction, InvokeTransaction, InvokeTransactionV0, InvokeTransactionV1,
+};
 use crate::{
     get_block_number, get_block_status, get_latest_block_number, internal_server_error,
     ContinuationTokenAsStruct,
@@ -466,6 +476,38 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
         }
     }
+
+    #[instrument(skip(self, transactions), level = "debug", err, ret)]
+    fn estimate_fee(
+        &self,
+        transactions: Vec<BroadcastedTransaction>,
+        block_id: BlockId,
+    ) -> RpcResult<Vec<FeeEstimate>> {
+        trace!("Estimating fee of transactions: {:#?}", transactions);
+        let executable_txns =
+            transactions.into_iter().map(|tx| tx.try_into()).collect::<Result<_, _>>()?;
+
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let block_number = get_block_number(&txn, block_id)?;
+        let state_number = StateNumber::right_after_block(block_number);
+
+        match exec_estimate_fee(executable_txns, &self.chain_id, &txn, state_number) {
+            Ok(fees) => Ok(fees
+                .into_iter()
+                .map(|(gas_price, overall_fee)| match gas_price {
+                    // If the gas price is 0, the transaction is free, wooho!
+                    GasPrice(0) => FeeEstimate::default(),
+                    _ => FeeEstimate {
+                        gas_consumed: (overall_fee.0 / gas_price.0).into(),
+                        gas_price,
+                        overall_fee,
+                    },
+                })
+                .collect()),
+            Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
+            Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
+        }
+    }
 }
 
 impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
@@ -489,6 +531,83 @@ impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
 
     fn into_rpc_module(self) -> RpcModule<Self> {
         self.into_rpc()
+    }
+}
+
+impl TryFrom<API_BroadcastedDeclareTransaction> for ExecutableTransactionInput {
+    type Error = ErrorObjectOwned;
+    fn try_from(value: API_BroadcastedDeclareTransaction) -> Result<Self, Self::Error> {
+        match value {
+            API_BroadcastedDeclareTransaction::V1(API_BroadcastedDeclareV1Transaction {
+                r#type: _,
+                contract_class,
+                sender_address,
+                nonce,
+                max_fee,
+                signature,
+            }) => Ok(Self::DeclareV1(
+                DeclareTransactionV0V1 {
+                    max_fee,
+                    signature,
+                    nonce,
+                    // The blockifier doesn't need the class hash, but it uses the SN_API
+                    // DeclareTransactionV0V1 which requires it.
+                    class_hash: ClassHash::default(),
+                    sender_address,
+                },
+                contract_class,
+            )),
+            API_BroadcastedDeclareTransaction::V2(_) => {
+                // TODO(yair): We need a way to get the casm of a declare V2 transaction.
+                Err(internal_server_error("Declare V2 is not supported yet in execution."))
+            }
+        }
+    }
+}
+
+impl From<InvokeTransaction> for starknet_api::transaction::InvokeTransaction {
+    fn from(value: InvokeTransaction) -> Self {
+        match value {
+            InvokeTransaction::Version0(InvokeTransactionV0 {
+                max_fee,
+                version: _,
+                signature,
+                contract_address,
+                entry_point_selector,
+                calldata,
+            }) => Self::V0(starknet_api::transaction::InvokeTransactionV0 {
+                max_fee,
+                signature,
+                contract_address,
+                entry_point_selector,
+                calldata,
+            }),
+            InvokeTransaction::Version1(InvokeTransactionV1 {
+                max_fee,
+                version: _,
+                signature,
+                nonce,
+                sender_address,
+                calldata,
+            }) => Self::V1(starknet_api::transaction::InvokeTransactionV1 {
+                max_fee,
+                signature,
+                nonce,
+                sender_address,
+                calldata,
+            }),
+        }
+    }
+}
+
+impl TryFrom<BroadcastedTransaction> for ExecutableTransactionInput {
+    type Error = ErrorObjectOwned;
+    fn try_from(value: BroadcastedTransaction) -> Result<Self, Self::Error> {
+        Ok(match value {
+            BroadcastedTransaction::Declare(tx) => tx.try_into()?,
+            BroadcastedTransaction::DeployAccount(tx) => Self::Deploy(tx),
+            BroadcastedTransaction::Invoke(tx) => Self::Invoke(tx.into()),
+        })
     }
 }
 

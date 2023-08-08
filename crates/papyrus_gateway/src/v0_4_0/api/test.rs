@@ -11,6 +11,7 @@ use jsonrpsee::types::ErrorObjectOwned;
 use jsonschema::JSONSchema;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_execution::execution_utils::selector_from_name;
+use papyrus_execution::ExecutableTransactionInput;
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::body::{BodyStorageWriter, TransactionIndex};
@@ -20,7 +21,9 @@ use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
 use pretty_assertions::assert_eq;
-use starknet_api::block::{BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus};
+use starknet_api::block::{
+    BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
+};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
     ContractClass as SN_API_DeprecatedContractClass, ContractClassAbiEntry, FunctionAbiEntry,
@@ -29,13 +32,13 @@ use starknet_api::deprecated_contract_class::{
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::StateDiff;
 use starknet_api::transaction::{
-    Calldata, EventIndexInTransactionOutput, EventKey, TransactionExecutionStatus, TransactionHash,
-    TransactionOffsetInBlock,
+    Calldata, DeployAccountTransaction, EventIndexInTransactionOutput, EventKey, Fee,
+    TransactionExecutionStatus, TransactionHash, TransactionOffsetInBlock, TransactionVersion,
 };
 use starknet_api::{calldata, patricia_key, stark_felt};
 use test_utils::{
-    get_rng, get_test_block, get_test_body, get_test_state_diff, read_json_file, send_request,
-    GetTestInstance,
+    auto_impl_get_test_instance, get_rng, get_test_block, get_test_body, get_test_state_diff,
+    read_json_file, send_request, GetTestInstance,
 };
 
 use super::super::api::EventsChunk;
@@ -52,8 +55,18 @@ use crate::test_utils::{
     get_starknet_spec_api_schema_for_components, get_test_gateway_config, get_test_highest_block,
     get_test_rpc_server_and_storage_writer, validate_schema, SpecFile,
 };
+use crate::v0_4_0::api::FeeEstimate;
+use crate::v0_4_0::broadcasted_transaction::{
+    API_BroadcastedDeclareTransaction, API_BroadcastedDeclareV1Transaction,
+    API_BroadcastedDeclareV2Transaction,
+};
+use crate::v0_4_0::transaction::{BroadcastedTransaction, InvokeTransaction, InvokeTransactionV1};
 use crate::version_config::VERSION_0_4;
 use crate::{run_server, ContinuationTokenAsStruct};
+
+const BLOCK_TIMESTAMP: BlockTimestamp = BlockTimestamp(1234);
+const SEQUENCER_ADDRESS: &str = "0xa";
+const GAS_PRICE: GasPrice = GasPrice(100 * u128::pow(10, 9)); // Given in units of wei.
 
 #[tokio::test]
 async fn chain_id() {
@@ -1925,6 +1938,18 @@ async fn execution_call() {
     ));
 }
 
+// TODO(yair): Move utility functions to the end of the file.
+fn get_test_account_class() -> starknet_api::deprecated_contract_class::ContractClass {
+    let mut raw_contract_class = read_json_file("account_class.json");
+    // ABI is not required for execution.
+    raw_contract_class
+        .as_object_mut()
+        .expect("A compiled contract must be a JSON object.")
+        .remove("abi");
+
+    serde_json::from_value(raw_contract_class).unwrap()
+}
+
 fn prepare_storage_for_execution(mut storage_writer: StorageWriter) {
     let class_hash1 = ClassHash(1u128.into());
     let class1 = serde_json::from_value::<SN_API_DeprecatedContractClass>(read_json_file(
@@ -1940,10 +1965,22 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) {
     let casm = serde_json::from_value::<CasmContractClass>(read_json_file("casm.json")).unwrap();
     let compiled_class_hash = CompiledClassHash(StarkHash::default());
 
+    let account_class_hash = ClassHash(StarkHash::try_from("0x333").unwrap());
+    let account_class = get_test_account_class();
+    let account_address = ContractAddress(patricia_key!("0x444"));
+
     storage_writer
         .begin_rw_txn()
         .unwrap()
-        .append_header(BlockNumber(0), &BlockHeader::default())
+        .append_header(
+            BlockNumber(0),
+            &BlockHeader {
+                gas_price: GAS_PRICE,
+                sequencer: ContractAddress(patricia_key!(SEQUENCER_ADDRESS)),
+                timestamp: BLOCK_TIMESTAMP,
+                ..Default::default()
+            },
+        )
         .unwrap()
         .append_body(BlockNumber(0), BlockBody::default())
         .unwrap()
@@ -1952,7 +1989,8 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) {
             StateDiff {
                 deployed_contracts: indexmap!(
                     address1 => class_hash1,
-                    address2 => class_hash2
+                    address2 => class_hash2,
+                    account_address => account_class_hash,
                 ),
                 storage_diffs: indexmap!(),
                 declared_classes: indexmap!(
@@ -1960,11 +1998,13 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) {
                     (compiled_class_hash, class2)
                 ),
                 deprecated_declared_classes: indexmap!(
-                    class_hash1 => class1
+                    class_hash1 => class1,
+                    account_class_hash => account_class
                 ),
                 nonces: indexmap!(
                     address1 => Nonce::default(),
-                    address2 => Nonce::default()
+                    address2 => Nonce::default(),
+                    account_address => Nonce::default(),
                 ),
                 replaced_classes: indexmap!(),
             },
@@ -1975,4 +2015,121 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) {
         .unwrap()
         .commit()
         .unwrap();
+}
+
+auto_impl_get_test_instance! {
+    pub struct FeeEstimate {
+        pub gas_consumed: StarkFelt,
+        pub gas_price: GasPrice,
+        pub overall_fee: Fee,
+    }
+}
+
+// TODO(yair, shahak): Make this test pass.
+#[ignore]
+#[test]
+fn validate_fee_estimation_schema() {
+    let mut rng = get_rng();
+    let fee_estimate = FeeEstimate::get_test_instance(&mut rng);
+    let schema = get_starknet_spec_api_schema_for_components(
+        &[(SpecFile::StarknetApiOpenrpc, &["FEE_ESTIMATE"])],
+        &VERSION_0_4,
+    );
+    dbg!(&schema);
+    let serialized = serde_json::to_value(fee_estimate).unwrap();
+    dbg!(&serialized);
+    assert!(validate_schema(&schema, serialized));
+}
+
+#[test]
+fn broadcasted_to_executable_declare_v1() {
+    let mut rng = get_rng();
+    let broadcasted_declare_v1 =
+        BroadcastedTransaction::Declare(API_BroadcastedDeclareTransaction::V1(
+            API_BroadcastedDeclareV1Transaction::get_test_instance(&mut rng),
+        ));
+    assert_matches!(
+        broadcasted_declare_v1.try_into(),
+        Ok(ExecutableTransactionInput::DeclareV1(_tx, _class))
+    );
+}
+
+// TODO(yair): Remove this ignore once we support V2 declares.
+#[ignore]
+#[test]
+fn broadcasted_to_executable_declare_v2() {
+    let mut rng = get_rng();
+    let broadcasted_declare_v2 =
+        BroadcastedTransaction::Declare(API_BroadcastedDeclareTransaction::V2(
+            API_BroadcastedDeclareV2Transaction::get_test_instance(&mut rng),
+        ));
+    assert_matches!(
+        broadcasted_declare_v2.try_into(),
+        Ok(ExecutableTransactionInput::DeclareV2(_tx, _class))
+    );
+}
+
+#[test]
+fn broadcasted_to_executable_deploy_account() {
+    let mut rng = get_rng();
+    let broadcasted_deploy_account = BroadcastedTransaction::DeployAccount(
+        DeployAccountTransaction::get_test_instance(&mut rng),
+    );
+    assert_matches!(
+        broadcasted_deploy_account.try_into(),
+        Ok(ExecutableTransactionInput::Deploy(_tx))
+    );
+}
+
+#[test]
+fn broadcasted_to_executable_invoke() {
+    let mut rng = get_rng();
+    let broadcasted_deploy_account =
+        BroadcastedTransaction::Invoke(InvokeTransaction::get_test_instance(&mut rng));
+    assert_matches!(
+        broadcasted_deploy_account.try_into(),
+        Ok(ExecutableTransactionInput::Invoke(_tx))
+    );
+}
+
+#[tokio::test]
+async fn call_estimate_fee() {
+    let (module, storage_writer, _) =
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+
+    prepare_storage_for_execution(storage_writer);
+
+    let address = ContractAddress(patricia_key!("0x1"));
+    let account_address = ContractAddress(patricia_key!("0x444"));
+
+    let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
+        max_fee: Fee(1000000 * GAS_PRICE.0),
+        version: TransactionVersion(stark_felt!("0x1")),
+        sender_address: account_address,
+        calldata: calldata![
+            *address.0.key(),                      // Contract address.
+            selector_from_name("return_result").0, // EP selector.
+            stark_felt!(1_u8),                     // Calldata length.
+            stark_felt!(2_u8)                      // Calldata: num.
+        ],
+        ..Default::default()
+    }));
+
+    let res = module
+        .call::<_, Vec<FeeEstimate>>(
+            "starknet_V0_4_estimateFee",
+            (vec![invoke], BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0)))),
+        )
+        .await
+        .unwrap();
+
+    // TODO(yair): verify this is the correct fee, got this value by printing the result of the
+    // call.
+    let expected_fee_estimate = vec![FeeEstimate {
+        gas_consumed: stark_felt!("0x19a2"),
+        gas_price: GAS_PRICE,
+        overall_fee: Fee(656200000000000),
+    }];
+
+    assert_eq!(res, expected_fee_estimate);
 }

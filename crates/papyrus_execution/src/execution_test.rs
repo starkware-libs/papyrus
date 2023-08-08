@@ -37,6 +37,8 @@ const CONTRACT_ADDRESS: &str = "0x2";
 const ACCOUNT_CLASS_HASH: &str = "0x333";
 const ACCOUNT_ADDRESS: &str = "0x444";
 
+// TODO(yair): Move utility functions to the end of the file.
+
 // A deprecated class for testing, taken from get_deprecated_contract_class of Blockifier.
 // TODO(yair): Save the json after the abi removal.
 fn get_test_deprecated_contract_class() -> DeprecatedContractClass {

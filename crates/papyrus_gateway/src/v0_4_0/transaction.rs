@@ -13,6 +13,8 @@ use starknet_api::transaction::{
 };
 use starknet_client::writer::objects::transaction as client_transaction;
 
+use super::broadcasted_transaction::API_BroadcastedDeclareTransaction;
+
 // TODO(yair): Make these functions regular consts.
 fn tx_v0() -> TransactionVersion {
     TransactionVersion(StarkFelt::try_from("0x0").expect("Unable to convert 0x0 to StarkFelt."))
@@ -361,4 +363,16 @@ pub struct Event {
     pub transaction_hash: TransactionHash,
     #[serde(flatten)]
     pub event: starknet_api::transaction::Event,
+}
+
+/// Transactions that are ready to be broadcasted to the network and are not included in a block.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum BroadcastedTransaction {
+    #[serde(rename = "DECLARE")]
+    Declare(API_BroadcastedDeclareTransaction),
+    #[serde(rename = "DEPLOY_ACCOUNT")]
+    DeployAccount(DeployAccountTransaction),
+    #[serde(rename = "INVOKE")]
+    Invoke(InvokeTransaction),
 }

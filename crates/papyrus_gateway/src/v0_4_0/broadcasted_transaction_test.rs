@@ -4,11 +4,11 @@ use jsonschema::JSONSchema;
 use lazy_static::lazy_static;
 use starknet_api::core::{CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::{
-    EntryPoint as DeprecatedEntryPoint, EntryPointType as DeprecatedEntryPointType, EventAbiEntry,
-    FunctionAbiEntry, StructAbiEntry,
+    ContractClass as API_DeprecatedContractClass, EntryPoint as DeprecatedEntryPoint,
+    EntryPointType as DeprecatedEntryPointType, EventAbiEntry, FunctionAbiEntry, StructAbiEntry,
 };
 use starknet_api::hash::StarkFelt;
-use starknet_api::state::EntryPoint;
+use starknet_api::state::{ContractClass as API_ContractClass, EntryPoint};
 use starknet_api::transaction::{Fee, TransactionSignature};
 use starknet_client::writer::objects::transaction::{
     DeprecatedContractClass, DeprecatedContractClassAbiEntry,
@@ -16,6 +16,7 @@ use starknet_client::writer::objects::transaction::{
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, get_rng, GetTestInstance};
 
 use super::broadcasted_transaction::{
+    API_BroadcastedDeclareV1Transaction, API_BroadcastedDeclareV2Transaction,
     BroadcastedDeclareTransaction, BroadcastedDeclareV1Transaction,
     BroadcastedDeclareV2Transaction, DeclareType,
 };
@@ -65,6 +66,25 @@ auto_impl_get_test_instance! {
     }
     pub enum DeclareType {
         Declare = 0,
+    }
+
+    pub struct API_BroadcastedDeclareV1Transaction {
+        pub r#type: DeclareType,
+        pub contract_class: API_DeprecatedContractClass,
+        pub sender_address: ContractAddress,
+        pub nonce: Nonce,
+        pub max_fee: Fee,
+        pub signature: TransactionSignature,
+    }
+
+    pub struct API_BroadcastedDeclareV2Transaction {
+        pub r#type: DeclareType,
+        pub contract_class: API_ContractClass,
+        pub compiled_class_hash: CompiledClassHash,
+        pub sender_address: ContractAddress,
+        pub nonce: Nonce,
+        pub max_fee: Fee,
+        pub signature: TransactionSignature,
     }
 }
 
