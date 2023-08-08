@@ -10,8 +10,7 @@ use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, 
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass, ContractClassAbiEntry,
     EntryPoint as DeprecatedEntryPoint, EntryPointOffset,
-    EntryPointType as DeprecatedEntryPointType, FunctionAbiEntry, FunctionAbiEntryType,
-    FunctionAbiEntryWithType, Program, TypedParameter,
+    EntryPointType as DeprecatedEntryPointType, FunctionAbiEntry, Program, TypedParameter,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{EntryPoint, EntryPointType, FunctionIndex};
@@ -190,17 +189,14 @@ async fn deprecated_contract_class() {
     )
     .unwrap();
     let expected_contract_class = DeprecatedContractClass {
-        abi: Some(vec![ContractClassAbiEntry::Function(FunctionAbiEntryWithType {
-            r#type: FunctionAbiEntryType::Constructor,
-            entry: FunctionAbiEntry {
-                name: "constructor".to_string(),
-                inputs: vec![TypedParameter {
-                    name: "implementation".to_string(),
-                    r#type: "felt".to_string(),
-                }],
-                outputs: vec![],
-                state_mutability: None,
-            },
+        abi: Some(vec![ContractClassAbiEntry::Constructor(FunctionAbiEntry {
+            name: "constructor".to_string(),
+            inputs: vec![TypedParameter {
+                name: "implementation".to_string(),
+                r#type: "felt".to_string(),
+            }],
+            outputs: vec![],
+            state_mutability: None,
         })]),
         program: Program {
             attributes: serde_json::Value::Array(vec![serde_json::json!(1234)]),

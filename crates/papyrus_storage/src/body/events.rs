@@ -165,7 +165,7 @@ impl EventIterByEventIndex<'_, '_> {
     /// # Errors
     /// Returns [`StorageError`](crate::StorageError) if there was an error.
     fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
-        let Some((tx_index, (tx_output, _execution_status))) = &self.tx_current else { return Ok(None) };
+        let Some((tx_index, tx_output)) = &self.tx_current else { return Ok(None) };
         let Some(address) =
             tx_output.events_contract_addresses_as_ref().get(self.event_index_in_tx_current.0)
         else {
@@ -186,7 +186,7 @@ impl EventIterByEventIndex<'_, '_> {
     /// # Errors
     /// Returns [`StorageError`](crate::StorageError) if there was an error.
     fn find_next_event_by_event_index(&mut self) -> StorageResult<()> {
-        while let Some((tx_index, (tx_output, _execution_status))) = &self.tx_current {
+        while let Some((tx_index, tx_output)) = &self.tx_current {
             if tx_index.0 > self.to_block_number {
                 self.tx_current = None;
                 break;
@@ -306,6 +306,8 @@ pub struct ThinInvokeTransactionOutput {
     pub messages_sent: Vec<MessageToL1>,
     /// The contract addresses of the events emitted by the transaction.
     pub events_contract_addresses: Vec<ContractAddress>,
+    /// The execution status of the transaction.
+    pub execution_status: TransactionExecutionStatus,
 }
 
 /// A thin version of
@@ -319,6 +321,8 @@ pub struct ThinL1HandlerTransactionOutput {
     pub messages_sent: Vec<MessageToL1>,
     /// The contract addresses of the events emitted by the transaction.
     pub events_contract_addresses: Vec<ContractAddress>,
+    /// The execution status of the transaction.
+    pub execution_status: TransactionExecutionStatus,
 }
 
 /// A thin version of
@@ -332,6 +336,8 @@ pub struct ThinDeclareTransactionOutput {
     pub messages_sent: Vec<MessageToL1>,
     /// The contract addresses of the events emitted by the transaction.
     pub events_contract_addresses: Vec<ContractAddress>,
+    /// The execution status of the transaction.
+    pub execution_status: TransactionExecutionStatus,
 }
 
 /// A thin version of
@@ -347,6 +353,8 @@ pub struct ThinDeployTransactionOutput {
     pub events_contract_addresses: Vec<ContractAddress>,
     /// The contract address of the deployed contract.
     pub contract_address: ContractAddress,
+    /// The execution status of the transaction.
+    pub execution_status: TransactionExecutionStatus,
 }
 
 /// A thin version of
@@ -362,6 +370,8 @@ pub struct ThinDeployAccountTransactionOutput {
     pub events_contract_addresses: Vec<ContractAddress>,
     /// The contract address of the deployed contract.
     pub contract_address: ContractAddress,
+    /// The execution status of the transaction.
+    pub execution_status: TransactionExecutionStatus,
 }
 
 impl From<TransactionOutput> for ThinTransactionOutput {
@@ -374,6 +384,7 @@ impl From<TransactionOutput> for ThinTransactionOutput {
                     actual_fee: tx_output.actual_fee,
                     messages_sent: tx_output.messages_sent,
                     events_contract_addresses,
+                    execution_status: tx_output.execution_status,
                 })
             }
             TransactionOutput::Deploy(tx_output) => {
@@ -382,6 +393,7 @@ impl From<TransactionOutput> for ThinTransactionOutput {
                     messages_sent: tx_output.messages_sent,
                     events_contract_addresses,
                     contract_address: tx_output.contract_address,
+                    execution_status: tx_output.execution_status,
                 })
             }
             TransactionOutput::DeployAccount(tx_output) => {
@@ -390,6 +402,7 @@ impl From<TransactionOutput> for ThinTransactionOutput {
                     messages_sent: tx_output.messages_sent,
                     events_contract_addresses,
                     contract_address: tx_output.contract_address,
+                    execution_status: tx_output.execution_status,
                 })
             }
             TransactionOutput::Invoke(tx_output) => {
@@ -397,6 +410,7 @@ impl From<TransactionOutput> for ThinTransactionOutput {
                     actual_fee: tx_output.actual_fee,
                     messages_sent: tx_output.messages_sent,
                     events_contract_addresses,
+                    execution_status: tx_output.execution_status,
                 })
             }
             TransactionOutput::L1Handler(tx_output) => {
@@ -404,6 +418,7 @@ impl From<TransactionOutput> for ThinTransactionOutput {
                     actual_fee: tx_output.actual_fee,
                     messages_sent: tx_output.messages_sent,
                     events_contract_addresses,
+                    execution_status: tx_output.execution_status,
                 })
             }
         }
@@ -415,8 +430,7 @@ type EventsTableKeyValue = (EventsTableKey, EventContent);
 /// A cursor of the events table.
 type EventsTableCursor<'txn> = DbCursor<'txn, RO, EventsTableKey, EventContent>;
 /// A key-value pair of the transaction outputs table.
-type TransactionOutputsKeyValue =
-    (TransactionIndex, (ThinTransactionOutput, TransactionExecutionStatus));
+type TransactionOutputsKeyValue = (TransactionIndex, ThinTransactionOutput);
 /// A cursor of the transaction outputs table.
 type TransactionOutputsTableCursor<'txn> =
-    DbCursor<'txn, RO, TransactionIndex, (ThinTransactionOutput, TransactionExecutionStatus)>;
+    DbCursor<'txn, RO, TransactionIndex, ThinTransactionOutput>;

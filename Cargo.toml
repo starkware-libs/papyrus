@@ -5,11 +5,11 @@ resolver = "2"
 
 members = [
     "crates/papyrus_base_layer",
-    "crates/papyrus_execution",
-    "crates/papyrus_gateway",
+    # "crates/papyrus_execution",
+    # "crates/papyrus_gateway",
     "crates/papyrus_load_test",
     "crates/papyrus_monitoring_gateway",
-    "crates/papyrus_node",
+    # "crates/papyrus_node",
     "crates/papyrus_proc_macros",
     "crates/papyrus_storage",
     "crates/papyrus_sync",
@@ -18,7 +18,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.3"
+version = "0.0.4"
 edition = "2021"
 repository = "https://github.com/starkware-libs/papyrus/"
 license = "Apache-2.0"
@@ -80,7 +80,7 @@ serde = "1.0.130"
 serde_json = "1.0.81"
 serde_yaml = "0.9.16"
 simple_logger = "4.0.0"
-starknet_api = "0.3.0"
+starknet_api = "0.4.1"
 tempfile = "3.3.0"
 thiserror = "1.0.31"
 tokio = "1.18.2"

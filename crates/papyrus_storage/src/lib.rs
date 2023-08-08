@@ -80,9 +80,7 @@ use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StorageKey, ThinStateDiff};
-use starknet_api::transaction::{
-    EventContent, Transaction, TransactionExecutionStatus, TransactionHash,
-};
+use starknet_api::transaction::{EventContent, Transaction, TransactionHash};
 use tracing::debug;
 use version::{StorageVersionError, Version};
 
@@ -99,7 +97,7 @@ use crate::version::{VersionStorageReader, VersionStorageWriter};
 /// The current version of the storage code.
 /// Whenever a breaking change is introduced, the version is incremented and a storage
 /// migration is required for existing storages.
-pub const STORAGE_VERSION: Version = Version(2);
+pub const STORAGE_VERSION: Version = Version(3);
 
 /// Opens a storage and returns a [`StorageReader`] and a [`StorageWriter`].
 pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, StorageWriter)> {
@@ -249,12 +247,12 @@ struct_field_names! {
         ommer_headers: TableIdentifier<BlockHash, BlockHeader>,
         ommer_nonces: TableIdentifier<(ContractAddress, BlockHash), Nonce>,
         ommer_state_diffs: TableIdentifier<BlockHash, ThinStateDiff>,
-        ommer_transaction_outputs: TableIdentifier<OmmerTransactionKey, (ThinTransactionOutput, TransactionExecutionStatus)>,
+        ommer_transaction_outputs: TableIdentifier<OmmerTransactionKey, ThinTransactionOutput>,
         ommer_transactions: TableIdentifier<OmmerTransactionKey, Transaction>,
         state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
         transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
         transaction_idx_to_hash: TableIdentifier<TransactionIndex, TransactionHash>,
-        transaction_outputs: TableIdentifier<TransactionIndex, (ThinTransactionOutput, TransactionExecutionStatus)>,
+        transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
         transactions: TableIdentifier<TransactionIndex, Transaction>,
         starknet_version: TableIdentifier<BlockNumber, StarknetVersion>,
         storage_version: TableIdentifier<String, Version>

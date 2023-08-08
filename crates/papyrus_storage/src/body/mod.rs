@@ -45,8 +45,8 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockBody, BlockNumber};
 use starknet_api::core::ContractAddress;
 use starknet_api::transaction::{
-    Event, EventContent, EventIndexInTransactionOutput, Transaction, TransactionExecutionStatus,
-    TransactionHash, TransactionOffsetInBlock, TransactionOutput,
+    Event, EventContent, EventIndexInTransactionOutput, Transaction, TransactionHash,
+    TransactionOffsetInBlock, TransactionOutput,
 };
 use tracing::debug;
 
@@ -56,8 +56,7 @@ use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
 type TransactionsTable<'env> = TableHandle<'env, TransactionIndex, Transaction>;
-type TransactionOutputsTable<'env> =
-    TableHandle<'env, TransactionIndex, (ThinTransactionOutput, TransactionExecutionStatus)>;
+type TransactionOutputsTable<'env> = TableHandle<'env, TransactionIndex, ThinTransactionOutput>;
 type TransactionHashToIdxTable<'env> = TableHandle<'env, TransactionHash, TransactionIndex>;
 type TransactionIdxToHashTable<'env> = TableHandle<'env, TransactionIndex, TransactionHash>;
 type EventsTableKey = (ContractAddress, EventIndex);
@@ -82,7 +81,7 @@ pub trait BodyStorageReader {
     fn get_transaction_output(
         &self,
         transaction_index: TransactionIndex,
-    ) -> StorageResult<Option<(ThinTransactionOutput, TransactionExecutionStatus)>>;
+    ) -> StorageResult<Option<ThinTransactionOutput>>;
 
     /// Returns the events of the transaction output at the given index.
     fn get_transaction_events(
@@ -118,15 +117,11 @@ pub trait BodyStorageReader {
     fn get_block_transaction_outputs(
         &self,
         block_number: BlockNumber,
-    ) -> StorageResult<Option<Vec<(ThinTransactionOutput, TransactionExecutionStatus)>>>;
+    ) -> StorageResult<Option<Vec<ThinTransactionOutput>>>;
 }
 
-type RevertedBlockBody = (
-    Vec<Transaction>,
-    Vec<(ThinTransactionOutput, TransactionExecutionStatus)>,
-    Vec<TransactionHash>,
-    Vec<Vec<EventContent>>,
-);
+type RevertedBlockBody =
+    (Vec<Transaction>, Vec<ThinTransactionOutput>, Vec<TransactionHash>, Vec<Vec<EventContent>>);
 
 /// Interface for updating data related to the block body.
 pub trait BodyStorageWriter
@@ -165,7 +160,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
     fn get_transaction_output(
         &self,
         transaction_index: TransactionIndex,
-    ) -> StorageResult<Option<(ThinTransactionOutput, TransactionExecutionStatus)>> {
+    ) -> StorageResult<Option<ThinTransactionOutput>> {
         let transaction_outputs_table = self.txn.open_table(&self.tables.transaction_outputs)?;
         let transaction_output = transaction_outputs_table.get(&self.txn, &transaction_index)?;
         Ok(transaction_output)
@@ -176,7 +171,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         transaction_index: TransactionIndex,
     ) -> StorageResult<Option<Vec<Event>>> {
         let tx_output = self.get_transaction_output(transaction_index)?;
-        let Some((tx_output, _execution_status)) = tx_output else { return Ok(None);};
+        let Some(tx_output) = tx_output else { return Ok(None);};
 
         let events_table = self.txn.open_table(&self.tables.events)?;
 
@@ -233,7 +228,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
     fn get_block_transaction_outputs(
         &self,
         block_number: BlockNumber,
-    ) -> StorageResult<Option<Vec<(ThinTransactionOutput, TransactionExecutionStatus)>>> {
+    ) -> StorageResult<Option<Vec<ThinTransactionOutput>>> {
         let transaction_outputs_table = self.txn.open_table(&self.tables.transaction_outputs)?;
         self.get_transactions_in_block(block_number, transaction_outputs_table)
     }
@@ -332,7 +327,7 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
 
         // Delete the transactions data.
         let mut events = vec![];
-        for (offset, (tx_output, _execution_status)) in transaction_outputs.iter().enumerate() {
+        for (offset, tx_output) in transaction_outputs.iter().enumerate() {
             let tx_index = TransactionIndex(block_number, TransactionOffsetInBlock(offset));
             let tx_hash = self
                 .get_transaction_hash_by_idx(&tx_index)?
@@ -394,19 +389,14 @@ fn write_transaction_outputs<'env>(
     events_table: &'env EventsTable<'env>,
     block_number: BlockNumber,
 ) -> StorageResult<()> {
-    for (index, (tx_output, execution_status)) in block_body
-        .transaction_outputs
-        .into_iter()
-        .zip(block_body.transaction_execution_statuses)
-        .enumerate()
-    {
+    for (index, tx_output) in block_body.transaction_outputs.into_iter().enumerate() {
         let transaction_index = TransactionIndex(block_number, TransactionOffsetInBlock(index));
 
         write_events(&tx_output, txn, events_table, transaction_index)?;
         transaction_outputs_table.insert(
             txn,
             &transaction_index,
-            &(ThinTransactionOutput::from(tx_output), execution_status),
+            &ThinTransactionOutput::from(tx_output),
         )?;
     }
     Ok(())
