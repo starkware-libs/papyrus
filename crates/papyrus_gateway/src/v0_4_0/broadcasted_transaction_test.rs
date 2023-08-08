@@ -62,6 +62,7 @@ auto_impl_get_test_instance! {
         pub entry_points_by_type: EntryPointByType,
         pub abi: String,
     }
+
     pub struct EntryPointByType {
         pub contructor: Vec<EntryPoint>,
         pub external: Vec<EntryPoint>,
