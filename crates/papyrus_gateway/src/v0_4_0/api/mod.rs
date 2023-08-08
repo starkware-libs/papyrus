@@ -1,24 +1,41 @@
 use std::collections::HashSet;
+use std::io::Read;
 
+use flate2::bufread::GzDecoder;
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_common::BlockHashAndNumber;
+use papyrus_execution::{ExecutableTransactionInput, ExecutionError};
 use papyrus_proc_macros::versioned_rpc;
 use serde::{Deserialize, Serialize};
-use starknet_api::block::BlockNumber;
+use starknet_api::block::{BlockNumber, GasPrice};
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
+use starknet_api::deprecated_contract_class::Program;
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::StorageKey;
-use starknet_api::transaction::{Calldata, EventKey, TransactionHash, TransactionOffsetInBlock};
+use starknet_api::transaction::{
+    Calldata,
+    EventKey,
+    Fee,
+    TransactionHash,
+    TransactionOffsetInBlock,
+};
 
 use super::block::Block;
-use super::broadcasted_transaction::BroadcastedDeclareTransaction;
+use super::broadcasted_transaction::{
+    BroadcastedDeclareTransaction,
+    BroadcastedDeclareV1Transaction,
+    BroadcastedTransaction,
+};
 use super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
+use super::error::{JsonRpcError, BLOCK_NOT_FOUND, CONTRACT_ERROR, CONTRACT_NOT_FOUND};
 use super::state::{ContractClass, StateUpdate};
 use super::transaction::{
     DeployAccountTransaction,
     Event,
+    InvokeTransaction,
+    InvokeTransactionV0,
     InvokeTransactionV1,
     TransactionReceipt,
     TransactionWithHash,
@@ -163,6 +180,14 @@ pub trait JsonRpc {
         &self,
         declare_transaction: BroadcastedDeclareTransaction,
     ) -> RpcResult<AddDeclareOkResult>;
+
+    /// Estimates the fee of a series of transactions.
+    #[method(name = "estimateFee")]
+    fn estimate_fee(
+        &self,
+        transactions: Vec<BroadcastedTransaction>,
+        block_id: BlockId,
+    ) -> RpcResult<Vec<FeeEstimate>>;
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -204,4 +229,122 @@ impl ContinuationToken {
     fn new(ct: ContinuationTokenAsStruct) -> Result<Self, ErrorObjectOwned> {
         Ok(Self(serde_json::to_string(&ct.0).map_err(internal_server_error)?))
     }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
+pub struct FeeEstimate {
+    pub gas_consumed: StarkFelt,
+    pub gas_price: GasPrice,
+    pub overall_fee: Fee,
+}
+
+impl TryFrom<BroadcastedTransaction> for ExecutableTransactionInput {
+    type Error = ErrorObjectOwned;
+    fn try_from(value: BroadcastedTransaction) -> Result<Self, Self::Error> {
+        Ok(match value {
+            BroadcastedTransaction::Declare(tx) => tx.try_into()?,
+            BroadcastedTransaction::DeployAccount(tx) => Self::Deploy(tx),
+            BroadcastedTransaction::Invoke(tx) => Self::Invoke(tx.into()),
+        })
+    }
+}
+
+impl TryFrom<BroadcastedDeclareTransaction> for ExecutableTransactionInput {
+    type Error = ErrorObjectOwned;
+    fn try_from(value: BroadcastedDeclareTransaction) -> Result<Self, Self::Error> {
+        match value {
+            BroadcastedDeclareTransaction::V1(BroadcastedDeclareV1Transaction {
+                r#type: _,
+                contract_class,
+                sender_address,
+                nonce,
+                max_fee,
+                signature,
+            }) => Ok(Self::DeclareV1(
+                starknet_api::transaction::DeclareTransactionV0V1 {
+                    max_fee,
+                    signature,
+                    nonce,
+                    // The blockifier doesn't need the class hash, but it uses the SN_API
+                    // DeclareTransactionV0V1 which requires it.
+                    class_hash: ClassHash::default(),
+                    sender_address,
+                },
+                user_deprecated_contract_class_to_sn_api(contract_class)?,
+            )),
+            BroadcastedDeclareTransaction::V2(_) => {
+                // TODO(yair): We need a way to get the casm of a declare V2 transaction.
+                Err(internal_server_error("Declare V2 is not supported yet in execution."))
+            }
+        }
+    }
+}
+
+fn user_deprecated_contract_class_to_sn_api(
+    value: starknet_client::writer::objects::transaction::DeprecatedContractClass,
+) -> Result<starknet_api::deprecated_contract_class::ContractClass, ErrorObjectOwned> {
+    Ok(starknet_api::deprecated_contract_class::ContractClass {
+        abi: value.abi,
+        program: decompress_program(&value.compressed_program)?,
+        entry_points_by_type: value.entry_points_by_type,
+    })
+}
+
+impl From<InvokeTransaction> for starknet_api::transaction::InvokeTransaction {
+    fn from(value: InvokeTransaction) -> Self {
+        match value {
+            InvokeTransaction::Version0(InvokeTransactionV0 {
+                max_fee,
+                version: _,
+                signature,
+                contract_address,
+                entry_point_selector,
+                calldata,
+            }) => Self::V0(starknet_api::transaction::InvokeTransactionV0 {
+                max_fee,
+                signature,
+                contract_address,
+                entry_point_selector,
+                calldata,
+            }),
+            InvokeTransaction::Version1(InvokeTransactionV1 {
+                max_fee,
+                version: _,
+                signature,
+                nonce,
+                sender_address,
+                calldata,
+            }) => Self::V1(starknet_api::transaction::InvokeTransactionV1 {
+                max_fee,
+                signature,
+                nonce,
+                sender_address,
+                calldata,
+            }),
+        }
+    }
+}
+
+impl TryFrom<ExecutionError> for JsonRpcError {
+    type Error = ErrorObjectOwned;
+    fn try_from(value: ExecutionError) -> Result<Self, Self::Error> {
+        match value {
+            ExecutionError::NotSynced { .. } => Ok(BLOCK_NOT_FOUND),
+            ExecutionError::ContractNotFound { .. } => Ok(CONTRACT_NOT_FOUND),
+            // All other execution errors are considered contract errors.
+            _ => Ok(CONTRACT_ERROR),
+        }
+    }
+}
+
+pub(crate) fn decompress_program(
+    base64_compressed_program: &String,
+) -> Result<Program, ErrorObjectOwned> {
+    base64::decode(base64_compressed_program).unwrap();
+    let compressed_data =
+        base64::decode(base64_compressed_program).map_err(internal_server_error)?;
+    let mut decoder = GzDecoder::new(compressed_data.as_slice());
+    let mut decompressed = Vec::new();
+    decoder.read_to_end(&mut decompressed).map_err(internal_server_error)?;
+    serde_json::from_reader(decompressed.as_slice()).map_err(internal_server_error)
 }
