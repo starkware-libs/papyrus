@@ -33,7 +33,14 @@ use itertools::chain;
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 
-use crate::{ConfigError, ParamPath, PointerParam, SerializedParam, IS_NONE_MARK};
+use crate::{
+    ConfigError,
+    ParamPath,
+    PointerParam,
+    SerializedContent,
+    SerializedParam,
+    IS_NONE_MARK,
+};
 
 /// Serialization for configs.
 pub trait SerializeConfig {
@@ -83,7 +90,13 @@ pub fn ser_param<T: Serialize>(
     value: &T,
     description: &str,
 ) -> (String, SerializedParam) {
-    (name.to_owned(), SerializedParam { description: description.to_owned(), value: json!(value) })
+    (
+        name.to_owned(),
+        SerializedParam {
+            description: description.to_owned(),
+            content: SerializedContent::DefaultValue(json!(value)),
+        },
+    )
 }
 
 /// Serializes optional sub-config fields (or default fields for None sub-config) and adds an
@@ -131,7 +144,7 @@ pub fn ser_is_param_none(name: &str, is_none: bool) -> (String, SerializedParam)
         format!("{name}.{IS_NONE_MARK}"),
         SerializedParam {
             description: "Flag for an optional field".to_owned(),
-            value: json!(is_none),
+            content: SerializedContent::DefaultValue(json!(is_none)),
         },
     )
 }

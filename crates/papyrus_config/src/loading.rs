@@ -17,7 +17,15 @@ use itertools::any;
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
 
-use crate::{command, ConfigError, ParamPath, PointerParam, SerializedParam, IS_NONE_MARK};
+use crate::{
+    command,
+    ConfigError,
+    ParamPath,
+    PointerParam,
+    SerializedContent,
+    SerializedParam,
+    IS_NONE_MARK,
+};
 
 /// Deserializes config from flatten JSON.
 /// For an explanation of `for<'a> Deserialize<'a>` see
@@ -82,7 +90,9 @@ pub(crate) fn remove_description(
 ) -> BTreeMap<ParamPath, Value> {
     config_map
         .into_iter()
-        .map(|(param_path, serialized_param)| (param_path, serialized_param.value))
+        .map(|(param_path, serialized_param)| match serialized_param.content {
+            SerializedContent::DefaultValue(value) => (param_path, value),
+        })
         .collect()
 }
 
