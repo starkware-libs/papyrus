@@ -5,7 +5,7 @@ use clap::{value_parser, Arg, ArgMatches, Command};
 use serde_json::{json, Value};
 
 use crate::loading::update_config_map;
-use crate::{ConfigError, ParamPath, SerializedContent, SerializedParam};
+use crate::{ConfigError, ParamPath, SerializationType, SerializedParam};
 
 pub(crate) fn get_command_matches(
     config_map: &BTreeMap<ParamPath, SerializedParam>,
@@ -20,12 +20,13 @@ pub(crate) fn get_command_matches(
 // Supports usize, bool and String.
 pub(crate) fn update_config_map_by_command_args(
     config_map: &mut BTreeMap<ParamPath, Value>,
+    types_map: &BTreeMap<ParamPath, SerializationType>,
     arg_match: &ArgMatches,
 ) -> Result<(), ConfigError> {
     for param_path_id in arg_match.ids() {
         let param_path = param_path_id.as_str();
-        let new_value = get_arg_by_type(config_map, arg_match, param_path)?;
-        update_config_map(config_map, param_path, new_value)?;
+        let new_value = get_arg_by_type(types_map, arg_match, param_path)?;
+        update_config_map(config_map, types_map, param_path, new_value)?;
     }
     Ok(())
 }
@@ -44,15 +45,13 @@ fn build_args_parser(config_map: &BTreeMap<ParamPath, SerializedParam>) -> Vec<A
     ];
 
     for (param_path, serialized_param) in config_map.iter() {
-        let SerializedContent::DefaultValue(value) = &serialized_param.content else {
-            continue;
+        let Some(serialization_type) = serialized_param.content.get_serialization_type() else {
+            continue; // Pointer target
         };
-        let clap_parser = match value {
-            Value::Number(_) => clap::value_parser!(usize).into(),
-            Value::Bool(_) => clap::value_parser!(bool),
-            Value::String(_) => clap::value_parser!(String),
-            // We Don't parse command line overrides for other value types.
-            _ => continue,
+        let clap_parser = match serialization_type {
+            SerializationType::Number => clap::value_parser!(usize).into(),
+            SerializationType::Boolean => clap::value_parser!(bool),
+            SerializationType::String => clap::value_parser!(String),
         };
 
         let arg = Arg::new(param_path)
@@ -67,14 +66,14 @@ fn build_args_parser(config_map: &BTreeMap<ParamPath, SerializedParam>) -> Vec<A
 
 // Converts clap arg_matches into json values.
 fn get_arg_by_type(
-    config_map: &BTreeMap<ParamPath, Value>,
+    types_map: &BTreeMap<ParamPath, SerializationType>,
     arg_match: &ArgMatches,
     param_path: &str,
 ) -> Result<Value, ConfigError> {
-    match config_map[param_path] {
-        Value::Number(_) => Ok(json!(arg_match.try_get_one::<usize>(param_path)?)),
-        Value::Bool(_) => Ok(json!(arg_match.try_get_one::<bool>(param_path)?)),
-        Value::String(_) => Ok(json!(arg_match.try_get_one::<String>(param_path)?)),
-        _ => unreachable!(),
+    let serialization_type = types_map.get(param_path).expect("missing type");
+    match serialization_type {
+        SerializationType::Number => Ok(json!(arg_match.try_get_one::<usize>(param_path)?)),
+        SerializationType::Boolean => Ok(json!(arg_match.try_get_one::<bool>(param_path)?)),
+        SerializationType::String => Ok(json!(arg_match.try_get_one::<String>(param_path)?)),
     }
 }
