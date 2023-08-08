@@ -59,67 +59,54 @@ pub const PENDING_BLOCKS_NOT_SUPPORTED: JsonRpcError = JsonRpcError {
     data: None,
 };
 
-#[allow(dead_code)]
 pub const CLASS_ALREADY_DECLARED: JsonRpcError =
     JsonRpcError { code: 51, message: "Class already declared", data: None };
 
-#[allow(dead_code)]
 pub const INVALID_TRANSACTION_NONCE: JsonRpcError =
     JsonRpcError { code: 52, message: "Invalid transaction nonce", data: None };
 
-#[allow(dead_code)]
 pub const INSUFFICIENT_MAX_FEE: JsonRpcError = JsonRpcError {
     code: 53,
     message: "Max fee is smaller than the minimal transaction cost (validation plus fee transfer)",
     data: None,
 };
 
-#[allow(dead_code)]
 pub const INSUFFICIENT_ACCOUNT_BALANCE: JsonRpcError = JsonRpcError {
     code: 54,
     message: "Account balance is smaller than the transaction's max_fee",
     data: None,
 };
 
-#[allow(dead_code)]
 pub const VALIDATION_FAILURE: JsonRpcError =
     JsonRpcError { code: 55, message: "Account validation failed", data: None };
 
-#[allow(dead_code)]
 pub const COMPILATION_FAILED: JsonRpcError =
     JsonRpcError { code: 56, message: "Compilation failed", data: None };
 
-#[allow(dead_code)]
 pub const CONTRACT_CLASS_SIZE_IS_TOO_LARGE: JsonRpcError =
     JsonRpcError { code: 57, message: "Contract class size it too large", data: None };
 
-#[allow(dead_code)]
 pub const NON_ACCOUNT: JsonRpcError =
     JsonRpcError { code: 58, message: "Sender address in not an account contract", data: None };
 
-#[allow(dead_code)]
 pub const DUPLICATE_TX: JsonRpcError = JsonRpcError {
     code: 59,
     message: "A transaction with the same hash already exists in the mempool",
     data: None,
 };
 
-#[allow(dead_code)]
 pub const COMPILED_CLASS_HASH_MISMATCH: JsonRpcError = JsonRpcError {
     code: 60,
     message: "the compiled class hash did not match the one supplied in the transaction",
     data: None,
 };
 
-#[allow(dead_code)]
 pub const UNSUPPORTED_TX_VERSION: JsonRpcError =
     JsonRpcError { code: 61, message: "the transaction version is not supported", data: None };
 
-#[allow(dead_code)]
 pub const UNSUPPORTED_CONTRACT_CLASS_VERSION: JsonRpcError =
     JsonRpcError { code: 62, message: "the contract class version is not supported", data: None };
 
-#[allow(dead_code)]
 pub fn unexpected_error(data: String) -> JsonRpcError {
     JsonRpcError { code: 63, message: "An unexpected error occured", data: Some(data) }
 }
