@@ -4275,6 +4275,7 @@ dependencies = [
  "lazy_static",
  "serde",
  "serde_json",
+ "strum_macros 0.25.2",
  "tempfile",
  "test_utils",
  "thiserror",

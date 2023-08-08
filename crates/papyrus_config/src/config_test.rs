@@ -21,17 +21,19 @@ use crate::dumping::{
     ser_optional_param,
     ser_optional_sub_config,
     ser_param,
+    ser_required_param,
     SerializeConfig,
 };
 use crate::loading::{
-    get_maps_from_raw_json,
     load,
     load_and_process_config,
-    remove_description,
+    split_pointers_map,
+    split_values_and_types,
+    update_config_map_by_custom_config,
     update_config_map_by_pointers,
     update_optional_values,
 };
-use crate::{ConfigError, ParamPath, SerializedContent, SerializedParam};
+use crate::{ConfigError, ParamPath, SerializationType, SerializedContent, SerializedParam};
 
 lazy_static! {
     static ref CUSTOM_CONFIG_PATH: PathBuf =
@@ -78,7 +80,7 @@ fn dump_and_load_config() {
         OuterConfig { opt_elem: None, opt_config: None, inner_config: InnerConfig { o: 5 } };
 
     for outer_config in [some_outer_config, none_outer_config] {
-        let mut dumped = remove_description(outer_config.dump());
+        let (mut dumped, _) = split_values_and_types(outer_config.dump());
         update_optional_values(&mut dumped);
         let loaded_config = load::<OuterConfig>(&dumped).unwrap();
         assert_eq!(loaded_config, outer_config);
@@ -113,8 +115,8 @@ fn test_update_dumped_config() {
     let args: Vec<String> = args.into_iter().map(|s| s.to_owned()).collect();
 
     let arg_matches = get_command_matches(&dumped_config, command, args).unwrap();
-    let mut config_map = remove_description(dumped_config);
-    update_config_map_by_command_args(&mut config_map, &arg_matches).unwrap();
+    let (mut config_map, required_map) = split_values_and_types(dumped_config);
+    update_config_map_by_command_args(&mut config_map, &required_map, &arg_matches).unwrap();
 
     assert_eq!(json!(1234), config_map["a"]);
     assert_eq!(json!("15"), config_map["b"]);
@@ -153,8 +155,8 @@ fn test_pointers_flow() {
 
     let serialized = serde_json::to_string(&stored_map).unwrap();
     let loaded = serde_json::from_str(&serialized).unwrap();
-    let (loaded_config_map, loaded_pointers_map) = get_maps_from_raw_json(loaded);
-    let mut config_map = remove_description(loaded_config_map);
+    let (loaded_config_map, loaded_pointers_map) = split_pointers_map(loaded);
+    let (mut config_map, _) = split_values_and_types(loaded_config_map);
     update_config_map_by_pointers(&mut config_map, &loaded_pointers_map).unwrap();
     assert_eq!(config_map["a1"], json!(10));
     assert_eq!(config_map["a1"], config_map["a2"]);
@@ -162,8 +164,8 @@ fn test_pointers_flow() {
 
 #[test]
 fn test_replace_pointers() {
-    let mut config_map =
-        remove_description(BTreeMap::from([ser_param("a", &json!(5), "This is a.")]));
+    let (mut config_map, _) =
+        split_values_and_types(BTreeMap::from([ser_param("a", &json!(5), "This is a.")]));
     let pointers_map =
         BTreeMap::from([("b".to_owned(), "a".to_owned()), ("c".to_owned(), "a".to_owned())]);
     update_config_map_by_pointers(&mut config_map, &pointers_map).unwrap();
@@ -245,4 +247,58 @@ fn serialization_precision() {
     let serialized = serde_json::from_str::<serde_json::Value>(input).unwrap();
     let deserialized = serde_json::to_string(&serialized).unwrap();
     assert_eq!(input, deserialized);
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+struct RequiredConfig {
+    param_path: String,
+    num: usize,
+}
+
+impl SerializeConfig for RequiredConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from([
+            ser_required_param("param_path", SerializationType::String, "This is param_path."),
+            ser_param("num", &self.num, "This is num."),
+        ])
+    }
+}
+
+// Loads param_path of CustomConfig from args.
+fn load_required_param_path(args: Vec<&str>) -> String {
+    let dir = TempDir::new().unwrap();
+    let file_path = dir.path().join("config.json");
+    RequiredConfig { param_path: "default value".to_owned(), num: 3 }
+        .dump_to_file(&vec![], file_path.to_str().unwrap())
+        .unwrap();
+
+    let loaded_config = load_and_process_config::<CustomConfig>(
+        File::open(file_path).unwrap(),
+        Command::new("Program"),
+        args.into_iter().map(|s| s.to_owned()).collect(),
+    )
+    .unwrap();
+    loaded_config.param_path
+}
+
+#[test]
+fn test_negative_required_param() {
+    let dumped_config = RequiredConfig { param_path: "0".to_owned(), num: 3 }.dump();
+    let (config_map, _) = split_values_and_types(dumped_config);
+    let err = load::<RequiredConfig>(&config_map).unwrap_err();
+    assert_matches!(err, ConfigError::MissingParam { .. });
+}
+
+#[test]
+fn test_required_param_from_command() {
+    let args = vec!["Testing", "--param_path", "1234"];
+    let param_path = load_required_param_path(args);
+    assert_eq!(param_path, "1234");
+}
+
+#[test]
+fn test_required_param_from_file() {
+    let args = vec!["Testing", "--config_file", CUSTOM_CONFIG_PATH.to_str().unwrap()];
+    let param_path = load_required_param_path(args);
+    assert_eq!(param_path, "custom value");
 }
