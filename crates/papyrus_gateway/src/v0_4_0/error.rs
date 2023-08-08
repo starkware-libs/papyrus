@@ -1,3 +1,6 @@
+use jsonrpsee::types::ErrorObjectOwned;
+
+// TODO(shahak) Implement all the v0_4_0 errors.
 #[derive(thiserror::Error, Clone, Copy, Debug)]
 pub enum JsonRpcError {
     #[error("There are no blocks.")]

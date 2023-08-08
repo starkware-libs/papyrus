@@ -1,5 +1,8 @@
+use std::collections::HashSet;
+
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
+use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_proc_macros::versioned_rpc;
 use serde::{Deserialize, Serialize};
@@ -7,14 +10,16 @@ use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::StorageKey;
-use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
+use starknet_api::transaction::{EventKey, TransactionHash, TransactionOffsetInBlock};
 
 use super::block::Block;
 use super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::state::{ContractClass, StateUpdate};
 use super::transaction::{Event, TransactionReceiptWithStatus, TransactionWithHash};
-use crate::api::{BlockId, ContinuationToken, EventFilter};
+use crate::api::BlockId;
 use crate::syncing_state::SyncingState;
+use crate::v0_3_0::error::JsonRpcError;
+use crate::{internal_server_error, ContinuationTokenAsStruct};
 
 pub mod api_impl;
 #[cfg(test)]

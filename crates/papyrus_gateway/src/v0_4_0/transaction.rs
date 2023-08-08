@@ -4,7 +4,7 @@ use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::db::TransactionKind;
 use papyrus_storage::StorageTxn;
 use serde::{Deserialize, Deserializer, Serialize};
-use starknet_api::block::{BlockHash, BlockNumber, BlockNumber, BlockStatus};
+use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
 use starknet_api::core::{
     ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, Nonce,
 };
@@ -12,13 +12,13 @@ use starknet_api::hash::StarkFelt;
 use starknet_api::transaction::{
     Calldata, DeclareTransactionOutput, DeployAccountTransaction, DeployAccountTransactionOutput,
     DeployTransaction, DeployTransactionOutput, Fee, InvokeTransactionOutput, L1HandlerTransaction,
-    L1HandlerTransactionOutput, TransactionExecutionStatus, TransactionHash, TransactionHash,
-    TransactionSignature, TransactionVersion,
+    L1HandlerTransactionOutput, TransactionExecutionStatus, TransactionHash, TransactionSignature,
+    TransactionVersion,
 };
 use starknet_client::writer::objects::transaction as client_transaction;
 
-use crate::api::JsonRpcError;
 use crate::internal_server_error;
+use crate::v0_4_0::error::JsonRpcError;
 
 // TODO(yair): Make these functions regular consts.
 fn tx_v0() -> TransactionVersion {

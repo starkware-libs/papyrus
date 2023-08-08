@@ -47,11 +47,13 @@ use super::super::transaction::{
     TransactionReceiptWithStatus, TransactionWithHash, Transactions,
 };
 use super::api_impl::JsonRpcServerV0_4Impl;
-use crate::api::{BlockHashOrNumber, BlockId, ContinuationToken, EventFilter, JsonRpcError, Tag};
+use super::{ContinuationToken, EventFilter};
+use crate::api::{BlockHashOrNumber, BlockId, Tag};
 use crate::test_utils::{
     get_starknet_spec_api_schema_for_components, get_test_gateway_config, get_test_highest_block,
     get_test_rpc_server_and_storage_writer, validate_schema, SpecFile,
 };
+use crate::v0_4_0::error::JsonRpcError;
 use crate::version_config::VERSION_0_4;
 use crate::{run_server, ContinuationTokenAsStruct};
 

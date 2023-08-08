@@ -1,3 +1,5 @@
+use jsonrpsee::types::ErrorObjectOwned;
+
 #[derive(thiserror::Error, Clone, Copy, Debug)]
 pub enum JsonRpcError {
     #[error("There are no blocks.")]

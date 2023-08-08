@@ -1,5 +1,4 @@
 mod api;
-mod block;
 mod gateway_metrics;
 #[cfg(test)]
 mod gateway_test;
@@ -7,7 +6,6 @@ mod middleware;
 mod syncing_state;
 #[cfg(test)]
 mod test_utils;
-mod transaction;
 mod v0_3_0;
 mod v0_4_0;
 mod version_config;
@@ -40,10 +38,7 @@ use starknet_client::RetryConfig;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, instrument};
 
-use crate::api::{
-    get_methods_from_supported_apis, BlockHashOrNumber, BlockId, ContinuationToken, JsonRpcError,
-    Tag,
-};
+use crate::api::get_methods_from_supported_apis;
 use crate::middleware::{deny_requests_with_unsupported_path, proxy_rpc_request};
 
 /// Maximum size of a supported transaction body - 10MB.

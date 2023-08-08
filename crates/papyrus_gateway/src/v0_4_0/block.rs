@@ -3,12 +3,13 @@ use papyrus_storage::db::TransactionKind;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::StorageTxn;
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockHash, BlockNumber, BlockNumber, BlockStatus, BlockTimestamp};
+use starknet_api::block::{BlockHash, BlockNumber, BlockStatus, BlockTimestamp};
 use starknet_api::core::{ContractAddress, GlobalRoot};
 
 use super::transaction::Transactions;
-use crate::api::JsonRpcError;
-use crate::internal_server_error;
+use crate::api::{BlockHashOrNumber, BlockId, Tag};
+use crate::v0_4_0::error::JsonRpcError;
+use crate::{get_latest_block_number, internal_server_error};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockHeader {
@@ -56,7 +57,7 @@ pub fn get_block_header_by_number<
     Ok(BlockHeader::from(header))
 }
 
-fn get_block_number<Mode: TransactionKind>(
+pub(crate) fn get_block_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
     block_id: BlockId,
 ) -> Result<BlockNumber, ErrorObjectOwned> {
