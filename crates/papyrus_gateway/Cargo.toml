@@ -14,6 +14,7 @@ futures.workspace = true
 futures-util.workspace = true
 hyper = { workspace = true, features = ["full"] }
 jsonrpsee = { workspace = true, features = ["full"] }
+lazy_static.workspace = true
 metrics.workspace = true
 papyrus_common = { path = "../papyrus_common"}
 papyrus_config = { path = "../papyrus_config", version = "0.0.4" }
