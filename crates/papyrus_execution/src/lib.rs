@@ -9,6 +9,8 @@ mod state_reader;
 #[path = "state_reader_test.rs"]
 mod state_reader_test;
 
+pub mod objects;
+
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -40,6 +42,7 @@ use cairo_vm::vm::runners::builtin_runner::{
     RANGE_CHECK_BUILTIN_NAME,
     SIGNATURE_BUILTIN_NAME,
 };
+use objects::TransactionTrace;
 use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::RO;
 use papyrus_storage::header::HeaderStorageReader;
@@ -116,6 +119,10 @@ pub enum ExecutionError {
     ProgramError(#[from] ProgramError),
     #[error(transparent)]
     TransactionExecutionError(#[from] TransactionExecutionError),
+    #[error("Charging fee is not supported yet in execution.")]
+    ChargeFeeNotSupported,
+    #[error("Must provide fee token contract address when passing charge_fee or validate.")]
+    MissingFeeTokenContractAddress,
 }
 
 /// Executes a StarkNet call and returns the execution result.
@@ -151,7 +158,7 @@ pub fn execute_call(
         header.timestamp,
         header.gas_price,
         &header.sequencer,
-        &ContractAddress::default(),
+        None,
     );
     let mut context = EntryPointExecutionContext::new(
         block_context,
@@ -204,14 +211,14 @@ fn create_block_context(
     block_timestamp: BlockTimestamp,
     gas_price: GasPrice,
     sequencer_address: &ContractAddress,
-    fee_contract_address: &ContractAddress,
+    fee_contract_address: Option<ContractAddress>,
 ) -> BlockContext {
     BlockContext {
         chain_id,
         block_number,
         block_timestamp,
         sequencer_address: *sequencer_address,
-        fee_token_address: *fee_contract_address,
+        fee_token_address: fee_contract_address.unwrap_or_default(),
         vm_resource_fee_cost: VM_RESOURCE_FEE_COST.clone(),
         invoke_tx_max_n_steps: INVOKE_TX_MAX_N_STEPS,
         validate_max_n_steps: VALIDATE_TX_MAX_N_STEPS,
@@ -243,15 +250,8 @@ pub fn estimate_fee(
     storage_txn: &StorageTxn<'_, RO>,
     state_number: StateNumber,
 ) -> ExecutionResult<Vec<(GasPrice, Fee)>> {
-    let (txs_execution_info, block_context) = execute_transactions(
-        txs,
-        chain_id,
-        storage_txn,
-        state_number,
-        &ContractAddress::default(),
-        false,
-        false,
-    )?;
+    let (txs_execution_info, block_context) =
+        execute_transactions(txs, chain_id, storage_txn, state_number, None, false, false)?;
     Ok(txs_execution_info
         .into_iter()
         .map(|tx_execution_info| (GasPrice(block_context.gas_price), tx_execution_info.actual_fee))
@@ -264,10 +264,13 @@ fn execute_transactions(
     chain_id: &ChainId,
     storage_txn: &StorageTxn<'_, RO>,
     state_number: StateNumber,
-    fee_contract_address: &ContractAddress,
+    fee_contract_address: Option<ContractAddress>,
     charge_fee: bool,
     validate: bool,
 ) -> ExecutionResult<(Vec<TransactionExecutionInfo>, BlockContext)> {
+    if fee_contract_address.is_none() && (charge_fee || validate) {
+        return Err(ExecutionError::MissingFeeTokenContractAddress);
+    }
     verify_node_synced(storage_txn, state_number)?;
     let header = storage_txn
         .get_block_header(block_before(state_number))?
@@ -351,4 +354,58 @@ impl TryFrom<ExecutableTransactionInput> for BlockifierTransaction {
             }
         }
     }
+}
+
+/// Simulates a series of transactions and returns the transaction traces and the fee estimations.
+pub fn simulate_transactions(
+    txs: Vec<ExecutableTransactionInput>,
+    chain_id: &ChainId,
+    storage_txn: &StorageTxn<'_, RO>,
+    state_number: StateNumber,
+    // Can be None if we don't want to charge fees or validate.
+    fee_contract_address: Option<ContractAddress>,
+    charge_fee: bool,
+    validate: bool,
+) -> ExecutionResult<Vec<(TransactionTrace, GasPrice, Fee)>> {
+    let (txs_execution_info, block_context) = execute_transactions(
+        // TODO(yair): Modify execute_transactions so it doesn't consume the txs / save the tx
+        // types before consuming them.
+        txs.clone(),
+        chain_id,
+        storage_txn,
+        state_number,
+        fee_contract_address,
+        charge_fee,
+        validate,
+    )?;
+    Ok(txs
+        .iter()
+        .zip(txs_execution_info.into_iter())
+        .map(|(tx, exec_info)| calc_trace_and_fee(tx, exec_info, &block_context))
+        .collect())
+}
+
+fn calc_trace_and_fee(
+    tx: &ExecutableTransactionInput,
+    execution_info: TransactionExecutionInfo,
+    block_context: &BlockContext,
+) -> (TransactionTrace, GasPrice, Fee) {
+    let gas_price = GasPrice(block_context.gas_price);
+    let fee = execution_info.actual_fee;
+    let trace = match tx {
+        ExecutableTransactionInput::Invoke(_) => TransactionTrace::Invoke(execution_info.into()),
+        ExecutableTransactionInput::DeclareV0(_, _) => {
+            TransactionTrace::Declare(execution_info.into())
+        }
+        ExecutableTransactionInput::DeclareV1(_, _) => {
+            TransactionTrace::Declare(execution_info.into())
+        }
+        ExecutableTransactionInput::DeclareV2(_, _) => {
+            TransactionTrace::Declare(execution_info.into())
+        }
+        ExecutableTransactionInput::Deploy(_) => {
+            TransactionTrace::DeployAccount(execution_info.into())
+        }
+    };
+    (trace, gas_price, fee)
 }
