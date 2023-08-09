@@ -44,6 +44,7 @@ fn test_dump_default_config() {
 
 #[test]
 fn test_default_config_process() {
+    env::set_current_dir(get_absolute_path("")).expect("Couldn't set working dir.");
     assert_eq!(NodeConfig::load_and_process(vec![]).unwrap(), NodeConfig::default());
 }
 
@@ -57,6 +58,7 @@ fn test_update_dumped_config_by_command() {
         "/abc",
     ];
     let args: Vec<String> = args.into_iter().map(|s| s.to_owned()).collect();
+    env::set_current_dir(get_absolute_path("")).expect("Couldn't set working dir.");
     let config = NodeConfig::load_and_process(args).unwrap();
 
     assert_eq!(config.gateway.max_events_keys, 1234);

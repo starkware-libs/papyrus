@@ -8,8 +8,7 @@ use starknet_api::block::{BlockHash, BlockHeader};
 use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, ThinStateDiff};
 use starknet_api::transaction::{
-    EventContent, EventIndexInTransactionOutput, Transaction, TransactionExecutionStatus,
-    TransactionOffsetInBlock,
+    EventContent, EventIndexInTransactionOutput, Transaction, TransactionOffsetInBlock,
 };
 
 use crate::body::events::ThinTransactionOutput;
@@ -51,7 +50,7 @@ where
         self,
         block_hash: BlockHash,
         transactions: &[Transaction],
-        thin_transaction_outputs: &[(ThinTransactionOutput, TransactionExecutionStatus)],
+        thin_transaction_outputs: &[ThinTransactionOutput],
         transaction_outputs_events: &[Vec<EventContent>],
     ) -> StorageResult<Self>;
 
@@ -84,7 +83,7 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
         self,
         block_hash: BlockHash,
         transactions: &[Transaction],
-        thin_transaction_outputs: &[(ThinTransactionOutput, TransactionExecutionStatus)],
+        thin_transaction_outputs: &[ThinTransactionOutput],
         transaction_outputs_events: &[Vec<EventContent>],
     ) -> StorageResult<Self> {
         assert!(transactions.len() == thin_transaction_outputs.len());
@@ -116,7 +115,7 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
             let events = &transaction_outputs_events[idx];
             for (event_offset, (event, address)) in events
                 .iter()
-                .zip(thin_transaction_outputs[idx].0.events_contract_addresses_as_ref().iter())
+                .zip(thin_transaction_outputs[idx].events_contract_addresses_as_ref().iter())
                 .enumerate()
             {
                 let event_key =

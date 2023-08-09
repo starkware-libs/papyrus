@@ -3,15 +3,14 @@ use std::collections::HashMap;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{
-    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, Nonce,
+    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, EthAddress, Nonce,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::{
     Calldata, ContractAddressSalt, DeclareTransactionOutput, DeployAccountTransactionOutput,
-    DeployTransactionOutput, EthAddress, Event, Fee, InvokeTransactionOutput,
-    L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, MessageToL1,
-    TransactionExecutionStatus, TransactionHash, TransactionOffsetInBlock, TransactionOutput,
-    TransactionSignature, TransactionVersion,
+    DeployTransactionOutput, Event, Fee, InvokeTransactionOutput, L1HandlerTransactionOutput,
+    L1ToL2Payload, L2ToL1Payload, MessageToL1, TransactionExecutionStatus, TransactionHash,
+    TransactionOffsetInBlock, TransactionOutput, TransactionSignature, TransactionVersion,
 };
 
 use crate::reader::ReaderClientError;
@@ -324,6 +323,7 @@ impl TransactionReceipt {
                 actual_fee: self.actual_fee,
                 messages_sent,
                 events: self.events,
+                execution_status: self.execution_status,
             }),
             TransactionType::Deploy => TransactionOutput::Deploy(DeployTransactionOutput {
                 actual_fee: self.actual_fee,
@@ -331,6 +331,7 @@ impl TransactionReceipt {
                 events: self.events,
                 contract_address: contract_address
                     .expect("Deploy transaction must have a contract address."),
+                execution_status: self.execution_status,
             }),
             TransactionType::DeployAccount => {
                 TransactionOutput::DeployAccount(DeployAccountTransactionOutput {
@@ -339,18 +340,21 @@ impl TransactionReceipt {
                     events: self.events,
                     contract_address: contract_address
                         .expect("Deploy account transaction must have a contract address."),
+                    execution_status: self.execution_status,
                 })
             }
             TransactionType::InvokeFunction => TransactionOutput::Invoke(InvokeTransactionOutput {
                 actual_fee: self.actual_fee,
                 messages_sent,
                 events: self.events,
+                execution_status: self.execution_status,
             }),
             TransactionType::L1Handler => {
                 TransactionOutput::L1Handler(L1HandlerTransactionOutput {
                     actual_fee: self.actual_fee,
                     messages_sent,
                     events: self.events,
+                    execution_status: self.execution_status,
                 })
             }
         }

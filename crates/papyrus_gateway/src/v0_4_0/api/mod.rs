@@ -15,7 +15,7 @@ use starknet_api::transaction::{Calldata, EventKey, TransactionHash, Transaction
 use super::block::Block;
 use super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::state::{ContractClass, StateUpdate};
-use super::transaction::{Event, TransactionReceiptWithStatus, TransactionWithHash};
+use super::transaction::{Event, TransactionReceipt, TransactionWithHash};
 use crate::api::BlockId;
 use crate::syncing_state::SyncingState;
 use crate::v0_4_0::error::JsonRpcError;
@@ -80,7 +80,7 @@ pub trait JsonRpc {
     fn get_transaction_receipt(
         &self,
         transaction_hash: TransactionHash,
-    ) -> RpcResult<TransactionReceiptWithStatus>;
+    ) -> RpcResult<TransactionReceipt>;
 
     /// Gets the contract class definition associated with the given hash.
     #[method(name = "getClass")]

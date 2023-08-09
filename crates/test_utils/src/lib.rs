@@ -28,14 +28,14 @@ use starknet_api::block::{
     Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
 };
 use starknet_api::core::{
-    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, GlobalRoot, Nonce,
+    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, EthAddress, GlobalRoot,
+    Nonce,
 };
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass, ContractClassAbiEntry,
     EntryPoint as DeprecatedEntryPoint, EntryPointOffset,
     EntryPointType as DeprecatedEntryPointType, EventAbiEntry, FunctionAbiEntry,
-    FunctionAbiEntryType, FunctionAbiEntryWithType, FunctionStateMutability, Program,
-    StructAbiEntry, StructMember, TypedParameter,
+    FunctionStateMutability, Program, StructAbiEntry, StructMember, TypedParameter,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::stark_felt;
@@ -45,7 +45,7 @@ use starknet_api::state::{
 use starknet_api::transaction::{
     Calldata, ContractAddressSalt, DeclareTransaction, DeclareTransactionOutput,
     DeclareTransactionV0V1, DeclareTransactionV2, DeployAccountTransaction,
-    DeployAccountTransactionOutput, DeployTransaction, DeployTransactionOutput, EthAddress, Event,
+    DeployAccountTransactionOutput, DeployTransaction, DeployTransactionOutput, Event,
     EventContent, EventData, EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction,
     InvokeTransactionOutput, InvokeTransactionV0, InvokeTransactionV1, L1HandlerTransaction,
     L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, MessageToL1, MessageToL2,
@@ -181,12 +181,7 @@ fn get_rand_test_body_with_events(
         transaction_outputs.push(transaction_output);
         transaction_execution_statuses.push(TransactionExecutionStatus::default());
     }
-    let mut body = BlockBody {
-        transactions,
-        transaction_outputs,
-        transaction_hashes,
-        transaction_execution_statuses,
-    };
+    let mut body = BlockBody { transactions, transaction_outputs, transaction_hashes };
     for tx_output in &mut body.transaction_outputs {
         let mut events = vec![];
         for _ in 0..events_per_tx {
@@ -330,8 +325,10 @@ auto_impl_get_test_instance! {
     }
     pub enum ContractClassAbiEntry {
         Event(EventAbiEntry) = 0,
-        Function(FunctionAbiEntryWithType) = 1,
-        Struct(StructAbiEntry) = 2,
+        Function(FunctionAbiEntry) = 1,
+        Constructor(FunctionAbiEntry) = 2,
+        L1Handler(FunctionAbiEntry) = 3,
+        Struct(StructAbiEntry) = 4,
     }
     pub enum DeclareTransaction {
         V0(DeclareTransactionV0V1) = 0,
@@ -407,15 +404,6 @@ auto_impl_get_test_instance! {
         pub inputs: Vec<TypedParameter>,
         pub outputs: Vec<TypedParameter>,
         pub state_mutability: Option<FunctionStateMutability>,
-    }
-    pub enum FunctionAbiEntryType {
-        Constructor = 0,
-        L1Handler = 1,
-        Function = 2,
-    }
-    pub struct FunctionAbiEntryWithType {
-        pub r#type: FunctionAbiEntryType,
-        pub entry: FunctionAbiEntry,
     }
     pub enum FunctionStateMutability {
         View = 0,

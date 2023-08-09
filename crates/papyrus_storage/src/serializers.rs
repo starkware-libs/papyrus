@@ -23,15 +23,14 @@ use starknet_api::block::{
     BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
 };
 use starknet_api::core::{
-    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, GlobalRoot, Nonce,
-    PatriciaKey,
+    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, EthAddress, GlobalRoot,
+    Nonce, PatriciaKey,
 };
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass, ContractClassAbiEntry,
     EntryPoint as DeprecatedEntryPoint, EntryPointOffset,
     EntryPointType as DeprecatedEntryPointType, EventAbiEntry, FunctionAbiEntry,
-    FunctionAbiEntryType, FunctionAbiEntryWithType, FunctionStateMutability, Program,
-    StructAbiEntry, StructMember, TypedParameter,
+    FunctionStateMutability, Program, StructAbiEntry, StructMember, TypedParameter,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{
@@ -39,10 +38,10 @@ use starknet_api::state::{
 };
 use starknet_api::transaction::{
     Calldata, ContractAddressSalt, DeclareTransaction, DeclareTransactionV0V1,
-    DeclareTransactionV2, DeployAccountTransaction, DeployTransaction, EthAddress, EventContent,
-    EventData, EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction,
-    InvokeTransactionV0, InvokeTransactionV1, L1HandlerTransaction, L1ToL2Payload, L2ToL1Payload,
-    MessageToL1, MessageToL2, Transaction, TransactionExecutionStatus, TransactionHash,
+    DeclareTransactionV2, DeployAccountTransaction, DeployTransaction, EventContent, EventData,
+    EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction, InvokeTransactionV0,
+    InvokeTransactionV1, L1HandlerTransaction, L1ToL2Payload, L2ToL1Payload, MessageToL1,
+    MessageToL2, Transaction, TransactionExecutionStatus, TransactionHash,
     TransactionOffsetInBlock, TransactionSignature, TransactionVersion,
 };
 
@@ -89,8 +88,10 @@ auto_storage_serde! {
     pub struct ContractAddressSalt(pub StarkHash);
     pub enum ContractClassAbiEntry {
         Event(EventAbiEntry) = 0,
-        Function(FunctionAbiEntryWithType) = 1,
-        Struct(StructAbiEntry) = 2,
+        Function(FunctionAbiEntry) = 1,
+        Constructor(FunctionAbiEntry) = 2,
+        L1Handler(FunctionAbiEntry) = 3,
+        Struct(StructAbiEntry) = 4,
     }
     pub enum DeclareTransaction {
         V0(DeclareTransactionV0V1) = 0,
@@ -170,15 +171,6 @@ auto_storage_serde! {
         pub outputs: Vec<TypedParameter>,
         pub state_mutability: Option<FunctionStateMutability>,
     }
-    pub enum FunctionAbiEntryType {
-        Constructor = 0,
-        L1Handler = 1,
-        Function = 2,
-    }
-    pub struct FunctionAbiEntryWithType {
-        pub r#type: FunctionAbiEntryType,
-        pub entry: FunctionAbiEntry,
-    }
     pub enum FunctionStateMutability {
         View = 0,
     }
@@ -254,18 +246,21 @@ auto_storage_serde! {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
+        pub execution_status: TransactionExecutionStatus,
     }
     pub struct ThinDeployTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
         pub contract_address: ContractAddress,
+        pub execution_status: TransactionExecutionStatus,
     }
     pub struct ThinDeployAccountTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
         pub contract_address: ContractAddress,
+        pub execution_status: TransactionExecutionStatus,
     }
     pub struct TypedParameter {
         pub name: String,
@@ -275,6 +270,7 @@ auto_storage_serde! {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
+        pub execution_status: TransactionExecutionStatus,
     }
     pub struct L1HandlerTransaction {
         pub version: TransactionVersion,
@@ -287,6 +283,7 @@ auto_storage_serde! {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
+        pub execution_status: TransactionExecutionStatus,
     }
     pub struct ThinStateDiff {
         pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
@@ -351,7 +348,6 @@ auto_storage_serde! {
     (ContractAddress, OmmerEventKey);
     (ContractAddress, StorageKey, BlockHash);
     (ContractAddress, StorageKey, BlockNumber);
-    (ThinTransactionOutput, TransactionExecutionStatus);
     (usize, Vec<Hint>);
     (usize, Vec<String>);
 }

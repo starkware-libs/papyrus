@@ -16,26 +16,22 @@ async fn append_body() {
     let txs = body.transactions;
     let tx_outputs = body.transaction_outputs;
     let tx_hashes = body.transaction_hashes;
-    let tx_exec_sts = body.transaction_execution_statuses;
 
     let body0 = BlockBody {
         transactions: vec![txs[0].clone()],
         transaction_outputs: vec![tx_outputs[0].clone()],
         transaction_hashes: vec![tx_hashes[0]],
-        transaction_execution_statuses: vec![tx_exec_sts[0].clone()],
     };
     let body1 = BlockBody::default();
     let body2 = BlockBody {
         transactions: vec![txs[1].clone(), txs[2].clone()],
         transaction_outputs: vec![tx_outputs[1].clone(), tx_outputs[2].clone()],
         transaction_hashes: vec![tx_hashes[1], tx_hashes[2]],
-        transaction_execution_statuses: vec![tx_exec_sts[1].clone(), tx_exec_sts[2].clone()],
     };
     let body3 = BlockBody {
         transactions: vec![txs[3].clone(), txs[0].clone()],
         transaction_outputs: vec![tx_outputs[3].clone(), tx_outputs[0].clone()],
         transaction_hashes: vec![tx_hashes[3], tx_hashes[0]],
-        transaction_execution_statuses: vec![tx_exec_sts[3].clone(), tx_exec_sts[0].clone()],
     };
     writer
         .begin_rw_txn()
@@ -93,8 +89,8 @@ async fn append_body() {
             expected_tx
         );
 
-        let expected_tx_output = original_index
-            .map(|i| (ThinTransactionOutput::from(tx_outputs[i].clone()), tx_exec_sts[i].clone()));
+        let expected_tx_output =
+            original_index.map(|i| ThinTransactionOutput::from(tx_outputs[i].clone()));
         assert_eq!(
             txn.get_transaction_output(TransactionIndex(block_number, tx_offset)).unwrap(),
             expected_tx_output
@@ -168,14 +164,14 @@ async fn append_body() {
     // Check block transaction outputs.
     assert_eq!(
         txn.get_block_transaction_outputs(BlockNumber(0)).unwrap(),
-        Some(vec![(ThinTransactionOutput::from(tx_outputs[0].clone()), tx_exec_sts[0].clone())])
+        Some(vec![ThinTransactionOutput::from(tx_outputs[0].clone())])
     );
     assert_eq!(txn.get_block_transaction_outputs(BlockNumber(1)).unwrap(), Some(vec![]));
     assert_eq!(
         txn.get_block_transaction_outputs(BlockNumber(2)).unwrap(),
         Some(vec![
-            (ThinTransactionOutput::from(tx_outputs[1].clone()), tx_exec_sts[1].clone()),
-            (ThinTransactionOutput::from(tx_outputs[2].clone()), tx_exec_sts[2].clone()),
+            ThinTransactionOutput::from(tx_outputs[1].clone()),
+            ThinTransactionOutput::from(tx_outputs[2].clone()),
         ])
     );
     assert_eq!(txn.get_block_transaction_outputs(BlockNumber(3)).unwrap(), None);

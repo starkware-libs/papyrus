@@ -292,6 +292,7 @@ impl TransactionOutput {
                     actual_fee: thin_declare.actual_fee,
                     messages_sent: thin_declare.messages_sent,
                     events,
+                    execution_status: thin_declare.execution_status,
                 })
             }
             ThinTransactionOutput::Deploy(thin_deploy) => {
@@ -300,6 +301,7 @@ impl TransactionOutput {
                     messages_sent: thin_deploy.messages_sent,
                     events,
                     contract_address: thin_deploy.contract_address,
+                    execution_status: thin_deploy.execution_status,
                 })
             }
             ThinTransactionOutput::DeployAccount(thin_deploy) => {
@@ -308,6 +310,7 @@ impl TransactionOutput {
                     messages_sent: thin_deploy.messages_sent,
                     events,
                     contract_address: thin_deploy.contract_address,
+                    execution_status: thin_deploy.execution_status,
                 })
             }
             ThinTransactionOutput::Invoke(thin_invoke) => {
@@ -315,6 +318,7 @@ impl TransactionOutput {
                     actual_fee: thin_invoke.actual_fee,
                     messages_sent: thin_invoke.messages_sent,
                     events,
+                    execution_status: thin_invoke.execution_status,
                 })
             }
             ThinTransactionOutput::L1Handler(thin_l1handler) => {
@@ -322,6 +326,7 @@ impl TransactionOutput {
                     actual_fee: thin_l1handler.actual_fee,
                     messages_sent: thin_l1handler.messages_sent,
                     events,
+                    execution_status: thin_l1handler.execution_status,
                 })
             }
         }

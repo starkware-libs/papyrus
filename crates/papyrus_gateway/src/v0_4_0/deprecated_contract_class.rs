@@ -3,83 +3,11 @@ use std::collections::HashMap;
 use papyrus_storage::compression_utils::serialize_and_compress;
 use papyrus_storage::db::serialization::{StorageSerde, StorageSerdeError};
 use serde::{Deserialize, Serialize};
-use starknet_api::deprecated_contract_class::{
-    EntryPoint, EntryPointType, EventAbiEntry, FunctionAbiEntry, FunctionAbiEntryType,
-    StructAbiEntry,
-};
-
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-#[serde(untagged)]
-pub enum ContractClassAbiEntry {
-    /// An event abi entry.
-    Event(EventAbiEntry),
-    /// A function abi entry.
-    Function(FunctionAbiEntry),
-    /// A struct abi entry.
-    Struct(StructAbiEntry),
-}
-
-#[derive(
-    Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord, Default,
-)]
-pub enum ContractClassAbiEntryType {
-    #[serde(rename(deserialize = "constructor", serialize = "constructor"))]
-    Constructor,
-    #[serde(rename(deserialize = "event", serialize = "event"))]
-    Event,
-    #[serde(rename(deserialize = "function", serialize = "function"))]
-    #[default]
-    Function,
-    #[serde(rename(deserialize = "l1_handler", serialize = "l1_handler"))]
-    L1Handler,
-    #[serde(rename(deserialize = "struct", serialize = "struct"))]
-    Struct,
-}
-
-impl From<FunctionAbiEntryType> for ContractClassAbiEntryType {
-    fn from(t: FunctionAbiEntryType) -> Self {
-        match t {
-            FunctionAbiEntryType::Constructor => ContractClassAbiEntryType::Constructor,
-            FunctionAbiEntryType::L1Handler => ContractClassAbiEntryType::L1Handler,
-            FunctionAbiEntryType::Function => ContractClassAbiEntryType::Function,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
-pub struct ContractClassAbiEntryWithType {
-    pub r#type: ContractClassAbiEntryType,
-    #[serde(flatten)]
-    pub entry: ContractClassAbiEntry,
-}
-
-impl From<starknet_api::deprecated_contract_class::ContractClassAbiEntry>
-    for ContractClassAbiEntryWithType
-{
-    fn from(entry: starknet_api::deprecated_contract_class::ContractClassAbiEntry) -> Self {
-        match entry {
-            starknet_api::deprecated_contract_class::ContractClassAbiEntry::Event(entry) => Self {
-                r#type: ContractClassAbiEntryType::Event,
-                entry: ContractClassAbiEntry::Event(entry),
-            },
-            starknet_api::deprecated_contract_class::ContractClassAbiEntry::Function(entry) => {
-                Self {
-                    r#type: entry.r#type.clone().into(),
-                    entry: ContractClassAbiEntry::Function(entry.entry),
-                }
-            }
-            starknet_api::deprecated_contract_class::ContractClassAbiEntry::Struct(entry) => Self {
-                r#type: ContractClassAbiEntryType::Struct,
-                entry: ContractClassAbiEntry::Struct(entry),
-            },
-        }
-    }
-}
+use starknet_api::deprecated_contract_class::{ContractClassAbiEntry, EntryPoint, EntryPointType};
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ContractClass {
-    pub abi: Vec<ContractClassAbiEntryWithType>,
+    pub abi: Vec<ContractClassAbiEntry>,
     /// A base64 encoding of the gzip-compressed JSON representation of program.
     pub program: String,
     /// The selector of each entry point is a unique identifier in the program.
@@ -101,11 +29,7 @@ impl TryFrom<starknet_api::deprecated_contract_class::ContractClass> for Contrac
             program_value.as_object_mut().unwrap().remove("compiler_version");
         }
 
-        let abi = if class.abi.is_none() {
-            vec![]
-        } else {
-            class.abi.unwrap().into_iter().map(|entry| entry.into()).collect()
-        };
+        let abi = if class.abi.is_none() { vec![] } else { class.abi.unwrap() };
 
         Ok(Self {
             abi,

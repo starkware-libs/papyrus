@@ -232,7 +232,7 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
             .map_err(internal_server_error)?
             .block_hash;
 
-        let (thin_tx_output, transaction_execution_status) = txn
+        let thin_tx_output = txn
             .get_transaction_output(transaction_index)
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
@@ -240,7 +240,7 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
         // starting from starknet v0.12.1 blocks can have reverted transactions (transactions that
         // failed execution). RPC API v0.3 does not support these transactions therefore we
         // return here with an error.
-        if transaction_execution_status == TransactionExecutionStatus::Reverted {
+        if thin_tx_output.execution_status() == &TransactionExecutionStatus::Reverted {
             return Err(ErrorObjectOwned::from(JsonRpcError::TransactionReverted))?;
         }
 

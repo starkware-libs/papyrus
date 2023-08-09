@@ -24,8 +24,7 @@ use tracing::instrument;
 use super::super::block::{Block, BlockHeader};
 use super::super::state::StateUpdate;
 use super::super::transaction::{
-    Event, Transaction, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus,
-    TransactionWithHash, Transactions,
+    Event, Transaction, TransactionOutput, TransactionReceipt, TransactionWithHash, Transactions,
 };
 use super::{
     BlockHashAndNumber, BlockId, ContinuationToken, EventFilter, EventsChunk, GatewayContractClass,
@@ -214,7 +213,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     fn get_transaction_receipt(
         &self,
         transaction_hash: TransactionHash,
-    ) -> RpcResult<TransactionReceiptWithStatus> {
+    ) -> RpcResult<TransactionReceipt> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let transaction_index = txn
@@ -236,7 +235,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             .map_err(internal_server_error)?
             .block_hash;
 
-        let (thin_tx_output, execution_status) = txn
+        let thin_tx_output = txn
             .get_transaction_output(transaction_index)
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
@@ -248,10 +247,12 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 
         let output = TransactionOutput::from_thin_transaction_output(thin_tx_output, events);
 
-        Ok(TransactionReceiptWithStatus {
-            receipt: TransactionReceipt { transaction_hash, block_hash, block_number, output },
+        Ok(TransactionReceipt {
             finality_status: status.into(),
-            execution_status,
+            transaction_hash,
+            block_hash,
+            block_number,
+            output,
         })
     }
 

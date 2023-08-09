@@ -2,7 +2,8 @@ use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::ContractAddress;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::transaction::{
-    EventIndexInTransactionOutput, Fee, MessageToL1, TransactionOffsetInBlock,
+    EventIndexInTransactionOutput, Fee, MessageToL1, TransactionExecutionStatus,
+    TransactionOffsetInBlock,
 };
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
 
@@ -35,28 +36,33 @@ auto_impl_get_test_instance! {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
+        pub execution_status: TransactionExecutionStatus,
     }
     pub struct ThinDeployTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
         pub contract_address: ContractAddress,
+        pub execution_status: TransactionExecutionStatus,
     }
     pub struct ThinDeployAccountTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
         pub contract_address: ContractAddress,
+        pub execution_status: TransactionExecutionStatus,
     }
     pub struct ThinInvokeTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
+        pub execution_status: TransactionExecutionStatus,
     }
     pub struct ThinL1HandlerTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
+        pub execution_status: TransactionExecutionStatus,
     }
     pub enum ThinTransactionOutput {
         Declare(ThinDeclareTransactionOutput) = 0,
