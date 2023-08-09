@@ -8,7 +8,7 @@ use starknet_api::core::{ContractAddress, GlobalRoot};
 
 use super::transaction::Transactions;
 use crate::api::{BlockHashOrNumber, BlockId, Tag};
-use crate::v0_4_0::error::JsonRpcError;
+use crate::v0_4_0::error::{BLOCK_NOT_FOUND, PENDING_BLOCKS_NOT_SUPPORTED};
 use crate::{get_latest_block_number, internal_server_error};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -52,7 +52,7 @@ pub fn get_block_header_by_number<
     let header = txn
         .get_block_header(block_number)
         .map_err(internal_server_error)?
-        .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
+        .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
 
     Ok(BlockHeader::from(header))
 }
@@ -65,20 +65,21 @@ pub(crate) fn get_block_number<Mode: TransactionKind>(
         BlockId::HashOrNumber(BlockHashOrNumber::Hash(block_hash)) => txn
             .get_block_number_by_hash(&block_hash)
             .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?,
+            .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?,
         BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number)) => {
             // Check that the block exists.
             let last_block_number = get_latest_block_number(txn)?
-                .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
+                .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
             if block_number > last_block_number {
-                return Err(ErrorObjectOwned::from(JsonRpcError::BlockNotFound));
+                return Err(ErrorObjectOwned::from(BLOCK_NOT_FOUND));
             }
             block_number
         }
-        BlockId::Tag(Tag::Latest) => get_latest_block_number(txn)?
-            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?,
+        BlockId::Tag(Tag::Latest) => {
+            get_latest_block_number(txn)?.ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?
+        }
         BlockId::Tag(Tag::Pending) => {
-            return Err(ErrorObjectOwned::from(JsonRpcError::PendingBlocksNotSupported));
+            return Err(ErrorObjectOwned::from(PENDING_BLOCKS_NOT_SUPPORTED));
         }
     })
 }

@@ -33,7 +33,11 @@ use super::{
 use crate::api::{BlockHashOrNumber, JsonRpcServerImpl};
 use crate::syncing_state::SyncingState;
 use crate::v0_4_0::block::{get_block_header_by_number, get_block_number};
-use crate::v0_4_0::error::JsonRpcError;
+use crate::v0_4_0::error::{
+    JsonRpcError, BLOCK_NOT_FOUND, CLASS_HASH_NOT_FOUND, CONTRACT_ERROR, CONTRACT_NOT_FOUND,
+    INVALID_TRANSACTION_INDEX, NO_BLOCKS, PAGE_SIZE_TOO_BIG, TOO_MANY_KEYS_IN_FILTER,
+    TRANSACTION_HASH_NOT_FOUND,
+};
 use crate::v0_4_0::transaction::{get_block_tx_hashes_by_number, get_block_txs_by_number};
 use crate::{
     get_block_status, get_latest_block_number, internal_server_error, ContinuationTokenAsStruct,
@@ -54,14 +58,14 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     fn block_number(&self) -> RpcResult<BlockNumber> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        get_latest_block_number(&txn)?.ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::NoBlocks))
+        get_latest_block_number(&txn)?.ok_or_else(|| ErrorObjectOwned::from(NO_BLOCKS))
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
     fn block_hash_and_number(&self) -> RpcResult<BlockHashAndNumber> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        let block_number = get_latest_block_number(&txn)?
-            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::NoBlocks))?;
+        let block_number =
+            get_latest_block_number(&txn)?.ok_or_else(|| ErrorObjectOwned::from(NO_BLOCKS))?;
         let header: BlockHeader = get_block_header_by_number(&txn, block_number)?;
 
         Ok(BlockHashAndNumber { block_hash: header.block_hash, block_number })
@@ -118,7 +122,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         state_reader
             .get_class_hash_at(state, &contract_address)
             .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::ContractNotFound))?;
+            .ok_or_else(|| ErrorObjectOwned::from(CONTRACT_NOT_FOUND))?;
 
         state_reader.get_storage_at(state, &contract_address, &key).map_err(internal_server_error)
     }
@@ -133,12 +137,12 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let transaction_index = txn
             .get_transaction_idx_by_hash(&transaction_hash)
             .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
+            .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
 
         let transaction = txn
             .get_transaction(transaction_index)
             .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
+            .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
 
         Ok(TransactionWithHash { transaction: transaction.into(), transaction_hash })
     }
@@ -156,11 +160,11 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let transaction = txn
             .get_transaction(tx_index)
             .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::InvalidTransactionIndex))?;
+            .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?;
         let transaction_hash = txn
             .get_transaction_hash_by_idx(&tx_index)
             .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::InvalidTransactionIndex))?;
+            .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?;
 
         Ok(TransactionWithHash { transaction: transaction.into(), transaction_hash })
     }
@@ -199,7 +203,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let thin_state_diff = txn
             .get_state_diff(block_number)
             .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
+            .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
 
         Ok(StateUpdate {
             block_hash: header.block_hash,
@@ -219,7 +223,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let transaction_index = txn
             .get_transaction_idx_by_hash(&transaction_hash)
             .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
+            .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
 
         let block_number = transaction_index.0;
         let status = get_block_status(&txn, block_number)?;
@@ -228,7 +232,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         // this assumption also holds for the conversion from block status to transaction finality
         // status where we set rejected blocks to unreachable.
         if status == BlockStatus::Rejected {
-            return Err(ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
+            return Err(ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
         }
 
         let block_hash = get_block_header_by_number::<_, BlockHeader>(&txn, block_number)
@@ -238,12 +242,12 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let thin_tx_output = txn
             .get_transaction_output(transaction_index)
             .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
+            .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
 
         let events = txn
             .get_transaction_events(transaction_index)
             .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::TransactionHashNotFound))?;
+            .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
 
         let output = TransactionOutput::from_thin_transaction_output(thin_tx_output, events);
 
@@ -279,7 +283,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             let class = state_reader
                 .get_deprecated_class_definition_at(state_number, &class_hash)
                 .map_err(internal_server_error)?
-                .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::ClassHashNotFound))?;
+                .ok_or_else(|| ErrorObjectOwned::from(CLASS_HASH_NOT_FOUND))?;
             Ok(GatewayContractClass::Cairo0(class.try_into().map_err(internal_server_error)?))
         }
     }
@@ -299,7 +303,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let class_hash = state_reader
             .get_class_hash_at(state_number, &contract_address)
             .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::ContractNotFound))?;
+            .ok_or_else(|| ErrorObjectOwned::from(CONTRACT_NOT_FOUND))?;
 
         if let Some(class) = state_reader
             .get_class_definition_at(state_number, &class_hash)
@@ -310,7 +314,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             let class = state_reader
                 .get_deprecated_class_definition_at(state_number, &class_hash)
                 .map_err(internal_server_error)?
-                .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::ContractNotFound))?;
+                .ok_or_else(|| ErrorObjectOwned::from(CONTRACT_NOT_FOUND))?;
             Ok(GatewayContractClass::Cairo0(class.try_into().map_err(internal_server_error)?))
         }
     }
@@ -330,7 +334,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         state_reader
             .get_class_hash_at(state, &contract_address)
             .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::ContractNotFound))
+            .ok_or_else(|| ErrorObjectOwned::from(CONTRACT_NOT_FOUND))
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
@@ -344,7 +348,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         state_reader
             .get_nonce_at(state, &contract_address)
             .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::ContractNotFound))
+            .ok_or_else(|| ErrorObjectOwned::from(CONTRACT_NOT_FOUND))
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
@@ -356,11 +360,11 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     fn get_events(&self, filter: EventFilter) -> RpcResult<EventsChunk> {
         // Check the chunk size.
         if filter.chunk_size > self.max_events_chunk_size {
-            return Err(ErrorObjectOwned::from(JsonRpcError::PageSizeTooBig));
+            return Err(ErrorObjectOwned::from(PAGE_SIZE_TOO_BIG));
         }
         // Check the number of keys.
         if filter.keys.len() > self.max_events_keys {
-            return Err(ErrorObjectOwned::from(JsonRpcError::TooManyKeysInFilter));
+            return Err(ErrorObjectOwned::from(TOO_MANY_KEYS_IN_FILTER));
         }
 
         // Get the requested block numbers.
@@ -498,10 +502,10 @@ impl TryFrom<ExecutionError> for JsonRpcError {
     type Error = ErrorObjectOwned;
     fn try_from(value: ExecutionError) -> Result<Self, Self::Error> {
         match value {
-            ExecutionError::NotSynced { .. } => Ok(Self::BlockNotFound),
-            ExecutionError::ContractNotFound { .. } => Ok(Self::ContractNotFound),
+            ExecutionError::NotSynced { .. } => Ok(BLOCK_NOT_FOUND),
+            ExecutionError::ContractNotFound { .. } => Ok(CONTRACT_NOT_FOUND),
             // All other execution errors are considered contract errors.
-            _ => Ok(Self::ContractError),
+            _ => Ok(CONTRACT_ERROR),
         }
     }
 }

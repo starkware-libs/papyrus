@@ -19,7 +19,7 @@ use starknet_api::transaction::{
 use starknet_client::writer::objects::transaction as client_transaction;
 
 use crate::internal_server_error;
-use crate::v0_4_0::error::JsonRpcError;
+use crate::v0_4_0::error::BLOCK_NOT_FOUND;
 
 // TODO(yair): Make these functions regular consts.
 fn tx_v0() -> TransactionVersion {
@@ -390,7 +390,7 @@ pub fn get_block_txs_by_number<
     let transactions = txn
         .get_block_transactions(block_number)
         .map_err(internal_server_error)?
-        .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
+        .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
 
     Ok(transactions.into_iter().map(Transaction::from).collect())
 }
@@ -402,7 +402,7 @@ pub fn get_block_tx_hashes_by_number<Mode: TransactionKind>(
     let transaction_hashes = txn
         .get_block_transaction_hashes(block_number)
         .map_err(internal_server_error)?
-        .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
+        .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
 
     Ok(transaction_hashes)
 }
