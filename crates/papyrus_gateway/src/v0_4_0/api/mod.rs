@@ -15,7 +15,8 @@ use starknet_api::transaction::{Calldata, EventKey, TransactionHash, Transaction
 use super::block::Block;
 use super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::state::{ContractClass, StateUpdate};
-use super::transaction::{Event, TransactionReceipt, TransactionWithHash};
+use super::transaction::{Event, InvokeTransactionV1, TransactionReceipt, TransactionWithHash};
+use super::write_api_result::AddInvokeOkResult;
 use crate::api::BlockId;
 use crate::syncing_state::SyncingState;
 use crate::v0_4_0::error::INVALID_CONTINUATION_TOKEN;
@@ -134,6 +135,13 @@ pub trait JsonRpc {
         calldata: Calldata,
         block_id: BlockId,
     ) -> RpcResult<Vec<StarkFelt>>;
+
+    /// Submits a new invoke transaction to be added to the chain.
+    #[method(name = "addInvokeTransaction")]
+    async fn add_invoke_transaction(
+        &self,
+        invoke_transaction: InvokeTransactionV1,
+    ) -> RpcResult<AddInvokeOkResult>;
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
