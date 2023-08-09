@@ -9,11 +9,12 @@ use starknet_api::core::{
     ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, Nonce,
 };
 use starknet_api::hash::StarkFelt;
+#[cfg(test)]
+use starknet_api::transaction::TransactionExecutionStatus;
 use starknet_api::transaction::{
     Calldata, DeclareTransactionOutput, DeployAccountTransaction, DeployAccountTransactionOutput,
     DeployTransaction, DeployTransactionOutput, Fee, InvokeTransactionOutput, L1HandlerTransaction,
-    L1HandlerTransactionOutput, TransactionExecutionStatus, TransactionHash, TransactionSignature,
-    TransactionVersion,
+    L1HandlerTransactionOutput, TransactionHash, TransactionSignature, TransactionVersion,
 };
 use starknet_client::writer::objects::transaction as client_transaction;
 
@@ -261,15 +262,8 @@ impl From<BlockStatus> for TransactionFinalityStatus {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct TransactionReceiptWithStatus {
-    pub finality_status: TransactionFinalityStatus,
-    pub execution_status: TransactionExecutionStatus,
-    #[serde(flatten)]
-    pub receipt: TransactionReceipt,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct TransactionReceipt {
+    pub finality_status: TransactionFinalityStatus,
     pub transaction_hash: TransactionHash,
     pub block_hash: BlockHash,
     pub block_number: BlockNumber,
@@ -293,6 +287,17 @@ pub enum TransactionOutput {
 }
 
 impl TransactionOutput {
+    #[cfg(test)]
+    pub fn execution_status(&self) -> &TransactionExecutionStatus {
+        match self {
+            TransactionOutput::Declare(tx_output) => &tx_output.execution_status,
+            TransactionOutput::Deploy(tx_output) => &tx_output.execution_status,
+            TransactionOutput::DeployAccount(tx_output) => &tx_output.execution_status,
+            TransactionOutput::Invoke(tx_output) => &tx_output.execution_status,
+            TransactionOutput::L1Handler(tx_output) => &tx_output.execution_status,
+        }
+    }
+
     pub fn from_thin_transaction_output(
         thin_tx_output: ThinTransactionOutput,
         events: Vec<starknet_api::transaction::Event>,
@@ -303,6 +308,7 @@ impl TransactionOutput {
                     actual_fee: thin_declare.actual_fee,
                     messages_sent: thin_declare.messages_sent,
                     events,
+                    execution_status: thin_declare.execution_status,
                 })
             }
             ThinTransactionOutput::Deploy(thin_deploy) => {
@@ -311,6 +317,7 @@ impl TransactionOutput {
                     messages_sent: thin_deploy.messages_sent,
                     events,
                     contract_address: thin_deploy.contract_address,
+                    execution_status: thin_deploy.execution_status,
                 })
             }
             ThinTransactionOutput::DeployAccount(thin_deploy) => {
@@ -319,6 +326,7 @@ impl TransactionOutput {
                     messages_sent: thin_deploy.messages_sent,
                     events,
                     contract_address: thin_deploy.contract_address,
+                    execution_status: thin_deploy.execution_status,
                 })
             }
             ThinTransactionOutput::Invoke(thin_invoke) => {
@@ -326,6 +334,7 @@ impl TransactionOutput {
                     actual_fee: thin_invoke.actual_fee,
                     messages_sent: thin_invoke.messages_sent,
                     events,
+                    execution_status: thin_invoke.execution_status,
                 })
             }
             ThinTransactionOutput::L1Handler(thin_l1handler) => {
@@ -333,6 +342,7 @@ impl TransactionOutput {
                     actual_fee: thin_l1handler.actual_fee,
                     messages_sent: thin_l1handler.messages_sent,
                     events,
+                    execution_status: thin_l1handler.execution_status,
                 })
             }
         }

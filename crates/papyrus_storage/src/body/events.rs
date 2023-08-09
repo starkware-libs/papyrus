@@ -294,6 +294,16 @@ impl ThinTransactionOutput {
             ThinTransactionOutput::L1Handler(tx_output) => &tx_output.events_contract_addresses,
         }
     }
+    /// Returns the execution status.
+    pub fn execution_status(&self) -> &TransactionExecutionStatus {
+        match self {
+            ThinTransactionOutput::Declare(tx_output) => &tx_output.execution_status,
+            ThinTransactionOutput::Deploy(tx_output) => &tx_output.execution_status,
+            ThinTransactionOutput::DeployAccount(tx_output) => &tx_output.execution_status,
+            ThinTransactionOutput::Invoke(tx_output) => &tx_output.execution_status,
+            ThinTransactionOutput::L1Handler(tx_output) => &tx_output.execution_status,
+        }
+    }
 }
 /// A thin version of
 /// [`InvokeTransactionOutput`](starknet_api::transaction::InvokeTransactionOutput), not holding the

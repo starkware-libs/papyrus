@@ -24,7 +24,7 @@ use starknet_api::block::{BlockBody, BlockHash, BlockHeader, BlockNumber, BlockS
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
     ContractClass as SN_API_DeprecatedContractClass, ContractClassAbiEntry, FunctionAbiEntry,
-    FunctionAbiEntryType, FunctionAbiEntryWithType, FunctionStateMutability,
+    FunctionStateMutability,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::StateDiff;
@@ -43,8 +43,8 @@ use super::super::block::Block;
 use super::super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::super::state::{ContractClass, StateUpdate, ThinStateDiff};
 use super::super::transaction::{
-    Event, TransactionFinalityStatus, TransactionOutput, TransactionReceipt,
-    TransactionReceiptWithStatus, TransactionWithHash, Transactions,
+    Event, TransactionFinalityStatus, TransactionOutput, TransactionReceipt, TransactionWithHash,
+    Transactions,
 };
 use super::api_impl::JsonRpcServerV0_4Impl;
 use super::{ContinuationToken, EventFilter};
@@ -582,21 +582,15 @@ async fn get_transaction_receipt() {
 
     let transaction_hash = block.body.transaction_hashes[0];
     let output = TransactionOutput::from(block.body.transaction_outputs.index(0).clone());
-    let expected_receipt = TransactionReceiptWithStatus {
-        receipt: TransactionReceipt {
-            transaction_hash,
-            block_hash: block.header.block_hash,
-            block_number: block.header.block_number,
-            output,
-        },
+    let expected_receipt = TransactionReceipt {
         finality_status: TransactionFinalityStatus::AcceptedOnL2,
-        execution_status: TransactionExecutionStatus::default(),
+        transaction_hash,
+        block_hash: block.header.block_hash,
+        block_number: block.header.block_number,
+        output,
     };
     let res = module
-        .call::<_, TransactionReceiptWithStatus>(
-            "starknet_V0_4_getTransactionReceipt",
-            [transaction_hash],
-        )
+        .call::<_, TransactionReceipt>("starknet_V0_4_getTransactionReceipt", [transaction_hash])
         .await
         .unwrap();
     // The returned jsons of some transaction outputs are the same. When deserialized, the first
@@ -616,18 +610,15 @@ async fn get_transaction_receipt() {
         .commit()
         .unwrap();
     let res = module
-        .call::<_, TransactionReceiptWithStatus>(
-            "starknet_V0_4_getTransactionReceipt",
-            [transaction_hash],
-        )
+        .call::<_, TransactionReceipt>("starknet_V0_4_getTransactionReceipt", [transaction_hash])
         .await
         .unwrap();
     assert_eq!(res.finality_status, TransactionFinalityStatus::AcceptedOnL1);
-    assert_eq!(res.execution_status, TransactionExecutionStatus::Succeeded);
+    assert_eq!(res.output.execution_status(), &TransactionExecutionStatus::Succeeded);
 
     // Ask for an invalid transaction.
     let err = module
-        .call::<_, TransactionReceiptWithStatus>(
+        .call::<_, TransactionReceipt>(
             "starknet_V0_4_getTransactionReceipt",
             [TransactionHash(StarkHash::from(1_u8))],
         )
@@ -1763,10 +1754,7 @@ async fn get_deprecated_class_state_mutability() {
     let function_abi_without_state_mutability =
         FunctionAbiEntry { state_mutability: None, ..Default::default() };
     let function_abi_without_state_mutability =
-        ContractClassAbiEntry::Function(FunctionAbiEntryWithType {
-            entry: function_abi_without_state_mutability,
-            r#type: FunctionAbiEntryType::Function,
-        });
+        ContractClassAbiEntry::Function(function_abi_without_state_mutability);
     let class_without_state_mutability = starknet_api::deprecated_contract_class::ContractClass {
         abi: Some(vec![function_abi_without_state_mutability]),
         ..Default::default()
@@ -1778,10 +1766,7 @@ async fn get_deprecated_class_state_mutability() {
         ..Default::default()
     };
     let function_abi_with_state_mutability =
-        ContractClassAbiEntry::Function(FunctionAbiEntryWithType {
-            entry: function_abi_with_state_mutability,
-            r#type: FunctionAbiEntryType::Function,
-        });
+        ContractClassAbiEntry::Function(function_abi_with_state_mutability);
     let class_with_state_mutability = starknet_api::deprecated_contract_class::ContractClass {
         abi: Some(vec![function_abi_with_state_mutability]),
         ..Default::default()

@@ -5,11 +5,11 @@ resolver = "2"
 
 members = [
     "crates/papyrus_base_layer",
-    # "crates/papyrus_execution",
-    # "crates/papyrus_gateway",
+    "crates/papyrus_execution",
+    "crates/papyrus_gateway",
     "crates/papyrus_load_test",
     "crates/papyrus_monitoring_gateway",
-    # "crates/papyrus_node",
+    "crates/papyrus_node",
     "crates/papyrus_proc_macros",
     "crates/papyrus_storage",
     "crates/papyrus_sync",
@@ -32,7 +32,7 @@ async-stream = "0.3.3"
 async-trait = "0.1.56"
 axum = "0.6.12"
 base64 = "0.13.0"
-blockifier = "0.1.0-rc1"
+blockifier = "0.2.0-rc0"
 byteorder = "1.4.3"
 cairo-lang-starknet = "2.1.0-rc0"
 cairo-lang-casm = "2.1.0-rc0"

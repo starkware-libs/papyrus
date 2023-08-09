@@ -126,7 +126,7 @@ pub fn execute_call(
         // todo(yair): Check if this is the correct value.
         initial_gas: INITIAL_GAS_COST,
     };
-    let mut cached_state = CachedState::new(ExecutionStateReader { txn, state_number });
+    let mut cached_state = CachedState::from(ExecutionStateReader { txn, state_number });
     let header =
         txn.get_block_header(block_before(state_number))?.expect("Should have block header.");
     let block_context = create_block_context(
@@ -258,7 +258,7 @@ fn execute_transactions(
         .expect("Should have block header.");
 
     let mut cached_state =
-        CachedState::new(ExecutionStateReader { txn: storage_txn, state_number });
+        CachedState::from(ExecutionStateReader { txn: storage_txn, state_number });
     let block_context = create_block_context(
         chain_id.clone(),
         block_before(state_number),

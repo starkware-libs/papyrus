@@ -19,8 +19,7 @@ use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
-    ContractClassAbiEntry, FunctionAbiEntry, FunctionAbiEntryType, FunctionAbiEntryWithType,
-    FunctionStateMutability,
+    ContractClassAbiEntry, FunctionAbiEntry, FunctionStateMutability,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::StateDiff;
@@ -1755,10 +1754,7 @@ async fn get_deprecated_class_state_mutability() {
     let function_abi_without_state_mutability =
         FunctionAbiEntry { state_mutability: None, ..Default::default() };
     let function_abi_without_state_mutability =
-        ContractClassAbiEntry::Function(FunctionAbiEntryWithType {
-            entry: function_abi_without_state_mutability,
-            r#type: FunctionAbiEntryType::Function,
-        });
+        ContractClassAbiEntry::Function(function_abi_without_state_mutability);
     let class_without_state_mutability = starknet_api::deprecated_contract_class::ContractClass {
         abi: Some(vec![function_abi_without_state_mutability]),
         ..Default::default()
@@ -1770,10 +1766,7 @@ async fn get_deprecated_class_state_mutability() {
         ..Default::default()
     };
     let function_abi_with_state_mutability =
-        ContractClassAbiEntry::Function(FunctionAbiEntryWithType {
-            entry: function_abi_with_state_mutability,
-            r#type: FunctionAbiEntryType::Function,
-        });
+        ContractClassAbiEntry::Function(function_abi_with_state_mutability);
     let class_with_state_mutability = starknet_api::deprecated_contract_class::ContractClass {
         abi: Some(vec![function_abi_with_state_mutability]),
         ..Default::default()
