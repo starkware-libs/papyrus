@@ -20,15 +20,14 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install commitlint
-        run: npm install -g @commitlint/cli @commitlint/config-conventional
+        run: npm install --global @commitlint/cli @commitlint/config-conventional
 
-      - name: Validate current commit (last commit) with commitlint
-        if: github.event_name == 'push'
-        run: npx commitlint --from HEAD~1 --to HEAD --verbose
+      - name: Validate PR title commit
+        run: echo ${{ github.event.pull_request.title }} | commitlint --verbose
 
       - name: Validate PR commits with commitlint
         if: github.event_name == 'pull_request'
-        run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+        run: commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
 
   test:
     runs-on: ${{ matrix.os }}
