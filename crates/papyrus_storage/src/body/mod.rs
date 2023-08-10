@@ -45,8 +45,13 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockBody, BlockNumber};
 use starknet_api::core::ContractAddress;
 use starknet_api::transaction::{
-    Event, EventContent, EventIndexInTransactionOutput, Transaction, TransactionHash,
-    TransactionOffsetInBlock, TransactionOutput,
+    Event,
+    EventContent,
+    EventIndexInTransactionOutput,
+    Transaction,
+    TransactionHash,
+    TransactionOffsetInBlock,
+    TransactionOutput,
 };
 use tracing::debug;
 
@@ -171,7 +176,9 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         transaction_index: TransactionIndex,
     ) -> StorageResult<Option<Vec<Event>>> {
         let tx_output = self.get_transaction_output(transaction_index)?;
-        let Some(tx_output) = tx_output else { return Ok(None);};
+        let Some(tx_output) = tx_output else {
+            return Ok(None);
+        };
 
         let events_table = self.txn.open_table(&self.tables.events)?;
 

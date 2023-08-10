@@ -8,9 +8,14 @@ use pretty_assertions::assert_eq;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
-    ContractClass as DeprecatedContractClass, ContractClassAbiEntry,
-    EntryPoint as DeprecatedEntryPoint, EntryPointOffset,
-    EntryPointType as DeprecatedEntryPointType, FunctionAbiEntry, Program, TypedParameter,
+    ContractClass as DeprecatedContractClass,
+    ContractClassAbiEntry,
+    EntryPoint as DeprecatedEntryPoint,
+    EntryPointOffset,
+    EntryPointType as DeprecatedEntryPointType,
+    FunctionAbiEntry,
+    Program,
+    TypedParameter,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{EntryPoint, EntryPointType, FunctionIndex};
@@ -20,8 +25,16 @@ use starknet_api::{patricia_key, stark_felt};
 use crate::reader::objects::state::StateUpdate;
 use crate::reader::objects::transaction::IntermediateDeclareTransaction;
 use crate::reader::{
-    Block, ContractClass, GenericContractClass, ReaderClientError, StarknetFeederGatewayClient,
-    StarknetReader, BLOCK_NUMBER_QUERY, CLASS_HASH_QUERY, GET_BLOCK_URL, GET_STATE_UPDATE_URL,
+    Block,
+    ContractClass,
+    GenericContractClass,
+    ReaderClientError,
+    StarknetFeederGatewayClient,
+    StarknetReader,
+    BLOCK_NUMBER_QUERY,
+    CLASS_HASH_QUERY,
+    GET_BLOCK_URL,
+    GET_STATE_UPDATE_URL,
 };
 use crate::test_utils::read_resource::read_resource_file;
 use crate::test_utils::retry::get_test_config;

@@ -10,7 +10,11 @@ use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_storage::{open_storage, StorageReader, StorageWriter};
 use papyrus_sync::{
-    BaseLayerSourceError, CentralError, CentralSource, EthereumBaseLayerSource, StateSync,
+    BaseLayerSourceError,
+    CentralError,
+    CentralSource,
+    EthereumBaseLayerSource,
+    StateSync,
     StateSyncError,
 };
 use tokio::sync::RwLock;

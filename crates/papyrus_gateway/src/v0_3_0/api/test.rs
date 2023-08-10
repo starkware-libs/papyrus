@@ -20,17 +20,27 @@ use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
-    ContractClassAbiEntry, FunctionAbiEntry, FunctionStateMutability,
+    ContractClassAbiEntry,
+    FunctionAbiEntry,
+    FunctionStateMutability,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::StateDiff;
 use starknet_api::transaction::{
-    EventIndexInTransactionOutput, EventKey, TransactionHash, TransactionOffsetInBlock,
+    EventIndexInTransactionOutput,
+    EventKey,
+    TransactionHash,
+    TransactionOffsetInBlock,
 };
 use starknet_api::{patricia_key, stark_felt};
 use starknet_client::writer::MockStarknetWriter;
 use test_utils::{
-    get_rng, get_test_block, get_test_body, get_test_state_diff, send_request, GetTestInstance,
+    get_rng,
+    get_test_block,
+    get_test_body,
+    get_test_state_diff,
+    send_request,
+    GetTestInstance,
 };
 
 use super::super::api::EventsChunk;
@@ -38,17 +48,27 @@ use super::super::block::Block;
 use super::super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::super::state::{ContractClass, StateUpdate, ThinStateDiff};
 use super::super::transaction::{
-    Event, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus, TransactionStatus,
-    TransactionWithHash, Transactions,
+    Event,
+    TransactionOutput,
+    TransactionReceipt,
+    TransactionReceiptWithStatus,
+    TransactionStatus,
+    TransactionWithHash,
+    Transactions,
 };
 use super::api_impl::JsonRpcServerV0_3Impl;
 use super::{ContinuationToken, EventFilter};
 use crate::api::{BlockHashOrNumber, BlockId, JsonRpcServerImpl, Tag};
 use crate::syncing_state::SyncStatus;
 use crate::test_utils::{
-    get_starknet_spec_api_schema_for_components, get_starknet_spec_api_schema_for_method_results,
-    get_test_gateway_config, get_test_highest_block, get_test_rpc_server_and_storage_writer,
-    raw_call, validate_schema, SpecFile,
+    get_starknet_spec_api_schema_for_components,
+    get_starknet_spec_api_schema_for_method_results,
+    get_test_gateway_config,
+    get_test_highest_block,
+    get_test_rpc_server_and_storage_writer,
+    raw_call,
+    validate_schema,
+    SpecFile,
 };
 use crate::v0_3_0::error::JsonRpcError;
 use crate::version_config::VERSION_0_3;

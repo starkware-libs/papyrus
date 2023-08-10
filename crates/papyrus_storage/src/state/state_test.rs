@@ -5,7 +5,9 @@ use pretty_assertions::assert_eq;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
-    ContractClass as DeprecatedContractClass, ContractClassAbiEntry, FunctionAbiEntry,
+    ContractClass as DeprecatedContractClass,
+    ContractClassAbiEntry,
+    FunctionAbiEntry,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey, ThinStateDiff};

@@ -14,7 +14,9 @@ use starknet_api::core::{ChainId, ClassHash, ContractAddress, GlobalRoot, Nonce}
 use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
-    EventIndexInTransactionOutput, TransactionExecutionStatus, TransactionHash,
+    EventIndexInTransactionOutput,
+    TransactionExecutionStatus,
+    TransactionHash,
     TransactionOffsetInBlock,
 };
 use starknet_client::writer::StarknetWriter;
@@ -24,11 +26,21 @@ use tracing::instrument;
 use super::super::block::{Block, BlockHeader};
 use super::super::state::StateUpdate;
 use super::super::transaction::{
-    Event, Transaction, TransactionOutput, TransactionReceipt, TransactionReceiptWithStatus,
-    TransactionWithHash, Transactions,
+    Event,
+    Transaction,
+    TransactionOutput,
+    TransactionReceipt,
+    TransactionReceiptWithStatus,
+    TransactionWithHash,
+    Transactions,
 };
 use super::{
-    BlockId, ContinuationToken, EventFilter, EventsChunk, GatewayContractClass, JsonRpcV0_3Server,
+    BlockId,
+    ContinuationToken,
+    EventFilter,
+    EventsChunk,
+    GatewayContractClass,
+    JsonRpcV0_3Server,
 };
 use crate::api::{BlockHashOrNumber, JsonRpcServerImpl};
 use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
@@ -36,7 +48,10 @@ use crate::v0_3_0::block::{get_block_header_by_number, get_block_number};
 use crate::v0_3_0::error::JsonRpcError;
 use crate::v0_3_0::transaction::{get_block_tx_hashes_by_number, get_block_txs_by_number};
 use crate::{
-    get_block_status, get_latest_block_number, internal_server_error, ContinuationTokenAsStruct,
+    get_block_status,
+    get_latest_block_number,
+    internal_server_error,
+    ContinuationTokenAsStruct,
 };
 
 /// Rpc server.
@@ -447,7 +462,7 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn syncing(&self) -> RpcResult<SyncingState> {
         let Some(highest_block) = *self.shared_highest_block.read().await else {
-            return Ok(SyncingState::Synced)
+            return Ok(SyncingState::Synced);
         };
         let current_block =
             get_last_synced_block(self.storage_reader.clone()).map_err(internal_server_error)?;

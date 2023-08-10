@@ -11,12 +11,19 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::{
-    EntryPoint as DeprecatedEntryPoint, EntryPointType as DeprecatedEntryPointType, EventAbiEntry,
-    FunctionAbiEntry, StructAbiEntry,
+    EntryPoint as DeprecatedEntryPoint,
+    EntryPointType as DeprecatedEntryPointType,
+    EventAbiEntry,
+    FunctionAbiEntry,
+    StructAbiEntry,
 };
 use starknet_api::state::{EntryPoint, EntryPointType};
 use starknet_api::transaction::{
-    Calldata, ContractAddressSalt, Fee, TransactionSignature, TransactionVersion,
+    Calldata,
+    ContractAddressSalt,
+    Fee,
+    TransactionSignature,
+    TransactionVersion,
 };
 
 // Each transaction type has a field called `type`. This field needs to be of a type that

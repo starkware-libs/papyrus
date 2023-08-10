@@ -4,7 +4,10 @@ use starknet_api::hash::StarkFelt;
 use starknet_api::stark_felt;
 use starknet_api::transaction::TransactionHash;
 use starknet_client::writer::objects::response::{
-    DeclareResponse, DeployAccountResponse, InvokeResponse, SuccessfulStarknetErrorCode,
+    DeclareResponse,
+    DeployAccountResponse,
+    InvokeResponse,
+    SuccessfulStarknetErrorCode,
 };
 use test_utils::{auto_impl_get_test_instance, get_rng, GetTestInstance};
 

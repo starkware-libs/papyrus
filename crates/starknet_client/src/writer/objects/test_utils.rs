@@ -1,13 +1,17 @@
 use std::collections::HashMap;
 
 use starknet_api::deprecated_contract_class::{
-    EntryPoint as DeprecatedEntryPoint, EntryPointType as DeprecatedEntryPointType, EventAbiEntry,
-    FunctionAbiEntry, StructAbiEntry,
+    EntryPoint as DeprecatedEntryPoint,
+    EntryPointType as DeprecatedEntryPointType,
+    EventAbiEntry,
+    FunctionAbiEntry,
+    StructAbiEntry,
 };
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
 
 use crate::writer::objects::transaction::{
-    DeprecatedContractClass, DeprecatedContractClassAbiEntry,
+    DeprecatedContractClass,
+    DeprecatedContractClassAbiEntry,
 };
 
 auto_impl_get_test_instance! {

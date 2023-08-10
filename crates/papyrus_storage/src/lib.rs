@@ -87,8 +87,17 @@ use version::{StorageVersionError, Version};
 use crate::body::events::ThinTransactionOutput;
 use crate::body::TransactionIndex;
 use crate::db::{
-    open_env, DbConfig, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier,
-    TransactionKind, RO, RW,
+    open_env,
+    DbConfig,
+    DbError,
+    DbReader,
+    DbTransaction,
+    DbWriter,
+    TableHandle,
+    TableIdentifier,
+    TransactionKind,
+    RO,
+    RW,
 };
 use crate::header::StarknetVersion;
 use crate::state::data::IndexedDeprecatedContractClass;

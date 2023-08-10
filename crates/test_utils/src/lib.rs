@@ -10,10 +10,17 @@ use std::sync::Arc;
 use assert::assert_ok;
 use cairo_lang_casm::hints::{CoreHint, CoreHintBase, Hint};
 use cairo_lang_casm::operand::{
-    BinOpOperand, CellRef, DerefOrImmediate, Operation, Register, ResOperand,
+    BinOpOperand,
+    CellRef,
+    DerefOrImmediate,
+    Operation,
+    Register,
+    ResOperand,
 };
 use cairo_lang_starknet::casm_contract_class::{
-    CasmContractClass, CasmContractEntryPoint, CasmContractEntryPoints,
+    CasmContractClass,
+    CasmContractEntryPoint,
+    CasmContractEntryPoints,
 };
 use cairo_lang_utils::bigint::BigUintAsHex;
 use indexmap::IndexMap;
@@ -25,32 +32,83 @@ use rand_chacha::ChaCha8Rng;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{
-    Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
+    Block,
+    BlockBody,
+    BlockHash,
+    BlockHeader,
+    BlockNumber,
+    BlockStatus,
+    BlockTimestamp,
+    GasPrice,
 };
 use starknet_api::core::{
-    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, EthAddress, GlobalRoot,
+    ClassHash,
+    CompiledClassHash,
+    ContractAddress,
+    EntryPointSelector,
+    EthAddress,
+    GlobalRoot,
     Nonce,
 };
 use starknet_api::deprecated_contract_class::{
-    ContractClass as DeprecatedContractClass, ContractClassAbiEntry,
-    EntryPoint as DeprecatedEntryPoint, EntryPointOffset,
-    EntryPointType as DeprecatedEntryPointType, EventAbiEntry, FunctionAbiEntry,
-    FunctionStateMutability, Program, StructAbiEntry, StructMember, TypedParameter,
+    ContractClass as DeprecatedContractClass,
+    ContractClassAbiEntry,
+    EntryPoint as DeprecatedEntryPoint,
+    EntryPointOffset,
+    EntryPointType as DeprecatedEntryPointType,
+    EventAbiEntry,
+    FunctionAbiEntry,
+    FunctionStateMutability,
+    Program,
+    StructAbiEntry,
+    StructMember,
+    TypedParameter,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::stark_felt;
 use starknet_api::state::{
-    ContractClass, EntryPoint, EntryPointType, FunctionIndex, StateDiff, StorageKey, ThinStateDiff,
+    ContractClass,
+    EntryPoint,
+    EntryPointType,
+    FunctionIndex,
+    StateDiff,
+    StorageKey,
+    ThinStateDiff,
 };
 use starknet_api::transaction::{
-    Calldata, ContractAddressSalt, DeclareTransaction, DeclareTransactionOutput,
-    DeclareTransactionV0V1, DeclareTransactionV2, DeployAccountTransaction,
-    DeployAccountTransactionOutput, DeployTransaction, DeployTransactionOutput, Event,
-    EventContent, EventData, EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction,
-    InvokeTransactionOutput, InvokeTransactionV0, InvokeTransactionV1, L1HandlerTransaction,
-    L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, MessageToL1, MessageToL2,
-    Transaction, TransactionExecutionStatus, TransactionHash, TransactionOffsetInBlock,
-    TransactionOutput, TransactionSignature, TransactionVersion,
+    Calldata,
+    ContractAddressSalt,
+    DeclareTransaction,
+    DeclareTransactionOutput,
+    DeclareTransactionV0V1,
+    DeclareTransactionV2,
+    DeployAccountTransaction,
+    DeployAccountTransactionOutput,
+    DeployTransaction,
+    DeployTransactionOutput,
+    Event,
+    EventContent,
+    EventData,
+    EventIndexInTransactionOutput,
+    EventKey,
+    Fee,
+    InvokeTransaction,
+    InvokeTransactionOutput,
+    InvokeTransactionV0,
+    InvokeTransactionV1,
+    L1HandlerTransaction,
+    L1HandlerTransactionOutput,
+    L1ToL2Payload,
+    L2ToL1Payload,
+    MessageToL1,
+    MessageToL2,
+    Transaction,
+    TransactionExecutionStatus,
+    TransactionHash,
+    TransactionOffsetInBlock,
+    TransactionOutput,
+    TransactionSignature,
+    TransactionVersion,
 };
 
 //////////////////////////////////////////////////////////////////////////

@@ -11,7 +11,9 @@ use std::sync::Arc;
 use byteorder::BigEndian;
 use cairo_lang_casm::hints::Hint;
 use cairo_lang_starknet::casm_contract_class::{
-    CasmContractClass, CasmContractEntryPoint, CasmContractEntryPoints,
+    CasmContractClass,
+    CasmContractEntryPoint,
+    CasmContractEntryPoints,
 };
 use cairo_lang_utils::bigint::BigUintAsHex;
 use indexmap::IndexMap;
@@ -20,39 +22,90 @@ use num_bigint::BigUint;
 use parity_scale_codec::{Decode, Encode};
 use primitive_types::H160;
 use starknet_api::block::{
-    BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp, GasPrice,
+    BlockHash,
+    BlockHeader,
+    BlockNumber,
+    BlockStatus,
+    BlockTimestamp,
+    GasPrice,
 };
 use starknet_api::core::{
-    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, EthAddress, GlobalRoot,
-    Nonce, PatriciaKey,
+    ClassHash,
+    CompiledClassHash,
+    ContractAddress,
+    EntryPointSelector,
+    EthAddress,
+    GlobalRoot,
+    Nonce,
+    PatriciaKey,
 };
 use starknet_api::deprecated_contract_class::{
-    ContractClass as DeprecatedContractClass, ContractClassAbiEntry,
-    EntryPoint as DeprecatedEntryPoint, EntryPointOffset,
-    EntryPointType as DeprecatedEntryPointType, EventAbiEntry, FunctionAbiEntry,
-    FunctionStateMutability, Program, StructAbiEntry, StructMember, TypedParameter,
+    ContractClass as DeprecatedContractClass,
+    ContractClassAbiEntry,
+    EntryPoint as DeprecatedEntryPoint,
+    EntryPointOffset,
+    EntryPointType as DeprecatedEntryPointType,
+    EventAbiEntry,
+    FunctionAbiEntry,
+    FunctionStateMutability,
+    Program,
+    StructAbiEntry,
+    StructMember,
+    TypedParameter,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{
-    ContractClass, EntryPoint, EntryPointType, FunctionIndex, StorageKey, ThinStateDiff,
+    ContractClass,
+    EntryPoint,
+    EntryPointType,
+    FunctionIndex,
+    StorageKey,
+    ThinStateDiff,
 };
 use starknet_api::transaction::{
-    Calldata, ContractAddressSalt, DeclareTransaction, DeclareTransactionV0V1,
-    DeclareTransactionV2, DeployAccountTransaction, DeployTransaction, EventContent, EventData,
-    EventIndexInTransactionOutput, EventKey, Fee, InvokeTransaction, InvokeTransactionV0,
-    InvokeTransactionV1, L1HandlerTransaction, L1ToL2Payload, L2ToL1Payload, MessageToL1,
-    MessageToL2, Transaction, TransactionExecutionStatus, TransactionHash,
-    TransactionOffsetInBlock, TransactionSignature, TransactionVersion,
+    Calldata,
+    ContractAddressSalt,
+    DeclareTransaction,
+    DeclareTransactionV0V1,
+    DeclareTransactionV2,
+    DeployAccountTransaction,
+    DeployTransaction,
+    EventContent,
+    EventData,
+    EventIndexInTransactionOutput,
+    EventKey,
+    Fee,
+    InvokeTransaction,
+    InvokeTransactionV0,
+    InvokeTransactionV1,
+    L1HandlerTransaction,
+    L1ToL2Payload,
+    L2ToL1Payload,
+    MessageToL1,
+    MessageToL2,
+    Transaction,
+    TransactionExecutionStatus,
+    TransactionHash,
+    TransactionOffsetInBlock,
+    TransactionSignature,
+    TransactionVersion,
 };
 
 use crate::body::events::{
-    EventIndex, ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput,
-    ThinDeployTransactionOutput, ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput,
+    EventIndex,
+    ThinDeclareTransactionOutput,
+    ThinDeployAccountTransactionOutput,
+    ThinDeployTransactionOutput,
+    ThinInvokeTransactionOutput,
+    ThinL1HandlerTransactionOutput,
     ThinTransactionOutput,
 };
 use crate::body::TransactionIndex;
 use crate::compression_utils::{
-    compress, decompress, decompress_from_reader, serialize_and_compress,
+    compress,
+    decompress,
+    decompress_from_reader,
+    serialize_and_compress,
 };
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
 use crate::header::StarknetVersion;

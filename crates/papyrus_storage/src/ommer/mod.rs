@@ -8,7 +8,10 @@ use starknet_api::block::{BlockHash, BlockHeader};
 use starknet_api::core::ClassHash;
 use starknet_api::state::{ContractClass, ThinStateDiff};
 use starknet_api::transaction::{
-    EventContent, EventIndexInTransactionOutput, Transaction, TransactionOffsetInBlock,
+    EventContent,
+    EventIndexInTransactionOutput,
+    Transaction,
+    TransactionOffsetInBlock,
 };
 
 use crate::body::events::ThinTransactionOutput;

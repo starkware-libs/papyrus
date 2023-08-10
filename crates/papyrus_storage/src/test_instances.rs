@@ -2,14 +2,21 @@ use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::ContractAddress;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::transaction::{
-    EventIndexInTransactionOutput, Fee, MessageToL1, TransactionExecutionStatus,
+    EventIndexInTransactionOutput,
+    Fee,
+    MessageToL1,
+    TransactionExecutionStatus,
     TransactionOffsetInBlock,
 };
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
 
 use crate::body::events::{
-    ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput, ThinDeployTransactionOutput,
-    ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
+    ThinDeclareTransactionOutput,
+    ThinDeployAccountTransactionOutput,
+    ThinDeployTransactionOutput,
+    ThinInvokeTransactionOutput,
+    ThinL1HandlerTransactionOutput,
+    ThinTransactionOutput,
 };
 use crate::body::TransactionIndex;
 use crate::header::StarknetVersion;

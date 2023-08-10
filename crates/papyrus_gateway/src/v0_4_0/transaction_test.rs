@@ -1,12 +1,20 @@
 use assert_matches::assert_matches;
 use camelpaste::paste;
 use papyrus_storage::body::events::{
-    ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput, ThinDeployTransactionOutput,
-    ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
+    ThinDeclareTransactionOutput,
+    ThinDeployAccountTransactionOutput,
+    ThinDeployTransactionOutput,
+    ThinInvokeTransactionOutput,
+    ThinL1HandlerTransactionOutput,
+    ThinTransactionOutput,
 };
 use starknet_api::core::{ContractAddress, Nonce};
 use starknet_api::transaction::{
-    Calldata, Fee, Transaction, TransactionSignature, TransactionVersion,
+    Calldata,
+    Fee,
+    Transaction,
+    TransactionSignature,
+    TransactionVersion,
 };
 use starknet_client::writer::objects::transaction as client_transaction;
 use test_utils::{auto_impl_get_test_instance, get_rng, GetTestInstance};

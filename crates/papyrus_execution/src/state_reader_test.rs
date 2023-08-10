@@ -1,6 +1,7 @@
 use assert_matches::assert_matches;
 use blockifier::execution::contract_class::{
-    ContractClass as BlockifierContractClass, ContractClassV1,
+    ContractClass as BlockifierContractClass,
+    ContractClassV1,
 };
 use blockifier::state::errors::StateError;
 use blockifier::state::state_api::StateReader;

@@ -5,7 +5,10 @@ use starknet_api::block::BlockHash;
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, GlobalRoot, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{
-    EntryPoint, EntryPointType, StorageKey, ThinStateDiff as starknet_api_ThinStateDiff,
+    EntryPoint,
+    EntryPointType,
+    StorageKey,
+    ThinStateDiff as starknet_api_ThinStateDiff,
 };
 
 const CONTRACT_CLASS_VERSION: &str = "0.1.0";

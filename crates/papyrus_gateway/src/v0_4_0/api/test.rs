@@ -23,19 +23,30 @@ use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
-    ContractClass as SN_API_DeprecatedContractClass, ContractClassAbiEntry, FunctionAbiEntry,
+    ContractClass as SN_API_DeprecatedContractClass,
+    ContractClassAbiEntry,
+    FunctionAbiEntry,
     FunctionStateMutability,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::StateDiff;
 use starknet_api::transaction::{
-    Calldata, EventIndexInTransactionOutput, EventKey, TransactionExecutionStatus, TransactionHash,
+    Calldata,
+    EventIndexInTransactionOutput,
+    EventKey,
+    TransactionExecutionStatus,
+    TransactionHash,
     TransactionOffsetInBlock,
 };
 use starknet_api::{calldata, patricia_key, stark_felt};
 use starknet_client::writer::MockStarknetWriter;
 use test_utils::{
-    get_rng, get_test_block, get_test_body, get_test_state_diff, read_json_file, send_request,
+    get_rng,
+    get_test_block,
+    get_test_body,
+    get_test_state_diff,
+    read_json_file,
+    send_request,
     GetTestInstance,
 };
 
@@ -44,7 +55,11 @@ use super::super::block::Block;
 use super::super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::super::state::{ContractClass, StateUpdate, ThinStateDiff};
 use super::super::transaction::{
-    Event, TransactionFinalityStatus, TransactionOutput, TransactionReceipt, TransactionWithHash,
+    Event,
+    TransactionFinalityStatus,
+    TransactionOutput,
+    TransactionReceipt,
+    TransactionWithHash,
     Transactions,
 };
 use super::api_impl::JsonRpcServerV0_4Impl;
@@ -52,14 +67,26 @@ use super::{ContinuationToken, EventFilter};
 use crate::api::{BlockHashOrNumber, BlockId, JsonRpcServerImpl, Tag};
 use crate::syncing_state::SyncStatus;
 use crate::test_utils::{
-    get_starknet_spec_api_schema_for_components, get_starknet_spec_api_schema_for_method_results,
-    get_test_gateway_config, get_test_highest_block, get_test_rpc_server_and_storage_writer,
-    raw_call, validate_schema, SpecFile,
+    get_starknet_spec_api_schema_for_components,
+    get_starknet_spec_api_schema_for_method_results,
+    get_test_gateway_config,
+    get_test_highest_block,
+    get_test_rpc_server_and_storage_writer,
+    raw_call,
+    validate_schema,
+    SpecFile,
 };
 use crate::v0_4_0::error::{
-    BLOCK_NOT_FOUND, CLASS_HASH_NOT_FOUND, CONTRACT_ERROR, CONTRACT_NOT_FOUND,
-    INVALID_CONTINUATION_TOKEN, INVALID_TRANSACTION_INDEX, NO_BLOCKS, PAGE_SIZE_TOO_BIG,
-    TOO_MANY_KEYS_IN_FILTER, TRANSACTION_HASH_NOT_FOUND,
+    BLOCK_NOT_FOUND,
+    CLASS_HASH_NOT_FOUND,
+    CONTRACT_ERROR,
+    CONTRACT_NOT_FOUND,
+    INVALID_CONTINUATION_TOKEN,
+    INVALID_TRANSACTION_INDEX,
+    NO_BLOCKS,
+    PAGE_SIZE_TOO_BIG,
+    TOO_MANY_KEYS_IN_FILTER,
+    TRANSACTION_HASH_NOT_FOUND,
 };
 use crate::version_config::VERSION_0_4;
 use crate::{run_server, ContinuationTokenAsStruct};

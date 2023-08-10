@@ -12,14 +12,25 @@ use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
 use starknet_api::block::{BlockBody, BlockHeader, BlockNumber, BlockTimestamp, GasPrice};
 use starknet_api::core::{
-    ChainId, ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey,
+    ChainId,
+    ClassHash,
+    CompiledClassHash,
+    ContractAddress,
+    Nonce,
+    PatriciaKey,
 };
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass, StateDiff, StateNumber};
 use starknet_api::transaction::{
-    Calldata, DeclareTransactionV0V1, DeclareTransactionV2, DeployAccountTransaction, Fee,
-    InvokeTransaction, InvokeTransactionV1, TransactionVersion,
+    Calldata,
+    DeclareTransactionV0V1,
+    DeclareTransactionV2,
+    DeployAccountTransaction,
+    Fee,
+    InvokeTransaction,
+    InvokeTransactionV1,
+    TransactionVersion,
 };
 use starknet_api::{calldata, patricia_key, stark_felt};
 use test_utils::read_json_file;

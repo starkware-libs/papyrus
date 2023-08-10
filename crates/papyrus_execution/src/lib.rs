@@ -16,7 +16,10 @@ use blockifier::abi::constants::{INITIAL_GAS_COST, N_STEPS_RESOURCE};
 use blockifier::block_context::BlockContext;
 use blockifier::execution::contract_class::ContractClass as BlockifierContractClass;
 use blockifier::execution::entry_point::{
-    CallEntryPoint, CallExecution, CallType as BlockifierCallType, EntryPointExecutionContext,
+    CallEntryPoint,
+    CallExecution,
+    CallType as BlockifierCallType,
+    EntryPointExecutionContext,
     ExecutionResources,
 };
 use blockifier::execution::errors::{EntryPointExecutionError, PreExecutionError};
@@ -29,8 +32,13 @@ use blockifier::transaction::transactions::ExecutableTransaction;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use cairo_vm::types::errors::program_errors::ProgramError;
 use cairo_vm::vm::runners::builtin_runner::{
-    BITWISE_BUILTIN_NAME, EC_OP_BUILTIN_NAME, HASH_BUILTIN_NAME, OUTPUT_BUILTIN_NAME,
-    POSEIDON_BUILTIN_NAME, RANGE_CHECK_BUILTIN_NAME, SIGNATURE_BUILTIN_NAME,
+    BITWISE_BUILTIN_NAME,
+    EC_OP_BUILTIN_NAME,
+    HASH_BUILTIN_NAME,
+    OUTPUT_BUILTIN_NAME,
+    POSEIDON_BUILTIN_NAME,
+    RANGE_CHECK_BUILTIN_NAME,
+    SIGNATURE_BUILTIN_NAME,
 };
 use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::RO;
@@ -41,12 +49,20 @@ use starknet_api::block::{BlockNumber, BlockTimestamp, GasPrice};
 use starknet_api::core::{ChainId, ContractAddress, EntryPointSelector};
 // TODO: merge multiple EntryPointType structs in SN_API into one.
 use starknet_api::deprecated_contract_class::{
-    ContractClass as DeprecatedContractClass, EntryPointType,
+    ContractClass as DeprecatedContractClass,
+    EntryPointType,
 };
 use starknet_api::state::StateNumber;
 use starknet_api::transaction::{
-    Calldata, DeclareTransaction, DeclareTransactionV0V1, DeclareTransactionV2,
-    DeployAccountTransaction, Fee, InvokeTransaction, Transaction, TransactionHash,
+    Calldata,
+    DeclareTransaction,
+    DeclareTransactionV0V1,
+    DeclareTransactionV2,
+    DeployAccountTransaction,
+    Fee,
+    InvokeTransaction,
+    Transaction,
+    TransactionHash,
 };
 use state_reader::ExecutionStateReader;
 
