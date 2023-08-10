@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::ops::Index;
-use std::sync::Arc;
 
 use assert_matches::assert_matches;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
@@ -49,12 +48,12 @@ use super::super::transaction::{
 };
 use super::api_impl::JsonRpcServerV0_4Impl;
 use super::{ContinuationToken, EventFilter};
-use crate::api::{BlockHashOrNumber, BlockId, JsonRpcServerImpl, Tag};
+use crate::api::{BlockHashOrNumber, BlockId, Tag};
 use crate::syncing_state::SyncStatus;
 use crate::test_utils::{
     get_starknet_spec_api_schema_for_components, get_starknet_spec_api_schema_for_method_results,
     get_test_gateway_config, get_test_highest_block, get_test_rpc_server_and_storage_writer,
-    raw_call, validate_schema, SpecFile,
+    get_test_rpc_server_and_storage_writer_from_mock_client, raw_call, validate_schema, SpecFile,
 };
 use crate::v0_4_0::error::{
     BLOCK_NOT_FOUND, CLASS_HASH_NOT_FOUND, CONTRACT_ERROR, CONTRACT_NOT_FOUND,
@@ -148,20 +147,10 @@ async fn syncing() {
         &[(SpecFile::StarknetApiOpenrpc, &[SPEC_METHOD_NAME])],
         &VERSION_0_4,
     );
-
-    let ((storage_reader, _), _temp_dir) = get_test_storage();
-    let config = get_test_gateway_config();
     let shared_highest_block = get_test_highest_block();
-    let module = JsonRpcServerV0_4Impl::new(
-        config.chain_id,
-        storage_reader,
-        config.max_events_chunk_size,
-        config.max_events_keys,
-        BlockHashAndNumber::default(),
-        shared_highest_block.clone(),
-        Arc::new(MockStarknetWriter::new()),
-    )
-    .into_rpc_module();
+    let (module, _) = get_test_rpc_server_and_storage_writer_from_mock_client::<
+        JsonRpcServerV0_4Impl,
+    >(MockStarknetWriter::new(), shared_highest_block.clone());
 
     let (json_response_0, result_0) = raw_call::<_, bool>(&module, API_METHOD_NAME, "").await;
     assert!(validate_schema(&result_schema, &json_response_0));
