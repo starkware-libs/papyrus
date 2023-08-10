@@ -1473,7 +1473,19 @@ async fn get_events_no_blocks_in_filter() {
         keys: vec![],
     };
 
-    let res = module.call::<_, EventsChunk>("starknet_V0_4_getEvents", [filter]).await.unwrap();
+    let (json_response, res) = raw_call::<_, EventsChunk>(
+        &module,
+        "starknet_V0_4_getEvents",
+        serde_json::to_value(filter).unwrap().to_string().as_str(),
+    )
+    .await;
+    assert!(
+        &json_response
+            .get("result")
+            .expect("response should have result field")
+            .get("continuation_token")
+            .is_none()
+    );
     assert_eq!(res, EventsChunk { events: vec![], continuation_token: None });
 }
 
