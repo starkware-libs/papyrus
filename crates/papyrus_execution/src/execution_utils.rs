@@ -3,7 +3,9 @@
 // Expose the tool for creating entry point selectors from function names.
 pub use blockifier::abi::abi_utils::selector_from_name;
 use blockifier::execution::contract_class::{
-    ContractClass as BlockifierContractClass, ContractClassV0, ContractClassV1,
+    ContractClass as BlockifierContractClass,
+    ContractClassV0,
+    ContractClassV1,
 };
 use cairo_vm::types::errors::program_errors::ProgramError;
 use papyrus_storage::compiled_class::CasmStorageReader;
@@ -33,7 +35,9 @@ pub(crate) fn get_contract_class(
     match txn.get_state_reader()?.get_class_definition_block_number(class_hash)? {
         Some(block_number) if state_number.is_before(block_number) => return Ok(None),
         Some(_block_number) => {
-            let Some(casm) = txn.get_casm(class_hash)? else { return Err(ExecutionUtilsError::CasmTableNotSynced) };
+            let Some(casm) = txn.get_casm(class_hash)? else {
+                return Err(ExecutionUtilsError::CasmTableNotSynced);
+            };
             return Ok(Some(BlockifierContractClass::V1(
                 ContractClassV1::try_from(casm).map_err(ExecutionUtilsError::ProgramError)?,
             )));
@@ -42,7 +46,10 @@ pub(crate) fn get_contract_class(
     };
 
     let Some(deprecated_class) =
-        txn.get_state_reader()?.get_deprecated_class_definition_at(state_number, class_hash)? else {return Ok(None);};
+        txn.get_state_reader()?.get_deprecated_class_definition_at(state_number, class_hash)?
+    else {
+        return Ok(None);
+    };
     Ok(Some(BlockifierContractClass::V0(
         ContractClassV0::try_from(deprecated_class).map_err(ExecutionUtilsError::ProgramError)?,
     )))

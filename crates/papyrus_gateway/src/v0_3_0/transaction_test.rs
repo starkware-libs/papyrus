@@ -1,8 +1,12 @@
 use assert_matches::assert_matches;
 use camelpaste::paste;
 use papyrus_storage::body::events::{
-    ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput, ThinDeployTransactionOutput,
-    ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
+    ThinDeclareTransactionOutput,
+    ThinDeployAccountTransactionOutput,
+    ThinDeployTransactionOutput,
+    ThinInvokeTransactionOutput,
+    ThinL1HandlerTransactionOutput,
+    ThinTransactionOutput,
 };
 use starknet_api::transaction::Transaction;
 use test_utils::{get_rng, GetTestInstance};

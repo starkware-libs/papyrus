@@ -12,12 +12,19 @@ use test_utils::get_absolute_path;
 use crate::command::{get_command_matches, update_config_map_by_command_args};
 use crate::converters::deserialize_milliseconds_to_duration;
 use crate::dumping::{
-    append_sub_config_name, combine_config_map_and_pointers, ser_optional_param,
-    ser_optional_sub_config, ser_param, SerializeConfig,
+    append_sub_config_name,
+    combine_config_map_and_pointers,
+    ser_optional_param,
+    ser_optional_sub_config,
+    ser_param,
+    SerializeConfig,
 };
 use crate::loading::{
-    get_maps_from_raw_json, load, update_config_map_by_custom_config,
-    update_config_map_by_pointers, update_optional_values,
+    get_maps_from_raw_json,
+    load,
+    update_config_map_by_custom_config,
+    update_config_map_by_pointers,
+    update_optional_values,
 };
 use crate::{ConfigError, ParamPath, PointerParam, SerializedParam};
 

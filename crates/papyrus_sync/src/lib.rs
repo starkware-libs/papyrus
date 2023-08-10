@@ -15,7 +15,8 @@ use futures_util::{pin_mut, select, Stream, StreamExt};
 use indexmap::IndexMap;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_config::converters::{
-    deserialize_milliseconds_to_duration, deserialize_seconds_to_duration,
+    deserialize_milliseconds_to_duration,
+    deserialize_seconds_to_duration,
 };
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, SerializedParam};
@@ -37,7 +38,11 @@ use tracing::{debug, error, info, instrument, trace, warn};
 
 // TODO(dvir): remove pub use, make the modules public and make inner functions private.
 pub use self::sources::{
-    BaseLayerSourceError, CentralError, CentralSource, CentralSourceConfig, CentralSourceTrait,
+    BaseLayerSourceError,
+    CentralError,
+    CentralSource,
+    CentralSourceConfig,
+    CentralSourceTrait,
     EthereumBaseLayerSource,
 };
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]

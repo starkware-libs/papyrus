@@ -26,7 +26,10 @@ use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContract
 use starknet_api::state::{ContractClass, StateDiff};
 use starknet_api::StarknetApiError;
 use starknet_client::reader::{
-    GenericContractClass, ReaderClientError, StarknetFeederGatewayClient, StarknetReader,
+    GenericContractClass,
+    ReaderClientError,
+    StarknetFeederGatewayClient,
+    StarknetReader,
 };
 use starknet_client::{ClientCreationError, RetryConfig};
 use tracing::{debug, trace};

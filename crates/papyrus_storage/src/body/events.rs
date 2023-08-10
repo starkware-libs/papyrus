@@ -50,7 +50,11 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ContractAddress;
 use starknet_api::transaction::{
-    EventContent, EventIndexInTransactionOutput, Fee, MessageToL1, TransactionExecutionStatus,
+    EventContent,
+    EventIndexInTransactionOutput,
+    Fee,
+    MessageToL1,
+    TransactionExecutionStatus,
     TransactionOutput,
 };
 

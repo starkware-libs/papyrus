@@ -10,8 +10,13 @@ use starknet_api::transaction::{EventIndexInTransactionOutput, TransactionOffset
 use test_utils::get_test_block;
 
 use crate::body::events::{
-    EventIndex, EventsReader, ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput,
-    ThinDeployTransactionOutput, ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput,
+    EventIndex,
+    EventsReader,
+    ThinDeclareTransactionOutput,
+    ThinDeployAccountTransactionOutput,
+    ThinDeployTransactionOutput,
+    ThinInvokeTransactionOutput,
+    ThinL1HandlerTransactionOutput,
     ThinTransactionOutput,
 };
 use crate::body::{BodyStorageWriter, TransactionIndex};

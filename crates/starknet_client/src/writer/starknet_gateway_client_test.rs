@@ -73,8 +73,10 @@ async fn test_add_transaction_fails_serde<
     let Err(WriterClientError::SerdeError(_)) = run_add_transaction(
         resource_file_transaction_path,
         resource_file_response_path,
-        add_transaction_function
-    ).await else {
+        add_transaction_function,
+    )
+    .await
+    else {
         panic!("Adding a transaction with bad response did not cause a SerdeError");
     };
 }

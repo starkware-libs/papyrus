@@ -21,11 +21,19 @@ use tracing::{debug, error};
 
 use crate::sources::base_layer::MockBaseLayerSourceTrait;
 use crate::sources::central::{
-    BlocksStream, CompiledClassesStream, MockCentralSourceTrait, StateUpdatesStream,
+    BlocksStream,
+    CompiledClassesStream,
+    MockCentralSourceTrait,
+    StateUpdatesStream,
 };
 use crate::sources::BaseLayerSourceTrait;
 use crate::{
-    CentralError, CentralSourceTrait, GenericStateSync, StateSyncError, StateSyncResult, SyncConfig,
+    CentralError,
+    CentralSourceTrait,
+    GenericStateSync,
+    StateSyncError,
+    StateSyncResult,
+    SyncConfig,
 };
 
 const SYNC_SLEEP_DURATION: Duration = Duration::from_millis(100); // 100ms

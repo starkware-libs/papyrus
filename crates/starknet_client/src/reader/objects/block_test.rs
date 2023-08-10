@@ -12,7 +12,11 @@ use starknet_api::{patricia_key, stark_felt};
 
 use super::block::{Block, GlobalRoot, TransactionReceiptsError};
 use super::state::{
-    DeclaredClassHashEntry, DeployedContract, StateDiff, StateUpdate, StorageEntry,
+    DeclaredClassHashEntry,
+    DeployedContract,
+    StateDiff,
+    StateUpdate,
+    StorageEntry,
 };
 use super::transaction::TransactionReceipt;
 use crate::reader::objects::state::ReplacedClass;

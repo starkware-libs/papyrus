@@ -11,12 +11,20 @@ use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::StorageReader;
 use starknet_api::block::{BlockNumber, BlockStatus};
 use starknet_api::core::{
-    ChainId, ClassHash, ContractAddress, EntryPointSelector, GlobalRoot, Nonce,
+    ChainId,
+    ClassHash,
+    ContractAddress,
+    EntryPointSelector,
+    GlobalRoot,
+    Nonce,
 };
 use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
-    Calldata, EventIndexInTransactionOutput, TransactionHash, TransactionOffsetInBlock,
+    Calldata,
+    EventIndexInTransactionOutput,
+    TransactionHash,
+    TransactionOffsetInBlock,
 };
 use starknet_client::writer::StarknetWriter;
 use tokio::sync::RwLock;
@@ -25,23 +33,43 @@ use tracing::instrument;
 use super::super::block::{Block, BlockHeader};
 use super::super::state::StateUpdate;
 use super::super::transaction::{
-    Event, Transaction, TransactionOutput, TransactionReceipt, TransactionWithHash, Transactions,
+    Event,
+    Transaction,
+    TransactionOutput,
+    TransactionReceipt,
+    TransactionWithHash,
+    Transactions,
 };
 use super::{
-    BlockHashAndNumber, BlockId, ContinuationToken, EventFilter, EventsChunk, GatewayContractClass,
+    BlockHashAndNumber,
+    BlockId,
+    ContinuationToken,
+    EventFilter,
+    EventsChunk,
+    GatewayContractClass,
     JsonRpcV0_4Server,
 };
 use crate::api::{BlockHashOrNumber, JsonRpcServerImpl};
 use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
 use crate::v0_4_0::block::{get_block_header_by_number, get_block_number};
 use crate::v0_4_0::error::{
-    JsonRpcError, BLOCK_NOT_FOUND, CLASS_HASH_NOT_FOUND, CONTRACT_ERROR, CONTRACT_NOT_FOUND,
-    INVALID_TRANSACTION_INDEX, NO_BLOCKS, PAGE_SIZE_TOO_BIG, TOO_MANY_KEYS_IN_FILTER,
+    JsonRpcError,
+    BLOCK_NOT_FOUND,
+    CLASS_HASH_NOT_FOUND,
+    CONTRACT_ERROR,
+    CONTRACT_NOT_FOUND,
+    INVALID_TRANSACTION_INDEX,
+    NO_BLOCKS,
+    PAGE_SIZE_TOO_BIG,
+    TOO_MANY_KEYS_IN_FILTER,
     TRANSACTION_HASH_NOT_FOUND,
 };
 use crate::v0_4_0::transaction::{get_block_tx_hashes_by_number, get_block_txs_by_number};
 use crate::{
-    get_block_status, get_latest_block_number, internal_server_error, ContinuationTokenAsStruct,
+    get_block_status,
+    get_latest_block_number,
+    internal_server_error,
+    ContinuationTokenAsStruct,
 };
 
 /// Rpc server.
@@ -447,7 +475,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn syncing(&self) -> RpcResult<SyncingState> {
         let Some(highest_block) = *self.shared_highest_block.read().await else {
-            return Ok(SyncingState::Synced)
+            return Ok(SyncingState::Synced);
         };
         let current_block =
             get_last_synced_block(self.storage_reader.clone()).map_err(internal_server_error)?;

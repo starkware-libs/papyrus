@@ -19,7 +19,11 @@ use tokio::sync::RwLock;
 
 use crate::sources::{MockBaseLayerSourceTrait, MockCentralSourceTrait};
 use crate::{
-    sort_state_diff, stream_new_base_layer_block, GenericStateSync, StateSyncError, SyncConfig,
+    sort_state_diff,
+    stream_new_base_layer_block,
+    GenericStateSync,
+    StateSyncError,
+    SyncConfig,
     SyncEvent,
 };
 

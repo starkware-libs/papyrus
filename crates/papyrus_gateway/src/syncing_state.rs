@@ -51,7 +51,7 @@ pub(crate) fn get_last_synced_block(
 ) -> StorageResult<BlockHashAndNumber> {
     let txn = storage_reader.begin_ro_txn()?;
     let Some(block_number) = txn.get_compiled_class_marker()?.prev() else {
-        return Ok(BlockHashAndNumber::default())
+        return Ok(BlockHashAndNumber::default());
     };
     let block_hash =
         txn.get_block_header(block_number)?.expect("No header for last compiled class").block_hash;

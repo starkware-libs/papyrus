@@ -23,7 +23,12 @@ use url::Url;
 
 pub use crate::reader::objects::block::{Block, GlobalRoot, TransactionReceiptsError};
 pub use crate::reader::objects::state::{
-    ContractClass, DeclaredClassHashEntry, DeployedContract, ReplacedClass, StateDiff, StateUpdate,
+    ContractClass,
+    DeclaredClassHashEntry,
+    DeployedContract,
+    ReplacedClass,
+    StateDiff,
+    StateUpdate,
     StorageEntry,
 };
 #[cfg(doc)]

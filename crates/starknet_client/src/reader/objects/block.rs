@@ -2,7 +2,11 @@ use std::ops::Index;
 
 use serde::{Deserialize, Serialize, Serializer};
 use starknet_api::block::{
-    Block as starknet_api_block, BlockHash, BlockNumber, BlockTimestamp, GasPrice,
+    Block as starknet_api_block,
+    BlockHash,
+    BlockNumber,
+    BlockTimestamp,
+    GasPrice,
 };
 use starknet_api::core::ContractAddress;
 use starknet_api::hash::StarkHash;
@@ -13,7 +17,10 @@ use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 use starknet_api::StarknetApiError;
 
 use crate::reader::objects::transaction::{
-    L1ToL2Message, Transaction, TransactionReceipt, TransactionType,
+    L1ToL2Message,
+    Transaction,
+    TransactionReceipt,
+    TransactionType,
 };
 use crate::reader::{ReaderClientError, ReaderClientResult};
 

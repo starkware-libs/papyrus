@@ -1,10 +1,21 @@
 use starknet_client::starknet_error::{KnownStarknetErrorCode, StarknetError, StarknetErrorCode};
 
 use crate::v0_4_0::error::{
-    unexpected_error, JsonRpcError, CLASS_ALREADY_DECLARED, CLASS_HASH_NOT_FOUND,
-    COMPILATION_FAILED, COMPILED_CLASS_HASH_MISMATCH, CONTRACT_CLASS_SIZE_IS_TOO_LARGE,
-    DUPLICATE_TX, INSUFFICIENT_ACCOUNT_BALANCE, INSUFFICIENT_MAX_FEE, INVALID_TRANSACTION_NONCE,
-    NON_ACCOUNT, UNSUPPORTED_CONTRACT_CLASS_VERSION, UNSUPPORTED_TX_VERSION, VALIDATION_FAILURE,
+    unexpected_error,
+    JsonRpcError,
+    CLASS_ALREADY_DECLARED,
+    CLASS_HASH_NOT_FOUND,
+    COMPILATION_FAILED,
+    COMPILED_CLASS_HASH_MISMATCH,
+    CONTRACT_CLASS_SIZE_IS_TOO_LARGE,
+    DUPLICATE_TX,
+    INSUFFICIENT_ACCOUNT_BALANCE,
+    INSUFFICIENT_MAX_FEE,
+    INVALID_TRANSACTION_NONCE,
+    NON_ACCOUNT,
+    UNSUPPORTED_CONTRACT_CLASS_VERSION,
+    UNSUPPORTED_TX_VERSION,
+    VALIDATION_FAILURE,
 };
 
 #[cfg(test)]
@@ -15,9 +26,7 @@ mod write_api_error_test;
 #[allow(dead_code)]
 pub(crate) fn starknet_error_to_invoke_error(error: StarknetError) -> JsonRpcError {
     let StarknetErrorCode::KnownErrorCode(known_error_code) = error.code else {
-        return unexpected_error(
-            error.message
-        );
+        return unexpected_error(error.message);
     };
     match known_error_code {
         KnownStarknetErrorCode::DuplicatedTransaction => DUPLICATE_TX,
@@ -40,10 +49,8 @@ pub(crate) fn starknet_error_to_invoke_error(error: StarknetError) -> JsonRpcErr
 #[allow(dead_code)]
 pub(crate) fn starknet_error_to_declare_error(error: StarknetError) -> JsonRpcError {
     let StarknetErrorCode::KnownErrorCode(known_error_code) = error.code else {
-            return unexpected_error(
-                error.message
-            );
-        };
+        return unexpected_error(error.message);
+    };
     match known_error_code {
         KnownStarknetErrorCode::ClassAlreadyDeclared => CLASS_ALREADY_DECLARED,
         KnownStarknetErrorCode::CompilationFailed => COMPILATION_FAILED,
@@ -67,8 +74,8 @@ pub(crate) fn starknet_error_to_declare_error(error: StarknetError) -> JsonRpcEr
 #[allow(dead_code)]
 pub(crate) fn starknet_error_to_deploy_account_error(error: StarknetError) -> JsonRpcError {
     let StarknetErrorCode::KnownErrorCode(known_error_code) = error.code else {
-            return unexpected_error(error.message);
-        };
+        return unexpected_error(error.message);
+    };
     match known_error_code {
         KnownStarknetErrorCode::DuplicatedTransaction => DUPLICATE_TX,
         // See explanation on this mapping in AddInvokeError.

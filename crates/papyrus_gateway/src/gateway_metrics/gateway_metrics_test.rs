@@ -8,8 +8,13 @@ use prometheus_parse::Value::Counter;
 use test_utils::prometheus_is_contained;
 
 use crate::gateway_metrics::{
-    get_method_and_version, MetricLogger, FAILED_REQUESTS, ILLEGAL_METHOD, INCOMING_REQUEST,
-    METHOD_LABEL, VERSION_LABEL,
+    get_method_and_version,
+    MetricLogger,
+    FAILED_REQUESTS,
+    ILLEGAL_METHOD,
+    INCOMING_REQUEST,
+    METHOD_LABEL,
+    VERSION_LABEL,
 };
 
 #[test]

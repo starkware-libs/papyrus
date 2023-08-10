@@ -16,8 +16,17 @@ use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass as sn_api_ContractClass, StateDiff, StorageKey};
 use starknet_api::{patricia_key, stark_felt};
 use starknet_client::reader::{
-    Block, ContractClass, DeclaredClassHashEntry, DeployedContract, GenericContractClass,
-    GlobalRoot, MockStarknetReader, ReaderClientError, ReplacedClass, StateUpdate, StorageEntry,
+    Block,
+    ContractClass,
+    DeclaredClassHashEntry,
+    DeployedContract,
+    GenericContractClass,
+    GlobalRoot,
+    MockStarknetReader,
+    ReaderClientError,
+    ReplacedClass,
+    StateUpdate,
+    StorageEntry,
 };
 use starknet_client::ClientError;
 use tokio_stream::StreamExt;

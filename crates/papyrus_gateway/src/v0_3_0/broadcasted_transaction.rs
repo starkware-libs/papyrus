@@ -9,7 +9,11 @@
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::transaction::{
-    Calldata, ContractAddressSalt, Fee, TransactionSignature, TransactionVersion,
+    Calldata,
+    ContractAddressSalt,
+    Fee,
+    TransactionSignature,
+    TransactionVersion,
 };
 use starknet_client::writer::objects::transaction::DeprecatedContractClass;
 
