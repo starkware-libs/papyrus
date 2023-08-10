@@ -154,6 +154,7 @@ pub enum GatewayContractClass {
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct EventsChunk {
     pub events: Vec<Event>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub continuation_token: Option<ContinuationToken>,
 }
 
