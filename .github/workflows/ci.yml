@@ -9,6 +9,7 @@ on:
       - reopened
       - synchronize
       - auto_merge_enabled
+      - edited # for when the PR title is edited
   merge_group:
     types: [checks_requested]
 
