@@ -242,6 +242,7 @@ fn update_marker<'env>(
 
     // Advance marker.
     markers_table.upsert(txn, &MarkerKind::Header, &block_number.next())?;
+    metrics::gauge!("papyrus_header_marker", block_number.next().0 as f64);
     Ok(())
 }
 

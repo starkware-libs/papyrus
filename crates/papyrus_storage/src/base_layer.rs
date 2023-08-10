@@ -76,6 +76,7 @@ impl<'env> BaseLayerStorageWriter for StorageTxn<'env, RW> {
     fn update_base_layer_block_marker(self, block_number: &BlockNumber) -> StorageResult<Self> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         markers_table.upsert(&self.txn, &MarkerKind::BaseLayerBlock, block_number)?;
+        metrics::gauge!("papyrus_base_layer_marker", block_number.0 as f64);
         Ok(self)
     }
 

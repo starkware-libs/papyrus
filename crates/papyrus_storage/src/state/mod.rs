@@ -554,6 +554,7 @@ fn update_marker<'env>(
 
     // Advance marker.
     markers_table.upsert(txn, &MarkerKind::State, &block_number.next())?;
+    metrics::gauge!("papyrus_state_marker", block_number.next().0 as f64);
     Ok(())
 }
 
@@ -575,6 +576,7 @@ fn update_compiled_class_marker<'env>(
         }
         compiled_class_marker = compiled_class_marker.next();
         markers_table.upsert(txn, &MarkerKind::CompiledClass, &compiled_class_marker)?;
+        metrics::gauge!("papyrus_compiled_class_marker", compiled_class_marker.0 as f64);
     }
     Ok(())
 }
