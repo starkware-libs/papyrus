@@ -43,6 +43,7 @@ use starknet_api::transaction::{
     TransactionOffsetInBlock,
 };
 use starknet_api::{calldata, patricia_key, stark_felt};
+use starknet_client::starknet_error::{KnownStarknetErrorCode, StarknetError, StarknetErrorCode};
 use starknet_client::writer::objects::response::{DeployAccountResponse, InvokeResponse};
 use starknet_client::writer::objects::transaction::{
     DeployAccountTransaction as ClientDeployAccountTransaction,
@@ -91,10 +92,13 @@ use crate::test_utils::{
     SpecFile,
 };
 use crate::v0_4_0::error::{
+    unexpected_error,
+    JsonRpcError,
     BLOCK_NOT_FOUND,
     CLASS_HASH_NOT_FOUND,
     CONTRACT_ERROR,
     CONTRACT_NOT_FOUND,
+    DUPLICATE_TX,
     INVALID_CONTINUATION_TOKEN,
     INVALID_TRANSACTION_INDEX,
     NO_BLOCKS,
@@ -1963,6 +1967,65 @@ trait AddTransactionTest {
         };
         assert_eq!(error, expected_error);
     }
+
+    async fn test_known_starknet_error(
+        known_starknet_error_code: KnownStarknetErrorCode,
+        expected_error: JsonRpcError,
+    ) {
+        let mut rng = get_rng();
+        let tx = Self::Transaction::get_test_instance(&mut rng);
+        const MESSAGE: &str = "message";
+        let client_error =
+            WriterClientError::ClientError(ClientError::StarknetError(StarknetError {
+                code: StarknetErrorCode::KnownErrorCode(known_starknet_error_code),
+                message: MESSAGE.to_owned(),
+            }));
+
+        let mut client_mock = MockStarknetWriter::new();
+        Self::expect_add_transaction(
+            &mut client_mock,
+            Self::ClientTransaction::from(tx.clone()),
+            Err(client_error),
+        );
+
+        let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
+            Some(client_mock),
+            None,
+        );
+        let result = module.call::<_, Self::Response>(Self::METHOD_NAME, [tx]).await;
+        let jsonrpsee::core::Error::Call(error) = result.unwrap_err() else {
+            panic!("Got an error which is not a call error");
+        };
+        assert_eq!(error, expected_error.into());
+    }
+
+    async fn test_unexpected_error(known_starknet_error_code: KnownStarknetErrorCode) {
+        let mut rng = get_rng();
+        let tx = Self::Transaction::get_test_instance(&mut rng);
+        const MESSAGE: &str = "message";
+        let client_error =
+            WriterClientError::ClientError(ClientError::StarknetError(StarknetError {
+                code: StarknetErrorCode::KnownErrorCode(known_starknet_error_code),
+                message: MESSAGE.to_owned(),
+            }));
+
+        let mut client_mock = MockStarknetWriter::new();
+        Self::expect_add_transaction(
+            &mut client_mock,
+            Self::ClientTransaction::from(tx.clone()),
+            Err(client_error),
+        );
+
+        let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
+            Some(client_mock),
+            None,
+        );
+        let result = module.call::<_, Self::Response>(Self::METHOD_NAME, [tx]).await;
+        let jsonrpsee::core::Error::Call(error) = result.unwrap_err() else {
+            panic!("Got an error which is not a call error");
+        };
+        assert_eq!(error, unexpected_error(MESSAGE.to_owned()).into());
+    }
 }
 
 struct AddInvokeTest {}
@@ -2020,6 +2083,21 @@ async fn add_invoke_internal_error() {
 }
 
 #[tokio::test]
+async fn add_invoke_known_starknet_error() {
+    AddInvokeTest::test_known_starknet_error(
+        KnownStarknetErrorCode::DuplicatedTransaction,
+        DUPLICATE_TX,
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn add_invoke_unexpected_error() {
+    AddInvokeTest::test_unexpected_error(KnownStarknetErrorCode::CompilationFailed).await;
+    AddInvokeTest::test_unexpected_error(KnownStarknetErrorCode::UndeclaredClass).await;
+}
+
+#[tokio::test]
 async fn add_deploy_account_positive_flow() {
     AddDeployAccountTest::test_positive_flow().await;
 }
@@ -2027,4 +2105,18 @@ async fn add_deploy_account_positive_flow() {
 #[tokio::test]
 async fn add_deploy_account_internal_error() {
     AddDeployAccountTest::test_internal_error().await;
+}
+
+#[tokio::test]
+async fn add_deploy_account_known_starknet_error() {
+    AddDeployAccountTest::test_known_starknet_error(
+        KnownStarknetErrorCode::UndeclaredClass,
+        CLASS_HASH_NOT_FOUND,
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn add_deploy_account_unexpected_error() {
+    AddDeployAccountTest::test_unexpected_error(KnownStarknetErrorCode::CompilationFailed).await;
 }
