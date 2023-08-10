@@ -12,8 +12,8 @@ use starknet_api::hash::StarkFelt;
 #[cfg(test)]
 use starknet_api::transaction::TransactionExecutionStatus;
 use starknet_api::transaction::{
-    Calldata, DeclareTransactionOutput, DeployAccountTransaction, DeployAccountTransactionOutput,
-    DeployTransaction, DeployTransactionOutput, Fee, InvokeTransactionOutput, L1HandlerTransaction,
+    Calldata, DeclareTransactionOutput, DeployAccountTransactionOutput, DeployTransaction,
+    DeployTransactionOutput, Fee, InvokeTransactionOutput, L1HandlerTransaction,
     L1HandlerTransactionOutput, TransactionHash, TransactionSignature, TransactionVersion,
 };
 use starknet_client::writer::objects::transaction as client_transaction;
@@ -168,6 +168,8 @@ pub struct TransactionWithHash {
     #[serde(flatten)]
     pub transaction: Transaction,
 }
+
+pub type DeployAccountTransaction = starknet_api::transaction::DeployAccountTransaction;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 #[serde(tag = "type")]
