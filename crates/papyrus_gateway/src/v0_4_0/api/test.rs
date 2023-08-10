@@ -1,14 +1,17 @@
 use std::collections::HashSet;
+use std::fmt::Debug;
 use std::net::SocketAddr;
 use std::ops::Index;
 use std::sync::Arc;
 
 use assert_matches::assert_matches;
+use async_trait::async_trait;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use indexmap::{indexmap, IndexMap};
 use jsonrpsee::core::params::ObjectParams;
 use jsonrpsee::core::Error;
 use jsonschema::JSONSchema;
+use mockall::predicate::eq;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_execution::execution_utils::selector_from_name;
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
@@ -20,6 +23,8 @@ use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
 use pretty_assertions::assert_eq;
+use reqwest::StatusCode;
+use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockBody, BlockHash, BlockHeader, BlockNumber, BlockStatus};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
@@ -39,7 +44,10 @@ use starknet_api::transaction::{
     TransactionOffsetInBlock,
 };
 use starknet_api::{calldata, patricia_key, stark_felt};
-use starknet_client::writer::MockStarknetWriter;
+use starknet_client::writer::objects::response::InvokeResponse;
+use starknet_client::writer::objects::transaction::InvokeTransaction as ClientInvokeTransaction;
+use starknet_client::writer::{MockStarknetWriter, WriterClientError, WriterClientResult};
+use starknet_client::ClientError;
 use test_utils::{
     get_rng,
     get_test_block,
@@ -56,12 +64,14 @@ use super::super::deprecated_contract_class::ContractClass as DeprecatedContract
 use super::super::state::{ContractClass, StateUpdate, ThinStateDiff};
 use super::super::transaction::{
     Event,
+    InvokeTransactionV1,
     TransactionFinalityStatus,
     TransactionOutput,
     TransactionReceipt,
     TransactionWithHash,
     Transactions,
 };
+use super::super::write_api_result::AddInvokeOkResult;
 use super::api_impl::JsonRpcServerV0_4Impl;
 use super::{ContinuationToken, EventFilter};
 use crate::api::{BlockHashOrNumber, BlockId, JsonRpcServerImpl, Tag};
@@ -72,6 +82,7 @@ use crate::test_utils::{
     get_test_gateway_config,
     get_test_highest_block,
     get_test_rpc_server_and_storage_writer,
+    get_test_rpc_server_and_storage_writer_from_mock_client,
     raw_call,
     validate_schema,
     SpecFile,
@@ -89,7 +100,7 @@ use crate::v0_4_0::error::{
     TRANSACTION_HASH_NOT_FOUND,
 };
 use crate::version_config::VERSION_0_4;
-use crate::{run_server, ContinuationTokenAsStruct};
+use crate::{internal_server_error, run_server, ContinuationTokenAsStruct};
 
 const NODE_VERSION: &str = "NODE VERSION";
 
@@ -1877,4 +1888,103 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) {
         .unwrap()
         .commit()
         .unwrap();
+}
+
+#[async_trait]
+trait AddTransactionTest {
+    type Transaction: GetTestInstance + Serialize + Clone + Send;
+    type ClientTransaction: From<Self::Transaction> + Send;
+    type Response: From<Self::ClientResponse>
+        + for<'de> Deserialize<'de>
+        + Eq
+        + Debug
+        + Clone
+        + Send;
+    type ClientResponse: GetTestInstance + Clone + Send;
+
+    const METHOD_NAME: &'static str;
+
+    fn expect_add_transaction(
+        client_mock: &mut MockStarknetWriter,
+        client_tx: Self::ClientTransaction,
+        client_result: WriterClientResult<Self::ClientResponse>,
+    );
+
+    async fn test_positive_flow() {
+        let mut rng = get_rng();
+        let tx = Self::Transaction::get_test_instance(&mut rng);
+        let client_resp = Self::ClientResponse::get_test_instance(&mut rng);
+        let expected_resp = Self::Response::from(client_resp.clone());
+
+        let mut client_mock = MockStarknetWriter::new();
+        Self::expect_add_transaction(
+            &mut client_mock,
+            Self::ClientTransaction::from(tx.clone()),
+            Ok(client_resp),
+        );
+
+        let (module, _) = get_test_rpc_server_and_storage_writer_from_mock_client::<
+            JsonRpcServerV0_4Impl,
+        >(client_mock);
+        let resp = module.call::<_, Self::Response>(Self::METHOD_NAME, [tx]).await.unwrap();
+        assert_eq!(resp, expected_resp);
+    }
+
+    async fn test_internal_error() {
+        let mut rng = get_rng();
+        let tx = Self::Transaction::get_test_instance(&mut rng);
+        let client_error = WriterClientError::ClientError(ClientError::BadResponseStatus {
+            code: StatusCode::from_u16(404).unwrap(),
+            message: "This site can’t be reached".to_owned(),
+        });
+        let expected_error = internal_server_error(&client_error);
+
+        let mut client_mock = MockStarknetWriter::new();
+        Self::expect_add_transaction(
+            &mut client_mock,
+            Self::ClientTransaction::from(tx.clone()),
+            Err(client_error),
+        );
+
+        let (module, _) = get_test_rpc_server_and_storage_writer_from_mock_client::<
+            JsonRpcServerV0_4Impl,
+        >(client_mock);
+        let result = module.call::<_, Self::Response>(Self::METHOD_NAME, [tx]).await;
+        let jsonrpsee::core::Error::Call(error) = result.unwrap_err() else {
+            panic!("Got an error which is not a call error");
+        };
+        assert_eq!(error, expected_error);
+    }
+}
+
+struct AddInvokeTest {}
+impl AddTransactionTest for AddInvokeTest {
+    type Transaction = InvokeTransactionV1;
+    type ClientTransaction = ClientInvokeTransaction;
+    type Response = AddInvokeOkResult;
+    type ClientResponse = InvokeResponse;
+
+    const METHOD_NAME: &'static str = "starknet_V0_4_addInvokeTransaction";
+
+    fn expect_add_transaction(
+        client_mock: &mut MockStarknetWriter,
+        client_tx: Self::ClientTransaction,
+        client_result: WriterClientResult<Self::ClientResponse>,
+    ) {
+        client_mock
+            .expect_add_invoke_transaction()
+            .times(1)
+            .with(eq(client_tx))
+            .return_once(move |_| client_result);
+    }
+}
+
+#[tokio::test]
+async fn add_invoke_positive_flow() {
+    AddInvokeTest::test_positive_flow().await;
+}
+
+#[tokio::test]
+async fn add_invoke_internal_error() {
+    AddInvokeTest::test_internal_error().await;
 }
