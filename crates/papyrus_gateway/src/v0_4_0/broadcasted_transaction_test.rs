@@ -4,6 +4,7 @@ use jsonschema::JSONSchema;
 use lazy_static::lazy_static;
 use starknet_api::core::{CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::{
+    ContractClassAbiEntry as DeprecatedContractClassAbiEntry,
     EntryPoint as DeprecatedEntryPoint,
     EntryPointType as DeprecatedEntryPointType,
     EventAbiEntry,
@@ -13,10 +14,7 @@ use starknet_api::deprecated_contract_class::{
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::EntryPoint;
 use starknet_api::transaction::{Fee, TransactionSignature};
-use starknet_client::writer::objects::transaction::{
-    DeprecatedContractClass,
-    DeprecatedContractClassAbiEntry,
-};
+use starknet_client::writer::objects::transaction::DeprecatedContractClass;
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, get_rng, GetTestInstance};
 
 use super::broadcasted_transaction::{

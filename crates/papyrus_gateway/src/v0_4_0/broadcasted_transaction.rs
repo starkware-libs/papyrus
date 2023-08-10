@@ -15,8 +15,9 @@ use super::state::ContractClass;
 
 /// A broadcasted declare transaction.
 ///
-/// This transaction is equivalent to the component BROADCASTED_DECLARE_TXN in the
-/// [`Starknet specs`].
+/// This transaction is equivalent to the component DECLARE_TXN in the
+/// [`Starknet specs`] without the V0 variant and with a contract class (DECLARE_TXN allows having
+/// either a contract class or a class hash).
 ///
 /// [`Starknet specs`]: https://github.com/starkware-libs/starknet-specs/blob/master/api/starknet_api_openrpc.json
 #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
@@ -31,8 +32,9 @@ pub enum BroadcastedDeclareTransaction {
 
 /// A broadcasted declare transaction of a Cairo-v0 contract.
 ///
-/// This transaction is equivalent to the component BROADCASTED_DECLARE_TXN_V1 in the
-/// [`Starknet specs`].
+/// This transaction is equivalent to the component DECLARE_TXN_V1 in the
+/// [`Starknet specs`] with a contract class (DECLARE_TXN_V1 allows having either a contract class
+/// or a class hash).
 ///
 /// [`Starknet specs`]: https://github.com/starkware-libs/starknet-specs/blob/master/api/starknet_api_openrpc.json
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
@@ -48,8 +50,9 @@ pub struct BroadcastedDeclareV1Transaction {
 
 /// A broadcasted declare transaction of a Cairo-v1 contract.
 ///
-/// This transaction is equivalent to the component BROADCASTED_DECLARE_TXN_V2 in the
-/// [`Starknet specs`].
+/// This transaction is equivalent to the component DECLARE_TXN_V2 in the
+/// [`Starknet specs`] with a contract class (DECLARE_TXN_V2 allows having either a contract class
+/// or a class hash).
 ///
 /// [`Starknet specs`]: https://github.com/starkware-libs/starknet-specs/blob/master/api/starknet_api_openrpc.json
 #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq, Default)]
