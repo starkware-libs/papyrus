@@ -4,6 +4,7 @@ use jsonschema::JSONSchema;
 use lazy_static::lazy_static;
 use starknet_api::core::{CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::{
+    ContractClassAbiEntry as DeprecatedContractClassAbiEntry,
     EntryPoint as DeprecatedEntryPoint,
     EntryPointType as DeprecatedEntryPointType,
     EventAbiEntry,
@@ -13,10 +14,7 @@ use starknet_api::deprecated_contract_class::{
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::EntryPoint;
 use starknet_api::transaction::{Fee, TransactionSignature};
-use starknet_client::writer::objects::transaction::{
-    DeprecatedContractClass,
-    DeprecatedContractClassAbiEntry,
-};
+use starknet_client::writer::objects::transaction::DeprecatedContractClass;
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, get_rng, GetTestInstance};
 
 use super::broadcasted_transaction::{
@@ -97,7 +95,7 @@ fn declare_v1_fits_rpc() {
         } else {
             None
         };
-        let tx = BroadcastedDeclareTransaction::V1(BroadcastedDeclareV1Transaction {
+        let inner_tx = BroadcastedDeclareV1Transaction {
             contract_class: DeprecatedContractClass {
                 abi,
                 entry_points_by_type: HashMap::from([
@@ -117,7 +115,23 @@ fn declare_v1_fits_rpc() {
                 ..GetTestInstance::get_test_instance(&mut rng)
             },
             ..GetTestInstance::get_test_instance(&mut rng)
-        });
+        };
+        let tx = BroadcastedDeclareTransaction::V1(inner_tx.clone());
+        let schema: JSONSchema = get_starknet_spec_api_schema_for_components(
+            &[(SpecFile::StarknetApiOpenrpc, &["DEPRECATED_CONTRACT_CLASS"])],
+            &VERSION_0_4,
+        );
+        if has_abi {
+            let schema: JSONSchema = get_starknet_spec_api_schema_for_components(
+                &[(SpecFile::StarknetApiOpenrpc, &["CONTRACT_ABI"])],
+                &VERSION_0_4,
+            );
+            assert!(
+                schema
+                    .is_valid(&serde_json::to_value(inner_tx.clone().contract_class.abi).unwrap())
+            );
+        }
+        assert!(schema.is_valid(&serde_json::to_value(inner_tx.clone().contract_class).unwrap()));
         validate_tx_fits_rpc(tx);
     }
 }

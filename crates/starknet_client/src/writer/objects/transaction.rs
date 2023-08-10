@@ -11,11 +11,9 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::{
+    ContractClassAbiEntry as DeprecatedContractClassAbiEntry,
     EntryPoint as DeprecatedEntryPoint,
     EntryPointType as DeprecatedEntryPointType,
-    EventAbiEntry,
-    FunctionAbiEntry,
-    StructAbiEntry,
 };
 use starknet_api::state::{EntryPoint, EntryPointType};
 use starknet_api::transaction::{
@@ -165,22 +163,6 @@ pub struct ContractClass {
     pub contract_class_version: String,
     pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
     pub abi: String,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
-#[serde(deny_unknown_fields)]
-#[serde(tag = "type")]
-pub enum DeprecatedContractClassAbiEntry {
-    #[serde(rename = "event")]
-    Event(EventAbiEntry),
-    #[serde(rename = "function")]
-    Function(FunctionAbiEntry),
-    #[serde(rename = "constructor")]
-    Constructor(FunctionAbiEntry),
-    #[serde(rename = "l1_handler")]
-    L1Handler(FunctionAbiEntry),
-    #[serde(rename = "struct")]
-    Struct(StructAbiEntry),
 }
 
 // The conversion is done here and not in papyrus_gateway because the gateway uses starknet_api for
