@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::ops::Index;
-use std::sync::Arc;
 
 use assert_matches::assert_matches;
 use indexmap::IndexMap;
@@ -33,7 +32,6 @@ use starknet_api::transaction::{
     TransactionOffsetInBlock,
 };
 use starknet_api::{patricia_key, stark_felt};
-use starknet_client::writer::MockStarknetWriter;
 use test_utils::{
     get_rng,
     get_test_block,
@@ -58,7 +56,7 @@ use super::super::transaction::{
 };
 use super::api_impl::JsonRpcServerV0_3Impl;
 use super::{ContinuationToken, EventFilter};
-use crate::api::{BlockHashOrNumber, BlockId, JsonRpcServerImpl, Tag};
+use crate::api::{BlockHashOrNumber, BlockId, Tag};
 use crate::syncing_state::SyncStatus;
 use crate::test_utils::{
     get_starknet_spec_api_schema_for_components,
@@ -66,6 +64,7 @@ use crate::test_utils::{
     get_test_gateway_config,
     get_test_highest_block,
     get_test_rpc_server_and_storage_writer,
+    get_test_rpc_server_and_storage_writer_from_params,
     raw_call,
     validate_schema,
     SpecFile,
@@ -166,20 +165,11 @@ async fn syncing() {
         &[(SpecFile::StarknetApiOpenrpc, &[SPEC_METHOD_NAME])],
         &VERSION_0_3,
     );
-
-    let ((storage_reader, _), _temp_dir) = get_test_storage();
-    let config = get_test_gateway_config();
     let shared_highest_block = get_test_highest_block();
-    let module = JsonRpcServerV0_3Impl::new(
-        config.chain_id,
-        storage_reader,
-        config.max_events_chunk_size,
-        config.max_events_keys,
-        BlockHashAndNumber::default(),
-        shared_highest_block.clone(),
-        Arc::new(MockStarknetWriter::new()),
-    )
-    .into_rpc_module();
+    let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_3Impl>(
+        None,
+        Some(shared_highest_block.clone()),
+    );
 
     let (json_response_0, result_0) = raw_call::<_, bool>(&module, API_METHOD_NAME, "").await;
     assert!(validate_schema(&result_schema, &json_response_0));

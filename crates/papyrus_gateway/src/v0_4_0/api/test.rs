@@ -2,7 +2,6 @@ use std::collections::HashSet;
 use std::fmt::Debug;
 use std::net::SocketAddr;
 use std::ops::Index;
-use std::sync::Arc;
 
 use assert_matches::assert_matches;
 use async_trait::async_trait;
@@ -74,7 +73,7 @@ use super::super::transaction::{
 use super::super::write_api_result::AddInvokeOkResult;
 use super::api_impl::JsonRpcServerV0_4Impl;
 use super::{ContinuationToken, EventFilter};
-use crate::api::{BlockHashOrNumber, BlockId, JsonRpcServerImpl, Tag};
+use crate::api::{BlockHashOrNumber, BlockId, Tag};
 use crate::syncing_state::SyncStatus;
 use crate::test_utils::{
     get_starknet_spec_api_schema_for_components,
@@ -82,7 +81,7 @@ use crate::test_utils::{
     get_test_gateway_config,
     get_test_highest_block,
     get_test_rpc_server_and_storage_writer,
-    get_test_rpc_server_and_storage_writer_from_mock_client,
+    get_test_rpc_server_and_storage_writer_from_params,
     raw_call,
     validate_schema,
     SpecFile,
@@ -186,20 +185,11 @@ async fn syncing() {
         &[(SpecFile::StarknetApiOpenrpc, &[SPEC_METHOD_NAME])],
         &VERSION_0_4,
     );
-
-    let ((storage_reader, _), _temp_dir) = get_test_storage();
-    let config = get_test_gateway_config();
     let shared_highest_block = get_test_highest_block();
-    let module = JsonRpcServerV0_4Impl::new(
-        config.chain_id,
-        storage_reader,
-        config.max_events_chunk_size,
-        config.max_events_keys,
-        BlockHashAndNumber::default(),
-        shared_highest_block.clone(),
-        Arc::new(MockStarknetWriter::new()),
-    )
-    .into_rpc_module();
+    let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
+        None,
+        Some(shared_highest_block.clone()),
+    );
 
     let (json_response_0, result_0) = raw_call::<_, bool>(&module, API_METHOD_NAME, "").await;
     assert!(validate_schema(&result_schema, &json_response_0));
@@ -1923,9 +1913,10 @@ trait AddTransactionTest {
             Ok(client_resp),
         );
 
-        let (module, _) = get_test_rpc_server_and_storage_writer_from_mock_client::<
-            JsonRpcServerV0_4Impl,
-        >(client_mock);
+        let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
+            Some(client_mock),
+            None,
+        );
         let resp = module.call::<_, Self::Response>(Self::METHOD_NAME, [tx]).await.unwrap();
         assert_eq!(resp, expected_resp);
     }
@@ -1946,9 +1937,10 @@ trait AddTransactionTest {
             Err(client_error),
         );
 
-        let (module, _) = get_test_rpc_server_and_storage_writer_from_mock_client::<
-            JsonRpcServerV0_4Impl,
-        >(client_mock);
+        let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
+            Some(client_mock),
+            None,
+        );
         let result = module.call::<_, Self::Response>(Self::METHOD_NAME, [tx]).await;
         let jsonrpsee::core::Error::Call(error) = result.unwrap_err() else {
             panic!("Got an error which is not a call error");

@@ -34,15 +34,18 @@ pub(crate) fn get_test_highest_block() -> Arc<RwLock<Option<BlockHashAndNumber>>
 
 pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
 -> (RpcModule<T>, StorageWriter) {
-    get_test_rpc_server_and_storage_writer_from_mock_client(MockStarknetWriter::new())
+    get_test_rpc_server_and_storage_writer_from_params(None, None)
 }
 
-pub(crate) fn get_test_rpc_server_and_storage_writer_from_mock_client<T: JsonRpcServerImpl>(
-    mock_client: MockStarknetWriter,
+pub(crate) fn get_test_rpc_server_and_storage_writer_from_params<T: JsonRpcServerImpl>(
+    mock_client: Option<MockStarknetWriter>,
+    shared_highest_block: Option<Arc<RwLock<Option<BlockHashAndNumber>>>>,
 ) -> (RpcModule<T>, StorageWriter) {
+    let mock_client = mock_client.unwrap_or(MockStarknetWriter::new());
+    let shared_highest_block = shared_highest_block.unwrap_or(get_test_highest_block());
+
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
     let config = get_test_gateway_config();
-    let shared_highest_block = get_test_highest_block();
     let mock_client_arc = Arc::new(mock_client);
     (
         T::new(
