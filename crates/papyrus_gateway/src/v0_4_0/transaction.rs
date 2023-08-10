@@ -18,7 +18,6 @@ use starknet_api::transaction::TransactionExecutionStatus;
 use starknet_api::transaction::{
     Calldata,
     DeclareTransactionOutput,
-    DeployAccountTransaction,
     DeployAccountTransactionOutput,
     DeployTransaction,
     DeployTransactionOutput,
@@ -182,6 +181,8 @@ pub struct TransactionWithHash {
     #[serde(flatten)]
     pub transaction: Transaction,
 }
+
+pub type DeployAccountTransaction = starknet_api::transaction::DeployAccountTransaction;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 #[serde(tag = "type")]
