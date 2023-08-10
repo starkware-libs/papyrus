@@ -4,6 +4,8 @@ mod starknet_error_test;
 
 use std::fmt::{self, Display, Formatter};
 
+#[cfg(any(feature = "testing", test))]
+use enum_iterator::Sequence;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -21,6 +23,7 @@ pub enum StarknetErrorCode {
 // The issue requesting that #[serde(other)] will deserialize the variant with the unknown tag's
 // content is: https://github.com/serde-rs/serde/issues/1701
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[cfg_attr(any(test, feature = "testing"), derive(Sequence))]
 pub enum KnownStarknetErrorCode {
     #[serde(rename = "StarknetErrorCode.UNDECLARED_CLASS")]
     UndeclaredClass,
