@@ -32,11 +32,17 @@ pub(crate) fn get_test_highest_block() -> Arc<RwLock<Option<BlockHashAndNumber>>
 }
 
 pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
--> (RpcModule<T>, StorageWriter, Arc<MockStarknetWriter>) {
+-> (RpcModule<T>, StorageWriter) {
+    get_test_rpc_server_and_storage_writer_from_mock_client(MockStarknetWriter::new())
+}
+
+pub(crate) fn get_test_rpc_server_and_storage_writer_from_mock_client<T: JsonRpcServerImpl>(
+    mock_client: MockStarknetWriter,
+) -> (RpcModule<T>, StorageWriter) {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
     let config = get_test_gateway_config();
     let shared_highest_block = get_test_highest_block();
-    let mock_starknet_writer = Arc::new(MockStarknetWriter::new());
+    let mock_client_arc = Arc::new(mock_client);
     (
         T::new(
             config.chain_id,
@@ -44,11 +50,10 @@ pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
             config.max_events_chunk_size,
             config.max_events_keys,
             shared_highest_block,
-            mock_starknet_writer.clone(),
+            mock_client_arc,
         )
         .into_rpc_module(),
         storage_writer,
-        mock_starknet_writer,
     )
 }
 
