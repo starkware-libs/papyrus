@@ -60,7 +60,7 @@ spec:
         args:
         - --chain_id
         - {{ .Values.starknet.chainId }}
-        - --central_url
+        - --central.url
         - {{ .Values.starknet.centralUrl }}
         - --base_layer.node_url
         - {{ .Values.base_layer_node_url }}
