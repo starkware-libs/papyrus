@@ -43,8 +43,11 @@ use starknet_api::transaction::{
     TransactionOffsetInBlock,
 };
 use starknet_api::{calldata, patricia_key, stark_felt};
-use starknet_client::writer::objects::response::InvokeResponse;
-use starknet_client::writer::objects::transaction::InvokeTransaction as ClientInvokeTransaction;
+use starknet_client::writer::objects::response::{DeployAccountResponse, InvokeResponse};
+use starknet_client::writer::objects::transaction::{
+    DeployAccountTransaction as ClientDeployAccountTransaction,
+    InvokeTransaction as ClientInvokeTransaction,
+};
 use starknet_client::writer::{MockStarknetWriter, WriterClientError, WriterClientResult};
 use starknet_client::ClientError;
 use test_utils::{
@@ -62,6 +65,7 @@ use super::super::block::Block;
 use super::super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::super::state::{ContractClass, StateUpdate, ThinStateDiff};
 use super::super::transaction::{
+    DeployAccountTransaction,
     Event,
     InvokeTransactionV1,
     TransactionFinalityStatus,
@@ -70,7 +74,7 @@ use super::super::transaction::{
     TransactionWithHash,
     Transactions,
 };
-use super::super::write_api_result::AddInvokeOkResult;
+use super::super::write_api_result::{AddDeployAccountOkResult, AddInvokeOkResult};
 use super::api_impl::JsonRpcServerV0_4Impl;
 use super::{ContinuationToken, EventFilter};
 use crate::api::{BlockHashOrNumber, BlockId, Tag};
@@ -1983,6 +1987,28 @@ impl AddTransactionTest for AddInvokeTest {
     }
 }
 
+struct AddDeployAccountTest {}
+impl AddTransactionTest for AddDeployAccountTest {
+    type Transaction = DeployAccountTransaction;
+    type ClientTransaction = ClientDeployAccountTransaction;
+    type Response = AddDeployAccountOkResult;
+    type ClientResponse = DeployAccountResponse;
+
+    const METHOD_NAME: &'static str = "starknet_V0_4_addDeployAccountTransaction";
+
+    fn expect_add_transaction(
+        client_mock: &mut MockStarknetWriter,
+        client_tx: Self::ClientTransaction,
+        client_result: WriterClientResult<Self::ClientResponse>,
+    ) {
+        client_mock
+            .expect_add_deploy_account_transaction()
+            .times(1)
+            .with(eq(client_tx))
+            .return_once(move |_| client_result);
+    }
+}
+
 #[tokio::test]
 async fn add_invoke_positive_flow() {
     AddInvokeTest::test_positive_flow().await;
@@ -1991,4 +2017,14 @@ async fn add_invoke_positive_flow() {
 #[tokio::test]
 async fn add_invoke_internal_error() {
     AddInvokeTest::test_internal_error().await;
+}
+
+#[tokio::test]
+async fn add_deploy_account_positive_flow() {
+    AddDeployAccountTest::test_positive_flow().await;
+}
+
+#[tokio::test]
+async fn add_deploy_account_internal_error() {
+    AddDeployAccountTest::test_internal_error().await;
 }

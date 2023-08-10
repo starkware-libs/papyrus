@@ -68,10 +68,14 @@ use crate::v0_4_0::error::{
 use crate::v0_4_0::transaction::{
     get_block_tx_hashes_by_number,
     get_block_txs_by_number,
+    DeployAccountTransaction,
     InvokeTransactionV1,
 };
-use crate::v0_4_0::write_api_error::starknet_error_to_invoke_error;
-use crate::v0_4_0::write_api_result::AddInvokeOkResult;
+use crate::v0_4_0::write_api_error::{
+    starknet_error_to_deploy_account_error,
+    starknet_error_to_invoke_error,
+};
+use crate::v0_4_0::write_api_result::{AddDeployAccountOkResult, AddInvokeOkResult};
 use crate::{
     get_block_status,
     get_latest_block_number,
@@ -534,6 +538,24 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             Ok(res) => Ok(res.into()),
             Err(WriterClientError::ClientError(ClientError::StarknetError(starknet_error))) => {
                 Err(ErrorObjectOwned::from(starknet_error_to_invoke_error(starknet_error)))
+            }
+            Err(err) => Err(internal_server_error(err)),
+        }
+    }
+
+    #[instrument(skip(self), level = "debug", err, ret)]
+    async fn add_deploy_account_transaction(
+        &self,
+        deploy_account_transaction: DeployAccountTransaction,
+    ) -> RpcResult<AddDeployAccountOkResult> {
+        let result = self
+            .writer_client
+            .add_deploy_account_transaction(&deploy_account_transaction.into())
+            .await;
+        match result {
+            Ok(res) => Ok(res.into()),
+            Err(WriterClientError::ClientError(ClientError::StarknetError(starknet_error))) => {
+                Err(ErrorObjectOwned::from(starknet_error_to_deploy_account_error(starknet_error)))
             }
             Err(err) => Err(internal_server_error(err)),
         }
