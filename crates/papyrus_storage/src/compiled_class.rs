@@ -114,6 +114,7 @@ fn update_marker<'env>(
         }
         block_number = block_number.next();
         markers_table.upsert(txn, &MarkerKind::CompiledClass, &block_number)?;
+        metrics::gauge!("papyrus_compiled_class_marker", block_number.0 as f64);
     }
     Ok(())
 }
