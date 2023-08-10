@@ -14,6 +14,7 @@ format_macro_bodies = true
 format_macro_matchers = true
 format_strings = true
 imports_granularity = "Module"
+imports_layout = "HorizontalVertical"
 group_imports = "StdExternalCrate"
 normalize_comments = true
 normalize_doc_attributes = true
@@ -23,11 +24,11 @@ wrap_comments = true
 #     "rust-analyzer.rustfmt.overrideCommand": [
 #         "rustup",
 #         "run",
-#         "nightly-2022-07-27",
+#         "nightly-2023-07-05",
 #         "--",
 #         "rustfmt",
 #         "--edition",
 #         "2018",
 #         "--"
 #     ]
-# and run "rustup toolchain install nightly-2022-07-27".
+# and run "rustup toolchain install nightly-2023-07-05".

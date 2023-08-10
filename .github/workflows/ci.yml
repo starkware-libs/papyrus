@@ -83,9 +83,9 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           components: rustfmt
-          toolchain: nightly-2022-11-03
+          toolchain: nightly-2023-07-05
       - uses: Swatinem/rust-cache@v2
-      - run: cargo +nightly-2022-11-03 fmt --all -- --check
+      - run: cargo +nightly-2023-07-05 fmt --all -- --check
 
   udeps:
     runs-on: ubuntu-latest
@@ -95,7 +95,7 @@ jobs:
         name: "Rust Toolchain Setup"
         with:
           profile: minimal
-          toolchain: nightly-2022-11-03
+          toolchain: nightly-2023-07-05
           override: true
       - uses: actions/cache@v3
         name: "Cache Setup"
@@ -111,7 +111,7 @@ jobs:
           tar -xzf cargo-udeps-v0.1.35-x86_64-unknown-linux-gnu.tar.gz;
           cargo-udeps-v0.1.35-x86_64-unknown-linux-gnu/cargo-udeps udeps --all-targets
         env:
-          RUSTUP_TOOLCHAIN: nightly-2023-04-25
+          RUSTUP_TOOLCHAIN: nightly-2023-07-05
 
   clippy:
     runs-on: ubuntu-latest
