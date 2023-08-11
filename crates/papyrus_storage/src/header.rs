@@ -151,6 +151,18 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
         let block_hash_to_number_table = self.txn.open_table(&self.tables.block_hash_to_number)?;
 
         update_marker(&self.txn, &markers_table, block_number)?;
+        use chrono::{TimeZone, Utc};
+
+        let dt = Utc::now()
+            - Utc
+                .timestamp_opt(block_header.timestamp.0 as i64, 0)
+                .single()
+                .expect("block timestamp should be valid");
+        let header_latency = dt.num_seconds();
+        println!("header latency: {}", header_latency);
+        if header_latency >= 0 {
+            metrics::gauge!("papyrus_header_latency", header_latency as f64);
+        }
 
         // Write header.
         headers_table.insert(&self.txn, &block_number, block_header)?;
