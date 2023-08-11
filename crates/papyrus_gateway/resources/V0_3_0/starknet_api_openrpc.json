@@ -452,7 +452,7 @@
         {
             "name": "starknet_estimateFee",
             "summary": "estimate the fee for of StarkNet transactions",
-            "description": "estimates the resources required by transactions when applyed on a given state",
+            "description": "estimates the resources required by transactions when applied on a given state",
             "params": [
                 {
                     "name": "request",
@@ -2190,7 +2190,7 @@
                     },
                     "abi": {
                         "type": "string",
-                        "descripition": "The class ABI, as supplied by the user declaring the class"
+                        "description": "The class ABI, as supplied by the user declaring the class"
                     }
                 },
                 "required": [
