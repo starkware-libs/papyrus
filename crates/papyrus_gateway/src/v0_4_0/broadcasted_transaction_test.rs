@@ -38,6 +38,10 @@ fn validate_tx_fits_rpc(tx: BroadcastedDeclareTransaction) {
 }
 
 auto_impl_get_test_instance! {
+    pub enum BroadcastedDeclareTransaction {
+        V1(BroadcastedDeclareV1Transaction) = 0,
+        V2(BroadcastedDeclareV2Transaction) = 1,
+    }
     pub struct BroadcastedDeclareV1Transaction {
         pub r#type: DeclareType,
         pub contract_class: DeprecatedContractClass,
