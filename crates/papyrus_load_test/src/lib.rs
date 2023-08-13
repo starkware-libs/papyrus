@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod precision_test;
+
 pub mod create_files;
 pub mod create_request;
 pub mod scenarios;
