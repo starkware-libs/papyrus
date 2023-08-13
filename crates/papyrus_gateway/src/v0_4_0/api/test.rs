@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::convert::Infallible;
 use std::fmt::Debug;
 use std::net::SocketAddr;
 use std::ops::Index;
@@ -43,8 +44,13 @@ use starknet_api::transaction::{
     TransactionOffsetInBlock,
 };
 use starknet_api::{calldata, patricia_key, stark_felt};
-use starknet_client::writer::objects::response::{DeployAccountResponse, InvokeResponse};
+use starknet_client::writer::objects::response::{
+    DeclareResponse,
+    DeployAccountResponse,
+    InvokeResponse,
+};
 use starknet_client::writer::objects::transaction::{
+    DeclareTransaction as ClientDeclareTransaction,
     DeployAccountTransaction as ClientDeployAccountTransaction,
     InvokeTransaction as ClientInvokeTransaction,
 };
@@ -62,6 +68,7 @@ use test_utils::{
 
 use super::super::api::EventsChunk;
 use super::super::block::Block;
+use super::super::broadcasted_transaction::BroadcastedDeclareTransaction;
 use super::super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::super::state::{ContractClass, StateUpdate, ThinStateDiff};
 use super::super::transaction::{
@@ -74,7 +81,11 @@ use super::super::transaction::{
     TransactionWithHash,
     Transactions,
 };
-use super::super::write_api_result::{AddDeployAccountOkResult, AddInvokeOkResult};
+use super::super::write_api_result::{
+    AddDeclareOkResult,
+    AddDeployAccountOkResult,
+    AddInvokeOkResult,
+};
 use super::api_impl::JsonRpcServerV0_4Impl;
 use super::{ContinuationToken, EventFilter};
 use crate::api::{BlockHashOrNumber, BlockId, Tag};
@@ -1897,9 +1908,12 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) {
 }
 
 #[async_trait]
-trait AddTransactionTest {
+trait AddTransactionTest
+where
+    <<Self as AddTransactionTest>::ClientTransaction as TryFrom<Self::Transaction>>::Error: Debug,
+{
     type Transaction: GetTestInstance + Serialize + Clone + Send;
-    type ClientTransaction: From<Self::Transaction> + Send;
+    type ClientTransaction: TryFrom<Self::Transaction> + Send;
     type Response: From<Self::ClientResponse>
         + for<'de> Deserialize<'de>
         + Eq
@@ -1925,7 +1939,7 @@ trait AddTransactionTest {
         let mut client_mock = MockStarknetWriter::new();
         Self::expect_add_transaction(
             &mut client_mock,
-            Self::ClientTransaction::from(tx.clone()),
+            Self::ClientTransaction::try_from(tx.clone()).unwrap(),
             Ok(client_resp),
         );
 
@@ -1949,7 +1963,7 @@ trait AddTransactionTest {
         let mut client_mock = MockStarknetWriter::new();
         Self::expect_add_transaction(
             &mut client_mock,
-            Self::ClientTransaction::from(tx.clone()),
+            Self::ClientTransaction::try_from(tx.clone()).unwrap(),
             Err(client_error),
         );
 
@@ -2009,6 +2023,30 @@ impl AddTransactionTest for AddDeployAccountTest {
     }
 }
 
+struct AddDeclareTest {}
+impl AddTransactionTest for AddDeclareTest {
+    type Transaction = BroadcastedDeclareTransaction;
+    type ClientTransaction = ClientDeclareTransaction;
+    type Response = AddDeclareOkResult;
+    type ClientResponse = DeclareResponse;
+
+    const METHOD_NAME: &'static str = "starknet_V0_4_addDeclareTransaction";
+
+    fn expect_add_transaction(
+        client_mock: &mut MockStarknetWriter,
+        client_tx: Self::ClientTransaction,
+        client_result: WriterClientResult<Self::ClientResponse>,
+    ) {
+        client_mock
+            .expect_add_declare_transaction()
+            .times(1)
+            .with(eq(client_tx))
+            .return_once(move |_| client_result);
+    }
+}
+
+// TODO(shahak): Test starknet error.
+
 #[tokio::test]
 async fn add_invoke_positive_flow() {
     AddInvokeTest::test_positive_flow().await;
@@ -2027,4 +2065,14 @@ async fn add_deploy_account_positive_flow() {
 #[tokio::test]
 async fn add_deploy_account_internal_error() {
     AddDeployAccountTest::test_internal_error().await;
+}
+
+#[tokio::test]
+async fn add_declare_positive_flow() {
+    AddDeclareTest::test_positive_flow().await;
+}
+
+#[tokio::test]
+async fn add_declare_internal_error() {
+    AddDeclareTest::test_internal_error().await;
 }

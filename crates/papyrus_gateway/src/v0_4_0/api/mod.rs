@@ -13,6 +13,7 @@ use starknet_api::state::StorageKey;
 use starknet_api::transaction::{Calldata, EventKey, TransactionHash, TransactionOffsetInBlock};
 
 use super::block::Block;
+use super::broadcasted_transaction::BroadcastedDeclareTransaction;
 use super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::state::{ContractClass, StateUpdate};
 use super::transaction::{
@@ -22,7 +23,7 @@ use super::transaction::{
     TransactionReceipt,
     TransactionWithHash,
 };
-use super::write_api_result::{AddDeployAccountOkResult, AddInvokeOkResult};
+use super::write_api_result::{AddDeclareOkResult, AddDeployAccountOkResult, AddInvokeOkResult};
 use crate::api::BlockId;
 use crate::syncing_state::SyncingState;
 use crate::v0_4_0::error::INVALID_CONTINUATION_TOKEN;
@@ -155,6 +156,13 @@ pub trait JsonRpc {
         &self,
         deploy_account_transaction: DeployAccountTransaction,
     ) -> RpcResult<AddDeployAccountOkResult>;
+
+    /// Submits a new declare transaction to be added to the chain.
+    #[method(name = "addDeclareTransaction")]
+    async fn add_declare_transaction(
+        &self,
+        declare_transaction: BroadcastedDeclareTransaction,
+    ) -> RpcResult<AddDeclareOkResult>;
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
