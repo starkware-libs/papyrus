@@ -9,5 +9,5 @@ pub mod state;
 pub mod transaction;
 #[cfg(test)]
 mod transaction_test;
-pub mod write_api_error;
+pub(crate) mod write_api_error;
 pub mod write_api_result;

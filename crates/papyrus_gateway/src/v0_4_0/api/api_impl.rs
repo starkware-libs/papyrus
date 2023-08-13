@@ -4,6 +4,8 @@ use async_trait::async_trait;
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
+#[cfg(test)]
+use mockall_double::double;
 use papyrus_execution::{execute_call, ExecutionError};
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
@@ -72,6 +74,7 @@ use crate::v0_4_0::transaction::{
     DeployAccountTransaction,
     InvokeTransactionV1,
 };
+#[cfg_attr(test, double)]
 use crate::v0_4_0::write_api_error::{
     starknet_error_to_declare_error,
     starknet_error_to_deploy_account_error,
