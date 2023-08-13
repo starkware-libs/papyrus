@@ -104,6 +104,7 @@ fn invoke_fits_rpc() {
     validate_tx_fits_rpc(tx);
 }
 
+// TODO(shahak): Fix entry_points_by_type and re-enable this test.
 #[ignore]
 #[test]
 fn declare_v1_fits_rpc() {
