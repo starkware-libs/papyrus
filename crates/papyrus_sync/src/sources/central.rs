@@ -36,7 +36,7 @@ use tracing::{debug, trace};
 
 use self::state_update_stream::StateUpdateStream;
 
-pub type CentralResult<T> = Result<T, CentralError>;
+type CentralResult<T> = Result<T, CentralError>;
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct CentralSourceConfig {
     pub concurrent_requests: usize,
@@ -89,7 +89,7 @@ pub struct GenericCentralSource<TStarknetClient: StarknetReader + Send + Sync> {
 }
 
 #[derive(Clone)]
-pub enum ApiContractClass {
+enum ApiContractClass {
     DeprecatedContractClass(starknet_api::deprecated_contract_class::ContractClass),
     ContractClass(starknet_api::state::ContractClass),
 }
@@ -106,14 +106,14 @@ impl From<GenericContractClass> for ApiContractClass {
 }
 
 impl ApiContractClass {
-    pub fn into_cairo0(self) -> CentralResult<DeprecatedContractClass> {
+    fn into_cairo0(self) -> CentralResult<DeprecatedContractClass> {
         match self {
             Self::DeprecatedContractClass(class) => Ok(class),
             _ => Err(CentralError::BadContractClassType),
         }
     }
 
-    pub fn into_cairo1(self) -> CentralResult<ContractClass> {
+    fn into_cairo1(self) -> CentralResult<ContractClass> {
         match self {
             Self::ContractClass(class) => Ok(class),
             _ => Err(CentralError::BadContractClassType),

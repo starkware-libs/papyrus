@@ -17,7 +17,8 @@ use starknet_api::state::{ContractClass, StateDiff, StorageKey};
 use starknet_api::{patricia_key, stark_felt};
 use tokio::sync::RwLock;
 
-use crate::sources::{MockBaseLayerSourceTrait, MockCentralSourceTrait};
+use crate::sources::base_layer::MockBaseLayerSourceTrait;
+use crate::sources::central::MockCentralSourceTrait;
 use crate::{
     sort_state_diff,
     stream_new_base_layer_block,
