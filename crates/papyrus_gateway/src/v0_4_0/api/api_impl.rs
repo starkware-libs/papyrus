@@ -32,6 +32,7 @@ use tokio::sync::RwLock;
 use tracing::instrument;
 
 use super::super::block::{Block, BlockHeader};
+use super::super::broadcasted_transaction::BroadcastedDeclareTransaction;
 use super::super::state::StateUpdate;
 use super::super::transaction::{
     Event,
@@ -72,10 +73,15 @@ use crate::v0_4_0::transaction::{
     InvokeTransactionV1,
 };
 use crate::v0_4_0::write_api_error::{
+    starknet_error_to_declare_error,
     starknet_error_to_deploy_account_error,
     starknet_error_to_invoke_error,
 };
-use crate::v0_4_0::write_api_result::{AddDeployAccountOkResult, AddInvokeOkResult};
+use crate::v0_4_0::write_api_result::{
+    AddDeclareOkResult,
+    AddDeployAccountOkResult,
+    AddInvokeOkResult,
+};
 use crate::{
     get_block_status,
     get_latest_block_number,
@@ -556,6 +562,26 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             Ok(res) => Ok(res.into()),
             Err(WriterClientError::ClientError(ClientError::StarknetError(starknet_error))) => {
                 Err(ErrorObjectOwned::from(starknet_error_to_deploy_account_error(starknet_error)))
+            }
+            Err(err) => Err(internal_server_error(err)),
+        }
+    }
+
+    #[instrument(skip(self), level = "debug", err, ret)]
+    async fn add_declare_transaction(
+        &self,
+        declare_transaction: BroadcastedDeclareTransaction,
+    ) -> RpcResult<AddDeclareOkResult> {
+        let result = self
+            .writer_client
+            .add_declare_transaction(
+                &declare_transaction.try_into().map_err(|err| internal_server_error(err))?,
+            )
+            .await;
+        match result {
+            Ok(res) => Ok(res.into()),
+            Err(WriterClientError::ClientError(ClientError::StarknetError(starknet_error))) => {
+                Err(ErrorObjectOwned::from(starknet_error_to_declare_error(starknet_error)))
             }
             Err(err) => Err(internal_server_error(err)),
         }

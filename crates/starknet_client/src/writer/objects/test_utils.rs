@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use starknet_api::core::ContractAddress;
+use starknet_api::core::{ClassHash, ContractAddress};
 use starknet_api::deprecated_contract_class::{
     ContractClassAbiEntry as DeprecatedContractClassAbiEntry,
     EntryPoint as DeprecatedEntryPoint,
@@ -10,6 +10,7 @@ use starknet_api::transaction::TransactionHash;
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
 
 use crate::writer::objects::response::{
+    DeclareResponse,
     DeployAccountResponse,
     InvokeResponse,
     SuccessfulStarknetErrorCode,
@@ -30,6 +31,11 @@ auto_impl_get_test_instance! {
         pub code: SuccessfulStarknetErrorCode,
         pub transaction_hash: TransactionHash,
         pub address: ContractAddress,
+    }
+    pub struct DeclareResponse {
+        pub code: SuccessfulStarknetErrorCode,
+        pub transaction_hash: TransactionHash,
+        pub class_hash: ClassHash,
     }
     pub enum SuccessfulStarknetErrorCode {
         TransactionReceived = 0,
