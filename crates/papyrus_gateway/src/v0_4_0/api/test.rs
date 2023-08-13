@@ -43,6 +43,7 @@ use starknet_api::transaction::{
     TransactionOffsetInBlock,
 };
 use starknet_api::{calldata, patricia_key, stark_felt};
+use starknet_client::starknet_error::{KnownStarknetErrorCode, StarknetError, StarknetErrorCode};
 use starknet_client::writer::objects::response::{
     DeclareResponse,
     DeployAccountResponse,
@@ -80,6 +81,11 @@ use super::super::transaction::{
     TransactionWithHash,
     Transactions,
 };
+use super::super::write_api_error::{
+    starknet_error_to_declare_error_context,
+    starknet_error_to_deploy_account_error_context,
+    starknet_error_to_invoke_error_context,
+};
 use super::super::write_api_result::{
     AddDeclareOkResult,
     AddDeployAccountOkResult,
@@ -101,10 +107,12 @@ use crate::test_utils::{
     SpecFile,
 };
 use crate::v0_4_0::error::{
+    JsonRpcError,
     BLOCK_NOT_FOUND,
     CLASS_HASH_NOT_FOUND,
     CONTRACT_ERROR,
     CONTRACT_NOT_FOUND,
+    DUPLICATE_TX,
     INVALID_CONTINUATION_TOKEN,
     INVALID_TRANSACTION_INDEX,
     NO_BLOCKS,
@@ -1932,6 +1940,10 @@ where
         client_tx: Self::ClientTransaction,
         client_result: WriterClientResult<Self::ClientResponse>,
     );
+    fn expect_starknet_error_conversion(
+        starknet_error: StarknetError,
+        rpc_error: JsonRpcError,
+    ) -> Box<dyn Send>;
 
     async fn test_positive_flow() {
         let mut rng = get_rng();
@@ -1980,6 +1992,43 @@ where
         };
         assert_eq!(error, expected_error);
     }
+
+    async fn test_starknet_error() {
+        let mut rng = get_rng();
+        let tx = Self::Transaction::get_test_instance(&mut rng);
+        const MESSAGE: &str = "message";
+        let starknet_error = StarknetError {
+            code: StarknetErrorCode::KnownErrorCode(KnownStarknetErrorCode::BlockNotFound),
+            message: MESSAGE.to_owned(),
+        };
+        let client_error =
+            WriterClientError::ClientError(ClientError::StarknetError(starknet_error.clone()));
+        let expected_error = DUPLICATE_TX;
+
+        let mut client_mock = MockStarknetWriter::new();
+        Self::expect_add_transaction(
+            &mut client_mock,
+            Self::ClientTransaction::try_from(tx.clone()).unwrap(),
+            Err(client_error),
+        );
+
+        // Note that this is not thread safe. We assume that this is the only test that calls
+        // `starknet_error_to_<tx_type>_error`. If this assumption breaks, We'll need to lock this
+        // section with a mutex. For more info, see:
+        // https://github.com/asomers/mockall/blob/master/mockall/examples/synchronization.rs
+        let _ctx =
+            Self::expect_starknet_error_conversion(starknet_error.clone(), expected_error.clone());
+
+        let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
+            Some(client_mock),
+            None,
+        );
+        let result = module.call::<_, Self::Response>(Self::METHOD_NAME, [tx]).await;
+        let jsonrpsee::core::Error::Call(error) = result.unwrap_err() else {
+            panic!("Got an error which is not a call error");
+        };
+        assert_eq!(error, expected_error.into());
+    }
 }
 
 struct AddInvokeTest {}
@@ -2001,6 +2050,15 @@ impl AddTransactionTest for AddInvokeTest {
             .times(1)
             .with(eq(client_tx))
             .return_once(move |_| client_result);
+    }
+
+    fn expect_starknet_error_conversion(
+        starknet_error: StarknetError,
+        rpc_error: JsonRpcError,
+    ) -> Box<dyn Send> {
+        let ctx = Box::new(starknet_error_to_invoke_error_context());
+        ctx.expect().times(1).with(eq(starknet_error)).return_once(move |_| rpc_error);
+        ctx
     }
 }
 
@@ -2024,6 +2082,15 @@ impl AddTransactionTest for AddDeployAccountTest {
             .with(eq(client_tx))
             .return_once(move |_| client_result);
     }
+
+    fn expect_starknet_error_conversion(
+        starknet_error: StarknetError,
+        rpc_error: JsonRpcError,
+    ) -> Box<dyn Send> {
+        let ctx = starknet_error_to_deploy_account_error_context();
+        ctx.expect().times(1).with(eq(starknet_error)).return_once(move |_| rpc_error);
+        Box::new(ctx)
+    }
 }
 
 struct AddDeclareTest {}
@@ -2046,6 +2113,15 @@ impl AddTransactionTest for AddDeclareTest {
             .with(eq(client_tx))
             .return_once(move |_| client_result);
     }
+
+    fn expect_starknet_error_conversion(
+        starknet_error: StarknetError,
+        rpc_error: JsonRpcError,
+    ) -> Box<dyn Send> {
+        let ctx = starknet_error_to_declare_error_context();
+        ctx.expect().times(1).with(eq(starknet_error)).return_once(move |_| rpc_error);
+        Box::new(ctx)
+    }
 }
 
 // TODO(shahak): Test starknet error.
@@ -2061,6 +2137,11 @@ async fn add_invoke_internal_error() {
 }
 
 #[tokio::test]
+async fn add_invoke_starknet_error() {
+    AddInvokeTest::test_starknet_error().await;
+}
+
+#[tokio::test]
 async fn add_deploy_account_positive_flow() {
     AddDeployAccountTest::test_positive_flow().await;
 }
@@ -2071,6 +2152,11 @@ async fn add_deploy_account_internal_error() {
 }
 
 #[tokio::test]
+async fn add_deploy_account_starknet_error() {
+    AddDeployAccountTest::test_starknet_error().await;
+}
+
+#[tokio::test]
 async fn add_declare_positive_flow() {
     AddDeclareTest::test_positive_flow().await;
 }
@@ -2078,4 +2164,9 @@ async fn add_declare_positive_flow() {
 #[tokio::test]
 async fn add_declare_internal_error() {
     AddDeclareTest::test_internal_error().await;
+}
+
+#[tokio::test]
+async fn add_declare_starknet_error() {
+    AddDeclareTest::test_starknet_error().await;
 }

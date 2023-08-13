@@ -64,7 +64,7 @@ pub enum KnownStarknetErrorCode {
 }
 
 /// A client error wrapping error codes returned by the starknet gateway.
-#[derive(thiserror::Error, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[derive(thiserror::Error, Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub struct StarknetError {
     pub code: StarknetErrorCode,
     pub message: String,
