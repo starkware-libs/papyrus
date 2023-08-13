@@ -9,14 +9,9 @@ use papyrus_monitoring_gateway::MonitoringServer;
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_storage::{open_storage, StorageReader, StorageWriter};
-use papyrus_sync::{
-    BaseLayerSourceError,
-    CentralError,
-    CentralSource,
-    EthereumBaseLayerSource,
-    StateSync,
-    StateSyncError,
-};
+use papyrus_sync::sources::base_layer::{BaseLayerSourceError, EthereumBaseLayerSource};
+use papyrus_sync::sources::central::{CentralError, CentralSource};
+use papyrus_sync::{StateSync, StateSyncError};
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 use tracing::info;

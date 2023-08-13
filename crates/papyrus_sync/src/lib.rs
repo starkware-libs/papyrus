@@ -2,7 +2,7 @@
 #[path = "sync_test.rs"]
 mod sync_test;
 
-mod sources;
+pub mod sources;
 
 use std::cmp::min;
 use std::collections::BTreeMap;
@@ -28,7 +28,7 @@ use papyrus_storage::ommer::{OmmerStorageReader, OmmerStorageWriter};
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
-use sources::BaseLayerSourceTrait;
+use sources::base_layer::BaseLayerSourceError;
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
@@ -36,15 +36,9 @@ use starknet_api::state::StateDiff;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, instrument, trace, warn};
 
-// TODO(dvir): remove pub use, make the modules public and make inner functions private.
-pub use self::sources::{
-    BaseLayerSourceError,
-    CentralError,
-    CentralSource,
-    CentralSourceConfig,
-    CentralSourceTrait,
-    EthereumBaseLayerSource,
-};
+use crate::sources::base_layer::{BaseLayerSourceTrait, EthereumBaseLayerSource};
+use crate::sources::central::{CentralError, CentralSource, CentralSourceTrait};
+
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct SyncConfig {
     #[serde(deserialize_with = "deserialize_milliseconds_to_duration")]

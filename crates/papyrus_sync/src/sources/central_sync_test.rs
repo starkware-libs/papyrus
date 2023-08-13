@@ -19,14 +19,13 @@ use starknet_api::state::StateDiff;
 use tokio::sync::{Mutex, RwLock};
 use tracing::{debug, error};
 
-use crate::sources::base_layer::MockBaseLayerSourceTrait;
+use crate::sources::base_layer::{BaseLayerSourceTrait, MockBaseLayerSourceTrait};
 use crate::sources::central::{
     BlocksStream,
     CompiledClassesStream,
     MockCentralSourceTrait,
     StateUpdatesStream,
 };
-use crate::sources::BaseLayerSourceTrait;
 use crate::{
     CentralError,
     CentralSourceTrait,
