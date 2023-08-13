@@ -13,8 +13,8 @@ use papyrus_sync::sources::central::{CentralError, CentralSource};
 use papyrus_sync::{StateSync, StateSyncError};
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
-use tracing::info;
 use tracing::metadata::LevelFilter;
+use tracing::{error, info};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 use validator::Validate;
@@ -47,32 +47,24 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         run_sync(config, shared_highest_block, storage_reader.clone(), storage_writer);
     let sync_handle = tokio::spawn(sync_future);
 
-    // TODO(dvir): refactor + better error handling.
-    async fn flatten_with_result<T: std::convert::Into<anyhow::Error>>(
-        handle: JoinHandle<Result<(), T>>,
-    ) -> anyhow::Result<()> {
-        match handle.await {
-            Ok(Ok(result)) => Ok(result),
-            Ok(Err(err)) => Err(err.into()),
-            Err(err) => Err(err.into()),
+    tokio::select! {
+        Err(err)= server_handle_future => {
+            error!("RPC server stopped.");
+            return Err(err.into());
         }
-    }
-
-    async fn flatten_server(handle: JoinHandle<()>) -> anyhow::Result<()> {
-        match handle.await {
-            Ok(_) => Ok(()),
-            Err(err) => Err(err.into()),
+        Err(err) = flatten_err(monitoring_server_handle) => {
+            error!("Monitoring server stopped.");
+            return Err(err);
         }
-    }
-
-    tokio::try_join!(
-        // We use flatten in order to try_join the inner result, not the join handle.
-        flatten_server(server_handle_future),
-        flatten_with_result(monitoring_server_handle),
-        flatten_with_result(sync_handle)
-    )?;
-
-    return Ok(());
+        Err(err) = flatten_err(sync_handle) => {
+            error!("Sync stopped.");
+            return Err(err);
+        }
+        else => {
+            error!("All tasks stopped without an error.");
+            return Ok(());
+        }
+    };
 
     async fn run_sync(
         config: NodeConfig,
@@ -111,6 +103,16 @@ fn configure_tracing() {
     tracing_subscriber::registry().with(fmt_layer).with(level_filter_layer).init();
 }
 
+async fn flatten_err<T: std::convert::Into<anyhow::Error>>(
+    handle: JoinHandle<Result<(), T>>,
+) -> anyhow::Result<()> {
+    match handle.await {
+        Ok(Ok(result)) => Ok(result),
+        Ok(Err(err)) => Err(err.into()),
+        Err(err) => Err(err.into()),
+    }
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let config = NodeConfig::load_and_process(args().collect());
@@ -123,4 +125,28 @@ async fn main() -> anyhow::Result<()> {
     configure_tracing();
     info!("Booting up.");
     run_threads(config).await
+}
+
+#[cfg(test)]
+mod main_test {
+    use assert_matches::assert_matches;
+    use papyrus_node::config::NodeConfig;
+    use tempdir::TempDir;
+
+    use crate::run_threads;
+
+    #[tokio::test]
+    async fn run_threads_stop() {
+        let tmp_data_dir = TempDir::new("./data_for_test").unwrap();
+        let mut config = NodeConfig::default();
+        config.storage.db_config.path_prefix = tmp_data_dir.path().into();
+
+        // Error when not overriding the base layer node URL.
+        assert_matches!(run_threads(config.clone()).await, Err(_));
+
+        // Error when not supplying legal central URL.
+        config.base_layer.node_url = "value".to_string();
+        config.central.url = "_not_legal_url".to_string();
+        assert_matches!(run_threads(config.clone()).await, Err(_));
+    }
 }
