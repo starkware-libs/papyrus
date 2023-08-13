@@ -6,9 +6,14 @@
 //!
 //! [`Starknet specs`]: https://github.com/starkware-libs/starknet-specs/blob/master/api/starknet_api_openrpc.json
 
+use papyrus_storage::compression_utils::serialize_and_compress;
+use papyrus_storage::db::serialization::StorageSerdeError;
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{CompiledClassHash, ContractAddress, Nonce};
-use starknet_api::transaction::{Fee, TransactionSignature};
+use starknet_api::hash::StarkFelt;
+use starknet_api::stark_felt;
+use starknet_api::transaction::{Fee, TransactionSignature, TransactionVersion};
+use starknet_client::writer::objects::transaction as client_transaction;
 use starknet_client::writer::objects::transaction::DeprecatedContractClass;
 
 use super::state::ContractClass;
@@ -74,4 +79,46 @@ pub enum DeclareType {
     #[serde(rename = "DECLARE")]
     #[default]
     Declare,
+}
+
+impl TryFrom<BroadcastedDeclareTransaction> for client_transaction::DeclareTransaction {
+    type Error = StorageSerdeError;
+
+    fn try_from(value: BroadcastedDeclareTransaction) -> Result<Self, Self::Error> {
+        match value {
+            BroadcastedDeclareTransaction::V1(declare_v1) => {
+                Ok(Self::DeclareV1(client_transaction::DeclareV1Transaction {
+                    contract_class: declare_v1.contract_class,
+                    sender_address: declare_v1.sender_address,
+                    nonce: declare_v1.nonce,
+                    max_fee: declare_v1.max_fee,
+                    signature: declare_v1.signature,
+                    version: TransactionVersion(stark_felt!("0x1")),
+                    r#type: client_transaction::DeclareV1Type::default(),
+                }))
+            }
+            BroadcastedDeclareTransaction::V2(declare_v2) => {
+                Ok(Self::DeclareV2(client_transaction::DeclareV2Transaction {
+                    contract_class: client_transaction::ContractClass {
+                        compressed_sierra_program: base64::encode(serialize_and_compress(
+                            &declare_v2.contract_class.sierra_program,
+                        )?),
+                        contract_class_version: declare_v2.contract_class.contract_class_version,
+                        entry_points_by_type: declare_v2
+                            .contract_class
+                            .entry_points_by_type
+                            .to_hash_map(),
+                        abi: declare_v2.contract_class.abi,
+                    },
+                    compiled_class_hash: declare_v2.compiled_class_hash,
+                    sender_address: declare_v2.sender_address,
+                    nonce: declare_v2.nonce,
+                    max_fee: declare_v2.max_fee,
+                    signature: declare_v2.signature,
+                    version: TransactionVersion(stark_felt!("0x2")),
+                    r#type: client_transaction::DeclareV2Type::default(),
+                }))
+            }
+        }
+    }
 }
