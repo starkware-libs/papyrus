@@ -42,7 +42,7 @@ impl SerializeConfig for MonitoringGatewayConfig {
             ser_param(
                 "collect_metrics",
                 &self.collect_metrics,
-                "If true, collect metrics for the monitoring gateway.",
+                "If true, collect and return metrics in the monitoring gateway.",
             ),
         ])
     }
