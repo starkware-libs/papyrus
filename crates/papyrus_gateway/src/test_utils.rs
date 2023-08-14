@@ -24,7 +24,12 @@ pub fn get_test_gateway_config() -> GatewayConfig {
         max_events_chunk_size: 10,
         max_events_keys: 10,
         collect_metrics: false,
-        ..Default::default()
+        starknet_url: String::from("https://alpha4.starknet.io/"),
+        starknet_gateway_retry_config: RetryConfig {
+            retry_base_millis: 2,
+            retry_max_delay_millis: 10,
+            max_retries: 5,
+        },
     }
 }
 
