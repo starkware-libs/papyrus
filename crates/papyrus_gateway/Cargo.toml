@@ -39,6 +39,7 @@ camelpaste.workspace = true
 derive_more.workspace = true
 enum-iterator.workspace = true
 hex.workspace = true
+insta = { workspace = true, features = ["json"] }
 jsonschema.workspace = true
 lazy_static.workspace = true
 metrics-exporter-prometheus = { version = "0.12.1" }
