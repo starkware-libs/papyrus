@@ -7,7 +7,7 @@ pub struct JsonRpcError {
     pub data: Option<String>,
 }
 
-// TODO(shahak): Remove allow(dead_code) once all errors are used.
+// TODO(yair): Remove allow(dead_code) once all errors are used.
 #[allow(dead_code)]
 pub const FAILED_TO_RECEIVE_TRANSACTION: JsonRpcError =
     JsonRpcError { code: 1, message: "Failed to write transaction", data: None };

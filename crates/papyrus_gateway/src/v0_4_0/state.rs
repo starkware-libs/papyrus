@@ -98,9 +98,8 @@ pub struct StorageEntry {
 }
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct EntryPointByType {
-    // TODO(shahak): Fix typo (contructor -> constructor)
     #[serde(rename = "CONSTRUCTOR")]
-    pub contructor: Vec<EntryPoint>,
+    pub constructor: Vec<EntryPoint>,
     #[serde(rename = "EXTERNAL")]
     pub external: Vec<EntryPoint>,
     #[serde(rename = "L1_HANDLER")]
@@ -116,14 +115,14 @@ impl EntryPointByType {
         }
 
         Self {
-            contructor: get_entrypoint_by_type!(Constructor),
+            constructor: get_entrypoint_by_type!(Constructor),
             external: get_entrypoint_by_type!(External),
             l1handler: get_entrypoint_by_type!(L1Handler),
         }
     }
     pub fn to_hash_map(&self) -> HashMap<EntryPointType, Vec<EntryPoint>> {
         HashMap::from_iter([
-            (EntryPointType::Constructor, self.contructor.clone()),
+            (EntryPointType::Constructor, self.constructor.clone()),
             (EntryPointType::External, self.external.clone()),
             (EntryPointType::L1Handler, self.l1handler.clone()),
         ])

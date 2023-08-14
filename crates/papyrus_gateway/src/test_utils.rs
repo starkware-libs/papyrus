@@ -91,8 +91,6 @@ pub fn validate_schema(schema: &JSONSchema, result: &Value) -> bool {
 pub enum SpecFile {
     #[display(fmt = "starknet_api_openrpc.json")]
     StarknetApiOpenrpc,
-    // TODO(shahak): Remove allow(dead_code) once we use this variant.
-    #[allow(dead_code)]
     #[display(fmt = "starknet_write_api.json")]
     StarknetWriteApi,
 }
@@ -128,8 +126,6 @@ pub fn get_starknet_spec_api_schema_for_method_results(
     )
 }
 
-// TODO(shahak): Remove allow(dead_code) once we use this function.
-#[allow(dead_code)]
 pub fn get_starknet_spec_api_schema_for_method_errors(
     file_to_methods: &[(SpecFile, &[&str])],
     version_id: &VersionId,

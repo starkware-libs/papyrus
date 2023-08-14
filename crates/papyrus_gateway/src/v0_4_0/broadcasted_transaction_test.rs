@@ -68,7 +68,7 @@ auto_impl_get_test_instance! {
     }
 
     pub struct EntryPointByType {
-        pub contructor: Vec<EntryPoint>,
+        pub constructor: Vec<EntryPoint>,
         pub external: Vec<EntryPoint>,
         pub l1handler: Vec<EntryPoint>,
     }
