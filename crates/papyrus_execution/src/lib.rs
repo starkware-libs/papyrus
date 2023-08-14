@@ -1,13 +1,9 @@
 #![warn(missing_docs)]
 //! Functionality for executing Starknet transactions and contract entry points.
 #[cfg(test)]
-#[path = "execution_test.rs"]
 mod execution_test;
 pub mod execution_utils;
 mod state_reader;
-#[cfg(test)]
-#[path = "state_reader_test.rs"]
-mod state_reader_test;
 
 pub mod objects;
 

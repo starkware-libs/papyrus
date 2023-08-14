@@ -63,7 +63,6 @@ mod version;
 mod test_instances;
 
 #[cfg(any(feature = "testing", test))]
-#[path = "test_utils.rs"]
 pub mod test_utils;
 
 use std::collections::{BTreeMap, HashMap};

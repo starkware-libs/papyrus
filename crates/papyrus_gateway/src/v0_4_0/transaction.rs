@@ -1,3 +1,7 @@
+#[cfg(test)]
+#[path = "transaction_test.rs"]
+mod transaction_test;
+
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_storage::body::events::ThinTransactionOutput;
 use papyrus_storage::body::BodyStorageReader;

@@ -1,5 +1,4 @@
 #[cfg(test)]
-#[path = "ommer_test.rs"]
 mod ommer_test;
 
 use indexmap::IndexMap;

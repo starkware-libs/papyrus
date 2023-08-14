@@ -51,7 +51,6 @@ pub type ParamPath = String;
 pub type Description = String;
 
 #[cfg(test)]
-#[path = "config_test.rs"]
 mod config_test;
 
 mod command;

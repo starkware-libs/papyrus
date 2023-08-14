@@ -2,8 +2,7 @@ use std::collections::HashMap;
 
 use pretty_assertions::assert_eq;
 
-use super::version_config::VERSION_CONFIG;
-use crate::version_config::VersionState;
+use super::{VersionState, VERSION_CONFIG};
 
 #[tokio::test]
 async fn validate_version_configuration() {

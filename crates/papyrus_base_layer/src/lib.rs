@@ -2,7 +2,6 @@ use async_trait::async_trait;
 use starknet_api::block::{BlockHash, BlockNumber};
 
 #[cfg(test)]
-#[path = "base_layer_test.rs"]
 mod base_layer_test;
 
 pub mod ethereum_base_layer_contract;

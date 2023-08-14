@@ -1,3 +1,7 @@
+#[cfg(test)]
+#[path = "version_config_test.rs"]
+mod version_config_test;
+
 use std::fmt;
 
 #[derive(Eq, PartialEq, Hash)]

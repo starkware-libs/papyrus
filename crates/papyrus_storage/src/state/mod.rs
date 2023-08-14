@@ -48,7 +48,6 @@
 #[doc(hidden)]
 pub mod data;
 #[cfg(test)]
-#[path = "state_test.rs"]
 mod state_test;
 
 use std::collections::HashSet;

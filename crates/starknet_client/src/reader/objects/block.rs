@@ -1,3 +1,7 @@
+#[cfg(test)]
+#[path = "block_test.rs"]
+mod block_test;
+
 use std::ops::Index;
 
 use serde::{Deserialize, Serialize, Serializer};

@@ -1,6 +1,6 @@
 use test_utils::validate_load_and_dump;
 
-use crate::writer::objects::response::{DeclareResponse, DeployAccountResponse, InvokeResponse};
+use super::{DeclareResponse, DeployAccountResponse, InvokeResponse};
 
 #[test]
 fn load_and_dump_deploy_account_same_string() {
