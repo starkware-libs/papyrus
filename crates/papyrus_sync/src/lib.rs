@@ -11,6 +11,7 @@ use std::time::Duration;
 
 use async_stream::try_stream;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+use chrono::{TimeZone, Utc};
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use indexmap::IndexMap;
 use papyrus_common::{metrics as papyrus_metrics, BlockHashAndNumber};
@@ -340,6 +341,16 @@ impl<
             .commit()?;
         metrics::gauge!(papyrus_metrics::PAPYRUS_HEADER_MARKER, block_number.next().0 as f64);
         metrics::gauge!(papyrus_metrics::PAPYRUS_BODY_MARKER, block_number.next().0 as f64);
+        let dt = Utc::now()
+            - Utc
+                .timestamp_opt(block.header.timestamp.0 as i64, 0)
+                .single()
+                .expect("block timestamp should be valid");
+        let header_latency = dt.num_seconds();
+        debug!("Header latency: {}.", header_latency);
+        if header_latency >= 0 {
+            metrics::gauge!(papyrus_metrics::PAPYRUS_HEADER_LATENCY_SEC, header_latency as f64);
+        }
         Ok(())
     }
 
