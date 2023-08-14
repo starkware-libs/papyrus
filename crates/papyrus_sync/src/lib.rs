@@ -13,7 +13,7 @@ use async_stream::try_stream;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use indexmap::IndexMap;
-use papyrus_common::BlockHashAndNumber;
+use papyrus_common::{metrics as papyrus_metrics, BlockHashAndNumber};
 use papyrus_config::converters::{
     deserialize_milliseconds_to_duration,
     deserialize_seconds_to_duration,
@@ -338,6 +338,8 @@ impl<
             .update_starknet_version(&block_number, starknet_version)?
             .append_body(block_number, block.body)?
             .commit()?;
+        metrics::gauge!(papyrus_metrics::PAPYRUS_HEADER_MARKER, block_number.next().0 as f64);
+        metrics::gauge!(papyrus_metrics::PAPYRUS_BODY_MARKER, block_number.next().0 as f64);
         Ok(())
     }
 
@@ -356,6 +358,12 @@ impl<
                 .begin_rw_txn()?
                 .append_state_diff(block_number, state_diff, deployed_contract_class_definitions)?
                 .commit()?;
+            metrics::gauge!(papyrus_metrics::PAPYRUS_STATE_MARKER, block_number.next().0 as f64);
+            let compiled_class_marker = self.reader.begin_ro_txn()?.get_compiled_class_marker()?;
+            metrics::gauge!(
+                papyrus_metrics::PAPYRUS_COMPILED_CLASS_MARKER,
+                compiled_class_marker.0 as f64
+            );
 
             // Info the user on syncing the block once all the data is stored.
             info!("Added block {} with hash {}.", block_number, block_hash);
@@ -381,6 +389,12 @@ impl<
         match txn.append_casm(&class_hash, &compiled_class) {
             Ok(txn) => {
                 txn.commit()?;
+                let compiled_class_marker =
+                    self.reader.begin_ro_txn()?.get_compiled_class_marker()?;
+                metrics::gauge!(
+                    papyrus_metrics::PAPYRUS_COMPILED_CLASS_MARKER,
+                    compiled_class_marker.0 as f64
+                );
                 debug!("Added compiled class.");
                 Ok(())
             }
@@ -422,6 +436,7 @@ impl<
         }
         debug!("Storing base layer block. Block number: {block_number}");
         txn.update_base_layer_block_marker(&block_number.next())?.commit()?;
+        metrics::gauge!(papyrus_metrics::PAPYRUS_BASE_LAYER_MARKER, block_number.next().0 as f64);
         Ok(())
     }
 
@@ -476,6 +491,7 @@ impl<
         Ok(())
     }
 
+    // TODO(dan): update necessary metrics.
     // Deletes the block data from the storage, moving it to the ommer tables.
     #[allow(clippy::expect_fun_call)]
     #[instrument(skip(self), level = "debug", err)]
@@ -581,6 +597,9 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
             *shared_highest_block.write().await = latest_central_block;
             let central_block_marker = latest_central_block.map_or(
                 BlockNumber::default(), |block| block.block_number.next()
+            );
+            metrics::gauge!(
+                papyrus_metrics::PAPYRUS_CENTRAL_BLOCK_MARKER, central_block_marker.0 as f64
             );
             if header_marker == central_block_marker {
                 debug!("Blocks syncing reached the last known block, waiting for blockchain to advance.");

@@ -4485,6 +4485,7 @@ dependencies = [
  "indexmap 1.9.3",
  "itertools 0.10.5",
  "libmdbx",
+ "metrics",
  "mockall",
  "papyrus_base_layer",
  "papyrus_common",
