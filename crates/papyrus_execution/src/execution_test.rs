@@ -67,10 +67,12 @@ static ref TEST_ERC20_CONTRACT_ADDRESS: ContractAddress = contract_address!("0x1
 static ref ACCOUNT_INITIAL_BALANCE: StarkFelt = stark_felt!(2 * MAX_FEE.0);
 }
 
+// TODO(yair): Move utility functions to the end of the file.
 fn get_test_instance<T: DeserializeOwned>(path_in_resource_dir: &str) -> T {
     serde_json::from_value(read_json_file(path_in_resource_dir)).unwrap()
 }
 
+// A deprecated class for testing, taken from get_deprecated_contract_class of Blockifier.
 fn get_test_deprecated_contract_class() -> DeprecatedContractClass {
     get_test_instance("deprecated_class.json")
 }

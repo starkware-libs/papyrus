@@ -17,6 +17,19 @@ use starknet_client::writer::objects::transaction as client_transaction;
 use starknet_client::writer::objects::transaction::DeprecatedContractClass;
 
 use super::state::ContractClass;
+use super::transaction::{DeployAccountTransaction, InvokeTransaction};
+
+/// Transactions that are ready to be broadcasted to the network and are not included in a block.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum BroadcastedTransaction {
+    #[serde(rename = "DECLARE")]
+    Declare(BroadcastedDeclareTransaction),
+    #[serde(rename = "DEPLOY_ACCOUNT")]
+    DeployAccount(DeployAccountTransaction),
+    #[serde(rename = "INVOKE")]
+    Invoke(InvokeTransaction),
+}
 
 /// A broadcasted declare transaction.
 ///
