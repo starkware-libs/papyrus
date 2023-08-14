@@ -14,11 +14,27 @@ async fn request_with_retry_positive_flow() {
     const BODY: &str = "body";
     let starknet_client = StarknetClient::new(None, NODE_VERSION, get_test_config()).unwrap();
     let mock = mock("GET", URL_SUFFIX).with_status(200).with_body(BODY).create();
-    let mut url = mockito::server_url().clone();
+    let mut url = mockito::server_url();
     url.push_str(URL_SUFFIX);
     let result =
         starknet_client.request_with_retry(starknet_client.internal_client.get(&url)).await;
     assert_eq!(result.unwrap(), BODY);
+    mock.assert();
+}
+
+#[tokio::test]
+async fn request_with_retry_bad_response_status() {
+    let error_code = StatusCode::NOT_FOUND;
+    let starknet_client = StarknetClient::new(None, NODE_VERSION, get_test_config()).unwrap();
+    let mock = mock("GET", URL_SUFFIX).with_status(error_code.as_u16().into()).create();
+    let mut url = mockito::server_url();
+    url.push_str(URL_SUFFIX);
+    let result =
+        starknet_client.request_with_retry(starknet_client.internal_client.get(&url)).await;
+    assert_matches!(
+        result,
+        Err(ClientError::BadResponseStatus { code, message: _ }) if code == error_code
+    );
     mock.assert();
 }
 
@@ -36,7 +52,7 @@ async fn request_with_retry_max_retries_reached() {
             .with_status(status_code.as_u16().into())
             .expect(MAX_RETRIES + 1)
             .create();
-        let mut url = mockito::server_url().clone();
+        let mut url = mockito::server_url();
         url.push_str(URL_SUFFIX);
         let result =
             starknet_client.request_with_retry(starknet_client.internal_client.get(&url)).await;
@@ -64,7 +80,7 @@ async fn request_with_retry_success_on_retry() {
             .expect(MAX_RETRIES)
             .create();
         let mock_success = mock("GET", URL_SUFFIX).with_status(200).with_body(BODY).create();
-        let mut url = mockito::server_url().clone();
+        let mut url = mockito::server_url();
         url.push_str(URL_SUFFIX);
         let result =
             starknet_client.request_with_retry(starknet_client.internal_client.get(&url)).await;
@@ -87,7 +103,7 @@ async fn request_with_retry_starknet_error_max_retries_reached() {
         .with_body(starknet_error_str)
         .expect(MAX_RETRIES + 1)
         .create();
-    let mut url = mockito::server_url().clone();
+    let mut url = mockito::server_url();
     url.push_str(URL_SUFFIX);
     let result =
         starknet_client.request_with_retry(starknet_client.internal_client.get(&url)).await;
@@ -114,7 +130,7 @@ async fn request_with_retry_starknet_error_success_on_retry() {
         .expect(MAX_RETRIES)
         .create();
     let mock_success = mock("GET", URL_SUFFIX).with_status(200).with_body(BODY).create();
-    let mut url = mockito::server_url().clone();
+    let mut url = mockito::server_url();
     url.push_str(URL_SUFFIX);
     let result =
         starknet_client.request_with_retry(starknet_client.internal_client.get(&url)).await;
