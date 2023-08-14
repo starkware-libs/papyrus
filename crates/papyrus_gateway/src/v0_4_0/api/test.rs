@@ -229,13 +229,15 @@ async fn syncing() {
         Some(shared_highest_block.clone()),
     );
 
-    let (json_response_0, result_0) = raw_call::<_, bool>(&module, API_METHOD_NAME, "").await;
+    let (json_response_0, result_0) =
+        raw_call::<_, _, bool>(&module, API_METHOD_NAME, &None::<()>).await;
     assert!(validate_schema(&result_schema, &json_response_0));
     assert_eq!(result_0, false);
 
     *shared_highest_block.write().await =
         Some(BlockHashAndNumber { block_number: BlockNumber(5), ..Default::default() });
-    let (json_response_1, result_1) = raw_call::<_, SyncStatus>(&module, API_METHOD_NAME, "").await;
+    let (json_response_1, result_1) =
+        raw_call::<_, _, SyncStatus>(&module, API_METHOD_NAME, &None::<()>).await;
     assert!(
         validate_schema(&result_schema, &json_response_1),
         "Result should match syncing state schema."
@@ -1511,12 +1513,9 @@ async fn get_events_no_blocks_in_filter() {
         keys: vec![],
     };
 
-    let (json_response, res) = raw_call::<_, EventsChunk>(
-        &module,
-        "starknet_V0_4_getEvents",
-        serde_json::to_value(filter).unwrap().to_string().as_str(),
-    )
-    .await;
+    let (json_response, res) =
+        raw_call::<_, EventFilter, EventsChunk>(&module, "starknet_V0_4_getEvents", &Some(filter))
+            .await;
     assert!(
         &json_response
             .get("result")

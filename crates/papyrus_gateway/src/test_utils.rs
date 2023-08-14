@@ -7,7 +7,7 @@ use jsonschema::JSONSchema;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use starknet_api::core::ChainId;
 use starknet_client::writer::MockStarknetWriter;
@@ -64,11 +64,16 @@ pub(crate) fn get_test_rpc_server_and_storage_writer_from_params<T: JsonRpcServe
 
 // Call a method on the `RPC module` without having to spin up a server.
 // Returns the raw `result field` in JSON-RPC response and the deserialized result if successful.
-pub(crate) async fn raw_call<R: JsonRpcServerImpl, T: for<'a> Deserialize<'a>>(
+pub(crate) async fn raw_call<R: JsonRpcServerImpl, S: Serialize, T: for<'a> Deserialize<'a>>(
     module: &RpcModule<R>,
     method: &str,
-    params: &str,
+    params_obj: &Option<S>, //&str,
 ) -> (Value, T) {
+    let params = if params_obj.is_none() {
+        "".to_string()
+    } else {
+        serde_json::to_value(params_obj).unwrap().to_string()
+    };
     let req = format!(r#"{{"jsonrpc":"2.0","id":"1","method":"{method}","params":[{params}]}}"#);
     let (resp_wrapper, _) = module.raw_json_request(req.as_str(), 1).await.expect("request format");
     assert!(resp_wrapper.success, "unsuccessful request");
