@@ -9,6 +9,7 @@ license-file.workspace = true
 async-stream.workspace = true
 async-trait.workspace = true
 cairo-lang-starknet.workspace = true
+chrono.workspace = true
 futures-channel.workspace = true
 futures-util.workspace = true
 futures.workspace = true

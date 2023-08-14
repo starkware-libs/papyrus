@@ -14,6 +14,10 @@ pub const PAPYRUS_STATE_MARKER: &str = "papyrus_state_marker";
 /// corresponding compiled classes.
 pub const PAPYRUS_COMPILED_CLASS_MARKER: &str = "papyrus_compiled_class_marker";
 
-/// The base layer marker is the first block number for which the node does not guerantee L1
+/// The base layer marker is the first block number for which the node does not guarantee L1
 /// finality.
 pub const PAPYRUS_BASE_LAYER_MARKER: &str = "papyrus_base_layer_marker";
+
+/// The latency, in seconds, between a block timestamp (as state in its header) and the time the
+/// node stores the header.
+pub const PAPYRUS_HEADER_LATENCY_SEC: &str = "papyrus_header_latency";
