@@ -90,7 +90,7 @@ expression: dumped_default_config
     "value": "https://alpha-mainnet.starknet.io/"
   },
   "monitoring_gateway.collect_metrics": {
-    "description": "If true, collect metrics for the monitoring gateway.",
+    "description": "If true, collect and return metrics in the monitoring gateway.",
     "value": false
   },
   "monitoring_gateway.server_address": {

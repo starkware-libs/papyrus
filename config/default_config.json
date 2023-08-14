@@ -35,16 +35,16 @@
     "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
     "value": "SN_MAIN"
   },
-  "gateway.chain_id": {
-    "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
-    "pointer_target": "chain_id"
-  },
   "collect_metrics": {
     "description": "If true, collect metrics for the node.",
     "value": false
   },
+  "gateway.chain_id": {
+    "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
+    "pointer_target": "chain_id"
+  },
   "gateway.collect_metrics": {
-    "description": "If true, collect metrics for the node.",
+    "description": "If true, collect metrics for the gateway.",
     "pointer_target": "collect_metrics"
   },
   "gateway.max_events_chunk_size": {
@@ -54,6 +54,10 @@
   "gateway.max_events_keys": {
     "description": "Maximum number of keys supported by the node in get_events requests.",
     "value": 100
+  },
+  "gateway.server_address": {
+    "description": "IP:PORT of the node`s JSON-RPC server.",
+    "value": "0.0.0.0:8080"
   },
   "gateway.starknet_gateway_retry_config.max_retries": {
     "description": "For communicating with Starknet gateway, maximum number of retries before the node stops retrying.",
@@ -67,16 +71,12 @@
     "description": "For communicating with Starknet gateway, max waiting time after a failed request.",
     "value": 1000
   },
-  "gateway.server_address": {
-    "description": "IP:PORT of the node`s JSON-RPC server.",
-    "value": "0.0.0.0:8080"
-  },
   "gateway.starknet_url": {
     "description": "URL for communicating with Starknet in write_api methods.",
     "value": "https://alpha-mainnet.starknet.io/"
   },
   "monitoring_gateway.collect_metrics": {
-    "description": "If true, collect metrics for the node.",
+    "description": "If true, collect and return metrics in the monitoring gateway.",
     "pointer_target": "collect_metrics"
   },
   "monitoring_gateway.server_address": {
