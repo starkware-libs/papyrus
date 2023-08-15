@@ -483,6 +483,7 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
 impl JsonRpcServerImpl for JsonRpcServerV0_3Impl {
     fn new(
         chain_id: ChainId,
+        _fee_contract_address: ContractAddress,
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,
