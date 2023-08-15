@@ -5,6 +5,9 @@ mod execution_test;
 pub mod execution_utils;
 mod state_reader;
 
+#[cfg(test)]
+mod test_utils;
+
 pub mod objects;
 
 use std::collections::HashMap;
