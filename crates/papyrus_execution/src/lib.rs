@@ -7,6 +7,8 @@ mod state_reader;
 
 #[cfg(test)]
 mod test_utils;
+#[cfg(any(feature = "testing", test))]
+pub mod testing_instances;
 
 pub mod objects;
 

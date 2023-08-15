@@ -4293,6 +4293,8 @@ dependencies = [
  "itertools 0.10.5",
  "lazy_static",
  "papyrus_storage",
+ "rand",
+ "rand_chacha",
  "serde",
  "serde_json",
  "starknet_api",

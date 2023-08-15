@@ -46,6 +46,7 @@ jsonschema.workspace = true
 lazy_static.workspace = true
 metrics-exporter-prometheus = { version = "0.12.1" }
 mockall.workspace = true
+papyrus_execution = { path = "../papyrus_execution", features = ["testing"] }
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 pretty_assertions.workspace = true
 prometheus-parse.workspace = true
