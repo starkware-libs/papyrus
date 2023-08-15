@@ -5,7 +5,6 @@ use blockifier::execution::contract_class::{
 };
 use blockifier::state::errors::StateError;
 use blockifier::state::state_api::StateReader;
-use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use indexmap::{indexmap, IndexMap};
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::CasmStorageWriter;
@@ -14,34 +13,15 @@ use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use starknet_api::block::{BlockBody, BlockHash, BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
-use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey};
 use starknet_api::{patricia_key, stark_felt};
-use test_utils::read_json_file;
 
 use crate::state_reader::ExecutionStateReader;
+use crate::test_utils::{get_test_casm, get_test_deprecated_contract_class};
 
 const CONTRACT_ADDRESS: &str = "0x2";
 const DEPRECATED_CONTRACT_ADDRESS: &str = "0x1";
-
-fn get_test_casm() -> CasmContractClass {
-    let raw_casm = read_json_file("casm.json");
-    serde_json::from_value(raw_casm).unwrap()
-}
-
-// A deprecated class for testing, taken from get_deprecated_contract_class of Blockifier.
-// todo(yair): Consider saving the json of the result instead of doing this process.
-fn get_test_deprecated_contract_class() -> DeprecatedContractClass {
-    let mut raw_contract_class = read_json_file("deprecated_class.json");
-    // ABI is not required for execution.
-    raw_contract_class
-        .as_object_mut()
-        .expect("A compiled contract must be a JSON object.")
-        .remove("abi");
-
-    serde_json::from_value(raw_contract_class).unwrap()
-}
 
 #[test]
 fn read_state() {

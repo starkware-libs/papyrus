@@ -183,8 +183,6 @@ fn block_before(state_number: StateNumber) -> BlockNumber {
     state_number.block_after().prev().unwrap_or_default()
 }
 
-// TODO(yair): This will not work if there are no compiled classes in the storage from before the
-// state number (because the compiled class marker doesn't update).
 fn verify_node_synced(txn: &StorageTxn<'_, RO>, state_number: StateNumber) -> ExecutionResult<()> {
     let compiled_class_marker = txn.get_compiled_class_marker()?;
     let synced_up_to = StateNumber::right_before_block(compiled_class_marker);
@@ -243,8 +241,6 @@ pub enum ExecutableTransactionInput {
 }
 
 /// Returns the fee estimation for a series of transactions.
-// TODO(yair): Consider removing this function and implemening it in the gateway.
-// TODO(yair): Find out what to gas_consumed means.
 pub fn estimate_fee(
     txs: Vec<ExecutableTransactionInput>,
     chain_id: &ChainId,
