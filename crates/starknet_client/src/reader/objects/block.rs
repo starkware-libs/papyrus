@@ -4,7 +4,7 @@ mod block_test;
 
 use std::ops::Index;
 
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Deserializer, Serialize};
 use starknet_api::block::{
     Block as starknet_api_block,
     BlockHash,
@@ -14,11 +14,9 @@ use starknet_api::block::{
 };
 use starknet_api::core::ContractAddress;
 use starknet_api::hash::StarkHash;
-use starknet_api::serde_utils::NonPrefixedBytesAsHex;
 #[cfg(doc)]
 use starknet_api::transaction::TransactionOutput as starknet_api_transaction_output;
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
-use starknet_api::StarknetApiError;
 
 use crate::reader::objects::transaction::{
     L1ToL2Message,
@@ -28,27 +26,24 @@ use crate::reader::objects::transaction::{
 };
 use crate::reader::{ReaderClientError, ReaderClientResult};
 
-#[derive(Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, PartialOrd, Ord)]
-#[serde(try_from = "NonPrefixedBytesAsHex<32_usize>")]
+#[derive(Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Serialize, PartialOrd, Ord)]
 pub struct GlobalRoot(pub StarkHash);
 
-impl Serialize for GlobalRoot {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+// TODO(dvir): remove this deserialization when all the environments use the same format.
+impl<'de> Deserialize<'de> for GlobalRoot {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        S: Serializer,
+        D: Deserializer<'de>,
     {
-        serializer.serialize_str(&self.0.to_string()[2..])
+        let mut as_string = String::deserialize(deserializer)?;
+        if !as_string.starts_with("0x") {
+            as_string = format!("0x{}", as_string);
+        }
+        let string_des = serde::de::value::StringDeserializer::new(as_string);
+        Ok(Self(Deserialize::deserialize(string_des)?))
     }
 }
 
-// We don't use the regular StarkHash deserialization since the Starknet sequencer returns the
-// global root hash as a hex string without a "0x" prefix.
-impl TryFrom<NonPrefixedBytesAsHex<32_usize>> for GlobalRoot {
-    type Error = StarknetApiError;
-    fn try_from(val: NonPrefixedBytesAsHex<32_usize>) -> Result<Self, Self::Error> {
-        Ok(Self(StarkHash::try_from(val)?))
-    }
-}
 impl From<GlobalRoot> for starknet_api::core::GlobalRoot {
     fn from(val: GlobalRoot) -> Self {
         Self(val.0)
