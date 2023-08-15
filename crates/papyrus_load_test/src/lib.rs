@@ -1,8 +1,11 @@
-#[cfg(test)]
-mod precision_test;
+// config compiler to support no_coverage feature when running coverage in nightly mode within this
+// crate
+#![cfg_attr(coverage_nightly, feature(no_coverage))]
 
 pub mod create_files;
 pub mod create_request;
+#[cfg(test)]
+mod precision_test;
 pub mod scenarios;
 pub mod transactions;
 
