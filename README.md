@@ -148,31 +148,31 @@ curl --location 'localhost:8080/rpc/v0_3' --header 'Content-Type: application/js
 
 ## Endpoints
 
-| Endpoint                                   | V0.3               | V0.4               |
-| :----------------------------------------- | :----------------- | :----------------- |
-| `starknet_addDeclareTransaction`           | :x:                | :heavy_check_mark: |
-| `starknet_addDeployAccountTransaction`     | :x:                | :heavy_check_mark: |
-| `starknet_addInvokeTransaction`            | :x:                | :heavy_check_mark: |
-| `starknet_blockHashAndNumber`              | :heavy_check_mark: | :heavy_check_mark: |
-| `starknet_blockNumber`                     | :heavy_check_mark: | :heavy_check_mark: |
-| `starknet_call`                            | :x:                | :heavy_check_mark: |
-| `starknet_chainId`                         | :heavy_check_mark: | :heavy_check_mark: |
-| `starknet_estimateFee`                     | :x:                | :heavy_check_mark: |
-| `starknet_getBlockTransactionCount`        | :heavy_check_mark: | :heavy_check_mark: |
-| `starknet_getBlockWithTxHashes`            | :heavy_check_mark: | :heavy_check_mark: |
-| `starknet_getBlockWithTxs`                 | :heavy_check_mark: | :heavy_check_mark: |
-| `starknet_getClass`                        | :heavy_check_mark: | :heavy_check_mark: |
-| `starknet_getClassAt`                      | :heavy_check_mark: | :heavy_check_mark: |
-| `starknet_getClassHashAt`                  | :heavy_check_mark: | :heavy_check_mark: |
-| `starknet_getEvents`                       | :heavy_check_mark: | :heavy_check_mark: |
-| `starknet_getNonce`                        | :heavy_check_mark: | :heavy_check_mark: |
-| `starknet_getStateUpdate`                  | :heavy_check_mark: | :heavy_check_mark: |
-| `starknet_getStorageAt`                    | :heavy_check_mark: | :heavy_check_mark: |
-| `starknet_getTransactionByBlockIdAndIndex` | :heavy_check_mark: | :heavy_check_mark: |
-| `starknet_getTransactionByHash`            | :heavy_check_mark: | :heavy_check_mark: |
-| `starknet_getTransactionReceipt`           | :heavy_check_mark: | :heavy_check_mark: |
-| `starknet_pendingTransactions`             | :x:                | :x:                |
-| `starknet_syncing`                         | :heavy_check_mark: | :heavy_check_mark: |
+| Endpoint                                   | V0.3                         | V0.4                         |
+| :----------------------------------------- | :--------------------------- | :--------------------------- |
+| `starknet_addDeclareTransaction`           | ![](resources/img/cross.png) | ![](resources/img/check.png) |
+| `starknet_addDeployAccountTransaction`     | ![](resources/img/cross.png) | ![](resources/img/check.png) |
+| `starknet_addInvokeTransaction`            | ![](resources/img/cross.png) | ![](resources/img/check.png) |
+| `starknet_blockHashAndNumber`              | ![](resources/img/check.png) | ![](resources/img/check.png) |
+| `starknet_blockNumber`                     | ![](resources/img/check.png) | ![](resources/img/check.png) |
+| `starknet_call`                            | ![](resources/img/cross.png) | ![](resources/img/check.png) |
+| `starknet_chainId`                         | ![](resources/img/check.png) | ![](resources/img/check.png) |
+| `starknet_estimateFee`                     | ![](resources/img/cross.png) | ![](resources/img/check.png) |
+| `starknet_getBlockTransactionCount`        | ![](resources/img/check.png) | ![](resources/img/check.png) |
+| `starknet_getBlockWithTxHashes`            | ![](resources/img/check.png) | ![](resources/img/check.png) |
+| `starknet_getBlockWithTxs`                 | ![](resources/img/check.png) | ![](resources/img/check.png) |
+| `starknet_getClass`                        | ![](resources/img/check.png) | ![](resources/img/check.png) |
+| `starknet_getClassAt`                      | ![](resources/img/check.png) | ![](resources/img/check.png) |
+| `starknet_getClassHashAt`                  | ![](resources/img/check.png) | ![](resources/img/check.png) |
+| `starknet_getEvents`                       | ![](resources/img/check.png) | ![](resources/img/check.png) |
+| `starknet_getNonce`                        | ![](resources/img/check.png) | ![](resources/img/check.png) |
+| `starknet_getStateUpdate`                  | ![](resources/img/check.png) | ![](resources/img/check.png) |
+| `starknet_getStorageAt`                    | ![](resources/img/check.png) | ![](resources/img/check.png) |
+| `starknet_getTransactionByBlockIdAndIndex` | ![](resources/img/check.png) | ![](resources/img/check.png) |
+| `starknet_getTransactionByHash`            | ![](resources/img/check.png) | ![](resources/img/check.png) |
+| `starknet_getTransactionReceipt`           | ![](resources/img/check.png) | ![](resources/img/check.png) |
+| `starknet_pendingTransactions`             | ![](resources/img/cross.png) | ![](resources/img/cross.png) |
+| `starknet_syncing`                         | ![](resources/img/check.png) | ![](resources/img/check.png) |
 
 ## Deployment
 We provide a helm chart for deploying the node to a kubernetes cluster.
