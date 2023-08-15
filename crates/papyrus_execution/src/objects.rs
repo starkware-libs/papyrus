@@ -8,6 +8,7 @@ use blockifier::execution::entry_point::{
     Retdata as BlockifierRetdata,
 };
 use blockifier::transaction::objects::TransactionExecutionInfo;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector};
 use starknet_api::deprecated_contract_class::EntryPointType;
@@ -16,7 +17,8 @@ use starknet_api::transaction::{Calldata, EventContent, MessageToL1};
 
 /// The execution trace of a transaction.
 #[allow(missing_docs)]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum TransactionTrace {
     Invoke(InvokeTransactionTrace),
     Declare(DeclareTransactionTrace),
@@ -24,28 +26,31 @@ pub enum TransactionTrace {
 }
 
 /// The execution trace of an Invoke transaction.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct InvokeTransactionTrace {
     /// The trace of the __validate__ call.
     pub validate_invocation: Option<FunctionInvocation>,
     /// The trace of the __execute__ call or the reason in case of reverted transaction.
-    pub execute_invocation: Result<FunctionInvocation, RevertReason>,
+    #[serde(flatten)]
+    pub execute_invocation: FunctionInvocationResult,
     /// The trace of the __fee_transfer__ call.
     pub fee_transfer_invocation: Option<FunctionInvocation>,
 }
 
 /// The reason for a reverted transaction.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct RevertReason(String);
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct RevertReason(pub String);
 
 impl From<TransactionExecutionInfo> for InvokeTransactionTrace {
     fn from(transaction_execution_info: TransactionExecutionInfo) -> Self {
         let execute_invocation = match transaction_execution_info.revert_error {
-            Some(revert_error) => Err(RevertReason(revert_error)),
-            None => Ok(transaction_execution_info
-                .execute_call_info
-                .expect("Invoke transaction execution should contain execute_call_info.")
-                .into()),
+            Some(revert_error) => FunctionInvocationResult::Err(RevertReason(revert_error)),
+            None => FunctionInvocationResult::Ok(
+                transaction_execution_info
+                    .execute_call_info
+                    .expect("Invoke transaction execution should contain execute_call_info.")
+                    .into(),
+            ),
         };
 
         Self {
@@ -61,7 +66,7 @@ impl From<TransactionExecutionInfo> for InvokeTransactionTrace {
 }
 
 /// The execution trace of a Declare transaction.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DeclareTransactionTrace {
     /// The trace of the __validate__ call.
     pub validate_invocation: Option<FunctionInvocation>,
@@ -83,7 +88,7 @@ impl From<TransactionExecutionInfo> for DeclareTransactionTrace {
 }
 
 /// The execution trace of a DeployAccount transaction.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DeployAccountTransactionTrace {
     /// The trace of the __validate__ call.
     pub validate_invocation: Option<FunctionInvocation>,
@@ -113,8 +118,18 @@ impl From<TransactionExecutionInfo> for DeployAccountTransactionTrace {
     }
 }
 
+/// Wether the function invocation succeeded or reverted.
+// Not using `Result` because it is not being serialized according to the spec.
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[allow(missing_docs)]
+pub enum FunctionInvocationResult {
+    Ok(FunctionInvocation),
+    #[serde(rename = "revert_reason")]
+    Err(RevertReason),
+}
+
 /// The execution trace of a function call.
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct FunctionInvocation {
     #[serde(flatten)]
     /// The details of the function call.
@@ -132,7 +147,7 @@ pub struct FunctionInvocation {
     /// The calls made by this invocation.
     pub calls: Vec<Self>,
     /// The events emitted in this invocation.
-    pub events: Vec<OrderedEvent>,
+    pub events: Vec<EventContent>,
     /// The messages sent by this invocation to L1.
     pub messages: Vec<OrderedL2ToL1Message>,
 }
@@ -151,7 +166,13 @@ impl From<CallInfo> for FunctionInvocation {
             call_type: call_info.call.call_type.into(),
             result: call_info.execution.retdata.into(),
             calls: call_info.inner_calls.into_iter().map(Self::from).collect(),
-            events: call_info.execution.events.into_iter().map(Into::into).collect(),
+            events: call_info
+                .execution
+                .events
+                .into_iter()
+                .sorted_by_key(|ordered_event| ordered_event.order)
+                .map(|ordered_event| ordered_event.event)
+                .collect(),
             messages: call_info
                 .execution
                 .l2_to_l1_messages
@@ -168,7 +189,7 @@ impl From<CallInfo> for FunctionInvocation {
 }
 
 /// library call or regular call.
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 #[allow(missing_docs)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum CallType {
@@ -196,9 +217,10 @@ impl From<BlockifierRetdata> for Retdata {
 }
 
 /// An event emitted by a contract.
-#[derive(Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct OrderedEvent {
     /// The order of the event in the transaction.
+    #[serde(skip)]
     pub order: usize,
     /// The event.
     pub event: EventContent,
@@ -211,7 +233,7 @@ impl From<BlockifierOrderedEvent> for OrderedEvent {
 }
 
 /// A message sent from L2 to L1.
-#[derive(Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct OrderedL2ToL1Message {
     /// The order of the message in the transaction.
     pub order: usize,
@@ -237,7 +259,7 @@ impl OrderedL2ToL1Message {
 }
 
 /// The details of a function call.
-#[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct FunctionCall {
     /// The address of the contract being called.
     pub contract_address: ContractAddress,
