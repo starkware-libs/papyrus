@@ -52,7 +52,7 @@ pub struct CentralSourceConfig {
 impl Default for CentralSourceConfig {
     fn default() -> Self {
         CentralSourceConfig {
-            concurrent_requests: 10,
+            concurrent_requests: 20,
             url: String::from("https://alpha-mainnet.starknet.io/"),
             http_headers: None,
             retry_config: RetryConfig {
