@@ -1,4 +1,5 @@
 mod api;
+mod compression_utils;
 mod gateway_metrics;
 #[cfg(test)]
 mod gateway_test;
