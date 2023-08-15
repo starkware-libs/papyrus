@@ -95,15 +95,14 @@ docker run --rm --name papyrus\
   ghcr.io/starkware-libs/papyrus:dev
 ```
 
-#### Notes
-
-- The container must have write access to `<local-host-data-path>`.
-A possible way to assure this is to create the `<local-host-data-path>` directory (only the first
-time you run `papyrus`) and add `--user "$(id -u):$(id -g)"` to the docker run command.
-- You must include the `dev` tag which keeps track of our development branch and contains the most
-up-to-date code. Once we have official releases we will add a `latest` tag for the latest release.
-- Currently, there is no automatic upgrade mechanism.
-Make sure to periodically pull the latest image and re-run the node.
+> **NOTE**  
+> - The container must have write access to `<local-host-data-path>`.
+> A possible way to assure this is to create the `<local-host-data-path>` directory (only the first
+> time you run `papyrus`) and add `--user "$(id -u):$(id -g)"` to the docker run command.
+> - You must include the `dev` tag which keeps track of our development branch and contains the most
+> up-to-date code. Once we have official releases we will add a `latest` tag for the latest release.
+> - Currently, there is no automatic upgrade mechanism.
+> Make sure to periodically pull the latest image and re-run the node.
 
 ## Memory usage
 The Papyrus node will use all the RAM it can in order to cache the storage.
@@ -127,33 +126,57 @@ docker run --rm --name papyrus\
 For more information, see [Docker's documentation](https://docs.docker.com/config/containers/resource_constraints/#limit-a-containers-access-to-memory).
 
 
+## sending API requests to the node
+API requests are sent to the path `/rpc/<starknet-rpc-version-id>`.
+Current supported versions are:
+* V0_3_0
+* V0_4_0  
+
+
+See specification at: [starknet-specs repo](https://github.com/starkware-libs/starknet-specs/)  
+Assuming the node is exposed at `localhost:8080` one might send requests via curl with:
+```bash
+curl --location 'localhost:8080/rpc/v0_3' --header 'Content-Type: application/json'\  
+ --data '{"jsonrpc":"2.0","id":0,"method":"starknet_blockHashAndNumber"}'
+```
+
+> **NOTE**  
+> The default expected version id is in the format: `v<Major>_<Minor>`.  
+> Also supported: `V<Major>_<Minor>` and `v<Major>_<Minor>_<Patch>` (or any combination of the above).  
+> The Node always supports one patched version per minor version (the latest for that minor version).  
+> When specifying a patch the semantic is grater or equal to the specified patch.  
+
 ## Endpoints
 
-| Endpoint                                   | Supported          |
-| :----------------------------------------- | :----------------- |
-| `starknet_addDeclareTransaction`           | :x:                |
-| `starknet_addDeployAccountTransaction`     | :x:                |
-| `starknet_addInvokeTransaction`            | :x:                |
-| `starknet_blockHashAndNumber`              | :heavy_check_mark: |
-| `starknet_blockNumber`                     | :heavy_check_mark: |
-| `starknet_call`                            | :x:                |
-| `starknet_chainId`                         | :heavy_check_mark: |
-| `starknet_estimateFee`                     | :x:                |
-| `starknet_getBlockTransactionCount`        | :heavy_check_mark: |
-| `starknet_getBlockWithTxHashes`            | :heavy_check_mark: |
-| `starknet_getBlockWithTxs`                 | :heavy_check_mark: |
-| `starknet_getClass`                        | :heavy_check_mark: |
-| `starknet_getClassAt`                      | :heavy_check_mark: |
-| `starknet_getClassHashAt`                  | :heavy_check_mark: |
-| `starknet_getEvents`                       | :heavy_check_mark: |
-| `starknet_getNonce`                        | :heavy_check_mark: |
-| `starknet_getStateUpdate`                  | :heavy_check_mark: |
-| `starknet_getStorageAt`                    | :heavy_check_mark: |
-| `starknet_getTransactionByBlockIdAndIndex` | :heavy_check_mark: |
-| `starknet_getTransactionByHash`            | :heavy_check_mark: |
-| `starknet_getTransactionReceipt`           | :heavy_check_mark: |
-| `starknet_pendingTransactions`             | :x:                |
-| `starknet_syncing`                         | :x:                |
+| Endpoint                                   | V0.3               | V0.4               |
+| :----------------------------------------- | :----------------- | :----------------- |
+| `starknet_addDeclareTransaction`           | :x:                | :heavy_check_mark: |
+| `starknet_addDeployAccountTransaction`     | :x:                | :heavy_check_mark: |
+| `starknet_addInvokeTransaction`            | :x:                | :heavy_check_mark: |
+| `starknet_blockHashAndNumber`              | :heavy_check_mark: | :heavy_check_mark: |
+| `starknet_blockNumber`                     | :heavy_check_mark: | :heavy_check_mark: |
+| `starknet_call`                            | :x:                | :heavy_check_mark: |
+| `starknet_chainId`                         | :heavy_check_mark: | :heavy_check_mark: |
+| `starknet_estimateFee`                     | :x:                | :heavy_check_mark: |
+| `starknet_getBlockTransactionCount`        | :heavy_check_mark: | :heavy_check_mark: |
+| `starknet_getBlockWithTxHashes`            | :heavy_check_mark: | :heavy_check_mark: |
+| `starknet_getBlockWithTxs`                 | :heavy_check_mark: | :heavy_check_mark: |
+| `starknet_getClass`                        | :heavy_check_mark: | :heavy_check_mark: |
+| `starknet_getClassAt`                      | :heavy_check_mark: | :heavy_check_mark: |
+| `starknet_getClassHashAt`                  | :heavy_check_mark: | :heavy_check_mark: |
+| `starknet_getEvents`                       | :heavy_check_mark: | :heavy_check_mark: |
+| `starknet_getNonce`                        | :heavy_check_mark: | :heavy_check_mark: |
+| `starknet_getStateUpdate`                  | :heavy_check_mark: | :heavy_check_mark: |
+| `starknet_getStorageAt`                    | :heavy_check_mark: | :heavy_check_mark: |
+| `starknet_getTransactionByBlockIdAndIndex` | :heavy_check_mark: | :heavy_check_mark: |
+| `starknet_getTransactionByHash`            | :heavy_check_mark: | :heavy_check_mark: |
+| `starknet_getTransactionReceipt`           | :heavy_check_mark: | :heavy_check_mark: |
+| `starknet_pendingTransactions`             | :x:                | :x:                |
+| `starknet_syncing`                         | :heavy_check_mark: | :heavy_check_mark: |
+
+## Deployment
+We provide a helm chart for deploying the node to a kubernetes cluster.
+It is located under the [deployments folder](deployments/helm/README.md).
 
 ## Roadmap
 
