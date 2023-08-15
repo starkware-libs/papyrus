@@ -9,12 +9,15 @@ use papyrus_common::BlockHashAndNumber;
 use papyrus_execution::objects::TransactionTrace;
 use papyrus_execution::{ExecutableTransactionInput, ExecutionError};
 use papyrus_proc_macros::versioned_rpc;
+use papyrus_storage::db::RO;
+use papyrus_storage::state::StateStorageReader;
+use papyrus_storage::StorageTxn;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, GasPrice};
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
 use starknet_api::deprecated_contract_class::Program;
 use starknet_api::hash::StarkFelt;
-use starknet_api::state::StorageKey;
+use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
     Calldata,
     EventKey,
@@ -198,6 +201,10 @@ pub trait JsonRpc {
         transactions: Vec<BroadcastedTransaction>,
         simulation_flags: Vec<SimulationFlag>,
     ) -> RpcResult<Vec<SimulatedTransaction>>;
+
+    /// Calculates the transaction trace of a transaction that is already included in a block.
+    #[method(name = "traceTransaction")]
+    fn trace_transaction(&self, transaction_hash: TransactionHash) -> RpcResult<TransactionTrace>;
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -280,6 +287,64 @@ impl TryFrom<BroadcastedTransaction> for ExecutableTransactionInput {
             BroadcastedTransaction::DeployAccount(tx) => Self::Deploy(tx),
             BroadcastedTransaction::Invoke(tx) => Self::Invoke(tx.into()),
         })
+    }
+}
+
+pub(crate) fn stored_txn_to_executable_txn(
+    stored_txn: starknet_api::transaction::Transaction,
+    storage_txn: &StorageTxn<'_, RO>,
+    state_number: StateNumber,
+) -> Result<ExecutableTransactionInput, ErrorObjectOwned> {
+    match stored_txn {
+        starknet_api::transaction::Transaction::Declare(
+            starknet_api::transaction::DeclareTransaction::V0(value),
+        ) => {
+            // Copy the class hash before the value moves.
+            let class_hash = value.class_hash;
+            Ok(ExecutableTransactionInput::DeclareV0(
+                value,
+                storage_txn
+                    .get_state_reader()
+                    .map_err(internal_server_error)?
+                    .get_deprecated_class_definition_at(state_number, &class_hash)
+                    .map_err(internal_server_error)?
+                    .ok_or(internal_server_error(format!(
+                        "Missing deprecated class definition of {class_hash}."
+                    )))?,
+            ))
+        }
+        starknet_api::transaction::Transaction::Declare(
+            starknet_api::transaction::DeclareTransaction::V1(value),
+        ) => {
+            // Copy the class hash before the value moves.
+            let class_hash = value.class_hash;
+            Ok(ExecutableTransactionInput::DeclareV1(
+                value,
+                storage_txn
+                    .get_state_reader()
+                    .map_err(internal_server_error)?
+                    .get_deprecated_class_definition_at(state_number, &class_hash)
+                    .map_err(internal_server_error)?
+                    .ok_or(internal_server_error(format!(
+                        "Missing deprecated class definition of {class_hash}."
+                    )))?,
+            ))
+        }
+        starknet_api::transaction::Transaction::Declare(
+            starknet_api::transaction::DeclareTransaction::V2(_),
+        ) => Err(internal_server_error("Declare v2 txns not supported yet in execution")),
+        starknet_api::transaction::Transaction::Deploy(_) => {
+            Err(internal_server_error("Deploy txns not supported in execution"))
+        }
+        starknet_api::transaction::Transaction::DeployAccount(value) => {
+            Ok(ExecutableTransactionInput::Deploy(value))
+        }
+        starknet_api::transaction::Transaction::Invoke(value) => {
+            Ok(ExecutableTransactionInput::Invoke(value))
+        }
+        starknet_api::transaction::Transaction::L1Handler(_) => {
+            Err(internal_server_error("L1 handler txns not supported in execution"))
+        }
     }
 }
 

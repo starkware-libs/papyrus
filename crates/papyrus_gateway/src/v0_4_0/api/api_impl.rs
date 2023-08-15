@@ -5,6 +5,7 @@ use jsonrpsee::core::RpcResult;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
+use papyrus_execution::objects::TransactionTrace;
 use papyrus_execution::{
     estimate_fee as exec_estimate_fee,
     execute_call,
@@ -14,7 +15,7 @@ use papyrus_execution::{
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
 use papyrus_storage::state::StateStorageReader;
-use papyrus_storage::StorageReader;
+use papyrus_storage::{StorageError, StorageReader};
 use starknet_api::block::{BlockNumber, BlockStatus};
 use starknet_api::core::{
     ChainId,
@@ -52,6 +53,7 @@ use super::super::transaction::{
     Transactions,
 };
 use super::{
+    stored_txn_to_executable_txn,
     BlockHashAndNumber,
     BlockId,
     ContinuationToken,
@@ -71,6 +73,7 @@ use crate::v0_4_0::error::{
     BLOCK_NOT_FOUND,
     CLASS_HASH_NOT_FOUND,
     CONTRACT_NOT_FOUND,
+    INVALID_TRANSACTION_HASH,
     INVALID_TRANSACTION_INDEX,
     NO_BLOCKS,
     PAGE_SIZE_TOO_BIG,
@@ -670,6 +673,49 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                     fee_estimation: FeeEstimate::from(gas_price, fee),
                 })
                 .collect()),
+            Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
+            Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
+        }
+    }
+
+    #[instrument(skip(self), level = "debug", err)]
+    fn trace_transaction(&self, transaction_hash: TransactionHash) -> RpcResult<TransactionTrace> {
+        let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let TransactionIndex(block_number, tx_offset) = storage_txn
+            .get_transaction_idx_by_hash(&transaction_hash)
+            .map_err(internal_server_error)?
+            .ok_or(INVALID_TRANSACTION_HASH)?;
+
+        let block_transactions = storage_txn
+            .get_block_transactions(block_number)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| {
+                internal_server_error(StorageError::DBInconsistency {
+                    msg: format!("Missing block {block_number} transactions").to_string(),
+                })
+            })?;
+
+        let state_number = StateNumber::right_before_block(block_number);
+        let executable_txns = block_transactions
+            .into_iter()
+            .take(tx_offset.0 + 1)
+            .map(|tx| stored_txn_to_executable_txn(tx, &storage_txn, state_number))
+            .collect::<Result<_, _>>()?;
+
+        let res = exec_simulate_transactions(
+            executable_txns,
+            &self.chain_id,
+            &storage_txn,
+            state_number,
+            Some(self.fee_contract_address),
+            true,
+            true,
+        );
+
+        match res {
+            Ok(mut simulation_results) => {
+                Ok(simulation_results.pop().expect("Should have transaction exeuction result").0)
+            }
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
         }
