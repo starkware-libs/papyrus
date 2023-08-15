@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod main_test;
+
 use std::env::args;
 use std::sync::Arc;
 
@@ -12,7 +15,6 @@ use papyrus_sync::sources::base_layer::{BaseLayerSourceError, EthereumBaseLayerS
 use papyrus_sync::sources::central::{CentralError, CentralSource};
 use papyrus_sync::{StateSync, StateSyncError};
 use tokio::sync::RwLock;
-use tokio::task::JoinHandle;
 use tracing::metadata::LevelFilter;
 use tracing::{error, info};
 use tracing_subscriber::prelude::*;
@@ -48,23 +50,21 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     let sync_handle = tokio::spawn(sync_future);
 
     tokio::select! {
-        Err(err)= server_handle_future => {
+        res = server_handle_future => {
             error!("RPC server stopped.");
-            return Err(err.into());
+            res?
         }
-        Err(err) = flatten_err(monitoring_server_handle) => {
+        res = monitoring_server_handle => {
             error!("Monitoring server stopped.");
-            return Err(err);
+            res??
         }
-        Err(err) = flatten_err(sync_handle) => {
+        res = sync_handle => {
             error!("Sync stopped.");
-            return Err(err);
-        }
-        else => {
-            error!("All tasks stopped without an error.");
-            return Ok(());
+            res??
         }
     };
+    error!("Task ended with unexpected Ok.");
+    return Ok(());
 
     async fn run_sync(
         config: NodeConfig,
@@ -103,16 +103,6 @@ fn configure_tracing() {
     tracing_subscriber::registry().with(fmt_layer).with(level_filter_layer).init();
 }
 
-async fn flatten_err<T: std::convert::Into<anyhow::Error>>(
-    handle: JoinHandle<Result<(), T>>,
-) -> anyhow::Result<()> {
-    match handle.await {
-        Ok(Ok(result)) => Ok(result),
-        Ok(Err(err)) => Err(err.into()),
-        Err(err) => Err(err.into()),
-    }
-}
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let config = NodeConfig::load_and_process(args().collect());
@@ -125,28 +115,4 @@ async fn main() -> anyhow::Result<()> {
     configure_tracing();
     info!("Booting up.");
     run_threads(config).await
-}
-
-#[cfg(test)]
-mod main_test {
-    use assert_matches::assert_matches;
-    use papyrus_node::config::NodeConfig;
-    use tempdir::TempDir;
-
-    use crate::run_threads;
-
-    #[tokio::test]
-    async fn run_threads_stop() {
-        let tmp_data_dir = TempDir::new("./data_for_test").unwrap();
-        let mut config = NodeConfig::default();
-        config.storage.db_config.path_prefix = tmp_data_dir.path().into();
-
-        // Error when not overriding the base layer node URL.
-        assert_matches!(run_threads(config.clone()).await, Err(_));
-
-        // Error when not supplying legal central URL.
-        config.base_layer.node_url = "value".to_string();
-        config.central.url = "_not_legal_url".to_string();
-        assert_matches!(run_threads(config.clone()).await, Err(_));
-    }
 }
