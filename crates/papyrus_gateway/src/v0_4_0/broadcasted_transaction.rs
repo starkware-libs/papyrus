@@ -10,7 +10,6 @@
 #[path = "broadcasted_transaction_test.rs"]
 mod broadcasted_transaction_test;
 
-use papyrus_storage::compression_utils::serialize_and_compress;
 use papyrus_storage::db::serialization::StorageSerdeError;
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{CompiledClassHash, ContractAddress, Nonce};
@@ -22,6 +21,7 @@ use starknet_client::writer::objects::transaction::DeprecatedContractClass;
 
 use super::state::ContractClass;
 use super::transaction::{DeployAccountTransaction, InvokeTransaction};
+use crate::compression_utils::compress_and_encode;
 
 /// Transactions that are ready to be broadcasted to the network and are not included in a block.
 #[derive(Debug, Serialize, Deserialize)]
@@ -117,9 +117,9 @@ impl TryFrom<BroadcastedDeclareTransaction> for client_transaction::DeclareTrans
             BroadcastedDeclareTransaction::V2(declare_v2) => {
                 Ok(Self::DeclareV2(client_transaction::DeclareV2Transaction {
                     contract_class: client_transaction::ContractClass {
-                        compressed_sierra_program: base64::encode(serialize_and_compress(
+                        compressed_sierra_program: compress_and_encode(serde_json::to_value(
                             &declare_v2.contract_class.sierra_program,
-                        )?),
+                        )?)?,
                         contract_class_version: declare_v2.contract_class.contract_class_version,
                         entry_points_by_type: declare_v2
                             .contract_class
