@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
+use std::future::Future;
 
 use assert_matches::assert_matches;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
@@ -22,13 +24,14 @@ use starknet_api::state::{EntryPoint, EntryPointType, FunctionIndex};
 use starknet_api::transaction::{Fee, TransactionHash, TransactionSignature, TransactionVersion};
 use starknet_api::{patricia_key, stark_felt};
 
-use crate::reader::objects::state::StateUpdate;
-use crate::reader::objects::transaction::IntermediateDeclareTransaction;
-use crate::reader::{
+use super::objects::state::StateUpdate;
+use super::objects::transaction::IntermediateDeclareTransaction;
+use super::{
     Block,
     ContractClass,
     GenericContractClass,
     ReaderClientError,
+    ReaderClientResult,
     StarknetFeederGatewayClient,
     StarknetReader,
     BLOCK_NUMBER_QUERY,
@@ -78,7 +81,7 @@ async fn get_block_number() {
     // There are no blocks in Starknet.
     let body = r#"{"code": "StarknetErrorCode.BLOCK_NOT_FOUND", "message": "Block number -1 was not found."}"#;
     let mock_no_block = mock("GET", "/feeder_gateway/get_block?blockNumber=latest")
-        .with_status(500)
+        .with_status(400)
         .with_body(body)
         .create();
     let latest_block = starknet_client.latest_block().await.unwrap();
@@ -116,15 +119,25 @@ async fn state_update() {
     )
     .unwrap();
     let raw_state_update = read_resource_file("reader/block_state_update.json");
-    let mock =
+    let mock_state_update =
         mock("GET", &format!("/feeder_gateway/get_state_update?{BLOCK_NUMBER_QUERY}=123456")[..])
             .with_status(200)
             .with_body(&raw_state_update)
             .create();
     let state_update = starknet_client.state_update(BlockNumber(123456)).await.unwrap();
-    mock.assert();
+    mock_state_update.assert();
     let expected_state_update: StateUpdate = serde_json::from_str(&raw_state_update).unwrap();
     assert_eq!(state_update.unwrap(), expected_state_update);
+
+    let body = r#"{"code": "StarknetErrorCode.BLOCK_NOT_FOUND", "message": "Block number -1 was not found."}"#;
+    let mock_no_block =
+        mock("GET", &format!("/feeder_gateway/get_state_update?{BLOCK_NUMBER_QUERY}=999999")[..])
+            .with_status(400)
+            .with_body(body)
+            .create();
+    let state_update = starknet_client.state_update(BlockNumber(999999)).await.unwrap();
+    assert!(state_update.is_none());
+    mock_no_block.assert();
 }
 
 #[tokio::test]
@@ -278,7 +291,7 @@ async fn deprecated_contract_class() {
     let body = r#"{"code": "StarknetErrorCode.UNDECLARED_CLASS", "message": "Class with hash 0x7 is not declared."}"#;
     let mock_by_hash =
         mock("GET", &format!("/feeder_gateway/get_class_by_hash?{CLASS_HASH_QUERY}=0x7")[..])
-            .with_status(500)
+            .with_status(400)
             .with_body(body)
             .create();
     let class = starknet_client.class_by_hash(ClassHash(stark_felt!("0x7"))).await.unwrap();
@@ -309,13 +322,14 @@ async fn get_block() {
     let body = r#"{"code": "StarknetErrorCode.BLOCK_NOT_FOUND", "message": "Block 9999999999 was not found."}"#;
     let mock_no_block =
         mock("GET", &format!("/feeder_gateway/get_block?{BLOCK_NUMBER_QUERY}=9999999999")[..])
-            .with_status(500)
+            .with_status(400)
             .with_body(body)
             .create();
     let block = starknet_client.block(BlockNumber(9999999999)).await.unwrap();
     mock_no_block.assert();
     assert!(block.is_none());
 }
+
 #[tokio::test]
 async fn compiled_class_by_hash() {
     let starknet_client = StarknetFeederGatewayClient::new(
@@ -342,26 +356,19 @@ async fn compiled_class_by_hash() {
     let expected_casm_contract_class: CasmContractClass =
         serde_json::from_str(&raw_casm_contract_class).unwrap();
     assert_eq!(casm_contract_class, expected_casm_contract_class);
-}
 
-#[tokio::test]
-async fn block_unserializable() {
-    let starknet_client = StarknetFeederGatewayClient::new(
-        &mockito::server_url(),
-        None,
-        NODE_VERSION,
-        get_test_config(),
+    let body = r#"{"code": "StarknetErrorCode.UNDECLARED_CLASS", "message": "Class with hash 0x7 is not declared."}"#;
+    let mock_undeclared = mock(
+        "GET",
+        &format!("/feeder_gateway/get_compiled_class_by_class_hash?{CLASS_HASH_QUERY}=0x0")[..],
     )
-    .unwrap();
-    let body =
-        r#"{"block_hash": "0x3f65ef25e87a83d92f32f5e4869a33580f9db47ec980c1ff27bdb5151914de5"}"#;
-    let mock = mock("GET", "/feeder_gateway/get_block?blockNumber=20")
-        .with_status(200)
-        .with_body(body)
-        .create();
-    let error = starknet_client.block(BlockNumber(20)).await.unwrap_err();
-    mock.assert();
-    assert_matches!(error, ReaderClientError::SerdeError(_));
+    .with_status(400)
+    .with_body(body)
+    .create();
+    let class =
+        starknet_client.compiled_class_by_hash(ClassHash(stark_felt!("0x0"))).await.unwrap();
+    mock_undeclared.assert();
+    assert!(class.is_none());
 }
 
 #[tokio::test]
@@ -384,4 +391,74 @@ async fn state_update_with_empty_storage_diff() {
     let state_update = starknet_client.state_update(BlockNumber(123456)).await.unwrap().unwrap();
     mock.assert();
     assert!(state_update.state_diff.storage_diffs.is_empty());
+}
+
+async fn test_unserializable<
+    Output: Send + Debug,
+    Fut: Future<Output = ReaderClientResult<Output>>,
+    F: FnOnce(StarknetFeederGatewayClient) -> Fut,
+>(
+    url_suffix: &str,
+    call_method: F,
+) {
+    let starknet_client = StarknetFeederGatewayClient::new(
+        &mockito::server_url(),
+        None,
+        NODE_VERSION,
+        get_test_config(),
+    )
+    .unwrap();
+    let body = "body";
+    let mock = mock("GET", url_suffix).with_status(200).with_body(body).create();
+    let error = call_method(starknet_client).await.unwrap_err();
+    mock.assert();
+    assert_matches!(error, ReaderClientError::SerdeError(_));
+}
+
+#[tokio::test]
+async fn latest_block_unserializable() {
+    test_unserializable(
+        "/feeder_gateway/get_block?blockNumber=latest",
+        |starknet_client| async move { starknet_client.latest_block().await },
+    )
+    .await
+}
+
+#[tokio::test]
+async fn block_unserializable() {
+    test_unserializable("/feeder_gateway/get_block?blockNumber=20", |starknet_client| async move {
+        starknet_client.block(BlockNumber(20)).await
+    })
+    .await
+}
+
+#[tokio::test]
+async fn class_by_hash_unserializable() {
+    test_unserializable(
+        &format!("/feeder_gateway/get_class_by_hash?{CLASS_HASH_QUERY}=0x1")[..],
+        |starknet_client| async move {
+            starknet_client.class_by_hash(ClassHash(stark_felt!("0x1"))).await
+        },
+    )
+    .await
+}
+
+#[tokio::test]
+async fn state_update_unserializable() {
+    test_unserializable(
+        &format!("/feeder_gateway/get_state_update?{BLOCK_NUMBER_QUERY}=123456")[..],
+        |starknet_client| async move { starknet_client.state_update(BlockNumber(123456)).await },
+    )
+    .await
+}
+
+#[tokio::test]
+async fn compiled_class_by_hash_unserializable() {
+    test_unserializable(
+        &format!("/feeder_gateway/get_compiled_class_by_class_hash?{CLASS_HASH_QUERY}=0x7")[..],
+        |starknet_client| async move {
+            starknet_client.compiled_class_by_hash(ClassHash(stark_felt!("0x7"))).await
+        },
+    )
+    .await
 }
