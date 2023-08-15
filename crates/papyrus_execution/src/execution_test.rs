@@ -14,6 +14,7 @@ use crate::execution_utils::selector_from_name;
 use crate::objects::{
     DeclareTransactionTrace,
     DeployAccountTransactionTrace,
+    FunctionInvocationResult,
     InvokeTransactionTrace,
     TransactionTrace,
 };
@@ -227,7 +228,7 @@ fn simulate_invoke() {
             exec_only_trace,
             InvokeTransactionTrace {
                 validate_invocation: None,
-                execute_invocation: Ok(_),
+                execute_invocation: FunctionInvocationResult::Ok(_),
                 fee_transfer_invocation: None,
             }
         );
@@ -239,7 +240,7 @@ fn simulate_invoke() {
             validate_trace,
             InvokeTransactionTrace {
                 validate_invocation: Some(_),
-                execute_invocation: Ok(_),
+                execute_invocation: FunctionInvocationResult::Ok(_),
                 fee_transfer_invocation: None,
             }
         );
@@ -251,16 +252,13 @@ fn simulate_invoke() {
             charge_fee_trace,
             InvokeTransactionTrace {
                 validate_invocation: None,
-                execute_invocation: Ok(_),
+                execute_invocation: FunctionInvocationResult::Ok(_),
                 fee_transfer_invocation: Some(_),
             }
         );
         assert_eq!(charge_fee.1, *GAS_PRICE);
 
-        assert_eq!(
-            exec_only_trace.execute_invocation.as_ref().unwrap(),
-            charge_fee_trace.execute_invocation.as_ref().unwrap()
-        );
+        assert_eq!(exec_only_trace.execute_invocation, charge_fee_trace.execute_invocation);
 
         let TransactionTrace::Invoke(charge_fee_validate_trace) = &charge_fee_validate.0 else {
             panic!("Wrong trace type, expected InvokeTransactionTrace.")
@@ -269,7 +267,7 @@ fn simulate_invoke() {
             charge_fee_validate_trace,
             InvokeTransactionTrace {
                 validate_invocation: Some(_),
-                execute_invocation: Ok(_),
+                execute_invocation: FunctionInvocationResult::Ok(_),
                 fee_transfer_invocation: Some(_),
             }
         );
@@ -499,7 +497,7 @@ fn simulate_invoke_from_new_account() {
     );
 
     // Check that the invoke transaction succeeded.
-    invoke_trace.execute_invocation.unwrap();
+    assert_matches!(invoke_trace.execute_invocation, FunctionInvocationResult::Ok(_));
 }
 
 #[test]
@@ -542,7 +540,7 @@ fn simulate_invoke_from_new_account_validate_and_charge() {
     );
 
     // Check that the invoke transaction succeeded.
-    invoke_trace.execute_invocation.unwrap();
+    assert_matches!(invoke_trace.execute_invocation, FunctionInvocationResult::Ok(_));
 
     // Check that the fee was charged.
     assert_ne!(deploy_fee_estimation, Fee(0));
