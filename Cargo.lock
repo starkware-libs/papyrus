@@ -4318,6 +4318,7 @@ dependencies = [
  "hex",
  "hyper",
  "indexmap 1.9.3",
+ "insta",
  "jsonrpsee",
  "jsonschema",
  "lazy_static",
