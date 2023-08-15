@@ -53,12 +53,6 @@ pub const TOO_MANY_KEYS_IN_FILTER: JsonRpcError =
 pub const CONTRACT_ERROR: JsonRpcError =
     JsonRpcError { code: 40, message: "Contract error", data: None };
 
-pub const PENDING_BLOCKS_NOT_SUPPORTED: JsonRpcError = JsonRpcError {
-    code: 41,
-    message: "Currently, Papyrus doesn't support pending blocks.",
-    data: None,
-};
-
 pub const CLASS_ALREADY_DECLARED: JsonRpcError =
     JsonRpcError { code: 51, message: "Class already declared", data: None };
 
