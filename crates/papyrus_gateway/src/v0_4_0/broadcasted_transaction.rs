@@ -6,6 +6,10 @@
 //!
 //! [`Starknet specs`]: https://github.com/starkware-libs/starknet-specs/blob/master/api/starknet_api_openrpc.json
 
+#[cfg(test)]
+#[path = "broadcasted_transaction_test.rs"]
+mod broadcasted_transaction_test;
+
 use papyrus_storage::compression_utils::serialize_and_compress;
 use papyrus_storage::db::serialization::StorageSerdeError;
 use serde::{Deserialize, Serialize};

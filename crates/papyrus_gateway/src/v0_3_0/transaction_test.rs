@@ -11,7 +11,7 @@ use papyrus_storage::body::events::{
 use starknet_api::transaction::Transaction;
 use test_utils::{get_rng, GetTestInstance};
 
-use super::transaction::TransactionOutput;
+use super::TransactionOutput;
 
 macro_rules! gen_test_from_thin_transaction_output_macro {
     ($variant: ident) => {
@@ -38,47 +38,47 @@ async fn test_gateway_trascation_from_starknet_api_transaction() {
     let mut rng = get_rng();
 
     let inner_transaction = starknet_api::transaction::DeclareTransactionV0V1::default();
-    let _transaction: super::transaction::Transaction =
+    let _transaction: super::Transaction =
         Transaction::Declare(starknet_api::transaction::DeclareTransaction::V0(inner_transaction))
             .try_into()
             .unwrap();
 
     let inner_transaction = starknet_api::transaction::DeclareTransactionV0V1::default();
-    let _transaction: super::transaction::Transaction =
+    let _transaction: super::Transaction =
         Transaction::Declare(starknet_api::transaction::DeclareTransaction::V1(inner_transaction))
             .try_into()
             .unwrap();
 
     let inner_transaction = starknet_api::transaction::DeclareTransactionV2::default();
-    let _transaction: super::transaction::Transaction =
+    let _transaction: super::Transaction =
         Transaction::Declare(starknet_api::transaction::DeclareTransaction::V2(inner_transaction))
             .try_into()
             .unwrap();
 
     let inner_transaction = starknet_api::transaction::InvokeTransactionV0::default();
-    let _transaction: super::transaction::Transaction =
+    let _transaction: super::Transaction =
         Transaction::Invoke(starknet_api::transaction::InvokeTransaction::V0(inner_transaction))
             .try_into()
             .unwrap();
 
     let inner_transaction = starknet_api::transaction::InvokeTransactionV1::default();
-    let _transaction: super::transaction::Transaction =
+    let _transaction: super::Transaction =
         Transaction::Invoke(starknet_api::transaction::InvokeTransaction::V1(inner_transaction))
             .try_into()
             .unwrap();
 
     let inner_transaction =
         starknet_api::transaction::L1HandlerTransaction::get_test_instance(&mut rng);
-    let _transaction: super::transaction::Transaction =
+    let _transaction: super::Transaction =
         Transaction::L1Handler(inner_transaction).try_into().unwrap();
 
     let inner_transaction =
         starknet_api::transaction::DeployTransaction::get_test_instance(&mut rng);
-    let _transaction: super::transaction::Transaction =
+    let _transaction: super::Transaction =
         Transaction::Deploy(inner_transaction).try_into().unwrap();
 
     let inner_transaction =
         starknet_api::transaction::DeployAccountTransaction::get_test_instance(&mut rng);
-    let _transaction: super::transaction::Transaction =
+    let _transaction: super::Transaction =
         Transaction::DeployAccount(inner_transaction).try_into().unwrap();
 }

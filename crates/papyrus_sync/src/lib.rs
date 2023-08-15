@@ -1,5 +1,4 @@
 #[cfg(test)]
-#[path = "sync_test.rs"]
 mod sync_test;
 
 pub mod sources;

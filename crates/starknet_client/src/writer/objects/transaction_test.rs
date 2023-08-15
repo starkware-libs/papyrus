@@ -1,6 +1,6 @@
 use test_utils::{get_rng, validate_load_and_dump, GetTestInstance};
 
-use crate::writer::objects::transaction::{
+use super::{
     DeclareV1Transaction,
     DeclareV2Transaction,
     DeployAccountTransaction,

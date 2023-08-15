@@ -37,7 +37,6 @@
 //! ```
 
 #[cfg(test)]
-#[path = "body_test.rs"]
 mod body_test;
 pub mod events;
 

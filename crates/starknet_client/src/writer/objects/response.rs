@@ -2,6 +2,10 @@
 //!
 //! [`Starknet`]: https://starknet.io/
 
+#[cfg(test)]
+#[path = "response_test.rs"]
+mod response_test;
+
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{ClassHash, ContractAddress};
 use starknet_api::transaction::TransactionHash;

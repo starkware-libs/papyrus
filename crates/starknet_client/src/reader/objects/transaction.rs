@@ -1,3 +1,7 @@
+#[cfg(test)]
+#[path = "transaction_test.rs"]
+mod transaction_test;
+
 use std::collections::HashMap;
 
 use lazy_static::lazy_static;

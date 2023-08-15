@@ -10,16 +10,16 @@ use starknet_api::state::StorageKey;
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 use starknet_api::{patricia_key, stark_felt};
 
-use super::block::{Block, GlobalRoot, TransactionReceiptsError};
-use super::state::{
+use super::{Block, GlobalRoot, TransactionReceiptsError};
+use crate::reader::objects::state::{
     DeclaredClassHashEntry,
     DeployedContract,
+    ReplacedClass,
     StateDiff,
     StateUpdate,
     StorageEntry,
 };
-use super::transaction::TransactionReceipt;
-use crate::reader::objects::state::ReplacedClass;
+use crate::reader::objects::transaction::TransactionReceipt;
 use crate::reader::ReaderClientError;
 use crate::test_utils::read_resource::read_resource_file;
 

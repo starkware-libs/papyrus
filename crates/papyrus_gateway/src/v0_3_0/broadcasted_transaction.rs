@@ -6,6 +6,10 @@
 //!
 //! [`Starknet specs`]: https://github.com/starkware-libs/starknet-specs/blob/master/api/starknet_api_openrpc.json
 
+#[cfg(test)]
+#[path = "broadcasted_transaction_test.rs"]
+mod broadcasted_transaction_test;
+
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::transaction::{
