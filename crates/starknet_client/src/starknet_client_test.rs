@@ -39,6 +39,43 @@ async fn request_with_retry_bad_response_status() {
 }
 
 #[tokio::test]
+async fn request_with_retry_starknet_error_no_retry() {
+    let starknet_client = StarknetClient::new(None, NODE_VERSION, get_test_config()).unwrap();
+    let expected_starknet_error = StarknetError {
+        code: StarknetErrorCode::KnownErrorCode(KnownStarknetErrorCode::UndeclaredClass),
+        message: "message".to_string(),
+    };
+    let mock = mock("GET", URL_SUFFIX)
+        .with_status(StatusCode::BAD_REQUEST.as_u16().into())
+        .with_body(serde_json::to_string(&expected_starknet_error).unwrap())
+        .create();
+    let mut url = mockito::server_url();
+    url.push_str(URL_SUFFIX);
+    let result =
+        starknet_client.request_with_retry(starknet_client.internal_client.get(&url)).await;
+    let Err(ClientError::StarknetError(starknet_error)) = result else {
+        panic!("Did not get a StarknetError.");
+    };
+    assert_eq!(starknet_error, expected_starknet_error);
+    mock.assert();
+}
+
+#[tokio::test]
+async fn request_with_retry_serde_error_in_starknet_error() {
+    let starknet_client = StarknetClient::new(None, NODE_VERSION, get_test_config()).unwrap();
+    let mock = mock("GET", URL_SUFFIX)
+        .with_status(StatusCode::BAD_REQUEST.as_u16().into())
+        .with_body("body")
+        .create();
+    let mut url = mockito::server_url();
+    url.push_str(URL_SUFFIX);
+    let result =
+        starknet_client.request_with_retry(starknet_client.internal_client.get(&url)).await;
+    assert_matches!(result, Err(ClientError::SerdeError(_)));
+    mock.assert();
+}
+
+#[tokio::test]
 async fn request_with_retry_max_retries_reached() {
     let starknet_client = StarknetClient::new(None, NODE_VERSION, get_test_config()).unwrap();
     for (status_code, error_code) in [
