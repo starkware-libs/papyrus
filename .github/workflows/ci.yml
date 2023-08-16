@@ -63,8 +63,10 @@ jobs:
           toolchain: stable
       - uses: Swatinem/rust-cache@v2
       - run: npm install -g ganache@7.4.3
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
       - run: |
-          cargo test
+          cargo nextest run; cargo test --doc
         env:
           SEED: 0
 
@@ -92,8 +94,10 @@ jobs:
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@v2
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
       - run: >
-          cargo test -p starknet_client -- --ignored feeder_gateway_integration_test;
+          cargo nextest run -p starknet_client -- --ignored feeder_gateway_integration_test;
           cargo run -p papyrus_node --bin central_source_integration_test
 
   rustfmt:
@@ -186,8 +190,10 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
       - uses: Swatinem/rust-cache@v2
       - run: npm install -g ganache@7.4.3
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
       - name: Coverage
-        run: cargo +nightly llvm-cov --codecov --output-path codecov.json
+        run: cargo +nightly llvm-cov nextest --codecov --output-path codecov.json
         env:
           SEED: 0
       - name: Codecov
