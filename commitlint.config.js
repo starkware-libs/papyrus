@@ -28,6 +28,7 @@ const Configuration = {
             'load_test',
             'monitoring',
             'release',
+            'p2p_communication',
             'starknet_client',
             'storage',
             'sync',
