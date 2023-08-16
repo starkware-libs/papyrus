@@ -22,8 +22,6 @@ use crate::v0_4_0::error::{
 #[path = "write_api_error_test.rs"]
 mod write_api_error_test;
 
-// TODO(shahak): Remove allow dead code once this function is used.
-#[allow(dead_code)]
 pub(crate) fn starknet_error_to_invoke_error(error: StarknetError) -> JsonRpcError {
     let StarknetErrorCode::KnownErrorCode(known_error_code) = error.code else {
         return unexpected_error(error.message);
@@ -45,8 +43,6 @@ pub(crate) fn starknet_error_to_invoke_error(error: StarknetError) -> JsonRpcErr
     }
 }
 
-// TODO(shahak): Remove allow dead code once this function is used.
-#[allow(dead_code)]
 pub(crate) fn starknet_error_to_declare_error(error: StarknetError) -> JsonRpcError {
     let StarknetErrorCode::KnownErrorCode(known_error_code) = error.code else {
         return unexpected_error(error.message);
@@ -70,8 +66,6 @@ pub(crate) fn starknet_error_to_declare_error(error: StarknetError) -> JsonRpcEr
     }
 }
 
-// TODO(shahak): Remove allow dead code once this function is used.
-#[allow(dead_code)]
 pub(crate) fn starknet_error_to_deploy_account_error(error: StarknetError) -> JsonRpcError {
     let StarknetErrorCode::KnownErrorCode(known_error_code) = error.code else {
         return unexpected_error(error.message);
