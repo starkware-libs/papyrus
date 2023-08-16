@@ -46,9 +46,9 @@ pub fn load_and_process_config<T: for<'a> Deserialize<'a>>(
         serde_json::from_reader(default_config_file).unwrap();
 
     let (mut config_map, pointers_map) = get_maps_from_raw_json(deserialized_default_config);
-    let arg_matches = get_command_matches(&config_map, command, args)?;
-    if let Some(custom_config_path) = arg_matches.try_get_one::<PathBuf>("config_file")? {
-        update_config_map_by_custom_config(&mut config_map, custom_config_path)?;
+    let mut arg_matches = get_command_matches(&config_map, command, args)?;
+    if let Some(custom_config_path) = arg_matches.remove_one::<PathBuf>("config_file") {
+        update_config_map_by_custom_config(&mut config_map, &custom_config_path)?;
     };
     update_config_map_by_command_args(&mut config_map, &arg_matches)?;
     update_config_map_by_pointers(&mut config_map, &pointers_map)?;
