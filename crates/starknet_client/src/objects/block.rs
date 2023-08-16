@@ -1,36 +1,42 @@
 use std::ops::Index;
 
-use serde::{Deserialize, Serialize};
-#[cfg(doc)]
-use starknet_api::block::Block as starknet_api_block;
-use starknet_api::block::{BlockHash, BlockNumber, BlockTimestamp, GasPrice};
+use serde::{Deserialize, Deserializer, Serialize};
+use starknet_api::block::{
+    Block as starknet_api_block,
+    BlockHash,
+    BlockNumber,
+    BlockTimestamp,
+    GasPrice,
+};
 use starknet_api::core::ContractAddress;
 use starknet_api::hash::StarkHash;
-use starknet_api::serde_utils::NonPrefixedBytesAsHex;
 #[cfg(doc)]
 use starknet_api::transaction::TransactionOutput as starknet_api_transaction_output;
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
-use starknet_api::StarknetApiError;
 
 use crate::objects::transaction::{
     L1ToL2Message, Transaction, TransactionReceipt, TransactionType,
 };
 use crate::{ClientError, ClientResult};
 
-#[derive(
-    Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-#[serde(try_from = "NonPrefixedBytesAsHex<32_usize>")]
+#[derive(Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Serialize, PartialOrd, Ord)]
 pub struct GlobalRoot(pub StarkHash);
 
-// We don't use the regular StarkHash deserialization since the Starknet sequencer returns the
-// global root hash as a hex string without a "0x" prefix.
-impl TryFrom<NonPrefixedBytesAsHex<32_usize>> for GlobalRoot {
-    type Error = StarknetApiError;
-    fn try_from(val: NonPrefixedBytesAsHex<32_usize>) -> Result<Self, Self::Error> {
-        Ok(Self(StarkHash::try_from(val)?))
+// TODO(dvir): remove this deserialization when all the environments use the same format.
+impl<'de> Deserialize<'de> for GlobalRoot {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let mut as_string = String::deserialize(deserializer)?;
+        if !as_string.starts_with("0x") {
+            as_string = format!("0x{}", as_string);
+        }
+        let string_des = serde::de::value::StringDeserializer::new(as_string);
+        Ok(Self(Deserialize::deserialize(string_des)?))
     }
 }
+
 impl From<GlobalRoot> for starknet_api::core::GlobalRoot {
     fn from(val: GlobalRoot) -> Self {
         Self(val.0)
