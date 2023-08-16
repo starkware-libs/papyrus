@@ -48,6 +48,10 @@ pub fn chain_id() -> Transaction {
     transaction_with_constant_request("chainId", "chain_id")
 }
 
+pub fn syncing() -> Transaction {
+    transaction_with_constant_request("syncing", "syncing")
+}
+
 fn transaction_with_constant_request(method_name: &str, transaction_name: &str) -> Transaction {
     let method = String::from("starknet_") + method_name;
     let request = jsonrpc_request(&method, json!([]));
