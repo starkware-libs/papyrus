@@ -30,6 +30,7 @@ use starknet_api::transaction::{
     Fee,
     InvokeTransaction,
     InvokeTransactionV1,
+    TransactionHash,
     TransactionVersion,
 };
 use starknet_api::{calldata, class_hash, contract_address, patricia_key, stark_felt};
@@ -151,6 +152,7 @@ pub fn prepare_storage(mut storage_writer: StorageWriter) {
 pub fn execute_simulate_transactions(
     storage_reader: &StorageReader,
     txs: Vec<ExecutableTransactionInput>,
+    tx_hashes: Option<Vec<TransactionHash>>,
     charge_fee: bool,
     validate: bool,
 ) -> Vec<(TransactionTrace, GasPrice, Fee)> {
@@ -159,6 +161,7 @@ pub fn execute_simulate_transactions(
 
     simulate_transactions(
         txs,
+        tx_hashes,
         &chain_id,
         &storage_txn,
         StateNumber::right_after_block(BlockNumber(0)),

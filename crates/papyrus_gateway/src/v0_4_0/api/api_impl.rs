@@ -657,6 +657,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 
         let res = exec_simulate_transactions(
             executable_txns,
+            None,
             &self.chain_id,
             &txn,
             state_number,
@@ -674,6 +675,9 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 })
                 .collect()),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
+            Err(ExecutionError::MissingTransactionHashes) => {
+                Err(internal_server_error("Simulate transactions not supported yet."))
+            }
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
         }
     }
@@ -691,7 +695,16 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             .map_err(internal_server_error)?
             .ok_or_else(|| {
                 internal_server_error(StorageError::DBInconsistency {
-                    msg: format!("Missing block {block_number} transactions").to_string(),
+                    msg: format!("Missing block {block_number} transactions"),
+                })
+            })?;
+
+        let tx_hashes = storage_txn
+            .get_block_transaction_hashes(block_number)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| {
+                internal_server_error(StorageError::DBInconsistency {
+                    msg: format!("Missing block {block_number} transactions"),
                 })
             })?;
 
@@ -704,6 +717,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 
         let res = exec_simulate_transactions(
             executable_txns,
+            Some(tx_hashes),
             &self.chain_id,
             &storage_txn,
             state_number,
