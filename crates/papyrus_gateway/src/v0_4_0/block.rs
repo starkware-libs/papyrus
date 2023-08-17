@@ -8,7 +8,7 @@ use starknet_api::core::{ContractAddress, GlobalRoot};
 
 use super::transaction::Transactions;
 use crate::api::{BlockHashOrNumber, BlockId, Tag};
-use crate::v0_4_0::error::{BLOCK_NOT_FOUND, PENDING_BLOCKS_NOT_SUPPORTED};
+use crate::v0_4_0::error::BLOCK_NOT_FOUND;
 use crate::{get_latest_block_number, internal_server_error};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -79,7 +79,11 @@ pub(crate) fn get_block_number<Mode: TransactionKind>(
             get_latest_block_number(txn)?.ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?
         }
         BlockId::Tag(Tag::Pending) => {
-            return Err(ErrorObjectOwned::from(PENDING_BLOCKS_NOT_SUPPORTED));
+            return Err(ErrorObjectOwned::owned(
+                jsonrpsee::types::error::ErrorCode::InternalError.code(),
+                "Currently, Papyrus doesn't support pending blocks.",
+                None::<()>,
+            ));
         }
     })
 }

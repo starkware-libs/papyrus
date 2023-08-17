@@ -78,7 +78,11 @@ pub(crate) fn get_block_number<Mode: TransactionKind>(
         BlockId::Tag(Tag::Latest) => get_latest_block_number(txn)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?,
         BlockId::Tag(Tag::Pending) => {
-            return Err(ErrorObjectOwned::from(JsonRpcError::PendingBlocksNotSupported));
+            return Err(ErrorObjectOwned::owned(
+                jsonrpsee::types::error::ErrorCode::InternalError.code(),
+                "Currently, Papyrus doesn't support pending blocks.",
+                None::<()>,
+            ));
         }
     })
 }

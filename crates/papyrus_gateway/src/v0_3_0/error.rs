@@ -24,9 +24,6 @@ pub enum JsonRpcError {
     TooManyKeysInFilter = 34,
     #[error("Contract error.")]
     ContractError = 40,
-    // TODO(dvir): delete this when start support pending blocks.
-    #[error("Currently, Papyrus doesn't support pending blocks.")]
-    PendingBlocksNotSupported = 41,
 }
 
 impl From<JsonRpcError> for ErrorObjectOwned {
