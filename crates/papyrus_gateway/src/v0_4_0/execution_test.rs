@@ -4,7 +4,7 @@ use std::path::Path;
 
 use assert_matches::assert_matches;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
-use indexmap::indexmap;
+use indexmap::{indexmap, IndexMap};
 use jsonrpsee::core::Error;
 use lazy_static::lazy_static;
 use papyrus_execution::execution_utils::selector_from_name;
@@ -23,12 +23,19 @@ use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::StorageWriter;
 use pretty_assertions::assert_eq;
-use starknet_api::block::{BlockBody, BlockHeader, BlockNumber, BlockTimestamp, GasPrice};
+use starknet_api::block::{
+    BlockBody,
+    BlockHash,
+    BlockHeader,
+    BlockNumber,
+    BlockTimestamp,
+    GasPrice,
+};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::ContractClass as SN_API_DeprecatedContractClass;
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::StateDiff;
-use starknet_api::transaction::{Calldata, Fee, TransactionVersion};
+use starknet_api::transaction::{Calldata, Fee, TransactionHash, TransactionVersion};
 use starknet_api::{calldata, class_hash, contract_address, patricia_key, stark_felt};
 use test_utils::{auto_impl_get_test_instance, get_rng, read_json_file, GetTestInstance};
 
@@ -355,6 +362,66 @@ async fn call_simulate_skip_fee_charge() {
     assert_matches!(invoke_trace.fee_transfer_invocation, None);
 }
 
+#[tokio::test]
+async fn call_trace_transaction() {
+    let (module, storage_writer) =
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+
+    let mut writer = prepare_storage_for_execution(storage_writer);
+
+    let tx_hash = TransactionHash(stark_felt!("0x1234"));
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(
+            BlockNumber(1),
+            &BlockHeader {
+                gas_price: *GAS_PRICE,
+                sequencer: *SEQUENCER_ADDRESS,
+                timestamp: *BLOCK_TIMESTAMP,
+                block_hash: BlockHash(stark_felt!("0x1")),
+                ..Default::default()
+            },
+        )
+        .unwrap()
+        .append_body(
+            BlockNumber(1),
+            BlockBody {
+                transactions: vec![starknet_api::transaction::Transaction::Invoke(
+                    starknet_api::transaction::InvokeTransaction::V1(
+                        starknet_api::transaction::InvokeTransactionV1 {
+                            max_fee: *MAX_FEE,
+                            sender_address: *ACCOUNT_ADDRESS,
+                            calldata: calldata![
+                                *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
+                                selector_from_name("return_result").0, // EP selector.
+                                stark_felt!(1_u8),                     // Calldata length.
+                                stark_felt!(2_u8)                      // Calldata: num.
+                            ],
+                            ..Default::default()
+                        },
+                    ),
+                )],
+                transaction_outputs: vec![starknet_api::transaction::TransactionOutput::Invoke(
+                    starknet_api::transaction::InvokeTransactionOutput::default(),
+                )],
+                transaction_hashes: vec![tx_hash],
+            },
+        )
+        .unwrap()
+        .append_state_diff(BlockNumber(1), StateDiff::default(), IndexMap::new())
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    let res = module
+        .call::<_, TransactionTrace>("starknet_V0_4_traceTransaction", [tx_hash])
+        .await
+        .unwrap();
+
+    assert_matches!(res, TransactionTrace::Invoke(_));
+}
+
 #[test]
 fn broadcasted_to_executable_declare_v1() {
     let mut rng = get_rng();
@@ -450,7 +517,7 @@ auto_impl_get_test_instance! {
     }
 }
 
-fn prepare_storage_for_execution(mut storage_writer: StorageWriter) {
+fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWriter {
     let class1 = serde_json::from_value::<SN_API_DeprecatedContractClass>(read_json_file(
         "deprecated_class.json",
     ))
@@ -529,4 +596,6 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) {
         .unwrap()
         .commit()
         .unwrap();
+
+    storage_writer
 }
