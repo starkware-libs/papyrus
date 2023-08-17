@@ -4272,6 +4272,7 @@ dependencies = [
  "assert_matches",
  "clap",
  "itertools 0.10.5",
+ "lazy_static",
  "serde",
  "serde_json",
  "tempfile",
