@@ -38,6 +38,7 @@ use test_utils::read_json_file;
 
 use crate::execution_utils::selector_from_name;
 use crate::objects::TransactionTrace;
+use crate::testing_instances::test_execution_config;
 use crate::{simulate_transactions, ExecutableTransactionInput};
 
 lazy_static! {
@@ -165,7 +166,7 @@ pub fn execute_simulate_transactions(
         &chain_id,
         &storage_txn,
         StateNumber::right_after_block(BlockNumber(0)),
-        Some(*TEST_ERC20_CONTRACT_ADDRESS),
+        &test_execution_config(),
         charge_fee,
         validate,
     )

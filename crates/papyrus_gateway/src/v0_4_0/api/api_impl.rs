@@ -10,6 +10,7 @@ use papyrus_execution::{
     estimate_fee as exec_estimate_fee,
     execute_call,
     simulate_transactions as exec_simulate_transactions,
+    ExecutionConfig,
     ExecutionError,
 };
 use papyrus_storage::body::events::{EventIndex, EventsReader};
@@ -111,7 +112,7 @@ lazy_static! {
 /// Rpc server.
 pub struct JsonRpcServerV0_4Impl {
     pub chain_id: ChainId,
-    pub fee_contract_address: ContractAddress,
+    pub execution_config: ExecutionConfig,
     pub storage_reader: StorageReader,
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
@@ -553,6 +554,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             &contract_address,
             entry_point_selector,
             calldata,
+            &self.execution_config,
         ) {
             Ok(res) => Ok(res.retdata.0),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
@@ -627,7 +629,13 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let block_number = get_block_number(&txn, block_id)?;
         let state_number = StateNumber::right_after_block(block_number);
 
-        match exec_estimate_fee(executable_txns, &self.chain_id, &txn, state_number) {
+        match exec_estimate_fee(
+            executable_txns,
+            &self.chain_id,
+            &txn,
+            state_number,
+            &self.execution_config,
+        ) {
             Ok(fees) => Ok(fees
                 .into_iter()
                 .map(|(gas_price, fee)| FeeEstimate::from(gas_price, fee))
@@ -661,7 +669,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             &self.chain_id,
             &txn,
             state_number,
-            Some(self.fee_contract_address),
+            &self.execution_config,
             charge_fee,
             validate,
         );
@@ -721,7 +729,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             &self.chain_id,
             &storage_txn,
             state_number,
-            Some(self.fee_contract_address),
+            &self.execution_config,
             true,
             true,
         );
@@ -739,7 +747,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
     fn new(
         chain_id: ChainId,
-        fee_contract_address: ContractAddress,
+        execution_config: ExecutionConfig,
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,
@@ -749,7 +757,7 @@ impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
     ) -> Self {
         Self {
             chain_id,
-            fee_contract_address,
+            execution_config,
             storage_reader,
             max_events_chunk_size,
             max_events_keys,

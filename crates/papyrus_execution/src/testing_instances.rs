@@ -2,10 +2,11 @@
 
 /// Returns the storage key of a storage variable.
 pub use blockifier::abi::abi_utils::get_storage_var_address;
-use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector};
+use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, PatriciaKey};
 use starknet_api::deprecated_contract_class::EntryPointType;
-use starknet_api::hash::StarkFelt;
+use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::{Calldata, EventContent, MessageToL1};
+use starknet_api::{contract_address, patricia_key};
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
 
 use crate::objects::{
@@ -21,6 +22,12 @@ use crate::objects::{
     RevertReason,
     TransactionTrace,
 };
+use crate::ExecutionConfig;
+
+/// Creates an ExecutionConfig for tests.
+pub fn test_execution_config() -> ExecutionConfig {
+    ExecutionConfig { fee_contract_address: contract_address!("0x1001"), ..Default::default() }
+}
 
 auto_impl_get_test_instance! {
     pub enum TransactionTrace {

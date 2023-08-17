@@ -4292,6 +4292,7 @@ dependencies = [
  "indexmap 1.9.3",
  "itertools 0.10.5",
  "lazy_static",
+ "papyrus_config",
  "papyrus_storage",
  "rand",
  "rand_chacha",

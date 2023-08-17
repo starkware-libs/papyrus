@@ -11,12 +11,11 @@ mod test_utils;
 pub mod testing_instances;
 
 pub mod objects;
-
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::iter;
 use std::sync::Arc;
 
-use blockifier::abi::constants::{INITIAL_GAS_COST, N_STEPS_RESOURCE};
+use blockifier::abi::constants::STEP_GAS_COST;
 use blockifier::block_context::BlockContext;
 use blockifier::execution::contract_class::ContractClass as BlockifierContractClass;
 use blockifier::execution::entry_point::{
@@ -35,28 +34,23 @@ use blockifier::transaction::transaction_execution::Transaction as BlockifierTra
 use blockifier::transaction::transactions::ExecutableTransaction;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use cairo_vm::types::errors::program_errors::ProgramError;
-use cairo_vm::vm::runners::builtin_runner::{
-    BITWISE_BUILTIN_NAME,
-    EC_OP_BUILTIN_NAME,
-    HASH_BUILTIN_NAME,
-    OUTPUT_BUILTIN_NAME,
-    POSEIDON_BUILTIN_NAME,
-    RANGE_CHECK_BUILTIN_NAME,
-    SIGNATURE_BUILTIN_NAME,
-};
 use objects::TransactionTrace;
+use papyrus_config::dumping::{ser_param, SerializeConfig};
+use papyrus_config::{ParamPath, SerializedParam};
 use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::RO;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageTxn};
+use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockTimestamp, GasPrice};
-use starknet_api::core::{ChainId, ContractAddress, EntryPointSelector};
+use starknet_api::core::{ChainId, ContractAddress, EntryPointSelector, PatriciaKey};
 // TODO: merge multiple EntryPointType structs in SN_API into one.
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass,
     EntryPointType,
 };
+use starknet_api::hash::StarkHash;
 use starknet_api::state::StateNumber;
 use starknet_api::transaction::{
     Calldata,
@@ -69,29 +63,135 @@ use starknet_api::transaction::{
     Transaction,
     TransactionHash,
 };
+use starknet_api::{contract_address, patricia_key};
 use state_reader::ExecutionStateReader;
 
 /// Result type for execution functions.
 pub type ExecutionResult<T> = Result<T, ExecutionError>;
-use lazy_static::lazy_static;
 
-// TODO(yair): These constants should be taken from the Starknet global config.
-const INVOKE_TX_MAX_N_STEPS: u32 = 1_000_000;
-const VALIDATE_TX_MAX_N_STEPS: u32 = 1_000_000;
-const MAX_RECURSION_DEPTH: usize = 50;
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[allow(missing_docs)]
+/// Parameters that are needed for execution.
+// TODO(yair): Find a way to get them from the Starknet general config.
+pub struct ExecutionConfig {
+    pub fee_contract_address: ContractAddress,
+    pub invoke_tx_max_n_steps: u32,
+    pub validate_tx_max_n_steps: u32,
+    pub max_recursion_depth: usize,
+    pub step_gas_cost: u64,
+    pub initial_gas_cost: u64,
 
-lazy_static! {
-    // TODO(yair): get real values.
-    static ref VM_RESOURCE_FEE_COST: Arc<HashMap<String, f64>> =  Arc::new(HashMap::from([
-        (N_STEPS_RESOURCE.to_string(), 1_f64),
-        (HASH_BUILTIN_NAME.to_string(), 1_f64),
-        (RANGE_CHECK_BUILTIN_NAME.to_string(), 1_f64),
-        (SIGNATURE_BUILTIN_NAME.to_string(), 1_f64),
-        (BITWISE_BUILTIN_NAME.to_string(), 1_f64),
-        (POSEIDON_BUILTIN_NAME.to_string(), 1_f64),
-        (OUTPUT_BUILTIN_NAME.to_string(), 1_f64),
-        (EC_OP_BUILTIN_NAME.to_string(), 1_f64),
-    ]));
+    // VM_RESOURCE_FEE_COST
+    pub n_steps: f64,             // N_STEPS_RESOURCE
+    pub pedersen_builtin: f64,    // HASH_BUILTIN_NAME
+    pub range_check_builtin: f64, // RANGE_CHECK_BUILTIN_NAME
+    pub ecdsa_builtin: f64,       // SIGNATURE_BUILTIN_NAME
+    pub bitwise_builtin: f64,     // BITWISE_BUILTIN_NAME
+    pub poseidon_builtin: f64,    // POSEIDON_BUILTIN_NAME
+    pub output_builtin: f64,      // OUTPUT_BUILTIN_NAME
+    pub ec_op_builtin: f64,       // EC_OP_BUILTIN_NAME
+}
+
+impl Default for ExecutionConfig {
+    fn default() -> Self {
+        Self {
+            fee_contract_address: contract_address!(
+                "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
+            ),
+            invoke_tx_max_n_steps: 1_000_000,
+            validate_tx_max_n_steps: 1_000_000,
+            max_recursion_depth: 50,
+            step_gas_cost: STEP_GAS_COST,
+            initial_gas_cost: 10_u64.pow(8) * STEP_GAS_COST,
+            n_steps: 1_f64,
+            pedersen_builtin: 1_f64,
+            range_check_builtin: 1_f64,
+            ecdsa_builtin: 1_f64,
+            bitwise_builtin: 1_f64,
+            poseidon_builtin: 1_f64,
+            output_builtin: 1_f64,
+            ec_op_builtin: 1_f64,
+        }
+    }
+}
+
+impl SerializeConfig for ExecutionConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from_iter([
+            ser_param(
+                "fee_contract_address",
+                &self.fee_contract_address,
+                "The contract address of the ERC-20 fee contract used for paying fees.",
+            ),
+            ser_param(
+                "invoke_tx_max_n_steps",
+                &self.invoke_tx_max_n_steps,
+                "Max steps for invoke transaction.",
+            ),
+            ser_param(
+                "validate_tx_max_n_steps",
+                &self.validate_tx_max_n_steps,
+                "Max steps for validating transaction.",
+            ),
+            ser_param(
+                "max_recursion_depth",
+                &self.max_recursion_depth,
+                "Max recursion depth for transaction.",
+            ),
+            ser_param("step_gas_cost", &self.step_gas_cost, "Cost of a single step."),
+            ser_param(
+                "initial_gas_cost",
+                &self.initial_gas_cost,
+                "An estimation of the initial gas for a transaction to run with (10e8 * \
+                 step_gas_cost).",
+            ),
+            // TODO(yair): fill description.
+            ser_param("n_steps", &self.n_steps, "I don't know what this is."),
+            ser_param(
+                "pedersen_builtin",
+                &self.pedersen_builtin,
+                "Cost of a single pedersen builtin call.",
+            ),
+            ser_param(
+                "range_check_builtin",
+                &self.range_check_builtin,
+                "Cost of a single range_check builtin call.",
+            ),
+            ser_param("ecdsa_builtin", &self.ecdsa_builtin, "Cost of a single ecdsa builtin call."),
+            ser_param(
+                "bitwise_builtin",
+                &self.bitwise_builtin,
+                "Cost of a single bitwise builtin call.",
+            ),
+            ser_param(
+                "poseidon_builtin",
+                &self.poseidon_builtin,
+                "Cost of a single poseidon builtin call.",
+            ),
+            ser_param(
+                "output_builtin",
+                &self.output_builtin,
+                "Cost of a single output builtin call.",
+            ),
+            ser_param("ec_op_builtin", &self.ec_op_builtin, "Cost of a single ec_op builtin call."),
+        ])
+    }
+}
+
+impl ExecutionConfig {
+    /// Returns the VM resources fee cost as a map from resource name to cost.
+    pub fn vm_resources_fee_cost(&self) -> Arc<HashMap<String, f64>> {
+        Arc::new(HashMap::from([
+            ("n_steps".to_string(), self.n_steps),
+            ("pedersen_builtin".to_string(), self.pedersen_builtin),
+            ("range_check_builtin".to_string(), self.range_check_builtin),
+            ("ecdsa_builtin".to_string(), self.ecdsa_builtin),
+            ("bitwise_builtin".to_string(), self.bitwise_builtin),
+            ("poseidon_builtin".to_string(), self.poseidon_builtin),
+            ("output_builtin".to_string(), self.output_builtin),
+            ("ec_op_builtin".to_string(), self.ec_op_builtin),
+        ]))
+    }
 }
 
 #[allow(missing_docs)]
@@ -123,8 +223,6 @@ pub enum ExecutionError {
     TransactionExecutionError(#[from] TransactionExecutionError),
     #[error("Charging fee is not supported yet in execution.")]
     ChargeFeeNotSupported,
-    #[error("Must provide fee token contract address when passing charge_fee or validate.")]
-    MissingFeeTokenContractAddress,
     #[error("Executing transactions without passing transaction hashes is not supported yet.")]
     MissingTransactionHashes,
 }
@@ -137,6 +235,7 @@ pub fn execute_call(
     contract_address: &ContractAddress,
     entry_point_selector: EntryPointSelector,
     calldata: Calldata,
+    execution_config: &ExecutionConfig,
 ) -> ExecutionResult<CallExecution> {
     verify_node_synced(txn, state_number)?;
     verify_contract_exists(contract_address, txn, state_number)?;
@@ -150,8 +249,8 @@ pub fn execute_call(
         storage_address: *contract_address,
         caller_address: ContractAddress::default(),
         call_type: BlockifierCallType::Call,
-        // todo(yair): Check if this is the correct value.
-        initial_gas: INITIAL_GAS_COST,
+        // TODO(yair): check if this is the correct value.
+        initial_gas: execution_config.initial_gas_cost,
     };
     let mut cached_state = CachedState::from(ExecutionStateReader { txn, state_number });
     let header =
@@ -162,12 +261,12 @@ pub fn execute_call(
         header.timestamp,
         header.gas_price,
         &header.sequencer,
-        None,
+        execution_config,
     );
     let mut context = EntryPointExecutionContext::new(
         block_context,
         AccountTransactionContext::default(),
-        INVOKE_TX_MAX_N_STEPS as usize,
+        execution_config.invoke_tx_max_n_steps as usize,
     );
 
     let res = call_entry_point.execute(
@@ -213,18 +312,18 @@ fn create_block_context(
     block_timestamp: BlockTimestamp,
     gas_price: GasPrice,
     sequencer_address: &ContractAddress,
-    fee_contract_address: Option<ContractAddress>,
+    execution_config: &ExecutionConfig,
 ) -> BlockContext {
     BlockContext {
         chain_id,
         block_number,
         block_timestamp,
         sequencer_address: *sequencer_address,
-        fee_token_address: fee_contract_address.unwrap_or_default(),
-        vm_resource_fee_cost: VM_RESOURCE_FEE_COST.clone(),
-        invoke_tx_max_n_steps: INVOKE_TX_MAX_N_STEPS,
-        validate_max_n_steps: VALIDATE_TX_MAX_N_STEPS,
-        max_recursion_depth: MAX_RECURSION_DEPTH,
+        fee_token_address: execution_config.fee_contract_address,
+        vm_resource_fee_cost: execution_config.vm_resources_fee_cost(),
+        invoke_tx_max_n_steps: execution_config.invoke_tx_max_n_steps,
+        validate_max_n_steps: execution_config.validate_tx_max_n_steps,
+        max_recursion_depth: execution_config.max_recursion_depth,
         gas_price: gas_price.0,
     }
 }
@@ -249,9 +348,18 @@ pub fn estimate_fee(
     chain_id: &ChainId,
     storage_txn: &StorageTxn<'_, RO>,
     state_number: StateNumber,
+    execution_config: &ExecutionConfig,
 ) -> ExecutionResult<Vec<(GasPrice, Fee)>> {
-    let (txs_execution_info, block_context) =
-        execute_transactions(txs, None, chain_id, storage_txn, state_number, None, false, false)?;
+    let (txs_execution_info, block_context) = execute_transactions(
+        txs,
+        None,
+        chain_id,
+        storage_txn,
+        state_number,
+        execution_config,
+        false,
+        false,
+    )?;
     Ok(txs_execution_info
         .into_iter()
         .map(|tx_execution_info| (GasPrice(block_context.gas_price), tx_execution_info.actual_fee))
@@ -266,15 +374,12 @@ fn execute_transactions(
     chain_id: &ChainId,
     storage_txn: &StorageTxn<'_, RO>,
     state_number: StateNumber,
-    fee_contract_address: Option<ContractAddress>,
+    execution_config: &ExecutionConfig,
     charge_fee: bool,
     validate: bool,
 ) -> ExecutionResult<(Vec<TransactionExecutionInfo>, BlockContext)> {
     if tx_hashes.is_none() {
         return Err(ExecutionError::MissingTransactionHashes);
-    }
-    if fee_contract_address.is_none() && (charge_fee || validate) {
-        return Err(ExecutionError::MissingFeeTokenContractAddress);
     }
     verify_node_synced(storage_txn, state_number)?;
     let header = storage_txn
@@ -289,7 +394,7 @@ fn execute_transactions(
         header.timestamp,
         header.gas_price,
         &header.sequencer,
-        fee_contract_address,
+        execution_config,
     );
 
     let tx_hashes_iter: Box<dyn Iterator<Item = TransactionHash>> = match tx_hashes {
@@ -371,8 +476,7 @@ pub fn simulate_transactions(
     chain_id: &ChainId,
     storage_txn: &StorageTxn<'_, RO>,
     state_number: StateNumber,
-    // Can be None if we don't want to charge fees or validate.
-    fee_contract_address: Option<ContractAddress>,
+    execution_config: &ExecutionConfig,
     charge_fee: bool,
     validate: bool,
 ) -> ExecutionResult<Vec<(TransactionTrace, GasPrice, Fee)>> {
@@ -384,7 +488,7 @@ pub fn simulate_transactions(
         chain_id,
         storage_txn,
         state_number,
-        fee_contract_address,
+        execution_config,
         charge_fee,
         validate,
     )?;

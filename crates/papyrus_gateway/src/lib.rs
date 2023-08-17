@@ -28,6 +28,7 @@ use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, SerializedParam};
+use papyrus_execution::ExecutionConfig;
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::db::TransactionKind;
@@ -35,9 +36,7 @@ use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageReader, StorageTxn};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockStatus};
-use starknet_api::core::{ChainId, ContractAddress, PatriciaKey};
-use starknet_api::hash::StarkHash;
-use starknet_api::{contract_address, patricia_key};
+use starknet_api::core::ChainId;
 use starknet_client::writer::StarknetGatewayClient;
 use starknet_client::RetryConfig;
 use tokio::sync::RwLock;
@@ -52,22 +51,19 @@ pub const SERVER_MAX_BODY_SIZE: u32 = 10 * 1024 * 1024;
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct GatewayConfig {
     pub chain_id: ChainId,
-    pub fee_contract_address: ContractAddress,
     pub server_address: String,
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
     pub collect_metrics: bool,
     pub starknet_url: String,
     pub starknet_gateway_retry_config: RetryConfig,
+    pub execution_config: ExecutionConfig,
 }
 
 impl Default for GatewayConfig {
     fn default() -> Self {
         GatewayConfig {
             chain_id: ChainId("SN_MAIN".to_string()),
-            fee_contract_address: contract_address!(
-                "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
-            ),
             server_address: String::from("0.0.0.0:8080"),
             max_events_chunk_size: 1000,
             max_events_keys: 100,
@@ -78,6 +74,7 @@ impl Default for GatewayConfig {
                 retry_max_delay_millis: 1000,
                 max_retries: 5,
             },
+            execution_config: ExecutionConfig::default(),
         }
     }
 }
@@ -86,7 +83,6 @@ impl SerializeConfig for GatewayConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         let mut self_params_dump = BTreeMap::from_iter([
             ser_param("chain_id", &self.chain_id, "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id."),
-            ser_param("fee_contract_address", &self.fee_contract_address, "The address of the ERC-20 contract used for paying fees."),
             ser_param("server_address", &self.server_address, "IP:PORT of the node`s JSON-RPC server."),
             ser_param("max_events_chunk_size", &self.max_events_chunk_size, "Maximum chunk size supported by the node in get_events requests."),
             ser_param("max_events_keys", &self.max_events_keys, "Maximum number of keys supported by the node in get_events requests."),
@@ -105,6 +101,9 @@ impl SerializeConfig for GatewayConfig {
             );
         }
         self_params_dump.append(&mut retry_config_dump);
+        let mut execution_config_dump =
+            append_sub_config_name(self.execution_config.dump(), "execution_config");
+        self_params_dump.append(&mut execution_config_dump);
         self_params_dump
     }
 }
@@ -146,7 +145,7 @@ pub async fn run_server(
     debug!("Starting gateway.");
     let methods = get_methods_from_supported_apis(
         &config.chain_id,
-        &config.fee_contract_address,
+        config.execution_config.clone(),
         storage_reader,
         config.max_events_chunk_size,
         config.max_events_keys,
