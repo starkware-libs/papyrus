@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use std::env;
+use std::fs::File;
 use std::time::Duration;
 
 use assert_matches::assert_matches;
@@ -7,6 +8,7 @@ use clap::Command;
 use itertools::chain;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tempfile::TempDir;
 use test_utils::get_absolute_path;
 
 use crate::command::{get_command_matches, update_config_map_by_command_args};
@@ -22,7 +24,7 @@ use crate::dumping::{
 use crate::loading::{
     get_maps_from_raw_json,
     load,
-    update_config_map_by_custom_config,
+    load_and_process_config,
     update_config_map_by_pointers,
     update_optional_values,
 };
@@ -158,14 +160,59 @@ fn test_replace_pointers() {
     assert_matches!(err, ConfigError::PointerTargetNotFound { .. });
 }
 
+#[derive(Clone, Default, Serialize, Deserialize, Debug, PartialEq)]
+struct CustomConfig {
+    param_path: String,
+}
+
+impl SerializeConfig for CustomConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from([ser_param("param_path", &self.param_path, "This is param_path.")])
+    }
+}
+
 #[test]
 fn test_update_by_custom_config() {
-    let mut config_map =
-        BTreeMap::from([ser_param("param_path", &json!("default value"), "This is a.")]);
+    // Loads CustomConfig from args.
+    fn load_custom_config(args: Vec<&str>) -> String {
+        let dir = TempDir::new().unwrap();
+        let file_path = dir.path().join("config.json");
+        CustomConfig { param_path: "default value".to_owned() }
+            .dump_to_file(&vec![], file_path.to_str().unwrap())
+            .unwrap();
+
+        let loaded_config = load_and_process_config::<CustomConfig>(
+            File::open(file_path).unwrap(),
+            Command::new("Program"),
+            args.into_iter().map(|s| s.to_owned()).collect(),
+        )
+        .unwrap();
+        loaded_config.param_path
+    }
+
+    // Default config.
+    let args = vec!["Testing"];
+    let param_path = load_custom_config(args);
+    assert_eq!(param_path, "default value");
+
     let custom_config_path =
         get_absolute_path("crates/papyrus_config/resources/custom_config_example.json");
-    update_config_map_by_custom_config(&mut config_map, &custom_config_path).unwrap();
-    assert_eq!(config_map["param_path"].value, json!("custom value"));
+
+    // Config from a custom file.
+    let args = vec!["Testing", "-f", custom_config_path.to_str().unwrap()];
+    let param_path = load_custom_config(args);
+    assert_eq!(param_path, "custom value");
+
+    // Config from a custom file and command line args.
+    let args = vec![
+        "Testing",
+        "--config_file",
+        custom_config_path.to_str().unwrap(),
+        "--param_path",
+        "command value",
+    ];
+    let param_path = load_custom_config(args);
+    assert_eq!(param_path, "command value");
 }
 
 #[test]
