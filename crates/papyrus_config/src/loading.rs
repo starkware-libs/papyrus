@@ -1,7 +1,7 @@
 //! Loads a configuration object, and set values for the fields in the following order of priority:
 //! * Command line arguments.
 //! * Environment variables (capital letters).
-//! * Custom config file.
+//! * Custom config files, separated by ',' (comma), from last to first.
 //! * Default config file.
 
 use std::collections::BTreeMap;
@@ -10,6 +10,7 @@ use std::mem::discriminant;
 use std::ops::IndexMut;
 use std::path::PathBuf;
 
+use clap::parser::Values;
 use clap::Command;
 use command::{get_command_matches, update_config_map_by_command_args};
 use itertools::any;
@@ -47,8 +48,8 @@ pub fn load_and_process_config<T: for<'a> Deserialize<'a>>(
 
     let (mut config_map, pointers_map) = get_maps_from_raw_json(deserialized_default_config);
     let mut arg_matches = get_command_matches(&config_map, command, args)?;
-    if let Some(custom_config_path) = arg_matches.remove_one::<PathBuf>("config_file") {
-        update_config_map_by_custom_config(&mut config_map, &custom_config_path)?;
+    if let Some(custom_config_paths) = arg_matches.remove_many::<PathBuf>("config_file") {
+        update_config_map_by_custom_configs(&mut config_map, custom_config_paths)?;
     };
     update_config_map_by_command_args(&mut config_map, &arg_matches)?;
     update_config_map_by_pointers(&mut config_map, &pointers_map)?;
@@ -74,15 +75,17 @@ pub(crate) fn get_maps_from_raw_json(
     (config_map, pointers_map)
 }
 
-// Updates the config map by param path to value custom json file.
-pub(crate) fn update_config_map_by_custom_config(
+// Updates the config map by param path to value custom json files.
+pub(crate) fn update_config_map_by_custom_configs(
     config_map: &mut BTreeMap<ParamPath, SerializedParam>,
-    custom_config_path: &PathBuf,
+    custom_config_paths: Values<PathBuf>,
 ) -> Result<(), ConfigError> {
-    let file = std::fs::File::open(custom_config_path).unwrap();
-    let custom_config: Map<String, Value> = serde_json::from_reader(file).unwrap();
-    for (param_path, json_value) in custom_config {
-        update_config_map(config_map, param_path.as_str(), json_value)?;
+    for config_path in custom_config_paths {
+        let file = std::fs::File::open(config_path).unwrap();
+        let custom_config: Map<String, Value> = serde_json::from_reader(file).unwrap();
+        for (param_path, json_value) in custom_config {
+            update_config_map(config_map, param_path.as_str(), json_value)?;
+        }
     }
     Ok(())
 }

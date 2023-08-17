@@ -223,6 +223,15 @@ fn test_load_custom_config_file_and_args() {
 }
 
 #[test]
+fn test_load_many_custom_config_files() {
+    let custom_config_path = CUSTOM_CONFIG_PATH.to_str().unwrap();
+    let cli_config_param = format!("{},{}", custom_config_path, custom_config_path);
+    let args = vec!["Testing", "-f", cli_config_param.as_str()];
+    let param_path = load_param_path(args);
+    assert_eq!(param_path, "custom value");
+}
+
+#[test]
 fn serialization_precision() {
     let input =
         "{\"value\":244116128358498188146337218061232635775543270890529169229936851982759783745}";

@@ -9,7 +9,7 @@ papyrus-config is a flexible and powerful layered configuration system designed 
 Supports multiple configuration sources in ascending order of overriding priority:
 
 - Default values
-- Configuration file
+- Configuration files (from first to last)
 - Environment variables
 - Command-line arguments
 
