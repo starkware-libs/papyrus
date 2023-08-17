@@ -29,6 +29,7 @@ use crate::test_utils::{
     GAS_PRICE,
     NEW_ACCOUNT_ADDRESS,
 };
+use crate::testing_instances::test_execution_config;
 use crate::{estimate_fee, execute_call, ExecutableTransactionInput};
 
 // Test calling entry points of a deprecated class.
@@ -48,6 +49,7 @@ fn execute_call_cairo0() {
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("without_arg"),
         Calldata::default(),
+        &test_execution_config(),
     )
     .unwrap()
     .retdata;
@@ -61,6 +63,7 @@ fn execute_call_cairo0() {
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("with_arg"),
         Calldata(Arc::new(vec![StarkFelt::from(25u128)])),
+        &test_execution_config(),
     )
     .unwrap()
     .retdata;
@@ -74,6 +77,7 @@ fn execute_call_cairo0() {
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("return_result"),
         Calldata(Arc::new(vec![StarkFelt::from(123u128)])),
+        &test_execution_config(),
     )
     .unwrap()
     .retdata;
@@ -87,6 +91,7 @@ fn execute_call_cairo0() {
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("test_storage_read_write"),
         Calldata(Arc::new(vec![StarkFelt::from(123u128), StarkFelt::from(456u128)])),
+        &test_execution_config(),
     )
     .unwrap()
     .retdata;
@@ -111,6 +116,7 @@ fn execute_call_cairo1() {
         &CONTRACT_ADDRESS,
         selector_from_name("test_storage_read_write"),
         calldata,
+        &test_execution_config(),
     )
     .unwrap()
     .retdata;
@@ -187,8 +193,14 @@ fn estimate_fees(txs: Vec<ExecutableTransactionInput>) -> Vec<(GasPrice, Fee)> {
 
     let storage_txn = storage_reader.begin_ro_txn().unwrap();
 
-    estimate_fee(txs, &CHAIN_ID, &storage_txn, StateNumber::right_after_block(BlockNumber(0)))
-        .unwrap()
+    estimate_fee(
+        txs,
+        &CHAIN_ID,
+        &storage_txn,
+        StateNumber::right_after_block(BlockNumber(0)),
+        &test_execution_config(),
+    )
+    .unwrap()
 }
 
 #[test]

@@ -2,10 +2,11 @@ use std::sync::Arc;
 
 use jsonrpsee::{Methods, RpcModule};
 use papyrus_common::BlockHashAndNumber;
+use papyrus_execution::ExecutionConfig;
 use papyrus_storage::StorageReader;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
-use starknet_api::core::{ChainId, ContractAddress};
+use starknet_api::core::ChainId;
 use starknet_client::writer::StarknetWriter;
 use tokio::sync::RwLock;
 
@@ -43,7 +44,7 @@ pub enum BlockId {
 #[allow(clippy::too_many_arguments)]
 pub fn get_methods_from_supported_apis(
     chain_id: &ChainId,
-    fee_contract_address: &ContractAddress,
+    execution_config: ExecutionConfig,
     storage_reader: StorageReader,
     max_events_chunk_size: usize,
     max_events_keys: usize,
@@ -54,7 +55,7 @@ pub fn get_methods_from_supported_apis(
     let mut methods: Methods = Methods::new();
     let server_gen = JsonRpcServerImplGenerator {
         chain_id: chain_id.clone(),
-        fee_contract_address: *fee_contract_address,
+        execution_config,
         storage_reader,
         max_events_chunk_size,
         max_events_keys,
@@ -93,7 +94,7 @@ pub trait JsonRpcServerImpl: Sized {
     #[allow(clippy::too_many_arguments)]
     fn new(
         chain_id: ChainId,
-        fee_contract_address: ContractAddress,
+        execution_config: ExecutionConfig,
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,
@@ -108,7 +109,7 @@ pub trait JsonRpcServerImpl: Sized {
 #[derive(Clone)]
 struct JsonRpcServerImplGenerator {
     chain_id: ChainId,
-    fee_contract_address: ContractAddress,
+    execution_config: ExecutionConfig,
     storage_reader: StorageReader,
     max_events_chunk_size: usize,
     max_events_keys: usize,
@@ -120,7 +121,7 @@ struct JsonRpcServerImplGenerator {
 
 type JsonRpcServerImplParams = (
     ChainId,
-    ContractAddress,
+    ExecutionConfig,
     StorageReader,
     usize,
     usize,
@@ -133,7 +134,7 @@ impl JsonRpcServerImplGenerator {
     fn get_params(self) -> JsonRpcServerImplParams {
         (
             self.chain_id,
-            self.fee_contract_address,
+            self.execution_config,
             self.storage_reader,
             self.max_events_chunk_size,
             self.max_events_keys,
