@@ -13,6 +13,7 @@ pub mod testing_instances;
 pub mod objects;
 
 use std::collections::HashMap;
+use std::iter;
 use std::sync::Arc;
 
 use blockifier::abi::constants::{INITIAL_GAS_COST, N_STEPS_RESOURCE};
@@ -248,7 +249,7 @@ pub fn estimate_fee(
     state_number: StateNumber,
 ) -> ExecutionResult<Vec<(GasPrice, Fee)>> {
     let (txs_execution_info, block_context) =
-        execute_transactions(txs, chain_id, storage_txn, state_number, None, false, false)?;
+        execute_transactions(txs, None, chain_id, storage_txn, state_number, None, false, false)?;
     Ok(txs_execution_info
         .into_iter()
         .map(|tx_execution_info| (GasPrice(block_context.gas_price), tx_execution_info.actual_fee))
@@ -256,8 +257,10 @@ pub fn estimate_fee(
 }
 
 // Executes a series of transactions and returns the execution results.
+#[allow(clippy::too_many_arguments)]
 fn execute_transactions(
     txs: Vec<ExecutableTransactionInput>,
+    tx_hashes: Option<Vec<TransactionHash>>,
     chain_id: &ChainId,
     storage_txn: &StorageTxn<'_, RO>,
     state_number: StateNumber,
@@ -284,9 +287,14 @@ fn execute_transactions(
         fee_contract_address,
     );
 
-    let mut res = Vec::new();
-    for tx in txs {
-        let blockifier_tx = BlockifierTransaction::try_from(tx)?;
+    let tx_hashes_iter: Box<dyn Iterator<Item = TransactionHash>> = match tx_hashes {
+        Some(hashes) => Box::new(hashes.into_iter()),
+        None => Box::new(iter::repeat(TransactionHash::default())),
+    };
+
+    let mut res = vec![];
+    for (tx, tx_hash) in txs.into_iter().zip(tx_hashes_iter) {
+        let blockifier_tx = to_blockifier_tx(tx, tx_hash)?;
         let tx_execution_info =
             blockifier_tx.execute(&mut cached_state, &block_context, charge_fee, validate)?;
         res.push(tx_execution_info);
@@ -295,67 +303,66 @@ fn execute_transactions(
     Ok((res, block_context))
 }
 
-impl TryFrom<ExecutableTransactionInput> for BlockifierTransaction {
-    type Error = ExecutionError;
+fn to_blockifier_tx(
+    tx: ExecutableTransactionInput,
+    tx_hash: TransactionHash,
+) -> ExecutionResult<BlockifierTransaction> {
+    match tx {
+        ExecutableTransactionInput::Invoke(invoke_tx) => Ok(BlockifierTransaction::from_api(
+            Transaction::Invoke(invoke_tx),
+            tx_hash,
+            None,
+            None,
+            None,
+        )?),
 
-    fn try_from(tx: ExecutableTransactionInput) -> Result<Self, Self::Error> {
-        match tx {
-            ExecutableTransactionInput::Invoke(invoke_tx) => Ok(BlockifierTransaction::from_api(
-                Transaction::Invoke(invoke_tx),
-                TransactionHash::default(),
+        ExecutableTransactionInput::Deploy(deploy_acc_tx) => Ok(BlockifierTransaction::from_api(
+            Transaction::DeployAccount(deploy_acc_tx),
+            tx_hash,
+            None,
+            None,
+            None,
+        )?),
+
+        ExecutableTransactionInput::DeclareV0(declare_tx, deprecated_class) => {
+            let class_v0 = BlockifierContractClass::V0(deprecated_class.try_into()?);
+            Ok(BlockifierTransaction::from_api(
+                Transaction::Declare(DeclareTransaction::V0(declare_tx)),
+                tx_hash,
+                Some(class_v0),
                 None,
                 None,
+            )?)
+        }
+        ExecutableTransactionInput::DeclareV1(declare_tx, deprecated_class) => {
+            let class_v0 = BlockifierContractClass::V0(deprecated_class.try_into()?);
+            Ok(BlockifierTransaction::from_api(
+                Transaction::Declare(DeclareTransaction::V1(declare_tx)),
+                tx_hash,
+                Some(class_v0),
                 None,
-            )?),
+                None,
+            )?)
+        }
 
-            ExecutableTransactionInput::Deploy(deploy_acc_tx) => {
-                Ok(BlockifierTransaction::from_api(
-                    Transaction::DeployAccount(deploy_acc_tx),
-                    TransactionHash::default(),
-                    None,
-                    None,
-                    None,
-                )?)
-            }
-
-            ExecutableTransactionInput::DeclareV0(declare_tx, deprecated_class) => {
-                let class_v0 = BlockifierContractClass::V0(deprecated_class.try_into()?);
-                Ok(BlockifierTransaction::from_api(
-                    Transaction::Declare(DeclareTransaction::V0(declare_tx)),
-                    TransactionHash::default(),
-                    Some(class_v0),
-                    None,
-                    None,
-                )?)
-            }
-            ExecutableTransactionInput::DeclareV1(declare_tx, deprecated_class) => {
-                let class_v0 = BlockifierContractClass::V0(deprecated_class.try_into()?);
-                Ok(BlockifierTransaction::from_api(
-                    Transaction::Declare(DeclareTransaction::V1(declare_tx)),
-                    TransactionHash::default(),
-                    Some(class_v0),
-                    None,
-                    None,
-                )?)
-            }
-
-            ExecutableTransactionInput::DeclareV2(declare_tx, compiled_class) => {
-                let class_v1 = BlockifierContractClass::V1(compiled_class.try_into()?);
-                Ok(BlockifierTransaction::from_api(
-                    Transaction::Declare(DeclareTransaction::V2(declare_tx)),
-                    TransactionHash::default(),
-                    Some(class_v1),
-                    None,
-                    None,
-                )?)
-            }
+        ExecutableTransactionInput::DeclareV2(declare_tx, compiled_class) => {
+            let class_v1 = BlockifierContractClass::V1(compiled_class.try_into()?);
+            Ok(BlockifierTransaction::from_api(
+                Transaction::Declare(DeclareTransaction::V2(declare_tx)),
+                tx_hash,
+                Some(class_v1),
+                None,
+                None,
+            )?)
         }
     }
 }
 
 /// Simulates a series of transactions and returns the transaction traces and the fee estimations.
+#[allow(clippy::too_many_arguments)]
 pub fn simulate_transactions(
     txs: Vec<ExecutableTransactionInput>,
+    tx_hashes: Option<Vec<TransactionHash>>,
     chain_id: &ChainId,
     storage_txn: &StorageTxn<'_, RO>,
     state_number: StateNumber,
@@ -368,6 +375,7 @@ pub fn simulate_transactions(
         // TODO(yair): Modify execute_transactions so it doesn't consume the txs / save the tx
         // types before consuming them.
         txs.clone(),
+        tx_hashes,
         chain_id,
         storage_txn,
         state_number,

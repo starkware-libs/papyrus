@@ -209,12 +209,13 @@ fn simulate_invoke() {
         .invoke_deprecated(*ACCOUNT_ADDRESS, *DEPRECATED_CONTRACT_ADDRESS, None)
         .collect();
     let exec_only_results =
-        execute_simulate_transactions(&storage_reader, tx.clone(), false, false);
-    let validate_results = execute_simulate_transactions(&storage_reader, tx.clone(), false, true);
+        execute_simulate_transactions(&storage_reader, tx.clone(), None, false, false);
+    let validate_results =
+        execute_simulate_transactions(&storage_reader, tx.clone(), None, false, true);
     let charge_fee_results =
-        execute_simulate_transactions(&storage_reader, tx.clone(), true, false);
+        execute_simulate_transactions(&storage_reader, tx.clone(), None, true, false);
     let charge_fee_validate_results =
-        execute_simulate_transactions(&storage_reader, tx, true, true);
+        execute_simulate_transactions(&storage_reader, tx, None, true, true);
 
     for (exec_only, (validate, (charge_fee, charge_fee_validate))) in exec_only_results.iter().zip(
         validate_results
@@ -283,12 +284,13 @@ fn simulate_declare_deprecated() {
 
     let tx = TxsScenarioBuilder::default().declare_deprecated_class(*ACCOUNT_ADDRESS).collect();
     let exec_only_results =
-        execute_simulate_transactions(&storage_reader, tx.clone(), false, false);
-    let validate_results = execute_simulate_transactions(&storage_reader, tx.clone(), false, true);
+        execute_simulate_transactions(&storage_reader, tx.clone(), None, false, false);
+    let validate_results =
+        execute_simulate_transactions(&storage_reader, tx.clone(), None, false, true);
     let charge_fee_results =
-        execute_simulate_transactions(&storage_reader, tx.clone(), true, false);
+        execute_simulate_transactions(&storage_reader, tx.clone(), None, true, false);
     let charge_fee_validate_results =
-        execute_simulate_transactions(&storage_reader, tx, true, true);
+        execute_simulate_transactions(&storage_reader, tx, None, true, true);
 
     for (exec_only, (validate, (charge_fee, charge_fee_validate))) in exec_only_results.iter().zip(
         validate_results
@@ -341,12 +343,13 @@ fn simulate_declare() {
 
     let tx = TxsScenarioBuilder::default().declare_class(*ACCOUNT_ADDRESS).collect();
     let exec_only_results =
-        execute_simulate_transactions(&storage_reader, tx.clone(), false, false);
-    let validate_results = execute_simulate_transactions(&storage_reader, tx.clone(), false, true);
+        execute_simulate_transactions(&storage_reader, tx.clone(), None, false, false);
+    let validate_results =
+        execute_simulate_transactions(&storage_reader, tx.clone(), None, false, true);
     let charge_fee_results =
-        execute_simulate_transactions(&storage_reader, tx.clone(), true, false);
+        execute_simulate_transactions(&storage_reader, tx.clone(), None, true, false);
     let charge_fee_validate_results =
-        execute_simulate_transactions(&storage_reader, tx, true, true);
+        execute_simulate_transactions(&storage_reader, tx, None, true, true);
 
     for (exec_only, (validate, (charge_fee, charge_fee_validate))) in exec_only_results.iter().zip(
         validate_results
@@ -399,12 +402,13 @@ fn simulate_deploy_account() {
 
     let tx = TxsScenarioBuilder::default().deploy_account().collect();
     let exec_only_results =
-        execute_simulate_transactions(&storage_reader, tx.clone(), false, false);
-    let validate_results = execute_simulate_transactions(&storage_reader, tx.clone(), false, true);
+        execute_simulate_transactions(&storage_reader, tx.clone(), None, false, false);
+    let validate_results =
+        execute_simulate_transactions(&storage_reader, tx.clone(), None, false, true);
     let charge_fee_results =
-        execute_simulate_transactions(&storage_reader, tx.clone(), true, false);
+        execute_simulate_transactions(&storage_reader, tx.clone(), None, true, false);
     let charge_fee_validate_results =
-        execute_simulate_transactions(&storage_reader, tx, true, true);
+        execute_simulate_transactions(&storage_reader, tx, None, true, true);
 
     for (exec_only, (validate, (charge_fee, charge_fee_validate))) in exec_only_results.iter().zip(
         validate_results
@@ -481,7 +485,7 @@ fn simulate_invoke_from_new_account() {
         // TODO(yair): Find out how to deploy another contract to test calling a new contract.
         .collect();
 
-    let mut result = execute_simulate_transactions(&storage_reader, txs, false, false);
+    let mut result = execute_simulate_transactions(&storage_reader, txs, None, false, false);
     assert_eq!(result.len(), 2);
 
     let Some((TransactionTrace::Invoke(invoke_trace), _, _)) = result.pop() else {
@@ -521,7 +525,7 @@ fn simulate_invoke_from_new_account_validate_and_charge() {
         // TODO(yair): Find out how to deploy another contract to test calling a new contract.
         .collect();
 
-    let mut result = execute_simulate_transactions(&storage_reader, txs, true, true);
+    let mut result = execute_simulate_transactions(&storage_reader, txs, None, true, true);
     assert_eq!(result.len(), 2);
 
     let Some((TransactionTrace::Invoke(invoke_trace), _, invoke_fee_estimation)) = result.pop()
