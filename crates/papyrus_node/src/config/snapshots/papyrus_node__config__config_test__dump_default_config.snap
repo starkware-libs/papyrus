@@ -51,6 +51,10 @@ expression: dumped_default_config
     "description": "If true, collect metrics for the gateway.",
     "value": false
   },
+  "gateway.fee_contract_address": {
+    "description": "The address of the ERC-20 contract used for paying fees.",
+    "value": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
+  },
   "gateway.max_events_chunk_size": {
     "description": "Maximum chunk size supported by the node in get_events requests.",
     "value": {

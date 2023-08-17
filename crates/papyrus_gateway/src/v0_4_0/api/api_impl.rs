@@ -5,12 +5,17 @@ use jsonrpsee::core::RpcResult;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
-use papyrus_execution::{estimate_fee as exec_estimate_fee, execute_call, ExecutionError};
+use papyrus_execution::{
+    estimate_fee as exec_estimate_fee,
+    execute_call,
+    simulate_transactions as exec_simulate_transactions,
+    ExecutionError,
+};
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::StorageReader;
-use starknet_api::block::{BlockNumber, BlockStatus, GasPrice};
+use starknet_api::block::{BlockNumber, BlockStatus};
 use starknet_api::core::{
     ChainId,
     ClassHash,
@@ -55,6 +60,8 @@ use super::{
     FeeEstimate,
     GatewayContractClass,
     JsonRpcV0_4Server,
+    SimulatedTransaction,
+    SimulationFlag,
 };
 use crate::api::{BlockHashOrNumber, JsonRpcServerImpl};
 use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
@@ -101,6 +108,7 @@ lazy_static! {
 /// Rpc server.
 pub struct JsonRpcServerV0_4Impl {
     pub chain_id: ChainId,
+    pub fee_contract_address: ContractAddress,
     pub storage_reader: StorageReader,
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
@@ -619,13 +627,47 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         match exec_estimate_fee(executable_txns, &self.chain_id, &txn, state_number) {
             Ok(fees) => Ok(fees
                 .into_iter()
-                .map(|(gas_price, overall_fee)| match gas_price {
-                    GasPrice(0) => FeeEstimate::default(),
-                    _ => FeeEstimate {
-                        gas_consumed: (overall_fee.0 / gas_price.0).into(),
-                        gas_price,
-                        overall_fee,
-                    },
+                .map(|(gas_price, fee)| FeeEstimate::from(gas_price, fee))
+                .collect()),
+            Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
+            Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
+        }
+    }
+
+    #[instrument(skip(self, transactions), level = "debug", err, ret)]
+    fn simulate_transactions(
+        &self,
+        block_id: BlockId,
+        transactions: Vec<BroadcastedTransaction>,
+        simulation_flags: Vec<SimulationFlag>,
+    ) -> RpcResult<Vec<SimulatedTransaction>> {
+        trace!("Simulating transactions: {:#?}", transactions);
+        let executable_txns =
+            transactions.into_iter().map(|tx| tx.try_into()).collect::<Result<_, _>>()?;
+
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let block_number = get_block_number(&txn, block_id)?;
+        let state_number = StateNumber::right_after_block(block_number);
+
+        let charge_fee = !simulation_flags.contains(&SimulationFlag::SkipFeeCharge);
+        let validate = !simulation_flags.contains(&SimulationFlag::SkipValidate);
+
+        let res = exec_simulate_transactions(
+            executable_txns,
+            &self.chain_id,
+            &txn,
+            state_number,
+            Some(self.fee_contract_address),
+            charge_fee,
+            validate,
+        );
+
+        match res {
+            Ok(simulation_results) => Ok(simulation_results
+                .into_iter()
+                .map(|(transaction_trace, gas_price, fee)| SimulatedTransaction {
+                    transaction_trace,
+                    fee_estimation: FeeEstimate::from(gas_price, fee),
                 })
                 .collect()),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
@@ -637,6 +679,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
     fn new(
         chain_id: ChainId,
+        fee_contract_address: ContractAddress,
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,
@@ -646,6 +689,7 @@ impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
     ) -> Self {
         Self {
             chain_id,
+            fee_contract_address,
             storage_reader,
             max_events_chunk_size,
             max_events_keys,

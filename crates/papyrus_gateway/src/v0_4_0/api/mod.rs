@@ -6,6 +6,7 @@ use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_common::BlockHashAndNumber;
+use papyrus_execution::objects::TransactionTrace;
 use papyrus_execution::{ExecutableTransactionInput, ExecutionError};
 use papyrus_proc_macros::versioned_rpc;
 use serde::{Deserialize, Serialize};
@@ -188,6 +189,15 @@ pub trait JsonRpc {
         transactions: Vec<BroadcastedTransaction>,
         block_id: BlockId,
     ) -> RpcResult<Vec<FeeEstimate>>;
+
+    /// Simulates execution of a series of transactions.
+    #[method(name = "simulateTransactions")]
+    fn simulate_transactions(
+        &self,
+        block_id: BlockId,
+        transactions: Vec<BroadcastedTransaction>,
+        simulation_flags: Vec<SimulationFlag>,
+    ) -> RpcResult<Vec<SimulatedTransaction>>;
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -236,6 +246,30 @@ pub struct FeeEstimate {
     pub gas_consumed: StarkFelt,
     pub gas_price: GasPrice,
     pub overall_fee: Fee,
+}
+
+impl FeeEstimate {
+    pub fn from(gas_price: GasPrice, overall_fee: Fee) -> Self {
+        match gas_price {
+            GasPrice(0) => Self::default(),
+            _ => {
+                Self { gas_consumed: (overall_fee.0 / gas_price.0).into(), gas_price, overall_fee }
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct SimulatedTransaction {
+    pub transaction_trace: TransactionTrace,
+    pub fee_estimation: FeeEstimate,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum SimulationFlag {
+    SkipValidate,
+    SkipFeeCharge,
 }
 
 impl TryFrom<BroadcastedTransaction> for ExecutableTransactionInput {
