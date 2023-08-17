@@ -165,7 +165,8 @@ fn get_starknet_spec_api_schema<Refs: IntoIterator<Item = String>>(
     for entry in std::fs::read_dir(format!("./resources/{version_id}")).unwrap() {
         let path = entry.unwrap().path();
         let spec_str = std::fs::read_to_string(path.clone()).unwrap();
-        let spec: serde_json::Value = serde_json::from_str(&spec_str).unwrap();
+        let mut spec: serde_json::Value = serde_json::from_str(&spec_str).unwrap();
+        fix_errors(&mut spec);
         let file_name = path.file_name().unwrap().to_str().unwrap();
         options.with_document(format!("file:///api/{file_name}"), spec);
     }
@@ -197,4 +198,81 @@ fn get_method_index(spec: &serde_json::Value, method: &str) -> usize {
         }
     }
     panic!("Method {method} doesn't exist");
+}
+
+// This function will change the errors in components/errors into schemas that accept the error.
+// It will change an error from the following json object:
+// { "code": 1, "message": "an error occured" } into {
+//     "properties": {
+//         "code: {
+//             "type": "integer",
+//             "enum": [1]
+//          },
+//          "message": {
+//              "type": "string",
+//              "enum": ["an error occured"]
+//          }
+//      },
+//      required: ["code", "message"]
+//  }
+// And it will change an error from the following json object:
+// { "code": 1, "message": "an error occured", "data": "string" } into {
+//     "properties": {
+//         "code: {
+//             "type": "integer",
+//             "enum": [1]
+//          },
+//          "message": {
+//              "type": "string",
+//              "enum": ["an error occured"]
+//          }
+//          "data": {}
+//      },
+//      required: ["code", "message", "data"]
+//  }
+fn fix_errors(spec: &mut serde_json::Value) {
+    let Some(errors) = spec
+        .as_object_mut()
+        .and_then(|obj| obj.get_mut("components"))
+        .and_then(|components| components.as_object_mut())
+        .and_then(|components| components.get_mut("errors"))
+        .and_then(|errors| errors.as_object_mut()) else {
+        return;
+    };
+    for value in errors.values_mut() {
+        let obj = value.as_object_mut().unwrap();
+        let Some(code) = obj.get("code").map(|code_obj| (*code_obj).clone()) else {
+            continue;
+        };
+        let Some(message) = obj.get("message").map(|message_obj| (*message_obj).clone()) else {
+            continue;
+        };
+        let has_data = obj.contains_key("data");
+        obj.clear();
+        let mut properties = serde_json::Map::from_iter([
+            (
+                "code".to_owned(),
+                serde_json::Map::from_iter([
+                    ("type".to_owned(), "integer".into()),
+                    ("enum".to_owned(), vec![code].into()),
+                ])
+                .into(),
+            ),
+            (
+                "message".to_owned(),
+                serde_json::Map::from_iter([
+                    ("type".to_owned(), "string".into()),
+                    ("enum".to_owned(), vec![message].into()),
+                ])
+                .into(),
+            ),
+        ]);
+        let mut required: Vec<serde_json::Value> = vec!["code".into(), "message".into()];
+        if has_data {
+            properties.insert("data".to_owned(), serde_json::Map::from_iter([]).into());
+            required.push("data".into());
+        }
+        obj.insert("properties".to_owned(), properties.into());
+        obj.insert("required".to_owned(), required.into());
+    }
 }
