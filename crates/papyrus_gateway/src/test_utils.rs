@@ -125,7 +125,7 @@ pub fn get_starknet_spec_api_schema_for_method_results(
 
             methods.iter().map(move |method| {
                 let index = get_method_index(&spec, method);
-                format!("file:///api/{file}#/methods/{index}/result")
+                format!("file:///api/{file}#/methods/{index}/result/schema")
             })
         }),
         version_id,
