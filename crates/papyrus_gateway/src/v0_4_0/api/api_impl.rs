@@ -64,6 +64,7 @@ use super::{
     JsonRpcV0_4Server,
     SimulatedTransaction,
     SimulationFlag,
+    TransactionTraceWithHash,
 };
 use crate::api::{BlockHashOrNumber, JsonRpcServerImpl};
 use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
@@ -737,6 +738,63 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             Ok(mut simulation_results) => {
                 Ok(simulation_results.pop().expect("Should have transaction exeuction result").0)
             }
+            Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
+            Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
+        }
+    }
+
+    #[instrument(skip(self), level = "debug", err)]
+    fn trace_block_transactions(
+        &self,
+        block_id: BlockId,
+    ) -> RpcResult<Vec<TransactionTraceWithHash>> {
+        let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let block_number = get_block_number(&storage_txn, block_id)?;
+
+        let block_transactions = storage_txn
+            .get_block_transactions(block_number)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| {
+                internal_server_error(StorageError::DBInconsistency {
+                    msg: format!("Missing block {block_number} transactions"),
+                })
+            })?;
+
+        let tx_hashes = storage_txn
+            .get_block_transaction_hashes(block_number)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| {
+                internal_server_error(StorageError::DBInconsistency {
+                    msg: format!("Missing block {block_number} transactions"),
+                })
+            })?;
+
+        let state_number = StateNumber::right_before_block(block_number);
+        let executable_txns = block_transactions
+            .into_iter()
+            .map(|tx| stored_txn_to_executable_txn(tx, &storage_txn, state_number))
+            .collect::<Result<_, _>>()?;
+
+        let res = exec_simulate_transactions(
+            executable_txns,
+            Some(tx_hashes.clone()),
+            &self.chain_id,
+            &storage_txn,
+            state_number,
+            Some(self.fee_contract_address),
+            true,
+            true,
+        );
+
+        match res {
+            Ok(simulation_results) => Ok(simulation_results
+                .into_iter()
+                .zip(tx_hashes)
+                .map(|((trace_root, _, _), transaction_hash)| TransactionTraceWithHash {
+                    transaction_hash,
+                    trace_root,
+                })
+                .collect()),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
         }

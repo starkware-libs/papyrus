@@ -49,12 +49,13 @@ use super::transaction::{DeployAccountTransaction, InvokeTransactionV1};
 use crate::api::{BlockHashOrNumber, BlockId};
 use crate::test_utils::{
     get_starknet_spec_api_schema_for_components,
+    get_starknet_spec_api_schema_for_method_results,
     get_test_rpc_server_and_storage_writer,
     validate_schema,
     SpecFile,
 };
 use crate::v0_4_0::api::api_impl::JsonRpcServerV0_4Impl;
-use crate::v0_4_0::api::{SimulatedTransaction, SimulationFlag};
+use crate::v0_4_0::api::{SimulatedTransaction, SimulationFlag, TransactionTraceWithHash};
 use crate::v0_4_0::error::{BLOCK_NOT_FOUND, CONTRACT_ERROR, CONTRACT_NOT_FOUND};
 use crate::v0_4_0::transaction::InvokeTransaction;
 use crate::version_config::VERSION_0_4;
@@ -426,6 +427,93 @@ async fn call_trace_transaction() {
     assert_matches!(res, TransactionTrace::Invoke(_));
 }
 
+#[tokio::test]
+async fn call_trace_block_transactions() {
+    let (module, storage_writer) =
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+
+    let mut writer = prepare_storage_for_execution(storage_writer);
+
+    let tx_hash1 = TransactionHash(stark_felt!("0x1234"));
+    let tx_hash2 = TransactionHash(stark_felt!("0x5678"));
+
+    let tx1 = starknet_api::transaction::Transaction::Invoke(
+        starknet_api::transaction::InvokeTransaction::V1(
+            starknet_api::transaction::InvokeTransactionV1 {
+                max_fee: *MAX_FEE,
+                sender_address: *ACCOUNT_ADDRESS,
+                calldata: calldata![
+                    *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
+                    selector_from_name("return_result").0, // EP selector.
+                    stark_felt!(1_u8),                     // Calldata length.
+                    stark_felt!(2_u8)                      // Calldata: num.
+                ],
+                nonce: Nonce(stark_felt!(0_u128)),
+                ..Default::default()
+            },
+        ),
+    );
+    let tx2 = starknet_api::transaction::Transaction::Invoke(
+        starknet_api::transaction::InvokeTransaction::V1(
+            starknet_api::transaction::InvokeTransactionV1 {
+                max_fee: *MAX_FEE,
+                sender_address: *ACCOUNT_ADDRESS,
+                calldata: calldata![
+                    *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
+                    selector_from_name("return_result").0, // EP selector.
+                    stark_felt!(1_u8),                     // Calldata length.
+                    stark_felt!(2_u8)                      // Calldata: num.
+                ],
+                nonce: Nonce(stark_felt!(1_u128)),
+                ..Default::default()
+            },
+        ),
+    );
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(
+            BlockNumber(1),
+            &BlockHeader {
+                gas_price: *GAS_PRICE,
+                sequencer: *SEQUENCER_ADDRESS,
+                timestamp: *BLOCK_TIMESTAMP,
+                block_hash: BlockHash(stark_felt!("0x1")),
+                ..Default::default()
+            },
+        )
+        .unwrap()
+        .append_body(
+            BlockNumber(1),
+            BlockBody {
+                transactions: vec![tx1, tx2],
+                transaction_outputs: vec![starknet_api::transaction::TransactionOutput::Invoke(
+                    starknet_api::transaction::InvokeTransactionOutput::default(),
+                )],
+                transaction_hashes: vec![tx_hash1, tx_hash2],
+            },
+        )
+        .unwrap()
+        .append_state_diff(BlockNumber(1), StateDiff::default(), IndexMap::new())
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    let res = module
+        .call::<_, Vec<TransactionTraceWithHash>>(
+            "starknet_V0_4_traceBlockTransactions",
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))],
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(res.len(), 2);
+    assert_matches!(res[0].trace_root, TransactionTrace::Invoke(_));
+    assert_eq!(res[0].transaction_hash, tx_hash1);
+    assert_matches!(res[1].trace_root, TransactionTrace::Invoke(_));
+    assert_eq!(res[1].transaction_hash, tx_hash2);
+}
+
 #[test]
 fn broadcasted_to_executable_declare_v1() {
     let mut rng = get_rng();
@@ -448,6 +536,18 @@ fn validate_fee_estimation_schema() {
         &VERSION_0_4,
     );
     let serialized = serde_json::to_value(fee_estimate).unwrap();
+    assert!(validate_schema(&schema, &serialized));
+}
+
+#[test]
+fn validate_transaction_trace_with_hash_schema() {
+    let mut rng = get_rng();
+    let txs_with_trace = Vec::<TransactionTraceWithHash>::get_test_instance(&mut rng);
+    let serialized = serde_json::to_value(txs_with_trace).unwrap();
+    let schema = get_starknet_spec_api_schema_for_method_results(
+        &[(SpecFile::StarknetTraceApi, &["starknet_traceBlockTransactions"])],
+        &VERSION_0_4,
+    );
     assert!(validate_schema(&schema, &serialized));
 }
 
@@ -518,6 +618,11 @@ auto_impl_get_test_instance! {
         pub gas_consumed: StarkFelt,
         pub gas_price: GasPrice,
         pub overall_fee: Fee,
+    }
+
+    pub struct TransactionTraceWithHash {
+        pub transaction_hash: TransactionHash,
+        pub trace_root: TransactionTrace,
     }
 }
 
