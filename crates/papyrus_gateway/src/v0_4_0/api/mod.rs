@@ -205,6 +205,13 @@ pub trait JsonRpc {
     /// Calculates the transaction trace of a transaction that is already included in a block.
     #[method(name = "traceTransaction")]
     fn trace_transaction(&self, transaction_hash: TransactionHash) -> RpcResult<TransactionTrace>;
+
+    /// Calculates the transaction trace of all of the transactions in a block.
+    #[method(name = "traceBlockTransactions")]
+    fn trace_block_transactions(
+        &self,
+        block_id: BlockId,
+    ) -> RpcResult<Vec<TransactionTraceWithHash>>;
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -446,4 +453,10 @@ pub(crate) fn decompress_program(
     let mut decompressed = Vec::new();
     decoder.read_to_end(&mut decompressed).map_err(internal_server_error)?;
     serde_json::from_reader(decompressed.as_slice()).map_err(internal_server_error)
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TransactionTraceWithHash {
+    pub transaction_hash: TransactionHash,
+    pub trace_root: TransactionTrace,
 }
