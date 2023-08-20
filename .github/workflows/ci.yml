@@ -93,7 +93,7 @@ jobs:
           toolchain: stable
       - uses: Swatinem/rust-cache@v2
       - run: >
-          cargo test -p starknet_client -- --ignored feeder_gateway_integration_test;
+          cargo test --test '*' -- --include-ignored;
           cargo run -p papyrus_node --bin central_source_integration_test
 
   rustfmt:
