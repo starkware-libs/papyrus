@@ -38,6 +38,7 @@ fn build_args_parser(config_map: &BTreeMap<ParamPath, SerializedParam>) -> Vec<A
         Arg::new("config_file")
             .long("config_file")
             .short('f')
+            .value_delimiter(',')
             .help("Optionally sets a config file to use")
             .value_parser(value_parser!(PathBuf)),
     ];
