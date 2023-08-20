@@ -619,6 +619,11 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         transactions: Vec<BroadcastedTransaction>,
         block_id: BlockId,
     ) -> RpcResult<Vec<FeeEstimate>> {
+        // TODO(yair): remove this once the transaction hash is calculated in the blockifier.
+        if true {
+            return Err(internal_server_error("Fee estimation not supported yet."));
+        }
+
         trace!("Estimating fee of transactions: {:#?}", transactions);
         let executable_txns =
             transactions.into_iter().map(|tx| tx.try_into()).collect::<Result<_, _>>()?;
@@ -644,6 +649,11 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         transactions: Vec<BroadcastedTransaction>,
         simulation_flags: Vec<SimulationFlag>,
     ) -> RpcResult<Vec<SimulatedTransaction>> {
+        // TODO(yair): remove this once the transaction hash is calculated in the blockifier.
+        if true {
+            return Err(internal_server_error("Simulate transactions not supported yet."));
+        }
+
         trace!("Simulating transactions: {:#?}", transactions);
         let executable_txns =
             transactions.into_iter().map(|tx| tx.try_into()).collect::<Result<_, _>>()?;
@@ -657,6 +667,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 
         let res = exec_simulate_transactions(
             executable_txns,
+            None,
             &self.chain_id,
             &txn,
             state_number,
@@ -691,7 +702,16 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             .map_err(internal_server_error)?
             .ok_or_else(|| {
                 internal_server_error(StorageError::DBInconsistency {
-                    msg: format!("Missing block {block_number} transactions").to_string(),
+                    msg: format!("Missing block {block_number} transactions"),
+                })
+            })?;
+
+        let tx_hashes = storage_txn
+            .get_block_transaction_hashes(block_number)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| {
+                internal_server_error(StorageError::DBInconsistency {
+                    msg: format!("Missing block {block_number} transactions"),
                 })
             })?;
 
@@ -704,6 +724,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 
         let res = exec_simulate_transactions(
             executable_txns,
+            Some(tx_hashes),
             &self.chain_id,
             &storage_txn,
             state_number,
