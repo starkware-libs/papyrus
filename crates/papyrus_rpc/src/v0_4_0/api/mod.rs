@@ -9,6 +9,7 @@ use papyrus_common::BlockHashAndNumber;
 use papyrus_execution::objects::TransactionTrace;
 use papyrus_execution::{ExecutableTransactionInput, ExecutionError};
 use papyrus_proc_macros::versioned_rpc;
+use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::RO;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::StorageTxn;
@@ -205,6 +206,13 @@ pub trait JsonRpc {
     /// Calculates the transaction trace of a transaction that is already included in a block.
     #[method(name = "traceTransaction")]
     fn trace_transaction(&self, transaction_hash: TransactionHash) -> RpcResult<TransactionTrace>;
+
+    /// Calculates the transaction trace of all of the transactions in a block.
+    #[method(name = "traceBlockTransactions")]
+    fn trace_block_transactions(
+        &self,
+        block_id: BlockId,
+    ) -> RpcResult<Vec<TransactionTraceWithHash>>;
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -331,8 +339,19 @@ pub(crate) fn stored_txn_to_executable_txn(
             ))
         }
         starknet_api::transaction::Transaction::Declare(
-            starknet_api::transaction::DeclareTransaction::V2(_),
-        ) => Err(internal_server_error("Declare v2 txns not supported yet in execution")),
+            starknet_api::transaction::DeclareTransaction::V2(value),
+        ) => {
+            let casm = storage_txn
+                .get_casm(&value.class_hash)
+                .map_err(internal_server_error)?
+                .ok_or_else(|| {
+                    internal_server_error(format!(
+                        "Missing casm of class hash {}.",
+                        value.class_hash
+                    ))
+                })?;
+            Ok(ExecutableTransactionInput::DeclareV2(value, casm))
+        }
         starknet_api::transaction::Transaction::Deploy(_) => {
             Err(internal_server_error("Deploy txns not supported in execution"))
         }
@@ -446,4 +465,10 @@ pub(crate) fn decompress_program(
     let mut decompressed = Vec::new();
     decoder.read_to_end(&mut decompressed).map_err(internal_server_error)?;
     serde_json::from_reader(decompressed.as_slice()).map_err(internal_server_error)
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TransactionTraceWithHash {
+    pub transaction_hash: TransactionHash,
+    pub trace_root: TransactionTrace,
 }
