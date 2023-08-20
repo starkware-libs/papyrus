@@ -30,7 +30,8 @@
                             "title": "The hash of the invoke transaction",
                             "$ref": "#/components/schemas/TXN_HASH"
                         }
-                    }
+                    },
+                    "required": ["transaction_hash"]
                 }
             },
             "errors": [
@@ -88,7 +89,8 @@
                             "title": "The hash of the declared class",
                             "$ref": "#/components/schemas/FELT"
                         }
-                    }
+                    },
+                    "required": ["transaction_hash", "class_hash"]
                 }
             },
             "errors": [
@@ -160,7 +162,8 @@
                             "title": "The address of the new contract",
                             "$ref": "#/components/schemas/FELT"
                         }
-                    }
+                    },
+                    "required": ["transaction_hash", "contract_address"]
                 }
             },
             "errors": [
@@ -203,25 +206,25 @@
                 "pattern": "^0x[a-fA-F0-9]+$"
             },
             "SIGNATURE": {
-                "$ref": "./api/starknet_api_openrpc.json#/components/schemas/SIGNATURE"
+                "$ref": "./starknet_api_openrpc.json#/components/schemas/SIGNATURE"
             },
             "FELT": {
-                "$ref": "./api/starknet_api_openrpc.json#/components/schemas/FELT"
+                "$ref": "./starknet_api_openrpc.json#/components/schemas/FELT"
             },
             "TXN_HASH": {
-                "$ref": "./api/starknet_api_openrpc.json#/components/schemas/TXN_HASH"
+                "$ref": "./starknet_api_openrpc.json#/components/schemas/TXN_HASH"
             },
             "INVOKE_TXN_V1": {
-                "$ref": "./api/starknet_api_openrpc.json#/components/schemas/INVOKE_TXN_V1"
+                "$ref": "./starknet_api_openrpc.json#/components/schemas/INVOKE_TXN_V1"
             },
             "DECLARE_TXN": {
-                "$ref": "./api/starknet_api_openrpc.json#/components/schemas/DECLARE_TXN"
+                "$ref": "./starknet_api_openrpc.json#/components/schemas/DECLARE_TXN"
             },
             "DEPLOY_ACCOUNT_TXN": {
-                "$ref": "./api/starknet_api_openrpc.json#/components/schemas/DEPLOY_ACCOUNT_TXN"
+                "$ref": "./starknet_api_openrpc.json#/components/schemas/DEPLOY_ACCOUNT_TXN"
             },
             "FUNCTION_CALL": {
-                "$ref": "./api/starknet_api_openrpc.json#/components/schemas/FUNCTION_CALL"
+                "$ref": "./starknet_api_openrpc.json#/components/schemas/FUNCTION_CALL"
             }
         },
         "errors": {

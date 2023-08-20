@@ -199,7 +199,7 @@ async fn syncing() {
 
     let (json_response_0, result_0) =
         raw_call::<_, _, bool>(&module, API_METHOD_NAME, &None::<()>).await;
-    assert!(validate_schema(&result_schema, &json_response_0));
+    assert!(validate_schema(&result_schema, &json_response_0["result"]));
     assert_eq!(result_0, false);
 
     *shared_highest_block.write().await =
@@ -207,7 +207,7 @@ async fn syncing() {
     let (json_response_1, result_1) =
         raw_call::<_, _, SyncStatus>(&module, API_METHOD_NAME, &None::<()>).await;
     assert!(
-        validate_schema(&result_schema, &json_response_1),
+        validate_schema(&result_schema, &json_response_1["result"]),
         "Result should match syncing state schema."
     );
     assert_eq!(result_1, SyncStatus { highest_block_num: BlockNumber(5), ..Default::default() });
