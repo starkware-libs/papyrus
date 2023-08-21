@@ -29,7 +29,7 @@ jobs:
         run: commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
 
       - name: Validate PR title with commitlint
-        if: github.event_name != 'merge_group'
+        if: github.event_name != 'merge_group' && github.event_name != 'push'
         run: echo "${{ github.event.pull_request.title }}" | commitlint --verbose
 
   executable-run:
