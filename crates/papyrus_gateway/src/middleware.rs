@@ -4,7 +4,7 @@ use regex::Regex;
 use tower::BoxError;
 use tracing::{debug, instrument};
 
-use crate::version_config::{VersionState, VERSION_CONFIG};
+use crate::version_config::{VersionState, VERSION_CONFIG, VERSION_PATTERN};
 use crate::SERVER_MAX_BODY_SIZE;
 
 /// [`Tower`] middleware intended to proxy method requests to the right version of the API.
@@ -117,6 +117,7 @@ fn get_version_as_prefix(path: &str) -> Result<&str, BoxError> {
 }
 
 fn is_supported_path(path: &str) -> bool {
-    let re = Regex::new(r"^\/rpc\/[Vv][0-9]+_[0-9]+(_[0-9]+)?$").expect("should be a valid regex");
+    let re = Regex::new((r"^\/rpc\/".to_string() + VERSION_PATTERN + "$").as_str())
+        .expect("should be a valid regex");
     re.is_match(path)
 }
