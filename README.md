@@ -175,6 +175,30 @@ curl --location 'localhost:8080/rpc/v0_3' --header 'Content-Type: application/js
 | `starknet_pendingTransactions`             | ![](resources/img/cross.png) | ![](resources/img/cross.png) |
 | `starknet_syncing`                         | ![](resources/img/check.png) | ![](resources/img/check.png) |
 
+## Papyrus Monitoring API
+Papyrus returns information about the running node in the `monitoring` path.<br />
+Example query: `https://<papyrus_url>/monitoring/alive`
+
+### Endpoints
+
+`alive`<br />Returns status code 200 if the node is alive.<br />
+`nodeVersion`<br /> Returns the version of the node.<br />
+`nodeConfig`<br /> Returns the configuration which the node runs with.<br />
+`dbTablesStats`<br /> Returns statistics of the node database. <br />
+`metrics`<br /> Returns metrics about the node.<br />
+
+### Metrics
+Metrics about the node are available in the metric path. By default, the node will not collect metrics, and the metric path will return an error code 405 - Method Not Allowed. To collect metrics, change the configuration value `collect_metrics`.
+Papyrus collects three kinds of metrics: gateway metrics, sync metrics, and proccesse metrics.
+
+#### Gateway Metrics
+Papyrus collects three metrics in the gateway:
+* `gateway_incoming_requests` counter
+* `gateway_failed_requests` counter
+* `gateway_request_latency_seconds` histogram
+
+Each metric can be filtered by method with the `method` label and by spec version with the `version` label. For example, to get all the incoming requests to method starknet_chainId in spec version 0.4, use the metric `gateway_incoming_requests{method="chainId", version="V0_4"}`. In addition, the number of requests with illegal method can be retrieved using `illegal_method` value for the `method` label.
+
 ## Deployment
 We provide a helm chart for deploying the node to a kubernetes cluster.
 It is located under the [deployments folder](deployments/helm/README.md).
