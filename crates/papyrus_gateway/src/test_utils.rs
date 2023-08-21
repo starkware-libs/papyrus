@@ -2,11 +2,14 @@ use std::path::Path;
 use std::sync::Arc;
 
 use derive_more::Display;
+use jsonrpsee::core::RpcResult;
 use jsonrpsee::server::RpcModule;
+use jsonrpsee::types::ErrorObjectOwned;
 use jsonschema::JSONSchema;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use starknet_api::core::{ChainId, ContractAddress, PatriciaKey};
@@ -16,7 +19,7 @@ use starknet_client::writer::MockStarknetWriter;
 use tokio::sync::RwLock;
 
 use crate::api::JsonRpcServerImpl;
-use crate::version_config::VersionId;
+use crate::version_config::{VersionId, VERSION_PATTERN};
 use crate::GatewayConfig;
 
 pub fn get_test_gateway_config() -> GatewayConfig {
@@ -72,22 +75,33 @@ pub(crate) async fn raw_call<R: JsonRpcServerImpl, S: Serialize, T: for<'a> Dese
     module: &RpcModule<R>,
     method: &str,
     params_obj: &Option<S>, //&str,
-) -> (Value, T) {
+) -> (Value, RpcResult<T>) {
     let params_str = if params_obj.is_none() {
         "".to_string()
     } else {
-        let params = serde_json::to_value(params_obj).unwrap().to_string();
-        format!(r#","params":[{params}]"#)
+        let params = serde_json::to_value(params_obj).unwrap();
+        let params_string = params.to_string();
+        match params {
+            Value::Array(_) => format!(r#", "params":{params_string}"#),
+            _ => format!(r#","params":[{params_string}]"#),
+        }
     };
     let req = format!(r#"{{"jsonrpc":"2.0","id":"1","method":"{method}"{params_str}}}"#);
-    let (resp_wrapper, _) = module.raw_json_request(req.as_str(), 1).await.expect("request format");
-    assert!(resp_wrapper.success, "unsuccessful request");
-
+    let (resp_wrapper, _) = module
+        .raw_json_request(req.as_str(), 1)
+        .await
+        .unwrap_or_else(|_| panic!("request format, got: {req}"));
     let json_resp: Value = serde_json::from_str(&resp_wrapper.result).unwrap();
-    let result = serde_json::from_value::<T>(
-        json_resp.get("result").expect("response should have result field").to_owned(),
-    )
-    .expect("result should match the target type");
+    let result: Result<T, jsonrpsee::types::ErrorObject<'_>> =
+        match json_resp.get("result") {
+            Some(resp) => Ok(serde_json::from_value::<T>(resp.clone())
+                .expect("result should mtach the target type")),
+            None => match json_resp.get("error") {
+                Some(err) => Err(serde_json::from_value::<ErrorObjectOwned>(err.clone())
+                    .expect("result should mtach the rpc error type")),
+                None => panic!("response should have result or error field, got {json_resp}"),
+            },
+        };
     (json_resp, result)
 }
 
@@ -284,4 +298,56 @@ fn fix_errors(spec: &mut serde_json::Value) {
         obj.insert("properties".to_string(), properties.into());
         obj.insert("required".to_string(), required.into());
     }
+}
+
+#[allow(dead_code)]
+pub fn method_name_to_spec_method_name(method_name: &str) -> String {
+    let re = Regex::new((r"(".to_string() + VERSION_PATTERN + ")_").as_str()).unwrap();
+    re.replace_all(method_name, "").to_string()
+}
+
+#[allow(dead_code)]
+pub async fn call_api_then_assert_and_validate_schema_for_err<
+    R: JsonRpcServerImpl,
+    S: Serialize,
+    T: for<'a> Deserialize<'a> + std::fmt::Debug,
+>(
+    module: &RpcModule<R>,
+    method: &str,
+    params: &Option<S>,
+    version_id: &VersionId,
+    expected_err: &ErrorObjectOwned,
+) {
+    let (json_response, err) = raw_call::<_, S, T>(module, method, params).await;
+    assert_eq!(err.unwrap_err(), *expected_err);
+    assert!(validate_schema(
+        &get_starknet_spec_api_schema_for_method_errors(
+            &[(SpecFile::StarknetApiOpenrpc, &[method_name_to_spec_method_name(method).as_str()])],
+            version_id,
+        ),
+        &json_response["error"],
+    ));
+}
+
+#[allow(dead_code)]
+pub async fn call_api_then_assert_and_validate_schema_for_result<
+    R: JsonRpcServerImpl,
+    S: Serialize,
+    T: for<'a> Deserialize<'a> + std::fmt::Debug + std::cmp::PartialEq,
+>(
+    module: &RpcModule<R>,
+    method: &str,
+    params: &Option<S>,
+    version_id: &VersionId,
+    expected_res: &T,
+) {
+    let (json_response, res) = raw_call::<_, S, T>(module, method, params).await;
+    assert_eq!(res.unwrap(), *expected_res);
+    assert!(validate_schema(
+        &get_starknet_spec_api_schema_for_method_results(
+            &[(SpecFile::StarknetApiOpenrpc, &[method_name_to_spec_method_name(method).as_str()])],
+            version_id,
+        ),
+        &json_response["result"],
+    ));
 }

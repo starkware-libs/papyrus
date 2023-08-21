@@ -174,7 +174,7 @@ async fn syncing() {
     let (json_response_0, result_0) =
         raw_call::<_, _, bool>(&module, API_METHOD_NAME, &None::<()>).await;
     assert!(validate_schema(&result_schema, &json_response_0["result"]));
-    assert_eq!(result_0, false);
+    assert_eq!(result_0.unwrap(), false);
 
     *shared_highest_block.write().await =
         Some(BlockHashAndNumber { block_number: BlockNumber(5), ..Default::default() });
@@ -184,7 +184,10 @@ async fn syncing() {
         validate_schema(&result_schema, &json_response_1["result"]),
         "Result should match syncing state schema."
     );
-    assert_eq!(result_1, SyncStatus { highest_block_num: BlockNumber(5), ..Default::default() });
+    assert_eq!(
+        result_1.unwrap(),
+        SyncStatus { highest_block_num: BlockNumber(5), ..Default::default() }
+    );
 }
 
 #[tokio::test]
@@ -1573,7 +1576,7 @@ async fn get_events_no_blocks() {
             .get("continuation_token")
             .is_none()
     );
-    assert_eq!(res, EventsChunk { events: vec![], continuation_token: None });
+    assert_eq!(res.unwrap(), EventsChunk { events: vec![], continuation_token: None });
 }
 
 #[tokio::test]
