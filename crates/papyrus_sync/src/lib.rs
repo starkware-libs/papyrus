@@ -119,6 +119,8 @@ pub type StateSyncResult = Result<(), StateSyncError>;
 
 #[derive(thiserror::Error, Debug)]
 pub enum StateSyncError {
+    #[error("Sync is stuck.")]
+    SyncStuck,
     #[error(transparent)]
     StorageError(#[from] StorageError),
     #[error(transparent)]
@@ -155,6 +157,7 @@ pub enum StateSyncError {
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum SyncEvent {
+    SyncStuck,
     BlockAvailable {
         block_number: BlockNumber,
         block: Block,
@@ -210,6 +213,7 @@ impl<
         // Whitelisting of errors from which we might be able to recover.
         fn is_recoverable(err: &StateSyncError) -> bool {
             match err {
+                StateSyncError::SyncStuck => true,
                 StateSyncError::CentralSourceError(_) => true,
                 StateSyncError::BaseLayerSourceError(_) => true,
                 StateSyncError::StorageError(storage_err)
@@ -276,7 +280,18 @@ impl<
             self.config.base_layer_propagation_sleep_duration,
         )
         .fuse();
-        pin_mut!(block_stream, state_diff_stream, compiled_class_stream, base_layer_block_stream);
+        // This function is used to check if the sync is stuck. This scenario can happen because of
+        // a bug in the "hyper" crate we use.
+        // TODO(dvir): try use interval instead of stream.
+        // TODO: fix the bug and remove this check.
+        let check_if_sync_stuck = check_if_sync_stuck(self.reader.clone()).fuse();
+        pin_mut!(
+            block_stream,
+            state_diff_stream,
+            compiled_class_stream,
+            base_layer_block_stream,
+            check_if_sync_stuck
+        );
 
         loop {
             debug!("Selecting between block sync and state diff sync.");
@@ -285,6 +300,7 @@ impl<
               res = state_diff_stream.next() => res,
               res = compiled_class_stream.next() => res,
               res = base_layer_block_stream.next() => res,
+              res = check_if_sync_stuck.next() => res,
               complete => break,
             }
             .expect("Received None as a sync event.")?;
@@ -297,6 +313,7 @@ impl<
     // Tries to store the incoming data.
     async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult {
         match sync_event {
+            SyncEvent::SyncStuck => Err(StateSyncError::SyncStuck),
             SyncEvent::BlockAvailable { block_number, block, starknet_version } => {
                 self.store_block(block_number, block, &starknet_version)
             }
@@ -787,6 +804,38 @@ fn stream_new_base_layer_block<TBaseLayerSource: BaseLayerSourceTrait + Sync>(
                     );
                 }
             }
+        }
+    }
+}
+
+// The sleep time between checks if the sync is stuck.
+const SLEEP_TIME_SYNC_STUCK_CHECK: Duration = Duration::from_secs(300);
+
+// This function is used to check if the sync is stuck. This scenario can happen because of a bug in
+// the "hyper" crate we use.
+// TODO: fix the bug and remove this function.
+// TODO(dvir): add a test for this scenario.
+fn check_if_sync_stuck(
+    reader: StorageReader,
+) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
+    try_stream! {
+        let mut header_marker=BlockNumber(0);
+        let mut state_marker=BlockNumber(0);
+        let mut casm_marker=BlockNumber(0);
+        loop{
+            tokio::time::sleep(SLEEP_TIME_SYNC_STUCK_CHECK).await;
+            debug!("Checking if sync is stuck.");
+            let txn=reader.begin_ro_txn()?;
+            let new_header_marker=txn.get_header_marker()?;
+            let new_state_marker=txn.get_state_marker()?;
+            let new_casm_marker=txn.get_compiled_class_marker()?;
+            if header_marker==new_header_marker && state_marker==new_state_marker && casm_marker==new_casm_marker{
+                debug!("Sync is stuck. Return SyncStuck event.");
+                yield SyncEvent::SyncStuck;
+            }
+            header_marker=new_header_marker;
+            state_marker=new_state_marker;
+            casm_marker=new_casm_marker;
         }
     }
 }
