@@ -6,7 +6,6 @@ use std::ops::Index;
 use assert_matches::assert_matches;
 use async_trait::async_trait;
 use indexmap::IndexMap;
-use jsonrpsee::core::params::ObjectParams;
 use jsonrpsee::core::Error;
 use jsonschema::JSONSchema;
 use mockall::predicate::eq;
@@ -83,12 +82,15 @@ use super::{ContinuationToken, EventFilter};
 use crate::api::{BlockHashOrNumber, BlockId, Tag};
 use crate::syncing_state::SyncStatus;
 use crate::test_utils::{
+    call_api_then_assert_and_validate_schema_for_err,
+    call_api_then_assert_and_validate_schema_for_result,
     get_starknet_spec_api_schema_for_components,
     get_starknet_spec_api_schema_for_method_results,
     get_test_gateway_config,
     get_test_highest_block,
     get_test_rpc_server_and_storage_writer,
     get_test_rpc_server_and_storage_writer_from_params,
+    method_name_to_spec_method_name,
     raw_call,
     validate_schema,
     SpecFile,
@@ -113,25 +115,35 @@ const NODE_VERSION: &str = "NODE VERSION";
 async fn chain_id() {
     let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
 
-    let res = module.call::<_, String>("starknet_V0_4_chainId", ObjectParams::new()).await.unwrap();
     // The result should be equal to the result of the following python code
     // hex(int.from_bytes(b'SN_GOERLI', byteorder="big", signed=False))
     // taken from starknet documentation:
     // https://docs.starknet.io/documentation/develop/Blocks/transactions/#chain-id.
-    assert_eq!(res, String::from("0x534e5f474f45524c49"));
+    call_api_then_assert_and_validate_schema_for_result::<_, _, String>(
+        &module,
+        "starknet_V0_4_chainId",
+        &None::<()>,
+        &VERSION_0_4,
+        &String::from("0x534e5f474f45524c49"),
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn block_hash_and_number() {
+    let method_name = "starknet_V0_4_blockHashAndNumber";
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
 
     // No blocks yet.
-    let err = module
-        .call::<_, BlockHashAndNumber>("starknet_V0_4_blockHashAndNumber", ObjectParams::new())
-        .await
-        .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == NO_BLOCKS.into());
+    call_api_then_assert_and_validate_schema_for_err::<_, _, BlockHashAndNumber>(
+        &module,
+        method_name,
+        &None::<()>,
+        &VERSION_0_4,
+        &NO_BLOCKS.into(),
+    )
+    .await;
 
     // Add a block and check again.
     let block = get_test_block(1, None, None, None);
@@ -142,30 +154,35 @@ async fn block_hash_and_number() {
         .unwrap()
         .commit()
         .unwrap();
-    let block_hash_and_number = module
-        .call::<_, BlockHashAndNumber>("starknet_V0_4_blockHashAndNumber", ObjectParams::new())
-        .await
-        .unwrap();
-    assert_eq!(
-        block_hash_and_number,
-        BlockHashAndNumber {
+    call_api_then_assert_and_validate_schema_for_result::<_, _, BlockHashAndNumber>(
+        &module,
+        method_name,
+        &None::<()>,
+        &VERSION_0_4,
+        &BlockHashAndNumber {
             block_hash: block.header.block_hash,
             block_number: block.header.block_number,
-        }
-    );
+        },
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn block_number() {
+    let method_name = "starknet_V0_4_blockNumber";
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
 
     // No blocks yet.
-    let err = module
-        .call::<_, BlockNumber>("starknet_V0_4_blockNumber", ObjectParams::new())
-        .await
-        .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == NO_BLOCKS.into());
+    let expected_err = NO_BLOCKS.into();
+    call_api_then_assert_and_validate_schema_for_err::<_, _, BlockNumber>(
+        &module,
+        method_name,
+        &None::<()>,
+        &VERSION_0_4,
+        &expected_err,
+    )
+    .await;
 
     // Add a block and check again.
     storage_writer
@@ -175,49 +192,50 @@ async fn block_number() {
         .unwrap()
         .commit()
         .unwrap();
-    let block_number = module
-        .call::<_, BlockNumber>("starknet_V0_4_blockNumber", ObjectParams::new())
-        .await
-        .unwrap();
-    assert_eq!(block_number, BlockNumber(0));
+    call_api_then_assert_and_validate_schema_for_result::<_, _, BlockNumber>(
+        &module,
+        method_name,
+        &None::<()>,
+        &VERSION_0_4,
+        &BlockNumber(0),
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn syncing() {
-    const SPEC_METHOD_NAME: &str = "starknet_syncing";
     const API_METHOD_NAME: &str = "starknet_V0_4_syncing";
 
-    let result_schema = get_starknet_spec_api_schema_for_method_results(
-        &[(SpecFile::StarknetApiOpenrpc, &[SPEC_METHOD_NAME])],
-        &VERSION_0_4,
-    );
     let shared_highest_block = get_test_highest_block();
     let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
         None,
         Some(shared_highest_block.clone()),
     );
 
-    let (json_response_0, result_0) =
-        raw_call::<_, _, bool>(&module, API_METHOD_NAME, &None::<()>).await;
-    assert!(validate_schema(&result_schema, &json_response_0["result"]));
-    assert_eq!(result_0.unwrap(), false);
+    call_api_then_assert_and_validate_schema_for_result::<_, _, bool>(
+        &module,
+        API_METHOD_NAME,
+        &None::<()>,
+        &VERSION_0_4,
+        &false,
+    )
+    .await;
 
     *shared_highest_block.write().await =
         Some(BlockHashAndNumber { block_number: BlockNumber(5), ..Default::default() });
-    let (json_response_1, result_1) =
-        raw_call::<_, _, SyncStatus>(&module, API_METHOD_NAME, &None::<()>).await;
-    assert!(
-        validate_schema(&result_schema, &json_response_1["result"]),
-        "Result should match syncing state schema."
-    );
-    assert_eq!(
-        result_1.unwrap(),
-        SyncStatus { highest_block_num: BlockNumber(5), ..Default::default() }
-    );
+    call_api_then_assert_and_validate_schema_for_result::<_, _, SyncStatus>(
+        &module,
+        API_METHOD_NAME,
+        &None::<()>,
+        &VERSION_0_4,
+        &SyncStatus { highest_block_num: BlockNumber(5), ..Default::default() },
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn get_block_transaction_count() {
+    let method_name = "starknet_V0_4_getBlockTransactionCount";
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
     let transaction_count = 5;
@@ -233,19 +251,19 @@ async fn get_block_transaction_count() {
         .unwrap();
 
     // Get block by hash.
-    let res = module
-        .call::<_, usize>(
-            "starknet_V0_4_getBlockTransactionCount",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash))],
-        )
-        .await
-        .unwrap();
-    assert_eq!(res, transaction_count);
+    call_api_then_assert_and_validate_schema_for_result::<_, BlockId, usize>(
+        &module,
+        method_name,
+        &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash))),
+        &VERSION_0_4,
+        &transaction_count,
+    )
+    .await;
 
     // Get block by number.
     let res = module
         .call::<_, usize>(
-            "starknet_V0_4_getBlockTransactionCount",
+            method_name,
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(block.header.block_number))],
         )
         .await
@@ -253,28 +271,25 @@ async fn get_block_transaction_count() {
     assert_eq!(res, transaction_count);
 
     // Ask for the latest block.
-    let res = module
-        .call::<_, usize>("starknet_V0_4_getBlockTransactionCount", [BlockId::Tag(Tag::Latest)])
-        .await
-        .unwrap();
+    let res = module.call::<_, usize>(method_name, [BlockId::Tag(Tag::Latest)]).await.unwrap();
     assert_eq!(res, transaction_count);
 
     // Ask for an invalid block hash.
-    let err = module
-        .call::<_, usize>(
-            "starknet_V0_4_getBlockTransactionCount",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
-                "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-            ))))],
-        )
-        .await
-        .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
+    call_api_then_assert_and_validate_schema_for_err::<_, BlockId, usize>(
+        &module,
+        method_name,
+        &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
+            "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
+        ))))),
+        &VERSION_0_4,
+        &BLOCK_NOT_FOUND.into(),
+    )
+    .await;
 
     // Ask for an invalid block number.
     let err = module
         .call::<_, usize>(
-            "starknet_V0_4_getBlockTransactionCount",
+            method_name,
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))],
         )
         .await
@@ -284,6 +299,7 @@ async fn get_block_transaction_count() {
 
 #[tokio::test]
 async fn get_block_w_full_transactions() {
+    let method_name = "starknet_V0_4_getBlockWithTxs";
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
 
@@ -309,19 +325,19 @@ async fn get_block_w_full_transactions() {
     };
 
     // Get block by hash.
-    let block = module
-        .call::<_, Block>(
-            "starknet_V0_4_getBlockWithTxs",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header.block_hash))],
-        )
-        .await
-        .unwrap();
-    assert_eq!(block, expected_block);
+    call_api_then_assert_and_validate_schema_for_result::<_, BlockId, Block>(
+        &module,
+        method_name,
+        &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header.block_hash))),
+        &VERSION_0_4,
+        &expected_block,
+    )
+    .await;
 
     // Get block by number.
     let block = module
         .call::<_, Block>(
-            "starknet_V0_4_getBlockWithTxs",
+            method_name,
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(expected_block.header.block_number))],
         )
         .await
@@ -329,10 +345,7 @@ async fn get_block_w_full_transactions() {
     assert_eq!(block, expected_block);
 
     // Ask for the latest block.
-    let block = module
-        .call::<_, Block>("starknet_V0_4_getBlockWithTxs", [BlockId::Tag(Tag::Latest)])
-        .await
-        .unwrap();
+    let block = module.call::<_, Block>(method_name, [BlockId::Tag(Tag::Latest)]).await.unwrap();
     assert_eq!(block, expected_block);
 
     // Ask for a block that was accepted on L1.
@@ -345,7 +358,7 @@ async fn get_block_w_full_transactions() {
         .unwrap();
     let block = module
         .call::<_, Block>(
-            "starknet_V0_4_getBlockWithTxs",
+            method_name,
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header.block_hash))],
         )
         .await
@@ -355,7 +368,7 @@ async fn get_block_w_full_transactions() {
     // Ask for an invalid block hash.
     let err = module
         .call::<_, Block>(
-            "starknet_V0_4_getBlockWithTxs",
+            method_name,
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             ))))],
@@ -367,7 +380,7 @@ async fn get_block_w_full_transactions() {
     // Ask for an invalid block number.
     let err = module
         .call::<_, Block>(
-            "starknet_V0_4_getBlockWithTxs",
+            method_name,
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))],
         )
         .await
@@ -377,6 +390,7 @@ async fn get_block_w_full_transactions() {
 
 #[tokio::test]
 async fn get_block_w_transaction_hashes() {
+    let method_name = "starknet_V0_4_getBlockWithTxHashes";
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
 
@@ -398,19 +412,19 @@ async fn get_block_w_transaction_hashes() {
     };
 
     // Get block by hash.
-    let block = module
-        .call::<_, Block>(
-            "starknet_V0_4_getBlockWithTxHashes",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header.block_hash))],
-        )
-        .await
-        .unwrap();
-    assert_eq!(block, expected_block);
+    call_api_then_assert_and_validate_schema_for_result::<_, BlockId, Block>(
+        &module,
+        method_name,
+        &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header.block_hash))),
+        &VERSION_0_4,
+        &expected_block,
+    )
+    .await;
 
     // Get block by number.
     let block = module
         .call::<_, Block>(
-            "starknet_V0_4_getBlockWithTxHashes",
+            method_name,
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(expected_block.header.block_number))],
         )
         .await
@@ -418,10 +432,7 @@ async fn get_block_w_transaction_hashes() {
     assert_eq!(block, expected_block);
 
     // Ask for the latest block.
-    let block = module
-        .call::<_, Block>("starknet_V0_4_getBlockWithTxHashes", [BlockId::Tag(Tag::Latest)])
-        .await
-        .unwrap();
+    let block = module.call::<_, Block>(method_name, [BlockId::Tag(Tag::Latest)]).await.unwrap();
     assert_eq!(block, expected_block);
 
     // Ask for a block that was accepted on L1.
@@ -434,7 +445,7 @@ async fn get_block_w_transaction_hashes() {
         .unwrap();
     let block = module
         .call::<_, Block>(
-            "starknet_V0_4_getBlockWithTxHashes",
+            method_name,
             [BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header.block_hash))],
         )
         .await
@@ -442,21 +453,21 @@ async fn get_block_w_transaction_hashes() {
     assert_eq!(block.status, BlockStatus::AcceptedOnL1);
 
     // Ask for an invalid block hash.
-    let err = module
-        .call::<_, Block>(
-            "starknet_V0_4_getBlockWithTxHashes",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
-                "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-            ))))],
-        )
-        .await
-        .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
+    call_api_then_assert_and_validate_schema_for_err::<_, BlockId, Block>(
+        &module,
+        method_name,
+        &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
+            "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
+        ))))),
+        &VERSION_0_4,
+        &BLOCK_NOT_FOUND.into(),
+    )
+    .await;
 
     // Ask for an invalid block number.
     let err = module
         .call::<_, Block>(
-            "starknet_V0_4_getBlockWithTxHashes",
+            method_name,
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))],
         )
         .await
@@ -466,6 +477,7 @@ async fn get_block_w_transaction_hashes() {
 
 #[tokio::test]
 async fn get_class() {
+    let method_name = "starknet_V0_4_getClass";
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
     let parent_header = BlockHeader::default();
@@ -499,19 +511,23 @@ async fn get_class() {
     let expected_contract_class = contract_class.clone().try_into().unwrap();
 
     // Get class by block hash.
-    let res = module
-        .call::<_, DeprecatedContractClass>(
-            "starknet_V0_4_getClass",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *class_hash),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res, expected_contract_class);
+    call_api_then_assert_and_validate_schema_for_result::<
+        _,
+        (BlockId, ClassHash),
+        DeprecatedContractClass,
+    >(
+        &module,
+        method_name,
+        &Some((BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *class_hash)),
+        &VERSION_0_4,
+        &expected_contract_class,
+    )
+    .await;
 
     // Get class by block number.
     let res = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_V0_4_getClass",
+            method_name,
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *class_hash),
         )
         .await
@@ -519,17 +535,21 @@ async fn get_class() {
     assert_eq!(res, expected_contract_class);
 
     // Ask for an invalid class hash.
-    let err = module
-        .call::<_, DeprecatedContractClass>(
-            "starknet_V0_4_getClass",
-            (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ClassHash(stark_felt!("0x7")),
-            ),
-        )
-        .await
-        .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == CLASS_HASH_NOT_FOUND.into());
+    call_api_then_assert_and_validate_schema_for_err::<
+        _,
+        (BlockId, ClassHash),
+        DeprecatedContractClass,
+    >(
+        &module,
+        method_name,
+        &Some((
+            BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
+            ClassHash(stark_felt!("0x7")),
+        )),
+        &VERSION_0_4,
+        &CLASS_HASH_NOT_FOUND.into(),
+    )
+    .await;
 
     // New Class
     let (class_hash, (_compiled_class_hash, contract_class)) =
@@ -539,7 +559,7 @@ async fn get_class() {
     // Get class by block hash.
     let res = module
         .call::<_, ContractClass>(
-            "starknet_V0_4_getClass",
+            method_name,
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *class_hash),
         )
         .await
@@ -549,7 +569,7 @@ async fn get_class() {
     // Get class by block number.
     let res = module
         .call::<_, ContractClass>(
-            "starknet_V0_4_getClass",
+            method_name,
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *class_hash),
         )
         .await
@@ -560,7 +580,7 @@ async fn get_class() {
     // Ask for an invalid class hash in the given block.
     let err = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_V0_4_getClass",
+            method_name,
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_header.block_number)),
                 *class_hash,
@@ -571,24 +591,28 @@ async fn get_class() {
     assert_matches!(err, Error::Call(err) if err == CLASS_HASH_NOT_FOUND.into());
 
     // Ask for an invalid block hash.
-    let err = module
-        .call::<_, DeprecatedContractClass>(
-            "starknet_V0_4_getClass",
-            (
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
-                    "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-                )))),
-                class_hash,
-            ),
-        )
-        .await
-        .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
+    call_api_then_assert_and_validate_schema_for_err::<
+        _,
+        (BlockId, ClassHash),
+        DeprecatedContractClass,
+    >(
+        &module,
+        method_name,
+        &Some((
+            BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
+                "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
+            )))),
+            ClassHash(stark_felt!("0x7")),
+        )),
+        &VERSION_0_4,
+        &BLOCK_NOT_FOUND.into(),
+    )
+    .await;
 
     // Ask for an invalid block number.
     let err = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_V0_4_getClass",
+            method_name,
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))), *class_hash),
         )
         .await
@@ -598,6 +622,7 @@ async fn get_class() {
 
 #[tokio::test]
 async fn get_transaction_receipt() {
+    let method_name = "starknet_V0_4_getTransactionReceipt";
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
     let block = get_test_block(1, None, None, None);
@@ -620,17 +645,29 @@ async fn get_transaction_receipt() {
         block_number: block.header.block_number,
         output,
     };
-    let res = module
-        .call::<_, TransactionReceipt>("starknet_V0_4_getTransactionReceipt", [transaction_hash])
-        .await
-        .unwrap();
+    let (json_response, res) = raw_call::<_, TransactionHash, TransactionReceipt>(
+        &module,
+        method_name,
+        &Some(transaction_hash),
+    )
+    .await;
     // The returned jsons of some transaction outputs are the same. When deserialized, the first
     // struct in the TransactionOutput enum that matches the json is chosen. To not depend here
     // on the order of structs we compare the serialized data.
     assert_eq!(
-        serde_json::to_string(&res).unwrap(),
+        serde_json::to_string(&res.clone().unwrap()).unwrap(),
         serde_json::to_string(&expected_receipt).unwrap(),
     );
+    assert!(validate_schema(
+        &get_starknet_spec_api_schema_for_method_results(
+            &[(
+                SpecFile::StarknetApiOpenrpc,
+                &[method_name_to_spec_method_name(method_name).as_str()]
+            )],
+            &VERSION_0_4,
+        ),
+        &json_response["result"],
+    ));
 
     // Ask for a transaction in a block that was accepted on L1.
     storage_writer
@@ -640,26 +677,24 @@ async fn get_transaction_receipt() {
         .unwrap()
         .commit()
         .unwrap();
-    let res = module
-        .call::<_, TransactionReceipt>("starknet_V0_4_getTransactionReceipt", [transaction_hash])
-        .await
-        .unwrap();
+    let res = module.call::<_, TransactionReceipt>(method_name, [transaction_hash]).await.unwrap();
     assert_eq!(res.finality_status, TransactionFinalityStatus::AcceptedOnL1);
     assert_eq!(res.output.execution_status(), &TransactionExecutionStatus::Succeeded);
 
     // Ask for an invalid transaction.
-    let err = module
-        .call::<_, TransactionReceipt>(
-            "starknet_V0_4_getTransactionReceipt",
-            [TransactionHash(StarkHash::from(1_u8))],
-        )
-        .await
-        .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == TRANSACTION_HASH_NOT_FOUND.into());
+    call_api_then_assert_and_validate_schema_for_err::<_, TransactionHash, TransactionReceipt>(
+        &module,
+        method_name,
+        &Some(TransactionHash(StarkHash::from(1_u8))),
+        &VERSION_0_4,
+        &TRANSACTION_HASH_NOT_FOUND.into(),
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn get_class_at() {
+    let method_name = "starknet_V0_4_getClassAt";
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
     let parent_header = BlockHeader::default();
@@ -698,19 +733,23 @@ async fn get_class_at() {
     let address = diff.deployed_contracts.get_index(0).unwrap().0;
 
     // Get class by block hash.
-    let res = module
-        .call::<_, DeprecatedContractClass>(
-            "starknet_V0_4_getClassAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res, expected_contract_class);
+    call_api_then_assert_and_validate_schema_for_result::<
+        _,
+        (BlockId, ContractAddress),
+        DeprecatedContractClass,
+    >(
+        &module,
+        method_name,
+        &Some((BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address)),
+        &VERSION_0_4,
+        &expected_contract_class,
+    )
+    .await;
 
     // Get class by block number.
     let res = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_V0_4_getClassAt",
+            method_name,
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *address),
         )
         .await
@@ -727,7 +766,7 @@ async fn get_class_at() {
     // Get class by block hash.
     let res = module
         .call::<_, ContractClass>(
-            "starknet_V0_4_getClassAt",
+            method_name,
             (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address),
         )
         .await
@@ -737,7 +776,7 @@ async fn get_class_at() {
     // Get class by block number.
     let res = module
         .call::<_, ContractClass>(
-            "starknet_V0_4_getClassAt",
+            method_name,
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *address),
         )
         .await
@@ -746,22 +785,26 @@ async fn get_class_at() {
 
     // Invalid Call
     // Ask for an invalid contract.
-    let err = module
-        .call::<_, DeprecatedContractClass>(
-            "starknet_V0_4_getClassAt",
-            (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ContractAddress(patricia_key!("0x12")),
-            ),
-        )
-        .await
-        .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == CONTRACT_NOT_FOUND.into());
+    call_api_then_assert_and_validate_schema_for_err::<
+        _,
+        (BlockId, ContractAddress),
+        DeprecatedContractClass,
+    >(
+        &module,
+        method_name,
+        &Some((
+            BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
+            ContractAddress(patricia_key!("0x12")),
+        )),
+        &VERSION_0_4,
+        &CONTRACT_NOT_FOUND.into(),
+    )
+    .await;
 
     // Ask for an invalid contract in the given block.
     let err = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_V0_4_getClassAt",
+            method_name,
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(parent_header.block_number)),
                 *address,
@@ -772,24 +815,28 @@ async fn get_class_at() {
     assert_matches!(err, Error::Call(err) if err == CONTRACT_NOT_FOUND.into());
 
     // Ask for an invalid block hash.
-    let err = module
-        .call::<_, DeprecatedContractClass>(
-            "starknet_V0_4_getClassAt",
-            (
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
-                    "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-                )))),
-                *address,
-            ),
-        )
-        .await
-        .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
+    call_api_then_assert_and_validate_schema_for_err::<
+        _,
+        (BlockId, ContractAddress),
+        DeprecatedContractClass,
+    >(
+        &module,
+        method_name,
+        &Some((
+            BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
+                "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
+            )))),
+            *address,
+        )),
+        &VERSION_0_4,
+        &BLOCK_NOT_FOUND.into(),
+    )
+    .await;
 
     // Ask for an invalid block number.
     let err = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_V0_4_getClassAt",
+            method_name,
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))), *address),
         )
         .await
@@ -799,6 +846,7 @@ async fn get_class_at() {
 
 #[tokio::test]
 async fn get_class_hash_at() {
+    let method_name = "starknet_V0_4_getClassHashAt";
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
     let header = BlockHeader::default();
@@ -816,19 +864,19 @@ async fn get_class_hash_at() {
     let (address, expected_class_hash) = diff.deployed_contracts.get_index(0).unwrap();
 
     // Get class hash by block hash.
-    let res = module
-        .call::<_, ClassHash>(
-            "starknet_V0_4_getClassHashAt",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res, *expected_class_hash);
+    call_api_then_assert_and_validate_schema_for_result::<_, (BlockId, ContractAddress), ClassHash>(
+        &module,
+        method_name,
+        &Some((BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address)),
+        &VERSION_0_4,
+        expected_class_hash,
+    )
+    .await;
 
     // Get class hash by block number.
     let res = module
         .call::<_, ClassHash>(
-            "starknet_V0_4_getClassHashAt",
+            method_name,
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *address),
         )
         .await
@@ -836,37 +884,37 @@ async fn get_class_hash_at() {
     assert_eq!(res, *expected_class_hash);
 
     // Ask for an invalid contract.
-    let err = module
-        .call::<_, ClassHash>(
-            "starknet_V0_4_getClassHashAt",
-            (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ContractAddress(patricia_key!("0x12")),
-            ),
-        )
-        .await
-        .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == CONTRACT_NOT_FOUND.into());
+    call_api_then_assert_and_validate_schema_for_err::<_, (BlockId, ContractAddress), ClassHash>(
+        &module,
+        method_name,
+        &Some((
+            BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
+            ContractAddress(patricia_key!("0x12")),
+        )),
+        &VERSION_0_4,
+        &CONTRACT_NOT_FOUND.into(),
+    )
+    .await;
 
     // Ask for an invalid block hash.
-    let err = module
-        .call::<_, ClassHash>(
-            "starknet_V0_4_getClassHashAt",
-            (
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
-                    "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-                )))),
-                *address,
-            ),
-        )
-        .await
-        .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
+    call_api_then_assert_and_validate_schema_for_err::<_, (BlockId, ContractAddress), ClassHash>(
+        &module,
+        method_name,
+        &Some((
+            BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
+                "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
+            )))),
+            *address,
+        )),
+        &VERSION_0_4,
+        &BLOCK_NOT_FOUND.into(),
+    )
+    .await;
 
     // Ask for an invalid block number.
     let err = module
         .call::<_, ClassHash>(
-            "starknet_V0_4_getClassHashAt",
+            method_name,
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), *address),
         )
         .await
@@ -876,6 +924,7 @@ async fn get_class_hash_at() {
 
 #[tokio::test]
 async fn get_nonce() {
+    let method_name = "starknet_V0_4_getNonce";
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
     let header = BlockHeader::default();
@@ -893,19 +942,19 @@ async fn get_nonce() {
     let (address, expected_nonce) = diff.nonces.get_index(0).unwrap();
 
     // Get class hash by block hash.
-    let res = module
-        .call::<_, Nonce>(
-            "starknet_V0_4_getNonce",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res, *expected_nonce);
+    call_api_then_assert_and_validate_schema_for_result::<_, (BlockId, ContractAddress), Nonce>(
+        &module,
+        method_name,
+        &Some((BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address)),
+        &VERSION_0_4,
+        expected_nonce,
+    )
+    .await;
 
     // Get class hash by block number.
     let res = module
         .call::<_, Nonce>(
-            "starknet_V0_4_getNonce",
+            method_name,
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *address),
         )
         .await
@@ -913,37 +962,37 @@ async fn get_nonce() {
     assert_eq!(res, *expected_nonce);
 
     // Ask for an invalid contract.
-    let err = module
-        .call::<_, Nonce>(
-            "starknet_V0_4_getNonce",
-            (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-                ContractAddress(patricia_key!("0x31")),
-            ),
-        )
-        .await
-        .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == CONTRACT_NOT_FOUND.into());
+    call_api_then_assert_and_validate_schema_for_err::<_, (BlockId, ContractAddress), Nonce>(
+        &module,
+        method_name,
+        &Some((
+            BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
+            ContractAddress(patricia_key!("0x31")),
+        )),
+        &VERSION_0_4,
+        &CONTRACT_NOT_FOUND.into(),
+    )
+    .await;
 
     // Ask for an invalid block hash.
-    let err = module
-        .call::<_, Nonce>(
-            "starknet_V0_4_getNonce",
-            (
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
-                    "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-                )))),
-                *address,
-            ),
-        )
-        .await
-        .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
+    call_api_then_assert_and_validate_schema_for_err::<_, (BlockId, ContractAddress), Nonce>(
+        &module,
+        method_name,
+        &Some((
+            BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
+                "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
+            )))),
+            *address,
+        )),
+        &VERSION_0_4,
+        &BLOCK_NOT_FOUND.into(),
+    )
+    .await;
 
     // Ask for an invalid block number.
     let err = module
         .call::<_, Nonce>(
-            "starknet_V0_4_getNonce",
+            method_name,
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), *address),
         )
         .await
@@ -953,6 +1002,7 @@ async fn get_nonce() {
 
 #[tokio::test]
 async fn get_storage_at() {
+    let method_name = "starknet_V0_4_getStorageAt";
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
     let header = BlockHeader::default();
@@ -971,19 +1021,23 @@ async fn get_storage_at() {
     let (key, expected_value) = storage_entries.get_index(0).unwrap();
 
     // Get storage by block hash.
-    let res = module
-        .call::<_, StarkFelt>(
-            "starknet_V0_4_getStorageAt",
-            (*address, *key, BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res, *expected_value);
+    call_api_then_assert_and_validate_schema_for_result::<
+        _,
+        (ContractAddress, StorageKey, BlockId),
+        StarkFelt,
+    >(
+        &module,
+        method_name,
+        &Some((*address, *key, BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)))),
+        &VERSION_0_4,
+        expected_value,
+    )
+    .await;
 
     // Get storage by block number.
     let res = module
         .call::<_, StarkFelt>(
-            "starknet_V0_4_getStorageAt",
+            method_name,
             (*address, *key, BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))),
         )
         .await
@@ -1006,39 +1060,47 @@ async fn get_storage_at() {
     assert_eq!(res, StarkFelt::default());
 
     // Ask for an invalid contract.
-    let err = module
-        .call::<_, StarkFelt>(
-            "starknet_V0_4_getStorageAt",
-            (
-                ContractAddress(patricia_key!("0x12")),
-                key,
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)),
-            ),
-        )
-        .await
-        .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == CONTRACT_NOT_FOUND.into());
+    call_api_then_assert_and_validate_schema_for_err::<
+        _,
+        (ContractAddress, StorageKey, BlockId),
+        StarkFelt,
+    >(
+        &module,
+        method_name,
+        &Some((
+            ContractAddress(patricia_key!("0x12")),
+            key,
+            BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)),
+        )),
+        &VERSION_0_4,
+        &CONTRACT_NOT_FOUND.into(),
+    )
+    .await;
 
     // Ask for an invalid block hash.
-    let err = module
-        .call::<_, StarkFelt>(
-            "starknet_V0_4_getStorageAt",
-            (
-                *address,
-                key,
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
-                    "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-                )))),
-            ),
-        )
-        .await
-        .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
+    call_api_then_assert_and_validate_schema_for_err::<
+        _,
+        (ContractAddress, StorageKey, BlockId),
+        StarkFelt,
+    >(
+        &module,
+        method_name,
+        &Some((
+            *address,
+            key,
+            BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
+                "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
+            )))),
+        )),
+        &VERSION_0_4,
+        &BLOCK_NOT_FOUND.into(),
+    )
+    .await;
 
     // Ask for an invalid block number.
     let err = module
         .call::<_, StarkFelt>(
-            "starknet_V0_4_getStorageAt",
+            method_name,
             (*address, key, BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))),
         )
         .await
@@ -1048,6 +1110,7 @@ async fn get_storage_at() {
 
 #[tokio::test]
 async fn get_transaction_by_hash() {
+    let method_name = "starknet_V0_4_getTransactionByHash";
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
     let block = get_test_block(1, None, None, None);
@@ -1063,28 +1126,29 @@ async fn get_transaction_by_hash() {
         transaction: block.body.transactions[0].clone().into(),
         transaction_hash: block.body.transaction_hashes[0],
     };
-    let res = module
-        .call::<_, TransactionWithHash>(
-            "starknet_V0_4_getTransactionByHash",
-            [block.body.transaction_hashes[0]],
-        )
-        .await
-        .unwrap();
-    assert_eq!(res, expected_transaction);
+    call_api_then_assert_and_validate_schema_for_result::<_, TransactionHash, TransactionWithHash>(
+        &module,
+        method_name,
+        &Some(block.body.transaction_hashes[0]),
+        &VERSION_0_4,
+        &expected_transaction,
+    )
+    .await;
 
     // Ask for an invalid transaction.
-    let err = module
-        .call::<_, TransactionWithHash>(
-            "starknet_V0_4_getTransactionByHash",
-            [TransactionHash(StarkHash::from(1_u8))],
-        )
-        .await
-        .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == TRANSACTION_HASH_NOT_FOUND.into());
+    call_api_then_assert_and_validate_schema_for_err::<_, TransactionHash, TransactionWithHash>(
+        &module,
+        method_name,
+        &Some(TransactionHash(StarkHash::from(1_u8))),
+        &VERSION_0_4,
+        &TRANSACTION_HASH_NOT_FOUND.into(),
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn get_transaction_by_block_id_and_index() {
+    let method_name = "starknet_V0_4_getTransactionByBlockIdAndIndex";
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
     let block = get_test_block(1, None, None, None);
@@ -1104,19 +1168,26 @@ async fn get_transaction_by_block_id_and_index() {
     };
 
     // Get transaction by block hash.
-    let res = module
-        .call::<_, TransactionWithHash>(
-            "starknet_V0_4_getTransactionByBlockIdAndIndex",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash)), 0),
-        )
-        .await
-        .unwrap();
-    assert_eq!(res, expected_transaction);
+    call_api_then_assert_and_validate_schema_for_result::<
+        _,
+        (BlockId, TransactionOffsetInBlock),
+        TransactionWithHash,
+    >(
+        &module,
+        method_name,
+        &Some((
+            BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash)),
+            TransactionOffsetInBlock(0),
+        )),
+        &VERSION_0_4,
+        &expected_transaction,
+    )
+    .await;
 
     // Get transaction by block number.
     let res = module
         .call::<_, TransactionWithHash>(
-            "starknet_V0_4_getTransactionByBlockIdAndIndex",
+            method_name,
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(block.header.block_number)), 0),
         )
         .await
@@ -1124,24 +1195,28 @@ async fn get_transaction_by_block_id_and_index() {
     assert_eq!(res, expected_transaction);
 
     // Ask for an invalid block hash.
-    let err = module
-        .call::<_, TransactionWithHash>(
-            "starknet_V0_4_getTransactionByBlockIdAndIndex",
-            (
-                BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
-                    "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-                )))),
-                0,
-            ),
-        )
-        .await
-        .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
+    call_api_then_assert_and_validate_schema_for_err::<
+        _,
+        (BlockId, TransactionOffsetInBlock),
+        TransactionWithHash,
+    >(
+        &module,
+        method_name,
+        &Some((
+            BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
+                "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
+            )))),
+            TransactionOffsetInBlock(0),
+        )),
+        &VERSION_0_4,
+        &BLOCK_NOT_FOUND.into(),
+    )
+    .await;
 
     // Ask for an invalid block number.
     let err = module
         .call::<_, TransactionWithHash>(
-            "starknet_V0_4_getTransactionByBlockIdAndIndex",
+            method_name,
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))), 0),
         )
         .await
@@ -1149,18 +1224,26 @@ async fn get_transaction_by_block_id_and_index() {
     assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
 
     // Ask for an invalid transaction index.
-    let err = module
-        .call::<_, TransactionWithHash>(
-            "starknet_V0_4_getTransactionByBlockIdAndIndex",
-            (BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash)), 1),
-        )
-        .await
-        .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == INVALID_TRANSACTION_INDEX.into());
+    call_api_then_assert_and_validate_schema_for_err::<
+        _,
+        (BlockId, TransactionOffsetInBlock),
+        TransactionWithHash,
+    >(
+        &module,
+        method_name,
+        &Some((
+            BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash)),
+            TransactionOffsetInBlock(1),
+        )),
+        &VERSION_0_4,
+        &INVALID_TRANSACTION_INDEX.into(),
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn get_state_update() {
+    let method_name = "starknet_V0_4_getStateUpdate";
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
     let parent_header = BlockHeader::default();
@@ -1197,19 +1280,19 @@ async fn get_state_update() {
     };
 
     // Get state update by block hash.
-    let res = module
-        .call::<_, StateUpdate>(
-            "starknet_V0_4_getStateUpdate",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))],
-        )
-        .await
-        .unwrap();
-    assert_eq!(res, expected_update);
+    call_api_then_assert_and_validate_schema_for_result::<_, BlockId, StateUpdate>(
+        &module,
+        method_name,
+        &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))),
+        &VERSION_0_4,
+        &expected_update,
+    )
+    .await;
 
     // Get state update by block number.
     let res = module
         .call::<_, StateUpdate>(
-            "starknet_V0_4_getStateUpdate",
+            method_name,
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))],
         )
         .await
@@ -1217,21 +1300,21 @@ async fn get_state_update() {
     assert_eq!(res, expected_update);
 
     // Ask for an invalid block hash.
-    let err = module
-        .call::<_, StateUpdate>(
-            "starknet_V0_4_getStateUpdate",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
-                "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-            ))))],
-        )
-        .await
-        .unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
+    call_api_then_assert_and_validate_schema_for_err::<_, BlockId, StateUpdate>(
+        &module,
+        method_name,
+        &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
+            "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
+        ))))),
+        &VERSION_0_4,
+        &BLOCK_NOT_FOUND.into(),
+    )
+    .await;
 
     // Ask for an invalid block number.
     let err = module
         .call::<_, StateUpdate>(
-            "starknet_V0_4_getStateUpdate",
+            method_name,
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2)))],
         )
         .await
@@ -1418,8 +1501,14 @@ async fn get_events_page_size_too_big() {
         keys: vec![],
     };
 
-    let err = module.call::<_, EventsChunk>("starknet_V0_4_getEvents", [filter]).await.unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == PAGE_SIZE_TOO_BIG.into());
+    call_api_then_assert_and_validate_schema_for_err::<_, EventFilter, EventsChunk>(
+        &module,
+        "starknet_V0_4_getEvents",
+        &Some(filter),
+        &VERSION_0_4,
+        &PAGE_SIZE_TOO_BIG.into(),
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -1439,10 +1528,17 @@ async fn get_events_too_many_keys() {
         keys,
     };
 
-    let err = module.call::<_, EventsChunk>("starknet_V0_4_getEvents", [filter]).await.unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == TOO_MANY_KEYS_IN_FILTER.into());
+    call_api_then_assert_and_validate_schema_for_err::<_, EventFilter, EventsChunk>(
+        &module,
+        "starknet_V0_4_getEvents",
+        &Some(filter),
+        &VERSION_0_4,
+        &TOO_MANY_KEYS_IN_FILTER.into(),
+    )
+    .await;
 }
 
+// TODO(nevo): add a test that returns the bock not found error for getEvents
 #[tokio::test]
 async fn get_events_no_blocks() {
     let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
@@ -1457,8 +1553,17 @@ async fn get_events_no_blocks() {
         keys: vec![],
     };
 
-    let res = module.call::<_, EventsChunk>("starknet_V0_4_getEvents", [filter]).await.unwrap();
-    assert_eq!(res, EventsChunk { events: vec![], continuation_token: None });
+    let (json_response, res) =
+        raw_call::<_, EventFilter, EventsChunk>(&module, "starknet_V0_4_getEvents", &Some(filter))
+            .await;
+    assert!(
+        &json_response
+            .get("result")
+            .expect("response should have result field")
+            .get("continuation_token")
+            .is_none()
+    );
+    assert_eq!(res.unwrap(), EventsChunk { events: vec![], continuation_token: None });
 }
 
 #[tokio::test]
@@ -1499,17 +1604,14 @@ async fn get_events_no_blocks_in_filter() {
         keys: vec![],
     };
 
-    let (json_response, res) =
-        raw_call::<_, EventFilter, EventsChunk>(&module, "starknet_V0_4_getEvents", &Some(filter))
-            .await;
-    assert!(
-        &json_response
-            .get("result")
-            .expect("response should have result field")
-            .get("continuation_token")
-            .is_none()
-    );
-    assert_eq!(res.unwrap(), EventsChunk { events: vec![], continuation_token: None });
+    call_api_then_assert_and_validate_schema_for_result::<_, EventFilter, EventsChunk>(
+        &module,
+        "starknet_V0_4_getEvents",
+        &Some(filter),
+        &VERSION_0_4,
+        &EventsChunk { events: vec![], continuation_token: None },
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -1537,8 +1639,14 @@ async fn get_events_invalid_ct() {
         keys: vec![],
     };
 
-    let err = module.call::<_, EventsChunk>("starknet_V0_4_getEvents", [filter]).await.unwrap_err();
-    assert_matches!(err, Error::Call(err) if err == INVALID_CONTINUATION_TOKEN.into());
+    call_api_then_assert_and_validate_schema_for_err::<_, EventFilter, EventsChunk>(
+        &module,
+        "starknet_V0_4_getEvents",
+        &Some(filter),
+        &VERSION_0_4,
+        &INVALID_CONTINUATION_TOKEN.into(),
+    )
+    .await;
 }
 
 #[tokio::test]
