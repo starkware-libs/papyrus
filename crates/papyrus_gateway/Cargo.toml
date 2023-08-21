@@ -42,6 +42,7 @@ derive_more.workspace = true
 enum-iterator.workspace = true
 hex.workspace = true
 insta = { workspace = true, features = ["json"] }
+itertools.workspace = true
 jsonschema.workspace = true
 lazy_static.workspace = true
 metrics-exporter-prometheus = { version = "0.12.1" }
@@ -55,5 +56,7 @@ reqwest.workspace = true
 test_utils = { path = "../test_utils" }
 starknet_api = { workspace = true, features = ["testing"] }
 starknet_client = { path = "../starknet_client", features = ["testing"] }
+strum.workspace = true
+strum_macros.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
 rand.workspace = true
