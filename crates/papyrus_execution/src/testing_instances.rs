@@ -63,7 +63,9 @@ auto_impl_get_test_instance! {
         pub calldata: Calldata,
     }
 
-    pub struct RevertReason(pub String);
+    pub enum RevertReason {
+        RevertReason(String) = 0,
+    }
 }
 
 impl GetTestInstance for FunctionInvocation {
