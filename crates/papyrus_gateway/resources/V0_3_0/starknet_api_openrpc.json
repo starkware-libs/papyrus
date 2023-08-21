@@ -93,9 +93,6 @@
                     "oneOf": [
                         {
                             "$ref": "#/components/schemas/STATE_UPDATE"
-                        },
-                        {
-                            "$ref": "#/components/schemas/PENDING_STATE_UPDATE"
                         }
                     ]
                 }
@@ -908,31 +905,14 @@
             },
             "STATE_UPDATE": {
                 "type": "object",
-                "allOf": [
-                    {
-                        "type": "object",
-                        "properties": {
-                            "block_hash": {
-                                "$ref": "#/components/schemas/BLOCK_HASH"
-                            },
-                            "new_root": {
-                                "description": "The new global state root",
-                                "$ref": "#/components/schemas/FELT"
-                            }
-                        },
-                        "required": [
-                            "block_hash",
-                            "new_root"
-                        ]
-                    },
-                    {
-                        "$ref": "#/components/schemas/PENDING_STATE_UPDATE"
-                    }
-                ]
-            },
-            "PENDING_STATE_UPDATE": {
-                "type": "object",
                 "properties": {
+                    "block_hash": {
+                        "$ref": "#/components/schemas/BLOCK_HASH"
+                    },
+                    "new_root": {
+                        "description": "The new global state root",
+                        "$ref": "#/components/schemas/FELT"
+                    },
                     "old_root": {
                         "description": "The previous global state root",
                         "$ref": "#/components/schemas/FELT"
@@ -1027,7 +1007,8 @@
                 "required": [
                     "old_root",
                     "state_diff"
-                ]
+                ],
+                "additionalProperties": false
             },
             "ADDRESS": {
                 "$ref": "#/components/schemas/FELT"
@@ -1200,7 +1181,8 @@
                             }
                         }
                     }
-                ]
+                ],
+                "additionalProperties": false
             },
             "PENDING_BLOCK_WITH_TXS": {
                 "description": "The dynamic block being constructed by the sequencer. Note that this object will be deprecated upon decentralization.",
@@ -1226,7 +1208,8 @@
                             }
                         }
                     }
-                ]
+                ],
+                "additionalProperties": false
             },
             "DEPLOYED_CONTRACT_ITEM": {
                 "type": "object",
