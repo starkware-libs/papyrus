@@ -6,7 +6,9 @@ use std::ops::Index;
 use assert_matches::assert_matches;
 use async_trait::async_trait;
 use indexmap::IndexMap;
+use itertools::Itertools;
 use jsonrpsee::core::Error;
+use jsonrpsee::Methods;
 use jsonschema::JSONSchema;
 use mockall::predicate::eq;
 use papyrus_common::BlockHashAndNumber;
@@ -84,6 +86,7 @@ use crate::syncing_state::SyncStatus;
 use crate::test_utils::{
     call_api_then_assert_and_validate_schema_for_err,
     call_api_then_assert_and_validate_schema_for_result,
+    get_method_names_from_spec,
     get_starknet_spec_api_schema_for_components,
     get_starknet_spec_api_schema_for_method_results,
     get_test_gateway_config,
@@ -2068,4 +2071,33 @@ async fn add_declare_positive_flow() {
 #[tokio::test]
 async fn add_declare_internal_error() {
     AddDeclareTest::test_internal_error().await;
+}
+
+#[test]
+fn spec_api_methods_coverage() {
+    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let implemented_methods: Methods = module.into();
+    let implemented_method_names = implemented_methods
+        .method_names()
+        .map(method_name_to_spec_method_name)
+        .sorted()
+        .collect::<Vec<_>>();
+    let non_implemented_apis = [
+        "starknet_estimateMessageFee".to_string(),
+        "starknet_pendingTransactions".to_string(),
+        "starknet_traceBlockTransactions".to_string(),
+    ];
+    let method_names_in_spec = get_method_names_from_spec(&VERSION_0_4)
+        .iter()
+        .filter_map(|method| {
+            let stripped_method_name = method.clone().replace('\"', "");
+            if non_implemented_apis.contains(&stripped_method_name) {
+                None
+            } else {
+                Some(stripped_method_name)
+            }
+        })
+        .sorted()
+        .collect::<Vec<_>>();
+    assert!(method_names_in_spec.eq(&implemented_method_names));
 }

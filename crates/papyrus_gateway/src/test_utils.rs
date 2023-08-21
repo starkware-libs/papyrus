@@ -16,6 +16,8 @@ use starknet_api::core::{ChainId, ContractAddress, PatriciaKey};
 use starknet_api::hash::StarkHash;
 use starknet_api::{contract_address, patricia_key};
 use starknet_client::writer::MockStarknetWriter;
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 use tokio::sync::RwLock;
 
 use crate::api::JsonRpcServerImpl;
@@ -111,7 +113,7 @@ pub fn validate_schema(schema: &JSONSchema, result: &Value) -> bool {
     result != &Value::Null && schema.is_valid(result)
 }
 
-#[derive(Clone, Copy, Display)]
+#[derive(Clone, Copy, Display, EnumIter)]
 // TODO(yair): Remove Starknet prefix and remove allow.
 #[allow(clippy::enum_variant_names)]
 pub enum SpecFile {
@@ -350,4 +352,20 @@ pub async fn call_api_then_assert_and_validate_schema_for_result<
         ),
         &json_response["result"],
     ));
+}
+
+pub fn get_method_names_from_spec(version_id: &VersionId) -> Vec<String> {
+    SpecFile::iter()
+        .flat_map(|file| {
+            let spec: serde_json::Value = read_spec(format!("./resources/{version_id}/{file}"));
+            let methods_json_arr =
+                spec.as_object().unwrap().get("methods").unwrap().as_array().unwrap();
+            methods_json_arr
+                .iter()
+                .map(|method_object| {
+                    method_object.as_object().unwrap().get("name").unwrap().to_string()
+                })
+                .collect::<Vec<String>>()
+        })
+        .collect::<Vec<_>>()
 }
