@@ -104,10 +104,6 @@
                         {
                             "title": "State update",
                             "$ref": "#/components/schemas/STATE_UPDATE"
-                        },
-                        {
-                            "title": "Pending state update",
-                            "$ref": "#/components/schemas/PENDING_STATE_UPDATE"
                         }
                     ]
                 }
@@ -1096,37 +1092,16 @@
             "STATE_UPDATE": {
                 "title": "State update",
                 "type": "object",
-                "allOf": [
-                    {
-                        "title": "Block info",
-                        "type": "object",
-                        "properties": {
-                            "block_hash": {
-                                "title": "Block hash",
-                                "$ref": "#/components/schemas/BLOCK_HASH"
-                            },
-                            "new_root": {
-                                "title": "New root",
-                                "description": "The new global state root",
-                                "$ref": "#/components/schemas/FELT"
-                            }
-                        },
-                        "required": [
-                            "block_hash",
-                            "new_root"
-                        ]
-                    },
-                    {
-                        "title": "Pending state update",
-                        "$ref": "#/components/schemas/PENDING_STATE_UPDATE"
-                    }
-                ]
-            },
-            "PENDING_STATE_UPDATE": {
-                "title": "Pending state update",
-                "description": "Pending state update",
-                "type": "object",
                 "properties": {
+                    "block_hash": {
+                        "title": "Block hash",
+                        "$ref": "#/components/schemas/BLOCK_HASH"
+                    },
+                    "new_root": {
+                        "title": "New root",
+                        "description": "The new global state root",
+                        "$ref": "#/components/schemas/FELT"
+                    },
                     "old_root": {
                         "title": "Old root",
                         "description": "The previous global state root",
@@ -1461,7 +1436,8 @@
                             }
                         }
                     }
-                ]
+                ],
+                "additionalProperties": false
             },
             "PENDING_BLOCK_WITH_TXS": {
                 "title": "Pending block with transactions",
@@ -1493,7 +1469,8 @@
                             }
                         }
                     }
-                ]
+                ],
+                "additionalProperties": false
             },
             "DEPLOYED_CONTRACT_ITEM": {
                 "title": "Deployed contract item",
