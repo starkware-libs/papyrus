@@ -59,15 +59,31 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]
+        cmd:
+          - test -p papyrus_base_layer
+          - test -p papyrus_common
+          - test -p papyrus_config
+          - test -p papyrus_execution
+          - test -p papyrus_gateway
+          - test -p papyrus_load_test
+          - test -p papyrus_monitoring_gateway
+          - test -p papyrus_node
+          - test -p papyrus_storage
+          - test -p papyrus_sync
+          - test -p starknet_client
+          - test -p test_utils
+
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@v2
-      - run: npm install -g ganache@7.4.3
+      # - run: npm install -g ganache@7.4.3
+      - if: ${{ matrix.cmd == 'test -p papyrus_base_layer' }}
+        run: npm install -g ganache@7.4.3
       - run: |
-          cargo test
+          cargo ${{ matrix.cmd }}
         env:
           SEED: 0
 
