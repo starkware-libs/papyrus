@@ -4462,7 +4462,6 @@ dependencies = [
  "primitive-types",
  "rand",
  "rand_chacha",
- "reqwest",
  "schemars",
  "serde",
  "serde_json",

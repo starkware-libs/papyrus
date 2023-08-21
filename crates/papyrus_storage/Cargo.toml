@@ -25,7 +25,6 @@ num-bigint.workspace = true
 primitive-types.workspace = true
 papyrus_config = { path = "../papyrus_config", version = "0.0.4" }
 parity-scale-codec.workspace = true
-reqwest = { workspace = true, features = ["json", "blocking"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["arbitrary_precision"] }
 starknet_api.workspace = true
