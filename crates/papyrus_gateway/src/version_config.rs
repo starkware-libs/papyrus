@@ -4,6 +4,8 @@ mod version_config_test;
 
 use std::fmt;
 
+pub const VERSION_PATTERN: &str = "[Vv][0-9]+_[0-9]+(_[0-9]+)?";
+
 #[derive(Eq, PartialEq, Hash)]
 /// Labels the jsonRPC versions we have such that there can be multiple versions that are supported,
 /// and there can be multiple versions that are deprecated.
