@@ -4449,7 +4449,6 @@ dependencies = [
  "cairo-lang-utils",
  "camelpaste",
  "flate2",
- "futures-util",
  "indexmap 1.9.3",
  "insta",
  "integer-encoding",
@@ -4463,7 +4462,6 @@ dependencies = [
  "primitive-types",
  "rand",
  "rand_chacha",
- "reqwest",
  "schemars",
  "serde",
  "serde_json",
@@ -4473,7 +4471,6 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
- "url",
 ]
 
 [[package]]
