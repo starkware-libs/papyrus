@@ -43,6 +43,9 @@ use tracing::{debug, error, info, instrument, trace, warn};
 use crate::sources::base_layer::{BaseLayerSourceTrait, EthereumBaseLayerSource};
 use crate::sources::central::{CentralError, CentralSource, CentralSourceTrait};
 
+// Sleep duration, in seconds, between sync progress checks.
+const SLEEP_TIME_SYNC_PROGRESS: Duration = Duration::from_secs(300);
+
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct SyncConfig {
     #[serde(deserialize_with = "deserialize_milliseconds_to_duration")]
@@ -119,8 +122,8 @@ pub type StateSyncResult = Result<(), StateSyncError>;
 
 #[derive(thiserror::Error, Debug)]
 pub enum StateSyncError {
-    #[error("Sync is stuck.")]
-    SyncStuck,
+    #[error("Sync stopped progress.")]
+    NoProgress,
     #[error(transparent)]
     StorageError(#[from] StorageError),
     #[error(transparent)]
@@ -157,7 +160,7 @@ pub enum StateSyncError {
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum SyncEvent {
-    SyncStuck,
+    NoProgress,
     BlockAvailable {
         block_number: BlockNumber,
         block: Block,
@@ -213,7 +216,7 @@ impl<
         // Whitelisting of errors from which we might be able to recover.
         fn is_recoverable(err: &StateSyncError) -> bool {
             match err {
-                StateSyncError::SyncStuck => true,
+                StateSyncError::NoProgress => true,
                 StateSyncError::CentralSourceError(_) => true,
                 StateSyncError::BaseLayerSourceError(_) => true,
                 StateSyncError::StorageError(storage_err)
@@ -280,17 +283,15 @@ impl<
             self.config.base_layer_propagation_sleep_duration,
         )
         .fuse();
-        // This function is used to check if the sync is stuck. This scenario can happen because of
-        // a bug in the "hyper" crate we use.
         // TODO(dvir): try use interval instead of stream.
         // TODO: fix the bug and remove this check.
-        let check_if_sync_stuck = check_if_sync_stuck(self.reader.clone()).fuse();
+        let check_sync_progress = check_sync_progress(self.reader.clone()).fuse();
         pin_mut!(
             block_stream,
             state_diff_stream,
             compiled_class_stream,
             base_layer_block_stream,
-            check_if_sync_stuck
+            check_sync_progress
         );
 
         loop {
@@ -300,7 +301,7 @@ impl<
               res = state_diff_stream.next() => res,
               res = compiled_class_stream.next() => res,
               res = base_layer_block_stream.next() => res,
-              res = check_if_sync_stuck.next() => res,
+              res = check_sync_progress.next() => res,
               complete => break,
             }
             .expect("Received None as a sync event.")?;
@@ -313,7 +314,6 @@ impl<
     // Tries to store the incoming data.
     async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult {
         match sync_event {
-            SyncEvent::SyncStuck => Err(StateSyncError::SyncStuck),
             SyncEvent::BlockAvailable { block_number, block, starknet_version } => {
                 self.store_block(block_number, block, &starknet_version)
             }
@@ -336,6 +336,7 @@ impl<
             SyncEvent::NewBaseLayerBlock { block_number, block_hash } => {
                 self.store_base_layer_block(block_number, block_hash)
             }
+            SyncEvent::NoProgress => Err(StateSyncError::NoProgress),
         }
     }
 
@@ -808,30 +809,27 @@ fn stream_new_base_layer_block<TBaseLayerSource: BaseLayerSourceTrait + Sync>(
     }
 }
 
-// The sleep time between checks if the sync is stuck.
-const SLEEP_TIME_SYNC_STUCK_CHECK: Duration = Duration::from_secs(300);
-
-// This function is used to check if the sync is stuck. This scenario can happen because of a bug in
-// the "hyper" crate we use.
+// This function is used to check if the sync is stuck.
 // TODO: fix the bug and remove this function.
 // TODO(dvir): add a test for this scenario.
-fn check_if_sync_stuck(
+fn check_sync_progress(
     reader: StorageReader,
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
-        let mut header_marker=BlockNumber(0);
-        let mut state_marker=BlockNumber(0);
-        let mut casm_marker=BlockNumber(0);
+        let mut txn=reader.begin_ro_txn()?;
+        let mut header_marker=txn.get_header_marker()?;
+        let mut state_marker=txn.get_state_marker()?;
+        let mut casm_marker=txn.get_compiled_class_marker()?;
         loop{
-            tokio::time::sleep(SLEEP_TIME_SYNC_STUCK_CHECK).await;
-            debug!("Checking if sync is stuck.");
-            let txn=reader.begin_ro_txn()?;
+            tokio::time::sleep(SLEEP_TIME_SYNC_PROGRESS).await;
+            debug!("Checking if sync stopped progress.");
+            txn=reader.begin_ro_txn()?;
             let new_header_marker=txn.get_header_marker()?;
             let new_state_marker=txn.get_state_marker()?;
             let new_casm_marker=txn.get_compiled_class_marker()?;
             if header_marker==new_header_marker && state_marker==new_state_marker && casm_marker==new_casm_marker{
-                debug!("Sync is stuck. Return SyncStuck event.");
-                yield SyncEvent::SyncStuck;
+                debug!("No progress in the sync. Return NoProgress event.");
+                yield SyncEvent::NoProgress;
             }
             header_marker=new_header_marker;
             state_marker=new_state_marker;
