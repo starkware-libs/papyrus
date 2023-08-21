@@ -7,5 +7,7 @@ license-file.workspace = true
 description = "Common utils and objects for a Starknet node."
 
 [dependencies]
+hex.workspace = true
 serde.workspace = true
 starknet_api.workspace = true
+starknet-crypto.workspace = true

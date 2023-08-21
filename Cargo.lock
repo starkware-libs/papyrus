@@ -4261,7 +4261,9 @@ dependencies = [
 name = "papyrus_common"
 version = "0.0.4"
 dependencies = [
+ "hex",
  "serde",
+ "starknet-crypto",
  "starknet_api",
 ]
 
