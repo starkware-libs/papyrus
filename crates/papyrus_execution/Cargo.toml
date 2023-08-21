@@ -34,4 +34,6 @@ cairo-lang-casm.workspace = true
 cairo-lang-utils.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
+rand.workspace = true
+rand_chacha.workspace = true
 test_utils = { path = "../test_utils" }
