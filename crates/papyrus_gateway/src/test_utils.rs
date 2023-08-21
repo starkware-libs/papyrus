@@ -7,14 +7,13 @@ use jsonrpsee::server::RpcModule;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonschema::JSONSchema;
 use papyrus_common::BlockHashAndNumber;
+use papyrus_execution::testing_instances::test_execution_config;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use starknet_api::core::{ChainId, ContractAddress, PatriciaKey};
-use starknet_api::hash::StarkHash;
-use starknet_api::{contract_address, patricia_key};
+use starknet_api::core::ChainId;
 use starknet_client::writer::MockStarknetWriter;
 use tokio::sync::RwLock;
 
@@ -25,7 +24,7 @@ use crate::GatewayConfig;
 pub fn get_test_gateway_config() -> GatewayConfig {
     GatewayConfig {
         chain_id: ChainId("SN_GOERLI".to_string()),
-        fee_contract_address: contract_address!("0x1001"),
+        execution_config: test_execution_config(),
         server_address: String::from("127.0.0.1:0"),
         max_events_chunk_size: 10,
         max_events_keys: 10,
@@ -56,7 +55,7 @@ pub(crate) fn get_test_rpc_server_and_storage_writer_from_params<T: JsonRpcServe
     (
         T::new(
             config.chain_id,
-            config.fee_contract_address,
+            config.execution_config,
             storage_reader,
             config.max_events_chunk_size,
             config.max_events_keys,
