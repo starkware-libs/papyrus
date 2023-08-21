@@ -114,25 +114,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         name: "Rust Toolchain Setup"
         with:
-          profile: minimal
           toolchain: nightly-2023-07-05
-          override: true
-      - uses: actions/cache@v3
-        name: "Cache Setup"
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-      - run:
-          wget https://github.com/est31/cargo-udeps/releases/download/v0.1.35/cargo-udeps-v0.1.35-x86_64-unknown-linux-gnu.tar.gz;
-          tar -xzf cargo-udeps-v0.1.35-x86_64-unknown-linux-gnu.tar.gz;
-          cargo-udeps-v0.1.35-x86_64-unknown-linux-gnu/cargo-udeps udeps --all-targets
+      - uses: Swatinem/rust-cache@v2
+      - name: "Download and run cargo-udeps"
+        run: |
+          wget -O - -c https://github.com/est31/cargo-udeps/releases/download/v0.1.35/cargo-udeps-v0.1.35-x86_64-unknown-linux-gnu.tar.gz | tar -xz
+          cargo-udeps-*/cargo-udeps udeps
         env:
           RUSTUP_TOOLCHAIN: nightly-2023-07-05
 
