@@ -447,7 +447,7 @@ impl<
                 l2_hash: expected_hash,
             });
         }
-        debug!("Storing base layer block. Block number: {block_number}");
+        info!("Verified block {block_number} hash against base layer.");
         txn.update_base_layer_block_marker(&block_number.next())?.commit()?;
         metrics::gauge!(papyrus_metrics::PAPYRUS_BASE_LAYER_MARKER, block_number.next().0 as f64);
         Ok(())
