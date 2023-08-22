@@ -31,7 +31,6 @@ pub struct InvokeTransactionTrace {
     /// The trace of the __validate__ call.
     pub validate_invocation: Option<FunctionInvocation>,
     /// The trace of the __execute__ call or the reason in case of reverted transaction.
-    #[serde(flatten)]
     pub execute_invocation: FunctionInvocationResult,
     /// The trace of the __fee_transfer__ call.
     pub fee_transfer_invocation: Option<FunctionInvocation>,
@@ -39,12 +38,18 @@ pub struct InvokeTransactionTrace {
 
 /// The reason for a reverted transaction.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct RevertReason(pub String);
+#[allow(missing_docs)]
+pub enum RevertReason {
+    #[serde(rename = "revert_reason")]
+    RevertReason(String),
+}
 
 impl From<TransactionExecutionInfo> for InvokeTransactionTrace {
     fn from(transaction_execution_info: TransactionExecutionInfo) -> Self {
         let execute_invocation = match transaction_execution_info.revert_error {
-            Some(revert_error) => FunctionInvocationResult::Err(RevertReason(revert_error)),
+            Some(revert_error) => {
+                FunctionInvocationResult::Err(RevertReason::RevertReason(revert_error))
+            }
             None => FunctionInvocationResult::Ok(
                 transaction_execution_info
                     .execute_call_info
@@ -122,9 +127,9 @@ impl From<TransactionExecutionInfo> for DeployAccountTransactionTrace {
 // Not using `Result` because it is not being serialized according to the spec.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 #[allow(missing_docs)]
+#[serde(untagged)]
 pub enum FunctionInvocationResult {
     Ok(FunctionInvocation),
-    #[serde(rename = "revert_reason")]
     Err(RevertReason),
 }
 
