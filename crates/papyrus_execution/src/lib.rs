@@ -252,10 +252,10 @@ pub fn execute_call(
     };
     let mut cached_state = CachedState::from(ExecutionStateReader { txn, state_number });
     let header =
-        txn.get_block_header(block_before(state_number))?.expect("Should have block header.");
+        txn.get_block_header(state_number.block_after())?.expect("Should have block header.");
     let block_context = create_block_context(
         chain_id.clone(),
-        state_number.0,
+        header.block_number,
         header.timestamp,
         header.gas_price,
         &header.sequencer,
@@ -276,17 +276,10 @@ pub fn execute_call(
     Ok(res.execution)
 }
 
-// TODO(yair): Move to StarknetAPI.
-// If the state was created using StateNumber::right_after_block(block_number), then the function
-// will return the block number.
-fn block_before(state_number: StateNumber) -> BlockNumber {
-    state_number.block_after().prev().unwrap_or_default()
-}
-
 fn verify_node_synced(txn: &StorageTxn<'_, RO>, state_number: StateNumber) -> ExecutionResult<()> {
     let compiled_class_marker = txn.get_compiled_class_marker()?;
     let synced_up_to = StateNumber::right_before_block(compiled_class_marker);
-    if state_number > synced_up_to {
+    if state_number >= synced_up_to {
         return Err(ExecutionError::NotSynced { state_number, compiled_class_marker });
     }
 
@@ -377,15 +370,21 @@ fn execute_transactions(
     validate: bool,
 ) -> ExecutionResult<(Vec<TransactionExecutionInfo>, BlockContext)> {
     verify_node_synced(storage_txn, state_number)?;
+
+    // TODO(yair): When we support pending blocks, use the latest block header instead of the
+    // pending block header.
+
+    // Create the block context from the block in which the transactions should run.
     let header = storage_txn
-        .get_block_header(block_before(state_number))?
+        .get_block_header(state_number.block_after())?
         .expect("Should have block header.");
 
+    // The starknet state will be from right before the block in which the transactions should run.
     let mut cached_state =
         CachedState::from(ExecutionStateReader { txn: storage_txn, state_number });
     let block_context = create_block_context(
         chain_id.clone(),
-        block_before(state_number),
+        header.block_number,
         header.timestamp,
         header.gas_price,
         &header.sequencer,
