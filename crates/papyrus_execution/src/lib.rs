@@ -90,6 +90,7 @@ pub struct ExecutionConfig {
     pub poseidon_builtin: f64,    // POSEIDON_BUILTIN_NAME
     pub output_builtin: f64,      // OUTPUT_BUILTIN_NAME
     pub ec_op_builtin: f64,       // EC_OP_BUILTIN_NAME
+    pub keccak_builtin: f64,      // KECCAK_BUILTIN_NAME
 }
 
 impl Default for ExecutionConfig {
@@ -103,14 +104,15 @@ impl Default for ExecutionConfig {
             max_recursion_depth: 50,
             step_gas_cost: STEP_GAS_COST,
             initial_gas_cost: 10_u64.pow(8) * STEP_GAS_COST,
-            n_steps: 1_f64,
-            pedersen_builtin: 1_f64,
-            range_check_builtin: 1_f64,
-            ecdsa_builtin: 1_f64,
-            bitwise_builtin: 1_f64,
-            poseidon_builtin: 1_f64,
+            n_steps: 0.01_f64,
+            pedersen_builtin: 0.32_f64,
+            range_check_builtin: 0.16_f64,
+            ecdsa_builtin: 20.48_f64,
+            bitwise_builtin: 0.64_f64,
+            poseidon_builtin: 0.32_f64,
             output_builtin: 1_f64,
-            ec_op_builtin: 1_f64,
+            ec_op_builtin: 10.24_f64,
+            keccak_builtin: 20.48_f64,
         }
     }
 }
@@ -174,6 +176,11 @@ impl SerializeConfig for ExecutionConfig {
                 "Cost of a single output builtin call.",
             ),
             ser_param("ec_op_builtin", &self.ec_op_builtin, "Cost of a single ec_op builtin call."),
+            ser_param(
+                "keccak_builtin",
+                &self.keccak_builtin,
+                "Cost of a single keccak builtin call.",
+            ),
         ])
     }
 }
@@ -190,6 +197,7 @@ impl ExecutionConfig {
             ("poseidon_builtin".to_string(), self.poseidon_builtin),
             ("output_builtin".to_string(), self.output_builtin),
             ("ec_op_builtin".to_string(), self.ec_op_builtin),
+            ("keccak_builtin".to_string(), self.keccak_builtin),
         ]))
     }
 }
