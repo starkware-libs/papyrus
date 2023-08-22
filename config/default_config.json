@@ -49,15 +49,15 @@
   },
   "gateway.execution_config.bitwise_builtin": {
     "description": "Cost of a single bitwise builtin call.",
-    "value": 1.0
+    "value": 0.64
   },
   "gateway.execution_config.ec_op_builtin": {
     "description": "Cost of a single ec_op builtin call.",
-    "value": 1.0
+    "value": 10.24
   },
   "gateway.execution_config.ecdsa_builtin": {
     "description": "Cost of a single ecdsa builtin call.",
-    "value": 1.0
+    "value": 20.48
   },
   "gateway.execution_config.fee_contract_address": {
     "description": "The contract address of the ERC-20 fee contract used for paying fees.",
@@ -71,13 +71,17 @@
     "description": "Max steps for invoke transaction.",
     "value": 1000000
   },
+  "gateway.execution_config.keccak_builtin": {
+    "description": "Cost of a single keccak builtin call.",
+    "value": 20.48
+  },
   "gateway.execution_config.max_recursion_depth": {
     "description": "Max recursion depth for transaction.",
     "value": 50
   },
   "gateway.execution_config.n_steps": {
     "description": "I don't know what this is.",
-    "value": 1.0
+    "value": 0.01
   },
   "gateway.execution_config.output_builtin": {
     "description": "Cost of a single output builtin call.",
@@ -85,15 +89,15 @@
   },
   "gateway.execution_config.pedersen_builtin": {
     "description": "Cost of a single pedersen builtin call.",
-    "value": 1.0
+    "value": 0.32
   },
   "gateway.execution_config.poseidon_builtin": {
     "description": "Cost of a single poseidon builtin call.",
-    "value": 1.0
+    "value": 0.32
   },
   "gateway.execution_config.range_check_builtin": {
     "description": "Cost of a single range_check builtin call.",
-    "value": 1.0
+    "value": 0.16
   },
   "gateway.execution_config.step_gas_cost": {
     "description": "Cost of a single step.",
