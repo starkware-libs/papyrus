@@ -1,12 +1,10 @@
-use std::io::BufReader;
-
 use serde::{Deserialize, Serialize};
 use starknet_api::core::ChainId;
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::transaction::DeployAccountTransaction;
-use test_utils::get_absolute_path;
+use starknet_api::transaction::Transaction;
+use test_utils::read_json_file;
 
-use super::{ascii_as_felt, get_deploy_account_transaction_hash};
+use super::{ascii_as_felt, get_transaction_hash, validate_transaction_hash};
 
 #[test]
 fn test_ascii_as_felt() {
@@ -18,19 +16,50 @@ fn test_ascii_as_felt() {
 }
 
 #[derive(Deserialize, Serialize)]
-struct TxWithHash {
-    tx: DeployAccountTransaction,
-    tx_hash: StarkHash,
+struct TransactionWithHash {
+    transaction: Transaction,
+    transaction_hash: StarkHash,
 }
 
 #[test]
-fn test_deploy_account_transaction_hash() {
-    let file_path = get_absolute_path("crates/papyrus_common/resources/tx_hash.json");
-    let file = std::fs::File::open(file_path).unwrap();
-    let reader = BufReader::new(file);
-    let tx_with_hash: TxWithHash = serde_json::from_reader(reader).unwrap();
-
+fn test_transaction_hash() {
+    // The details were taken from Starknet Goerli. You can found the transactions by hash in:
+    // https://alpha4.starknet.io/feeder_gateway/get_transaction?transactionHash=<transaction_hash>
     let chain_id = ChainId("SN_GOERLI".to_owned());
-    let actual_tx_hash = get_deploy_account_transaction_hash(&tx_with_hash.tx, &chain_id).unwrap();
-    assert_eq!(actual_tx_hash, tx_with_hash.tx_hash);
+    let transactions_with_hash: Vec<TransactionWithHash> =
+        serde_json::from_value(read_json_file("transaction_hash.json")).unwrap();
+
+    for transaction_with_hash in transactions_with_hash {
+        assert!(
+            validate_transaction_hash(
+                &transaction_with_hash.transaction,
+                &chain_id,
+                transaction_with_hash.transaction_hash
+            )
+            .unwrap()
+        );
+        let actual_transaction_hash =
+            get_transaction_hash(&transaction_with_hash.transaction, &chain_id).unwrap();
+        assert_eq!(actual_transaction_hash, transaction_with_hash.transaction_hash);
+    }
+}
+
+#[test]
+fn test_deprecated_transaction_hash() {
+    // The details were taken from Starknet Goerli. You can found the transactions by hash in:
+    // https://alpha4.starknet.io/feeder_gateway/get_transaction?transactionHash=<transaction_hash>
+    let chain_id = ChainId("SN_GOERLI".to_owned());
+    let transactions_with_hash: Vec<TransactionWithHash> =
+        serde_json::from_value(read_json_file("deprecated_transaction_hash.json")).unwrap();
+
+    for transaction_with_hash in transactions_with_hash {
+        assert!(
+            validate_transaction_hash(
+                &transaction_with_hash.transaction,
+                &chain_id,
+                transaction_with_hash.transaction_hash
+            )
+            .unwrap()
+        );
+    }
 }
