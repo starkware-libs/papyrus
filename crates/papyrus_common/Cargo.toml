@@ -14,5 +14,6 @@ starknet_api.workspace = true
 starknet-crypto.workspace = true
 
 [dev-dependencies]
+pretty_assertions.workspace = true
 serde_json = { workspace = true, features = ["arbitrary_precision"]}
 test_utils = { path = "../test_utils" }
