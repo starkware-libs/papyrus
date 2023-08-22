@@ -4,8 +4,10 @@ use std::ops::Index;
 
 use assert_matches::assert_matches;
 use indexmap::IndexMap;
+use itertools::Itertools;
 use jsonrpsee::core::Error;
 use jsonrpsee::types::ErrorObjectOwned;
+use jsonrpsee::Methods;
 use jsonschema::JSONSchema;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
@@ -60,6 +62,7 @@ use crate::syncing_state::SyncStatus;
 use crate::test_utils::{
     call_api_then_assert_and_validate_schema_for_err,
     call_api_then_assert_and_validate_schema_for_result,
+    get_method_names_from_spec,
     get_starknet_spec_api_schema_for_components,
     get_starknet_spec_api_schema_for_method_results,
     get_test_gateway_config,
@@ -2008,4 +2011,46 @@ async fn get_deprecated_class_state_mutability() {
     let res_as_value = serde_json::to_value(res).unwrap();
     let entry = res_as_value["abi"][0].as_object().unwrap();
     assert_eq!(entry.get("stateMutability").unwrap().as_str().unwrap(), "view");
+}
+
+#[test]
+fn spec_api_methods_coverage() {
+    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
+    let implemented_methods: Methods = module.into();
+    let implemented_method_names = implemented_methods
+        .method_names()
+        .map(method_name_to_spec_method_name)
+        .sorted()
+        .collect::<Vec<_>>();
+    for mn in implemented_method_names.clone() {
+        println!("{}", mn);
+    }
+    let non_implemented_apis = [
+        "starknet_addDeclareTransaction".to_string(),
+        "starknet_addDeployAccountTransaction".to_string(),
+        "starknet_addInvokeTransaction".to_string(),
+        "starknet_call".to_string(),
+        "starknet_estimateFee".to_string(),
+        "starknet_estimateMessageFee".to_string(),
+        "starknet_pendingTransactions".to_string(),
+        "starknet_traceBlockTransactions".to_string(),
+        "starknet_simulateTransaction".to_string(),
+        "starknet_traceTransaction".to_string(),
+    ];
+    let method_names_in_spec = get_method_names_from_spec(&VERSION_0_3)
+        .iter()
+        .filter_map(|method| {
+            let stripped_method_name = method.clone().replace('\"', "");
+            if non_implemented_apis.contains(&stripped_method_name) {
+                None
+            } else {
+                Some(stripped_method_name)
+            }
+        })
+        .sorted()
+        .collect::<Vec<_>>();
+    for mn in method_names_in_spec.clone() {
+        println!("{}", mn);
+    }
+    assert!(method_names_in_spec.eq(&implemented_method_names));
 }
