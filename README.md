@@ -29,6 +29,7 @@
   - [Configuration](#configuration)
 - [Running `papyrus` with Docker](#running-papyrus-with-docker)
 - [Endpoints](#endpoints)
+- [Papyrus monitoring API](#Papyrus-monitoring-API)
 - [Roadmap](#roadmap)
 - [Support](#support)
 - [Project assistance](#project-assistance)
@@ -175,23 +176,30 @@ curl --location 'localhost:8080/rpc/v0_3' --header 'Content-Type: application/js
 | `starknet_pendingTransactions`             | ![](resources/img/cross.png) | ![](resources/img/cross.png) |
 | `starknet_syncing`                         | ![](resources/img/check.png) | ![](resources/img/check.png) |
 
-## Papyrus Monitoring API
-Papyrus returns information about the running node in the `monitoring` path.<br />
-Example query: `https://<papyrus_url>/monitoring/alive`
+## Papyrus monitoring API
+Endpoints for retrieving monitoring information for the running node is available at `monitoring` path.
+
+Assuming the node monitoring gateway is exposed at `localhost:8081` one might send requests via curl with:  
+`curl https://localhost:8081/monitoring/alive`
 
 ### Endpoints
 
-`alive`<br />Returns status code 200 if the node is alive.<br />
-`nodeVersion`<br /> Returns the version of the node.<br />
-`nodeConfig`<br /> Returns the configuration which the node runs with.<br />
-`dbTablesStats`<br /> Returns statistics of the node database. <br />
-`metrics`<br /> Returns metrics about the node.<br />
+`alive`  
+&emsp; liveliness endpoint (Returns status code 200 if the node is alive).  
+`nodeVersion`  
+&emsp; get node version.  
+`nodeConfig`  
+&emsp; get the current node configuration.  
+`dbTablesStats`  
+&emsp; get statistics for each table in the database ([libmdbx](https://docs.rs/libmdbx/latest/libmdbx/index.html)), for more details see [libmdbx::Stat](https://docs.rs/libmdbx/latest/libmdbx/struct.Stat.html).  
+`metrics`  
+&emsp; get metrics of the node activity. See details below.    
 
 ### Metrics
-Metrics about the node are available in the metric path. By default, the node will not collect metrics, and the metric path will return an error code 405 - Method Not Allowed. To collect metrics, change the configuration value `collect_metrics`.
-Papyrus collects three kinds of metrics: gateway metrics, sync metrics, and proccesse metrics.
+Metrics about the node are available in the metric path. By default, the node will not collect metrics, and the metric path will return an error code 405 - Method Not Allowed. To collect metrics, set the configuration value `collect_metrics` to true.
+Papyrus collects three kinds of metrics: gateway metrics, sync metrics, and process metrics.
 
-#### Gateway Metrics
+#### Gateway metrics
 Papyrus collects three metrics in the gateway:
 * `gateway_incoming_requests` counter
 * `gateway_failed_requests` counter
