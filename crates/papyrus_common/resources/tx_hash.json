@@ -1,17 +1,55 @@
-{
-  "tx": {
-    "max_fee": "0x81ca6d7a5d",
-    "version": "0x1",
-    "signature": [
-      "0x787e77d333665c7c830a8257e36270410f038fb278e8a468d5c89ec09f2c361",
-      "0x4310e1aad5c88a32439bf5b64b0b4114c2a42c8468aa97f374a0738d7733a49"
-    ],
-    "nonce": "0x0",
-    "class_hash": "0x1fac3074c9d5282f0acc5c69a4781a1c711efea5e73c550c5d9fb253cf7fd3d",
-    "contract_address_salt": "0x548987f6a88ad1a506c639f4da4571dfabcfa7fa2abc5da30d3c3c1af71b5d9",
-    "constructor_calldata": [
-      "0x3d03f1e51b6be7edf29c4fa772cf4294259a8449ed32e76ee2169479b06afdd"
-    ]
+[
+  {
+    "tx": {
+      "DeployAccount": {
+        "max_fee": "0x81ca6d7a5d",
+        "version": "0x1",
+        "signature": [
+          "0x787e77d333665c7c830a8257e36270410f038fb278e8a468d5c89ec09f2c361",
+          "0x4310e1aad5c88a32439bf5b64b0b4114c2a42c8468aa97f374a0738d7733a49"
+        ],
+        "nonce": "0x0",
+        "class_hash": "0x1fac3074c9d5282f0acc5c69a4781a1c711efea5e73c550c5d9fb253cf7fd3d",
+        "contract_address_salt": "0x548987f6a88ad1a506c639f4da4571dfabcfa7fa2abc5da30d3c3c1af71b5d9",
+        "constructor_calldata": [
+          "0x3d03f1e51b6be7edf29c4fa772cf4294259a8449ed32e76ee2169479b06afdd"
+        ]
+      }
+    },
+    "tx_hash": "0xd74a7310e8739a8586b851b928bcc32c955009e3a49057e986d0f2c0a06f16",
+    "is_deprecated": false
   },
-  "tx_hash": "0xd74a7310e8739a8586b851b928bcc32c955009e3a49057e986d0f2c0a06f16"
-}
+  {
+    "tx": {
+      "Deploy": {
+        "version": "0x0",
+        "class_hash": "0x25ec026985a3bf9d0cc1fe17326b245dfdc3ff89b8fde106542a3ea56c5a918",
+        "contract_address_salt": "0x535c361a7ec21e5b863763b7c2f81ed395c6c23e6001720a1bcac9f4e0b145d",
+        "constructor_calldata": [
+          "0x3e327de1c40540b98d05cbcb13552008e36f0ec8d61d46956d2f9752c294328",
+          "0x79dc0da7c54b95f10aa182ad0a46400db63156920adb65eca2654c0945a463",
+          "0x2",
+          "0x535c361a7ec21e5b863763b7c2f81ed395c6c23e6001720a1bcac9f4e0b145d",
+          "0x0"
+        ]
+      }
+    },
+    "tx_hash": "0x39017e29a3e0f7f01478ef718096ba4529eabe7e554614f26ff4d0000e2c248",
+    "is_deprecated": false
+  },
+  {
+    "tx": {
+      "Deploy": {
+        "version": "0x0",
+        "class_hash": "0x10455c752b86932ce552f2b0fe81a880746649b9aee7e0d842bf3f52378f9f8",
+        "contract_address_salt": "0x7284a0367fdd636434f76da25532785690d5f27db40ba38b0cfcbc89a472507",
+        "constructor_calldata": [
+          "0x635b73abaa9efff71570cb08f3e5014424788470c3b972b952368fb3fc27cc3",
+          "0x7e92479a573a24241ee6f3e4ade742ff37bae4a60bacef5be1caaff5e7e04f3"
+        ]
+      }
+    },
+    "tx_hash": "0x45c61314be4da85f0e13df53d18062e002c04803218f08061e4b274d4b38537",
+    "is_deprecated": true
+  }
+]
