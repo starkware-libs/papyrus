@@ -29,7 +29,7 @@
   - [Configuration](#configuration)
 - [Running `papyrus` with Docker](#running-papyrus-with-docker)
 - [Endpoints](#endpoints)
-- [Papyrus monitoring API](#Papyrus-monitoring-API)
+- [Papyrus monitoring API](#papyrus-monitoring-api)
 - [Roadmap](#roadmap)
 - [Support](#support)
 - [Project assistance](#project-assistance)
@@ -180,24 +180,25 @@ curl --location 'localhost:8080/rpc/v0_3' --header 'Content-Type: application/js
 Endpoints for retrieving monitoring information for the running node is available at `monitoring` path.
 
 Assuming the node monitoring gateway is exposed at `localhost:8081` one might send requests via curl with:  
-`curl https://localhost:8081/monitoring/alive`
+`curl -X GET  https://localhost:8081/monitoring/alive`
 
 ### Endpoints
 
-`alive`  
+* `alive`  
 &emsp; liveliness endpoint (Returns status code 200 if the node is alive).  
-`nodeVersion`  
+* `nodeVersion`  
 &emsp; get node version.  
-`nodeConfig`  
+* `nodeConfig`  
 &emsp; get the current node configuration.  
-`dbTablesStats`  
+* `dbTablesStats`  
 &emsp; get statistics for each table in the database ([libmdbx](https://docs.rs/libmdbx/latest/libmdbx/index.html)), for more details see [libmdbx::Stat](https://docs.rs/libmdbx/latest/libmdbx/struct.Stat.html).  
-`metrics`  
+* `metrics`  
 &emsp; get metrics of the node activity. See details below.    
 
 ### Metrics
-Metrics about the node are available in the metric path. By default, the node will not collect metrics, and the metric path will return an error code 405 - Method Not Allowed. To collect metrics, set the configuration value `collect_metrics` to true.
 Papyrus collects three kinds of metrics: gateway metrics, sync metrics, and process metrics.
+By default, the node will not collect metrics and the metric path will return an error code `405 - Method Not Allowed`. 
+To collect metrics, set the configuration value `collect_metrics` to true.
 
 #### Gateway metrics
 Papyrus collects three metrics in the gateway:
@@ -205,7 +206,9 @@ Papyrus collects three metrics in the gateway:
 * `gateway_failed_requests` counter
 * `gateway_request_latency_seconds` histogram
 
-Each metric can be filtered by method with the `method` label and by spec version with the `version` label. For example, to get all the incoming requests to method starknet_chainId in spec version 0.4, use the metric `gateway_incoming_requests{method="chainId", version="V0_4"}`. In addition, the number of requests with illegal method can be retrieved using `illegal_method` value for the `method` label.
+Each metric can be filtered by method with the `method` label and by spec version with the `version` label. For example, to get all the incoming requests to method starknet_chainId in spec version 0.4, use the metric `gateway_incoming_requests{method="chainId", version="V0_4"}`.
+
+In addition, the number of requests with illegal method name (for example typo of the user, starknet_chainIddd) can be retrieved using `illegal_method` value for the `method` label.
 
 ## Deployment
 We provide a helm chart for deploying the node to a kubernetes cluster.
