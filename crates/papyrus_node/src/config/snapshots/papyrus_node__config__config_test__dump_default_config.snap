@@ -54,19 +54,19 @@ expression: dumped_default_config
   "gateway.execution_config.bitwise_builtin": {
     "description": "Cost of a single bitwise builtin call.",
     "value": {
-      "$serde_json::private::Number": "1.0"
+      "$serde_json::private::Number": "0.64"
     }
   },
   "gateway.execution_config.ec_op_builtin": {
     "description": "Cost of a single ec_op builtin call.",
     "value": {
-      "$serde_json::private::Number": "1.0"
+      "$serde_json::private::Number": "10.24"
     }
   },
   "gateway.execution_config.ecdsa_builtin": {
     "description": "Cost of a single ecdsa builtin call.",
     "value": {
-      "$serde_json::private::Number": "1.0"
+      "$serde_json::private::Number": "20.48"
     }
   },
   "gateway.execution_config.fee_contract_address": {
@@ -85,6 +85,12 @@ expression: dumped_default_config
       "$serde_json::private::Number": "1000000"
     }
   },
+  "gateway.execution_config.keccak_builtin": {
+    "description": "Cost of a single keccak builtin call.",
+    "value": {
+      "$serde_json::private::Number": "20.48"
+    }
+  },
   "gateway.execution_config.max_recursion_depth": {
     "description": "Max recursion depth for transaction.",
     "value": {
@@ -94,7 +100,7 @@ expression: dumped_default_config
   "gateway.execution_config.n_steps": {
     "description": "I don't know what this is.",
     "value": {
-      "$serde_json::private::Number": "1.0"
+      "$serde_json::private::Number": "0.01"
     }
   },
   "gateway.execution_config.output_builtin": {
@@ -106,19 +112,19 @@ expression: dumped_default_config
   "gateway.execution_config.pedersen_builtin": {
     "description": "Cost of a single pedersen builtin call.",
     "value": {
-      "$serde_json::private::Number": "1.0"
+      "$serde_json::private::Number": "0.32"
     }
   },
   "gateway.execution_config.poseidon_builtin": {
     "description": "Cost of a single poseidon builtin call.",
     "value": {
-      "$serde_json::private::Number": "1.0"
+      "$serde_json::private::Number": "0.32"
     }
   },
   "gateway.execution_config.range_check_builtin": {
     "description": "Cost of a single range_check builtin call.",
     "value": {
-      "$serde_json::private::Number": "1.0"
+      "$serde_json::private::Number": "0.16"
     }
   },
   "gateway.execution_config.step_gas_cost": {
