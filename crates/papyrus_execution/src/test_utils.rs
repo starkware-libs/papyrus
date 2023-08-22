@@ -10,7 +10,14 @@ use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::{StorageReader, StorageWriter};
 use serde::de::DeserializeOwned;
-use starknet_api::block::{BlockBody, BlockHeader, BlockNumber, BlockTimestamp, GasPrice};
+use starknet_api::block::{
+    BlockBody,
+    BlockHash,
+    BlockHeader,
+    BlockNumber,
+    BlockTimestamp,
+    GasPrice,
+};
 use starknet_api::core::{
     ChainId,
     ClassHash,
@@ -145,6 +152,22 @@ pub fn prepare_storage(mut storage_writer: StorageWriter) {
         )
         .unwrap()
         .append_casm(&class_hash0, &get_test_casm())
+        .unwrap()
+        .append_header(
+            BlockNumber(1),
+            &BlockHeader {
+                gas_price: *GAS_PRICE,
+                sequencer: *SEQUENCER_ADDRESS,
+                timestamp: *BLOCK_TIMESTAMP,
+                block_hash: BlockHash(stark_felt!(1_u128)),
+                parent_hash: BlockHash(stark_felt!(0_u128)),
+                ..Default::default()
+            },
+        )
+        .unwrap()
+        .append_body(BlockNumber(1), BlockBody::default())
+        .unwrap()
+        .append_state_diff(BlockNumber(1), StateDiff::default(), indexmap![])
         .unwrap()
         .commit()
         .unwrap();

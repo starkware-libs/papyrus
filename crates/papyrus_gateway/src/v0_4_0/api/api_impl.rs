@@ -546,7 +546,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     ) -> RpcResult<Vec<StarkFelt>> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
-        let state_number = StateNumber::right_after_block(block_number);
+        let state_number = StateNumber::right_before_block(block_number);
         match execute_call(
             &txn,
             &self.chain_id,
@@ -668,7 +668,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
-        let state_number = StateNumber::right_after_block(block_number);
+        let state_number = StateNumber::right_before_block(block_number);
 
         let charge_fee = !simulation_flags.contains(&SimulationFlag::SkipFeeCharge);
         let validate = !simulation_flags.contains(&SimulationFlag::SkipValidate);
