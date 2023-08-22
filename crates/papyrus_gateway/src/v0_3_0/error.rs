@@ -2,27 +2,27 @@ use jsonrpsee::types::ErrorObjectOwned;
 
 #[derive(thiserror::Error, Clone, Copy, Debug)]
 pub enum JsonRpcError {
-    #[error("There are no blocks.")]
-    NoBlocks,
-    #[error("Contract not found.")]
+    #[error("Contract not found")]
     ContractNotFound = 20,
-    #[error("Block not found.")]
+    #[error("Block not found")]
     BlockNotFound = 24,
-    #[error("Transaction hash not found.")]
+    #[error("Transaction hash not found")]
     TransactionHashNotFound = 25,
-    #[error("Invalid transaction index in a block.")]
+    #[error("Invalid transaction index in a block")]
     InvalidTransactionIndex = 27,
-    #[error("Class hash not found.")]
+    #[error("Class hash not found")]
     ClassHashNotFound = 28,
-    #[error("Transaction reverted.")]
+    #[error("Transaction reverted")]
     TransactionReverted = 29,
-    #[error("Requested page size is too big.")]
+    #[error("Requested page size is too big")]
     PageSizeTooBig = 31,
-    #[error("The supplied continuation token is invalid or unknown.")]
+    #[error("There are no blocks")]
+    NoBlocks = 32,
+    #[error("The supplied continuation token is invalid or unknown")]
     InvalidContinuationToken = 33,
-    #[error("Too many keys provided in a filter.")]
+    #[error("Too many keys provided in a filter")]
     TooManyKeysInFilter = 34,
-    #[error("Contract error.")]
+    #[error("Contract error")]
     ContractError = 40,
 }
 
