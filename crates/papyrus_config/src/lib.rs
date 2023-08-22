@@ -61,20 +61,25 @@ pub mod converters;
 pub mod dumping;
 pub mod loading;
 
-/// A description and serialized JSON value of a configuration parameter.
+/// A serialized content of a configuration parameter.
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum SerializedContent {
+    /// Serialized JSON default value.
+    #[serde(rename = "value")]
+    DefaultValue(Value),
+    /// The target from which to take the JSON value of a configuration parameter.
+    PointerTarget(ParamPath),
+}
+
+/// A description and serialized content of a configuration parameter.
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SerializedParam {
     /// The description of the parameter.
     pub description: Description,
-    /// The value of the parameter.
-    pub value: Value,
-}
-
-/// A description and the target from which to take the JSON value of a configuration parameter.
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-pub struct PointerParam {
-    description: String,
-    pointer_target: ParamPath,
+    /// The content of the parameter.
+    #[serde(flatten)]
+    pub content: SerializedContent,
 }
 
 /// Errors at the configuration dumping and loading process.

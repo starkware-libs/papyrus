@@ -17,7 +17,7 @@ use itertools::any;
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
 
-use crate::{command, ConfigError, ParamPath, PointerParam, SerializedParam, IS_NONE_MARK};
+use crate::{command, ConfigError, ParamPath, SerializedContent, SerializedParam, IS_NONE_MARK};
 
 /// Deserializes config from flatten JSON.
 /// For an explanation of `for<'a> Deserialize<'a>` see
@@ -63,15 +63,19 @@ pub(crate) fn get_maps_from_raw_json(
     json_map: Map<String, Value>,
 ) -> (BTreeMap<ParamPath, SerializedParam>, BTreeMap<ParamPath, ParamPath>) {
     let mut config_map: BTreeMap<String, SerializedParam> = BTreeMap::new();
-    let mut pointers_map: BTreeMap<String, ParamPath> = BTreeMap::new();
+    let mut pointers_map: BTreeMap<ParamPath, ParamPath> = BTreeMap::new();
     for (param_path, stored_param) in json_map {
-        if let Ok(ser_param) = serde_json::from_value::<SerializedParam>(stored_param.clone()) {
-            config_map.insert(param_path.to_owned(), ser_param);
-        } else if let Ok(pointer_param) = serde_json::from_value::<PointerParam>(stored_param) {
-            pointers_map.insert(param_path.to_owned(), pointer_param.pointer_target);
-        } else {
+        let Ok(ser_param) = serde_json::from_value::<SerializedParam>(stored_param.clone()) else {
             unreachable!("Invalid type in the json config map")
-        }
+        };
+        match ser_param.content {
+            SerializedContent::DefaultValue(_) => {
+                config_map.insert(param_path, ser_param);
+            }
+            SerializedContent::PointerTarget(pointer_target) => {
+                pointers_map.insert(param_path, pointer_target);
+            }
+        };
     }
     (config_map, pointers_map)
 }
@@ -82,7 +86,10 @@ pub(crate) fn remove_description(
 ) -> BTreeMap<ParamPath, Value> {
     config_map
         .into_iter()
-        .map(|(param_path, serialized_param)| (param_path, serialized_param.value))
+        .filter_map(|(param_path, serialized_param)| match serialized_param.content {
+            SerializedContent::DefaultValue(value) => Some((param_path, value)),
+            SerializedContent::PointerTarget(_) => None,
+        })
         .collect()
 }
 
