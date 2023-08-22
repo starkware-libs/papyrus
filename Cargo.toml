@@ -6,11 +6,11 @@ resolver = "2"
 members = [
     "crates/papyrus_base_layer",
     "crates/papyrus_execution",
-    "crates/papyrus_gateway",
     "crates/papyrus_load_test",
     "crates/papyrus_monitoring_gateway",
     "crates/papyrus_node",
     "crates/papyrus_proc_macros",
+    "crates/papyrus_rpc",
     "crates/papyrus_storage",
     "crates/papyrus_sync",
     "crates/starknet_client",
