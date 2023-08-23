@@ -30,6 +30,7 @@ use crate::{
     GET_TRANSACTION_BY_BLOCK_ID_AND_INDEX_BY_NUMBER_WEIGHT,
     GET_TRANSACTION_BY_HASH_WEIGHT,
     GET_TRANSACTION_RECEIPT_WEIGHT,
+    SYNCING_WEIGHT,
 };
 
 pub fn general_request() -> Scenario {
@@ -83,6 +84,7 @@ pub fn general_request() -> Scenario {
         ),
         (txs::get_transaction_by_hash(), GET_TRANSACTION_BY_HASH_WEIGHT),
         (txs::get_transaction_receipt(), GET_TRANSACTION_RECEIPT_WEIGHT),
+        (txs::syncing(), SYNCING_WEIGHT),
     ];
     for (transaction, weight) in trans_and_weights.into_iter() {
         scenario = scenario.register_transaction(transaction.set_weight(weight).unwrap());
