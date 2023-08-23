@@ -4,10 +4,10 @@
 
 mod api;
 mod compression_utils;
-mod gateway_metrics;
-#[cfg(test)]
-mod gateway_test;
 mod middleware;
+mod rpc_metrics;
+#[cfg(test)]
+mod rpc_test;
 mod syncing_state;
 #[cfg(test)]
 mod test_utils;
@@ -20,7 +20,6 @@ use std::fmt::Display;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use gateway_metrics::MetricLogger;
 use jsonrpsee::server::{ServerBuilder, ServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
@@ -34,6 +33,7 @@ use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::db::TransactionKind;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageReader, StorageTxn};
+use rpc_metrics::MetricLogger;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockStatus};
 use starknet_api::core::ChainId;
@@ -49,7 +49,7 @@ use crate::syncing_state::get_last_synced_block;
 /// Maximum size of a supported transaction body - 10MB.
 pub const SERVER_MAX_BODY_SIZE: u32 = 10 * 1024 * 1024;
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-pub struct GatewayConfig {
+pub struct RpcConfig {
     pub chain_id: ChainId,
     pub server_address: String,
     pub max_events_chunk_size: usize,
@@ -60,9 +60,9 @@ pub struct GatewayConfig {
     pub execution_config: ExecutionConfig,
 }
 
-impl Default for GatewayConfig {
+impl Default for RpcConfig {
     fn default() -> Self {
-        GatewayConfig {
+        RpcConfig {
             chain_id: ChainId("SN_MAIN".to_string()),
             server_address: String::from("0.0.0.0:8080"),
             max_events_chunk_size: 1000,
@@ -79,14 +79,14 @@ impl Default for GatewayConfig {
     }
 }
 
-impl SerializeConfig for GatewayConfig {
+impl SerializeConfig for RpcConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         let mut self_params_dump = BTreeMap::from_iter([
             ser_param("chain_id", &self.chain_id, "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id."),
             ser_param("server_address", &self.server_address, "IP:PORT of the node`s JSON-RPC server."),
             ser_param("max_events_chunk_size", &self.max_events_chunk_size, "Maximum chunk size supported by the node in get_events requests."),
             ser_param("max_events_keys", &self.max_events_keys, "Maximum number of keys supported by the node in get_events requests."),
-            ser_param("collect_metrics", &self.collect_metrics, "If true, collect metrics for the gateway."),
+            ser_param("collect_metrics", &self.collect_metrics, "If true, collect metrics for the rpc."),
             ser_param("starknet_url", &self.starknet_url, "URL for communicating with Starknet in write_api methods."),
         ]);
         let mut retry_config_dump = append_sub_config_name(
@@ -136,13 +136,13 @@ struct ContinuationTokenAsStruct(EventIndex);
 
 #[instrument(skip(storage_reader), level = "debug", err)]
 pub async fn run_server(
-    config: &GatewayConfig,
+    config: &RpcConfig,
     shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
     storage_reader: StorageReader,
     node_version: &'static str,
 ) -> anyhow::Result<(SocketAddr, ServerHandle)> {
     let starting_block = get_last_synced_block(storage_reader.clone())?;
-    debug!("Starting gateway.");
+    debug!("Starting JSON-RPC.");
     let methods = get_methods_from_supported_apis(
         &config.chain_id,
         config.execution_config.clone(),
@@ -178,6 +178,6 @@ pub async fn run_server(
         addr = server.local_addr()?;
         handle = server.start(methods)?;
     }
-    info!(local_address = %addr, "Gateway is running.");
+    info!(local_address = %addr, "JSON-RPC is running.");
     Ok((addr, handle))
 }

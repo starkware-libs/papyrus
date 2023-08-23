@@ -43,140 +43,6 @@ expression: dumped_default_config
     "description": "Starknet feeder-gateway URL. It should match chain_id.",
     "value": "https://alpha-mainnet.starknet.io/"
   },
-  "gateway.chain_id": {
-    "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
-    "value": "SN_MAIN"
-  },
-  "gateway.collect_metrics": {
-    "description": "If true, collect metrics for the gateway.",
-    "value": false
-  },
-  "gateway.execution_config.bitwise_builtin": {
-    "description": "Cost of a single bitwise builtin call.",
-    "value": {
-      "$serde_json::private::Number": "0.64"
-    }
-  },
-  "gateway.execution_config.ec_op_builtin": {
-    "description": "Cost of a single ec_op builtin call.",
-    "value": {
-      "$serde_json::private::Number": "10.24"
-    }
-  },
-  "gateway.execution_config.ecdsa_builtin": {
-    "description": "Cost of a single ecdsa builtin call.",
-    "value": {
-      "$serde_json::private::Number": "20.48"
-    }
-  },
-  "gateway.execution_config.fee_contract_address": {
-    "description": "The contract address of the ERC-20 fee contract used for paying fees.",
-    "value": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
-  },
-  "gateway.execution_config.initial_gas_cost": {
-    "description": "An estimation of the initial gas for a transaction to run with (10e8 * step_gas_cost).",
-    "value": {
-      "$serde_json::private::Number": "10000000000"
-    }
-  },
-  "gateway.execution_config.invoke_tx_max_n_steps": {
-    "description": "Max steps for invoke transaction.",
-    "value": {
-      "$serde_json::private::Number": "1000000"
-    }
-  },
-  "gateway.execution_config.keccak_builtin": {
-    "description": "Cost of a single keccak builtin call.",
-    "value": {
-      "$serde_json::private::Number": "20.48"
-    }
-  },
-  "gateway.execution_config.max_recursion_depth": {
-    "description": "Max recursion depth for transaction.",
-    "value": {
-      "$serde_json::private::Number": "50"
-    }
-  },
-  "gateway.execution_config.n_steps": {
-    "description": "I don't know what this is.",
-    "value": {
-      "$serde_json::private::Number": "0.01"
-    }
-  },
-  "gateway.execution_config.output_builtin": {
-    "description": "Cost of a single output builtin call.",
-    "value": {
-      "$serde_json::private::Number": "1.0"
-    }
-  },
-  "gateway.execution_config.pedersen_builtin": {
-    "description": "Cost of a single pedersen builtin call.",
-    "value": {
-      "$serde_json::private::Number": "0.32"
-    }
-  },
-  "gateway.execution_config.poseidon_builtin": {
-    "description": "Cost of a single poseidon builtin call.",
-    "value": {
-      "$serde_json::private::Number": "0.32"
-    }
-  },
-  "gateway.execution_config.range_check_builtin": {
-    "description": "Cost of a single range_check builtin call.",
-    "value": {
-      "$serde_json::private::Number": "0.16"
-    }
-  },
-  "gateway.execution_config.step_gas_cost": {
-    "description": "Cost of a single step.",
-    "value": {
-      "$serde_json::private::Number": "100"
-    }
-  },
-  "gateway.execution_config.validate_tx_max_n_steps": {
-    "description": "Max steps for validating transaction.",
-    "value": {
-      "$serde_json::private::Number": "1000000"
-    }
-  },
-  "gateway.max_events_chunk_size": {
-    "description": "Maximum chunk size supported by the node in get_events requests.",
-    "value": {
-      "$serde_json::private::Number": "1000"
-    }
-  },
-  "gateway.max_events_keys": {
-    "description": "Maximum number of keys supported by the node in get_events requests.",
-    "value": {
-      "$serde_json::private::Number": "100"
-    }
-  },
-  "gateway.server_address": {
-    "description": "IP:PORT of the node`s JSON-RPC server.",
-    "value": "0.0.0.0:8080"
-  },
-  "gateway.starknet_gateway_retry_config.max_retries": {
-    "description": "For communicating with Starknet gateway, maximum number of retries before the node stops retrying.",
-    "value": {
-      "$serde_json::private::Number": "5"
-    }
-  },
-  "gateway.starknet_gateway_retry_config.retry_base_millis": {
-    "description": "For communicating with Starknet gateway, base waiting time after a failed request. After that, the time increases exponentially.",
-    "value": {
-      "$serde_json::private::Number": "50"
-    }
-  },
-  "gateway.starknet_gateway_retry_config.retry_max_delay_millis": {
-    "description": "For communicating with Starknet gateway, max waiting time after a failed request.",
-    "value": {
-      "$serde_json::private::Number": "1000"
-    }
-  },
-  "gateway.starknet_url": {
-    "description": "URL for communicating with Starknet in write_api methods.",
-    "value": "https://alpha-mainnet.starknet.io/"
-  },
   "monitoring_gateway.collect_metrics": {
     "description": "If true, collect and return metrics in the monitoring gateway.",
     "value": false
@@ -184,6 +50,140 @@ expression: dumped_default_config
   "monitoring_gateway.server_address": {
     "description": "node's monitoring server.",
     "value": "0.0.0.0:8081"
+  },
+  "rpc.chain_id": {
+    "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
+    "value": "SN_MAIN"
+  },
+  "rpc.collect_metrics": {
+    "description": "If true, collect metrics for the rpc.",
+    "value": false
+  },
+  "rpc.execution_config.bitwise_builtin": {
+    "description": "Cost of a single bitwise builtin call.",
+    "value": {
+      "$serde_json::private::Number": "0.64"
+    }
+  },
+  "rpc.execution_config.ec_op_builtin": {
+    "description": "Cost of a single ec_op builtin call.",
+    "value": {
+      "$serde_json::private::Number": "10.24"
+    }
+  },
+  "rpc.execution_config.ecdsa_builtin": {
+    "description": "Cost of a single ecdsa builtin call.",
+    "value": {
+      "$serde_json::private::Number": "20.48"
+    }
+  },
+  "rpc.execution_config.fee_contract_address": {
+    "description": "The contract address of the ERC-20 fee contract used for paying fees.",
+    "value": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
+  },
+  "rpc.execution_config.initial_gas_cost": {
+    "description": "An estimation of the initial gas for a transaction to run with (10e8 * step_gas_cost).",
+    "value": {
+      "$serde_json::private::Number": "10000000000"
+    }
+  },
+  "rpc.execution_config.invoke_tx_max_n_steps": {
+    "description": "Max steps for invoke transaction.",
+    "value": {
+      "$serde_json::private::Number": "1000000"
+    }
+  },
+  "rpc.execution_config.keccak_builtin": {
+    "description": "Cost of a single keccak builtin call.",
+    "value": {
+      "$serde_json::private::Number": "20.48"
+    }
+  },
+  "rpc.execution_config.max_recursion_depth": {
+    "description": "Max recursion depth for transaction.",
+    "value": {
+      "$serde_json::private::Number": "50"
+    }
+  },
+  "rpc.execution_config.n_steps": {
+    "description": "I don't know what this is.",
+    "value": {
+      "$serde_json::private::Number": "0.01"
+    }
+  },
+  "rpc.execution_config.output_builtin": {
+    "description": "Cost of a single output builtin call.",
+    "value": {
+      "$serde_json::private::Number": "1.0"
+    }
+  },
+  "rpc.execution_config.pedersen_builtin": {
+    "description": "Cost of a single pedersen builtin call.",
+    "value": {
+      "$serde_json::private::Number": "0.32"
+    }
+  },
+  "rpc.execution_config.poseidon_builtin": {
+    "description": "Cost of a single poseidon builtin call.",
+    "value": {
+      "$serde_json::private::Number": "0.32"
+    }
+  },
+  "rpc.execution_config.range_check_builtin": {
+    "description": "Cost of a single range_check builtin call.",
+    "value": {
+      "$serde_json::private::Number": "0.16"
+    }
+  },
+  "rpc.execution_config.step_gas_cost": {
+    "description": "Cost of a single step.",
+    "value": {
+      "$serde_json::private::Number": "100"
+    }
+  },
+  "rpc.execution_config.validate_tx_max_n_steps": {
+    "description": "Max steps for validating transaction.",
+    "value": {
+      "$serde_json::private::Number": "1000000"
+    }
+  },
+  "rpc.max_events_chunk_size": {
+    "description": "Maximum chunk size supported by the node in get_events requests.",
+    "value": {
+      "$serde_json::private::Number": "1000"
+    }
+  },
+  "rpc.max_events_keys": {
+    "description": "Maximum number of keys supported by the node in get_events requests.",
+    "value": {
+      "$serde_json::private::Number": "100"
+    }
+  },
+  "rpc.server_address": {
+    "description": "IP:PORT of the node`s JSON-RPC server.",
+    "value": "0.0.0.0:8080"
+  },
+  "rpc.starknet_gateway_retry_config.max_retries": {
+    "description": "For communicating with Starknet gateway, maximum number of retries before the node stops retrying.",
+    "value": {
+      "$serde_json::private::Number": "5"
+    }
+  },
+  "rpc.starknet_gateway_retry_config.retry_base_millis": {
+    "description": "For communicating with Starknet gateway, base waiting time after a failed request. After that, the time increases exponentially.",
+    "value": {
+      "$serde_json::private::Number": "50"
+    }
+  },
+  "rpc.starknet_gateway_retry_config.retry_max_delay_millis": {
+    "description": "For communicating with Starknet gateway, max waiting time after a failed request.",
+    "value": {
+      "$serde_json::private::Number": "1000"
+    }
+  },
+  "rpc.starknet_url": {
+    "description": "URL for communicating with Starknet in write_api methods.",
+    "value": "https://alpha-mainnet.starknet.io/"
   },
   "storage.db_config.chain_id": {
     "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
