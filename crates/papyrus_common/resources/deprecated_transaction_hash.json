@@ -57,5 +57,23 @@
       }
     },
     "transaction_hash": "0x394a595572ee0de6ccf79328c24f9e79979c6cae6a9dd2d413b88ee4a1f32e1"
+  },
+  {
+    "transaction": {
+      "L1Handler": {
+        "version": "0x0",
+        "contract_address": "0x45c2f280c6d96a1e1ff740fd38eb6caab833db833ff03a23fbc10fc746025f8",
+        "entry_point_selector": "0x3d7e9aabaee46b2e84062eb3bca33a0c08e1142b329c095d47ec3d6af1adbc6",
+        "nonce": "0x1784",
+        "calldata": [
+          "0xd9cedf07afdd92ef2733b919637744d5e166492e",
+          "0x54ae80a9c33ee3b65961d8a97d29fd9cc5d23e2d4efa521462f6cf00f6fd4b2",
+          "0x2e695b94dc82ae61d665d9f546029f379ffa8bac",
+          "0x53c9f44836ad00b25c65b360c111bdf2d32115faf2f705d84f1acf69f244775",
+          "0x434d"
+        ]
+      }
+    },
+    "transaction_hash": "0x5772cdd88ca51effeeeff8fcdcd9635c90226bd56ed6b5b6b0e3a318c0a2e9a"
   }
 ]
