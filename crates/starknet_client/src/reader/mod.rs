@@ -304,7 +304,7 @@ fn load_object_from_response<Object: for<'a> Deserialize<'a>>(
     }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum GenericContractClass {
     Cairo0ContractClass(DeprecatedContractClass),
