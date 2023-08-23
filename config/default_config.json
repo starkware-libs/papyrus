@@ -9,7 +9,7 @@
   },
   "central.concurrent_requests": {
     "description": "Maximum number of concurrent requests to Starknet feeder-gateway for getting a type of data (for example, blocks).",
-    "value": 20
+    "value": 10
   },
   "central.http_headers": {
     "description": "'k1:v1 k2:v2 ...' headers for SN-client.",
