@@ -19,7 +19,7 @@ use test_utils::get_rng;
 use tower::BoxError;
 
 use crate::middleware::proxy_rpc_request;
-use crate::test_utils::{get_test_gateway_config, get_test_highest_block};
+use crate::test_utils::{get_test_highest_block, get_test_rpc_config};
 use crate::v0_4_0::error::NO_BLOCKS;
 use crate::version_config::VERSION_CONFIG;
 use crate::{get_block_status, run_server, SERVER_MAX_BODY_SIZE};
@@ -27,7 +27,7 @@ use crate::{get_block_status, run_server, SERVER_MAX_BODY_SIZE};
 #[tokio::test]
 async fn run_server_no_blocks() {
     let ((storage_reader, _), _temp_dir) = get_test_storage();
-    let gateway_config = get_test_gateway_config();
+    let gateway_config = get_test_rpc_config();
     let shared_highest_block = get_test_highest_block();
     let (addr, _handle) =
         run_server(&gateway_config, shared_highest_block, storage_reader, "NODE VERSION")

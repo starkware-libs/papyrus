@@ -16,7 +16,7 @@ use papyrus_config::dumping::{append_sub_config_name, ser_optional_sub_config, S
 use papyrus_config::loading::load_and_process_config;
 use papyrus_config::{ConfigError, ParamPath, SerializedParam};
 use papyrus_monitoring_gateway::MonitoringGatewayConfig;
-use papyrus_rpc::GatewayConfig;
+use papyrus_rpc::RpcConfig;
 use papyrus_storage::db::DbConfig;
 use papyrus_storage::StorageConfig;
 use papyrus_sync::sources::central::CentralSourceConfig;
@@ -34,7 +34,7 @@ pub const DEFAULT_CONFIG_PATH: &str = "config/default_config.json";
 /// The configurations of the various components of the node.
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct NodeConfig {
-    pub gateway: GatewayConfig,
+    pub rpc: RpcConfig,
     pub central: CentralSourceConfig,
     pub base_layer: EthereumBaseLayerConfig,
     pub monitoring_gateway: MonitoringGatewayConfig,
@@ -49,7 +49,7 @@ impl Default for NodeConfig {
         NodeConfig {
             central: CentralSourceConfig::default(),
             base_layer: EthereumBaseLayerConfig::default(),
-            gateway: GatewayConfig::default(),
+            rpc: RpcConfig::default(),
             monitoring_gateway: MonitoringGatewayConfig::default(),
             storage: StorageConfig::default(),
             sync: Some(SyncConfig::default()),
@@ -62,7 +62,7 @@ impl SerializeConfig for NodeConfig {
         chain!(
             append_sub_config_name(self.central.dump(), "central"),
             append_sub_config_name(self.base_layer.dump(), "base_layer"),
-            append_sub_config_name(self.gateway.dump(), "gateway"),
+            append_sub_config_name(self.rpc.dump(), "rpc"),
             append_sub_config_name(self.monitoring_gateway.dump(), "monitoring_gateway"),
             append_sub_config_name(self.storage.dump(), "storage"),
             ser_optional_sub_config(&self.sync, "sync"),

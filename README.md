@@ -196,17 +196,17 @@ Assuming the node monitoring gateway is exposed at `localhost:8081` one might se
 &emsp; get metrics of the node activity. See details below.    
 
 ### Metrics
-Papyrus collects three kinds of metrics: gateway metrics, sync metrics, and process metrics.
-By default, the node will not collect metrics and the metric path will return an error code `405 - Method Not Allowed`. 
+Papyrus collects three kinds of metrics: rpc metrics, sync metrics, and process metrics.
+By default, the node will not collect metrics and the metric path will return an error code `405 - Method Not Allowed`.
 To collect metrics, set the configuration value `collect_metrics` to true.
 
-#### Gateway metrics
-Papyrus collects three metrics in the gateway:
-* `gateway_incoming_requests` counter
-* `gateway_failed_requests` counter
-* `gateway_request_latency_seconds` histogram
+#### JSON-RPC metrics
+Papyrus collects three metrics in the rpc:
+* `rpc_incoming_requests` counter
+* `rpc_failed_requests` counter
+* `rpc_request_latency_seconds` histogram
 
-Each metric can be filtered by method with the `method` label and by spec version with the `version` label. For example, to get all the incoming requests to method starknet_chainId in spec version 0.4, use the metric `gateway_incoming_requests{method="chainId", version="V0_4"}`.
+Each metric can be filtered by method with the `method` label and by spec version with the `version` label. For example, to get all the incoming requests to method starknet_chainId in spec version 0.4, use the metric `rpc_incoming_requests{method="chainId", version="V0_4"}`.
 
 In addition, the number of requests with illegal method name (for example typo of the user, starknet_chainIddd) can be retrieved using `illegal_method` value for the `method` label.
 

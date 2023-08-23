@@ -21,10 +21,10 @@ use tokio::sync::RwLock;
 
 use crate::api::JsonRpcServerImpl;
 use crate::version_config::{VersionId, VERSION_PATTERN};
-use crate::GatewayConfig;
+use crate::RpcConfig;
 
-pub fn get_test_gateway_config() -> GatewayConfig {
-    GatewayConfig {
+pub fn get_test_rpc_config() -> RpcConfig {
+    RpcConfig {
         chain_id: ChainId("SN_GOERLI".to_string()),
         execution_config: test_execution_config(),
         server_address: String::from("127.0.0.1:0"),
@@ -52,7 +52,7 @@ pub(crate) fn get_test_rpc_server_and_storage_writer_from_params<T: JsonRpcServe
     let shared_highest_block = shared_highest_block.unwrap_or(get_test_highest_block());
 
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
-    let config = get_test_gateway_config();
+    let config = get_test_rpc_config();
     let mock_client_arc = Arc::new(mock_client);
     (
         T::new(

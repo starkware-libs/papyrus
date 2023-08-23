@@ -7,7 +7,7 @@ use metrics_exporter_prometheus::PrometheusBuilder;
 use prometheus_parse::Value::Counter;
 use test_utils::prometheus_is_contained;
 
-use crate::gateway_metrics::{
+use crate::rpc_metrics::{
     get_method_and_version,
     MetricLogger,
     FAILED_REQUESTS,

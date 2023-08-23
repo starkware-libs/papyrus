@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod gateway_metrics_test;
+mod rpc_metrics_test;
 
 use std::collections::HashSet;
 use std::net::SocketAddr;
@@ -11,9 +11,9 @@ use jsonrpsee::Methods;
 use metrics::{histogram, increment_counter, register_counter, register_histogram};
 
 // Name of the metrics.
-const INCOMING_REQUEST: &str = "gateway_incoming_requests";
-const FAILED_REQUESTS: &str = "gateway_failed_requests";
-const REQUEST_LATENCY: &str = "gateway_request_latency_seconds";
+const INCOMING_REQUEST: &str = "rpc_incoming_requests";
+const FAILED_REQUESTS: &str = "rpc_failed_requests";
+const REQUEST_LATENCY: &str = "rpc_request_latency_seconds";
 
 // Labels for the metrics.
 const METHOD_LABEL: &str = "method";

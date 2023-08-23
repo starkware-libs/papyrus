@@ -65,8 +65,8 @@ use crate::test_utils::{
     get_method_names_from_spec,
     get_starknet_spec_api_schema_for_components,
     get_starknet_spec_api_schema_for_method_results,
-    get_test_gateway_config,
     get_test_highest_block,
+    get_test_rpc_config,
     get_test_rpc_server_and_storage_writer,
     get_test_rpc_server_and_storage_writer_from_params,
     method_name_to_spec_method_name,
@@ -1601,7 +1601,7 @@ async fn get_events_page_size_too_big() {
         from_block: None,
         to_block: None,
         continuation_token: None,
-        chunk_size: get_test_gateway_config().max_events_chunk_size + 1,
+        chunk_size: get_test_rpc_config().max_events_chunk_size + 1,
         address: None,
         keys: vec![],
     };
@@ -1623,7 +1623,7 @@ async fn get_events_page_size_too_big() {
 #[tokio::test]
 async fn get_events_too_many_keys() {
     let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_3Impl>();
-    let keys = (0..get_test_gateway_config().max_events_keys + 1)
+    let keys = (0..get_test_rpc_config().max_events_keys + 1)
         .map(|i| HashSet::from([EventKey(StarkFelt::from(i as u128))]))
         .collect();
 
@@ -1811,7 +1811,7 @@ async fn serialize_returns_valid_json() {
         .commit()
         .unwrap();
 
-    let gateway_config = get_test_gateway_config();
+    let gateway_config = get_test_rpc_config();
     let (server_address, _handle) =
         run_server(&gateway_config, get_test_highest_block(), storage_reader, NODE_VERSION)
             .await

@@ -50,17 +50,12 @@ fn test_default_config_process() {
 
 #[test]
 fn test_update_dumped_config_by_command() {
-    let args = vec![
-        "Papyrus",
-        "--gateway.max_events_keys",
-        "1234",
-        "--storage.db_config.path_prefix",
-        "/abc",
-    ];
+    let args =
+        vec!["Papyrus", "--rpc.max_events_keys", "1234", "--storage.db_config.path_prefix", "/abc"];
     let args: Vec<String> = args.into_iter().map(|s| s.to_owned()).collect();
     env::set_current_dir(get_absolute_path("")).expect("Couldn't set working dir.");
     let config = NodeConfig::load_and_process(args).unwrap();
 
-    assert_eq!(config.gateway.max_events_keys, 1234);
+    assert_eq!(config.rpc.max_events_keys, 1234);
     assert_eq!(config.storage.db_config.path_prefix.to_str(), Some("/abc"));
 }
