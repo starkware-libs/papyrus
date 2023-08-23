@@ -50,15 +50,15 @@
 
 `Papyrus` is a StarkNet full node written in Rust.
 
-## Getting Started
+## Getting started
 
-### Compiling and running `papyrus`
+### Compiling and running `Papyrus`
 
 Prerequisites
 
 - [Rust](https://www.rust-lang.org/tools/install)
 
-You can build and run a `papyrus` node with the default configuration by running:
+You can build and run a `Papyrus` node with the default configuration by running:
 
 ```bash
 mkdir data
@@ -81,14 +81,14 @@ cargo run --release --package papyrus_node --bin papyrus_node -- --help
 
 See [here](crates/papyrus_config/README.md) for more information.
 
-## Running `papyrus` with Docker
+## Running `Papyrus` with Docker
 
 #### Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/)
 
 #### Command line
-You can run a `papyrus` node with the default configuration by running:
+You can run a `Papyrus` node with the default configuration by running:
 
 ```bash
 docker run --rm --name papyrus\
@@ -100,7 +100,7 @@ docker run --rm --name papyrus\
 > **NOTE**  
 > - The container must have write access to `<local-host-data-path>`.
 > A possible way to assure this is to create the `<local-host-data-path>` directory (only the first
-> time you run `papyrus`) and add `--user "$(id -u):$(id -g)"` to the docker run command.
+> time you run `Papyrus`) and add `--user "$(id -u):$(id -g)"` to the docker run command.
 > - You must include the `dev` tag which keeps track of our development branch and contains the most
 > up-to-date code. Once we have official releases we will add a `latest` tag for the latest release.
 > - Currently, there is no automatic upgrade mechanism.
@@ -128,7 +128,7 @@ docker run --rm --name papyrus\
 For more information, see [Docker's documentation](https://docs.docker.com/config/containers/resource_constraints/#limit-a-containers-access-to-memory).
 
 
-## sending API requests to the node
+## Sending API requests to the node
 API requests are sent to the path `/rpc/<starknet-rpc-version-id>`.
 Current supported versions are:
 * V0_3_0
