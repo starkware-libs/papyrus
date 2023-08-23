@@ -169,7 +169,7 @@ pub struct ContractClass {
     pub abi: String,
 }
 
-// The conversion is done here and not in papyrus_gateway because the gateway uses starknet_api for
+// The conversion is done here and not in papyrus_rpc because the gateway uses starknet_api for
 // DeployAccountTransaction.
 impl From<starknet_api::transaction::DeployAccountTransaction> for DeployAccountTransaction {
     fn from(tx: starknet_api::transaction::DeployAccountTransaction) -> Self {
