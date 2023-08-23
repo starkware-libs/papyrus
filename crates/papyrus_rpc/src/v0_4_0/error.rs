@@ -15,11 +15,9 @@ pub const FAILED_TO_RECEIVE_TRANSACTION: JsonRpcError =
 pub const CONTRACT_NOT_FOUND: JsonRpcError =
     JsonRpcError { code: 20, message: "Contract not found", data: None };
 
-#[allow(dead_code)]
 pub const INVALID_TRANSACTION_HASH: JsonRpcError =
     JsonRpcError { code: 25, message: "Invalid transaction hash", data: None };
 
-#[allow(dead_code)]
 pub const INVALID_BLOCK_HASH: JsonRpcError =
     JsonRpcError { code: 26, message: "Invalid block hash", data: None };
 

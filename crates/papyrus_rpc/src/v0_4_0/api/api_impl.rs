@@ -15,6 +15,7 @@ use papyrus_execution::{
 };
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
+use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use starknet_api::block::{BlockNumber, BlockStatus};
@@ -37,7 +38,7 @@ use starknet_api::transaction::{
 use starknet_client::writer::{StarknetWriter, WriterClientError};
 use starknet_client::ClientError;
 use tokio::sync::RwLock;
-use tracing::{instrument, trace};
+use tracing::{debug, instrument, trace};
 
 use super::super::block::{Block, BlockHeader};
 use super::super::broadcasted_transaction::{
@@ -65,6 +66,7 @@ use super::{
     JsonRpcV0_4Server,
     SimulatedTransaction,
     SimulationFlag,
+    TransactionTraceWithHash,
 };
 use crate::api::{BlockHashOrNumber, JsonRpcServerImpl};
 use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
@@ -74,6 +76,7 @@ use crate::v0_4_0::error::{
     BLOCK_NOT_FOUND,
     CLASS_HASH_NOT_FOUND,
     CONTRACT_NOT_FOUND,
+    INVALID_BLOCK_HASH,
     INVALID_TRANSACTION_HASH,
     INVALID_TRANSACTION_INDEX,
     NO_BLOCKS,
@@ -705,6 +708,18 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             .map_err(internal_server_error)?
             .ok_or(INVALID_TRANSACTION_HASH)?;
 
+        let casm_marker = storage_txn.get_compiled_class_marker().map_err(internal_server_error)?;
+        if casm_marker <= block_number {
+            debug!(
+                ?transaction_hash,
+                ?block_number,
+                ?casm_marker,
+                "Transaction is in the storage, but the compiled classes are not fully synced up \
+                 to its block.",
+            );
+            return Err(INVALID_TRANSACTION_HASH.into());
+        }
+
         let block_transactions = storage_txn
             .get_block_transactions(block_number)
             .map_err(internal_server_error)?
@@ -745,6 +760,73 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             Ok(mut simulation_results) => {
                 Ok(simulation_results.pop().expect("Should have transaction exeuction result").0)
             }
+            Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
+            Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
+        }
+    }
+
+    #[instrument(skip(self), level = "debug", err)]
+    fn trace_block_transactions(
+        &self,
+        block_id: BlockId,
+    ) -> RpcResult<Vec<TransactionTraceWithHash>> {
+        let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let block_number = get_block_number(&storage_txn, block_id)?;
+
+        let casm_marker = storage_txn.get_compiled_class_marker().map_err(internal_server_error)?;
+        if casm_marker <= block_number {
+            debug!(
+                ?block_id,
+                ?casm_marker,
+                "Block is in the storage, but the compiled classes are not fully synced.",
+            );
+            return Err(INVALID_BLOCK_HASH.into());
+        }
+
+        let block_transactions = storage_txn
+            .get_block_transactions(block_number)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| {
+                internal_server_error(StorageError::DBInconsistency {
+                    msg: format!("Missing block {block_number} transactions"),
+                })
+            })?;
+
+        let tx_hashes = storage_txn
+            .get_block_transaction_hashes(block_number)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| {
+                internal_server_error(StorageError::DBInconsistency {
+                    msg: format!("Missing block {block_number} transactions"),
+                })
+            })?;
+
+        let state_number = StateNumber::right_before_block(block_number);
+        let executable_txns = block_transactions
+            .into_iter()
+            .map(|tx| stored_txn_to_executable_txn(tx, &storage_txn, state_number))
+            .collect::<Result<_, _>>()?;
+
+        let res = exec_simulate_transactions(
+            executable_txns,
+            Some(tx_hashes.clone()),
+            &self.chain_id,
+            &storage_txn,
+            state_number,
+            &self.execution_config,
+            true,
+            true,
+        );
+
+        match res {
+            Ok(simulation_results) => Ok(simulation_results
+                .into_iter()
+                .zip(tx_hashes)
+                .map(|((trace_root, _, _), transaction_hash)| TransactionTraceWithHash {
+                    transaction_hash,
+                    trace_root,
+                })
+                .collect()),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
         }
