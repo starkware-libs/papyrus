@@ -18,14 +18,15 @@ use tracing::{debug, instrument};
 use super::{ApiContractClass, CentralResult, CentralStateUpdate};
 use crate::CentralError;
 
-// TODO (dan): take from config.
-const MAX_STATE_UPDATES_TO_DOWNLOAD: usize = 100;
-const MAX_STATE_UPDATES_TO_STORE_IN_MEMORY: usize = 100;
-const MAX_CLASSES_TO_DOWNLOAD: usize = 100;
-const CLASSES_INITIAL_CAPACITY: usize = MAX_STATE_UPDATES_TO_STORE_IN_MEMORY * 5;
-
 type TasksQueue<T> = FuturesOrdered<Pin<Box<dyn Future<Output = T> + Send>>>;
 type NumberOfClasses = usize;
+
+#[derive(Clone)]
+pub struct StateUpdateStreamConfig {
+    pub max_state_updates_to_download: usize,
+    pub max_state_updates_to_store_in_memory: usize,
+    pub max_classes_to_download: usize,
+}
 
 pub(crate) struct StateUpdateStream<TStarknetClient: StarknetReader + Send + 'static> {
     initial_block_number: BlockNumber,
@@ -38,6 +39,7 @@ pub(crate) struct StateUpdateStream<TStarknetClient: StarknetReader + Send + 'st
     classes_to_download: VecDeque<ClassHash>,
     download_class_tasks: TasksQueue<CentralResult<Option<ApiContractClass>>>,
     downloaded_classes: VecDeque<ApiContractClass>,
+    config: StateUpdateStreamConfig,
 }
 
 impl<TStarknetClient: StarknetReader + Send + Sync + 'static> Stream
@@ -86,6 +88,7 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> StateUpdateStream<
         up_to_block_number: BlockNumber,
         starknet_client: Arc<TStarknetClient>,
         storage_reader: StorageReader,
+        config: StateUpdateStreamConfig,
     ) -> Self {
         StateUpdateStream {
             initial_block_number,
@@ -93,10 +96,17 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> StateUpdateStream<
             starknet_client,
             storage_reader,
             download_state_update_tasks: futures::stream::FuturesOrdered::new(),
-            downloaded_state_updates: VecDeque::with_capacity(MAX_STATE_UPDATES_TO_STORE_IN_MEMORY),
-            classes_to_download: VecDeque::with_capacity(CLASSES_INITIAL_CAPACITY),
+            downloaded_state_updates: VecDeque::with_capacity(
+                config.max_state_updates_to_store_in_memory,
+            ),
+            classes_to_download: VecDeque::with_capacity(
+                config.max_state_updates_to_store_in_memory * 5,
+            ),
             download_class_tasks: futures::stream::FuturesOrdered::new(),
-            downloaded_classes: VecDeque::with_capacity(CLASSES_INITIAL_CAPACITY),
+            downloaded_classes: VecDeque::with_capacity(
+                config.max_state_updates_to_store_in_memory * 5,
+            ),
+            config,
         }
     }
 
@@ -135,7 +145,7 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> StateUpdateStream<
 
     // Adds more class downloading tasks.
     fn schedule_class_downloads(self: &mut std::pin::Pin<&mut Self>, should_poll_again: &mut bool) {
-        while self.download_class_tasks.len() < MAX_CLASSES_TO_DOWNLOAD {
+        while self.download_class_tasks.len() < self.config.max_classes_to_download {
             let Some(class_hash) = self.classes_to_download.pop_front() else {
                 break;
             };
@@ -180,7 +190,7 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> StateUpdateStream<
         should_poll_again: &mut bool,
     ) {
         while self.initial_block_number < self.up_to_block_number
-            && self.download_state_update_tasks.len() < MAX_STATE_UPDATES_TO_DOWNLOAD
+            && self.download_state_update_tasks.len() < self.config.max_state_updates_to_download
         {
             let current_block_number = self.initial_block_number;
             let starknet_client = self.starknet_client.clone();
@@ -199,7 +209,7 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> StateUpdateStream<
         cx: &mut std::task::Context<'_>,
         should_poll_again: &mut bool,
     ) -> CentralResult<()> {
-        if self.downloaded_state_updates.len() >= MAX_STATE_UPDATES_TO_STORE_IN_MEMORY {
+        if self.downloaded_state_updates.len() >= self.config.max_state_updates_to_store_in_memory {
             return Ok(());
         }
 
