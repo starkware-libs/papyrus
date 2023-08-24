@@ -3,6 +3,7 @@
 mod transaction_test;
 
 use jsonrpsee::types::ErrorObjectOwned;
+use lazy_static::lazy_static;
 use papyrus_storage::body::events::ThinTransactionOutput;
 use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::db::TransactionKind;
@@ -38,15 +39,16 @@ use starknet_client::writer::objects::transaction as client_transaction;
 use crate::internal_server_error;
 use crate::v0_4_0::error::BLOCK_NOT_FOUND;
 
-// TODO(yair): Make these functions regular consts.
-fn tx_v0() -> TransactionVersion {
-    TransactionVersion(StarkFelt::try_from("0x0").expect("Unable to convert 0x0 to StarkFelt."))
-}
-fn tx_v1() -> TransactionVersion {
-    TransactionVersion(StarkFelt::try_from("0x1").expect("Unable to convert 0x1 to StarkFelt."))
-}
-fn tx_v2() -> TransactionVersion {
-    TransactionVersion(StarkFelt::try_from("0x2").expect("Unable to convert 0x2 to StarkFelt."))
+lazy_static! {
+    static ref TX_V0: TransactionVersion = TransactionVersion(
+        StarkFelt::try_from("0x0").expect("Unable to convert 0x0 to StarkFelt.")
+    );
+    static ref TX_V1: TransactionVersion = TransactionVersion(
+        StarkFelt::try_from("0x1").expect("Unable to convert 0x1 to StarkFelt.")
+    );
+    static ref TX_V2: TransactionVersion = TransactionVersion(
+        StarkFelt::try_from("0x2").expect("Unable to convert 0x2 to StarkFelt.")
+    );
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -85,7 +87,7 @@ impl From<starknet_api::transaction::DeclareTransactionV2> for DeclareTransactio
             sender_address: tx.sender_address,
             nonce: tx.nonce,
             max_fee: tx.max_fee,
-            version: tx_v2(),
+            version: *TX_V2,
             signature: tx.signature,
         }
     }
@@ -105,7 +107,7 @@ where
     D: Deserializer<'de>,
 {
     let v0v1: DeclareTransactionV0V1 = Deserialize::deserialize(deserializer)?;
-    if v0v1.version == tx_v0() {
+    if v0v1.version == *TX_V0 {
         Ok(v0v1)
     } else {
         Err(serde::de::Error::custom("Invalid version value"))
@@ -126,7 +128,7 @@ impl From<starknet_api::transaction::InvokeTransactionV0> for InvokeTransactionV
     fn from(tx: starknet_api::transaction::InvokeTransactionV0) -> Self {
         Self {
             max_fee: tx.max_fee,
-            version: tx_v0(),
+            version: *TX_V0,
             signature: tx.signature,
             contract_address: tx.contract_address,
             entry_point_selector: tx.entry_point_selector,
@@ -149,7 +151,7 @@ impl From<starknet_api::transaction::InvokeTransactionV1> for InvokeTransactionV
     fn from(tx: starknet_api::transaction::InvokeTransactionV1) -> Self {
         Self {
             max_fee: tx.max_fee,
-            version: tx_v1(),
+            version: *TX_V1,
             signature: tx.signature,
             nonce: tx.nonce,
             sender_address: tx.sender_address,
@@ -213,7 +215,7 @@ impl From<starknet_api::transaction::Transaction> for Transaction {
                         sender_address: tx.sender_address,
                         nonce: tx.nonce,
                         max_fee: tx.max_fee,
-                        version: tx_v0(),
+                        version: *TX_V0,
                         signature: tx.signature,
                     }))
                 }
@@ -223,7 +225,7 @@ impl From<starknet_api::transaction::Transaction> for Transaction {
                         sender_address: tx.sender_address,
                         nonce: tx.nonce,
                         max_fee: tx.max_fee,
-                        version: tx_v1(),
+                        version: *TX_V1,
                         signature: tx.signature,
                     }))
                 }
