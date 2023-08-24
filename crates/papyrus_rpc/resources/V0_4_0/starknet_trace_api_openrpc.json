@@ -187,14 +187,21 @@
                                                 "description": "the revert reason for the failed execution",
                                                 "type": "string"
                                             }
-                                        }
+                                        },
+                                        "required": [
+                                            "revert_reason"
+                                        ]
                                     }
                                 ]
                             },
                             "fee_transfer_invocation": {
                                 "$ref": "#/components/schemas/FUNCTION_INVOCATION"
                             }
-                        }
+                        },
+                        "required": [
+                            "execute_invocation"
+                        ],
+                        "additionalProperties": false
                     },
                     {
                         "name": "DECLARE_TXN_TRACE",
@@ -207,7 +214,12 @@
                             "fee_transfer_invocation": {
                                 "$ref": "#/components/schemas/FUNCTION_INVOCATION"
                             }
-                        }
+                        },
+                        "required": [
+                            "validate_invocation",
+                            "fee_transfer_invocation"
+                        ],
+                        "additionalProperties": false
                     },
                     {
                         "name": "DEPLOY_ACCOUNT_TXN_TRACE",
@@ -224,7 +236,13 @@
                             "fee_transfer_invocation": {
                                 "$ref": "#/components/schemas/FUNCTION_INVOCATION"
                             }
-                        }
+                        },
+                        "required": [
+                            "validate_invocation",
+                            "constructor_invocation",
+                            "fee_transfer_invocation"
+                        ],
+                        "additionalProperties": false
                     },
                     {
                         "name": "L1_HANDLER_TXN_TRACE",
@@ -235,7 +253,11 @@
                                 "description": "the trace of the __execute__ call or constructor call, depending on the transaction type (none for declare transactions)",
                                 "$ref": "#/components/schemas/FUNCTION_INVOCATION"
                             }
-                        }
+                        },
+                        "required": [
+                            "function_invocation"
+                        ],
+                        "additionalProperties": false
                     }
                 ]
             },
@@ -306,7 +328,17 @@
                                     "$ref": "#/components/schemas/MSG_TO_L1"
                                 }
                             }
-                        }
+                        },
+                        "required": [
+                            "caller_address",
+                            "class_hash",
+                            "entry_point_type",
+                            "call_type",
+                            "result",
+                            "calls",
+                            "events",
+                            "messages"
+                        ]
                     }
                 ]
             },
