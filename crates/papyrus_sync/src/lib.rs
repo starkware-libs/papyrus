@@ -680,7 +680,10 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
                     mut state_diff,
                     deployed_contract_class_definitions,
                 ) = maybe_state_diff?;
+                let t_sort = std::time::Instant::now();
                 sort_state_diff(&mut state_diff);
+                let t_sort = t_sort.elapsed();
+                debug!("Sorting state diff {block_number}: {t_sort:?}.");
                 yield SyncEvent::StateDiffAvailable {
                     block_number,
                     block_hash,

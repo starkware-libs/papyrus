@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::num::NonZeroUsize;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::Poll;
@@ -6,12 +7,14 @@ use std::task::Poll;
 use futures_util::stream::FuturesOrdered;
 use futures_util::{Future, Stream, StreamExt};
 use indexmap::IndexMap;
+use lru::LruCache;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::StorageReader;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 use starknet_api::state::{StateDiff, StateNumber};
 use starknet_client::reader::{ReaderClientResult, StarknetReader, StateUpdate};
+use tokio::sync::Mutex;
 use tracing::log::trace;
 use tracing::{debug, instrument};
 
@@ -39,6 +42,7 @@ pub(crate) struct StateUpdateStream<TStarknetClient: StarknetReader + Send + 'st
     classes_to_download: VecDeque<ClassHash>,
     download_class_tasks: TasksQueue<CentralResult<Option<ApiContractClass>>>,
     downloaded_classes: VecDeque<ApiContractClass>,
+    cache: Arc<Mutex<LruCache<ClassHash, ApiContractClass>>>,
     config: StateUpdateStreamConfig,
 }
 
@@ -107,6 +111,9 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> StateUpdateStream<
                 config.max_state_updates_to_store_in_memory * 5,
             ),
             config,
+            cache: Arc::from(Mutex::new(LruCache::new(
+                NonZeroUsize::new(30).expect("30 should not be zero."),
+            ))),
         }
     }
 
@@ -151,7 +158,9 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> StateUpdateStream<
             };
             let starknet_client = self.starknet_client.clone();
             let storage_reader = self.storage_reader.clone();
+            let cache = self.cache.clone();
             self.download_class_tasks.push_back(Box::pin(download_class_if_necessary(
+                cache,
                 class_hash,
                 starknet_client,
                 storage_reader,
@@ -330,10 +339,17 @@ fn client_to_central_state_update(
 // If not found in the storage, the class is downloaded.
 #[instrument(skip(starknet_client, storage_reader), level = "debug", err)]
 async fn download_class_if_necessary<TStarknetClient: StarknetReader>(
+    cache: Arc<Mutex<LruCache<ClassHash, ApiContractClass>>>,
     class_hash: ClassHash,
     starknet_client: Arc<TStarknetClient>,
     storage_reader: StorageReader,
 ) -> CentralResult<Option<ApiContractClass>> {
+    {
+        let mut cache = cache.lock().await;
+        if let Some(class) = cache.get(&class_hash) {
+            return Ok(Some(class.clone()));
+        }
+    }
     let txn = storage_reader.begin_ro_txn()?;
     let state_reader = txn.get_state_reader()?;
     let block_number = txn.get_state_marker()?;
@@ -342,6 +358,10 @@ async fn download_class_if_necessary<TStarknetClient: StarknetReader>(
     // Check declared classes.
     if let Ok(Some(class)) = state_reader.get_class_definition_at(state_number, &class_hash) {
         trace!("Class {:?} retrieved from storage.", class_hash);
+        {
+            let mut cache = cache.lock().await;
+            cache.put(class_hash, ApiContractClass::ContractClass(class.clone()));
+        }
         return Ok(Some(ApiContractClass::ContractClass(class)));
     };
 
@@ -350,6 +370,10 @@ async fn download_class_if_necessary<TStarknetClient: StarknetReader>(
         state_reader.get_deprecated_class_definition_at(state_number, &class_hash)
     {
         trace!("Deprecated class {:?} retrieved from storage.", class_hash);
+        {
+            let mut cache = cache.lock().await;
+            cache.put(class_hash, ApiContractClass::DeprecatedContractClass(class.clone()));
+        }
         return Ok(Some(ApiContractClass::DeprecatedContractClass(class)));
     }
 
@@ -358,6 +382,12 @@ async fn download_class_if_necessary<TStarknetClient: StarknetReader>(
     let client_class = starknet_client.class_by_hash(class_hash).await.map_err(Arc::new)?;
     match client_class {
         None => Ok(None),
-        Some(class) => Ok(Some(class.into())),
+        Some(class) => {
+            {
+                let mut cache = cache.lock().await;
+                cache.put(class_hash, class.clone().into());
+            }
+            Ok(Some(class.into()))
+        }
     }
 }

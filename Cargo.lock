@@ -3620,6 +3620,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "lru"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eedb2bdbad7e0634f83989bf596f497b070130daaa398ab22d84c39e266deec5"
+dependencies = [
+ "hashbrown 0.14.0",
+]
+
+[[package]]
 name = "mach2"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4045,7 +4054,7 @@ checksum = "5f4e3bc495f6e95bc15a6c0c55ac00421504a5a43d09e3cc455d1fea7015581d"
 dependencies = [
  "bitvec 1.0.1",
  "either",
- "lru",
+ "lru 0.7.8",
  "num-bigint",
  "num-integer",
  "num-modular",
@@ -4493,6 +4502,7 @@ dependencies = [
  "indexmap 1.9.3",
  "itertools 0.10.5",
  "libmdbx",
+ "lru 0.11.0",
  "metrics",
  "mockall",
  "papyrus_base_layer",

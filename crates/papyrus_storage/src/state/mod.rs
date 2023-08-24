@@ -394,8 +394,12 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
         let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
 
+        let t_sort = std::time::Instant::now();
         update_marker(&self.txn, &markers_table, block_number)?;
+        let t_sort = t_sort.elapsed();
+        debug!("update_marker {block_number}: {t_sort:?}.");
 
+        let t_sort = std::time::Instant::now();
         // Write state except declared classes.
         write_deployed_contracts(
             &state_diff.deployed_contracts,
@@ -404,20 +408,39 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             &deployed_contracts_table,
             &nonces_table,
         )?;
+        let t_sort = t_sort.elapsed();
+        debug!("write_deployed_contracts {block_number}: {t_sort:?}.");
+
+        let t_sort = std::time::Instant::now();
         write_storage_diffs(&state_diff.storage_diffs, &self.txn, block_number, &storage_table)?;
+        let t_sort = t_sort.elapsed();
+        debug!("write_storage_diffs {block_number}: {t_sort:?}.");
+
+        let t_sort = std::time::Instant::now();
         write_nonces(&state_diff.nonces, &self.txn, block_number, &nonces_table)?;
+        let t_sort = t_sort.elapsed();
+        debug!("write_nonces {block_number}: {t_sort:?}.");
+
+        let t_sort = std::time::Instant::now();
         write_replaced_classes(
             &state_diff.replaced_classes,
             &self.txn,
             block_number,
             &deployed_contracts_table,
         )?;
+        let t_sort = t_sort.elapsed();
+        debug!("write_replaced_classes {block_number}: {t_sort:?}.");
 
+        let t_sort = std::time::Instant::now();
         // Write state diff.
         let (thin_state_diff, declared_classes, deprecated_declared_classes) =
             ThinStateDiff::from_state_diff(state_diff);
+        let t_sort_thin = t_sort.elapsed();
         state_diffs_table.insert(&self.txn, &block_number, &thin_state_diff)?;
+        let t_sort = t_sort.elapsed();
+        debug!("thin_state_diff {block_number}: ({t_sort_thin:?}) {t_sort:?}.");
 
+        let t_sort = std::time::Instant::now();
         // Write declared classes.
         write_declared_classes(
             &declared_classes,
@@ -426,10 +449,16 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             block_number,
             &declared_classes_block_table,
         )?;
+        let t_sort = t_sort.elapsed();
+        debug!("write_declared_classes {block_number}: {t_sort:?}.");
 
-        // Advance compiled class marker.
+        let t_sort = std::time::Instant::now();
         update_compiled_class_marker(&self.txn, &markers_table, &state_diffs_table)?;
+        let t_sort = t_sort.elapsed();
+        debug!("update_compiled_class_marker {block_number}: {t_sort:?}.");
+        // Advance compiled class marker.
 
+        let t_sort = std::time::Instant::now();
         // Write deprecated declared classes.
         if !deployed_contract_class_definitions.is_empty() {
             // TODO(anatg): Remove this after regenesis.
@@ -452,6 +481,8 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
                 &deprecated_declared_classes_table,
             )?;
         }
+        let t_sort = t_sort.elapsed();
+        debug!("write_deprecated_declared_classes {block_number}: {t_sort:?}.");
 
         Ok(self)
     }
