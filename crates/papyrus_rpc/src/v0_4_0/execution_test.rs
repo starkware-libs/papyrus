@@ -368,68 +368,7 @@ async fn call_simulate_skip_fee_charge() {
 }
 
 #[tokio::test]
-async fn call_trace_transaction() {
-    let (module, storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
-
-    let mut writer = prepare_storage_for_execution(storage_writer);
-
-    let tx_hash = TransactionHash(stark_felt!("0x1234"));
-    writer
-        .begin_rw_txn()
-        .unwrap()
-        .append_header(
-            BlockNumber(2),
-            &BlockHeader {
-                gas_price: *GAS_PRICE,
-                sequencer: *SEQUENCER_ADDRESS,
-                timestamp: *BLOCK_TIMESTAMP,
-                block_hash: BlockHash(stark_felt!("0x2")),
-                parent_hash: BlockHash(stark_felt!("0x1")),
-                ..Default::default()
-            },
-        )
-        .unwrap()
-        .append_body(
-            BlockNumber(2),
-            BlockBody {
-                transactions: vec![starknet_api::transaction::Transaction::Invoke(
-                    starknet_api::transaction::InvokeTransaction::V1(
-                        starknet_api::transaction::InvokeTransactionV1 {
-                            max_fee: *MAX_FEE,
-                            sender_address: *ACCOUNT_ADDRESS,
-                            calldata: calldata![
-                                *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
-                                selector_from_name("return_result").0, // EP selector.
-                                stark_felt!(1_u8),                     // Calldata length.
-                                stark_felt!(2_u8)                      // Calldata: num.
-                            ],
-                            ..Default::default()
-                        },
-                    ),
-                )],
-                transaction_outputs: vec![starknet_api::transaction::TransactionOutput::Invoke(
-                    starknet_api::transaction::InvokeTransactionOutput::default(),
-                )],
-                transaction_hashes: vec![tx_hash],
-            },
-        )
-        .unwrap()
-        .append_state_diff(BlockNumber(2), StateDiff::default(), IndexMap::new())
-        .unwrap()
-        .commit()
-        .unwrap();
-
-    let res = module
-        .call::<_, TransactionTrace>("starknet_V0_4_traceTransaction", [tx_hash])
-        .await
-        .unwrap();
-
-    assert_matches!(res, TransactionTrace::Invoke(_));
-}
-
-#[tokio::test]
-async fn call_trace_block_transactions() {
+async fn trace_block_transactions() {
     let (module, storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
 
@@ -501,6 +440,20 @@ async fn call_trace_block_transactions() {
         .commit()
         .unwrap();
 
+    let tx_1_trace = module
+        .call::<_, TransactionTrace>("starknet_V0_4_traceTransaction", [tx_hash1])
+        .await
+        .unwrap();
+
+    assert_matches!(tx_1_trace, TransactionTrace::Invoke(_));
+
+    let tx_2_trace = module
+        .call::<_, TransactionTrace>("starknet_V0_4_traceTransaction", [tx_hash2])
+        .await
+        .unwrap();
+
+    assert_matches!(tx_2_trace, TransactionTrace::Invoke(_));
+
     let res = module
         .call::<_, Vec<TransactionTraceWithHash>>(
             "starknet_V0_4_traceBlockTransactions",
@@ -510,9 +463,9 @@ async fn call_trace_block_transactions() {
         .unwrap();
 
     assert_eq!(res.len(), 2);
-    assert_matches!(res[0].trace_root, TransactionTrace::Invoke(_));
+    assert_eq!(res[0].trace_root, tx_1_trace);
     assert_eq!(res[0].transaction_hash, tx_hash1);
-    assert_matches!(res[1].trace_root, TransactionTrace::Invoke(_));
+    assert_eq!(res[1].trace_root, tx_2_trace);
     assert_eq!(res[1].transaction_hash, tx_hash2);
 }
 

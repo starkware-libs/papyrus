@@ -467,7 +467,7 @@ pub(crate) fn decompress_program(
     serde_json::from_reader(decompressed.as_slice()).map_err(internal_server_error)
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 pub struct TransactionTraceWithHash {
     pub transaction_hash: TransactionHash,
     pub trace_root: TransactionTrace,

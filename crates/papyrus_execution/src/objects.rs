@@ -17,7 +17,7 @@ use starknet_api::transaction::{Calldata, EventContent, MessageToL1};
 
 /// The execution trace of a transaction.
 #[allow(missing_docs)]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 #[serde(untagged)]
 pub enum TransactionTrace {
     Invoke(InvokeTransactionTrace),
@@ -26,7 +26,7 @@ pub enum TransactionTrace {
 }
 
 /// The execution trace of an Invoke transaction.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct InvokeTransactionTrace {
     /// The trace of the __validate__ call.
     pub validate_invocation: Option<FunctionInvocation>,
@@ -71,7 +71,7 @@ impl From<TransactionExecutionInfo> for InvokeTransactionTrace {
 }
 
 /// The execution trace of a Declare transaction.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct DeclareTransactionTrace {
     /// The trace of the __validate__ call.
     pub validate_invocation: Option<FunctionInvocation>,
@@ -93,7 +93,7 @@ impl From<TransactionExecutionInfo> for DeclareTransactionTrace {
 }
 
 /// The execution trace of a DeployAccount transaction.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct DeployAccountTransactionTrace {
     /// The trace of the __validate__ call.
     pub validate_invocation: Option<FunctionInvocation>,
