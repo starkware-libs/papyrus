@@ -568,7 +568,7 @@ fn update_compiled_class_marker<'env>(
     while compiled_class_marker < state_marker {
         let state_diff = state_diffs_table
             .get(txn, &compiled_class_marker)?
-            .unwrap_or_else(|| panic!("Missing state diff for block {}", compiled_class_marker));
+            .unwrap_or_else(|| panic!("Missing state diff for block {compiled_class_marker}"));
         if !state_diff.declared_classes.is_empty() {
             break;
         }

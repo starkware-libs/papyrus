@@ -152,12 +152,12 @@ pub(crate) fn update_config_map_by_pointers(
 pub(crate) fn update_optional_values(config_map: &mut BTreeMap<ParamPath, Value>) {
     let optional_params: Vec<_> = config_map
         .keys()
-        .filter_map(|param_path| param_path.strip_suffix(&format!(".{}", IS_NONE_MARK)))
+        .filter_map(|param_path| param_path.strip_suffix(&format!(".{IS_NONE_MARK}")))
         .map(|param_path| param_path.to_owned())
         .collect();
     let mut none_params = vec![];
     for optional_param in optional_params {
-        let value = config_map.remove(&format!("{}.{}", optional_param, IS_NONE_MARK)).unwrap();
+        let value = config_map.remove(&format!("{optional_param}.{IS_NONE_MARK}")).unwrap();
         if value == json!(true) {
             none_params.push(optional_param);
         }

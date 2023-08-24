@@ -71,8 +71,7 @@ where
         let split: Vec<&str> = raw_pair.split(':').collect();
         if split.len() != 2 {
             return Err(D::Error::custom(format!(
-                "pair \"{}\" is not valid. The Expected format is name:value",
-                raw_pair
+                "pair \"{raw_pair}\" is not valid. The Expected format is name:value"
             )));
         }
         map.insert(split[0].to_string(), split[1].to_string());

@@ -94,7 +94,7 @@ fn get_version_as_prefix(path: &str) -> Result<&str, BoxError> {
     let Some(temp_version) = uri_components.get(2) else {
         // as long as 'deny_requests_with_unsupported_path' middleware is used, this should never
         // happen but for safety we return an error and not unreachable!()
-        let msg = format!("Invalid path format: {}", path);
+        let msg = format!("Invalid path format: {path}");
         debug!(msg);
         return Err(BoxError::from(msg));
     };

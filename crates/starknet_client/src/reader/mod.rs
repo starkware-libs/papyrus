@@ -161,7 +161,7 @@ impl StarknetFeederGatewayClient {
         load_object_from_response(
             response,
             KnownStarknetErrorCode::BlockNotFound,
-            format!("Failed to get block number {:?} from starknet server.", block_number),
+            format!("Failed to get block number {block_number:?} from starknet server."),
         )
     }
 }
@@ -191,7 +191,7 @@ impl StarknetReader for StarknetFeederGatewayClient {
         load_object_from_response(
             response,
             KnownStarknetErrorCode::UndeclaredClass,
-            format!("Failed to get class with hash {:?} from starknet server.", class_hash),
+            format!("Failed to get class with hash {class_hash:?} from starknet server."),
         )
     }
 
@@ -207,8 +207,7 @@ impl StarknetReader for StarknetFeederGatewayClient {
             response,
             KnownStarknetErrorCode::BlockNotFound,
             format!(
-                "Failed to get state update for block number {} from starknet server.",
-                block_number
+                "Failed to get state update for block number {block_number} from starknet server."
             ),
         )
         .map(|option| {
@@ -276,10 +275,7 @@ impl StarknetReader for StarknetFeederGatewayClient {
         load_object_from_response(
             response,
             KnownStarknetErrorCode::UndeclaredClass,
-            format!(
-                "Failed to get compiled class with hash {:?} from starknet server.",
-                class_hash
-            ),
+            format!("Failed to get compiled class with hash {class_hash:?} from starknet server."),
         )
     }
 }

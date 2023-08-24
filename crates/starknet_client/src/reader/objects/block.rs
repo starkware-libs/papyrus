@@ -37,7 +37,7 @@ impl<'de> Deserialize<'de> for GlobalRoot {
     {
         let mut as_string = String::deserialize(deserializer)?;
         if !as_string.starts_with("0x") {
-            as_string = format!("0x{}", as_string);
+            as_string = format!("0x{as_string}");
         }
         let string_des = serde::de::value::StringDeserializer::new(as_string);
         Ok(Self(Deserialize::deserialize(string_des)?))
