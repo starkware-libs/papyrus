@@ -59,6 +59,7 @@ use starknet_api::transaction::{
     DeployAccountTransaction,
     Fee,
     InvokeTransaction,
+    L1HandlerTransaction,
     Transaction,
     TransactionHash,
 };
@@ -331,6 +332,7 @@ pub enum ExecutableTransactionInput {
     DeclareV1(DeclareTransactionV0V1, DeprecatedContractClass),
     DeclareV2(DeclareTransactionV2, CasmContractClass),
     Deploy(DeployAccountTransaction),
+    L1Handler(L1HandlerTransaction, Fee),
 }
 
 /// Returns the fee estimation for a series of transactions.
@@ -450,7 +452,6 @@ fn to_blockifier_tx(
                 None,
             )?)
         }
-
         ExecutableTransactionInput::DeclareV2(declare_tx, compiled_class) => {
             let class_v1 = BlockifierContractClass::V1(compiled_class.try_into()?);
             Ok(BlockifierTransaction::from_api(
@@ -458,6 +459,15 @@ fn to_blockifier_tx(
                 tx_hash,
                 Some(class_v1),
                 None,
+                None,
+            )?)
+        }
+        ExecutableTransactionInput::L1Handler(l1_handler_tx, paid_fee) => {
+            Ok(BlockifierTransaction::from_api(
+                Transaction::L1Handler(l1_handler_tx),
+                tx_hash,
+                None,
+                Some(paid_fee),
                 None,
             )?)
         }
@@ -515,6 +525,9 @@ fn calc_trace_and_fee(
         }
         ExecutableTransactionInput::Deploy(_) => {
             TransactionTrace::DeployAccount(execution_info.into())
+        }
+        ExecutableTransactionInput::L1Handler(_, _) => {
+            TransactionTrace::L1Handler(execution_info.into())
         }
     };
     (trace, gas_price, fee)

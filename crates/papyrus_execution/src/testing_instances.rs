@@ -17,6 +17,7 @@ use crate::objects::{
     FunctionInvocation,
     FunctionInvocationResult,
     InvokeTransactionTrace,
+    L1HandlerTransactionTrace,
     OrderedL2ToL1Message,
     Retdata,
     RevertReason,
@@ -49,6 +50,9 @@ auto_impl_get_test_instance! {
         pub validate_invocation: Option<FunctionInvocation>,
         pub constructor_invocation: FunctionInvocation,
         pub fee_transfer_invocation: Option<FunctionInvocation>,
+    }
+    pub struct L1HandlerTransactionTrace {
+        pub function_invocation: FunctionInvocation,
     }
 
     pub enum FunctionInvocationResult {

@@ -291,6 +291,8 @@ impl TxsScenarioBuilder {
         self
     }
 
+    // TODO(yair): add l1 handler transaction.
+
     fn next_nonce(&mut self, sender_address: ContractAddress) -> Nonce {
         match self.sender_to_nonce.get_mut(&sender_address) {
             Some(current) => {
