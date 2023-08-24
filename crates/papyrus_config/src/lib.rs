@@ -70,6 +70,23 @@ pub enum SerializedContent {
     DefaultValue(Value),
     /// The target from which to take the JSON value of a configuration parameter.
     PointerTarget(ParamPath),
+    /// Type of a required configuration parameter.
+    RequiredType(SerializationType),
+}
+
+impl SerializedContent {
+    fn get_serialization_type(&self) -> Option<SerializationType> {
+        match self {
+            SerializedContent::DefaultValue(value) => match value {
+                Value::Number(_) => Some(SerializationType::Number),
+                Value::Bool(_) => Some(SerializationType::Boolean),
+                Value::String(_) => Some(SerializationType::String),
+                _ => None,
+            },
+            SerializedContent::PointerTarget(_) => None,
+            SerializedContent::RequiredType(ser_type) => Some(ser_type.clone()),
+        }
+    }
 }
 
 /// A description and serialized content of a configuration parameter.
@@ -80,6 +97,15 @@ pub struct SerializedParam {
     /// The content of the parameter.
     #[serde(flatten)]
     pub content: SerializedContent,
+}
+
+/// A serialized type of a configuration parameter.
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, strum_macros::Display)]
+#[allow(missing_docs)]
+pub enum SerializationType {
+    Number,
+    Boolean,
+    String,
 }
 
 /// Errors at the configuration dumping and loading process.
@@ -100,6 +126,6 @@ pub enum ConfigError {
     PointerTargetNotFound { target_param: String },
     #[error("{pointing_param} is not found.")]
     PointerSourceNotFound { pointing_param: String },
-    #[error("Changing {param_path} type from {before} to {after} is not allowed.")]
-    ChangeParamType { param_path: String, before: Value, after: Value },
+    #[error("Changing {param_path} from required type {required} to {given} is not allowed.")]
+    ChangeRequiredParamType { param_path: String, required: SerializationType, given: Value },
 }

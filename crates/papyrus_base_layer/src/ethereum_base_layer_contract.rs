@@ -45,6 +45,7 @@ pub struct EthereumBaseLayerConfig {
 impl SerializeConfig for EthereumBaseLayerConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         BTreeMap::from_iter([
+            // TODO(yoav): Serialize as required param. Edit the description.
             ser_param(
                 "node_url",
                 &self.node_url,

@@ -16,11 +16,20 @@
 //! }
 //! ```
 //!
+//! Supports required params. A required param has no default value, but the type of value that the
+//! user must set:
+//! ```json
+//! "conf1.conf2.conf3.param_name: {
+//!     "description": "Param description.",
+//!     "required_type": Number
+//! }
+//! ```
+//!
 //! Supports flags for optional params and sub-configs. An optional param / sub-config has an
 //! "#is_none" indicator that determines whether to take its value or to deserialize it to None:
 //! ```json
 //! "conf1.conf2.#is_none": {
-//!     "description": ""Flag for an optional field.",
+//!     "description": "Flag for an optional field.",
 //!     "value": true
 //! }
 //! ```
@@ -33,7 +42,14 @@ use itertools::chain;
 use serde::Serialize;
 use serde_json::{json, Value};
 
-use crate::{ConfigError, ParamPath, SerializedContent, SerializedParam, IS_NONE_MARK};
+use crate::{
+    ConfigError,
+    ParamPath,
+    SerializationType,
+    SerializedContent,
+    SerializedParam,
+    IS_NONE_MARK,
+};
 
 /// Serialization for configs.
 pub trait SerializeConfig {
@@ -88,6 +104,22 @@ pub fn ser_param<T: Serialize>(
         SerializedParam {
             description: description.to_owned(),
             content: SerializedContent::DefaultValue(json!(value)),
+        },
+    )
+}
+
+/// Serializes expected type for a single required param of a config.
+/// The returned pair is designed to be an input to a dumped config map.
+pub fn ser_required_param(
+    name: &str,
+    serialization_type: SerializationType,
+    description: &str,
+) -> (String, SerializedParam) {
+    (
+        name.to_owned(),
+        SerializedParam {
+            description: description.to_owned(),
+            content: SerializedContent::RequiredType(serialization_type),
         },
     )
 }
