@@ -16,7 +16,7 @@ starknet:
   # SN_MAIN: https://alpha-mainnet.starknet.io
   # SN_GOERLI: https://alpha4.starknet.io
   centralUrl: https://alpha-mainnet.starknet.io
-  additionalHeaders: # optional addtional headers for SN communication
+  additionalHeaders: # optional additional headers for SN communication
 
 deployment:
   # The container image

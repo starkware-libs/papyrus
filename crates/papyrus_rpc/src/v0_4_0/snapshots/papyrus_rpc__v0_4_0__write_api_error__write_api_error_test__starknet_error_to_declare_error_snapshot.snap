@@ -153,7 +153,7 @@ expression: get_conversion_snapshot(starknet_error_to_declare_error)
         "$serde_json::private::Number": "63"
       },
       "data": "message",
-      "message": "An unexpected error occured"
+      "message": "An unexpected error occurred"
     },
     {
       "code": "code",

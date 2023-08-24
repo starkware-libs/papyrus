@@ -100,7 +100,7 @@ pub const UNSUPPORTED_CONTRACT_CLASS_VERSION: JsonRpcError =
     JsonRpcError { code: 62, message: "the contract class version is not supported", data: None };
 
 pub fn unexpected_error(data: String) -> JsonRpcError {
-    JsonRpcError { code: 63, message: "An unexpected error occured", data: Some(data) }
+    JsonRpcError { code: 63, message: "An unexpected error occurred", data: Some(data) }
 }
 
 impl From<JsonRpcError> for ErrorObjectOwned {

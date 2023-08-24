@@ -225,7 +225,7 @@ fn get_method_index(spec: &serde_json::Value, method: &str) -> usize {
 
 // This function will change the errors in components/errors into schemas that accept the error.
 // It will change an error from the following json object:
-// { "code": 1, "message": "an error occured" } into {
+// { "code": 1, "message": "an error occurred" } into {
 //     "properties": {
 //         "code: {
 //             "type": "integer",
@@ -233,13 +233,13 @@ fn get_method_index(spec: &serde_json::Value, method: &str) -> usize {
 //          },
 //          "message": {
 //              "type": "string",
-//              "enum": ["an error occured"]
+//              "enum": ["an error occurred"]
 //          }
 //      },
 //      required: ["code", "message"]
 //  }
 // And it will change an error from the following json object:
-// { "code": 1, "message": "an error occured", "data": "string" } into {
+// { "code": 1, "message": "an error occurred", "data": "string" } into {
 //     "properties": {
 //         "code: {
 //             "type": "integer",
@@ -247,7 +247,7 @@ fn get_method_index(spec: &serde_json::Value, method: &str) -> usize {
 //          },
 //          "message": {
 //              "type": "string",
-//              "enum": ["an error occured"]
+//              "enum": ["an error occurred"]
 //          }
 //          "data": {}
 //      },
