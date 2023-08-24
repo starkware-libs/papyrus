@@ -361,8 +361,11 @@ pub(crate) fn stored_txn_to_executable_txn(
         starknet_api::transaction::Transaction::Invoke(value) => {
             Ok(ExecutableTransactionInput::Invoke(value))
         }
-        starknet_api::transaction::Transaction::L1Handler(_) => {
-            Err(internal_server_error("L1 handler txns not supported in execution"))
+        starknet_api::transaction::Transaction::L1Handler(value) => {
+            // todo(yair): This is a temporary solution until we have a better way to get the l1
+            // fee.
+            let paid_fee_on_l1 = Fee(1);
+            Ok(ExecutableTransactionInput::L1Handler(value, paid_fee_on_l1))
         }
     }
 }

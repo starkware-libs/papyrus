@@ -20,6 +20,7 @@ use starknet_api::transaction::{Calldata, EventContent, MessageToL1};
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum TransactionTrace {
+    L1Handler(L1HandlerTransactionTrace),
     Invoke(InvokeTransactionTrace),
     Declare(DeclareTransactionTrace),
     DeployAccount(DeployAccountTransactionTrace),
@@ -119,6 +120,24 @@ impl From<TransactionExecutionInfo> for DeployAccountTransactionTrace {
             fee_transfer_invocation: transaction_execution_info
                 .fee_transfer_call_info
                 .map(FunctionInvocation::from),
+        }
+    }
+}
+
+/// The execution trace of an L1Handler transaction.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct L1HandlerTransactionTrace {
+    /// The trace of the funcion call.
+    pub function_invocation: FunctionInvocation,
+}
+
+impl From<TransactionExecutionInfo> for L1HandlerTransactionTrace {
+    fn from(transaction_execution_info: TransactionExecutionInfo) -> Self {
+        Self {
+            function_invocation: transaction_execution_info
+                .execute_call_info
+                .expect("L1Handler execution should contain execute_call_info.")
+                .into(),
         }
     }
 }
