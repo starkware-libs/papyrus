@@ -12,10 +12,10 @@ pub mod testing_instances;
 
 pub mod objects;
 use std::collections::{BTreeMap, HashMap};
-use std::iter;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::{fs, iter};
 
-use blockifier::abi::constants::STEP_GAS_COST;
 use blockifier::block_context::BlockContext;
 use blockifier::execution::contract_class::ContractClass as BlockifierContractClass;
 use blockifier::execution::entry_point::{
@@ -44,13 +44,12 @@ use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageTxn};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockTimestamp, GasPrice};
-use starknet_api::core::{ChainId, ContractAddress, EntryPointSelector, PatriciaKey};
+use starknet_api::core::{ChainId, ContractAddress, EntryPointSelector};
 // TODO: merge multiple EntryPointType structs in SN_API into one.
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass,
     EntryPointType,
 };
-use starknet_api::hash::StarkHash;
 use starknet_api::state::StateNumber;
 use starknet_api::transaction::{
     Calldata,
@@ -63,11 +62,20 @@ use starknet_api::transaction::{
     Transaction,
     TransactionHash,
 };
-use starknet_api::{contract_address, patricia_key};
 use state_reader::ExecutionStateReader;
 
 /// Result type for execution functions.
 pub type ExecutionResult<T> = Result<T, ExecutionError>;
+
+/// The path to the default execution config file.
+pub const DEFAULT_CONFIG_PATH: &str = "config_files/default.json";
+
+/// Returns the absolute path of the execution config file.
+pub fn get_absolute_config_file_path(relative_path: &str) -> PathBuf {
+    Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
+        .join("../papyrus_execution")
+        .join(relative_path)
+}
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 #[allow(missing_docs)]
@@ -95,25 +103,9 @@ pub struct ExecutionConfig {
 
 impl Default for ExecutionConfig {
     fn default() -> Self {
-        Self {
-            fee_contract_address: contract_address!(
-                "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
-            ),
-            invoke_tx_max_n_steps: 1_000_000,
-            validate_tx_max_n_steps: 1_000_000,
-            max_recursion_depth: 50,
-            step_gas_cost: STEP_GAS_COST,
-            initial_gas_cost: 10_u64.pow(8) * STEP_GAS_COST,
-            n_steps: 0.01_f64,
-            pedersen_builtin: 0.32_f64,
-            range_check_builtin: 0.16_f64,
-            ecdsa_builtin: 20.48_f64,
-            bitwise_builtin: 0.64_f64,
-            poseidon_builtin: 0.32_f64,
-            output_builtin: 1_f64,
-            ec_op_builtin: 10.24_f64,
-            keccak_builtin: 20.48_f64,
-        }
+        let default_config_file =
+            fs::File::open(get_absolute_config_file_path(DEFAULT_CONFIG_PATH)).unwrap();
+        serde_json::from_reader(default_config_file).unwrap()
     }
 }
 
