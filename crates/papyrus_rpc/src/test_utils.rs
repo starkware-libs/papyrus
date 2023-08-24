@@ -113,15 +113,13 @@ pub fn validate_schema(schema: &JSONSchema, result: &Value) -> bool {
 }
 
 #[derive(Clone, Copy, Display, EnumIter)]
-// TODO(yair): Remove Starknet prefix and remove allow.
-#[allow(clippy::enum_variant_names)]
 pub enum SpecFile {
     #[display(fmt = "starknet_api_openrpc.json")]
     StarknetApiOpenrpc,
     #[display(fmt = "starknet_write_api.json")]
-    StarknetWriteApi,
+    WriteApi,
     #[display(fmt = "starknet_trace_api_openrpc.json")]
-    StarknetTraceApi,
+    TraceApi,
 }
 
 pub fn get_starknet_spec_api_schema_for_components(

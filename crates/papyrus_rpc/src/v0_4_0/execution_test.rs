@@ -547,7 +547,7 @@ fn validate_transaction_trace_with_hash_schema() {
     let txs_with_trace = Vec::<TransactionTraceWithHash>::get_test_instance(&mut rng);
     let serialized = serde_json::to_value(txs_with_trace).unwrap();
     let schema = get_starknet_spec_api_schema_for_method_results(
-        &[(SpecFile::StarknetTraceApi, &["starknet_traceBlockTransactions"])],
+        &[(SpecFile::TraceApi, &["starknet_traceBlockTransactions"])],
         &VERSION_0_4,
     );
     assert!(validate_schema(&schema, &serialized));
@@ -557,7 +557,7 @@ fn validate_transaction_trace_with_hash_schema() {
 fn validate_transaction_trace_schema() {
     let mut rng = get_rng();
     let schema = get_starknet_spec_api_schema_for_components(
-        &[(SpecFile::StarknetTraceApi, &["TRANSACTION_TRACE"])],
+        &[(SpecFile::TraceApi, &["TRANSACTION_TRACE"])],
         &VERSION_0_4,
     );
 
