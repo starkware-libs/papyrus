@@ -31,7 +31,7 @@ auto_impl_get_test_instance! {
 
 fn test_ok_result_fits_rpc<AddOkResult: GetTestInstance + Serialize>(spec_method: &str) {
     let schema = get_starknet_spec_api_schema_for_method_results(
-        &[(SpecFile::StarknetWriteApi, &[spec_method])],
+        &[(SpecFile::WriteApi, &[spec_method])],
         &VERSION_0_4,
     );
     let result = AddOkResult::get_test_instance(&mut get_rng());

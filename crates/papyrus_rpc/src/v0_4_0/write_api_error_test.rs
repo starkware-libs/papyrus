@@ -28,7 +28,7 @@ fn test_error_from_conversion_fits_rpc<F: Fn(StarknetError) -> JsonRpcError>(
     spec_method: &str,
 ) {
     let schema = get_starknet_spec_api_schema_for_method_errors(
-        &[(SpecFile::StarknetWriteApi, &[spec_method])],
+        &[(SpecFile::WriteApi, &[spec_method])],
         &VERSION_0_4,
     );
     for starknet_error in starknet_errors() {
