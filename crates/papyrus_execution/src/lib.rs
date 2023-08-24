@@ -490,7 +490,7 @@ pub fn simulate_transactions(
     )?;
     Ok(txs
         .iter()
-        .zip(txs_execution_info.into_iter())
+        .zip(txs_execution_info)
         .map(|(tx, exec_info)| calc_trace_and_fee(tx, exec_info, &block_context))
         .collect())
 }
