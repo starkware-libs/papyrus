@@ -13,6 +13,7 @@ use papyrus_execution::objects::{
     DeployAccountTransactionTrace,
     FunctionInvocationResult,
     InvokeTransactionTrace,
+    L1HandlerTransactionTrace,
     TransactionTrace,
 };
 use papyrus_execution::testing_instances::get_storage_var_address;
@@ -563,7 +564,6 @@ fn validate_transaction_trace_schema() {
 
     let invoke_trace =
         TransactionTrace::Invoke(InvokeTransactionTrace::get_test_instance(&mut rng));
-
     let serialized = serde_json::to_value(invoke_trace).unwrap();
     assert!(validate_schema(&schema, &serialized));
 
@@ -575,6 +575,11 @@ fn validate_transaction_trace_schema() {
     let deploy_account_trace =
         TransactionTrace::DeployAccount(DeployAccountTransactionTrace::get_test_instance(&mut rng));
     let serialized = serde_json::to_value(deploy_account_trace).unwrap();
+    assert!(validate_schema(&schema, &serialized));
+
+    let l1_handler_trace =
+        TransactionTrace::L1Handler(L1HandlerTransactionTrace::get_test_instance(&mut rng));
+    let serialized = serde_json::to_value(l1_handler_trace).unwrap();
     assert!(validate_schema(&schema, &serialized));
 }
 
