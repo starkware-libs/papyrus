@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use assert_matches::assert_matches;
+use blockifier::abi::constants::STEP_GAS_COST;
 use blockifier::execution::entry_point::Retdata;
 use papyrus_storage::test_utils::get_test_storage;
 use starknet_api::block::{BlockNumber, GasPrice};
@@ -8,7 +9,7 @@ use starknet_api::core::{ChainId, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::StateNumber;
 use starknet_api::transaction::{Calldata, Fee};
-use starknet_api::{calldata, patricia_key, stark_felt};
+use starknet_api::{calldata, contract_address, patricia_key, stark_felt};
 
 use crate::execution_utils::selector_from_name;
 use crate::objects::{
@@ -30,7 +31,7 @@ use crate::test_utils::{
     NEW_ACCOUNT_ADDRESS,
 };
 use crate::testing_instances::test_execution_config;
-use crate::{estimate_fee, execute_call, ExecutableTransactionInput};
+use crate::{estimate_fee, execute_call, ExecutableTransactionInput, ExecutionConfig};
 
 // Test calling entry points of a deprecated class.
 #[test]
@@ -574,4 +575,28 @@ fn simulate_invoke_from_new_account_validate_and_charge() {
     assert_matches!(deploy_account_trace.fee_transfer_invocation, Some(_));
     assert_ne!(invoke_fee_estimation, Fee(0));
     assert_matches!(invoke_trace.fee_transfer_invocation, Some(_));
+}
+
+#[test]
+fn test_default_execution_config() {
+    let expected_config = ExecutionConfig {
+        fee_contract_address: contract_address!(
+            "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
+        ),
+        invoke_tx_max_n_steps: 1_000_000,
+        validate_tx_max_n_steps: 1_000_000,
+        max_recursion_depth: 50,
+        step_gas_cost: STEP_GAS_COST,
+        initial_gas_cost: 10_u64.pow(8) * STEP_GAS_COST,
+        n_steps: 0.01_f64,
+        pedersen_builtin: 0.32_f64,
+        range_check_builtin: 0.16_f64,
+        ecdsa_builtin: 20.48_f64,
+        bitwise_builtin: 0.64_f64,
+        poseidon_builtin: 0.32_f64,
+        output_builtin: 1_f64,
+        ec_op_builtin: 10.24_f64,
+        keccak_builtin: 20.48_f64,
+    };
+    assert_eq!(expected_config, ExecutionConfig::default());
 }
