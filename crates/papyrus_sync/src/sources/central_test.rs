@@ -31,6 +31,7 @@ use starknet_client::reader::{
 use starknet_client::ClientError;
 use tokio_stream::StreamExt;
 
+use super::state_update_stream::StateUpdateStreamConfig;
 use crate::sources::central::{CentralError, CentralSourceTrait, GenericCentralSource};
 
 const TEST_CONCURRENT_REQUESTS: usize = 300;
@@ -50,6 +51,7 @@ async fn last_block_number() {
         starknet_client: Arc::new(mock),
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
         storage_reader: reader,
+        state_update_stream_config: state_update_stream_config_for_test(),
     };
 
     let last_block_number = central_source.get_latest_block().await.unwrap().unwrap().block_number;
@@ -74,6 +76,7 @@ async fn stream_block_headers() {
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
         starknet_client: Arc::new(mock),
         storage_reader: reader,
+        state_update_stream_config: state_update_stream_config_for_test(),
     };
 
     let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
@@ -110,6 +113,7 @@ async fn stream_block_headers_some_are_missing() {
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
         starknet_client: Arc::new(mock),
         storage_reader: reader,
+        state_update_stream_config: state_update_stream_config_for_test(),
     };
 
     let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
@@ -161,6 +165,7 @@ async fn stream_block_headers_error() {
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
         starknet_client: Arc::new(mock),
         storage_reader: reader,
+        state_update_stream_config: state_update_stream_config_for_test(),
     };
 
     let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
@@ -296,6 +301,7 @@ async fn stream_state_updates() {
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
         starknet_client: Arc::new(mock),
         storage_reader: reader,
+        state_update_stream_config: state_update_stream_config_for_test(),
     };
     let initial_block_num = BlockNumber(START_BLOCK_NUMBER);
 
@@ -405,6 +411,7 @@ async fn stream_compiled_classes() {
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
         starknet_client: Arc::new(mock),
         storage_reader: reader,
+        state_update_stream_config: state_update_stream_config_for_test(),
     };
 
     let stream = central_source.stream_compiled_classes(BlockNumber(0), BlockNumber(2));
@@ -419,5 +426,13 @@ async fn stream_compiled_classes() {
         assert_eq!(class_hash, expected_class_hash);
         assert_eq!(compiled_class_hash, expected_compiled_class_hash);
         assert_eq!(compiled_class, expected_compiled_class);
+    }
+}
+
+fn state_update_stream_config_for_test() -> StateUpdateStreamConfig {
+    StateUpdateStreamConfig {
+        max_state_updates_to_download: 10,
+        max_state_updates_to_store_in_memory: 10,
+        max_classes_to_download: 10,
     }
 }

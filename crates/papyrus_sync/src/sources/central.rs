@@ -37,7 +37,7 @@ use starknet_client::reader::{
 use starknet_client::{ClientCreationError, RetryConfig};
 use tracing::{debug, trace};
 
-use self::state_update_stream::StateUpdateStream;
+use self::state_update_stream::{StateUpdateStream, StateUpdateStreamConfig};
 
 type CentralResult<T> = Result<T, CentralError>;
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -46,6 +46,9 @@ pub struct CentralSourceConfig {
     pub url: String,
     #[serde(deserialize_with = "deserialize_optional_map")]
     pub http_headers: Option<HashMap<String, String>>,
+    pub max_state_updates_to_download: usize,
+    pub max_state_updates_to_store_in_memory: usize,
+    pub max_classes_to_download: usize,
     pub retry_config: RetryConfig,
 }
 
@@ -55,6 +58,9 @@ impl Default for CentralSourceConfig {
             concurrent_requests: 10,
             url: String::from("https://alpha-mainnet.starknet.io/"),
             http_headers: None,
+            max_state_updates_to_download: 20,
+            max_state_updates_to_store_in_memory: 20,
+            max_classes_to_download: 20,
             retry_config: RetryConfig {
                 retry_base_millis: 30,
                 retry_max_delay_millis: 30000,
@@ -79,6 +85,21 @@ impl SerializeConfig for CentralSourceConfig {
                 &serialize_optional_map(&self.http_headers),
                 "'k1:v1 k2:v2 ...' headers for SN-client.",
             ),
+            ser_param(
+                "max_state_updates_to_download",
+                &self.max_state_updates_to_download,
+                "Maximum number of state updates to download at a given time.",
+            ),
+            ser_param(
+                "max_state_updates_to_store_in_memory",
+                &self.max_state_updates_to_store_in_memory,
+                "Maximum number of state updates to store in memory at a given time.",
+            ),
+            ser_param(
+                "max_classes_to_download",
+                &self.max_classes_to_download,
+                "Maximum number of classes to download at a given time.",
+            ),
         ]);
         chain!(self_params_dump, append_sub_config_name(self.retry_config.dump(), "retry_config"))
             .collect()
@@ -89,6 +110,7 @@ pub struct GenericCentralSource<TStarknetClient: StarknetReader + Send + Sync> {
     pub concurrent_requests: usize,
     pub starknet_client: Arc<TStarknetClient>,
     pub storage_reader: StorageReader,
+    pub state_update_stream_config: StateUpdateStreamConfig,
 }
 
 #[derive(Clone)]
@@ -218,6 +240,7 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> CentralSourceTrait
             up_to_block_number,
             self.starknet_client.clone(),
             self.storage_reader.clone(),
+            self.state_update_stream_config.clone(),
         )
         .boxed()
     }
@@ -357,6 +380,11 @@ impl CentralSource {
             concurrent_requests: config.concurrent_requests,
             starknet_client: Arc::new(starknet_client),
             storage_reader,
+            state_update_stream_config: StateUpdateStreamConfig {
+                max_state_updates_to_download: config.max_state_updates_to_download,
+                max_state_updates_to_store_in_memory: config.max_state_updates_to_store_in_memory,
+                max_classes_to_download: config.max_classes_to_download,
+            },
         })
     }
 }

@@ -15,6 +15,18 @@
     "description": "'k1:v1 k2:v2 ...' headers for SN-client.",
     "value": ""
   },
+  "central.max_classes_to_download": {
+    "description": "Maximum number of classes to download at a given time.",
+    "value": 20
+  },
+  "central.max_state_updates_to_download": {
+    "description": "Maximum number of state updates to download at a given time.",
+    "value": 20
+  },
+  "central.max_state_updates_to_store_in_memory": {
+    "description": "Maximum number of state updates to store in memory at a given time.",
+    "value": 20
+  },
   "central.retry_config.max_retries": {
     "description": "Maximum number of retries before the node stops retrying.",
     "value": 10
