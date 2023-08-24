@@ -86,7 +86,7 @@ impl GetTestInstance for FunctionInvocation {
             result: Retdata::get_test_instance(rng),
             calls: Vec::new(),
             events: Vec::<EventContent>::get_test_instance(rng),
-            messages: Vec::<OrderedL2ToL1Message>::get_test_instance(rng),
+            messages: Vec::<MessageToL1>::get_test_instance(rng),
         }
     }
 }

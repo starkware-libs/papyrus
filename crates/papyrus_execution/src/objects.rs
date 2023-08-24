@@ -154,7 +154,7 @@ pub struct FunctionInvocation {
     /// The events emitted in this invocation.
     pub events: Vec<EventContent>,
     /// The messages sent by this invocation to L1.
-    pub messages: Vec<OrderedL2ToL1Message>,
+    pub messages: Vec<MessageToL1>,
 }
 
 impl From<CallInfo> for FunctionInvocation {
@@ -182,11 +182,11 @@ impl From<CallInfo> for FunctionInvocation {
                 .execution
                 .l2_to_l1_messages
                 .into_iter()
-                .map(|blockifier_message| {
-                    OrderedL2ToL1Message::from(
-                        blockifier_message,
-                        call_info.call.code_address.unwrap(), // TODO: fix this.
-                    )
+                .sorted_by_key(|ordered_message| ordered_message.order)
+                .map(|ordered_message| MessageToL1 {
+                    from_address: call_info.call.caller_address,
+                    to_address: ordered_message.message.to_address,
+                    payload: ordered_message.message.payload,
                 })
                 .collect(),
         }
