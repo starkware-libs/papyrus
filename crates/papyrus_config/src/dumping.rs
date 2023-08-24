@@ -88,7 +88,7 @@ pub fn append_sub_config_name(
     BTreeMap::from_iter(
         sub_config_dump
             .into_iter()
-            .map(|(field_name, val)| (format!("{}.{}", sub_config_name, field_name), val)),
+            .map(|(field_name, val)| (format!("{sub_config_name}.{field_name}"), val)),
     )
 }
 

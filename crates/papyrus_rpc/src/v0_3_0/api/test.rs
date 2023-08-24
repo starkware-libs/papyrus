@@ -2023,7 +2023,7 @@ fn spec_api_methods_coverage() {
         .sorted()
         .collect::<Vec<_>>();
     for mn in implemented_method_names.clone() {
-        println!("{}", mn);
+        println!("{mn}");
     }
     let non_implemented_apis = [
         "starknet_addDeclareTransaction".to_string(),
@@ -2050,7 +2050,7 @@ fn spec_api_methods_coverage() {
         .sorted()
         .collect::<Vec<_>>();
     for mn in method_names_in_spec.clone() {
-        println!("{}", mn);
+        println!("{mn}");
     }
     assert!(method_names_in_spec.eq(&implemented_method_names));
 }
