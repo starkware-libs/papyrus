@@ -63,9 +63,9 @@ impl Default for DbConfig {
         DbConfig {
             path_prefix: PathBuf::from("./data"),
             chain_id: ChainId("SN_MAIN".to_string()),
-            min_size: 1 << 20,    // 1MB
+            min_size: 1 << 30,    // 1GB
             max_size: 1 << 40,    // 1TB
-            growth_step: 1 << 26, // 64MB
+            growth_step: 1 << 32, // 4GB
         }
     }
 }

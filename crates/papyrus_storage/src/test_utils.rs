@@ -19,8 +19,8 @@ pub fn get_test_config() -> (DbConfig, TempDir) {
             path_prefix: dir.path().to_path_buf(),
             chain_id: ChainId("".to_owned()),
             min_size: 1 << 20,    // 1MB
-            max_size: 1 << 35,    // 32GB
-            growth_step: 1 << 26, // 64MB
+            max_size: 1 << 30,    // 1GB
+            growth_step: 1 << 25, // 32MB
         },
         dir,
     )

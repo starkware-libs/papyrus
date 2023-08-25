@@ -1,5 +1,4 @@
 use std::collections::VecDeque;
-use std::num::NonZeroUsize;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::Poll;
@@ -93,6 +92,7 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> StateUpdateStream<
         starknet_client: Arc<TStarknetClient>,
         storage_reader: StorageReader,
         config: StateUpdateStreamConfig,
+        cache: Arc<Mutex<LruCache<ClassHash, ApiContractClass>>>,
     ) -> Self {
         StateUpdateStream {
             initial_block_number,
@@ -111,9 +111,7 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> StateUpdateStream<
                 config.max_state_updates_to_store_in_memory * 5,
             ),
             config,
-            cache: Arc::from(Mutex::new(LruCache::new(
-                NonZeroUsize::new(30).expect("30 should not be zero."),
-            ))),
+            cache,
         }
     }
 
