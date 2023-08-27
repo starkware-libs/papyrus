@@ -669,11 +669,11 @@ impl StorageSerde for u8 {
 // TODO(dan): get rid of usize.
 impl StorageSerde for usize {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
-        (*self as u64).serialize_into(res)
+        (*self as u32).serialize_into(res)
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        usize::try_from(u64::deserialize_from(bytes)?).ok()
+        usize::try_from(u32::deserialize_from(bytes)?).ok()
     }
 }
 
