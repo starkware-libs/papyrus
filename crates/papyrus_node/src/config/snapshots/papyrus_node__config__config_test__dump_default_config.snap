@@ -4,8 +4,8 @@ expression: dumped_default_config
 ---
 {
   "base_layer.node_url": {
-    "description": "Ethereum node URL. No default value for this parameter. The given value is a schema to match to Infura node, but any other node can be used.",
-    "value": "https://mainnet.infura.io/v3/<your_api_key>"
+    "description": "Ethereum node URL.",
+    "required_type": "String"
   },
   "base_layer.starknet_contract_address": {
     "description": "Starknet contract address in ethereum.",
