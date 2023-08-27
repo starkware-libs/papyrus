@@ -85,6 +85,7 @@ use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StorageKey, ThinStateDiff};
 use starknet_api::transaction::{EventContent, Transaction, TransactionHash};
 use tracing::debug;
+use validator::Validate;
 use version::{StorageVersionError, Version};
 
 use crate::body::events::ThinTransactionOutput;
@@ -360,8 +361,9 @@ pub type StorageResult<V> = std::result::Result<V, StorageError>;
 
 /// A struct for the configuration of the storage.
 #[allow(missing_docs)]
-#[derive(Serialize, Debug, Deserialize, Clone, Default, PartialEq)]
+#[derive(Serialize, Debug, Deserialize, Clone, Default, PartialEq, Validate)]
 pub struct StorageConfig {
+    #[validate]
     pub db_config: DbConfig,
 }
 

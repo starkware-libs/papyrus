@@ -30,6 +30,7 @@ starknet_api.workspace = true
 tempfile = { workspace = true, optional = true }
 thiserror.workspace = true
 tracing = { workspace = true, features = ["log"] }
+validator = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
 assert_matches.workspace = true
