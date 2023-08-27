@@ -6,6 +6,9 @@ use lazy_static::lazy_static;
 use starknet_api::core::{calculate_contract_address, ChainId, ContractAddress};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::{
+    DeclareTransaction,
+    DeclareTransactionV0V1,
+    DeclareTransactionV2,
     DeployAccountTransaction,
     DeployTransaction,
     InvokeTransaction,
@@ -18,6 +21,7 @@ use starknet_api::StarknetApiError;
 use starknet_crypto::{pedersen_hash, FieldElement};
 
 lazy_static! {
+    static ref DECLARE: StarkFelt = ascii_as_felt("declare").unwrap();
     static ref DEPLOY: StarkFelt = ascii_as_felt("deploy").unwrap();
     static ref DEPLOY_ACCOUNT: StarkFelt = ascii_as_felt("deploy_account").unwrap();
     static ref INVOKE: StarkFelt = ascii_as_felt("invoke").unwrap();
@@ -30,6 +34,7 @@ lazy_static! {
 
     static ref ZERO: StarkFelt = StarkFelt::from(0_u8);
     static ref ONE: StarkFelt = StarkFelt::from(1_u8);
+    static ref TWO: StarkFelt = StarkFelt::from(2_u8);
 }
 
 /// Calculates hash of a Starknet transaction.
@@ -38,7 +43,17 @@ pub fn get_transaction_hash(
     chain_id: &ChainId,
 ) -> Result<StarkHash, StarknetApiError> {
     match transaction {
-        Transaction::Declare(_) => unimplemented!(),
+        Transaction::Declare(declare) => match declare {
+            DeclareTransaction::V0(declare_v0) => {
+                get_declare_transaction_v0_hash(declare_v0, chain_id)
+            }
+            DeclareTransaction::V1(declare_v1) => {
+                get_declare_transaction_v1_hash(declare_v1, chain_id)
+            }
+            DeclareTransaction::V2(declare_v2) => {
+                get_declare_transaction_v2_hash(declare_v2, chain_id)
+            }
+        },
         Transaction::Deploy(deploy) => get_deploy_transaction_hash(deploy, chain_id),
         Transaction::DeployAccount(deploy_account) => {
             get_deploy_account_transaction_hash(deploy_account, chain_id)
@@ -60,13 +75,11 @@ pub fn validate_transaction_hash(
     expected_hash: StarkHash,
 ) -> Result<bool, StarknetApiError> {
     let mut possible_hashes = match transaction {
-        Transaction::Declare(_) => unimplemented!(),
+        Transaction::Declare(_) => vec![],
         Transaction::Deploy(deploy) => {
             vec![get_deprecated_deploy_transaction_hash(deploy, chain_id)?]
         }
-        Transaction::DeployAccount(_) => {
-            vec![]
-        }
+        Transaction::DeployAccount(_) => vec![],
         Transaction::Invoke(invoke) => match invoke {
             InvokeTransaction::V0(invoke_v0) => {
                 vec![get_deprecated_invoke_transaction_v0_hash(invoke_v0, chain_id)?]
@@ -263,5 +276,54 @@ fn get_common_l1_handler_transaction_hash(
         .chain_if(&ZERO, !is_deprecated) // No fee in l1 handler transaction.
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
         .chain(&transaction.nonce.0)
+        .get_hash())
+}
+
+fn get_declare_transaction_v0_hash(
+    transaction: &DeclareTransactionV0V1,
+    chain_id: &ChainId,
+) -> Result<StarkHash, StarknetApiError> {
+    Ok(PedersenHashChain::new()
+        .chain(&DECLARE)
+        .chain(&ZERO) // Version
+        .chain(transaction.sender_address.0.key())
+        .chain(&ZERO ) // No entry point selector in declare transaction.
+        .chain(&PedersenHashChain::new().get_hash())
+        .chain(&transaction.max_fee.0.into())
+        .chain(&ascii_as_felt(chain_id.0.as_str())?)
+        .chain(&transaction.class_hash.0)
+        .get_hash())
+}
+
+fn get_declare_transaction_v1_hash(
+    transaction: &DeclareTransactionV0V1,
+    chain_id: &ChainId,
+) -> Result<StarkHash, StarknetApiError> {
+    Ok(PedersenHashChain::new()
+        .chain(&DECLARE)
+        .chain(&ONE) // Version
+        .chain(transaction.sender_address.0.key())
+        .chain(&ZERO) // No entry point selector in declare transaction.
+        .chain(&PedersenHashChain::new().chain(&transaction.class_hash.0).get_hash())
+        .chain(&transaction.max_fee.0.into())
+        .chain(&ascii_as_felt(chain_id.0.as_str())?)
+        .chain(&transaction.nonce.0)
+        .get_hash())
+}
+
+fn get_declare_transaction_v2_hash(
+    transaction: &DeclareTransactionV2,
+    chain_id: &ChainId,
+) -> Result<StarkHash, StarknetApiError> {
+    Ok(PedersenHashChain::new()
+        .chain(&DECLARE)
+        .chain(&TWO) // Version
+        .chain(transaction.sender_address.0.key())
+        .chain(&ZERO) // No entry point selector in declare transaction.
+        .chain(&PedersenHashChain::new().chain(&transaction.class_hash.0).get_hash())
+        .chain(&transaction.max_fee.0.into())
+        .chain(&ascii_as_felt(chain_id.0.as_str())?)
+        .chain(&transaction.nonce.0)
+        .chain(&transaction.compiled_class_hash.0)
         .get_hash())
 }

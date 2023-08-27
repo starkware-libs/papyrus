@@ -79,6 +79,54 @@
       }
     },
     "transaction_hash": "0xa5eeb0d17fe3262c2b7b95bd934c5a5ee7243b0e7584a8d2a3fbb9bd456241"
+  },
+  {
+    "transaction": {
+      "Declare": {
+        "V0": {
+          "max_fee": "0x0",
+          "signature": [],
+          "nonce": "0x0",
+          "class_hash": "0x70ffba803149d9cfe1762b5099d15ec129de0e998d1cbd2a29c2abca40c2ce1",
+          "sender_address": "0x1"
+        }
+      }
+    },
+    "transaction_hash": "0x5a5e819664c7550d60d9e4bce8da3478a133602b81e4d0bfdbbc4bb30125a96"
+  },
+  {
+    "transaction": {
+      "Declare": {
+        "V1": {
+          "max_fee": "0x174876e8000",
+          "signature": [
+            "0x6b2c99aac0e375ecca77d5056be39c00328e45c541045d89aeb7458acaffbdb",
+            "0x732e2b1604487609fdabd9be05ea0e2d828f50bca1e5dd86ca0beabf4670866"
+          ],
+          "nonce": "0x5",
+          "class_hash": "0x4da612e187f8ea1508ca96c726e1da9891bc480f97a157df25568f9dc8ea1dc",
+          "sender_address": "0x92e02752e4309de75f8f07f4a9efca32649ba83d798f13897714b1a5acd93d"
+        }
+      }
+    },
+    "transaction_hash": "0x64b91efce5648a65b950d3aa560b4e265eedd9b49b232a85170510c4c77e9bc"
+  },
+  {
+    "transaction": {
+      "Declare": {
+        "V2": {
+          "max_fee": "0xb7efe7b25236",
+          "signature": [
+            "0x2a1abe101f6651801e5faf2adab17feb726d440fb19a0f1d75e3ea7786b9459",
+            "0x2fda52f14100da5d87ddffdbc2b48981947285bb549a7760d4f472ce06dba5e"
+          ],
+          "nonce": "0x17",
+          "class_hash": "0x702a9e80c74a214caf0e77326180e72ba3bd3f53dbd5519ede339eb3ae9eed4",
+          "compiled_class_hash": "0x1be58ebac8e3bc17ae4b7de633ed9c78f2d6dd1acd49c12985bcd5002bdb824",
+          "sender_address": "0x349d9bdae264d4d613f34a7bcb68e287417e4cd3651e1ff7a89fd75ff04b662"
+        }
+      }
+    },
+    "transaction_hash": "0x29410c3ab8d8a7d593e915f3051b9c71e48626cf688c7c8c526f400648cf24c"
   }
-
 ]
