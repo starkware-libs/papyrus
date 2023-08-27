@@ -7,8 +7,8 @@ use ethers::contract::Contract;
 use ethers::prelude::{AbiError, Address, ContractError, Http, Middleware, Provider};
 use ethers::providers::ProviderError;
 use ethers::types::{I256, U256};
-use papyrus_config::dumping::{ser_param, SerializeConfig};
-use papyrus_config::{ParamPath, SerializedParam};
+use papyrus_config::dumping::{ser_param, ser_required_param, SerializeConfig};
+use papyrus_config::{ParamPath, SerializationType, SerializedParam};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::hash::StarkHash;
@@ -45,13 +45,7 @@ pub struct EthereumBaseLayerConfig {
 impl SerializeConfig for EthereumBaseLayerConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         BTreeMap::from_iter([
-            // TODO(yoav): Serialize as required param. Edit the description.
-            ser_param(
-                "node_url",
-                &self.node_url,
-                "Ethereum node URL. No default value for this parameter. The given value is a \
-                 schema to match to Infura node, but any other node can be used.",
-            ),
+            ser_required_param("node_url", SerializationType::String, "Ethereum node URL."),
             ser_param(
                 "starknet_contract_address",
                 &self.starknet_contract_address,
