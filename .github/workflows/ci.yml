@@ -69,9 +69,27 @@ jobs:
       - name: Install nextest
         uses: taiki-e/install-action@nextest
       - run: |
-          cargo nextest run; cargo test --doc
+          cargo test
         env:
           SEED: 0
+  test-doc:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+      - run: npm install -g ganache@7.4.3
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
+      - run: |
+          cargo test --doc
+        env:
+          SEED: 0       
 
   build-load-test:
     runs-on: ${{ matrix.os }}
@@ -100,7 +118,7 @@ jobs:
       - name: Install nextest
         uses: taiki-e/install-action@nextest
       - run: >
-          cargo nextest run --test '*' -- --include-ignored;
+          cargo test --test '*' -- --include-ignored;
           cargo run -p papyrus_node --bin central_source_integration_test
 
   rustfmt:
