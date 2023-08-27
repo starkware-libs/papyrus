@@ -26,6 +26,7 @@ use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
+use papyrus_config::validators::validate_ascii;
 use papyrus_config::{ParamPath, SerializedParam};
 use papyrus_execution::ExecutionConfig;
 use papyrus_storage::base_layer::BaseLayerStorageReader;
@@ -41,6 +42,7 @@ use starknet_client::writer::StarknetGatewayClient;
 use starknet_client::RetryConfig;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, instrument};
+use validator::Validate;
 
 use crate::api::get_methods_from_supported_apis;
 use crate::middleware::{deny_requests_with_unsupported_path, proxy_rpc_request};
@@ -48,8 +50,9 @@ use crate::syncing_state::get_last_synced_block;
 
 /// Maximum size of a supported transaction body - 10MB.
 pub const SERVER_MAX_BODY_SIZE: u32 = 10 * 1024 * 1024;
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Validate)]
 pub struct RpcConfig {
+    #[validate(custom = "validate_ascii")]
     pub chain_id: ChainId,
     pub server_address: String,
     pub max_events_chunk_size: usize,

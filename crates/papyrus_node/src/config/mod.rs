@@ -25,6 +25,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use starknet_api::core::ChainId;
 use starknet_client::RetryConfig;
+use validator::Validate;
 
 use crate::version::VERSION_FULL;
 
@@ -32,12 +33,14 @@ use crate::version::VERSION_FULL;
 pub const DEFAULT_CONFIG_PATH: &str = "config/default_config.json";
 
 /// The configurations of the various components of the node.
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Validate)]
 pub struct NodeConfig {
+    #[validate]
     pub rpc: RpcConfig,
     pub central: CentralSourceConfig,
     pub base_layer: EthereumBaseLayerConfig,
     pub monitoring_gateway: MonitoringGatewayConfig,
+    #[validate]
     pub storage: StorageConfig,
     /// None if the syncing should be disabled.
     pub sync: Option<SyncConfig>,

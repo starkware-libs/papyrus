@@ -60,6 +60,7 @@ mod command;
 pub mod converters;
 pub mod dumping;
 pub mod loading;
+pub mod validators;
 
 /// A serialized content of a configuration parameter.
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
