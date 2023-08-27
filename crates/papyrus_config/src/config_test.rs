@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tempfile::TempDir;
 use test_utils::get_absolute_path;
+use validator::Validate;
 
 use crate::command::{get_command_matches, update_config_map_by_command_args};
 use crate::converters::deserialize_milliseconds_to_duration;
@@ -32,6 +33,7 @@ use crate::loading::{
     update_config_map_by_pointers,
     update_optional_values,
 };
+use crate::validators::recursive_validation;
 use crate::{ConfigError, ParamPath, SerializationType, SerializedContent, SerializedParam};
 
 lazy_static! {
@@ -39,8 +41,9 @@ lazy_static! {
         get_absolute_path("crates/papyrus_config/resources/custom_config_example.json");
 }
 
-#[derive(Clone, Copy, Default, Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Clone, Copy, Default, Serialize, Deserialize, Debug, PartialEq, Validate)]
 struct InnerConfig {
+    #[validate(range(min = 0, max = 10))]
     o: usize,
 }
 
@@ -50,10 +53,11 @@ impl SerializeConfig for InnerConfig {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Validate)]
 struct OuterConfig {
     opt_elem: Option<usize>,
     opt_config: Option<InnerConfig>,
+    #[validate(custom = "recursive_validation")]
     inner_config: InnerConfig,
 }
 
@@ -84,6 +88,13 @@ fn dump_and_load_config() {
         let loaded_config = load::<OuterConfig>(&dumped).unwrap();
         assert_eq!(loaded_config, outer_config);
     }
+}
+
+#[test]
+fn test_recursive_validation() {
+    let outer_config =
+        OuterConfig { opt_elem: None, opt_config: None, inner_config: InnerConfig { o: 20 } };
+    assert!(outer_config.validate().is_err());
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]

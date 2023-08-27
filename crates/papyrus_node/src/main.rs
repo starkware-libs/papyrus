@@ -18,6 +18,7 @@ use tracing::info;
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
+use validator::Validate;
 
 // TODO(yair): Add to config.
 const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
@@ -123,7 +124,10 @@ async fn main() -> anyhow::Result<()> {
     if let Err(ConfigError::CommandInput(clap_err)) = config {
         clap_err.exit();
     }
+    let config = config?;
+    config.validate().expect("Invalid config");
+
     configure_tracing();
     info!("Booting up.");
-    run_threads(config?).await
+    run_threads(config).await
 }

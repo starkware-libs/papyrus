@@ -14,6 +14,7 @@ use itertools::chain;
 use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
 use papyrus_config::dumping::{append_sub_config_name, ser_optional_sub_config, SerializeConfig};
 use papyrus_config::loading::load_and_process_config;
+use papyrus_config::validators::recursive_validation;
 use papyrus_config::{ConfigError, ParamPath, SerializedParam};
 use papyrus_monitoring_gateway::MonitoringGatewayConfig;
 use papyrus_rpc::RpcConfig;
@@ -25,6 +26,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use starknet_api::core::ChainId;
 use starknet_client::RetryConfig;
+use validator::Validate;
 
 use crate::version::VERSION_FULL;
 
@@ -32,12 +34,14 @@ use crate::version::VERSION_FULL;
 pub const DEFAULT_CONFIG_PATH: &str = "config/default_config.json";
 
 /// The configurations of the various components of the node.
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Validate)]
 pub struct NodeConfig {
+    #[validate(custom = "recursive_validation")]
     pub rpc: RpcConfig,
     pub central: CentralSourceConfig,
     pub base_layer: EthereumBaseLayerConfig,
     pub monitoring_gateway: MonitoringGatewayConfig,
+    #[validate(custom = "recursive_validation")]
     pub storage: StorageConfig,
     /// None if the syncing should be disabled.
     pub sync: Option<SyncConfig>,

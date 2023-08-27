@@ -77,6 +77,7 @@ use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use db::DbTableStats;
 use ommer::{OmmerEventKey, OmmerTransactionKey};
 use papyrus_config::dumping::{append_sub_config_name, SerializeConfig};
+use papyrus_config::validators::recursive_validation;
 use papyrus_config::{ParamPath, SerializedParam};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
@@ -85,6 +86,7 @@ use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StorageKey, ThinStateDiff};
 use starknet_api::transaction::{EventContent, Transaction, TransactionHash};
 use tracing::debug;
+use validator::Validate;
 use version::{StorageVersionError, Version};
 
 use crate::body::events::ThinTransactionOutput;
@@ -360,8 +362,9 @@ pub type StorageResult<V> = std::result::Result<V, StorageError>;
 
 /// A struct for the configuration of the storage.
 #[allow(missing_docs)]
-#[derive(Serialize, Debug, Deserialize, Clone, Default, PartialEq)]
+#[derive(Serialize, Debug, Deserialize, Clone, Default, PartialEq, Validate)]
 pub struct StorageConfig {
+    #[validate(custom = "recursive_validation")]
     pub db_config: DbConfig,
 }
 
