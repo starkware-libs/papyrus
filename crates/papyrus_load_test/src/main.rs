@@ -11,9 +11,10 @@ use std::env;
 use std::fs::File;
 
 use assert_matches::assert_matches;
-use goose::{util, GooseAttack};
+use goose::goose::Scenario;
+use goose::{scenario, util, GooseAttack};
 use papyrus_load_test::create_files::create_files;
-use papyrus_load_test::scenarios;
+use papyrus_load_test::{scenarios, transactions as txs};
 use serde::Serialize;
 
 #[tokio::main]
@@ -25,8 +26,15 @@ async fn main() -> anyhow::Result<()> {
         return Ok(());
     }
 
+    // To get the latency run in grafana the query:
+    // sum(rate(gateway_request_latency_seconds_sum{method="getEvents", version="V0_4"}[5m]))/
+    // sum(rate(gateway_request_latency_seconds_count{method="getEvents", version="V0_4"}[5m]))
+    
     let metrics = GooseAttack::initialize()?
-        .register_scenario(scenarios::general_request())
+        //.register_scenario(scenarios::all_requests())
+        .register_scenario(scenario!("get_last_blocks").register_transaction(txs::get_last_blocks()))
+        .register_scenario(scenario!("get_last_events").register_transaction(txs::get_last_events()))
+        .register_scenario(scenario!("get_last_block_traces").register_transaction(txs::get_last_block_traces()))
         .execute()
         .await?;
 

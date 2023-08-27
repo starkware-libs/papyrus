@@ -88,6 +88,22 @@ pub fn general_request() -> Scenario {
         (txs::get_transaction_by_hash(), GET_TRANSACTION_BY_HASH_WEIGHT),
         (txs::get_transaction_receipt(), GET_TRANSACTION_RECEIPT_WEIGHT),
         (txs::syncing(), SYNCING_WEIGHT),
+        (txs::trace_block_transactions_by_hash(), TRACE_BLOCK_TRANSACTIONS_BY_HASH_WEIGHT),
+        (txs::trace_block_transactions_by_number(), TRACE_BLOCK_TRANSACTIONS_BY_NUMBER_WEIGHT),
+        (txs::trace_transaction(), TRACE_TRANSACTION_WEIGHT),
+    ];
+    for (transaction, weight) in trans_and_weights.into_iter() {
+        scenario = scenario.register_transaction(transaction.set_weight(weight).unwrap());
+    }
+    scenario
+}
+
+pub fn all_requests() -> Scenario {
+    let mut scenario = scenario!("my_thing");
+    let trans_and_weights = vec![
+        (txs::get_last_events(), 10),
+        (txs::get_last_block_traces(), 10),
+        (txs::get_last_blocks(), 10),
     ];
     for (transaction, weight) in trans_and_weights.into_iter() {
         scenario = scenario.register_transaction(transaction.set_weight(weight).unwrap());

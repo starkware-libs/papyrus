@@ -56,6 +56,78 @@ pub fn syncing() -> Transaction {
     transaction_with_constant_request("syncing", "syncing")
 }
 
+use goose::prelude::GooseUser;
+
+const INTERVAL: u64 = 100;
+
+pub async fn request_last_block(user: &mut GooseUser) -> u64 {
+    let method = String::from("starknet_") + "blockNumber";
+    let request = jsonrpc_request(&method, json!([]));
+    let last_block = post_jsonrpc_request(user, &request).await.unwrap().as_u64().unwrap();
+    last_block
+}
+
+pub fn get_last_blocks() -> Transaction {
+    let func: TransactionFunction = Arc::new(move |user| {
+        Box::pin(async move {
+            let last_block = request_last_block(user).await;
+            for block_number in last_block - INTERVAL..last_block {
+                let request = create_request::get_block_with_full_transactions_by_number(
+                    &block_number.to_string(),
+                );
+                post_jsonrpc_request(user, &request).await?;
+            }
+
+            Ok(())
+        })
+    });
+    Transaction::new(func).set_name("get_last_blocks")
+}
+
+pub fn get_last_block_traces() -> Transaction {
+    let func: TransactionFunction = Arc::new(move |user| {
+        Box::pin(async move {
+            let last_block = request_last_block(user).await;
+            for block_number in last_block - INTERVAL..last_block {
+                let request =
+                    create_request::trace_block_transactions_by_number(&block_number.to_string());
+                post_jsonrpc_request(user, &request).await?;
+            }
+            Ok(())
+        })
+    });
+    Transaction::new(func).set_name("get_last_block_traces")
+}
+
+pub fn get_last_events() -> Transaction {
+    const MAX_CHUNK_SIZE: usize = 1000;
+
+    let func: TransactionFunction = Arc::new(move |user| {
+        Box::pin(async move {
+            let last_block = request_last_block(user).await;
+            let req = jsonrpc_request(
+                "starknet_getEvents",
+                json!([{"from_block":{"block_number": last_block-INTERVAL}, "to_block":{"block_number": last_block}, 
+            "chunk_size": MAX_CHUNK_SIZE, "keys": []}]),
+            );
+            let mut binding = post_jsonrpc_request(user, &req).await?;
+            let mut continuation = binding.as_object().unwrap().get("continuation_token");
+            while let Some(token) = continuation {
+                let req = jsonrpc_request(
+                    "starknet_getEvents",
+                    json!([{ "continuation_token": token, 
+                "chunk_size": MAX_CHUNK_SIZE, "keys": []}]),
+                );
+                binding = post_jsonrpc_request(user, &req).await?;
+                continuation = binding.as_object().unwrap().get("continuation_token");
+            }
+
+            Ok(())
+        })
+    });
+    Transaction::new(func).set_name("get_last_events")
+}
+
 fn transaction_with_constant_request(method_name: &str, transaction_name: &str) -> Transaction {
     let method = String::from("starknet_") + method_name;
     let request = jsonrpc_request(&method, json!([]));
