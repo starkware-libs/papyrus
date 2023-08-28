@@ -7,5 +7,12 @@ license-file.workspace = true
 description = "Common utils and objects for a Starknet node."
 
 [dependencies]
+hex.workspace = true
+lazy_static.workspace = true
 serde.workspace = true
 starknet_api.workspace = true
+starknet-crypto.workspace = true
+
+[dev-dependencies]
+serde_json = { workspace = true, features = ["arbitrary_precision"]}
+test_utils = { path = "../test_utils" }
