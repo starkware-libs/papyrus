@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use jsonrpsee::{Methods, RpcModule};
 use papyrus_common::BlockHashAndNumber;
-use papyrus_execution::ExecutionConfig;
+use papyrus_execution::ExecutionConfigByBlock;
 use papyrus_storage::StorageReader;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
@@ -44,7 +44,7 @@ pub enum BlockId {
 #[allow(clippy::too_many_arguments)]
 pub fn get_methods_from_supported_apis(
     chain_id: &ChainId,
-    execution_config: ExecutionConfig,
+    execution_config: ExecutionConfigByBlock,
     storage_reader: StorageReader,
     max_events_chunk_size: usize,
     max_events_keys: usize,
@@ -94,7 +94,7 @@ pub trait JsonRpcServerImpl: Sized {
     #[allow(clippy::too_many_arguments)]
     fn new(
         chain_id: ChainId,
-        execution_config: ExecutionConfig,
+        execution_config: ExecutionConfigByBlock,
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,
@@ -109,7 +109,7 @@ pub trait JsonRpcServerImpl: Sized {
 #[derive(Clone)]
 struct JsonRpcServerImplGenerator {
     chain_id: ChainId,
-    execution_config: ExecutionConfig,
+    execution_config: ExecutionConfigByBlock,
     storage_reader: StorageReader,
     max_events_chunk_size: usize,
     max_events_keys: usize,
@@ -121,7 +121,7 @@ struct JsonRpcServerImplGenerator {
 
 type JsonRpcServerImplParams = (
     ChainId,
-    ExecutionConfig,
+    ExecutionConfigByBlock,
     StorageReader,
     usize,
     usize,
