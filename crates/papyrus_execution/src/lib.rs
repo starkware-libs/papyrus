@@ -70,19 +70,20 @@ pub type ExecutionResult<T> = Result<T, ExecutionError>;
 
 /// The path to the default execution config file.
 pub const DEFAULT_CONFIG_PATH: &str = "config_files/default.json";
+/// The path to the test execution config file.
+pub const TEST_CONFIG_PATH: &str = "config_files/test.json";
 
 /// Returns the absolute path of the execution config file.
 pub fn get_absolute_config_file_path(relative_path: &str) -> PathBuf {
-    Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
-        .join("../papyrus_execution")
-        .join(relative_path)
+    let absolute_path = env!("CARGO_MANIFEST_DIR", "crates/papyrus_execution");
+    Path::new(&absolute_path).join("../papyrus_execution").join(relative_path)
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 #[allow(missing_docs)]
 /// Parameters that are needed for execution.
 // TODO(yair): Find a way to get them from the Starknet general config.
-pub struct ExecutionConfig {
+pub struct BlockExecutionConfig {
     pub fee_contract_address: ContractAddress,
     pub invoke_tx_max_n_steps: u32,
     pub validate_tx_max_n_steps: u32,
@@ -102,6 +103,19 @@ pub struct ExecutionConfig {
     pub keccak_builtin: f64,      // KECCAK_BUILTIN_NAME
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[allow(missing_docs)]
+pub struct ExecutionConfigSegment {
+    pub from_block: BlockNumber,
+    pub block_execution_config: BlockExecutionConfig,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[allow(missing_docs)]
+pub struct ExecutionConfig {
+    pub execution_config_segments: Vec<ExecutionConfigSegment>,
+}
+
 impl Default for ExecutionConfig {
     fn default() -> Self {
         let default_config_file =
@@ -110,7 +124,53 @@ impl Default for ExecutionConfig {
     }
 }
 
-impl SerializeConfig for ExecutionConfig {
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[allow(missing_docs)]
+pub struct ExecutionConfigFile {
+    pub config_file_path: String,
+}
+
+impl Default for ExecutionConfigFile {
+    fn default() -> Self {
+        ExecutionConfigFile { config_file_path: DEFAULT_CONFIG_PATH.to_string() }
+    }
+}
+
+/// Returns the execution config from the config file.
+pub fn get_execution_config(execution_config_file_path: &ExecutionConfigFile) -> ExecutionConfig {
+    let config_file =
+        fs::File::open(get_absolute_config_file_path(&execution_config_file_path.config_file_path))
+            .unwrap();
+    serde_json::from_reader(config_file).unwrap()
+}
+
+/// Returns the execution config for a given block number.
+pub fn get_execution_config_for_block(
+    execution_config: &ExecutionConfig,
+    block_number: BlockNumber,
+) -> BlockExecutionConfig {
+    let segments = &execution_config.execution_config_segments;
+    assert!(!segments.is_empty(), "Execution config is empty.");
+    assert!(segments[0].from_block == BlockNumber(0), "First segment must start at block 0.");
+    for (segment_number, segment) in segments.iter().enumerate() {
+        if block_number < segment.from_block {
+            return segments[segment_number - 1].block_execution_config.clone();
+        }
+    }
+    return segments.last().unwrap().block_execution_config.clone();
+}
+
+impl SerializeConfig for ExecutionConfigFile {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from_iter([ser_param(
+            "config_file_path",
+            &self.config_file_path,
+            "Path for the ExecutionConfig configuration file.",
+        )])
+    }
+}
+
+impl SerializeConfig for BlockExecutionConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         BTreeMap::from_iter([
             ser_param(
@@ -152,7 +212,12 @@ impl SerializeConfig for ExecutionConfig {
                 &self.range_check_builtin,
                 "Cost of a single range_check builtin call.",
             ),
-            ser_param("ecdsa_builtin", &self.ecdsa_builtin, "Cost of a single ecdsa builtin call."),
+            ser_param(
+                "ecdsa_builtin",
+                &self.ecdsa_builtin,
+                "Cost of a single ecdsa builtin
+call.",
+            ),
             ser_param(
                 "bitwise_builtin",
                 &self.bitwise_builtin,
@@ -168,7 +233,12 @@ impl SerializeConfig for ExecutionConfig {
                 &self.output_builtin,
                 "Cost of a single output builtin call.",
             ),
-            ser_param("ec_op_builtin", &self.ec_op_builtin, "Cost of a single ec_op builtin call."),
+            ser_param(
+                "ec_op_builtin",
+                &self.ec_op_builtin,
+                "Cost of a single ec_op builtin
+call.",
+            ),
             ser_param(
                 "keccak_builtin",
                 &self.keccak_builtin,
@@ -178,7 +248,7 @@ impl SerializeConfig for ExecutionConfig {
     }
 }
 
-impl ExecutionConfig {
+impl BlockExecutionConfig {
     /// Returns the VM resources fee cost as a map from resource name to cost.
     pub fn vm_resources_fee_cost(&self) -> Arc<HashMap<String, f64>> {
         Arc::new(HashMap::from([
@@ -234,7 +304,7 @@ pub fn execute_call(
     contract_address: &ContractAddress,
     entry_point_selector: EntryPointSelector,
     calldata: Calldata,
-    execution_config: &ExecutionConfig,
+    execution_config: &BlockExecutionConfig,
 ) -> ExecutionResult<CallExecution> {
     verify_node_synced(txn, state_number)?;
     verify_contract_exists(contract_address, txn, state_number)?;
@@ -304,7 +374,7 @@ fn create_block_context(
     block_timestamp: BlockTimestamp,
     gas_price: GasPrice,
     sequencer_address: &ContractAddress,
-    execution_config: &ExecutionConfig,
+    execution_config: &BlockExecutionConfig,
 ) -> BlockContext {
     BlockContext {
         chain_id,
@@ -341,7 +411,7 @@ pub fn estimate_fee(
     chain_id: &ChainId,
     storage_txn: &StorageTxn<'_, RO>,
     state_number: StateNumber,
-    execution_config: &ExecutionConfig,
+    execution_config: &BlockExecutionConfig,
 ) -> ExecutionResult<Vec<(GasPrice, Fee)>> {
     let (txs_execution_info, block_context) = execute_transactions(
         txs,
@@ -367,7 +437,7 @@ fn execute_transactions(
     chain_id: &ChainId,
     storage_txn: &StorageTxn<'_, RO>,
     state_number: StateNumber,
-    execution_config: &ExecutionConfig,
+    execution_config: &BlockExecutionConfig,
     charge_fee: bool,
     validate: bool,
 ) -> ExecutionResult<(Vec<TransactionExecutionInfo>, BlockContext)> {
@@ -482,7 +552,7 @@ pub fn simulate_transactions(
     chain_id: &ChainId,
     storage_txn: &StorageTxn<'_, RO>,
     state_number: StateNumber,
-    execution_config: &ExecutionConfig,
+    execution_config: &BlockExecutionConfig,
     charge_fee: bool,
     validate: bool,
 ) -> ExecutionResult<Vec<(TransactionTrace, GasPrice, Fee)>> {

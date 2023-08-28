@@ -30,8 +30,15 @@ use crate::test_utils::{
     GAS_PRICE,
     NEW_ACCOUNT_ADDRESS,
 };
-use crate::testing_instances::test_execution_config;
-use crate::{estimate_fee, execute_call, ExecutableTransactionInput, ExecutionConfig};
+use crate::testing_instances::test_block_execution_config;
+use crate::{
+    estimate_fee,
+    execute_call,
+    BlockExecutionConfig,
+    ExecutableTransactionInput,
+    ExecutionConfig,
+    ExecutionConfigSegment,
+};
 
 // Test calling entry points of a deprecated class.
 #[test]
@@ -50,7 +57,7 @@ fn execute_call_cairo0() {
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("without_arg"),
         Calldata::default(),
-        &test_execution_config(),
+        &test_block_execution_config(),
     )
     .unwrap()
     .retdata;
@@ -64,7 +71,7 @@ fn execute_call_cairo0() {
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("with_arg"),
         Calldata(Arc::new(vec![StarkFelt::from(25u128)])),
-        &test_execution_config(),
+        &test_block_execution_config(),
     )
     .unwrap()
     .retdata;
@@ -78,7 +85,7 @@ fn execute_call_cairo0() {
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("return_result"),
         Calldata(Arc::new(vec![StarkFelt::from(123u128)])),
-        &test_execution_config(),
+        &test_block_execution_config(),
     )
     .unwrap()
     .retdata;
@@ -92,7 +99,7 @@ fn execute_call_cairo0() {
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("test_storage_read_write"),
         Calldata(Arc::new(vec![StarkFelt::from(123u128), StarkFelt::from(456u128)])),
-        &test_execution_config(),
+        &test_block_execution_config(),
     )
     .unwrap()
     .retdata;
@@ -117,7 +124,7 @@ fn execute_call_cairo1() {
         &CONTRACT_ADDRESS,
         selector_from_name("test_storage_read_write"),
         calldata,
-        &test_execution_config(),
+        &test_block_execution_config(),
     )
     .unwrap()
     .retdata;
@@ -204,7 +211,7 @@ fn estimate_fees(txs: Vec<ExecutableTransactionInput>) -> Vec<(GasPrice, Fee)> {
         &CHAIN_ID,
         &storage_txn,
         StateNumber::right_after_block(BlockNumber(0)),
-        &test_execution_config(),
+        &test_block_execution_config(),
     )
     .unwrap()
 }
@@ -579,7 +586,7 @@ fn simulate_invoke_from_new_account_validate_and_charge() {
 
 #[test]
 fn test_default_execution_config() {
-    let expected_config = ExecutionConfig {
+    let block_execution_config = BlockExecutionConfig {
         fee_contract_address: contract_address!(
             "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
         ),
@@ -598,5 +605,9 @@ fn test_default_execution_config() {
         ec_op_builtin: 10.24_f64,
         keccak_builtin: 20.48_f64,
     };
+    let execution_config_segment =
+        ExecutionConfigSegment { from_block: BlockNumber(0), block_execution_config };
+    let expected_config =
+        ExecutionConfig { execution_config_segments: vec![execution_config_segment] };
     assert_eq!(expected_config, ExecutionConfig::default());
 }

@@ -27,7 +27,7 @@ use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, SerializedParam};
-use papyrus_execution::ExecutionConfig;
+use papyrus_execution::{get_execution_config, ExecutionConfigFile};
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::db::TransactionKind;
@@ -57,7 +57,7 @@ pub struct RpcConfig {
     pub collect_metrics: bool,
     pub starknet_url: String,
     pub starknet_gateway_retry_config: RetryConfig,
-    pub execution_config: ExecutionConfig,
+    pub execution_config_file_path: ExecutionConfigFile,
 }
 
 impl Default for RpcConfig {
@@ -74,7 +74,7 @@ impl Default for RpcConfig {
                 retry_max_delay_millis: 1000,
                 max_retries: 5,
             },
-            execution_config: ExecutionConfig::default(),
+            execution_config_file_path: ExecutionConfigFile::default(),
         }
     }
 }
@@ -102,7 +102,7 @@ impl SerializeConfig for RpcConfig {
         }
         self_params_dump.append(&mut retry_config_dump);
         let mut execution_config_dump =
-            append_sub_config_name(self.execution_config.dump(), "execution_config");
+            append_sub_config_name(self.execution_config_file_path.dump(), "execution_config");
         self_params_dump.append(&mut execution_config_dump);
         self_params_dump
     }
@@ -145,7 +145,7 @@ pub async fn run_server(
     debug!("Starting JSON-RPC.");
     let methods = get_methods_from_supported_apis(
         &config.chain_id,
-        config.execution_config.clone(),
+        get_execution_config(&config.execution_config_file_path),
         storage_reader,
         config.max_events_chunk_size,
         config.max_events_keys,
