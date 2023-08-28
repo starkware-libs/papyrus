@@ -5,6 +5,7 @@ use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
 use papyrus_config::dumping::SerializeConfig;
 use papyrus_config::SerializedParam;
 use pretty_assertions::assert_eq;
@@ -15,23 +16,27 @@ use test_utils::get_absolute_path;
 
 use crate::config::{node_command, NodeConfig, DEFAULT_CONFIG_PATH};
 
-// Fill here all the required params in default_config.json with some default value.
+// Fill here all the required params in default_config.json with the default value.
 fn required_args() -> Vec<String> {
-    vec![]
+    vec!["--base_layer.node_url".to_owned(), EthereumBaseLayerConfig::default().node_url]
+}
+
+fn get_args(additional_args: Vec<&str>) -> Vec<String> {
+    let mut args = vec!["Papyrus".to_owned()];
+    args.append(&mut required_args());
+    args.append(&mut additional_args.into_iter().map(|s| s.to_owned()).collect());
+    args
 }
 
 #[test]
 fn load_default_config() {
     env::set_current_dir(get_absolute_path("")).expect("Couldn't set working dir.");
-    NodeConfig::load_and_process(required_args()).expect("Failed to load the config.");
+    NodeConfig::load_and_process(get_args(vec![])).expect("Failed to load the config.");
 }
 
 #[test]
 fn load_http_headers() {
-    let args = vec!["Papyrus", "--central.http_headers", "NAME_1:VALUE_1 NAME_2:VALUE_2"];
-    let mut args: Vec<String> = args.into_iter().map(|s| s.to_owned()).collect();
-    args.append(&mut required_args());
-
+    let args = get_args(vec!["--central.http_headers", "NAME_1:VALUE_1 NAME_2:VALUE_2"]);
     env::set_current_dir(get_absolute_path("")).expect("Couldn't set working dir.");
     let config = NodeConfig::load_and_process(args).unwrap();
     let target_http_headers = HashMap::from([
@@ -51,15 +56,13 @@ fn test_dump_default_config() {
 #[test]
 fn test_default_config_process() {
     env::set_current_dir(get_absolute_path("")).expect("Couldn't set working dir.");
-    assert_eq!(NodeConfig::load_and_process(required_args()).unwrap(), NodeConfig::default());
+    assert_eq!(NodeConfig::load_and_process(get_args(vec![])).unwrap(), NodeConfig::default());
 }
 
 #[test]
 fn test_update_dumped_config_by_command() {
     let args =
-        vec!["Papyrus", "--rpc.max_events_keys", "1234", "--storage.db_config.path_prefix", "/abc"];
-    let mut args: Vec<String> = args.into_iter().map(|s| s.to_owned()).collect();
-    args.append(&mut required_args());
+        get_args(vec!["--rpc.max_events_keys", "1234", "--storage.db_config.path_prefix", "/abc"]);
     env::set_current_dir(get_absolute_path("")).expect("Couldn't set working dir.");
     let config = NodeConfig::load_and_process(args).unwrap();
 

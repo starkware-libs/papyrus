@@ -1,7 +1,6 @@
 use std::env::args;
 use std::sync::Arc;
 
-use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_config::ConfigError;
 use papyrus_monitoring_gateway::MonitoringServer;
@@ -84,12 +83,6 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         let central_source =
             CentralSource::new(config.central, VERSION_FULL, storage_reader.clone())
                 .map_err(CentralError::ClientCreation)?;
-        // TODO(yoav, dvir): consider add config option for mandatory value.
-        if config.base_layer.node_url == EthereumBaseLayerConfig::default().node_url {
-            return Err(papyrus_sync::StateSyncError::BaseLayerSourceError(BaseLayerSourceError::BaseLayerSourceCreationError(
-                r#"No base layer node url was provided. You must override the config value "base_layer.node_url""#.to_string(),
-            )));
-        }
         let base_layer_source = EthereumBaseLayerSource::new(config.base_layer)
             .map_err(|e| BaseLayerSourceError::BaseLayerSourceCreationError(e.to_string()))?;
         let mut sync = StateSync::new(
