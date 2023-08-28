@@ -316,7 +316,7 @@ pub(crate) fn stored_txn_to_executable_txn(
                     .map_err(internal_server_error)?
                     .get_deprecated_class_definition_at(state_number, &class_hash)
                     .map_err(internal_server_error)?
-                    .ok_or(internal_server_error(format!(
+                    .ok_or_else(|| internal_server_error(format!(
                         "Missing deprecated class definition of {class_hash}."
                     )))?,
             ))
@@ -333,7 +333,7 @@ pub(crate) fn stored_txn_to_executable_txn(
                     .map_err(internal_server_error)?
                     .get_deprecated_class_definition_at(state_number, &class_hash)
                     .map_err(internal_server_error)?
-                    .ok_or(internal_server_error(format!(
+                    .ok_or_else(|| internal_server_error(format!(
                         "Missing deprecated class definition of {class_hash}."
                     )))?,
             ))
