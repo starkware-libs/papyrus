@@ -383,6 +383,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         state_diff: StateDiff,
         mut deployed_contract_class_definitions: IndexMap<ClassHash, DeprecatedContractClass>,
     ) -> StorageResult<Self> {
+        debug!("1. Start writing");
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let nonces_table = self.txn.open_table(&self.tables.nonces)?;
         let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
@@ -394,8 +395,11 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
         let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
 
+    
+        debug!("2. End open table");
         update_marker(&self.txn, &markers_table, block_number)?;
 
+        debug!("3. Deploy contract");
         // Write state except declared classes.
         write_deployed_contracts(
             &state_diff.deployed_contracts,
@@ -404,8 +408,11 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             &deployed_contracts_table,
             &nonces_table,
         )?;
+        debug!("4. Storage diff");
         write_storage_diffs(&state_diff.storage_diffs, &self.txn, block_number, &storage_table)?;
+        debug!("5. Nonce");
         write_nonces(&state_diff.nonces, &self.txn, block_number, &nonces_table)?;
+        debug!("6. Replaced classes");
         write_replaced_classes(
             &state_diff.replaced_classes,
             &self.txn,
@@ -414,10 +421,13 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         )?;
 
         // Write state diff.
+        debug!("7. Create state diff");
         let (thin_state_diff, declared_classes, deprecated_declared_classes) =
             ThinStateDiff::from_state_diff(state_diff);
+        debug!("8. Insert state diff");
         state_diffs_table.insert(&self.txn, &block_number, &thin_state_diff)?;
 
+        debug!("9. Declared classes");
         // Write declared classes.
         write_declared_classes(
             &declared_classes,
@@ -428,8 +438,10 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         )?;
 
         // Advance compiled class marker.
+        debug!("10. Compiled class");
         update_compiled_class_marker(&self.txn, &markers_table, &state_diffs_table)?;
 
+        debug!("11. Deprecated classes");
         // Write deprecated declared classes.
         if !deployed_contract_class_definitions.is_empty() {
             // TODO(anatg): Remove this after regenesis.
@@ -452,6 +464,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
                 &deprecated_declared_classes_table,
             )?;
         }
+        debug!("End writing");
 
         Ok(self)
     }
