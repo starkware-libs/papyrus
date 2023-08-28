@@ -54,11 +54,8 @@ jobs:
           target/release/papyrus_node --base_layer.node_url ${{ secrets.CI_BASE_LAYER_NODE_URL }}
           & sleep 30 ; kill $!
 
-  test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [macos-latest, ubuntu-latest]
+  test-macos:
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
@@ -70,6 +67,38 @@ jobs:
         uses: taiki-e/install-action@nextest
       - run: |
           cargo nextest run; cargo test --doc
+        env:
+          SEED: 0
+          
+  test-ubuntu:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cmd:
+          - -p papyrus_base_layer
+          - -p papyrus_common
+          - -p papyrus_config
+          - -p papyrus_execution
+          - -p papyrus_load_test
+          - -p papyrus_monitoring_gateway
+          - -p papyrus_node
+          - -p papyrus_storage
+          - -p papyrus_sync
+          - -p starknet_client
+          - -p test_utils
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+      - run: npm install -g ganache@7.4.3
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
+      - if: ${{ matrix.cmd == '-p papyrus_base_layer' }}
+        run: npm install -g ganache@7.4.3
+      - run: |
+          cargo test ${{ matrix.cmd }}
         env:
           SEED: 0
 
@@ -186,7 +215,7 @@ jobs:
       - name: Install nextest
         uses: taiki-e/install-action@nextest
       - name: Coverage
-        run: cargo +nightly llvm-cov nextest --codecov --output-path codecov.json
+        run: cargo +nightly llvm-cov --codecov --output-path codecov.json
         env:
           SEED: 0
       - name: Codecov
