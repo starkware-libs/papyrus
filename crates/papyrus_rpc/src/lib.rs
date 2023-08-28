@@ -145,7 +145,7 @@ pub async fn run_server(
     debug!("Starting JSON-RPC.");
     let methods = get_methods_from_supported_apis(
         &config.chain_id,
-        config.execution_config.clone(),
+        config.execution_config.clone().try_into()?,
         storage_reader,
         config.max_events_chunk_size,
         config.max_events_keys,
