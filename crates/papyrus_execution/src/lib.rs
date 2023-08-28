@@ -12,7 +12,8 @@ pub mod testing_instances;
 
 pub mod objects;
 use std::collections::{BTreeMap, HashMap};
-use std::path::{Path, PathBuf};
+use std::fs::File;
+use std::path::Path;
 use std::sync::Arc;
 use std::{fs, iter};
 
@@ -69,14 +70,17 @@ use state_reader::ExecutionStateReader;
 pub type ExecutionResult<T> = Result<T, ExecutionError>;
 
 /// The path to the default execution config file.
-pub const DEFAULT_CONFIG_PATH: &str = "config_files/default.json";
-/// The path to the test execution config file.
-pub const TEST_CONFIG_PATH: &str = "config_files/test.json";
+pub const DEFAULT_CONFIG_FILE: &str = "default_config.json";
 
 /// Returns the absolute path of the execution config file.
-pub fn get_absolute_config_file_path(relative_path: &str) -> PathBuf {
-    let absolute_path = env!("CARGO_MANIFEST_DIR", "crates/papyrus_execution");
-    Path::new(&absolute_path).join("../papyrus_execution").join(relative_path)
+pub fn get_config_file(file_name: &str) -> File {
+    // TODO(Omri): Find a better way to get the config file path.
+    let home_dir = match std::env::var("CARGO_MANIFEST_DIR") {
+        Ok(s) => format!("{}/../..", s),
+        _ => "".to_string(),
+    };
+    let file_full_name = Path::new(&home_dir).join("config/execution_config").join(file_name);
+    fs::File::open(file_full_name).unwrap()
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
@@ -118,8 +122,7 @@ pub struct ExecutionConfig {
 
 impl Default for ExecutionConfig {
     fn default() -> Self {
-        let default_config_file =
-            fs::File::open(get_absolute_config_file_path(DEFAULT_CONFIG_PATH)).unwrap();
+        let default_config_file = get_config_file(DEFAULT_CONFIG_FILE);
         serde_json::from_reader(default_config_file).unwrap()
     }
 }
@@ -127,20 +130,18 @@ impl Default for ExecutionConfig {
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 #[allow(missing_docs)]
 pub struct ExecutionConfigFile {
-    pub config_file_path: String,
+    pub config_file_name: String,
 }
 
 impl Default for ExecutionConfigFile {
     fn default() -> Self {
-        ExecutionConfigFile { config_file_path: DEFAULT_CONFIG_PATH.to_string() }
+        ExecutionConfigFile { config_file_name: DEFAULT_CONFIG_FILE.to_string() }
     }
 }
 
 /// Returns the execution config from the config file.
-pub fn get_execution_config(execution_config_file_path: &ExecutionConfigFile) -> ExecutionConfig {
-    let config_file =
-        fs::File::open(get_absolute_config_file_path(&execution_config_file_path.config_file_path))
-            .unwrap();
+pub fn get_execution_config(execution_config_file: &ExecutionConfigFile) -> ExecutionConfig {
+    let config_file = get_config_file(&execution_config_file.config_file_name);
     serde_json::from_reader(config_file).unwrap()
 }
 
@@ -163,9 +164,9 @@ pub fn get_execution_config_for_block(
 impl SerializeConfig for ExecutionConfigFile {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         BTreeMap::from_iter([ser_param(
-            "config_file_path",
-            &self.config_file_path,
-            "Path for the ExecutionConfig configuration file.",
+            "config_file_name",
+            &self.config_file_name,
+            "Name of the ExecutionConfig configuration file.",
         )])
     }
 }

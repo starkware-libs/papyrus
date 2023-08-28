@@ -584,6 +584,7 @@ fn simulate_invoke_from_new_account_validate_and_charge() {
     assert_matches!(invoke_trace.fee_transfer_invocation, Some(_));
 }
 
+/// Test that the execution config is loaded correctly. Compare the loaded config to the expected.
 #[test]
 fn test_default_execution_config() {
     let block_execution_config = BlockExecutionConfig {
@@ -611,3 +612,5 @@ fn test_default_execution_config() {
         ExecutionConfig { execution_config_segments: vec![execution_config_segment] };
     assert_eq!(expected_config, ExecutionConfig::default());
 }
+
+// TODO(Omri): Test loading of configuration according to the given block number.

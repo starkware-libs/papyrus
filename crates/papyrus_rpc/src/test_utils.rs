@@ -7,7 +7,7 @@ use jsonrpsee::server::RpcModule;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonschema::JSONSchema;
 use papyrus_common::BlockHashAndNumber;
-use papyrus_execution::{get_execution_config, ExecutionConfigFile, TEST_CONFIG_PATH};
+use papyrus_execution::{get_execution_config, ExecutionConfigFile};
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
 use regex::Regex;
@@ -23,11 +23,14 @@ use crate::api::JsonRpcServerImpl;
 use crate::version_config::{VersionId, VERSION_PATTERN};
 use crate::RpcConfig;
 
+/// The path to the test execution config file.
+pub const TEST_CONFIG_PATH: &str = "test_config.json";
+
 pub fn get_test_rpc_config() -> RpcConfig {
     RpcConfig {
         chain_id: ChainId("SN_GOERLI".to_string()),
-        execution_config_file_path: ExecutionConfigFile {
-            config_file_path: TEST_CONFIG_PATH.to_string(),
+        execution_config_file: ExecutionConfigFile {
+            config_file_name: TEST_CONFIG_PATH.to_string(),
         },
         server_address: String::from("127.0.0.1:0"),
         max_events_chunk_size: 10,
@@ -59,7 +62,7 @@ pub(crate) fn get_test_rpc_server_and_storage_writer_from_params<T: JsonRpcServe
     (
         T::new(
             config.chain_id,
-            get_execution_config(&config.execution_config_file_path),
+            get_execution_config(&config.execution_config_file),
             storage_reader,
             config.max_events_chunk_size,
             config.max_events_keys,
