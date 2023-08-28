@@ -57,7 +57,7 @@ pub struct RpcConfig {
     pub collect_metrics: bool,
     pub starknet_url: String,
     pub starknet_gateway_retry_config: RetryConfig,
-    pub execution_config: ExecutionConfig,
+    pub execution_config_file: ExecutionConfig,
 }
 
 impl Default for RpcConfig {
@@ -74,7 +74,7 @@ impl Default for RpcConfig {
                 retry_max_delay_millis: 1000,
                 max_retries: 5,
             },
-            execution_config: ExecutionConfig::default(),
+            execution_config_file: ExecutionConfig::default(),
         }
     }
 }
@@ -102,7 +102,7 @@ impl SerializeConfig for RpcConfig {
         }
         self_params_dump.append(&mut retry_config_dump);
         let mut execution_config_dump =
-            append_sub_config_name(self.execution_config.dump(), "execution_config");
+            append_sub_config_name(self.execution_config_file.dump(), "execution_config");
         self_params_dump.append(&mut execution_config_dump);
         self_params_dump
     }
@@ -145,7 +145,7 @@ pub async fn run_server(
     debug!("Starting JSON-RPC.");
     let methods = get_methods_from_supported_apis(
         &config.chain_id,
-        config.execution_config.clone(),
+        config.execution_config_file.clone().try_into()?,
         storage_reader,
         config.max_events_chunk_size,
         config.max_events_keys,
