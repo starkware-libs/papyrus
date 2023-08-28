@@ -1,3 +1,4 @@
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 use assert_matches::assert_matches;
@@ -30,8 +31,14 @@ use crate::test_utils::{
     GAS_PRICE,
     NEW_ACCOUNT_ADDRESS,
 };
-use crate::testing_instances::test_execution_config;
-use crate::{estimate_fee, execute_call, ExecutableTransactionInput, ExecutionConfig};
+use crate::testing_instances::{test_block_execution_config, test_get_default_execution_config};
+use crate::{
+    estimate_fee,
+    execute_call,
+    BlockExecutionConfig,
+    ExecutableTransactionInput,
+    ExecutionConfigByBlock,
+};
 
 // Test calling entry points of a deprecated class.
 #[test]
@@ -50,7 +57,7 @@ fn execute_call_cairo0() {
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("without_arg"),
         Calldata::default(),
-        &test_execution_config(),
+        &test_block_execution_config(),
     )
     .unwrap()
     .retdata;
@@ -64,7 +71,7 @@ fn execute_call_cairo0() {
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("with_arg"),
         Calldata(Arc::new(vec![StarkFelt::from(25u128)])),
-        &test_execution_config(),
+        &test_block_execution_config(),
     )
     .unwrap()
     .retdata;
@@ -78,7 +85,7 @@ fn execute_call_cairo0() {
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("return_result"),
         Calldata(Arc::new(vec![StarkFelt::from(123u128)])),
-        &test_execution_config(),
+        &test_block_execution_config(),
     )
     .unwrap()
     .retdata;
@@ -92,7 +99,7 @@ fn execute_call_cairo0() {
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("test_storage_read_write"),
         Calldata(Arc::new(vec![StarkFelt::from(123u128), StarkFelt::from(456u128)])),
-        &test_execution_config(),
+        &test_block_execution_config(),
     )
     .unwrap()
     .retdata;
@@ -117,7 +124,7 @@ fn execute_call_cairo1() {
         &CONTRACT_ADDRESS,
         selector_from_name("test_storage_read_write"),
         calldata,
-        &test_execution_config(),
+        &test_block_execution_config(),
     )
     .unwrap()
     .retdata;
@@ -204,7 +211,7 @@ fn estimate_fees(txs: Vec<ExecutableTransactionInput>) -> Vec<(GasPrice, Fee)> {
         &CHAIN_ID,
         &storage_txn,
         StateNumber::right_after_block(BlockNumber(0)),
-        &test_execution_config(),
+        &test_block_execution_config(),
     )
     .unwrap()
 }
@@ -577,9 +584,22 @@ fn simulate_invoke_from_new_account_validate_and_charge() {
     assert_matches!(invoke_trace.fee_transfer_invocation, Some(_));
 }
 
+/// Test that the execution config is loaded correctly. Compare the loaded config to the expected.
 #[test]
 fn test_default_execution_config() {
-    let expected_config = ExecutionConfig {
+    let mut vm_resource_fee_cost = HashMap::new();
+    vm_resource_fee_cost.insert("n_steps".to_owned(), 0.01);
+    vm_resource_fee_cost.insert("pedersen_builtin".to_owned(), 0.32);
+    vm_resource_fee_cost.insert("range_check_builtin".to_owned(), 0.16);
+    vm_resource_fee_cost.insert("ecdsa_builtin".to_owned(), 20.48);
+    vm_resource_fee_cost.insert("bitwise_builtin".to_owned(), 0.64);
+    vm_resource_fee_cost.insert("poseidon_builtin".to_owned(), 0.32);
+    vm_resource_fee_cost.insert("output_builtin".to_owned(), 1.0);
+    vm_resource_fee_cost.insert("ec_op_builtin".to_owned(), 10.24);
+    vm_resource_fee_cost.insert("keccak_builtin".to_owned(), 20.48);
+
+    let vm_resource_fee_cost = Arc::new(vm_resource_fee_cost);
+    let block_execution_config = BlockExecutionConfig {
         fee_contract_address: contract_address!(
             "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
         ),
@@ -588,15 +608,13 @@ fn test_default_execution_config() {
         max_recursion_depth: 50,
         step_gas_cost: STEP_GAS_COST,
         initial_gas_cost: 10_u64.pow(8) * STEP_GAS_COST,
-        n_steps: 0.01_f64,
-        pedersen_builtin: 0.32_f64,
-        range_check_builtin: 0.16_f64,
-        ecdsa_builtin: 20.48_f64,
-        bitwise_builtin: 0.64_f64,
-        poseidon_builtin: 0.32_f64,
-        output_builtin: 1_f64,
-        ec_op_builtin: 10.24_f64,
-        keccak_builtin: 20.48_f64,
+        vm_resource_fee_cost,
     };
-    assert_eq!(expected_config, ExecutionConfig::default());
+    let mut execution_config_segments = BTreeMap::new();
+    execution_config_segments.insert(BlockNumber(0), block_execution_config);
+    let expected_config = ExecutionConfigByBlock { execution_config_segments };
+    let config_from_file = test_get_default_execution_config();
+    assert_eq!(expected_config, config_from_file);
 }
+
+// TODO(Omri): Test loading of configuration according to the given block number.

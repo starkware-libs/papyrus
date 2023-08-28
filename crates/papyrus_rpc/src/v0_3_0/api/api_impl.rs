@@ -6,7 +6,7 @@ use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
 use papyrus_common::BlockHashAndNumber;
-use papyrus_execution::ExecutionConfig;
+use papyrus_execution::ExecutionConfigByBlock;
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
 use papyrus_storage::state::StateStorageReader;
@@ -496,7 +496,7 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
 impl JsonRpcServerImpl for JsonRpcServerV0_3Impl {
     fn new(
         chain_id: ChainId,
-        _execution_config: ExecutionConfig,
+        _execution_config: ExecutionConfigByBlock,
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,

@@ -77,93 +77,9 @@ expression: dumped_default_config
     "description": "If true, collect metrics for the rpc.",
     "value": false
   },
-  "rpc.execution_config.bitwise_builtin": {
-    "description": "Cost of a single bitwise builtin call.",
-    "value": {
-      "$serde_json::private::Number": "0.64"
-    }
-  },
-  "rpc.execution_config.ec_op_builtin": {
-    "description": "Cost of a single ec_op builtin call.",
-    "value": {
-      "$serde_json::private::Number": "10.24"
-    }
-  },
-  "rpc.execution_config.ecdsa_builtin": {
-    "description": "Cost of a single ecdsa builtin call.",
-    "value": {
-      "$serde_json::private::Number": "20.48"
-    }
-  },
-  "rpc.execution_config.fee_contract_address": {
-    "description": "The contract address of the ERC-20 fee contract used for paying fees.",
-    "value": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
-  },
-  "rpc.execution_config.initial_gas_cost": {
-    "description": "An estimation of the initial gas for a transaction to run with (10e8 * step_gas_cost).",
-    "value": {
-      "$serde_json::private::Number": "10000000000"
-    }
-  },
-  "rpc.execution_config.invoke_tx_max_n_steps": {
-    "description": "Max steps for invoke transaction.",
-    "value": {
-      "$serde_json::private::Number": "1000000"
-    }
-  },
-  "rpc.execution_config.keccak_builtin": {
-    "description": "Cost of a single keccak builtin call.",
-    "value": {
-      "$serde_json::private::Number": "20.48"
-    }
-  },
-  "rpc.execution_config.max_recursion_depth": {
-    "description": "Max recursion depth for transaction.",
-    "value": {
-      "$serde_json::private::Number": "50"
-    }
-  },
-  "rpc.execution_config.n_steps": {
-    "description": "I don't know what this is.",
-    "value": {
-      "$serde_json::private::Number": "0.01"
-    }
-  },
-  "rpc.execution_config.output_builtin": {
-    "description": "Cost of a single output builtin call.",
-    "value": {
-      "$serde_json::private::Number": "1.0"
-    }
-  },
-  "rpc.execution_config.pedersen_builtin": {
-    "description": "Cost of a single pedersen builtin call.",
-    "value": {
-      "$serde_json::private::Number": "0.32"
-    }
-  },
-  "rpc.execution_config.poseidon_builtin": {
-    "description": "Cost of a single poseidon builtin call.",
-    "value": {
-      "$serde_json::private::Number": "0.32"
-    }
-  },
-  "rpc.execution_config.range_check_builtin": {
-    "description": "Cost of a single range_check builtin call.",
-    "value": {
-      "$serde_json::private::Number": "0.16"
-    }
-  },
-  "rpc.execution_config.step_gas_cost": {
-    "description": "Cost of a single step.",
-    "value": {
-      "$serde_json::private::Number": "100"
-    }
-  },
-  "rpc.execution_config.validate_tx_max_n_steps": {
-    "description": "Max steps for validating transaction.",
-    "value": {
-      "$serde_json::private::Number": "1000000"
-    }
+  "rpc.execution_config.config_file_name": {
+    "description": "Name of the ExecutionConfig configuration file.",
+    "value": "config/execution_config/default_config.json"
   },
   "rpc.max_events_chunk_size": {
     "description": "Maximum chunk size supported by the node in get_events requests.",
