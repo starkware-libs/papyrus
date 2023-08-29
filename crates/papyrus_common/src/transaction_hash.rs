@@ -102,7 +102,7 @@ pub fn validate_transaction_hash(
 }
 
 // Represents an intermediate calculation of Pedersen hash chain.
-struct PedersenHashChain {
+pub(crate) struct PedersenHashChain {
     current_hash: FieldElement,
     length: u128,
 }
@@ -140,12 +140,13 @@ impl PedersenHashChain {
 
     // Returns the hash of the chained felts, hashed with the length of the chain.
     pub fn get_hash(&self) -> StarkHash {
+        // TODO(yoav): Return a constant if the length is 0.
         let final_hash = pedersen_hash(&self.current_hash, &FieldElement::from(self.length));
         StarkHash::from(final_hash)
     }
 }
 
-fn ascii_as_felt(ascii_str: &str) -> Result<StarkFelt, StarknetApiError> {
+pub(crate) fn ascii_as_felt(ascii_str: &str) -> Result<StarkFelt, StarknetApiError> {
     StarkFelt::try_from(hex::encode(ascii_str).as_str())
 }
 

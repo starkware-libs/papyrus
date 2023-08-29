@@ -59,6 +59,9 @@ enum SubTreeSplitting {
 /// Calculates Patricia hash root on the given values.
 /// The values are keyed by consecutive numbers, starting from 0.
 pub fn calculate_root(values: Vec<StarkFelt>) -> StarkFelt {
+    if values.is_empty() {
+        return *ZERO;
+    }
     let leaves: Vec<Entry> = values
         .into_iter()
         .zip(0u64..)
