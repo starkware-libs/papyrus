@@ -132,6 +132,24 @@ impl Stream for Discovery {
                             self.swarm.behaviour_mut().kademlia.add_address(&peer_id, address);
                         }
                     }
+                    SwarmEvent::Behaviour(MixedEvent::Identify(identify::Event::Sent {
+                        peer_id,
+                    })) => {
+                        self.log_message(format!(
+                            "{:?} sent identify to {:?} after they requested it",
+                            self.peer_id(),
+                            peer_id,
+                        ));
+                    }
+                    SwarmEvent::Behaviour(MixedEvent::Identify(identify::Event::Pushed {
+                        peer_id,
+                    })) => {
+                        self.log_message(format!(
+                            "{:?} pushed identify to {:?}",
+                            self.peer_id(),
+                            peer_id,
+                        ));
+                    }
                     SwarmEvent::IncomingConnection { send_back_addr, .. } => {
                         self.log_message(format!(
                             "{:?} has incoming connection from {:?}",
