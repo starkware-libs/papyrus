@@ -13,6 +13,7 @@ use serde_json::{json, Map, Value};
 use starknet_api::core::ChainId;
 use tempfile::NamedTempFile;
 use test_utils::get_absolute_path;
+use validator::Validate;
 
 use crate::config::{node_command, NodeConfig, DEFAULT_CONFIG_PATH};
 
@@ -49,7 +50,9 @@ fn load_http_headers() {
 #[test]
 // Regression test which checks that the default config dumping hasn't changed.
 fn test_dump_default_config() {
-    let dumped_default_config = NodeConfig::default().dump();
+    let default_config = NodeConfig::default();
+    default_config.validate().unwrap();
+    let dumped_default_config = default_config.dump();
     insta::assert_json_snapshot!(dumped_default_config);
 }
 
