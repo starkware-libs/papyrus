@@ -2,4 +2,5 @@
 /// to the [`Starknet p2p specs`]
 ///
 /// [`Starknet p2p specs`]: https://github.com/starknet-io/starknet-p2p-specs/
+pub mod get_blocks;
 pub mod messages;
