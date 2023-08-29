@@ -34,5 +34,33 @@
       }
     },
     "transaction_hash": "0x39017e29a3e0f7f01478ef718096ba4529eabe7e554614f26ff4d0000e2c248"
+  },
+  {
+    "transaction": {
+      "Invoke": {
+        "V1": {
+          "max_fee": "0x174876e8000",
+          "signature": [
+            "0xdd6e2f69ef2c90df1913d93a1a26fb232555a7cc72a279b790a4d869c2db2d",
+            "0x7f8c1ad6e33514733b8a947e25fbede07e572ace6a85a07e88f42cf531dd1c8"
+          ],
+          "nonce": "0x0",
+          "sender_address": "0x70e1e23753c9dbfb01f1a49dc0a37fedeadf57620792e33ab00049e501816a4",
+          "calldata": [
+            "0x1",
+            "0x70e1e23753c9dbfb01f1a49dc0a37fedeadf57620792e33ab00049e501816a4",
+            "0x2730079d734ee55315f4f141eaed376bddd8c2133523d223a344c5604e0f7f8",
+            "0x0",
+            "0x4",
+            "0x4",
+            "0x1e48f20c157f50d7b135363d3684785e2e05cc7cccb7ddca3f55a7601328c81",
+            "0x46440f630201391aa9e59608828f559ae01b18d344c711111b66da7ecc69520",
+            "0x0",
+            "0x0"
+          ]
+        }
+      }
+    },
+    "transaction_hash": "0x2a50202d4c6936c70f3c604c0f8059f17eab30329b662436b02069a7dd27cc9"
   }
 ]
