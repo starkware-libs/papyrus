@@ -4320,12 +4320,14 @@ dependencies = [
  "hex",
  "lazy_static",
  "pretty_assertions",
+ "reqwest",
  "serde",
  "serde_json",
  "sha3",
  "starknet-crypto",
  "starknet_api",
  "test_utils",
+ "tokio",
 ]
 
 [[package]]

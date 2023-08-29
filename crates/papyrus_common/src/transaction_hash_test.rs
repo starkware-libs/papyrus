@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
 use sha3::{Digest, Keccak256};
 use starknet_api::core::ChainId;
 use starknet_api::hash::{StarkFelt, StarkHash};
@@ -77,5 +78,75 @@ fn test_deprecated_transaction_hash() {
             )
             .unwrap()
         );
+    }
+}
+
+#[tokio::test]
+async fn test_all_blocks() {
+    for block_number in 192..193 {
+        validate_block(block_number).await;
+    }
+}
+
+async fn validate_block(block_number: usize) {
+    let chain_id = ChainId("SN_MAIN".to_owned());
+    let url = "http://papyrus-mainnet-bm.starknet.io/rpc/v0_4";
+    let method = "starknet_getBlockWithTxs";
+    // let params = r#"{"block_number": 0}"#;
+    let params = format!("{{\"block_number\": {}}}", block_number);
+
+    let client = reqwest::Client::new();
+    let res = client
+    .post(url)
+    .header("Content-Type", "application/json")
+    .body(format!(r#"{{"jsonrpc":"2.0","id":"1","method":"{method}","params":[{params}]}}"#))
+    .send()
+    .await
+    .unwrap()
+    .text()
+    .await
+    .unwrap();
+
+
+    let block: Value = serde_json::from_str(&res).unwrap();
+    let block = block.as_object().unwrap().get("result").unwrap();
+    let json_txs = block.get("transactions").unwrap().as_array().unwrap();
+    for json_tx in json_txs {
+        let mut json_obj_tx = json_tx.as_object().unwrap().to_owned();
+        let tx_hash = json_obj_tx.remove("transaction_hash").unwrap();
+        let expected_hash = StarkFelt::try_from(tx_hash.as_str().unwrap()).unwrap();
+
+        let tx_type = json_obj_tx.remove("type").unwrap();
+        let tx_type = if tx_type == "L1_HANDLER" {
+            "L1Handler".to_owned()
+        } else {
+            let temp_tx_type = tx_type.as_str().unwrap().to_owned();
+            format!("{}{}", temp_tx_type.chars().next().unwrap(), temp_tx_type[1..].to_lowercase())
+        };
+
+        let version = {
+            if tx_type == "Declare" || tx_type == "Invoke" {
+                json_obj_tx.remove("version")
+            } else {
+                None
+            }
+        };
+
+        let mut tx = json!({});
+        let tx_content = match version {
+            Some(ver) => {
+                let ver_str = format!("V{}", ver.as_str().unwrap().strip_prefix("0x").unwrap());
+                let mut tx_content_val = json!({});
+                tx_content_val[ver_str] = json!(json_obj_tx);
+                tx_content_val
+            },
+            None => json!(json_obj_tx),
+        };
+        tx[tx_type] = tx_content;
+        let tx_obj: Transaction = serde_json::from_value(tx).expect("serde_json error");
+
+
+        let is_valid = validate_transaction_hash(&tx_obj, &chain_id, expected_hash).unwrap();
+        assert!(is_valid, "Invalid tx hash {}", expected_hash);
     }
 }
