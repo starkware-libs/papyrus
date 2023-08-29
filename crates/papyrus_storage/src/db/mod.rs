@@ -155,9 +155,24 @@ pub(crate) fn open_env(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
                 ..Default::default()
             })
             .set_max_tables(MAX_DBS)
+            .set_flags(get_flags())
             .open(&config.path())?,
     );
     Ok((DbReader { env: env.clone() }, DbWriter { env }))
+}
+
+use libmdbx::DatabaseFlags;
+use libmdbx::Mode;
+use libmdbx::SyncMode;
+
+/// doc
+pub fn get_flags() -> DatabaseFlags{
+    DatabaseFlags {
+        mode: Mode::ReadWrite{
+            sync_mode: SyncMode::UtterlyNoSync,
+        },
+        ..Default::default()
+    }
 }
 
 #[derive(Clone)]
