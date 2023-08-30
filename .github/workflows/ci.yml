@@ -66,7 +66,7 @@ jobs:
       - name: Install nextest
         uses: taiki-e/install-action@nextest
       - run: |
-          cargo nextest run; cargo test --doc
+          cargo test; cargo test --doc
         env:
           SEED: 0
           
@@ -98,7 +98,7 @@ jobs:
       - if: ${{ matrix.cmd == '-p papyrus_base_layer' }}
         run: npm install -g ganache@7.4.3
       - run: |
-          cargo test ${{ matrix.cmd }}
+          cargo nextest run ${{ matrix.cmd }}
         env:
           SEED: 0
 
