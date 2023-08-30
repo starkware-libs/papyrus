@@ -53,6 +53,7 @@ where
 /// Substream upgrade protocol for requesting data on blocks.
 ///
 /// Sends a request to get a range of blocks and receives a stream of data on the blocks.
+#[derive(Debug)]
 pub struct RequestProtocol {
     request: GetBlocks,
     responses_sender: UnboundedSender<GetBlocksResponse>,
@@ -62,6 +63,16 @@ impl RequestProtocol {
     pub fn new(request: GetBlocks) -> (Self, UnboundedReceiver<GetBlocksResponse>) {
         let (responses_sender, responses_receiver) = unbounded();
         (Self { request, responses_sender }, responses_receiver)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn request(&self) -> &GetBlocks {
+        &self.request
+    }
+
+    #[cfg(test)]
+    pub(crate) fn responses_sender(&self) -> &UnboundedSender<GetBlocksResponse> {
+        &self.responses_sender
     }
 }
 
