@@ -35,7 +35,7 @@ use validator::Validate;
 use crate::db::serialization::{StorageSerde, StorageSerdeEx};
 
 // Maximum number of Sub-Databases.
-const MAX_DBS: usize = 27;
+const MAX_DBS: usize = 28;
 
 // Note that NO_TLS mode is used by default.
 type EnvironmentKind = WriteMap;
@@ -155,6 +155,24 @@ pub(crate) fn open_env(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
                 ..Default::default()
             })
             .set_max_tables(MAX_DBS)
+            //.set_flags(get_flags())
+            .open(&config.path())?,
+    );
+    Ok((DbReader { env: env.clone() }, DbWriter { env }))
+}
+
+
+pub(crate) fn open_env_super(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
+    let env = Arc::new(
+        Environment::new()
+            .set_geometry(Geometry {
+                size: Some(config.min_size..config.max_size),
+                growth_step: Some(config.growth_step),
+                //page_size: Some(libmdbx::PageSize::Set(32768)),
+                ..Default::default()
+            })
+            .set_max_tables(MAX_DBS)
+            //.set_flags(get_flags())
             .open(&config.path())?,
     );
     Ok((DbReader { env: env.clone() }, DbWriter { env }))

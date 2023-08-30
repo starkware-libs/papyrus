@@ -393,6 +393,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             self.txn.open_table(&self.tables.deprecated_declared_classes)?;
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
         let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
+        let new_diffs_table=self.txn.open_table(&self.tables.contract_changes)?;
 
         update_marker(&self.txn, &markers_table, block_number)?;
 
@@ -414,9 +415,15 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         )?;
 
         // Write state diff.
-        let (thin_state_diff, declared_classes, deprecated_declared_classes) =
+        let (mut thin_state_diff, declared_classes, deprecated_declared_classes) =
             ThinStateDiff::from_state_diff(state_diff);
+
+        write_storage_diffs_new_table(&thin_state_diff.storage_diffs, &self.txn, block_number, &new_diffs_table)?;
+
+        thin_state_diff.storage_diffs=IndexMap::new();
+
         state_diffs_table.insert(&self.txn, &block_number, &thin_state_diff)?;
+
 
         // Write declared classes.
         write_declared_classes(
@@ -658,6 +665,7 @@ fn write_deployed_contracts<'env>(
     Ok(())
 }
 
+
 fn write_nonces<'env>(
     nonces: &IndexMap<ContractAddress, Nonce>,
     txn: &DbTransaction<'env, RW>,
@@ -692,6 +700,18 @@ fn write_storage_diffs<'env>(
         for (key, value) in storage_entries {
             storage_table.upsert(txn, &(*address, *key, block_number), value)?;
         }
+    }
+    Ok(())
+}
+
+fn write_storage_diffs_new_table<'env>(
+    storage_diffs: &IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
+    txn: &DbTransaction<'env, RW>,
+    block_number: BlockNumber,
+    storage_table: &'env TableHandle<'env, (BlockNumber, ContractAddress), IndexMap<StorageKey, StarkFelt>>,
+) -> StorageResult<()> {
+    for (address, map) in storage_diffs{
+        storage_table.insert(txn, &(block_number, *address), map)?;
     }
     Ok(())
 }

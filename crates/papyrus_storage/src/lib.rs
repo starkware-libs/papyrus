@@ -74,7 +74,8 @@ use std::sync::Arc;
 
 use body::events::EventIndex;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
-use db::DbTableStats;
+use db::{DbTableStats, open_env_super};
+use indexmap::IndexMap;
 use ommer::{OmmerEventKey, OmmerTransactionKey};
 use papyrus_config::dumping::{append_sub_config_name, SerializeConfig};
 use papyrus_config::{ParamPath, SerializedParam};
@@ -143,6 +144,7 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         transactions: db_writer.create_table("transactions")?,
         starknet_version: db_writer.create_table("starknet_version")?,
         storage_version: db_writer.create_table("storage_version")?,
+        contract_changes: db_writer.create_table("contract_changes")?,
     });
     let reader = StorageReader { db_reader, tables: tables.clone() };
     let writer = StorageWriter { db_writer, tables };
@@ -151,6 +153,46 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
     verify_storage_version(reader.clone())?;
     Ok((reader, writer))
 }
+
+// pub fn open_storage_super(db_config: DbConfig) -> StorageResult<(StorageReader, StorageWriter)> {
+//     let (db_reader, mut db_writer) = open_env_super(db_config)?;
+//     let tables = Arc::new(Tables {
+//         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
+//         casms: db_writer.create_table("casms")?,
+//         contract_storage: db_writer.create_table("contract_storage")?,
+//         declared_classes: db_writer.create_table("declared_classes")?,
+//         declared_classes_block: db_writer.create_table("declared_classes_block")?,
+//         deprecated_declared_classes: db_writer.create_table("deprecated_declared_classes")?,
+//         deployed_contracts: db_writer.create_table("deployed_contracts")?,
+//         events: db_writer.create_table("events")?,
+//         headers: db_writer.create_table("headers")?,
+//         markers: db_writer.create_table("markers")?,
+//         nonces: db_writer.create_table("nonces")?,
+//         ommer_contract_storage: db_writer.create_table("ommer_contract_storage")?,
+//         ommer_declared_classes: db_writer.create_table("ommer_declared_classes")?,
+//         ommer_deployed_contracts: db_writer.create_table("ommer_deployed_contracts")?,
+//         ommer_events: db_writer.create_table("ommer_events")?,
+//         ommer_headers: db_writer.create_table("ommer_headers")?,
+//         ommer_nonces: db_writer.create_table("ommer_nonces")?,
+//         ommer_state_diffs: db_writer.create_table("ommer_state_diffs")?,
+//         ommer_transaction_outputs: db_writer.create_table("ommer_transaction_outputs")?,
+//         ommer_transactions: db_writer.create_table("ommer_transactions")?,
+//         state_diffs: db_writer.create_table("state_diffs")?,
+//         transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
+//         transaction_idx_to_hash: db_writer.create_table("transaction_idx_to_hash")?,
+//         transaction_outputs: db_writer.create_table("transaction_outputs")?,
+//         transactions: db_writer.create_table("transactions")?,
+//         starknet_version: db_writer.create_table("starknet_version")?,
+//         storage_version: db_writer.create_table("storage_version")?,
+//         contract_changes: db_writer.create_table("contract_changes")?,
+//     });
+//     let reader = StorageReader { db_reader, tables: tables.clone() };
+//     let writer = StorageWriter { db_writer, tables };
+
+//     let writer = set_initial_version_if_needed(writer)?;
+//     verify_storage_version(reader.clone())?;
+//     Ok((reader, writer))
+// }
 
 // In case storage version does not exist, set it to the crate version.
 // Expected to happen once - when the node is launched for the first time.
@@ -268,9 +310,42 @@ struct_field_names! {
         transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
         transactions: TableIdentifier<TransactionIndex, Transaction>,
         starknet_version: TableIdentifier<BlockNumber, StarknetVersion>,
-        storage_version: TableIdentifier<String, Version>
+        storage_version: TableIdentifier<String, Version>,
+        contract_changes: TableIdentifier<(BlockNumber, ContractAddress), IndexMap<StorageKey, StarkFelt>>
     }
 }
+
+    // struct TablesSuper {
+    //     block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
+    //     casms: TableIdentifier<ClassHash, CasmContractClass>,
+    //     contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
+    //     declared_classes: TableIdentifier<ClassHash, ContractClass>,
+    //     declared_classes_block: TableIdentifier<ClassHash, BlockNumber>,
+    //     deprecated_declared_classes: TableIdentifier<ClassHash, IndexedDeprecatedContractClass>,
+    //     deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), ClassHash>,
+    //     events: TableIdentifier<(ContractAddress, EventIndex), EventContent>,
+    //     headers: TableIdentifier<BlockNumber, BlockHeader>,
+    //     markers: TableIdentifier<MarkerKind, BlockNumber>,
+    //     nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
+    //     ommer_contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockHash), StarkFelt>,
+    //     //TODO(yair): Consider whether an ommer_deprecated_declared_classes is needed.
+    //     ommer_declared_classes: TableIdentifier<(BlockHash, ClassHash), ContractClass>,
+    //     ommer_deployed_contracts: TableIdentifier<(ContractAddress, BlockHash), ClassHash>,
+    //     ommer_events: TableIdentifier<(ContractAddress, OmmerEventKey), EventContent>,
+    //     ommer_headers: TableIdentifier<BlockHash, BlockHeader>,
+    //     ommer_nonces: TableIdentifier<(ContractAddress, BlockHash), Nonce>,
+    //     ommer_state_diffs: TableIdentifier<BlockHash, ThinStateDiff>,
+    //     ommer_transaction_outputs: TableIdentifier<OmmerTransactionKey, ThinTransactionOutput>,
+    //     ommer_transactions: TableIdentifier<OmmerTransactionKey, Transaction>,
+    //     state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
+    //     transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
+    //     transaction_idx_to_hash: TableIdentifier<TransactionIndex, TransactionHash>,
+    //     transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
+    //     transactions: TableIdentifier<TransactionIndex, Transaction>,
+    //     starknet_version: TableIdentifier<BlockNumber, StarknetVersion>,
+    //     storage_version: TableIdentifier<String, Version>,
+    // }
+
 
 macro_rules! struct_field_names {
     (struct $name:ident { $($fname:ident : $ftype:ty),* }) => {
