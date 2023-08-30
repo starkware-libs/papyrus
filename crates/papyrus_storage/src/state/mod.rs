@@ -374,6 +374,18 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         }
         Ok(Some(value.contract_class))
     }
+
+}
+
+impl<'env> StorageTxn<'env, RW>{
+
+    pub fn append_only_thin_state_diff(self, block_number: BlockNumber, state_diff: StateDiff) -> StorageResult<Self> {
+        let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
+
+        let (thin_state_diff, _, _) = ThinStateDiff::from_state_diff(state_diff);
+        state_diffs_table.insert(&self.txn, &block_number, &thin_state_diff).unwrap();
+        Ok(self)
+    }
 }
 
 impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
@@ -416,7 +428,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         // Write state diff.
         let (thin_state_diff, declared_classes, deprecated_declared_classes) =
             ThinStateDiff::from_state_diff(state_diff);
-        state_diffs_table.insert(&self.txn, &block_number, &thin_state_diff)?;
+        // state_diffs_table.insert(&self.txn, &block_number, &thin_state_diff)?;
 
         // Write declared classes.
         write_declared_classes(

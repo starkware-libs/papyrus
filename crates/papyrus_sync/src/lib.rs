@@ -387,6 +387,10 @@ impl<
             trace!("StateDiff data: {state_diff:#?}");
             self.writer
                 .begin_rw_txn()?
+                .append_only_thin_state_diff(block_number, state_diff.clone())?
+                .commit()?;
+            self.writer
+                .begin_rw_txn()?
                 .append_state_diff(block_number, state_diff, deployed_contract_class_definitions)?
                 .commit()?;
             metrics::gauge!(papyrus_metrics::PAPYRUS_STATE_MARKER, block_number.next().0 as f64);
