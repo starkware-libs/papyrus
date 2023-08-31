@@ -13,3 +13,5 @@ pub type BlockId = crate::messages::proto::p2p::proto::BlockId;
 pub type Signature = crate::messages::proto::p2p::proto::Signature;
 
 pub type Merkle = crate::messages::proto::p2p::proto::Merkle;
+
+pub type Fin = crate::messages::proto::p2p::proto::Fin;
