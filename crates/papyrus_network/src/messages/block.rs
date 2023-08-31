@@ -11,5 +11,18 @@ pub type BlockProof = crate::messages::proto::p2p::proto::BlockProof;
 pub type NewBlock = crate::messages::proto::p2p::proto::NewBlock;
 /// A request to get a range of block headers and state diffs.
 pub type GetBlocks = crate::messages::proto::p2p::proto::GetBlocks;
+/// A response of a [`GetBlocks`] request.
+pub type GetBlocksResponse = crate::messages::proto::p2p::proto::GetBlocksResponse;
 /// A request to get signatures on a block.
 pub type GetSignatures = crate::messages::proto::p2p::proto::GetSignatures;
+
+impl GetBlocksResponse {
+    pub fn is_fin(&self) -> bool {
+        self.response.as_ref().map_or(false, |response| {
+            matches!(
+                response,
+                crate::messages::proto::p2p::proto::get_blocks_response::Response::Fin(_)
+            )
+        })
+    }
+}
