@@ -43,6 +43,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - run: mkdir data
+      - run: sudo apt install -y protobuf-compiler || brew install protobuf
 
       - name: Build node
         run: cargo build -r
@@ -62,6 +63,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: npm install -g ganache@7.4.3
+      - run: sudo apt install -y protobuf-compiler || brew install protobuf
       - run: |
           cargo test -r
         env:
@@ -100,6 +102,7 @@ jobs:
           components: rustfmt
           toolchain: nightly-2023-10-19
       - uses: Swatinem/rust-cache@v2
+      - run: sudo apt install -y protobuf-compiler
       - run: cargo +nightly-2023-10-19 fmt --all -- --check
 
   udeps:
@@ -113,6 +116,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: "Download and run cargo-udeps"
         run: |
+          sudo apt install -y protobuf-compiler
           wget -O - -c https://github.com/est31/cargo-udeps/releases/download/v0.1.35/cargo-udeps-v0.1.35-x86_64-unknown-linux-gnu.tar.gz | tar -xz
           cargo-udeps-*/cargo-udeps udeps
         env:
@@ -126,6 +130,7 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
+      - run: sudo apt install -y protobuf-compiler
       - run: >
           cargo clippy --all-targets --all-features -- -D warnings -D future-incompatible
           -D nonstandard-style -D rust-2018-idioms -D unused -D clippy::unwrap_used
@@ -138,6 +143,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - run: sudo apt install -y protobuf-compiler
       - run: cargo doc -r --document-private-items --no-deps
 
   check:
@@ -148,6 +154,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - run: sudo apt install -y protobuf-compiler
       - run: cargo check -r --all-features
 
   codecov:
