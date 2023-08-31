@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::hash::StarkHash;
 use starknet_api::StarknetApiError;
-use url::ParseError;
+use url::{ParseError, Url};
 
 use crate::BaseLayerContract;
 
@@ -37,9 +37,8 @@ pub enum EthereumBaseLayerError {
 
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct EthereumBaseLayerConfig {
-    // TODO(yair): consider using types.
-    pub node_url: String,
-    pub starknet_contract_address: String,
+    pub node_url: Url,
+    pub starknet_contract_address: Address,
 }
 
 impl SerializeConfig for EthereumBaseLayerConfig {
@@ -62,8 +61,12 @@ impl SerializeConfig for EthereumBaseLayerConfig {
 impl Default for EthereumBaseLayerConfig {
     fn default() -> Self {
         Self {
-            node_url: "https://mainnet.infura.io/v3/<your_api_key>".to_string(),
-            starknet_contract_address: "0xc662c410C0ECf747543f5bA90660f6ABeBD9C8c4".to_string(),
+            node_url: "https://mainnet.infura.io/v3/<your_api_key>"
+                .parse()
+                .expect("Failed to parse Infura URL."),
+            starknet_contract_address: "0xc662c410c0ecf747543f5ba90660f6abebd9c8c4"
+                .parse()
+                .expect("Failed to parse Starknet contract address."),
         }
     }
 }
@@ -74,11 +77,13 @@ pub struct EthereumBaseLayerContract {
 
 impl EthereumBaseLayerContract {
     pub fn new(config: EthereumBaseLayerConfig) -> Result<Self, EthereumBaseLayerError> {
-        let address = config.starknet_contract_address.parse::<Address>()?;
-        let client: Provider<Http> = Provider::<Http>::try_from(config.node_url)?;
+        let client: Provider<Http> = Provider::<Http>::try_from(config.node_url.to_string())?;
+
         // The solidity contract was pre-compiled, and only the relevant functions were kept.
         let abi: Abi = serde_json::from_str::<Abi>(include_str!("core_contract_latest_block.abi"))?;
-        Ok(Self { contract: Contract::new(address, abi, Arc::new(client)) })
+        Ok(Self {
+            contract: Contract::new(config.starknet_contract_address, abi, Arc::new(client)),
+        })
     }
 }
 

@@ -15,7 +15,8 @@ serde_json.workspace = true
 starknet_api.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
-url.workspace = true
+url = { workspace = true, features = ["serde"] }
+
 
 [dev-dependencies]
 ethers-core = { version = "2.0.3"}

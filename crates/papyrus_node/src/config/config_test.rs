@@ -19,7 +19,10 @@ use crate::config::{node_command, NodeConfig, DEFAULT_CONFIG_PATH};
 
 // Fill here all the required params in default_config.json with the default value.
 fn required_args() -> Vec<String> {
-    vec!["--base_layer.node_url".to_owned(), EthereumBaseLayerConfig::default().node_url]
+    vec![
+        "--base_layer.node_url".to_owned(),
+        EthereumBaseLayerConfig::default().node_url.to_string(),
+    ]
 }
 
 fn get_args(additional_args: Vec<&str>) -> Vec<String> {

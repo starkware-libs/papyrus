@@ -5,7 +5,7 @@
   },
   "base_layer.starknet_contract_address": {
     "description": "Starknet contract address in ethereum.",
-    "value": "0xc662c410C0ECf747543f5bA90660f6ABeBD9C8c4"
+    "value": "0xc662c410c0ecf747543f5ba90660f6abebd9c8c4"
   },
   "central.concurrent_requests": {
     "description": "Maximum number of concurrent requests to Starknet feeder-gateway for getting a type of data (for example, blocks).",

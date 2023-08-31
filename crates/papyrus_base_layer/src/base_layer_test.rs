@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::process::Command;
 
+use ethers::prelude::Address;
 use ethers::utils::{Ganache, GanacheInstance};
 use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockHash, BlockNumber};
@@ -12,7 +13,7 @@ use tempfile::{tempdir, TempDir};
 use crate::ethereum_base_layer_contract::{EthereumBaseLayerConfig, EthereumBaseLayerContract};
 use crate::BaseLayerContract;
 
-type EthereumContractAddress = String;
+type EthereumContractAddress = Address;
 type TestEthereumNodeHandle = (GanacheInstance, TempDir);
 
 // Returns a Ganache instance, preset with a Starknet core contract and some state updates:
@@ -24,7 +25,9 @@ type TestEthereumNodeHandle = (GanacheInstance, TempDir);
 // The blockchain is at Ethereum block number 31.
 // Note: Requires Ganache@7.4.3 installed.
 fn get_test_ethereum_node() -> (TestEthereumNodeHandle, EthereumContractAddress) {
-    const SN_CONTRACT_ADDR: &str = "0xe2aF2c1AE11fE13aFDb7598D0836398108a4db0A";
+    let sn_contract_addr: Address = "0xe2aF2c1AE11fE13aFDb7598D0836398108a4db0A"
+        .parse()
+        .expect("Failed to parse Starknet contract address.");
     // Verify correct Ganache version.
     let ganache_version = String::from_utf8_lossy(
         &Command::new("ganache")
@@ -51,7 +54,7 @@ fn get_test_ethereum_node() -> (TestEthereumNodeHandle, EthereumContractAddress)
     let db_path = ganache_db.path().join(DB_NAME);
     let ganache = Ganache::new().args(["--db", db_path.to_str().unwrap()]).spawn();
 
-    ((ganache, ganache_db), SN_CONTRACT_ADDR.to_owned())
+    ((ganache, ganache_db), sn_contract_addr)
 }
 
 #[test_with::executable(ganache)]
@@ -59,8 +62,10 @@ fn get_test_ethereum_node() -> (TestEthereumNodeHandle, EthereumContractAddress)
 // Note: the test requires ganache-cli installed, otherwise it is ignored.
 async fn latest_proved_block_ethereum() {
     let (node_handle, starknet_contract_address) = get_test_ethereum_node();
-    let config =
-        EthereumBaseLayerConfig { node_url: node_handle.0.endpoint(), starknet_contract_address };
+    let config = EthereumBaseLayerConfig {
+        node_url: node_handle.0.endpoint().parse().expect("Failed to parse node url."),
+        starknet_contract_address,
+    };
     let contract = EthereumBaseLayerContract::new(config).unwrap();
 
     let first_sn_state_update = (BlockNumber(100), BlockHash(stark_felt!("0x100")));
