@@ -41,11 +41,12 @@ pub enum RequestError {
     RemoteDoesntSupportProtocol,
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Eq, PartialEq)]
 #[error("Remote peer doesn't support the {PROTOCOL_NAME} protocol.")]
 pub struct RemoteDoesntSupportProtocolError;
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub enum RequestProgressEvent {
     ReceivedResponse { request_id: RequestId, response: GetBlocksResponse },
     RequestFinished { request_id: RequestId },
@@ -199,6 +200,7 @@ impl ConnectionHandler for Handler {
                     // This error will happen on all future connections to the peer, so we'll close
                     // the handle after reporting to the behaviour.
                     self.pending_events.clear();
+                    self.request_to_responses_receiver.clear();
                     self.pending_events.push_front(ConnectionHandlerEvent::NotifyBehaviour(
                         RequestProgressEvent::RequestFailed { request_id, error },
                     ));
