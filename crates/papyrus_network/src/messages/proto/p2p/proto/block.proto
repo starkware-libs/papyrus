@@ -61,6 +61,13 @@ message GetBlocks {
     uint64 step = 5; // to allow interleaving from several nodes
 }
 
+message GetBlocksResponse {
+    oneof Response {
+        BlockHeader header = 1;
+        Fin fin = 2;
+    }
+}
+
 message GetSignatures {
     BlockID id = 1;
 }
