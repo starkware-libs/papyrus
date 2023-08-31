@@ -27,6 +27,7 @@ const Configuration = {
             'JSON-RPC',
             'load_test',
             'monitoring',
+            'network',
             'release',
             'starknet_client',
             'storage',
