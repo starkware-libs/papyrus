@@ -155,9 +155,17 @@ pub(crate) fn open_env(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
                 ..Default::default()
             })
             .set_max_tables(MAX_DBS)
+            .set_flags(get_flags())
             .open(&config.path())?,
     );
     Ok((DbReader { env: env.clone() }, DbWriter { env }))
+}
+
+fn get_flags() -> libmdbx::DatabaseFlags {
+    libmdbx::DatabaseFlags{
+        mode: libmdbx::Mode::ReadWrite { sync_mode: libmdbx::SyncMode::UtterlyNoSync },
+        ..Default::default()
+    }
 }
 
 pub(crate) fn open_env_big(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
@@ -170,6 +178,7 @@ pub(crate) fn open_env_big(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
                 ..Default::default()
             })
             .set_max_tables(MAX_DBS)
+            .set_flags(get_flags())
             .open(&config.path())?,
     );
     Ok((DbReader { env: env.clone() }, DbWriter { env }))
