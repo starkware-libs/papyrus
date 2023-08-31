@@ -1,10 +1,16 @@
 use serde::{Deserialize, Serialize};
+use sha3::{Digest, Keccak256};
 use starknet_api::core::ChainId;
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::Transaction;
 use test_utils::read_json_file;
 
-use super::{ascii_as_felt, get_transaction_hash, validate_transaction_hash};
+use super::{
+    ascii_as_felt,
+    get_transaction_hash,
+    validate_transaction_hash,
+    CONSTRUCTOR_ENTRY_POINT_SELECTOR,
+};
 
 #[test]
 fn test_ascii_as_felt() {
@@ -13,6 +19,16 @@ fn test_ascii_as_felt() {
     // This is the result of the Python snippet from the Chain-Id documentation.
     let expected_sn_main = StarkFelt::from(23448594291968334_u128);
     assert_eq!(sn_main_felt, expected_sn_main);
+}
+
+#[test]
+fn test_constructor_selector() {
+    let mut keccak = Keccak256::default();
+    keccak.update(b"constructor");
+    let mut constructor_bytes: [u8; 32] = keccak.finalize().into();
+    constructor_bytes[0] &= 0b00000011_u8; // Discard the six MSBs.
+    let constructor_felt = StarkFelt::new(constructor_bytes).unwrap();
+    assert_eq!(constructor_felt, *CONSTRUCTOR_ENTRY_POINT_SELECTOR);
 }
 
 #[derive(Deserialize, Serialize)]
