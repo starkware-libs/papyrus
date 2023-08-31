@@ -4664,12 +4664,16 @@ dependencies = [
 name = "papyrus_network"
 version = "0.0.5"
 dependencies = [
+ "assert_matches",
  "bytes",
  "futures",
  "libp2p",
+ "pretty_assertions",
  "prost",
  "prost-build",
  "prost-types",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]
