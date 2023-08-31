@@ -30,7 +30,7 @@ use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter, StarknetVersion};
 use papyrus_storage::ommer::{OmmerStorageReader, OmmerStorageWriter};
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
-use papyrus_storage::{StorageError, StorageReader, StorageWriter};
+use papyrus_storage::{StorageError, StorageReader, StorageWriter, StorageWriterBig};
 use serde::{Deserialize, Serialize};
 use sources::base_layer::BaseLayerSourceError;
 use starknet_api::block::{Block, BlockHash, BlockNumber};
@@ -116,6 +116,7 @@ pub struct GenericStateSync<
     base_layer_source: Arc<TBaseLayerSource>,
     reader: StorageReader,
     writer: StorageWriter,
+    big_writer: StorageWriterBig,
 }
 
 pub type StateSyncResult = Result<(), StateSyncError>;
@@ -385,6 +386,10 @@ impl<
         if !self.is_reverted_state_diff(block_number, block_hash)? {
             debug!("Storing state diff.");
             trace!("StateDiff data: {state_diff:#?}");
+            self.big_writer
+                .begin_rw_txn()?
+                .append_state_diff_big(block_number, state_diff.clone())?
+                .commit()?;
             self.writer
                 .begin_rw_txn()?
                 .append_state_diff(block_number, state_diff, deployed_contract_class_definitions)?
@@ -714,6 +719,7 @@ impl StateSync {
         base_layer_source: EthereumBaseLayerSource,
         reader: StorageReader,
         writer: StorageWriter,
+        big_writer: StorageWriterBig,
     ) -> Self {
         Self {
             config,
@@ -722,6 +728,7 @@ impl StateSync {
             base_layer_source: Arc::new(base_layer_source),
             reader,
             writer,
+            big_writer,
         }
     }
 }

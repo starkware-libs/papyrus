@@ -160,6 +160,21 @@ pub(crate) fn open_env(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
     Ok((DbReader { env: env.clone() }, DbWriter { env }))
 }
 
+pub(crate) fn open_env_big(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
+    let env = Arc::new(
+        Environment::new()
+            .set_geometry(Geometry {
+                size: Some(config.min_size..config.max_size),
+                growth_step: Some(config.growth_step),
+                page_size: Some(libmdbx::PageSize::Set(16384)), // 2^14, 16KB
+                ..Default::default()
+            })
+            .set_max_tables(MAX_DBS)
+            .open(&config.path())?,
+    );
+    Ok((DbReader { env: env.clone() }, DbWriter { env }))
+}
+
 #[derive(Clone)]
 pub(crate) struct DbReader {
     env: Arc<Environment>,

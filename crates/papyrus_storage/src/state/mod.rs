@@ -51,6 +51,7 @@ pub mod data;
 mod state_test;
 
 use std::collections::HashSet;
+use std::default;
 
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use indexmap::IndexMap;
@@ -63,7 +64,7 @@ use tracing::debug;
 
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::state::data::IndexedDeprecatedContractClass;
-use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
+use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn, StorageTxnBig};
 
 type DeclaredClassesTable<'env> = TableHandle<'env, ClassHash, ContractClass>;
 type DeclaredClassesBlockTable<'env> = TableHandle<'env, ClassHash, BlockNumber>;
@@ -376,6 +377,26 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
     }
 }
 
+
+
+impl<'env> StorageTxnBig<'env, RW> {
+    /// DOC
+    pub fn append_state_diff_big(
+        self,
+        block_number: BlockNumber,
+        state_diff: StateDiff,
+    ) -> StorageResult<Self> {
+        let state_diff_table=self.txn.open_table(&self.tables.state_diffs)?;
+
+        // Write state diff.
+        let (thin_state_diff, _declared_classes, _deprecated_declared_classes) =
+            ThinStateDiff::from_state_diff(state_diff);
+        state_diff_table.insert(&self.txn, &block_number, &thin_state_diff)?;
+
+        Ok(self)
+    }
+}
+
 impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
     fn append_state_diff(
         self,
@@ -414,9 +435,17 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         )?;
 
         // Write state diff.
-        let (thin_state_diff, declared_classes, deprecated_declared_classes) =
+        let (_thin_state_diff, declared_classes, deprecated_declared_classes) =
             ThinStateDiff::from_state_diff(state_diff);
-        state_diffs_table.insert(&self.txn, &block_number, &thin_state_diff)?;
+        let default_state_diff=ThinStateDiff{
+            deployed_contracts: IndexMap::new(),
+            storage_diffs: IndexMap::new(),
+            declared_classes: IndexMap::new(),
+            deprecated_declared_classes: Vec::new(),
+            nonces: IndexMap::new(),
+            replaced_classes: IndexMap::new(),
+        };  
+        state_diffs_table.insert(&self.txn, &block_number, &default_state_diff)?;
 
         // Write declared classes.
         write_declared_classes(

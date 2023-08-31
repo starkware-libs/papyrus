@@ -74,7 +74,7 @@ use std::sync::Arc;
 
 use body::events::EventIndex;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
-use db::DbTableStats;
+use db::{DbTableStats, open_env_big};
 use ommer::{OmmerEventKey, OmmerTransactionKey};
 use papyrus_config::dumping::{append_sub_config_name, SerializeConfig};
 use papyrus_config::{ParamPath, SerializedParam};
@@ -152,6 +152,16 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
     Ok((reader, writer))
 }
 
+pub fn open_storage_big(db_config: DbConfig) -> StorageResult<StorageWriterBig> {
+    let (db_reader, mut db_writer) = open_env_big(db_config)?;
+    let tables = Arc::new(TablesBig {
+        state_diffs: db_writer.create_table("state_diffs")?,
+    });
+    let writer = StorageWriterBig { db_writer, tables };
+
+    Ok(writer)
+}
+
 // In case storage version does not exist, set it to the crate version.
 // Expected to happen once - when the node is launched for the first time.
 fn set_initial_version_if_needed(mut writer: StorageWriter) -> StorageResult<StorageWriter> {
@@ -212,12 +222,30 @@ pub struct StorageWriter {
     tables: Arc<Tables>,
 }
 
+pub struct StorageWriterBig {
+    db_writer: DbWriter,
+    tables: Arc<TablesBig>,
+}
+
 impl StorageWriter {
     /// Takes a snapshot of the current state of the storage and returns a [`StorageTxn`] for
     /// reading and modifying data in the storage.
     pub fn begin_rw_txn(&mut self) -> StorageResult<StorageTxn<'_, RW>> {
         Ok(StorageTxn { txn: self.db_writer.begin_rw_txn()?, tables: self.tables.clone() })
     }
+}
+
+impl StorageWriterBig {
+    /// Takes a snapshot of the current state of the storage and returns a [`StorageTxn`] for
+    /// reading and modifying data in the storage.
+    pub fn begin_rw_txn(&mut self) -> StorageResult<StorageTxnBig<'_, RW>> {
+        Ok(StorageTxnBig { txn: self.db_writer.begin_rw_txn()?, tables: self.tables.clone() })
+    }
+}
+
+pub struct StorageTxnBig<'env, Mode: TransactionKind> {
+    txn: DbTransaction<'env, Mode>,
+    tables: Arc<TablesBig>,
 }
 
 /// A struct for interacting with the storage.
@@ -228,6 +256,13 @@ pub struct StorageTxn<'env, Mode: TransactionKind> {
 }
 
 impl<'env> StorageTxn<'env, RW> {
+    /// Commits the changes made in the transaction to the storage.
+    pub fn commit(self) -> StorageResult<()> {
+        Ok(self.txn.commit()?)
+    }
+}
+
+impl<'env> StorageTxnBig<'env, RW> {
     /// Commits the changes made in the transaction to the storage.
     pub fn commit(self) -> StorageResult<()> {
         Ok(self.txn.commit()?)
@@ -269,6 +304,12 @@ struct_field_names! {
         transactions: TableIdentifier<TransactionIndex, Transaction>,
         starknet_version: TableIdentifier<BlockNumber, StarknetVersion>,
         storage_version: TableIdentifier<String, Version>
+    }
+}
+
+struct_field_names! {
+    struct TablesBig {
+        state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>
     }
 }
 
