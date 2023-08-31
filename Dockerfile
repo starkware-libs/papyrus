@@ -35,7 +35,7 @@ RUN find /app \! -name "Cargo.toml" -type f -delete ; \
 FROM clux/muslrust:1.70.0-stable AS builder
 WORKDIR /app/
 
-RUN apt update && apt install -y clang
+RUN apt update && apt install -y clang protobuf-compiler
 
 # Copy all the files from the previous stage (which are Cargo.toml and empty lib.rs files).
 COPY --from=copy_toml /app .
