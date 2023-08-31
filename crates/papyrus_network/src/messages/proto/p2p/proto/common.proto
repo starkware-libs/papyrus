@@ -35,6 +35,4 @@ message Merkle {
     Hash root = 2;
 }
 
-
-
-
+message Fin {}
