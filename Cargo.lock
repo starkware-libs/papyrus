@@ -642,7 +642,7 @@ dependencies = [
  "serde_json",
  "sha3",
  "starknet-crypto",
- "starknet_api",
+ "starknet_api 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "strum 0.24.1",
  "strum_macros 0.24.3",
  "thiserror",
@@ -4299,12 +4299,12 @@ dependencies = [
  "async-trait",
  "ethers",
  "ethers-core",
- "papyrus_config",
+ "papyrus_config 0.0.4 (git+https://github.com/starkware-libs/papyrus?rev=224b66a)",
  "pretty_assertions",
  "rustc-hex",
  "serde",
  "serde_json",
- "starknet_api",
+ "starknet_api 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "tar",
  "tempfile",
  "test-with",
@@ -4324,7 +4324,7 @@ dependencies = [
  "serde_json",
  "sha3",
  "starknet-crypto",
- "starknet_api",
+ "starknet_api 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils",
 ]
 
@@ -4346,6 +4346,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "papyrus_config"
+version = "0.0.4"
+source = "git+https://github.com/starkware-libs/papyrus?rev=224b66a#224b66af273552cd54834be3a888632266ed49d3"
+dependencies = [
+ "clap",
+ "itertools 0.10.5",
+ "serde",
+ "serde_json",
+ "strum_macros 0.25.2",
+ "thiserror",
+ "validator",
+]
+
+[[package]]
 name = "papyrus_execution"
 version = "0.0.4"
 dependencies = [
@@ -4358,13 +4372,13 @@ dependencies = [
  "indexmap 1.9.3",
  "itertools 0.10.5",
  "lazy_static",
- "papyrus_config",
- "papyrus_storage",
+ "papyrus_config 0.0.4 (git+https://github.com/starkware-libs/papyrus?rev=224b66a)",
+ "papyrus_storage 0.0.4 (git+https://github.com/starkware-libs/papyrus?rev=224b66a)",
  "rand",
  "rand_chacha",
  "serde",
  "serde_json",
- "starknet_api",
+ "starknet_api 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils",
  "thiserror",
 ]
@@ -4397,8 +4411,8 @@ dependencies = [
  "metrics",
  "metrics-exporter-prometheus",
  "metrics-process",
- "papyrus_config",
- "papyrus_storage",
+ "papyrus_config 0.0.4 (git+https://github.com/starkware-libs/papyrus?rev=224b66a)",
+ "papyrus_storage 0.0.4 (git+https://github.com/starkware-libs/papyrus?rev=224b66a)",
  "pretty_assertions",
  "serde",
  "serde_json",
@@ -4424,16 +4438,16 @@ dependencies = [
  "libmdbx",
  "papyrus_base_layer",
  "papyrus_common",
- "papyrus_config",
+ "papyrus_config 0.0.4 (git+https://github.com/starkware-libs/papyrus?rev=224b66a)",
  "papyrus_monitoring_gateway",
  "papyrus_rpc",
- "papyrus_storage",
+ "papyrus_storage 0.0.4 (git+https://github.com/starkware-libs/papyrus?rev=224b66a)",
  "papyrus_sync",
  "pretty_assertions",
  "reqwest",
  "serde",
  "serde_json",
- "starknet_api",
+ "starknet_api 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "starknet_client",
  "tempfile",
  "test_utils",
@@ -4482,10 +4496,10 @@ dependencies = [
  "metrics-exporter-prometheus",
  "mockall",
  "papyrus_common",
- "papyrus_config",
+ "papyrus_config 0.0.4 (git+https://github.com/starkware-libs/papyrus?rev=224b66a)",
  "papyrus_execution",
  "papyrus_proc_macros",
- "papyrus_storage",
+ "papyrus_storage 0.0.4 (git+https://github.com/starkware-libs/papyrus?rev=224b66a)",
  "pretty_assertions",
  "prometheus-parse",
  "rand",
@@ -4494,7 +4508,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "starknet_api",
+ "starknet_api 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "starknet_client",
  "strum 0.25.0",
  "strum_macros 0.25.2",
@@ -4525,7 +4539,7 @@ dependencies = [
  "libmdbx",
  "num-bigint",
  "num-traits 0.2.16",
- "papyrus_config",
+ "papyrus_config 0.0.4",
  "parity-scale-codec",
  "paste",
  "pretty_assertions",
@@ -4535,11 +4549,37 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
- "starknet_api",
+ "starknet_api 0.4.1 (git+https://github.com/starkware-libs/starknet-api?branch=barak/v3/declare)",
  "tempfile",
  "test_utils",
  "thiserror",
  "tokio",
+ "tracing",
+ "validator",
+]
+
+[[package]]
+name = "papyrus_storage"
+version = "0.0.4"
+source = "git+https://github.com/starkware-libs/papyrus?rev=224b66a#224b66af273552cd54834be3a888632266ed49d3"
+dependencies = [
+ "byteorder",
+ "cairo-lang-casm",
+ "cairo-lang-starknet",
+ "cairo-lang-utils",
+ "flate2",
+ "indexmap 1.9.3",
+ "integer-encoding",
+ "libmdbx",
+ "num-bigint",
+ "papyrus_config 0.0.4 (git+https://github.com/starkware-libs/papyrus?rev=224b66a)",
+ "parity-scale-codec",
+ "primitive-types",
+ "serde",
+ "serde_json",
+ "starknet_api 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tempfile",
+ "thiserror",
  "tracing",
  "validator",
 ]
@@ -4564,13 +4604,13 @@ dependencies = [
  "mockall",
  "papyrus_base_layer",
  "papyrus_common",
- "papyrus_config",
- "papyrus_storage",
+ "papyrus_config 0.0.4 (git+https://github.com/starkware-libs/papyrus?rev=224b66a)",
+ "papyrus_storage 0.0.4 (git+https://github.com/starkware-libs/papyrus?rev=224b66a)",
  "pretty_assertions",
  "reqwest",
  "serde",
  "simple_logger",
- "starknet_api",
+ "starknet_api 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "starknet_client",
  "thiserror",
  "tokio",
@@ -6029,6 +6069,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "starknet_api"
+version = "0.4.1"
+source = "git+https://github.com/starkware-libs/starknet-api?branch=barak/v3/declare#7e33aae17ec4ec25d889f024d2ad1b554b1c8f28"
+dependencies = [
+ "cairo-lang-starknet",
+ "derive_more",
+ "hex",
+ "indexmap 1.9.3",
+ "once_cell",
+ "primitive-types",
+ "serde",
+ "serde_json",
+ "starknet-crypto",
+ "thiserror",
+]
+
+[[package]]
 name = "starknet_client"
 version = "0.0.4"
 dependencies = [
@@ -6043,14 +6100,14 @@ dependencies = [
  "mockall",
  "mockito",
  "os_info",
- "papyrus_config",
+ "papyrus_config 0.0.4 (git+https://github.com/starkware-libs/papyrus?rev=224b66a)",
  "pretty_assertions",
  "rand",
  "rand_chacha",
  "reqwest",
  "serde",
  "serde_json",
- "starknet_api",
+ "starknet_api 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils",
  "thiserror",
  "tokio",
@@ -6267,7 +6324,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "starknet_api",
+ "starknet_api 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "tracing",
 ]
 
