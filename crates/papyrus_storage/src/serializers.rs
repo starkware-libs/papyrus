@@ -39,6 +39,7 @@ use starknet_api::core::{
     Nonce,
     PatriciaKey,
 };
+use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass,
     ContractClassAbiEntry,
@@ -88,7 +89,7 @@ use starknet_api::transaction::{
     TransactionHash,
     TransactionOffsetInBlock,
     TransactionSignature,
-    TransactionVersion,
+    TransactionVersion, DeclareTransactionV3, ResourceBounds, Tip,
 };
 
 use crate::body::events::{
@@ -150,6 +151,7 @@ auto_storage_serde! {
         V0(DeclareTransactionV0V1) = 0,
         V1(DeclareTransactionV0V1) = 1,
         V2(DeclareTransactionV2) = 2,
+        V3(DeclareTransactionV3) = 3,
     }
     pub struct DeclareTransactionV0V1 {
         pub max_fee: Fee,
@@ -165,6 +167,17 @@ auto_storage_serde! {
         pub class_hash: ClassHash,
         pub compiled_class_hash: CompiledClassHash,
         pub sender_address: ContractAddress,
+    }
+    pub struct DeclareTransactionV3 {
+        pub resource_bounds: ResourceBounds,
+        pub tip: Tip,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub class_hash: ClassHash,
+        pub compiled_class_hash: CompiledClassHash,
+        pub sender_address: ContractAddress,
+        pub nonce_data_availability_mode: DataAvailabilityMode,
+        pub fee_data_availability_mode: DataAvailabilityMode,
     }
     pub struct DeployAccountTransaction {
         pub max_fee: Fee,
@@ -192,6 +205,10 @@ auto_storage_serde! {
     pub struct FunctionIndex(pub usize);
     pub struct EntryPointOffset(pub usize);
     pub struct EntryPointSelector(pub StarkHash);
+    pub enum DataAvailabilityMode {
+        L1 = 0,
+        L2 = 1,
+    }
     pub enum DeprecatedEntryPointType {
         Constructor = 0,
         External = 1,
@@ -285,6 +302,10 @@ auto_storage_serde! {
         pub prime: serde_json::Value,
         pub reference_manager: serde_json::Value,
     }
+    pub struct ResourceBounds {
+        pub max_amount: u64,
+        pub max_price_per_unit: u128,
+    }
     pub struct StructAbiEntry {
         pub name: String,
         pub size: usize,
@@ -295,6 +316,7 @@ auto_storage_serde! {
         pub offset: usize,
     }
     pub struct StarknetVersion(pub String);
+    pub struct Tip(pub u64);
     pub struct ThinDeclareTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
