@@ -7,7 +7,7 @@ use papyrus_monitoring_gateway::MonitoringServer;
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_rpc::run_server;
-use papyrus_storage::{open_storage, StorageReader, StorageWriter, open_storage_big, StorageWriterBig};
+use papyrus_storage::{open_storage, StorageReader, StorageWriter};
 use papyrus_sync::sources::base_layer::{BaseLayerSourceError, EthereumBaseLayerSource};
 use papyrus_sync::sources::central::{CentralError, CentralSource};
 use papyrus_sync::{StateSync, StateSyncError};
@@ -24,9 +24,9 @@ const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
 
 async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     let (storage_reader, storage_writer) = open_storage(config.storage.db_config.clone())?;
-    let mut db_config_big = config.storage.db_config.clone();
-    db_config_big.chain_id = starknet_api::core::ChainId("the_big_db".to_string());
-    let big_writer=open_storage_big(db_config_big)?;
+    //let db_config_big = config.storage.db_config.clone();
+    //db_config_big.chain_id = starknet_api::core::ChainId("the_big_db".to_string());
+    //let big_writer=open_storage_big(db_config_big)?;
 
     // Monitoring server.
     let monitoring_server = MonitoringServer::new(
@@ -47,7 +47,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
 
     // Sync task.
     let sync_future =
-        run_sync(config, shared_highest_block, storage_reader.clone(), storage_writer, big_writer);
+        run_sync(config, shared_highest_block, storage_reader.clone(), storage_writer);
     let sync_handle = tokio::spawn(sync_future);
 
     // TODO(dvir): refactor + better error handling.
@@ -82,7 +82,6 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
-        big_writer: StorageWriterBig,
     ) -> Result<(), StateSyncError> {
         let Some(sync_config) = config.sync else { return Ok(()) };
         let central_source =
@@ -97,7 +96,6 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
             base_layer_source,
             storage_reader.clone(),
             storage_writer,
-            big_writer
 
         );
         sync.run().await

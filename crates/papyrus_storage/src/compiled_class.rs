@@ -66,7 +66,7 @@ where
 
 impl<'env, Mode: TransactionKind> CasmStorageReader for StorageTxn<'env, Mode> {
     fn get_casm(&self, class_hash: &ClassHash) -> StorageResult<Option<CasmContractClass>> {
-        let casm_table = self.txn.open_table(&self.tables.casms)?;
+        let casm_table = self.txn.open_table(&self.tables_big.casms)?;
         Ok(casm_table.get(&self.txn, class_hash)?)
     }
 
@@ -78,9 +78,9 @@ impl<'env, Mode: TransactionKind> CasmStorageReader for StorageTxn<'env, Mode> {
 
 impl<'env> CasmStorageWriter for StorageTxn<'env, RW> {
     fn append_casm(self, class_hash: &ClassHash, casm: &CasmContractClass) -> StorageResult<Self> {
-        let casm_table = self.txn.open_table(&self.tables.casms)?;
+        let casm_table = self.txn.open_table(&self.tables_big.casms)?;
         let markers_table = self.txn.open_table(&self.tables.markers)?;
-        let state_diff_table = self.txn.open_table(&self.tables.state_diffs)?;
+        let state_diff_table = self.txn.open_table(&self.tables_big.state_diffs)?;
         casm_table.insert(&self.txn, class_hash, casm).map_err(|err| {
             if matches!(err, DbError::Inner(libmdbx::Error::KeyExist)) {
                 StorageError::CompiledClassReWrite { class_hash: *class_hash }

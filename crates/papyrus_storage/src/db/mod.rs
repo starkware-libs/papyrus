@@ -112,6 +112,11 @@ impl DbConfig {
     pub fn path(&self) -> PathBuf {
         self.path_prefix.join(self.chain_id.0.as_str())
     }
+
+    /// Doc
+    pub fn path_big(&self) -> PathBuf {
+        self.path_prefix.join(self.chain_id.0.as_str()).join("big")
+    }
 }
 
 #[allow(missing_docs)]
@@ -155,21 +160,10 @@ pub(crate) fn open_env(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
                 ..Default::default()
             })
             .set_max_tables(MAX_DBS)
-            .set_flags(get_flags())
+            //.set_flags(get_flags())
             .open(&config.path())?,
     );
-    Ok((DbReader { env: env.clone() }, DbWriter { env }))
-}
-
-fn get_flags() -> libmdbx::DatabaseFlags {
-    libmdbx::DatabaseFlags{
-        mode: libmdbx::Mode::ReadWrite { sync_mode: libmdbx::SyncMode::UtterlyNoSync },
-        ..Default::default()
-    }
-}
-
-pub(crate) fn open_env_big(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
-    let env = Arc::new(
+    let env_big = Arc::new(
         Environment::new()
             .set_geometry(Geometry {
                 size: Some(config.min_size..config.max_size),
@@ -178,24 +172,49 @@ pub(crate) fn open_env_big(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
                 ..Default::default()
             })
             .set_max_tables(MAX_DBS)
-            .set_flags(get_flags())
-            .open(&config.path())?,
+            //.set_flags(get_flags())
+            .open(&config.path_big())?,
     );
-    Ok((DbReader { env: env.clone() }, DbWriter { env }))
+    Ok((DbReader { env: env.clone(), env_big: env_big.clone() }, DbWriter { env, env_big }))
 }
+
+// fn get_flags() -> libmdbx::DatabaseFlags {
+//     libmdbx::DatabaseFlags{
+//         mode: libmdbx::Mode::ReadWrite { sync_mode: libmdbx::SyncMode::UtterlyNoSync },
+//         ..Default::default()
+//     }
+// }
+
+// pub(crate) fn open_env_big(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
+//     let env = Arc::new(
+//         Environment::new()
+//             .set_geometry(Geometry {
+//                 size: Some(config.min_size..config.max_size),
+//                 growth_step: Some(config.growth_step),
+//                 page_size: Some(libmdbx::PageSize::Set(16384)), // 2^14, 16KB
+//                 ..Default::default()
+//             })
+//             .set_max_tables(MAX_DBS)
+//             //.set_flags(get_flags())
+//             .open(&config.path())?,
+//     );
+//     Ok((DbReader { env: env.clone() }, DbWriter { env }))
+// }
 
 #[derive(Clone)]
 pub(crate) struct DbReader {
     env: Arc<Environment>,
+    env_big: Arc<Environment>,
 }
 
 pub(crate) struct DbWriter {
     env: Arc<Environment>,
+    env_big: Arc<Environment>,
 }
 
 impl DbReader {
     pub(crate) fn begin_ro_txn(&self) -> DbResult<DbReadTransaction<'_>> {
-        Ok(DbReadTransaction { txn: self.env.begin_ro_txn()? })
+        Ok(DbReadTransaction { txn: self.env.begin_ro_txn()?, txn_big: self.env_big.begin_ro_txn()? })
     }
 
     /// Returns statistics about a specific table in the database.
@@ -219,7 +238,7 @@ type DbReadTransaction<'env> = DbTransaction<'env, RO>;
 
 impl DbWriter {
     pub(crate) fn begin_rw_txn(&mut self) -> DbResult<DbWriteTransaction<'_>> {
-        Ok(DbWriteTransaction { txn: self.env.begin_rw_txn()? })
+        Ok(DbWriteTransaction { txn: self.env.begin_rw_txn()?, txn_big: self.env_big.begin_rw_txn()? })
     }
 
     pub(crate) fn create_table<K: StorageSerde, V: StorageSerde>(
@@ -238,6 +257,7 @@ type DbWriteTransaction<'env> = DbTransaction<'env, RW>;
 impl<'a> DbWriteTransaction<'a> {
     pub(crate) fn commit(self) -> DbResult<()> {
         self.txn.commit()?;
+        self.txn_big.commit()?;
         Ok(())
     }
 }
@@ -250,6 +270,7 @@ pub trait TransactionKind {
 
 pub(crate) struct DbTransaction<'env, Mode: TransactionKind> {
     txn: libmdbx::Transaction<'env, Mode::Internal, EnvironmentKind>,
+    txn_big: libmdbx::Transaction<'env, Mode::Internal, EnvironmentKind>,
 }
 
 impl<'a, Mode: TransactionKind> DbTransaction<'a, Mode> {

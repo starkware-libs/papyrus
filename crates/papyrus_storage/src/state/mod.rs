@@ -51,7 +51,6 @@ pub mod data;
 mod state_test;
 
 use std::collections::HashSet;
-use std::default;
 
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use indexmap::IndexMap;
@@ -64,7 +63,7 @@ use tracing::debug;
 
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::state::data::IndexedDeprecatedContractClass;
-use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn, StorageTxnBig};
+use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
 type DeclaredClassesTable<'env> = TableHandle<'env, ClassHash, ContractClass>;
 type DeclaredClassesBlockTable<'env> = TableHandle<'env, ClassHash, BlockNumber>;
@@ -149,7 +148,7 @@ impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for StorageTxn<'env, 
         Ok(markers_table.get(&self.txn, &MarkerKind::State)?.unwrap_or_default())
     }
     fn get_state_diff(&self, block_number: BlockNumber) -> StorageResult<Option<ThinStateDiff>> {
-        let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
+        let state_diffs_table = self.txn.open_table(&self.tables_big.state_diffs)?;
         let state_diff = state_diffs_table.get(&self.txn, &block_number)?;
         Ok(state_diff)
     }
@@ -181,11 +180,11 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
     /// # Errors
     /// Returns [`StorageError`] if there was an error opening the tables.
     fn new(txn: &'env StorageTxn<'env, Mode>) -> StorageResult<Self> {
-        let declared_classes_table = txn.txn.open_table(&txn.tables.declared_classes)?;
+        let declared_classes_table = txn.txn.open_table(&txn.tables_big.declared_classes)?;
         let declared_classes_block_table =
             txn.txn.open_table(&txn.tables.declared_classes_block)?;
         let deprecated_declared_classes_table =
-            txn.txn.open_table(&txn.tables.deprecated_declared_classes)?;
+            txn.txn.open_table(&txn.tables_big.deprecated_declared_classes)?;
         let deployed_contracts_table = txn.txn.open_table(&txn.tables.deployed_contracts)?;
         let nonces_table = txn.txn.open_table(&txn.tables.nonces)?;
         let storage_table = txn.txn.open_table(&txn.tables.contract_storage)?;
@@ -379,23 +378,23 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
 
 
 
-impl<'env> StorageTxnBig<'env, RW> {
-    /// DOC
-    pub fn append_state_diff_big(
-        self,
-        block_number: BlockNumber,
-        state_diff: StateDiff,
-    ) -> StorageResult<Self> {
-        let state_diff_table=self.txn.open_table(&self.tables.state_diffs)?;
+// impl<'env> StorageTxnBig<'env, RW> {
+//     /// DOC
+//     pub fn append_state_diff_big(
+//         self,
+//         block_number: BlockNumber,
+//         state_diff: StateDiff,
+//     ) -> StorageResult<Self> {
+//         let state_diff_table=self.txn.open_table(&self.tables.state_diffs)?;
 
-        // Write state diff.
-        let (thin_state_diff, _declared_classes, _deprecated_declared_classes) =
-            ThinStateDiff::from_state_diff(state_diff);
-        state_diff_table.insert(&self.txn, &block_number, &thin_state_diff)?;
+//         // Write state diff.
+//         let (thin_state_diff, _declared_classes, _deprecated_declared_classes) =
+//             ThinStateDiff::from_state_diff(state_diff);
+//         state_diff_table.insert(&self.txn, &block_number, &thin_state_diff)?;
 
-        Ok(self)
-    }
-}
+//         Ok(self)
+//     }
+// }
 
 impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
     fn append_state_diff(
@@ -407,13 +406,13 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let nonces_table = self.txn.open_table(&self.tables.nonces)?;
         let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
-        let declared_classes_table = self.txn.open_table(&self.tables.declared_classes)?;
+        let declared_classes_table = self.txn.open_table(&self.tables_big.declared_classes)?;
         let declared_classes_block_table =
             self.txn.open_table(&self.tables.declared_classes_block)?;
         let deprecated_declared_classes_table =
-            self.txn.open_table(&self.tables.deprecated_declared_classes)?;
+            self.txn.open_table(&self.tables_big.deprecated_declared_classes)?;
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
-        let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
+        let state_diffs_table = self.txn.open_table(&self.tables_big.state_diffs)?;
 
         update_marker(&self.txn, &markers_table, block_number)?;
 
@@ -490,17 +489,17 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         block_number: BlockNumber,
     ) -> StorageResult<(Self, Option<RevertedStateDiff>)> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
-        let declared_classes_table = self.txn.open_table(&self.tables.declared_classes)?;
+        let declared_classes_table = self.txn.open_table(&self.tables_big.declared_classes)?;
         let declared_classes_block_table =
             self.txn.open_table(&self.tables.declared_classes_block)?;
         let deprecated_declared_classes_table =
-            self.txn.open_table(&self.tables.deprecated_declared_classes)?;
+            self.txn.open_table(&self.tables_big.deprecated_declared_classes)?;
         // TODO(yair): Consider reverting the compiled classes in their own module.
-        let compiled_classes_table = self.txn.open_table(&self.tables.casms)?;
+        let compiled_classes_table = self.txn.open_table(&self.tables_big.casms)?;
         let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
         let nonces_table = self.txn.open_table(&self.tables.nonces)?;
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
-        let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
+        let state_diffs_table = self.txn.open_table(&self.tables_big.state_diffs)?;
 
         let current_state_marker = self.get_state_marker()?;
 
