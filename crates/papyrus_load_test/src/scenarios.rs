@@ -1,5 +1,4 @@
 use goose::goose::Scenario;
-use goose::scenario;
 
 use crate::{
     transactions as txs,
@@ -31,10 +30,18 @@ use crate::{
     GET_TRANSACTION_BY_HASH_WEIGHT,
     GET_TRANSACTION_RECEIPT_WEIGHT,
     SYNCING_WEIGHT,
+    TRACE_BLOCK_TRANSACTIONS_BY_HASH_WEIGHT,
+    TRACE_BLOCK_TRANSACTIONS_BY_NUMBER_WEIGHT,
+    TRACE_TRANSACTION_WEIGHT,
 };
 
-pub fn general_request() -> Scenario {
-    let mut scenario = scenario!("general_request");
+pub fn general_request_v0_3() -> Scenario {
+    let mut scenario = Scenario::new("general_request_v0_3");
+    // This is the scenario name to run from the command line.
+    // This name must be alphanumeric, so instead of letting Goose do the conversion from the
+    // scenario name for us, we give it the name we want.
+    scenario.machine_name = "generalrequestv003".to_string();
+
     let trans_and_weights = vec![
         (txs::block_hash_and_number(), BLOCK_HASH_AND_NUMBER_WEIGHT),
         (txs::block_number(), BLOCK_NUMBER_WEIGHT),
@@ -87,6 +94,23 @@ pub fn general_request() -> Scenario {
         (txs::syncing(), SYNCING_WEIGHT),
     ];
     for (transaction, weight) in trans_and_weights.into_iter() {
+        scenario = scenario.register_transaction(transaction.set_weight(weight).unwrap());
+    }
+    scenario
+}
+
+// TODO(dvir): add also traceTransaction, simulateTransactions, estimateFee and call endpoints.
+pub fn general_request_v0_4() -> Scenario {
+    let mut scenario = general_request_v0_3();
+    scenario.name = "general_request_v0_4".to_string();
+    scenario.machine_name = "generalrequestv004".to_string();
+
+    let new_trans_and_weights = vec![
+        (txs::trace_block_transactions_by_hash(), TRACE_BLOCK_TRANSACTIONS_BY_HASH_WEIGHT),
+        (txs::trace_block_transactions_by_number(), TRACE_BLOCK_TRANSACTIONS_BY_NUMBER_WEIGHT),
+        (txs::trace_transaction(), TRACE_TRANSACTION_WEIGHT),
+    ];
+    for (transaction, weight) in new_trans_and_weights.into_iter() {
         scenario = scenario.register_transaction(transaction.set_weight(weight).unwrap());
     }
     scenario
