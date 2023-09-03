@@ -168,7 +168,7 @@ pub(crate) fn open_env(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
             .set_geometry(Geometry {
                 size: Some(config.min_size..config.max_size),
                 growth_step: Some(config.growth_step),
-                page_size: Some(libmdbx::PageSize::Set(8192)), // 2^13, 8KB
+                page_size: Some(libmdbx::PageSize::Set(65536)), // 2^13, 8KB
                 ..Default::default()
             })
             .set_max_tables(MAX_DBS)
