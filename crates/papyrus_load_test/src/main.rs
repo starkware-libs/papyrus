@@ -1,7 +1,7 @@
 // This code is inspired by the pathfinder load test.
 // first set the env variable VERSION_ID to the version of the node you want to test.
 // To run this load test, run locally a node and then run:
-//      cargo run -r -p papyrus_load_test -- -t 5m -H http://127.0.0.1:8080
+//      cargo run -r -p papyrus_load_test -- -t 5m -H http://127.0.0.1:8080 --scenarios=generalrequestv004
 // To create the files of requests run:
 //      cargo run -r -p papyrus_load_test -- --create_files 127.0.0.1:8080
 // For more options run:
@@ -26,7 +26,9 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let metrics = GooseAttack::initialize()?
-        .register_scenario(scenarios::general_request())
+        // The choice between V0_3 and V0_4 must be also in the environment variable VERSION_ID.
+        .register_scenario(scenarios::general_request_v0_3())
+        .register_scenario(scenarios::general_request_v0_4())
         .execute()
         .await?;
 
