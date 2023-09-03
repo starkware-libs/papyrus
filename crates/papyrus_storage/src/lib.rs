@@ -127,6 +127,13 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         headers: db_writer.create_table("headers")?,
         markers: db_writer.create_table("markers")?,
         nonces: db_writer.create_table("nonces")?,
+        state_diffs: db_writer.create_table("state_diffs")?,
+        transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
+        transaction_idx_to_hash: db_writer.create_table("transaction_idx_to_hash")?,
+        transaction_outputs: db_writer.create_table("transaction_outputs")?,
+        transactions: db_writer.create_table("transactions")?,
+
+        // Ommer tables
         ommer_contract_storage: db_writer.create_table("ommer_contract_storage")?,
         ommer_declared_classes: db_writer.create_table("ommer_declared_classes")?,
         ommer_deployed_contracts: db_writer.create_table("ommer_deployed_contracts")?,
@@ -136,11 +143,8 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         ommer_state_diffs: db_writer.create_table("ommer_state_diffs")?,
         ommer_transaction_outputs: db_writer.create_table("ommer_transaction_outputs")?,
         ommer_transactions: db_writer.create_table("ommer_transactions")?,
-        state_diffs: db_writer.create_table("state_diffs")?,
-        transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
-        transaction_idx_to_hash: db_writer.create_table("transaction_idx_to_hash")?,
-        transaction_outputs: db_writer.create_table("transaction_outputs")?,
-        transactions: db_writer.create_table("transactions")?,
+
+        // Version tables
         starknet_version: db_writer.create_table("starknet_version")?,
         storage_version: db_writer.create_table("storage_version")?,
     });
@@ -252,6 +256,13 @@ struct_field_names! {
         headers: TableIdentifier<BlockNumber, BlockHeader>,
         markers: TableIdentifier<MarkerKind, BlockNumber>,
         nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
+        state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
+        transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
+        transaction_idx_to_hash: TableIdentifier<TransactionIndex, TransactionHash>,
+        transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
+        transactions: TableIdentifier<TransactionIndex, Transaction>,
+
+        // Ommer tables
         ommer_contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockHash), StarkFelt>,
         //TODO(yair): Consider whether an ommer_deprecated_declared_classes is needed.
         ommer_declared_classes: TableIdentifier<(BlockHash, ClassHash), ContractClass>,
@@ -262,11 +273,8 @@ struct_field_names! {
         ommer_state_diffs: TableIdentifier<BlockHash, ThinStateDiff>,
         ommer_transaction_outputs: TableIdentifier<OmmerTransactionKey, ThinTransactionOutput>,
         ommer_transactions: TableIdentifier<OmmerTransactionKey, Transaction>,
-        state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
-        transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
-        transaction_idx_to_hash: TableIdentifier<TransactionIndex, TransactionHash>,
-        transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
-        transactions: TableIdentifier<TransactionIndex, Transaction>,
+
+        // Version tables
         starknet_version: TableIdentifier<BlockNumber, StarknetVersion>,
         storage_version: TableIdentifier<String, Version>
     }
