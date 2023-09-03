@@ -26,6 +26,7 @@ use starknet_api::transaction::{
     TransactionHash,
     TransactionOffsetInBlock,
 };
+use tracing::debug;
 
 use super::block::Block;
 use super::broadcasted_transaction::{
@@ -453,6 +454,7 @@ impl From<InvokeTransaction> for starknet_api::transaction::InvokeTransaction {
 impl TryFrom<ExecutionError> for JsonRpcError {
     type Error = ErrorObjectOwned;
     fn try_from(value: ExecutionError) -> Result<Self, Self::Error> {
+        debug!("Execution error:\n {:?}", value);
         match value {
             ExecutionError::NotSynced { .. } => Ok(BLOCK_NOT_FOUND),
             ExecutionError::ContractNotFound { .. } => Ok(CONTRACT_NOT_FOUND),
