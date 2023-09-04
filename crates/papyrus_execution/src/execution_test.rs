@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use assert_matches::assert_matches;
 use blockifier::abi::constants::STEP_GAS_COST;
-use blockifier::execution::entry_point::Retdata;
+use blockifier::execution::call_info::Retdata;
 use papyrus_storage::test_utils::get_test_storage;
 use starknet_api::block::{BlockNumber, GasPrice};
 use starknet_api::core::{ChainId, ContractAddress, Nonce, PatriciaKey};

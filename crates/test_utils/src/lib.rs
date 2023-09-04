@@ -53,6 +53,7 @@ use starknet_api::core::{
     GlobalRoot,
     Nonce,
 };
+use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass,
     ContractClassAbiEntry,
@@ -79,12 +80,14 @@ use starknet_api::state::{
     ThinStateDiff,
 };
 use starknet_api::transaction::{
+    AccountDeploymentData,
     Calldata,
     ContractAddressSalt,
     DeclareTransaction,
     DeclareTransactionOutput,
     DeclareTransactionV0V1,
     DeclareTransactionV2,
+    DeclareTransactionV3,
     DeployAccountTransaction,
     DeployAccountTransactionOutput,
     DeployTransaction,
@@ -105,6 +108,10 @@ use starknet_api::transaction::{
     L2ToL1Payload,
     MessageToL1,
     MessageToL2,
+    PaymasterAddress,
+    Resource,
+    ResourceBounds,
+    Tip,
     Transaction,
     TransactionExecutionStatus,
     TransactionHash,
@@ -352,6 +359,7 @@ pub trait GetTestInstance: Sized {
 }
 
 auto_impl_get_test_instance! {
+    pub struct AccountDeploymentData(pub Vec<StarkFelt>);
     pub struct BlockHash(pub StarkHash);
     pub struct BlockHeader {
         pub block_hash: BlockHash,
@@ -391,10 +399,15 @@ auto_impl_get_test_instance! {
         L1Handler(FunctionAbiEntry) = 3,
         Struct(StructAbiEntry) = 4,
     }
+    pub enum DataAvailabilityMode {
+        L1(u32) = 0,
+        L2(u32) = 1,
+    }
     pub enum DeclareTransaction {
         V0(DeclareTransactionV0V1) = 0,
         V1(DeclareTransactionV0V1) = 1,
         V2(DeclareTransactionV2) = 2,
+        V3(DeclareTransactionV3) = 3,
     }
     pub struct DeclareTransactionV0V1 {
         pub max_fee: Fee,
@@ -410,6 +423,20 @@ auto_impl_get_test_instance! {
         pub class_hash: ClassHash,
         pub compiled_class_hash: CompiledClassHash,
         pub sender_address: ContractAddress,
+    }
+    pub struct DeclareTransactionV3 {
+        pub resource: Resource,
+        pub resource_bounds: ResourceBounds,
+        pub tip: Tip,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub class_hash: ClassHash,
+        pub compiled_class_hash: CompiledClassHash,
+        pub sender_address: ContractAddress,
+        pub nonce_data_availability_mode: DataAvailabilityMode,
+        pub fee_data_availability_mode: DataAvailabilityMode,
+        pub paymaster_address: PaymasterAddress,
+        pub account_init_code: AccountDeploymentData,
     }
     pub struct DeployAccountTransaction {
         pub max_fee: Fee,
@@ -508,6 +535,7 @@ auto_impl_get_test_instance! {
         pub payload: L1ToL2Payload,
     }
     pub struct Nonce(pub StarkFelt);
+    pub struct PaymasterAddress(pub ContractAddress);
     pub struct Program {
         pub attributes: serde_json::Value,
         pub builtins: serde_json::Value,
@@ -519,6 +547,14 @@ auto_impl_get_test_instance! {
         pub main_scope: serde_json::Value,
         pub prime: serde_json::Value,
         pub reference_manager: serde_json::Value,
+    }
+    pub enum Resource {
+        L1Gas = 0,
+        L2Gas = 1,
+    }
+    pub struct ResourceBounds {
+        pub max_amount: u64,
+        pub max_price_per_unit: u128,
     }
     pub struct StateDiff {
         pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
@@ -540,6 +576,7 @@ auto_impl_get_test_instance! {
         pub nonces: IndexMap<ContractAddress, Nonce>,
         pub replaced_classes: IndexMap<ContractAddress, ClassHash>,
     }
+    pub struct Tip(pub u64);
     pub enum Transaction {
         Declare(DeclareTransaction) = 0,
         Deploy(DeployTransaction) = 1,

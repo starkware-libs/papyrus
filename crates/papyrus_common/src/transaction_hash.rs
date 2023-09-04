@@ -9,6 +9,7 @@ use starknet_api::transaction::{
     DeclareTransaction,
     DeclareTransactionV0V1,
     DeclareTransactionV2,
+    DeclareTransactionV3,
     DeployAccountTransaction,
     DeployTransaction,
     InvokeTransaction,
@@ -36,6 +37,7 @@ lazy_static! {
     static ref ZERO: StarkFelt = StarkFelt::from(0_u8);
     static ref ONE: StarkFelt = StarkFelt::from(1_u8);
     static ref TWO: StarkFelt = StarkFelt::from(2_u8);
+    static ref THREE: StarkFelt = StarkFelt::from(3_u8);
 }
 
 /// Calculates hash of a Starknet transaction.
@@ -54,6 +56,7 @@ pub fn get_transaction_hash(
             DeclareTransaction::V2(declare_v2) => {
                 get_declare_transaction_v2_hash(declare_v2, chain_id)
             }
+            DeclareTransaction::V3(declare_v3) => get_declare_transaction_v3_hash(declare_v3),
         },
         Transaction::Deploy(deploy) => get_deploy_transaction_hash(deploy, chain_id),
         Transaction::DeployAccount(deploy_account) => {
@@ -364,6 +367,31 @@ fn get_declare_transaction_v2_hash(
         .chain(&transaction.max_fee.0.into())
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
         .chain(&transaction.nonce.0)
+        .chain(&transaction.compiled_class_hash.0)
+        .get_hash(),
+    ))
+}
+
+fn get_declare_transaction_v3_hash(
+    transaction: &DeclareTransactionV3,
+) -> Result<TransactionHash, StarknetApiError> {
+    let account_init_code_hash =
+        PedersenHashChain::new().chain_iter(transaction.account_init_code.0.iter()).get_hash();
+
+    Ok(TransactionHash(
+        PedersenHashChain::new()
+        .chain(&DECLARE)
+        .chain(&THREE) // Version
+        .chain(&StarkFelt::from(transaction.resource as u8))
+        .chain(&transaction.resource_bounds.max_amount.into())
+        .chain(&transaction.resource_bounds.max_price_per_unit.into())
+        .chain(&transaction.tip.into())
+        .chain(&StarkFelt::from(transaction.nonce_data_availability_mode))
+        .chain(&StarkFelt::from(transaction.fee_data_availability_mode))
+        .chain(transaction.paymaster_address.0.0.key())
+        .chain(&transaction.nonce.0)
+        .chain(&account_init_code_hash)
+        .chain(&transaction.class_hash.0)
         .chain(&transaction.compiled_class_hash.0)
         .get_hash(),
     ))
