@@ -87,7 +87,7 @@ pub fn validate_transaction_hash(
             InvokeTransaction::V1(_) => vec![],
         },
         Transaction::L1Handler(l1_handler) => {
-            vec![get_deprecated_l1_handler_transaction_hash(l1_handler, chain_id)?]
+            get_deprecated_l1_handler_transaction_hashes(l1_handler, chain_id)?
         }
     };
     possible_hashes.push(get_transaction_hash(transaction, chain_id)?);
@@ -252,30 +252,50 @@ fn get_l1_handler_transaction_hash(
     transaction: &L1HandlerTransaction,
     chain_id: &ChainId,
 ) -> Result<StarkHash, StarknetApiError> {
-    get_common_l1_handler_transaction_hash(transaction, chain_id, false)
+    get_common_l1_handler_transaction_hash(transaction, chain_id, L1HandlerVersions::V0)
 }
 
-fn get_deprecated_l1_handler_transaction_hash(
+fn get_deprecated_l1_handler_transaction_hashes(
     transaction: &L1HandlerTransaction,
     chain_id: &ChainId,
-) -> Result<StarkHash, StarknetApiError> {
-    get_common_l1_handler_transaction_hash(transaction, chain_id, true)
+) -> Result<Vec<StarkHash>, StarknetApiError> {
+    let hashes = vec![
+        get_common_l1_handler_transaction_hash(
+            transaction,
+            chain_id,
+            L1HandlerVersions::PreL1Handler,
+        )?,
+        get_common_l1_handler_transaction_hash(
+            transaction,
+            chain_id,
+            L1HandlerVersions::Deprecated,
+        )?,
+    ];
+    Ok(hashes)
+}
+
+#[derive(PartialEq)]
+enum L1HandlerVersions {
+    PreL1Handler,
+    Deprecated,
+    V0,
 }
 
 fn get_common_l1_handler_transaction_hash(
     transaction: &L1HandlerTransaction,
     chain_id: &ChainId,
-    is_deprecated: bool,
+    version: L1HandlerVersions,
 ) -> Result<StarkHash, StarknetApiError> {
     Ok(PedersenHashChain::new()
-        .chain(&L1_HANDLER)
-        .chain_if(&transaction.version.0, !is_deprecated)
+        .chain_if(&L1_HANDLER, version != L1HandlerVersions::PreL1Handler)
+        .chain_if(&INVOKE, version == L1HandlerVersions::PreL1Handler)
+        .chain_if(&transaction.version.0, version == L1HandlerVersions::V0)
         .chain(transaction.contract_address.0.key())
         .chain(&transaction.entry_point_selector.0)
         .chain(&PedersenHashChain::new().chain_iter(transaction.calldata.0.iter()).get_hash())
-        .chain_if(&ZERO, !is_deprecated) // No fee in l1 handler transaction.
+        .chain_if(&ZERO, version == L1HandlerVersions::V0) // No fee in l1 handler transaction.
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
-        .chain(&transaction.nonce.0)
+        .chain_if(&transaction.nonce.0, version != L1HandlerVersions::PreL1Handler)
         .get_hash())
 }
 
