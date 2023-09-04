@@ -4685,6 +4685,7 @@ version = "0.0.4"
 dependencies = [
  "assert_matches",
  "bytes",
+ "derive_more",
  "futures",
  "libp2p",
  "pretty_assertions",
