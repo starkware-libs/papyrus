@@ -98,8 +98,14 @@ async fn declare_tx_serde() {
         compiled_class_hash: None,
         sender_address: ContractAddress(patricia_key!("0x1")),
         nonce: Nonce(stark_felt!("0x0")),
-        max_fee: Fee(0),
+        max_fee: Some(Fee(0)),
         version: TransactionVersion(stark_felt!("0x1")),
+        resource_bounds: None,
+        tip: None,
+        nonce_data_availability_mode: None,
+        fee_data_availability_mode: None,
+        paymaster_address: None,
+        account_deployment_data: None,
         transaction_hash: TransactionHash(stark_felt!(
             "0x2f2ef64daffdc72bf33b34ad024891691b8eb1d0ab70cc7f8fb71f6fd5e1f22"
         )),
