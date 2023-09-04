@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use starknet_api::core::ChainId;
-use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::transaction::Transaction;
+use starknet_api::hash::StarkFelt;
+use starknet_api::transaction::{Transaction, TransactionHash};
 use test_utils::read_json_file;
 
 use super::{
@@ -34,7 +34,7 @@ fn test_constructor_selector() {
 #[derive(Deserialize, Serialize)]
 struct TransactionWithHash {
     transaction: Transaction,
-    transaction_hash: StarkHash,
+    transaction_hash: TransactionHash,
 }
 
 #[test]

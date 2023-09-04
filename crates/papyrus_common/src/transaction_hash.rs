@@ -16,6 +16,7 @@ use starknet_api::transaction::{
     InvokeTransactionV1,
     L1HandlerTransaction,
     Transaction,
+    TransactionHash,
 };
 use starknet_api::StarknetApiError;
 use starknet_crypto::{pedersen_hash, FieldElement};
@@ -41,7 +42,7 @@ lazy_static! {
 pub fn get_transaction_hash(
     transaction: &Transaction,
     chain_id: &ChainId,
-) -> Result<StarkHash, StarknetApiError> {
+) -> Result<TransactionHash, StarknetApiError> {
     match transaction {
         Transaction::Declare(declare) => match declare {
             DeclareTransaction::V0(declare_v0) => {
@@ -72,7 +73,7 @@ pub fn get_transaction_hash(
 pub fn validate_transaction_hash(
     transaction: &Transaction,
     chain_id: &ChainId,
-    expected_hash: StarkHash,
+    expected_hash: TransactionHash,
 ) -> Result<bool, StarknetApiError> {
     let mut possible_hashes = match transaction {
         Transaction::Declare(_) => vec![],
@@ -135,7 +136,7 @@ fn ascii_as_felt(ascii_str: &str) -> Result<StarkFelt, StarknetApiError> {
 fn get_deploy_account_transaction_hash(
     transaction: &DeployAccountTransaction,
     chain_id: &ChainId,
-) -> Result<StarkHash, StarknetApiError> {
+) -> Result<TransactionHash, StarknetApiError> {
     let calldata_hash = PedersenHashChain::new()
         .chain(&transaction.class_hash.0)
         .chain(&transaction.contract_address_salt.0)
@@ -149,7 +150,8 @@ fn get_deploy_account_transaction_hash(
         ContractAddress::from(0_u8),
     )?;
 
-    Ok(PedersenHashChain::new()
+    Ok(TransactionHash(
+        PedersenHashChain::new()
         .chain(&DEPLOY_ACCOUNT)
         .chain(&transaction.version.0)
         .chain(contract_address.0.key())
@@ -158,20 +160,21 @@ fn get_deploy_account_transaction_hash(
         .chain(&transaction.max_fee.0.into())
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
         .chain(&transaction.nonce.0)
-        .get_hash())
+        .get_hash(),
+    ))
 }
 
 fn get_deploy_transaction_hash(
     transaction: &DeployTransaction,
     chain_id: &ChainId,
-) -> Result<StarkHash, StarknetApiError> {
+) -> Result<TransactionHash, StarknetApiError> {
     get_common_deploy_transaction_hash(transaction, chain_id, false)
 }
 
 fn get_deprecated_deploy_transaction_hash(
     transaction: &DeployTransaction,
     chain_id: &ChainId,
-) -> Result<StarkHash, StarknetApiError> {
+) -> Result<TransactionHash, StarknetApiError> {
     get_common_deploy_transaction_hash(transaction, chain_id, true)
 }
 
@@ -179,7 +182,7 @@ fn get_common_deploy_transaction_hash(
     transaction: &DeployTransaction,
     chain_id: &ChainId,
     is_deprecated: bool,
-) -> Result<StarkHash, StarknetApiError> {
+) -> Result<TransactionHash, StarknetApiError> {
     let contract_address = calculate_contract_address(
         transaction.contract_address_salt,
         transaction.class_hash,
@@ -187,7 +190,8 @@ fn get_common_deploy_transaction_hash(
         ContractAddress::from(0_u8),
     )?;
 
-    Ok(PedersenHashChain::new()
+    Ok(TransactionHash(
+        PedersenHashChain::new()
         .chain(&DEPLOY)
         .chain_if(&transaction.version.0, !is_deprecated)
         .chain(contract_address.0.key())
@@ -199,20 +203,21 @@ fn get_common_deploy_transaction_hash(
         )
         .chain_if(&ZERO, !is_deprecated) // No fee in deploy transaction.
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
-        .get_hash())
+        .get_hash(),
+    ))
 }
 
 fn get_invoke_transaction_v0_hash(
     transaction: &InvokeTransactionV0,
     chain_id: &ChainId,
-) -> Result<StarkHash, StarknetApiError> {
+) -> Result<TransactionHash, StarknetApiError> {
     get_common_invoke_transaction_v0_hash(transaction, chain_id, false)
 }
 
 fn get_deprecated_invoke_transaction_v0_hash(
     transaction: &InvokeTransactionV0,
     chain_id: &ChainId,
-) -> Result<StarkHash, StarknetApiError> {
+) -> Result<TransactionHash, StarknetApiError> {
     get_common_invoke_transaction_v0_hash(transaction, chain_id, true)
 }
 
@@ -220,8 +225,9 @@ fn get_common_invoke_transaction_v0_hash(
     transaction: &InvokeTransactionV0,
     chain_id: &ChainId,
     is_deprecated: bool,
-) -> Result<StarkHash, StarknetApiError> {
-    Ok(PedersenHashChain::new()
+) -> Result<TransactionHash, StarknetApiError> {
+    Ok(TransactionHash(
+        PedersenHashChain::new()
         .chain(&INVOKE)
         .chain_if(&ZERO, !is_deprecated) // Version
         .chain(transaction.contract_address.0.key())
@@ -229,14 +235,16 @@ fn get_common_invoke_transaction_v0_hash(
         .chain(&PedersenHashChain::new().chain_iter(transaction.calldata.0.iter()).get_hash())
         .chain_if(&transaction.max_fee.0.into(), !is_deprecated)
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
-        .get_hash())
+        .get_hash(),
+    ))
 }
 
 fn get_invoke_transaction_v1_hash(
     transaction: &InvokeTransactionV1,
     chain_id: &ChainId,
-) -> Result<StarkHash, StarknetApiError> {
-    Ok(PedersenHashChain::new()
+) -> Result<TransactionHash, StarknetApiError> {
+    Ok(TransactionHash(
+        PedersenHashChain::new()
         .chain(&INVOKE)
         .chain(&ONE) // Version
         .chain(transaction.sender_address.0.key())
@@ -245,20 +253,21 @@ fn get_invoke_transaction_v1_hash(
         .chain(&transaction.max_fee.0.into())
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
         .chain(&transaction.nonce.0)
-        .get_hash())
+        .get_hash(),
+    ))
 }
 
 fn get_l1_handler_transaction_hash(
     transaction: &L1HandlerTransaction,
     chain_id: &ChainId,
-) -> Result<StarkHash, StarknetApiError> {
+) -> Result<TransactionHash, StarknetApiError> {
     get_common_l1_handler_transaction_hash(transaction, chain_id, false)
 }
 
 fn get_deprecated_l1_handler_transaction_hash(
     transaction: &L1HandlerTransaction,
     chain_id: &ChainId,
-) -> Result<StarkHash, StarknetApiError> {
+) -> Result<TransactionHash, StarknetApiError> {
     get_common_l1_handler_transaction_hash(transaction, chain_id, true)
 }
 
@@ -266,8 +275,9 @@ fn get_common_l1_handler_transaction_hash(
     transaction: &L1HandlerTransaction,
     chain_id: &ChainId,
     is_deprecated: bool,
-) -> Result<StarkHash, StarknetApiError> {
-    Ok(PedersenHashChain::new()
+) -> Result<TransactionHash, StarknetApiError> {
+    Ok(TransactionHash(
+        PedersenHashChain::new()
         .chain(&L1_HANDLER)
         .chain_if(&transaction.version.0, !is_deprecated)
         .chain(transaction.contract_address.0.key())
@@ -276,14 +286,16 @@ fn get_common_l1_handler_transaction_hash(
         .chain_if(&ZERO, !is_deprecated) // No fee in l1 handler transaction.
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
         .chain(&transaction.nonce.0)
-        .get_hash())
+        .get_hash(),
+    ))
 }
 
 fn get_declare_transaction_v0_hash(
     transaction: &DeclareTransactionV0V1,
     chain_id: &ChainId,
-) -> Result<StarkHash, StarknetApiError> {
-    Ok(PedersenHashChain::new()
+) -> Result<TransactionHash, StarknetApiError> {
+    Ok(TransactionHash(
+        PedersenHashChain::new()
         .chain(&DECLARE)
         .chain(&ZERO) // Version
         .chain(transaction.sender_address.0.key())
@@ -292,14 +304,16 @@ fn get_declare_transaction_v0_hash(
         .chain(&transaction.max_fee.0.into())
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
         .chain(&transaction.class_hash.0)
-        .get_hash())
+        .get_hash(),
+    ))
 }
 
 fn get_declare_transaction_v1_hash(
     transaction: &DeclareTransactionV0V1,
     chain_id: &ChainId,
-) -> Result<StarkHash, StarknetApiError> {
-    Ok(PedersenHashChain::new()
+) -> Result<TransactionHash, StarknetApiError> {
+    Ok(TransactionHash(
+        PedersenHashChain::new()
         .chain(&DECLARE)
         .chain(&ONE) // Version
         .chain(transaction.sender_address.0.key())
@@ -308,14 +322,16 @@ fn get_declare_transaction_v1_hash(
         .chain(&transaction.max_fee.0.into())
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
         .chain(&transaction.nonce.0)
-        .get_hash())
+        .get_hash(),
+    ))
 }
 
 fn get_declare_transaction_v2_hash(
     transaction: &DeclareTransactionV2,
     chain_id: &ChainId,
-) -> Result<StarkHash, StarknetApiError> {
-    Ok(PedersenHashChain::new()
+) -> Result<TransactionHash, StarknetApiError> {
+    Ok(TransactionHash(
+        PedersenHashChain::new()
         .chain(&DECLARE)
         .chain(&TWO) // Version
         .chain(transaction.sender_address.0.key())
@@ -325,5 +341,6 @@ fn get_declare_transaction_v2_hash(
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
         .chain(&transaction.nonce.0)
         .chain(&transaction.compiled_class_hash.0)
-        .get_hash())
+        .get_hash(),
+    ))
 }
