@@ -111,7 +111,7 @@ impl TryFrom<BroadcastedDeclareTransaction> for client_transaction::DeclareTrans
                     max_fee: declare_v1.max_fee,
                     signature: declare_v1.signature,
                     version: TransactionVersion(stark_felt!("0x1")),
-                    r#type: client_transaction::DeclareV1Type::default(),
+                    r#type: client_transaction::DeclareType::default(),
                 }))
             }
             BroadcastedDeclareTransaction::V2(declare_v2) => {
@@ -133,7 +133,7 @@ impl TryFrom<BroadcastedDeclareTransaction> for client_transaction::DeclareTrans
                     max_fee: declare_v2.max_fee,
                     signature: declare_v2.signature,
                     version: TransactionVersion(stark_felt!("0x2")),
-                    r#type: client_transaction::DeclareV2Type::default(),
+                    r#type: client_transaction::DeclareType::default(),
                 }))
             }
         }
