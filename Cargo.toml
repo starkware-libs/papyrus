@@ -97,3 +97,7 @@ tracing-subscriber = "0.3.16"
 tower = "0.4"
 url = "2.2.2"
 validator = "0.12"
+
+[patch.crates-io]
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "0c828700d8ec9b6ef742ff4f8222e7a25b2916f9" }
+blockifier = { git = "https://github.com/starkware-libs/blockifier", rev = "fa4ff457325631dbf0b4543c89a21ee91b5b24d8" }
