@@ -9,12 +9,14 @@ use starknet_api::transaction::{
     DeclareTransaction,
     DeclareTransactionV0V1,
     DeclareTransactionV2,
+    DeclareTransactionV3,
     DeployAccountTransaction,
     DeployTransaction,
     InvokeTransaction,
     InvokeTransactionV0,
     InvokeTransactionV1,
     L1HandlerTransaction,
+    Resource,
     Transaction,
     TransactionHash,
 };
@@ -42,6 +44,7 @@ lazy_static! {
     pub(crate) static ref ZERO: StarkFelt = StarkFelt::from(0_u8);
     static ref ONE: StarkFelt = StarkFelt::from(1_u8);
     static ref TWO: StarkFelt = StarkFelt::from(2_u8);
+    static ref THREE: StarkFelt = StarkFelt::from(3_u8);
 }
 
 /// Calculates hash of a Starknet transaction.
@@ -59,6 +62,9 @@ pub fn get_transaction_hash(
             }
             DeclareTransaction::V2(declare_v2) => {
                 get_declare_transaction_v2_hash(declare_v2, chain_id)
+            }
+            DeclareTransaction::V3(declare_v3) => {
+                get_declare_transaction_v3_hash(declare_v3, chain_id)
             }
         },
         Transaction::Deploy(deploy) => get_deploy_transaction_hash(deploy, chain_id),
@@ -370,6 +376,66 @@ fn get_declare_transaction_v2_hash(
         .chain(&transaction.max_fee.0.into())
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
         .chain(&transaction.nonce.0)
+        .chain(&transaction.compiled_class_hash.0)
+        .get_hash(),
+    ))
+}
+
+// TODO(yoav, 01/11/2023): Add test for Declare v3 transaction.
+fn get_declare_transaction_v3_hash(
+    transaction: &DeclareTransactionV3,
+    chain_id: &ChainId,
+) -> Result<TransactionHash, StarknetApiError> {
+    let l1_gas_max_amount = transaction
+        .resource_bounds
+        .0
+        .get(&Resource::L1Gas)
+        .map_or(StarkFelt::ZERO, |resource_bounds| StarkFelt::from(resource_bounds.max_amount));
+    let l1_gas_max_price_per_unit = transaction
+        .resource_bounds
+        .0
+        .get(&Resource::L1Gas)
+        .map_or(StarkFelt::ZERO, |resource_bounds| {
+            StarkFelt::from(resource_bounds.max_price_per_unit)
+        });
+    let l2_gas_max_amount = transaction
+        .resource_bounds
+        .0
+        .get(&Resource::L2Gas)
+        .map_or(StarkFelt::ZERO, |resource_bounds| StarkFelt::from(resource_bounds.max_amount));
+    let l2_gas_max_price_per_unit = transaction
+        .resource_bounds
+        .0
+        .get(&Resource::L2Gas)
+        .map_or(StarkFelt::ZERO, |resource_bounds| {
+            StarkFelt::from(resource_bounds.max_price_per_unit)
+        });
+    let tip_resource_bounds_hash = PedersenHashChain::new()
+        .chain(&transaction.tip.into())
+        .chain(&l1_gas_max_amount)
+        .chain(&l1_gas_max_price_per_unit)
+        .chain(&l2_gas_max_amount)
+        .chain(&l2_gas_max_price_per_unit)
+        .get_hash();
+    let paymaster_data_hash =
+        PedersenHashChain::new().chain_iter(transaction.paymaster_data.0.iter()).get_hash();
+    let account_deployment_data_hash = PedersenHashChain::new()
+        .chain_iter(transaction.account_deployment_data.0.iter())
+        .get_hash();
+
+    Ok(TransactionHash(
+        PedersenHashChain::new()
+        .chain(&DECLARE)
+        .chain(&THREE) // Version
+        .chain(transaction.sender_address.0.key())
+        .chain(&tip_resource_bounds_hash)
+        .chain(&paymaster_data_hash)
+        .chain(&ascii_as_felt(chain_id.0.as_str())?)
+        .chain(&transaction.nonce.0)
+        .chain(&StarkFelt::from(transaction.nonce_data_availability_mode))
+        .chain(&StarkFelt::from(transaction.fee_data_availability_mode))
+        .chain(&account_deployment_data_hash)
+        .chain(&transaction.class_hash.0)
         .chain(&transaction.compiled_class_hash.0)
         .get_hash(),
     ))

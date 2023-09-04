@@ -356,6 +356,12 @@ pub(crate) fn stored_txn_to_executable_txn(
                 })?;
             Ok(ExecutableTransactionInput::DeclareV2(value, casm))
         }
+        starknet_api::transaction::Transaction::Declare(
+            starknet_api::transaction::DeclareTransaction::V3(_),
+        ) => Err(internal_server_error(
+            "The requested transaction is a declare of version 3, which is not supported on \
+             v0.4.0.",
+        )),
         starknet_api::transaction::Transaction::Deploy(_) => {
             Err(internal_server_error("Deploy txns not supported in execution"))
         }
