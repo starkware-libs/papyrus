@@ -2989,15 +2989,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
-name = "hkdf"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "791a029f6b9fc27657f6f188ec6e5e43f6911f6f878e0dc5501396e09809d437"
-dependencies = [
- "hmac",
-]
-
-[[package]]
 name = "hmac"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3694,12 +3685,11 @@ dependencies = [
 
 [[package]]
 name = "libp2p"
-version = "0.52.4"
+version = "0.52.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e94495eb319a85b70a68b85e2389a95bb3555c71c49025b78c691a854a7e6464"
+checksum = "32d07d1502a027366d55afe187621c2d7895dc111a3df13b35fed698049681d7"
 dependencies = [
  "bytes",
- "either",
  "futures",
  "futures-timer",
  "getrandom",
@@ -3711,8 +3701,6 @@ dependencies = [
  "libp2p-swarm",
  "multiaddr",
  "pin-project",
- "rw-stream-sink",
- "thiserror",
 ]
 
 [[package]]
@@ -3769,13 +3757,12 @@ dependencies = [
 
 [[package]]
 name = "libp2p-identity"
-version = "0.2.7"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdd6317441f361babc74c2989c6484eb0726045399b6648de039e1805ea96972"
+checksum = "686e73aff5e23efbb99bc85340ea6fd8686986aa7b283a881ba182cfca535ca9"
 dependencies = [
  "bs58",
  "ed25519-dalek",
- "hkdf",
  "log",
  "multihash",
  "quick-protobuf",
@@ -3787,9 +3774,9 @@ dependencies = [
 
 [[package]]
 name = "libp2p-swarm"
-version = "0.43.7"
+version = "0.43.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "580189e0074af847df90e75ef54f3f30059aedda37ea5a1659e8b9fca05c0141"
+checksum = "ab94183f8fc2325817835b57946deb44340c99362cd4606c0a5717299b2ba369"
 dependencies = [
  "either",
  "fnv",
@@ -4717,6 +4704,7 @@ version = "0.2.1"
 dependencies = [
  "assert_matches",
  "bytes",
+ "derive_more",
  "futures",
  "libp2p",
  "pretty_assertions",
