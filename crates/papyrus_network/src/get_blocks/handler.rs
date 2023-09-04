@@ -18,7 +18,7 @@ use libp2p::swarm::{
     SubstreamProtocol,
 };
 
-use super::protocol::{RequestProtocol, RequestProtocolError, ResponseProtocol, PROTOCOL_NAME};
+use super::protocol::{InboundProtocol, OutboundProtocol, OutboundProtocolError, PROTOCOL_NAME};
 use super::RequestId;
 use crate::messages::block::{GetBlocks, GetBlocksResponse};
 
@@ -79,15 +79,15 @@ impl Handler {
 
     fn convert_upgrade_error(
         &self,
-        error: StreamUpgradeError<RequestProtocolError>,
+        error: StreamUpgradeError<OutboundProtocolError>,
     ) -> RequestError {
         match error {
             StreamUpgradeError::Timeout => {
                 RequestError::Timeout { substream_timeout: self.substream_timeout }
             }
             StreamUpgradeError::Apply(request_protocol_error) => match request_protocol_error {
-                RequestProtocolError::IOError(error) => RequestError::IOError(error),
-                RequestProtocolError::ResponseSendError(error) => {
+                OutboundProtocolError::IOError(error) => RequestError::IOError(error),
+                OutboundProtocolError::ResponseSendError(error) => {
                     RequestError::ResponseSendError(error)
                 }
             },
@@ -111,13 +111,15 @@ impl ConnectionHandler for Handler {
     type FromBehaviour = NewRequestEvent;
     type ToBehaviour = RequestProgressEvent;
     type Error = RemoteDoesntSupportProtocolError;
-    type InboundProtocol = ResponseProtocol;
-    type OutboundProtocol = RequestProtocol;
+    type InboundProtocol = InboundProtocol;
+    type OutboundProtocol = OutboundProtocol;
     type InboundOpenInfo = ();
     type OutboundOpenInfo = RequestId;
 
     fn listen_protocol(&self) -> SubstreamProtocol<Self::InboundProtocol, Self::InboundOpenInfo> {
-        SubstreamProtocol::new(ResponseProtocol {}, ()).with_timeout(self.substream_timeout)
+        // TODO(nevo): use the inbound protocol channels.
+        let (inbound_protocol, _) = InboundProtocol::new();
+        SubstreamProtocol::new(inbound_protocol, ()).with_timeout(self.substream_timeout)
     }
 
     fn connection_keep_alive(&self) -> KeepAlive {
@@ -161,14 +163,14 @@ impl ConnectionHandler for Handler {
     fn on_behaviour_event(&mut self, event: Self::FromBehaviour) {
         // There's only one type of event so we can unpack it without matching.
         let NewRequestEvent { request, request_id } = event;
-        let (request_protocol, responses_receiver) = RequestProtocol::new(request);
+        let (outbound_protocol, responses_receiver) = OutboundProtocol::new(request);
         let insert_result =
             self.request_to_responses_receiver.insert(request_id, responses_receiver);
         if insert_result.is_some() {
             panic!("Multiple requests exist with the same ID {}", request_id);
         }
         self.pending_events.push_back(ConnectionHandlerEvent::OutboundSubstreamRequest {
-            protocol: SubstreamProtocol::new(request_protocol, request_id)
+            protocol: SubstreamProtocol::new(outbound_protocol, request_id)
                 .with_timeout(self.substream_timeout),
         });
     }
