@@ -7,6 +7,7 @@ license-file.workspace = true
 
 [dependencies]
 bytes.workspace = true
+derive_more.workspace = true
 futures.workspace = true
 libp2p.workspace = true
 prost.workspace = true
