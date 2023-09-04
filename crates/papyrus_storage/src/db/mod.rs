@@ -112,6 +112,11 @@ impl DbConfig {
     pub fn path(&self) -> PathBuf {
         self.path_prefix.join(self.chain_id.0.as_str())
     }
+
+    /// Doc
+    pub fn path_big(&self) -> PathBuf {
+        self.path_prefix.join(self.chain_id.0.as_str().to_string()+"_big")
+    }
 }
 
 #[allow(missing_docs)]
@@ -155,21 +160,10 @@ pub(crate) fn open_env(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
                 ..Default::default()
             })
             .set_max_tables(MAX_DBS)
-            .set_flags(get_flags())
+            //.set_flags(get_flags())
             .open(&config.path())?,
     );
-    Ok((DbReader { env: env.clone() }, DbWriter { env }))
-}
-
-fn get_flags() -> libmdbx::DatabaseFlags {
-    libmdbx::DatabaseFlags{
-        mode: libmdbx::Mode::ReadWrite { sync_mode: libmdbx::SyncMode::UtterlyNoSync },
-        ..Default::default()
-    }
-}
-
-pub(crate) fn open_env_big(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
-    let env = Arc::new(
+    let env_big = Arc::new(
         Environment::new()
             .set_geometry(Geometry {
                 size: Some(config.min_size..config.max_size),
@@ -178,24 +172,49 @@ pub(crate) fn open_env_big(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
                 ..Default::default()
             })
             .set_max_tables(MAX_DBS)
-            .set_flags(get_flags())
-            .open(&config.path())?,
+            //.set_flags(get_flags())
+            .open(&config.path_big())?,
     );
-    Ok((DbReader { env: env.clone() }, DbWriter { env }))
+    Ok((DbReader { env: env.clone(), env_big: env_big.clone() }, DbWriter { env, env_big }))
 }
+
+// fn get_flags() -> libmdbx::DatabaseFlags {
+//     libmdbx::DatabaseFlags{
+//         mode: libmdbx::Mode::ReadWrite { sync_mode: libmdbx::SyncMode::UtterlyNoSync },
+//         ..Default::default()
+//     }
+// }
+
+// pub(crate) fn open_env_big(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
+//     let env = Arc::new(
+//         Environment::new()
+//             .set_geometry(Geometry {
+//                 size: Some(config.min_size..config.max_size),
+//                 growth_step: Some(config.growth_step),
+//                 page_size: Some(libmdbx::PageSize::Set(16384)), // 2^14, 16KB
+//                 ..Default::default()
+//             })
+//             .set_max_tables(MAX_DBS)
+//             //.set_flags(get_flags())
+//             .open(&config.path())?,
+//     );
+//     Ok((DbReader { env: env.clone() }, DbWriter { env }))
+// }
 
 #[derive(Clone)]
 pub(crate) struct DbReader {
     env: Arc<Environment>,
+    env_big: Arc<Environment>,
 }
 
 pub(crate) struct DbWriter {
     env: Arc<Environment>,
+    env_big: Arc<Environment>,
 }
 
 impl DbReader {
     pub(crate) fn begin_ro_txn(&self) -> DbResult<DbReadTransaction<'_>> {
-        Ok(DbReadTransaction { txn: self.env.begin_ro_txn()? })
+        Ok(DbReadTransaction { txn: self.env.begin_ro_txn()?, txn_big: self.env_big.begin_ro_txn()? })
     }
 
     /// Returns statistics about a specific table in the database.
@@ -213,13 +232,30 @@ impl DbReader {
             page_size: stat.page_size(),
         })
     }
+
+
+    /// Returns statistics about a specific table in the database.
+    pub(crate) fn get_table_stats_big(&self, name: &str) -> DbResult<DbTableStats> {
+        let db_txn = self.begin_ro_txn()?;
+        let database = db_txn.txn_big.open_table(Some(name))?;
+        let stat = db_txn.txn_big.table_stat(&database)?;
+        Ok(DbTableStats {
+            database: format!("{database:?}"),
+            branch_pages: stat.branch_pages(),
+            depth: stat.depth(),
+            entries: stat.entries(),
+            leaf_pages: stat.leaf_pages(),
+            overflow_pages: stat.overflow_pages(),
+            page_size: stat.page_size(),
+        })
+    }
 }
 
 type DbReadTransaction<'env> = DbTransaction<'env, RO>;
 
 impl DbWriter {
     pub(crate) fn begin_rw_txn(&mut self) -> DbResult<DbWriteTransaction<'_>> {
-        Ok(DbWriteTransaction { txn: self.env.begin_rw_txn()? })
+        Ok(DbWriteTransaction { txn: self.env.begin_rw_txn()?, txn_big: self.env_big.begin_rw_txn()? })
     }
 
     pub(crate) fn create_table<K: StorageSerde, V: StorageSerde>(
@@ -231,6 +267,16 @@ impl DbWriter {
         txn.commit()?;
         Ok(TableIdentifier { name, _key_type: PhantomData {}, _value_type: PhantomData {} })
     }
+
+    pub(crate) fn create_table_big<K: StorageSerde, V: StorageSerde>(
+        &mut self,
+        name: &'static str,
+    ) -> DbResult<TableIdentifier<K, V>> {
+        let txn = self.env_big.begin_rw_txn()?;
+        txn.create_table(Some(name), TableFlags::empty())?;
+        txn.commit()?;
+        Ok(TableIdentifier { name, _key_type: PhantomData {}, _value_type: PhantomData {} })
+    }
 }
 
 type DbWriteTransaction<'env> = DbTransaction<'env, RW>;
@@ -238,6 +284,7 @@ type DbWriteTransaction<'env> = DbTransaction<'env, RW>;
 impl<'a> DbWriteTransaction<'a> {
     pub(crate) fn commit(self) -> DbResult<()> {
         self.txn.commit()?;
+        self.txn_big.commit()?;
         Ok(())
     }
 }
@@ -250,6 +297,7 @@ pub trait TransactionKind {
 
 pub(crate) struct DbTransaction<'env, Mode: TransactionKind> {
     txn: libmdbx::Transaction<'env, Mode::Internal, EnvironmentKind>,
+    txn_big: libmdbx::Transaction<'env, Mode::Internal, EnvironmentKind>,
 }
 
 impl<'a, Mode: TransactionKind> DbTransaction<'a, Mode> {
@@ -258,6 +306,14 @@ impl<'a, Mode: TransactionKind> DbTransaction<'a, Mode> {
         table_id: &TableIdentifier<K, V>,
     ) -> DbResult<TableHandle<'env, K, V>> {
         let database = self.txn.open_table(Some(table_id.name))?;
+        Ok(TableHandle { database, _key_type: PhantomData {}, _value_type: PhantomData {} })
+    }
+
+    pub fn open_table_big<'env, K: StorageSerde, V: StorageSerde>(
+        &'env self,
+        table_id: &TableIdentifier<K, V>,
+    ) -> DbResult<TableHandle<'env, K, V>> {
+        let database = self.txn_big.open_table(Some(table_id.name))?;
         Ok(TableHandle { database, _key_type: PhantomData {}, _value_type: PhantomData {} })
     }
 }
@@ -281,6 +337,20 @@ impl<'env, 'txn, K: StorageSerde, V: StorageSerde> TableHandle<'env, K, V> {
     ) -> DbResult<DbCursor<'txn, Mode, K, V>> {
         let cursor = txn.txn.cursor(&self.database)?;
         Ok(DbCursor { cursor, _key_type: PhantomData {}, _value_type: PhantomData {} })
+    }
+
+    pub(crate) fn get_big<Mode: TransactionKind>(
+        &'env self,
+        txn: &'env DbTransaction<'env, Mode>,
+        key: &K,
+    ) -> DbResult<Option<V>> {
+        // TODO: Support zero-copy. This might require a return type of Cow<'env, ValueType>.
+        let bin_key = key.serialize()?;
+        let Some(bytes) = txn.txn_big.get::<Cow<'env, [u8]>>(&self.database, &bin_key)? else {
+            return Ok(None);
+        };
+        let value = V::deserialize(&mut bytes.as_ref()).ok_or(DbError::InnerDeserialization)?;
+        Ok(Some(value))
     }
 
     pub(crate) fn get<Mode: TransactionKind>(
@@ -321,10 +391,29 @@ impl<'env, 'txn, K: StorageSerde, V: StorageSerde> TableHandle<'env, K, V> {
         Ok(())
     }
 
+    pub(crate) fn insert_big(
+        &'env self,
+        txn: &DbTransaction<'env, RW>,
+        key: &K,
+        value: &V,
+    ) -> DbResult<()> {
+        let data = value.serialize()?;
+        let bin_key = key.serialize()?;
+        txn.txn_big.put(&self.database, bin_key, data, WriteFlags::NO_OVERWRITE)?;
+        Ok(())
+    }
+
     #[allow(dead_code)]
     pub(crate) fn delete(&'env self, txn: &DbTransaction<'env, RW>, key: &K) -> DbResult<()> {
         let bin_key = key.serialize()?;
         txn.txn.del(&self.database, bin_key, None)?;
+        Ok(())
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn delete_big(&'env self, txn: &DbTransaction<'env, RW>, key: &K) -> DbResult<()> {
+        let bin_key = key.serialize()?;
+        txn.txn_big.del(&self.database, bin_key, None)?;
         Ok(())
     }
 }

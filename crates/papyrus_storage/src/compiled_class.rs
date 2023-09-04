@@ -66,8 +66,8 @@ where
 
 impl<'env, Mode: TransactionKind> CasmStorageReader for StorageTxn<'env, Mode> {
     fn get_casm(&self, class_hash: &ClassHash) -> StorageResult<Option<CasmContractClass>> {
-        let casm_table = self.txn.open_table(&self.tables.casms)?;
-        Ok(casm_table.get(&self.txn, class_hash)?)
+        let casm_table = self.txn.open_table_big(&self.tables_big.casms)?;
+        Ok(casm_table.get_big(&self.txn, class_hash)?)
     }
 
     fn get_compiled_class_marker(&self) -> StorageResult<BlockNumber> {
@@ -78,10 +78,10 @@ impl<'env, Mode: TransactionKind> CasmStorageReader for StorageTxn<'env, Mode> {
 
 impl<'env> CasmStorageWriter for StorageTxn<'env, RW> {
     fn append_casm(self, class_hash: &ClassHash, casm: &CasmContractClass) -> StorageResult<Self> {
-        let casm_table = self.txn.open_table(&self.tables.casms)?;
+        let casm_table = self.txn.open_table_big(&self.tables_big.casms)?;
         let markers_table = self.txn.open_table(&self.tables.markers)?;
-        let state_diff_table = self.txn.open_table(&self.tables.state_diffs)?;
-        casm_table.insert(&self.txn, class_hash, casm).map_err(|err| {
+        let state_diff_table = self.txn.open_table_big(&self.tables_big.state_diffs)?;
+        casm_table.insert_big(&self.txn, class_hash, casm).map_err(|err| {
             if matches!(err, DbError::Inner(libmdbx::Error::KeyExist)) {
                 StorageError::CompiledClassReWrite { class_hash: *class_hash }
             } else {
@@ -103,7 +103,7 @@ fn update_marker<'env>(
     // advancing it if the next blocks don't have declared classes.
     let mut block_number = markers_table.get(txn, &MarkerKind::CompiledClass)?.unwrap_or_default();
     loop {
-        let Some(state_diff) = state_diffs_table.get(txn, &block_number)? else {
+        let Some(state_diff) = state_diffs_table.get_big(txn, &block_number)? else {
             break;
         };
         if let Some((last_class_hash, _)) = state_diff.declared_classes.last() {
