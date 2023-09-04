@@ -74,7 +74,7 @@ use std::sync::Arc;
 
 use body::events::EventIndex;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
-use db::{DbTableStats, open_env_big};
+use db::{DbTableStats};
 use ommer::{OmmerEventKey, OmmerTransactionKey};
 use papyrus_config::dumping::{append_sub_config_name, SerializeConfig};
 use papyrus_config::{ParamPath, SerializedParam};
@@ -117,11 +117,8 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
     let (db_reader, mut db_writer) = open_env(db_config)?;
     let tables = Arc::new(Tables {
         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
-        casms: db_writer.create_table("casms")?,
         contract_storage: db_writer.create_table("contract_storage")?,
-        declared_classes: db_writer.create_table("declared_classes")?,
         declared_classes_block: db_writer.create_table("declared_classes_block")?,
-        deprecated_declared_classes: db_writer.create_table("deprecated_declared_classes")?,
         deployed_contracts: db_writer.create_table("deployed_contracts")?,
         events: db_writer.create_table("events")?,
         headers: db_writer.create_table("headers")?,
@@ -136,7 +133,6 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         ommer_state_diffs: db_writer.create_table("ommer_state_diffs")?,
         ommer_transaction_outputs: db_writer.create_table("ommer_transaction_outputs")?,
         ommer_transactions: db_writer.create_table("ommer_transactions")?,
-        state_diffs: db_writer.create_table("state_diffs")?,
         transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
         transaction_idx_to_hash: db_writer.create_table("transaction_idx_to_hash")?,
         transaction_outputs: db_writer.create_table("transaction_outputs")?,
@@ -144,23 +140,32 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         starknet_version: db_writer.create_table("starknet_version")?,
         storage_version: db_writer.create_table("storage_version")?,
     });
-    let reader = StorageReader { db_reader, tables: tables.clone() };
-    let writer = StorageWriter { db_writer, tables };
+
+    
+    let tables_big= Arc::new(TablesBig {
+        casms: db_writer.create_table_big("casms")?,
+        declared_classes: db_writer.create_table_big("declared_classes")?,
+        deprecated_declared_classes: db_writer.create_table_big("deprecated_declared_classes")?,
+        state_diffs: db_writer.create_table_big("state_diffs")?,
+    });
+
+    let reader = StorageReader { db_reader, tables: tables.clone(), tabels_big: tables_big.clone() };
+    let writer = StorageWriter { db_writer, tables, tables_big };
 
     let writer = set_initial_version_if_needed(writer)?;
     verify_storage_version(reader.clone())?;
     Ok((reader, writer))
 }
 
-pub fn open_storage_big(db_config: DbConfig) -> StorageResult<StorageWriterBig> {
-    let (db_reader, mut db_writer) = open_env_big(db_config)?;
-    let tables = Arc::new(TablesBig {
-        state_diffs: db_writer.create_table("state_diffs")?,
-    });
-    let writer = StorageWriterBig { db_writer, tables };
+// pub fn open_storage_big(db_config: DbConfig) -> StorageResult<StorageWriterBig> {
+//     let (db_reader, mut db_writer) = open_env_big(db_config)?;
+//     let tables = Arc::new(TablesBig {
+//         state_diffs: db_writer.create_table("state_diffs")?,
+//     });
+//     let writer = StorageWriterBig { db_writer, tables };
 
-    Ok(writer)
-}
+//     Ok(writer)
+// }
 
 // In case storage version does not exist, set it to the crate version.
 // Expected to happen once - when the node is launched for the first time.
@@ -195,19 +200,23 @@ fn verify_storage_version(reader: StorageReader) -> StorageResult<()> {
 pub struct StorageReader {
     db_reader: DbReader,
     tables: Arc<Tables>,
+    tabels_big: Arc<TablesBig>,
 }
 
 impl StorageReader {
     /// Takes a snapshot of the current state of the storage and returns a [`StorageTxn`] for
     /// reading data from the storage.
     pub fn begin_ro_txn(&self) -> StorageResult<StorageTxn<'_, RO>> {
-        Ok(StorageTxn { txn: self.db_reader.begin_ro_txn()?, tables: self.tables.clone() })
+        Ok(StorageTxn { txn: self.db_reader.begin_ro_txn()?, tables: self.tables.clone(), tables_big: self.tabels_big.clone() })
     }
 
     /// Returns metadata about the tables in the storage.
     pub fn db_tables_stats(&self) -> StorageResult<DbTablesStats> {
         let mut stats = HashMap::new();
         for name in Tables::field_names() {
+            stats.insert(name.to_string(), self.db_reader.get_table_stats(name)?);
+        }
+        for name in TablesBig::field_names() {
             stats.insert(name.to_string(), self.db_reader.get_table_stats(name)?);
         }
         Ok(DbTablesStats { stats })
@@ -220,39 +229,41 @@ impl StorageReader {
 pub struct StorageWriter {
     db_writer: DbWriter,
     tables: Arc<Tables>,
+    tables_big: Arc<TablesBig>,
 }
 
-pub struct StorageWriterBig {
-    db_writer: DbWriter,
-    tables: Arc<TablesBig>,
-}
+// pub struct StorageWriterBig {
+//     db_writer: DbWriter,
+//     tables: Arc<TablesBig>,
+// }
 
 impl StorageWriter {
     /// Takes a snapshot of the current state of the storage and returns a [`StorageTxn`] for
     /// reading and modifying data in the storage.
     pub fn begin_rw_txn(&mut self) -> StorageResult<StorageTxn<'_, RW>> {
-        Ok(StorageTxn { txn: self.db_writer.begin_rw_txn()?, tables: self.tables.clone() })
+        Ok(StorageTxn { txn: self.db_writer.begin_rw_txn()?, tables: self.tables.clone(), tables_big: self.tables_big.clone() })
     }
 }
 
-impl StorageWriterBig {
-    /// Takes a snapshot of the current state of the storage and returns a [`StorageTxn`] for
-    /// reading and modifying data in the storage.
-    pub fn begin_rw_txn(&mut self) -> StorageResult<StorageTxnBig<'_, RW>> {
-        Ok(StorageTxnBig { txn: self.db_writer.begin_rw_txn()?, tables: self.tables.clone() })
-    }
-}
+// impl StorageWriterBig {
+//     /// Takes a snapshot of the current state of the storage and returns a [`StorageTxn`] for
+//     /// reading and modifying data in the storage.
+//     pub fn begin_rw_txn(&mut self) -> StorageResult<StorageTxnBig<'_, RW>> {
+//         Ok(StorageTxnBig { txn: self.db_writer.begin_rw_txn()?, tables: self.tables.clone() })
+//     }
+// }
 
-pub struct StorageTxnBig<'env, Mode: TransactionKind> {
-    txn: DbTransaction<'env, Mode>,
-    tables: Arc<TablesBig>,
-}
+// pub struct StorageTxnBig<'env, Mode: TransactionKind> {
+//     txn: DbTransaction<'env, Mode>,
+//     tables: Arc<TablesBig>,
+// }
 
 /// A struct for interacting with the storage.
 /// The actually functionality is implemented on the transaction in multiple traits.
 pub struct StorageTxn<'env, Mode: TransactionKind> {
     txn: DbTransaction<'env, Mode>,
     tables: Arc<Tables>,
+    tables_big: Arc<TablesBig>,
 }
 
 impl<'env> StorageTxn<'env, RW> {
@@ -262,12 +273,12 @@ impl<'env> StorageTxn<'env, RW> {
     }
 }
 
-impl<'env> StorageTxnBig<'env, RW> {
-    /// Commits the changes made in the transaction to the storage.
-    pub fn commit(self) -> StorageResult<()> {
-        Ok(self.txn.commit()?)
-    }
-}
+// impl<'env> StorageTxnBig<'env, RW> {
+//     /// Commits the changes made in the transaction to the storage.
+//     pub fn commit(self) -> StorageResult<()> {
+//         Ok(self.txn.commit()?)
+//     }
+// }
 
 /// Returns the names of the tables in the storage.
 pub fn table_names() -> &'static [&'static str] {
@@ -277,11 +288,8 @@ pub fn table_names() -> &'static [&'static str] {
 struct_field_names! {
     struct Tables {
         block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
-        casms: TableIdentifier<ClassHash, CasmContractClass>,
         contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
-        declared_classes: TableIdentifier<ClassHash, ContractClass>,
         declared_classes_block: TableIdentifier<ClassHash, BlockNumber>,
-        deprecated_declared_classes: TableIdentifier<ClassHash, IndexedDeprecatedContractClass>,
         deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), ClassHash>,
         events: TableIdentifier<(ContractAddress, EventIndex), EventContent>,
         headers: TableIdentifier<BlockNumber, BlockHeader>,
@@ -297,7 +305,6 @@ struct_field_names! {
         ommer_state_diffs: TableIdentifier<BlockHash, ThinStateDiff>,
         ommer_transaction_outputs: TableIdentifier<OmmerTransactionKey, ThinTransactionOutput>,
         ommer_transactions: TableIdentifier<OmmerTransactionKey, Transaction>,
-        state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
         transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
         transaction_idx_to_hash: TableIdentifier<TransactionIndex, TransactionHash>,
         transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
@@ -309,9 +316,18 @@ struct_field_names! {
 
 struct_field_names! {
     struct TablesBig {
+        casms: TableIdentifier<ClassHash, CasmContractClass>,
+        declared_classes: TableIdentifier<ClassHash, ContractClass>,
+        deprecated_declared_classes: TableIdentifier<ClassHash, IndexedDeprecatedContractClass>,
         state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>
     }
 }
+
+// struct_field_names! {
+//     struct TablesBig {
+//         state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>
+//     }
+// }
 
 macro_rules! struct_field_names {
     (struct $name:ident { $($fname:ident : $ftype:ty),* }) => {
