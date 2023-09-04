@@ -824,5 +824,5 @@
         ]
     },
     "sender_address": "0x43eef75848203b37363edd1e44e4121b49c8d4adff592c21b59566f5b76562f",
-    "type": "DEPRECATED_DECLARE"
+    "type": "DECLARE"
 }

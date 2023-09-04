@@ -15,11 +15,11 @@ use std::collections::{BTreeMap, HashMap};
 use std::iter;
 use std::sync::Arc;
 
-use blockifier::block_context::BlockContext;
+use blockifier::block_context::{BlockContext, FeeTokenAddresses, GasPrices};
+use blockifier::execution::call_info::CallExecution;
 use blockifier::execution::contract_class::ContractClass as BlockifierContractClass;
 use blockifier::execution::entry_point::{
     CallEntryPoint,
-    CallExecution,
     CallType as BlockifierCallType,
     EntryPointExecutionContext,
     ExecutionResources,
@@ -54,6 +54,7 @@ use starknet_api::transaction::{
     DeclareTransaction,
     DeclareTransactionV0V1,
     DeclareTransactionV2,
+    DeclareTransactionV3,
     DeployAccountTransaction,
     Fee,
     InvokeTransaction,
@@ -240,12 +241,17 @@ fn create_block_context(
         block_number,
         block_timestamp,
         sequencer_address: *sequencer_address,
-        fee_token_address: execution_config.fee_contract_address,
+        // TODO(barak, 01/10/2023): Change strk_fee_token_address once it exists.
+        fee_token_addresses: FeeTokenAddresses {
+            strk_fee_token_address: execution_config.fee_contract_address,
+            eth_fee_token_address: execution_config.fee_contract_address,
+        },
         vm_resource_fee_cost: Arc::clone(&execution_config.vm_resource_fee_cost),
         invoke_tx_max_n_steps: execution_config.invoke_tx_max_n_steps,
         validate_max_n_steps: execution_config.validate_tx_max_n_steps,
         max_recursion_depth: execution_config.max_recursion_depth,
-        gas_price: gas_price.0,
+        // TODO(barak, 01/10/2023): Change strk_l1_gas_price once it exists.
+        gas_prices: GasPrices { eth_l1_gas_price: gas_price.0, strk_l1_gas_price: 1_u128 },
     }
 }
 
@@ -260,6 +266,7 @@ pub enum ExecutableTransactionInput {
     DeclareV0(DeclareTransactionV0V1, DeprecatedContractClass),
     DeclareV1(DeclareTransactionV0V1, DeprecatedContractClass),
     DeclareV2(DeclareTransactionV2, CasmContractClass),
+    DeclareV3(DeclareTransactionV3, CasmContractClass),
     Deploy(DeployAccountTransaction),
     L1Handler(L1HandlerTransaction, Fee),
 }
@@ -284,7 +291,9 @@ pub fn estimate_fee(
     )?;
     Ok(txs_execution_info
         .into_iter()
-        .map(|tx_execution_info| (GasPrice(block_context.gas_price), tx_execution_info.actual_fee))
+        .map(|tx_execution_info| {
+            (GasPrice(block_context.gas_prices.eth_l1_gas_price), tx_execution_info.actual_fee)
+        })
         .collect())
 }
 
@@ -391,6 +400,16 @@ fn to_blockifier_tx(
                 None,
             )?)
         }
+        ExecutableTransactionInput::DeclareV3(declare_tx, compiled_class) => {
+            let class_v1 = BlockifierContractClass::V1(compiled_class.try_into()?);
+            Ok(BlockifierTransaction::from_api(
+                Transaction::Declare(DeclareTransaction::V3(declare_tx)),
+                tx_hash,
+                Some(class_v1),
+                None,
+                None,
+            )?)
+        }
         ExecutableTransactionInput::L1Handler(l1_handler_tx, paid_fee) => {
             Ok(BlockifierTransaction::from_api(
                 Transaction::L1Handler(l1_handler_tx),
@@ -426,7 +445,7 @@ pub fn simulate_transactions(
         charge_fee,
         validate,
     )?;
-    let gas_price = GasPrice(block_context.gas_price);
+    let gas_price = GasPrice(block_context.gas_prices.eth_l1_gas_price);
     Ok(txs_execution_info
         .into_iter()
         .zip(trace_constructors)
