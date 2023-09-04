@@ -221,7 +221,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
 
-        Ok(TransactionWithHash { transaction: transaction.into(), transaction_hash })
+        Ok(TransactionWithHash { transaction: transaction.try_into()?, transaction_hash })
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
@@ -243,7 +243,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?;
 
-        Ok(TransactionWithHash { transaction: transaction.into(), transaction_hash })
+        Ok(TransactionWithHash { transaction: transaction.try_into()?, transaction_hash })
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]

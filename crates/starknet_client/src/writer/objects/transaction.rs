@@ -14,6 +14,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
+use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::deprecated_contract_class::{
     ContractClassAbiEntry as DeprecatedContractClassAbiEntry,
     EntryPoint as DeprecatedEntryPoint,
@@ -21,9 +22,13 @@ use starknet_api::deprecated_contract_class::{
 };
 use starknet_api::state::{EntryPoint, EntryPointType};
 use starknet_api::transaction::{
+    AccountDeploymentData,
     Calldata,
     ContractAddressSalt,
     Fee,
+    PaymasterAddress,
+    ResourceBoundsMapping,
+    Tip,
     TransactionSignature,
     TransactionVersion,
 };
@@ -57,7 +62,7 @@ pub enum InvokeType {
 /// string.
 #[derive(Debug, Deserialize, Serialize, Default, Clone, Copy, Eq, PartialEq)]
 pub enum DeclareV1Type {
-    #[serde(rename = "DEPRECATED_DECLARE")]
+    #[serde(rename = "DEPRECATED_OLD_DECLARE")]
     #[default]
     DeclareV1,
 }
@@ -66,9 +71,18 @@ pub enum DeclareV1Type {
 /// string.
 #[derive(Debug, Deserialize, Serialize, Default, Clone, Copy, Eq, PartialEq)]
 pub enum DeclareV2Type {
-    #[serde(rename = "DECLARE")]
+    #[serde(rename = "DEPRECATED_DECLARE")]
     #[default]
     DeclareV2,
+}
+
+/// The type field of a declare V3 transaction. This enum serializes/deserializes into a constant
+/// string.
+#[derive(Debug, Deserialize, Serialize, Default, Clone, Copy, Eq, PartialEq)]
+pub enum DeclareV3Type {
+    #[serde(rename = "DECLARE")]
+    #[default]
+    DeclareV3,
 }
 
 /// A deploy account transaction that can be added to Starknet through the Starknet gateway.
@@ -136,6 +150,29 @@ pub struct DeclareV2Transaction {
     pub r#type: DeclareV2Type,
 }
 
+/// A declare transaction of a Cairo-v1 contract class that can be added to Starknet through the
+/// Starknet gateway.
+/// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
+/// HTTP method.
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct DeclareV3Transaction {
+    pub contract_class: ContractClass,
+    pub resource_bounds: ResourceBoundsMapping,
+    pub tip: Tip,
+    pub signature: TransactionSignature,
+    pub nonce: Nonce,
+    pub class_hash: ClassHash,
+    pub compiled_class_hash: CompiledClassHash,
+    pub sender_address: ContractAddress,
+    pub nonce_data_availability_mode: DataAvailabilityMode,
+    pub fee_data_availability_mode: DataAvailabilityMode,
+    pub paymaster_address: PaymasterAddress,
+    pub account_deployment_data: AccountDeploymentData,
+    pub version: TransactionVersion,
+    pub r#type: DeclareV3Type,
+}
+
 /// A declare transaction that can be added to Starknet through the Starknet gateway.
 /// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
 /// HTTP method.
@@ -144,6 +181,7 @@ pub struct DeclareV2Transaction {
 pub enum DeclareTransaction {
     DeclareV1(DeclareV1Transaction),
     DeclareV2(DeclareV2Transaction),
+    DeclareV3(DeclareV3Transaction),
 }
 
 // The structs that are implemented here are the structs that have deviations from starknet_api.

@@ -1,12 +1,12 @@
 //! Execution objects.
 
-use blockifier::execution::entry_point::{
+use blockifier::execution::call_info::{
     CallInfo,
-    CallType as BlockifierCallType,
     OrderedEvent as BlockifierOrderedEvent,
     OrderedL2ToL1Message as BlockifierOrderedL2ToL1Message,
     Retdata as BlockifierRetdata,
 };
+use blockifier::execution::entry_point::CallType as BlockifierCallType;
 use blockifier::transaction::objects::TransactionExecutionInfo;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod precision_test;
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::env;
 use std::fs::read_to_string;
 use std::hash::Hash;
@@ -53,6 +53,7 @@ use starknet_api::core::{
     GlobalRoot,
     Nonce,
 };
+use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass,
     ContractClassAbiEntry,
@@ -79,12 +80,14 @@ use starknet_api::state::{
     ThinStateDiff,
 };
 use starknet_api::transaction::{
+    AccountDeploymentData,
     Calldata,
     ContractAddressSalt,
     DeclareTransaction,
     DeclareTransactionOutput,
     DeclareTransactionV0V1,
     DeclareTransactionV2,
+    DeclareTransactionV3,
     DeployAccountTransaction,
     DeployAccountTransactionOutput,
     DeployTransaction,
@@ -105,6 +108,11 @@ use starknet_api::transaction::{
     L2ToL1Payload,
     MessageToL1,
     MessageToL2,
+    PaymasterAddress,
+    Resource,
+    ResourceBounds,
+    ResourceBoundsMapping,
+    Tip,
     Transaction,
     TransactionExecutionStatus,
     TransactionHash,
@@ -352,6 +360,7 @@ pub trait GetTestInstance: Sized {
 }
 
 auto_impl_get_test_instance! {
+    pub struct AccountDeploymentData(pub Vec<StarkFelt>);
     pub struct BlockHash(pub StarkHash);
     pub struct BlockHeader {
         pub block_hash: BlockHash,
@@ -391,10 +400,15 @@ auto_impl_get_test_instance! {
         L1Handler(FunctionAbiEntry) = 3,
         Struct(StructAbiEntry) = 4,
     }
+    pub enum DataAvailabilityMode {
+        L1 = 0,
+        L2 = 1,
+    }
     pub enum DeclareTransaction {
         V0(DeclareTransactionV0V1) = 0,
         V1(DeclareTransactionV0V1) = 1,
         V2(DeclareTransactionV2) = 2,
+        V3(DeclareTransactionV3) = 3,
     }
     pub struct DeclareTransactionV0V1 {
         pub max_fee: Fee,
@@ -410,6 +424,19 @@ auto_impl_get_test_instance! {
         pub class_hash: ClassHash,
         pub compiled_class_hash: CompiledClassHash,
         pub sender_address: ContractAddress,
+    }
+    pub struct DeclareTransactionV3 {
+        pub resource_bounds: ResourceBoundsMapping,
+        pub tip: Tip,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub class_hash: ClassHash,
+        pub compiled_class_hash: CompiledClassHash,
+        pub sender_address: ContractAddress,
+        pub nonce_data_availability_mode: DataAvailabilityMode,
+        pub fee_data_availability_mode: DataAvailabilityMode,
+        pub paymaster_address: PaymasterAddress,
+        pub account_deployment_data: AccountDeploymentData,
     }
     pub struct DeployAccountTransaction {
         pub max_fee: Fee,
@@ -430,6 +457,11 @@ auto_impl_get_test_instance! {
         pub selector: EntryPointSelector,
         pub offset: EntryPointOffset,
     }
+    pub enum DeprecatedEntryPointType {
+        Constructor = 0,
+        External = 1,
+        L1Handler = 2,
+    }
     pub struct EntryPoint {
         pub function_idx: FunctionIndex,
         pub selector: EntryPointSelector,
@@ -438,11 +470,6 @@ auto_impl_get_test_instance! {
     pub struct EntryPointOffset(pub usize);
     pub struct EntryPointSelector(pub StarkHash);
     pub enum EntryPointType {
-        Constructor = 0,
-        External = 1,
-        L1Handler = 2,
-    }
-    pub enum DeprecatedEntryPointType {
         Constructor = 0,
         External = 1,
         L1Handler = 2,
@@ -508,6 +535,7 @@ auto_impl_get_test_instance! {
         pub payload: L1ToL2Payload,
     }
     pub struct Nonce(pub StarkFelt);
+    pub struct PaymasterAddress(pub ContractAddress);
     pub struct Program {
         pub attributes: serde_json::Value,
         pub builtins: serde_json::Value,
@@ -520,6 +548,15 @@ auto_impl_get_test_instance! {
         pub prime: serde_json::Value,
         pub reference_manager: serde_json::Value,
     }
+    pub enum Resource {
+        L1Gas = 0,
+        L2Gas = 1,
+    }
+    pub struct ResourceBounds {
+        pub max_amount: u64,
+        pub max_price_per_unit: u128,
+    }
+    pub struct ResourceBoundsMapping(pub BTreeMap<Resource, ResourceBounds>);
     pub struct StateDiff {
         pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
         pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
@@ -540,6 +577,7 @@ auto_impl_get_test_instance! {
         pub nonces: IndexMap<ContractAddress, Nonce>,
         pub replaced_classes: IndexMap<ContractAddress, ClassHash>,
     }
+    pub struct Tip(pub u64);
     pub enum Transaction {
         Declare(DeclareTransaction) = 0,
         Deploy(DeployTransaction) = 1,
@@ -734,6 +772,15 @@ impl<K: GetTestInstance + Eq + Hash, V: GetTestInstance> GetTestInstance for Has
 impl<K: GetTestInstance + Eq + Hash, V: GetTestInstance> GetTestInstance for IndexMap<K, V> {
     fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
         let mut res = IndexMap::with_capacity(1);
+        let k = K::get_test_instance(rng);
+        let v = V::get_test_instance(rng);
+        res.insert(k, v);
+        res
+    }
+}
+impl<K: GetTestInstance + Eq + Ord, V: GetTestInstance> GetTestInstance for BTreeMap<K, V> {
+    fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+        let mut res = BTreeMap::new();
         let k = K::get_test_instance(rng);
         let v = V::get_test_instance(rng);
         res.insert(k, v);
