@@ -205,50 +205,58 @@ pub enum Transaction {
     L1Handler(L1HandlerTransaction),
 }
 
-impl From<starknet_api::transaction::Transaction> for Transaction {
-    fn from(tx: starknet_api::transaction::Transaction) -> Self {
+// TODO(shahak, 01/11/2023): Add test that v3 transactions cause error.
+impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
+    type Error = ErrorObjectOwned;
+
+    fn try_from(tx: starknet_api::transaction::Transaction) -> Result<Self, Self::Error> {
         match tx {
             starknet_api::transaction::Transaction::Declare(declare_tx) => match declare_tx {
+                // TODO(shahak, 01/11/2023): impl TryFrom for declare separately.
                 starknet_api::transaction::DeclareTransaction::V0(tx) => {
-                    Self::Declare(DeclareTransaction::Version0(DeclareTransactionV0V1 {
+                    Ok(Self::Declare(DeclareTransaction::Version0(DeclareTransactionV0V1 {
                         class_hash: tx.class_hash,
                         sender_address: tx.sender_address,
                         nonce: tx.nonce,
                         max_fee: tx.max_fee,
                         version: *TX_V0,
                         signature: tx.signature,
-                    }))
+                    })))
                 }
                 starknet_api::transaction::DeclareTransaction::V1(tx) => {
-                    Self::Declare(DeclareTransaction::Version1(DeclareTransactionV0V1 {
+                    Ok(Self::Declare(DeclareTransaction::Version1(DeclareTransactionV0V1 {
                         class_hash: tx.class_hash,
                         sender_address: tx.sender_address,
                         nonce: tx.nonce,
                         max_fee: tx.max_fee,
                         version: *TX_V1,
                         signature: tx.signature,
-                    }))
+                    })))
                 }
                 starknet_api::transaction::DeclareTransaction::V2(tx) => {
-                    Self::Declare(DeclareTransaction::Version2(tx.into()))
+                    Ok(Self::Declare(DeclareTransaction::Version2(tx.into())))
                 }
+                starknet_api::transaction::DeclareTransaction::V3(_) => Err(internal_server_error(
+                    "The requested transaction is a declare of version 3, which is not supported \
+                     on v0.4.0.",
+                )),
             },
             starknet_api::transaction::Transaction::Deploy(deploy_tx) => {
-                Transaction::Deploy(deploy_tx)
+                Ok(Transaction::Deploy(deploy_tx))
             }
             starknet_api::transaction::Transaction::DeployAccount(deploy_tx) => {
-                Transaction::DeployAccount(deploy_tx)
+                Ok(Transaction::DeployAccount(deploy_tx))
             }
             starknet_api::transaction::Transaction::Invoke(invoke_tx) => match invoke_tx {
                 starknet_api::transaction::InvokeTransaction::V0(tx) => {
-                    Self::Invoke(InvokeTransaction::Version0(tx.into()))
+                    Ok(Self::Invoke(InvokeTransaction::Version0(tx.into())))
                 }
                 starknet_api::transaction::InvokeTransaction::V1(tx) => {
-                    Self::Invoke(InvokeTransaction::Version1(tx.into()))
+                    Ok(Self::Invoke(InvokeTransaction::Version1(tx.into())))
                 }
             },
             starknet_api::transaction::Transaction::L1Handler(l1_handler_tx) => {
-                Transaction::L1Handler(l1_handler_tx)
+                Ok(Transaction::L1Handler(l1_handler_tx))
             }
         }
     }
@@ -404,7 +412,7 @@ pub struct Event {
 
 pub fn get_block_txs_by_number<
     Mode: TransactionKind,
-    Transaction: From<starknet_api::transaction::Transaction>,
+    Transaction: TryFrom<starknet_api::transaction::Transaction, Error = ErrorObjectOwned>,
 >(
     txn: &StorageTxn<'_, Mode>,
     block_number: BlockNumber,
@@ -414,7 +422,7 @@ pub fn get_block_txs_by_number<
         .map_err(internal_server_error)?
         .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
 
-    Ok(transactions.into_iter().map(Transaction::from).collect())
+    transactions.into_iter().map(Transaction::try_from).collect()
 }
 
 pub fn get_block_tx_hashes_by_number<Mode: TransactionKind>(

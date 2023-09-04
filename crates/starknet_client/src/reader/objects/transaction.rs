@@ -14,8 +14,10 @@ use starknet_api::core::{
     EthAddress,
     Nonce,
 };
+use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::{
+    AccountDeploymentData,
     Calldata,
     ContractAddressSalt,
     DeclareTransactionOutput,
@@ -28,6 +30,9 @@ use starknet_api::transaction::{
     L1ToL2Payload,
     L2ToL1Payload,
     MessageToL1,
+    PaymasterData,
+    ResourceBoundsMapping,
+    Tip,
     TransactionExecutionStatus,
     TransactionHash,
     TransactionOffsetInBlock,
@@ -42,6 +47,7 @@ lazy_static! {
     static ref TX_V0: TransactionVersion = TransactionVersion(StarkFelt::from(0u128));
     static ref TX_V1: TransactionVersion = TransactionVersion(StarkFelt::from(1u128));
     static ref TX_V2: TransactionVersion = TransactionVersion(StarkFelt::from(2u128));
+    static ref TX_V3: TransactionVersion = TransactionVersion(StarkFelt::from(3u128));
 }
 
 // TODO(dan): consider extracting common fields out (version, hash, type).
@@ -137,27 +143,36 @@ impl From<L1HandlerTransaction> for starknet_api::transaction::L1HandlerTransact
     }
 }
 
+// TODO(shahak, 01/11/2023): Add serde tests for v3 transactions.
 #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct IntermediateDeclareTransaction {
+    pub resource_bounds: Option<ResourceBoundsMapping>,
+    pub tip: Option<Tip>,
+    pub signature: TransactionSignature,
+    pub nonce: Nonce,
     pub class_hash: ClassHash,
     pub compiled_class_hash: Option<CompiledClassHash>,
     pub sender_address: ContractAddress,
-    pub nonce: Nonce,
-    pub max_fee: Fee,
+    pub nonce_data_availability_mode: Option<DataAvailabilityMode>,
+    pub fee_data_availability_mode: Option<DataAvailabilityMode>,
+    pub paymaster_data: Option<PaymasterData>,
+    pub account_deployment_data: Option<AccountDeploymentData>,
+    pub max_fee: Option<Fee>,
     pub version: TransactionVersion,
     pub transaction_hash: TransactionHash,
-    pub signature: TransactionSignature,
 }
 
+// TODO(shahak, 01/11/2023): Add conversion tests.
 impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransaction {
     type Error = ReaderClientError;
 
     fn try_from(declare_tx: IntermediateDeclareTransaction) -> Result<Self, ReaderClientError> {
         match declare_tx.version {
-            v if v == *TX_V0 => Ok(Self::V0(declare_tx.into())),
-            v if v == *TX_V1 => Ok(Self::V1(declare_tx.into())),
+            v if v == *TX_V0 => Ok(Self::V0(declare_tx.try_into()?)),
+            v if v == *TX_V1 => Ok(Self::V1(declare_tx.try_into()?)),
             v if v == *TX_V2 => Ok(Self::V2(declare_tx.try_into()?)),
+            v if v == *TX_V3 => Ok(Self::V3(declare_tx.try_into()?)),
             _ => Err(ReaderClientError::BadTransaction {
                 tx_hash: declare_tx.transaction_hash,
                 msg: format!("Declare version {:?} is not supported.", declare_tx.version),
@@ -166,15 +181,20 @@ impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::Decl
     }
 }
 
-impl From<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransactionV0V1 {
-    fn from(declare_tx: IntermediateDeclareTransaction) -> Self {
-        Self {
-            max_fee: declare_tx.max_fee,
+impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransactionV0V1 {
+    type Error = ReaderClientError;
+
+    fn try_from(declare_tx: IntermediateDeclareTransaction) -> Result<Self, ReaderClientError> {
+        Ok(Self {
+            max_fee: declare_tx.max_fee.ok_or(ReaderClientError::BadTransaction {
+                tx_hash: declare_tx.transaction_hash,
+                msg: "Declare V1 must contain max_fee field.".to_string(),
+            })?,
             signature: declare_tx.signature,
             nonce: declare_tx.nonce,
             class_hash: declare_tx.class_hash,
             sender_address: declare_tx.sender_address,
-        }
+        })
     }
 }
 
@@ -183,7 +203,10 @@ impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::Decl
 
     fn try_from(declare_tx: IntermediateDeclareTransaction) -> Result<Self, ReaderClientError> {
         Ok(Self {
-            max_fee: declare_tx.max_fee,
+            max_fee: declare_tx.max_fee.ok_or(ReaderClientError::BadTransaction {
+                tx_hash: declare_tx.transaction_hash,
+                msg: "Declare V2 must contain max_fee field.".to_string(),
+            })?,
             signature: declare_tx.signature,
             nonce: declare_tx.nonce,
             class_hash: declare_tx.class_hash,
@@ -194,6 +217,57 @@ impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::Decl
                 },
             )?,
             sender_address: declare_tx.sender_address,
+        })
+    }
+}
+
+impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransactionV3 {
+    type Error = ReaderClientError;
+
+    fn try_from(declare_tx: IntermediateDeclareTransaction) -> Result<Self, ReaderClientError> {
+        Ok(Self {
+            resource_bounds: declare_tx.resource_bounds.ok_or(
+                ReaderClientError::BadTransaction {
+                    tx_hash: declare_tx.transaction_hash,
+                    msg: "Declare V3 must contain resource_bounds field.".to_string(),
+                },
+            )?,
+            tip: declare_tx.tip.ok_or(ReaderClientError::BadTransaction {
+                tx_hash: declare_tx.transaction_hash,
+                msg: "Declare V3 must contain tip field.".to_string(),
+            })?,
+            signature: declare_tx.signature,
+            nonce: declare_tx.nonce,
+            class_hash: declare_tx.class_hash,
+            compiled_class_hash: declare_tx.compiled_class_hash.ok_or(
+                ReaderClientError::BadTransaction {
+                    tx_hash: declare_tx.transaction_hash,
+                    msg: "Declare V3 must contain compiled_class_hash field.".to_string(),
+                },
+            )?,
+            sender_address: declare_tx.sender_address,
+            nonce_data_availability_mode: declare_tx.nonce_data_availability_mode.ok_or(
+                ReaderClientError::BadTransaction {
+                    tx_hash: declare_tx.transaction_hash,
+                    msg: "Declare V3 must contain nonce_data_availability_mode field.".to_string(),
+                },
+            )?,
+            fee_data_availability_mode: declare_tx.fee_data_availability_mode.ok_or(
+                ReaderClientError::BadTransaction {
+                    tx_hash: declare_tx.transaction_hash,
+                    msg: "Declare V3 must contain fee_data_availability_mode field.".to_string(),
+                },
+            )?,
+            paymaster_data: declare_tx.paymaster_data.ok_or(ReaderClientError::BadTransaction {
+                tx_hash: declare_tx.transaction_hash,
+                msg: "Declare V3 must contain paymaster_data field.".to_string(),
+            })?,
+            account_deployment_data: declare_tx.account_deployment_data.ok_or(
+                ReaderClientError::BadTransaction {
+                    tx_hash: declare_tx.transaction_hash,
+                    msg: "Declare V3 must contain account_deployment_data field.".to_string(),
+                },
+            )?,
         })
     }
 }
