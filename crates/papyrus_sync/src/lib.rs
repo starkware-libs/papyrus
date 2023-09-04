@@ -262,21 +262,21 @@ impl<
             self.config.blocks_max_stream_size,
         )
         .fuse();
-        let state_diff_stream = stream_new_state_diffs(
-            self.reader.clone(),
-            self.central_source.clone(),
-            self.config.block_propagation_sleep_duration,
-            self.config.state_updates_max_stream_size,
-        )
-        .fuse();
-        let compiled_class_stream = stream_new_compiled_classes(
-            self.reader.clone(),
-            self.central_source.clone(),
-            self.config.block_propagation_sleep_duration,
-            // TODO(yair): separate config param.
-            self.config.state_updates_max_stream_size,
-        )
-        .fuse();
+        // let state_diff_stream = stream_new_state_diffs(
+        //     self.reader.clone(),
+        //     self.central_source.clone(),
+        //     self.config.block_propagation_sleep_duration,
+        //     self.config.state_updates_max_stream_size,
+        // )
+        // .fuse();
+        // let compiled_class_stream = stream_new_compiled_classes(
+        //     self.reader.clone(),
+        //     self.central_source.clone(),
+        //     self.config.block_propagation_sleep_duration,
+        //     // TODO(yair): separate config param.
+        //     self.config.state_updates_max_stream_size,
+        // )
+        // .fuse();
         let base_layer_block_stream = stream_new_base_layer_block(
             self.reader.clone(),
             self.base_layer_source.clone(),
@@ -288,8 +288,8 @@ impl<
         let check_sync_progress = check_sync_progress(self.reader.clone()).fuse();
         pin_mut!(
             block_stream,
-            state_diff_stream,
-            compiled_class_stream,
+            //state_diff_stream,
+            //compiled_class_stream,
             base_layer_block_stream,
             check_sync_progress
         );
@@ -298,8 +298,8 @@ impl<
             debug!("Selecting between block sync and state diff sync.");
             let sync_event = select! {
               res = block_stream.next() => res,
-              res = state_diff_stream.next() => res,
-              res = compiled_class_stream.next() => res,
+              //res = state_diff_stream.next() => res,
+              //res = compiled_class_stream.next() => res,
               res = base_layer_block_stream.next() => res,
               res = check_sync_progress.next() => res,
               complete => break,
@@ -353,12 +353,16 @@ impl<
 
         debug!("Storing block.");
         trace!("Block data: {block:#?}");
+
+        let now=std::time::Instant::now();
         self.writer
             .begin_rw_txn()?
             .append_header(block_number, &block.header)?
             .update_starknet_version(&block_number, starknet_version)?
             .append_body(block_number, block.body)?
             .commit()?;
+        let elapsed=now.elapsed();
+        metrics::increment_gauge!(papyrus_metrics::PAPYRUS_BLOCK_TOTAL_WRITE_TIME_SECS, elapsed.as_secs_f64());
         metrics::gauge!(papyrus_metrics::PAPYRUS_HEADER_MARKER, block_number.next().0 as f64);
         metrics::gauge!(papyrus_metrics::PAPYRUS_BODY_MARKER, block_number.next().0 as f64);
         let dt = Utc::now()
