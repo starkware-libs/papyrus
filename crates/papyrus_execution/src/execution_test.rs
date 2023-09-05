@@ -127,7 +127,6 @@ fn execute_call_cairo1() {
 
 // TODO(yair): Compare to the expected fee instead of asserting that it is not zero (all
 // estimate_fee tests).
-#[ignore = "need to pass tx hashes"]
 #[test]
 fn estimate_fee_invoke() {
     let tx = TxsScenarioBuilder::default()
@@ -140,7 +139,6 @@ fn estimate_fee_invoke() {
     }
 }
 
-#[ignore = "need to pass tx hashes"]
 #[test]
 fn estimate_fee_declare_deprecated_class() {
     let tx = TxsScenarioBuilder::default().declare_deprecated_class(*ACCOUNT_ADDRESS).collect();
@@ -152,7 +150,6 @@ fn estimate_fee_declare_deprecated_class() {
     }
 }
 
-#[ignore = "need to pass tx hashes"]
 #[test]
 fn estimate_fee_declare_class() {
     let tx = TxsScenarioBuilder::default().declare_class(*ACCOUNT_ADDRESS).collect();
@@ -164,7 +161,6 @@ fn estimate_fee_declare_class() {
     }
 }
 
-#[ignore = "need to pass tx hashes"]
 #[test]
 fn estimate_fee_deploy_account() {
     let tx = TxsScenarioBuilder::default().deploy_account().collect();
@@ -176,7 +172,6 @@ fn estimate_fee_deploy_account() {
     }
 }
 
-#[ignore = "need to pass tx hashes"]
 #[test]
 fn estimate_fee_combination() {
     let txs = TxsScenarioBuilder::default()
@@ -218,7 +213,6 @@ fn serialization_precision() {
     assert_eq!(input, deserialized);
 }
 
-#[ignore = "need to pass tx hashes"]
 #[test]
 fn simulate_invoke() {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
@@ -296,7 +290,6 @@ fn simulate_invoke() {
     }
 }
 
-#[ignore = "need to pass tx hashes"]
 #[test]
 fn simulate_declare_deprecated() {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
@@ -356,7 +349,6 @@ fn simulate_declare_deprecated() {
     }
 }
 
-#[ignore = "need to pass tx hashes"]
 #[test]
 fn simulate_declare() {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
@@ -416,7 +408,6 @@ fn simulate_declare() {
     }
 }
 
-#[ignore = "need to pass tx hashes"]
 #[test]
 fn simulate_deploy_account() {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
@@ -490,7 +481,6 @@ fn simulate_deploy_account() {
     }
 }
 
-#[ignore = "need to pass tx hashes"]
 #[test]
 fn simulate_invoke_from_new_account() {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
@@ -527,7 +517,6 @@ fn simulate_invoke_from_new_account() {
     assert_matches!(invoke_trace.execute_invocation, FunctionInvocationResult::Ok(_));
 }
 
-#[ignore = "need to pass tx hashes"]
 #[test]
 fn simulate_invoke_from_new_account_validate_and_charge() {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();

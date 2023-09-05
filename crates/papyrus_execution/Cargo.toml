@@ -19,6 +19,7 @@ cairo-lang-starknet.workspace = true
 cairo-vm.workspace = true
 itertools.workspace = true
 lazy_static.workspace = true
+papyrus_common = { path = "../papyrus_common", version = "0.0.4" }
 papyrus_config = { path = "../papyrus_config", version = "0.0.4" }
 papyrus_storage = { path = "../papyrus_storage", version = "0.0.4" }
 rand = { workspace = true, optional = true }
@@ -28,6 +29,7 @@ serde_json = { workspace = true, features = ["arbitrary_precision"]}
 starknet_api.workspace = true
 test_utils = { path = "../test_utils", optional = true }
 thiserror.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
 assert_matches.workspace = true
