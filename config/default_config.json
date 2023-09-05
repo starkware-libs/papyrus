@@ -184,16 +184,16 @@
     "value": 10
   },
   "sync.block_propagation_sleep_duration": {
-    "description": "Time in milliseconds before checking for a new block after the node is synchronized.",
-    "value": 2000
+    "description": "Time in seconds before checking for a new block after the node is synchronized.",
+    "value": 2
   },
   "sync.blocks_max_stream_size": {
     "description": "Max amount of blocks to download in a stream.",
     "value": 1000
   },
   "sync.recoverable_error_sleep_duration": {
-    "description": "Waiting time in milliseconds before restarting synchronization after a recoverable error.",
-    "value": 3000
+    "description": "Waiting time in seconds before restarting synchronization after a recoverable error.",
+    "value": 3
   },
   "sync.state_updates_max_stream_size": {
     "description": "Max amount of state updates to download in a stream.",

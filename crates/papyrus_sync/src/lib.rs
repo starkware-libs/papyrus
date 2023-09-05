@@ -18,10 +18,7 @@ use chrono::{TimeZone, Utc};
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use indexmap::IndexMap;
 use papyrus_common::{metrics as papyrus_metrics, BlockHashAndNumber};
-use papyrus_config::converters::{
-    deserialize_milliseconds_to_duration,
-    deserialize_seconds_to_duration,
-};
+use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, SerializedParam};
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
@@ -48,11 +45,11 @@ const SLEEP_TIME_SYNC_PROGRESS: Duration = Duration::from_secs(300);
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct SyncConfig {
-    #[serde(deserialize_with = "deserialize_milliseconds_to_duration")]
+    #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub block_propagation_sleep_duration: Duration,
     #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub base_layer_propagation_sleep_duration: Duration,
-    #[serde(deserialize_with = "deserialize_milliseconds_to_duration")]
+    #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub recoverable_error_sleep_duration: Duration,
     pub blocks_max_stream_size: u32,
     pub state_updates_max_stream_size: u32,
@@ -63,9 +60,8 @@ impl SerializeConfig for SyncConfig {
         BTreeMap::from_iter([
             ser_param(
                 "block_propagation_sleep_duration",
-                &self.block_propagation_sleep_duration.as_millis(),
-                "Time in milliseconds before checking for a new block after the node is \
-                 synchronized.",
+                &self.block_propagation_sleep_duration.as_secs(),
+                "Time in seconds before checking for a new block after the node is synchronized.",
             ),
             ser_param(
                 "base_layer_propagation_sleep_duration",
@@ -74,9 +70,9 @@ impl SerializeConfig for SyncConfig {
             ),
             ser_param(
                 "recoverable_error_sleep_duration",
-                &self.recoverable_error_sleep_duration.as_millis(),
-                "Waiting time in milliseconds before restarting synchronization after a \
-                 recoverable error.",
+                &self.recoverable_error_sleep_duration.as_secs(),
+                "Waiting time in seconds before restarting synchronization after a recoverable \
+                 error.",
             ),
             ser_param(
                 "blocks_max_stream_size",
