@@ -353,12 +353,15 @@ impl<
 
         debug!("Storing block.");
         trace!("Block data: {block:#?}");
+        let now= std::time::Instant::now();
         self.writer
             .begin_rw_txn()?
             .append_header(block_number, &block.header)?
             .update_starknet_version(&block_number, starknet_version)?
             .append_body(block_number, block.body)?
             .commit()?;
+        let elapsed = now.elapsed();
+        metrics::increment_gauge!(papyrus_metrics::PAPYRUS_TOTAL_BLOCK_WRITE_TIME_SECS, elapsed.as_secs_f64());
         metrics::gauge!(papyrus_metrics::PAPYRUS_HEADER_MARKER, block_number.next().0 as f64);
         metrics::gauge!(papyrus_metrics::PAPYRUS_BODY_MARKER, block_number.next().0 as f64);
         let dt = Utc::now()
@@ -385,10 +388,13 @@ impl<
         if !self.is_reverted_state_diff(block_number, block_hash)? {
             debug!("Storing state diff.");
             trace!("StateDiff data: {state_diff:#?}");
+            let now= std::time::Instant::now();
             self.writer
                 .begin_rw_txn()?
                 .append_state_diff(block_number, state_diff, deployed_contract_class_definitions)?
                 .commit()?;
+            let elapsed = now.elapsed();
+            metrics::increment_gauge!(papyrus_metrics::PAPYRUS_TOTAL_STATE_WRITE_TIME_SECS, elapsed.as_secs_f64());
             metrics::gauge!(papyrus_metrics::PAPYRUS_STATE_MARKER, block_number.next().0 as f64);
             let compiled_class_marker = self.reader.begin_ro_txn()?.get_compiled_class_marker()?;
             metrics::gauge!(
@@ -411,13 +417,14 @@ impl<
         compiled_class_hash: CompiledClassHash,
         compiled_class: CasmContractClass,
     ) -> StateSyncResult {
+        let now= std::time::Instant::now();
         let txn = self.writer.begin_rw_txn()?;
         let is_reverted_class =
             txn.get_state_reader()?.get_class_definition_block_number(&class_hash)?.is_none();
         if is_reverted_class {
             debug!("TODO: Insert reverted compiled class to ommer table.");
         }
-        match txn.append_casm(&class_hash, &compiled_class) {
+        let x=match txn.append_casm(&class_hash, &compiled_class) {
             Ok(txn) => {
                 txn.commit()?;
                 let compiled_class_marker =
@@ -439,7 +446,10 @@ impl<
                 Ok(())
             }
             Err(err) => Err(StateSyncError::StorageError(err)),
-        }
+        };
+        let elapsed = now.elapsed();
+        metrics::increment_gauge!(papyrus_metrics::PAPYRUS_TOTAL_COMPILED_WRITE_TIME_SECS, elapsed.as_secs_f64());
+        x
     }
 
     #[instrument(skip(self), level = "debug", err)]

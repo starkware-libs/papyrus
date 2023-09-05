@@ -21,3 +21,10 @@ pub const PAPYRUS_BASE_LAYER_MARKER: &str = "papyrus_base_layer_marker";
 /// The latency, in seconds, between a block timestamp (as state in its header) and the time the
 /// node stores the header.
 pub const PAPYRUS_HEADER_LATENCY_SEC: &str = "papyrus_header_latency";
+
+pub const PAPYRUS_TOTAL_BLOCK_WRITE_TIME_SECS: &str = "papyrus_total_block_write_time_secs";
+
+pub const PAPYRUS_TOTAL_STATE_WRITE_TIME_SECS: &str = "papyrus_total_state_write_time_secs";
+
+pub const PAPYRUS_TOTAL_COMPILED_WRITE_TIME_SECS: &str =
+    "papyrus_total_compiled_write_time_secs";

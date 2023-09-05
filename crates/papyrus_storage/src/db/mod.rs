@@ -160,7 +160,7 @@ pub(crate) fn open_env(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
                 ..Default::default()
             })
             .set_max_tables(MAX_DBS)
-            //.set_flags(get_flags())
+            .set_flags(get_flags())
             .open(&config.path())?,
     );
     let env_big = Arc::new(
@@ -168,22 +168,22 @@ pub(crate) fn open_env(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
             .set_geometry(Geometry {
                 size: Some(config.min_size..config.max_size),
                 growth_step: Some(config.growth_step),
-                page_size: Some(libmdbx::PageSize::Set(8192)), // 2^14, 16KB
+                page_size: Some(libmdbx::PageSize::Set(8192)), // 2^13, 8KB
                 ..Default::default()
             })
             .set_max_tables(MAX_DBS)
-            //.set_flags(get_flags())
+            .set_flags(get_flags())
             .open(&config.path_big())?,
     );
     Ok((DbReader { env: env.clone(), env_big: env_big.clone() }, DbWriter { env, env_big }))
 }
 
-// fn get_flags() -> libmdbx::DatabaseFlags {
-//     libmdbx::DatabaseFlags{
-//         mode: libmdbx::Mode::ReadWrite { sync_mode: libmdbx::SyncMode::UtterlyNoSync },
-//         ..Default::default()
-//     }
-// }
+fn get_flags() -> libmdbx::DatabaseFlags {
+    libmdbx::DatabaseFlags{
+        mode: libmdbx::Mode::ReadWrite { sync_mode: libmdbx::SyncMode::NoMetaSync },
+        ..Default::default()
+    }
+}
 
 // pub(crate) fn open_env_big(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
 //     let env = Arc::new(
