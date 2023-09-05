@@ -34,9 +34,9 @@ axum = "0.6.12"
 base64 = "0.13.0"
 blockifier = "0.2.0-rc0"
 byteorder = "1.4.3"
-cairo-lang-starknet = "2.1.0-rc0"
-cairo-lang-casm = "2.1.0-rc0"
-cairo-lang-utils = "2.1.0-rc0"
+cairo-lang-starknet = "=2.2.0"
+cairo-lang-casm = "=2.2.0"
+cairo-lang-utils = "=2.2.0"
 cairo-vm = "0.8.2"
 camelpaste = "0.1.0"
 chrono = "0.4.26"
@@ -97,3 +97,25 @@ tracing-subscriber = "0.3.16"
 tower = "0.4"
 url = "2.2.2"
 validator = "0.12"
+
+[patch.crates-io]
+blockifier = { path = "../blockifier/crates/blockifier" }
+# cairo-lang-starknet = { path = "../cairo/crates/cairo-lang-starknet" }
+# cairo-lang-casm = { path = "../cairo/crates/cairo-lang-casm" }
+# cairo-lang-utils = { path = "../cairo/crates/cairo-lang-utils" }
+
+cairo-lang-casm = { path = "../cairo/crates/cairo-lang-casm" }
+cairo-lang-compiler = { path = "../cairo/crates/cairo-lang-compiler" }
+cairo-lang-defs = { path = "../cairo/crates/cairo-lang-defs" }
+cairo-lang-diagnostics = { path = "../cairo/crates/cairo-lang-diagnostics" }
+cairo-lang-filesystem = { path = "../cairo/crates/cairo-lang-filesystem" }
+cairo-lang-lowering = { path = "../cairo/crates/cairo-lang-lowering" }
+cairo-lang-semantic = { path = "../cairo/crates/cairo-lang-semantic" }
+cairo-lang-sierra = { path = "../cairo/crates/cairo-lang-sierra" }
+cairo-lang-sierra-ap-change = { path = "../cairo/crates/cairo-lang-sierra-ap-change" }
+cairo-lang-sierra-gas = { path = "../cairo/crates/cairo-lang-sierra-gas" }
+cairo-lang-sierra-generator = { path = "../cairo/crates/cairo-lang-sierra-generator" }
+cairo-lang-sierra-to-casm = { path = "../cairo/crates/cairo-lang-sierra-to-casm" }
+cairo-lang-sierra-type-size = { path = "../cairo/crates/cairo-lang-sierra-type-size" }
+cairo-lang-starknet = { path = "../cairo/crates/cairo-lang-starknet" }
+cairo-lang-utils = { path = "../cairo/crates/cairo-lang-utils" }
