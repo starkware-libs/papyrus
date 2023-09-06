@@ -92,7 +92,7 @@ pub fn get_trace_constructor(
         ExecutableTransactionInput::DeclareV3(_, _) => {
             |execution_info| Ok(TransactionTrace::Declare(execution_info.try_into()?))
         }
-        ExecutableTransactionInput::Deploy(_) => {
+        ExecutableTransactionInput::DeployAccount(_) => {
             |execution_info| Ok(TransactionTrace::DeployAccount(execution_info.try_into()?))
         }
         ExecutableTransactionInput::L1Handler(_, _) => {

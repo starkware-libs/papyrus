@@ -72,7 +72,7 @@ pub enum DeclareType {
 /// HTTP method.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
-pub struct DeployAccountTransaction {
+pub struct DeployAccountV1Transaction {
     pub contract_address_salt: ContractAddressSalt,
     pub class_hash: ClassHash,
     pub constructor_calldata: Calldata,
@@ -83,6 +83,36 @@ pub struct DeployAccountTransaction {
     pub r#type: DeployAccountType,
 }
 
+/// A deploy account transaction that can be added to Starknet through the Starknet gateway.
+/// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
+/// HTTP method.
+// TODO(Shahak, 01/11/2023): Add tests for deploy account v3.
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct DeployAccountV3Transaction {
+    pub resource_bounds: ResourceBoundsMapping,
+    pub tip: Tip,
+    pub contract_address_salt: ContractAddressSalt,
+    pub class_hash: ClassHash,
+    pub constructor_calldata: Calldata,
+    pub nonce: Nonce,
+    pub signature: TransactionSignature,
+    pub nonce_data_availability_mode: DataAvailabilityMode,
+    pub fee_data_availability_mode: DataAvailabilityMode,
+    pub paymaster_data: PaymasterData,
+    pub version: TransactionVersion,
+    pub r#type: DeployAccountType,
+}
+
+/// A deploy account transaction that can be added to Starknet through the Starknet gateway.
+/// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
+/// HTTP method.
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(untagged)]
+pub enum DeployAccountTransaction {
+    DeployAccountV1(DeployAccountV1Transaction),
+    DeployAccountV3(DeployAccountV3Transaction),
+}
 /// An invoke account transaction that can be added to Starknet through the Starknet gateway.
 /// The invoke is a V1 transaction.
 /// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
@@ -188,21 +218,4 @@ pub struct ContractClass {
     pub contract_class_version: String,
     pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
     pub abi: String,
-}
-
-// The conversion is done here and not in papyrus_rpc because the gateway uses starknet_api for
-// DeployAccountTransaction.
-impl From<starknet_api::transaction::DeployAccountTransaction> for DeployAccountTransaction {
-    fn from(tx: starknet_api::transaction::DeployAccountTransaction) -> Self {
-        Self {
-            contract_address_salt: tx.contract_address_salt,
-            class_hash: tx.class_hash,
-            constructor_calldata: tx.constructor_calldata,
-            nonce: tx.nonce,
-            max_fee: tx.max_fee,
-            signature: tx.signature,
-            version: tx.version,
-            r#type: DeployAccountType::default(),
-        }
-    }
 }
