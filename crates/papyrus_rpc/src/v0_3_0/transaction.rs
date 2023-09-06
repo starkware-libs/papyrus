@@ -19,8 +19,8 @@ use starknet_api::core::{
 use starknet_api::hash::StarkFelt;
 use starknet_api::transaction::{
     Calldata,
+    ContractAddressSalt,
     DeclareTransactionOutput,
-    DeployAccountTransaction,
     DeployAccountTransactionOutput,
     DeployTransaction,
     DeployTransactionOutput,
@@ -108,6 +108,59 @@ where
     } else {
         Err(serde::de::Error::custom("Invalid version value"))
     }
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct DeployAccountTransactionV1 {
+    pub max_fee: Fee,
+    pub signature: TransactionSignature,
+    pub nonce: Nonce,
+    pub class_hash: ClassHash,
+    pub contract_address_salt: ContractAddressSalt,
+    pub constructor_calldata: Calldata,
+    pub version: TransactionVersion,
+}
+
+// TODO(shahak, 01/11/2023): Add test that v3 transactions cause error.
+impl TryFrom<starknet_api::transaction::DeployAccountTransaction> for DeployAccountTransaction {
+    type Error = ErrorObjectOwned;
+
+    fn try_from(
+        tx: starknet_api::transaction::DeployAccountTransaction,
+    ) -> Result<Self, Self::Error> {
+        match tx {
+            starknet_api::transaction::DeployAccountTransaction::V1(
+                starknet_api::transaction::DeployAccountTransactionV1 {
+                    max_fee,
+                    signature,
+                    nonce,
+                    class_hash,
+                    contract_address_salt,
+                    constructor_calldata,
+                },
+            ) => Ok(Self::Version1(DeployAccountTransactionV1 {
+                max_fee,
+                signature,
+                nonce,
+                class_hash,
+                contract_address_salt,
+                constructor_calldata,
+                version: tx_v1(),
+            })),
+            starknet_api::transaction::DeployAccountTransaction::V3(_) => {
+                Err(internal_server_error(
+                    "The requested transaction is a deploy account of version 3, which is not \
+                     supported on v0.3.0.",
+                ))
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(untagged)]
+pub enum DeployAccountTransaction {
+    Version1(DeployAccountTransactionV1),
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -224,8 +277,18 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
             starknet_api::transaction::Transaction::Deploy(deploy_tx) => {
                 Ok(Transaction::Deploy(deploy_tx))
             }
-            starknet_api::transaction::Transaction::DeployAccount(deploy_tx) => {
-                Ok(Transaction::DeployAccount(deploy_tx))
+            starknet_api::transaction::Transaction::DeployAccount(deploy_account_tx) => {
+                match deploy_account_tx {
+                    starknet_api::transaction::DeployAccountTransaction::V1(_) => {
+                        Ok(Self::DeployAccount(deploy_account_tx.try_into()?))
+                    }
+                    starknet_api::transaction::DeployAccountTransaction::V3(_) => {
+                        Err(internal_server_error(
+                            "The requested transaction is a deploy account of version 3, which is \
+                             not supported on v0.3.0.",
+                        ))
+                    }
+                }
             }
             starknet_api::transaction::Transaction::Invoke(invoke_tx) => match invoke_tx {
                 starknet_api::transaction::InvokeTransaction::V0(tx) => {
