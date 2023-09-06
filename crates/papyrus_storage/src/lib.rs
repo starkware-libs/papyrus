@@ -143,6 +143,9 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         transactions: db_writer.create_table("transactions")?,
         starknet_version: db_writer.create_table("starknet_version")?,
         storage_version: db_writer.create_table("storage_version")?,
+
+        //storage_diffs: db_writer.create_table("storage_diffs")?,
+        storage_diffs: db_writer.create_table_dup("storage_diffs")?,
     });
     let reader = StorageReader { db_reader, tables: tables.clone() };
     let writer = StorageWriter { db_writer, tables };
@@ -268,7 +271,9 @@ struct_field_names! {
         transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
         transactions: TableIdentifier<TransactionIndex, Transaction>,
         starknet_version: TableIdentifier<BlockNumber, StarknetVersion>,
-        storage_version: TableIdentifier<String, Version>
+        storage_version: TableIdentifier<String, Version>,
+
+        storage_diffs: TableIdentifier<(BlockNumber, ContractAddress), (StorageKey, StarkFelt)>
     }
 }
 

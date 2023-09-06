@@ -393,6 +393,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             self.txn.open_table(&self.tables.deprecated_declared_classes)?;
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
         let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
+        let storage_diffs_table=self.txn.open_table( &self.tables.storage_diffs)?;
 
         update_marker(&self.txn, &markers_table, block_number)?;
 
@@ -404,7 +405,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             &deployed_contracts_table,
             &nonces_table,
         )?;
-        write_storage_diffs(&state_diff.storage_diffs, &self.txn, block_number, &storage_table)?;
+        write_storage_diffs(&state_diff.storage_diffs, &self.txn, block_number, &storage_table, &storage_diffs_table)?;
         write_nonces(&state_diff.nonces, &self.txn, block_number, &nonces_table)?;
         write_replaced_classes(
             &state_diff.replaced_classes,
@@ -414,8 +415,9 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         )?;
 
         // Write state diff.
-        let (thin_state_diff, declared_classes, deprecated_declared_classes) =
+        let (mut thin_state_diff, declared_classes, deprecated_declared_classes) =
             ThinStateDiff::from_state_diff(state_diff);
+        thin_state_diff.storage_diffs=IndexMap::new();
         state_diffs_table.insert(&self.txn, &block_number, &thin_state_diff)?;
 
         // Write declared classes.
@@ -687,16 +689,21 @@ fn write_storage_diffs<'env>(
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     storage_table: &'env ContractStorageTable<'env>,
+
+    storage_diffs_table: &TableHandle<'env, (BlockNumber, ContractAddress), (StorageKey, StarkFelt)>,
+
 ) -> StorageResult<()> {
     for (address, storage_entries) in storage_diffs {
         for (key, value) in storage_entries {
             storage_table.upsert(txn, &(*address, *key, block_number), value)?;
+            storage_diffs_table.insert_dup(txn, &(block_number, *address), &(*key, *value))?;
         }
     }
     Ok(())
 }
 
 fn delete_declared_classes<'env>(
+
     txn: &'env DbTransaction<'env, RW>,
     thin_state_diff: &ThinStateDiff,
     declared_classes_table: &'env DeclaredClassesTable<'env>,

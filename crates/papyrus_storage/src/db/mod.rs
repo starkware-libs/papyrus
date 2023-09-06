@@ -35,7 +35,7 @@ use validator::Validate;
 use crate::db::serialization::{StorageSerde, StorageSerdeEx};
 
 // Maximum number of Sub-Databases.
-const MAX_DBS: usize = 27;
+const MAX_DBS: usize = 28;
 
 // Note that NO_TLS mode is used by default.
 type EnvironmentKind = WriteMap;
@@ -207,6 +207,17 @@ impl DbWriter {
         txn.commit()?;
         Ok(TableIdentifier { name, _key_type: PhantomData {}, _value_type: PhantomData {} })
     }
+
+
+    pub(crate) fn create_table_dup<K: StorageSerde, V: StorageSerde>(
+        &mut self,
+        name: &'static str,
+    ) -> DbResult<TableIdentifier<K, V>> {
+        let txn = self.env.begin_rw_txn()?;
+        txn.create_table(Some(name), TableFlags::DUP_SORT)?;
+        txn.commit()?;
+        Ok(TableIdentifier { name, _key_type: PhantomData {}, _value_type: PhantomData {} })
+    }
 }
 
 type DbWriteTransaction<'env> = DbTransaction<'env, RW>;
@@ -294,6 +305,18 @@ impl<'env, 'txn, K: StorageSerde, V: StorageSerde> TableHandle<'env, K, V> {
         let data = value.serialize()?;
         let bin_key = key.serialize()?;
         txn.txn.put(&self.database, bin_key, data, WriteFlags::NO_OVERWRITE)?;
+        Ok(())
+    }
+
+    pub(crate) fn insert_dup(
+        &'env self,
+        txn: &DbTransaction<'env, RW>,
+        key: &K,
+        value: &V,
+    ) -> DbResult<()> {
+        let data = value.serialize()?;
+        let bin_key = key.serialize()?;
+        txn.txn.put(&self.database, bin_key, data, WriteFlags::APPEND_DUP)?;
         Ok(())
     }
 
