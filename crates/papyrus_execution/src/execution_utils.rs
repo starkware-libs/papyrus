@@ -7,6 +7,7 @@ use blockifier::execution::contract_class::{
     ContractClassV0,
     ContractClassV1,
 };
+use blockifier::transaction::objects::TransactionExecutionInfo;
 use cairo_vm::types::errors::program_errors::ProgramError;
 use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::RO;
@@ -15,6 +16,9 @@ use papyrus_storage::{StorageError, StorageTxn};
 use starknet_api::core::ClassHash;
 use starknet_api::state::StateNumber;
 use thiserror::Error;
+
+use crate::objects::TransactionTrace;
+use crate::ExecutableTransactionInput;
 
 // An error that can occur during the use of the execution utils.
 #[derive(Debug, Error)]
@@ -53,4 +57,31 @@ pub(crate) fn get_contract_class(
     Ok(Some(BlockifierContractClass::V0(
         ContractClassV0::try_from(deprecated_class).map_err(ExecutionUtilsError::ProgramError)?,
     )))
+}
+
+/// Given an ExecutableTransactionInput, returns a function that will convert the corresponding
+/// TransactionExecutionInfo into the right TransactionTrace variant.
+pub fn get_trace_constructor(
+    tx: &ExecutableTransactionInput,
+) -> fn(TransactionExecutionInfo) -> TransactionTrace {
+    match tx {
+        ExecutableTransactionInput::Invoke(_) => {
+            |execution_info| TransactionTrace::Invoke(execution_info.into())
+        }
+        ExecutableTransactionInput::DeclareV0(_, _) => {
+            |execution_info| TransactionTrace::Declare(execution_info.into())
+        }
+        ExecutableTransactionInput::DeclareV1(_, _) => {
+            |execution_info| TransactionTrace::Declare(execution_info.into())
+        }
+        ExecutableTransactionInput::DeclareV2(_, _) => {
+            |execution_info| TransactionTrace::Declare(execution_info.into())
+        }
+        ExecutableTransactionInput::Deploy(_) => {
+            |execution_info| TransactionTrace::DeployAccount(execution_info.into())
+        }
+        ExecutableTransactionInput::L1Handler(_, _) => {
+            |execution_info| TransactionTrace::L1Handler(execution_info.into())
+        }
+    }
 }

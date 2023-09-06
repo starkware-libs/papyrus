@@ -34,6 +34,7 @@ use blockifier::transaction::transaction_execution::Transaction as BlockifierTra
 use blockifier::transaction::transactions::ExecutableTransaction;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use cairo_vm::types::errors::program_errors::ProgramError;
+use execution_utils::get_trace_constructor;
 use objects::TransactionTrace;
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, SerializedParam};
@@ -486,10 +487,9 @@ pub fn simulate_transactions(
     charge_fee: bool,
     validate: bool,
 ) -> ExecutionResult<Vec<(TransactionTrace, GasPrice, Fee)>> {
+    let trace_constructors = txs.iter().map(get_trace_constructor).collect::<Vec<_>>();
     let (txs_execution_info, block_context) = execute_transactions(
-        // TODO(yair): Modify execute_transactions so it doesn't consume the txs / save the tx
-        // types before consuming them.
-        txs.clone(),
+        txs,
         tx_hashes,
         chain_id,
         storage_txn,
@@ -498,37 +498,14 @@ pub fn simulate_transactions(
         charge_fee,
         validate,
     )?;
-    Ok(txs
-        .iter()
-        .zip(txs_execution_info)
-        .map(|(tx, exec_info)| calc_trace_and_fee(tx, exec_info, &block_context))
-        .collect())
-}
-
-fn calc_trace_and_fee(
-    tx: &ExecutableTransactionInput,
-    execution_info: TransactionExecutionInfo,
-    block_context: &BlockContext,
-) -> (TransactionTrace, GasPrice, Fee) {
     let gas_price = GasPrice(block_context.gas_price);
-    let fee = execution_info.actual_fee;
-    let trace = match tx {
-        ExecutableTransactionInput::Invoke(_) => TransactionTrace::Invoke(execution_info.into()),
-        ExecutableTransactionInput::DeclareV0(_, _) => {
-            TransactionTrace::Declare(execution_info.into())
-        }
-        ExecutableTransactionInput::DeclareV1(_, _) => {
-            TransactionTrace::Declare(execution_info.into())
-        }
-        ExecutableTransactionInput::DeclareV2(_, _) => {
-            TransactionTrace::Declare(execution_info.into())
-        }
-        ExecutableTransactionInput::Deploy(_) => {
-            TransactionTrace::DeployAccount(execution_info.into())
-        }
-        ExecutableTransactionInput::L1Handler(_, _) => {
-            TransactionTrace::L1Handler(execution_info.into())
-        }
-    };
-    (trace, gas_price, fee)
+    Ok(txs_execution_info
+        .into_iter()
+        .zip(trace_constructors)
+        .map(|(execution_info, trace_constructor)| {
+            let fee = execution_info.actual_fee;
+            let trace = trace_constructor(execution_info);
+            (trace, gas_price, fee)
+        })
+        .collect())
 }
