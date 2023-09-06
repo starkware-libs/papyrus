@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used)]
 #[cfg(test)]
 mod precision_test;
 
