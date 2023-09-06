@@ -114,6 +114,7 @@ where
     }
 }
 
+pub type DeployAccountTransaction = starknet_api::transaction::DeployAccountTransaction;
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct InvokeTransactionV0 {
     pub max_fee: Fee,
@@ -188,8 +189,6 @@ pub struct TransactionWithHash {
     pub transaction: Transaction,
 }
 
-pub type DeployAccountTransaction = starknet_api::transaction::DeployAccountTransaction;
-
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 #[serde(tag = "type")]
 pub enum Transaction {
@@ -241,8 +240,17 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
             starknet_api::transaction::Transaction::Deploy(deploy_tx) => {
                 Ok(Transaction::Deploy(deploy_tx))
             }
-            starknet_api::transaction::Transaction::DeployAccount(deploy_tx) => {
-                Ok(Transaction::DeployAccount(deploy_tx))
+            starknet_api::transaction::Transaction::DeployAccount(deploy_account_tx) => {
+                match deploy_account_tx {
+                    starknet_api::transaction::DeployAccountTransaction::V1(tx) => {
+                        Ok(Self::DeployAccount(
+                            starknet_api::transaction::DeployAccountTransaction::V1(tx),
+                        ))
+                    }
+                    starknet_api::transaction::DeployAccountTransaction::V3(_) => Err(
+                        internal_server_error("Version 3 transactions are not supported on v0.4.0"),
+                    ),
+                }
             }
             starknet_api::transaction::Transaction::Invoke(invoke_tx) => match invoke_tx {
                 starknet_api::transaction::InvokeTransaction::V0(tx) => {
