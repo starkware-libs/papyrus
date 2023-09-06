@@ -544,7 +544,7 @@ fn broadcasted_to_executable_deploy_account() {
     );
     assert_matches!(
         broadcasted_deploy_account.try_into(),
-        Ok(ExecutableTransactionInput::Deploy(_tx))
+        Ok(ExecutableTransactionInput::DeployAccount(_tx))
     );
 }
 

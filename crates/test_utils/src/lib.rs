@@ -91,6 +91,8 @@ use starknet_api::transaction::{
     DeclareTransactionV3,
     DeployAccountTransaction,
     DeployAccountTransactionOutput,
+    DeployAccountTransactionV1,
+    DeployAccountTransactionV3,
     DeployTransaction,
     DeployTransactionOutput,
     Event,
@@ -234,7 +236,11 @@ fn get_rand_test_block_with_events(
 // TODO(Dan, 01/11/2023): Remove this util once v3 tests are ready and transaction generation is
 // using randomness more stably.
 fn is_v3_transaction(transaction: &Transaction) -> bool {
-    matches!(transaction, Transaction::Declare(DeclareTransaction::V3(_)))
+    matches!(
+        transaction,
+        Transaction::Declare(DeclareTransaction::V3(_))
+            | Transaction::DeployAccount(DeployAccountTransaction::V3(_))
+    )
 }
 
 /// Returns a test block body with a variable number of transactions and events.
@@ -448,14 +454,29 @@ auto_impl_get_test_instance! {
         pub paymaster_data: PaymasterData,
         pub account_deployment_data: AccountDeploymentData,
     }
-    pub struct DeployAccountTransaction {
+    pub enum DeployAccountTransaction {
+        V1(DeployAccountTransactionV1) = 0,
+        V3(DeployAccountTransactionV3) = 1,
+    }
+    pub struct DeployAccountTransactionV1 {
         pub max_fee: Fee,
-        pub version: TransactionVersion,
         pub signature: TransactionSignature,
         pub nonce: Nonce,
         pub class_hash: ClassHash,
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
+    }
+    pub struct DeployAccountTransactionV3 {
+        pub resource_bounds: ResourceBoundsMapping,
+        pub tip: Tip,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub class_hash: ClassHash,
+        pub contract_address_salt: ContractAddressSalt,
+        pub constructor_calldata: Calldata,
+        pub nonce_data_availability_mode: DataAvailabilityMode,
+        pub fee_data_availability_mode: DataAvailabilityMode,
+        pub paymaster_data: PaymasterData,
     }
     pub struct DeployTransaction {
         pub version: TransactionVersion,
