@@ -292,7 +292,7 @@ impl TryFrom<BroadcastedTransaction> for ExecutableTransactionInput {
     fn try_from(value: BroadcastedTransaction) -> Result<Self, Self::Error> {
         Ok(match value {
             BroadcastedTransaction::Declare(tx) => tx.try_into()?,
-            BroadcastedTransaction::DeployAccount(tx) => Self::Deploy(tx),
+            BroadcastedTransaction::DeployAccount(tx) => Self::DeployAccount(tx),
             BroadcastedTransaction::Invoke(tx) => Self::Invoke(tx.into()),
         })
     }
@@ -363,7 +363,7 @@ pub(crate) fn stored_txn_to_executable_txn(
             Err(internal_server_error("Deploy txns not supported in execution"))
         }
         starknet_api::transaction::Transaction::DeployAccount(value) => {
-            Ok(ExecutableTransactionInput::Deploy(value))
+            Ok(ExecutableTransactionInput::DeployAccount(value))
         }
         starknet_api::transaction::Transaction::Invoke(value) => {
             Ok(ExecutableTransactionInput::Invoke(value))

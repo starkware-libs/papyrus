@@ -221,9 +221,14 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
             starknet_api::transaction::Transaction::Deploy(deploy_tx) => {
                 Ok(Transaction::Deploy(deploy_tx))
             }
-            starknet_api::transaction::Transaction::DeployAccount(deploy_tx) => {
-                Ok(Transaction::DeployAccount(deploy_tx))
-            }
+            starknet_api::transaction::Transaction::DeployAccount(deploy_tx) => match deploy_tx {
+                starknet_api::transaction::DeployAccountTransaction::V1(tx) => {
+                    Ok(Self::DeployAccount(DeployAccountTransaction::V1(tx)))
+                }
+                starknet_api::transaction::DeployAccountTransaction::V3(_) => {
+                    Err(internal_server_error("Version 3 transactions are not supported on v0.3.0"))
+                }
+            },
             starknet_api::transaction::Transaction::Invoke(invoke_tx) => match invoke_tx {
                 starknet_api::transaction::InvokeTransaction::V0(tx) => {
                     Ok(Self::Invoke(InvokeTransaction::Version0(tx.into())))
