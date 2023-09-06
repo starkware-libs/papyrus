@@ -51,7 +51,7 @@ pub fn load_and_process_config<T: for<'a> Deserialize<'a>>(
     args: Vec<String>,
 ) -> Result<T, ConfigError> {
     let deserialized_default_config: Map<String, Value> =
-        serde_json::from_reader(default_config_file).unwrap();
+        serde_json::from_reader(default_config_file)?;
 
     // Store the pointers separately from the default values. The pointers will receive a value
     // only at the end of the process.
@@ -123,8 +123,8 @@ pub(crate) fn update_config_map_by_custom_configs(
     custom_config_paths: Values<PathBuf>,
 ) -> Result<(), ConfigError> {
     for config_path in custom_config_paths {
-        let file = std::fs::File::open(config_path).unwrap();
-        let custom_config: Map<String, Value> = serde_json::from_reader(file).unwrap();
+        let file = std::fs::File::open(config_path)?;
+        let custom_config: Map<String, Value> = serde_json::from_reader(file)?;
         for (param_path, json_value) in custom_config {
             update_config_map(config_map, types_map, param_path.as_str(), json_value)?;
         }
@@ -157,7 +157,9 @@ pub(crate) fn update_optional_values(config_map: &mut BTreeMap<ParamPath, Value>
         .collect();
     let mut none_params = vec![];
     for optional_param in optional_params {
-        let value = config_map.remove(&format!("{optional_param}.{IS_NONE_MARK}")).unwrap();
+        let value = config_map
+            .remove(&format!("{optional_param}.{IS_NONE_MARK}"))
+            .expect("Not found optional param");
         if value == json!(true) {
             none_params.push(optional_param);
         }
