@@ -96,10 +96,9 @@ impl BaseLayerContract for EthereumBaseLayerContract {
             .get_block_number()
             .await?
             .checked_sub(min_confirmations.unwrap_or(0).into());
-        if ethereum_block_number.is_none() {
+        let Some(ethereum_block_number) = ethereum_block_number else {
             return Ok(None);
-        }
-        let ethereum_block_number = ethereum_block_number.unwrap();
+        };
 
         let call_state_block_number =
             self.contract.method::<_, I256>("stateBlockNumber", ())?.block(ethereum_block_number);
