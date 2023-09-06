@@ -22,14 +22,20 @@ use starknet_api::StarknetApiError;
 use starknet_crypto::{pedersen_hash, FieldElement};
 
 lazy_static! {
-    static ref DECLARE: StarkFelt = ascii_as_felt("declare").unwrap();
-    static ref DEPLOY: StarkFelt = ascii_as_felt("deploy").unwrap();
-    static ref DEPLOY_ACCOUNT: StarkFelt = ascii_as_felt("deploy_account").unwrap();
-    static ref INVOKE: StarkFelt = ascii_as_felt("invoke").unwrap();
-    static ref L1_HANDLER: StarkFelt = ascii_as_felt("l1_handler").unwrap();
+    static ref DECLARE: StarkFelt =
+        #[allow(clippy::unwrap_used)] ascii_as_felt("declare").unwrap();
+    static ref DEPLOY: StarkFelt =
+        #[allow(clippy::unwrap_used)] ascii_as_felt("deploy").unwrap();
+    static ref DEPLOY_ACCOUNT: StarkFelt =
+        #[allow(clippy::unwrap_used)] ascii_as_felt("deploy_account").unwrap();
+    static ref INVOKE: StarkFelt =
+        #[allow(clippy::unwrap_used)] ascii_as_felt("invoke").unwrap();
+    static ref L1_HANDLER: StarkFelt =
+        #[allow(clippy::unwrap_used)] ascii_as_felt("l1_handler").unwrap();
     // The first 250 bits of the Keccak256 hash on "constructor".
     // The correctness of this constant is enforced by a test.
     static ref CONSTRUCTOR_ENTRY_POINT_SELECTOR: StarkFelt =
+        #[allow(clippy::unwrap_used)]
         StarkFelt::try_from("0x28ffe4ff0f226a9107253e17a904099aa4f63a02a5621de0576e5aa71bc5194")
         .unwrap();
 

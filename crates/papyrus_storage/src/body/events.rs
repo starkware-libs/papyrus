@@ -91,13 +91,13 @@ pub trait EventsReader<'txn, 'env> {
 impl<'txn, 'env> EventsReader<'txn, 'env> for StorageTxn<'env, RO> {
     fn iter_events(
         &'env self,
-        address: Option<ContractAddress>,
+        optional_address: Option<ContractAddress>,
         event_index: EventIndex,
         to_block_number: BlockNumber,
     ) -> StorageResult<EventIter<'txn, 'env>> {
-        if address.is_some() {
+        if let Some(address) = optional_address {
             return Ok(EventIter::ByContractAddress(
-                self.iter_events_by_contract_address((address.unwrap(), event_index))?,
+                self.iter_events_by_contract_address((address, event_index))?,
             ));
         }
 
@@ -120,14 +120,11 @@ impl Iterator for EventIter<'_, '_> {
     type Item = EventsTableKeyValue;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let res = match self {
+        match self {
             EventIter::ByContractAddress(it) => it.next(),
             EventIter::ByEventIndex(it) => it.next(),
-        };
-        if res.is_err() {
-            return None;
         }
-        res.unwrap()
+        .unwrap_or(None)
     }
 }
 
