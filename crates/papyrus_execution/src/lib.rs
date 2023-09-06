@@ -56,6 +56,8 @@ use starknet_api::transaction::{
     DeclareTransactionV2,
     DeclareTransactionV3,
     DeployAccountTransaction,
+    DeployAccountTransactionV1,
+    DeployAccountTransactionV3,
     Fee,
     InvokeTransaction,
     L1HandlerTransaction,
@@ -267,7 +269,8 @@ pub enum ExecutableTransactionInput {
     DeclareV1(DeclareTransactionV0V1, DeprecatedContractClass),
     DeclareV2(DeclareTransactionV2, CasmContractClass),
     DeclareV3(DeclareTransactionV3, CasmContractClass),
-    Deploy(DeployAccountTransaction),
+    DeployAccountV1(DeployAccountTransactionV1),
+    DeployAccountV3(DeployAccountTransactionV3),
     L1Handler(L1HandlerTransaction, Fee),
 }
 
@@ -362,13 +365,25 @@ fn to_blockifier_tx(
             None,
         )?),
 
-        ExecutableTransactionInput::Deploy(deploy_acc_tx) => Ok(BlockifierTransaction::from_api(
-            Transaction::DeployAccount(deploy_acc_tx),
-            tx_hash,
-            None,
-            None,
-            None,
-        )?),
+        ExecutableTransactionInput::DeployAccountV1(deploy_acc_tx) => {
+            Ok(BlockifierTransaction::from_api(
+                Transaction::DeployAccount(DeployAccountTransaction::V1(deploy_acc_tx)),
+                tx_hash,
+                None,
+                None,
+                None,
+            )?)
+        }
+
+        ExecutableTransactionInput::DeployAccountV3(deploy_acc_tx) => {
+            Ok(BlockifierTransaction::from_api(
+                Transaction::DeployAccount(DeployAccountTransaction::V3(deploy_acc_tx)),
+                tx_hash,
+                None,
+                None,
+                None,
+            )?)
+        }
 
         ExecutableTransactionInput::DeclareV0(declare_tx, deprecated_class) => {
             let class_v0 = BlockifierContractClass::V0(deprecated_class.try_into()?);

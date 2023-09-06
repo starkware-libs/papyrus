@@ -20,6 +20,7 @@ use starknet_api::deprecated_contract_class::{
     EntryPoint as DeprecatedEntryPoint,
     EntryPointType as DeprecatedEntryPointType,
 };
+use starknet_api::hash::StarkFelt;
 use starknet_api::state::{EntryPoint, EntryPointType};
 use starknet_api::transaction::{
     AccountDeploymentData,
@@ -72,7 +73,7 @@ pub enum DeclareType {
 /// HTTP method.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
-pub struct DeployAccountTransaction {
+pub struct DeployAccountV1Transaction {
     pub contract_address_salt: ContractAddressSalt,
     pub class_hash: ClassHash,
     pub constructor_calldata: Calldata,
@@ -83,6 +84,36 @@ pub struct DeployAccountTransaction {
     pub r#type: DeployAccountType,
 }
 
+/// A deploy account transaction that can be added to Starknet through the Starknet gateway.
+/// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
+/// HTTP method.
+// TODO(Shahak, 01/11/2023): Add tests for deploy account v3.
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct DeployAccountV3Transaction {
+    pub resource_bounds: ResourceBoundsMapping,
+    pub tip: Tip,
+    pub contract_address_salt: ContractAddressSalt,
+    pub class_hash: ClassHash,
+    pub constructor_calldata: Calldata,
+    pub nonce: Nonce,
+    pub signature: TransactionSignature,
+    pub nonce_data_availability_mode: DataAvailabilityMode,
+    pub fee_data_availability_mode: DataAvailabilityMode,
+    pub paymaster_address: PaymasterAddress,
+    pub version: TransactionVersion,
+    pub r#type: DeployAccountType,
+}
+
+/// A deploy account transaction that can be added to Starknet through the Starknet gateway.
+/// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
+/// HTTP method.
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(untagged)]
+pub enum DeployAccountTransaction {
+    DeployAccountV1(DeployAccountV1Transaction),
+    DeployAccountV3(DeployAccountV3Transaction),
+}
 /// An invoke account transaction that can be added to Starknet through the Starknet gateway.
 /// The invoke is a V1 transaction.
 /// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
@@ -194,15 +225,35 @@ pub struct ContractClass {
 // DeployAccountTransaction.
 impl From<starknet_api::transaction::DeployAccountTransaction> for DeployAccountTransaction {
     fn from(tx: starknet_api::transaction::DeployAccountTransaction) -> Self {
-        Self {
-            contract_address_salt: tx.contract_address_salt,
-            class_hash: tx.class_hash,
-            constructor_calldata: tx.constructor_calldata,
-            nonce: tx.nonce,
-            max_fee: tx.max_fee,
-            signature: tx.signature,
-            version: tx.version,
-            r#type: DeployAccountType::default(),
+        match tx {
+            starknet_api::transaction::DeployAccountTransaction::V1(tx) => {
+                DeployAccountTransaction::DeployAccountV1(DeployAccountV1Transaction {
+                    contract_address_salt: tx.contract_address_salt,
+                    class_hash: tx.class_hash,
+                    constructor_calldata: tx.constructor_calldata,
+                    nonce: tx.nonce,
+                    max_fee: tx.max_fee,
+                    signature: tx.signature,
+                    version: TransactionVersion(StarkFelt::from(1_u8)),
+                    r#type: DeployAccountType::default(),
+                })
+            }
+            starknet_api::transaction::DeployAccountTransaction::V3(tx) => {
+                DeployAccountTransaction::DeployAccountV3(DeployAccountV3Transaction {
+                    resource_bounds: tx.resource_bounds,
+                    tip: tx.tip,
+                    contract_address_salt: tx.contract_address_salt,
+                    class_hash: tx.class_hash,
+                    constructor_calldata: tx.constructor_calldata,
+                    nonce: tx.nonce,
+                    signature: tx.signature,
+                    nonce_data_availability_mode: tx.nonce_data_availability_mode,
+                    fee_data_availability_mode: tx.fee_data_availability_mode,
+                    paymaster_address: tx.paymaster_address,
+                    version: TransactionVersion(StarkFelt::from(3_u8)),
+                    r#type: DeployAccountType::default(),
+                })
+            }
         }
     }
 }

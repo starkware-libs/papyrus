@@ -292,7 +292,14 @@ impl TryFrom<BroadcastedTransaction> for ExecutableTransactionInput {
     fn try_from(value: BroadcastedTransaction) -> Result<Self, Self::Error> {
         Ok(match value {
             BroadcastedTransaction::Declare(tx) => tx.try_into()?,
-            BroadcastedTransaction::DeployAccount(tx) => Self::Deploy(tx),
+            BroadcastedTransaction::DeployAccount(tx) => match tx {
+                starknet_api::transaction::DeployAccountTransaction::V1(tx) => {
+                    Self::DeployAccountV1(tx)
+                }
+                starknet_api::transaction::DeployAccountTransaction::V3(tx) => {
+                    Self::DeployAccountV3(tx)
+                }
+            },
             BroadcastedTransaction::Invoke(tx) => Self::Invoke(tx.into()),
         })
     }
@@ -365,9 +372,15 @@ pub(crate) fn stored_txn_to_executable_txn(
         starknet_api::transaction::Transaction::Deploy(_) => {
             Err(internal_server_error("Deploy txns not supported in execution"))
         }
-        starknet_api::transaction::Transaction::DeployAccount(value) => {
-            Ok(ExecutableTransactionInput::Deploy(value))
-        }
+        starknet_api::transaction::Transaction::DeployAccount(
+            starknet_api::transaction::DeployAccountTransaction::V1(value),
+        ) => Ok(ExecutableTransactionInput::DeployAccountV1(value)),
+        starknet_api::transaction::Transaction::DeployAccount(
+            starknet_api::transaction::DeployAccountTransaction::V3(_),
+        ) => Err(internal_server_error(
+            "The requested transaction is a deploy account of version 3, which is not supported \
+             on v0.4.0.",
+        )),
         starknet_api::transaction::Transaction::Invoke(value) => {
             Ok(ExecutableTransactionInput::Invoke(value))
         }
