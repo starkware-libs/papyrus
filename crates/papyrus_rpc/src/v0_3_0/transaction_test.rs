@@ -78,7 +78,10 @@ async fn test_gateway_trascation_from_starknet_api_transaction() {
         Transaction::Deploy(inner_transaction).try_into().unwrap();
 
     let inner_transaction =
-        starknet_api::transaction::DeployAccountTransaction::get_test_instance(&mut rng);
-    let _transaction: super::Transaction =
-        Transaction::DeployAccount(inner_transaction).try_into().unwrap();
+        starknet_api::transaction::DeployAccountTransactionV1::get_test_instance(&mut rng);
+    let _transaction: super::Transaction = Transaction::DeployAccount(
+        starknet_api::transaction::DeployAccountTransaction::V1(inner_transaction),
+    )
+    .try_into()
+    .unwrap();
 }

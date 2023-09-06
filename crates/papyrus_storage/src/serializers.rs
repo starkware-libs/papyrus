@@ -72,6 +72,8 @@ use starknet_api::transaction::{
     DeclareTransactionV2,
     DeclareTransactionV3,
     DeployAccountTransaction,
+    DeployAccountTransactionV1,
+    DeployAccountTransactionV3,
     DeployTransaction,
     EventContent,
     EventData,
@@ -193,14 +195,29 @@ auto_storage_serde! {
         pub paymaster_address: PaymasterAddress,
         pub account_deployment_data: AccountDeploymentData,
     }
-    pub struct DeployAccountTransaction {
+    pub enum DeployAccountTransaction {
+        V1(DeployAccountTransactionV1) = 1,
+        V3(DeployAccountTransactionV3) = 3,
+    }
+    pub struct DeployAccountTransactionV1 {
         pub max_fee: Fee,
-        pub version: TransactionVersion,
         pub signature: TransactionSignature,
         pub nonce: Nonce,
         pub class_hash: ClassHash,
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
+    }
+    pub struct DeployAccountTransactionV3 {
+        pub resource_bounds: ResourceBoundsMapping,
+        pub tip: Tip,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub class_hash: ClassHash,
+        pub contract_address_salt: ContractAddressSalt,
+        pub constructor_calldata: Calldata,
+        pub nonce_data_availability_mode: DataAvailabilityMode,
+        pub fee_data_availability_mode: DataAvailabilityMode,
+        pub paymaster_address: PaymasterAddress,
     }
     pub struct DeployTransaction {
         pub version: TransactionVersion,

@@ -267,7 +267,7 @@ pub enum ExecutableTransactionInput {
     DeclareV1(DeclareTransactionV0V1, DeprecatedContractClass),
     DeclareV2(DeclareTransactionV2, CasmContractClass),
     DeclareV3(DeclareTransactionV3, CasmContractClass),
-    Deploy(DeployAccountTransaction),
+    DeployAccount(DeployAccountTransaction),
     L1Handler(L1HandlerTransaction, Fee),
 }
 
@@ -362,13 +362,15 @@ fn to_blockifier_tx(
             None,
         )?),
 
-        ExecutableTransactionInput::Deploy(deploy_acc_tx) => Ok(BlockifierTransaction::from_api(
-            Transaction::DeployAccount(deploy_acc_tx),
-            tx_hash,
-            None,
-            None,
-            None,
-        )?),
+        ExecutableTransactionInput::DeployAccount(deploy_acc_tx) => {
+            Ok(BlockifierTransaction::from_api(
+                Transaction::DeployAccount(deploy_acc_tx),
+                tx_hash,
+                None,
+                None,
+                None,
+            )?)
+        }
 
         ExecutableTransactionInput::DeclareV0(declare_tx, deprecated_class) => {
             let class_v0 = BlockifierContractClass::V0(deprecated_class.try_into()?);
