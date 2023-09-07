@@ -409,6 +409,8 @@ impl TryFrom<IntermediateDeployAccountTransaction>
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct IntermediateInvokeTransaction {
+    pub resource_bounds: Option<ResourceBoundsMapping>,
+    pub tip: Option<Tip>,
     pub calldata: Calldata,
     // In early versions of starknet, the `sender_address` field was originally named
     // `contract_address`.
@@ -417,8 +419,12 @@ pub struct IntermediateInvokeTransaction {
     pub entry_point_selector: Option<EntryPointSelector>,
     #[serde(default)]
     pub nonce: Option<Nonce>,
-    pub max_fee: Fee,
+    pub max_fee: Option<Fee>,
     pub signature: TransactionSignature,
+    pub nonce_data_availability_mode: Option<DataAvailabilityMode>,
+    pub fee_data_availability_mode: Option<DataAvailabilityMode>,
+    pub paymaster_data: Option<PaymasterData>,
+    pub account_deployment_data: Option<AccountDeploymentData>,
     pub transaction_hash: TransactionHash,
     pub version: TransactionVersion,
 }
@@ -430,6 +436,7 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
         match invoke_tx.version {
             v if v == *TX_V0 => Ok(Self::V0(invoke_tx.try_into()?)),
             v if v == *TX_V1 => Ok(Self::V1(invoke_tx.try_into()?)),
+            v if v == *TX_V3 => Ok(Self::V3(invoke_tx.try_into()?)),
             _ => Err(ReaderClientError::BadTransaction {
                 tx_hash: invoke_tx.transaction_hash,
                 msg: format!("Invoke version {:?} is not supported.", invoke_tx.version),
@@ -443,7 +450,10 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
 
     fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ReaderClientError> {
         Ok(Self {
-            max_fee: invoke_tx.max_fee,
+            max_fee: invoke_tx.max_fee.ok_or(ReaderClientError::BadTransaction {
+                tx_hash: invoke_tx.transaction_hash,
+                msg: "Invoke V0 must contain max_fee field.".to_string(),
+            })?,
             signature: invoke_tx.signature,
             contract_address: invoke_tx.sender_address,
             entry_point_selector: invoke_tx.entry_point_selector.ok_or(
@@ -463,7 +473,10 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
     fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ReaderClientError> {
         // TODO(yair): Consider asserting that entry_point_selector is None.
         Ok(Self {
-            max_fee: invoke_tx.max_fee,
+            max_fee: invoke_tx.max_fee.ok_or(ReaderClientError::BadTransaction {
+                tx_hash: invoke_tx.transaction_hash,
+                msg: "Invoke V1 must contain max_fee field.".to_string(),
+            })?,
             signature: invoke_tx.signature,
             nonce: invoke_tx.nonce.ok_or(ReaderClientError::BadTransaction {
                 tx_hash: invoke_tx.transaction_hash,
@@ -471,6 +484,55 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
             })?,
             sender_address: invoke_tx.sender_address,
             calldata: invoke_tx.calldata,
+        })
+    }
+}
+
+impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::InvokeTransactionV3 {
+    type Error = ReaderClientError;
+
+    fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ReaderClientError> {
+        // TODO(yair): Consider asserting that entry_point_selector is None.
+        Ok(Self {
+            resource_bounds: invoke_tx.resource_bounds.ok_or(
+                ReaderClientError::BadTransaction {
+                    tx_hash: invoke_tx.transaction_hash,
+                    msg: "Invoke V3 must contain resource_bounds field.".to_string(),
+                },
+            )?,
+            tip: invoke_tx.tip.ok_or(ReaderClientError::BadTransaction {
+                tx_hash: invoke_tx.transaction_hash,
+                msg: "Invoke V3 must contain tip field.".to_string(),
+            })?,
+            signature: invoke_tx.signature,
+            nonce: invoke_tx.nonce.ok_or(ReaderClientError::BadTransaction {
+                tx_hash: invoke_tx.transaction_hash,
+                msg: "Invoke V3 must contain nonce field.".to_string(),
+            })?,
+            sender_address: invoke_tx.sender_address,
+            calldata: invoke_tx.calldata,
+            nonce_data_availability_mode: invoke_tx.nonce_data_availability_mode.ok_or(
+                ReaderClientError::BadTransaction {
+                    tx_hash: invoke_tx.transaction_hash,
+                    msg: "Invoke V3 must contain nonce_data_availability_mode field.".to_string(),
+                },
+            )?,
+            fee_data_availability_mode: invoke_tx.fee_data_availability_mode.ok_or(
+                ReaderClientError::BadTransaction {
+                    tx_hash: invoke_tx.transaction_hash,
+                    msg: "Invoke V3 must contain fee_data_availability_mode field.".to_string(),
+                },
+            )?,
+            paymaster_data: invoke_tx.paymaster_data.ok_or(ReaderClientError::BadTransaction {
+                tx_hash: invoke_tx.transaction_hash,
+                msg: "Invoke V3 must contain paymaster_data field.".to_string(),
+            })?,
+            account_deployment_data: invoke_tx.account_deployment_data.ok_or(
+                ReaderClientError::BadTransaction {
+                    tx_hash: invoke_tx.transaction_hash,
+                    msg: "Invoke V3 must contain account_deployment_data field.".to_string(),
+                },
+            )?,
         })
     }
 }
