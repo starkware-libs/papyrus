@@ -4691,6 +4691,7 @@ dependencies = [
  "prost",
  "prost-build",
  "prost-types",
+ "starknet_api",
  "thiserror",
  "tokio",
 ]
