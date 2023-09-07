@@ -4,6 +4,7 @@ mod handler_test;
 
 use std::collections::{HashMap, VecDeque};
 use std::io;
+use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
@@ -20,6 +21,7 @@ use libp2p::swarm::{
 
 use super::protocol::{RequestProtocol, RequestProtocolError, ResponseProtocol, PROTOCOL_NAME};
 use super::RequestId;
+use crate::db_executor::ReaderExecutor;
 use crate::messages::block::{GetBlocks, GetBlocksResponse};
 
 // TODO(shahak): Add a FromBehaviour event for cancelling an existing request.
@@ -59,18 +61,25 @@ type HandlerEvent<H> = ConnectionHandlerEvent<
     <H as ConnectionHandler>::Error,
 >;
 
-pub struct Handler {
+pub struct Handler<TReaderExecutor: ReaderExecutor<GetBlocksResponse> + Send + Sync + 'static> {
     substream_timeout: Duration,
+    // TODO(shahak): Remove allow dead code.
+    #[allow(dead_code)]
+    reader_executor: Arc<TReaderExecutor>,
     request_to_responses_receiver: HashMap<RequestId, UnboundedReceiver<GetBlocksResponse>>,
     pending_events: VecDeque<HandlerEvent<Self>>,
     ready_requests: VecDeque<(RequestId, GetBlocksResponse)>,
 }
 
-impl Handler {
+impl<TReaderExecutor> Handler<TReaderExecutor>
+where
+    TReaderExecutor: ReaderExecutor<GetBlocksResponse> + Send + Sync + 'static,
+{
     // TODO(shahak) If we'll add more parameters, consider creating a HandlerConfig struct.
-    pub fn new(substream_timeout: Duration) -> Self {
+    pub fn new(substream_timeout: Duration, reader_executor: Arc<TReaderExecutor>) -> Self {
         Self {
             substream_timeout,
+            reader_executor,
             request_to_responses_receiver: Default::default(),
             pending_events: Default::default(),
             ready_requests: Default::default(),
@@ -107,7 +116,10 @@ impl Handler {
     }
 }
 
-impl ConnectionHandler for Handler {
+impl<TReaderExecutor> ConnectionHandler for Handler<TReaderExecutor>
+where
+    TReaderExecutor: ReaderExecutor<GetBlocksResponse> + Send + Sync + 'static,
+{
     type FromBehaviour = NewRequestEvent;
     type ToBehaviour = RequestProgressEvent;
     type Error = RemoteDoesntSupportProtocolError;
