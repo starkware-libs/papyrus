@@ -163,15 +163,15 @@ impl From<starknet_api::transaction::InvokeTransactionV1> for InvokeTransactionV
 
 impl From<InvokeTransactionV1> for client_transaction::InvokeTransaction {
     fn from(tx: InvokeTransactionV1) -> Self {
-        Self {
+        Self::InvokeV1(client_transaction::InvokeV1Transaction {
             max_fee: tx.max_fee,
             version: tx.version,
             signature: tx.signature,
             nonce: tx.nonce,
             sender_address: tx.sender_address,
             calldata: tx.calldata,
-            r#type: client_transaction::InvokeType::default(),
-        }
+            r#type: client_transaction::InvokeV1Type::default(),
+        })
     }
 }
 
@@ -258,6 +258,9 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
                 }
                 starknet_api::transaction::InvokeTransaction::V1(tx) => {
                     Ok(Self::Invoke(InvokeTransaction::Version1(tx.into())))
+                }
+                starknet_api::transaction::InvokeTransaction::V3(_) => {
+                    Err(internal_server_error("Version 3 transactions are not supported on v0.4.0"))
                 }
             },
             starknet_api::transaction::Transaction::L1Handler(l1_handler_tx) => {

@@ -104,6 +104,7 @@ use starknet_api::transaction::{
     InvokeTransactionOutput,
     InvokeTransactionV0,
     InvokeTransactionV1,
+    InvokeTransactionV3,
     L1HandlerTransaction,
     L1HandlerTransactionOutput,
     L1ToL2Payload,
@@ -518,6 +519,7 @@ auto_impl_get_test_instance! {
     pub enum InvokeTransaction {
         V0(InvokeTransactionV0) = 0,
         V1(InvokeTransactionV1) = 1,
+        V3(InvokeTransactionV3) = 3,
     }
     pub struct InvokeTransactionV0 {
         pub max_fee: Fee,
@@ -532,6 +534,18 @@ auto_impl_get_test_instance! {
         pub nonce: Nonce,
         pub sender_address: ContractAddress,
         pub calldata: Calldata,
+    }
+    pub struct InvokeTransactionV3 {
+        pub resource_bounds: ResourceBoundsMapping,
+        pub tip: Tip,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub sender_address: ContractAddress,
+        pub calldata: Calldata,
+        pub nonce_data_availability_mode: DataAvailabilityMode,
+        pub fee_data_availability_mode: DataAvailabilityMode,
+        pub paymaster_address: PaymasterAddress,
+        pub account_deployment_data: AccountDeploymentData,
     }
     pub struct L1HandlerTransaction {
         pub version: TransactionVersion,
