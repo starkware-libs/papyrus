@@ -259,6 +259,9 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
                 starknet_api::transaction::InvokeTransaction::V1(tx) => {
                     Ok(Self::Invoke(InvokeTransaction::Version1(tx.into())))
                 }
+                starknet_api::transaction::InvokeTransaction::V3(_) => {
+                    Err(internal_server_error("Version 3 transactions are not supported on v0.4.0"))
+                }
             },
             starknet_api::transaction::Transaction::L1Handler(l1_handler_tx) => {
                 Ok(Transaction::L1Handler(l1_handler_tx))

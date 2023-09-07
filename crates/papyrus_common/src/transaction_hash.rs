@@ -17,6 +17,7 @@ use starknet_api::transaction::{
     InvokeTransaction,
     InvokeTransactionV0,
     InvokeTransactionV1,
+    InvokeTransactionV3,
     L1HandlerTransaction,
     Transaction,
     TransactionHash,
@@ -72,6 +73,7 @@ pub fn get_transaction_hash(
         Transaction::Invoke(invoke) => match invoke {
             InvokeTransaction::V0(invoke_v0) => get_invoke_transaction_v0_hash(invoke_v0, chain_id),
             InvokeTransaction::V1(invoke_v1) => get_invoke_transaction_v1_hash(invoke_v1, chain_id),
+            InvokeTransaction::V3(invoke_v3) => get_invoke_transaction_v3_hash(invoke_v3),
         },
         Transaction::L1Handler(l1_handler) => get_l1_handler_transaction_hash(l1_handler, chain_id),
     }
@@ -95,7 +97,7 @@ pub fn validate_transaction_hash(
             InvokeTransaction::V0(invoke_v0) => {
                 vec![get_deprecated_invoke_transaction_v0_hash(invoke_v0, chain_id)?]
             }
-            InvokeTransaction::V1(_) => vec![],
+            InvokeTransaction::V1(_) | InvokeTransaction::V3(_) => vec![],
         },
         Transaction::L1Handler(l1_handler) => {
             get_deprecated_l1_handler_transaction_hashes(l1_handler, chain_id)?
@@ -242,6 +244,31 @@ fn get_invoke_transaction_v1_hash(
         .chain(&transaction.max_fee.0.into())
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
         .chain(&transaction.nonce.0)
+        .get_hash(),
+    ))
+}
+
+fn get_invoke_transaction_v3_hash(
+    transaction: &InvokeTransactionV3,
+) -> Result<TransactionHash, StarknetApiError> {
+    let account_init_code_hash =
+        PedersenHashChain::new().chain_iter(transaction.account_init_code.0.iter()).get_hash();
+    let calldata_hash =
+        PedersenHashChain::new().chain_iter(transaction.calldata.0.iter()).get_hash();
+    Ok(TransactionHash(
+        PedersenHashChain::new()
+        .chain(&INVOKE)
+        .chain(&THREE) // Version
+        .chain(&StarkFelt::from(transaction.resource as u8))
+        .chain(&transaction.resource_bounds.max_amount.into())
+        .chain(&transaction.resource_bounds.max_price_per_unit.into())
+        .chain(&transaction.tip.into())
+        .chain(&StarkFelt::from(transaction.nonce_data_availability_mode))
+        .chain(&StarkFelt::from(transaction.fee_data_availability_mode))
+        .chain(transaction.paymaster_address.0.0.key())
+        .chain(&transaction.nonce.0)
+        .chain(&account_init_code_hash)
+        .chain(&calldata_hash)
         .get_hash(),
     ))
 }
