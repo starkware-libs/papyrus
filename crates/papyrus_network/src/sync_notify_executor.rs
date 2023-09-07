@@ -3,8 +3,6 @@ use futures::channel::oneshot;
 #[cfg(test)]
 use mockall::automock;
 
-use crate::BlocksRange;
-
 #[derive(thiserror::Error)]
 pub enum WriterError {}
 
@@ -15,5 +13,5 @@ pub struct WriterCommunication<Response> {
 
 #[cfg_attr(test, automock)]
 pub trait WriterExecutor<Response> {
-    fn start_writing(&self, blocks_range: BlocksRange) -> WriterCommunication<Response>;
+    fn start_writing(&self) -> WriterCommunication<Response>;
 }

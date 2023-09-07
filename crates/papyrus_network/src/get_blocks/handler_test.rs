@@ -11,14 +11,15 @@ use libp2p::swarm::{ConnectionHandler, ConnectionHandlerEvent};
 
 use super::super::RequestId;
 use super::{Handler, HandlerEvent, NewRequestEvent, RequestProgressEvent};
+use crate::db_executor::MockReaderExecutor;
 use crate::messages::block::{BlockHeader, GetBlocks, GetBlocksResponse};
 use crate::messages::common::BlockId;
 use crate::messages::proto::p2p::proto::get_blocks_response::Response;
 
-impl Unpin for Handler {}
+impl Unpin for Handler<MockReaderExecutor<Response>> {}
 
-impl Stream for Handler {
-    type Item = HandlerEvent<Handler>;
+impl Stream for Handler<MockReaderExecutor<Response>> {
+    type Item = HandlerEvent<Handler<MockReaderExecutor<Response>>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match Pin::into_inner(self).poll(cx) {
@@ -31,7 +32,7 @@ impl Stream for Handler {
 const SUBSTREAM_TIMEOUT: Duration = Duration::MAX;
 
 async fn start_request_and_validate_event(
-    handler: &mut Handler,
+    handler: &mut Handler<MockReaderExecutor<Response>>,
     request: &GetBlocks,
     request_id: RequestId,
 ) -> UnboundedSender<GetBlocksResponse> {
@@ -46,7 +47,7 @@ async fn start_request_and_validate_event(
 }
 
 async fn send_response_and_validate_event(
-    handler: &mut Handler,
+    handler: &mut Handler<MockReaderExecutor<Response>>,
     response: &GetBlocksResponse,
     request_id: RequestId,
     responses_sender: &UnboundedSender<GetBlocksResponse>,
@@ -61,7 +62,10 @@ async fn send_response_and_validate_event(
     );
 }
 
-async fn finish_request_and_validate_event(handler: &mut Handler, request_id: RequestId) {
+async fn finish_request_and_validate_event(
+    handler: &mut Handler<MockReaderExecutor<Response>>,
+    request_id: RequestId,
+) {
     handler.on_connection_event(ConnectionEvent::FullyNegotiatedOutbound(
         FullyNegotiatedOutbound { protocol: (), info: request_id },
     ));
@@ -76,7 +80,7 @@ async fn finish_request_and_validate_event(handler: &mut Handler, request_id: Re
 
 #[tokio::test]
 async fn process_request() {
-    let mut handler = Handler::new(SUBSTREAM_TIMEOUT);
+    let mut handler = Handler::<MockReaderExecutor<Response>>::new(SUBSTREAM_TIMEOUT);
 
     let request = GetBlocks::default();
     let request_id = RequestId::default();
@@ -96,7 +100,7 @@ async fn process_request() {
 
 #[tokio::test]
 async fn process_multiple_requests_simultaneously() {
-    let mut handler = Handler::new(SUBSTREAM_TIMEOUT);
+    let mut handler = Handler::<MockReaderExecutor<Response>>::new(SUBSTREAM_TIMEOUT);
 
     const N_REQUESTS: usize = 20;
     let request_ids = (0..N_REQUESTS).map(RequestId).collect::<Vec<_>>();

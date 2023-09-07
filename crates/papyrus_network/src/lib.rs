@@ -19,7 +19,7 @@ pub enum BlockID {
     Number(BlockNumber),
 }
 
-pub struct BlocksRange {
+pub struct BlockQuery {
     pub start: BlockID,
     pub direction: Direction,
     pub limit: u64,
@@ -27,4 +27,4 @@ pub struct BlocksRange {
     pub step: u64,
 }
 
-// TODO(shahak): Implement conversion from GetBlocks to BlocksRange.
+// TODO(shahak): Implement conversion from GetBlocks to BlockQuery.

@@ -3,7 +3,7 @@ use futures::channel::oneshot;
 #[cfg(test)]
 use mockall::automock;
 
-use crate::BlocksRange;
+use crate::BlockQuery;
 
 #[derive(thiserror::Error)]
 pub enum ReaderError {}
@@ -19,5 +19,5 @@ pub struct ReaderCommunication<Response> {
 
 #[cfg_attr(test, automock)]
 pub trait ReaderExecutor<Response> {
-    fn start_reading(&self, blocks_range: BlocksRange) -> ReaderCommunication<Response>;
+    fn start_reading(&self, blocks_range: BlockQuery) -> ReaderCommunication<Response>;
 }

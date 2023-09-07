@@ -19,7 +19,8 @@ use libp2p::swarm::{
 };
 
 use super::protocol::{RequestProtocol, RequestProtocolError, ResponseProtocol, PROTOCOL_NAME};
-use super::RequestId;
+use super::{RequestId, Response};
+use crate::db_executor::ReaderExecutor;
 use crate::messages::block::{GetBlocks, GetBlocksResponse};
 
 // TODO(shahak): Add a FromBehaviour event for cancelling an existing request.
@@ -59,14 +60,17 @@ type HandlerEvent<H> = ConnectionHandlerEvent<
     <H as ConnectionHandler>::Error,
 >;
 
-pub struct Handler {
+pub struct Handler<TReaderExecutor: ReaderExecutor<Response> + Send + Sync + 'static> {
     substream_timeout: Duration,
     request_to_responses_receiver: HashMap<RequestId, UnboundedReceiver<GetBlocksResponse>>,
     pending_events: VecDeque<HandlerEvent<Self>>,
     ready_requests: VecDeque<(RequestId, GetBlocksResponse)>,
 }
 
-impl Handler {
+impl<TReaderExecutor> Handler<TReaderExecutor>
+where
+    TReaderExecutor: ReaderExecutor<Response> + Send + Sync + 'static,
+{
     // TODO(shahak) If we'll add more parameters, consider creating a HandlerConfig struct.
     pub fn new(substream_timeout: Duration) -> Self {
         Self {
@@ -107,7 +111,10 @@ impl Handler {
     }
 }
 
-impl ConnectionHandler for Handler {
+impl<TReaderExecutor> ConnectionHandler for Handler<TReaderExecutor>
+where
+    TReaderExecutor: ReaderExecutor<Response> + Send + Sync + 'static,
+{
     type FromBehaviour = NewRequestEvent;
     type ToBehaviour = RequestProgressEvent;
     type Error = RemoteDoesntSupportProtocolError;
