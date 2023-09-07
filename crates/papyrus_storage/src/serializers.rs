@@ -83,6 +83,7 @@ use starknet_api::transaction::{
     InvokeTransaction,
     InvokeTransactionV0,
     InvokeTransactionV1,
+    InvokeTransactionV3,
     L1HandlerTransaction,
     L1ToL2Payload,
     L2ToL1Payload,
@@ -281,6 +282,7 @@ auto_storage_serde! {
     pub enum InvokeTransaction {
         V0(InvokeTransactionV0) = 0,
         V1(InvokeTransactionV1) = 1,
+        V3(InvokeTransactionV3) = 2,
     }
     pub struct InvokeTransactionV0 {
         pub max_fee: Fee,
@@ -295,6 +297,18 @@ auto_storage_serde! {
         pub nonce: Nonce,
         pub sender_address: ContractAddress,
         pub calldata: Calldata,
+    }
+    pub struct InvokeTransactionV3 {
+        pub resource_bounds: ResourceBoundsMapping,
+        pub tip: Tip,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub sender_address: ContractAddress,
+        pub calldata: Calldata,
+        pub nonce_data_availability_mode: DataAvailabilityMode,
+        pub fee_data_availability_mode: DataAvailabilityMode,
+        pub paymaster_address: PaymasterAddress,
+        pub account_deployment_data: AccountDeploymentData,
     }
     pub struct L1ToL2Payload(pub Vec<StarkFelt>);
     pub struct L2ToL1Payload(pub Vec<StarkFelt>);
