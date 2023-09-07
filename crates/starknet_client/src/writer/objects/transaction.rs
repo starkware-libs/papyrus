@@ -119,7 +119,7 @@ pub enum DeployAccountTransaction {
 /// HTTP method.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
-pub struct InvokeTransaction {
+pub struct InvokeV1Transaction {
     pub calldata: Calldata,
     pub sender_address: ContractAddress,
     pub nonce: Nonce,
@@ -129,6 +129,37 @@ pub struct InvokeTransaction {
     pub r#type: InvokeType,
 }
 
+/// An invoke account transaction that can be added to Starknet through the Starknet gateway.
+/// The invoke is a V3 transaction.
+/// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
+/// HTTP method.
+// TODO(Shahak, 01/11/2023): Add tests for invoke v3.
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct InvokeV3Transaction {
+    pub resource_bounds: ResourceBoundsMapping,
+    pub tip: Tip,
+    pub calldata: Calldata,
+    pub sender_address: ContractAddress,
+    pub nonce: Nonce,
+    pub signature: TransactionSignature,
+    pub nonce_data_availability_mode: DataAvailabilityMode,
+    pub fee_data_availability_mode: DataAvailabilityMode,
+    pub paymaster_data: PaymasterData,
+    pub account_deployment_data: AccountDeploymentData,
+    pub version: TransactionVersion,
+    pub r#type: InvokeType,
+}
+
+/// An invoke transaction that can be added to Starknet through the Starknet gateway.
+/// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
+/// HTTP method.
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(untagged)]
+pub enum InvokeTransaction {
+    InvokeV1(InvokeV1Transaction),
+    InvokeV3(InvokeV3Transaction),
+}
 /// A declare transaction of a Cairo-v0 (deprecated) contract class that can be added to Starknet
 /// through the Starknet gateway.
 /// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
