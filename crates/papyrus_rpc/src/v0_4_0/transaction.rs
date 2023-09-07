@@ -197,19 +197,6 @@ pub struct InvokeTransactionV0 {
     pub calldata: Calldata,
 }
 
-impl From<starknet_api::transaction::InvokeTransactionV0> for InvokeTransactionV0 {
-    fn from(tx: starknet_api::transaction::InvokeTransactionV0) -> Self {
-        Self {
-            max_fee: tx.max_fee,
-            version: *TX_V0,
-            signature: tx.signature,
-            contract_address: tx.contract_address,
-            entry_point_selector: tx.entry_point_selector,
-            calldata: tx.calldata,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct InvokeTransactionV1 {
     pub max_fee: Fee,
@@ -220,22 +207,9 @@ pub struct InvokeTransactionV1 {
     pub calldata: Calldata,
 }
 
-impl From<starknet_api::transaction::InvokeTransactionV1> for InvokeTransactionV1 {
-    fn from(tx: starknet_api::transaction::InvokeTransactionV1) -> Self {
-        Self {
-            max_fee: tx.max_fee,
-            version: *TX_V1,
-            signature: tx.signature,
-            nonce: tx.nonce,
-            sender_address: tx.sender_address,
-            calldata: tx.calldata,
-        }
-    }
-}
-
 impl From<InvokeTransactionV1> for client_transaction::InvokeTransaction {
     fn from(tx: InvokeTransactionV1) -> Self {
-        Self {
+        Self::InvokeV1(client_transaction::InvokeV1Transaction {
             max_fee: tx.max_fee,
             version: tx.version,
             signature: tx.signature,
@@ -243,7 +217,7 @@ impl From<InvokeTransactionV1> for client_transaction::InvokeTransaction {
             sender_address: tx.sender_address,
             calldata: tx.calldata,
             r#type: client_transaction::InvokeType::default(),
-        }
+        })
     }
 }
 
@@ -252,6 +226,52 @@ impl From<InvokeTransactionV1> for client_transaction::InvokeTransaction {
 pub enum InvokeTransaction {
     Version0(InvokeTransactionV0),
     Version1(InvokeTransactionV1),
+}
+
+// TODO(shahak, 01/11/2023): Add test that v3 transactions cause error.
+impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction {
+    type Error = ErrorObjectOwned;
+
+    fn try_from(tx: starknet_api::transaction::InvokeTransaction) -> Result<Self, Self::Error> {
+        match tx {
+            starknet_api::transaction::InvokeTransaction::V0(
+                starknet_api::transaction::InvokeTransactionV0 {
+                    max_fee,
+                    signature,
+                    contract_address,
+                    entry_point_selector,
+                    calldata,
+                },
+            ) => Ok(Self::Version0(InvokeTransactionV0 {
+                max_fee,
+                version: *TX_V0,
+                signature,
+                contract_address,
+                entry_point_selector,
+                calldata,
+            })),
+            starknet_api::transaction::InvokeTransaction::V1(
+                starknet_api::transaction::InvokeTransactionV1 {
+                    max_fee,
+                    signature,
+                    nonce,
+                    sender_address,
+                    calldata,
+                },
+            ) => Ok(Self::Version1(InvokeTransactionV1 {
+                max_fee,
+                version: *TX_V1,
+                signature,
+                nonce,
+                sender_address,
+                calldata,
+            })),
+            starknet_api::transaction::InvokeTransaction::V3(_) => Err(internal_server_error(
+                "The requested transaction is an invoke of version 3, which is not supported on \
+                 v0.4.0.",
+            )),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -327,12 +347,11 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
                 }
             }
             starknet_api::transaction::Transaction::Invoke(invoke_tx) => match invoke_tx {
-                starknet_api::transaction::InvokeTransaction::V0(tx) => {
-                    Ok(Self::Invoke(InvokeTransaction::Version0(tx.into())))
-                }
-                starknet_api::transaction::InvokeTransaction::V1(tx) => {
-                    Ok(Self::Invoke(InvokeTransaction::Version1(tx.into())))
-                }
+                starknet_api::transaction::InvokeTransaction::V3(_) => Err(internal_server_error(
+                    "The requested transaction is a invoke of version 3, which is not supported \
+                     on v0.4.0.",
+                )),
+                _ => Ok(Self::Invoke(invoke_tx.try_into()?)),
             },
             starknet_api::transaction::Transaction::L1Handler(l1_handler_tx) => {
                 Ok(Transaction::L1Handler(l1_handler_tx))
