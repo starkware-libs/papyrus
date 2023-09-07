@@ -17,6 +17,7 @@ use starknet_api::transaction::{
     InvokeTransaction,
     InvokeTransactionV0,
     InvokeTransactionV1,
+    InvokeTransactionV3,
     L1HandlerTransaction,
     Resource,
     Transaction,
@@ -75,6 +76,7 @@ pub fn get_transaction_hash(
         Transaction::Invoke(invoke) => match invoke {
             InvokeTransaction::V0(invoke_v0) => get_invoke_transaction_v0_hash(invoke_v0, chain_id),
             InvokeTransaction::V1(invoke_v1) => get_invoke_transaction_v1_hash(invoke_v1, chain_id),
+            InvokeTransaction::V3(invoke_v3) => get_invoke_transaction_v3_hash(invoke_v3, chain_id),
         },
         Transaction::L1Handler(l1_handler) => get_l1_handler_transaction_hash(l1_handler, chain_id),
     }
@@ -98,7 +100,7 @@ pub fn validate_transaction_hash(
             InvokeTransaction::V0(invoke_v0) => {
                 vec![get_deprecated_invoke_transaction_v0_hash(invoke_v0, chain_id)?]
             }
-            InvokeTransaction::V1(_) => vec![],
+            InvokeTransaction::V1(_) | InvokeTransaction::V3(_) => vec![],
         },
         Transaction::L1Handler(l1_handler) => {
             get_deprecated_l1_handler_transaction_hashes(l1_handler, chain_id)?
@@ -245,6 +247,63 @@ fn get_invoke_transaction_v1_hash(
         .chain(&transaction.max_fee.0.into())
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
         .chain(&transaction.nonce.0)
+        .get_hash(),
+    ))
+}
+
+fn get_invoke_transaction_v3_hash(
+    transaction: &InvokeTransactionV3,
+    chain_id: &ChainId,
+) -> Result<TransactionHash, StarknetApiError> {
+    let l1_gas_max_amount = transaction
+        .resource_bounds
+        .0
+        .get(&Resource::L1Gas)
+        .map_or(StarkFelt::ZERO, |resource_bounds| StarkFelt::from(resource_bounds.max_amount));
+    let l1_gas_max_price_per_unit = transaction
+        .resource_bounds
+        .0
+        .get(&Resource::L1Gas)
+        .map_or(StarkFelt::ZERO, |resource_bounds| {
+            StarkFelt::from(resource_bounds.max_price_per_unit)
+        });
+    let l2_gas_max_amount = transaction
+        .resource_bounds
+        .0
+        .get(&Resource::L2Gas)
+        .map_or(StarkFelt::ZERO, |resource_bounds| StarkFelt::from(resource_bounds.max_amount));
+    let l2_gas_max_price_per_unit = transaction
+        .resource_bounds
+        .0
+        .get(&Resource::L2Gas)
+        .map_or(StarkFelt::ZERO, |resource_bounds| {
+            StarkFelt::from(resource_bounds.max_price_per_unit)
+        });
+    let tip_resource_bounds_hash = PedersenHashChain::new()
+        .chain(&transaction.tip.into())
+        .chain(&l1_gas_max_amount)
+        .chain(&l1_gas_max_price_per_unit)
+        .chain(&l2_gas_max_amount)
+        .chain(&l2_gas_max_price_per_unit)
+        .get_hash();
+    let account_deployment_data_hash = PedersenHashChain::new()
+        .chain_iter(transaction.account_deployment_data.0.iter())
+        .get_hash();
+    let calldata_hash =
+        PedersenHashChain::new().chain_iter(transaction.calldata.0.iter()).get_hash();
+    Ok(TransactionHash(
+        PedersenHashChain::new()
+        .chain(&INVOKE)
+        .chain(&THREE) // Version
+        .chain(transaction.sender_address.0.key())
+        .chain(&tip_resource_bounds_hash)
+        .chain(transaction.paymaster_address.0.0.key())
+        .chain(&ascii_as_felt(chain_id.0.as_str())?)
+        .chain(&transaction.nonce.0)
+        .chain(&StarkFelt::from(transaction.nonce_data_availability_mode))
+        .chain(&StarkFelt::from(transaction.fee_data_availability_mode))
+        .chain(&account_deployment_data_hash)
+        .chain(&calldata_hash)
         .get_hash(),
     ))
 }
