@@ -4683,6 +4683,7 @@ name = "papyrus_network"
 version = "0.0.4"
 dependencies = [
  "assert_matches",
+ "async-trait",
  "bytes",
  "derive_more",
  "futures",
