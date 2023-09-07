@@ -617,7 +617,7 @@ dependencies = [
 [[package]]
 name = "blockifier"
 version = "0.2.0-rc0"
-source = "git+https://github.com/starkware-libs/blockifier?rev=9655e3d57a7a9bdbbe3844e8a9a1874d720f1353#9655e3d57a7a9bdbbe3844e8a9a1874d720f1353"
+source = "git+https://github.com/starkware-libs/blockifier?rev=6cac0e82f68e50738174f674edad2fc15bc9b521#6cac0e82f68e50738174f674edad2fc15bc9b521"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -6015,7 +6015,7 @@ dependencies = [
 [[package]]
 name = "starknet_api"
 version = "0.4.1"
-source = "git+https://github.com/starkware-libs/starknet-api?rev=39ca3858e1146b8015c017bf0fc5618417ab8304#39ca3858e1146b8015c017bf0fc5618417ab8304"
+source = "git+https://github.com/starkware-libs/starknet-api?rev=1efe32df11bad0a028fbc2be29b6f9b400575e97#1efe32df11bad0a028fbc2be29b6f9b400575e97"
 dependencies = [
  "cairo-lang-starknet",
  "derive_more",
