@@ -4703,10 +4703,12 @@ dependencies = [
  "derive_more",
  "futures",
  "libp2p",
+ "mockall",
  "pretty_assertions",
  "prost",
  "prost-build",
  "prost-types",
+ "starknet_api",
  "thiserror",
  "tokio",
 ]
