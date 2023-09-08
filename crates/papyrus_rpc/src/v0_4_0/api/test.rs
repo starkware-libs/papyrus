@@ -1669,7 +1669,7 @@ async fn serialize_returns_valid_json() {
             block_number: BlockNumber(1),
             ..BlockHeader::default()
         },
-        body: get_test_body(5, Some(5), None, None),
+        aaaa,
     };
     let mut state_diff = StateDiff::get_test_instance(&mut rng);
     // In the test instance both declared_classes and deprecated_declared_classes have an entry
