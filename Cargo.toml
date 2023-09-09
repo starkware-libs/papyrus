@@ -100,5 +100,5 @@ url = "2.2.2"
 validator = "0.12"
 
 [patch.crates-io]
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "06116f4e212215da253da865eb5ae778ace8b9cf" }
-blockifier = { git = "https://github.com/starkware-libs/blockifier", rev = "6cac0e82f68e50738174f674edad2fc15bc9b521" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "4788bccf34fe35bdc64e80a1be9321ec780bd4de" }
+blockifier = { git = "https://github.com/starkware-libs/blockifier", rev = "3f5568ea1e8d87b1ee12f914f50d8312a56dcccf" }
