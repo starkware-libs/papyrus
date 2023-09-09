@@ -15,7 +15,7 @@ use starknet_api::core::{
     Nonce,
 };
 use starknet_api::data_availability::DataAvailabilityMode;
-use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::hash::StarkHash;
 use starknet_api::transaction::{
     AccountDeploymentData,
     Calldata,
@@ -45,10 +45,10 @@ use starknet_api::transaction::{
 use crate::reader::ReaderClientError;
 
 lazy_static! {
-    static ref TX_V0: TransactionVersion = TransactionVersion(StarkFelt::from(0u128));
-    static ref TX_V1: TransactionVersion = TransactionVersion(StarkFelt::from(1u128));
-    static ref TX_V2: TransactionVersion = TransactionVersion(StarkFelt::from(2u128));
-    static ref TX_V3: TransactionVersion = TransactionVersion(StarkFelt::from(3u128));
+    static ref TX_V0: TransactionVersion = TransactionVersion::ZERO;
+    static ref TX_V1: TransactionVersion = TransactionVersion::ONE;
+    static ref TX_V2: TransactionVersion = TransactionVersion::TWO;
+    static ref TX_V3: TransactionVersion = TransactionVersion::THREE;
 }
 
 // TODO(dan): consider extracting common fields out (version, hash, type).

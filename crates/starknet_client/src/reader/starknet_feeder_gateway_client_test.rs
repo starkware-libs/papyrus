@@ -99,7 +99,7 @@ async fn declare_tx_serde() {
         sender_address: ContractAddress(patricia_key!("0x1")),
         nonce: Nonce(stark_felt!("0x0")),
         max_fee: Some(Fee(0)),
-        version: TransactionVersion(stark_felt!("0x1")),
+        version: TransactionVersion::ONE,
         resource: None,
         resource_bounds: None,
         tip: None,
