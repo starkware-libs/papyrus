@@ -4,7 +4,6 @@ mod transaction_test;
 
 use std::collections::HashMap;
 
-use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{
     ClassHash,
@@ -15,7 +14,7 @@ use starknet_api::core::{
     Nonce,
 };
 use starknet_api::data_availability::DataAvailabilityMode;
-use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::hash::StarkHash;
 use starknet_api::transaction::{
     AccountDeploymentData,
     Calldata,
@@ -42,13 +41,6 @@ use starknet_api::transaction::{
 };
 
 use crate::reader::ReaderClientError;
-
-lazy_static! {
-    static ref TX_V0: TransactionVersion = TransactionVersion(StarkFelt::from(0u128));
-    static ref TX_V1: TransactionVersion = TransactionVersion(StarkFelt::from(1u128));
-    static ref TX_V2: TransactionVersion = TransactionVersion(StarkFelt::from(2u128));
-    static ref TX_V3: TransactionVersion = TransactionVersion(StarkFelt::from(3u128));
-}
 
 // TODO(dan): consider extracting common fields out (version, hash, type).
 #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
@@ -167,10 +159,10 @@ impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::Decl
 
     fn try_from(declare_tx: IntermediateDeclareTransaction) -> Result<Self, ReaderClientError> {
         match declare_tx.version {
-            v if v == *TX_V0 => Ok(Self::V0(declare_tx.try_into()?)),
-            v if v == *TX_V1 => Ok(Self::V1(declare_tx.try_into()?)),
-            v if v == *TX_V2 => Ok(Self::V2(declare_tx.try_into()?)),
-            v if v == *TX_V3 => Ok(Self::V3(declare_tx.try_into()?)),
+            TransactionVersion::ZERO => Ok(Self::V0(declare_tx.try_into()?)),
+            TransactionVersion::ONE => Ok(Self::V1(declare_tx.try_into()?)),
+            TransactionVersion::TWO => Ok(Self::V2(declare_tx.try_into()?)),
+            TransactionVersion::THREE => Ok(Self::V3(declare_tx.try_into()?)),
             _ => Err(ReaderClientError::BadTransaction {
                 tx_hash: declare_tx.transaction_hash,
                 msg: format!("Declare version {:?} is not supported.", declare_tx.version),
@@ -321,10 +313,10 @@ impl TryFrom<IntermediateDeployAccountTransaction>
         deploy_account_tx: IntermediateDeployAccountTransaction,
     ) -> Result<Self, ReaderClientError> {
         match deploy_account_tx.version {
-            v if v == *TX_V1 => Ok(Self::V1(deploy_account_tx.try_into()?)),
+            TransactionVersion::ONE => Ok(Self::V1(deploy_account_tx.try_into()?)),
             // Since v3 transactions, all transaction types are aligned with respect to the version,
             // v2 was skipped in the Deploy Account type.
-            v if v == *TX_V3 => Ok(Self::V3(deploy_account_tx.try_into()?)),
+            TransactionVersion::THREE => Ok(Self::V3(deploy_account_tx.try_into()?)),
             _ => Err(ReaderClientError::BadTransaction {
                 tx_hash: deploy_account_tx.transaction_hash,
                 msg: format!(
@@ -434,9 +426,11 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
 
     fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ReaderClientError> {
         match invoke_tx.version {
-            v if v == *TX_V0 => Ok(Self::V0(invoke_tx.try_into()?)),
-            v if v == *TX_V1 => Ok(Self::V1(invoke_tx.try_into()?)),
-            v if v == *TX_V3 => Ok(Self::V3(invoke_tx.try_into()?)),
+            TransactionVersion::ZERO => Ok(Self::V0(invoke_tx.try_into()?)),
+            TransactionVersion::ONE => Ok(Self::V1(invoke_tx.try_into()?)),
+            // Since v3 transactions, all transaction types are aligned with respect to the version,
+            // v2 was skipped in the Invoke type.
+            TransactionVersion::THREE => Ok(Self::V3(invoke_tx.try_into()?)),
             _ => Err(ReaderClientError::BadTransaction {
                 tx_hash: invoke_tx.transaction_hash,
                 msg: format!("Invoke version {:?} is not supported.", invoke_tx.version),
