@@ -20,7 +20,6 @@ use starknet_api::deprecated_contract_class::{
     EntryPoint as DeprecatedEntryPoint,
     EntryPointType as DeprecatedEntryPointType,
 };
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::{EntryPoint, EntryPointType};
 use starknet_api::transaction::{
     AccountDeploymentData,
@@ -298,7 +297,7 @@ impl From<starknet_api::transaction::DeployAccountTransaction> for DeployAccount
                     nonce: tx.nonce,
                     max_fee: tx.max_fee,
                     signature: tx.signature,
-                    version: TransactionVersion(StarkFelt::from(1_u8)),
+                    version: TransactionVersion::ONE,
                     r#type: DeployAccountV1Type::default(),
                 })
             }
@@ -314,7 +313,7 @@ impl From<starknet_api::transaction::DeployAccountTransaction> for DeployAccount
                     nonce_data_availability_mode: tx.nonce_data_availability_mode,
                     fee_data_availability_mode: tx.fee_data_availability_mode,
                     paymaster_address: tx.paymaster_address,
-                    version: TransactionVersion(StarkFelt::from(3_u8)),
+                    version: TransactionVersion::THREE,
                     r#type: DeployAccountV3Type::default(),
                 })
             }

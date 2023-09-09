@@ -16,7 +16,6 @@ use starknet_api::core::{
     EntryPointSelector,
     Nonce,
 };
-use starknet_api::hash::StarkFelt;
 use starknet_api::transaction::{
     Calldata,
     DeclareTransactionOutput,
@@ -38,13 +37,13 @@ use crate::v0_3_0::error::JsonRpcError;
 
 // TODO(yair): Make these functions regular consts.
 fn tx_v0() -> TransactionVersion {
-    TransactionVersion(StarkFelt::try_from("0x0").expect("Unable to convert 0x0 to StarkFelt."))
+    TransactionVersion::ZERO
 }
 fn tx_v1() -> TransactionVersion {
-    TransactionVersion(StarkFelt::try_from("0x1").expect("Unable to convert 0x1 to StarkFelt."))
+    TransactionVersion::ONE
 }
 fn tx_v2() -> TransactionVersion {
-    TransactionVersion(StarkFelt::try_from("0x2").expect("Unable to convert 0x2 to StarkFelt."))
+    TransactionVersion::TWO
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]

@@ -17,7 +17,6 @@ use starknet_api::core::{
     EntryPointSelector,
     Nonce,
 };
-use starknet_api::hash::StarkFelt;
 #[cfg(test)]
 use starknet_api::transaction::TransactionExecutionStatus;
 use starknet_api::transaction::{
@@ -40,15 +39,9 @@ use crate::internal_server_error;
 use crate::v0_4_0::error::BLOCK_NOT_FOUND;
 
 lazy_static! {
-    static ref TX_V0: TransactionVersion = TransactionVersion(
-        StarkFelt::try_from("0x0").expect("Unable to convert 0x0 to StarkFelt.")
-    );
-    static ref TX_V1: TransactionVersion = TransactionVersion(
-        StarkFelt::try_from("0x1").expect("Unable to convert 0x1 to StarkFelt.")
-    );
-    static ref TX_V2: TransactionVersion = TransactionVersion(
-        StarkFelt::try_from("0x2").expect("Unable to convert 0x2 to StarkFelt.")
-    );
+    static ref TX_V0: TransactionVersion = TransactionVersion::ZERO;
+    static ref TX_V1: TransactionVersion = TransactionVersion::ONE;
+    static ref TX_V2: TransactionVersion = TransactionVersion::TWO;
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
