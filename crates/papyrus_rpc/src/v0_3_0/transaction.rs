@@ -16,7 +16,6 @@ use starknet_api::core::{
     EntryPointSelector,
     Nonce,
 };
-use starknet_api::hash::StarkFelt;
 use starknet_api::transaction::{
     Calldata,
     ContractAddressSalt,
@@ -35,17 +34,6 @@ use starknet_api::transaction::{
 
 use crate::internal_server_error;
 use crate::v0_3_0::error::JsonRpcError;
-
-// TODO(yair): Make these functions regular consts.
-fn tx_v0() -> TransactionVersion {
-    TransactionVersion(StarkFelt::try_from("0x0").expect("Unable to convert 0x0 to StarkFelt."))
-}
-fn tx_v1() -> TransactionVersion {
-    TransactionVersion(StarkFelt::try_from("0x1").expect("Unable to convert 0x1 to StarkFelt."))
-}
-fn tx_v2() -> TransactionVersion {
-    TransactionVersion(StarkFelt::try_from("0x2").expect("Unable to convert 0x2 to StarkFelt."))
-}
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(untagged)]
@@ -83,7 +71,7 @@ impl From<starknet_api::transaction::DeclareTransactionV2> for DeclareTransactio
             sender_address: tx.sender_address,
             nonce: tx.nonce,
             max_fee: tx.max_fee,
-            version: tx_v2(),
+            version: TransactionVersion::TWO,
             signature: tx.signature,
         }
     }
@@ -103,7 +91,7 @@ where
     D: Deserializer<'de>,
 {
     let v0v1: DeclareTransactionV0V1 = Deserialize::deserialize(deserializer)?;
-    if v0v1.version == tx_v0() {
+    if v0v1.version == TransactionVersion::ZERO {
         Ok(v0v1)
     } else {
         Err(serde::de::Error::custom("Invalid version value"))
@@ -145,7 +133,7 @@ impl TryFrom<starknet_api::transaction::DeployAccountTransaction> for DeployAcco
                 class_hash,
                 contract_address_salt,
                 constructor_calldata,
-                version: tx_v1(),
+                version: TransactionVersion::ONE,
             })),
             starknet_api::transaction::DeployAccountTransaction::V3(_) => {
                 Err(internal_server_error(
@@ -206,7 +194,7 @@ impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction
                 },
             ) => Ok(Self::Version0(InvokeTransactionV0 {
                 max_fee,
-                version: tx_v0(),
+                version: TransactionVersion::ZERO,
                 signature,
                 contract_address,
                 entry_point_selector,
@@ -222,7 +210,7 @@ impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction
                 },
             ) => Ok(Self::Version1(InvokeTransactionV1 {
                 max_fee,
-                version: tx_v1(),
+                version: TransactionVersion::ONE,
                 signature,
                 nonce,
                 sender_address,
@@ -272,7 +260,7 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
                         sender_address: tx.sender_address,
                         nonce: tx.nonce,
                         max_fee: tx.max_fee,
-                        version: tx_v0(),
+                        version: TransactionVersion::ZERO,
                         signature: tx.signature,
                     })))
                 }
@@ -282,7 +270,7 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
                         sender_address: tx.sender_address,
                         nonce: tx.nonce,
                         max_fee: tx.max_fee,
-                        version: tx_v1(),
+                        version: TransactionVersion::ONE,
                         signature: tx.signature,
                     })))
                 }

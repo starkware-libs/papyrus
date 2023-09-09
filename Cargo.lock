@@ -6043,7 +6043,6 @@ dependencies = [
  "enum-iterator",
  "http",
  "indexmap 1.9.3",
- "lazy_static",
  "mockall",
  "mockito",
  "os_info",

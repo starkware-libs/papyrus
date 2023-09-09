@@ -21,7 +21,6 @@ cairo-lang-starknet.workspace = true
 enum-iterator = { workspace = true, optional = true }
 http.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
-lazy_static.workspace = true
 mockall = { workspace = true, optional = true }
 os_info.workspace = true
 papyrus_config = { path = "../papyrus_config", version = "0.0.5" }
