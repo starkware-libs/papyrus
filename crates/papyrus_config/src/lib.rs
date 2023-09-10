@@ -14,7 +14,7 @@
 //! use clap::Command;
 //! use papyrus_config::dumping::{ser_param, SerializeConfig};
 //! use papyrus_config::loading::load_and_process_config;
-//! use papyrus_config::{ParamPath, SerializedParam};
+//! use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 //! use serde::{Deserialize, Serialize};
 //! use tempfile::TempDir;
 //!
@@ -25,7 +25,12 @@
 //!
 //! impl SerializeConfig for ConfigExample {
 //!     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
-//!         BTreeMap::from([ser_param("key", &self.key, "This is key description.")])
+//!         BTreeMap::from([ser_param(
+//!             "key",
+//!             &self.key,
+//!             "This is key description.",
+//!             ParamPrivacyInput::Public,
+//!         )])
 //!     }
 //! }
 //!
@@ -61,6 +66,35 @@ pub mod converters;
 pub mod dumping;
 pub mod loading;
 pub mod validators;
+
+/// The privacy level of a config parameter, that received as input from the configs.
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub enum ParamPrivacyInput {
+    /// The field is visible only by a secret.
+    Private,
+    /// The field is visible only to node's users.
+    Public,
+}
+
+/// The privacy level of a config parameter.
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+enum ParamPrivacy {
+    /// The field is visible only by a secret.
+    Private,
+    /// The field is visible only to node's users.
+    Public,
+    /// The field is not a part of the final config.
+    TemporaryValue,
+}
+
+impl From<ParamPrivacyInput> for ParamPrivacy {
+    fn from(user_param_privacy: ParamPrivacyInput) -> Self {
+        match user_param_privacy {
+            ParamPrivacyInput::Private => ParamPrivacy::Private,
+            ParamPrivacyInput::Public => ParamPrivacy::Public,
+        }
+    }
+}
 
 /// A serialized content of a configuration parameter.
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
@@ -98,6 +132,7 @@ pub struct SerializedParam {
     /// The content of the parameter.
     #[serde(flatten)]
     pub content: SerializedContent,
+    pub(crate) privacy: ParamPrivacy,
 }
 
 /// A serialized type of a configuration parameter.
