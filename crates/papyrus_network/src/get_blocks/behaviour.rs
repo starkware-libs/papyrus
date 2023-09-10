@@ -21,66 +21,73 @@ use libp2p::swarm::{
     ToSwarm,
 };
 use libp2p::{Multiaddr, PeerId};
+use prost::Message;
 
-use super::handler::{Handler, NewRequestEvent};
-use super::RequestId;
-use crate::messages::block::GetBlocks;
+use super::handler::{Handler, NewQueryEvent};
+use super::{InboundSessionId, OutboundSessionId};
 
 #[derive(Debug)]
-pub enum Event {
-    // TODO(shahak): Implement.
+pub enum Event<Query: Message, Data: Message> {
+    NewInboundQuery { query: Query, inbound_session_id: InboundSessionId },
+    RecievedData { data: Data, outbound_session_id: OutboundSessionId },
 }
 
-pub struct Behaviour {
+pub struct Behaviour<Query: Message + Clone, Data: Message> {
     substream_timeout: Duration,
-    pending_events: VecDeque<ToSwarm<Event, NewRequestEvent>>,
-    pending_requests: DefaultHashMap<PeerId, Vec<(GetBlocks, RequestId)>>,
+    pending_events: VecDeque<ToSwarm<Event<Query, Data>, NewQueryEvent<Query>>>,
+    pending_queries: DefaultHashMap<PeerId, Vec<(Query, OutboundSessionId)>>,
     connected_peers: HashSet<PeerId>,
-    next_request_id: RequestId,
+    next_outbound_session_id: OutboundSessionId,
 }
 
-impl Behaviour {
+impl<Query: Message + Clone, Data: Message> Behaviour<Query, Data> {
     pub fn new(substream_timeout: Duration) -> Self {
         Self {
             substream_timeout,
             pending_events: Default::default(),
-            pending_requests: Default::default(),
+            pending_queries: Default::default(),
             connected_peers: Default::default(),
-            next_request_id: Default::default(),
+            next_outbound_session_id: Default::default(),
         }
     }
 
-    pub fn send_request(&mut self, request: GetBlocks, peer_id: PeerId) -> RequestId {
-        let request_id = self.next_request_id;
-        self.next_request_id.0 += 1;
+    pub fn send_query(&mut self, query: Query, peer_id: PeerId) -> OutboundSessionId {
+        let outbound_session_id = self.next_outbound_session_id;
+        self.next_outbound_session_id.value += 1;
         if self.connected_peers.contains(&peer_id) {
-            self.send_request_to_handler(peer_id, request, request_id);
-            return request_id;
+            self.send_query_to_handler(peer_id, query, outbound_session_id);
+            return outbound_session_id;
         }
         self.pending_events.push_back(ToSwarm::Dial {
             opts: DialOpts::peer_id(peer_id).condition(PeerCondition::Disconnected).build(),
         });
-        self.pending_requests.get_mut(peer_id).push((request, request_id));
-        request_id
+        self.pending_queries.get_mut(peer_id).push((query, outbound_session_id));
+        outbound_session_id
     }
 
-    fn send_request_to_handler(
+    pub fn send_data(&mut self, _data: Data, _inbound_session_id: InboundSessionId) {
+        unimplemented!();
+    }
+
+    fn send_query_to_handler(
         &mut self,
         peer_id: PeerId,
-        request: GetBlocks,
-        request_id: RequestId,
+        query: Query,
+        outbound_session_id: OutboundSessionId,
     ) {
         self.pending_events.push_back(ToSwarm::NotifyHandler {
             peer_id,
             handler: NotifyHandler::Any,
-            event: NewRequestEvent { request, request_id },
+            event: NewQueryEvent { query, outbound_session_id },
         });
     }
 }
 
-impl NetworkBehaviour for Behaviour {
-    type ConnectionHandler = Handler;
-    type ToSwarm = Event;
+impl<Query: Message + 'static + Clone, Data: Message + 'static + Default> NetworkBehaviour
+    for Behaviour<Query, Data>
+{
+    type ConnectionHandler = Handler<Query, Data>;
+    type ToSwarm = Event<Query, Data>;
 
     fn handle_established_inbound_connection(
         &mut self,
@@ -106,9 +113,9 @@ impl NetworkBehaviour for Behaviour {
         match event {
             FromSwarm::ConnectionEstablished(connection_established) => {
                 let ConnectionEstablished { peer_id, .. } = connection_established;
-                if let Some(requests) = self.pending_requests.remove(&peer_id) {
-                    for (request, request_id) in requests.into_iter() {
-                        self.send_request_to_handler(peer_id, request, request_id);
+                if let Some(queries) = self.pending_queries.remove(&peer_id) {
+                    for (query, outbound_session_id) in queries.into_iter() {
+                        self.send_query_to_handler(peer_id, query, outbound_session_id);
                     }
                 }
             }
