@@ -144,7 +144,8 @@ async fn run(test_env_data: TestEnvData) {
     join!(
         test_get_block(&starknet_client, test_env_data.get_blocks),
         test_get_state_update(&starknet_client, test_env_data.get_state_updates),
-        test_class_hash(&starknet_client, test_env_data.class_hashes)
+        test_class_hash(&starknet_client, test_env_data.class_hashes),
+        async { starknet_client.pending_data().await.unwrap().unwrap() },
     );
 }
 
