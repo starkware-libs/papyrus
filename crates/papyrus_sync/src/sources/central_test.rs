@@ -10,7 +10,14 @@ use papyrus_storage::test_utils::get_test_storage;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use starknet_api::block::{BlockHash, BlockNumber};
-use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
+use starknet_api::core::{
+    ClassHash,
+    CompiledClassHash,
+    ContractAddress,
+    GlobalRoot,
+    Nonce,
+    PatriciaKey,
+};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass as sn_api_ContractClass, StateDiff, StorageKey};
@@ -21,7 +28,6 @@ use starknet_client::reader::{
     DeclaredClassHashEntry,
     DeployedContract,
     GenericContractClass,
-    GlobalRoot,
     MockStarknetReader,
     ReaderClientError,
     ReplacedClass,
