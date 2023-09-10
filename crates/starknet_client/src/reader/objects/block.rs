@@ -4,7 +4,7 @@ mod block_test;
 
 use std::ops::Index;
 
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use starknet_api::block::{
     Block as starknet_api_block,
     BlockHash,
@@ -12,8 +12,7 @@ use starknet_api::block::{
     BlockTimestamp,
     GasPrice,
 };
-use starknet_api::core::ContractAddress;
-use starknet_api::hash::StarkHash;
+use starknet_api::core::{ContractAddress, GlobalRoot};
 #[cfg(doc)]
 use starknet_api::transaction::TransactionOutput as starknet_api_transaction_output;
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
@@ -25,30 +24,6 @@ use crate::reader::objects::transaction::{
     TransactionType,
 };
 use crate::reader::{ReaderClientError, ReaderClientResult};
-
-#[derive(Debug, Copy, Clone, Default, Eq, PartialEq, Hash, Serialize, PartialOrd, Ord)]
-pub struct GlobalRoot(pub StarkHash);
-
-// TODO(dvir): remove this deserialization when all the environments use the same format.
-impl<'de> Deserialize<'de> for GlobalRoot {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let mut as_string = String::deserialize(deserializer)?;
-        if !as_string.starts_with("0x") {
-            as_string = format!("0x{as_string}");
-        }
-        let string_des = serde::de::value::StringDeserializer::new(as_string);
-        Ok(Self(Deserialize::deserialize(string_des)?))
-    }
-}
-
-impl From<GlobalRoot> for starknet_api::core::GlobalRoot {
-    fn from(val: GlobalRoot) -> Self {
-        Self(val.0)
-    }
-}
 
 /// A block as returned by the starknet gateway.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
@@ -215,7 +190,7 @@ impl Block {
             parent_hash: self.parent_block_hash,
             block_number: self.block_number,
             gas_price: self.gas_price,
-            state_root: self.state_root.into(),
+            state_root: self.state_root,
             sequencer: self.sequencer_address,
             timestamp: self.timestamp,
         };

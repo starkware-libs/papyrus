@@ -177,16 +177,3 @@ async fn to_starknet_api_block_and_version() {
         })
     );
 }
-
-#[test]
-fn global_root_deserialization() {
-    let original_root = GlobalRoot("0x1".try_into().unwrap());
-
-    // With 0x prefix.
-    let root = serde_json::from_str::<GlobalRoot>(r#""0x1""#).unwrap();
-    assert_eq!(original_root, root);
-
-    // Without prefix.
-    let root = serde_json::from_str::<GlobalRoot>(r#""1""#).unwrap();
-    assert_eq!(original_root, root);
-}
