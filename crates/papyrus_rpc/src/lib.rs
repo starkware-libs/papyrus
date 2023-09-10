@@ -28,7 +28,7 @@ use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::validators::validate_ascii;
-use papyrus_config::{ParamPath, SerializedParam};
+use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::db::TransactionKind;
@@ -85,12 +85,42 @@ impl Default for RpcConfig {
 impl SerializeConfig for RpcConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         let mut self_params_dump = BTreeMap::from_iter([
-            ser_param("chain_id", &self.chain_id, "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id."),
-            ser_param("server_address", &self.server_address, "IP:PORT of the node`s JSON-RPC server."),
-            ser_param("max_events_chunk_size", &self.max_events_chunk_size, "Maximum chunk size supported by the node in get_events requests."),
-            ser_param("max_events_keys", &self.max_events_keys, "Maximum number of keys supported by the node in get_events requests."),
-            ser_param("collect_metrics", &self.collect_metrics, "If true, collect metrics for the rpc."),
-            ser_param("starknet_url", &self.starknet_url, "URL for communicating with Starknet in write_api methods."),
+            ser_param(
+                "chain_id",
+                &self.chain_id,
+                "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "server_address",
+                &self.server_address,
+                "IP:PORT of the node`s JSON-RPC server.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "max_events_chunk_size",
+                &self.max_events_chunk_size,
+                "Maximum chunk size supported by the node in get_events requests.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "max_events_keys",
+                &self.max_events_keys,
+                "Maximum number of keys supported by the node in get_events requests.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "collect_metrics",
+                &self.collect_metrics,
+                "If true, collect metrics for the rpc.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "starknet_url",
+                &self.starknet_url,
+                "URL for communicating with Starknet in write_api methods.",
+                ParamPrivacyInput::Public,
+            ),
         ]);
         let mut retry_config_dump = append_sub_config_name(
             self.starknet_gateway_retry_config.dump(),
@@ -133,6 +163,7 @@ impl SerializeConfig for ExecutionConfig {
             "config_file_name",
             &self.config_file_name,
             "Name of the ExecutionConfig configuration file.",
+            ParamPrivacyInput::Public,
         )])
     }
 }
