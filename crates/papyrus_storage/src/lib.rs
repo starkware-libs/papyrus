@@ -75,6 +75,7 @@ use std::sync::Arc;
 use body::events::EventIndex;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use db::DbTableStats;
+use indexmap::IndexMap;
 use ommer::{OmmerEventKey, OmmerTransactionKey};
 use papyrus_config::dumping::{append_sub_config_name, SerializeConfig};
 use papyrus_config::{ParamPath, SerializedParam};
@@ -144,8 +145,8 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         starknet_version: db_writer.create_table("starknet_version")?,
         storage_version: db_writer.create_table("storage_version")?,
 
-        //storage_diffs: db_writer.create_table("storage_diffs")?,
-        storage_diffs: db_writer.create_table_dup("storage_diffs")?,
+        storage_diffs: db_writer.create_table("storage_diffs")?,
+        //storage_diffs: db_writer.create_table_dup("storage_diffs")?,
     });
     let reader = StorageReader { db_reader, tables: tables.clone() };
     let writer = StorageWriter { db_writer, tables };
@@ -273,7 +274,8 @@ struct_field_names! {
         starknet_version: TableIdentifier<BlockNumber, StarknetVersion>,
         storage_version: TableIdentifier<String, Version>,
 
-        storage_diffs: TableIdentifier<(BlockNumber, ContractAddress), (StorageKey, StarkFelt)>
+        // storage_diffs: TableIdentifier<(BlockNumber, ContractAddress), (StorageKey, StarkFelt)>
+        storage_diffs: TableIdentifier<(BlockNumber, ContractAddress), IndexMap<StorageKey, StarkFelt>>
     }
 }
 

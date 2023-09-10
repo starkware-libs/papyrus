@@ -690,13 +690,16 @@ fn write_storage_diffs<'env>(
     block_number: BlockNumber,
     storage_table: &'env ContractStorageTable<'env>,
 
-    storage_diffs_table: &TableHandle<'env, (BlockNumber, ContractAddress), (StorageKey, StarkFelt)>,
+    //storage_diffs_table: &TableHandle<'env, (BlockNumber, ContractAddress), (StorageKey, StarkFelt)>,
+    storage_diffs_table: &TableHandle<'env, (BlockNumber, ContractAddress), IndexMap<StorageKey, StarkFelt>>,
+
 
 ) -> StorageResult<()> {
     for (address, storage_entries) in storage_diffs {
+        storage_diffs_table.insert(txn, &(block_number, *address), storage_entries)?;
         for (key, value) in storage_entries {
             storage_table.upsert(txn, &(*address, *key, block_number), value)?;
-            storage_diffs_table.insert_dup(txn, &(block_number, *address), &(*key, *value))?;
+            //storage_diffs_table.insert_dup(txn, &(block_number, *address), &(*key, *value))?;
         }
     }
     Ok(())
