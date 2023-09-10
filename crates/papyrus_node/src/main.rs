@@ -2,6 +2,7 @@ use std::env::args;
 use std::sync::Arc;
 
 use papyrus_common::BlockHashAndNumber;
+use papyrus_config::dumping::get_config_representation;
 use papyrus_config::ConfigError;
 use papyrus_monitoring_gateway::MonitoringServer;
 use papyrus_node::config::NodeConfig;
@@ -28,7 +29,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     // Monitoring server.
     let monitoring_server = MonitoringServer::new(
         config.monitoring_gateway.clone(),
-        config.get_config_representation()?,
+        get_config_representation(&config)?,
         storage_reader.clone(),
         VERSION_FULL,
     )?;
