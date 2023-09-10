@@ -30,7 +30,7 @@ impl TryFrom<starknet_api::deprecated_contract_class::ContractClass> for Contrac
             program_value.as_object_mut().unwrap().remove("compiler_version");
         }
 
-        let abi = if class.abi.is_none() { vec![] } else { class.abi.unwrap() };
+        let abi = class.abi.unwrap_or(vec![]);
 
         Ok(Self {
             abi,
