@@ -51,6 +51,7 @@
 pub mod base_layer;
 pub mod body;
 pub mod compiled_class;
+pub mod mmap_objects_db;
 // TODO(yair): Make the compression_utils module pub(crate) or extract it from the crate.
 #[doc(hidden)]
 pub mod compression_utils;
@@ -70,11 +71,12 @@ mod test_instances;
 pub mod test_utils;
 
 use std::collections::{BTreeMap, HashMap};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use body::events::EventIndex;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use db::DbTableStats;
+use mmap_objects_db::{LargeFile, LocationInFile};
 use ommer::{OmmerEventKey, OmmerTransactionKey};
 use papyrus_config::dumping::{append_sub_config_name, SerializeConfig};
 use papyrus_config::{ParamPath, SerializedParam};
@@ -112,9 +114,21 @@ use crate::version::{VersionStorageReader, VersionStorageWriter};
 /// migration is required for existing storages.
 pub const STORAGE_VERSION: Version = Version(4);
 
+/// Storage that is backed up by mmap files directly, instead of using the database.
+#[derive(Clone)]
+pub struct StorageFiles {
+    class: Arc<Mutex<LargeFile<ContractClass>>>,
+    thin_state_diff: Arc<Mutex<LargeFile<ThinStateDiff>>>,
+    casm: Arc<Mutex<LargeFile<CasmContractClass>>>,
+}
+
 /// Opens a storage and returns a [`StorageReader`] and a [`StorageWriter`].
 pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, StorageWriter)> {
-    let (db_reader, mut db_writer) = open_env(db_config)?;
+    let (db_reader, mut db_writer) = open_env(&db_config)?;
+    let storage_files = open_storage_files(&db_config);
+    // let class_storage = Arc::new(Mutex::new(mmap_objects_db::open_mmaped_file(
+    //     db_config.path().join("large_object_db"),
+    // )));
     let tables = Arc::new(Tables {
         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
         casms: db_writer.create_table("casms")?,
@@ -127,6 +141,7 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         headers: db_writer.create_table("headers")?,
         markers: db_writer.create_table("markers")?,
         nonces: db_writer.create_table("nonces")?,
+        offsets: db_writer.create_table("offsets")?,
         ommer_contract_storage: db_writer.create_table("ommer_contract_storage")?,
         ommer_declared_classes: db_writer.create_table("ommer_declared_classes")?,
         ommer_deployed_contracts: db_writer.create_table("ommer_deployed_contracts")?,
@@ -144,12 +159,27 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         starknet_version: db_writer.create_table("starknet_version")?,
         storage_version: db_writer.create_table("storage_version")?,
     });
-    let reader = StorageReader { db_reader, tables: tables.clone() };
-    let writer = StorageWriter { db_writer, tables };
+    let reader =
+        StorageReader { db_reader, tables: tables.clone(), storage_files: storage_files.clone() };
+    let writer = StorageWriter { db_writer, tables, storage_files };
 
     let writer = set_initial_version_if_needed(writer)?;
     verify_storage_version(reader.clone())?;
     Ok((reader, writer))
+}
+
+fn open_storage_files(db_config: &DbConfig) -> StorageFiles {
+    StorageFiles {
+        class: Arc::new(Mutex::new(mmap_objects_db::open_mmaped_file(
+            db_config.path().join("class"),
+        ))),
+        thin_state_diff: Arc::new(Mutex::new(mmap_objects_db::open_mmaped_file(
+            db_config.path().join("thin_state_diff"),
+        ))),
+        casm: Arc::new(Mutex::new(mmap_objects_db::open_mmaped_file(
+            db_config.path().join("casm"),
+        ))),
+    }
 }
 
 // In case storage version does not exist, set it to the crate version.
@@ -185,13 +215,20 @@ fn verify_storage_version(reader: StorageReader) -> StorageResult<()> {
 pub struct StorageReader {
     db_reader: DbReader,
     tables: Arc<Tables>,
+    // class_storage: Arc<Mutex<LargeFile>>,
+    storage_files: StorageFiles,
 }
 
 impl StorageReader {
     /// Takes a snapshot of the current state of the storage and returns a [`StorageTxn`] for
     /// reading data from the storage.
     pub fn begin_ro_txn(&self) -> StorageResult<StorageTxn<'_, RO>> {
-        Ok(StorageTxn { txn: self.db_reader.begin_ro_txn()?, tables: self.tables.clone() })
+        Ok(StorageTxn {
+            txn: self.db_reader.begin_ro_txn()?,
+            tables: self.tables.clone(),
+            // class_storage: self.class_storage.clone(),
+            storage_files: self.storage_files.clone(),
+        })
     }
 
     /// Returns metadata about the tables in the storage.
@@ -210,13 +247,20 @@ impl StorageReader {
 pub struct StorageWriter {
     db_writer: DbWriter,
     tables: Arc<Tables>,
+    // class_storage: Arc<Mutex<LargeFile>>,
+    storage_files: StorageFiles,
 }
 
 impl StorageWriter {
     /// Takes a snapshot of the current state of the storage and returns a [`StorageTxn`] for
     /// reading and modifying data in the storage.
     pub fn begin_rw_txn(&mut self) -> StorageResult<StorageTxn<'_, RW>> {
-        Ok(StorageTxn { txn: self.db_writer.begin_rw_txn()?, tables: self.tables.clone() })
+        Ok(StorageTxn {
+            txn: self.db_writer.begin_rw_txn()?,
+            tables: self.tables.clone(),
+            // class_storage: self.class_storage.clone(),
+            storage_files: self.storage_files.clone(),
+        })
     }
 }
 
@@ -225,6 +269,8 @@ impl StorageWriter {
 pub struct StorageTxn<'env, Mode: TransactionKind> {
     txn: DbTransaction<'env, Mode>,
     tables: Arc<Tables>,
+    // class_storage: Arc<Mutex<LargeFile>>,
+    storage_files: StorageFiles,
 }
 
 impl<'env> StorageTxn<'env, RW> {
@@ -242,9 +288,9 @@ pub fn table_names() -> &'static [&'static str] {
 struct_field_names! {
     struct Tables {
         block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
-        casms: TableIdentifier<ClassHash, CasmContractClass>,
+        casms: TableIdentifier<ClassHash, LocationInFile>,
         contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
-        declared_classes: TableIdentifier<ClassHash, ContractClass>,
+        declared_classes: TableIdentifier<ClassHash, LocationInFile>,
         declared_classes_block: TableIdentifier<ClassHash, BlockNumber>,
         deprecated_declared_classes: TableIdentifier<ClassHash, IndexedDeprecatedContractClass>,
         deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), ClassHash>,
@@ -252,6 +298,7 @@ struct_field_names! {
         headers: TableIdentifier<BlockNumber, BlockHeader>,
         markers: TableIdentifier<MarkerKind, BlockNumber>,
         nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
+        offsets: TableIdentifier<OffsetKind, usize>,
         ommer_contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockHash), StarkFelt>,
         //TODO(yair): Consider whether an ommer_deprecated_declared_classes is needed.
         ommer_declared_classes: TableIdentifier<(BlockHash, ClassHash), ContractClass>,
@@ -262,7 +309,7 @@ struct_field_names! {
         ommer_state_diffs: TableIdentifier<BlockHash, ThinStateDiff>,
         ommer_transaction_outputs: TableIdentifier<OmmerTransactionKey, ThinTransactionOutput>,
         ommer_transactions: TableIdentifier<OmmerTransactionKey, Transaction>,
-        state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
+        state_diffs: TableIdentifier<BlockNumber, LocationInFile>,
         transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
         transaction_idx_to_hash: TableIdentifier<TransactionIndex, TransactionHash>,
         transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
@@ -395,3 +442,10 @@ pub(crate) enum MarkerKind {
 }
 
 pub(crate) type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
+
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub(crate) enum OffsetKind {
+    Class,
+    ThinStateDiff,
+    Casm,
+}

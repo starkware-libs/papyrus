@@ -38,10 +38,11 @@ mod casm_test;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
-use starknet_api::state::ThinStateDiff;
 
-use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
-use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
+use crate::db::{DbError, TransactionKind, RW};
+use crate::mmap_objects_db::LocationInFile;
+use crate::state::StateStorageReader;
+use crate::{MarkerKind, MarkersTable, OffsetKind, StorageError, StorageResult, StorageTxn};
 
 /// Interface for reading data related to the compiled classes.
 pub trait CasmStorageReader {
@@ -67,7 +68,10 @@ where
 impl<'env, Mode: TransactionKind> CasmStorageReader for StorageTxn<'env, Mode> {
     fn get_casm(&self, class_hash: &ClassHash) -> StorageResult<Option<CasmContractClass>> {
         let casm_table = self.txn.open_table(&self.tables.casms)?;
-        Ok(casm_table.get(&self.txn, class_hash)?)
+
+        let location = casm_table.get(&self.txn, class_hash)?;
+        let casm = location.map(|location| self.storage_files.casm.lock().unwrap().get(location));
+        Ok(casm)
     }
 
     fn get_compiled_class_marker(&self) -> StorageResult<BlockNumber> {
@@ -80,30 +84,36 @@ impl<'env> CasmStorageWriter for StorageTxn<'env, RW> {
     fn append_casm(self, class_hash: &ClassHash, casm: &CasmContractClass) -> StorageResult<Self> {
         let casm_table = self.txn.open_table(&self.tables.casms)?;
         let markers_table = self.txn.open_table(&self.tables.markers)?;
-        let state_diff_table = self.txn.open_table(&self.tables.state_diffs)?;
-        casm_table.insert(&self.txn, class_hash, casm).map_err(|err| {
-            if matches!(err, DbError::Inner(libmdbx::Error::KeyExist)) {
-                StorageError::CompiledClassReWrite { class_hash: *class_hash }
-            } else {
-                StorageError::from(err)
-            }
-        })?;
-        update_marker(&self.txn, &markers_table, &state_diff_table, class_hash)?;
+        let offset_table = self.txn.open_table(&self.tables.offsets)?;
+
+        let offset = offset_table.get(&self.txn, &OffsetKind::Casm)?.unwrap_or_default();
+        let len = self.storage_files.casm.lock().unwrap().insert(offset, casm);
+        casm_table.insert(&self.txn, class_hash, &LocationInFile { offset, len }).map_err(
+            |err| {
+                if matches!(err, DbError::Inner(libmdbx::Error::KeyExist)) {
+                    StorageError::CompiledClassReWrite { class_hash: *class_hash }
+                } else {
+                    StorageError::from(err)
+                }
+            },
+        )?;
+        offset_table.upsert(&self.txn, &OffsetKind::Casm, &offset)?;
+        update_marker(&self, &markers_table, class_hash)?;
         Ok(self)
     }
 }
 
 fn update_marker<'env>(
-    txn: &DbTransaction<'env, RW>,
+    txn: &StorageTxn<'env, RW>,
     markers_table: &'env MarkersTable<'env>,
-    state_diffs_table: &'env TableHandle<'_, BlockNumber, ThinStateDiff>,
     class_hash: &ClassHash,
 ) -> StorageResult<()> {
     // The marker needs to update if we reached the last class from the state diff. We can continue
     // advancing it if the next blocks don't have declared classes.
-    let mut block_number = markers_table.get(txn, &MarkerKind::CompiledClass)?.unwrap_or_default();
+    let mut block_number =
+        markers_table.get(&txn.txn, &MarkerKind::CompiledClass)?.unwrap_or_default();
     loop {
-        let Some(state_diff) = state_diffs_table.get(txn, &block_number)? else {
+        let Some(state_diff) = txn.get_state_diff(block_number)? else {
             break;
         };
         if let Some((last_class_hash, _)) = state_diff.declared_classes.last() {
@@ -113,7 +123,7 @@ fn update_marker<'env>(
             }
         }
         block_number = block_number.next();
-        markers_table.upsert(txn, &MarkerKind::CompiledClass, &block_number)?;
+        markers_table.upsert(&txn.txn, &MarkerKind::CompiledClass, &block_number)?;
     }
     Ok(())
 }

@@ -109,12 +109,13 @@ use crate::compression_utils::{
 };
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
 use crate::header::StarknetVersion;
+use crate::mmap_objects_db::LocationInFile;
 use crate::ommer::{OmmerEventKey, OmmerTransactionKey};
 #[cfg(test)]
 use crate::serializers::serializers_test::{create_storage_serde_test, StorageSerdeTest};
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::Version;
-use crate::MarkerKind;
+use crate::{MarkerKind, OffsetKind};
 
 auto_storage_serde! {
     pub struct BlockHash(pub StarkHash);
@@ -254,6 +255,10 @@ auto_storage_serde! {
     }
     pub struct L1ToL2Payload(pub Vec<StarkFelt>);
     pub struct L2ToL1Payload(pub Vec<StarkFelt>);
+    pub struct LocationInFile {
+        pub offset: usize,
+        pub len: usize,
+    }
     enum MarkerKind {
         Header = 0,
         Body = 1,
@@ -271,6 +276,11 @@ auto_storage_serde! {
         pub payload: L1ToL2Payload,
     }
     pub struct Nonce(pub StarkFelt);
+    pub enum OffsetKind {
+        Class = 0,
+        ThinStateDiff = 1,
+        Casm = 2,
+    }
     struct OmmerTransactionKey(pub BlockHash, pub TransactionOffsetInBlock);
     struct OmmerEventKey(pub OmmerTransactionKey, pub EventIndexInTransactionOutput);
     pub struct Program {

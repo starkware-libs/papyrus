@@ -42,7 +42,6 @@ fn append_state_diff_declared_classes() {
         declared_classes: IndexMap::from([(nc1, new_class)]),
         ..Default::default()
     };
-
     let ((_, mut writer), _temp_dir) = get_test_storage();
     let mut txn = writer.begin_rw_txn().unwrap();
     txn = txn.append_state_diff(BlockNumber(0), diff0, IndexMap::new()).unwrap();

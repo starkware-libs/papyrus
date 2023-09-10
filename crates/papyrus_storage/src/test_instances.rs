@@ -20,9 +20,10 @@ use crate::body::events::{
 };
 use crate::body::TransactionIndex;
 use crate::header::StarknetVersion;
+use crate::mmap_objects_db::LocationInFile;
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::Version;
-use crate::{EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey};
+use crate::{EventIndex, MarkerKind, OffsetKind, OmmerEventKey, OmmerTransactionKey};
 
 auto_impl_get_test_instance! {
     struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
@@ -30,11 +31,20 @@ auto_impl_get_test_instance! {
         pub block_number: BlockNumber,
         pub contract_class: DeprecatedContractClass,
     }
+    pub struct LocationInFile {
+        pub offset: usize,
+        pub len: usize,
+    }
     enum MarkerKind {
         Header = 0,
         Body = 1,
         State = 2,
         CompiledClass = 3,
+    }
+    pub enum OffsetKind {
+        Class = 0,
+        ThinStateDiff = 1,
+        Casm = 2,
     }
     struct OmmerTransactionKey(pub BlockHash, pub TransactionOffsetInBlock);
     struct OmmerEventKey(pub OmmerTransactionKey, pub EventIndexInTransactionOutput);
