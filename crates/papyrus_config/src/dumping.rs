@@ -37,14 +37,17 @@
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{BufWriter, Write};
+use std::ops::IndexMut;
 
-use itertools::chain;
+use itertools::{chain, Itertools};
 use serde::Serialize;
 use serde_json::{json, Value};
 
 use crate::{
     ConfigError,
     ParamPath,
+    ParamPrivacy,
+    ParamPrivacyInput,
     SerializationType,
     SerializedContent,
     SerializedParam,
@@ -98,12 +101,14 @@ pub fn ser_param<T: Serialize>(
     name: &str,
     value: &T,
     description: &str,
+    privacy: ParamPrivacyInput,
 ) -> (String, SerializedParam) {
     (
         name.to_owned(),
         SerializedParam {
             description: description.to_owned(),
             content: SerializedContent::DefaultValue(json!(value)),
+            privacy: privacy.into(),
         },
     )
 }
@@ -114,12 +119,14 @@ pub fn ser_required_param(
     name: &str,
     serialization_type: SerializationType,
     description: &str,
+    privacy: ParamPrivacyInput,
 ) -> (String, SerializedParam) {
     (
         name.to_owned(),
         SerializedParam {
             description: description.to_owned(),
             content: SerializedContent::RequiredType(serialization_type),
+            privacy: privacy.into(),
         },
     )
 }
@@ -149,6 +156,7 @@ pub fn ser_optional_param<T: Serialize>(
     default_value: T,
     name: &str,
     description: &str,
+    privacy: ParamPrivacyInput,
 ) -> BTreeMap<ParamPath, SerializedParam> {
     BTreeMap::from([
         ser_is_param_none(name, optional_param.is_none()),
@@ -159,6 +167,7 @@ pub fn ser_optional_param<T: Serialize>(
                 None => &default_value,
             },
             description,
+            privacy,
         ),
     ])
 }
@@ -170,6 +179,23 @@ pub fn ser_is_param_none(name: &str, is_none: bool) -> (String, SerializedParam)
         SerializedParam {
             description: "Flag for an optional field".to_owned(),
             content: SerializedContent::DefaultValue(json!(is_none)),
+            privacy: ParamPrivacy::TemporaryValue,
+        },
+    )
+}
+
+/// Serializes a pointer target param of a config.
+pub fn ser_pointer_target_param<T: Serialize>(
+    name: &str,
+    value: &T,
+    description: &str,
+) -> (String, SerializedParam) {
+    (
+        name.to_owned(),
+        SerializedParam {
+            description: description.to_owned(),
+            content: SerializedContent::DefaultValue(json!(value)),
+            privacy: ParamPrivacy::TemporaryValue,
         },
     )
 }
@@ -195,9 +221,44 @@ pub(crate) fn combine_config_map_and_pointers(
                 SerializedParam {
                     description: pointing_serialized_param.description.clone(),
                     content: SerializedContent::PointerTarget(target_param.to_owned()),
+                    privacy: pointing_serialized_param.privacy.clone(),
                 },
             );
         }
     }
     Ok(json!(config_map))
+}
+
+/// Nested representation of a finalized config.
+pub trait ConfigRepresentation: SerializeConfig + Serialize {
+    /// Returns representation of all the parameters in the config.
+    fn get_config_representation(&self) -> Result<serde_json::Value, ConfigError> {
+        Ok(serde_json::to_value(self)?)
+    }
+
+    /// Returns representation of the public parameters in the config.
+    fn get_public_config_representation(&self) -> Result<serde_json::Value, ConfigError> {
+        let mut config_representation = self.get_config_representation()?;
+        for (param_path, serialized_param) in self.dump() {
+            if let ParamPrivacy::Public = serialized_param.privacy {
+                continue;
+            }
+
+            // Remove a non-public parameter.
+            let mut config_hierarchy = param_path.split('.').collect_vec();
+            let Some(element_to_remove) = config_hierarchy.pop() else {
+                continue; // Empty param path.`
+            };
+            let most_inner_config =
+                config_hierarchy.iter().fold(&mut config_representation, |entry, config_name| {
+                    entry.index_mut(config_name)
+                });
+
+            most_inner_config
+                .as_object_mut()
+                .ok_or_else(|| ConfigError::ParamNotFound { param_path: param_path.to_string() })?
+                .remove(element_to_remove);
+        }
+        Ok(config_representation)
+    }
 }

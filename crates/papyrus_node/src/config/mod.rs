@@ -5,14 +5,20 @@ use std::collections::{BTreeMap, HashMap};
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::mem::discriminant;
+use std::ops::IndexMut;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::{env, fs, io};
 
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
-use itertools::chain;
+use itertools::{chain, Itertools};
 use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
-use papyrus_config::dumping::{append_sub_config_name, ser_optional_sub_config, SerializeConfig};
+use papyrus_config::dumping::{
+    append_sub_config_name,
+    ser_optional_sub_config,
+    ConfigRepresentation,
+    SerializeConfig,
+};
 use papyrus_config::loading::load_and_process_config;
 use papyrus_config::{ConfigError, ParamPath, SerializedParam};
 use papyrus_monitoring_gateway::MonitoringGatewayConfig;
@@ -74,16 +80,14 @@ impl SerializeConfig for NodeConfig {
     }
 }
 
+impl ConfigRepresentation for NodeConfig {}
+
 impl NodeConfig {
     /// Creates a config object. Selects the values from the default file and from resources with
     /// higher priority.
     pub fn load_and_process(args: Vec<String>) -> Result<Self, ConfigError> {
         let default_config_file = std::fs::File::open(Path::new(DEFAULT_CONFIG_PATH))?;
         load_and_process_config(default_config_file, node_command(), args)
-    }
-
-    pub fn get_config_representation(&self) -> Result<serde_json::Value, ConfigError> {
-        Ok(serde_json::to_value(self)?)
     }
 }
 

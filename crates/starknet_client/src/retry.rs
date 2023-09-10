@@ -8,7 +8,7 @@ use std::iter::Take;
 use std::time::Duration;
 
 use papyrus_config::dumping::{ser_param, SerializeConfig};
-use papyrus_config::{ParamPath, SerializedParam};
+use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use serde::{Deserialize, Serialize};
 use tokio_retry::strategy::ExponentialBackoff;
 use tokio_retry::{Action, Condition, RetryIf};
@@ -33,16 +33,19 @@ impl SerializeConfig for RetryConfig {
                 &self.retry_base_millis,
                 "Base waiting time after a failed request. After that, the time increases \
                  exponentially.",
+                ParamPrivacyInput::Public,
             ),
             ser_param(
                 "retry_max_delay_millis",
                 &self.retry_max_delay_millis,
                 "Max waiting time after a failed request.",
+                ParamPrivacyInput::Public,
             ),
             ser_param(
                 "max_retries",
                 &self.max_retries,
                 "Maximum number of retries before the node stops retrying.",
+                ParamPrivacyInput::Public,
             ),
         ])
     }

@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
-use papyrus_config::dumping::SerializeConfig;
+use papyrus_config::dumping::{ConfigRepresentation, SerializeConfig};
 use papyrus_config::SerializedParam;
 use pretty_assertions::assert_eq;
 use serde_json::{json, Map, Value};

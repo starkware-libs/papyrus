@@ -2,6 +2,7 @@ use std::env::args;
 use std::sync::Arc;
 
 use papyrus_common::BlockHashAndNumber;
+use papyrus_config::dumping::ConfigRepresentation;
 use papyrus_config::ConfigError;
 use papyrus_monitoring_gateway::MonitoringServer;
 use papyrus_node::config::NodeConfig;
