@@ -9,12 +9,13 @@ use libp2p::core::{ConnectedPoint, Endpoint};
 use libp2p::swarm::behaviour::ConnectionEstablished;
 use libp2p::swarm::{ConnectionId, FromSwarm, NetworkBehaviour, PollParameters, ToSwarm};
 use libp2p::{Multiaddr, PeerId};
+use prost::Message;
 
-use super::super::handler::NewRequestEvent;
+use super::super::handler::NewQueryEvent;
 use super::super::protocol::PROTOCOL_NAME;
-use super::super::RequestId;
+use super::super::OutboundSessionId;
 use super::{Behaviour, Event};
-use crate::messages::block::GetBlocks;
+use crate::messages::block::{GetBlocks, GetBlocksResponse};
 
 pub struct GetBlocksPollParameters {}
 
@@ -25,10 +26,12 @@ impl PollParameters for GetBlocksPollParameters {
     }
 }
 
-impl Unpin for Behaviour {}
+impl<Query: Message + Clone, Data: Message> Unpin for Behaviour<Query, Data> {}
 
-impl Stream for Behaviour {
-    type Item = ToSwarm<Event, NewRequestEvent>;
+impl<Query: Message + Clone + 'static, Data: Message + Default + 'static> Stream
+    for Behaviour<Query, Data>
+{
+    type Item = ToSwarm<Event<Query, Data>, NewQueryEvent<Query>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match Pin::into_inner(self).poll(cx, &mut GetBlocksPollParameters {}) {
@@ -40,11 +43,19 @@ impl Stream for Behaviour {
 
 const SUBSTREAM_TIMEOUT: Duration = Duration::MAX;
 
-fn validate_no_events(behaviour: &mut Behaviour) {
+fn validate_no_events<Query: Message + Clone + 'static, Data: Message + Default + 'static>(
+    behaviour: &mut Behaviour<Query, Data>,
+) {
     assert!(behaviour.next().now_or_never().is_none());
 }
 
-async fn validate_next_event_dial(behaviour: &mut Behaviour, peer_id: &PeerId) {
+async fn validate_next_event_dial<
+    Query: Message + Clone + 'static,
+    Data: Message + Default + 'static,
+>(
+    behaviour: &mut Behaviour<Query, Data>,
+    peer_id: &PeerId,
+) {
     let event = behaviour.next().await.unwrap();
     let ToSwarm::Dial { opts } = event else {
         panic!("Got unexpected event");
@@ -52,33 +63,36 @@ async fn validate_next_event_dial(behaviour: &mut Behaviour, peer_id: &PeerId) {
     assert_eq!(*peer_id, opts.get_peer_id().unwrap());
 }
 
-async fn validate_next_event_send_request_to_handler(
-    behaviour: &mut Behaviour,
+async fn validate_next_event_send_query_to_handler<
+    Query: Message + Clone + PartialEq + 'static,
+    Data: Message + Default + 'static,
+>(
+    behaviour: &mut Behaviour<Query, Data>,
     peer_id: &PeerId,
-    request: &GetBlocks,
-    request_id: &RequestId,
+    query: &Query,
+    outbound_session_id: &OutboundSessionId,
 ) {
     let event = behaviour.next().await.unwrap();
     assert_matches!(
         event,
         ToSwarm::NotifyHandler {
             peer_id: other_peer_id,
-            event: NewRequestEvent { request: other_request, request_id: other_request_id },
+            event: NewQueryEvent::<Query> { query: other_query, outbound_session_id: other_outbound_session_id },
             ..
         } if *peer_id == other_peer_id
-            && *request_id == other_request_id
-            && *request == other_request
+            && *outbound_session_id == other_outbound_session_id
+            && *query == other_query
     );
 }
 
 #[tokio::test]
 async fn send_and_process_request() {
-    let mut behaviour = Behaviour::new(SUBSTREAM_TIMEOUT);
+    let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(SUBSTREAM_TIMEOUT);
 
-    let request = GetBlocks::default();
+    let query = GetBlocks::default();
     let peer_id = PeerId::random();
 
-    let request_id = behaviour.send_request(request.clone(), peer_id);
+    let outbound_session_id = behaviour.send_query(query.clone(), peer_id);
     validate_next_event_dial(&mut behaviour, &peer_id).await;
     validate_no_events(&mut behaviour);
 
@@ -95,8 +109,13 @@ async fn send_and_process_request() {
         failed_addresses: &[],
         other_established: 0,
     }));
-    validate_next_event_send_request_to_handler(&mut behaviour, &peer_id, &request, &request_id)
-        .await;
+    validate_next_event_send_query_to_handler(
+        &mut behaviour,
+        &peer_id,
+        &query,
+        &outbound_session_id,
+    )
+    .await;
     validate_no_events(&mut behaviour);
 
     // TODO(shahak): Send responses from the handler.
