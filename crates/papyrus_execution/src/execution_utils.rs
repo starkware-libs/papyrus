@@ -1,4 +1,6 @@
 //! Utilities for executing contracts and transactions.
+use std::fs::File;
+use std::path::PathBuf;
 
 // Expose the tool for creating entry point selectors from function names.
 pub use blockifier::abi::abi_utils::selector_from_name;
@@ -18,7 +20,7 @@ use starknet_api::state::StateNumber;
 use thiserror::Error;
 
 use crate::objects::TransactionTrace;
-use crate::ExecutableTransactionInput;
+use crate::{ExecutableTransactionInput, ExecutionConfigByBlock, ExecutionError};
 
 // An error that can occur during the use of the execution utils.
 #[derive(Debug, Error)]
@@ -29,6 +31,16 @@ pub(crate) enum ExecutionUtilsError {
     StorageError(#[from] StorageError),
     #[error("Casm table not fully synced")]
     CasmTableNotSynced,
+}
+
+/// Returns the execution config from the config file.
+impl TryFrom<PathBuf> for ExecutionConfigByBlock {
+    type Error = ExecutionError;
+
+    fn try_from(execution_config_file: PathBuf) -> Result<Self, Self::Error> {
+        let file = File::open(execution_config_file).map_err(ExecutionError::ConfigFileError)?;
+        serde_json::from_reader(file).map_err(ExecutionError::ConfigSerdeError)
+    }
 }
 
 pub(crate) fn get_contract_class(

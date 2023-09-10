@@ -18,6 +18,7 @@ mod version_config;
 use std::collections::BTreeMap;
 use std::fmt::Display;
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use jsonrpsee::server::{ServerBuilder, ServerHandle};
@@ -28,7 +29,6 @@ use papyrus_common::BlockHashAndNumber;
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::validators::validate_ascii;
 use papyrus_config::{ParamPath, SerializedParam};
-use papyrus_execution::ExecutionConfig;
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::db::TransactionKind;
@@ -111,6 +111,32 @@ impl SerializeConfig for RpcConfig {
     }
 }
 
+/// The path to the default execution config file.
+const DEFAULT_CONFIG_FILE: &str = "config/execution_config/default_config.json";
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+#[allow(missing_docs)]
+/// The execution configuration file name
+pub struct ExecutionConfig {
+    pub config_file_name: PathBuf,
+}
+
+impl Default for ExecutionConfig {
+    fn default() -> Self {
+        ExecutionConfig { config_file_name: PathBuf::from(DEFAULT_CONFIG_FILE) }
+    }
+}
+
+impl SerializeConfig for ExecutionConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from_iter([ser_param(
+            "config_file_name",
+            &self.config_file_name,
+            "Name of the ExecutionConfig configuration file.",
+        )])
+    }
+}
+
 fn internal_server_error(err: impl Display) -> ErrorObjectOwned {
     error!("{}: {}", INTERNAL_ERROR_MSG, err);
     ErrorObjectOwned::owned(InternalError.code(), INTERNAL_ERROR_MSG, None::<()>)
@@ -148,7 +174,7 @@ pub async fn run_server(
     debug!("Starting JSON-RPC.");
     let methods = get_methods_from_supported_apis(
         &config.chain_id,
-        config.execution_config.clone(),
+        config.execution_config.config_file_name.clone().try_into()?,
         storage_reader,
         config.max_events_chunk_size,
         config.max_events_keys,
