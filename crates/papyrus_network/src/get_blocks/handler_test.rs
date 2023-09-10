@@ -8,17 +8,18 @@ use futures::task::{Context, Poll};
 use futures::{Stream, StreamExt};
 use libp2p::swarm::handler::{ConnectionEvent, FullyNegotiatedOutbound};
 use libp2p::swarm::{ConnectionHandler, ConnectionHandlerEvent};
+use prost::Message;
 
-use super::super::RequestId;
-use super::{Handler, HandlerEvent, NewRequestEvent, RequestProgressEvent};
+use super::super::OutboundSessionId;
+use super::{Handler, HandlerEvent, NewQueryEvent, SessionProgressEvent};
 use crate::messages::block::{BlockHeader, GetBlocks, GetBlocksResponse};
 use crate::messages::common::BlockId;
 use crate::messages::proto::p2p::proto::get_blocks_response::Response;
 
-impl Unpin for Handler {}
+impl<Query: Message, Data: Message + Default> Unpin for Handler<Query, Data> {}
 
-impl Stream for Handler {
-    type Item = HandlerEvent<Handler>;
+impl<Query: Message, Data: Message + Default> Stream for Handler<Query, Data> {
+    type Item = HandlerEvent<Handler<Query, Data>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match Pin::into_inner(self).poll(cx) {
@@ -30,56 +31,65 @@ impl Stream for Handler {
 
 const SUBSTREAM_TIMEOUT: Duration = Duration::MAX;
 
-async fn start_request_and_validate_event(
-    handler: &mut Handler,
-    request: &GetBlocks,
-    request_id: RequestId,
-) -> UnboundedSender<GetBlocksResponse> {
-    handler.on_behaviour_event(NewRequestEvent { request: request.clone(), request_id });
+async fn start_request_and_validate_event<
+    Query: Message + PartialEq + Clone,
+    Data: Message + Default,
+>(
+    handler: &mut Handler<Query, Data>,
+    query: &Query,
+    outbound_session_id: OutboundSessionId,
+) -> UnboundedSender<Data> {
+    handler.on_behaviour_event(NewQueryEvent { query: query.clone(), outbound_session_id });
     let event = handler.next().await.unwrap();
     let ConnectionHandlerEvent::OutboundSubstreamRequest { protocol } = event else {
         panic!("Got unexpected event");
     };
-    assert_eq!(*request, *protocol.upgrade().request());
+    assert_eq!(*query, *protocol.upgrade().query());
     assert_eq!(SUBSTREAM_TIMEOUT, *protocol.timeout());
-    protocol.upgrade().responses_sender().clone()
+    protocol.upgrade().data_sender().clone()
 }
 
-async fn send_response_and_validate_event(
-    handler: &mut Handler,
-    response: &GetBlocksResponse,
-    request_id: RequestId,
-    responses_sender: &UnboundedSender<GetBlocksResponse>,
+async fn send_data_and_validate_event<
+    Query: Message,
+    Data: Message + Default + PartialEq + Clone,
+>(
+    handler: &mut Handler<Query, Data>,
+    data: &Data,
+    outbound_session_id: OutboundSessionId,
+    data_sender: &UnboundedSender<Data>,
 ) {
-    responses_sender.unbounded_send(response.clone()).unwrap();
+    data_sender.unbounded_send(data.clone()).unwrap();
     let event = handler.next().await.unwrap();
     assert_matches!(
         event,
-        ConnectionHandlerEvent::NotifyBehaviour(RequestProgressEvent::ReceivedResponse{
-            request_id: event_request_id, response: event_response
-        }) if event_request_id == request_id && event_response == *response
+        ConnectionHandlerEvent::NotifyBehaviour(SessionProgressEvent::ReceivedData{
+            outbound_session_id: event_outbound_session_id, data: event_data
+        }) if event_outbound_session_id == outbound_session_id && event_data == *data
     );
 }
 
-async fn finish_request_and_validate_event(handler: &mut Handler, request_id: RequestId) {
+async fn finish_session_and_validate_event<Query: Message, Data: Message + Default>(
+    handler: &mut Handler<Query, Data>,
+    outbound_session_id: OutboundSessionId,
+) {
     handler.on_connection_event(ConnectionEvent::FullyNegotiatedOutbound(
-        FullyNegotiatedOutbound { protocol: (), info: request_id },
+        FullyNegotiatedOutbound { protocol: (), info: outbound_session_id },
     ));
     let event = handler.next().await.unwrap();
     assert_matches!(
         event,
-        ConnectionHandlerEvent::NotifyBehaviour(RequestProgressEvent::RequestFinished{
-            request_id: event_request_id
-        }) if event_request_id == request_id
+        ConnectionHandlerEvent::NotifyBehaviour(SessionProgressEvent::SessionFinished{
+            outbound_session_id: event_outbound_session_id
+        }) if event_outbound_session_id == outbound_session_id
     );
 }
 
 #[tokio::test]
-async fn process_request() {
+async fn process_session() {
     let mut handler = Handler::new(SUBSTREAM_TIMEOUT);
 
     let request = GetBlocks::default();
-    let request_id = RequestId::default();
+    let request_id = OutboundSessionId::default();
     let response = GetBlocksResponse {
         response: Some(Response::Header(BlockHeader {
             parent_block: Some(BlockId { hash: None, height: 1 }),
@@ -90,16 +100,16 @@ async fn process_request() {
     let responses_sender =
         start_request_and_validate_event(&mut handler, &request, request_id).await;
 
-    send_response_and_validate_event(&mut handler, &response, request_id, &responses_sender).await;
-    finish_request_and_validate_event(&mut handler, request_id).await;
+    send_data_and_validate_event(&mut handler, &response, request_id, &responses_sender).await;
+    finish_session_and_validate_event(&mut handler, request_id).await;
 }
 
 #[tokio::test]
-async fn process_multiple_requests_simultaneously() {
+async fn process_multiple_sessions_simultaneously() {
     let mut handler = Handler::new(SUBSTREAM_TIMEOUT);
 
     const N_REQUESTS: usize = 20;
-    let request_ids = (0..N_REQUESTS).map(RequestId).collect::<Vec<_>>();
+    let request_ids = (0..N_REQUESTS).map(|value| OutboundSessionId { value }).collect::<Vec<_>>();
     let requests = (0..N_REQUESTS)
         .map(|i| GetBlocks { skip: i as u64, ..Default::default() })
         .collect::<Vec<_>>();
@@ -121,11 +131,11 @@ async fn process_multiple_requests_simultaneously() {
     let mut request_id_found = [false; N_REQUESTS];
     for event in handler.take(N_REQUESTS).collect::<Vec<_>>().await {
         match event {
-            ConnectionHandlerEvent::NotifyBehaviour(RequestProgressEvent::ReceivedResponse {
-                request_id: RequestId(i),
-                response: event_response,
+            ConnectionHandlerEvent::NotifyBehaviour(SessionProgressEvent::ReceivedData {
+                outbound_session_id: OutboundSessionId { value: i },
+                data: event_data,
             }) => {
-                assert_eq!(responses[i], event_response);
+                assert_eq!(responses[i], event_data);
                 assert!(!request_id_found[i]);
                 request_id_found[i] = true;
             }

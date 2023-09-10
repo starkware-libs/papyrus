@@ -5,4 +5,11 @@ pub mod protocol;
 use derive_more::Display;
 
 #[derive(Clone, Copy, Debug, Default, Display, Eq, Hash, PartialEq)]
-pub struct RequestId(pub usize);
+pub struct OutboundSessionId {
+    value: usize,
+}
+
+#[derive(Clone, Copy, Debug, Default, Display, Eq, Hash, PartialEq)]
+pub struct InboundSessionId {
+    value: usize,
+}
