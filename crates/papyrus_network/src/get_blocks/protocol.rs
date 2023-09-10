@@ -9,6 +9,7 @@ use futures::future::BoxFuture;
 use futures::{AsyncRead, AsyncWrite, AsyncWriteExt, FutureExt};
 use libp2p::core::upgrade::{InboundUpgrade, OutboundUpgrade, UpgradeInfo};
 use libp2p::swarm::StreamProtocol;
+use prost::Message;
 
 use crate::messages::block::{GetBlocks, GetBlocksResponse};
 use crate::messages::{read_message, write_message};
@@ -54,37 +55,37 @@ where
 ///
 /// Sends a request to get a range of blocks and receives a stream of data on the blocks.
 #[derive(Debug)]
-pub struct RequestProtocol {
-    request: GetBlocks,
-    responses_sender: UnboundedSender<GetBlocksResponse>,
+pub struct OutboundProtocol<Query: Message, Data: Message> {
+    query: Query,
+    data_sender: UnboundedSender<Data>,
 }
 
-impl RequestProtocol {
-    pub fn new(request: GetBlocks) -> (Self, UnboundedReceiver<GetBlocksResponse>) {
-        let (responses_sender, responses_receiver) = unbounded();
-        (Self { request, responses_sender }, responses_receiver)
+impl<Query: Message, Data: Message> OutboundProtocol<Query, Data> {
+    pub fn new(query: Query) -> (Self, UnboundedReceiver<Data>) {
+        let (data_sender, data_receiver) = unbounded();
+        (Self { query, data_sender }, data_receiver)
     }
 
     #[cfg(test)]
-    pub(crate) fn request(&self) -> &GetBlocks {
-        &self.request
+    pub(crate) fn query(&self) -> &Query {
+        &self.query
     }
 
     #[cfg(test)]
-    pub(crate) fn responses_sender(&self) -> &UnboundedSender<GetBlocksResponse> {
-        &self.responses_sender
+    pub(crate) fn data_sender(&self) -> &UnboundedSender<Data> {
+        &self.data_sender
     }
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum RequestProtocolError {
+pub enum OutboundProtocolError<Data: Message> {
     #[error(transparent)]
     IOError(#[from] io::Error),
     #[error(transparent)]
-    ResponseSendError(#[from] TrySendError<GetBlocksResponse>),
+    ResponseSendError(#[from] TrySendError<Data>),
 }
 
-impl UpgradeInfo for RequestProtocol {
+impl<Query: Message, Data: Message> UpgradeInfo for OutboundProtocol<Query, Data> {
     type Info = StreamProtocol;
     type InfoIter = iter::Once<Self::Info>;
 
@@ -93,24 +94,25 @@ impl UpgradeInfo for RequestProtocol {
     }
 }
 
-impl<Stream> OutboundUpgrade<Stream> for RequestProtocol
+impl<Stream, Query: Message + 'static, Data: Message + Default + 'static> OutboundUpgrade<Stream>
+    for OutboundProtocol<Query, Data>
 where
     Stream: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     type Output = ();
-    type Error = RequestProtocolError;
+    type Error = OutboundProtocolError<Data>;
     type Future = BoxFuture<'static, Result<Self::Output, Self::Error>>;
 
     fn upgrade_outbound(self, mut io: Stream, _: Self::Info) -> Self::Future {
         async move {
-            write_message(self.request, &mut io).await?;
+            write_message(self.query, &mut io).await?;
             loop {
-                let response = read_message::<GetBlocksResponse, _>(&mut io).await?;
-                if response.is_fin() {
-                    io.close().await?;
-                    return Ok(());
-                }
-                self.responses_sender.unbounded_send(response)?;
+                let data = read_message::<Data, _>(&mut io).await?;
+                // if data.is_fin() {
+                //     io.close().await?;
+                //     return Ok(());
+                // }
+                self.data_sender.unbounded_send(data)?;
             }
         }
         .boxed()
