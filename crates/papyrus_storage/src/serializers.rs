@@ -233,7 +233,7 @@ auto_storage_serde! {
     pub struct H160(pub [u8; 20]);
     pub struct IndexedDeprecatedContractClass {
         pub block_number: BlockNumber,
-        pub contract_class: DeprecatedContractClass,
+        pub location: LocationInFile,
     }
     pub enum InvokeTransaction {
         V0(InvokeTransactionV0) = 0,
@@ -280,6 +280,7 @@ auto_storage_serde! {
         Class = 0,
         ThinStateDiff = 1,
         Casm = 2,
+        DeprecatedClass =3,
     }
     struct OmmerTransactionKey(pub BlockHash, pub TransactionOffsetInBlock);
     struct OmmerEventKey(pub OmmerTransactionKey, pub EventIndexInTransactionOutput);

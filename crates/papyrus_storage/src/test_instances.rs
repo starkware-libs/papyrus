@@ -1,6 +1,5 @@
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::ContractAddress;
-use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::transaction::{
     EventIndexInTransactionOutput,
     Fee,
@@ -29,7 +28,7 @@ auto_impl_get_test_instance! {
     struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
     pub struct IndexedDeprecatedContractClass {
         pub block_number: BlockNumber,
-        pub contract_class: DeprecatedContractClass,
+        pub location: LocationInFile,
     }
     pub struct LocationInFile {
         pub offset: usize,
@@ -45,6 +44,7 @@ auto_impl_get_test_instance! {
         Class = 0,
         ThinStateDiff = 1,
         Casm = 2,
+        DeprecatedClass = 3,
     }
     struct OmmerTransactionKey(pub BlockHash, pub TransactionOffsetInBlock);
     struct OmmerEventKey(pub OmmerTransactionKey, pub EventIndexInTransactionOutput);

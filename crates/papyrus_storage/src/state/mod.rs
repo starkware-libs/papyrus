@@ -389,7 +389,9 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         if state_number.is_before(value.block_number) {
             return Ok(None);
         }
-        Ok(Some(value.contract_class))
+        let contract_class =
+            self.storage_files.deprecated_class.lock().unwrap().get(value.location);
+        Ok(Some(contract_class))
     }
 }
 
@@ -469,6 +471,8 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             write_deprecated_declared_classes(
                 deployed_contract_class_definitions,
                 &self.txn,
+                &self.storage_files.deprecated_class,
+                &offsets_table,
                 block_number,
                 &deprecated_declared_classes_table,
             )?;
@@ -476,6 +480,8 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             write_deprecated_declared_classes(
                 deprecated_declared_classes,
                 &self.txn,
+                &self.storage_files.deprecated_class,
+                &offsets_table,
                 block_number,
                 &deprecated_declared_classes_table,
             )?;
@@ -531,6 +537,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         )?;
         let deleted_deprecated_classes = delete_deprecated_declared_classes(
             &self.txn,
+            &self.storage_files.deprecated_class,
             block_number,
             &thin_state_diff,
             &deprecated_declared_classes_table,
@@ -642,22 +649,28 @@ fn write_declared_classes<'env>(
 fn write_deprecated_declared_classes<'env>(
     deprecated_declared_classes: IndexMap<ClassHash, DeprecatedContractClass>,
     txn: &DbTransaction<'env, RW>,
+    deprecated_class: &Arc<Mutex<LargeFile<DeprecatedContractClass>>>,
+    offsets_table: &'env OffsetsTable<'env>,
     block_number: BlockNumber,
     deprecated_declared_classes_table: &'env DeprecatedDeclaredClassesTable<'env>,
 ) -> StorageResult<()> {
     for (class_hash, deprecated_contract_class) in deprecated_declared_classes {
         // TODO(dan): remove this check after regenesis, in favor of insert().
         if let Some(value) = deprecated_declared_classes_table.get(txn, &class_hash)? {
-            if value.contract_class != deprecated_contract_class {
+            let contract_class = deprecated_class.lock().unwrap().get(value.location);
+            if contract_class != deprecated_contract_class {
                 return Err(StorageError::ClassAlreadyExists { class_hash });
             }
             continue;
         }
+        let offset = offsets_table.get(txn, &OffsetKind::DeprecatedClass)?.unwrap_or_default();
+        let len = deprecated_class.lock().unwrap().insert(offset, &deprecated_contract_class);
         let value = IndexedDeprecatedContractClass {
             block_number,
-            contract_class: deprecated_contract_class,
+            location: LocationInFile { offset, len },
         };
         let res = deprecated_declared_classes_table.insert(txn, &class_hash, &value);
+        offsets_table.upsert(txn, &OffsetKind::DeprecatedClass, &(offset + len))?;
         match res {
             Ok(()) => continue,
             Err(err) => return Err(err.into()),
@@ -760,6 +773,7 @@ fn delete_declared_classes<'env>(
 
 fn delete_deprecated_declared_classes<'env>(
     txn: &'env DbTransaction<'env, RW>,
+    deprecated_class: &Arc<Mutex<LargeFile<DeprecatedContractClass>>>,
     block_number: BlockNumber,
     thin_state_diff: &ThinStateDiff,
     deprecated_declared_classes_table: &'env DeprecatedDeclaredClassesTable<'env>,
@@ -783,11 +797,12 @@ fn delete_deprecated_declared_classes<'env>(
         // don't find in the deprecated classes table.
         if let Some(IndexedDeprecatedContractClass {
             block_number: declared_block_number,
-            contract_class,
+            location,
         }) = deprecated_declared_classes_table.get(txn, class_hash)?
         {
             // If the class was declared in a different block then we should'nt delete it.
             if block_number == declared_block_number {
+                let contract_class = deprecated_class.lock().unwrap().get(location);
                 deleted_data.insert(*class_hash, contract_class);
                 deprecated_declared_classes_table.delete(txn, class_hash)?;
             }

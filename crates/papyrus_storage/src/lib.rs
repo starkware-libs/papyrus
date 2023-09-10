@@ -83,6 +83,7 @@ use papyrus_config::{ParamPath, SerializedParam};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StorageKey, ThinStateDiff};
 use starknet_api::transaction::{EventContent, Transaction, TransactionHash};
@@ -118,6 +119,7 @@ pub const STORAGE_VERSION: Version = Version(4);
 #[derive(Clone)]
 pub struct StorageFiles {
     class: Arc<Mutex<LargeFile<ContractClass>>>,
+    deprecated_class: Arc<Mutex<LargeFile<DeprecatedContractClass>>>,
     thin_state_diff: Arc<Mutex<LargeFile<ThinStateDiff>>>,
     casm: Arc<Mutex<LargeFile<CasmContractClass>>>,
 }
@@ -126,9 +128,6 @@ pub struct StorageFiles {
 pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, StorageWriter)> {
     let (db_reader, mut db_writer) = open_env(&db_config)?;
     let storage_files = open_storage_files(&db_config);
-    // let class_storage = Arc::new(Mutex::new(mmap_objects_db::open_mmaped_file(
-    //     db_config.path().join("large_object_db"),
-    // )));
     let tables = Arc::new(Tables {
         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
         casms: db_writer.create_table("casms")?,
@@ -172,6 +171,9 @@ fn open_storage_files(db_config: &DbConfig) -> StorageFiles {
     StorageFiles {
         class: Arc::new(Mutex::new(mmap_objects_db::open_mmaped_file(
             db_config.path().join("class"),
+        ))),
+        deprecated_class: Arc::new(Mutex::new(mmap_objects_db::open_mmaped_file(
+            db_config.path().join("deprecated_class"),
         ))),
         thin_state_diff: Arc::new(Mutex::new(mmap_objects_db::open_mmaped_file(
             db_config.path().join("thin_state_diff"),
@@ -448,4 +450,5 @@ pub(crate) enum OffsetKind {
     Class,
     ThinStateDiff,
     Casm,
+    DeprecatedClass,
 }
