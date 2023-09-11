@@ -12,7 +12,8 @@
       }
     },
     "transaction_hash": "0x45c61314be4da85f0e13df53d18062e002c04803218f08061e4b274d4b38537",
-    "chain_id": "SN_GOERLI"
+    "chain_id": "SN_GOERLI",
+    "block_number": 0
   },
   {
     "transaction": {
@@ -30,7 +31,8 @@
       }
     },
     "transaction_hash": "0x1822471b7751cbaf98a5cce0003181af95d588e38c958739213af59f389fdc5",
-    "chain_id": "SN_GOERLI"
+    "chain_id": "SN_GOERLI",
+    "block_number": 0
   },
   {
     "transaction": {
@@ -59,7 +61,8 @@
       }
     },
     "transaction_hash": "0x394a595572ee0de6ccf79328c24f9e79979c6cae6a9dd2d413b88ee4a1f32e1",
-    "chain_id": "SN_GOERLI"
+    "chain_id": "SN_GOERLI",
+    "block_number": 330291
   },
   {
     "transaction": {
@@ -78,7 +81,8 @@
       }
     },
     "transaction_hash": "0x5772cdd88ca51effeeeff8fcdcd9635c90226bd56ed6b5b6b0e3a318c0a2e9a",
-    "chain_id": "SN_GOERLI"
+    "chain_id": "SN_GOERLI",
+    "block_number": 100000
   },
   {
     "transaction": {
@@ -96,6 +100,7 @@
       }
     },
     "transaction_hash": "0x5d50b7020f7cf8033fd7d913e489f47edf74fbf3c8ada85be512c7baa6a2eab",
-    "chain_id": "SN_MAIN"
+    "chain_id": "SN_MAIN",
+    "block_number": 192
   }
 ]
