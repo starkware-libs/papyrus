@@ -57,9 +57,6 @@ spec:
             cpu: {{ .Values.deployment.resources.requests.cpu | quote}}
             memory: {{ .Values.deployment.resources.requests.memory }}
         {{- if not .Values.backup.enabled }}
-        env:
-        - name: RUST_LOG
-          value: papyrus=DEBUG
         args:
         - --chain_id
         - {{ .Values.starknet.chainId }}
