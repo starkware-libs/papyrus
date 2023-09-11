@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
+use starknet_api::block::BlockNumber;
 use starknet_api::core::ChainId;
 use starknet_api::hash::StarkFelt;
 use starknet_api::transaction::{Transaction, TransactionHash};
@@ -36,6 +37,7 @@ struct TransactionTestData {
     transaction: Transaction,
     transaction_hash: TransactionHash,
     chain_id: ChainId,
+    block_number: BlockNumber,
 }
 
 #[test]
@@ -49,10 +51,13 @@ fn test_transaction_hash() {
         assert!(
             validate_transaction_hash(
                 &transaction_test_data.transaction,
+                &transaction_test_data.block_number,
                 &transaction_test_data.chain_id,
                 transaction_test_data.transaction_hash
             )
-            .unwrap()
+            .unwrap(),
+            "expected transaction hash {}",
+            transaction_test_data.transaction_hash
         );
         let actual_transaction_hash = get_transaction_hash(
             &transaction_test_data.transaction,
@@ -78,6 +83,7 @@ fn test_deprecated_transaction_hash() {
         assert!(
             validate_transaction_hash(
                 &transaction_test_data.transaction,
+                &transaction_test_data.block_number,
                 &transaction_test_data.chain_id,
                 transaction_test_data.transaction_hash
             )
