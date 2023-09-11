@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
+use starknet_api::block::BlockNumber;
 use starknet_api::core::ChainId;
 use starknet_api::hash::StarkFelt;
 use starknet_api::transaction::{Transaction, TransactionHash};
@@ -49,6 +50,7 @@ fn test_transaction_hash() {
         assert!(
             validate_transaction_hash(
                 &transaction_test_data.transaction,
+                &BlockNumber(2000),
                 &transaction_test_data.chain_id,
                 transaction_test_data.transaction_hash
             )
@@ -78,6 +80,7 @@ fn test_deprecated_transaction_hash() {
         assert!(
             validate_transaction_hash(
                 &transaction_test_data.transaction,
+                &BlockNumber(0),
                 &transaction_test_data.chain_id,
                 transaction_test_data.transaction_hash
             )
