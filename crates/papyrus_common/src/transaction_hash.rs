@@ -39,7 +39,7 @@ lazy_static! {
         StarkFelt::try_from("0x28ffe4ff0f226a9107253e17a904099aa4f63a02a5621de0576e5aa71bc5194")
         .unwrap();
 
-    static ref ZERO: StarkFelt = StarkFelt::from(0_u8);
+    pub(crate) static ref ZERO: StarkFelt = StarkFelt::from(0_u8);
     static ref ONE: StarkFelt = StarkFelt::from(1_u8);
     static ref TWO: StarkFelt = StarkFelt::from(2_u8);
 }
