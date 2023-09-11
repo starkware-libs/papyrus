@@ -264,17 +264,15 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let header: BlockHeader = get_block_header_by_number(&txn, block_number)?;
 
         // Get the old root.
-        let parent_block_number = get_block_number(
+        let old_root = match get_block_number(
             &txn,
             BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.parent_hash)),
-        );
-        let mut old_root =
-            GlobalRoot(StarkHash::try_from(GENESIS_HASH).map_err(internal_server_error)?);
-        if parent_block_number.is_ok() {
-            let parent_header: BlockHeader =
-                get_block_header_by_number(&txn, parent_block_number.unwrap())?;
-            old_root = parent_header.new_root;
-        }
+        ) {
+            Ok(parent_block_number) => {
+                get_block_header_by_number::<_, BlockHeader>(&txn, parent_block_number)?.new_root
+            }
+            Err(_) => GlobalRoot(StarkHash::try_from(GENESIS_HASH).map_err(internal_server_error)?),
+        };
 
         // Get the block state diff.
         let thin_state_diff = txn
@@ -453,11 +451,10 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             filter.to_block.map_or(get_latest_block_number(&txn), |block_id| {
                 get_block_number(&txn, block_id).map(Some)
             })?;
-        if maybe_to_block_number.is_none() {
+        let Some(to_block_number) = maybe_to_block_number else {
             // There are no blocks.
             return Ok(EventsChunk { events: vec![], continuation_token: None });
-        }
-        let to_block_number = maybe_to_block_number.unwrap();
+        };
         if from_block_number > to_block_number {
             return Ok(EventsChunk { events: vec![], continuation_token: None });
         }
@@ -485,8 +482,10 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             if block_number > to_block_number {
                 break;
             }
-            if filter.address.is_some() && from_address != filter.address.unwrap() {
-                break;
+            if let Some(filter_address) = filter.address {
+                if from_address != filter_address {
+                    break;
+                }
             }
             // TODO: Consider changing empty sets in the filer keys to None.
             if filter.keys.iter().enumerate().all(|(i, keys)| {
