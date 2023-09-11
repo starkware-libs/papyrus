@@ -51,6 +51,8 @@ impl<Query: Message + Clone, Data: Message> Behaviour<Query, Data> {
         }
     }
 
+    /// Send query to the given peer and start a new outbound session with it. Return the id of the
+    /// new session.
     pub fn send_query(&mut self, query: Query, peer_id: PeerId) -> OutboundSessionId {
         let outbound_session_id = self.next_outbound_session_id;
         self.next_outbound_session_id.value += 1;
@@ -65,7 +67,20 @@ impl<Query: Message + Clone, Data: Message> Behaviour<Query, Data> {
         outbound_session_id
     }
 
+    /// Send a data message to an open inbound session.
     pub fn send_data(&mut self, _data: Data, _inbound_session_id: InboundSessionId) {
+        unimplemented!();
+    }
+
+    /// Report to the behaviour that we've finished sending all the required data for a given
+    /// inbound session.
+    pub fn finish_inbound_session(_inbound_session_id: InboundSessionId) {
+        unimplemented!();
+    }
+
+    /// Report to the behaviour that we've received all the required data from a given outbound
+    /// session.
+    pub fn finish_outbound_session(_outbound_session_id: OutboundSessionId) {
         unimplemented!();
     }
 
