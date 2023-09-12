@@ -32,6 +32,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     let monitoring_server = MonitoringServer::new(
         config.monitoring_gateway.clone(),
         get_config_representation(&config, true)?,
+        get_config_representation(&config, false)?,
         storage_reader.clone(),
         VERSION_FULL,
     )?;

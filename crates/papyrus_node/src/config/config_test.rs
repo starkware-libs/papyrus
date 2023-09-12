@@ -8,6 +8,7 @@ use std::str::FromStr;
 use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
 use papyrus_config::dumping::SerializeConfig;
 use papyrus_config::SerializedParam;
+use papyrus_monitoring_gateway::MonitoringGatewayConfig;
 use pretty_assertions::assert_eq;
 use serde_json::{json, Map, Value};
 use starknet_api::core::ChainId;
@@ -19,7 +20,12 @@ use crate::config::{node_command, NodeConfig, DEFAULT_CONFIG_PATH};
 
 // Fill here all the required params in default_config.json with the default value.
 fn required_args() -> Vec<String> {
-    vec!["--base_layer.node_url".to_owned(), EthereumBaseLayerConfig::default().node_url]
+    vec![
+        "--base_layer.node_url".to_owned(),
+        EthereumBaseLayerConfig::default().node_url,
+        "--monitoring_gateway.config_representation_secret".to_owned(),
+        MonitoringGatewayConfig::default().config_representation_secret,
+    ]
 }
 
 fn get_args(additional_args: Vec<&str>) -> Vec<String> {
