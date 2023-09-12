@@ -51,6 +51,7 @@
 pub mod base_layer;
 pub mod body;
 pub mod compiled_class;
+pub mod mmap_file;
 // TODO(yair): Make the compression_utils module pub(crate) or extract it from the crate.
 #[doc(hidden)]
 pub mod compression_utils;
