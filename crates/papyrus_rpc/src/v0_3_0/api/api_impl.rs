@@ -46,15 +46,10 @@ use super::{
 };
 use crate::api::{BlockHashOrNumber, JsonRpcServerImpl};
 use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
-use crate::v0_3_0::block::{get_block_header_by_number, get_block_number};
+use crate::v0_3_0::block::{get_block_header_by_number, get_block_number, get_latest_block_number};
 use crate::v0_3_0::error::JsonRpcError;
 use crate::v0_3_0::transaction::{get_block_tx_hashes_by_number, get_block_txs_by_number};
-use crate::{
-    get_block_status,
-    get_latest_block_number,
-    internal_server_error,
-    ContinuationTokenAsStruct,
-};
+use crate::{get_block_status, internal_server_error, ContinuationTokenAsStruct};
 
 // TODO(yael): implement address 0x1 as a const function in starknet_api.
 lazy_static! {
@@ -74,15 +69,16 @@ pub struct JsonRpcServerV0_3Impl {
 #[async_trait]
 impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn block_number(&self) -> RpcResult<BlockNumber> {
+    async fn block_number(&self) -> RpcResult<BlockNumber> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        get_latest_block_number(&txn)?.ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::NoBlocks))
+        get_latest_block_number(&txn, synced(self).await)?
+            .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::NoBlocks))
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn block_hash_and_number(&self) -> RpcResult<BlockHashAndNumber> {
+    async fn block_hash_and_number(&self) -> RpcResult<BlockHashAndNumber> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        let block_number = get_latest_block_number(&txn)?
+        let block_number = get_latest_block_number(&txn, synced(self).await)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::NoBlocks))?;
         let header: BlockHeader = get_block_header_by_number(&txn, block_number)?;
 
@@ -90,9 +86,9 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> RpcResult<Block> {
+    async fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> RpcResult<Block> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        let block_number = get_block_number(&txn, block_id)?;
+        let block_number = get_block_number(&txn, block_id, synced(self).await)?;
         let status = get_block_status(&txn, block_number)?;
         let header = get_block_header_by_number(&txn, block_number)?;
         let transaction_hashes = get_block_tx_hashes_by_number(&txn, block_number)?;
@@ -101,9 +97,9 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_block_w_full_transactions(&self, block_id: BlockId) -> RpcResult<Block> {
+    async fn get_block_w_full_transactions(&self, block_id: BlockId) -> RpcResult<Block> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        let block_number = get_block_number(&txn, block_id)?;
+        let block_number = get_block_number(&txn, block_id, synced(self).await)?;
         let status = get_block_status(&txn, block_number)?;
         let header = get_block_header_by_number(&txn, block_number)?;
         // TODO(dvir): consider create a vector of (transaction, transaction_index) first and get
@@ -123,7 +119,7 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_storage_at(
+    async fn get_storage_at(
         &self,
         contract_address: ContractAddress,
         key: StorageKey,
@@ -132,7 +128,7 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         // Check that the block is valid and get the state number.
-        let block_number = get_block_number(&txn, block_id)?;
+        let block_number = get_block_number(&txn, block_id, synced(self).await)?;
         let state = StateNumber::right_after_block(block_number);
         let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
 
@@ -172,13 +168,13 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_transaction_by_block_id_and_index(
+    async fn get_transaction_by_block_id_and_index(
         &self,
         block_id: BlockId,
         index: TransactionOffsetInBlock,
     ) -> RpcResult<TransactionWithHash> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        let block_number = get_block_number(&txn, block_id)?;
+        let block_number = get_block_number(&txn, block_id, synced(self).await)?;
 
         let tx_index = TransactionIndex(block_number, index);
         let transaction = txn
@@ -194,26 +190,27 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_block_transaction_count(&self, block_id: BlockId) -> RpcResult<usize> {
+    async fn get_block_transaction_count(&self, block_id: BlockId) -> RpcResult<usize> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        let block_number = get_block_number(&txn, block_id)?;
+        let block_number = get_block_number(&txn, block_id, synced(self).await)?;
         let transactions: Vec<Transaction> = get_block_txs_by_number(&txn, block_number)?;
 
         Ok(transactions.len())
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_state_update(&self, block_id: BlockId) -> RpcResult<StateUpdate> {
+    async fn get_state_update(&self, block_id: BlockId) -> RpcResult<StateUpdate> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         // Get the block header for the block hash and state root.
-        let block_number = get_block_number(&txn, block_id)?;
+        let block_number = get_block_number(&txn, block_id, synced(self).await)?;
         let header: BlockHeader = get_block_header_by_number(&txn, block_number)?;
 
         // Get the old root.
         let old_root = match get_block_number(
             &txn,
             BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.parent_hash)),
+            synced(self).await,
         ) {
             Ok(parent_block_number) => {
                 get_block_header_by_number::<_, BlockHeader>(&txn, parent_block_number)?.new_root
@@ -289,14 +286,14 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_class(
+    async fn get_class(
         &self,
         block_id: BlockId,
         class_hash: ClassHash,
     ) -> RpcResult<GatewayContractClass> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
-        let block_number = get_block_number(&txn, block_id)?;
+        let block_number = get_block_number(&txn, block_id, synced(self).await)?;
         let state_number = StateNumber::right_after_block(block_number);
         let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
 
@@ -317,14 +314,14 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_class_at(
+    async fn get_class_at(
         &self,
         block_id: BlockId,
         contract_address: ContractAddress,
     ) -> RpcResult<GatewayContractClass> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
-        let block_number = get_block_number(&txn, block_id)?;
+        let block_number = get_block_number(&txn, block_id, synced(self).await)?;
         let state_number = StateNumber::right_after_block(block_number);
         let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
 
@@ -348,14 +345,14 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_class_hash_at(
+    async fn get_class_hash_at(
         &self,
         block_id: BlockId,
         contract_address: ContractAddress,
     ) -> RpcResult<ClassHash> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
-        let block_number = get_block_number(&txn, block_id)?;
+        let block_number = get_block_number(&txn, block_id, synced(self).await)?;
         let state = StateNumber::right_after_block(block_number);
         let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
 
@@ -366,10 +363,14 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_nonce(&self, block_id: BlockId, contract_address: ContractAddress) -> RpcResult<Nonce> {
+    async fn get_nonce(
+        &self,
+        block_id: BlockId,
+        contract_address: ContractAddress,
+    ) -> RpcResult<Nonce> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
-        let block_number = get_block_number(&txn, block_id)?;
+        let block_number = get_block_number(&txn, block_id, synced(self).await)?;
         let state = StateNumber::right_after_block(block_number);
         let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
 
@@ -385,7 +386,7 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_events(&self, filter: EventFilter) -> RpcResult<EventsChunk> {
+    async fn get_events(&self, filter: EventFilter) -> RpcResult<EventsChunk> {
         // Check the chunk size.
         if filter.chunk_size > self.max_events_chunk_size {
             return Err(ErrorObjectOwned::from(JsonRpcError::PageSizeTooBig));
@@ -397,12 +398,13 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
 
         // Get the requested block numbers.
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let synced = synced(self).await;
         let from_block_number = filter
             .from_block
-            .map_or(Ok(BlockNumber(0)), |block_id| get_block_number(&txn, block_id))?;
+            .map_or(Ok(BlockNumber(0)), |block_id| get_block_number(&txn, block_id, synced))?;
         let maybe_to_block_number =
-            filter.to_block.map_or(get_latest_block_number(&txn), |block_id| {
-                get_block_number(&txn, block_id).map(Some)
+            filter.to_block.map_or(get_latest_block_number(&txn, synced), |block_id| {
+                get_block_number(&txn, block_id, synced).map(Some)
             })?;
         let Some(to_block_number) = maybe_to_block_number else {
             // There are no blocks.
@@ -489,6 +491,18 @@ impl JsonRpcV0_3Server for JsonRpcServerV0_3Impl {
             highest_block_hash: highest_block.block_hash,
             highest_block_num: highest_block.block_number,
         }))
+    }
+}
+
+pub async fn synced(rpc_obj: &JsonRpcServerV0_3Impl) -> bool {
+    let Some(highest_block) = *rpc_obj.shared_highest_block.read().await else {
+        return true;
+    };
+    let current_block =
+        get_last_synced_block(rpc_obj.storage_reader.clone()).map_err(internal_server_error);
+    match current_block {
+        Ok(current_block) => current_block.block_number >= highest_block.block_number,
+        Err(_) => false,
     }
 }
 

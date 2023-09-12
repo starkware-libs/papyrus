@@ -104,10 +104,10 @@ pub(crate) async fn raw_call<R: JsonRpcServerImpl, S: Serialize, T: for<'a> Dese
     let result: Result<T, jsonrpsee::types::ErrorObject<'_>> =
         match json_resp.get("result") {
             Some(resp) => Ok(serde_json::from_value::<T>(resp.clone())
-                .expect("result should mtach the target type")),
+                .expect("result should match the target type")),
             None => match json_resp.get("error") {
                 Some(err) => Err(serde_json::from_value::<ErrorObjectOwned>(err.clone())
-                    .expect("result should mtach the rpc error type")),
+                    .expect("result should match the rpc error type")),
                 None => panic!("response should have result or error field, got {json_resp}"),
             },
         };

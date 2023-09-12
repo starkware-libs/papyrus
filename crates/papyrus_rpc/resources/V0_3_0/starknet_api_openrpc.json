@@ -515,6 +515,9 @@
             "errors": [
                 {
                     "$ref": "#/components/errors/NO_BLOCKS"
+                },
+                {
+                    "$ref": "#/components/errors/SERVER_NOT_SYNCED"
                 }
             ]
         },
@@ -2457,6 +2460,10 @@
             "TOO_MANY_KEYS_IN_FILTER": {
                 "code": 34,
                 "message": "Too many keys provided in a filter"
+            },
+            "SERVER_NOT_SYNCED": {
+                "code": 35,
+                "message": "Server is not synchronized"
             },
             "CONTRACT_ERROR": {
                 "code": 40,

@@ -48,6 +48,9 @@ pub const INVALID_CONTINUATION_TOKEN: JsonRpcError = JsonRpcError {
 pub const TOO_MANY_KEYS_IN_FILTER: JsonRpcError =
     JsonRpcError { code: 34, message: "Too many keys provided in a filter", data: None };
 
+pub const SERVER_NOT_SYNCED: JsonRpcError =
+    JsonRpcError { code: 35, message: "Server is not synchronized", data: None };
+
 pub const CONTRACT_ERROR: JsonRpcError =
     JsonRpcError { code: 40, message: "Contract error", data: None };
 
@@ -100,7 +103,7 @@ pub const UNSUPPORTED_CONTRACT_CLASS_VERSION: JsonRpcError =
     JsonRpcError { code: 62, message: "the contract class version is not supported", data: None };
 
 pub fn unexpected_error(data: String) -> JsonRpcError {
-    JsonRpcError { code: 63, message: "An unexpected error occured", data: Some(data) }
+    JsonRpcError { code: 64, message: "An unexpected error occured", data: Some(data) }
 }
 
 impl From<JsonRpcError> for ErrorObjectOwned {

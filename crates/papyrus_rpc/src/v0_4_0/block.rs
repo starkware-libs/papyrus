@@ -8,8 +8,8 @@ use starknet_api::core::{ContractAddress, GlobalRoot};
 
 use super::transaction::Transactions;
 use crate::api::{BlockHashOrNumber, BlockId, Tag};
-use crate::v0_4_0::error::BLOCK_NOT_FOUND;
-use crate::{get_latest_block_number, internal_server_error};
+use crate::internal_server_error;
+use crate::v0_4_0::error::{BLOCK_NOT_FOUND, SERVER_NOT_SYNCED};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockHeader {
@@ -60,6 +60,7 @@ pub fn get_block_header_by_number<
 pub(crate) fn get_block_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
     block_id: BlockId,
+    synced: bool,
 ) -> Result<BlockNumber, ErrorObjectOwned> {
     Ok(match block_id {
         BlockId::HashOrNumber(BlockHashOrNumber::Hash(block_hash)) => txn
@@ -68,16 +69,15 @@ pub(crate) fn get_block_number<Mode: TransactionKind>(
             .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?,
         BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number)) => {
             // Check that the block exists.
-            let last_block_number = get_latest_block_number(txn)?
+            let last_block_number = get_latest_block_number(txn, true)?
                 .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
             if block_number > last_block_number {
                 return Err(ErrorObjectOwned::from(BLOCK_NOT_FOUND));
             }
             block_number
         }
-        BlockId::Tag(Tag::Latest) => {
-            get_latest_block_number(txn)?.ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?
-        }
+        BlockId::Tag(Tag::Latest) => get_latest_block_number(txn, synced)?
+            .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?,
         BlockId::Tag(Tag::Pending) => {
             return Err(ErrorObjectOwned::owned(
                 jsonrpsee::types::error::ErrorCode::InternalError.code(),
@@ -86,4 +86,14 @@ pub(crate) fn get_block_number<Mode: TransactionKind>(
             ));
         }
     })
+}
+
+pub(crate) fn get_latest_block_number<Mode: TransactionKind>(
+    txn: &StorageTxn<'_, Mode>,
+    synced: bool,
+) -> Result<Option<BlockNumber>, ErrorObjectOwned> {
+    if !synced {
+        return Err(ErrorObjectOwned::from(SERVER_NOT_SYNCED));
+    }
+    Ok(txn.get_header_marker().map_err(internal_server_error)?.prev())
 }
