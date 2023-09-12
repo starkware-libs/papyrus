@@ -114,7 +114,7 @@ impl ExecutionConfigByBlock {
                 return Ok(segment);
             }
         }
-        return Ok(segments.last_key_value().unwrap().1);
+        return segments.values().last().ok_or(ExecutionError::ConfigContentError);
     }
 }
 
