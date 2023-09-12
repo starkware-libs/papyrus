@@ -18,6 +18,7 @@ serde_json = { workspace = true, features = ["arbitrary_precision"]}
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
 tracing.workspace = true
+validator = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
 http-body = { version = "0.4.5" }

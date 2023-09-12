@@ -15,6 +15,8 @@ use tower::ServiceExt;
 use crate::{app, MONITORING_PREFIX};
 
 const TEST_CONFIG_REPRESENTATION: &str = "general_config_representation";
+const PUBLIC_TEST_CONFIG_REPRESENTATION: &str = "public_general_config_representation";
+const SECRET: &str = "abcd";
 const TEST_VERSION: &str = "1.2.3-dev";
 
 // TODO(dan): consider using a proper fixture.
@@ -24,6 +26,8 @@ fn setup_app() -> Router {
         storage_reader,
         TEST_VERSION,
         serde_json::to_value(TEST_CONFIG_REPRESENTATION).unwrap(),
+        serde_json::to_value(PUBLIC_TEST_CONFIG_REPRESENTATION).unwrap(),
+        SECRET.to_string(),
         None,
     )
 }
@@ -67,16 +71,33 @@ async fn version() {
     assert_eq!(&body[..], TEST_VERSION.as_bytes());
 }
 
-#[tokio::test]
-async fn node_config() {
+async fn validate_response(request: &str, expected_response: &str) {
     let app = setup_app();
-    let response = request_app(app, "nodeConfig").await;
+    let response = request_app(app, request).await;
 
     assert_eq!(response.status(), StatusCode::OK);
 
     let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
     let body: Value = serde_json::from_slice(&body).unwrap();
-    assert_eq!(body, json!(TEST_CONFIG_REPRESENTATION));
+    assert_eq!(body, json!(expected_response));
+}
+
+#[tokio::test]
+async fn public_node_config() {
+    validate_response("publicNodeConfig", PUBLIC_TEST_CONFIG_REPRESENTATION).await;
+}
+
+#[tokio::test]
+async fn node_config_valid_secret() {
+    validate_response(format!("nodeConfig/{SECRET}").as_str(), TEST_CONFIG_REPRESENTATION).await;
+}
+
+#[tokio::test]
+async fn node_config_invalid_secret() {
+    let app = setup_app();
+    let response = request_app(app, "nodeConfig/zzz".to_string().as_str()).await;
+
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
 }
 
 #[tokio::test]
@@ -102,8 +123,14 @@ async fn with_metrics() {
     // Creates an app with prometheus handle.
     let ((storage_reader, _), _temp_dir) = test_utils::get_test_storage();
     let prometheus_handle = PrometheusBuilder::new().install_recorder().unwrap();
-    let app =
-        app(storage_reader, TEST_VERSION, serde_json::Value::default(), Some(prometheus_handle));
+    let app = app(
+        storage_reader,
+        TEST_VERSION,
+        serde_json::Value::default(),
+        serde_json::Value::default(),
+        String::new(),
+        Some(prometheus_handle),
+    );
 
     // Register a metric.
     let metric_name = "metric_name";
