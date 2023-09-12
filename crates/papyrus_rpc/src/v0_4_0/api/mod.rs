@@ -465,7 +465,7 @@ impl TryFrom<ExecutionError> for JsonRpcError {
 pub(crate) fn decompress_program(
     base64_compressed_program: &String,
 ) -> Result<Program, ErrorObjectOwned> {
-    base64::decode(base64_compressed_program).unwrap();
+    base64::decode(base64_compressed_program).map_err(internal_server_error)?;
     let compressed_data =
         base64::decode(base64_compressed_program).map_err(internal_server_error)?;
     let mut decoder = GzDecoder::new(compressed_data.as_slice());
