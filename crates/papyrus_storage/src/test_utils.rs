@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used)]
 //! Test utilities for the storage crate users.
 
 use starknet_api::core::ChainId;

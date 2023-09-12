@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used)]
 //! Utilities for generating testing instances of the execution objects.
 use std::path::PathBuf;
 
