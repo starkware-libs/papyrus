@@ -4408,6 +4408,7 @@ dependencies = [
  "tokio",
  "tower",
  "tracing",
+ "validator",
 ]
 
 [[package]]
