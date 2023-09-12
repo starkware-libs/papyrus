@@ -10,9 +10,7 @@ node:
 # Ethereum node URL. A value for this variable is mandatory.
 base_layer_node_url:
 
-# If true, metrics will be collected and exposed on the monitoring port.
-# Note: this is not a guarantee the metrics will be collected. To see where
-# they collected see the deployment.yaml file.
+# If true, metrics will be collected.
 collect_metrics: true
 
 starknet:
