@@ -77,8 +77,8 @@ expression: dumped_default_config
     "description": "If true, collect metrics for the rpc.",
     "value": false
   },
-  "rpc.execution_config.config_file_name": {
-    "description": "Name of the ExecutionConfig configuration file.",
+  "rpc.execution_config": {
+    "description": "Path of the ExecutionConfig configuration file.",
     "value": "config/execution_config/default_config.json"
   },
   "rpc.max_events_chunk_size": {
