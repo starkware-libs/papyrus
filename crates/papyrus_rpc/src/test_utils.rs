@@ -20,7 +20,7 @@ use tokio::sync::RwLock;
 
 use crate::api::JsonRpcServerImpl;
 use crate::version_config::{VersionId, VERSION_PATTERN};
-use crate::{ExecutionConfig, RpcConfig};
+use crate::RpcConfig;
 
 /// The path to the test execution config file.
 pub const TEST_EXECUTION_CONFIG_PATH: &str = "resources/test_config.json";
@@ -28,9 +28,7 @@ pub const TEST_EXECUTION_CONFIG_PATH: &str = "resources/test_config.json";
 pub fn get_test_rpc_config() -> RpcConfig {
     RpcConfig {
         chain_id: ChainId("SN_GOERLI".to_string()),
-        execution_config: ExecutionConfig {
-            config_file_name: PathBuf::from(TEST_EXECUTION_CONFIG_PATH),
-        },
+        execution_config: PathBuf::from(TEST_EXECUTION_CONFIG_PATH),
         server_address: String::from("127.0.0.1:0"),
         max_events_chunk_size: 10,
         max_events_keys: 10,
@@ -63,7 +61,6 @@ pub(crate) fn get_test_rpc_server_and_storage_writer_from_params<T: JsonRpcServe
             config.chain_id,
             config
                 .execution_config
-                .config_file_name
                 .try_into()
                 .expect("failed to load execution config"),
             storage_reader,
