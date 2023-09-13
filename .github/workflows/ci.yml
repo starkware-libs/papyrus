@@ -137,7 +137,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: >
           cargo clippy --all-targets --all-features -- -D warnings -D future-incompatible
-          -D nonstandard-style -D rust-2018-idioms -D unused
+          -D nonstandard-style -D rust-2018-idioms -D unused -D clippy::unwrap_used
 
   doc:
     runs-on: ubuntu-latest
