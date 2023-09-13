@@ -22,6 +22,7 @@ use crate::dumping::{
     ser_optional_param,
     ser_optional_sub_config,
     ser_param,
+    ser_pointer_target_param,
     ser_required_param,
     SerializeConfig,
 };
@@ -33,7 +34,16 @@ use crate::loading::{
     update_config_map_by_pointers,
     update_optional_values,
 };
-use crate::{ConfigError, ParamPath, SerializationType, SerializedContent, SerializedParam};
+use crate::representation::get_config_representation;
+use crate::{
+    ConfigError,
+    ParamPath,
+    ParamPrivacy,
+    ParamPrivacyInput,
+    SerializationType,
+    SerializedContent,
+    SerializedParam,
+};
 
 lazy_static! {
     static ref CUSTOM_CONFIG_PATH: PathBuf =
@@ -48,7 +58,7 @@ struct InnerConfig {
 
 impl SerializeConfig for InnerConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
-        BTreeMap::from([ser_param("o", &self.o, "This is o.")])
+        BTreeMap::from([ser_param("o", &self.o, "This is o.", ParamPrivacyInput::Public)])
     }
 }
 
@@ -63,7 +73,13 @@ struct OuterConfig {
 impl SerializeConfig for OuterConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         chain!(
-            ser_optional_param(&self.opt_elem, 1, "opt_elem", "This is elem."),
+            ser_optional_param(
+                &self.opt_elem,
+                1,
+                "opt_elem",
+                "This is elem.",
+                ParamPrivacyInput::Public
+            ),
             ser_optional_sub_config(&self.opt_config, "opt_config"),
             append_sub_config_name(self.inner_config.dump(), "inner_config"),
         )
@@ -107,9 +123,14 @@ struct TypicalConfig {
 impl SerializeConfig for TypicalConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         BTreeMap::from([
-            ser_param("a", &self.a.as_millis(), "This is a as milliseconds."),
-            ser_param("b", &self.b, "This is b."),
-            ser_param("c", &self.c, "This is c."),
+            ser_param(
+                "a",
+                &self.a.as_millis(),
+                "This is a as milliseconds.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param("b", &self.b, "This is b.", ParamPrivacyInput::Public),
+            ser_param("c", &self.c, "This is c.", ParamPrivacyInput::Private),
         ])
     }
 }
@@ -136,13 +157,25 @@ fn test_update_dumped_config() {
 }
 
 #[test]
+fn test_config_representation() {
+    let config = TypicalConfig { a: Duration::from_secs(1), b: "bbb".to_owned(), c: false };
+    let representation = get_config_representation(&config, true).unwrap();
+    let keys: Vec<_> = representation.as_object().unwrap().keys().collect();
+    assert_eq!(keys, vec!["a", "b", "c"]);
+
+    let public_representation = get_config_representation(&config, false).unwrap();
+    let keys: Vec<_> = public_representation.as_object().unwrap().keys().collect();
+    assert_eq!(keys, vec!["a", "b"]);
+}
+
+#[test]
 fn test_pointers_flow() {
     let config_map = BTreeMap::from([
-        ser_param("a1", &json!(5), "This is a."),
-        ser_param("a2", &json!(5), "This is a."),
+        ser_param("a1", &json!(5), "This is a.", ParamPrivacyInput::Public),
+        ser_param("a2", &json!(5), "This is a.", ParamPrivacyInput::Private),
     ]);
     let pointers = vec![(
-        ser_param("common_a", &json!(10), "This is common a"),
+        ser_pointer_target_param("common_a", &json!(10), "This is common a"),
         vec!["a1".to_owned(), "a2".to_owned()],
     )];
     let stored_map = combine_config_map_and_pointers(config_map, &pointers).unwrap();
@@ -151,14 +184,23 @@ fn test_pointers_flow() {
         json!(SerializedParam {
             description: "This is a.".to_owned(),
             content: SerializedContent::PointerTarget("common_a".to_owned()),
+            privacy: ParamPrivacy::Public,
         })
     );
-    assert_eq!(stored_map["a2"], stored_map["a1"]);
+    assert_eq!(
+        stored_map["a2"],
+        json!(SerializedParam {
+            description: "This is a.".to_owned(),
+            content: SerializedContent::PointerTarget("common_a".to_owned()),
+            privacy: ParamPrivacy::Private,
+        })
+    );
     assert_eq!(
         stored_map["common_a"],
         json!(SerializedParam {
             description: "This is common a".to_owned(),
-            content: SerializedContent::DefaultValue(json!(10))
+            content: SerializedContent::DefaultValue(json!(10)),
+            privacy: ParamPrivacy::TemporaryValue,
         })
     );
 
@@ -173,8 +215,12 @@ fn test_pointers_flow() {
 
 #[test]
 fn test_replace_pointers() {
-    let (mut config_map, _) =
-        split_values_and_types(BTreeMap::from([ser_param("a", &json!(5), "This is a.")]));
+    let (mut config_map, _) = split_values_and_types(BTreeMap::from([ser_param(
+        "a",
+        &json!(5),
+        "This is a.",
+        ParamPrivacyInput::Public,
+    )]));
     let pointers_map =
         BTreeMap::from([("b".to_owned(), "a".to_owned()), ("c".to_owned(), "a".to_owned())]);
     update_config_map_by_pointers(&mut config_map, &pointers_map).unwrap();
@@ -192,7 +238,12 @@ struct CustomConfig {
 
 impl SerializeConfig for CustomConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
-        BTreeMap::from([ser_param("param_path", &self.param_path, "This is param_path.")])
+        BTreeMap::from([ser_param(
+            "param_path",
+            &self.param_path,
+            "This is param_path.",
+            ParamPrivacyInput::Public,
+        )])
     }
 }
 
@@ -267,8 +318,13 @@ struct RequiredConfig {
 impl SerializeConfig for RequiredConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         BTreeMap::from([
-            ser_required_param("param_path", SerializationType::String, "This is param_path."),
-            ser_param("num", &self.num, "This is num."),
+            ser_required_param(
+                "param_path",
+                SerializationType::String,
+                "This is param_path.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param("num", &self.num, "This is num.", ParamPrivacyInput::Public),
         ])
     }
 }

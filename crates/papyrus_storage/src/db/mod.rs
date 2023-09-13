@@ -27,7 +27,7 @@ use std::sync::Arc;
 use libmdbx::{Cursor, Geometry, TableFlags, WriteFlags, WriteMap};
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::validators::validate_ascii;
-use papyrus_config::{ParamPath, SerializedParam};
+use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use serde::{Deserialize, Serialize};
 use starknet_api::core::ChainId;
 use validator::Validate;
@@ -81,27 +81,32 @@ impl SerializeConfig for DbConfig {
                 &self.path_prefix,
                 "Prefix of the path of the node's storage directory, the storage file path \
                 will be <path_prefix>/<chain_id>. The path is not created automatically.",
+                ParamPrivacyInput::Public,
             ),
             ser_param(
                 "chain_id",
                 &self.chain_id,
                 "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
+                ParamPrivacyInput::Public,
             ),
             ser_param(
                 "min_size",
                 &self.min_size,
                 "The minimum size of the node's storage in bytes.",
+                ParamPrivacyInput::Public,
             ),
             ser_param(
                 "max_size",
                 &self.max_size,
                 "The maximum size of the node's storage in bytes.",
+                ParamPrivacyInput::Public,
             ),
             ser_param(
                 "growth_step",
                 &self.growth_step,
                 "The growth step in bytes, must be greater than zero to allow the database to \
                  grow.",
+                ParamPrivacyInput::Public,
             ),
         ])
     }
