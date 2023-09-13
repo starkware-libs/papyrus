@@ -16,11 +16,10 @@ use starknet_api::core::{
     EntryPointSelector,
     Nonce,
 };
-use starknet_api::hash::StarkFelt;
 use starknet_api::transaction::{
     Calldata,
+    ContractAddressSalt,
     DeclareTransactionOutput,
-    DeployAccountTransaction,
     DeployAccountTransactionOutput,
     DeployTransaction,
     DeployTransactionOutput,
@@ -35,17 +34,6 @@ use starknet_api::transaction::{
 
 use crate::internal_server_error;
 use crate::v0_3_0::error::JsonRpcError;
-
-// TODO(yair): Make these functions regular consts.
-fn tx_v0() -> TransactionVersion {
-    TransactionVersion(StarkFelt::try_from("0x0").expect("Unable to convert 0x0 to StarkFelt."))
-}
-fn tx_v1() -> TransactionVersion {
-    TransactionVersion(StarkFelt::try_from("0x1").expect("Unable to convert 0x1 to StarkFelt."))
-}
-fn tx_v2() -> TransactionVersion {
-    TransactionVersion(StarkFelt::try_from("0x2").expect("Unable to convert 0x2 to StarkFelt."))
-}
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(untagged)]
@@ -83,7 +71,7 @@ impl From<starknet_api::transaction::DeclareTransactionV2> for DeclareTransactio
             sender_address: tx.sender_address,
             nonce: tx.nonce,
             max_fee: tx.max_fee,
-            version: tx_v2(),
+            version: TransactionVersion::TWO,
             signature: tx.signature,
         }
     }
@@ -103,11 +91,64 @@ where
     D: Deserializer<'de>,
 {
     let v0v1: DeclareTransactionV0V1 = Deserialize::deserialize(deserializer)?;
-    if v0v1.version == tx_v0() {
+    if v0v1.version == TransactionVersion::ZERO {
         Ok(v0v1)
     } else {
         Err(serde::de::Error::custom("Invalid version value"))
     }
+}
+
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct DeployAccountTransactionV1 {
+    pub max_fee: Fee,
+    pub signature: TransactionSignature,
+    pub nonce: Nonce,
+    pub class_hash: ClassHash,
+    pub contract_address_salt: ContractAddressSalt,
+    pub constructor_calldata: Calldata,
+    pub version: TransactionVersion,
+}
+
+// TODO(shahak, 01/11/2023): Add test that v3 transactions cause error.
+impl TryFrom<starknet_api::transaction::DeployAccountTransaction> for DeployAccountTransaction {
+    type Error = ErrorObjectOwned;
+
+    fn try_from(
+        tx: starknet_api::transaction::DeployAccountTransaction,
+    ) -> Result<Self, Self::Error> {
+        match tx {
+            starknet_api::transaction::DeployAccountTransaction::V1(
+                starknet_api::transaction::DeployAccountTransactionV1 {
+                    max_fee,
+                    signature,
+                    nonce,
+                    class_hash,
+                    contract_address_salt,
+                    constructor_calldata,
+                },
+            ) => Ok(Self::Version1(DeployAccountTransactionV1 {
+                max_fee,
+                signature,
+                nonce,
+                class_hash,
+                contract_address_salt,
+                constructor_calldata,
+                version: TransactionVersion::ONE,
+            })),
+            starknet_api::transaction::DeployAccountTransaction::V3(_) => {
+                Err(internal_server_error(
+                    "The requested transaction is a deploy account of version 3, which is not \
+                     supported on v0.3.0.",
+                ))
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(untagged)]
+pub enum DeployAccountTransaction {
+    Version1(DeployAccountTransactionV1),
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -120,19 +161,6 @@ pub struct InvokeTransactionV0 {
     pub calldata: Calldata,
 }
 
-impl From<starknet_api::transaction::InvokeTransactionV0> for InvokeTransactionV0 {
-    fn from(tx: starknet_api::transaction::InvokeTransactionV0) -> Self {
-        Self {
-            max_fee: tx.max_fee,
-            version: tx_v0(),
-            signature: tx.signature,
-            contract_address: tx.contract_address,
-            entry_point_selector: tx.entry_point_selector,
-            calldata: tx.calldata,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct InvokeTransactionV1 {
     pub max_fee: Fee,
@@ -143,24 +171,57 @@ pub struct InvokeTransactionV1 {
     pub calldata: Calldata,
 }
 
-impl From<starknet_api::transaction::InvokeTransactionV1> for InvokeTransactionV1 {
-    fn from(tx: starknet_api::transaction::InvokeTransactionV1) -> Self {
-        Self {
-            max_fee: tx.max_fee,
-            version: tx_v1(),
-            signature: tx.signature,
-            nonce: tx.nonce,
-            sender_address: tx.sender_address,
-            calldata: tx.calldata,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(untagged)]
 pub enum InvokeTransaction {
     Version0(InvokeTransactionV0),
     Version1(InvokeTransactionV1),
+}
+
+// TODO(shahak, 01/11/2023): Add test that v3 transactions cause error.
+impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction {
+    type Error = ErrorObjectOwned;
+
+    fn try_from(tx: starknet_api::transaction::InvokeTransaction) -> Result<Self, Self::Error> {
+        match tx {
+            starknet_api::transaction::InvokeTransaction::V0(
+                starknet_api::transaction::InvokeTransactionV0 {
+                    max_fee,
+                    signature,
+                    contract_address,
+                    entry_point_selector,
+                    calldata,
+                },
+            ) => Ok(Self::Version0(InvokeTransactionV0 {
+                max_fee,
+                version: TransactionVersion::ZERO,
+                signature,
+                contract_address,
+                entry_point_selector,
+                calldata,
+            })),
+            starknet_api::transaction::InvokeTransaction::V1(
+                starknet_api::transaction::InvokeTransactionV1 {
+                    max_fee,
+                    signature,
+                    nonce,
+                    sender_address,
+                    calldata,
+                },
+            ) => Ok(Self::Version1(InvokeTransactionV1 {
+                max_fee,
+                version: TransactionVersion::ONE,
+                signature,
+                nonce,
+                sender_address,
+                calldata,
+            })),
+            starknet_api::transaction::InvokeTransaction::V3(_) => Err(internal_server_error(
+                "The requested transaction is an invoke of version 3, which is not supported on \
+                 v0.3.0.",
+            )),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -185,50 +246,65 @@ pub enum Transaction {
     L1Handler(L1HandlerTransaction),
 }
 
-impl From<starknet_api::transaction::Transaction> for Transaction {
-    fn from(tx: starknet_api::transaction::Transaction) -> Self {
+// TODO(shahak, 01/11/2023): Add test that v3 transactions cause error.
+impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
+    type Error = ErrorObjectOwned;
+
+    fn try_from(tx: starknet_api::transaction::Transaction) -> Result<Self, Self::Error> {
         match tx {
             starknet_api::transaction::Transaction::Declare(declare_tx) => match declare_tx {
+                // TODO(shahak, 01/11/2023): impl TryFrom for declare separately.
                 starknet_api::transaction::DeclareTransaction::V0(tx) => {
-                    Self::Declare(DeclareTransaction::Version0(DeclareTransactionV0V1 {
+                    Ok(Self::Declare(DeclareTransaction::Version0(DeclareTransactionV0V1 {
                         class_hash: tx.class_hash,
                         sender_address: tx.sender_address,
                         nonce: tx.nonce,
                         max_fee: tx.max_fee,
-                        version: tx_v0(),
+                        version: TransactionVersion::ZERO,
                         signature: tx.signature,
-                    }))
+                    })))
                 }
                 starknet_api::transaction::DeclareTransaction::V1(tx) => {
-                    Self::Declare(DeclareTransaction::Version1(DeclareTransactionV0V1 {
+                    Ok(Self::Declare(DeclareTransaction::Version1(DeclareTransactionV0V1 {
                         class_hash: tx.class_hash,
                         sender_address: tx.sender_address,
                         nonce: tx.nonce,
                         max_fee: tx.max_fee,
-                        version: tx_v1(),
+                        version: TransactionVersion::ONE,
                         signature: tx.signature,
-                    }))
+                    })))
                 }
                 starknet_api::transaction::DeclareTransaction::V2(tx) => {
-                    Self::Declare(DeclareTransaction::Version2(tx.into()))
+                    Ok(Self::Declare(DeclareTransaction::Version2(tx.into())))
                 }
+                starknet_api::transaction::DeclareTransaction::V3(_) => Err(internal_server_error(
+                    "The requested transaction is a declare of version 3, which is not supported \
+                     on v0.3.0.",
+                )),
             },
             starknet_api::transaction::Transaction::Deploy(deploy_tx) => {
-                Transaction::Deploy(deploy_tx)
+                Ok(Transaction::Deploy(deploy_tx))
             }
-            starknet_api::transaction::Transaction::DeployAccount(deploy_tx) => {
-                Transaction::DeployAccount(deploy_tx)
+            starknet_api::transaction::Transaction::DeployAccount(deploy_account_tx) => {
+                match deploy_account_tx {
+                    starknet_api::transaction::DeployAccountTransaction::V3(_) => {
+                        Err(internal_server_error(
+                            "The requested transaction is a deploy account of version 3, which is \
+                             not supported on v0.3.0.",
+                        ))
+                    }
+                    _ => Ok(Self::DeployAccount(deploy_account_tx.try_into()?)),
+                }
             }
             starknet_api::transaction::Transaction::Invoke(invoke_tx) => match invoke_tx {
-                starknet_api::transaction::InvokeTransaction::V0(tx) => {
-                    Self::Invoke(InvokeTransaction::Version0(tx.into()))
-                }
-                starknet_api::transaction::InvokeTransaction::V1(tx) => {
-                    Self::Invoke(InvokeTransaction::Version1(tx.into()))
-                }
+                starknet_api::transaction::InvokeTransaction::V3(_) => Err(internal_server_error(
+                    "The requested transaction is a invoke of version 3, which is not supported \
+                     on v0.3.0.",
+                )),
+                _ => Ok(Self::Invoke(invoke_tx.try_into()?)),
             },
             starknet_api::transaction::Transaction::L1Handler(l1_handler_tx) => {
-                Transaction::L1Handler(l1_handler_tx)
+                Ok(Transaction::L1Handler(l1_handler_tx))
             }
         }
     }
@@ -385,7 +461,7 @@ pub struct Event {
 
 pub fn get_block_txs_by_number<
     Mode: TransactionKind,
-    Transaction: From<starknet_api::transaction::Transaction>,
+    Transaction: TryFrom<starknet_api::transaction::Transaction, Error = ErrorObjectOwned>,
 >(
     txn: &StorageTxn<'_, Mode>,
     block_number: BlockNumber,
@@ -395,7 +471,7 @@ pub fn get_block_txs_by_number<
         .map_err(internal_server_error)?
         .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
 
-    Ok(transactions.into_iter().map(Transaction::from).collect())
+    transactions.into_iter().map(Transaction::try_from).collect()
 }
 
 pub fn get_block_tx_hashes_by_number<Mode: TransactionKind>(

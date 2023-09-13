@@ -38,6 +38,7 @@ use super::error::{JsonRpcError, BLOCK_NOT_FOUND, CONTRACT_ERROR, CONTRACT_NOT_F
 use super::state::{ContractClass, StateUpdate};
 use super::transaction::{
     DeployAccountTransaction,
+    DeployAccountTransactionV1,
     Event,
     InvokeTransaction,
     InvokeTransactionV0,
@@ -290,11 +291,11 @@ pub enum SimulationFlag {
 impl TryFrom<BroadcastedTransaction> for ExecutableTransactionInput {
     type Error = ErrorObjectOwned;
     fn try_from(value: BroadcastedTransaction) -> Result<Self, Self::Error> {
-        Ok(match value {
-            BroadcastedTransaction::Declare(tx) => tx.try_into()?,
-            BroadcastedTransaction::DeployAccount(tx) => Self::Deploy(tx),
-            BroadcastedTransaction::Invoke(tx) => Self::Invoke(tx.into()),
-        })
+        match value {
+            BroadcastedTransaction::Declare(tx) => Ok(tx.try_into()?),
+            BroadcastedTransaction::DeployAccount(tx) => Ok(Self::DeployAccount(tx.into())),
+            BroadcastedTransaction::Invoke(tx) => Ok(Self::Invoke(tx.into())),
+        }
     }
 }
 
@@ -356,11 +357,27 @@ pub(crate) fn stored_txn_to_executable_txn(
                 })?;
             Ok(ExecutableTransactionInput::DeclareV2(value, casm))
         }
+        starknet_api::transaction::Transaction::Declare(
+            starknet_api::transaction::DeclareTransaction::V3(_),
+        ) => Err(internal_server_error(
+            "The requested transaction is a declare of version 3, which is not supported on \
+             v0.4.0.",
+        )),
         starknet_api::transaction::Transaction::Deploy(_) => {
             Err(internal_server_error("Deploy txns not supported in execution"))
         }
-        starknet_api::transaction::Transaction::DeployAccount(value) => {
-            Ok(ExecutableTransactionInput::Deploy(value))
+        starknet_api::transaction::Transaction::DeployAccount(deploy_account_tx) => {
+            match deploy_account_tx {
+                starknet_api::transaction::DeployAccountTransaction::V1(_) => {
+                    Ok(ExecutableTransactionInput::DeployAccount(deploy_account_tx))
+                }
+                starknet_api::transaction::DeployAccountTransaction::V3(_) => {
+                    Err(internal_server_error(
+                        "The requested transaction is a deploy account of version 3, which is not \
+                         supported on v0.4.0.",
+                    ))
+                }
+            }
         }
         starknet_api::transaction::Transaction::Invoke(value) => {
             Ok(ExecutableTransactionInput::Invoke(value))
@@ -413,6 +430,29 @@ fn user_deprecated_contract_class_to_sn_api(
         program: decompress_program(&value.compressed_program)?,
         entry_points_by_type: value.entry_points_by_type,
     })
+}
+
+impl From<DeployAccountTransaction> for starknet_api::transaction::DeployAccountTransaction {
+    fn from(tx: DeployAccountTransaction) -> Self {
+        match tx {
+            DeployAccountTransaction::Version1(DeployAccountTransactionV1 {
+                max_fee,
+                signature,
+                nonce,
+                class_hash,
+                contract_address_salt,
+                constructor_calldata,
+                version: _,
+            }) => Self::V1(starknet_api::transaction::DeployAccountTransactionV1 {
+                max_fee,
+                signature,
+                nonce,
+                class_hash,
+                contract_address_salt,
+                constructor_calldata,
+            }),
+        }
+    }
 }
 
 impl From<InvokeTransaction> for starknet_api::transaction::InvokeTransaction {

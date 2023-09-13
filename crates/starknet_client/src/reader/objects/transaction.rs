@@ -4,7 +4,6 @@ mod transaction_test;
 
 use std::collections::HashMap;
 
-use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{
     ClassHash,
@@ -14,8 +13,10 @@ use starknet_api::core::{
     EthAddress,
     Nonce,
 };
-use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::data_availability::DataAvailabilityMode;
+use starknet_api::hash::StarkHash;
 use starknet_api::transaction::{
+    AccountDeploymentData,
     Calldata,
     ContractAddressSalt,
     DeclareTransactionOutput,
@@ -28,6 +29,9 @@ use starknet_api::transaction::{
     L1ToL2Payload,
     L2ToL1Payload,
     MessageToL1,
+    PaymasterData,
+    ResourceBoundsMapping,
+    Tip,
     TransactionExecutionStatus,
     TransactionHash,
     TransactionOffsetInBlock,
@@ -38,12 +42,6 @@ use starknet_api::transaction::{
 
 use crate::reader::ReaderClientError;
 
-lazy_static! {
-    static ref TX_V0: TransactionVersion = TransactionVersion(StarkFelt::from(0u128));
-    static ref TX_V1: TransactionVersion = TransactionVersion(StarkFelt::from(1u128));
-    static ref TX_V2: TransactionVersion = TransactionVersion(StarkFelt::from(2u128));
-}
-
 // TODO(dan): consider extracting common fields out (version, hash, type).
 #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(tag = "type")]
@@ -51,7 +49,7 @@ pub enum Transaction {
     #[serde(rename = "DECLARE")]
     Declare(IntermediateDeclareTransaction),
     #[serde(rename = "DEPLOY_ACCOUNT")]
-    DeployAccount(DeployAccountTransaction),
+    DeployAccount(IntermediateDeployAccountTransaction),
     #[serde(rename = "DEPLOY")]
     Deploy(DeployTransaction),
     #[serde(rename = "INVOKE_FUNCTION")]
@@ -71,7 +69,7 @@ impl TryFrom<Transaction> for starknet_api::transaction::Transaction {
                 Ok(starknet_api::transaction::Transaction::Deploy(deploy_tx.into()))
             }
             Transaction::DeployAccount(deploy_acc_tx) => {
-                Ok(starknet_api::transaction::Transaction::DeployAccount(deploy_acc_tx.into()))
+                Ok(starknet_api::transaction::Transaction::DeployAccount(deploy_acc_tx.try_into()?))
             }
             Transaction::Invoke(invoke_tx) => {
                 Ok(starknet_api::transaction::Transaction::Invoke(invoke_tx.try_into()?))
@@ -137,27 +135,36 @@ impl From<L1HandlerTransaction> for starknet_api::transaction::L1HandlerTransact
     }
 }
 
+// TODO(shahak, 01/11/2023): Add serde tests for v3 transactions.
 #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct IntermediateDeclareTransaction {
+    pub resource_bounds: Option<ResourceBoundsMapping>,
+    pub tip: Option<Tip>,
+    pub signature: TransactionSignature,
+    pub nonce: Nonce,
     pub class_hash: ClassHash,
     pub compiled_class_hash: Option<CompiledClassHash>,
     pub sender_address: ContractAddress,
-    pub nonce: Nonce,
-    pub max_fee: Fee,
+    pub nonce_data_availability_mode: Option<DataAvailabilityMode>,
+    pub fee_data_availability_mode: Option<DataAvailabilityMode>,
+    pub paymaster_data: Option<PaymasterData>,
+    pub account_deployment_data: Option<AccountDeploymentData>,
+    pub max_fee: Option<Fee>,
     pub version: TransactionVersion,
     pub transaction_hash: TransactionHash,
-    pub signature: TransactionSignature,
 }
 
+// TODO(shahak, 01/11/2023): Add conversion tests.
 impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransaction {
     type Error = ReaderClientError;
 
     fn try_from(declare_tx: IntermediateDeclareTransaction) -> Result<Self, ReaderClientError> {
         match declare_tx.version {
-            v if v == *TX_V0 => Ok(Self::V0(declare_tx.into())),
-            v if v == *TX_V1 => Ok(Self::V1(declare_tx.into())),
-            v if v == *TX_V2 => Ok(Self::V2(declare_tx.try_into()?)),
+            TransactionVersion::ZERO => Ok(Self::V0(declare_tx.try_into()?)),
+            TransactionVersion::ONE => Ok(Self::V1(declare_tx.try_into()?)),
+            TransactionVersion::TWO => Ok(Self::V2(declare_tx.try_into()?)),
+            TransactionVersion::THREE => Ok(Self::V3(declare_tx.try_into()?)),
             _ => Err(ReaderClientError::BadTransaction {
                 tx_hash: declare_tx.transaction_hash,
                 msg: format!("Declare version {:?} is not supported.", declare_tx.version),
@@ -166,15 +173,20 @@ impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::Decl
     }
 }
 
-impl From<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransactionV0V1 {
-    fn from(declare_tx: IntermediateDeclareTransaction) -> Self {
-        Self {
-            max_fee: declare_tx.max_fee,
+impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransactionV0V1 {
+    type Error = ReaderClientError;
+
+    fn try_from(declare_tx: IntermediateDeclareTransaction) -> Result<Self, ReaderClientError> {
+        Ok(Self {
+            max_fee: declare_tx.max_fee.ok_or(ReaderClientError::BadTransaction {
+                tx_hash: declare_tx.transaction_hash,
+                msg: "Declare V1 must contain max_fee field.".to_string(),
+            })?,
             signature: declare_tx.signature,
             nonce: declare_tx.nonce,
             class_hash: declare_tx.class_hash,
             sender_address: declare_tx.sender_address,
-        }
+        })
     }
 }
 
@@ -183,7 +195,10 @@ impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::Decl
 
     fn try_from(declare_tx: IntermediateDeclareTransaction) -> Result<Self, ReaderClientError> {
         Ok(Self {
-            max_fee: declare_tx.max_fee,
+            max_fee: declare_tx.max_fee.ok_or(ReaderClientError::BadTransaction {
+                tx_hash: declare_tx.transaction_hash,
+                msg: "Declare V2 must contain max_fee field.".to_string(),
+            })?,
             signature: declare_tx.signature,
             nonce: declare_tx.nonce,
             class_hash: declare_tx.class_hash,
@@ -194,6 +209,57 @@ impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::Decl
                 },
             )?,
             sender_address: declare_tx.sender_address,
+        })
+    }
+}
+
+impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransactionV3 {
+    type Error = ReaderClientError;
+
+    fn try_from(declare_tx: IntermediateDeclareTransaction) -> Result<Self, ReaderClientError> {
+        Ok(Self {
+            resource_bounds: declare_tx.resource_bounds.ok_or(
+                ReaderClientError::BadTransaction {
+                    tx_hash: declare_tx.transaction_hash,
+                    msg: "Declare V3 must contain resource_bounds field.".to_string(),
+                },
+            )?,
+            tip: declare_tx.tip.ok_or(ReaderClientError::BadTransaction {
+                tx_hash: declare_tx.transaction_hash,
+                msg: "Declare V3 must contain tip field.".to_string(),
+            })?,
+            signature: declare_tx.signature,
+            nonce: declare_tx.nonce,
+            class_hash: declare_tx.class_hash,
+            compiled_class_hash: declare_tx.compiled_class_hash.ok_or(
+                ReaderClientError::BadTransaction {
+                    tx_hash: declare_tx.transaction_hash,
+                    msg: "Declare V3 must contain compiled_class_hash field.".to_string(),
+                },
+            )?,
+            sender_address: declare_tx.sender_address,
+            nonce_data_availability_mode: declare_tx.nonce_data_availability_mode.ok_or(
+                ReaderClientError::BadTransaction {
+                    tx_hash: declare_tx.transaction_hash,
+                    msg: "Declare V3 must contain nonce_data_availability_mode field.".to_string(),
+                },
+            )?,
+            fee_data_availability_mode: declare_tx.fee_data_availability_mode.ok_or(
+                ReaderClientError::BadTransaction {
+                    tx_hash: declare_tx.transaction_hash,
+                    msg: "Declare V3 must contain fee_data_availability_mode field.".to_string(),
+                },
+            )?,
+            paymaster_data: declare_tx.paymaster_data.ok_or(ReaderClientError::BadTransaction {
+                tx_hash: declare_tx.transaction_hash,
+                msg: "Declare V3 must contain paymaster_data field.".to_string(),
+            })?,
+            account_deployment_data: declare_tx.account_deployment_data.ok_or(
+                ReaderClientError::BadTransaction {
+                    tx_hash: declare_tx.transaction_hash,
+                    msg: "Declare V3 must contain account_deployment_data field.".to_string(),
+                },
+            )?,
         })
     }
 }
@@ -221,38 +287,127 @@ impl From<DeployTransaction> for starknet_api::transaction::DeployTransaction {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+// TODO(shahak, 01/11/2023): Add serde tests for v3 transactions.
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
-pub struct DeployAccountTransaction {
-    pub contract_address: ContractAddress,
-    pub contract_address_salt: ContractAddressSalt,
-    pub class_hash: ClassHash,
-    pub constructor_calldata: Calldata,
-    pub nonce: Nonce,
-    pub max_fee: Fee,
+pub struct IntermediateDeployAccountTransaction {
+    pub resource_bounds: Option<ResourceBoundsMapping>,
+    pub tip: Option<Tip>,
     pub signature: TransactionSignature,
+    pub nonce: Nonce,
+    pub class_hash: ClassHash,
+    pub contract_address_salt: ContractAddressSalt,
+    pub constructor_calldata: Calldata,
+    pub nonce_data_availability_mode: Option<DataAvailabilityMode>,
+    pub fee_data_availability_mode: Option<DataAvailabilityMode>,
+    pub paymaster_data: Option<PaymasterData>,
+    pub contract_address: ContractAddress,
+    pub max_fee: Option<Fee>,
     pub transaction_hash: TransactionHash,
-    #[serde(default)]
     pub version: TransactionVersion,
 }
 
-impl From<DeployAccountTransaction> for starknet_api::transaction::DeployAccountTransaction {
-    fn from(deploy_tx: DeployAccountTransaction) -> Self {
-        starknet_api::transaction::DeployAccountTransaction {
-            version: deploy_tx.version,
-            constructor_calldata: deploy_tx.constructor_calldata,
-            class_hash: deploy_tx.class_hash,
-            contract_address_salt: deploy_tx.contract_address_salt,
-            max_fee: deploy_tx.max_fee,
-            signature: deploy_tx.signature,
-            nonce: deploy_tx.nonce,
+// TODO(shahak, 01/11/2023): Add conversion tests.
+impl TryFrom<IntermediateDeployAccountTransaction>
+    for starknet_api::transaction::DeployAccountTransaction
+{
+    type Error = ReaderClientError;
+
+    fn try_from(
+        deploy_account_tx: IntermediateDeployAccountTransaction,
+    ) -> Result<Self, ReaderClientError> {
+        match deploy_account_tx.version {
+            TransactionVersion::ONE => Ok(Self::V1(deploy_account_tx.try_into()?)),
+            // Since v3 transactions, all transaction types are aligned with respect to the version,
+            // v2 was skipped in the Deploy Account type.
+            TransactionVersion::THREE => Ok(Self::V3(deploy_account_tx.try_into()?)),
+            _ => Err(ReaderClientError::BadTransaction {
+                tx_hash: deploy_account_tx.transaction_hash,
+                msg: format!(
+                    "DeployAccount version {:?} is not supported.",
+                    deploy_account_tx.version
+                ),
+            }),
         }
     }
 }
 
+impl TryFrom<IntermediateDeployAccountTransaction>
+    for starknet_api::transaction::DeployAccountTransactionV1
+{
+    type Error = ReaderClientError;
+
+    fn try_from(
+        deploy_account_tx: IntermediateDeployAccountTransaction,
+    ) -> Result<Self, ReaderClientError> {
+        Ok(Self {
+            constructor_calldata: deploy_account_tx.constructor_calldata,
+            class_hash: deploy_account_tx.class_hash,
+            contract_address_salt: deploy_account_tx.contract_address_salt,
+            max_fee: deploy_account_tx.max_fee.ok_or(ReaderClientError::BadTransaction {
+                tx_hash: deploy_account_tx.transaction_hash,
+                msg: "DeployAccount V1 must contain max_fee field.".to_string(),
+            })?,
+            signature: deploy_account_tx.signature,
+            nonce: deploy_account_tx.nonce,
+        })
+    }
+}
+
+impl TryFrom<IntermediateDeployAccountTransaction>
+    for starknet_api::transaction::DeployAccountTransactionV3
+{
+    type Error = ReaderClientError;
+
+    fn try_from(
+        deploy_account_tx: IntermediateDeployAccountTransaction,
+    ) -> Result<Self, ReaderClientError> {
+        Ok(Self {
+            resource_bounds: deploy_account_tx.resource_bounds.ok_or(
+                ReaderClientError::BadTransaction {
+                    tx_hash: deploy_account_tx.transaction_hash,
+                    msg: "DeployAccount V3 must contain resource_bounds field.".to_string(),
+                },
+            )?,
+            tip: deploy_account_tx.tip.ok_or(ReaderClientError::BadTransaction {
+                tx_hash: deploy_account_tx.transaction_hash,
+                msg: "DeployAccount V3 must contain tip field.".to_string(),
+            })?,
+            signature: deploy_account_tx.signature,
+            nonce: deploy_account_tx.nonce,
+            class_hash: deploy_account_tx.class_hash,
+            contract_address_salt: deploy_account_tx.contract_address_salt,
+            constructor_calldata: deploy_account_tx.constructor_calldata,
+            nonce_data_availability_mode: deploy_account_tx.nonce_data_availability_mode.ok_or(
+                ReaderClientError::BadTransaction {
+                    tx_hash: deploy_account_tx.transaction_hash,
+                    msg: "DeployAccount V3 must contain nonce_data_availability_mode field."
+                        .to_string(),
+                },
+            )?,
+            fee_data_availability_mode: deploy_account_tx.fee_data_availability_mode.ok_or(
+                ReaderClientError::BadTransaction {
+                    tx_hash: deploy_account_tx.transaction_hash,
+                    msg: "DeployAccount V3 must contain fee_data_availability_mode field."
+                        .to_string(),
+                },
+            )?,
+            paymaster_data: deploy_account_tx.paymaster_data.ok_or(
+                ReaderClientError::BadTransaction {
+                    tx_hash: deploy_account_tx.transaction_hash,
+                    msg: "DeployAccount V3 must contain paymaster_data field.".to_string(),
+                },
+            )?,
+        })
+    }
+}
+
+// TODO(shahak, 01/11/2023): Add serde tests for v3 transactions.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct IntermediateInvokeTransaction {
+    pub resource_bounds: Option<ResourceBoundsMapping>,
+    pub tip: Option<Tip>,
     pub calldata: Calldata,
     // In early versions of starknet, the `sender_address` field was originally named
     // `contract_address`.
@@ -261,19 +416,27 @@ pub struct IntermediateInvokeTransaction {
     pub entry_point_selector: Option<EntryPointSelector>,
     #[serde(default)]
     pub nonce: Option<Nonce>,
-    pub max_fee: Fee,
+    pub max_fee: Option<Fee>,
     pub signature: TransactionSignature,
+    pub nonce_data_availability_mode: Option<DataAvailabilityMode>,
+    pub fee_data_availability_mode: Option<DataAvailabilityMode>,
+    pub paymaster_data: Option<PaymasterData>,
+    pub account_deployment_data: Option<AccountDeploymentData>,
     pub transaction_hash: TransactionHash,
     pub version: TransactionVersion,
 }
 
+// TODO(shahak, 01/11/2023): Add conversion tests.
 impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::InvokeTransaction {
     type Error = ReaderClientError;
 
     fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ReaderClientError> {
         match invoke_tx.version {
-            v if v == *TX_V0 => Ok(Self::V0(invoke_tx.try_into()?)),
-            v if v == *TX_V1 => Ok(Self::V1(invoke_tx.try_into()?)),
+            TransactionVersion::ZERO => Ok(Self::V0(invoke_tx.try_into()?)),
+            TransactionVersion::ONE => Ok(Self::V1(invoke_tx.try_into()?)),
+            // Since v3 transactions, all transaction types are aligned with respect to the version,
+            // v2 was skipped in the Invoke type.
+            TransactionVersion::THREE => Ok(Self::V3(invoke_tx.try_into()?)),
             _ => Err(ReaderClientError::BadTransaction {
                 tx_hash: invoke_tx.transaction_hash,
                 msg: format!("Invoke version {:?} is not supported.", invoke_tx.version),
@@ -287,7 +450,10 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
 
     fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ReaderClientError> {
         Ok(Self {
-            max_fee: invoke_tx.max_fee,
+            max_fee: invoke_tx.max_fee.ok_or(ReaderClientError::BadTransaction {
+                tx_hash: invoke_tx.transaction_hash,
+                msg: "Invoke V0 must contain max_fee field.".to_string(),
+            })?,
             signature: invoke_tx.signature,
             contract_address: invoke_tx.sender_address,
             entry_point_selector: invoke_tx.entry_point_selector.ok_or(
@@ -307,7 +473,10 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
     fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ReaderClientError> {
         // TODO(yair): Consider asserting that entry_point_selector is None.
         Ok(Self {
-            max_fee: invoke_tx.max_fee,
+            max_fee: invoke_tx.max_fee.ok_or(ReaderClientError::BadTransaction {
+                tx_hash: invoke_tx.transaction_hash,
+                msg: "Invoke V1 must contain max_fee field.".to_string(),
+            })?,
             signature: invoke_tx.signature,
             nonce: invoke_tx.nonce.ok_or(ReaderClientError::BadTransaction {
                 tx_hash: invoke_tx.transaction_hash,
@@ -315,6 +484,55 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
             })?,
             sender_address: invoke_tx.sender_address,
             calldata: invoke_tx.calldata,
+        })
+    }
+}
+
+impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::InvokeTransactionV3 {
+    type Error = ReaderClientError;
+
+    fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ReaderClientError> {
+        // TODO(yair): Consider asserting that entry_point_selector is None.
+        Ok(Self {
+            resource_bounds: invoke_tx.resource_bounds.ok_or(
+                ReaderClientError::BadTransaction {
+                    tx_hash: invoke_tx.transaction_hash,
+                    msg: "Invoke V3 must contain resource_bounds field.".to_string(),
+                },
+            )?,
+            tip: invoke_tx.tip.ok_or(ReaderClientError::BadTransaction {
+                tx_hash: invoke_tx.transaction_hash,
+                msg: "Invoke V3 must contain tip field.".to_string(),
+            })?,
+            signature: invoke_tx.signature,
+            nonce: invoke_tx.nonce.ok_or(ReaderClientError::BadTransaction {
+                tx_hash: invoke_tx.transaction_hash,
+                msg: "Invoke V3 must contain nonce field.".to_string(),
+            })?,
+            sender_address: invoke_tx.sender_address,
+            calldata: invoke_tx.calldata,
+            nonce_data_availability_mode: invoke_tx.nonce_data_availability_mode.ok_or(
+                ReaderClientError::BadTransaction {
+                    tx_hash: invoke_tx.transaction_hash,
+                    msg: "Invoke V3 must contain nonce_data_availability_mode field.".to_string(),
+                },
+            )?,
+            fee_data_availability_mode: invoke_tx.fee_data_availability_mode.ok_or(
+                ReaderClientError::BadTransaction {
+                    tx_hash: invoke_tx.transaction_hash,
+                    msg: "Invoke V3 must contain fee_data_availability_mode field.".to_string(),
+                },
+            )?,
+            paymaster_data: invoke_tx.paymaster_data.ok_or(ReaderClientError::BadTransaction {
+                tx_hash: invoke_tx.transaction_hash,
+                msg: "Invoke V3 must contain paymaster_data field.".to_string(),
+            })?,
+            account_deployment_data: invoke_tx.account_deployment_data.ok_or(
+                ReaderClientError::BadTransaction {
+                    tx_hash: invoke_tx.transaction_hash,
+                    msg: "Invoke V3 must contain account_deployment_data field.".to_string(),
+                },
+            )?,
         })
     }
 }
