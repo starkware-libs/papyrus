@@ -616,4 +616,57 @@ fn test_default_execution_config() {
     let config_from_file = test_get_default_execution_config();
     assert_eq!(expected_config, config_from_file);
 }
-// TODO(Omri): Test loading of configuration according to the given block number.
+
+fn fill_up_block_execution_config_segment_with_value(value: usize) -> BlockExecutionConfig {
+    let vm_resource_fee_cost = HashMap::new();
+    let vm_resource_fee_cost = Arc::new(vm_resource_fee_cost);
+    BlockExecutionConfig {
+        fee_contract_address: contract_address!(format!("{:x}", value).as_str()),
+        invoke_tx_max_n_steps: value as u32,
+        validate_tx_max_n_steps: value as u32,
+        max_recursion_depth: value,
+        step_gas_cost: value as u64,
+        initial_gas_cost: value as u64,
+        vm_resource_fee_cost,
+    }
+}
+
+#[test]
+/// Test for the get_execution_config_for_block function.
+fn test_get_execution_config_for_block() {
+    let mut execution_config_segments: BTreeMap<BlockNumber, BlockExecutionConfig> =
+        BTreeMap::new();
+    let segment_block_numbers = vec![0, 67, 1005, 20369];
+    for block_number in segment_block_numbers {
+        execution_config_segments.insert(
+            BlockNumber(block_number as u64),
+            fill_up_block_execution_config_segment_with_value(block_number),
+        );
+    }
+    let execution_config_by_block = ExecutionConfigByBlock { execution_config_segments };
+
+    assert_eq!(
+        execution_config_by_block.get_execution_config_for_block(BlockNumber(0)).unwrap(),
+        &fill_up_block_execution_config_segment_with_value(0),
+        "Failed to get config for {:?}",
+        BlockNumber(0),
+    );
+    assert_eq!(
+        execution_config_by_block.get_execution_config_for_block(BlockNumber(67)).unwrap(),
+        &fill_up_block_execution_config_segment_with_value(67),
+        "Failed to get config for {:?}",
+        BlockNumber(67),
+    );
+    assert_eq!(
+        execution_config_by_block.get_execution_config_for_block(BlockNumber(517)).unwrap(),
+        &fill_up_block_execution_config_segment_with_value(67),
+        "Failed to get config for {:?}",
+        BlockNumber(517),
+    );
+    assert_eq!(
+        execution_config_by_block.get_execution_config_for_block(BlockNumber(20400)).unwrap(),
+        &fill_up_block_execution_config_segment_with_value(20369),
+        "Failed to get config for {:?}",
+        BlockNumber(20400),
+    );
+}

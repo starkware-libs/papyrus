@@ -110,12 +110,12 @@ impl ExecutionConfigByBlock {
         // Ok(segments.upper_bound(std::ops::Bound::Included(&block_number)).value().unwrap().
         // clone())
 
-        for (segment_block_number, segment) in segments.iter() {
-            if block_number < *segment_block_number {
+        for (segment_block_number, segment) in segments.iter().rev() {
+            if block_number >= *segment_block_number {
                 return Ok(segment);
             }
         }
-        return segments.values().last().ok_or(ExecutionError::ConfigContentError);
+        Err(ExecutionError::ConfigContentError)
     }
 }
 
