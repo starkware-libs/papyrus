@@ -4317,6 +4317,7 @@ dependencies = [
 name = "papyrus_common"
 version = "0.0.4"
 dependencies = [
+ "bitvec",
  "hex",
  "lazy_static",
  "pretty_assertions",
@@ -4367,6 +4368,7 @@ dependencies = [
  "starknet_api",
  "test_utils",
  "thiserror",
+ "tracing",
 ]
 
 [[package]]

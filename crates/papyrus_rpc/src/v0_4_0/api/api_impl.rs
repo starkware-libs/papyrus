@@ -10,7 +10,7 @@ use papyrus_execution::{
     estimate_fee as exec_estimate_fee,
     execute_call,
     simulate_transactions as exec_simulate_transactions,
-    ExecutionConfig,
+    ExecutionConfigByBlock,
     ExecutionError,
 };
 use papyrus_storage::body::events::{EventIndex, EventsReader};
@@ -115,7 +115,7 @@ lazy_static! {
 /// Rpc server.
 pub struct JsonRpcServerV0_4Impl {
     pub chain_id: ChainId,
-    pub execution_config: ExecutionConfig,
+    pub execution_config: ExecutionConfigByBlock,
     pub storage_reader: StorageReader,
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
@@ -264,17 +264,15 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let header: BlockHeader = get_block_header_by_number(&txn, block_number)?;
 
         // Get the old root.
-        let parent_block_number = get_block_number(
+        let old_root = match get_block_number(
             &txn,
             BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.parent_hash)),
-        );
-        let mut old_root =
-            GlobalRoot(StarkHash::try_from(GENESIS_HASH).map_err(internal_server_error)?);
-        if parent_block_number.is_ok() {
-            let parent_header: BlockHeader =
-                get_block_header_by_number(&txn, parent_block_number.unwrap())?;
-            old_root = parent_header.new_root;
-        }
+        ) {
+            Ok(parent_block_number) => {
+                get_block_header_by_number::<_, BlockHeader>(&txn, parent_block_number)?.new_root
+            }
+            Err(_) => GlobalRoot(StarkHash::try_from(GENESIS_HASH).map_err(internal_server_error)?),
+        };
 
         // Get the block state diff.
         let thin_state_diff = txn
@@ -453,11 +451,10 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             filter.to_block.map_or(get_latest_block_number(&txn), |block_id| {
                 get_block_number(&txn, block_id).map(Some)
             })?;
-        if maybe_to_block_number.is_none() {
+        let Some(to_block_number) = maybe_to_block_number else {
             // There are no blocks.
             return Ok(EventsChunk { events: vec![], continuation_token: None });
-        }
-        let to_block_number = maybe_to_block_number.unwrap();
+        };
         if from_block_number > to_block_number {
             return Ok(EventsChunk { events: vec![], continuation_token: None });
         }
@@ -485,8 +482,10 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             if block_number > to_block_number {
                 break;
             }
-            if filter.address.is_some() && from_address != filter.address.unwrap() {
-                break;
+            if let Some(filter_address) = filter.address {
+                if from_address != filter_address {
+                    break;
+                }
             }
             // TODO: Consider changing empty sets in the filer keys to None.
             if filter.keys.iter().enumerate().all(|(i, keys)| {
@@ -550,6 +549,11 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
         let state_number = StateNumber::right_before_block(block_number);
+        let block_execution_config =
+            self.execution_config.get_execution_config_for_block(block_number).map_err(|err| {
+                internal_server_error(format!("Failed to get execution config: {}", err))
+            })?;
+
         match execute_call(
             &txn,
             &self.chain_id,
@@ -557,7 +561,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             &contract_address,
             entry_point_selector,
             calldata,
-            &self.execution_config,
+            block_execution_config,
         ) {
             Ok(res) => Ok(res.retdata.0),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
@@ -636,13 +640,17 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
         let state_number = StateNumber::right_after_block(block_number);
+        let block_execution_config =
+            self.execution_config.get_execution_config_for_block(block_number).map_err(|err| {
+                internal_server_error(format!("Failed to get execution config: {}", err))
+            })?;
 
         match exec_estimate_fee(
             executable_txns,
             &self.chain_id,
             &txn,
             state_number,
-            &self.execution_config,
+            block_execution_config,
         ) {
             Ok(fees) => Ok(fees
                 .into_iter()
@@ -672,6 +680,10 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
         let state_number = StateNumber::right_before_block(block_number);
+        let block_execution_config =
+            self.execution_config.get_execution_config_for_block(block_number).map_err(|err| {
+                internal_server_error(format!("Failed to get execution config: {}", err))
+            })?;
 
         let charge_fee = !simulation_flags.contains(&SimulationFlag::SkipFeeCharge);
         let validate = !simulation_flags.contains(&SimulationFlag::SkipValidate);
@@ -682,7 +694,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             &self.chain_id,
             &txn,
             state_number,
-            &self.execution_config,
+            block_execution_config,
             charge_fee,
             validate,
         );
@@ -707,6 +719,10 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             .get_transaction_idx_by_hash(&transaction_hash)
             .map_err(internal_server_error)?
             .ok_or(INVALID_TRANSACTION_HASH)?;
+        let block_execution_config =
+            self.execution_config.get_execution_config_for_block(block_number).map_err(|err| {
+                internal_server_error(format!("Failed to get execution config: {}", err))
+            })?;
 
         let casm_marker = storage_txn.get_compiled_class_marker().map_err(internal_server_error)?;
         if casm_marker <= block_number {
@@ -751,7 +767,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             &self.chain_id,
             &storage_txn,
             state_number,
-            &self.execution_config,
+            block_execution_config,
             true,
             true,
         );
@@ -772,6 +788,10 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     ) -> RpcResult<Vec<TransactionTraceWithHash>> {
         let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&storage_txn, block_id)?;
+        let block_execution_config =
+            self.execution_config.get_execution_config_for_block(block_number).map_err(|err| {
+                internal_server_error(format!("Failed to get execution config: {}", err))
+            })?;
 
         let casm_marker = storage_txn.get_compiled_class_marker().map_err(internal_server_error)?;
         if casm_marker <= block_number {
@@ -813,7 +833,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             &self.chain_id,
             &storage_txn,
             state_number,
-            &self.execution_config,
+            block_execution_config,
             true,
             true,
         );
@@ -836,7 +856,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
     fn new(
         chain_id: ChainId,
-        execution_config: ExecutionConfig,
+        execution_config: ExecutionConfigByBlock,
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,

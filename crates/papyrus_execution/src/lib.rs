@@ -12,9 +12,8 @@ pub mod testing_instances;
 
 pub mod objects;
 use std::collections::{BTreeMap, HashMap};
-use std::path::{Path, PathBuf};
+use std::iter;
 use std::sync::Arc;
-use std::{fs, iter};
 
 use blockifier::block_context::BlockContext;
 use blockifier::execution::contract_class::ContractClass as BlockifierContractClass;
@@ -36,8 +35,6 @@ use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use cairo_vm::types::errors::program_errors::ProgramError;
 use execution_utils::get_trace_constructor;
 use objects::TransactionTrace;
-use papyrus_config::dumping::{ser_param, SerializeConfig};
-use papyrus_config::{ParamPath, SerializedParam};
 use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::RO;
 use papyrus_storage::header::HeaderStorageReader;
@@ -69,130 +66,55 @@ use state_reader::ExecutionStateReader;
 /// Result type for execution functions.
 pub type ExecutionResult<T> = Result<T, ExecutionError>;
 
-/// The path to the default execution config file.
-pub const DEFAULT_CONFIG_PATH: &str = "config_files/default.json";
-
-/// Returns the absolute path of the execution config file.
-pub fn get_absolute_config_file_path(relative_path: &str) -> PathBuf {
-    Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap())
-        .join("../papyrus_execution")
-        .join(relative_path)
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+/// Parameters that are needed for execution.
+// TODO(yair): Find a way to get them from the Starknet general config.
+pub struct BlockExecutionConfig {
+    /// The adress to receive fees
+    pub fee_contract_address: ContractAddress,
+    /// The maximum number of steps for an invoke transaction
+    pub invoke_tx_max_n_steps: u32,
+    /// The maximum number of steps for a validate transaction
+    pub validate_tx_max_n_steps: u32,
+    /// The maximum recursion depth for a transaction
+    pub max_recursion_depth: usize,
+    /// The cost of a single step
+    pub step_gas_cost: u64,
+    /// Parameter used to calculate the fee for a transaction
+    pub vm_resource_fee_cost: Arc<HashMap<String, f64>>,
+    /// The initial gas cost for a transaction
+    pub initial_gas_cost: u64,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[allow(missing_docs)]
-/// Parameters that are needed for execution.
-// TODO(yair): Find a way to get them from the Starknet general config.
-pub struct ExecutionConfig {
-    pub fee_contract_address: ContractAddress,
-    pub invoke_tx_max_n_steps: u32,
-    pub validate_tx_max_n_steps: u32,
-    pub max_recursion_depth: usize,
-    pub step_gas_cost: u64,
-    pub initial_gas_cost: u64,
-
-    // VM_RESOURCE_FEE_COST
-    pub n_steps: f64,             // N_STEPS_RESOURCE
-    pub pedersen_builtin: f64,    // HASH_BUILTIN_NAME
-    pub range_check_builtin: f64, // RANGE_CHECK_BUILTIN_NAME
-    pub ecdsa_builtin: f64,       // SIGNATURE_BUILTIN_NAME
-    pub bitwise_builtin: f64,     // BITWISE_BUILTIN_NAME
-    pub poseidon_builtin: f64,    // POSEIDON_BUILTIN_NAME
-    pub output_builtin: f64,      // OUTPUT_BUILTIN_NAME
-    pub ec_op_builtin: f64,       // EC_OP_BUILTIN_NAME
-    pub keccak_builtin: f64,      // KECCAK_BUILTIN_NAME
+/// Holds a mapping from the block number, to the corresponding execution configuration.
+pub struct ExecutionConfigByBlock {
+    /// A mapping from the block number to the execution configuration corresponding to the version
+    /// that was updated in this block.
+    pub execution_config_segments: BTreeMap<BlockNumber, BlockExecutionConfig>,
 }
 
-impl Default for ExecutionConfig {
-    fn default() -> Self {
-        let default_config_file =
-            fs::File::open(get_absolute_config_file_path(DEFAULT_CONFIG_PATH)).unwrap();
-        serde_json::from_reader(default_config_file).unwrap()
-    }
-}
+impl ExecutionConfigByBlock {
+    /// Returns the execution config for a given block number.
+    pub fn get_execution_config_for_block(
+        &self,
+        block_number: BlockNumber,
+    ) -> ExecutionResult<&BlockExecutionConfig> {
+        let segments = &self.execution_config_segments;
+        if segments.is_empty() || segments.keys().min() != Some(&BlockNumber(0)) {
+            return Err(ExecutionError::ConfigContentError);
+        }
 
-impl SerializeConfig for ExecutionConfig {
-    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
-        BTreeMap::from_iter([
-            ser_param(
-                "fee_contract_address",
-                &self.fee_contract_address,
-                "The contract address of the ERC-20 fee contract used for paying fees.",
-            ),
-            ser_param(
-                "invoke_tx_max_n_steps",
-                &self.invoke_tx_max_n_steps,
-                "Max steps for invoke transaction.",
-            ),
-            ser_param(
-                "validate_tx_max_n_steps",
-                &self.validate_tx_max_n_steps,
-                "Max steps for validating transaction.",
-            ),
-            ser_param(
-                "max_recursion_depth",
-                &self.max_recursion_depth,
-                "Max recursion depth for transaction.",
-            ),
-            ser_param("step_gas_cost", &self.step_gas_cost, "Cost of a single step."),
-            ser_param(
-                "initial_gas_cost",
-                &self.initial_gas_cost,
-                "An estimation of the initial gas for a transaction to run with (10e8 * \
-                 step_gas_cost).",
-            ),
-            // TODO(yair): fill description.
-            ser_param("n_steps", &self.n_steps, "I don't know what this is."),
-            ser_param(
-                "pedersen_builtin",
-                &self.pedersen_builtin,
-                "Cost of a single pedersen builtin call.",
-            ),
-            ser_param(
-                "range_check_builtin",
-                &self.range_check_builtin,
-                "Cost of a single range_check builtin call.",
-            ),
-            ser_param("ecdsa_builtin", &self.ecdsa_builtin, "Cost of a single ecdsa builtin call."),
-            ser_param(
-                "bitwise_builtin",
-                &self.bitwise_builtin,
-                "Cost of a single bitwise builtin call.",
-            ),
-            ser_param(
-                "poseidon_builtin",
-                &self.poseidon_builtin,
-                "Cost of a single poseidon builtin call.",
-            ),
-            ser_param(
-                "output_builtin",
-                &self.output_builtin,
-                "Cost of a single output builtin call.",
-            ),
-            ser_param("ec_op_builtin", &self.ec_op_builtin, "Cost of a single ec_op builtin call."),
-            ser_param(
-                "keccak_builtin",
-                &self.keccak_builtin,
-                "Cost of a single keccak builtin call.",
-            ),
-        ])
-    }
-}
+        // TODO(yael): use the upper_bound feature once stable
+        // Ok(segments.upper_bound(std::ops::Bound::Included(&block_number)).value().unwrap().
+        // clone())
 
-impl ExecutionConfig {
-    /// Returns the VM resources fee cost as a map from resource name to cost.
-    pub fn vm_resources_fee_cost(&self) -> Arc<HashMap<String, f64>> {
-        Arc::new(HashMap::from([
-            ("n_steps".to_string(), self.n_steps),
-            ("pedersen_builtin".to_string(), self.pedersen_builtin),
-            ("range_check_builtin".to_string(), self.range_check_builtin),
-            ("ecdsa_builtin".to_string(), self.ecdsa_builtin),
-            ("bitwise_builtin".to_string(), self.bitwise_builtin),
-            ("poseidon_builtin".to_string(), self.poseidon_builtin),
-            ("output_builtin".to_string(), self.output_builtin),
-            ("ec_op_builtin".to_string(), self.ec_op_builtin),
-            ("keccak_builtin".to_string(), self.keccak_builtin),
-        ]))
+        for (segment_block_number, segment) in segments.iter() {
+            if block_number < *segment_block_number {
+                return Ok(segment);
+            }
+        }
+        return segments.values().last().ok_or(ExecutionError::ConfigContentError);
     }
 }
 
@@ -225,6 +147,14 @@ pub enum ExecutionError {
     TransactionExecutionError(#[from] TransactionExecutionError),
     #[error("Charging fee is not supported yet in execution.")]
     ChargeFeeNotSupported,
+    #[error("Execution config file does not contain a configuration for all blocks")]
+    ConfigContentError,
+    #[error(transparent)]
+    ConfigFileError(#[from] std::io::Error),
+    #[error(transparent)]
+    ConfigSerdeError(#[from] serde_json::Error),
+    #[error("Missing class hash in call info")]
+    MissingClassHash,
 }
 
 /// Executes a StarkNet call and returns the execution result.
@@ -235,7 +165,7 @@ pub fn execute_call(
     contract_address: &ContractAddress,
     entry_point_selector: EntryPointSelector,
     calldata: Calldata,
-    execution_config: &ExecutionConfig,
+    execution_config: &BlockExecutionConfig,
 ) -> ExecutionResult<CallExecution> {
     verify_node_synced(txn, state_number)?;
     verify_contract_exists(contract_address, txn, state_number)?;
@@ -305,7 +235,7 @@ fn create_block_context(
     block_timestamp: BlockTimestamp,
     gas_price: GasPrice,
     sequencer_address: &ContractAddress,
-    execution_config: &ExecutionConfig,
+    execution_config: &BlockExecutionConfig,
 ) -> BlockContext {
     BlockContext {
         chain_id,
@@ -313,7 +243,7 @@ fn create_block_context(
         block_timestamp,
         sequencer_address: *sequencer_address,
         fee_token_address: execution_config.fee_contract_address,
-        vm_resource_fee_cost: execution_config.vm_resources_fee_cost(),
+        vm_resource_fee_cost: Arc::clone(&execution_config.vm_resource_fee_cost),
         invoke_tx_max_n_steps: execution_config.invoke_tx_max_n_steps,
         validate_max_n_steps: execution_config.validate_tx_max_n_steps,
         max_recursion_depth: execution_config.max_recursion_depth,
@@ -342,7 +272,7 @@ pub fn estimate_fee(
     chain_id: &ChainId,
     storage_txn: &StorageTxn<'_, RO>,
     state_number: StateNumber,
-    execution_config: &ExecutionConfig,
+    execution_config: &BlockExecutionConfig,
 ) -> ExecutionResult<Vec<(GasPrice, Fee)>> {
     let (txs_execution_info, block_context) = execute_transactions(
         txs,
@@ -368,7 +298,7 @@ fn execute_transactions(
     chain_id: &ChainId,
     storage_txn: &StorageTxn<'_, RO>,
     state_number: StateNumber,
-    execution_config: &ExecutionConfig,
+    execution_config: &BlockExecutionConfig,
     charge_fee: bool,
     validate: bool,
 ) -> ExecutionResult<(Vec<TransactionExecutionInfo>, BlockContext)> {
@@ -483,7 +413,7 @@ pub fn simulate_transactions(
     chain_id: &ChainId,
     storage_txn: &StorageTxn<'_, RO>,
     state_number: StateNumber,
-    execution_config: &ExecutionConfig,
+    execution_config: &BlockExecutionConfig,
     charge_fee: bool,
     validate: bool,
 ) -> ExecutionResult<Vec<(TransactionTrace, GasPrice, Fee)>> {
@@ -499,13 +429,15 @@ pub fn simulate_transactions(
         validate,
     )?;
     let gas_price = GasPrice(block_context.gas_price);
-    Ok(txs_execution_info
+    txs_execution_info
         .into_iter()
         .zip(trace_constructors)
         .map(|(execution_info, trace_constructor)| {
             let fee = execution_info.actual_fee;
-            let trace = trace_constructor(execution_info);
-            (trace, gas_price, fee)
+            match trace_constructor(execution_info) {
+                Ok(trace) => Ok((trace, gas_price, fee)),
+                Err(e) => Err(e),
+            }
         })
-        .collect())
+        .collect()
 }

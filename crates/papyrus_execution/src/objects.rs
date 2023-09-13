@@ -15,6 +15,8 @@ use starknet_api::deprecated_contract_class::EntryPointType;
 use starknet_api::hash::StarkFelt;
 use starknet_api::transaction::{Calldata, EventContent, MessageToL1};
 
+use crate::{ExecutionError, ExecutionResult};
+
 /// The execution trace of a transaction.
 #[allow(missing_docs)]
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
@@ -45,8 +47,9 @@ pub enum RevertReason {
     RevertReason(String),
 }
 
-impl From<TransactionExecutionInfo> for InvokeTransactionTrace {
-    fn from(transaction_execution_info: TransactionExecutionInfo) -> Self {
+impl TryFrom<TransactionExecutionInfo> for InvokeTransactionTrace {
+    type Error = ExecutionError;
+    fn try_from(transaction_execution_info: TransactionExecutionInfo) -> ExecutionResult<Self> {
         let execute_invocation = match transaction_execution_info.revert_error {
             Some(revert_error) => {
                 FunctionInvocationResult::Err(RevertReason::RevertReason(revert_error))
@@ -55,19 +58,21 @@ impl From<TransactionExecutionInfo> for InvokeTransactionTrace {
                 transaction_execution_info
                     .execute_call_info
                     .expect("Invoke transaction execution should contain execute_call_info.")
-                    .into(),
+                    .try_into()?,
             ),
         };
 
-        Self {
-            validate_invocation: transaction_execution_info
-                .validate_call_info
-                .map(FunctionInvocation::from),
+        Ok(Self {
+            validate_invocation: match transaction_execution_info.validate_call_info {
+                None => None,
+                Some(call_info) => Some(call_info.try_into()?),
+            },
             execute_invocation,
-            fee_transfer_invocation: transaction_execution_info
-                .fee_transfer_call_info
-                .map(FunctionInvocation::from),
-        }
+            fee_transfer_invocation: match transaction_execution_info.fee_transfer_call_info {
+                None => None,
+                Some(call_info) => Some(call_info.try_into()?),
+            },
+        })
     }
 }
 
@@ -80,16 +85,19 @@ pub struct DeclareTransactionTrace {
     pub fee_transfer_invocation: Option<FunctionInvocation>,
 }
 
-impl From<TransactionExecutionInfo> for DeclareTransactionTrace {
-    fn from(transaction_execution_info: TransactionExecutionInfo) -> Self {
-        Self {
-            validate_invocation: transaction_execution_info
-                .validate_call_info
-                .map(FunctionInvocation::from),
-            fee_transfer_invocation: transaction_execution_info
-                .fee_transfer_call_info
-                .map(FunctionInvocation::from),
-        }
+impl TryFrom<TransactionExecutionInfo> for DeclareTransactionTrace {
+    type Error = ExecutionError;
+    fn try_from(transaction_execution_info: TransactionExecutionInfo) -> ExecutionResult<Self> {
+        Ok(Self {
+            validate_invocation: match transaction_execution_info.validate_call_info {
+                None => None,
+                Some(call_info) => Some(call_info.try_into()?),
+            },
+            fee_transfer_invocation: match transaction_execution_info.fee_transfer_call_info {
+                None => None,
+                Some(call_info) => Some(call_info.try_into()?),
+            },
+        })
     }
 }
 
@@ -104,23 +112,26 @@ pub struct DeployAccountTransactionTrace {
     pub fee_transfer_invocation: Option<FunctionInvocation>,
 }
 
-impl From<TransactionExecutionInfo> for DeployAccountTransactionTrace {
-    fn from(transaction_execution_info: TransactionExecutionInfo) -> Self {
-        Self {
-            validate_invocation: transaction_execution_info
-                .validate_call_info
-                .map(FunctionInvocation::from),
+impl TryFrom<TransactionExecutionInfo> for DeployAccountTransactionTrace {
+    type Error = ExecutionError;
+    fn try_from(transaction_execution_info: TransactionExecutionInfo) -> ExecutionResult<Self> {
+        Ok(Self {
+            validate_invocation: match transaction_execution_info.validate_call_info {
+                None => None,
+                Some(call_info) => Some(call_info.try_into()?),
+            },
             constructor_invocation: transaction_execution_info
                 .execute_call_info
                 .expect(
                     "Deploy account execution should contain execute_call_info (the constructor \
                      call info).",
                 )
-                .into(),
-            fee_transfer_invocation: transaction_execution_info
-                .fee_transfer_call_info
-                .map(FunctionInvocation::from),
-        }
+                .try_into()?,
+            fee_transfer_invocation: match transaction_execution_info.fee_transfer_call_info {
+                None => None,
+                Some(call_info) => Some(call_info.try_into()?),
+            },
+        })
     }
 }
 
@@ -131,14 +142,15 @@ pub struct L1HandlerTransactionTrace {
     pub function_invocation: FunctionInvocation,
 }
 
-impl From<TransactionExecutionInfo> for L1HandlerTransactionTrace {
-    fn from(transaction_execution_info: TransactionExecutionInfo) -> Self {
-        Self {
+impl TryFrom<TransactionExecutionInfo> for L1HandlerTransactionTrace {
+    type Error = ExecutionError;
+    fn try_from(transaction_execution_info: TransactionExecutionInfo) -> ExecutionResult<Self> {
+        Ok(Self {
             function_invocation: transaction_execution_info
                 .execute_call_info
                 .expect("L1Handler execution should contain execute_call_info.")
-                .into(),
-        }
+                .try_into()?,
+        })
     }
 }
 
@@ -176,20 +188,25 @@ pub struct FunctionInvocation {
     pub messages: Vec<MessageToL1>,
 }
 
-impl From<CallInfo> for FunctionInvocation {
-    fn from(call_info: CallInfo) -> Self {
-        Self {
+impl TryFrom<CallInfo> for FunctionInvocation {
+    type Error = ExecutionError;
+    fn try_from(call_info: CallInfo) -> ExecutionResult<Self> {
+        Ok(Self {
             function_call: FunctionCall {
                 contract_address: call_info.call.storage_address,
                 entry_point_selector: call_info.call.entry_point_selector,
                 calldata: call_info.call.calldata,
             },
             caller_address: call_info.call.caller_address,
-            class_hash: call_info.call.class_hash.unwrap(), // TODO: fix this.
+            class_hash: call_info.call.class_hash.ok_or(ExecutionError::MissingClassHash)?, /* TODO: fix this. */
             entry_point_type: call_info.call.entry_point_type,
             call_type: call_info.call.call_type.into(),
             result: call_info.execution.retdata.into(),
-            calls: call_info.inner_calls.into_iter().map(Self::from).collect(),
+            calls: call_info
+                .inner_calls
+                .into_iter()
+                .map(Self::try_from)
+                .collect::<Result<_, _>>()?,
             events: call_info
                 .execution
                 .events
@@ -208,7 +225,7 @@ impl From<CallInfo> for FunctionInvocation {
                     payload: ordered_message.message.payload,
                 })
                 .collect(),
-        }
+        })
     }
 }
 

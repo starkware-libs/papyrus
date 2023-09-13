@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod main_test;
+
 use std::env::args;
 use std::sync::Arc;
 
@@ -12,9 +15,8 @@ use papyrus_sync::sources::base_layer::{BaseLayerSourceError, EthereumBaseLayerS
 use papyrus_sync::sources::central::{CentralError, CentralSource};
 use papyrus_sync::{StateSync, StateSyncError};
 use tokio::sync::RwLock;
-use tokio::task::JoinHandle;
-use tracing::info;
 use tracing::metadata::LevelFilter;
+use tracing::{error, info};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 use validator::Validate;
@@ -47,31 +49,21 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         run_sync(config, shared_highest_block, storage_reader.clone(), storage_writer);
     let sync_handle = tokio::spawn(sync_future);
 
-    // TODO(dvir): refactor + better error handling.
-    async fn flatten_with_result<T: std::convert::Into<anyhow::Error>>(
-        handle: JoinHandle<Result<(), T>>,
-    ) -> anyhow::Result<()> {
-        match handle.await {
-            Ok(Ok(result)) => Ok(result),
-            Ok(Err(err)) => Err(err.into()),
-            Err(err) => Err(err.into()),
+    tokio::select! {
+        res = server_handle_future => {
+            error!("RPC server stopped.");
+            res?
         }
-    }
-
-    async fn flatten_server(handle: JoinHandle<()>) -> anyhow::Result<()> {
-        match handle.await {
-            Ok(_) => Ok(()),
-            Err(err) => Err(err.into()),
+        res = monitoring_server_handle => {
+            error!("Monitoring server stopped.");
+            res??
         }
-    }
-
-    tokio::try_join!(
-        // We use flatten in order to try_join the inner result, not the join handle.
-        flatten_server(server_handle_future),
-        flatten_with_result(monitoring_server_handle),
-        flatten_with_result(sync_handle)
-    )?;
-
+        res = sync_handle => {
+            error!("Sync stopped.");
+            res??
+        }
+    };
+    error!("Task ended with unexpected Ok.");
     return Ok(());
 
     async fn run_sync(

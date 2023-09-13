@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used)]
 use serde::Serialize;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
