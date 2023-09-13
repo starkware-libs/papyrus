@@ -70,8 +70,9 @@ cargo run --release --package papyrus_node --bin papyrus_node
 `Papyrus` default [configuration file](config/default_config.json) documents all the available parameters,
 including pointers to common values and `#is_none` flags for optional parameters.
 
-You can override the default with your own key-value configuration json file, by providing a path to the
-`--config_file` command-line argument. Note that the configuration file can be partial or even empty.
+You can override the default with configuration json files, by providing paths to the `--config_file`
+command-line argument. We provide preset json files for several Starknet networks [here](config/presets).
+Note that the configuration files can be partial.
 Alternatively, You can specify environment variables and command-line arguments.
 See the available command-line arguments by running:
 
