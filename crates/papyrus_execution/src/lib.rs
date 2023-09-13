@@ -153,6 +153,8 @@ pub enum ExecutionError {
     ConfigFileError(#[from] std::io::Error),
     #[error(transparent)]
     ConfigSerdeError(#[from] serde_json::Error),
+    #[error("Missing class hash in call info")]
+    MissingClassHash,
 }
 
 /// Executes a StarkNet call and returns the execution result.
@@ -427,13 +429,15 @@ pub fn simulate_transactions(
         validate,
     )?;
     let gas_price = GasPrice(block_context.gas_price);
-    Ok(txs_execution_info
+    txs_execution_info
         .into_iter()
         .zip(trace_constructors)
         .map(|(execution_info, trace_constructor)| {
             let fee = execution_info.actual_fee;
-            let trace = trace_constructor(execution_info);
-            (trace, gas_price, fee)
+            match trace_constructor(execution_info) {
+                Ok(trace) => Ok((trace, gas_price, fee)),
+                Err(e) => Err(e),
+            }
         })
-        .collect())
+        .collect()
 }
