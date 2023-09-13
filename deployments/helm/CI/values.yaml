@@ -2,6 +2,10 @@
 
 rustLogLevel: "debug"
 
+starknet:
+  # possible values: "mainnet.json", "testnet1.json", "testnet2.json".
+  preset: mainnet.json
+
 deployment:
   image:
     tag: dev

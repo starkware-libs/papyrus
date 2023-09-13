@@ -11,7 +11,7 @@ if [ -n "${CONCURRENT_REQUESTS}" ]; then
     sed -i "s/concurrent_requests: 10/concurrent_requests: $CONCURRENT_REQUESTS/g" /app/config/config.yaml
 fi
 
-RUN_CMD="/app/target/release/papyrus_node --chain_id=${CHAIN_ID} --central_url=${CENTRAL_URL} ${ADDITIONAL_ARGS}"
+RUN_CMD="/app/target/release/papyrus_node --config_file=/app/config/presets/${PRESET} ${ADDITIONAL_ARGS}"
 
 while true; do
     # start papyrus and save the pid
