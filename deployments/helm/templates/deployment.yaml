@@ -58,10 +58,8 @@ spec:
             memory: {{ .Values.deployment.resources.requests.memory }}
         {{- if not .Values.backup.enabled }}
         args:
-        - --chain_id
-        - {{ .Values.starknet.chainId }}
-        - --central.url
-        - {{ .Values.starknet.centralUrl }}
+        - --config_file
+        - {{ .Values.starknet.preset }}
         - --base_layer.node_url
         - {{ .Values.base_layer_node_url }}
         {{- if .Values.services }}
