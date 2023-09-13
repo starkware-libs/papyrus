@@ -40,7 +40,7 @@ pub fn general_request_v0_3() -> Scenario {
     // This is the scenario name to run from the command line.
     // This name must be alphanumeric, so instead of letting Goose do the conversion from the
     // scenario name for us, we give it the name we want.
-    scenario.machine_name = "generalrequestv003".to_string();
+    scenario.machine_name = "generalrequestv03".to_string();
 
     let trans_and_weights = vec![
         (txs::block_hash_and_number(), BLOCK_HASH_AND_NUMBER_WEIGHT),
@@ -103,7 +103,7 @@ pub fn general_request_v0_3() -> Scenario {
 pub fn general_request_v0_4() -> Scenario {
     let mut scenario = general_request_v0_3();
     scenario.name = "general_request_v0_4".to_string();
-    scenario.machine_name = "generalrequestv004".to_string();
+    scenario.machine_name = "generalrequestv04".to_string();
 
     let new_trans_and_weights = vec![
         (txs::trace_block_transactions_by_hash(), TRACE_BLOCK_TRANSACTIONS_BY_HASH_WEIGHT),
