@@ -11,5 +11,5 @@ pub struct OutboundSessionId {
 
 #[derive(Clone, Copy, Debug, Default, Display, Eq, Hash, PartialEq)]
 pub struct InboundSessionId {
-    value: usize,
+    pub value: usize,
 }
