@@ -92,8 +92,8 @@ expression: dumped_default_config
     "value": false,
     "privacy": "Public"
   },
-  "rpc.execution_config.config_file_name": {
-    "description": "Name of the ExecutionConfig configuration file.",
+  "rpc.execution_config": {
+    "description": "Path to the execution configuration file.",
     "value": "config/execution_config/default_config.json",
     "privacy": "Public"
   },
