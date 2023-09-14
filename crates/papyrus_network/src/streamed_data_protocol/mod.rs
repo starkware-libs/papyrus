@@ -7,12 +7,24 @@ use prost::Message;
 
 #[derive(Clone, Copy, Debug, Default, Display, Eq, Hash, PartialEq)]
 pub struct OutboundSessionId {
-    value: usize,
+    pub value: usize,
 }
 
 #[derive(Clone, Copy, Debug, Default, Display, Eq, Hash, PartialEq)]
 pub struct InboundSessionId {
-    value: usize,
+    pub value: usize,
+}
+
+#[cfg_attr(test, derive(Debug, Clone, Eq, PartialEq, Copy))]
+pub enum SessionId {
+    Inbound(InboundSessionId),
+    Outbound(OutboundSessionId),
+}
+
+impl Default for SessionId {
+    fn default() -> Self {
+        Self::Inbound(InboundSessionId::default())
+    }
 }
 
 // This is a workaround for the unstable feature trait aliases
