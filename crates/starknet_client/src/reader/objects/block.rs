@@ -13,6 +13,7 @@ use starknet_api::block::{
     GasPrice,
 };
 use starknet_api::core::{ContractAddress, GlobalRoot};
+use starknet_api::hash::StarkFelt;
 #[cfg(doc)]
 use starknet_api::transaction::TransactionOutput as starknet_api_transaction_output;
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
@@ -237,4 +238,23 @@ impl From<BlockStatus> for starknet_api::block::BlockStatus {
             BlockStatus::Reverted => starknet_api::block::BlockStatus::Rejected,
         }
     }
+}
+
+/// A block signature and the input data used to create it.
+#[derive(
+    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct BlockSignatureData {
+    pub block_number: BlockNumber,
+    pub signature: [StarkFelt; 2],
+    pub signature_input: BlockSignatureMessage,
+}
+
+/// The input data used to create a block signature (Poseidon hash of this data).
+#[derive(
+    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
+)]
+pub struct BlockSignatureMessage {
+    pub block_hash: BlockHash,
+    pub state_diff_commitment: StarkFelt,
 }
