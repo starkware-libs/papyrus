@@ -616,5 +616,4 @@ fn test_default_execution_config() {
     let config_from_file = test_get_default_execution_config();
     assert_eq!(expected_config, config_from_file);
 }
-
 // TODO(Omri): Test loading of configuration according to the given block number.
