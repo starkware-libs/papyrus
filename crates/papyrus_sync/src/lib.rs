@@ -639,6 +639,7 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
                 continue;
             }
             let up_to = min(central_block_marker, BlockNumber(header_marker.0 + max_stream_size as u64));
+            let up_to= min(up_to, BlockNumber(200_000));
             debug!("Downloading blocks [{} - {}).", header_marker, up_to);
             let block_stream =
                 central_source.stream_new_blocks(header_marker, up_to).fuse();
