@@ -9,19 +9,22 @@ use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
 use pretty_assertions::assert_eq;
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
+use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, GasPrice};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass, StateDiff, StorageKey};
 use starknet_api::{patricia_key, stark_felt};
+use starknet_client::reader::PendingData;
 use tokio::sync::RwLock;
 
 use crate::sources::base_layer::MockBaseLayerSourceTrait;
 use crate::sources::central::MockCentralSourceTrait;
+use crate::sources::pending::MockPendingSourceTrait;
 use crate::{
     sort_state_diff,
     stream_new_base_layer_block,
+    sync_pending_data,
     GenericStateSync,
     StateSyncError,
     SyncConfig,
@@ -177,7 +180,9 @@ fn store_base_layer_block_test() {
     let mut gen_state_sync = GenericStateSync {
         config: SyncConfig::default(),
         shared_highest_block: Arc::new(RwLock::new(None)),
+        pending_data: Arc::new(RwLock::new(PendingData::default())),
         central_source: Arc::new(MockCentralSourceTrait::new()),
+        pending_source: Arc::new(MockPendingSourceTrait::new()),
         base_layer_source: Arc::new(MockBaseLayerSourceTrait::new()),
         reader,
         writer,
@@ -216,4 +221,47 @@ fn add_headers(headers_num: u64, writer: &mut StorageWriter) {
             .commit()
             .unwrap();
     }
+}
+
+#[tokio::test]
+async fn pending_sync() {
+    // Storage with one default block header.
+    let (reader, mut writer) = get_test_storage().0;
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(BlockNumber(0), &BlockHeader::default())
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    let mut mock_pending_source = MockPendingSourceTrait::new();
+
+    const PENDING_QUERIES: usize = 2;
+    for call_count in 0..=PENDING_QUERIES {
+        mock_pending_source.expect_get_pending_data().times(1).returning(move || {
+            let mut block = PendingData::default();
+            block.block.gas_price = GasPrice(call_count as u128);
+            Ok(block)
+        });
+    }
+
+    mock_pending_source.expect_get_pending_data().times(1).returning(|| {
+        let mut block = PendingData::default();
+        block.block.parent_block_hash = BlockHash(stark_felt!("0x1"));
+        Ok(block)
+    });
+
+    let pending_data = Arc::new(RwLock::new(PendingData::default()));
+
+    sync_pending_data(
+        reader,
+        Arc::new(mock_pending_source),
+        pending_data.clone(),
+        Duration::from_millis(1),
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(pending_data.read().await.block.gas_price, GasPrice(PENDING_QUERIES as u128));
 }
