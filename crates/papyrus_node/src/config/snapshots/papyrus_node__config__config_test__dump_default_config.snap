@@ -77,6 +77,11 @@ expression: dumped_default_config
     "value": false,
     "privacy": "Public"
   },
+  "monitoring_gateway.config_representation_secret": {
+    "description": "A secret for representing the full general config.",
+    "required_type": "String",
+    "privacy": "Private"
+  },
   "monitoring_gateway.server_address": {
     "description": "node's monitoring server.",
     "value": "0.0.0.0:8081",

@@ -2,12 +2,16 @@ use std::collections::{BTreeMap, HashMap};
 use std::env::{self, args};
 use std::fs::File;
 use std::io::{BufWriter, Write};
+use std::ops::IndexMut;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+use itertools::Itertools;
 use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
 use papyrus_config::dumping::SerializeConfig;
-use papyrus_config::SerializedParam;
+use papyrus_config::representation::get_config_representation;
+use papyrus_config::{SerializedContent, SerializedParam};
+use papyrus_monitoring_gateway::MonitoringGatewayConfig;
 use pretty_assertions::assert_eq;
 use serde_json::{json, Map, Value};
 use starknet_api::core::ChainId;
@@ -17,9 +21,32 @@ use validator::Validate;
 
 use crate::config::{node_command, NodeConfig, DEFAULT_CONFIG_PATH};
 
-// Fill here all the required params in default_config.json with the default value.
+// Returns the required params in default_config.json with the default value from the config
+// representation.
 fn required_args() -> Vec<String> {
-    vec!["--base_layer.node_url".to_owned(), EthereumBaseLayerConfig::default().node_url]
+    let default_config = NodeConfig::default();
+    let mut args = Vec::new();
+    let mut config_representation = get_config_representation(&default_config, true).unwrap();
+
+    for (param_path, serialized_param) in default_config.dump() {
+        let SerializedContent::RequiredType(serialization_type) = serialized_param.content else {
+            continue;
+        };
+        args.push(format!("--{param_path}"));
+
+        let required_param_json_value = param_path
+            .split('.')
+            .fold(&mut config_representation, |entry, config_name| entry.index_mut(config_name));
+
+        let required_param_string_value = match serialization_type {
+            papyrus_config::SerializationType::String => {
+                required_param_json_value.as_str().unwrap().to_string()
+            }
+            _ => required_param_json_value.to_string(),
+        };
+        args.push(required_param_string_value);
+    }
+    args
 }
 
 fn get_args(additional_args: Vec<&str>) -> Vec<String> {

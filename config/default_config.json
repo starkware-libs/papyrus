@@ -69,6 +69,11 @@
     "pointer_target": "collect_metrics",
     "privacy": "Public"
   },
+  "monitoring_gateway.config_representation_secret": {
+    "description": "A secret for representing the full general config.",
+    "privacy": "Private",
+    "required_type": "String"
+  },
   "monitoring_gateway.server_address": {
     "description": "node's monitoring server.",
     "privacy": "Public",
