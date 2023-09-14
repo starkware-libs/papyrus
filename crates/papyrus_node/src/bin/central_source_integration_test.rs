@@ -21,6 +21,7 @@ async fn main() {
         "--central.url=https://alpha4.starknet.io/".to_owned(),
         "--base_layer.node_url=https://mainnet.infura.io/v3/1234".to_owned(),
         format!("--storage.db_config.path_prefix={}", path.display()),
+        "--monitoring_gateway.config_representation_secret=abcd".to_owned(),
     ])
     .expect("Load config");
     let (storage_reader, _) = open_storage(config.storage).expect("Open storage");
