@@ -7,7 +7,7 @@ use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use indexmap::indexmap;
 use mockito::mock;
 use pretty_assertions::assert_eq;
-use starknet_api::block::BlockNumber;
+use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass,
@@ -39,6 +39,7 @@ use super::{
     GET_BLOCK_URL,
     GET_STATE_UPDATE_URL,
 };
+use crate::reader::objects::block::{BlockSignatureData, BlockSignatureMessage};
 use crate::test_utils::read_resource::read_resource_file;
 use crate::test_utils::retry::get_test_config;
 
@@ -467,4 +468,44 @@ async fn compiled_class_by_hash_unserializable() {
         },
     )
     .await
+}
+
+#[tokio::test]
+async fn get_block_signature() {
+    let starknet_client = StarknetFeederGatewayClient::new(
+        &mockito::server_url(),
+        None,
+        NODE_VERSION,
+        get_test_config(),
+    )
+    .unwrap();
+
+    let expected_block_signature = BlockSignatureData {
+        block_number: BlockNumber(20),
+        signature: [stark_felt!("0x1"), stark_felt!("0x2")],
+        signature_input: BlockSignatureMessage {
+            block_hash: BlockHash(stark_felt!("0x20")),
+            state_diff_commitment: stark_felt!("0x1234"),
+        },
+    };
+
+    let mock_block_signature =
+        mock("GET", &format!("/feeder_gateway/get_signature?{BLOCK_NUMBER_QUERY}=20")[..])
+            .with_status(200)
+            .with_body(serde_json::to_string(&expected_block_signature).unwrap())
+            .create();
+
+    let block_signature = starknet_client.block_signature(BlockNumber(20)).await.unwrap().unwrap();
+    mock_block_signature.assert();
+    assert_eq!(block_signature, expected_block_signature);
+
+    let body = r#"{"code": "StarknetErrorCode.BLOCK_NOT_FOUND", "message": "Block number 999999 was not found."}"#;
+    let mock_no_block =
+        mock("GET", &format!("/feeder_gateway/get_signature?{BLOCK_NUMBER_QUERY}=999999")[..])
+            .with_status(400)
+            .with_body(body)
+            .create();
+    let block_signature = starknet_client.block_signature(BlockNumber(999999)).await.unwrap();
+    mock_no_block.assert();
+    assert!(block_signature.is_none());
 }

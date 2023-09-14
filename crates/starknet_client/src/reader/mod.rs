@@ -21,6 +21,7 @@ use starknet_api::StarknetApiError;
 use tracing::{debug, instrument};
 use url::Url;
 
+use self::objects::block::BlockSignatureData;
 pub use crate::reader::objects::block::{Block, TransactionReceiptsError};
 pub use crate::reader::objects::state::{
     ContractClass,
@@ -88,6 +89,11 @@ pub trait StarknetReader {
         &self,
         block_number: BlockNumber,
     ) -> ReaderClientResult<Option<StateUpdate>>;
+
+    async fn block_signature(
+        &self,
+        block_number: BlockNumber,
+    ) -> ReaderClientResult<Option<BlockSignatureData>>;
 }
 
 /// A client for the [`Starknet`] feeder gateway.
@@ -104,6 +110,7 @@ struct StarknetUrls {
     get_contract_by_hash: Url,
     get_compiled_class_by_class_hash: Url,
     get_state_update: Url,
+    get_block_signature: Url,
 }
 
 const GET_BLOCK_URL: &str = "feeder_gateway/get_block";
@@ -114,6 +121,7 @@ const GET_STATE_UPDATE_URL: &str = "feeder_gateway/get_state_update";
 const BLOCK_NUMBER_QUERY: &str = "blockNumber";
 const LATEST_BLOCK_NUMBER: &str = "latest";
 const CLASS_HASH_QUERY: &str = "classHash";
+const GET_BLOCK_SIGNATURE_URL: &str = "feeder_gateway/get_signature";
 
 impl StarknetUrls {
     fn new(url_str: &str) -> Result<Self, ClientCreationError> {
@@ -124,6 +132,7 @@ impl StarknetUrls {
             get_compiled_class_by_class_hash: base_url
                 .join(GET_COMPILED_CLASS_BY_CLASS_HASH_URL)?,
             get_state_update: base_url.join(GET_STATE_UPDATE_URL)?,
+            get_block_signature: base_url.join(GET_BLOCK_SIGNATURE_URL)?,
         })
     }
 }
@@ -282,6 +291,21 @@ impl StarknetReader for StarknetFeederGatewayClient {
             response,
             KnownStarknetErrorCode::UndeclaredClass,
             format!("Failed to get compiled class with hash {class_hash:?} from starknet server."),
+        )
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    async fn block_signature(
+        &self,
+        block_number: BlockNumber,
+    ) -> ReaderClientResult<Option<BlockSignatureData>> {
+        let mut url = self.urls.get_block_signature.clone();
+        url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.to_string());
+        let response = self.request_with_retry_url(url).await;
+        load_object_from_response(
+            response,
+            KnownStarknetErrorCode::BlockNotFound,
+            format!("Failed to get signature for block {block_number:?} from starknet server."),
         )
     }
 }
