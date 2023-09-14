@@ -10,7 +10,9 @@ use papyrus_rpc::run_server;
 use papyrus_storage::{open_storage, StorageReader, StorageWriter};
 use papyrus_sync::sources::base_layer::{BaseLayerSourceError, EthereumBaseLayerSource};
 use papyrus_sync::sources::central::{CentralError, CentralSource};
+use papyrus_sync::sources::pending::PendingSource;
 use papyrus_sync::{StateSync, StateSyncError};
+use starknet_client::reader::PendingData;
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 use tracing::info;
@@ -36,6 +38,8 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
 
     // The sync is the only writer of the syncing state.
     let shared_highest_block = Arc::new(RwLock::new(None));
+    let pending_data = Arc::new(RwLock::new(PendingData::default()));
+
     // JSON-RPC server.
     let (_, server_handle) =
         run_server(&config.rpc, shared_highest_block.clone(), storage_reader.clone(), VERSION_FULL)
@@ -43,8 +47,13 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     let server_handle_future = tokio::spawn(server_handle.stopped());
 
     // Sync task.
-    let sync_future =
-        run_sync(config, shared_highest_block, storage_reader.clone(), storage_writer);
+    let sync_future = run_sync(
+        config,
+        shared_highest_block,
+        pending_data,
+        storage_reader.clone(),
+        storage_writer,
+    );
     let sync_handle = tokio::spawn(sync_future);
 
     // TODO(dvir): refactor + better error handling.
@@ -77,19 +86,24 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     async fn run_sync(
         config: NodeConfig,
         shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
+        pending_data: Arc<RwLock<PendingData>>,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
     ) -> Result<(), StateSyncError> {
         let Some(sync_config) = config.sync else { return Ok(()) };
         let central_source =
-            CentralSource::new(config.central, VERSION_FULL, storage_reader.clone())
+            CentralSource::new(config.central.clone(), VERSION_FULL, storage_reader.clone())
                 .map_err(CentralError::ClientCreation)?;
+        let pending_source = PendingSource::new(config.central, VERSION_FULL)
+            .map_err(CentralError::ClientCreation)?;
         let base_layer_source = EthereumBaseLayerSource::new(config.base_layer)
             .map_err(|e| BaseLayerSourceError::BaseLayerSourceCreationError(e.to_string()))?;
         let mut sync = StateSync::new(
             sync_config,
             shared_highest_block,
+            pending_data,
             central_source,
+            pending_source,
             base_layer_source,
             storage_reader.clone(),
             storage_writer,

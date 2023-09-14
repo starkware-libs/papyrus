@@ -34,11 +34,17 @@ use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::StateDiff;
+use starknet_client::reader::PendingData;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, instrument, trace, warn};
 
 use crate::sources::base_layer::{BaseLayerSourceTrait, EthereumBaseLayerSource};
 use crate::sources::central::{CentralError, CentralSource, CentralSourceTrait};
+use crate::sources::pending::{PendingError, PendingSource, PendingSourceTrait};
+
+// TODO(dvir): add to config.
+// Sleep duration between polling for pending data.
+const PENDING_SLEEP_DURATION: Duration = Duration::from_millis(500);
 
 // Sleep duration, in seconds, between sync progress checks.
 const SLEEP_TIME_SYNC_PROGRESS: Duration = Duration::from_secs(300);
@@ -104,11 +110,14 @@ impl Default for SyncConfig {
 // memory.
 pub struct GenericStateSync<
     TCentralSource: CentralSourceTrait + Sync + Send,
+    TPendingSource: PendingSourceTrait + Sync + Send,
     TBaseLayerSource: BaseLayerSourceTrait + Sync + Send,
 > {
     config: SyncConfig,
     shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
+    pending_data: Arc<RwLock<PendingData>>,
     central_source: Arc<TCentralSource>,
+    pending_source: Arc<TPendingSource>,
     base_layer_source: Arc<TBaseLayerSource>,
     reader: StorageReader,
     writer: StorageWriter,
@@ -124,6 +133,8 @@ pub enum StateSyncError {
     StorageError(#[from] StorageError),
     #[error(transparent)]
     CentralSourceError(#[from] CentralError),
+    #[error(transparent)]
+    PendingSourceError(#[from] PendingError),
     #[error(
         "Parent block hash of block {block_number} is not consistent with the stored block. \
          Expected {expected_parent_block_hash}, found {stored_parent_block_hash}."
@@ -185,8 +196,9 @@ pub enum SyncEvent {
 
 impl<
     TCentralSource: CentralSourceTrait + Sync + Send + 'static,
+    TPendingSource: PendingSourceTrait + Sync + Send + 'static,
     TBaseLayerSource: BaseLayerSourceTrait + Sync + Send,
-> GenericStateSync<TCentralSource, TBaseLayerSource>
+> GenericStateSync<TCentralSource, TPendingSource, TBaseLayerSource>
 {
     pub async fn run(&mut self) -> StateSyncResult {
         info!("State sync started.");
@@ -253,8 +265,11 @@ impl<
         let block_stream = stream_new_blocks(
             self.reader.clone(),
             self.central_source.clone(),
+            self.pending_source.clone(),
             self.shared_highest_block.clone(),
+            self.pending_data.clone(),
             self.config.block_propagation_sleep_duration,
+            PENDING_SLEEP_DURATION,
             self.config.blocks_max_stream_size,
         )
         .fuse();
@@ -509,7 +524,7 @@ impl<
         let mut last_block_in_storage = header_marker.prev();
         while let Some(block_number) = last_block_in_storage {
             if self.should_revert_block(block_number).await? {
-                self.revert_block(block_number)?;
+                self.revert_block(block_number).await?;
                 last_block_in_storage = block_number.prev();
             } else {
                 break;
@@ -522,11 +537,12 @@ impl<
     // Deletes the block data from the storage, moving it to the ommer tables.
     #[allow(clippy::expect_fun_call)]
     #[instrument(skip(self), level = "debug", err)]
-    fn revert_block(&mut self, block_number: BlockNumber) -> StateSyncResult {
+    async fn revert_block(&mut self, block_number: BlockNumber) -> StateSyncResult {
         debug!("Reverting block.");
         let mut txn = self.writer.begin_rw_txn()?;
 
         txn = txn.try_revert_base_layer_marker(block_number)?;
+        *self.pending_data.write().await = PendingData::default();
         let res = txn.revert_header(block_number)?;
         txn = res.0;
         let mut reverted_block_hash: Option<BlockHash> = None;
@@ -610,15 +626,23 @@ impl<
     }
 }
 
-fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
+#[allow(clippy::too_many_arguments)]
+fn stream_new_blocks<
+    TCentralSource: CentralSourceTrait + Sync + Send,
+    TPendingSource: PendingSourceTrait + Sync + Send,
+>(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
+    pending_source: Arc<TPendingSource>,
     shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
+    pending_data: Arc<RwLock<PendingData>>,
     block_propagation_sleep_duration: Duration,
+    pending_sleep_duration: Duration,
     max_stream_size: u32,
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
         loop {
+
             let header_marker = reader.begin_ro_txn()?.get_header_marker()?;
             let latest_central_block = central_source.get_latest_block().await?;
             *shared_highest_block.write().await = latest_central_block;
@@ -629,8 +653,16 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
                 papyrus_metrics::PAPYRUS_CENTRAL_BLOCK_MARKER, central_block_marker.0 as f64
             );
             if header_marker == central_block_marker {
-                debug!("Blocks syncing reached the last known block, waiting for blockchain to advance.");
-                tokio::time::sleep(block_propagation_sleep_duration).await;
+                // Only if the node is fully synced until the last known block (and the chain isn't empty), sync pending data.
+                if reader.begin_ro_txn()?.get_state_marker()? == header_marker && header_marker!=BlockNumber::default(){
+                    // Here and when reverting a block those are the only places we update the pending data.
+                    debug!("Start polling for pending data.");
+                    sync_pending_data(reader.clone(), pending_source.clone(), pending_data.clone(), pending_sleep_duration).await?;
+                }
+                else{
+                    debug!("Blocks syncing reached the last known block, waiting for blockchain to advance.");
+                    tokio::time::sleep(block_propagation_sleep_duration).await;
+                };
                 continue;
             }
             let up_to = min(central_block_marker, BlockNumber(header_marker.0 + max_stream_size as u64));
@@ -700,13 +732,16 @@ pub fn sort_state_diff(diff: &mut StateDiff) {
     }
 }
 
-pub type StateSync = GenericStateSync<CentralSource, EthereumBaseLayerSource>;
+pub type StateSync = GenericStateSync<CentralSource, PendingSource, EthereumBaseLayerSource>;
 
 impl StateSync {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         config: SyncConfig,
         shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
+        pending_data: Arc<RwLock<PendingData>>,
         central_source: CentralSource,
+        pending_source: PendingSource,
         base_layer_source: EthereumBaseLayerSource,
         reader: StorageReader,
         writer: StorageWriter,
@@ -714,7 +749,9 @@ impl StateSync {
         Self {
             config,
             shared_highest_block,
+            pending_data,
             central_source: Arc::new(central_source),
+            pending_source: Arc::new(pending_source),
             base_layer_source: Arc::new(base_layer_source),
             reader,
             writer,
@@ -831,5 +868,32 @@ fn check_sync_progress(
             state_marker=new_state_marker;
             casm_marker=new_casm_marker;
         }
+    }
+}
+
+// Update the pending data and return when a new block is discovered.
+async fn sync_pending_data<TPendingSource: PendingSourceTrait + Sync + Send>(
+    reader: StorageReader,
+    pending_source: Arc<TPendingSource>,
+    pending_data: Arc<RwLock<PendingData>>,
+    sleep_duration: Duration,
+) -> Result<(), StateSyncError> {
+    let txn = reader.begin_ro_txn()?;
+    let header_marker = txn.get_header_marker()?;
+    let latest_block_hash = txn
+        .get_block_header(
+            header_marker
+                .prev()
+                .expect("We start asking for pending data only if the chain isn't empty"),
+        )?
+        .expect("Block before the header marker must have header in the data base")
+        .block_hash;
+    loop {
+        let new_pending_data = pending_source.get_pending_data().await?;
+        if new_pending_data.block.parent_block_hash != latest_block_hash {
+            return Ok(());
+        };
+        *pending_data.write().await = new_pending_data;
+        tokio::time::sleep(sleep_duration).await;
     }
 }
