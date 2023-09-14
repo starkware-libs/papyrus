@@ -1,35 +1,52 @@
-use assert_matches::assert_matches;
-use futures::{AsyncRead, AsyncWrite, Future, StreamExt};
+use futures::{AsyncRead, AsyncWrite, AsyncWriteExt, Future, StreamExt};
 use libp2p::core::multiaddr::multiaddr;
 use libp2p::core::transport::memory::MemoryTransport;
 use libp2p::core::transport::{ListenerId, Transport};
-use libp2p::core::upgrade::{InboundUpgrade, OutboundUpgrade};
+use libp2p::core::upgrade::{write_varint, InboundUpgrade, OutboundUpgrade};
 use libp2p::core::UpgradeInfo;
 use pretty_assertions::assert_eq;
 
-use super::{
-    hardcoded_responses,
-    OutboundProtocol,
-    OutboundProtocolError,
-    ResponseProtocol,
-    PROTOCOL_NAME,
-};
-use crate::messages::block::{GetBlocks, GetBlocksResponse, GetSignatures, NewBlock};
-use crate::messages::common::BlockId;
-use crate::messages::write_message;
+use super::{InboundProtocol, OutboundProtocol, PROTOCOL_NAME};
+use crate::messages::block::{BlockHeader, GetBlocks, GetBlocksResponse};
+use crate::messages::common::{BlockId, Fin};
+use crate::messages::proto::p2p::proto::get_blocks_response::Response;
+use crate::messages::{read_message, write_message};
+
+fn hardcoded_responses() -> Vec<GetBlocksResponse> {
+    vec![
+        GetBlocksResponse {
+            response: Some(Response::Header(BlockHeader {
+                parent_block: Some(BlockId { hash: None, height: 1 }),
+                ..Default::default()
+            })),
+        },
+        GetBlocksResponse {
+            response: Some(Response::Header(BlockHeader {
+                parent_block: Some(BlockId { hash: None, height: 2 }),
+                ..Default::default()
+            })),
+        },
+        GetBlocksResponse {
+            response: Some(Response::Header(BlockHeader {
+                parent_block: Some(BlockId { hash: None, height: 3 }),
+                ..Default::default()
+            })),
+        },
+        GetBlocksResponse { response: Some(Response::Fin(Fin {})) },
+    ]
+}
 
 #[test]
 fn both_protocols_have_same_info() {
-    let (outbound_protocol, _) =
-        OutboundProtocol::<GetBlocks, GetBlocksResponse>::new(Default::default());
-    let inbound_protocol = ResponseProtocol;
+    let outbound_protocol = OutboundProtocol::<GetBlocks> { query: Default::default() };
+    let inbound_protocol = InboundProtocol::<GetBlocks>::new();
     assert_eq!(
         outbound_protocol.protocol_info().collect::<Vec<_>>(),
         inbound_protocol.protocol_info().collect::<Vec<_>>()
     );
 }
 
-async fn get_connected_io_futures() -> (
+async fn get_connected_stream_futures() -> (
     impl Future<Output = impl AsyncRead + AsyncWrite>,
     impl Future<Output = impl AsyncRead + AsyncWrite>,
 ) {
@@ -53,109 +70,74 @@ async fn get_connected_io_futures() -> (
 }
 
 #[tokio::test]
-#[ignore]
 async fn positive_flow() {
-    let (inbound_io_future, outbound_io_future) = get_connected_io_futures().await;
+    let (inbound_stream_future, outbound_stream_future) = get_connected_stream_futures().await;
 
-    let (outbound_protocol, mut responses_receiver) =
-        OutboundProtocol::<GetBlocks, GetBlocksResponse>::new(Default::default());
-    let inbound_protocol = ResponseProtocol;
+    let query = GetBlocks::default();
+    let outbound_protocol = OutboundProtocol { query: query.clone() };
+    let inbound_protocol = InboundProtocol::<GetBlocks>::new();
 
     tokio::join!(
         async move {
-            inbound_protocol.upgrade_inbound(inbound_io_future.await, PROTOCOL_NAME).await.unwrap();
-        },
-        async move {
-            outbound_protocol
-                .upgrade_outbound(outbound_io_future.await, PROTOCOL_NAME)
+            let (received_query, mut stream) = inbound_protocol
+                .upgrade_inbound(inbound_stream_future.await, PROTOCOL_NAME)
                 .await
                 .unwrap();
+            assert_eq!(query, received_query);
+            for response in hardcoded_responses() {
+                write_message(response, &mut stream).await.unwrap();
+            }
         },
         async move {
+            let mut stream = outbound_protocol
+                .upgrade_outbound(outbound_stream_future.await, PROTOCOL_NAME)
+                .await
+                .unwrap();
             for expected_response in hardcoded_responses() {
-                let result = responses_receiver.next().await;
-                if expected_response.is_fin() {
-                    assert!(result.is_none());
-                    break;
-                } else {
-                    assert_eq!(result.unwrap(), expected_response);
-                }
+                let response = read_message::<GetBlocksResponse, _>(&mut stream).await.unwrap();
+                assert_eq!(response, expected_response);
             }
         }
     );
 }
 
 #[tokio::test]
-async fn inbound_sends_invalid_response() {
-    let (inbound_io_future, outbound_io_future) = get_connected_io_futures().await;
+async fn inbound_closes_stream() {
+    let (inbound_stream_future, outbound_stream_future) = get_connected_stream_futures().await;
 
-    let (outbound_protocol, mut responses_receiver) =
-        OutboundProtocol::<GetBlocks, GetBlocksResponse>::new(Default::default());
+    let outbound_protocol = OutboundProtocol::<GetBlocks> { query: Default::default() };
 
-    tokio::join!(
+    let (_, outbound_stream) = tokio::join!(
         async move {
-            let mut inbound_io = inbound_io_future.await;
-            write_message(
-                NewBlock { id: Some(BlockId { hash: None, height: 1 }) },
-                &mut inbound_io,
-            )
-            .await
-            .unwrap();
+            let mut inbound_stream = inbound_stream_future.await;
+            inbound_stream.close().await.unwrap();
+            inbound_stream
         },
-        async move {
-            let err = outbound_protocol
-                .upgrade_outbound(outbound_io_future.await, PROTOCOL_NAME)
-                .await
-                .unwrap_err();
-            assert_matches!(err, OutboundProtocolError::IOError(_));
-        },
-        async move { assert!(responses_receiver.next().await.is_none()) }
+        outbound_stream_future,
     );
+    assert!(outbound_protocol.upgrade_outbound(outbound_stream, PROTOCOL_NAME).await.is_err());
 }
 
 #[tokio::test]
 async fn outbound_sends_invalid_request() {
-    let (inbound_io_future, outbound_io_future) = get_connected_io_futures().await;
-    let inbound_protocol = ResponseProtocol;
+    let (inbound_stream_future, outbound_stream_future) = get_connected_stream_futures().await;
+    let inbound_protocol = InboundProtocol::<GetBlocks>::new();
 
     tokio::join!(
         async move {
-            inbound_protocol
-                .upgrade_inbound(inbound_io_future.await, PROTOCOL_NAME)
-                .await
-                .unwrap_err();
+            assert!(
+                inbound_protocol
+                    .upgrade_inbound(inbound_stream_future.await, PROTOCOL_NAME)
+                    .await
+                    .is_err()
+            );
         },
         async move {
-            let mut outbound_io = outbound_io_future.await;
-            write_message(
-                GetSignatures { id: Some(BlockId { hash: None, height: 1 }) },
-                &mut outbound_io,
-            )
-            .await
-            .unwrap();
-        },
-    );
-}
-
-#[tokio::test]
-async fn outbound_receiver_closed() {
-    let (inbound_io_future, outbound_io_future) = get_connected_io_futures().await;
-
-    let (outbound_protocol, mut responses_receiver) =
-        OutboundProtocol::<GetBlocks, GetBlocksResponse>::new(Default::default());
-    let inbound_protocol = ResponseProtocol;
-    responses_receiver.close();
-
-    tokio::join!(
-        async move {
-            inbound_protocol.upgrade_inbound(inbound_io_future.await, PROTOCOL_NAME).await.unwrap();
-        },
-        async move {
-            let err = outbound_protocol
-                .upgrade_outbound(outbound_io_future.await, PROTOCOL_NAME)
-                .await
-                .unwrap_err();
-            assert_matches!(err, OutboundProtocolError::ResponseSendError(_));
+            let mut outbound_stream = outbound_stream_future.await;
+            // The first element is the length of the message, if we don't write that many bytes
+            // after then the message will be invalid.
+            write_varint(&mut outbound_stream, 10).await.unwrap();
+            outbound_stream.close().await.unwrap();
         },
     );
 }
