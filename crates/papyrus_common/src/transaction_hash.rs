@@ -3,6 +3,7 @@
 mod transaction_hash_test;
 
 use lazy_static::lazy_static;
+use starknet_api::block::BlockNumber;
 use starknet_api::core::{calculate_contract_address, ChainId, ContractAddress};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::{
@@ -87,30 +88,55 @@ pub fn get_transaction_hash(
     }
 }
 
-/// Validates hash of a starknet transaction.
-/// A hash is valid if it is the result of one of the hash functions that were ever used in
-/// Starknet.
+// On mainnet, from this block number onwards, there are no deprecated transactions,
+// enabling us to validate against a single hash calculation.
+const MAINNET_TRANSACTION_HASH_WITH_VERSION: BlockNumber = BlockNumber(1470);
+
+// Calculates a list of deprecated hashes for a transaction.
+fn get_deprecated_transaction_hashes(
+    chain_id: &ChainId,
+    block_number: &BlockNumber,
+    transaction: &Transaction,
+) -> Result<Vec<TransactionHash>, StarknetApiError> {
+    Ok(
+        if chain_id == &ChainId("SN_MAIN".to_string())
+            && block_number > &MAINNET_TRANSACTION_HASH_WITH_VERSION
+        {
+            vec![]
+        } else {
+            match transaction {
+                Transaction::Declare(_) => vec![],
+                Transaction::Deploy(deploy) => {
+                    vec![get_deprecated_deploy_transaction_hash(deploy, chain_id)?]
+                }
+                Transaction::DeployAccount(_) => vec![],
+                Transaction::Invoke(invoke) => match invoke {
+                    InvokeTransaction::V0(invoke_v0) => {
+                        vec![get_deprecated_invoke_transaction_v0_hash(invoke_v0, chain_id)?]
+                    }
+                    InvokeTransaction::V1(_) | InvokeTransaction::V3(_) => vec![],
+                },
+                Transaction::L1Handler(l1_handler) => {
+                    get_deprecated_l1_handler_transaction_hashes(l1_handler, chain_id)?
+                }
+            }
+        },
+    )
+}
+
+/// Validates the hash of a starknet transaction.
+/// For transactions on testnet or those with a low block_number, we validate the
+/// transaction hash against all potential historical hash computations. For recent
+/// transactions on mainnet, the hash is validated by calculating the precise hash
+/// based on the transaction version.
 pub fn validate_transaction_hash(
     transaction: &Transaction,
+    block_number: &BlockNumber,
     chain_id: &ChainId,
     expected_hash: TransactionHash,
 ) -> Result<bool, StarknetApiError> {
-    let mut possible_hashes = match transaction {
-        Transaction::Declare(_) => vec![],
-        Transaction::Deploy(deploy) => {
-            vec![get_deprecated_deploy_transaction_hash(deploy, chain_id)?]
-        }
-        Transaction::DeployAccount(_) => vec![],
-        Transaction::Invoke(invoke) => match invoke {
-            InvokeTransaction::V0(invoke_v0) => {
-                vec![get_deprecated_invoke_transaction_v0_hash(invoke_v0, chain_id)?]
-            }
-            InvokeTransaction::V1(_) | InvokeTransaction::V3(_) => vec![],
-        },
-        Transaction::L1Handler(l1_handler) => {
-            get_deprecated_l1_handler_transaction_hashes(l1_handler, chain_id)?
-        }
-    };
+    let mut possible_hashes =
+        get_deprecated_transaction_hashes(chain_id, block_number, transaction)?;
     possible_hashes.push(get_transaction_hash(transaction, chain_id)?);
     Ok(possible_hashes.contains(&expected_hash))
 }
