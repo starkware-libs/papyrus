@@ -571,15 +571,21 @@ impl<
 
     async fn sync_base_layer_finality(&mut self) -> Result<(), StateSyncError> {
         debug!("Syncing base layer finality.");
-        let base_layer_block_stream =
-            stream_new_base_layer_block(self.reader.clone(), self.base_layer_source.clone()).fuse();
-        pin_mut!(base_layer_block_stream);
-        while let Some(maybe_base_layer_block) = base_layer_block_stream.next().await {
-            let SyncEvent::NewBaseLayerBlock { block_number, block_hash } = maybe_base_layer_block?
-            else {
-                panic!("Expected base layer block.")
-            };
-            self.store_base_layer_block(block_number, block_hash)?;
+        let header_marker = self.reader.begin_ro_txn()?.get_header_marker()?;
+        match self.base_layer_source.latest_proved_block().await? {
+            Some((block_number, _block_hash)) if header_marker <= block_number => {
+                debug!(
+                    "Sync headers ({header_marker}) is behind the base layer tip \
+                     ({block_number}), waiting for sync to advance."
+                );
+            }
+            Some((block_number, block_hash)) => {
+                debug!("Returns a block from the base layer. Block number: {block_number}.");
+                self.store_base_layer_block(block_number, block_hash)?;
+            }
+            None => {
+                debug!("No blocks were proved on the base layer.");
+            }
         }
         Ok(())
     }
@@ -866,35 +872,6 @@ fn stream_new_compiled_classes<TCentralSource: CentralSourceTrait + Sync + Send>
                     compiled_class_hash,
                     compiled_class,
                 };
-            }
-        }
-    }
-}
-
-// TODO(dvir): consider combine this function and store_base_layer_block.
-fn stream_new_base_layer_block<TBaseLayerSource: BaseLayerSourceTrait + Sync>(
-    reader: StorageReader,
-    base_layer_source: Arc<TBaseLayerSource>,
-) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
-    try_stream! {
-        let txn = reader.begin_ro_txn()?;
-        let header_marker = txn.get_header_marker()?;
-        match base_layer_source.latest_proved_block().await? {
-            Some((block_number, _block_hash)) if header_marker <= block_number => {
-                debug!(
-                    "Sync headers ({header_marker}) is behind the base layer tip \
-                        ({block_number}), waiting for sync to advance."
-                );
-            }
-            Some((block_number, block_hash)) => {
-                debug!("Returns a block from the base layer. Block number: {block_number}.");
-                yield SyncEvent::NewBaseLayerBlock { block_number, block_hash }
-            }
-            None => {
-                debug!(
-                    "No blocks were proved on the base layer, waiting for blockchain to \
-                        advance."
-                );
             }
         }
     }
