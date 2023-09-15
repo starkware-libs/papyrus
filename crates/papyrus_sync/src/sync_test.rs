@@ -1,5 +1,4 @@
 use std::sync::Arc;
-use std::time::Duration;
 
 use assert_matches::assert_matches;
 use futures_util::StreamExt;
@@ -126,8 +125,7 @@ async fn stream_new_base_layer_block_test_header_marker() {
     let mut iter = block_numbers.into_iter().map(|bn| (BlockNumber(bn), BlockHash::default()));
     let mut mock = MockBaseLayerSourceTrait::new();
     mock.expect_latest_proved_block().times(4).returning(move || Ok(iter.next()));
-    let mut stream =
-        stream_new_base_layer_block(reader, Arc::new(mock), Duration::from_millis(0)).boxed();
+    let mut stream = stream_new_base_layer_block(reader, Arc::new(mock)).boxed();
 
     let event = stream.next().await.unwrap().unwrap();
     assert_matches!(event, SyncEvent::NewBaseLayerBlock { block_number: BlockNumber(1), .. });
@@ -149,8 +147,7 @@ async fn stream_new_base_layer_block_no_blocks_on_base_layer() {
     let mut mock = MockBaseLayerSourceTrait::new();
     mock.expect_latest_proved_block().times(2).returning(move || Ok(values.next().unwrap()));
 
-    let mut stream =
-        stream_new_base_layer_block(reader, Arc::new(mock), Duration::from_millis(0)).boxed();
+    let mut stream = stream_new_base_layer_block(reader, Arc::new(mock)).boxed();
 
     let event = stream.next().await.unwrap().unwrap();
     assert_matches!(event, SyncEvent::NewBaseLayerBlock { block_number: BlockNumber(1), .. });

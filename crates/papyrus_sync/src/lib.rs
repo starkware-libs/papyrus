@@ -15,7 +15,7 @@ use std::time::Duration;
 use async_stream::try_stream;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use chrono::{TimeZone, Utc};
-use futures_util::{pin_mut, select, Stream, StreamExt};
+use futures_util::{pin_mut, Stream, StreamExt};
 use indexmap::IndexMap;
 use papyrus_common::{metrics as papyrus_metrics, BlockHashAndNumber};
 use papyrus_config::converters::deserialize_seconds_to_duration;
@@ -35,13 +35,14 @@ use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::StateDiff;
 use tokio::sync::RwLock;
+use tokio::time::interval;
 use tracing::{debug, error, info, instrument, trace, warn};
 
 use crate::sources::base_layer::{BaseLayerSourceTrait, EthereumBaseLayerSource};
 use crate::sources::central::{CentralError, CentralSource, CentralSourceTrait};
 
 // Sleep duration, in seconds, between sync progress checks.
-const SLEEP_TIME_SYNC_PROGRESS: Duration = Duration::from_secs(300);
+const SLEEP_TIME_SYNC_PROGRESS: u64 = 300;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct SyncConfig {
@@ -250,94 +251,28 @@ impl<
     }
 
     // Sync until encountering an error:
-    //  1. If needed, revert blocks from the end of the chain.
-    //  2. Create infinite block and state diff streams to fetch data from the central source.
-    //  3. Fetch data from the streams with unblocking wait while there is no new data.
+    //
+    // If needed, revert blocks from the end of the chain.
+    // In case there is no progress for a while, return an error.
+    // loop:
+    //  1. Fetch and store blocks.
+    //  2. Check agains base layer and update finality if needed.
+    //  3. Fetch and store state diffs.
+    //  4. Fetch and store compiled classes.
     async fn sync_while_ok(&mut self) -> StateSyncResult {
+        self.start_monitoring_sync_progress();
         self.handle_block_reverts().await?;
-        let block_stream = stream_new_blocks(
-            self.reader.clone(),
-            self.central_source.clone(),
-            self.shared_highest_block.clone(),
-            self.config.block_propagation_sleep_duration,
-            self.config.blocks_max_stream_size,
-        )
-        .fuse();
-        let state_diff_stream = stream_new_state_diffs(
-            self.reader.clone(),
-            self.central_source.clone(),
-            self.config.block_propagation_sleep_duration,
-            self.config.state_updates_max_stream_size,
-        )
-        .fuse();
-        let compiled_class_stream = stream_new_compiled_classes(
-            self.reader.clone(),
-            self.central_source.clone(),
-            self.config.block_propagation_sleep_duration,
-            // TODO(yair): separate config param.
-            self.config.state_updates_max_stream_size,
-        )
-        .fuse();
-        let base_layer_block_stream = stream_new_base_layer_block(
-            self.reader.clone(),
-            self.base_layer_source.clone(),
-            self.config.base_layer_propagation_sleep_duration,
-        )
-        .fuse();
-        // TODO(dvir): try use interval instead of stream.
-        // TODO: fix the bug and remove this check.
-        let check_sync_progress = check_sync_progress(self.reader.clone()).fuse();
-        pin_mut!(
-            block_stream,
-            state_diff_stream,
-            compiled_class_stream,
-            base_layer_block_stream,
-            check_sync_progress
-        );
 
+        let mut consecutive_iterations = 0;
         loop {
-            debug!("Selecting between block sync and state diff sync.");
-            let sync_event = select! {
-              res = block_stream.next() => res,
-              res = state_diff_stream.next() => res,
-              res = compiled_class_stream.next() => res,
-              res = base_layer_block_stream.next() => res,
-              res = check_sync_progress.next() => res,
-              complete => break,
-            }
-            .expect("Received None as a sync event.")?;
-            self.process_sync_event(sync_event).await?;
-            debug!("Finished processing sync event.");
-        }
-        unreachable!("Fetching data loop should never return.");
-    }
-
-    // Tries to store the incoming data.
-    async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult {
-        match sync_event {
-            SyncEvent::BlockAvailable { block_number, block, starknet_version } => {
-                self.store_block(block_number, block, &starknet_version)
-            }
-            SyncEvent::StateDiffAvailable {
-                block_number,
-                block_hash,
-                state_diff,
-                deployed_contract_class_definitions,
-            } => self.store_state_diff(
-                block_number,
-                block_hash,
-                state_diff,
-                deployed_contract_class_definitions,
-            ),
-            SyncEvent::CompiledClassAvailable {
-                class_hash,
-                compiled_class_hash,
-                compiled_class,
-            } => self.store_compiled_class(class_hash, compiled_class_hash, compiled_class),
-            SyncEvent::NewBaseLayerBlock { block_number, block_hash } => {
-                self.store_base_layer_block(block_number, block_hash)
-            }
-            SyncEvent::NoProgress => Err(StateSyncError::NoProgress),
+            debug!("Syncing iteration {}.", consecutive_iterations);
+            self.sync_blocks().await?;
+            self.sync_base_layer_finality().await?;
+            self.sync_state_diffs().await?;
+            self.sync_compiled_classes().await?;
+            consecutive_iterations += 1;
+            debug!("Finished all stages {consecutive_iterations} consecutive times.");
+            self.sleep_if_needed().await?;
         }
     }
 
@@ -613,13 +548,176 @@ impl<
             }
         }
     }
+
+    async fn sync_blocks(&mut self) -> Result<(), StateSyncError> {
+        debug!("Syncing blocks.");
+        let block_stream = stream_new_blocks(
+            self.reader.clone(),
+            self.central_source.clone(),
+            self.shared_highest_block.clone(),
+            self.config.blocks_max_stream_size,
+        )
+        .fuse();
+        pin_mut!(block_stream);
+        while let Some(maybe_block) = block_stream.next().await {
+            let SyncEvent::BlockAvailable { block_number, block, starknet_version } = maybe_block?
+            else {
+                panic!("Expected block.")
+            };
+            self.store_block(block_number, block, &starknet_version)?;
+        }
+        Ok(())
+    }
+
+    async fn sync_base_layer_finality(&mut self) -> Result<(), StateSyncError> {
+        debug!("Syncing base layer finality.");
+        let base_layer_block_stream =
+            stream_new_base_layer_block(self.reader.clone(), self.base_layer_source.clone()).fuse();
+        pin_mut!(base_layer_block_stream);
+        while let Some(maybe_base_layer_block) = base_layer_block_stream.next().await {
+            let SyncEvent::NewBaseLayerBlock { block_number, block_hash } = maybe_base_layer_block?
+            else {
+                panic!("Expected base layer block.")
+            };
+            self.store_base_layer_block(block_number, block_hash)?;
+        }
+        Ok(())
+    }
+
+    async fn sync_state_diffs(&mut self) -> Result<(), StateSyncError> {
+        debug!("Syncing state diffs.");
+        let state_diff_stream = stream_new_state_diffs(
+            self.reader.clone(),
+            self.central_source.clone(),
+            self.config.state_updates_max_stream_size,
+        )
+        .fuse();
+        pin_mut!(state_diff_stream);
+        while let Some(maybe_state_diff) = state_diff_stream.next().await {
+            let SyncEvent::StateDiffAvailable {
+                block_number,
+                block_hash,
+                state_diff,
+                deployed_contract_class_definitions,
+            } = maybe_state_diff?
+            else {
+                panic!("Expected state diff.")
+            };
+            self.store_state_diff(
+                block_number,
+                block_hash,
+                state_diff,
+                deployed_contract_class_definitions,
+            )?;
+        }
+        Ok(())
+    }
+
+    async fn sync_compiled_classes(&mut self) -> Result<(), StateSyncError> {
+        debug!("Syncing compiled classes.");
+        let compiled_class_stream = stream_new_compiled_classes(
+            self.reader.clone(),
+            self.central_source.clone(),
+            // TODO(yair): separate config param.
+            self.config.state_updates_max_stream_size,
+        )
+        .fuse();
+        pin_mut!(compiled_class_stream);
+        while let Some(maybe_compiled_class) = compiled_class_stream.next().await {
+            let SyncEvent::CompiledClassAvailable {
+                class_hash,
+                compiled_class_hash,
+                compiled_class,
+            } = maybe_compiled_class?
+            else {
+                panic!("Expected compiled class.")
+            };
+            self.store_compiled_class(class_hash, compiled_class_hash, compiled_class)?;
+        }
+        Ok(())
+    }
+
+    // Assuming this is called after the last stage of the sync.
+    // If the header marker is equal to the central block marker, sleep for a while.
+    async fn sleep_if_needed(&self) -> Result<(), StateSyncError> {
+        let header_marker = self.reader.begin_ro_txn()?.get_header_marker()?;
+        let latest_central_block = self.central_source.get_latest_block().await?;
+        *self.shared_highest_block.write().await = latest_central_block;
+        let central_block_marker =
+            latest_central_block.map_or(BlockNumber::default(), |block| block.block_number.next());
+        metrics::gauge!(
+            papyrus_metrics::PAPYRUS_CENTRAL_BLOCK_MARKER,
+            central_block_marker.0 as f64
+        );
+        if header_marker == central_block_marker {
+            debug!("Syncing reached the last known block, waiting for blockchain to advance.");
+            tokio::time::sleep(self.config.block_propagation_sleep_duration).await;
+        }
+        Ok(())
+    }
+
+    async fn start_monitoring_sync_progress(&self) -> Result<(), StateSyncError> {
+        let central_source = self.central_source.clone();
+
+        let reader = self.reader.clone();
+        let join_handle = tokio::spawn(async move {
+            let mut interval = interval(Duration::from_secs(SLEEP_TIME_SYNC_PROGRESS));
+
+            let latest_central_block = central_source.get_latest_block().await?;
+            let mut central_block_marker = latest_central_block
+                .map_or(BlockNumber::default(), |block| block.block_number.next());
+            let mut txn = reader.begin_ro_txn()?;
+            let mut header_marker = txn.get_header_marker()?;
+            let mut state_marker = txn.get_state_marker()?;
+            let mut casm_marker = txn.get_compiled_class_marker()?;
+            interval.tick().await;
+            loop {
+                interval.tick().await;
+                debug!("Checking if sync stopped progress.");
+                let new_latest_central_block = central_source.get_latest_block().await?;
+                let new_central_block_marker = new_latest_central_block
+                    .map_or(BlockNumber::default(), |block| block.block_number.next());
+                txn = reader.begin_ro_txn()?;
+                let new_header_marker = txn.get_header_marker()?;
+                let new_state_marker = txn.get_state_marker()?;
+                let new_casm_marker = txn.get_compiled_class_marker()?;
+                let central_block_progress = new_central_block_marker.0 - central_block_marker.0;
+                let header_progress = new_header_marker.0 - header_marker.0;
+                let state_progress = new_state_marker.0 - state_marker.0;
+                let casm_progress = new_casm_marker.0 - casm_marker.0;
+                debug!(
+                    "Central progress: {}-{}. Header progress: {}-{}. State progress: {}-{}. CASM \
+                     progress: {}-{}.",
+                    central_block_marker.0,
+                    new_central_block_marker.0,
+                    header_marker.0,
+                    new_header_marker.0,
+                    state_marker.0,
+                    new_state_marker.0,
+                    casm_marker.0,
+                    new_casm_marker.0,
+                );
+                if header_progress <= min(100, central_block_progress - 1)
+                    && state_progress <= min(100, central_block_progress - 1)
+                    && casm_progress <= min(100, central_block_progress - 1)
+                {
+                    error!("No progress in the sync for {SLEEP_TIME_SYNC_PROGRESS} seconds.");
+                    return Err(StateSyncError::NoProgress);
+                }
+                central_block_marker = new_central_block_marker;
+                header_marker = new_header_marker;
+                state_marker = new_state_marker;
+                casm_marker = new_casm_marker;
+            }
+        });
+        join_handle.await.expect("Sync progress monitoring thread panicked.")
+    }
 }
 
 fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
     shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
-    block_propagation_sleep_duration: Duration,
     max_stream_size: u32,
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
@@ -635,11 +733,10 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
             );
             if header_marker == central_block_marker {
                 debug!("Blocks syncing reached the last known block, waiting for blockchain to advance.");
-                tokio::time::sleep(block_propagation_sleep_duration).await;
-                continue;
+                return;
             }
             let up_to = min(central_block_marker, BlockNumber(header_marker.0 + max_stream_size as u64));
-            debug!("Downloading blocks [{} - {}).", header_marker, up_to);
+            debug!("Downloading blocks [{header_marker} - {up_to}/{central_block_marker}).");
             let block_stream =
                 central_source.stream_new_blocks(header_marker, up_to).fuse();
             pin_mut!(block_stream);
@@ -654,7 +751,6 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
 fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
-    block_propagation_sleep_duration: Duration,
     max_stream_size: u32,
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
@@ -665,11 +761,10 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
             drop(txn);
             if state_marker == last_block_number {
                 debug!("State updates syncing reached the last downloaded block, waiting for more blocks.");
-                tokio::time::sleep(block_propagation_sleep_duration).await;
-                continue;
+                return;
             }
             let up_to = min(last_block_number, BlockNumber(state_marker.0 + max_stream_size as u64));
-            debug!("Downloading state diffs [{} - {}).", state_marker, up_to);
+            debug!("Downloading state diffs [{state_marker} - {up_to}/{last_block_number}).");
             let state_diff_stream =
                 central_source.stream_state_updates(state_marker, up_to).fuse();
             pin_mut!(state_diff_stream);
@@ -730,7 +825,6 @@ impl StateSync {
 fn stream_new_compiled_classes<TCentralSource: CentralSourceTrait + Sync + Send>(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
-    block_propagation_sleep_duration: Duration,
     max_stream_size: u32,
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
@@ -754,11 +848,11 @@ fn stream_new_compiled_classes<TCentralSource: CentralSourceTrait + Sync + Send>
                     "Compiled classes syncing reached the last downloaded state update, waiting \
                      for more state updates."
                 );
-                tokio::time::sleep(block_propagation_sleep_duration).await;
-                continue;
+                return ;
+
             }
             let up_to = min(state_marker, BlockNumber(from.0 + max_stream_size as u64));
-            debug!("Downloading compiled classes of blocks [{} - {}).", from, up_to);
+            debug!("Downloading compiled classes of blocks [{from} - {up_to}/{state_marker}).");
             let compiled_classes_stream =
                 central_source.stream_compiled_classes(from, up_to).fuse();
             pin_mut!(compiled_classes_stream);
@@ -781,60 +875,27 @@ fn stream_new_compiled_classes<TCentralSource: CentralSourceTrait + Sync + Send>
 fn stream_new_base_layer_block<TBaseLayerSource: BaseLayerSourceTrait + Sync>(
     reader: StorageReader,
     base_layer_source: Arc<TBaseLayerSource>,
-    base_layer_propagation_sleep_duration: Duration,
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
-        loop {
-            tokio::time::sleep(base_layer_propagation_sleep_duration).await;
-            let txn = reader.begin_ro_txn()?;
-            let header_marker = txn.get_header_marker()?;
-            match base_layer_source.latest_proved_block().await? {
-                Some((block_number, _block_hash)) if header_marker <= block_number => {
-                    debug!(
-                        "Sync headers ({header_marker}) is behind the base layer tip \
-                         ({block_number}), waiting for sync to advance."
-                    );
-                }
-                Some((block_number, block_hash)) => {
-                    debug!("Returns a block from the base layer. Block number: {block_number}.");
-                    yield SyncEvent::NewBaseLayerBlock { block_number, block_hash }
-                }
-                None => {
-                    debug!(
-                        "No blocks were proved on the base layer, waiting for blockchain to \
-                         advance."
-                    );
-                }
+        let txn = reader.begin_ro_txn()?;
+        let header_marker = txn.get_header_marker()?;
+        match base_layer_source.latest_proved_block().await? {
+            Some((block_number, _block_hash)) if header_marker <= block_number => {
+                debug!(
+                    "Sync headers ({header_marker}) is behind the base layer tip \
+                        ({block_number}), waiting for sync to advance."
+                );
             }
-        }
-    }
-}
-
-// This function is used to check if the sync is stuck.
-// TODO: fix the bug and remove this function.
-// TODO(dvir): add a test for this scenario.
-fn check_sync_progress(
-    reader: StorageReader,
-) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
-    try_stream! {
-        let mut txn=reader.begin_ro_txn()?;
-        let mut header_marker=txn.get_header_marker()?;
-        let mut state_marker=txn.get_state_marker()?;
-        let mut casm_marker=txn.get_compiled_class_marker()?;
-        loop{
-            tokio::time::sleep(SLEEP_TIME_SYNC_PROGRESS).await;
-            debug!("Checking if sync stopped progress.");
-            txn=reader.begin_ro_txn()?;
-            let new_header_marker=txn.get_header_marker()?;
-            let new_state_marker=txn.get_state_marker()?;
-            let new_casm_marker=txn.get_compiled_class_marker()?;
-            if header_marker==new_header_marker && state_marker==new_state_marker && casm_marker==new_casm_marker{
-                debug!("No progress in the sync. Return NoProgress event.");
-                yield SyncEvent::NoProgress;
+            Some((block_number, block_hash)) => {
+                debug!("Returns a block from the base layer. Block number: {block_number}.");
+                yield SyncEvent::NewBaseLayerBlock { block_number, block_hash }
             }
-            header_marker=new_header_marker;
-            state_marker=new_state_marker;
-            casm_marker=new_casm_marker;
+            None => {
+                debug!(
+                    "No blocks were proved on the base layer, waiting for blockchain to \
+                        advance."
+                );
+            }
         }
     }
 }
