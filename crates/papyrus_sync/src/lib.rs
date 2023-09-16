@@ -42,7 +42,7 @@ use crate::sources::base_layer::{BaseLayerSourceTrait, EthereumBaseLayerSource};
 use crate::sources::central::{CentralError, CentralSource, CentralSourceTrait};
 
 // Sleep duration, in seconds, between sync progress checks.
-const SLEEP_TIME_SYNC_PROGRESS: u64 = 30;
+const SLEEP_TIME_SYNC_PROGRESS: u64 = 120;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct SyncConfig {
@@ -283,36 +283,60 @@ impl<
         }
     }
 
-    #[instrument(skip(self, block), level = "debug", fields(block_hash = %block.header.block_hash), err)]
-    fn store_block(
+    #[instrument(skip(self, blocks), level = "debug", fields(n_blocks), err)]
+    fn store_blocks(
         &mut self,
-        block_number: BlockNumber,
-        block: Block,
-        starknet_version: &StarknetVersion,
+        initial_block_number: Option<BlockNumber>,
+        blocks: Vec<(Block, StarknetVersion)>,
     ) -> StateSyncResult {
-        // Assuming the central source is trusted, detect reverts by comparing the incoming block's
-        // parent hash to the current hash.
-        self.verify_parent_block_hash(block_number, &block)?;
+        let n_blocks = blocks.len();
+        tracing::Span::current().record("n_blocks", n_blocks);
+        debug!("Storing blocks.");
+        let Some(initial_block_number) = initial_block_number else {
+            return Ok(());
+        };
 
-        debug!("Storing block.");
-        trace!("Block data: {block:#?}");
-        self.writer
-            .begin_rw_txn()?
-            .append_header(block_number, &block.header)?
-            .update_starknet_version(&block_number, starknet_version)?
-            .append_body(block_number, block.body)?
-            .commit()?;
-        metrics::gauge!(papyrus_metrics::PAPYRUS_HEADER_MARKER, block_number.next().0 as f64);
-        metrics::gauge!(papyrus_metrics::PAPYRUS_BODY_MARKER, block_number.next().0 as f64);
+        let mut block_number = initial_block_number;
+        let mut prev_block_hash = blocks.first().expect("should have a value").0.header.parent_hash;
+        let last_block_timestamp = blocks.last().expect("should have a value").0.header.timestamp;
+
+        let mut parent_block_mismatch_error = None;
+        let mut tx = self.writer.begin_rw_txn()?;
+        for (block, starknet_version) in blocks {
+            trace!("Block data: {block:#?}");
+            if block.header.parent_hash != prev_block_hash {
+                parent_block_mismatch_error = Some(StateSyncError::ParentBlockHashMismatch {
+                    block_number,
+                    expected_parent_block_hash: block.header.parent_hash,
+                    stored_parent_block_hash: prev_block_hash,
+                });
+                break;
+            }
+            tx = tx
+                .append_header(block_number, &block.header)?
+                .update_starknet_version(&block_number, &starknet_version)?
+                .append_body(block_number, block.body)?;
+
+            prev_block_hash = block.header.block_hash;
+            block_number = block_number.next();
+        }
+        tx.commit()?;
+
+        metrics::gauge!(papyrus_metrics::PAPYRUS_HEADER_MARKER, block_number.0 as f64);
+        metrics::gauge!(papyrus_metrics::PAPYRUS_BODY_MARKER, block_number.0 as f64);
         let dt = Utc::now()
             - Utc
-                .timestamp_opt(block.header.timestamp.0 as i64, 0)
+                .timestamp_opt(last_block_timestamp.0 as i64, 0)
                 .single()
                 .expect("block timestamp should be valid");
         let header_latency = dt.num_seconds();
         debug!("Header latency: {}.", header_latency);
         if header_latency >= 0 {
             metrics::gauge!(papyrus_metrics::PAPYRUS_HEADER_LATENCY_SEC, header_latency as f64);
+        }
+
+        if let Some(err) = parent_block_mismatch_error {
+            return Err(err);
         }
         Ok(())
     }
@@ -558,6 +582,7 @@ impl<
 
     async fn sync_blocks(&mut self) -> Result<(), StateSyncError> {
         debug!("Syncing blocks.");
+        const MAX_BLOCKS_BEFORE_PERSISTING: usize = 500;
         let block_stream = stream_new_blocks(
             self.reader.clone(),
             self.central_source.clone(),
@@ -566,13 +591,28 @@ impl<
         )
         .fuse();
         pin_mut!(block_stream);
+        let mut initial_block_number: Option<BlockNumber> = None;
+        let mut blocks: Vec<(Block, StarknetVersion)> =
+            Vec::with_capacity(MAX_BLOCKS_BEFORE_PERSISTING);
         while let Some(maybe_block) = block_stream.next().await {
             let SyncEvent::BlockAvailable { block_number, block, starknet_version } = maybe_block?
             else {
                 panic!("Expected block.")
             };
-            self.store_block(block_number, block, &starknet_version)?;
+            if initial_block_number.is_none() {
+                // Assuming the central source is trusted, detect reverts by comparing the incoming
+                // block's parent hash to the current hash.
+                self.verify_parent_block_hash(block_number, &block)?;
+                initial_block_number = Some(block_number);
+            }
+            blocks.push((block, starknet_version));
+            if blocks.len() >= MAX_BLOCKS_BEFORE_PERSISTING {
+                self.store_blocks(initial_block_number, blocks)?;
+                blocks = Vec::with_capacity(MAX_BLOCKS_BEFORE_PERSISTING);
+                initial_block_number = None;
+            }
         }
+        self.store_blocks(initial_block_number, blocks)?;
         Ok(())
     }
 
@@ -735,8 +775,8 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
     max_stream_size: u32,
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
+        let mut next_block_number = reader.begin_ro_txn()?.get_header_marker()?;
         loop {
-            let header_marker = reader.begin_ro_txn()?.get_header_marker()?;
             let latest_central_block = central_source.get_latest_block().await?;
             *shared_highest_block.write().await = latest_central_block;
             let central_block_marker = latest_central_block.map_or(
@@ -745,18 +785,19 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
             metrics::gauge!(
                 papyrus_metrics::PAPYRUS_CENTRAL_BLOCK_MARKER, central_block_marker.0 as f64
             );
-            if header_marker == central_block_marker {
+            if next_block_number == central_block_marker {
                 debug!("Blocks syncing reached the last known block, waiting for blockchain to advance.");
                 return;
             }
-            let up_to = min(central_block_marker, BlockNumber(header_marker.0 + max_stream_size as u64));
-            debug!("Downloading blocks [{header_marker} - {up_to}/{central_block_marker}).");
+            let up_to = min(central_block_marker, BlockNumber(next_block_number.0 + max_stream_size as u64));
+            debug!("Downloading blocks [{next_block_number} - {up_to}/{central_block_marker}).");
             let block_stream =
-                central_source.stream_new_blocks(header_marker, up_to).fuse();
+                central_source.stream_new_blocks(next_block_number, up_to).fuse();
             pin_mut!(block_stream);
             while let Some(maybe_block) = block_stream.next().await {
                 let (block_number, block, starknet_version) = maybe_block?;
                 yield SyncEvent::BlockAvailable { block_number, block , starknet_version};
+                next_block_number = next_block_number.next();
             }
         }
     }
