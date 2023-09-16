@@ -42,7 +42,7 @@ use crate::sources::base_layer::{BaseLayerSourceTrait, EthereumBaseLayerSource};
 use crate::sources::central::{CentralError, CentralSource, CentralSourceTrait};
 
 // Sleep duration, in seconds, between sync progress checks.
-const SLEEP_TIME_SYNC_PROGRESS: u64 = 300;
+const SLEEP_TIME_SYNC_PROGRESS: u64 = 30;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct SyncConfig {
@@ -197,7 +197,14 @@ impl<
     pub async fn run(&mut self) -> StateSyncResult {
         info!("State sync started.");
         loop {
-            match self.sync_while_ok().await {
+            let monitoring_task =
+                start_monitoring_sync_progress(self.central_source.clone(), self.reader.clone());
+            let res = tokio::select! {
+                res = self.sync_while_ok() => res,
+                res = monitoring_task => res
+            };
+
+            match res {
                 // A recoverable error occurred. Sleep and try syncing again.
                 Err(err) if is_recoverable(&err) => {
                     warn!("Recoverable error encountered while syncing, error: {}", err);
@@ -260,7 +267,7 @@ impl<
     //  3. Fetch and store state diffs.
     //  4. Fetch and store compiled classes.
     async fn sync_while_ok(&mut self) -> StateSyncResult {
-        self.start_monitoring_sync_progress();
+        // self.start_monitoring_sync_progress();
         self.handle_block_reverts().await?;
 
         let mut consecutive_iterations = 0;
@@ -661,63 +668,64 @@ impl<
         }
         Ok(())
     }
+}
+async fn start_monitoring_sync_progress<
+    TCentralSource: CentralSourceTrait + Sync + Send + 'static,
+>(
+    central_source: Arc<TCentralSource>,
+    reader: StorageReader,
+) -> Result<(), StateSyncError> {
+    let central_source = central_source.clone();
+    let reader = reader.clone();
 
-    async fn start_monitoring_sync_progress(&self) -> Result<(), StateSyncError> {
-        let central_source = self.central_source.clone();
+    let join_handle = tokio::spawn(async move {
+        let mut interval = interval(Duration::from_secs(SLEEP_TIME_SYNC_PROGRESS));
+        interval.tick().await;
 
-        let reader = self.reader.clone();
-        let join_handle = tokio::spawn(async move {
-            let mut interval = interval(Duration::from_secs(SLEEP_TIME_SYNC_PROGRESS));
-
-            let latest_central_block = central_source.get_latest_block().await?;
-            let mut central_block_marker = latest_central_block
-                .map_or(BlockNumber::default(), |block| block.block_number.next());
-            let mut txn = reader.begin_ro_txn()?;
-            let mut header_marker = txn.get_header_marker()?;
-            let mut state_marker = txn.get_state_marker()?;
-            let mut casm_marker = txn.get_compiled_class_marker()?;
+        let latest_central_block = central_source.get_latest_block().await?;
+        let mut central_block_marker =
+            latest_central_block.map_or(BlockNumber::default(), |block| block.block_number.next());
+        let mut txn = reader.begin_ro_txn()?;
+        let mut header_marker = txn.get_header_marker()?;
+        let mut state_marker = txn.get_state_marker()?;
+        let mut casm_marker = txn.get_compiled_class_marker()?;
+        loop {
             interval.tick().await;
-            loop {
-                interval.tick().await;
-                debug!("Checking if sync stopped progress.");
-                let new_latest_central_block = central_source.get_latest_block().await?;
-                let new_central_block_marker = new_latest_central_block
-                    .map_or(BlockNumber::default(), |block| block.block_number.next());
-                txn = reader.begin_ro_txn()?;
-                let new_header_marker = txn.get_header_marker()?;
-                let new_state_marker = txn.get_state_marker()?;
-                let new_casm_marker = txn.get_compiled_class_marker()?;
-                let central_block_progress = new_central_block_marker.0 - central_block_marker.0;
-                let header_progress = new_header_marker.0 - header_marker.0;
-                let state_progress = new_state_marker.0 - state_marker.0;
-                let casm_progress = new_casm_marker.0 - casm_marker.0;
-                debug!(
-                    "Central progress: {}-{}. Header progress: {}-{}. State progress: {}-{}. CASM \
-                     progress: {}-{}.",
-                    central_block_marker.0,
-                    new_central_block_marker.0,
-                    header_marker.0,
-                    new_header_marker.0,
-                    state_marker.0,
-                    new_state_marker.0,
-                    casm_marker.0,
-                    new_casm_marker.0,
-                );
-                if header_progress <= min(100, central_block_progress - 1)
-                    && state_progress <= min(100, central_block_progress - 1)
-                    && casm_progress <= min(100, central_block_progress - 1)
-                {
-                    error!("No progress in the sync for {SLEEP_TIME_SYNC_PROGRESS} seconds.");
-                    return Err(StateSyncError::NoProgress);
-                }
-                central_block_marker = new_central_block_marker;
-                header_marker = new_header_marker;
-                state_marker = new_state_marker;
-                casm_marker = new_casm_marker;
+            let new_latest_central_block = central_source.get_latest_block().await?;
+            let new_central_block_marker = new_latest_central_block
+                .map_or(BlockNumber::default(), |block| block.block_number.next());
+            txn = reader.begin_ro_txn()?;
+            let new_header_marker = txn.get_header_marker()?;
+            let new_state_marker = txn.get_state_marker()?;
+            let new_casm_marker = txn.get_compiled_class_marker()?;
+            let central_block_progress = new_central_block_marker.0 - central_block_marker.0;
+            debug!(
+                "Checking if sync stopped progress. Central progress: {}-{}. Header progress: \
+                 {}-{}. State progress: {}-{}. CASM progress: {}-{}.",
+                central_block_marker.0,
+                new_central_block_marker.0,
+                header_marker.0,
+                new_header_marker.0,
+                state_marker.0,
+                new_state_marker.0,
+                casm_marker.0,
+                new_casm_marker.0,
+            );
+            if central_block_progress > 0
+                && new_header_marker.0 - header_marker.0 <= 1
+                && new_state_marker.0 - state_marker.0 <= 1
+                && new_casm_marker.0 - casm_marker.0 <= 1
+            {
+                error!("No progress in the sync for {SLEEP_TIME_SYNC_PROGRESS} seconds.");
+                return Err(StateSyncError::NoProgress);
             }
-        });
-        join_handle.await.expect("Sync progress monitoring thread panicked.")
-    }
+            central_block_marker = new_central_block_marker;
+            header_marker = new_header_marker;
+            state_marker = new_state_marker;
+            casm_marker = new_casm_marker;
+        }
+    });
+    join_handle.await.expect("Sync progress monitoring thread panicked.")
 }
 
 fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
