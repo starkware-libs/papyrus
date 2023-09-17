@@ -22,7 +22,7 @@ fn write_read() {
 
     dir.close().unwrap();
 }
-
+// TODO: test writing and reading from different locations.
 #[test]
 fn concurrent_reads() {
     let dir = tempdir().unwrap();

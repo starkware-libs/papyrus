@@ -25,6 +25,7 @@ use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter, StarknetVersion};
+use papyrus_storage::mmap_file::LocationInFile;
 use papyrus_storage::ommer::{OmmerStorageReader, OmmerStorageWriter};
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
@@ -33,7 +34,7 @@ use sources::base_layer::BaseLayerSourceError;
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::state::StateDiff;
+use starknet_api::state::{StateDiff, ThinStateDiff};
 use tokio::sync::RwLock;
 use tokio::time::interval;
 use tracing::{debug, error, info, instrument, trace, warn};
@@ -348,6 +349,58 @@ impl<
         Ok(())
     }
 
+    #[instrument(skip(self, state_diffs), level = "debug", fields(n_blocks), err)]
+    fn store_state_diffs(
+        &mut self,
+        initial_block_number: Option<BlockNumber>,
+        state_diffs: Vec<(BlockHash, StateDiff, IndexMap<ClassHash, DeprecatedContractClass>)>,
+    ) -> StateSyncResult {
+        let n_blocks = state_diffs.len();
+        tracing::Span::current().record("n_blocks", n_blocks);
+        debug!("Storing state diffs.");
+        let Some(initial_block_number) = initial_block_number else {
+            return Ok(());
+        };
+
+        let mut block_number = initial_block_number;
+        let mut thin_state_diff_locations_to_write = Vec::with_capacity(n_blocks);
+        let mut diffs = Vec::with_capacity(n_blocks);
+        let mut offset = self.writer.get_thin_state_diff_offset();
+        for (block_hash, state_diff, deployed_contract_class_definitions) in state_diffs {
+            if !self.is_reverted_state_diff(block_number, block_hash)? {
+                trace!("StateDiff data: {state_diff:#?}");
+
+                let thin_state_diff_ref = thin_state_diff_from_state_diff_ref(&state_diff);
+                let len = self.writer.insert_thin_state_diff(offset, &thin_state_diff_ref);
+                // info!("Inserted thin state diff at offset {} of length {}.", offset, len);
+                thin_state_diff_locations_to_write.push(LocationInFile { offset, len });
+                offset += len;
+
+                diffs.push((state_diff, deployed_contract_class_definitions));
+            } else {
+                debug!("TODO: Insert reverted state diff to ommer table.");
+                break;
+            }
+            block_number = block_number.next();
+        }
+
+        self.writer.flush_thin_state_diff();
+        self.writer
+            .begin_rw_txn()?
+            .append_state_diffs(initial_block_number, diffs, &thin_state_diff_locations_to_write)?
+            .commit()?;
+        metrics::gauge!(papyrus_metrics::PAPYRUS_STATE_MARKER, block_number.0 as f64);
+        let compiled_class_marker = self.reader.begin_ro_txn()?.get_compiled_class_marker()?;
+        metrics::gauge!(
+            papyrus_metrics::PAPYRUS_COMPILED_CLASS_MARKER,
+            compiled_class_marker.0 as f64
+        );
+
+        // Info the user on syncing the block once all the data is stored.
+        debug!("Added state upto block {}.", block_number.prev().unwrap_or_default());
+        Ok(())
+    }
+
     #[instrument(skip(self, state_diff, deployed_contract_class_definitions), level = "debug", err)]
     fn store_state_diff(
         &mut self,
@@ -646,6 +699,7 @@ impl<
 
     async fn sync_state_diffs(&mut self) -> Result<(), StateSyncError> {
         debug!("Syncing state diffs.");
+        const MAX_STATE_DIFF_BEFORE_PERSISTING: usize = 50;
         let state_diff_stream = stream_new_state_diffs(
             self.reader.clone(),
             self.central_source.clone(),
@@ -653,6 +707,12 @@ impl<
         )
         .fuse();
         pin_mut!(state_diff_stream);
+        let mut initial_block_number: Option<BlockNumber> = None;
+        let mut state_diffs: Vec<(
+            BlockHash,
+            StateDiff,
+            IndexMap<ClassHash, DeprecatedContractClass>,
+        )> = Vec::with_capacity(MAX_STATE_DIFF_BEFORE_PERSISTING);
         while let Some(maybe_state_diff) = state_diff_stream.next().await {
             let SyncEvent::StateDiffAvailable {
                 block_number,
@@ -663,13 +723,17 @@ impl<
             else {
                 panic!("Expected state diff.")
             };
-            self.store_state_diff(
-                block_number,
-                block_hash,
-                state_diff,
-                deployed_contract_class_definitions,
-            )?;
+            if initial_block_number.is_none() {
+                initial_block_number = Some(block_number);
+            }
+            state_diffs.push((block_hash, state_diff, deployed_contract_class_definitions));
+            if state_diffs.len() >= MAX_STATE_DIFF_BEFORE_PERSISTING {
+                self.store_state_diffs(initial_block_number, state_diffs)?;
+                state_diffs = Vec::with_capacity(MAX_STATE_DIFF_BEFORE_PERSISTING);
+                initial_block_number = None;
+            }
         }
+        self.store_state_diffs(initial_block_number, state_diffs)?;
         Ok(())
     }
 
@@ -784,7 +848,13 @@ fn stream_new_blocks<TCentralSource: CentralSourceTrait + Sync + Send>(
     try_stream! {
         let mut next_block_number = reader.begin_ro_txn()?.get_header_marker()?;
         loop {
-            let latest_central_block = central_source.get_latest_block().await?;
+            let latest_central_block = Some(
+                BlockHashAndNumber {
+                    block_hash: BlockHash::default(),
+                    block_number: BlockNumber(200000)
+                }
+            );
+            // let latest_central_block = central_source.get_latest_block().await?;
             *shared_highest_block.write().await = latest_central_block;
             let central_block_marker = latest_central_block.map_or(
                 BlockNumber::default(), |block| block.block_number.next()
@@ -930,5 +1000,21 @@ fn stream_new_compiled_classes<TCentralSource: CentralSourceTrait + Sync + Send>
                 };
             }
         }
+    }
+}
+
+// Returns a reference to the thin state diff from a StateDiff.
+pub fn thin_state_diff_from_state_diff_ref(diff: &StateDiff) -> ThinStateDiff {
+    ThinStateDiff {
+        deployed_contracts: diff.deployed_contracts.clone(),
+        storage_diffs: diff.storage_diffs.clone(),
+        declared_classes: diff
+            .declared_classes
+            .iter()
+            .map(|(class_hash, (compiled_hash, _class))| (*class_hash, *compiled_hash))
+            .collect(),
+        deprecated_declared_classes: diff.deprecated_declared_classes.keys().copied().collect(),
+        nonces: diff.nonces.clone(),
+        replaced_classes: diff.replaced_classes.clone(),
     }
 }

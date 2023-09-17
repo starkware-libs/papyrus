@@ -35,7 +35,7 @@ use validator::Validate;
 use crate::db::serialization::{StorageSerde, StorageSerdeEx};
 
 // Maximum number of Sub-Databases.
-const MAX_DBS: usize = 27;
+const MAX_DBS: usize = 28;
 
 // Note that NO_TLS mode is used by default.
 type EnvironmentKind = WriteMap;
@@ -68,7 +68,7 @@ impl Default for DbConfig {
             chain_id: ChainId("SN_MAIN".to_string()),
             min_size: 1 << 20,    // 1MB
             max_size: 1 << 40,    // 1TB
-            growth_step: 1 << 26, // 64MB
+            growth_step: 1 << 32, // 4GB
         }
     }
 }

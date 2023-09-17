@@ -79,7 +79,11 @@ impl<V: StorageSerde> Reader<V> for FileReader {
     /// Returns an object from the file.
     fn get(&self, location: LocationInFile) -> V {
         let bytes = std::borrow::Cow::from(unsafe {
-            std::slice::from_raw_parts(self.shared_data, location.len)
+            std::slice::from_raw_parts(
+                self.shared_data
+                    .offset(location.offset.try_into().expect("Failed to convert offset to isize")),
+                location.len,
+            )
         });
         V::deserialize(&mut bytes.as_ref()).unwrap()
     }
