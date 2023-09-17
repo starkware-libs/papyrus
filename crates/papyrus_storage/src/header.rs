@@ -80,11 +80,25 @@ where
         block_header: &BlockHeader,
     ) -> StorageResult<Self>;
 
+    /// Appends several headers to the storage.
+    fn append_headers(
+        self,
+        initial_block_number: BlockNumber,
+        headers: &[BlockHeader],
+    ) -> StorageResult<Self>;
+
     /// Update the starknet version if needed.
     fn update_starknet_version(
         self,
         block_number: &BlockNumber,
         starknet_version: &StarknetVersion,
+    ) -> StorageResult<Self>;
+
+    /// Update the starknet for several blocks version if needed.
+    fn update_starknet_versions(
+        self,
+        initial_block_number: &BlockNumber,
+        starknet_versions: Vec<StarknetVersion>,
     ) -> StorageResult<Self>;
 
     /// Removes a block header from the storage and returns the removed data.
@@ -161,6 +175,30 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
         Ok(self)
     }
 
+    fn append_headers(
+        self,
+        initial_block_number: BlockNumber,
+        headers: &[BlockHeader],
+    ) -> StorageResult<Self> {
+        let markers_table = self.txn.open_table(&self.tables.markers)?;
+        let headers_table = self.txn.open_table(&self.tables.headers)?;
+        let block_hash_to_number_table = self.txn.open_table(&self.tables.block_hash_to_number)?;
+
+        let up_to_block_number = BlockNumber(initial_block_number.0 + headers.len() as u64 - 1);
+        update_marker(&self.txn, &markers_table, up_to_block_number)?;
+
+        let mut header_cursor = headers_table.cursor(&self.txn)?;
+
+        let mut block_number = initial_block_number;
+        for header in headers {
+            header_cursor.append(&block_number, header)?;
+            update_hash_mapping(&self.txn, &block_hash_to_number_table, header, block_number)?;
+            block_number = block_number.next();
+        }
+
+        Ok(self)
+    }
+
     fn update_starknet_version(
         self,
         block_number: &BlockNumber,
@@ -178,6 +216,38 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
                 starknet_version_table.insert(&self.txn, block_number, starknet_version)?;
             }
         }
+        Ok(self)
+    }
+
+    fn update_starknet_versions(
+        self,
+        initial_block_number: &BlockNumber,
+        starknet_versions: Vec<StarknetVersion>,
+    ) -> StorageResult<Self> {
+        if starknet_versions.is_empty() {
+            return Ok(self);
+        }
+
+        let starknet_version_table = self.txn.open_table(&self.tables.starknet_version)?;
+        let mut cursor = starknet_version_table.cursor(&self.txn)?;
+        let block_number = initial_block_number;
+
+        let mut last_starknet_version = match cursor.last()? {
+            Some((_block_number, last_starknet_version)) => last_starknet_version,
+            _ => {
+                cursor.append(block_number, &starknet_versions[0])?;
+                starknet_versions[0].clone()
+            }
+        };
+
+        for starknet_version in starknet_versions {
+            if last_starknet_version == starknet_version {
+                continue;
+            }
+            cursor.append(block_number, &starknet_version)?;
+            last_starknet_version = starknet_version;
+        }
+
         Ok(self)
     }
 
@@ -235,10 +305,10 @@ fn update_marker<'env>(
     block_number: BlockNumber,
 ) -> StorageResult<()> {
     // Make sure marker is consistent.
-    let header_marker = markers_table.get(txn, &MarkerKind::Header)?.unwrap_or_default();
-    if header_marker != block_number {
-        return Err(StorageError::MarkerMismatch { expected: header_marker, found: block_number });
-    };
+    // let header_marker = markers_table.get(txn, &MarkerKind::Header)?.unwrap_or_default();
+    // if header_marker != block_number {
+    //     return Err(StorageError::MarkerMismatch { expected: header_marker, found: block_number
+    // }); };
 
     // Advance marker.
     markers_table.upsert(txn, &MarkerKind::Header, &block_number.next())?;

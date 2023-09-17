@@ -301,7 +301,10 @@ impl<
         let last_block_timestamp = blocks.last().expect("should have a value").0.header.timestamp;
 
         let mut parent_block_mismatch_error = None;
-        let mut tx = self.writer.begin_rw_txn()?;
+        let mut headers = Vec::with_capacity(n_blocks);
+        let mut bodies = Vec::with_capacity(n_blocks);
+        let mut starknet_versions = Vec::with_capacity(n_blocks);
+
         for (block, starknet_version) in blocks {
             trace!("Block data: {block:#?}");
             if block.header.parent_hash != prev_block_hash {
@@ -312,15 +315,19 @@ impl<
                 });
                 break;
             }
-            tx = tx
-                .append_header(block_number, &block.header)?
-                .update_starknet_version(&block_number, &starknet_version)?
-                .append_body(block_number, block.body)?;
-
             prev_block_hash = block.header.block_hash;
             block_number = block_number.next();
+
+            headers.push(block.header);
+            bodies.push(block.body);
+            starknet_versions.push(starknet_version);
         }
-        tx.commit()?;
+        self.writer
+            .begin_rw_txn()?
+            .append_headers(initial_block_number, &headers)?
+            .append_bodies(initial_block_number, bodies)?
+            .update_starknet_versions(&initial_block_number, starknet_versions)?
+            .commit()?;
 
         metrics::gauge!(papyrus_metrics::PAPYRUS_HEADER_MARKER, block_number.0 as f64);
         metrics::gauge!(papyrus_metrics::PAPYRUS_BODY_MARKER, block_number.0 as f64);

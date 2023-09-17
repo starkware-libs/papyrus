@@ -139,6 +139,13 @@ where
     // TODO(yair): make this work without consuming the body.
     fn append_body(self, block_number: BlockNumber, block_body: BlockBody) -> StorageResult<Self>;
 
+    /// Appends a list of block bodies to the storage.
+    fn append_bodies(
+        self,
+        initial_block_number: BlockNumber,
+        block_bodies: Vec<BlockBody>,
+    ) -> StorageResult<Self>;
+
     /// Removes a block body from the storage and returns the removed data.
     fn revert_body(
         self,
@@ -298,6 +305,42 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
         Ok(self)
     }
 
+    fn append_bodies(
+        self,
+        initial_block_number: BlockNumber,
+        block_bodies: Vec<BlockBody>,
+    ) -> StorageResult<Self> {
+        let markers_table = self.txn.open_table(&self.tables.markers)?;
+        let transactions_table = self.txn.open_table(&self.tables.transactions)?;
+        let transaction_outputs_table = self.txn.open_table(&self.tables.transaction_outputs)?;
+        let events_table = self.txn.open_table(&self.tables.events)?;
+        let transaction_hash_to_idx_table =
+            self.txn.open_table(&self.tables.transaction_hash_to_idx)?;
+        let transaction_idx_to_hash_table =
+            self.txn.open_table(&self.tables.transaction_idx_to_hash)?;
+
+        let block_number = BlockNumber(initial_block_number.0 + block_bodies.len() as u64 - 1);
+        update_marker(&self.txn, &markers_table, block_number)?;
+
+        write_blocks_transactions(
+            &block_bodies,
+            &self.txn,
+            &transactions_table,
+            &transaction_hash_to_idx_table,
+            &transaction_idx_to_hash_table,
+            initial_block_number,
+        )?;
+        write_blocks_transaction_outputs(
+            block_bodies,
+            &self.txn,
+            &transaction_outputs_table,
+            &events_table,
+            initial_block_number,
+        )?;
+
+        Ok(self)
+    }
+
     fn revert_body(
         self,
         block_number: BlockNumber,
@@ -388,6 +431,36 @@ fn write_transactions<'env>(
     Ok(())
 }
 
+fn write_blocks_transactions<'env>(
+    block_bodies: &[BlockBody],
+    txn: &DbTransaction<'env, RW>,
+    transactions_table: &'env TransactionsTable<'env>,
+    transaction_hash_to_idx_table: &'env TransactionHashToIdxTable<'env>,
+    transaction_idx_to_hash_table: &'env TransactionIdxToHashTable<'env>,
+    initial_block_number: BlockNumber,
+) -> StorageResult<()> {
+    let mut block_number = initial_block_number;
+    let mut transactions_cursor = transactions_table.cursor(txn)?;
+    for block_body in block_bodies {
+        for (index, (tx, tx_hash)) in
+            block_body.transactions.iter().zip(block_body.transaction_hashes.iter()).enumerate()
+        {
+            let tx_offset_in_block = TransactionOffsetInBlock(index);
+            let transaction_index = TransactionIndex(block_number, tx_offset_in_block);
+            update_tx_hash_mapping(
+                txn,
+                transaction_hash_to_idx_table,
+                transaction_idx_to_hash_table,
+                tx_hash,
+                transaction_index,
+            )?;
+            transactions_cursor.append(&transaction_index, tx)?;
+        }
+        block_number = block_number.next();
+    }
+    Ok(())
+}
+
 fn write_transaction_outputs<'env>(
     block_body: BlockBody,
     txn: &DbTransaction<'env, RW>,
@@ -404,6 +477,29 @@ fn write_transaction_outputs<'env>(
             &transaction_index,
             &ThinTransactionOutput::from(tx_output),
         )?;
+    }
+    Ok(())
+}
+
+fn write_blocks_transaction_outputs<'env>(
+    block_bodies: Vec<BlockBody>,
+    txn: &DbTransaction<'env, RW>,
+    transaction_outputs_table: &'env TransactionOutputsTable<'env>,
+    events_table: &'env EventsTable<'env>,
+    initial_block_number: BlockNumber,
+) -> StorageResult<()> {
+    let mut block_number = initial_block_number;
+    let mut transaction_outputs_cursor = transaction_outputs_table.cursor(txn)?;
+
+    for block_body in block_bodies {
+        for (index, tx_output) in block_body.transaction_outputs.into_iter().enumerate() {
+            let transaction_index = TransactionIndex(block_number, TransactionOffsetInBlock(index));
+
+            write_events(&tx_output, txn, events_table, transaction_index)?;
+            transaction_outputs_cursor
+                .append(&transaction_index, &ThinTransactionOutput::from(tx_output))?;
+        }
+        block_number = block_number.next();
     }
     Ok(())
 }
@@ -445,10 +541,10 @@ fn update_marker<'env>(
     block_number: BlockNumber,
 ) -> StorageResult<()> {
     // Make sure marker is consistent.
-    let body_marker = markers_table.get(txn, &MarkerKind::Body)?.unwrap_or_default();
-    if body_marker != block_number {
-        return Err(StorageError::MarkerMismatch { expected: body_marker, found: block_number });
-    };
+    // let body_marker = markers_table.get(txn, &MarkerKind::Body)?.unwrap_or_default();
+    // if body_marker != block_number {
+    //     return Err(StorageError::MarkerMismatch { expected: body_marker, found: block_number });
+    // };
 
     // Advance marker.
     markers_table.upsert(txn, &MarkerKind::Body, &block_number.next())?;

@@ -316,7 +316,36 @@ pub(crate) struct DbCursor<'txn, Mode: TransactionKind, K: StorageSerde, V: Stor
     _value_type: PhantomData<V>,
 }
 
+impl<'txn, K: StorageSerde, V: StorageSerde> DbCursor<'txn, RW, K, V> {
+    /// Appends a key/value pair to the database at the end of the table.
+    ///
+    /// # Errors
+    ///
+    ///  Returns an error if the key is less than the last key in the table.
+    pub(crate) fn append(&mut self, key: &K, value: &V) -> DbResult<()> {
+        let data = value.serialize()?;
+        let bin_key = key.serialize()?;
+        self.cursor.put(&bin_key, data.as_ref(), WriteFlags::APPEND)?;
+        Ok(())
+    }
+}
+
 impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'txn, Mode, K, V> {
+    /// Sets the cursor to the last key/value pair in the table.
+    pub(crate) fn last(&mut self) -> DbResult<Option<(K, V)>> {
+        let prev_cursor_res = self.cursor.last::<DbKeyType<'_>, DbValueType<'_>>()?;
+        match prev_cursor_res {
+            None => Ok(None),
+            Some((key_bytes, value_bytes)) => {
+                let key =
+                    K::deserialize(&mut key_bytes.as_ref()).ok_or(DbError::InnerDeserialization)?;
+                let value = V::deserialize(&mut value_bytes.as_ref())
+                    .ok_or(DbError::InnerDeserialization)?;
+                Ok(Some((key, value)))
+            }
+        }
+    }
+
     pub(crate) fn prev(&mut self) -> DbResult<Option<(K, V)>> {
         let prev_cursor_res = self.cursor.prev::<DbKeyType<'_>, DbValueType<'_>>()?;
         match prev_cursor_res {
