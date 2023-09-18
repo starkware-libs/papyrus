@@ -25,3 +25,4 @@ mockall.workspace = true
 pretty_assertions.workspace = true
 rand.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
+tokio-stream.workspace = true
