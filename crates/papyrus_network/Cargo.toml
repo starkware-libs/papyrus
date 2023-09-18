@@ -20,6 +20,8 @@ prost-build.workspace = true
 
 [dev-dependencies]
 assert_matches.workspace = true
+libp2p = { workspace = true, features = ["noise", "yamux"] }
 mockall.workspace = true
 pretty_assertions.workspace = true
+rand.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
