@@ -5,6 +5,7 @@ mod transaction_hash_test;
 use lazy_static::lazy_static;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{calculate_contract_address, ChainId, ContractAddress};
+use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::{
     DeclareTransaction,
@@ -20,11 +21,21 @@ use starknet_api::transaction::{
     InvokeTransactionV1,
     InvokeTransactionV3,
     L1HandlerTransaction,
+    Resource,
+    ResourceBounds,
+    ResourceBoundsMapping,
+    Tip,
     Transaction,
     TransactionHash,
 };
 use starknet_api::StarknetApiError;
-use starknet_crypto::{pedersen_hash, FieldElement};
+use starknet_crypto::{pedersen_hash, poseidon_hash_many, FieldElement};
+
+type ResourceName = [u8; 7];
+
+const DATA_AVAILABILITY_MODE_BITS: usize = 32;
+const L1_GAS: &ResourceName = b"\0L1_GAS";
+const L2_GAS: &ResourceName = b"\0L2_GAS";
 
 lazy_static! {
     static ref DECLARE: StarkFelt =
@@ -141,21 +152,20 @@ pub fn validate_transaction_hash(
     Ok(possible_hashes.contains(&expected_hash))
 }
 
-// Represents an intermediate calculation of Pedersen hash chain.
-pub(crate) struct PedersenHashChain {
-    current_hash: FieldElement,
-    length: u128,
+// Collect elements for applying hash chain.
+pub(crate) struct HashChain {
+    elements: Vec<FieldElement>,
 }
 
-impl PedersenHashChain {
-    pub fn new() -> PedersenHashChain {
-        PedersenHashChain { current_hash: FieldElement::ZERO, length: 0 }
+impl HashChain {
+    pub fn new() -> HashChain {
+        HashChain { elements: Vec::new() }
     }
 
     // Chains a felt to the hash chain.
-    pub fn chain(self, felt: &StarkFelt) -> Self {
-        let new_hash = pedersen_hash(&self.current_hash, &FieldElement::from(*felt));
-        Self { current_hash: new_hash, length: self.length + 1 }
+    pub fn chain(mut self, felt: &StarkFelt) -> Self {
+        self.elements.push(FieldElement::from(*felt));
+        self
     }
 
     // Chains a felt to the hash chain if a condition is true.
@@ -178,16 +188,79 @@ impl PedersenHashChain {
         felts.fold(self, |current, felt| current.chain(felt))
     }
 
-    // Returns the hash of the chained felts, hashed with the length of the chain.
-    pub fn get_hash(&self) -> StarkHash {
-        // TODO(yoav): Return a constant if the length is 0.
-        let final_hash = pedersen_hash(&self.current_hash, &FieldElement::from(self.length));
-        StarkHash::from(final_hash)
+    // Returns the pedersen hash of the chained felts, hashed with the length of the chain.
+    pub fn get_pedersen_hash(&self) -> StarkHash {
+        let current_hash = self
+            .elements
+            .iter()
+            .fold(FieldElement::ZERO, |current_hash, felt| pedersen_hash(&current_hash, felt));
+        let n_elements =
+            FieldElement::try_from(self.elements.len()).expect("Got too many elements.");
+        pedersen_hash(&current_hash, &n_elements).into()
+    }
+
+    // Returns the poseidon hash of the chained felts.
+    pub fn get_poseidon_hash(&self) -> StarkHash {
+        poseidon_hash_many(&self.elements).into()
     }
 }
 
 pub(crate) fn ascii_as_felt(ascii_str: &str) -> Result<StarkFelt, StarknetApiError> {
     StarkFelt::try_from(hex::encode(ascii_str).as_str())
+}
+
+// An implementation of the SNIP: https://github.com/EvyatarO/SNIPs/blob/snip-8/SNIPS/snip-8.md
+fn get_tip_resource_bounds_hash(
+    resource_bounds_mapping: &ResourceBoundsMapping,
+    tip: &Tip,
+) -> Result<StarkFelt, StarknetApiError> {
+    let l1_resource_bounds =
+        resource_bounds_mapping.0.get(&Resource::L1Gas).expect("Missing l1 resource");
+    let l1_resource = get_concat_resource(l1_resource_bounds, L1_GAS)?;
+
+    let l2_resource_bounds =
+        resource_bounds_mapping.0.get(&Resource::L2Gas).expect("Missing l2 resource");
+    let l2_resource = get_concat_resource(l2_resource_bounds, L2_GAS)?;
+
+    Ok(HashChain::new()
+        .chain(&tip.0.into())
+        .chain(&l1_resource)
+        .chain(&l2_resource)
+        .get_poseidon_hash())
+}
+
+// Receives resource_bounds and resource_name and returns:
+// [0 | resource_name (56 bit) | max_amount (64 bit) | max_price_per_unit (128 bit)].
+// An implementation of the SNIP: https://github.com/EvyatarO/SNIPs/blob/snip-8/SNIPS/snip-8.md.
+fn get_concat_resource(
+    resource_bounds: &ResourceBounds,
+    resource_name: &ResourceName,
+) -> Result<StarkFelt, StarknetApiError> {
+    let max_amount = resource_bounds.max_amount.to_be_bytes();
+    let max_price = resource_bounds.max_price_per_unit.to_be_bytes();
+    let concat_bytes =
+        [[0_u8].as_slice(), resource_name.as_slice(), max_amount.as_slice(), max_price.as_slice()]
+            .concat();
+    StarkFelt::new(concat_bytes.try_into().expect("Expect 32 bytes"))
+}
+
+// Receives nonce_mode and fee_mode and returns:
+// [0...0 (192 bit) | nonce_mode (32 bit) | fee_mode (32 bit)].
+// An implementation of the SNIP: https://github.com/EvyatarO/SNIPs/blob/snip-8/SNIPS/snip-8.md.
+fn concat_data_availability_mode(
+    nonce_mode: &DataAvailabilityMode,
+    fee_mode: &DataAvailabilityMode,
+) -> StarkFelt {
+    (data_availability_mode_index(fee_mode)
+        + (data_availability_mode_index(nonce_mode) << DATA_AVAILABILITY_MODE_BITS))
+        .into()
+}
+
+fn data_availability_mode_index(mode: &DataAvailabilityMode) -> u64 {
+    match mode {
+        DataAvailabilityMode::L1 => 0,
+        DataAvailabilityMode::L2 => 1,
+    }
 }
 
 fn get_deploy_transaction_hash(
@@ -217,19 +290,19 @@ fn get_common_deploy_transaction_hash(
     )?;
 
     Ok(TransactionHash(
-        PedersenHashChain::new()
+        HashChain::new()
         .chain(&DEPLOY)
         .chain_if(&transaction.version.0, !is_deprecated)
         .chain(contract_address.0.key())
         .chain(&CONSTRUCTOR_ENTRY_POINT_SELECTOR)
         .chain(
-            &PedersenHashChain::new()
+            &HashChain::new()
                 .chain_iter(transaction.constructor_calldata.0.iter())
-                .get_hash(),
+                .get_pedersen_hash(),
         )
         .chain_if(&ZERO, !is_deprecated) // No fee in deploy transaction.
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
-        .get_hash(),
+        .get_pedersen_hash(),
     ))
 }
 
@@ -253,15 +326,15 @@ fn get_common_invoke_transaction_v0_hash(
     is_deprecated: bool,
 ) -> Result<TransactionHash, StarknetApiError> {
     Ok(TransactionHash(
-        PedersenHashChain::new()
+        HashChain::new()
         .chain(&INVOKE)
         .chain_if(&ZERO, !is_deprecated) // Version
         .chain(transaction.contract_address.0.key())
         .chain(&transaction.entry_point_selector.0)
-        .chain(&PedersenHashChain::new().chain_iter(transaction.calldata.0.iter()).get_hash())
+        .chain(&HashChain::new().chain_iter(transaction.calldata.0.iter()).get_pedersen_hash())
         .chain_if(&transaction.max_fee.0.into(), !is_deprecated)
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
-        .get_hash(),
+        .get_pedersen_hash(),
     ))
 }
 
@@ -270,79 +343,51 @@ fn get_invoke_transaction_v1_hash(
     chain_id: &ChainId,
 ) -> Result<TransactionHash, StarknetApiError> {
     Ok(TransactionHash(
-        PedersenHashChain::new()
+        HashChain::new()
         .chain(&INVOKE)
         .chain(&ONE) // Version
         .chain(transaction.sender_address.0.key())
         .chain(&ZERO) // No entry point selector in invoke transaction.
-        .chain(&PedersenHashChain::new().chain_iter(transaction.calldata.0.iter()).get_hash())
+        .chain(&HashChain::new().chain_iter(transaction.calldata.0.iter()).get_pedersen_hash())
         .chain(&transaction.max_fee.0.into())
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
         .chain(&transaction.nonce.0)
-        .get_hash(),
+        .get_pedersen_hash(),
     ))
 }
 
-// TODO(yoav, 01/11/2023): Add test for Invoke v3 transaction.
 fn get_invoke_transaction_v3_hash(
-    _transaction: &InvokeTransactionV3,
-    _chain_id: &ChainId,
+    transaction: &InvokeTransactionV3,
+    chain_id: &ChainId,
 ) -> Result<TransactionHash, StarknetApiError> {
-    unimplemented!()
-    // let l1_gas_max_amount = transaction
-    //     .resource_bounds
-    //     .0
-    //     .get(&Resource::L1Gas)
-    //     .map_or(StarkFelt::ZERO, |resource_bounds| StarkFelt::from(resource_bounds.max_amount));
-    // let l1_gas_max_price_per_unit = transaction
-    //     .resource_bounds
-    //     .0
-    //     .get(&Resource::L1Gas)
-    //     .map_or(StarkFelt::ZERO, |resource_bounds| {
-    //         StarkFelt::from(resource_bounds.max_price_per_unit)
-    //     });
-    // let l2_gas_max_amount = transaction
-    //     .resource_bounds
-    //     .0
-    //     .get(&Resource::L2Gas)
-    //     .map_or(StarkFelt::ZERO, |resource_bounds| StarkFelt::from(resource_bounds.max_amount));
-    // let l2_gas_max_price_per_unit = transaction
-    //     .resource_bounds
-    //     .0
-    //     .get(&Resource::L2Gas)
-    //     .map_or(StarkFelt::ZERO, |resource_bounds| {
-    //         StarkFelt::from(resource_bounds.max_price_per_unit)
-    //     });
-    // let tip_resource_bounds_hash = PedersenHashChain::new()
-    //     .chain(&transaction.tip.into())
-    //     .chain(&l1_gas_max_amount)
-    //     .chain(&l1_gas_max_price_per_unit)
-    //     .chain(&l2_gas_max_amount)
-    //     .chain(&l2_gas_max_price_per_unit)
-    //     .get_hash();
-    // let paymaster_data_hash =
-    //     PedersenHashChain::new().chain_iter(transaction.paymaster_data.0.iter()).get_hash();
-    // let account_deployment_data_hash = PedersenHashChain::new()
-    //     .chain_iter(transaction.account_deployment_data.0.iter())
-    //     .get_hash();
-    // let calldata_hash =
-    //     PedersenHashChain::new().chain_iter(transaction.calldata.0.iter()).get_hash();
+    let tip_resource_bounds_hash =
+        get_tip_resource_bounds_hash(&transaction.resource_bounds, &transaction.tip)?;
+    let paymaster_data_hash =
+        HashChain::new().chain_iter(transaction.paymaster_data.0.iter()).get_poseidon_hash();
+    let data_availability_mode = concat_data_availability_mode(
+        &transaction.nonce_data_availability_mode,
+        &transaction.fee_data_availability_mode,
+    );
+    let account_deployment_data_hash = HashChain::new()
+        .chain_iter(transaction.account_deployment_data.0.iter())
+        .get_poseidon_hash();
+    let calldata_hash =
+        HashChain::new().chain_iter(transaction.calldata.0.iter()).get_poseidon_hash();
 
-    // Ok(TransactionHash(
-    //     PedersenHashChain::new()
-    //     .chain(&INVOKE)
-    //     .chain(&THREE) // Version
-    //     .chain(transaction.sender_address.0.key())
-    //     .chain(&tip_resource_bounds_hash)
-    //     .chain(&paymaster_data_hash)
-    //     .chain(&ascii_as_felt(chain_id.0.as_str())?)
-    //     .chain(&transaction.nonce.0)
-    //     .chain(&StarkFelt::from(transaction.nonce_data_availability_mode))
-    //     .chain(&StarkFelt::from(transaction.fee_data_availability_mode))
-    //     .chain(&account_deployment_data_hash)
-    //     .chain(&calldata_hash)
-    //     .get_hash(),
-    // ))
+    Ok(TransactionHash(
+        HashChain::new()
+        .chain(&INVOKE)
+        .chain(&THREE) // Version
+        .chain(transaction.sender_address.0.key())
+        .chain(&tip_resource_bounds_hash)
+        .chain(&paymaster_data_hash)
+        .chain(&ascii_as_felt(chain_id.0.as_str())?)
+        .chain(&transaction.nonce.0)
+        .chain(&data_availability_mode)
+        .chain(&account_deployment_data_hash)
+        .chain(&calldata_hash)
+        .get_poseidon_hash(),
+    ))
 }
 
 #[derive(PartialEq, PartialOrd)]
@@ -379,16 +424,16 @@ fn get_common_l1_handler_transaction_hash(
     version: L1HandlerVersions,
 ) -> Result<TransactionHash, StarknetApiError> {
     Ok(TransactionHash(
-        PedersenHashChain::new()
+        HashChain::new()
         .chain_if_else(&INVOKE, &L1_HANDLER, version == L1HandlerVersions::AsInvoke)
         .chain_if(&transaction.version.0, version > L1HandlerVersions::V0Deprecated)
         .chain(transaction.contract_address.0.key())
         .chain(&transaction.entry_point_selector.0)
-        .chain(&PedersenHashChain::new().chain_iter(transaction.calldata.0.iter()).get_hash())
+        .chain(&HashChain::new().chain_iter(transaction.calldata.0.iter()).get_pedersen_hash())
         .chain_if(&ZERO, version > L1HandlerVersions::V0Deprecated) // No fee in l1 handler transaction.
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
         .chain_if(&transaction.nonce.0, version > L1HandlerVersions::AsInvoke)
-        .get_hash(),
+        .get_pedersen_hash(),
     ))
 }
 
@@ -397,16 +442,16 @@ fn get_declare_transaction_v0_hash(
     chain_id: &ChainId,
 ) -> Result<TransactionHash, StarknetApiError> {
     Ok(TransactionHash(
-        PedersenHashChain::new()
+        HashChain::new()
         .chain(&DECLARE)
         .chain(&ZERO) // Version
         .chain(transaction.sender_address.0.key())
         .chain(&ZERO ) // No entry point selector in declare transaction.
-        .chain(&PedersenHashChain::new().get_hash())
+        .chain(&HashChain::new().get_pedersen_hash())
         .chain(&transaction.max_fee.0.into())
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
         .chain(&transaction.class_hash.0)
-        .get_hash(),
+        .get_pedersen_hash(),
     ))
 }
 
@@ -415,16 +460,16 @@ fn get_declare_transaction_v1_hash(
     chain_id: &ChainId,
 ) -> Result<TransactionHash, StarknetApiError> {
     Ok(TransactionHash(
-        PedersenHashChain::new()
+        HashChain::new()
         .chain(&DECLARE)
         .chain(&ONE) // Version
         .chain(transaction.sender_address.0.key())
         .chain(&ZERO) // No entry point selector in declare transaction.
-        .chain(&PedersenHashChain::new().chain(&transaction.class_hash.0).get_hash())
+        .chain(&HashChain::new().chain(&transaction.class_hash.0).get_pedersen_hash())
         .chain(&transaction.max_fee.0.into())
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
         .chain(&transaction.nonce.0)
-        .get_hash(),
+        .get_pedersen_hash(),
     ))
 }
 
@@ -433,90 +478,62 @@ fn get_declare_transaction_v2_hash(
     chain_id: &ChainId,
 ) -> Result<TransactionHash, StarknetApiError> {
     Ok(TransactionHash(
-        PedersenHashChain::new()
+        HashChain::new()
         .chain(&DECLARE)
         .chain(&TWO) // Version
         .chain(transaction.sender_address.0.key())
         .chain(&ZERO) // No entry point selector in declare transaction.
-        .chain(&PedersenHashChain::new().chain(&transaction.class_hash.0).get_hash())
+        .chain(&HashChain::new().chain(&transaction.class_hash.0).get_pedersen_hash())
         .chain(&transaction.max_fee.0.into())
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
         .chain(&transaction.nonce.0)
         .chain(&transaction.compiled_class_hash.0)
-        .get_hash(),
+        .get_pedersen_hash(),
     ))
 }
 
-// TODO(yoav, 01/11/2023): Add test for Declare v3 transaction.
 fn get_declare_transaction_v3_hash(
-    _transaction: &DeclareTransactionV3,
-    _chain_id: &ChainId,
+    transaction: &DeclareTransactionV3,
+    chain_id: &ChainId,
 ) -> Result<TransactionHash, StarknetApiError> {
-    unimplemented!()
-    //     let l1_gas_max_amount = transaction
-    //         .resource_bounds
-    //         .0
-    //         .get(&Resource::L1Gas)
-    //         .map_or(StarkFelt::ZERO, |resource_bounds|
-    // StarkFelt::from(resource_bounds.max_amount));     let l1_gas_max_price_per_unit =
-    // transaction         .resource_bounds
-    //         .0
-    //         .get(&Resource::L1Gas)
-    //         .map_or(StarkFelt::ZERO, |resource_bounds| {
-    //             StarkFelt::from(resource_bounds.max_price_per_unit)
-    //         });
-    //     let l2_gas_max_amount = transaction
-    //         .resource_bounds
-    //         .0
-    //         .get(&Resource::L2Gas)
-    //         .map_or(StarkFelt::ZERO, |resource_bounds|
-    // StarkFelt::from(resource_bounds.max_amount));     let l2_gas_max_price_per_unit =
-    // transaction         .resource_bounds
-    //         .0
-    //         .get(&Resource::L2Gas)
-    //         .map_or(StarkFelt::ZERO, |resource_bounds| {
-    //             StarkFelt::from(resource_bounds.max_price_per_unit)
-    //         });
-    //     let tip_resource_bounds_hash = PedersenHashChain::new()
-    //         .chain(&transaction.tip.into())
-    //         .chain(&l1_gas_max_amount)
-    //         .chain(&l1_gas_max_price_per_unit)
-    //         .chain(&l2_gas_max_amount)
-    //         .chain(&l2_gas_max_price_per_unit)
-    //         .get_hash();
-    //     let paymaster_data_hash =
-    //         PedersenHashChain::new().chain_iter(transaction.paymaster_data.0.iter()).get_hash();
-    //     let account_deployment_data_hash = PedersenHashChain::new()
-    //         .chain_iter(transaction.account_deployment_data.0.iter())
-    //         .get_hash();
+    let tip_resource_bounds_hash =
+        get_tip_resource_bounds_hash(&transaction.resource_bounds, &transaction.tip)?;
+    let paymaster_data_hash =
+        HashChain::new().chain_iter(transaction.paymaster_data.0.iter()).get_poseidon_hash();
+    let data_availability_mode = concat_data_availability_mode(
+        &transaction.nonce_data_availability_mode,
+        &transaction.fee_data_availability_mode,
+    );
+    let account_deployment_data_hash = HashChain::new()
+        .chain_iter(transaction.account_deployment_data.0.iter())
+        .get_poseidon_hash();
 
-    //     Ok(TransactionHash(
-    //         PedersenHashChain::new()
-    //         .chain(&DECLARE)
-    //         .chain(&THREE) // Version
-    //         .chain(transaction.sender_address.0.key())
-    //         .chain(&tip_resource_bounds_hash)
-    //         .chain(&paymaster_data_hash)
-    //         .chain(&ascii_as_felt(chain_id.0.as_str())?)
-    //         .chain(&transaction.nonce.0)
-    //         .chain(&StarkFelt::from(transaction.nonce_data_availability_mode))
-    //         .chain(&StarkFelt::from(transaction.fee_data_availability_mode))
-    //         .chain(&account_deployment_data_hash)
-    //         .chain(&transaction.class_hash.0)
-    //         .chain(&transaction.compiled_class_hash.0)
-    //         .get_hash(),
-    //     ))
+    Ok(TransactionHash(
+        HashChain::new()
+            .chain(&DECLARE)
+            .chain(&THREE) // Version
+            .chain(transaction.sender_address.0.key())
+            .chain(&tip_resource_bounds_hash)
+            .chain(&paymaster_data_hash)
+            .chain(&ascii_as_felt(chain_id.0.as_str())?)
+            .chain(&transaction.nonce.0)
+            .chain(&data_availability_mode)
+            .chain(&account_deployment_data_hash)
+            .chain(&transaction.class_hash.0)
+            .chain(&transaction.compiled_class_hash.0)
+            .get_poseidon_hash(),
+    ))
 }
 
 fn get_deploy_account_transaction_v1_hash(
     transaction: &DeployAccountTransactionV1,
     chain_id: &ChainId,
 ) -> Result<TransactionHash, StarknetApiError> {
-    let calldata_hash = PedersenHashChain::new()
+    let calldata_hash = HashChain::new()
         .chain(&transaction.class_hash.0)
         .chain(&transaction.contract_address_salt.0)
         .chain_iter(transaction.constructor_calldata.0.iter())
-        .get_hash();
+        .get_pedersen_hash();
 
     let contract_address = calculate_contract_address(
         transaction.contract_address_salt,
@@ -526,7 +543,7 @@ fn get_deploy_account_transaction_v1_hash(
     )?;
 
     Ok(TransactionHash(
-        PedersenHashChain::new()
+        HashChain::new()
         .chain(&DEPLOY_ACCOUNT)
         .chain(&ONE) // Version
         .chain(contract_address.0.key())
@@ -535,73 +552,44 @@ fn get_deploy_account_transaction_v1_hash(
         .chain(&transaction.max_fee.0.into())
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
         .chain(&transaction.nonce.0)
-        .get_hash(),
+        .get_pedersen_hash(),
     ))
 }
 
-// TODO(yoav, 01/11/2023): Add test for DeployAccount v3 transaction.
 fn get_deploy_account_transaction_v3_hash(
-    _transaction: &DeployAccountTransactionV3,
-    _chain_id: &ChainId,
+    transaction: &DeployAccountTransactionV3,
+    chain_id: &ChainId,
 ) -> Result<TransactionHash, StarknetApiError> {
-    unimplemented!()
-    // let contract_address = calculate_contract_address(
-    //     transaction.contract_address_salt,
-    //     transaction.class_hash,
-    //     &transaction.constructor_calldata,
-    //     ContractAddress::from(0_u8),
-    // )?;
-    // let l1_gas_max_amount = transaction
-    //     .resource_bounds
-    //     .0
-    //     .get(&Resource::L1Gas)
-    //     .map_or(StarkFelt::ZERO, |resource_bounds| StarkFelt::from(resource_bounds.max_amount));
-    // let l1_gas_max_price_per_unit = transaction
-    //     .resource_bounds
-    //     .0
-    //     .get(&Resource::L1Gas)
-    //     .map_or(StarkFelt::ZERO, |resource_bounds| {
-    //         StarkFelt::from(resource_bounds.max_price_per_unit)
-    //     });
-    // let l2_gas_max_amount = transaction
-    //     .resource_bounds
-    //     .0
-    //     .get(&Resource::L2Gas)
-    //     .map_or(StarkFelt::ZERO, |resource_bounds| StarkFelt::from(resource_bounds.max_amount));
-    // let l2_gas_max_price_per_unit = transaction
-    //     .resource_bounds
-    //     .0
-    //     .get(&Resource::L2Gas)
-    //     .map_or(StarkFelt::ZERO, |resource_bounds| {
-    //         StarkFelt::from(resource_bounds.max_price_per_unit)
-    //     });
-    // let tip_resource_bounds_hash = PedersenHashChain::new()
-    //     .chain(&transaction.tip.into())
-    //     .chain(&l1_gas_max_amount)
-    //     .chain(&l1_gas_max_price_per_unit)
-    //     .chain(&l2_gas_max_amount)
-    //     .chain(&l2_gas_max_price_per_unit)
-    //     .get_hash();
-    // let paymaster_data_hash =
-    //     PedersenHashChain::new().chain_iter(transaction.paymaster_data.0.iter()).get_hash();
-    // let constructor_calldata_hash =
-    //     PedersenHashChain::new().chain_iter(transaction.constructor_calldata.0.iter()).
-    // get_hash();
+    let contract_address = calculate_contract_address(
+        transaction.contract_address_salt,
+        transaction.class_hash,
+        &transaction.constructor_calldata,
+        ContractAddress::from(0_u8),
+    )?;
+    let tip_resource_bounds_hash =
+        get_tip_resource_bounds_hash(&transaction.resource_bounds, &transaction.tip)?;
+    let paymaster_data_hash =
+        HashChain::new().chain_iter(transaction.paymaster_data.0.iter()).get_poseidon_hash();
+    let data_availability_mode = concat_data_availability_mode(
+        &transaction.nonce_data_availability_mode,
+        &transaction.fee_data_availability_mode,
+    );
+    let constructor_calldata_hash =
+        HashChain::new().chain_iter(transaction.constructor_calldata.0.iter()).get_poseidon_hash();
 
-    // Ok(TransactionHash(
-    //     PedersenHashChain::new()
-    //     .chain(&DEPLOY_ACCOUNT)
-    //     .chain(&THREE) // Version
-    //     .chain(contract_address.0.key())
-    //     .chain(&tip_resource_bounds_hash)
-    //     .chain(&paymaster_data_hash)
-    //     .chain(&ascii_as_felt(chain_id.0.as_str())?)
-    //     .chain(&StarkFelt::from(transaction.nonce_data_availability_mode))
-    //     .chain(&StarkFelt::from(transaction.fee_data_availability_mode))
-    //     .chain(&transaction.nonce.0)
-    //     .chain(&constructor_calldata_hash)
-    //     .chain(&transaction.class_hash.0)
-    //     .chain(&transaction.contract_address_salt.0)
-    //     .get_hash(),
-    // ))
+    Ok(TransactionHash(
+        HashChain::new()
+        .chain(&DEPLOY_ACCOUNT)
+        .chain(&THREE) // Version
+        .chain(contract_address.0.key())
+        .chain(&tip_resource_bounds_hash)
+        .chain(&paymaster_data_hash)
+        .chain(&ascii_as_felt(chain_id.0.as_str())?)
+        .chain(&data_availability_mode)
+        .chain(&transaction.nonce.0)
+        .chain(&constructor_calldata_hash)
+        .chain(&transaction.class_hash.0)
+        .chain(&transaction.contract_address_salt.0)
+        .get_poseidon_hash(),
+    ))
 }

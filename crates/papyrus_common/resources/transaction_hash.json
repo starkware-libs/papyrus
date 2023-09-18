@@ -172,5 +172,105 @@
     "transaction_hash": "0x23a8b9fb4e1648dad90077fcc862addb720ce9bdc3e028ea5a71fe3cbda8242",
     "chain_id": "SN_MAIN",
     "block_number": 100000
+  },
+  {
+    "transaction": {
+      "Declare": {
+        "V3": {
+          "signature": ["0x3", "0x4"],
+          "nonce": "0x0",
+          "sender_address": "0x12fd538",
+          "nonce_data_availability_mode": "L1",
+          "fee_data_availability_mode": "L1",
+          "resource_bounds": {
+            "L2Gas": {
+              "max_amount": 0,
+              "max_price_per_unit": 0
+            },
+            "L1Gas": {
+              "max_amount": 1993,
+              "max_price_per_unit": 1
+            }
+          },
+          "tip": "0x0",
+          "paymaster_data": [
+            "0x0"
+          ],
+          "class_hash": "0x7d6b55b53dc0b621bb7e2b501340e4a88f7c448b513c9882d1be7ffac42ba3",
+          "compiled_class_hash": "0x7b",
+          "account_deployment_data": [
+            "0x0"
+          ]
+        }
+      }
+    },
+    "transaction_hash": "0x6819909698b213a42e90751f85e6c6be877a679503e1a50921b1efc7ea997e",
+    "chain_id": "3",
+    "block_number": 0
+  },
+  {
+    "transaction": {
+      "DeployAccount": {
+        "V3": {
+          "signature": ["0x3", "0x4"],
+          "nonce": "0x0",
+          "sender_address": "0x219bea54dc352c0d6853de34019644758620fa6298c4608829228c3f5f8db33",
+          "constructor_calldata": ["0x21b", "0x151"],
+          "contract_address_salt": "0x12fd537",
+          "nonce_data_availability_mode": "L1",
+          "fee_data_availability_mode": "L1",
+          "resource_bounds": {
+            "L2Gas": {
+              "max_amount": 0,
+              "max_price_per_unit": 0
+            },
+            "L1Gas": {
+              "max_amount": 1993,
+              "max_price_per_unit": 1
+            }
+          },
+          "tip": "0x0",
+          "paymaster_data": [],
+          "class_hash": "0x65bcf29c898ff912fa2bdd4c6cd94b9142da0399127601ef35dfc9babc7a691"
+        }
+      }
+    },
+    "transaction_hash": "0x3877e0ffb3917187deb3321f6017f5339d22a3753d498df76203b6b8120dde5",
+    "chain_id": "2",
+    "block_number": 0
+  },
+  {
+    "transaction": {
+      "Invoke": {
+        "V3": {
+          "signature": ["0x3", "0x4"],
+          "nonce": "0x9",
+          "sender_address": "0x12fd538",
+          "constructor_calldata": ["0x21b", "0x151"],
+          "nonce_data_availability_mode": "L1",
+          "fee_data_availability_mode": "L1",
+          "resource_bounds": {
+            "L2Gas": {
+              "max_amount": 0,
+              "max_price_per_unit": 0
+            },
+            "L1Gas": {
+              "max_amount": 1993,
+              "max_price_per_unit": 1
+            }
+          },
+          "tip": "0x0",
+          "paymaster_data": [],
+          "account_deployment_data": [],
+          "calldata": [
+            "0x11",
+            "0x26"
+          ]
+        }
+      }
+    },
+    "transaction_hash": "0x35591624e5ea7e612f7c65f7c5fcfa0d972365359cfb611aaf93a13a6026a13",
+    "chain_id": "1",
+    "block_number": 0
   }
 ]
