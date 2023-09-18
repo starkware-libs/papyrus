@@ -470,7 +470,7 @@ impl TransactionOutput {
 }
 
 impl From<starknet_api::transaction::TransactionOutput> for TransactionOutput {
-    #[cfg_attr(coverage_nightly, no_coverage)]
+    #[cfg_attr(coverage_nightly, coverage_attribute)]
     fn from(tx_output: starknet_api::transaction::TransactionOutput) -> Self {
         match tx_output {
             starknet_api::transaction::TransactionOutput::Declare(declare_tx_output) => {

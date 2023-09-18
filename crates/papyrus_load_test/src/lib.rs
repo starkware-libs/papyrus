@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
-// config compiler to support no_coverage feature when running coverage in nightly mode within this
-// crate
-#![cfg_attr(coverage_nightly, feature(no_coverage))]
+// config compiler to support coverage_attribute feature when running coverage in nightly mode
+// within this crate
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 pub mod create_files;
 pub mod create_request;

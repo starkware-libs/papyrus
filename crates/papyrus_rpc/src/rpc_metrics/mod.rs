@@ -72,16 +72,16 @@ impl Logger for MetricLogger {
         }
     }
 
-    #[cfg_attr(coverage_nightly, no_coverage)]
+    #[cfg_attr(coverage_nightly, coverage_attribute)]
     fn on_request(&self, _transport: TransportProtocol) -> Self::Instant {
         Instant::now()
     }
 
     // Required methods.
-    #[cfg_attr(coverage_nightly, no_coverage)]
+    #[cfg_attr(coverage_nightly, coverage_attribute)]
     fn on_connect(&self, _remote_addr: SocketAddr, _request: &HttpRequest, _t: TransportProtocol) {}
 
-    #[cfg_attr(coverage_nightly, no_coverage)]
+    #[cfg_attr(coverage_nightly, coverage_attribute)]
     fn on_call(
         &self,
         _method_name: &str,
@@ -91,7 +91,7 @@ impl Logger for MetricLogger {
     ) {
     }
 
-    #[cfg_attr(coverage_nightly, no_coverage)]
+    #[cfg_attr(coverage_nightly, coverage_attribute)]
     fn on_response(
         &self,
         _result: &str,
@@ -100,7 +100,7 @@ impl Logger for MetricLogger {
     ) {
     }
 
-    #[cfg_attr(coverage_nightly, no_coverage)]
+    #[cfg_attr(coverage_nightly, coverage_attribute)]
     fn on_disconnect(&self, _remote_addr: SocketAddr, _transport: TransportProtocol) {}
 }
 
