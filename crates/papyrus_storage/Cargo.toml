@@ -31,6 +31,7 @@ tempfile = { workspace = true, optional = true }
 thiserror.workspace = true
 tracing = { workspace = true, features = ["log"] }
 validator = { workspace = true, features = ["derive"] }
+page_size = "0.4.2"
 
 [dev-dependencies]
 assert_matches.workspace = true

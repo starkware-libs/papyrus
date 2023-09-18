@@ -24,7 +24,7 @@ use std::path::PathBuf;
 use std::result;
 use std::sync::Arc;
 
-use libmdbx::{Cursor, Geometry, TableFlags, WriteFlags, WriteMap};
+use libmdbx::{Cursor, Geometry, TableFlags, WriteFlags, WriteMap, PageSize, SyncMode, Mode};
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::validators::validate_ascii;
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
@@ -152,14 +152,28 @@ type DbResult<V> = result::Result<V, DbError>;
 /// There is a single non clonable writer instance, to make sure there is only one write transaction
 ///  at any given moment.
 pub(crate) fn open_env(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
+    const GIGABYTE: usize = 1024 * 1024 * 1024;
+    const TERABYTE: usize = GIGABYTE * 1024;
+
+    let libmdbx_max_page_size = 0x10000;
+    let min_page_size = 4096;
+    let page_size=page_size::get().clamp(min_page_size, libmdbx_max_page_size);
+    
     let env = Arc::new(
         Environment::new()
             .set_geometry(Geometry {
-                size: Some(config.min_size..config.max_size),
-                growth_step: Some(config.growth_step),
-                ..Default::default()
+                // Maximum database size of 4 terabytes
+                size: Some(0..(4 * TERABYTE)),
+                // We grow the database in increments of 4 gigabytes
+                growth_step: Some(4 * GIGABYTE as isize),
+                // The database never shrinks
+                shrink_threshold: None,
+                page_size: Some(PageSize::Set(page_size)),
             })
             .set_max_tables(MAX_DBS)
+            .set_flags(
+                libmdbx::DatabaseFlags {mode: Mode::ReadWrite { sync_mode: SyncMode::Durable }, no_rdahead: true, coalesce: true, ..Default::default() }
+            )
             .open(&config.path())?,
     );
     Ok((DbReader { env: env.clone() }, DbWriter { env }))
