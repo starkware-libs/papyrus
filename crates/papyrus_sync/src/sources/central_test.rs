@@ -26,6 +26,7 @@ use starknet_api::state::{ContractClass as sn_api_ContractClass, StateDiff, Stor
 use starknet_api::{patricia_key, stark_felt};
 use starknet_client::reader::{
     Block,
+    BlockSignatureData,
     ContractClass,
     DeclaredClassHashEntry,
     DeployedContract,
@@ -81,6 +82,9 @@ async fn stream_block_headers() {
             .with(predicate::eq(BlockNumber(i)))
             .times(1)
             .returning(|_block_number| Ok(Some(Block::default())));
+        mock.expect_block_signature().with(predicate::eq(BlockNumber(i))).times(1).returning(
+            |block_number| Ok(Some(BlockSignatureData { block_number, ..Default::default() })),
+        );
     }
     let ((reader, _), _temp_dir) = get_test_storage();
     let central_source = GenericCentralSource {
@@ -96,7 +100,9 @@ async fn stream_block_headers() {
     let stream =
         central_source.stream_new_blocks(expected_block_num, BlockNumber(END_BLOCK_NUMBER));
     pin_mut!(stream);
-    while let Some(Ok((block_number, _block, _starknet_version))) = stream.next().await {
+    while let Some(Ok((block_number, _block, _signature_data, _starknet_version))) =
+        stream.next().await
+    {
         assert_eq!(expected_block_num, block_number);
         expected_block_num = expected_block_num.next();
     }
@@ -105,50 +111,85 @@ async fn stream_block_headers() {
 
 #[tokio::test]
 async fn stream_block_headers_some_are_missing() {
-    const START_BLOCK_NUMBER: u64 = 5;
-    const END_BLOCK_NUMBER: u64 = 13;
-    const MISSING_BLOCK_NUMBER: u64 = 9;
-    let mut mock = MockStarknetReader::new();
+    // TODO(yair): Find a way to use test_case with async.
+    let test_cases = [
+        (true, true, "both missing"),
+        (true, false, "block missing"),
+        (false, true, "signature missing"),
+    ];
+    for (block_missing, signature_missing, test_case_description) in test_cases {
+        println!("Test case: {}", test_case_description);
+        const START_BLOCK_NUMBER: u64 = 5;
+        const END_BLOCK_NUMBER: u64 = 13;
+        const MISSING_BLOCK_NUMBER: u64 = 9;
+        let mut mock = MockStarknetReader::new();
 
-    // We need to perform all the mocks before moving the mock into central_source.
-    for i in START_BLOCK_NUMBER..MISSING_BLOCK_NUMBER {
-        mock.expect_block()
-            .with(predicate::eq(BlockNumber(i)))
-            .times(1)
-            .returning(|_| Ok(Some(Block::default())));
-    }
-    mock.expect_block()
-        .with(predicate::eq(BlockNumber(MISSING_BLOCK_NUMBER)))
-        .times(1)
-        .returning(|_| Ok(None));
-    let ((reader, _), _temp_dir) = get_test_storage();
-    let central_source = GenericCentralSource {
-        concurrent_requests: TEST_CONCURRENT_REQUESTS,
-        starknet_client: Arc::new(mock),
-        storage_reader: reader,
-        state_update_stream_config: state_update_stream_config_for_test(),
-        class_cache: get_test_class_cache(),
-        compiled_class_cache: get_test_compiled_class_cache(),
-    };
-
-    let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
-    let stream =
-        central_source.stream_new_blocks(expected_block_num, BlockNumber(END_BLOCK_NUMBER));
-    pin_mut!(stream);
-    while let Some(block_tuple) = stream.next().await {
-        if expected_block_num == BlockNumber(MISSING_BLOCK_NUMBER) {
-            assert_matches!(
-                block_tuple,
-                Err(CentralError::BlockNotFound { block_number })
-                if block_number == expected_block_num
+        // We need to perform all the mocks before moving the mock into central_source.
+        for i in START_BLOCK_NUMBER..MISSING_BLOCK_NUMBER {
+            mock.expect_block()
+                .with(predicate::eq(BlockNumber(i)))
+                .times(1)
+                .returning(|_| Ok(Some(Block::default())));
+            mock.expect_block_signature().with(predicate::eq(BlockNumber(i))).times(1).returning(
+                |block_number| Ok(Some(BlockSignatureData { block_number, ..Default::default() })),
             );
-        } else {
-            let block_number = block_tuple.unwrap().0;
-            assert_eq!(expected_block_num, block_number);
         }
-        expected_block_num = expected_block_num.next();
+        if block_missing {
+            mock.expect_block()
+                .with(predicate::eq(BlockNumber(MISSING_BLOCK_NUMBER)))
+                .times(1)
+                .returning(|_| Ok(None));
+        } else {
+            mock.expect_block()
+                .with(predicate::eq(BlockNumber(MISSING_BLOCK_NUMBER)))
+                .times(1)
+                .returning(|_| Ok(Some(Block::default())));
+        }
+        if signature_missing {
+            mock.expect_block_signature()
+                .with(predicate::eq(BlockNumber(MISSING_BLOCK_NUMBER)))
+                .times(1)
+                .returning(|_| Ok(None));
+        } else {
+            mock.expect_block_signature()
+                .with(predicate::eq(BlockNumber(MISSING_BLOCK_NUMBER)))
+                .times(1)
+                .returning(|_| {
+                    Ok(Some(BlockSignatureData {
+                        block_number: BlockNumber(MISSING_BLOCK_NUMBER),
+                        ..Default::default()
+                    }))
+                });
+        }
+        let ((reader, _), _temp_dir) = get_test_storage();
+        let central_source = GenericCentralSource {
+            concurrent_requests: TEST_CONCURRENT_REQUESTS,
+            starknet_client: Arc::new(mock),
+            storage_reader: reader,
+            state_update_stream_config: state_update_stream_config_for_test(),
+            class_cache: get_test_class_cache(),
+            compiled_class_cache: get_test_compiled_class_cache(),
+        };
+
+        let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
+        let stream =
+            central_source.stream_new_blocks(expected_block_num, BlockNumber(END_BLOCK_NUMBER));
+        pin_mut!(stream);
+        while let Some(block_tuple) = stream.next().await {
+            if expected_block_num == BlockNumber(MISSING_BLOCK_NUMBER) {
+                assert_matches!(
+                    block_tuple,
+                    Err(CentralError::BlockNotFound { block_number })
+                    if block_number == expected_block_num
+                );
+            } else {
+                let block_number = block_tuple.unwrap().0;
+                assert_eq!(expected_block_num, block_number);
+            }
+            expected_block_num = expected_block_num.next();
+        }
+        assert_eq!(expected_block_num, BlockNumber(MISSING_BLOCK_NUMBER + 1));
     }
-    assert_eq!(expected_block_num, BlockNumber(MISSING_BLOCK_NUMBER + 1));
 }
 
 #[tokio::test]
@@ -166,6 +207,9 @@ async fn stream_block_headers_error() {
             .with(predicate::eq(BlockNumber(i)))
             .times(1)
             .returning(|_x| Ok(Some(Block::default())));
+        mock.expect_block_signature().with(predicate::eq(BlockNumber(i))).times(1).returning(
+            |block_number| Ok(Some(BlockSignatureData { block_number, ..Default::default() })),
+        );
     }
     mock.expect_block().with(predicate::eq(BlockNumber(ERROR_BLOCK_NUMBER))).times(1).returning(
         |_block_number| {
