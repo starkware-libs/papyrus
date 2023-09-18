@@ -155,7 +155,7 @@ expression: dumped_default_config
   "storage.db_config.growth_step": {
     "description": "The growth step in bytes, must be greater than zero to allow the database to grow.",
     "value": {
-      "$serde_json::private::Number": "67108864"
+      "$serde_json::private::Number": "4294967296"
     },
     "privacy": "Public"
   },
