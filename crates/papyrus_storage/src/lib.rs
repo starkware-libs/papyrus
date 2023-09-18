@@ -1,6 +1,6 @@
-// config compiler to support no_coverage feature when running coverage in nightly mode within this
-// crate
-#![cfg_attr(coverage_nightly, feature(no_coverage))]
+// config compiler to support coverage_attribute feature when running coverage in nightly mode
+// within this crate
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 #![warn(missing_docs)]
 
 //! A storage implementation for a [`Starknet`] node.
