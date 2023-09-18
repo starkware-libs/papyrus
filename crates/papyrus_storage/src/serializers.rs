@@ -120,14 +120,22 @@ use crate::compression_utils::{
 };
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
 use crate::header::StarknetVersion;
+use crate::mmap_file::LocationInFile;
 use crate::ommer::{OmmerEventKey, OmmerTransactionKey};
 #[cfg(test)]
 use crate::serializers::serializers_test::{create_storage_serde_test, StorageSerdeTest};
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::Version;
-use crate::MarkerKind;
+use crate::{MarkerKind, OffsetKind};
 
 auto_storage_serde! {
+    pub struct LocationInFile {
+        pub offset: usize,
+        pub len: usize,
+    }
+    pub enum OffsetKind {
+        ThinStateDiff = 0,
+    }
     pub struct AccountDeploymentData(pub Vec<StarkFelt>);
     pub struct BlockHash(pub StarkHash);
     pub struct BlockHeader {

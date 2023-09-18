@@ -51,12 +51,12 @@
 pub mod base_layer;
 pub mod body;
 pub mod compiled_class;
+pub mod mmap_file;
 // TODO(yair): Make the compression_utils module pub(crate) or extract it from the crate.
 #[doc(hidden)]
 pub mod compression_utils;
 pub mod db;
 pub mod header;
-pub mod mmap_file;
 // TODO(yair): Once decided whether to keep the ommer module, write its documentation or delete it.
 #[doc(hidden)]
 pub mod ommer;
@@ -76,6 +76,7 @@ use std::sync::Arc;
 use body::events::EventIndex;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use db::DbTableStats;
+use mmap_file::{open_file, FileReader, FileWriter, LocationInFile, Writer};
 use ommer::{OmmerEventKey, OmmerTransactionKey};
 use papyrus_config::dumping::{append_sub_config_name, SerializeConfig};
 use papyrus_config::{ParamPath, SerializedParam};
@@ -115,7 +116,8 @@ pub const STORAGE_VERSION: Version = Version(5);
 
 /// Opens a storage and returns a [`StorageReader`] and a [`StorageWriter`].
 pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, StorageWriter)> {
-    let (db_reader, mut db_writer) = open_env(db_config)?;
+    let (db_reader, mut db_writer) = open_env(db_config.clone())?;
+    let (thin_state_diff_writer, thin_state_diff_reader) = open_storage_files(&db_config);
     let tables = Arc::new(Tables {
         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
         casms: db_writer.create_table("casms")?,
@@ -128,6 +130,7 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         headers: db_writer.create_table("headers")?,
         markers: db_writer.create_table("markers")?,
         nonces: db_writer.create_table("nonces")?,
+        offsets: db_writer.create_table("offsets")?,
         state_diffs: db_writer.create_table("state_diffs")?,
         transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
         transaction_idx_to_hash: db_writer.create_table("transaction_idx_to_hash")?,
@@ -149,8 +152,13 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         starknet_version: db_writer.create_table("starknet_version")?,
         storage_version: db_writer.create_table("storage_version")?,
     });
-    let reader = StorageReader { db_reader, tables: tables.clone() };
-    let writer = StorageWriter { db_writer, tables };
+    let reader = StorageReader {
+        db_reader,
+        tables: tables.clone(),
+        thin_state_diff_reader: thin_state_diff_reader.clone(),
+    };
+    let writer =
+        StorageWriter { db_writer, tables, thin_state_diff_reader, thin_state_diff_writer };
 
     let writer = set_initial_version_if_needed(writer)?;
     verify_storage_version(reader.clone())?;
@@ -190,13 +198,18 @@ fn verify_storage_version(reader: StorageReader) -> StorageResult<()> {
 pub struct StorageReader {
     db_reader: DbReader,
     tables: Arc<Tables>,
+    thin_state_diff_reader: FileReader,
 }
 
 impl StorageReader {
     /// Takes a snapshot of the current state of the storage and returns a [`StorageTxn`] for
     /// reading data from the storage.
     pub fn begin_ro_txn(&self) -> StorageResult<StorageTxn<'_, RO>> {
-        Ok(StorageTxn { txn: self.db_reader.begin_ro_txn()?, tables: self.tables.clone() })
+        Ok(StorageTxn {
+            txn: self.db_reader.begin_ro_txn()?,
+            tables: self.tables.clone(),
+            thin_state_diff_reader: self.thin_state_diff_reader.clone(),
+        })
     }
 
     /// Returns metadata about the tables in the storage.
@@ -215,13 +228,38 @@ impl StorageReader {
 pub struct StorageWriter {
     db_writer: DbWriter,
     tables: Arc<Tables>,
+    thin_state_diff_writer: FileWriter<ThinStateDiff>,
+    thin_state_diff_reader: FileReader,
+}
+
+impl StorageWriter {
+    /// Gets thin state diff offset from the storage.
+    pub fn get_thin_state_diff_offset(&mut self) -> usize {
+        let tx = self.db_writer.begin_rw_txn().unwrap();
+        let offset_table = tx.open_table(&self.tables.offsets).unwrap();
+        offset_table.get(&tx, &OffsetKind::ThinStateDiff).unwrap().unwrap_or_default()
+    }
+
+    /// Inserts thin state diff at the given offset.
+    pub fn insert_thin_state_diff(&mut self, offset: usize, val: &ThinStateDiff) -> usize {
+        self.thin_state_diff_writer.insert(offset, val)
+    }
+
+    /// Flushes thin state diff mmap to disk.
+    pub fn flush_thin_state_diff(&mut self) {
+        self.thin_state_diff_writer.flush()
+    }
 }
 
 impl StorageWriter {
     /// Takes a snapshot of the current state of the storage and returns a [`StorageTxn`] for
     /// reading and modifying data in the storage.
     pub fn begin_rw_txn(&mut self) -> StorageResult<StorageTxn<'_, RW>> {
-        Ok(StorageTxn { txn: self.db_writer.begin_rw_txn()?, tables: self.tables.clone() })
+        Ok(StorageTxn {
+            txn: self.db_writer.begin_rw_txn()?,
+            tables: self.tables.clone(),
+            thin_state_diff_reader: self.thin_state_diff_reader.clone(),
+        })
     }
 }
 
@@ -230,6 +268,7 @@ impl StorageWriter {
 pub struct StorageTxn<'env, Mode: TransactionKind> {
     txn: DbTransaction<'env, Mode>,
     tables: Arc<Tables>,
+    thin_state_diff_reader: FileReader,
 }
 
 impl<'env> StorageTxn<'env, RW> {
@@ -257,7 +296,8 @@ struct_field_names! {
         headers: TableIdentifier<BlockNumber, BlockHeader>,
         markers: TableIdentifier<MarkerKind, BlockNumber>,
         nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
-        state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
+        offsets: TableIdentifier<OffsetKind, usize>,
+        state_diffs: TableIdentifier<BlockNumber, LocationInFile>,
         transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
         transaction_idx_to_hash: TableIdentifier<TransactionIndex, TransactionHash>,
         transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
@@ -404,3 +444,27 @@ pub(crate) enum MarkerKind {
 }
 
 pub(crate) type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
+
+fn open_storage_files(db_config: &DbConfig) -> (FileWriter<ThinStateDiff>, FileReader) {
+    let (writer, reader) = open_file(db_config.path().join("thin_state_diff"));
+    (writer, reader)
+    // StorageFiles {
+    //     class: Arc::new(Mutex::new(mmap_objects_db::open_mmaped_file(
+    //         db_config.path().join("class"),
+    //     ))),
+    //     deprecated_class: Arc::new(Mutex::new(mmap_objects_db::open_mmaped_file(
+    //         db_config.path().join("deprecated_class"),
+    //     ))),
+    //     thin_state_diff: Arc::new(Mutex::new(mmap_objects_db::open_mmaped_file(
+    //         db_config.path().join("thin_state_diff"),
+    //     ))),
+    //     casm: Arc::new(Mutex::new(mmap_objects_db::open_mmaped_file(
+    //         db_config.path().join("casm"),
+    //     ))),
+    // }
+}
+
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub(crate) enum OffsetKind {
+    ThinStateDiff,
+}

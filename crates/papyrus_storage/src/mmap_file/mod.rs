@@ -43,6 +43,13 @@ pub struct LocationInFile {
     pub len: usize,
 }
 
+impl LocationInFile {
+    /// returns the next offset in the file.
+    pub fn next_offset(&self) -> usize {
+        self.offset + self.len
+    }
+}
+
 /// A wrapper around `MMapFile` that provides a write interface.
 pub struct FileWriter<V: StorageSerde> {
     large_file: MMapFile<V>,

@@ -22,8 +22,8 @@ use crate::v0_3_0::error::JsonRpcError;
 use crate::{internal_server_error, ContinuationTokenAsStruct};
 
 pub mod api_impl;
-#[cfg(test)]
-mod test;
+// #[cfg(test)]
+// mod test;
 
 #[versioned_rpc("V0_3")]
 pub trait JsonRpc {

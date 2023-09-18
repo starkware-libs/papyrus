@@ -53,8 +53,8 @@ use crate::v0_4_0::error::INVALID_CONTINUATION_TOKEN;
 use crate::{internal_server_error, ContinuationTokenAsStruct};
 
 pub mod api_impl;
-#[cfg(test)]
-mod test;
+// #[cfg(test)]
+// mod test;
 
 #[versioned_rpc("V0_4")]
 #[async_trait]

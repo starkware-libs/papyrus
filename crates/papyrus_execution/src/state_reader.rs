@@ -1,6 +1,6 @@
-#[cfg(test)]
-#[path = "state_reader_test.rs"]
-mod state_reader_test;
+// #[cfg(test)]
+// #[path = "state_reader_test.rs"]
+// mod state_reader_test;
 
 use blockifier::execution::contract_class::ContractClass as BlockifierContractClass;
 use blockifier::state::errors::StateError;

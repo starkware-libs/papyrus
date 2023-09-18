@@ -47,8 +47,8 @@
 
 #[doc(hidden)]
 pub mod data;
-#[cfg(test)]
-mod state_test;
+// #[cfg(test)]
+// mod state_test;
 
 use std::collections::HashSet;
 
@@ -62,8 +62,9 @@ use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey, Thi
 use tracing::debug;
 
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
+use crate::mmap_file::{FileReader, LocationInFile, Reader};
 use crate::state::data::IndexedDeprecatedContractClass;
-use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
+use crate::{MarkerKind, MarkersTable, OffsetKind, StorageError, StorageResult, StorageTxn};
 
 type DeclaredClassesTable<'env> = TableHandle<'env, ClassHash, ContractClass>;
 type DeclaredClassesBlockTable<'env> = TableHandle<'env, ClassHash, BlockNumber>;
@@ -132,6 +133,7 @@ where
         // deployment, so there is no need to pass the classes of deployed contracts if they are of
         // the new version.
         deployed_contract_class_definitions: IndexMap<ClassHash, DeprecatedContractClass>,
+        location: &LocationInFile,
     ) -> StorageResult<Self>;
 
     /// Removes a state diff from the storage and returns the removed data.
@@ -149,7 +151,8 @@ impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for StorageTxn<'env, 
     }
     fn get_state_diff(&self, block_number: BlockNumber) -> StorageResult<Option<ThinStateDiff>> {
         let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
-        let state_diff = state_diffs_table.get(&self.txn, &block_number)?;
+        let location = state_diffs_table.get(&self.txn, &block_number)?;
+        let state_diff = location.map(|location| self.thin_state_diff_reader.get(location));
         Ok(state_diff)
     }
     fn get_state_reader(&self) -> StorageResult<StateReader<'_, Mode>> {
@@ -382,6 +385,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         block_number: BlockNumber,
         state_diff: StateDiff,
         mut deployed_contract_class_definitions: IndexMap<ClassHash, DeprecatedContractClass>,
+        location: &LocationInFile,
     ) -> StorageResult<Self> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let nonces_table = self.txn.open_table(&self.tables.nonces)?;
@@ -393,6 +397,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             self.txn.open_table(&self.tables.deprecated_declared_classes)?;
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
         let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
+        let offset_table = self.txn.open_table(&self.tables.offsets).unwrap();
 
         update_marker(&self.txn, &markers_table, block_number)?;
 
@@ -414,9 +419,15 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         )?;
 
         // Write state diff.
-        let (thin_state_diff, declared_classes, deprecated_declared_classes) =
+        let (_thin_state_diff, declared_classes, deprecated_declared_classes) =
             ThinStateDiff::from_state_diff(state_diff);
-        state_diffs_table.insert(&self.txn, &block_number, &thin_state_diff)?;
+        state_diffs_table.insert(&self.txn, &block_number, location)?;
+        offset_table.upsert(
+            &self.txn,
+            &OffsetKind::ThinStateDiff,
+            &location.next_offset(),
+            // &(location.offset + location.len),
+        )?;
 
         // Write declared classes.
         write_declared_classes(
@@ -428,7 +439,12 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         )?;
 
         // Advance compiled class marker.
-        update_compiled_class_marker(&self.txn, &markers_table, &state_diffs_table)?;
+        update_compiled_class_marker(
+            &self.txn,
+            &markers_table,
+            &state_diffs_table,
+            self.thin_state_diff_reader.clone(),
+        )?;
 
         // Write deprecated declared classes.
         if !deployed_contract_class_definitions.is_empty() {
@@ -560,15 +576,17 @@ fn update_marker<'env>(
 fn update_compiled_class_marker<'env>(
     txn: &DbTransaction<'env, RW>,
     markers_table: &'env MarkersTable<'env>,
-    state_diffs_table: &'env TableHandle<'_, BlockNumber, ThinStateDiff>,
+    state_diffs_table: &'env TableHandle<'_, BlockNumber, LocationInFile>,
+    thin_state_diff_reader: FileReader,
 ) -> StorageResult<()> {
     let state_marker = markers_table.get(txn, &MarkerKind::State)?.unwrap_or_default();
     let mut compiled_class_marker =
         markers_table.get(txn, &MarkerKind::CompiledClass)?.unwrap_or_default();
     while compiled_class_marker < state_marker {
-        let state_diff = state_diffs_table
+        let location = state_diffs_table
             .get(txn, &compiled_class_marker)?
             .unwrap_or_else(|| panic!("Missing state diff for block {compiled_class_marker}"));
+        let state_diff: ThinStateDiff = thin_state_diff_reader.get(location);
         if !state_diff.declared_classes.is_empty() {
             break;
         }

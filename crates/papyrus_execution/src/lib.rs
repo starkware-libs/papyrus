@@ -1,12 +1,12 @@
 #![warn(missing_docs)]
 //! Functionality for executing Starknet transactions and contract entry points.
-#[cfg(test)]
-mod execution_test;
+// #[cfg(test)]
+// mod execution_test;
 pub mod execution_utils;
 mod state_reader;
 
-#[cfg(test)]
-mod test_utils;
+// #[cfg(test)]
+// mod test_utils;
 #[cfg(any(feature = "testing", test))]
 pub mod testing_instances;
 

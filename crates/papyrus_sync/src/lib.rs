@@ -25,6 +25,7 @@ use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter, StarknetVersion};
+use papyrus_storage::mmap_file::LocationInFile;
 use papyrus_storage::ommer::{OmmerStorageReader, OmmerStorageWriter};
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
@@ -33,7 +34,7 @@ use sources::base_layer::BaseLayerSourceError;
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::state::StateDiff;
+use starknet_api::state::{StateDiff, ThinStateDiff};
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, instrument, trace, warn};
 
@@ -386,9 +387,19 @@ impl<
         if !self.is_reverted_state_diff(block_number, block_hash)? {
             debug!("Storing state diff.");
             trace!("StateDiff data: {state_diff:#?}");
+
+            let offset = self.writer.get_thin_state_diff_offset();
+            let thin_state_diff_ref = thin_state_diff_from_state_diff_ref(&state_diff);
+            let len = self.writer.insert_thin_state_diff(offset, &thin_state_diff_ref);
+
             self.writer
                 .begin_rw_txn()?
-                .append_state_diff(block_number, state_diff, deployed_contract_class_definitions)?
+                .append_state_diff(
+                    block_number,
+                    state_diff,
+                    deployed_contract_class_definitions,
+                    &LocationInFile { offset, len },
+                )?
                 .commit()?;
             metrics::gauge!(papyrus_metrics::PAPYRUS_STATE_MARKER, block_number.next().0 as f64);
             let compiled_class_marker = self.reader.begin_ro_txn()?.get_compiled_class_marker()?;
@@ -823,18 +834,45 @@ fn check_sync_progress(
         let mut casm_marker=txn.get_compiled_class_marker()?;
         loop{
             tokio::time::sleep(SLEEP_TIME_SYNC_PROGRESS).await;
-            debug!("Checking if sync stopped progress.");
             txn=reader.begin_ro_txn()?;
             let new_header_marker=txn.get_header_marker()?;
             let new_state_marker=txn.get_state_marker()?;
             let new_casm_marker=txn.get_compiled_class_marker()?;
-            if header_marker==new_header_marker && state_marker==new_state_marker && casm_marker==new_casm_marker{
-                debug!("No progress in the sync. Return NoProgress event.");
+            debug!("Checking if sync stopped progress. Header marker: {header_marker}-{new_header_marker}, state marker: {state_marker}-{new_state_marker}, casm marker: {casm_marker}-{new_casm_marker}", header_marker=header_marker, new_header_marker=new_header_marker, state_marker=state_marker, new_state_marker=new_state_marker, casm_marker=casm_marker, new_casm_marker=new_casm_marker);
+            debug!(
+                "Checking if sync stopped progress. Header marker: \
+                 {header_marker}-{new_header_marker}, state marker: \
+                 {state_marker}-{new_state_marker}, casm marker: {casm_marker}-{new_casm_marker}",
+            );
+            if header_marker == new_header_marker
+                || state_marker == new_state_marker
+                || casm_marker == new_casm_marker
+            {
+                debug!(
+                    "No progress in the sync for {} seconds. Return NoProgress event.",
+                    SLEEP_TIME_SYNC_PROGRESS.as_secs()
+                );
                 yield SyncEvent::NoProgress;
             }
             header_marker=new_header_marker;
             state_marker=new_state_marker;
             casm_marker=new_casm_marker;
         }
+    }
+}
+
+// Returns a reference to the thin state diff from a StateDiff.
+pub fn thin_state_diff_from_state_diff_ref(diff: &StateDiff) -> ThinStateDiff {
+    ThinStateDiff {
+        deployed_contracts: diff.deployed_contracts.clone(),
+        storage_diffs: diff.storage_diffs.clone(),
+        declared_classes: diff
+            .declared_classes
+            .iter()
+            .map(|(class_hash, (compiled_hash, _class))| (*class_hash, *compiled_hash))
+            .collect(),
+        deprecated_declared_classes: diff.deprecated_declared_classes.keys().copied().collect(),
+        nonces: diff.nonces.clone(),
+        replaced_classes: diff.replaced_classes.clone(),
     }
 }
