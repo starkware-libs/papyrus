@@ -1,55 +1,63 @@
-#[cfg(test)]
-#[path = "handler_test.rs"]
-mod handler_test;
+// #[cfg(test)]
+// #[path = "handler_test.rs"]
+// mod handler_test;
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::io;
+use std::sync::atomic::AtomicUsize;
+use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-use futures::channel::mpsc::{TrySendError, UnboundedReceiver};
-use futures::StreamExt;
-use libp2p::swarm::handler::{ConnectionEvent, DialUpgradeError, FullyNegotiatedOutbound};
-use libp2p::swarm::{
-    ConnectionHandler,
-    ConnectionHandlerEvent,
-    KeepAlive,
-    StreamUpgradeError,
-    SubstreamProtocol,
+use libp2p::swarm::handler::{
+    ConnectionEvent,
+    DialUpgradeError,
+    FullyNegotiatedInbound,
+    FullyNegotiatedOutbound,
 };
-use prost::Message;
+use libp2p::swarm::{ConnectionHandler, ConnectionHandlerEvent, KeepAlive, SubstreamProtocol};
 
-use super::protocol::{OutboundProtocol, OutboundProtocolError, ResponseProtocol, PROTOCOL_NAME};
-use super::OutboundSessionId;
+use super::protocol::{InboundProtocol, OutboundProtocol, PROTOCOL_NAME};
+use super::{DataBound, InboundSessionId, OutboundSessionId, QueryBound};
 
-// TODO(shahak): Add a FromBehaviour event for cancelling an existing request.
 #[derive(Debug)]
-pub struct NewQueryEvent<Query: Message> {
-    pub query: Query,
-    pub outbound_session_id: OutboundSessionId,
+// TODO(shahak) remove allow(dead_code).
+#[allow(dead_code)]
+pub(crate) enum SessionId {
+    OutboundSessionId(OutboundSessionId),
+    InboundSessionId(InboundSessionId),
+}
+
+#[derive(Debug)]
+// TODO(shahak) remove allow(dead_code).
+#[allow(dead_code)]
+pub(crate) enum RequestFromBehaviourEvent<Query, Data> {
+    CreateOutboundSession { query: Query, outbound_session_id: OutboundSessionId },
+    SendData { data: Data, inbound_session_id: InboundSessionId },
+    FinishSession { session_id: SessionId },
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum RequestError<Data> {
+// TODO(shahak) remove allow(dead_code).
+#[allow(dead_code)]
+pub(crate) enum SessionError {
     #[error("Connection timed out after {} seconds.", substream_timeout.as_secs())]
     Timeout { substream_timeout: Duration },
     #[error(transparent)]
     IOError(#[from] io::Error),
-    #[error(transparent)]
-    ResponseSendError(#[from] TrySendError<Data>),
-    #[error("Remote peer doesn't support the {PROTOCOL_NAME} protocol.")]
-    RemoteDoesntSupportProtocol,
 }
 
 #[derive(thiserror::Error, Debug)]
 #[error("Remote peer doesn't support the {PROTOCOL_NAME} protocol.")]
-pub struct RemoteDoesntSupportProtocolError;
+pub(crate) struct RemoteDoesntSupportProtocolError;
 
 #[derive(Debug)]
-pub enum SessionProgressEvent<Data: Message> {
+// TODO(shahak) remove allow(dead_code).
+#[allow(dead_code)]
+pub(crate) enum ToBehaviourEvent<Query, Data> {
+    NewInboundSession { query: Query, inbound_session_id: InboundSessionId },
     ReceivedData { outbound_session_id: OutboundSessionId, data: Data },
-    SessionFinished { outbound_session_id: OutboundSessionId },
-    SessionFailed { outbound_session_id: OutboundSessionId, error: RequestError<Data> },
+    SessionFailed { session_id: SessionId, error: SessionError },
 }
 
 type HandlerEvent<H> = ConnectionHandlerEvent<
@@ -59,67 +67,55 @@ type HandlerEvent<H> = ConnectionHandlerEvent<
     <H as ConnectionHandler>::Error,
 >;
 
-pub struct Handler<Query: Message + 'static, Data: Message + 'static + Default> {
+// TODO(shahak) remove allow(dead_code).
+#[allow(dead_code)]
+pub(crate) struct Handler<Query: QueryBound, Data: DataBound> {
     substream_timeout: Duration,
-    outbound_session_id_to_data_receiver: HashMap<OutboundSessionId, UnboundedReceiver<Data>>,
     pending_events: VecDeque<HandlerEvent<Self>>,
-    ready_outbound_data: VecDeque<(OutboundSessionId, Data)>,
 }
 
-impl<Query: Message + 'static, Data: Message + 'static + Default> Handler<Query, Data> {
+impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
     // TODO(shahak) If we'll add more parameters, consider creating a HandlerConfig struct.
-    pub fn new(substream_timeout: Duration) -> Self {
-        Self {
-            substream_timeout,
-            outbound_session_id_to_data_receiver: Default::default(),
-            pending_events: Default::default(),
-            ready_outbound_data: Default::default(),
-        }
+    // TODO(shahak) remove allow(dead_code).
+    #[allow(dead_code)]
+    pub fn new(_substream_timeout: Duration, _next_inbound_session_id: Arc<AtomicUsize>) -> Self {
+        unimplemented!();
     }
 
-    fn convert_upgrade_error(
-        &self,
-        error: StreamUpgradeError<OutboundProtocolError<Data>>,
-    ) -> RequestError<Data> {
-        match error {
-            StreamUpgradeError::Timeout => {
-                RequestError::Timeout { substream_timeout: self.substream_timeout }
-            }
-            StreamUpgradeError::Apply(request_protocol_error) => match request_protocol_error {
-                OutboundProtocolError::IOError(error) => RequestError::IOError(error),
-                OutboundProtocolError::ResponseSendError(error) => {
-                    RequestError::ResponseSendError(error)
-                }
-            },
-            StreamUpgradeError::NegotiationFailed => RequestError::RemoteDoesntSupportProtocol,
-            StreamUpgradeError::Io(error) => RequestError::IOError(error),
-        }
-    }
+    // fn convert_upgrade_error(
+    //     &self,
+    //     error: StreamUpgradeError<OutboundProtocolError<Data>>,
+    // ) -> RequestError<Data> { match error { StreamUpgradeError::Timeout => {
+    //   RequestError::Timeout { substream_timeout: self.substream_timeout } }
+    //   StreamUpgradeError::Apply(request_protocol_error) => match request_protocol_error {
+    //   OutboundProtocolError::IOError(error) => RequestError::IOError(error),
+    //   OutboundProtocolError::ResponseSendError(error) => { RequestError::ResponseSendError(error)
+    //   } }, StreamUpgradeError::NegotiationFailed => RequestError::RemoteDoesntSupportProtocol,
+    //   StreamUpgradeError::Io(error) => RequestError::IOError(error), }
+    // }
 
-    fn clear_pending_events_related_to_session(&mut self, outbound_session_id: OutboundSessionId) {
-        self.pending_events.retain(|event| match event {
-            ConnectionHandlerEvent::NotifyBehaviour(SessionProgressEvent::ReceivedData {
-                outbound_session_id: other_outbound_session_id,
-                ..
-            }) => outbound_session_id != *other_outbound_session_id,
-            _ => true,
-        })
-    }
+    // fn clear_pending_events_related_to_session(&mut self, outbound_session_id: OutboundSessionId)
+    // {     self.pending_events.retain(|event| match event {
+    //         ConnectionHandlerEvent::NotifyBehaviour(SessionProgressEvent::ReceivedData {
+    //             outbound_session_id: other_outbound_session_id,
+    //             ..
+    //         }) => outbound_session_id != *other_outbound_session_id,
+    //         _ => true,
+    //     })
+    // }
 }
 
-impl<Query: Message + 'static, Data: Message + 'static + Default> ConnectionHandler
-    for Handler<Query, Data>
-{
-    type FromBehaviour = NewQueryEvent<Query>;
-    type ToBehaviour = SessionProgressEvent<Data>;
+impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Data> {
+    type FromBehaviour = RequestFromBehaviourEvent<Query, Data>;
+    type ToBehaviour = ToBehaviourEvent<Query, Data>;
     type Error = RemoteDoesntSupportProtocolError;
-    type InboundProtocol = ResponseProtocol;
-    type OutboundProtocol = OutboundProtocol<Query, Data>;
-    type InboundOpenInfo = ();
+    type InboundProtocol = InboundProtocol<Query>;
+    type OutboundProtocol = OutboundProtocol<Query>;
+    type InboundOpenInfo = InboundSessionId;
     type OutboundOpenInfo = OutboundSessionId;
 
     fn listen_protocol(&self) -> SubstreamProtocol<Self::InboundProtocol, Self::InboundOpenInfo> {
-        SubstreamProtocol::new(ResponseProtocol {}, ()).with_timeout(self.substream_timeout)
+        unimplemented!();
     }
 
     fn connection_keep_alive(&self) -> KeepAlive {
@@ -129,7 +125,7 @@ impl<Query: Message + 'static, Data: Message + 'static + Default> ConnectionHand
 
     fn poll(
         &mut self,
-        cx: &mut Context<'_>,
+        _cx: &mut Context<'_>,
     ) -> Poll<
         ConnectionHandlerEvent<
             Self::OutboundProtocol,
@@ -138,45 +134,34 @@ impl<Query: Message + 'static, Data: Message + 'static + Default> ConnectionHand
             Self::Error,
         >,
     > {
-        // TODO(shahak): Consider handling incoming messages interleaved with handling pending
-        // events to avoid starvation.
-        if let Some(event) = self.pending_events.pop_front() {
-            return Poll::Ready(event);
-        }
-
-        // Handle incoming messages.
-        for (request_id, responses_receiver) in &mut self.outbound_session_id_to_data_receiver {
-            if let Poll::Ready(Some(response)) = responses_receiver.poll_next_unpin(cx) {
-                // Collect all ready responses to avoid starvation of the request ids at the end.
-                self.ready_outbound_data.push_back((*request_id, response));
-            }
-        }
-        if let Some((outbound_session_id, data)) = self.ready_outbound_data.pop_front() {
-            return Poll::Ready(ConnectionHandlerEvent::NotifyBehaviour(SessionProgressEvent::<
-                Data,
-            >::ReceivedData {
-                outbound_session_id,
-                data,
-            }));
-        }
-
-        Poll::Pending
+        unimplemented!();
     }
 
     fn on_behaviour_event(&mut self, event: Self::FromBehaviour) {
-        // There's only one type of event so we can unpack it without matching.
-        let NewQueryEvent { query, outbound_session_id } = event;
-        let (request_protocol, responses_receiver) = OutboundProtocol::new(query);
-        let insert_result = self
-            .outbound_session_id_to_data_receiver
-            .insert(outbound_session_id, responses_receiver);
-        if insert_result.is_some() {
-            panic!("Multiple requests exist with the same ID {}", outbound_session_id);
+        match event {
+            RequestFromBehaviourEvent::CreateOutboundSession {
+                query: _query,
+                outbound_session_id: _outbound_session_id,
+            } => {
+                unimplemented!();
+            }
+            RequestFromBehaviourEvent::SendData {
+                data: _data,
+                inbound_session_id: _inbound_session_id,
+            } => {
+                unimplemented!();
+            }
+            RequestFromBehaviourEvent::FinishSession {
+                session_id: SessionId::InboundSessionId(_inbound_session_id),
+            } => {
+                unimplemented!();
+            }
+            RequestFromBehaviourEvent::FinishSession {
+                session_id: SessionId::OutboundSessionId(_outbound_session_id),
+            } => {
+                unimplemented!();
+            }
         }
-        self.pending_events.push_back(ConnectionHandlerEvent::OutboundSubstreamRequest {
-            protocol: SubstreamProtocol::new(request_protocol, outbound_session_id)
-                .with_timeout(self.substream_timeout),
-        });
     }
 
     fn on_connection_event(
@@ -191,38 +176,41 @@ impl<Query: Message + 'static, Data: Message + 'static + Default> ConnectionHand
     ) {
         match event {
             ConnectionEvent::FullyNegotiatedOutbound(FullyNegotiatedOutbound {
-                protocol: _,
-                info: outbound_session_id,
+                protocol: _stream,
+                info: _outbound_session_id,
             }) => {
-                self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                    SessionProgressEvent::SessionFinished { outbound_session_id },
-                ));
-                self.outbound_session_id_to_data_receiver.remove(&outbound_session_id);
+                unimplemented!();
+            }
+            ConnectionEvent::FullyNegotiatedInbound(FullyNegotiatedInbound {
+                protocol: (_query, _stream),
+                info: _inbound_session_id,
+            }) => {
+                unimplemented!();
             }
             ConnectionEvent::DialUpgradeError(DialUpgradeError {
-                info: outbound_session_id,
-                error,
+                info: _outbound_session_id,
+                error: _error,
             }) => {
-                let error = self.convert_upgrade_error(error);
-                if matches!(error, RequestError::RemoteDoesntSupportProtocol) {
-                    // This error will happen on all future connections to the peer, so we'll close
-                    // the handle after reporting to the behaviour.
-                    self.pending_events.clear();
-                    self.pending_events.push_front(ConnectionHandlerEvent::NotifyBehaviour(
-                        SessionProgressEvent::SessionFailed { outbound_session_id, error },
-                    ));
-                    self.pending_events
-                        .push_back(ConnectionHandlerEvent::Close(RemoteDoesntSupportProtocolError));
-                } else {
-                    self.clear_pending_events_related_to_session(outbound_session_id);
-                    self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                        SessionProgressEvent::SessionFailed { outbound_session_id, error },
-                    ));
-                }
-                self.outbound_session_id_to_data_receiver.remove(&outbound_session_id);
+                unimplemented!();
+                // let error = self.convert_upgrade_error(error);
+                // if matches!(error, RequestError::RemoteDoesntSupportProtocol) {
+                //     // This error will happen on all future connections to the peer, so we'll
+                //     // close the handle after reporting to the behaviour.
+                //     self.pending_events.clear();
+                //     self.pending_events.push_front(ConnectionHandlerEvent::NotifyBehaviour(
+                //         SessionProgressEvent::SessionFailed { outbound_session_id, error },
+                //     ));
+                //     self.pending_events
+                //         .push_back(ConnectionHandlerEvent::Close(RemoteDoesntSupportProtocolError));
+                // } else {
+                //     self.clear_pending_events_related_to_session(outbound_session_id);
+                //     self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
+                //         SessionProgressEvent::SessionFailed { outbound_session_id, error },
+                //     ));
+                // }
+                // self.outbound_session_id_to_data_receiver.remove(&outbound_session_id);
             }
-            ConnectionEvent::FullyNegotiatedInbound(_)
-            | ConnectionEvent::ListenUpgradeError(_)
+            ConnectionEvent::ListenUpgradeError(_)
             | ConnectionEvent::AddressChange(_)
             | ConnectionEvent::LocalProtocolsChange(_)
             | ConnectionEvent::RemoteProtocolsChange(_) => {}
