@@ -1,32 +1,12 @@
-use std::task::{Context, Poll};
-use std::{io, iter};
+mod get_stream;
 
-use futures::future::BoxFuture;
-use futures::{AsyncRead, AsyncWrite, FutureExt};
 use libp2p::core::transport::memory::MemoryTransport;
 use libp2p::core::transport::Transport;
-use libp2p::core::upgrade::{InboundUpgrade, OutboundUpgrade, UpgradeInfo};
-use libp2p::core::{multiaddr, upgrade, Endpoint};
+use libp2p::core::{multiaddr, upgrade};
 use libp2p::identity::Keypair;
 use libp2p::swarm::dial_opts::DialOpts;
-use libp2p::swarm::handler::{ConnectionEvent, FullyNegotiatedInbound, FullyNegotiatedOutbound};
-use libp2p::swarm::{
-    ConnectionDenied,
-    ConnectionHandler,
-    ConnectionHandlerEvent,
-    ConnectionId,
-    FromSwarm,
-    KeepAlive,
-    NetworkBehaviour,
-    PollParameters,
-    Stream,
-    StreamProtocol,
-    SubstreamProtocol,
-    SwarmBuilder,
-    SwarmEvent,
-    ToSwarm,
-};
-use libp2p::{noise, yamux, Multiaddr, PeerId, Swarm};
+use libp2p::swarm::{NetworkBehaviour, SwarmBuilder, SwarmEvent};
+use libp2p::{noise, yamux, Multiaddr, Stream, Swarm};
 use rand::random;
 use tokio_stream::StreamExt as TokioStreamExt;
 
@@ -52,8 +32,8 @@ pub(crate) fn create_swarm<BehaviourT: NetworkBehaviour>(
 }
 
 pub(crate) async fn get_connected_streams() -> (Stream, Stream) {
-    let (mut dialer_swarm, _) = create_swarm(GetStreamBehaviour::default());
-    let (listener_swarm, listener_address) = create_swarm(GetStreamBehaviour::default());
+    let (mut dialer_swarm, _) = create_swarm(get_stream::Behaviour::default());
+    let (listener_swarm, listener_address) = create_swarm(get_stream::Behaviour::default());
     dialer_swarm
         .dial(
             DialOpts::peer_id(*listener_swarm.local_peer_id())

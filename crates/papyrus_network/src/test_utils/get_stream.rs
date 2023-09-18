@@ -3,12 +3,8 @@ use std::{io, iter};
 
 use futures::future::BoxFuture;
 use futures::{AsyncRead, AsyncWrite, FutureExt};
-use libp2p::core::transport::memory::MemoryTransport;
-use libp2p::core::transport::Transport;
 use libp2p::core::upgrade::{InboundUpgrade, OutboundUpgrade, UpgradeInfo};
-use libp2p::core::{multiaddr, upgrade, Endpoint};
-use libp2p::identity::Keypair;
-use libp2p::swarm::dial_opts::DialOpts;
+use libp2p::core::Endpoint;
 use libp2p::swarm::handler::{ConnectionEvent, FullyNegotiatedInbound, FullyNegotiatedOutbound};
 use libp2p::swarm::{
     ConnectionDenied,
@@ -22,21 +18,17 @@ use libp2p::swarm::{
     Stream,
     StreamProtocol,
     SubstreamProtocol,
-    SwarmBuilder,
-    SwarmEvent,
     ToSwarm,
 };
-use libp2p::{noise, yamux, Multiaddr, PeerId, Swarm};
-use rand::random;
-use tokio_stream::StreamExt as TokioStreamExt;
+use libp2p::{Multiaddr, PeerId};
 
 #[derive(Default)]
-struct GetStreamBehaviour {
+pub(crate) struct Behaviour {
     stream: Option<Stream>,
 }
 
-impl NetworkBehaviour for GetStreamBehaviour {
-    type ConnectionHandler = GetStreamHandler;
+impl NetworkBehaviour for Behaviour {
+    type ConnectionHandler = Handler;
     type ToSwarm = Stream;
 
     fn handle_established_inbound_connection(
@@ -46,7 +38,7 @@ impl NetworkBehaviour for GetStreamBehaviour {
         _local_addr: &Multiaddr,
         _remote_addr: &Multiaddr,
     ) -> Result<Self::ConnectionHandler, ConnectionDenied> {
-        Ok(GetStreamHandler { request_outbound_session: false, stream: None })
+        Ok(Handler { request_outbound_session: false, stream: None })
     }
 
     fn handle_established_outbound_connection(
@@ -56,7 +48,7 @@ impl NetworkBehaviour for GetStreamBehaviour {
         _addr: &Multiaddr,
         _role_override: Endpoint,
     ) -> Result<Self::ConnectionHandler, ConnectionDenied> {
-        Ok(GetStreamHandler { request_outbound_session: true, stream: None })
+        Ok(Handler { request_outbound_session: true, stream: None })
     }
 
     fn on_swarm_event(&mut self, _event: FromSwarm<'_, Self::ConnectionHandler>) {}
@@ -83,22 +75,22 @@ impl NetworkBehaviour for GetStreamBehaviour {
     }
 }
 
-struct GetStreamHandler {
+pub(crate) struct Handler {
     request_outbound_session: bool,
     stream: Option<Stream>,
 }
 
-impl ConnectionHandler for GetStreamHandler {
+impl ConnectionHandler for Handler {
     type FromBehaviour = ();
     type ToBehaviour = Stream;
     type Error = io::Error;
-    type InboundProtocol = GetStreamProtocol;
-    type OutboundProtocol = GetStreamProtocol;
+    type InboundProtocol = Protocol;
+    type OutboundProtocol = Protocol;
     type InboundOpenInfo = ();
     type OutboundOpenInfo = ();
 
     fn listen_protocol(&self) -> SubstreamProtocol<Self::InboundProtocol, Self::InboundOpenInfo> {
-        SubstreamProtocol::new(GetStreamProtocol, ())
+        SubstreamProtocol::new(Protocol, ())
     }
 
     fn connection_keep_alive(&self) -> KeepAlive {
@@ -119,7 +111,7 @@ impl ConnectionHandler for GetStreamHandler {
         if self.request_outbound_session {
             self.request_outbound_session = false;
             return Poll::Ready(ConnectionHandlerEvent::OutboundSubstreamRequest {
-                protocol: SubstreamProtocol::new(GetStreamProtocol, ()),
+                protocol: SubstreamProtocol::new(Protocol, ()),
             });
         }
         if let Some(stream) = self.stream.take() {
@@ -156,9 +148,9 @@ impl ConnectionHandler for GetStreamHandler {
 
 pub const PROTOCOL_NAME: StreamProtocol = StreamProtocol::new("/get_stream");
 
-pub struct GetStreamProtocol;
+pub(crate) struct Protocol;
 
-impl UpgradeInfo for GetStreamProtocol {
+impl UpgradeInfo for Protocol {
     type Info = StreamProtocol;
     type InfoIter = iter::Once<Self::Info>;
 
@@ -167,7 +159,7 @@ impl UpgradeInfo for GetStreamProtocol {
     }
 }
 
-impl OutboundUpgrade<Stream> for GetStreamProtocol
+impl OutboundUpgrade<Stream> for Protocol
 where
     Stream: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
@@ -180,7 +172,7 @@ where
     }
 }
 
-impl InboundUpgrade<Stream> for GetStreamProtocol
+impl InboundUpgrade<Stream> for Protocol
 where
     Stream: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
