@@ -17,7 +17,7 @@ use starknet_api::transaction::{
 use starknet_api::StarknetApiError;
 
 use crate::patricia_hash_tree::calculate_root;
-use crate::transaction_hash::{ascii_as_felt, PedersenHashChain, ZERO};
+use crate::transaction_hash::{ascii_as_felt, HashChain, ZERO};
 
 #[derive(Debug, Eq, PartialEq, PartialOrd, Ord)]
 enum BlockHashVersion {
@@ -53,7 +53,7 @@ fn calculate_block_hash_by_version(
     let (n_events, events_patricia_root) =
         get_events_hash_data(&block.body.transaction_outputs, &version);
 
-    Ok(PedersenHashChain::new()
+    Ok(HashChain::new()
         .chain(&block.header.block_number.0.into())
         .chain(&block.header.state_root.0)
         .chain_if_else(
@@ -70,7 +70,7 @@ fn calculate_block_hash_by_version(
         .chain(&ZERO) // Not implemented Element.
         .chain_if(&ascii_as_felt(chain_id.0.as_str())?, version == BlockHashVersion::V0)
         .chain(&block.header.parent_hash.0)
-        .get_hash())
+        .get_pedersen_hash())
 }
 
 // Returns the number of the transactions, and the Patricia root of the transactions.
@@ -100,7 +100,7 @@ fn get_transaction_leaf(
     } else {
         get_signature_only_from_invoke(transaction)
     };
-    let signature_hash = PedersenHashChain::new().chain_iter(signature.iter()).get_hash();
+    let signature_hash = HashChain::new().chain_iter(signature.iter()).get_pedersen_hash();
     Ok(pedersen_hash(&transaction_hash.0, &signature_hash))
 }
 
@@ -141,11 +141,11 @@ fn get_events_hash_data(
 // Returns a Patricia leaf value for an event.
 fn get_event_leaf(event: &Event) -> StarkHash {
     let event_keys: Vec<_> = event.content.keys.iter().map(|key| key.0).collect();
-    PedersenHashChain::new()
+    HashChain::new()
         .chain(event.from_address.0.key())
-        .chain(&PedersenHashChain::new().chain_iter(event_keys.iter()).get_hash())
-        .chain(&PedersenHashChain::new().chain_iter(event.content.data.0.iter()).get_hash())
-        .get_hash()
+        .chain(&HashChain::new().chain_iter(event_keys.iter()).get_pedersen_hash())
+        .chain(&HashChain::new().chain_iter(event.content.data.0.iter()).get_pedersen_hash())
+        .get_pedersen_hash()
 }
 
 // The fixed sequencer addresses of the chains that have historic blocks with block hash version 2.
