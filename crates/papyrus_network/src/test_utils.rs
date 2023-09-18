@@ -10,6 +10,10 @@ use libp2p::{noise, yamux, Multiaddr, Stream, Swarm};
 use rand::random;
 use tokio_stream::StreamExt as TokioStreamExt;
 
+use crate::messages::block::{BlockHeader, GetBlocksResponse};
+use crate::messages::common::{BlockId, Fin};
+use crate::messages::proto::p2p::proto::get_blocks_response::Response;
+
 pub(crate) fn create_swarm<BehaviourT: NetworkBehaviour>(
     behaviour: BehaviourT,
 ) -> (Swarm<BehaviourT>, Multiaddr) {
@@ -53,4 +57,28 @@ pub(crate) async fn get_connected_streams() -> (Stream, Stream) {
         while TokioStreamExt::next(&mut filtered_swarm).await.is_some() {}
     });
     result
+}
+
+pub(crate) fn hardcoded_data() -> Vec<GetBlocksResponse> {
+    vec![
+        GetBlocksResponse {
+            response: Some(Response::Header(BlockHeader {
+                parent_block: Some(BlockId { hash: None, height: 1 }),
+                ..Default::default()
+            })),
+        },
+        GetBlocksResponse {
+            response: Some(Response::Header(BlockHeader {
+                parent_block: Some(BlockId { hash: None, height: 2 }),
+                ..Default::default()
+            })),
+        },
+        GetBlocksResponse {
+            response: Some(Response::Header(BlockHeader {
+                parent_block: Some(BlockId { hash: None, height: 3 }),
+                ..Default::default()
+            })),
+        },
+        GetBlocksResponse { response: Some(Response::Fin(Fin {})) },
+    ]
 }
