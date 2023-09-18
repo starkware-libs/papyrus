@@ -8,9 +8,10 @@ use papyrus_storage::body::events::{
     ThinL1HandlerTransactionOutput,
     ThinTransactionOutput,
 };
-use starknet_api::core::{ContractAddress, EntryPointSelector, Nonce};
+use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
 use starknet_api::transaction::{
     Calldata,
+    ContractAddressSalt,
     Fee,
     Transaction,
     TransactionSignature,
@@ -19,8 +20,27 @@ use starknet_api::transaction::{
 use starknet_client::writer::objects::transaction as client_transaction;
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, get_rng, GetTestInstance};
 
-use super::{InvokeTransaction, InvokeTransactionV0, InvokeTransactionV1, TransactionOutput};
+use super::{
+    DeployAccountTransaction,
+    DeployAccountTransactionV1,
+    InvokeTransaction,
+    InvokeTransactionV0,
+    InvokeTransactionV1,
+    TransactionOutput,
+};
 auto_impl_get_test_instance! {
+    pub enum DeployAccountTransaction {
+        Version1(DeployAccountTransactionV1) = 0,
+    }
+    pub struct DeployAccountTransactionV1 {
+        pub max_fee: Fee,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub class_hash: ClassHash,
+        pub contract_address_salt: ContractAddressSalt,
+        pub constructor_calldata: Calldata,
+        pub version: TransactionVersion,
+    }
     pub enum InvokeTransaction {
         Version0(InvokeTransactionV0) = 0,
         Version1(InvokeTransactionV1) = 1,
@@ -108,9 +128,12 @@ fn test_gateway_trascation_from_starknet_api_transaction() {
         Transaction::Deploy(inner_transaction).try_into().unwrap();
 
     let inner_transaction =
-        starknet_api::transaction::DeployAccountTransaction::get_test_instance(&mut rng);
-    let _transaction: super::Transaction =
-        Transaction::DeployAccount(inner_transaction).try_into().unwrap();
+        starknet_api::transaction::DeployAccountTransactionV1::get_test_instance(&mut rng);
+    let _transaction: super::Transaction = Transaction::DeployAccount(
+        starknet_api::transaction::DeployAccountTransaction::V1(inner_transaction),
+    )
+    .try_into()
+    .unwrap();
 }
 
 #[test]

@@ -18,7 +18,7 @@ use mockall::automock;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_config::converters::{deserialize_optional_map, serialize_optional_map};
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
-use papyrus_config::{ParamPath, SerializedParam};
+use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use papyrus_storage::header::StarknetVersion;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
@@ -78,27 +78,37 @@ impl SerializeConfig for CentralSourceConfig {
                 &self.concurrent_requests,
                 "Maximum number of concurrent requests to Starknet feeder-gateway for getting a \
                  type of data (for example, blocks).",
+                ParamPrivacyInput::Public,
             ),
-            ser_param("url", &self.url, "Starknet feeder-gateway URL. It should match chain_id."),
+            ser_param(
+                "url",
+                &self.url,
+                "Starknet feeder-gateway URL. It should match chain_id.",
+                ParamPrivacyInput::Public,
+            ),
             ser_param(
                 "http_headers",
                 &serialize_optional_map(&self.http_headers),
                 "'k1:v1 k2:v2 ...' headers for SN-client.",
+                ParamPrivacyInput::Private,
             ),
             ser_param(
                 "max_state_updates_to_download",
                 &self.max_state_updates_to_download,
                 "Maximum number of state updates to download at a given time.",
+                ParamPrivacyInput::Public,
             ),
             ser_param(
                 "max_state_updates_to_store_in_memory",
                 &self.max_state_updates_to_store_in_memory,
                 "Maximum number of state updates to store in memory at a given time.",
+                ParamPrivacyInput::Public,
             ),
             ser_param(
                 "max_classes_to_download",
                 &self.max_classes_to_download,
                 "Maximum number of classes to download at a given time.",
+                ParamPrivacyInput::Public,
             ),
         ]);
         chain!(self_params_dump, append_sub_config_name(self.retry_config.dump(), "retry_config"))

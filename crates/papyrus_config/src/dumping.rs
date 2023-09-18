@@ -45,6 +45,8 @@ use serde_json::{json, Value};
 use crate::{
     ConfigError,
     ParamPath,
+    ParamPrivacy,
+    ParamPrivacyInput,
     SerializationType,
     SerializedContent,
     SerializedParam,
@@ -98,12 +100,14 @@ pub fn ser_param<T: Serialize>(
     name: &str,
     value: &T,
     description: &str,
+    privacy: ParamPrivacyInput,
 ) -> (String, SerializedParam) {
     (
         name.to_owned(),
         SerializedParam {
             description: description.to_owned(),
             content: SerializedContent::DefaultValue(json!(value)),
+            privacy: privacy.into(),
         },
     )
 }
@@ -114,12 +118,14 @@ pub fn ser_required_param(
     name: &str,
     serialization_type: SerializationType,
     description: &str,
+    privacy: ParamPrivacyInput,
 ) -> (String, SerializedParam) {
     (
         name.to_owned(),
         SerializedParam {
             description: description.to_owned(),
             content: SerializedContent::RequiredType(serialization_type),
+            privacy: privacy.into(),
         },
     )
 }
@@ -149,6 +155,7 @@ pub fn ser_optional_param<T: Serialize>(
     default_value: T,
     name: &str,
     description: &str,
+    privacy: ParamPrivacyInput,
 ) -> BTreeMap<ParamPath, SerializedParam> {
     BTreeMap::from([
         ser_is_param_none(name, optional_param.is_none()),
@@ -159,6 +166,7 @@ pub fn ser_optional_param<T: Serialize>(
                 None => &default_value,
             },
             description,
+            privacy,
         ),
     ])
 }
@@ -170,6 +178,23 @@ pub fn ser_is_param_none(name: &str, is_none: bool) -> (String, SerializedParam)
         SerializedParam {
             description: "Flag for an optional field".to_owned(),
             content: SerializedContent::DefaultValue(json!(is_none)),
+            privacy: ParamPrivacy::TemporaryValue,
+        },
+    )
+}
+
+/// Serializes a pointer target param of a config.
+pub fn ser_pointer_target_param<T: Serialize>(
+    name: &str,
+    value: &T,
+    description: &str,
+) -> (String, SerializedParam) {
+    (
+        name.to_owned(),
+        SerializedParam {
+            description: description.to_owned(),
+            content: SerializedContent::DefaultValue(json!(value)),
+            privacy: ParamPrivacy::TemporaryValue,
         },
     )
 }
@@ -195,6 +220,7 @@ pub(crate) fn combine_config_map_and_pointers(
                 SerializedParam {
                     description: pointing_serialized_param.description.clone(),
                     content: SerializedContent::PointerTarget(target_param.to_owned()),
+                    privacy: pointing_serialized_param.privacy.clone(),
                 },
             );
         }

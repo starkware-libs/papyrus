@@ -27,8 +27,8 @@ use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
-use papyrus_config::validators::validate_ascii;
-use papyrus_config::{ParamPath, SerializedParam};
+use papyrus_config::validators::{validate_ascii, validate_file_exists};
+use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::db::TransactionKind;
@@ -49,6 +49,7 @@ use crate::syncing_state::get_last_synced_block;
 
 /// Maximum size of a supported transaction body - 10MB.
 pub const SERVER_MAX_BODY_SIZE: u32 = 10 * 1024 * 1024;
+
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Validate)]
 pub struct RpcConfig {
     #[validate(custom = "validate_ascii")]
@@ -59,7 +60,8 @@ pub struct RpcConfig {
     pub collect_metrics: bool,
     pub starknet_url: String,
     pub starknet_gateway_retry_config: RetryConfig,
-    pub execution_config: ExecutionConfig,
+    #[validate(custom = "validate_file_exists")]
+    pub execution_config: PathBuf,
 }
 
 impl Default for RpcConfig {
@@ -76,7 +78,7 @@ impl Default for RpcConfig {
                 retry_max_delay_millis: 1000,
                 max_retries: 5,
             },
-            execution_config: ExecutionConfig::default(),
+            execution_config: PathBuf::from("config/execution_config/default_config.json"),
         }
     }
 }
@@ -84,12 +86,48 @@ impl Default for RpcConfig {
 impl SerializeConfig for RpcConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         let mut self_params_dump = BTreeMap::from_iter([
-            ser_param("chain_id", &self.chain_id, "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id."),
-            ser_param("server_address", &self.server_address, "IP:PORT of the node`s JSON-RPC server."),
-            ser_param("max_events_chunk_size", &self.max_events_chunk_size, "Maximum chunk size supported by the node in get_events requests."),
-            ser_param("max_events_keys", &self.max_events_keys, "Maximum number of keys supported by the node in get_events requests."),
-            ser_param("collect_metrics", &self.collect_metrics, "If true, collect metrics for the rpc."),
-            ser_param("starknet_url", &self.starknet_url, "URL for communicating with Starknet in write_api methods."),
+            ser_param(
+                "chain_id",
+                &self.chain_id,
+                "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "server_address",
+                &self.server_address,
+                "IP:PORT of the node`s JSON-RPC server.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "max_events_chunk_size",
+                &self.max_events_chunk_size,
+                "Maximum chunk size supported by the node in get_events requests.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "max_events_keys",
+                &self.max_events_keys,
+                "Maximum number of keys supported by the node in get_events requests.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "collect_metrics",
+                &self.collect_metrics,
+                "If true, collect metrics for the rpc.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "starknet_url",
+                &self.starknet_url,
+                "URL for communicating with Starknet in write_api methods.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "execution_config",
+                &self.execution_config,
+                "Path to the execution configuration file.",
+                ParamPrivacyInput::Public,
+            ),
         ]);
         let mut retry_config_dump = append_sub_config_name(
             self.starknet_gateway_retry_config.dump(),
@@ -103,36 +141,7 @@ impl SerializeConfig for RpcConfig {
             );
         }
         self_params_dump.append(&mut retry_config_dump);
-        let mut execution_config_dump =
-            append_sub_config_name(self.execution_config.dump(), "execution_config");
-        self_params_dump.append(&mut execution_config_dump);
         self_params_dump
-    }
-}
-
-/// The path to the default execution config file.
-const DEFAULT_CONFIG_FILE: &str = "config/execution_config/default_config.json";
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[allow(missing_docs)]
-/// The execution configuration file name
-pub struct ExecutionConfig {
-    pub config_file_name: PathBuf,
-}
-
-impl Default for ExecutionConfig {
-    fn default() -> Self {
-        ExecutionConfig { config_file_name: PathBuf::from(DEFAULT_CONFIG_FILE) }
-    }
-}
-
-impl SerializeConfig for ExecutionConfig {
-    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
-        BTreeMap::from_iter([ser_param(
-            "config_file_name",
-            &self.config_file_name,
-            "Name of the ExecutionConfig configuration file.",
-        )])
     }
 }
 
@@ -167,7 +176,7 @@ pub async fn run_server(
     debug!("Starting JSON-RPC.");
     let methods = get_methods_from_supported_apis(
         &config.chain_id,
-        config.execution_config.config_file_name.clone().try_into()?,
+        config.execution_config.clone().try_into()?,
         storage_reader,
         config.max_events_chunk_size,
         config.max_events_keys,

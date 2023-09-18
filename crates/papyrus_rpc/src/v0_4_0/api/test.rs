@@ -362,7 +362,7 @@ async fn get_block_w_full_transactions() {
         .unwrap();
 
     let expected_transaction = TransactionWithHash {
-        transaction: block.body.transactions[0].clone().into(),
+        transaction: block.body.transactions[0].clone().try_into().unwrap(),
         transaction_hash: block.body.transaction_hashes[0],
     };
     let expected_block = Block {
@@ -1170,7 +1170,7 @@ async fn get_transaction_by_hash() {
         .unwrap();
 
     let expected_transaction = TransactionWithHash {
-        transaction: block.body.transactions[0].clone().into(),
+        transaction: block.body.transactions[0].clone().try_into().unwrap(),
         transaction_hash: block.body.transaction_hashes[0],
     };
     call_api_then_assert_and_validate_schema_for_result::<_, TransactionHash, TransactionWithHash>(
@@ -1210,7 +1210,7 @@ async fn get_transaction_by_block_id_and_index() {
         .unwrap();
 
     let expected_transaction = TransactionWithHash {
-        transaction: block.body.transactions[0].clone().into(),
+        transaction: block.body.transactions[0].clone().try_into().unwrap(),
         transaction_hash: block.body.transaction_hashes[0],
     };
 

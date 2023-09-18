@@ -51,7 +51,7 @@ jobs:
 
       - name: Run executable
         run: >
-          target/release/papyrus_node --base_layer.node_url ${{ secrets.CI_BASE_LAYER_NODE_URL }}
+          target/release/papyrus_node --base_layer.node_url ${{ secrets.CI_BASE_LAYER_NODE_URL }} --monitoring_gateway.config_representation_secret qwerty
           & sleep 30 ; kill $!
 
   test:
@@ -137,7 +137,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: >
           cargo clippy --all-targets --all-features -- -D warnings -D future-incompatible
-          -D nonstandard-style -D rust-2018-idioms -D unused
+          -D nonstandard-style -D rust-2018-idioms -D unused -D clippy::unwrap_used
 
   doc:
     runs-on: ubuntu-latest

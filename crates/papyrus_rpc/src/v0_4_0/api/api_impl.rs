@@ -217,7 +217,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
 
-        Ok(TransactionWithHash { transaction: transaction.into(), transaction_hash })
+        Ok(TransactionWithHash { transaction: transaction.try_into()?, transaction_hash })
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
@@ -239,7 +239,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?;
 
-        Ok(TransactionWithHash { transaction: transaction.into(), transaction_hash })
+        Ok(TransactionWithHash { transaction: transaction.try_into()?, transaction_hash })
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
@@ -630,18 +630,13 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         transactions: Vec<BroadcastedTransaction>,
         block_id: BlockId,
     ) -> RpcResult<Vec<FeeEstimate>> {
-        // TODO(yair): remove this once the transaction hash is calculated in the blockifier.
-        if true {
-            return Err(internal_server_error("Fee estimation not supported yet."));
-        }
-
         trace!("Estimating fee of transactions: {:#?}", transactions);
         let executable_txns =
             transactions.into_iter().map(|tx| tx.try_into()).collect::<Result<_, _>>()?;
 
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id, synced(self).await)?;
-        let state_number = StateNumber::right_after_block(block_number);
+        let state_number = StateNumber::right_before_block(block_number);
         let block_execution_config =
             self.execution_config.get_execution_config_for_block(block_number).map_err(|err| {
                 internal_server_error(format!("Failed to get execution config: {}", err))
@@ -670,11 +665,6 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         transactions: Vec<BroadcastedTransaction>,
         simulation_flags: Vec<SimulationFlag>,
     ) -> RpcResult<Vec<SimulatedTransaction>> {
-        // TODO(yair): remove this once the transaction hash is calculated in the blockifier.
-        if true {
-            return Err(internal_server_error("Simulate transactions not supported yet."));
-        }
-
         trace!("Simulating transactions: {:#?}", transactions);
         let executable_txns =
             transactions.into_iter().map(|tx| tx.try_into()).collect::<Result<_, _>>()?;
