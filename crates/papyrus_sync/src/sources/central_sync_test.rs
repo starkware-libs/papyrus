@@ -22,6 +22,7 @@ use tracing::{debug, error};
 use crate::sources::base_layer::{BaseLayerSourceTrait, MockBaseLayerSourceTrait};
 use crate::sources::central::{
     BlocksStream,
+    CentralBlockSignatureData,
     CompiledClassesStream,
     MockCentralSourceTrait,
     StateUpdatesStream,
@@ -160,13 +161,14 @@ async fn sync_happy_flow() {
                 if block_number.0 >= N_BLOCKS {
                     yield Err(CentralError::BlockNotFound { block_number });
                 }
+                let block_hash = create_block_hash(block_number, false);
                 let header = BlockHeader {
                     block_number,
-                    block_hash: create_block_hash(block_number, false),
+                    block_hash,
                     parent_hash: create_block_hash(block_number.prev().unwrap_or_default(), false),
                     ..BlockHeader::default()
                 };
-                yield Ok((block_number, Block { header, body: BlockBody::default() }, StarknetVersion(STARKNET_VERSION.to_string())));
+                yield Ok((block_number, Block { header, body: BlockBody::default() }, CentralBlockSignatureData::default(), StarknetVersion(STARKNET_VERSION.to_string())));
             }
         }
         .boxed();
@@ -442,12 +444,14 @@ async fn sync_with_revert() {
                         if i.0 >= N_BLOCKS_BEFORE_REVERT {
                             yield Err(CentralError::BlockNotFound { block_number: i });
                         }
+                        let block_hash = create_block_hash(i, false);
                         let header = BlockHeader{
                             block_number: i,
-                            block_hash: create_block_hash(i, false),
+                            block_hash,
                             parent_hash: create_block_hash(i.prev().unwrap_or_default(), false),
-                            ..BlockHeader::default()};
-                        yield Ok((i,Block{header, body: BlockBody::default()}, StarknetVersion(STARKNET_VERSION.to_string())));
+                            ..BlockHeader::default()
+                        };
+                        yield Ok((i, Block{ header, body: BlockBody::default() }, CentralBlockSignatureData::default(), StarknetVersion(STARKNET_VERSION.to_string())));
                     }
                 }
                 .boxed(),
@@ -456,15 +460,17 @@ async fn sync_with_revert() {
                         if i.0 >= N_BLOCKS_AFTER_REVERT {
                             yield Err(CentralError::BlockNotFound { block_number: i });
                         }
-                        let header = BlockHeader{
+                        let block_hash = create_block_hash(i, i.0 >= CHAIN_FORK_BLOCK_NUMBER);
+                        let header = BlockHeader {
                             block_number: i,
-                            block_hash: create_block_hash(i, i.0 >= CHAIN_FORK_BLOCK_NUMBER),
+                            block_hash,
                             parent_hash: create_block_hash(i.prev().unwrap_or_default(), i.0 > CHAIN_FORK_BLOCK_NUMBER),
-                            ..BlockHeader::default()};
-                        yield Ok((i, Block{header, body: BlockBody::default()},  StarknetVersion(STARKNET_VERSION.to_string())));
+                            ..BlockHeader::default()
+                        };
+                        yield Ok((i, Block{header, body: BlockBody::default()}, CentralBlockSignatureData::default(), StarknetVersion(STARKNET_VERSION.to_string())));
                     }
                 }
-                .boxed(),
+                .boxed()
             }
         }
 
@@ -536,15 +542,17 @@ async fn test_unrecoverable_sync_error_flow() {
     });
     mock.expect_stream_new_blocks().returning(move |_, _| {
         let blocks_stream: BlocksStream<'_> = stream! {
+            let block_hash = create_block_hash(BLOCK_NUMBER, false);
             let header = BlockHeader {
                     block_number: BLOCK_NUMBER,
-                    block_hash: create_block_hash(BLOCK_NUMBER, false),
+                    block_hash,
                     parent_hash: create_block_hash(BLOCK_NUMBER.prev().unwrap_or_default(), false),
                     ..BlockHeader::default()
                 };
             yield Ok((
                 BLOCK_NUMBER,
                 Block { header, body: BlockBody::default()},
+                CentralBlockSignatureData::default(),
                 StarknetVersion(STARKNET_VERSION.to_string()),
             ));
         }
