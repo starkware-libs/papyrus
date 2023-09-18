@@ -1,5 +1,5 @@
 // pub mod behaviour;
-// pub mod handler;
+pub mod handler;
 pub mod protocol;
 
 use derive_more::Display;
