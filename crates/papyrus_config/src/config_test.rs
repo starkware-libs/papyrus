@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 use std::env;
-use std::fs::File;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -10,11 +9,9 @@ use itertools::chain;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tempfile::TempDir;
 use test_utils::get_absolute_path;
 use validator::Validate;
 
-use crate::command::{get_command_matches, update_config_map_by_command_args};
 use crate::converters::deserialize_milliseconds_to_duration;
 use crate::dumping::{
     append_sub_config_name,
@@ -28,12 +25,10 @@ use crate::dumping::{
     SerializeConfig,
 };
 use crate::loading::{
+    inner_load_and_process_config,
     load,
-    load_and_process_config,
-    split_pointers_map,
-    split_values_and_types,
     update_config_map_by_pointers,
-    update_optional_values,
+    ProcessingMaps,
 };
 use crate::presentation::get_config_presentation;
 use crate::{
@@ -49,6 +44,14 @@ use crate::{
 lazy_static! {
     static ref CUSTOM_CONFIG_PATH: PathBuf =
         get_absolute_path("crates/papyrus_config/resources/custom_config_example.json");
+}
+
+fn load_and_process_util<T: for<'a> Deserialize<'a>>(
+    default_config_map: BTreeMap<String, SerializedParam>,
+    mut args: Vec<String>,
+) -> Result<T, ConfigError> {
+    args.insert(0, "Testing".to_owned());
+    inner_load_and_process_config(default_config_map, Command::new("Testing"), args)
 }
 
 #[derive(Clone, Copy, Default, Serialize, Deserialize, Debug, PartialEq, Validate)]
@@ -99,8 +102,7 @@ fn dump_and_load_config() {
         OuterConfig { opt_elem: None, opt_config: None, inner_config: InnerConfig { o: 5 } };
 
     for outer_config in [some_outer_config, none_outer_config] {
-        let (mut dumped, _) = split_values_and_types(outer_config.dump());
-        update_optional_values(&mut dumped);
+        let dumped = load_and_process_util(outer_config.dump(), vec![]).unwrap();
         let loaded_config = load::<OuterConfig>(&dumped).unwrap();
         assert_eq!(loaded_config, outer_config);
     }
@@ -138,23 +140,16 @@ impl SerializeConfig for TypicalConfig {
 
 #[test]
 fn test_update_dumped_config() {
-    let command = Command::new("Testing");
     let dumped_config =
         TypicalConfig { a: Duration::from_secs(1), b: "bbb".to_owned(), c: false }.dump();
-    let args = vec!["Testing", "--a", "1234", "--b", "15"];
+    let args = vec!["--a", "1234", "--b", "15"];
     env::set_var("C", "true");
     let args: Vec<String> = args.into_iter().map(|s| s.to_owned()).collect();
+    let loaded_config: TypicalConfig = load_and_process_util(dumped_config, args).unwrap();
 
-    let arg_matches = get_command_matches(&dumped_config, command, args).unwrap();
-    let (mut config_map, required_map) = split_values_and_types(dumped_config);
-    update_config_map_by_command_args(&mut config_map, &required_map, &arg_matches).unwrap();
-
-    assert_eq!(json!(1234), config_map["a"]);
-    assert_eq!(json!("15"), config_map["b"]);
-    assert_eq!(json!(true), config_map["c"]);
-
-    let loaded_config: TypicalConfig = load(&config_map).unwrap();
     assert_eq!(Duration::from_millis(1234), loaded_config.a);
+    assert_eq!("15", loaded_config.b);
+    assert!(loaded_config.c);
 }
 
 #[test]
@@ -206,27 +201,21 @@ fn test_pointers_flow() {
     );
 
     let serialized = serde_json::to_string(&stored_map).unwrap();
-    let loaded = serde_json::from_str(&serialized).unwrap();
-    let (loaded_config_map, loaded_pointers_map) = split_pointers_map(loaded);
-    let (mut config_map, _) = split_values_and_types(loaded_config_map);
-    update_config_map_by_pointers(&mut config_map, &loaded_pointers_map).unwrap();
-    assert_eq!(config_map["a1"], json!(10));
-    assert_eq!(config_map["a1"], config_map["a2"]);
+    let loaded: BTreeMap<String, SerializedParam> = serde_json::from_str(&serialized).unwrap();
+    let mut processing_maps: ProcessingMaps = loaded.try_into().unwrap();
+    update_config_map_by_pointers(&mut processing_maps.values, &processing_maps.pointers).unwrap();
+    assert_eq!(processing_maps.values["a1"], json!(10));
+    assert_eq!(processing_maps.values["a1"], processing_maps.values["a2"]);
 }
 
 #[test]
 fn test_replace_pointers() {
-    let (mut config_map, _) = split_values_and_types(BTreeMap::from([ser_param(
-        "a",
-        &json!(5),
-        "This is a.",
-        ParamPrivacyInput::Public,
-    )]));
+    let mut values_map = BTreeMap::from([("a".to_owned(), json!(5)), ("b".to_owned(), json!(7))]);
     let pointers_map =
         BTreeMap::from([("b".to_owned(), "a".to_owned()), ("c".to_owned(), "a".to_owned())]);
-    update_config_map_by_pointers(&mut config_map, &pointers_map).unwrap();
-    assert_eq!(config_map["a"], config_map["b"]);
-    assert_eq!(config_map["a"], config_map["c"]);
+    update_config_map_by_pointers(&mut values_map, &pointers_map).unwrap();
+    assert_eq!(values_map["a"], values_map["c"]);
+    assert_eq!(values_map["b"], json!(7));
 
     let err = update_config_map_by_pointers(&mut BTreeMap::default(), &pointers_map).unwrap_err();
     assert_matches!(err, ConfigError::PointerTargetNotFound { .. });
@@ -260,15 +249,9 @@ impl SerializeConfig for CustomConfig {
 
 // Loads CustomConfig from args.
 fn load_custom_config(args: Vec<&str>) -> CustomConfig {
-    let dir = TempDir::new().unwrap();
-    let file_path = dir.path().join("config.json");
-    CustomConfig { param_path: "default value".to_owned(), seed: 5 }
-        .dump_to_file(&vec![], file_path.to_str().unwrap())
-        .unwrap();
-
-    load_and_process_config::<CustomConfig>(
-        File::open(file_path).unwrap(),
-        Command::new("Program"),
+    let custom_config = CustomConfig { param_path: "default value".to_owned(), seed: 5 };
+    load_and_process_util::<CustomConfig>(
+        custom_config.dump(),
         args.into_iter().map(|s| s.to_owned()).collect(),
     )
     .unwrap()
@@ -276,14 +259,13 @@ fn load_custom_config(args: Vec<&str>) -> CustomConfig {
 
 #[test]
 fn test_load_default_config() {
-    let args = vec!["Testing"];
-    let param_path = load_custom_config(args).param_path;
+    let param_path = load_custom_config(vec![]).param_path;
     assert_eq!(param_path, "default value");
 }
 
 #[test]
 fn test_load_custom_config_file() {
-    let args = vec!["Testing", "-f", CUSTOM_CONFIG_PATH.to_str().unwrap()];
+    let args = vec!["-f", CUSTOM_CONFIG_PATH.to_str().unwrap()];
     let param_path = load_custom_config(args).param_path;
     assert_eq!(param_path, "custom value");
 }
@@ -291,7 +273,6 @@ fn test_load_custom_config_file() {
 #[test]
 fn test_load_custom_config_file_and_args() {
     let args = vec![
-        "Testing",
         "--config_file",
         CUSTOM_CONFIG_PATH.to_str().unwrap(),
         "--param_path",
@@ -305,18 +286,15 @@ fn test_load_custom_config_file_and_args() {
 fn test_load_many_custom_config_files() {
     let custom_config_path = CUSTOM_CONFIG_PATH.to_str().unwrap();
     let cli_config_param = format!("{custom_config_path},{custom_config_path}");
-    let args = vec!["Testing", "-f", cli_config_param.as_str()];
+    let args = vec!["-f", cli_config_param.as_str()];
     let param_path = load_custom_config(args).param_path;
     assert_eq!(param_path, "custom value");
 }
 
 #[test]
 fn test_generated_type() {
-    let args = vec!["Testing"];
-    assert_eq!(load_custom_config(args).seed, 0);
-
-    let args = vec!["Testing", "--seed", "7"];
-    assert_eq!(load_custom_config(args).seed, 7);
+    assert_eq!(load_custom_config(vec![]).seed, 0);
+    assert_eq!(load_custom_config(vec!["--seed", "7"]).seed, 7);
 }
 
 #[test]
@@ -350,39 +328,32 @@ impl SerializeConfig for RequiredConfig {
 
 // Loads param_path of RequiredConfig from args.
 fn load_required_param_path(args: Vec<&str>) -> String {
-    let dir = TempDir::new().unwrap();
-    let file_path = dir.path().join("config.json");
-    RequiredConfig { param_path: "default value".to_owned(), num: 3 }
-        .dump_to_file(&vec![], file_path.to_str().unwrap())
-        .unwrap();
-
-    let loaded_config = load_and_process_config::<CustomConfig>(
-        File::open(file_path).unwrap(),
-        Command::new("Program"),
+    let required_config = RequiredConfig { param_path: "default value".to_owned(), num: 3 };
+    let loaded_required_config: RequiredConfig = load_and_process_util(
+        required_config.dump(),
         args.into_iter().map(|s| s.to_owned()).collect(),
     )
     .unwrap();
-    loaded_config.param_path
+    loaded_required_config.param_path
 }
 
 #[test]
 fn test_negative_required_param() {
     let dumped_config = RequiredConfig { param_path: "0".to_owned(), num: 3 }.dump();
-    let (config_map, _) = split_values_and_types(dumped_config);
-    let err = load::<RequiredConfig>(&config_map).unwrap_err();
+    let err = load_and_process_util::<RequiredConfig>(dumped_config, vec![]).unwrap_err();
     assert_matches!(err, ConfigError::MissingParam { .. });
 }
 
 #[test]
 fn test_required_param_from_command() {
-    let args = vec!["Testing", "--param_path", "1234"];
+    let args = vec!["--param_path", "1234"];
     let param_path = load_required_param_path(args);
     assert_eq!(param_path, "1234");
 }
 
 #[test]
 fn test_required_param_from_file() {
-    let args = vec!["Testing", "--config_file", CUSTOM_CONFIG_PATH.to_str().unwrap()];
+    let args = vec!["--config_file", CUSTOM_CONFIG_PATH.to_str().unwrap()];
     let param_path = load_required_param_path(args);
     assert_eq!(param_path, "custom value");
 }

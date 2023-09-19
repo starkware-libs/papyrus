@@ -5,14 +5,17 @@ use clap::{value_parser, Arg, ArgMatches, Command};
 use serde_json::{json, Value};
 
 use crate::loading::update_config_map;
-use crate::{ConfigError, ParamPath, SerializationType, SerializedParam};
+use crate::{ConfigError, Description, ParamPath, SerializationType};
 
 pub(crate) fn get_command_matches(
-    config_map: &BTreeMap<ParamPath, SerializedParam>,
+    types_map: &BTreeMap<ParamPath, SerializationType>,
+    descriptions_map: &BTreeMap<ParamPath, Description>,
     command: Command,
     command_input: Vec<String>,
 ) -> Result<ArgMatches, ConfigError> {
-    Ok(command.args(build_args_parser(config_map)).try_get_matches_from(command_input)?)
+    Ok(command
+        .args(build_args_parser(types_map, descriptions_map))
+        .try_get_matches_from(command_input)?)
 }
 
 // Takes matched arguments from the command line interface and env variables and updates the config
@@ -33,7 +36,10 @@ pub(crate) fn update_config_map_by_command_args(
 
 // Builds the parser for the command line flags and env variables according to the types of the
 // values in the config map.
-fn build_args_parser(config_map: &BTreeMap<ParamPath, SerializedParam>) -> Vec<Arg> {
+fn build_args_parser(
+    types_map: &BTreeMap<ParamPath, SerializationType>,
+    descriptions_map: &BTreeMap<ParamPath, Description>,
+) -> Vec<Arg> {
     let mut args_parser = vec![
         // Custom_config_file_path.
         Arg::new("config_file")
@@ -44,21 +50,22 @@ fn build_args_parser(config_map: &BTreeMap<ParamPath, SerializedParam>) -> Vec<A
             .value_parser(value_parser!(PathBuf)),
     ];
 
-    for (param_path, serialized_param) in config_map.iter() {
-        let Some(serialization_type) = serialized_param.content.get_serialization_type() else {
-            continue; // Pointer target
-        };
+    for (param_path, serialization_type) in types_map.iter() {
         let clap_parser = match serialization_type {
             SerializationType::Number => clap::value_parser!(usize).into(),
             SerializationType::Boolean => clap::value_parser!(bool),
             SerializationType::String => clap::value_parser!(String),
         };
 
-        let arg = Arg::new(param_path)
+        let mut arg = Arg::new(param_path)
             .long(param_path)
             .env(param_path.to_uppercase())
-            .help(&serialized_param.description)
             .value_parser(clap_parser);
+
+        if let Some(description) = descriptions_map.get(param_path) {
+            arg = arg.help(description);
+        }
+
         args_parser.push(arg);
     }
     args_parser
