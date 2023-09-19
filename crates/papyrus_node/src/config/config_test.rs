@@ -76,11 +76,15 @@ fn load_http_headers() {
 #[test]
 // Regression test which checks that the default config dumping hasn't changed.
 fn test_dump_default_config() {
-    let default_config = NodeConfig::default();
+    let mut default_config = NodeConfig::default();
     env::set_current_dir(get_absolute_path("")).expect("Couldn't set working dir.");
-    default_config.validate().unwrap();
     let dumped_default_config = default_config.dump();
     insta::assert_json_snapshot!(dumped_default_config);
+
+    // The validate function will fail if the data directory does not exist so we change the path to
+    // point to an existing directory.
+    default_config.storage.db_config.path_prefix = PathBuf::from(".");
+    default_config.validate().unwrap();
 }
 
 #[test]
