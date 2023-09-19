@@ -23,7 +23,7 @@ use crate::{
     SerializationType,
     SerializedContent,
     SerializedParam,
-    IS_NONE_MARK,
+    IS_NONE_MARK, validators::validate_path_exists,
 };
 
 /// Deserializes config from flatten JSON.
@@ -123,6 +123,7 @@ pub(crate) fn update_config_map_by_custom_configs(
     custom_config_paths: Values<PathBuf>,
 ) -> Result<(), ConfigError> {
     for config_path in custom_config_paths {
+        validate_path_exists(&config_path)?;
         let file = std::fs::File::open(config_path)?;
         let custom_config: Map<String, Value> = serde_json::from_reader(file)?;
         for (param_path, json_value) in custom_config {

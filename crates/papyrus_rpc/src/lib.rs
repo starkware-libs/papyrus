@@ -27,7 +27,7 @@ use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
-use papyrus_config::validators::{validate_ascii, validate_file_exists};
+use papyrus_config::validators::{validate_ascii, validate_path_exists};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::body::events::EventIndex;
@@ -61,7 +61,7 @@ pub struct RpcConfig {
     pub collect_metrics: bool,
     pub starknet_url: String,
     pub starknet_gateway_retry_config: RetryConfig,
-    #[validate(custom = "validate_file_exists")]
+    #[validate(custom = "validate_path_exists")]
     pub execution_config: PathBuf,
 }
 
