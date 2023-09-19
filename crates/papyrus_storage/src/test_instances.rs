@@ -32,6 +32,8 @@ auto_impl_get_test_instance! {
     }
     pub enum OffsetKind {
         ThinStateDiff = 0,
+        DeprecatedDeclaredClass = 1,
+        ContractClass = 2,
     }
     struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
     pub struct IndexedDeprecatedContractClass {

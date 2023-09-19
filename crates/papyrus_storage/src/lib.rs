@@ -243,6 +243,7 @@ impl StorageWriter {
             OffsetKind::DeprecatedDeclaredClass => {
                 self.file_writers.deprecated_class_writer.flush()
             }
+            OffsetKind::ContractClass => self.file_writers.contract_class_writer.flush(),
         }
     }
 
@@ -258,6 +259,11 @@ impl StorageWriter {
         val: &DeprecatedContractClass,
     ) -> usize {
         self.file_writers.deprecated_class_writer.insert(offset, val)
+    }
+
+    /// Inserts a contract class at the given offset.
+    pub fn insert_contract_class(&mut self, offset: usize, val: &ContractClass) -> usize {
+        self.file_writers.contract_class_writer.insert(offset, val)
     }
 }
 
@@ -298,7 +304,7 @@ struct_field_names! {
         block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
         casms: TableIdentifier<ClassHash, CasmContractClass>,
         contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
-        declared_classes: TableIdentifier<ClassHash, ContractClass>,
+        declared_classes: TableIdentifier<ClassHash, LocationInFile>,
         declared_classes_block: TableIdentifier<ClassHash, BlockNumber>,
         deprecated_declared_classes: TableIdentifier<ClassHash, (BlockNumber, LocationInFile)>,
         deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), ClassHash>,
@@ -458,12 +464,14 @@ pub(crate) type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
 struct FileWriters {
     thin_state_diff_writer: FileWriter<ThinStateDiff>,
     deprecated_class_writer: FileWriter<DeprecatedContractClass>,
+    contract_class_writer: FileWriter<ContractClass>,
 }
 
 #[derive(Clone, Debug)]
 struct FileReaders {
     thin_state_diff_reader: FileReader,
     deprecated_class_reader: FileReader,
+    contract_class_reader: FileReader,
 }
 
 fn open_storage_files(db_config: &DbConfig) -> (FileWriters, FileReaders) {
@@ -471,21 +479,12 @@ fn open_storage_files(db_config: &DbConfig) -> (FileWriters, FileReaders) {
         open_file(db_config.path().join("thin_state_diff"));
     let (deprecated_class_writer, deprecated_class_reader) =
         open_file(db_config.path().join("deprecated_class"));
+    let (contract_class_writer, contract_class_reader) =
+        open_file(db_config.path().join("contract_class"));
     (
-        FileWriters { thin_state_diff_writer, deprecated_class_writer },
-        FileReaders { thin_state_diff_reader, deprecated_class_reader },
+        FileWriters { thin_state_diff_writer, deprecated_class_writer, contract_class_writer },
+        FileReaders { thin_state_diff_reader, deprecated_class_reader, contract_class_reader },
     )
-    // StorageFiles {
-    //     class: Arc::new(Mutex::new(mmap_objects_db::open_mmaped_file(
-    //         db_config.path().join("class"),
-    //     ))),
-    //     thin_state_diff: Arc::new(Mutex::new(mmap_objects_db::open_mmaped_file(
-    //         db_config.path().join("thin_state_diff"),
-    //     ))),
-    //     casm: Arc::new(Mutex::new(mmap_objects_db::open_mmaped_file(
-    //         db_config.path().join("casm"),
-    //     ))),
-    // }
 }
 
 /// Represents a kind of mmap file.
@@ -495,4 +494,6 @@ pub enum OffsetKind {
     ThinStateDiff,
     /// A deprecated declared class file.
     DeprecatedDeclaredClass,
+    /// A contract class file.
+    ContractClass,
 }

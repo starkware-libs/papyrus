@@ -393,43 +393,63 @@ impl<
             let len =
                 self.writer.insert_thin_state_diff(thin_state_diff_offset, &thin_state_diff_ref);
 
-            let mut deprecated_class_definition_locations =
-                IndexMap::with_capacity(deployed_contract_class_definitions.len());
-            let mut offset = self.writer.get_file_offset(OffsetKind::DeprecatedDeclaredClass);
+            let mut deprecated_class_definition_locations = IndexMap::with_capacity(
+                deployed_contract_class_definitions.len()
+                    + state_diff.deprecated_declared_classes.len(),
+            );
+            let mut deprecated_declared_class_offset =
+                self.writer.get_file_offset(OffsetKind::DeprecatedDeclaredClass);
             for (class_hash, deployed_contract_class_definition) in
                 deployed_contract_class_definitions.iter()
             {
-                let len = self
-                    .writer
-                    .insert_deprecated_declared_class(offset, deployed_contract_class_definition);
-                let location = LocationInFile { offset, len };
+                let len = self.writer.insert_deprecated_declared_class(
+                    deprecated_declared_class_offset,
+                    deployed_contract_class_definition,
+                );
+                let location = LocationInFile { offset: deprecated_declared_class_offset, len };
                 deprecated_class_definition_locations.insert(*class_hash, location);
                 // warn!(
                 //     "insert to deprecated (deployed_contract_class_definitions)- class hash: {},
                 // \      location: {:?}",
                 //     class_hash, location
                 // );
-                offset += len;
+                deprecated_declared_class_offset += len;
             }
 
             for (class_hash, deprecated_class_definition) in
                 state_diff.deprecated_declared_classes.iter()
             {
-                let len = self
-                    .writer
-                    .insert_deprecated_declared_class(offset, deprecated_class_definition);
-                let location = LocationInFile { offset, len };
+                let len = self.writer.insert_deprecated_declared_class(
+                    deprecated_declared_class_offset,
+                    deprecated_class_definition,
+                );
+                let location = LocationInFile { offset: deprecated_declared_class_offset, len };
                 deprecated_class_definition_locations.insert(*class_hash, location);
                 // warn!(
                 //     "insert to deprecated- class hash (deprecated_declared_classes): {}, \
                 //      location: {:?}",
                 //     class_hash, location
                 // );
-                offset += len;
+                deprecated_declared_class_offset += len;
+            }
+
+            let mut contract_class_locations =
+                IndexMap::with_capacity(state_diff.declared_classes.len());
+            let mut contract_class_file_offset =
+                self.writer.get_file_offset(OffsetKind::ContractClass);
+            for (class_hash, (_compiled_class_hash, contract_class)) in
+                state_diff.declared_classes.iter()
+            {
+                let len =
+                    self.writer.insert_contract_class(contract_class_file_offset, contract_class);
+                let location = LocationInFile { offset: contract_class_file_offset, len };
+                contract_class_locations.insert(*class_hash, location);
+                contract_class_file_offset += len;
             }
 
             self.writer.flush_file(OffsetKind::ThinStateDiff);
             self.writer.flush_file(OffsetKind::DeprecatedDeclaredClass);
+            self.writer.flush_file(OffsetKind::ContractClass);
             self.writer
                 .begin_rw_txn()?
                 .append_state_diff(
@@ -438,7 +458,9 @@ impl<
                     &LocationInFile { offset: thin_state_diff_offset, len },
                     deployed_contract_class_definitions,
                     deprecated_class_definition_locations,
-                    offset,
+                    deprecated_declared_class_offset,
+                    contract_class_locations,
+                    contract_class_file_offset,
                 )?
                 .commit()?;
             metrics::gauge!(papyrus_metrics::PAPYRUS_STATE_MARKER, block_number.next().0 as f64);
