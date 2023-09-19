@@ -8,6 +8,10 @@ use libp2p::swarm::{NetworkBehaviour, SwarmBuilder};
 use libp2p::{noise, yamux, Multiaddr, Swarm};
 use rand::random;
 
+use crate::messages::block::{BlockHeader, GetBlocksResponse};
+use crate::messages::common::{BlockId, Fin};
+use crate::messages::proto::p2p::proto::get_blocks_response::Response;
+
 // TODO(shahak): Use create_swarm and remove allow(dead_code)
 #[allow(dead_code)]
 pub(crate) fn create_swarm<BehaviourT: NetworkBehaviour>(
@@ -50,4 +54,28 @@ pub(crate) async fn get_connected_streams()
         },
         async move { MemoryTransport::new().dial(listener_addr).unwrap().await.unwrap() },
     )
+}
+
+pub(crate) fn hardcoded_data() -> Vec<GetBlocksResponse> {
+    vec![
+        GetBlocksResponse {
+            response: Some(Response::Header(BlockHeader {
+                parent_block: Some(BlockId { hash: None, height: 1 }),
+                ..Default::default()
+            })),
+        },
+        GetBlocksResponse {
+            response: Some(Response::Header(BlockHeader {
+                parent_block: Some(BlockId { hash: None, height: 2 }),
+                ..Default::default()
+            })),
+        },
+        GetBlocksResponse {
+            response: Some(Response::Header(BlockHeader {
+                parent_block: Some(BlockId { hash: None, height: 3 }),
+                ..Default::default()
+            })),
+        },
+        GetBlocksResponse { response: Some(Response::Fin(Fin {})) },
+    ]
 }
