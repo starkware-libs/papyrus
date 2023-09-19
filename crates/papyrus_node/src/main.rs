@@ -2,10 +2,12 @@
 mod main_test;
 
 use std::env::args;
+use std::process::exit;
 use std::sync::Arc;
 
 use papyrus_common::BlockHashAndNumber;
 use papyrus_config::representation::get_config_representation;
+use papyrus_config::validators::ParsedValidationErrors;
 use papyrus_config::ConfigError;
 use papyrus_monitoring_gateway::MonitoringServer;
 use papyrus_node::config::NodeConfig;
@@ -20,14 +22,13 @@ use tracing::metadata::LevelFilter;
 use tracing::{error, info};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
-use validator::Validate;
+use validator::{Validate, ValidationErrors};
 
 // TODO(yair): Add to config.
 const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
 
 async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     let (storage_reader, storage_writer) = open_storage(config.storage.db_config.clone())?;
-
     // Monitoring server.
     let monitoring_server = MonitoringServer::new(
         config.monitoring_gateway.clone(),
@@ -105,16 +106,34 @@ fn configure_tracing() {
     tracing_subscriber::registry().with(fmt_layer).with(level_filter_layer).init();
 }
 
+fn print_validation_errors(errors: ValidationErrors) {
+    let parsed_errors: ParsedValidationErrors = errors.try_into().unwrap();
+    for error in parsed_errors.0.iter() {
+        error!(
+            "Configuration validation error: The field {:?} got error {:?} for value: {:?}",
+            &error.path, &error.code, &error.params
+        );
+        if let Some(msg) = &error.message {
+            error!("{:?}", msg);
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let config = NodeConfig::load_and_process(args().collect());
     if let Err(ConfigError::CommandInput(clap_err)) = config {
         clap_err.exit();
     }
-    let config = config?;
-    config.validate().expect("Invalid config");
 
     configure_tracing();
+
+    let config = config?;
+    if let Err(errors) = config.validate() {
+        print_validation_errors(errors);
+        exit(1);
+    }
+
     info!("Booting up.");
     run_threads(config).await
 }

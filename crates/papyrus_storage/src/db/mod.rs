@@ -26,7 +26,7 @@ use std::sync::Arc;
 
 use libmdbx::{Cursor, Geometry, TableFlags, WriteFlags, WriteMap};
 use papyrus_config::dumping::{ser_param, SerializeConfig};
-use papyrus_config::validators::validate_ascii;
+use papyrus_config::validators::{data_dir_exists, validate_ascii};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use serde::{Deserialize, Serialize};
 use starknet_api::core::ChainId;
@@ -49,6 +49,7 @@ type DbValueType<'env> = Cow<'env, [u8]>;
 pub struct DbConfig {
     /// The path prefix of the database files. The final path is the path prefix followed by the
     /// chain id.
+    #[validate(custom = "data_dir_exists")]
     pub path_prefix: PathBuf,
     /// The [chain id](https://docs.rs/starknet_api/latest/starknet_api/core/struct.ChainId.html) of the Starknet network.
     #[validate(custom = "validate_ascii")]
