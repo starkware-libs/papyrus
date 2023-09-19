@@ -79,7 +79,7 @@ expression: dumped_default_config
   },
   "monitoring_gateway.config_representation_secret": {
     "description": "A secret for representing the full general config.",
-    "required_type": "String",
+    "random_or_custom_type": "String",
     "privacy": "Private"
   },
   "monitoring_gateway.server_address": {

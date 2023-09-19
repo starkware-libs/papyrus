@@ -108,6 +108,8 @@ pub enum SerializedContent {
     PointerTarget(ParamPath),
     /// Type of a required configuration parameter.
     RequiredType(SerializationType),
+    /// Type of a random configuration parameter, as long as the user does not set a custom value.
+    RandomOrCustomType(SerializationType),
 }
 
 impl SerializedContent {
@@ -121,6 +123,7 @@ impl SerializedContent {
             },
             SerializedContent::PointerTarget(_) => None,
             SerializedContent::RequiredType(ser_type) => Some(ser_type.clone()),
+            SerializedContent::RandomOrCustomType(ser_type) => Some(ser_type.clone()),
         }
     }
 }
