@@ -135,6 +135,7 @@ auto_storage_serde! {
     }
     pub enum OffsetKind {
         ThinStateDiff = 0,
+        DeprecatedDeclaredClass = 1,
     }
     pub struct AccountDeploymentData(pub Vec<StarkFelt>);
     pub struct BlockHash(pub StarkHash);
@@ -470,6 +471,7 @@ auto_storage_serde! {
 
 
     (BlockNumber, TransactionOffsetInBlock);
+    (BlockNumber, LocationInFile);
     (BlockHash, ClassHash);
     (ContractAddress, BlockHash);
     (ContractAddress, BlockNumber);

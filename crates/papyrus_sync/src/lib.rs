@@ -28,7 +28,7 @@ use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter, Starknet
 use papyrus_storage::mmap_file::LocationInFile;
 use papyrus_storage::ommer::{OmmerStorageReader, OmmerStorageWriter};
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
-use papyrus_storage::{StorageError, StorageReader, StorageWriter};
+use papyrus_storage::{OffsetKind, StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
 use sources::base_layer::BaseLayerSourceError;
 use starknet_api::block::{Block, BlockHash, BlockNumber};
@@ -388,17 +388,57 @@ impl<
             debug!("Storing state diff.");
             trace!("StateDiff data: {state_diff:#?}");
 
-            let offset = self.writer.get_thin_state_diff_offset();
+            let thin_state_diff_offset = self.writer.get_file_offset(OffsetKind::ThinStateDiff);
             let thin_state_diff_ref = thin_state_diff_from_state_diff_ref(&state_diff);
-            let len = self.writer.insert_thin_state_diff(offset, &thin_state_diff_ref);
+            let len =
+                self.writer.insert_thin_state_diff(thin_state_diff_offset, &thin_state_diff_ref);
 
+            let mut deprecated_class_definition_locations =
+                IndexMap::with_capacity(deployed_contract_class_definitions.len());
+            let mut offset = self.writer.get_file_offset(OffsetKind::DeprecatedDeclaredClass);
+            for (class_hash, deployed_contract_class_definition) in
+                deployed_contract_class_definitions.iter()
+            {
+                let len = self
+                    .writer
+                    .insert_deprecated_declared_class(offset, deployed_contract_class_definition);
+                let location = LocationInFile { offset, len };
+                deprecated_class_definition_locations.insert(*class_hash, location);
+                // warn!(
+                //     "insert to deprecated (deployed_contract_class_definitions)- class hash: {},
+                // \      location: {:?}",
+                //     class_hash, location
+                // );
+                offset += len;
+            }
+
+            for (class_hash, deprecated_class_definition) in
+                state_diff.deprecated_declared_classes.iter()
+            {
+                let len = self
+                    .writer
+                    .insert_deprecated_declared_class(offset, deprecated_class_definition);
+                let location = LocationInFile { offset, len };
+                deprecated_class_definition_locations.insert(*class_hash, location);
+                // warn!(
+                //     "insert to deprecated- class hash (deprecated_declared_classes): {}, \
+                //      location: {:?}",
+                //     class_hash, location
+                // );
+                offset += len;
+            }
+
+            self.writer.flush_file(OffsetKind::ThinStateDiff);
+            self.writer.flush_file(OffsetKind::DeprecatedDeclaredClass);
             self.writer
                 .begin_rw_txn()?
                 .append_state_diff(
                     block_number,
                     state_diff,
+                    &LocationInFile { offset: thin_state_diff_offset, len },
                     deployed_contract_class_definitions,
-                    &LocationInFile { offset, len },
+                    deprecated_class_definition_locations,
+                    offset,
                 )?
                 .commit()?;
             metrics::gauge!(papyrus_metrics::PAPYRUS_STATE_MARKER, block_number.next().0 as f64);

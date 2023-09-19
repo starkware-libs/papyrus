@@ -75,7 +75,7 @@ impl<V: StorageSerde> Reader<V> for FileWriter<V> {
 }
 
 /// A wrapper around `MMapFile` that provides a read interface.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct FileReader {
     shared_data: *const u8,
 }

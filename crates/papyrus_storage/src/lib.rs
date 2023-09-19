@@ -83,6 +83,7 @@ use papyrus_config::{ParamPath, SerializedParam};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StorageKey, ThinStateDiff};
 use starknet_api::transaction::{EventContent, Transaction, TransactionHash};
@@ -106,7 +107,6 @@ use crate::db::{
     RW,
 };
 use crate::header::StarknetVersion;
-use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::{VersionStorageReader, VersionStorageWriter};
 
 /// The current version of the storage code.
@@ -117,7 +117,7 @@ pub const STORAGE_VERSION: Version = Version(5);
 /// Opens a storage and returns a [`StorageReader`] and a [`StorageWriter`].
 pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, StorageWriter)> {
     let (db_reader, mut db_writer) = open_env(db_config.clone())?;
-    let (thin_state_diff_writer, thin_state_diff_reader) = open_storage_files(&db_config);
+    let (file_writers, file_readers) = open_storage_files(&db_config);
     let tables = Arc::new(Tables {
         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
         casms: db_writer.create_table("casms")?,
@@ -152,13 +152,9 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         starknet_version: db_writer.create_table("starknet_version")?,
         storage_version: db_writer.create_table("storage_version")?,
     });
-    let reader = StorageReader {
-        db_reader,
-        tables: tables.clone(),
-        thin_state_diff_reader: thin_state_diff_reader.clone(),
-    };
-    let writer =
-        StorageWriter { db_writer, tables, thin_state_diff_reader, thin_state_diff_writer };
+    let reader =
+        StorageReader { db_reader, tables: tables.clone(), file_readers: file_readers.clone() };
+    let writer = StorageWriter { db_writer, tables, file_readers, file_writers };
 
     let writer = set_initial_version_if_needed(writer)?;
     verify_storage_version(reader.clone())?;
@@ -198,7 +194,7 @@ fn verify_storage_version(reader: StorageReader) -> StorageResult<()> {
 pub struct StorageReader {
     db_reader: DbReader,
     tables: Arc<Tables>,
-    thin_state_diff_reader: FileReader,
+    file_readers: FileReaders,
 }
 
 impl StorageReader {
@@ -208,7 +204,7 @@ impl StorageReader {
         Ok(StorageTxn {
             txn: self.db_reader.begin_ro_txn()?,
             tables: self.tables.clone(),
-            thin_state_diff_reader: self.thin_state_diff_reader.clone(),
+            file_readers: self.file_readers.clone(),
         })
     }
 
@@ -228,26 +224,40 @@ impl StorageReader {
 pub struct StorageWriter {
     db_writer: DbWriter,
     tables: Arc<Tables>,
-    thin_state_diff_writer: FileWriter<ThinStateDiff>,
-    thin_state_diff_reader: FileReader,
+    file_writers: FileWriters,
+    file_readers: FileReaders,
 }
 
 impl StorageWriter {
     /// Gets thin state diff offset from the storage.
-    pub fn get_thin_state_diff_offset(&mut self) -> usize {
+    pub fn get_file_offset(&mut self, offset_kind: OffsetKind) -> usize {
         let tx = self.db_writer.begin_rw_txn().unwrap();
         let offset_table = tx.open_table(&self.tables.offsets).unwrap();
-        offset_table.get(&tx, &OffsetKind::ThinStateDiff).unwrap().unwrap_or_default()
+        offset_table.get(&tx, &offset_kind).unwrap().unwrap_or_default()
     }
 
-    /// Inserts thin state diff at the given offset.
+    /// Flushes a mmap to disk.
+    pub fn flush_file(&mut self, offset_kind: OffsetKind) {
+        match offset_kind {
+            OffsetKind::ThinStateDiff => self.file_writers.thin_state_diff_writer.flush(),
+            OffsetKind::DeprecatedDeclaredClass => {
+                self.file_writers.deprecated_class_writer.flush()
+            }
+        }
+    }
+
+    /// Inserts a thin state diff at the given offset.
     pub fn insert_thin_state_diff(&mut self, offset: usize, val: &ThinStateDiff) -> usize {
-        self.thin_state_diff_writer.insert(offset, val)
+        self.file_writers.thin_state_diff_writer.insert(offset, val)
     }
 
-    /// Flushes thin state diff mmap to disk.
-    pub fn flush_thin_state_diff(&mut self) {
-        self.thin_state_diff_writer.flush()
+    /// Inserts a deprecated declared class at the given offset.
+    pub fn insert_deprecated_declared_class(
+        &mut self,
+        offset: usize,
+        val: &DeprecatedContractClass,
+    ) -> usize {
+        self.file_writers.deprecated_class_writer.insert(offset, val)
     }
 }
 
@@ -258,7 +268,7 @@ impl StorageWriter {
         Ok(StorageTxn {
             txn: self.db_writer.begin_rw_txn()?,
             tables: self.tables.clone(),
-            thin_state_diff_reader: self.thin_state_diff_reader.clone(),
+            file_readers: self.file_readers.clone(),
         })
     }
 }
@@ -268,7 +278,7 @@ impl StorageWriter {
 pub struct StorageTxn<'env, Mode: TransactionKind> {
     txn: DbTransaction<'env, Mode>,
     tables: Arc<Tables>,
-    thin_state_diff_reader: FileReader,
+    file_readers: FileReaders,
 }
 
 impl<'env> StorageTxn<'env, RW> {
@@ -290,7 +300,7 @@ struct_field_names! {
         contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
         declared_classes: TableIdentifier<ClassHash, ContractClass>,
         declared_classes_block: TableIdentifier<ClassHash, BlockNumber>,
-        deprecated_declared_classes: TableIdentifier<ClassHash, IndexedDeprecatedContractClass>,
+        deprecated_declared_classes: TableIdentifier<ClassHash, (BlockNumber, LocationInFile)>,
         deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), ClassHash>,
         events: TableIdentifier<(ContractAddress, EventIndex), EventContent>,
         headers: TableIdentifier<BlockNumber, BlockHeader>,
@@ -445,15 +455,29 @@ pub(crate) enum MarkerKind {
 
 pub(crate) type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
 
-fn open_storage_files(db_config: &DbConfig) -> (FileWriter<ThinStateDiff>, FileReader) {
-    let (writer, reader) = open_file(db_config.path().join("thin_state_diff"));
-    (writer, reader)
+struct FileWriters {
+    thin_state_diff_writer: FileWriter<ThinStateDiff>,
+    deprecated_class_writer: FileWriter<DeprecatedContractClass>,
+}
+
+#[derive(Clone, Debug)]
+struct FileReaders {
+    thin_state_diff_reader: FileReader,
+    deprecated_class_reader: FileReader,
+}
+
+fn open_storage_files(db_config: &DbConfig) -> (FileWriters, FileReaders) {
+    let (thin_state_diff_writer, thin_state_diff_reader) =
+        open_file(db_config.path().join("thin_state_diff"));
+    let (deprecated_class_writer, deprecated_class_reader) =
+        open_file(db_config.path().join("deprecated_class"));
+    (
+        FileWriters { thin_state_diff_writer, deprecated_class_writer },
+        FileReaders { thin_state_diff_reader, deprecated_class_reader },
+    )
     // StorageFiles {
     //     class: Arc::new(Mutex::new(mmap_objects_db::open_mmaped_file(
     //         db_config.path().join("class"),
-    //     ))),
-    //     deprecated_class: Arc::new(Mutex::new(mmap_objects_db::open_mmaped_file(
-    //         db_config.path().join("deprecated_class"),
     //     ))),
     //     thin_state_diff: Arc::new(Mutex::new(mmap_objects_db::open_mmaped_file(
     //         db_config.path().join("thin_state_diff"),
@@ -464,7 +488,11 @@ fn open_storage_files(db_config: &DbConfig) -> (FileWriter<ThinStateDiff>, FileR
     // }
 }
 
+/// Represents a kind of mmap file.
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
-pub(crate) enum OffsetKind {
+pub enum OffsetKind {
+    /// A thin state diff file.
     ThinStateDiff,
+    /// A deprecated declared class file.
+    DeprecatedDeclaredClass,
 }

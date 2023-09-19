@@ -95,7 +95,7 @@ impl<'env> CasmStorageWriter for StorageTxn<'env, RW> {
             &markers_table,
             &state_diff_table,
             class_hash,
-            self.thin_state_diff_reader.clone(),
+            self.file_readers.thin_state_diff_reader.clone(),
         )?;
         Ok(self)
     }
