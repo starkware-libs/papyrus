@@ -77,8 +77,8 @@ use std::sync::Arc;
 
 use body::events::EventIndex;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+use db::db_stats::{DbTableStats, DbWholeStats};
 use db::serialization::StorageSerde;
-use db::DbTableStats;
 use ommer::{OmmerEventKey, OmmerTransactionKey};
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
@@ -209,6 +209,8 @@ pub struct StorageReader {
     scope: StorageScope,
 }
 
+// use crate::db::db_stats::DbTableStats;
+
 impl StorageReader {
     /// Takes a snapshot of the current state of the storage and returns a [`StorageTxn`] for
     /// reading data from the storage.
@@ -221,12 +223,12 @@ impl StorageReader {
     }
 
     /// Returns metadata about the tables in the storage.
-    pub fn db_tables_stats(&self) -> StorageResult<DbTablesStats> {
-        let mut stats = HashMap::new();
+    pub fn db_tables_stats(&self) -> StorageResult<DbStats> {
+        let mut tables_stats = HashMap::new();
         for name in Tables::field_names() {
-            stats.insert(name.to_string(), self.db_reader.get_table_stats(name)?);
+            tables_stats.insert(name.to_string(), self.db_reader.get_table_stats(name)?);
         }
-        Ok(DbTablesStats { stats })
+        Ok(DbStats { db_stats: self.db_reader.get_db_stats()?, tables_stats })
     }
 }
 
@@ -449,9 +451,11 @@ impl SerializeConfig for StorageConfig {
 
 /// A struct for the statistics of the tables in the database.
 #[derive(Serialize, Deserialize, Debug)]
-pub struct DbTablesStats {
+pub struct DbStats {
+    /// Stats about the whole database.
+    pub db_stats: DbWholeStats,
     /// A mapping from a table name in the database to its statistics.
-    pub stats: HashMap<String, DbTableStats>,
+    pub tables_stats: HashMap<String, DbTableStats>,
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
