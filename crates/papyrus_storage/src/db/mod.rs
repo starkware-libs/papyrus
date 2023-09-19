@@ -24,7 +24,7 @@ use std::path::PathBuf;
 use std::result;
 use std::sync::Arc;
 
-use libmdbx::{Cursor, Geometry, TableFlags, WriteFlags, WriteMap};
+use libmdbx::{Cursor, Geometry, PageSize, TableFlags, WriteFlags, WriteMap};
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::validators::validate_ascii;
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
@@ -157,12 +157,28 @@ pub(crate) fn open_env(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
             .set_geometry(Geometry {
                 size: Some(config.min_size..config.max_size),
                 growth_step: Some(config.growth_step),
+                page_size: Some(get_page_size(page_size::get())),
                 ..Default::default()
             })
             .set_max_tables(MAX_DBS)
             .open(&config.path())?,
     );
     Ok((DbReader { env: env.clone() }, DbWriter { env }))
+}
+
+// Size in bytes.
+const MDBX_MIN_PAGESIZE: usize = 256;
+const MDBX_MAX_PAGESIZE: usize = 65536; // 64KB
+
+fn get_page_size(os_page_size: usize) -> PageSize {
+    let mut page_size = os_page_size.clamp(MDBX_MIN_PAGESIZE, MDBX_MAX_PAGESIZE);
+
+    // Page size must be power of two.
+    if !page_size.is_power_of_two() {
+        page_size = page_size.next_power_of_two() / 2;
+    }
+
+    PageSize::Set(page_size)
 }
 
 #[derive(Clone)]
