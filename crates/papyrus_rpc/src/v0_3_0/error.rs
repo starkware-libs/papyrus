@@ -22,6 +22,8 @@ pub enum JsonRpcError {
     InvalidContinuationToken = 33,
     #[error("Too many keys provided in a filter")]
     TooManyKeysInFilter = 34,
+    #[error("Server is not synchronized")]
+    ServerNotSynced = 35,
     #[error("Contract error")]
     ContractError = 40,
 }
