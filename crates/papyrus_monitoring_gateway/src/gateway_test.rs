@@ -14,8 +14,8 @@ use tower::ServiceExt;
 
 use crate::{app, MONITORING_PREFIX};
 
-const TEST_CONFIG_REPRESENTATION: &str = "full_general_config_representation";
-const PUBLIC_TEST_CONFIG_REPRESENTATION: &str = "public_general_config_representation";
+const TEST_CONFIG_PRESENTATION: &str = "full_general_config_presentation";
+const PUBLIC_TEST_CONFIG_PRESENTATION: &str = "public_general_config_presentation";
 const SECRET: &str = "abcd";
 const TEST_VERSION: &str = "1.2.3-dev";
 
@@ -25,8 +25,8 @@ fn setup_app() -> Router {
     app(
         storage_reader,
         TEST_VERSION,
-        serde_json::to_value(TEST_CONFIG_REPRESENTATION).unwrap(),
-        serde_json::to_value(PUBLIC_TEST_CONFIG_REPRESENTATION).unwrap(),
+        serde_json::to_value(TEST_CONFIG_PRESENTATION).unwrap(),
+        serde_json::to_value(PUBLIC_TEST_CONFIG_PRESENTATION).unwrap(),
         SECRET.to_string(),
         None,
     )
@@ -84,13 +84,12 @@ async fn validate_response(request: &str, expected_response: &str) {
 
 #[tokio::test]
 async fn public_node_config() {
-    validate_response("nodeConfig", PUBLIC_TEST_CONFIG_REPRESENTATION).await;
+    validate_response("nodeConfig", PUBLIC_TEST_CONFIG_PRESENTATION).await;
 }
 
 #[tokio::test]
 async fn node_config_valid_secret() {
-    validate_response(format!("nodeConfigFull/{SECRET}").as_str(), TEST_CONFIG_REPRESENTATION)
-        .await;
+    validate_response(format!("nodeConfigFull/{SECRET}").as_str(), TEST_CONFIG_PRESENTATION).await;
 }
 
 #[tokio::test]
