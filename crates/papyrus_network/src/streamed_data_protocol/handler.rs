@@ -1,15 +1,16 @@
-// #[cfg(test)]
-// #[path = "handler_test.rs"]
-// mod handler_test;
+#[cfg(test)]
+#[path = "handler_test.rs"]
+mod handler_test;
 mod session;
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::io;
-use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
+use futures::FutureExt;
 use libp2p::swarm::handler::{
     ConnectionEvent,
     DialUpgradeError,
@@ -17,7 +18,9 @@ use libp2p::swarm::handler::{
     FullyNegotiatedOutbound,
 };
 use libp2p::swarm::{ConnectionHandler, ConnectionHandlerEvent, KeepAlive, SubstreamProtocol};
+use tracing::warn;
 
+use self::session::InboundSession;
 use super::protocol::{InboundProtocol, OutboundProtocol, PROTOCOL_NAME};
 use super::{DataBound, InboundSessionId, OutboundSessionId, QueryBound};
 
@@ -68,19 +71,26 @@ type HandlerEvent<H> = ConnectionHandlerEvent<
     <H as ConnectionHandler>::Error,
 >;
 
-// TODO(shahak) remove allow(dead_code).
-#[allow(dead_code)]
 pub(crate) struct Handler<Query: QueryBound, Data: DataBound> {
     substream_timeout: Duration,
+    next_inbound_session_id: Arc<AtomicUsize>,
+    id_to_inbound_session: HashMap<InboundSessionId, InboundSession<Data>>,
     pending_events: VecDeque<HandlerEvent<Self>>,
+    finished_inbound_sessions: HashSet<InboundSessionId>,
 }
 
 impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
     // TODO(shahak) If we'll add more parameters, consider creating a HandlerConfig struct.
     // TODO(shahak) remove allow(dead_code).
     #[allow(dead_code)]
-    pub fn new(_substream_timeout: Duration, _next_inbound_session_id: Arc<AtomicUsize>) -> Self {
-        unimplemented!();
+    pub fn new(substream_timeout: Duration, next_inbound_session_id: Arc<AtomicUsize>) -> Self {
+        Self {
+            substream_timeout,
+            next_inbound_session_id,
+            id_to_inbound_session: Default::default(),
+            pending_events: Default::default(),
+            finished_inbound_sessions: Default::default(),
+        }
     }
 
     // fn convert_upgrade_error(
@@ -116,7 +126,11 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
     type OutboundOpenInfo = OutboundSessionId;
 
     fn listen_protocol(&self) -> SubstreamProtocol<Self::InboundProtocol, Self::InboundOpenInfo> {
-        unimplemented!();
+        SubstreamProtocol::new(
+            InboundProtocol::new(),
+            InboundSessionId { value: self.next_inbound_session_id.fetch_add(1, Ordering::AcqRel) },
+        )
+        .with_timeout(self.substream_timeout)
     }
 
     fn connection_keep_alive(&self) -> KeepAlive {
@@ -126,7 +140,7 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
 
     fn poll(
         &mut self,
-        _cx: &mut Context<'_>,
+        cx: &mut Context<'_>,
     ) -> Poll<
         ConnectionHandlerEvent<
             Self::OutboundProtocol,
@@ -135,7 +149,26 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
             Self::Error,
         >,
     > {
-        unimplemented!();
+        // Handle inbound sessions.
+        self.id_to_inbound_session.retain(|inbound_session_id, inbound_session| {
+            if let Poll::Ready(io_error) = inbound_session.poll_unpin(cx) {
+                self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
+                    ToBehaviourEvent::SessionFailed {
+                        session_id: SessionId::InboundSessionId(*inbound_session_id),
+                        error: SessionError::IOError(io_error),
+                    },
+                ));
+                return false;
+            }
+            return !(self.finished_inbound_sessions.contains(inbound_session_id)
+                && inbound_session.is_waiting());
+        });
+
+        // Handling pending_events at the end of the function to avoid starvation.
+        if let Some(event) = self.pending_events.pop_front() {
+            return Poll::Ready(event);
+        }
+        Poll::Pending
     }
 
     fn on_behaviour_event(&mut self, event: Self::FromBehaviour) {
@@ -146,16 +179,29 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
             } => {
                 unimplemented!();
             }
-            RequestFromBehaviourEvent::SendData {
-                data: _data,
-                inbound_session_id: _inbound_session_id,
-            } => {
-                unimplemented!();
+            RequestFromBehaviourEvent::SendData { data, inbound_session_id } => {
+                if let Some(inbound_session) =
+                    self.id_to_inbound_session.get_mut(&inbound_session_id)
+                {
+                    if self.finished_inbound_sessions.contains(&inbound_session_id) {
+                        warn!(
+                            "Got a request to send data on a finished inbound session with id \
+                             {inbound_session_id}. Ignoring request."
+                        );
+                    } else {
+                        inbound_session.add_message_to_queue(data);
+                    }
+                } else {
+                    warn!(
+                        "Got a request to send data on a non-existing or finished inbound session \
+                         with id {inbound_session_id}. Ignoring request."
+                    );
+                }
             }
             RequestFromBehaviourEvent::FinishSession {
-                session_id: SessionId::InboundSessionId(_inbound_session_id),
+                session_id: SessionId::InboundSessionId(inbound_session_id),
             } => {
-                unimplemented!();
+                self.finished_inbound_sessions.insert(inbound_session_id);
             }
             RequestFromBehaviourEvent::FinishSession {
                 session_id: SessionId::OutboundSessionId(_outbound_session_id),
@@ -183,10 +229,13 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                 unimplemented!();
             }
             ConnectionEvent::FullyNegotiatedInbound(FullyNegotiatedInbound {
-                protocol: (_query, _stream),
-                info: _inbound_session_id,
+                protocol: (query, stream),
+                info: inbound_session_id,
             }) => {
-                unimplemented!();
+                self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
+                    ToBehaviourEvent::NewInboundSession { query, inbound_session_id },
+                ));
+                self.id_to_inbound_session.insert(inbound_session_id, InboundSession::new(stream));
             }
             ConnectionEvent::DialUpgradeError(DialUpgradeError {
                 info: _outbound_session_id,
