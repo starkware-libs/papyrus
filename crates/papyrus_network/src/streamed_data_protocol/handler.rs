@@ -1,6 +1,7 @@
 // #[cfg(test)]
 // #[path = "handler_test.rs"]
 // mod handler_test;
+mod session;
 
 use std::collections::VecDeque;
 use std::io;
