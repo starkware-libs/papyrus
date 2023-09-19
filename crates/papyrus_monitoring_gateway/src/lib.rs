@@ -17,11 +17,13 @@ use axum::routing::get;
 use axum::{Json, Router};
 use metrics_exporter_prometheus::{BuildError, PrometheusBuilder, PrometheusHandle};
 use metrics_process::Collector;
-use papyrus_config::dumping::{ser_param, ser_required_param, SerializeConfig};
+use papyrus_config::dumping::{ser_generated_param, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializationType, SerializedParam};
 use papyrus_storage::{DbTablesStats, StorageError, StorageReader};
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
-use tracing::{debug, instrument};
+use tracing::{debug, info, instrument};
 use validator::Validate;
 
 const MONITORING_PREFIX: &str = "monitoring";
@@ -31,7 +33,14 @@ pub struct MonitoringGatewayConfig {
     pub server_address: String,
     pub collect_metrics: bool,
     #[validate(length(min = 1))]
+    #[serde(default = "random_secret")]
     pub config_representation_secret: String,
+}
+
+fn random_secret() -> String {
+    let secret = thread_rng().sample_iter(&Alphanumeric).take(10).map(char::from).collect();
+    info!("The randomly generated config representation secret is: {}", secret);
+    secret
 }
 
 impl Default for MonitoringGatewayConfig {
@@ -39,6 +48,7 @@ impl Default for MonitoringGatewayConfig {
         MonitoringGatewayConfig {
             server_address: String::from("0.0.0.0:8081"),
             collect_metrics: false,
+            // A constant value for testing purposes.
             config_representation_secret: String::from("qwerty"),
         }
     }
@@ -59,10 +69,11 @@ impl SerializeConfig for MonitoringGatewayConfig {
                 "If true, collect and return metrics in the monitoring gateway.",
                 ParamPrivacyInput::Public,
             ),
-            ser_required_param(
+            ser_generated_param(
                 "config_representation_secret",
                 SerializationType::String,
-                "A secret for representing the full general config.",
+                "A secret for representing the full general config. In case no value is provided, \
+                 a random secret will be generated.",
                 ParamPrivacyInput::Private,
             ),
         ])

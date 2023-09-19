@@ -94,6 +94,16 @@ pub fn append_sub_config_name(
     )
 }
 
+// Serializes a parameter of a config.
+fn common_ser_param(
+    name: &str,
+    content: SerializedContent,
+    description: &str,
+    privacy: ParamPrivacy,
+) -> (String, SerializedParam) {
+    (name.to_owned(), SerializedParam { description: description.to_owned(), content, privacy })
+}
+
 /// Serializes a single param of a config.
 /// The returned pair is designed to be an input to a dumped config map.
 pub fn ser_param<T: Serialize>(
@@ -102,13 +112,11 @@ pub fn ser_param<T: Serialize>(
     description: &str,
     privacy: ParamPrivacyInput,
 ) -> (String, SerializedParam) {
-    (
-        name.to_owned(),
-        SerializedParam {
-            description: description.to_owned(),
-            content: SerializedContent::DefaultValue(json!(value)),
-            privacy: privacy.into(),
-        },
+    common_ser_param(
+        name,
+        SerializedContent::DefaultValue(json!(value)),
+        description,
+        privacy.into(),
     )
 }
 
@@ -120,13 +128,28 @@ pub fn ser_required_param(
     description: &str,
     privacy: ParamPrivacyInput,
 ) -> (String, SerializedParam) {
-    (
-        name.to_owned(),
-        SerializedParam {
-            description: description.to_owned(),
-            content: SerializedContent::RequiredType(serialization_type),
-            privacy: privacy.into(),
-        },
+    common_ser_param(
+        name,
+        SerializedContent::ParamType(serialization_type),
+        format!("A required param! {}", description).as_str(),
+        privacy.into(),
+    )
+}
+
+/// Serializes expected type for a single param of a config that the system may generate. The
+/// generation should be defined as serde default field attribute.
+/// The returned pair is designed to be an input to a dumped config map.
+pub fn ser_generated_param(
+    name: &str,
+    serialization_type: SerializationType,
+    description: &str,
+    privacy: ParamPrivacyInput,
+) -> (String, SerializedParam) {
+    common_ser_param(
+        name,
+        SerializedContent::ParamType(serialization_type),
+        format!("{} If no value is provided, the system will generate one.", description).as_str(),
+        privacy.into(),
     )
 }
 
@@ -173,13 +196,11 @@ pub fn ser_optional_param<T: Serialize>(
 
 /// Serializes is_none flag for a param.
 pub fn ser_is_param_none(name: &str, is_none: bool) -> (String, SerializedParam) {
-    (
-        format!("{name}.{IS_NONE_MARK}"),
-        SerializedParam {
-            description: "Flag for an optional field".to_owned(),
-            content: SerializedContent::DefaultValue(json!(is_none)),
-            privacy: ParamPrivacy::TemporaryValue,
-        },
+    common_ser_param(
+        format!("{name}.{IS_NONE_MARK}").as_str(),
+        SerializedContent::DefaultValue(json!(is_none)),
+        "Flag for an optional field",
+        ParamPrivacy::TemporaryValue,
     )
 }
 
@@ -189,13 +210,11 @@ pub fn ser_pointer_target_param<T: Serialize>(
     value: &T,
     description: &str,
 ) -> (String, SerializedParam) {
-    (
-        name.to_owned(),
-        SerializedParam {
-            description: description.to_owned(),
-            content: SerializedContent::DefaultValue(json!(value)),
-            privacy: ParamPrivacy::TemporaryValue,
-        },
+    common_ser_param(
+        name,
+        SerializedContent::DefaultValue(json!(value)),
+        description,
+        ParamPrivacy::TemporaryValue,
     )
 }
 

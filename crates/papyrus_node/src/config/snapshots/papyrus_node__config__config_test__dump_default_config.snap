@@ -4,8 +4,8 @@ expression: dumped_default_config
 ---
 {
   "base_layer.node_url": {
-    "description": "Ethereum node URL. A schema to match to Infura node: https://mainnet.infura.io/v3/<your_api_key>, but any other node can be used.",
-    "required_type": "String",
+    "description": "A required param! Ethereum node URL. A schema to match to Infura node: https://mainnet.infura.io/v3/<your_api_key>, but any other node can be used.",
+    "param_type": "String",
     "privacy": "Private"
   },
   "base_layer.starknet_contract_address": {
@@ -78,8 +78,8 @@ expression: dumped_default_config
     "privacy": "Public"
   },
   "monitoring_gateway.config_representation_secret": {
-    "description": "A secret for representing the full general config.",
-    "required_type": "String",
+    "description": "A secret for representing the full general config. In case no value is provided, a random secret will be generated. If no value is provided, the system will generate one.",
+    "param_type": "String",
     "privacy": "Private"
   },
   "monitoring_gateway.server_address": {

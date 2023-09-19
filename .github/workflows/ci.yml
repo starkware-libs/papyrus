@@ -51,7 +51,7 @@ jobs:
 
       - name: Run executable
         run: >
-          target/release/papyrus_node --base_layer.node_url ${{ secrets.CI_BASE_LAYER_NODE_URL }} --monitoring_gateway.config_representation_secret qwerty
+          target/release/papyrus_node --base_layer.node_url ${{ secrets.CI_BASE_LAYER_NODE_URL }}
           & sleep 30 ; kill $!
 
   test:
