@@ -55,8 +55,12 @@ async fn db_stats() {
 
     let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
     let body: Value = serde_json::from_slice(&body).unwrap();
+    assert!(!body["db_stats"].is_null());
     for &name in table_names() {
-        assert!(body["stats"].get(name).is_some(), "{name} is not found in returned DB statistics.")
+        assert!(
+            body["tables_stats"].get(name).is_some(),
+            "{name} is not found in returned DB statistics."
+        )
     }
 }
 

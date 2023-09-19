@@ -13,6 +13,9 @@
 
 #[cfg(test)]
 mod db_test;
+
+/// Statistics and information about the database.
+pub mod db_stats;
 // TODO(yair): Make the serialization module pub(crate).
 #[doc(hidden)]
 pub mod serialization;
@@ -119,20 +122,6 @@ impl DbConfig {
     }
 }
 
-#[allow(missing_docs)]
-/// A single table statistics.
-#[derive(Serialize, Deserialize, Debug)]
-pub struct DbTableStats {
-    /// The name of the table.
-    pub database: String,
-    pub branch_pages: usize,
-    pub depth: u32,
-    pub entries: usize,
-    pub leaf_pages: usize,
-    pub overflow_pages: usize,
-    pub page_size: u32,
-}
-
 /// An error that can occur when interacting with the database.
 #[derive(thiserror::Error, Debug)]
 pub enum DbError {
@@ -177,22 +166,6 @@ pub(crate) struct DbWriter {
 impl DbReader {
     pub(crate) fn begin_ro_txn(&self) -> DbResult<DbReadTransaction<'_>> {
         Ok(DbReadTransaction { txn: self.env.begin_ro_txn()? })
-    }
-
-    /// Returns statistics about a specific table in the database.
-    pub(crate) fn get_table_stats(&self, name: &str) -> DbResult<DbTableStats> {
-        let db_txn = self.begin_ro_txn()?;
-        let database = db_txn.txn.open_table(Some(name))?;
-        let stat = db_txn.txn.table_stat(&database)?;
-        Ok(DbTableStats {
-            database: format!("{database:?}"),
-            branch_pages: stat.branch_pages(),
-            depth: stat.depth(),
-            entries: stat.entries(),
-            leaf_pages: stat.leaf_pages(),
-            overflow_pages: stat.overflow_pages(),
-            page_size: stat.page_size(),
-        })
     }
 }
 
