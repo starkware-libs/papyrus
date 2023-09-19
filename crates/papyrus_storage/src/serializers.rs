@@ -137,6 +137,7 @@ auto_storage_serde! {
         ThinStateDiff = 0,
         DeprecatedDeclaredClass = 1,
         ContractClass = 2,
+        Casm = 3,
     }
     pub struct AccountDeploymentData(pub Vec<StarkFelt>);
     pub struct BlockHash(pub StarkHash);

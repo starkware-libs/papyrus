@@ -77,7 +77,7 @@ type DeclaredClassesTable<'env> = TableHandle<'env, ClassHash, LocationInFile>;
 type DeclaredClassesBlockTable<'env> = TableHandle<'env, ClassHash, BlockNumber>;
 type DeprecatedDeclaredClassesTable<'env> =
     TableHandle<'env, ClassHash, (BlockNumber, LocationInFile)>;
-type CompiledClassesTable<'env> = TableHandle<'env, ClassHash, CasmContractClass>;
+// type CompiledClassesTable<'env> = TableHandle<'env, ClassHash, CasmContractClass>;
 type DeployedContractsTable<'env> = TableHandle<'env, (ContractAddress, BlockNumber), ClassHash>;
 type ContractStorageTable<'env> =
     TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), StarkFelt>;
@@ -517,7 +517,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         let _deprecated_declared_classes_table =
             self.txn.open_table(&self.tables.deprecated_declared_classes)?;
         // TODO(yair): Consider reverting the compiled classes in their own module.
-        let compiled_classes_table = self.txn.open_table(&self.tables.casms)?;
+        let _compiled_classes_table = self.txn.open_table(&self.tables.casms)?;
         let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
         let nonces_table = self.txn.open_table(&self.tables.nonces)?;
         let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
@@ -558,11 +558,12 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         //     &deprecated_declared_classes_table,
         // )?;
         let deleted_deprecated_classes = IndexMap::new();
-        let deleted_compiled_classes = delete_compiled_classes(
-            &self.txn,
-            thin_state_diff.declared_classes.keys(),
-            &compiled_classes_table,
-        )?;
+        // let deleted_compiled_classes = delete_compiled_classes(
+        //     &self.txn,
+        //     thin_state_diff.declared_classes.keys(),
+        //     &compiled_classes_table,
+        // )?;
+        let deleted_compiled_classes = IndexMap::new();
         delete_deployed_contracts(
             &self.txn,
             block_number,
@@ -824,24 +825,18 @@ fn write_storage_diffs<'env>(
 //     Ok(deleted_data)
 // }
 
-fn delete_compiled_classes<'a, 'env>(
-    txn: &'env DbTransaction<'env, RW>,
-    class_hashes: impl Iterator<Item = &'a ClassHash>,
-    compiled_classes_table: &'env CompiledClassesTable<'env>,
-) -> StorageResult<IndexMap<ClassHash, CasmContractClass>> {
-    let mut deleted_data = IndexMap::new();
-    for class_hash in class_hashes {
-        let Some(compiled_class) = compiled_classes_table.get(txn, class_hash)?
-        // No compiled class means the rest of the compiled classes weren't downloaded yet.
-        else {
-            break;
-        };
-        compiled_classes_table.delete(txn, class_hash)?;
-        deleted_data.insert(*class_hash, compiled_class);
-    }
+// fn delete_compiled_classes<'a, 'env>(
+//     txn: &'env DbTransaction<'env, RW>,
+//     class_hashes: impl Iterator<Item = &'a ClassHash>,
+//     compiled_classes_table: &'env CompiledClassesTable<'env>,
+// ) -> StorageResult<IndexMap<ClassHash, CasmContractClass>> { let mut deleted_data =
+//   IndexMap::new(); for class_hash in class_hashes { let Some(compiled_class) =
+//   compiled_classes_table.get(txn, class_hash)? // No compiled class means the rest of the
+//   compiled classes weren't downloaded yet. else { break; }; compiled_classes_table.delete(txn,
+//   class_hash)?; deleted_data.insert(*class_hash, compiled_class); }
 
-    Ok(deleted_data)
-}
+//     Ok(deleted_data)
+// }
 
 fn delete_deployed_contracts<'env>(
     txn: &'env DbTransaction<'env, RW>,

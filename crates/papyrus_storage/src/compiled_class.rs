@@ -62,13 +62,14 @@ where
 {
     /// Stores the Cairo assembly of a class, mapped to its class hash.
     // To enforce that no commit happen after a failure, we consume and return Self on success.
-    fn append_casm(self, class_hash: &ClassHash, casm: &CasmContractClass) -> StorageResult<Self>;
+    fn append_casm(self, class_hash: &ClassHash, location: &LocationInFile) -> StorageResult<Self>;
 }
 
 impl<'env, Mode: TransactionKind> CasmStorageReader for StorageTxn<'env, Mode> {
     fn get_casm(&self, class_hash: &ClassHash) -> StorageResult<Option<CasmContractClass>> {
         let casm_table = self.txn.open_table(&self.tables.casms)?;
-        Ok(casm_table.get(&self.txn, class_hash)?)
+        let location = casm_table.get(&self.txn, class_hash)?;
+        Ok(location.map(|location| self.file_readers.casm_reader.get(location)))
     }
 
     fn get_compiled_class_marker(&self) -> StorageResult<BlockNumber> {
@@ -78,11 +79,12 @@ impl<'env, Mode: TransactionKind> CasmStorageReader for StorageTxn<'env, Mode> {
 }
 
 impl<'env> CasmStorageWriter for StorageTxn<'env, RW> {
-    fn append_casm(self, class_hash: &ClassHash, casm: &CasmContractClass) -> StorageResult<Self> {
+    fn append_casm(self, class_hash: &ClassHash, location: &LocationInFile) -> StorageResult<Self> {
         let casm_table = self.txn.open_table(&self.tables.casms)?;
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let state_diff_table = self.txn.open_table(&self.tables.state_diffs)?;
-        casm_table.insert(&self.txn, class_hash, casm).map_err(|err| {
+        let offset_table = self.txn.open_table(&self.tables.offsets)?;
+        casm_table.insert(&self.txn, class_hash, location).map_err(|err| {
             if matches!(err, DbError::Inner(libmdbx::Error::KeyExist)) {
                 StorageError::CompiledClassReWrite { class_hash: *class_hash }
             } else {
@@ -97,6 +99,9 @@ impl<'env> CasmStorageWriter for StorageTxn<'env, RW> {
             class_hash,
             self.file_readers.thin_state_diff_reader.clone(),
         )?;
+
+        offset_table.upsert(&self.txn, &crate::OffsetKind::Casm, &location.next_offset())?;
+
         Ok(self)
     }
 }

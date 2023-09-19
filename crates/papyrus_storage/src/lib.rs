@@ -244,6 +244,7 @@ impl StorageWriter {
                 self.file_writers.deprecated_class_writer.flush()
             }
             OffsetKind::ContractClass => self.file_writers.contract_class_writer.flush(),
+            OffsetKind::Casm => self.file_writers.casm_writer.flush(),
         }
     }
 
@@ -264,6 +265,11 @@ impl StorageWriter {
     /// Inserts a contract class at the given offset.
     pub fn insert_contract_class(&mut self, offset: usize, val: &ContractClass) -> usize {
         self.file_writers.contract_class_writer.insert(offset, val)
+    }
+
+    /// Inserts a compiled sierra at the given offset.
+    pub fn insert_casm(&mut self, offset: usize, val: &CasmContractClass) -> usize {
+        self.file_writers.casm_writer.insert(offset, val)
     }
 }
 
@@ -302,7 +308,7 @@ pub fn table_names() -> &'static [&'static str] {
 struct_field_names! {
     struct Tables {
         block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
-        casms: TableIdentifier<ClassHash, CasmContractClass>,
+        casms: TableIdentifier<ClassHash, LocationInFile>,
         contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
         declared_classes: TableIdentifier<ClassHash, LocationInFile>,
         declared_classes_block: TableIdentifier<ClassHash, BlockNumber>,
@@ -465,6 +471,7 @@ struct FileWriters {
     thin_state_diff_writer: FileWriter<ThinStateDiff>,
     deprecated_class_writer: FileWriter<DeprecatedContractClass>,
     contract_class_writer: FileWriter<ContractClass>,
+    casm_writer: FileWriter<CasmContractClass>,
 }
 
 #[derive(Clone, Debug)]
@@ -472,6 +479,7 @@ struct FileReaders {
     thin_state_diff_reader: FileReader,
     deprecated_class_reader: FileReader,
     contract_class_reader: FileReader,
+    casm_reader: FileReader,
 }
 
 fn open_storage_files(db_config: &DbConfig) -> (FileWriters, FileReaders) {
@@ -481,9 +489,20 @@ fn open_storage_files(db_config: &DbConfig) -> (FileWriters, FileReaders) {
         open_file(db_config.path().join("deprecated_class"));
     let (contract_class_writer, contract_class_reader) =
         open_file(db_config.path().join("contract_class"));
+    let (casm_writer, casm_reader) = open_file(db_config.path().join("casm"));
     (
-        FileWriters { thin_state_diff_writer, deprecated_class_writer, contract_class_writer },
-        FileReaders { thin_state_diff_reader, deprecated_class_reader, contract_class_reader },
+        FileWriters {
+            thin_state_diff_writer,
+            deprecated_class_writer,
+            contract_class_writer,
+            casm_writer,
+        },
+        FileReaders {
+            thin_state_diff_reader,
+            deprecated_class_reader,
+            contract_class_reader,
+            casm_reader,
+        },
     )
 }
 
@@ -496,4 +515,6 @@ pub enum OffsetKind {
     DeprecatedDeclaredClass,
     /// A contract class file.
     ContractClass,
+    /// A compiled sierra file.
+    Casm,
 }

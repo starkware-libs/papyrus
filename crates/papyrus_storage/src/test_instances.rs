@@ -34,6 +34,7 @@ auto_impl_get_test_instance! {
         ThinStateDiff = 0,
         DeprecatedDeclaredClass = 1,
         ContractClass = 2,
+        Casm = 3,
     }
     struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
     pub struct IndexedDeprecatedContractClass {

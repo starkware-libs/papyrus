@@ -485,13 +485,17 @@ impl<
         compiled_class_hash: CompiledClassHash,
         compiled_class: CasmContractClass,
     ) -> StateSyncResult {
+        let casm_offset = self.writer.get_file_offset(OffsetKind::Casm);
+        let len = self.writer.insert_casm(casm_offset, &compiled_class);
+        self.writer.flush_file(OffsetKind::Casm);
+
         let txn = self.writer.begin_rw_txn()?;
         let is_reverted_class =
             txn.get_state_reader()?.get_class_definition_block_number(&class_hash)?.is_none();
         if is_reverted_class {
             debug!("TODO: Insert reverted compiled class to ommer table.");
         }
-        match txn.append_casm(&class_hash, &compiled_class) {
+        match txn.append_casm(&class_hash, &LocationInFile { offset: casm_offset, len }) {
             Ok(txn) => {
                 txn.commit()?;
                 let compiled_class_marker =
