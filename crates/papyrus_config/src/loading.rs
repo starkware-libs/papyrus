@@ -16,6 +16,7 @@ use itertools::any;
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
 
+use crate::validators::validate_path_exists;
 use crate::{
     command,
     ConfigError,
@@ -123,6 +124,7 @@ pub(crate) fn update_config_map_by_custom_configs(
     custom_config_paths: Values<PathBuf>,
 ) -> Result<(), ConfigError> {
     for config_path in custom_config_paths {
+        validate_path_exists(&config_path)?;
         let file = std::fs::File::open(config_path)?;
         let custom_config: Map<String, Value> = serde_json::from_reader(file)?;
         for (param_path, json_value) in custom_config {

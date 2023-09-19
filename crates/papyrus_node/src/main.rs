@@ -2,10 +2,12 @@
 mod main_test;
 
 use std::env::args;
+use std::process::exit;
 use std::sync::Arc;
 
 use papyrus_common::BlockHashAndNumber;
 use papyrus_config::presentation::get_config_presentation;
+use papyrus_config::validators::config_validate;
 use papyrus_config::ConfigError;
 use papyrus_monitoring_gateway::MonitoringServer;
 use papyrus_node::config::NodeConfig;
@@ -22,7 +24,6 @@ use tracing::metadata::LevelFilter;
 use tracing::{error, info};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
-use validator::Validate;
 
 // TODO(yair): Add to config.
 const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
@@ -125,10 +126,15 @@ async fn main() -> anyhow::Result<()> {
     if let Err(ConfigError::CommandInput(clap_err)) = config {
         clap_err.exit();
     }
-    let config = config?;
-    config.validate().expect("Invalid config");
 
     configure_tracing();
+
+    let config = config?;
+    if let Err(errors) = config_validate(&config) {
+        error!("{}", errors);
+        exit(1);
+    }
+
     info!("Booting up.");
     run_threads(config).await
 }
