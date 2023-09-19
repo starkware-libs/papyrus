@@ -2,10 +2,12 @@
 mod main_test;
 
 use std::env::args;
+use std::process::exit;
 use std::sync::Arc;
 
 use papyrus_common::BlockHashAndNumber;
 use papyrus_config::representation::get_config_representation;
+use papyrus_config::validators::ParsedValidationErrors;
 use papyrus_config::ConfigError;
 use papyrus_monitoring_gateway::MonitoringServer;
 use papyrus_node::config::NodeConfig;
@@ -27,7 +29,6 @@ const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
 
 async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     let (storage_reader, storage_writer) = open_storage(config.storage.db_config.clone())?;
-
     // Monitoring server.
     let monitoring_server = MonitoringServer::new(
         config.monitoring_gateway.clone(),
@@ -111,10 +112,15 @@ async fn main() -> anyhow::Result<()> {
     if let Err(ConfigError::CommandInput(clap_err)) = config {
         clap_err.exit();
     }
-    let config = config?;
-    config.validate().expect("Invalid config");
 
     configure_tracing();
+
+    let config = config?;
+    if let Err(errors) = config.validate() {
+        error!("{}", ParsedValidationErrors::from(errors));
+        exit(1);
+    }
+
     info!("Booting up.");
     run_threads(config).await
 }
