@@ -19,6 +19,7 @@ use serde_json::{json, Map, Value};
 use crate::{
     command,
     ConfigError,
+    Description,
     ParamPath,
     SerializationType,
     SerializedContent,
@@ -52,13 +53,20 @@ pub fn load_and_process_config<T: for<'a> Deserialize<'a>>(
 ) -> Result<T, ConfigError> {
     let deserialized_default_config: Map<String, Value> =
         serde_json::from_reader(default_config_file)?;
+    let default_config_map = convert_json_map_to_config_map(deserialized_default_config);
+    inner_load_and_process_config(default_config_map, command, args)
+}
 
-    // Store the pointers separately from the default values. The pointers will receive a value
-    // only at the end of the process.
-    let (default_config_map, pointers_map) = split_pointers_map(deserialized_default_config);
+// Updates the default config map.
+pub(crate) fn inner_load_and_process_config<T: for<'a> Deserialize<'a>>(
+    default_config_map: BTreeMap<String, SerializedParam>,
+    command: Command,
+    args: Vec<String>,
+) -> Result<T, ConfigError> {
+    let (mut values_map, metadata_map, pointers_map) = split_config_map(default_config_map)?;
     // Take param paths with corresponding descriptions, and get the matching arguments.
-    let mut arg_matches = get_command_matches(&default_config_map, command, args)?;
-    let (mut values_map, types_map) = split_values_and_types(default_config_map);
+    let mut arg_matches = get_command_matches(&metadata_map, command, args)?;
+    let types_map = get_types_map(metadata_map);
     // If the config_file arg is given, updates the values map according to this files.
     if let Some(custom_config_paths) = arg_matches.remove_many::<PathBuf>("config_file") {
         update_config_map_by_custom_configs(&mut values_map, &types_map, custom_config_paths)?;
@@ -73,47 +81,90 @@ pub fn load_and_process_config<T: for<'a> Deserialize<'a>>(
     load(&values_map)
 }
 
-// Separates a json map into config map of the raw values and pointers map.
-pub(crate) fn split_pointers_map(
+fn convert_json_map_to_config_map(
     json_map: Map<String, Value>,
-) -> (BTreeMap<ParamPath, SerializedParam>, BTreeMap<ParamPath, ParamPath>) {
-    let mut config_map: BTreeMap<String, SerializedParam> = BTreeMap::new();
-    let mut pointers_map: BTreeMap<ParamPath, ParamPath> = BTreeMap::new();
-    for (param_path, stored_param) in json_map {
-        let Ok(ser_param) = serde_json::from_value::<SerializedParam>(stored_param.clone()) else {
-            unreachable!("Invalid type in the json config map")
-        };
-        match ser_param.content {
-            SerializedContent::PointerTarget(pointer_target) => {
-                pointers_map.insert(param_path, pointer_target);
-            }
-            _ => {
-                config_map.insert(param_path, ser_param);
-            }
-        };
-    }
-    (config_map, pointers_map)
+) -> BTreeMap<ParamPath, SerializedParam> {
+    json_map
+        .into_iter()
+        .map(|(param_path, stored_param)| {
+            let Ok(ser_param) = serde_json::from_value::<SerializedParam>(stored_param.clone())
+            else {
+                unreachable!("Invalid type in the json config map")
+            };
+            (param_path, ser_param)
+        })
+        .collect()
 }
 
-// Removes the description from the config map, and splits the config map into default values and
-// types of the default and required values.
-// The types map includes required params, that do not have a value yet.
-pub(crate) fn split_values_and_types(
-    config_map: BTreeMap<ParamPath, SerializedParam>,
-) -> (BTreeMap<ParamPath, Value>, BTreeMap<ParamPath, SerializationType>) {
-    let mut values_map: BTreeMap<ParamPath, Value> = BTreeMap::new();
-    let mut types_map: BTreeMap<ParamPath, SerializationType> = BTreeMap::new();
-    for (param_path, serialized_param) in config_map {
-        let Some(serialization_type) = serialized_param.content.get_serialization_type() else {
-            continue;
-        };
-        types_map.insert(param_path.clone(), serialization_type);
+type ValuesMetadataPointersMaps = (
+    BTreeMap<ParamPath, Value>,
+    BTreeMap<ParamPath, (Description, SerializationType)>,
+    BTreeMap<ParamPath, ParamPath>,
+);
 
-        if let SerializedContent::DefaultValue(value) = serialized_param.content {
-            values_map.insert(param_path, value);
+// Splits the config map into 3 maps:
+// 1. values: holds intermediate values of the params;
+// 2. metadata: holds description and type;
+// 3. pointers: holds source and target.
+pub(crate) fn split_config_map(
+    config_map: BTreeMap<ParamPath, SerializedParam>,
+) -> Result<ValuesMetadataPointersMaps, ConfigError> {
+    let mut values_map: BTreeMap<ParamPath, Value> = BTreeMap::new();
+    let mut metadata_map: BTreeMap<ParamPath, (Description, SerializationType)> = BTreeMap::new();
+    // The description in the pointers map is temporary.
+    let mut pointers_map: BTreeMap<ParamPath, (Description, ParamPath)> = BTreeMap::new();
+
+    for (param_path, ser_param) in config_map {
+        if let SerializedContent::DefaultValue(value) = &ser_param.content {
+            values_map.insert(param_path.to_owned(), value.to_owned());
+        }
+        match ser_param.content {
+            SerializedContent::DefaultValue(_) | SerializedContent::ParamType(_) => {
+                if let Some(serialization_type) = ser_param.content.get_serialization_type() {
+                    metadata_map.insert(param_path, (ser_param.description, serialization_type));
+                }
+            }
+            SerializedContent::PointerTarget(param_target) => {
+                pointers_map.insert(param_path, (ser_param.description, param_target));
+            }
         };
     }
-    (values_map, types_map)
+
+    // Insert metadata of the pointers.
+    for (param_path, (description, target_param_path)) in pointers_map.iter() {
+        let (_, target_type) = get_pointer_target_value(&metadata_map, target_param_path)?;
+        metadata_map
+            .insert(param_path.to_string(), (description.to_string(), target_type.to_owned()));
+    }
+    // Remove the description from the pointers map.
+    let pointers_map: BTreeMap<_, _> = pointers_map
+        .into_iter()
+        .map(|(param_path, (_, target_param_path))| (param_path, target_param_path))
+        .collect();
+
+    Ok((values_map, metadata_map, pointers_map))
+}
+
+fn get_pointer_target_value<'a, T>(
+    config_map: &'a BTreeMap<ParamPath, T>,
+    target_param_path: &String,
+) -> Result<&'a T, ConfigError> {
+    match config_map.get(target_param_path) {
+        Some(target_value) => Ok(target_value),
+        None => {
+            Err(ConfigError::PointerTargetNotFound { target_param: target_param_path.to_owned() })
+        }
+    }
+}
+
+// Removes the description from the types map.
+fn get_types_map(
+    metadata_map: BTreeMap<ParamPath, (Description, SerializationType)>,
+) -> BTreeMap<ParamPath, SerializationType> {
+    metadata_map
+        .into_iter()
+        .map(|(param_path, (_, serialization_type))| (param_path, serialization_type))
+        .collect()
 }
 
 // Updates the config map by param path to value custom json files.
@@ -132,24 +183,24 @@ pub(crate) fn update_config_map_by_custom_configs(
     Ok(())
 }
 
-// Sets values in the config map to the params in the pointers map.
+// Sets values in the config map to the params in the pointers map that have not yet been assigned a
+// value.
 pub(crate) fn update_config_map_by_pointers(
     config_map: &mut BTreeMap<ParamPath, Value>,
     pointers_map: &BTreeMap<ParamPath, ParamPath>,
 ) -> Result<(), ConfigError> {
     for (param_path, target_param_path) in pointers_map {
-        let Some(target_value) = config_map.get(target_param_path) else {
-            return Err(ConfigError::PointerTargetNotFound {
-                target_param: target_param_path.to_owned(),
-            });
-        };
+        if config_map.get(param_path).is_some() {
+            continue;
+        }
+        let target_value = get_pointer_target_value(config_map, target_param_path)?;
         config_map.insert(param_path.to_owned(), target_value.clone());
     }
     Ok(())
 }
 
 // Removes the none marks, and sets null for the params marked as None instead of the inner params.
-pub(crate) fn update_optional_values(config_map: &mut BTreeMap<ParamPath, Value>) {
+fn update_optional_values(config_map: &mut BTreeMap<ParamPath, Value>) {
     let optional_params: Vec<_> = config_map
         .keys()
         .filter_map(|param_path| param_path.strip_suffix(&format!(".{IS_NONE_MARK}")))
