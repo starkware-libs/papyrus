@@ -156,7 +156,7 @@ pub enum ConfigError {
     #[error(transparent)]
     CommandMatches(#[from] MatchesError),
     #[error(transparent)]
-    WriteDumpedConfig(#[from] std::io::Error),
+    IOError(#[from] std::io::Error),
     #[error("Insert a new param is not allowed.")]
     ParamNotFound { param_path: String },
     #[error("{target_param} is not found.")]
