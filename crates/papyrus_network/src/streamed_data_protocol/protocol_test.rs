@@ -4,35 +4,9 @@ use libp2p::core::UpgradeInfo;
 use pretty_assertions::assert_eq;
 
 use super::{InboundProtocol, OutboundProtocol, PROTOCOL_NAME};
-use crate::messages::block::{BlockHeader, GetBlocks, GetBlocksResponse};
-use crate::messages::common::{BlockId, Fin};
-use crate::messages::proto::p2p::proto::get_blocks_response::Response;
+use crate::messages::block::{GetBlocks, GetBlocksResponse};
 use crate::messages::{read_message, write_message};
-use crate::test_utils::get_connected_streams;
-
-fn hardcoded_responses() -> Vec<GetBlocksResponse> {
-    vec![
-        GetBlocksResponse {
-            response: Some(Response::Header(BlockHeader {
-                parent_block: Some(BlockId { hash: None, height: 1 }),
-                ..Default::default()
-            })),
-        },
-        GetBlocksResponse {
-            response: Some(Response::Header(BlockHeader {
-                parent_block: Some(BlockId { hash: None, height: 2 }),
-                ..Default::default()
-            })),
-        },
-        GetBlocksResponse {
-            response: Some(Response::Header(BlockHeader {
-                parent_block: Some(BlockId { hash: None, height: 3 }),
-                ..Default::default()
-            })),
-        },
-        GetBlocksResponse { response: Some(Response::Fin(Fin {})) },
-    ]
-}
+use crate::test_utils::{get_connected_streams, hardcoded_data};
 
 #[test]
 fn both_protocols_have_same_info() {
@@ -57,14 +31,14 @@ async fn positive_flow() {
             let (received_query, mut stream) =
                 inbound_protocol.upgrade_inbound(inbound_stream, PROTOCOL_NAME).await.unwrap();
             assert_eq!(query, received_query);
-            for response in hardcoded_responses() {
+            for response in hardcoded_data() {
                 write_message(response, &mut stream).await.unwrap();
             }
         },
         async move {
             let mut stream =
                 outbound_protocol.upgrade_outbound(outbound_stream, PROTOCOL_NAME).await.unwrap();
-            for expected_response in hardcoded_responses() {
+            for expected_response in hardcoded_data() {
                 let response = read_message::<GetBlocksResponse, _>(&mut stream).await.unwrap();
                 assert_eq!(response, expected_response);
             }
