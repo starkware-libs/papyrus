@@ -48,6 +48,9 @@ pub const INVALID_CONTINUATION_TOKEN: JsonRpcError = JsonRpcError {
 pub const TOO_MANY_KEYS_IN_FILTER: JsonRpcError =
     JsonRpcError { code: 34, message: "Too many keys provided in a filter", data: None };
 
+pub const SERVER_NOT_SYNCED: JsonRpcError =
+    JsonRpcError { code: 35, message: "Server is not synchronized", data: None };
+
 pub const CONTRACT_ERROR: JsonRpcError =
     JsonRpcError { code: 40, message: "Contract error", data: None };
 
