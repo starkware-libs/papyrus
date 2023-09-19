@@ -165,4 +165,6 @@ pub enum ConfigError {
     PointerSourceNotFound { pointing_param: String },
     #[error("Changing {param_path} from required type {required} to {given} is not allowed.")]
     ChangeRequiredParamType { param_path: String, required: SerializationType, given: Value },
+    #[error("The configuration validations failed.")]
+    ConfigValidation { validation_errors: Vec<validator::ValidationError> },
 }
