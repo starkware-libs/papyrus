@@ -108,6 +108,9 @@ pub enum SerializedContent {
     PointerTarget(ParamPath),
     /// Type of a required configuration parameter.
     RequiredType(SerializationType),
+    /// Type of a configuration parameter that will be generated, as long as the user does not
+    /// providing its value.
+    GeneratedType(SerializationType),
 }
 
 impl SerializedContent {
@@ -121,6 +124,7 @@ impl SerializedContent {
             },
             SerializedContent::PointerTarget(_) => None,
             SerializedContent::RequiredType(ser_type) => Some(ser_type.clone()),
+            SerializedContent::GeneratedType(ser_type) => Some(ser_type.clone()),
         }
     }
 }

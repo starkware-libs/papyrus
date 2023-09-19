@@ -78,8 +78,8 @@ expression: dumped_default_config
     "privacy": "Public"
   },
   "monitoring_gateway.config_representation_secret": {
-    "description": "A secret for representing the full general config.",
-    "required_type": "String",
+    "description": "A secret for representing the full general config. In case no value is provided, a random secret will be generated.",
+    "generated_type": "String",
     "privacy": "Private"
   },
   "monitoring_gateway.server_address": {
