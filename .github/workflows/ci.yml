@@ -180,7 +180,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: npm install -g ganache@7.4.3
       - name: Coverage
-        run: cargo +nightly llvm-cov --codecov --output-path codecov.json
+        run: cargo llvm-cov --codecov --output-path codecov.json
         env:
           SEED: 0
       - name: Codecov
