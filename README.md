@@ -189,7 +189,8 @@ Assuming the node monitoring gateway is exposed at `localhost:8081` one might se
 * `nodeVersion`  
 &emsp; get node version.  
 * `nodeConfig`  
-&emsp; get the current node configuration.  
+&emsp; get the current node configuration.
+<!--- TODO(dvir):  change the more details part to the documentation of the storage after its publish --->
 * `dbTablesStats`  
 &emsp; get statistics for each table in the database ([libmdbx](https://docs.rs/libmdbx/latest/libmdbx/index.html)), for more details see [libmdbx::Stat](https://docs.rs/libmdbx/latest/libmdbx/struct.Stat.html).  
 * `metrics`  

@@ -19,7 +19,7 @@ use metrics_exporter_prometheus::{BuildError, PrometheusBuilder, PrometheusHandl
 use metrics_process::Collector;
 use papyrus_config::dumping::{ser_param, ser_required_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializationType, SerializedParam};
-use papyrus_storage::{DbTablesStats, StorageError, StorageReader};
+use papyrus_storage::{DbStats, StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument};
 use validator::Validate;
@@ -184,9 +184,7 @@ fn app(
 
 /// Returns DB statistics.
 #[instrument(skip(storage_reader), level = "debug", ret)]
-async fn db_tables_stats(
-    storage_reader: StorageReader,
-) -> Result<Json<DbTablesStats>, ServerError> {
+async fn db_tables_stats(storage_reader: StorageReader) -> Result<Json<DbStats>, ServerError> {
     Ok(storage_reader.db_tables_stats()?.into())
 }
 
