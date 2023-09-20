@@ -6,7 +6,9 @@
     "gas_price": "0x0",
     "state_root": "0x5a5f26ce761d20ac9dfdc3a009b6adeaabac74b97de38c7633af690efd9b175",
     "sequencer": "0x0",
-    "timestamp": 1643609156
+    "timestamp": 1643609156,
+    "n_transactions": 111,
+    "n_events": 0
   },
   "body": {
     "transactions": [
@@ -3169,5 +3171,9 @@
       "0x912170b6c5b0454e66fb8dab8da03f8cd9a32acfe9df6690d05dcdca19e52",
       "0x4822394e8699126997fbdc7d4427926e01876e19970fadbfa0307653ec53e47"
     ]
+  },
+  "commitments": {
+    "transactions_commitment": "0x0",
+    "events_commitment": "0x0"
   }
 }
