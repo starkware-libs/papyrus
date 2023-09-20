@@ -4862,6 +4862,7 @@ dependencies = [
  "prost-build",
  "prost-types",
  "rand",
+ "replace_with",
  "starknet_api",
  "thiserror",
  "tokio",
@@ -5762,6 +5763,12 @@ name = "relative-path"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c707298afce11da2efef2f600116fa93ffa7a032b5d7b628aa17711ec81383ca"
+
+[[package]]
+name = "replace_with"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3a8614ee435691de62bcffcf4a66d91b3594bf1428a5722e79103249a095690"
 
 [[package]]
 name = "reqwest"
