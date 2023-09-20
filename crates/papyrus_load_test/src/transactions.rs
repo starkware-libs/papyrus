@@ -34,6 +34,9 @@ create_get_transaction_function_with_requests_from_file! {
     get_class_by_hash, "block_hash_and_class_hash.txt";
     get_events_with_address, "block_range_and_contract_address.txt";
     get_events_without_address, "block_range_and_contract_address.txt";
+    trace_transaction, "transaction_hash.txt";
+    trace_block_transactions_by_number, "block_number.txt";
+    trace_block_transactions_by_hash, "block_hash.txt";
 }
 
 pub fn block_number() -> Transaction {
