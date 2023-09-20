@@ -40,6 +40,7 @@
 mod body_test;
 pub mod events;
 
+use papyrus_proc_macros::latency_histogram;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockBody, BlockNumber};
 use starknet_api::core::ContractAddress;
@@ -268,6 +269,7 @@ impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
 }
 
 impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
+    #[latency_histogram("storage_append_body_latency_seconds")]
     fn append_body(self, block_number: BlockNumber, block_body: BlockBody) -> StorageResult<Self> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
         let transactions_table = self.txn.open_table(&self.tables.transactions)?;

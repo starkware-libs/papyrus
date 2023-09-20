@@ -54,6 +54,7 @@ use std::collections::HashSet;
 
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use indexmap::IndexMap;
+use papyrus_proc_macros::latency_histogram;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
@@ -377,6 +378,7 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
 }
 
 impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
+    #[latency_histogram("storage_append_state_diff_latency_seconds")]
     fn append_state_diff(
         self,
         block_number: BlockNumber,
