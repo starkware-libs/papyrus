@@ -79,7 +79,7 @@ impl Default for RpcConfig {
                 retry_max_delay_millis: 1000,
                 max_retries: 5,
             },
-            execution_config: PathBuf::from("config/execution_config/default_config.json"),
+            execution_config: PathBuf::from("config/execution_config/mainnet_config.json"),
         }
     }
 }

@@ -30,7 +30,7 @@ use crate::{BlockExecutionConfig, ExecutionConfigByBlock};
 
 /// Return the default execution config, using the relative path from the testing directory.
 pub fn test_get_default_execution_config() -> ExecutionConfigByBlock {
-    let execution_config_file = PathBuf::from("../../config/execution_config/default_config.json");
+    let execution_config_file = PathBuf::from("../../config/execution_config/mainnet_config.json");
     execution_config_file.try_into().unwrap()
 }
 

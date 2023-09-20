@@ -92,7 +92,7 @@
   "rpc.execution_config": {
     "description": "Path to the execution configuration file.",
     "privacy": "Public",
-    "value": "config/execution_config/default_config.json"
+    "value": "config/execution_config/mainnet_config.json"
   },
   "rpc.max_events_chunk_size": {
     "description": "Maximum chunk size supported by the node in get_events requests.",
