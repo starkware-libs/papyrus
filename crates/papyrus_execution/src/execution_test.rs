@@ -592,7 +592,7 @@ fn test_default_execution_config() {
         fee_contract_address: contract_address!(
             "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
         ),
-        invoke_tx_max_n_steps: 1_000_000,
+        invoke_tx_max_n_steps: 3_000_000,
         validate_tx_max_n_steps: 1_000_000,
         max_recursion_depth: 50,
         step_gas_cost: STEP_GAS_COST,
