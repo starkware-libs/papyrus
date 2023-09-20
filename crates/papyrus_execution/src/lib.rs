@@ -12,14 +12,13 @@ pub mod testing_instances;
 
 pub mod objects;
 use std::collections::{BTreeMap, HashMap};
-use std::iter;
 use std::sync::Arc;
 
-use blockifier::block_context::BlockContext;
+use blockifier::block_context::{BlockContext, FeeTokenAddresses, GasPrices};
+use blockifier::execution::call_info::CallExecution;
 use blockifier::execution::contract_class::ContractClass as BlockifierContractClass;
 use blockifier::execution::entry_point::{
     CallEntryPoint,
-    CallExecution,
     CallType as BlockifierCallType,
     EntryPointExecutionContext,
     ExecutionResources,
@@ -35,6 +34,7 @@ use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use cairo_vm::types::errors::program_errors::ProgramError;
 use execution_utils::get_trace_constructor;
 use objects::TransactionTrace;
+use papyrus_common::transaction_hash::get_transaction_hash;
 use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::RO;
 use papyrus_storage::header::HeaderStorageReader;
@@ -54,6 +54,7 @@ use starknet_api::transaction::{
     DeclareTransaction,
     DeclareTransactionV0V1,
     DeclareTransactionV2,
+    DeclareTransactionV3,
     DeployAccountTransaction,
     Fee,
     InvokeTransaction,
@@ -61,7 +62,9 @@ use starknet_api::transaction::{
     Transaction,
     TransactionHash,
 };
+use starknet_api::StarknetApiError;
 use state_reader::ExecutionStateReader;
+use tracing::trace;
 
 /// Result type for execution functions.
 pub type ExecutionResult<T> = Result<T, ExecutionError>;
@@ -109,12 +112,12 @@ impl ExecutionConfigByBlock {
         // Ok(segments.upper_bound(std::ops::Bound::Included(&block_number)).value().unwrap().
         // clone())
 
-        for (segment_block_number, segment) in segments.iter() {
-            if block_number < *segment_block_number {
+        for (segment_block_number, segment) in segments.iter().rev() {
+            if block_number >= *segment_block_number {
                 return Ok(segment);
             }
         }
-        return segments.values().last().ok_or(ExecutionError::ConfigContentError);
+        Err(ExecutionError::ConfigContentError)
     }
 }
 
@@ -139,6 +142,8 @@ pub enum ExecutionError {
     NotSynced { state_number: StateNumber, compiled_class_marker: BlockNumber },
     #[error(transparent)]
     StateError(#[from] StateError),
+    #[error("Failed to calculate transaction hash.")]
+    TransactionHashCalculationFailed(StarknetApiError),
     #[error(transparent)]
     PreExecutionError(#[from] PreExecutionError),
     #[error(transparent)]
@@ -242,12 +247,17 @@ fn create_block_context(
         block_number,
         block_timestamp,
         sequencer_address: *sequencer_address,
-        fee_token_address: execution_config.fee_contract_address,
+        // TODO(barak, 01/10/2023): Change strk_fee_token_address once it exists.
+        fee_token_addresses: FeeTokenAddresses {
+            strk_fee_token_address: execution_config.fee_contract_address,
+            eth_fee_token_address: execution_config.fee_contract_address,
+        },
         vm_resource_fee_cost: Arc::clone(&execution_config.vm_resource_fee_cost),
         invoke_tx_max_n_steps: execution_config.invoke_tx_max_n_steps,
         validate_max_n_steps: execution_config.validate_tx_max_n_steps,
         max_recursion_depth: execution_config.max_recursion_depth,
-        gas_price: gas_price.0,
+        // TODO(barak, 01/10/2023): Change strk_l1_gas_price once it exists.
+        gas_prices: GasPrices { eth_l1_gas_price: gas_price.0, strk_l1_gas_price: 1_u128 },
     }
 }
 
@@ -262,8 +272,98 @@ pub enum ExecutableTransactionInput {
     DeclareV0(DeclareTransactionV0V1, DeprecatedContractClass),
     DeclareV1(DeclareTransactionV0V1, DeprecatedContractClass),
     DeclareV2(DeclareTransactionV2, CasmContractClass),
-    Deploy(DeployAccountTransaction),
+    DeclareV3(DeclareTransactionV3, CasmContractClass),
+    DeployAccount(DeployAccountTransaction),
     L1Handler(L1HandlerTransaction, Fee),
+}
+
+impl ExecutableTransactionInput {
+    fn calc_tx_hash(self, chain_id: &ChainId) -> ExecutionResult<(Self, TransactionHash)> {
+        match self.apply_on_transaction(|tx| get_transaction_hash(tx, chain_id)) {
+            (original_tx, Ok(tx_hash)) => Ok((original_tx, tx_hash)),
+            (_, Err(err)) => Err(ExecutionError::TransactionHashCalculationFailed(err)),
+        }
+    }
+
+    /// Applies a non consuming function on the transaction as if it was of type [Transaction] of
+    /// StarknetAPI and returns the result without cloning the original transaction.
+    // TODO(yair): Refactor this.
+    fn apply_on_transaction<F, T>(self, func: F) -> (Self, T)
+    where
+        F: Fn(&Transaction) -> T,
+    {
+        match self {
+            ExecutableTransactionInput::Invoke(tx) => {
+                let as_transaction = Transaction::Invoke(tx);
+                let res = func(&as_transaction);
+                let Transaction::Invoke(tx) = as_transaction else {
+                    unreachable!("Should be invoke transaction.")
+                };
+                (Self::Invoke(tx), res)
+            }
+            ExecutableTransactionInput::DeclareV0(tx, class) => {
+                let as_transaction = Transaction::Declare(DeclareTransaction::V0(tx));
+                let res = func(&as_transaction);
+                let Transaction::Declare(DeclareTransaction::V0(tx)) = as_transaction else {
+                    unreachable!("Should be declare v0 transaction.")
+                };
+                (Self::DeclareV0(tx, class), res)
+            }
+            ExecutableTransactionInput::DeclareV1(tx, class) => {
+                let as_transaction = Transaction::Declare(DeclareTransaction::V1(tx));
+                let res = func(&as_transaction);
+                let Transaction::Declare(DeclareTransaction::V1(tx)) = as_transaction else {
+                    unreachable!("Should be declare v1 transaction.")
+                };
+                (Self::DeclareV1(tx, class), res)
+            }
+            ExecutableTransactionInput::DeclareV2(tx, class) => {
+                let as_transaction = Transaction::Declare(DeclareTransaction::V2(tx));
+                let res = func(&as_transaction);
+                let Transaction::Declare(DeclareTransaction::V2(tx)) = as_transaction else {
+                    unreachable!("Should be declare v2 transaction.")
+                };
+                (Self::DeclareV2(tx, class), res)
+            }
+            ExecutableTransactionInput::DeclareV3(tx, class) => {
+                let as_transaction = Transaction::Declare(DeclareTransaction::V3(tx));
+                let res = func(&as_transaction);
+                let Transaction::Declare(DeclareTransaction::V3(tx)) = as_transaction else {
+                    unreachable!("Should be declare v3 transaction.")
+                };
+                (Self::DeclareV3(tx, class), res)
+            }
+            ExecutableTransactionInput::DeployAccount(tx) => {
+                let as_transaction = Transaction::DeployAccount(tx);
+                let res = func(&as_transaction);
+                let Transaction::DeployAccount(tx) = as_transaction else {
+                    unreachable!("Should be deploy account transaction.")
+                };
+                (Self::DeployAccount(tx), res)
+            }
+            ExecutableTransactionInput::L1Handler(tx, fee) => {
+                let as_transaction = Transaction::L1Handler(tx);
+                let res = func(&as_transaction);
+                let Transaction::L1Handler(tx) = as_transaction else {
+                    unreachable!("Should be L1 handler transaction.")
+                };
+                (Self::L1Handler(tx, fee), res)
+            }
+        }
+    }
+}
+
+/// Calculates the transaction hashes for a series of transactions without cloning the transactions.
+fn calc_tx_hashes(
+    txs: Vec<ExecutableTransactionInput>,
+    chain_id: &ChainId,
+) -> ExecutionResult<(Vec<ExecutableTransactionInput>, Vec<TransactionHash>)> {
+    Ok(txs
+        .into_iter()
+        .map(|tx| tx.calc_tx_hash(chain_id))
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .unzip())
 }
 
 /// Returns the fee estimation for a series of transactions.
@@ -286,7 +386,9 @@ pub fn estimate_fee(
     )?;
     Ok(txs_execution_info
         .into_iter()
-        .map(|tx_execution_info| (GasPrice(block_context.gas_price), tx_execution_info.actual_fee))
+        .map(|tx_execution_info| {
+            (GasPrice(block_context.gas_prices.eth_l1_gas_price), tx_execution_info.actual_fee)
+        })
         .collect())
 }
 
@@ -324,13 +426,17 @@ fn execute_transactions(
         execution_config,
     );
 
-    let tx_hashes_iter: Box<dyn Iterator<Item = Option<TransactionHash>>> = match tx_hashes {
-        Some(hashes) => Box::new(hashes.into_iter().map(Some)),
-        None => Box::new(iter::repeat(None)),
+    let (txs, tx_hashes) = match tx_hashes {
+        Some(tx_hashes) => (txs, tx_hashes),
+        None => {
+            let tx_hashes = calc_tx_hashes(txs, chain_id)?;
+            trace!("Calculated tx hashes: {:?}", tx_hashes);
+            tx_hashes
+        }
     };
 
     let mut res = vec![];
-    for (tx, tx_hash) in txs.into_iter().zip(tx_hashes_iter) {
+    for (tx, tx_hash) in txs.into_iter().zip(tx_hashes.into_iter()) {
         let blockifier_tx = to_blockifier_tx(tx, tx_hash)?;
         let tx_execution_info =
             blockifier_tx.execute(&mut cached_state, &block_context, charge_fee, validate)?;
@@ -342,10 +448,8 @@ fn execute_transactions(
 
 fn to_blockifier_tx(
     tx: ExecutableTransactionInput,
-    tx_hash: Option<TransactionHash>,
+    tx_hash: TransactionHash,
 ) -> ExecutionResult<BlockifierTransaction> {
-    // TODO(yair): Remove the unwrap once the blockifier calculates the tx hash.
-    let tx_hash = tx_hash.unwrap_or_default();
     match tx {
         ExecutableTransactionInput::Invoke(invoke_tx) => Ok(BlockifierTransaction::from_api(
             Transaction::Invoke(invoke_tx),
@@ -355,13 +459,15 @@ fn to_blockifier_tx(
             None,
         )?),
 
-        ExecutableTransactionInput::Deploy(deploy_acc_tx) => Ok(BlockifierTransaction::from_api(
-            Transaction::DeployAccount(deploy_acc_tx),
-            tx_hash,
-            None,
-            None,
-            None,
-        )?),
+        ExecutableTransactionInput::DeployAccount(deploy_acc_tx) => {
+            Ok(BlockifierTransaction::from_api(
+                Transaction::DeployAccount(deploy_acc_tx),
+                tx_hash,
+                None,
+                None,
+                None,
+            )?)
+        }
 
         ExecutableTransactionInput::DeclareV0(declare_tx, deprecated_class) => {
             let class_v0 = BlockifierContractClass::V0(deprecated_class.try_into()?);
@@ -387,6 +493,16 @@ fn to_blockifier_tx(
             let class_v1 = BlockifierContractClass::V1(compiled_class.try_into()?);
             Ok(BlockifierTransaction::from_api(
                 Transaction::Declare(DeclareTransaction::V2(declare_tx)),
+                tx_hash,
+                Some(class_v1),
+                None,
+                None,
+            )?)
+        }
+        ExecutableTransactionInput::DeclareV3(declare_tx, compiled_class) => {
+            let class_v1 = BlockifierContractClass::V1(compiled_class.try_into()?);
+            Ok(BlockifierTransaction::from_api(
+                Transaction::Declare(DeclareTransaction::V3(declare_tx)),
                 tx_hash,
                 Some(class_v1),
                 None,
@@ -428,7 +544,7 @@ pub fn simulate_transactions(
         charge_fee,
         validate,
     )?;
-    let gas_price = GasPrice(block_context.gas_price);
+    let gas_price = GasPrice(block_context.gas_prices.eth_l1_gas_price);
     txs_execution_info
         .into_iter()
         .zip(trace_constructors)

@@ -22,6 +22,7 @@ use tracing::{debug, instrument};
 use url::Url;
 
 pub use crate::reader::objects::block::{Block, TransactionReceiptsError};
+pub use crate::reader::objects::pending_data::PendingData;
 pub use crate::reader::objects::state::{
     ContractClass,
     DeclaredClassHashEntry,
@@ -88,6 +89,10 @@ pub trait StarknetReader {
         &self,
         block_number: BlockNumber,
     ) -> ReaderClientResult<Option<StateUpdate>>;
+
+    // TODO(dvir): delete this when stop supporting pending data.
+    /// Returns pending [`starknet_client`][`PendingData`].
+    async fn pending_data(&self) -> ReaderClientResult<Option<PendingData>>;
 }
 
 /// A client for the [`Starknet`] feeder gateway.
@@ -104,6 +109,7 @@ struct StarknetUrls {
     get_contract_by_hash: Url,
     get_compiled_class_by_class_hash: Url,
     get_state_update: Url,
+    get_pending_data: Url,
 }
 
 const GET_BLOCK_URL: &str = "feeder_gateway/get_block";
@@ -114,6 +120,8 @@ const GET_STATE_UPDATE_URL: &str = "feeder_gateway/get_state_update";
 const BLOCK_NUMBER_QUERY: &str = "blockNumber";
 const LATEST_BLOCK_NUMBER: &str = "latest";
 const CLASS_HASH_QUERY: &str = "classHash";
+const PENDING_BLOCK_ID: &str = "pending";
+const INCLUDE_BLOCK: &str = "includeBlock";
 
 impl StarknetUrls {
     fn new(url_str: &str) -> Result<Self, ClientCreationError> {
@@ -124,6 +132,13 @@ impl StarknetUrls {
             get_compiled_class_by_class_hash: base_url
                 .join(GET_COMPILED_CLASS_BY_CLASS_HASH_URL)?,
             get_state_update: base_url.join(GET_STATE_UPDATE_URL)?,
+            get_pending_data: base_url
+                .join(GET_STATE_UPDATE_URL)?
+                .query_pairs_mut()
+                .append_pair(BLOCK_NUMBER_QUERY, PENDING_BLOCK_ID)
+                .append_pair(INCLUDE_BLOCK, "true")
+                .finish()
+                .clone(),
         })
     }
 }
@@ -282,6 +297,16 @@ impl StarknetReader for StarknetFeederGatewayClient {
             response,
             KnownStarknetErrorCode::UndeclaredClass,
             format!("Failed to get compiled class with hash {class_hash:?} from starknet server."),
+        )
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    async fn pending_data(&self) -> ReaderClientResult<Option<PendingData>> {
+        let response = self.request_with_retry_url(self.urls.get_pending_data.clone()).await;
+        load_object_from_response(
+            response,
+            KnownStarknetErrorCode::BlockNotFound,
+            "Failed to get pending data from starknet server.".to_string(),
         )
     }
 }

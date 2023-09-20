@@ -149,7 +149,6 @@ async fn execution_call() {
     assert_matches!(err, Error::Call(err) if err == CONTRACT_ERROR.into());
 }
 
-#[ignore = "need to pass tx hashes"]
 #[tokio::test]
 async fn call_estimate_fee() {
     let (module, storage_writer) =
@@ -161,7 +160,7 @@ async fn call_estimate_fee() {
 
     let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
         max_fee: Fee(1000000 * GAS_PRICE.0),
-        version: TransactionVersion(stark_felt!("0x1")),
+        version: TransactionVersion::ONE,
         sender_address: account_address,
         calldata: calldata![
             *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
@@ -183,15 +182,14 @@ async fn call_estimate_fee() {
     // TODO(yair): verify this is the correct fee, got this value by printing the result of the
     // call.
     let expected_fee_estimate = vec![FeeEstimate {
-        gas_consumed: stark_felt!("0x19a2"),
+        gas_consumed: stark_felt!("0x9ba"),
         gas_price: *GAS_PRICE,
-        overall_fee: Fee(656200000000000),
+        overall_fee: Fee(249000000000000),
     }];
 
     assert_eq!(res, expected_fee_estimate);
 }
 
-#[ignore = "need to pass tx hashes"]
 #[tokio::test]
 async fn call_simulate() {
     let (module, storage_writer) =
@@ -201,7 +199,7 @@ async fn call_simulate() {
 
     let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
         max_fee: Fee(1000000 * GAS_PRICE.0),
-        version: TransactionVersion(stark_felt!("0x1")),
+        version: TransactionVersion::ONE,
         sender_address: *ACCOUNT_ADDRESS,
         calldata: calldata![
             *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
@@ -232,9 +230,9 @@ async fn call_simulate() {
     // call.
     // Why is it different from the estimate_fee call?
     let expected_fee_estimate = FeeEstimate {
-        gas_consumed: stark_felt!("0x19b7"),
+        gas_consumed: stark_felt!("0x9ba"),
         gas_price: *GAS_PRICE,
-        overall_fee: Fee(658300000000000),
+        overall_fee: Fee(249000000000000),
     };
 
     assert_eq!(simulated_tx.fee_estimation, expected_fee_estimate);
@@ -250,7 +248,6 @@ async fn call_simulate() {
     assert_matches!(invoke_trace.fee_transfer_invocation, Some(_));
 }
 
-#[ignore = "need to pass tx hashes"]
 #[tokio::test]
 async fn call_simulate_skip_validate() {
     let (module, storage_writer) =
@@ -260,7 +257,7 @@ async fn call_simulate_skip_validate() {
 
     let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
         max_fee: Fee(1000000 * GAS_PRICE.0),
-        version: TransactionVersion(stark_felt!("0x1")),
+        version: TransactionVersion::ONE,
         sender_address: *ACCOUNT_ADDRESS,
         calldata: calldata![
             *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
@@ -291,9 +288,9 @@ async fn call_simulate_skip_validate() {
     // call.
     // Why is it different from the estimate_fee call?
     let expected_fee_estimate = FeeEstimate {
-        gas_consumed: stark_felt!("0x19a2"),
+        gas_consumed: stark_felt!("0x9ba"),
         gas_price: *GAS_PRICE,
-        overall_fee: Fee(656200000000000),
+        overall_fee: Fee(249000000000000),
     };
 
     assert_eq!(simulated_tx.fee_estimation, expected_fee_estimate);
@@ -309,7 +306,6 @@ async fn call_simulate_skip_validate() {
     assert_matches!(invoke_trace.fee_transfer_invocation, Some(_));
 }
 
-#[ignore = "need to pass tx hashes"]
 #[tokio::test]
 async fn call_simulate_skip_fee_charge() {
     let (module, storage_writer) =
@@ -319,7 +315,7 @@ async fn call_simulate_skip_fee_charge() {
 
     let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
         max_fee: Fee(1000000 * GAS_PRICE.0),
-        version: TransactionVersion(stark_felt!("0x1")),
+        version: TransactionVersion::ONE,
         sender_address: *ACCOUNT_ADDRESS,
         calldata: calldata![
             *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
@@ -350,9 +346,9 @@ async fn call_simulate_skip_fee_charge() {
     // call.
     // Why is it different from the estimate_fee call?
     let expected_fee_estimate = FeeEstimate {
-        gas_consumed: stark_felt!("0x19b7"),
+        gas_consumed: stark_felt!("9ba"),
         gas_price: *GAS_PRICE,
-        overall_fee: Fee(658300000000000),
+        overall_fee: Fee(249000000000000),
     };
 
     assert_eq!(simulated_tx.fee_estimation, expected_fee_estimate);
@@ -544,7 +540,7 @@ fn broadcasted_to_executable_deploy_account() {
     );
     assert_matches!(
         broadcasted_deploy_account.try_into(),
-        Ok(ExecutableTransactionInput::Deploy(_tx))
+        Ok(ExecutableTransactionInput::DeployAccount(_tx))
     );
 }
 

@@ -30,6 +30,7 @@ use super::{
     Block,
     ContractClass,
     GenericContractClass,
+    PendingData,
     ReaderClientError,
     ReaderClientResult,
     StarknetFeederGatewayClient,
@@ -98,8 +99,14 @@ async fn declare_tx_serde() {
         compiled_class_hash: None,
         sender_address: ContractAddress(patricia_key!("0x1")),
         nonce: Nonce(stark_felt!("0x0")),
-        max_fee: Fee(0),
-        version: TransactionVersion(stark_felt!("0x1")),
+        max_fee: Some(Fee(0)),
+        version: TransactionVersion::ONE,
+        resource_bounds: None,
+        tip: None,
+        nonce_data_availability_mode: None,
+        fee_data_availability_mode: None,
+        paymaster_data: None,
+        account_deployment_data: None,
         transaction_hash: TransactionHash(stark_felt!(
             "0x2f2ef64daffdc72bf33b34ad024891691b8eb1d0ab70cc7f8fb71f6fd5e1f22"
         )),
@@ -297,6 +304,27 @@ async fn deprecated_contract_class() {
     let class = starknet_client.class_by_hash(ClassHash(stark_felt!("0x7"))).await.unwrap();
     mock_by_hash.assert();
     assert!(class.is_none());
+}
+
+#[tokio::test]
+async fn pending_data() {
+    let starknet_client = StarknetFeederGatewayClient::new(
+        &mockito::server_url(),
+        None,
+        NODE_VERSION,
+        get_test_config(),
+    )
+    .unwrap();
+    let raw_pending_data = read_resource_file("reader/pending_data.json");
+    let mock =
+        mock("GET", "/feeder_gateway/get_state_update?blockNumber=pending&includeBlock=true")
+            .with_status(200)
+            .with_body(&raw_pending_data)
+            .create();
+    let pending_data = starknet_client.pending_data().await;
+    mock.assert();
+    let expected_pending_data: PendingData = serde_json::from_str(&raw_pending_data).unwrap();
+    assert_eq!(pending_data.unwrap().unwrap(), expected_pending_data);
 }
 
 #[tokio::test]

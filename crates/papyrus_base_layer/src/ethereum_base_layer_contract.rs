@@ -8,7 +8,7 @@ use ethers::prelude::{AbiError, Address, ContractError, Http, Middleware, Provid
 use ethers::providers::ProviderError;
 use ethers::types::{I256, U256};
 use papyrus_config::dumping::{ser_param, ser_required_param, SerializeConfig};
-use papyrus_config::{ParamPath, SerializationType, SerializedParam};
+use papyrus_config::{ParamPath, ParamPrivacyInput, SerializationType, SerializedParam};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::hash::StarkHash;
@@ -48,12 +48,14 @@ impl SerializeConfig for EthereumBaseLayerConfig {
             ser_required_param(
                 "node_url",
                 SerializationType::String,
-                "Ethereum node URL. A schema to match to Infura node: https://mainnet.infura.io/v3/<your_api_key>, but any other node can be used."
+                "Ethereum node URL. A schema to match to Infura node: https://mainnet.infura.io/v3/<your_api_key>, but any other node can be used.",
+                ParamPrivacyInput::Private,
             ),
             ser_param(
                 "starknet_contract_address",
                 &self.starknet_contract_address,
                 "Starknet contract address in ethereum.",
+                ParamPrivacyInput::Public,
             ),
         ])
     }

@@ -13,8 +13,6 @@ mod broadcasted_transaction_test;
 use papyrus_storage::db::serialization::StorageSerdeError;
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{CompiledClassHash, ContractAddress, Nonce};
-use starknet_api::hash::StarkFelt;
-use starknet_api::stark_felt;
 use starknet_api::transaction::{Fee, TransactionSignature, TransactionVersion};
 use starknet_client::writer::objects::transaction as client_transaction;
 use starknet_client::writer::objects::transaction::DeprecatedContractClass;
@@ -110,8 +108,8 @@ impl TryFrom<BroadcastedDeclareTransaction> for client_transaction::DeclareTrans
                     nonce: declare_v1.nonce,
                     max_fee: declare_v1.max_fee,
                     signature: declare_v1.signature,
-                    version: TransactionVersion(stark_felt!("0x1")),
-                    r#type: client_transaction::DeclareV1Type::default(),
+                    version: TransactionVersion::ONE,
+                    r#type: client_transaction::DeclareType::default(),
                 }))
             }
             BroadcastedDeclareTransaction::V2(declare_v2) => {
@@ -132,8 +130,8 @@ impl TryFrom<BroadcastedDeclareTransaction> for client_transaction::DeclareTrans
                     nonce: declare_v2.nonce,
                     max_fee: declare_v2.max_fee,
                     signature: declare_v2.signature,
-                    version: TransactionVersion(stark_felt!("0x2")),
-                    r#type: client_transaction::DeclareV2Type::default(),
+                    version: TransactionVersion::TWO,
+                    r#type: client_transaction::DeclareType::default(),
                 }))
             }
         }

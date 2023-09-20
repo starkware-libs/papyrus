@@ -34,11 +34,11 @@ use starknet_api::transaction::{
     DeclareTransactionV0V1,
     DeclareTransactionV2,
     DeployAccountTransaction,
+    DeployAccountTransactionV1,
     Fee,
     InvokeTransaction,
     InvokeTransactionV1,
     TransactionHash,
-    TransactionVersion,
 };
 use starknet_api::{calldata, class_hash, contract_address, patricia_key, stark_felt};
 use test_utils::read_json_file;
@@ -280,13 +280,14 @@ impl TxsScenarioBuilder {
     }
 
     pub fn deploy_account(mut self) -> TxsScenarioBuilder {
-        let tx = ExecutableTransactionInput::Deploy(DeployAccountTransaction {
-            max_fee: *MAX_FEE,
-            nonce: Nonce(stark_felt!(0_u128)),
-            class_hash: *ACCOUNT_CLASS_HASH,
-            version: TransactionVersion(1_u128.into()),
-            ..Default::default()
-        });
+        let tx = ExecutableTransactionInput::DeployAccount(DeployAccountTransaction::V1(
+            DeployAccountTransactionV1 {
+                max_fee: *MAX_FEE,
+                nonce: Nonce(stark_felt!(0_u128)),
+                class_hash: *ACCOUNT_CLASS_HASH,
+                ..Default::default()
+            },
+        ));
         self.txs.push(tx);
         self
     }
