@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
-use quote::ToTokens;
-use syn::{parse_macro_input, ItemTrait, LitStr, Meta, TraitItem};
+use quote::{quote, ToTokens};
+use syn::{parse_macro_input, ExprLit, ItemFn, ItemTrait, LitStr, Meta, TraitItem};
 
 /// This macro is a wrapper around the "rpc" macro supplied by the jsonrpsee library that generates
 /// a server and client traits from a given trait definition. The wrapper gets a version id and
@@ -9,21 +9,25 @@ use syn::{parse_macro_input, ItemTrait, LitStr, Meta, TraitItem};
 /// able to merge multiple versions of jsonrpc APIs into one server and not have a clash in method
 /// resolution.
 ///
-/// Example:
+/// # Example:
 ///
 /// Given this code:
+/// ```rust,ignore
 /// #[versioned_rpc("V0_3_0")]
 /// pub trait JsonRpc {
 ///     #[method(name = "blockNumber")]
 ///     fn block_number(&self) -> Result<BlockNumber, Error>;
 /// }
+/// ```
 ///
 /// The macro will generate this code:
+/// ```rust,ignore
 /// #[rpc(server, client, namespace = "starknet")]
 /// pub trait JsonRpcV0_3_0 {
 ///     #[method(name = "V0_3_0_blockNumber")]
 ///     fn block_number(&self) -> Result<BlockNumber, Error>;
 /// }
+/// ```
 #[proc_macro_attribute]
 pub fn versioned_rpc(attr: TokenStream, input: TokenStream) -> TokenStream {
     let version = parse_macro_input!(attr as syn::LitStr);
@@ -91,4 +95,46 @@ pub fn versioned_rpc(attr: TokenStream, input: TokenStream) -> TokenStream {
     };
 
     versioned_trait.to_token_stream().into()
+}
+
+/// This macro will emit a histogram metric with the given name and the latency of the function.
+///
+/// # Example
+/// Given this code:
+///
+/// ```rust,ignore
+/// #[latency_histogram("metric_name")]
+/// fn foo() {
+///     // Some code ...
+/// }
+/// ```
+/// Every call to foo will update the histogram metric with the name “metric_name” with the time it
+/// took to execute foo.
+#[proc_macro_attribute]
+pub fn latency_histogram(attr: TokenStream, input: TokenStream) -> TokenStream {
+    // Parse the input function.
+    let input_fn = parse_macro_input!(input as ItemFn);
+
+    let metric_name = parse_macro_input!(attr as ExprLit);
+
+    // Extract the original function's block.
+    let origin_block = &mut input_fn.block.clone();
+
+    // Create a new block with the print statement and original block.
+    let expanded_block = quote! {
+        {
+            let now=std::time::Instant::now();
+            let return_value=#origin_block;
+            metrics::histogram!(#metric_name, now.elapsed().as_secs_f64());
+            return_value
+        }
+    };
+
+    // Create a new function with the modified block.
+    let modified_function = ItemFn {
+        block: syn::parse2(expanded_block).expect("Parse tokens in latency_histogram attribute."),
+        ..input_fn
+    };
+
+    modified_function.to_token_stream().into()
 }

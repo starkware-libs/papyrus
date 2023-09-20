@@ -21,6 +21,7 @@ use papyrus_common::{metrics as papyrus_metrics, BlockHashAndNumber};
 use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
+use papyrus_proc_macros::latency_histogram;
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
@@ -341,6 +342,7 @@ impl<
         }
     }
 
+    #[latency_histogram("sync_store_block_latency_seconds")]
     #[instrument(skip(self, block), level = "debug", fields(block_hash = %block.header.block_hash), err)]
     fn store_block(
         &mut self,
@@ -375,6 +377,7 @@ impl<
         Ok(())
     }
 
+    #[latency_histogram("sync_store_state_diff_latency_seconds")]
     #[instrument(skip(self, state_diff, deployed_contract_class_definitions), level = "debug", err)]
     fn store_state_diff(
         &mut self,
@@ -405,6 +408,7 @@ impl<
         Ok(())
     }
 
+    #[latency_histogram("sync_store_compiled_class_latency_seconds")]
     #[instrument(skip(self, compiled_class), level = "debug", err)]
     fn store_compiled_class(
         &mut self,

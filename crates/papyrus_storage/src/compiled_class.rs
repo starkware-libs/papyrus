@@ -36,6 +36,7 @@
 mod casm_test;
 
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+use papyrus_proc_macros::latency_histogram;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 use starknet_api::state::ThinStateDiff;
@@ -77,6 +78,7 @@ impl<'env, Mode: TransactionKind> CasmStorageReader for StorageTxn<'env, Mode> {
 }
 
 impl<'env> CasmStorageWriter for StorageTxn<'env, RW> {
+    #[latency_histogram("storage_append_casm_latency_seconds")]
     fn append_casm(self, class_hash: &ClassHash, casm: &CasmContractClass) -> StorageResult<Self> {
         let casm_table = self.txn.open_table(&self.tables.casms)?;
         let markers_table = self.txn.open_table(&self.tables.markers)?;
