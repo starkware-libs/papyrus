@@ -9,5 +9,11 @@ license-file.workspace = true
 syn = "2.0.15"
 quote = "1.0.26"
 
+[dev-dependencies]
+metrics.workspace = true
+metrics-exporter-prometheus.workspace = true
+prometheus-parse.workspace = true
+test_utils = { path = "../test_utils" }
+
 [lib]
 proc-macro = true

@@ -4430,8 +4430,12 @@ dependencies = [
 name = "papyrus_proc_macros"
 version = "0.0.5"
 dependencies = [
+ "metrics",
+ "metrics-exporter-prometheus",
+ "prometheus-parse",
  "quote",
  "syn 2.0.37",
+ "test_utils",
 ]
 
 [[package]]
@@ -4503,9 +4507,11 @@ dependencies = [
  "insta",
  "integer-encoding",
  "libmdbx",
+ "metrics",
  "num-bigint",
  "num-traits 0.2.16",
  "papyrus_config",
+ "papyrus_proc_macros",
  "parity-scale-codec",
  "paste",
  "pretty_assertions",
@@ -4545,6 +4551,7 @@ dependencies = [
  "papyrus_base_layer",
  "papyrus_common",
  "papyrus_config",
+ "papyrus_proc_macros",
  "papyrus_storage",
  "pretty_assertions",
  "reqwest",
