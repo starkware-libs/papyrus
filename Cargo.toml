@@ -100,3 +100,6 @@ tracing-subscriber = "0.3.16"
 tower = "0.4"
 url = "2.2.2"
 validator = "0.12"
+
+[patch.crates-io]
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "1526a40921762641a39872643c53305c3e959ab2" }

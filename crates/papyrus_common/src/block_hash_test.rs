@@ -3,12 +3,19 @@ use starknet_api::core::ChainId;
 use test_utils::read_json_file;
 
 use super::calculate_block_hash_by_version;
-use crate::block_hash::BlockHashVersion;
+use crate::block_hash::{calculate_block_commitments, BlockHashVersion};
 
 fn validate_block_hash_util(file_name: &str, version: BlockHashVersion) -> bool {
     let chain_id = ChainId("SN_MAIN".to_owned());
-    let block: Block = serde_json::from_value(read_json_file(file_name)).unwrap();
-    let calculated_hash = calculate_block_hash_by_version(&block, version, &chain_id).unwrap();
+    // Load block with dummy commitments.
+    let mut block: Block = serde_json::from_value(read_json_file(file_name)).unwrap();
+
+    let commitments = calculate_block_commitments(&block.header, &block.body).unwrap();
+    block.commitments = commitments;
+
+    let calculated_hash =
+        calculate_block_hash_by_version(&block.header, &block.commitments, version, &chain_id)
+            .unwrap();
     calculated_hash == block.header.block_hash.0
 }
 

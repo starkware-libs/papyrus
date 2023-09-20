@@ -4,6 +4,7 @@ mod block_test;
 
 use std::ops::Index;
 
+use papyrus_common::block_hash::calculate_block_commitments;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{
     Block as starknet_api_block,
@@ -184,6 +185,8 @@ impl Block {
             .map(starknet_api::transaction::Transaction::try_from)
             .collect::<Result<_, ReaderClientError>>()?;
 
+        let n_events = transaction_outputs.iter().flat_map(|output| output.events()).count();
+
         // Get the header.
         let header = starknet_api::block::BlockHeader {
             block_hash: self.block_hash,
@@ -193,6 +196,8 @@ impl Block {
             state_root: self.state_root,
             sequencer: self.sequencer_address,
             timestamp: self.timestamp,
+            n_transactions: u64::try_from(transactions.len()).expect("Expect at most 64 bits"),
+            n_events: u64::try_from(n_events).expect("Expect at most 64 bits"),
         };
 
         let body = starknet_api::block::BlockBody {
@@ -201,7 +206,9 @@ impl Block {
             transaction_hashes,
         };
 
-        Ok((starknet_api_block { header, body }, self.starknet_version))
+        let commitments = calculate_block_commitments(&header, &body)?;
+
+        Ok((starknet_api_block { header, body, commitments }, self.starknet_version))
     }
 }
 
