@@ -9,6 +9,8 @@ on:
       - main
     paths:
       - deployments/**
+      - config/default_config.json
+      - .github/workflows/helm-install.yml
 
 jobs:
   deploy-teardown:
