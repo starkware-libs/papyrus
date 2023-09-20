@@ -1587,6 +1587,7 @@ async fn get_events_no_blocks_in_filter() {
             ..BlockHeader::default()
         },
         body: get_test_body(1, None, None, None),
+        ..Default::default()
     };
     storage_writer
         .begin_rw_txn()
@@ -1670,6 +1671,7 @@ async fn serialize_returns_valid_json() {
             ..BlockHeader::default()
         },
         body: get_test_body(5, Some(5), None, None),
+        ..Default::default()
     };
     let mut state_diff = StateDiff::get_test_instance(&mut rng);
     // In the test instance both declared_classes and deprecated_declared_classes have an entry
