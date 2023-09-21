@@ -20,7 +20,7 @@ use tokio::sync::RwLock;
 
 use crate::api::JsonRpcServerImpl;
 use crate::version_config::{VersionId, VERSION_PATTERN};
-use crate::{ExecutionConfig, RpcConfig};
+use crate::RpcConfig;
 
 /// The path to the test execution config file.
 pub const TEST_EXECUTION_CONFIG_PATH: &str = "resources/test_config.json";
@@ -28,9 +28,7 @@ pub const TEST_EXECUTION_CONFIG_PATH: &str = "resources/test_config.json";
 pub fn get_test_rpc_config() -> RpcConfig {
     RpcConfig {
         chain_id: ChainId("SN_GOERLI".to_string()),
-        execution_config: ExecutionConfig {
-            config_file_name: PathBuf::from(TEST_EXECUTION_CONFIG_PATH),
-        },
+        execution_config: PathBuf::from(TEST_EXECUTION_CONFIG_PATH),
         server_address: String::from("127.0.0.1:0"),
         max_events_chunk_size: 10,
         max_events_keys: 10,
@@ -61,11 +59,7 @@ pub(crate) fn get_test_rpc_server_and_storage_writer_from_params<T: JsonRpcServe
     (
         T::new(
             config.chain_id,
-            config
-                .execution_config
-                .config_file_name
-                .try_into()
-                .expect("failed to load execution config"),
+            config.execution_config.try_into().expect("failed to load execution config"),
             storage_reader,
             config.max_events_chunk_size,
             config.max_events_keys,
@@ -104,10 +98,10 @@ pub(crate) async fn raw_call<R: JsonRpcServerImpl, S: Serialize, T: for<'a> Dese
     let result: Result<T, jsonrpsee::types::ErrorObject<'_>> =
         match json_resp.get("result") {
             Some(resp) => Ok(serde_json::from_value::<T>(resp.clone())
-                .expect("result should mtach the target type")),
+                .expect("result should match the target type")),
             None => match json_resp.get("error") {
                 Some(err) => Err(serde_json::from_value::<ErrorObjectOwned>(err.clone())
-                    .expect("result should mtach the rpc error type")),
+                    .expect("result should match the rpc error type")),
                 None => panic!("response should have result or error field, got {json_resp}"),
             },
         };
@@ -231,7 +225,7 @@ fn get_method_index(spec: &serde_json::Value, method: &str) -> usize {
 
 // This function will change the errors in components/errors into schemas that accept the error.
 // It will change an error from the following json object:
-// { "code": 1, "message": "an error occured" } into {
+// { "code": 1, "message": "an error occurred" } into {
 //     "properties": {
 //         "code: {
 //             "type": "integer",
@@ -239,13 +233,13 @@ fn get_method_index(spec: &serde_json::Value, method: &str) -> usize {
 //          },
 //          "message": {
 //              "type": "string",
-//              "enum": ["an error occured"]
+//              "enum": ["an error occurred"]
 //          }
 //      },
 //      required: ["code", "message"]
 //  }
 // And it will change an error from the following json object:
-// { "code": 1, "message": "an error occured", "data": "string" } into {
+// { "code": 1, "message": "an error occurred", "data": "string" } into {
 //     "properties": {
 //         "code: {
 //             "type": "integer",
@@ -253,7 +247,7 @@ fn get_method_index(spec: &serde_json::Value, method: &str) -> usize {
 //          },
 //          "message": {
 //              "type": "string",
-//              "enum": ["an error occured"]
+//              "enum": ["an error occurred"]
 //          }
 //          "data": {}
 //      },

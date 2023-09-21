@@ -14,6 +14,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
+use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::deprecated_contract_class::{
     ContractClassAbiEntry as DeprecatedContractClassAbiEntry,
     EntryPoint as DeprecatedEntryPoint,
@@ -21,9 +22,13 @@ use starknet_api::deprecated_contract_class::{
 };
 use starknet_api::state::{EntryPoint, EntryPointType};
 use starknet_api::transaction::{
+    AccountDeploymentData,
     Calldata,
     ContractAddressSalt,
     Fee,
+    PaymasterData,
+    ResourceBoundsMapping,
+    Tip,
     TransactionSignature,
     TransactionVersion,
 };
@@ -53,22 +58,13 @@ pub enum InvokeType {
     Invoke,
 }
 
-/// The type field of a declare V1 transaction. This enum serializes/deserializes into a constant
+/// The type field of a declare transaction. This enum serializes/deserializes into a constant
 /// string.
 #[derive(Debug, Deserialize, Serialize, Default, Clone, Copy, Eq, PartialEq)]
-pub enum DeclareV1Type {
-    #[serde(rename = "DEPRECATED_DECLARE")]
-    #[default]
-    DeclareV1,
-}
-
-/// The type field of a declare V2 transaction. This enum serializes/deserializes into a constant
-/// string.
-#[derive(Debug, Deserialize, Serialize, Default, Clone, Copy, Eq, PartialEq)]
-pub enum DeclareV2Type {
+pub enum DeclareType {
     #[serde(rename = "DECLARE")]
     #[default]
-    DeclareV2,
+    Declare,
 }
 
 /// A deploy account transaction that can be added to Starknet through the Starknet gateway.
@@ -76,7 +72,7 @@ pub enum DeclareV2Type {
 /// HTTP method.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
-pub struct DeployAccountTransaction {
+pub struct DeployAccountV1Transaction {
     pub contract_address_salt: ContractAddressSalt,
     pub class_hash: ClassHash,
     pub constructor_calldata: Calldata,
@@ -87,13 +83,43 @@ pub struct DeployAccountTransaction {
     pub r#type: DeployAccountType,
 }
 
+/// A deploy account transaction that can be added to Starknet through the Starknet gateway.
+/// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
+/// HTTP method.
+// TODO(Shahak, 01/11/2023): Add tests for deploy account v3.
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct DeployAccountV3Transaction {
+    pub resource_bounds: ResourceBoundsMapping,
+    pub tip: Tip,
+    pub contract_address_salt: ContractAddressSalt,
+    pub class_hash: ClassHash,
+    pub constructor_calldata: Calldata,
+    pub nonce: Nonce,
+    pub signature: TransactionSignature,
+    pub nonce_data_availability_mode: DataAvailabilityMode,
+    pub fee_data_availability_mode: DataAvailabilityMode,
+    pub paymaster_data: PaymasterData,
+    pub version: TransactionVersion,
+    pub r#type: DeployAccountType,
+}
+
+/// A deploy account transaction that can be added to Starknet through the Starknet gateway.
+/// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
+/// HTTP method.
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(untagged)]
+pub enum DeployAccountTransaction {
+    DeployAccountV1(DeployAccountV1Transaction),
+    DeployAccountV3(DeployAccountV3Transaction),
+}
 /// An invoke account transaction that can be added to Starknet through the Starknet gateway.
 /// The invoke is a V1 transaction.
 /// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
 /// HTTP method.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
-pub struct InvokeTransaction {
+pub struct InvokeV1Transaction {
     pub calldata: Calldata,
     pub sender_address: ContractAddress,
     pub nonce: Nonce,
@@ -103,6 +129,37 @@ pub struct InvokeTransaction {
     pub r#type: InvokeType,
 }
 
+/// An invoke account transaction that can be added to Starknet through the Starknet gateway.
+/// The invoke is a V3 transaction.
+/// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
+/// HTTP method.
+// TODO(Shahak, 01/11/2023): Add tests for invoke v3.
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct InvokeV3Transaction {
+    pub resource_bounds: ResourceBoundsMapping,
+    pub tip: Tip,
+    pub calldata: Calldata,
+    pub sender_address: ContractAddress,
+    pub nonce: Nonce,
+    pub signature: TransactionSignature,
+    pub nonce_data_availability_mode: DataAvailabilityMode,
+    pub fee_data_availability_mode: DataAvailabilityMode,
+    pub paymaster_data: PaymasterData,
+    pub account_deployment_data: AccountDeploymentData,
+    pub version: TransactionVersion,
+    pub r#type: InvokeType,
+}
+
+/// An invoke transaction that can be added to Starknet through the Starknet gateway.
+/// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
+/// HTTP method.
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(untagged)]
+pub enum InvokeTransaction {
+    InvokeV1(InvokeV1Transaction),
+    InvokeV3(InvokeV3Transaction),
+}
 /// A declare transaction of a Cairo-v0 (deprecated) contract class that can be added to Starknet
 /// through the Starknet gateway.
 /// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
@@ -116,7 +173,7 @@ pub struct DeclareV1Transaction {
     pub max_fee: Fee,
     pub version: TransactionVersion,
     pub signature: TransactionSignature,
-    pub r#type: DeclareV1Type,
+    pub r#type: DeclareType,
 }
 
 /// A declare transaction of a Cairo-v1 contract class that can be added to Starknet through the
@@ -133,7 +190,31 @@ pub struct DeclareV2Transaction {
     pub max_fee: Fee,
     pub version: TransactionVersion,
     pub signature: TransactionSignature,
-    pub r#type: DeclareV2Type,
+    pub r#type: DeclareType,
+}
+
+/// A declare transaction of a Cairo-v1 contract class that can be added to Starknet through the
+/// Starknet gateway.
+/// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
+/// HTTP method.
+// TODO(shahak, 01/11/2023): Add tests for declare v3.
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct DeclareV3Transaction {
+    pub contract_class: ContractClass,
+    pub resource_bounds: ResourceBoundsMapping,
+    pub tip: Tip,
+    pub signature: TransactionSignature,
+    pub nonce: Nonce,
+    pub class_hash: ClassHash,
+    pub compiled_class_hash: CompiledClassHash,
+    pub sender_address: ContractAddress,
+    pub nonce_data_availability_mode: DataAvailabilityMode,
+    pub fee_data_availability_mode: DataAvailabilityMode,
+    pub paymaster_data: PaymasterData,
+    pub account_deployment_data: AccountDeploymentData,
+    pub version: TransactionVersion,
+    pub r#type: DeclareType,
 }
 
 /// A declare transaction that can be added to Starknet through the Starknet gateway.
@@ -144,6 +225,7 @@ pub struct DeclareV2Transaction {
 pub enum DeclareTransaction {
     DeclareV1(DeclareV1Transaction),
     DeclareV2(DeclareV2Transaction),
+    DeclareV3(DeclareV3Transaction),
 }
 
 // The structs that are implemented here are the structs that have deviations from starknet_api.
@@ -167,21 +249,4 @@ pub struct ContractClass {
     pub contract_class_version: String,
     pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
     pub abi: String,
-}
-
-// The conversion is done here and not in papyrus_rpc because the gateway uses starknet_api for
-// DeployAccountTransaction.
-impl From<starknet_api::transaction::DeployAccountTransaction> for DeployAccountTransaction {
-    fn from(tx: starknet_api::transaction::DeployAccountTransaction) -> Self {
-        Self {
-            contract_address_salt: tx.contract_address_salt,
-            class_hash: tx.class_hash,
-            constructor_calldata: tx.constructor_calldata,
-            nonce: tx.nonce,
-            max_fee: tx.max_fee,
-            signature: tx.signature,
-            version: tx.version,
-            r#type: DeployAccountType::default(),
-        }
-    }
 }

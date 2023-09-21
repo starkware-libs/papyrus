@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use assert_matches::assert_matches;
 use blockifier::abi::constants::STEP_GAS_COST;
-use blockifier::execution::entry_point::Retdata;
+use blockifier::execution::call_info::Retdata;
 use papyrus_storage::test_utils::get_test_storage;
 use starknet_api::block::{BlockNumber, GasPrice};
 use starknet_api::core::{ChainId, ContractAddress, Nonce, PatriciaKey};
@@ -134,7 +134,6 @@ fn execute_call_cairo1() {
 
 // TODO(yair): Compare to the expected fee instead of asserting that it is not zero (all
 // estimate_fee tests).
-#[ignore = "need to pass tx hashes"]
 #[test]
 fn estimate_fee_invoke() {
     let tx = TxsScenarioBuilder::default()
@@ -147,7 +146,6 @@ fn estimate_fee_invoke() {
     }
 }
 
-#[ignore = "need to pass tx hashes"]
 #[test]
 fn estimate_fee_declare_deprecated_class() {
     let tx = TxsScenarioBuilder::default().declare_deprecated_class(*ACCOUNT_ADDRESS).collect();
@@ -159,7 +157,6 @@ fn estimate_fee_declare_deprecated_class() {
     }
 }
 
-#[ignore = "need to pass tx hashes"]
 #[test]
 fn estimate_fee_declare_class() {
     let tx = TxsScenarioBuilder::default().declare_class(*ACCOUNT_ADDRESS).collect();
@@ -171,7 +168,6 @@ fn estimate_fee_declare_class() {
     }
 }
 
-#[ignore = "need to pass tx hashes"]
 #[test]
 fn estimate_fee_deploy_account() {
     let tx = TxsScenarioBuilder::default().deploy_account().collect();
@@ -183,7 +179,6 @@ fn estimate_fee_deploy_account() {
     }
 }
 
-#[ignore = "need to pass tx hashes"]
 #[test]
 fn estimate_fee_combination() {
     let txs = TxsScenarioBuilder::default()
@@ -225,7 +220,6 @@ fn serialization_precision() {
     assert_eq!(input, deserialized);
 }
 
-#[ignore = "need to pass tx hashes"]
 #[test]
 fn simulate_invoke() {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
@@ -303,7 +297,6 @@ fn simulate_invoke() {
     }
 }
 
-#[ignore = "need to pass tx hashes"]
 #[test]
 fn simulate_declare_deprecated() {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
@@ -363,7 +356,6 @@ fn simulate_declare_deprecated() {
     }
 }
 
-#[ignore = "need to pass tx hashes"]
 #[test]
 fn simulate_declare() {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
@@ -423,7 +415,6 @@ fn simulate_declare() {
     }
 }
 
-#[ignore = "need to pass tx hashes"]
 #[test]
 fn simulate_deploy_account() {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
@@ -497,7 +488,6 @@ fn simulate_deploy_account() {
     }
 }
 
-#[ignore = "need to pass tx hashes"]
 #[test]
 fn simulate_invoke_from_new_account() {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
@@ -534,7 +524,6 @@ fn simulate_invoke_from_new_account() {
     assert_matches!(invoke_trace.execute_invocation, FunctionInvocationResult::Ok(_));
 }
 
-#[ignore = "need to pass tx hashes"]
 #[test]
 fn simulate_invoke_from_new_account_validate_and_charge() {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
@@ -603,7 +592,7 @@ fn test_default_execution_config() {
         fee_contract_address: contract_address!(
             "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
         ),
-        invoke_tx_max_n_steps: 1_000_000,
+        invoke_tx_max_n_steps: 3_000_000,
         validate_tx_max_n_steps: 1_000_000,
         max_recursion_depth: 50,
         step_gas_cost: STEP_GAS_COST,
@@ -617,4 +606,56 @@ fn test_default_execution_config() {
     assert_eq!(expected_config, config_from_file);
 }
 
-// TODO(Omri): Test loading of configuration according to the given block number.
+fn fill_up_block_execution_config_segment_with_value(value: usize) -> BlockExecutionConfig {
+    let vm_resource_fee_cost = HashMap::new();
+    let vm_resource_fee_cost = Arc::new(vm_resource_fee_cost);
+    BlockExecutionConfig {
+        fee_contract_address: contract_address!(format!("{:x}", value).as_str()),
+        invoke_tx_max_n_steps: value as u32,
+        validate_tx_max_n_steps: value as u32,
+        max_recursion_depth: value,
+        step_gas_cost: value as u64,
+        initial_gas_cost: value as u64,
+        vm_resource_fee_cost,
+    }
+}
+
+#[test]
+/// Test for the get_execution_config_for_block function.
+fn test_get_execution_config_for_block() {
+    let mut execution_config_segments: BTreeMap<BlockNumber, BlockExecutionConfig> =
+        BTreeMap::new();
+    let segment_block_numbers = vec![0, 67, 1005, 20369];
+    for block_number in segment_block_numbers {
+        execution_config_segments.insert(
+            BlockNumber(block_number as u64),
+            fill_up_block_execution_config_segment_with_value(block_number),
+        );
+    }
+    let execution_config_by_block = ExecutionConfigByBlock { execution_config_segments };
+
+    assert_eq!(
+        execution_config_by_block.get_execution_config_for_block(BlockNumber(0)).unwrap(),
+        &fill_up_block_execution_config_segment_with_value(0),
+        "Failed to get config for {:?}",
+        BlockNumber(0),
+    );
+    assert_eq!(
+        execution_config_by_block.get_execution_config_for_block(BlockNumber(67)).unwrap(),
+        &fill_up_block_execution_config_segment_with_value(67),
+        "Failed to get config for {:?}",
+        BlockNumber(67),
+    );
+    assert_eq!(
+        execution_config_by_block.get_execution_config_for_block(BlockNumber(517)).unwrap(),
+        &fill_up_block_execution_config_segment_with_value(67),
+        "Failed to get config for {:?}",
+        BlockNumber(517),
+    );
+    assert_eq!(
+        execution_config_by_block.get_execution_config_for_block(BlockNumber(20400)).unwrap(),
+        &fill_up_block_execution_config_segment_with_value(20369),
+        "Failed to get config for {:?}",
+        BlockNumber(20400),
+    );
+}

@@ -20,7 +20,7 @@ use starknet_api::state::StateNumber;
 use thiserror::Error;
 
 use crate::objects::TransactionTrace;
-use crate::{ExecutableTransactionInput, ExecutionConfigByBlock, ExecutionError};
+use crate::{ExecutableTransactionInput, ExecutionConfigByBlock, ExecutionError, ExecutionResult};
 
 // An error that can occur during the use of the execution utils.
 #[derive(Debug, Error)]
@@ -75,25 +75,28 @@ pub(crate) fn get_contract_class(
 /// TransactionExecutionInfo into the right TransactionTrace variant.
 pub fn get_trace_constructor(
     tx: &ExecutableTransactionInput,
-) -> fn(TransactionExecutionInfo) -> TransactionTrace {
+) -> fn(TransactionExecutionInfo) -> ExecutionResult<TransactionTrace> {
     match tx {
         ExecutableTransactionInput::Invoke(_) => {
-            |execution_info| TransactionTrace::Invoke(execution_info.into())
+            |execution_info| Ok(TransactionTrace::Invoke(execution_info.try_into()?))
         }
         ExecutableTransactionInput::DeclareV0(_, _) => {
-            |execution_info| TransactionTrace::Declare(execution_info.into())
+            |execution_info| Ok(TransactionTrace::Declare(execution_info.try_into()?))
         }
         ExecutableTransactionInput::DeclareV1(_, _) => {
-            |execution_info| TransactionTrace::Declare(execution_info.into())
+            |execution_info| Ok(TransactionTrace::Declare(execution_info.try_into()?))
         }
         ExecutableTransactionInput::DeclareV2(_, _) => {
-            |execution_info| TransactionTrace::Declare(execution_info.into())
+            |execution_info| Ok(TransactionTrace::Declare(execution_info.try_into()?))
         }
-        ExecutableTransactionInput::Deploy(_) => {
-            |execution_info| TransactionTrace::DeployAccount(execution_info.into())
+        ExecutableTransactionInput::DeclareV3(_, _) => {
+            |execution_info| Ok(TransactionTrace::Declare(execution_info.try_into()?))
+        }
+        ExecutableTransactionInput::DeployAccount(_) => {
+            |execution_info| Ok(TransactionTrace::DeployAccount(execution_info.try_into()?))
         }
         ExecutableTransactionInput::L1Handler(_, _) => {
-            |execution_info| TransactionTrace::L1Handler(execution_info.into())
+            |execution_info| Ok(TransactionTrace::L1Handler(execution_info.try_into()?))
         }
     }
 }

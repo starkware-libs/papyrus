@@ -44,11 +44,14 @@ impl TryFrom<starknet_api::deprecated_contract_class::ContractClass> for Contrac
         let mut program_value = serde_json::to_value(&class.program)?;
         // Remove the 'attributes' key if it is null.
         if class.program.attributes == serde_json::value::Value::Null {
-            program_value.as_object_mut().unwrap().remove("attributes");
+            program_value.as_object_mut().expect("Expecting json object").remove("attributes");
         }
         // Remove the 'compiler_version' key if it is null.
         if class.program.compiler_version == serde_json::value::Value::Null {
-            program_value.as_object_mut().unwrap().remove("compiler_version");
+            program_value
+                .as_object_mut()
+                .expect("Expecting json object")
+                .remove("compiler_version");
         }
 
         let abi = class.abi.unwrap_or(vec![]);

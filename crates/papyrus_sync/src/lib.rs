@@ -1,6 +1,6 @@
-// config compiler to support no_coverage feature when running coverage in nightly mode within this
-// crate
-#![cfg_attr(coverage_nightly, feature(no_coverage))]
+// config compiler to support coverage_attribute feature when running coverage in nightly mode
+// within this crate
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 #[cfg(test)]
 mod sync_test;
@@ -20,7 +20,7 @@ use indexmap::IndexMap;
 use papyrus_common::{metrics as papyrus_metrics, BlockHashAndNumber};
 use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_param, SerializeConfig};
-use papyrus_config::{ParamPath, SerializedParam};
+use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
@@ -68,27 +68,32 @@ impl SerializeConfig for SyncConfig {
                 "block_propagation_sleep_duration",
                 &self.block_propagation_sleep_duration.as_secs(),
                 "Time in seconds before checking for a new block after the node is synchronized.",
+                ParamPrivacyInput::Public,
             ),
             ser_param(
                 "base_layer_propagation_sleep_duration",
                 &self.base_layer_propagation_sleep_duration.as_secs(),
                 "Time in seconds to poll the base layer to get the latest proved block.",
+                ParamPrivacyInput::Public,
             ),
             ser_param(
                 "recoverable_error_sleep_duration",
                 &self.recoverable_error_sleep_duration.as_secs(),
                 "Waiting time in seconds before restarting synchronization after a recoverable \
                  error.",
+                ParamPrivacyInput::Public,
             ),
             ser_param(
                 "blocks_max_stream_size",
                 &self.blocks_max_stream_size,
                 "Max amount of blocks to download in a stream.",
+                ParamPrivacyInput::Public,
             ),
             ser_param(
                 "state_updates_max_stream_size",
                 &self.state_updates_max_stream_size,
                 "Max amount of state updates to download in a stream.",
+                ParamPrivacyInput::Public,
             ),
         ])
     }
@@ -860,7 +865,7 @@ fn check_sync_progress(
             let new_header_marker=txn.get_header_marker()?;
             let new_state_marker=txn.get_state_marker()?;
             let new_casm_marker=txn.get_compiled_class_marker()?;
-            if header_marker==new_header_marker && state_marker==new_state_marker && casm_marker==new_casm_marker{
+            if header_marker==new_header_marker || state_marker==new_state_marker || casm_marker==new_casm_marker{
                 debug!("No progress in the sync. Return NoProgress event.");
                 yield SyncEvent::NoProgress;
             }

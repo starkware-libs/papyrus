@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
-// config compiler to support no_coverage feature when running coverage in nightly mode within this
-// crate
-#![cfg_attr(coverage_nightly, feature(no_coverage))]
+// config compiler to support coverage_attribute feature when running coverage in nightly mode
+// within this crate
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 pub mod create_files;
 pub mod create_request;
@@ -102,6 +102,9 @@ const GET_TRANSACTION_BY_BLOCK_ID_AND_INDEX_BY_NUMBER_WEIGHT: usize = 10;
 const GET_TRANSACTION_BY_HASH_WEIGHT: usize = 10;
 const GET_TRANSACTION_RECEIPT_WEIGHT: usize = 10;
 const SYNCING_WEIGHT: usize = 10;
+const TRACE_BLOCK_TRANSACTIONS_BY_HASH_WEIGHT: usize = 10;
+const TRACE_BLOCK_TRANSACTIONS_BY_NUMBER_WEIGHT: usize = 10;
+const TRACE_TRANSACTION_WEIGHT: usize = 10;
 
 static RPC_VERSION_ID: Lazy<String> = Lazy::new(|| match std::env::var("VERSION_ID") {
     Ok(version_id) => version_id,

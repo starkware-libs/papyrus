@@ -2,7 +2,7 @@
 #[path = "serializers_test.rs"]
 mod serializers_test;
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
 use std::hash::Hash;
 use std::ops::Deref;
@@ -39,6 +39,7 @@ use starknet_api::core::{
     Nonce,
     PatriciaKey,
 };
+use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass,
     ContractClassAbiEntry,
@@ -63,12 +64,16 @@ use starknet_api::state::{
     ThinStateDiff,
 };
 use starknet_api::transaction::{
+    AccountDeploymentData,
     Calldata,
     ContractAddressSalt,
     DeclareTransaction,
     DeclareTransactionV0V1,
     DeclareTransactionV2,
+    DeclareTransactionV3,
     DeployAccountTransaction,
+    DeployAccountTransactionV1,
+    DeployAccountTransactionV3,
     DeployTransaction,
     EventContent,
     EventData,
@@ -78,11 +83,17 @@ use starknet_api::transaction::{
     InvokeTransaction,
     InvokeTransactionV0,
     InvokeTransactionV1,
+    InvokeTransactionV3,
     L1HandlerTransaction,
     L1ToL2Payload,
     L2ToL1Payload,
     MessageToL1,
     MessageToL2,
+    PaymasterData,
+    Resource,
+    ResourceBounds,
+    ResourceBoundsMapping,
+    Tip,
     Transaction,
     TransactionExecutionStatus,
     TransactionHash,
@@ -117,6 +128,7 @@ use crate::version::Version;
 use crate::MarkerKind;
 
 auto_storage_serde! {
+    pub struct AccountDeploymentData(pub Vec<StarkFelt>);
     pub struct BlockHash(pub StarkHash);
     pub struct BlockHeader {
         pub block_hash: BlockHash,
@@ -146,10 +158,15 @@ auto_storage_serde! {
         L1Handler(FunctionAbiEntry) = 3,
         Struct(StructAbiEntry) = 4,
     }
+    pub enum DataAvailabilityMode {
+        L1 = 0,
+        L2 = 1,
+    }
     pub enum DeclareTransaction {
         V0(DeclareTransactionV0V1) = 0,
         V1(DeclareTransactionV0V1) = 1,
         V2(DeclareTransactionV2) = 2,
+        V3(DeclareTransactionV3) = 3,
     }
     pub struct DeclareTransactionV0V1 {
         pub max_fee: Fee,
@@ -166,14 +183,42 @@ auto_storage_serde! {
         pub compiled_class_hash: CompiledClassHash,
         pub sender_address: ContractAddress,
     }
-    pub struct DeployAccountTransaction {
+    pub struct DeclareTransactionV3 {
+        pub resource_bounds: ResourceBoundsMapping,
+        pub tip: Tip,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub class_hash: ClassHash,
+        pub compiled_class_hash: CompiledClassHash,
+        pub sender_address: ContractAddress,
+        pub nonce_data_availability_mode: DataAvailabilityMode,
+        pub fee_data_availability_mode: DataAvailabilityMode,
+        pub paymaster_data: PaymasterData,
+        pub account_deployment_data: AccountDeploymentData,
+    }
+    pub enum DeployAccountTransaction {
+        V1(DeployAccountTransactionV1) = 0,
+        V3(DeployAccountTransactionV3) = 1,
+    }
+    pub struct DeployAccountTransactionV1 {
         pub max_fee: Fee,
-        pub version: TransactionVersion,
         pub signature: TransactionSignature,
         pub nonce: Nonce,
         pub class_hash: ClassHash,
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
+    }
+    pub struct DeployAccountTransactionV3 {
+        pub resource_bounds: ResourceBoundsMapping,
+        pub tip: Tip,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub class_hash: ClassHash,
+        pub contract_address_salt: ContractAddressSalt,
+        pub constructor_calldata: Calldata,
+        pub nonce_data_availability_mode: DataAvailabilityMode,
+        pub fee_data_availability_mode: DataAvailabilityMode,
+        pub paymaster_data: PaymasterData,
     }
     pub struct DeployTransaction {
         pub version: TransactionVersion,
@@ -185,6 +230,11 @@ auto_storage_serde! {
         pub selector: EntryPointSelector,
         pub offset: EntryPointOffset,
     }
+    pub enum DeprecatedEntryPointType {
+        Constructor = 0,
+        External = 1,
+        L1Handler = 2,
+    }
     pub struct EntryPoint {
         pub function_idx: FunctionIndex,
         pub selector: EntryPointSelector,
@@ -192,11 +242,6 @@ auto_storage_serde! {
     pub struct FunctionIndex(pub usize);
     pub struct EntryPointOffset(pub usize);
     pub struct EntryPointSelector(pub StarkHash);
-    pub enum DeprecatedEntryPointType {
-        Constructor = 0,
-        External = 1,
-        L1Handler = 2,
-    }
     pub enum EntryPointType {
         Constructor = 0,
         External = 1,
@@ -237,6 +282,7 @@ auto_storage_serde! {
     pub enum InvokeTransaction {
         V0(InvokeTransactionV0) = 0,
         V1(InvokeTransactionV1) = 1,
+        V3(InvokeTransactionV3) = 2,
     }
     pub struct InvokeTransactionV0 {
         pub max_fee: Fee,
@@ -251,6 +297,18 @@ auto_storage_serde! {
         pub nonce: Nonce,
         pub sender_address: ContractAddress,
         pub calldata: Calldata,
+    }
+    pub struct InvokeTransactionV3 {
+        pub resource_bounds: ResourceBoundsMapping,
+        pub tip: Tip,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub sender_address: ContractAddress,
+        pub calldata: Calldata,
+        pub nonce_data_availability_mode: DataAvailabilityMode,
+        pub fee_data_availability_mode: DataAvailabilityMode,
+        pub paymaster_data: PaymasterData,
+        pub account_deployment_data: AccountDeploymentData,
     }
     pub struct L1ToL2Payload(pub Vec<StarkFelt>);
     pub struct L2ToL1Payload(pub Vec<StarkFelt>);
@@ -273,6 +331,7 @@ auto_storage_serde! {
     pub struct Nonce(pub StarkFelt);
     struct OmmerTransactionKey(pub BlockHash, pub TransactionOffsetInBlock);
     struct OmmerEventKey(pub OmmerTransactionKey, pub EventIndexInTransactionOutput);
+    pub struct PaymasterData(pub Vec<StarkFelt>);
     pub struct Program {
         pub attributes: serde_json::Value,
         pub builtins: serde_json::Value,
@@ -285,6 +344,15 @@ auto_storage_serde! {
         pub prime: serde_json::Value,
         pub reference_manager: serde_json::Value,
     }
+    pub enum Resource {
+        L1Gas = 0,
+        L2Gas = 1,
+    }
+    pub struct ResourceBounds {
+        pub max_amount: u64,
+        pub max_price_per_unit: u128,
+    }
+    pub struct ResourceBoundsMapping(pub BTreeMap<Resource, ResourceBounds>);
     pub struct StructAbiEntry {
         pub name: String,
         pub size: usize,
@@ -295,6 +363,7 @@ auto_storage_serde! {
         pub offset: usize,
     }
     pub struct StarknetVersion(pub String);
+    pub struct Tip(pub u64);
     pub struct ThinDeclareTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
@@ -732,6 +801,29 @@ impl<K: StorageSerde + Eq + Hash, V: StorageSerde> StorageSerde for IndexMap<K, 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         let n: usize = bytes.read_varint().ok()?;
         let mut res = IndexMap::with_capacity(n);
+        for _i in 0..n {
+            let k = K::deserialize_from(bytes)?;
+            let v = V::deserialize_from(bytes)?;
+            if res.insert(k, v).is_some() {
+                return None;
+            }
+        }
+        Some(res)
+    }
+}
+impl<K: StorageSerde + Eq + Ord, V: StorageSerde> StorageSerde for BTreeMap<K, V> {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        res.write_varint(self.len())?;
+        for (k, v) in self.iter() {
+            k.serialize_into(res)?;
+            v.serialize_into(res)?;
+        }
+        Ok(())
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        let n: usize = bytes.read_varint().ok()?;
+        let mut res = BTreeMap::new();
         for _i in 0..n {
             let k = K::deserialize_from(bytes)?;
             let v = V::deserialize_from(bytes)?;
