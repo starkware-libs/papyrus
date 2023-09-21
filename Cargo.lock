@@ -4846,6 +4846,7 @@ dependencies = [
  "starknet_api",
  "thiserror",
  "tokio",
+ "tokio-stream",
 ]
 
 [[package]]

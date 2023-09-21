@@ -20,7 +20,7 @@ fn both_protocols_have_same_info() {
 
 #[tokio::test]
 async fn positive_flow() {
-    let (inbound_stream, outbound_stream) = get_connected_streams().await;
+    let (inbound_stream, outbound_stream, _) = get_connected_streams().await;
 
     let query = GetBlocks::default();
     let outbound_protocol = OutboundProtocol { query: query.clone() };
@@ -48,7 +48,7 @@ async fn positive_flow() {
 
 #[tokio::test]
 async fn outbound_sends_invalid_request() {
-    let (inbound_stream, mut outbound_stream) = get_connected_streams().await;
+    let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
     let inbound_protocol = InboundProtocol::<GetBlocks>::new();
 
     tokio::join!(
