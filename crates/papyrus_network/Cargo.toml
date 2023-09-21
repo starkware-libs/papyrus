@@ -15,6 +15,7 @@ prost.workspace = true
 prost-types.workspace = true
 starknet_api.workspace = true
 thiserror.workspace = true
+tracing.workspace = true
 
 [build-dependencies]
 prost-build.workspace = true
