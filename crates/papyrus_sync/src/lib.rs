@@ -828,7 +828,7 @@ fn check_sync_progress(
             let new_header_marker=txn.get_header_marker()?;
             let new_state_marker=txn.get_state_marker()?;
             let new_casm_marker=txn.get_compiled_class_marker()?;
-            if header_marker==new_header_marker && state_marker==new_state_marker && casm_marker==new_casm_marker{
+            if header_marker==new_header_marker || state_marker==new_state_marker || casm_marker==new_casm_marker{
                 debug!("No progress in the sync. Return NoProgress event.");
                 yield SyncEvent::NoProgress;
             }
