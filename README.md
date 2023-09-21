@@ -195,6 +195,7 @@ Assuming the node monitoring gateway is exposed at `localhost:8081` one might se
 * `metrics`  
 &emsp; get metrics of the node activity. See details below.    
 
+<!--- TODO(dvir): add store metrics (storage and sync) --->
 ### Metrics
 Papyrus collects three kinds of metrics: rpc metrics, sync metrics, and process metrics.
 By default, the node will not collect metrics and the metric path will return an error code `405 - Method Not Allowed`.
