@@ -1,19 +1,20 @@
-use futures::{AsyncRead, AsyncWrite, StreamExt};
-use libp2p::core::multiaddr::multiaddr;
+mod get_stream;
+
 use libp2p::core::transport::memory::MemoryTransport;
-use libp2p::core::transport::{ListenerId, Transport};
+use libp2p::core::transport::Transport;
 use libp2p::core::{multiaddr, upgrade};
 use libp2p::identity::Keypair;
-use libp2p::swarm::{NetworkBehaviour, SwarmBuilder};
-use libp2p::{noise, yamux, Multiaddr, Swarm};
+use libp2p::swarm::dial_opts::DialOpts;
+use libp2p::swarm::{NetworkBehaviour, SwarmBuilder, SwarmEvent};
+use libp2p::{noise, yamux, Multiaddr, Stream, Swarm};
 use rand::random;
+use tokio::task::JoinHandle;
+use tokio_stream::StreamExt as TokioStreamExt;
 
 use crate::messages::block::{BlockHeader, GetBlocksResponse};
 use crate::messages::common::{BlockId, Fin};
 use crate::messages::proto::p2p::proto::get_blocks_response::Response;
 
-// TODO(shahak): Use create_swarm and remove allow(dead_code)
-#[allow(dead_code)]
 pub(crate) fn create_swarm<BehaviourT: NetworkBehaviour>(
     behaviour: BehaviourT,
 ) -> (Swarm<BehaviourT>, Multiaddr) {
@@ -35,24 +36,29 @@ pub(crate) fn create_swarm<BehaviourT: NetworkBehaviour>(
     (swarm, listen_address)
 }
 
-pub(crate) async fn get_connected_streams()
--> (impl AsyncRead + AsyncWrite, impl AsyncRead + AsyncWrite) {
-    let address = multiaddr![Memory(0u64)];
-    let mut transport = MemoryTransport::new().boxed();
-    transport.listen_on(ListenerId::next(), address).unwrap();
-    let listener_addr = transport
-        .select_next_some()
-        .await
-        .into_new_address()
-        .expect("MemoryTransport not listening on an address!");
-
-    tokio::join!(
-        async move {
-            let transport_event = transport.next().await.unwrap();
-            let (listener_upgrade, _) = transport_event.into_incoming().unwrap();
-            listener_upgrade.await.unwrap()
-        },
-        async move { MemoryTransport::new().dial(listener_addr).unwrap().await.unwrap() },
+/// Create two streams that are connected to each other. Return them and a join handle for a thread
+/// that will perform the sends between the streams (this thread will run forever so it shouldn't
+/// be joined).
+pub(crate) async fn get_connected_streams() -> (Stream, Stream, JoinHandle<()>) {
+    let (mut dialer_swarm, _) = create_swarm(get_stream::Behaviour::default());
+    let (listener_swarm, listener_address) = create_swarm(get_stream::Behaviour::default());
+    dialer_swarm
+        .dial(
+            DialOpts::peer_id(*listener_swarm.local_peer_id())
+                .addresses(vec![listener_address])
+                .build(),
+        )
+        .unwrap();
+    let merged_swarm = dialer_swarm.merge(listener_swarm);
+    let mut filtered_swarm = TokioStreamExt::filter_map(merged_swarm, |event| {
+        if let SwarmEvent::Behaviour(stream) = event { Some(stream) } else { None }
+    });
+    (
+        TokioStreamExt::next(&mut filtered_swarm).await.unwrap(),
+        TokioStreamExt::next(&mut filtered_swarm).await.unwrap(),
+        tokio::task::spawn(async move {
+            while TokioStreamExt::next(&mut filtered_swarm).await.is_some() {}
+        }),
     )
 }
 
