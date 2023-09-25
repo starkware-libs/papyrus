@@ -4,3 +4,5 @@
 /.vscode
 # Git hooks
 /.husky
+*mdbx.dat
+*mdbx.lck

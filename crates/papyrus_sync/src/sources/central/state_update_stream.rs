@@ -6,11 +6,9 @@ use std::task::Poll;
 use futures_util::stream::FuturesOrdered;
 use futures_util::{Future, Stream, StreamExt};
 use indexmap::IndexMap;
-use papyrus_storage::state::StateStorageReader;
-use papyrus_storage::StorageReader;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
-use starknet_api::state::{StateDiff, StateNumber};
+use starknet_api::state::StateDiff;
 use starknet_client::reader::{ReaderClientResult, StarknetReader, StateUpdate};
 use tracing::log::trace;
 use tracing::{debug, instrument};
@@ -32,7 +30,6 @@ pub(crate) struct StateUpdateStream<TStarknetClient: StarknetReader + Send + 'st
     initial_block_number: BlockNumber,
     up_to_block_number: BlockNumber,
     starknet_client: Arc<TStarknetClient>,
-    storage_reader: StorageReader,
     download_state_update_tasks: TasksQueue<(BlockNumber, ReaderClientResult<Option<StateUpdate>>)>,
     // Contains NumberOfClasses so we don't need to calculate it from the StateUpdate.
     downloaded_state_updates: VecDeque<(BlockNumber, NumberOfClasses, StateUpdate)>,
@@ -87,14 +84,12 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> StateUpdateStream<
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
         starknet_client: Arc<TStarknetClient>,
-        storage_reader: StorageReader,
         config: StateUpdateStreamConfig,
     ) -> Self {
         StateUpdateStream {
             initial_block_number,
             up_to_block_number,
             starknet_client,
-            storage_reader,
             download_state_update_tasks: futures::stream::FuturesOrdered::new(),
             downloaded_state_updates: VecDeque::with_capacity(
                 config.max_state_updates_to_store_in_memory,
@@ -150,12 +145,8 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> StateUpdateStream<
                 break;
             };
             let starknet_client = self.starknet_client.clone();
-            let storage_reader = self.storage_reader.clone();
-            self.download_class_tasks.push_back(Box::pin(download_class_if_necessary(
-                class_hash,
-                starknet_client,
-                storage_reader,
-            )));
+            self.download_class_tasks
+                .push_back(Box::pin(download_class_if_necessary(class_hash, starknet_client)));
             *should_poll_again = true;
         }
     }
@@ -328,32 +319,11 @@ fn client_to_central_state_update(
 // Given a class hash, returns the corresponding class definition.
 // First tries to retrieve the class from the storage.
 // If not found in the storage, the class is downloaded.
-#[instrument(skip(starknet_client, storage_reader), level = "debug", err)]
+#[instrument(skip(starknet_client), level = "debug", err)]
 async fn download_class_if_necessary<TStarknetClient: StarknetReader>(
     class_hash: ClassHash,
     starknet_client: Arc<TStarknetClient>,
-    storage_reader: StorageReader,
 ) -> CentralResult<Option<ApiContractClass>> {
-    let txn = storage_reader.begin_ro_txn()?;
-    let state_reader = txn.get_state_reader()?;
-    let block_number = txn.get_state_marker()?;
-    let state_number = StateNumber::right_after_block(block_number);
-
-    // Check declared classes.
-    if let Ok(Some(class)) = state_reader.get_class_definition_at(state_number, &class_hash) {
-        trace!("Class {:?} retrieved from storage.", class_hash);
-        return Ok(Some(ApiContractClass::ContractClass(class)));
-    };
-
-    // Check deprecated classes.
-    if let Ok(Some(class)) =
-        state_reader.get_deprecated_class_definition_at(state_number, &class_hash)
-    {
-        trace!("Deprecated class {:?} retrieved from storage.", class_hash);
-        return Ok(Some(ApiContractClass::DeprecatedContractClass(class)));
-    }
-
-    // Class not found in storage - download.
     trace!("Downloading class {:?}.", class_hash);
     let client_class = starknet_client.class_by_hash(class_hash).await.map_err(Arc::new)?;
     match client_class {

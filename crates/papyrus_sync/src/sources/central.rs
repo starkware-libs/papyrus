@@ -249,7 +249,6 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> CentralSourceTrait
             initial_block_number,
             up_to_block_number,
             self.starknet_client.clone(),
-            self.storage_reader.clone(),
             self.state_update_stream_config.clone(),
         )
         .boxed()
