@@ -11,7 +11,7 @@
 //! ```
 //! use papyrus_storage::base_layer::{BaseLayerStorageReader, BaseLayerStorageWriter};
 //! use papyrus_storage::open_storage;
-//! # use papyrus_storage::db::DbConfig;
+//! # use papyrus_storage::{db::DbConfig, StorageConfig};
 //! # use starknet_api::core::ChainId;
 //! use starknet_api::block::BlockNumber;
 //!
@@ -24,7 +24,8 @@
 //! #     max_size: 1 << 35,    // 32GB
 //! #     growth_step: 1 << 26, // 64MB
 //! # };
-//! let (reader, mut writer) = open_storage(db_config)?;
+//! # let storage_config = StorageConfig{db_config, ..Default::default()};
+//! let (reader, mut writer) = open_storage(storage_config)?;
 //! writer
 //!     .begin_rw_txn()?                                    // Start a RW transaction.
 //!     .update_base_layer_block_marker(&BlockNumber(3))?    //Update the base layer block marker.

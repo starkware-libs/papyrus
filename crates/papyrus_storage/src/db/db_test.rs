@@ -6,7 +6,7 @@ use crate::test_utils::get_test_config;
 
 fn get_test_env() -> ((DbReader, DbWriter), TempDir) {
     let (config, temp_dir) = get_test_config();
-    (open_env(config).expect("Failed to open environment."), temp_dir)
+    (open_env(config.db_config).expect("Failed to open environment."), temp_dir)
 }
 
 #[test]

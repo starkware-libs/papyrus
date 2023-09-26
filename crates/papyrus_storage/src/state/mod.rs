@@ -10,7 +10,7 @@
 //! use papyrus_storage::open_storage;
 //! use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 //! # use indexmap::IndexMap;
-//! # use papyrus_storage::db::DbConfig;
+//! # use papyrus_storage::{db::DbConfig, StorageConfig};
 //! # use starknet_api::block::BlockNumber;
 //! # use starknet_api::core::{ChainId, ContractAddress};
 //! use starknet_api::state::{StateDiff, StateNumber, ThinStateDiff};
@@ -24,8 +24,9 @@
 //! #     max_size: 1 << 35,    // 32GB
 //! #     growth_step: 1 << 26, // 64MB
 //! # };
+//! # let storage_config = StorageConfig{db_config, ..Default::default()};
 //! let state_diff = StateDiff::default();
-//! let (reader, mut writer) = open_storage(db_config)?;
+//! let (reader, mut writer) = open_storage(storage_config)?;
 //! writer
 //!     .begin_rw_txn()?                                                    // Start a RW transaction.
 //!     .append_state_diff(BlockNumber(0), state_diff, IndexMap::new())?    // Append a state diff.
