@@ -1,0 +1,12 @@
+/home/dvir/WORKSPACES/libmdbx-rs/target/debug/deps/anes-89ef9cd5bf2a239e.rmeta: /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/lib.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/macros.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/sequences.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/sequences/attribute.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/sequences/buffer.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/sequences/color.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/sequences/cursor.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/sequences/terminal.rs
+
+/home/dvir/WORKSPACES/libmdbx-rs/target/debug/deps/anes-89ef9cd5bf2a239e.d: /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/lib.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/macros.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/sequences.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/sequences/attribute.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/sequences/buffer.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/sequences/color.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/sequences/cursor.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/sequences/terminal.rs
+
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/lib.rs:
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/macros.rs:
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/sequences.rs:
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/sequences/attribute.rs:
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/sequences/buffer.rs:
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/sequences/color.rs:
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/sequences/cursor.rs:
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/anes-0.1.6/src/sequences/terminal.rs:

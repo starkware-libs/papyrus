@@ -208,6 +208,10 @@ impl StorageReader {
         }
         Ok(DbStats { db_stats: self.db_reader.get_db_stats()?, tables_stats })
     }
+
+    pub fn info(&self) -> libmdbx::Info {
+        self.db_reader.info()
+    }
 }
 
 /// A struct for starting RW transactions ([`StorageTxn`]) to the storage.
@@ -236,7 +240,8 @@ pub struct StorageTxn<'env, Mode: TransactionKind> {
 impl<'env> StorageTxn<'env, RW> {
     /// Commits the changes made in the transaction to the storage.
     pub fn commit(self) -> StorageResult<()> {
-        Ok(self.txn.commit()?)
+        let x = self.txn.commit()?;
+        Ok(())
     }
 }
 

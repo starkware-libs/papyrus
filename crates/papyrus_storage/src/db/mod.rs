@@ -167,6 +167,10 @@ impl DbReader {
     pub(crate) fn begin_ro_txn(&self) -> DbResult<DbReadTransaction<'_>> {
         Ok(DbReadTransaction { txn: self.env.begin_ro_txn()? })
     }
+
+    pub fn info(&self) -> libmdbx::Info {
+        self.env.info().unwrap()
+    }
 }
 
 type DbReadTransaction<'env> = DbTransaction<'env, RO>;
@@ -191,7 +195,8 @@ type DbWriteTransaction<'env> = DbTransaction<'env, RW>;
 
 impl<'a> DbWriteTransaction<'a> {
     pub(crate) fn commit(self) -> DbResult<()> {
-        self.txn.commit()?;
+        let (_bool, latency) = self.txn.commit()?;
+        latency.print_latency();
         Ok(())
     }
 }

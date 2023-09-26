@@ -16,7 +16,7 @@ const_format.workspace = true
 futures-util.workspace = true
 itertools.workspace = true
 jsonrpsee = { workspace = true, features = ["full"] }
-libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
+libmdbx = { path = "../libmdbx-rs", features = ["lifetimed-bytes"] }
 lazy_static.workspace = true
 papyrus_base_layer = { path = "../papyrus_base_layer" }
 papyrus_config = { path = "../papyrus_config", version = "0.0.5" }

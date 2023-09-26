@@ -1,0 +1,12 @@
+/home/dvir/WORKSPACES/libmdbx-rs/target/debug/deps/tempfile-a308495d84d188b9.rmeta: /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/lib.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/dir.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/error.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/file/mod.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/file/imp/mod.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/spooled.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/util.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/file/imp/unix.rs
+
+/home/dvir/WORKSPACES/libmdbx-rs/target/debug/deps/tempfile-a308495d84d188b9.d: /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/lib.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/dir.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/error.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/file/mod.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/file/imp/mod.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/spooled.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/util.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/file/imp/unix.rs
+
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/lib.rs:
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/dir.rs:
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/error.rs:
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/file/mod.rs:
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/file/imp/mod.rs:
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/spooled.rs:
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/util.rs:
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tempfile-3.8.0/src/file/imp/unix.rs:

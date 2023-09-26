@@ -418,7 +418,9 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         // Write state diff.
         let (thin_state_diff, declared_classes, deprecated_declared_classes) =
             ThinStateDiff::from_state_diff(state_diff);
+        tracing::debug!("START writing state diff {block_number}");
         state_diffs_table.insert(&self.txn, &block_number, &thin_state_diff)?;
+        tracing::debug!("END writing state diff {block_number}");
 
         // Write declared classes.
         write_declared_classes(

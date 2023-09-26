@@ -1,0 +1,182 @@
+OPT_LEVEL = Some("0")
+TARGET = Some("x86_64-unknown-linux-gnu")
+HOST = Some("x86_64-unknown-linux-gnu")
+cargo:rerun-if-env-changed=CC_x86_64-unknown-linux-gnu
+CC_x86_64-unknown-linux-gnu = None
+cargo:rerun-if-env-changed=CC_x86_64_unknown_linux_gnu
+CC_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=HOST_CC
+HOST_CC = None
+cargo:rerun-if-env-changed=CC
+CC = None
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+DEBUG = Some("true")
+CARGO_CFG_TARGET_FEATURE = Some("fxsr,sse,sse2")
+cargo:rerun-if-env-changed=CFLAGS_x86_64-unknown-linux-gnu
+CFLAGS_x86_64-unknown-linux-gnu = None
+cargo:rerun-if-env-changed=CFLAGS_x86_64_unknown_linux_gnu
+CFLAGS_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=HOST_CFLAGS
+HOST_CFLAGS = None
+cargo:rerun-if-env-changed=CFLAGS
+CFLAGS = None
+cargo:rerun-if-env-changed=CC_x86_64-unknown-linux-gnu
+CC_x86_64-unknown-linux-gnu = None
+cargo:rerun-if-env-changed=CC_x86_64_unknown_linux_gnu
+CC_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=HOST_CC
+HOST_CC = None
+cargo:rerun-if-env-changed=CC
+CC = None
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+CARGO_CFG_TARGET_FEATURE = Some("fxsr,sse,sse2")
+cargo:rerun-if-env-changed=CFLAGS_x86_64-unknown-linux-gnu
+CFLAGS_x86_64-unknown-linux-gnu = None
+cargo:rerun-if-env-changed=CFLAGS_x86_64_unknown_linux_gnu
+CFLAGS_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=HOST_CFLAGS
+HOST_CFLAGS = None
+cargo:rerun-if-env-changed=CFLAGS
+CFLAGS = None
+cargo:rerun-if-env-changed=CC_x86_64-unknown-linux-gnu
+CC_x86_64-unknown-linux-gnu = None
+cargo:rerun-if-env-changed=CC_x86_64_unknown_linux_gnu
+CC_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=HOST_CC
+HOST_CC = None
+cargo:rerun-if-env-changed=CC
+CC = None
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+CARGO_CFG_TARGET_FEATURE = Some("fxsr,sse,sse2")
+cargo:rerun-if-env-changed=CFLAGS_x86_64-unknown-linux-gnu
+CFLAGS_x86_64-unknown-linux-gnu = None
+cargo:rerun-if-env-changed=CFLAGS_x86_64_unknown_linux_gnu
+CFLAGS_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=HOST_CFLAGS
+HOST_CFLAGS = None
+cargo:rerun-if-env-changed=CFLAGS
+CFLAGS = None
+cargo:rerun-if-env-changed=CC_x86_64-unknown-linux-gnu
+CC_x86_64-unknown-linux-gnu = None
+cargo:rerun-if-env-changed=CC_x86_64_unknown_linux_gnu
+CC_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=HOST_CC
+HOST_CC = None
+cargo:rerun-if-env-changed=CC
+CC = None
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+CARGO_CFG_TARGET_FEATURE = Some("fxsr,sse,sse2")
+cargo:rerun-if-env-changed=CFLAGS_x86_64-unknown-linux-gnu
+CFLAGS_x86_64-unknown-linux-gnu = None
+cargo:rerun-if-env-changed=CFLAGS_x86_64_unknown_linux_gnu
+CFLAGS_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=HOST_CFLAGS
+HOST_CFLAGS = None
+cargo:rerun-if-env-changed=CFLAGS
+CFLAGS = None
+running: "cc" "-O0" "-ffunction-sections" "-fdata-sections" "-fPIC" "-gdwarf-4" "-fno-omit-frame-pointer" "-m64" "-Wall" "-Wextra" "-Wno-unused-parameter" "-Wbad-function-cast" "-Wuninitialized" "-DMDBX_BUILD_FLAGS=\"-NDEBUG=0 -O0 -ffunction-sections -fdata-sections -fPIC -gdwarf-4 -fno-omit-frame-pointer -m64 -Wall -Wextra -Wno-unused-parameter -Wbad-function-cast -Wuninitialized\"" "-DMDBX_TXN_CHECKOWNER=0" "-o" "/home/dvir/WORKSPACES/libmdbx-rs/target/debug/build/mdbx-sys-a4932d2e6f28b93f/out/30b35f52c450f285-mdbx.o" "-c" "/home/dvir/WORKSPACES/libmdbx-rs/mdbx-sys/libmdbx/mdbx.c"
+cargo:warning=/home/dvir/WORKSPACES/libmdbx-rs/mdbx-sys/libmdbx/mdbx.c: In function ‘node_data’:
+
+cargo:warning=/home/dvir/WORKSPACES/libmdbx-rs/mdbx-sys/libmdbx/mdbx.c:2968:40: warning: cast from function call of type ‘void *’ to non-matching type ‘long int’ [-Wbad-function-cast]
+
+cargo:warning= 2968 | #define ptr_disp(ptr, disp) ((void *)(((intptr_t)(ptr)) + ((intptr_t)(disp))))
+
+cargo:warning=      |                                        ^
+
+cargo:warning=/home/dvir/WORKSPACES/libmdbx-rs/mdbx-sys/libmdbx/mdbx.c:4390:10: note: in expansion of macro ‘ptr_disp’
+
+cargo:warning= 4390 |   return ptr_disp(node_key(node), node_ks(node));
+
+cargo:warning=      |          ^~~~~~~~
+
+cargo:warning=/home/dvir/WORKSPACES/libmdbx-rs/mdbx-sys/libmdbx/mdbx.c: In function ‘setup_dxb’:
+
+cargo:warning=/home/dvir/WORKSPACES/libmdbx-rs/mdbx-sys/libmdbx/mdbx.c:2971:32: warning: cast from function call of type ‘const MDBX_page *’ {aka ‘const struct MDBX_page *’} to non-matching type ‘long int’ [-Wbad-function-cast]
+
+cargo:warning= 2971 | #define ptr_dist(more, less) (((intptr_t)(more)) - ((intptr_t)(less)))
+
+cargo:warning=      |                                ^
+
+cargo:warning=/home/dvir/WORKSPACES/libmdbx-rs/mdbx-sys/libmdbx/mdbx.c:2576:63: note: in definition of macro ‘ERROR’
+
+cargo:warning= 2576 |       debug_log(MDBX_LOG_ERROR, __func__, __LINE__, fmt "\n", __VA_ARGS__);    \
+
+cargo:warning=      |                                                               ^~~~~~~~~~~
+
+cargo:warning=/home/dvir/WORKSPACES/libmdbx-rs/mdbx-sys/libmdbx/mdbx.c:17876:29: note: in expansion of macro ‘ptr_dist’
+
+cargo:warning=17876 |             bytes2pgno(env, ptr_dist(data_page(target), env->me_map)));
+
+cargo:warning=      |                             ^~~~~~~~
+
+cargo:warning=/home/dvir/WORKSPACES/libmdbx-rs/mdbx-sys/libmdbx/mdbx.c: In function ‘cursor_put_nochecklen’:
+
+cargo:warning=/home/dvir/WORKSPACES/libmdbx-rs/mdbx-sys/libmdbx/mdbx.c:2968:40: warning: cast from function call of type ‘void *’ to non-matching type ‘long int’ [-Wbad-function-cast]
+
+cargo:warning= 2968 | #define ptr_disp(ptr, disp) ((void *)(((intptr_t)(ptr)) + ((intptr_t)(disp))))
+
+cargo:warning=      |                                        ^
+
+cargo:warning=/home/dvir/WORKSPACES/libmdbx-rs/mdbx-sys/libmdbx/mdbx.c:766:44: note: in definition of macro ‘unlikely’
+
+cargo:warning=  766 | #define unlikely(cond) __builtin_expect(!!(cond), 0)
+
+cargo:warning=      |                                            ^~~~
+
+cargo:warning=/home/dvir/WORKSPACES/libmdbx-rs/mdbx-sys/libmdbx/mdbx.c:2600:27: note: in expansion of macro ‘ENSURE_MSG’
+
+cargo:warning= 2600 | #define ENSURE(env, expr) ENSURE_MSG(env, expr, #expr)
+
+cargo:warning=      |                           ^~~~~~~~~~
+
+cargo:warning=/home/dvir/WORKSPACES/libmdbx-rs/mdbx-sys/libmdbx/mdbx.c:2606:7: note: in expansion of macro ‘ENSURE’
+
+cargo:warning= 2606 |       ENSURE(env, expr);                                                       \
+
+cargo:warning=      |       ^~~~~~
+
+cargo:warning=/home/dvir/WORKSPACES/libmdbx-rs/mdbx-sys/libmdbx/mdbx.c:2610:27: note: in expansion of macro ‘eASSERT’
+
+cargo:warning= 2610 | #define cASSERT(mc, expr) eASSERT((mc)->mc_txn->mt_env, expr)
+
+cargo:warning=      |                           ^~~~~~~
+
+cargo:warning=/home/dvir/WORKSPACES/libmdbx-rs/mdbx-sys/libmdbx/mdbx.c:21749:11: note: in expansion of macro ‘cASSERT’
+
+cargo:warning=21749 |           cASSERT(mc, ptr_disp(node_key(node), node_ds(node)) <
+
+cargo:warning=      |           ^~~~~~~
+
+cargo:warning=/home/dvir/WORKSPACES/libmdbx-rs/mdbx-sys/libmdbx/mdbx.c:21749:23: note: in expansion of macro ‘ptr_disp’
+
+cargo:warning=21749 |           cASSERT(mc, ptr_disp(node_key(node), node_ds(node)) <
+
+cargo:warning=      |                       ^~~~~~~~
+
+exit status: 0
+cargo:rerun-if-env-changed=AR_x86_64-unknown-linux-gnu
+AR_x86_64-unknown-linux-gnu = None
+cargo:rerun-if-env-changed=AR_x86_64_unknown_linux_gnu
+AR_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=HOST_AR
+HOST_AR = None
+cargo:rerun-if-env-changed=AR
+AR = None
+cargo:rerun-if-env-changed=ARFLAGS_x86_64-unknown-linux-gnu
+ARFLAGS_x86_64-unknown-linux-gnu = None
+cargo:rerun-if-env-changed=ARFLAGS_x86_64_unknown_linux_gnu
+ARFLAGS_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=HOST_ARFLAGS
+HOST_ARFLAGS = None
+cargo:rerun-if-env-changed=ARFLAGS
+ARFLAGS = None
+running: ZERO_AR_DATE="1" "ar" "cq" "/home/dvir/WORKSPACES/libmdbx-rs/target/debug/build/mdbx-sys-a4932d2e6f28b93f/out/libmdbx.a" "/home/dvir/WORKSPACES/libmdbx-rs/target/debug/build/mdbx-sys-a4932d2e6f28b93f/out/30b35f52c450f285-mdbx.o"
+exit status: 0
+running: "ar" "s" "/home/dvir/WORKSPACES/libmdbx-rs/target/debug/build/mdbx-sys-a4932d2e6f28b93f/out/libmdbx.a"
+exit status: 0
+cargo:rustc-link-lib=static=mdbx
+cargo:rustc-link-search=native=/home/dvir/WORKSPACES/libmdbx-rs/target/debug/build/mdbx-sys-a4932d2e6f28b93f/out

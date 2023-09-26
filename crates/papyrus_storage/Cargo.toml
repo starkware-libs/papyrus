@@ -20,7 +20,7 @@ flate2.workspace = true
 human_bytes.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
 integer-encoding.workspace = true
-libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
+libmdbx = { path = "../libmdbx-rs", features = ["lifetimed-bytes"] }
 metrics.workspace = true
 num-bigint.workspace = true
 primitive-types.workspace = true

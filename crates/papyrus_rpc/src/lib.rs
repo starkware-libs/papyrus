@@ -204,7 +204,7 @@ pub async fn run_server(
                 .filter_async(proxy_rpc_request),
         );
 
-    if config.collect_metrics {
+    if false {
         let server = server_builder
             .set_logger(MetricLogger::new(&methods))
             .build(&config.server_address)

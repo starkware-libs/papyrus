@@ -1,0 +1,12 @@
+/home/dvir/WORKSPACES/libmdbx-rs/target/debug/deps/libthiserror_impl-ce070fcd7d9b5952.so: /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/lib.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/ast.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/attr.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/expand.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/fmt.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/generics.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/prop.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/valid.rs
+
+/home/dvir/WORKSPACES/libmdbx-rs/target/debug/deps/thiserror_impl-ce070fcd7d9b5952.d: /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/lib.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/ast.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/attr.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/expand.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/fmt.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/generics.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/prop.rs /home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/valid.rs
+
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/lib.rs:
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/ast.rs:
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/attr.rs:
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/expand.rs:
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/fmt.rs:
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/generics.rs:
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/prop.rs:
+/home/dvir/.cargo/registry/src/index.crates.io-6f17d22bba15001f/thiserror-impl-1.0.48/src/valid.rs:

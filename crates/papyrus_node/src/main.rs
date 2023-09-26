@@ -17,7 +17,7 @@ use papyrus_sync::sources::central::{CentralError, CentralSource};
 use papyrus_sync::{StateSync, StateSyncError};
 use tokio::sync::RwLock;
 use tracing::metadata::LevelFilter;
-use tracing::{error, info};
+use tracing::{error, info, debug};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 use validator::Validate;
@@ -27,6 +27,15 @@ const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
 
 async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     let (storage_reader, storage_writer) = open_storage(config.storage.db_config.clone())?;
+
+    async fn foo(reader: StorageReader) {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
+        loop {
+            interval.tick().await;
+            debug!("info:\n {:?}", reader.info());
+        }
+    }
+    let h = tokio::spawn(foo(storage_reader.clone()));
 
     // Monitoring server.
     let monitoring_server = MonitoringServer::new(
@@ -63,6 +72,10 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         res = sync_handle => {
             error!("Sync stopped.");
             res??
+        }
+        res = h =>{
+            error!("h stopped.");
+            res?
         }
     };
     error!("Task ended with unexpected Ok.");
