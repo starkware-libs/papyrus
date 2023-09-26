@@ -110,6 +110,14 @@ async fn alive() {
 }
 
 #[tokio::test]
+async fn ready() {
+    let app = setup_app();
+    let response = request_app(app, "ready").await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
 async fn without_metrics() {
     let app = setup_app();
     let response = request_app(app, "metrics").await;
