@@ -59,7 +59,7 @@ use tracing::debug;
 use crate::body::events::{EventIndex, ThinTransactionOutput};
 use crate::db::serialization::StorageSerde;
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
-use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
+use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageScope, StorageTxn};
 
 type TransactionsTable<'env> = TableHandle<'env, TransactionIndex, Transaction>;
 type TransactionOutputsTable<'env> = TableHandle<'env, TransactionIndex, ThinTransactionOutput>;
@@ -273,30 +273,34 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
     #[latency_histogram("storage_append_body_latency_seconds")]
     fn append_body(self, block_number: BlockNumber, block_body: BlockBody) -> StorageResult<Self> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
-        let transactions_table = self.txn.open_table(&self.tables.transactions)?;
-        let transaction_outputs_table = self.txn.open_table(&self.tables.transaction_outputs)?;
-        let events_table = self.txn.open_table(&self.tables.events)?;
-        let transaction_hash_to_idx_table =
-            self.txn.open_table(&self.tables.transaction_hash_to_idx)?;
-        let transaction_idx_to_hash_table =
-            self.txn.open_table(&self.tables.transaction_idx_to_hash)?;
-
         update_marker(&self.txn, &markers_table, block_number)?;
-        write_transactions(
-            &block_body,
-            &self.txn,
-            &transactions_table,
-            &transaction_hash_to_idx_table,
-            &transaction_idx_to_hash_table,
-            block_number,
-        )?;
-        write_transaction_outputs(
-            block_body,
-            &self.txn,
-            &transaction_outputs_table,
-            &events_table,
-            block_number,
-        )?;
+
+        if self.scope != StorageScope::StateOnly {
+            let transactions_table = self.txn.open_table(&self.tables.transactions)?;
+            let transaction_outputs_table =
+                self.txn.open_table(&self.tables.transaction_outputs)?;
+            let events_table = self.txn.open_table(&self.tables.events)?;
+            let transaction_hash_to_idx_table =
+                self.txn.open_table(&self.tables.transaction_hash_to_idx)?;
+            let transaction_idx_to_hash_table =
+                self.txn.open_table(&self.tables.transaction_idx_to_hash)?;
+
+            write_transactions(
+                &block_body,
+                &self.txn,
+                &transactions_table,
+                &transaction_hash_to_idx_table,
+                &transaction_idx_to_hash_table,
+                block_number,
+            )?;
+            write_transaction_outputs(
+                block_body,
+                &self.txn,
+                &transaction_outputs_table,
+                &events_table,
+                block_number,
+            )?;
+        }
 
         Ok(self)
     }
@@ -306,13 +310,6 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
         block_number: BlockNumber,
     ) -> StorageResult<(Self, Option<RevertedBlockBody>)> {
         let markers_table = self.txn.open_table(&self.tables.markers)?;
-        let transactions_table = self.txn.open_table(&self.tables.transactions)?;
-        let transaction_outputs_table = self.txn.open_table(&self.tables.transaction_outputs)?;
-        let transaction_hash_to_idx_table =
-            self.txn.open_table(&self.tables.transaction_hash_to_idx)?;
-        let transaction_idx_to_hash_table =
-            self.txn.open_table(&self.tables.transaction_idx_to_hash)?;
-        let events_table = self.txn.open_table(&self.tables.events)?;
 
         // Assert that body marker equals the reverted block number + 1
         let current_header_marker = self.get_body_marker()?;
@@ -324,45 +321,61 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
             return Ok((self, None));
         }
 
-        let transactions = self
-            .get_block_transactions(block_number)?
-            .expect("Missing transactions for block {block_number}.");
-        let transaction_outputs = self
-            .get_block_transaction_outputs(block_number)?
-            .expect("Missing transaction outputs for block {block_number}.");
-        let transaction_hashes = self
-            .get_block_transaction_hashes(block_number)?
-            .expect("Missing transaction hashes for block {block_number}.");
-
-        // Delete the transactions data.
-        let mut events = vec![];
-        for (offset, tx_output) in transaction_outputs.iter().enumerate() {
-            let tx_index = TransactionIndex(block_number, TransactionOffsetInBlock(offset));
-            let tx_hash = self
-                .get_transaction_hash_by_idx(&tx_index)?
-                .expect("Missing transaction hash for transaction index {tx_index}.");
-            let mut tx_events = vec![];
-            for (index, from_address) in
-                tx_output.events_contract_addresses_as_ref().iter().enumerate()
-            {
-                let key =
-                    (*from_address, EventIndex(tx_index, EventIndexInTransactionOutput(index)));
-                tx_events.push(
-                    events_table
-                        .get(&self.txn, &key)?
-                        .expect("Missing events for transaction output {tx_index}."),
-                );
-                events_table.delete(&self.txn, &key)?;
+        let reverted_block_body = 'reverted_block_body: {
+            if self.scope == StorageScope::StateOnly {
+                break 'reverted_block_body None;
             }
-            events.push(tx_events);
-            transactions_table.delete(&self.txn, &tx_index)?;
-            transaction_outputs_table.delete(&self.txn, &tx_index)?;
-            transaction_hash_to_idx_table.delete(&self.txn, &tx_hash)?;
-            transaction_idx_to_hash_table.delete(&self.txn, &tx_index)?;
-        }
+
+            let transactions_table = self.txn.open_table(&self.tables.transactions)?;
+            let transaction_outputs_table =
+                self.txn.open_table(&self.tables.transaction_outputs)?;
+            let transaction_hash_to_idx_table =
+                self.txn.open_table(&self.tables.transaction_hash_to_idx)?;
+            let transaction_idx_to_hash_table =
+                self.txn.open_table(&self.tables.transaction_idx_to_hash)?;
+            let events_table = self.txn.open_table(&self.tables.events)?;
+
+            let transactions = self
+                .get_block_transactions(block_number)?
+                .expect("Missing transactions for block {block_number}.");
+            let transaction_outputs = self
+                .get_block_transaction_outputs(block_number)?
+                .expect("Missing transaction outputs for block {block_number}.");
+            let transaction_hashes = self
+                .get_block_transaction_hashes(block_number)?
+                .expect("Missing transaction hashes for block {block_number}.");
+
+            // Delete the transactions data.
+            let mut events = vec![];
+            for (offset, tx_output) in transaction_outputs.iter().enumerate() {
+                let tx_index = TransactionIndex(block_number, TransactionOffsetInBlock(offset));
+                let tx_hash = self
+                    .get_transaction_hash_by_idx(&tx_index)?
+                    .expect("Missing transaction hash for transaction index {tx_index}.");
+                let mut tx_events = vec![];
+                for (index, from_address) in
+                    tx_output.events_contract_addresses_as_ref().iter().enumerate()
+                {
+                    let key =
+                        (*from_address, EventIndex(tx_index, EventIndexInTransactionOutput(index)));
+                    tx_events.push(
+                        events_table
+                            .get(&self.txn, &key)?
+                            .expect("Missing events for transaction output {tx_index}."),
+                    );
+                    events_table.delete(&self.txn, &key)?;
+                }
+                events.push(tx_events);
+                transactions_table.delete(&self.txn, &tx_index)?;
+                transaction_outputs_table.delete(&self.txn, &tx_index)?;
+                transaction_hash_to_idx_table.delete(&self.txn, &tx_hash)?;
+                transaction_idx_to_hash_table.delete(&self.txn, &tx_index)?;
+            }
+            Some((transactions, transaction_outputs, transaction_hashes, events))
+        };
 
         markers_table.upsert(&self.txn, &MarkerKind::Body, &block_number)?;
-        Ok((self, Some((transactions, transaction_outputs, transaction_hashes, events))))
+        Ok((self, reverted_block_body))
     }
 }
 

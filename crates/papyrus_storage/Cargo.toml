@@ -46,5 +46,6 @@ rand.workspace = true
 rand_chacha.workspace = true
 schemars = {workspace = true, features = ["preserve_order"] }
 tempfile = { workspace = true}
+test-case.workspace = true
 test_utils = { path = "../test_utils"}
 tokio = { workspace = true, features = ["full", "sync"] }
