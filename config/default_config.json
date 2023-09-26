@@ -137,7 +137,7 @@
   "storage.db_config.growth_step": {
     "description": "The growth step in bytes, must be greater than zero to allow the database to grow.",
     "privacy": "Public",
-    "value": 67108864
+    "value": 4294967296
   },
   "storage.db_config.max_size": {
     "description": "The maximum size of the node's storage in bytes.",
