@@ -28,8 +28,8 @@ pub(crate) enum SessionId {
 pub(crate) trait QueryBound: Message + 'static + Default {}
 impl<T> QueryBound for T where T: Message + 'static + Default {}
 
-pub(crate) trait DataBound: Message + 'static + Unpin {}
-impl<T> DataBound for T where T: Message + 'static + Unpin {}
+pub(crate) trait DataBound: Message + 'static + Unpin + Default {}
+impl<T> DataBound for T where T: Message + 'static + Unpin + Default {}
 
 #[derive(Debug)]
 // TODO(shahak) remove allow dead code.
