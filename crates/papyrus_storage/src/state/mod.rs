@@ -65,7 +65,7 @@ use tracing::debug;
 
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::state::data::IndexedDeprecatedContractClass;
-use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
+use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageScope, StorageTxn};
 
 type DeclaredClassesTable<'env> = TableHandle<'env, ClassHash, ContractClass>;
 type DeclaredClassesBlockTable<'env> = TableHandle<'env, ClassHash, BlockNumber>;
@@ -523,7 +523,9 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         )?;
         delete_storage_diffs(&self.txn, block_number, &thin_state_diff, &storage_table)?;
         delete_nonces(&self.txn, block_number, &thin_state_diff, &nonces_table)?;
-        state_diffs_table.delete(&self.txn, &block_number)?;
+        if self.scope != StorageScope::StateOnly {
+            state_diffs_table.delete(&self.txn, &block_number)?;
+        }
         delete_replaced_classes(
             &self.txn,
             block_number,

@@ -253,8 +253,6 @@ impl StorageWriter {
 pub struct StorageTxn<'env, Mode: TransactionKind> {
     txn: DbTransaction<'env, Mode>,
     tables: Arc<Tables>,
-    // TODO(yoav): Remove the dead_code attribute once the scope is in use.
-    #[allow(dead_code)]
     scope: StorageScope,
 }
 
