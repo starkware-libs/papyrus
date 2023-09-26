@@ -180,6 +180,10 @@ fn app(
             format!("/{MONITORING_PREFIX}/metrics").as_str(),
             get(move || metrics(prometheus_handle)),
         )
+        .route(
+            format!("/{MONITORING_PREFIX}/ready").as_str(),
+            get(move || async { StatusCode::OK.to_string() }),
+        )
 }
 
 /// Returns DB statistics.
