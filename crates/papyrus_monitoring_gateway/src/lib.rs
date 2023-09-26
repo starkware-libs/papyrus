@@ -180,6 +180,12 @@ fn app(
             format!("/{MONITORING_PREFIX}/metrics").as_str(),
             get(move || metrics(prometheus_handle)),
         )
+        .route(format!("/{MONITORING_PREFIX}/ready").as_str(), get(move || is_ready()))
+}
+
+// Return Ok string if the node is ready to be used.
+async fn is_ready() -> String {
+    StatusCode::OK.to_string()
 }
 
 /// Returns DB statistics.
