@@ -3,6 +3,7 @@
 // mod behaviour_test;
 
 use std::collections::{HashSet, VecDeque};
+use std::io;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
@@ -23,15 +24,23 @@ use libp2p::swarm::{
 use libp2p::{Multiaddr, PeerId};
 
 use super::handler::{Handler, RequestFromBehaviourEvent};
-use super::{DataBound, InboundSessionId, OutboundSessionId, QueryBound};
+use super::protocol::PROTOCOL_NAME;
+use super::{DataBound, GenericEvent, InboundSessionId, OutboundSessionId, QueryBound};
 
-#[derive(Debug)]
-// TODO(shahak) remove allow dead code.
+#[derive(thiserror::Error, Debug)]
+// TODO(shahak) remove allow(dead_code).
 #[allow(dead_code)]
-pub(crate) enum Event<Query: QueryBound, Data: DataBound> {
-    NewInboundQuery { query: Query, inbound_session_id: InboundSessionId },
-    RecievedData { data: Data, outbound_session_id: OutboundSessionId },
+pub(crate) enum SessionError {
+    #[error("Connection timed out after {} seconds.", substream_timeout.as_secs())]
+    Timeout { substream_timeout: Duration },
+    #[error(transparent)]
+    IOError(#[from] io::Error),
+    // TODO(shahak) make PROTOCOL_NAME configurable.
+    #[error("Remote peer doesn't support the {PROTOCOL_NAME} protocol.")]
+    RemoteDoesntSupportProtocol,
 }
+
+pub(crate) type Event<Query, Data> = GenericEvent<Query, Data, SessionError>;
 
 // TODO(shahak) remove allow dead code.
 #[allow(dead_code)]
