@@ -31,6 +31,14 @@ impl<Query: QueryBound, Data: DataBound> StreamTrait for Handler<Query, Data> {
 
 const SUBSTREAM_TIMEOUT: Duration = Duration::MAX;
 
+fn simulate_request_to_send_data_from_swarm<Query: QueryBound, Data: DataBound>(
+    handler: &mut Handler<Query, Data>,
+    data: Data,
+    inbound_session_id: InboundSessionId,
+) {
+    handler.on_behaviour_event(RequestFromBehaviourEvent::SendData { data, inbound_session_id });
+}
+
 fn simulate_new_inbound_session_from_swarm<Query: QueryBound, Data: DataBound>(
     handler: &mut Handler<Query, Data>,
     query: Query,
@@ -55,14 +63,6 @@ async fn validate_new_inbound_session_event<Query: QueryBound + PartialEq, Data:
             query: event_query, inbound_session_id: event_inbound_session_id
         }) if event_query == *query &&  event_inbound_session_id == inbound_session_id
     );
-}
-
-fn simulate_request_to_send_data_from_swarm<Query: QueryBound, Data: DataBound>(
-    handler: &mut Handler<Query, Data>,
-    data: Data,
-    inbound_session_id: InboundSessionId,
-) {
-    handler.on_behaviour_event(RequestFromBehaviourEvent::SendData { data, inbound_session_id });
 }
 
 async fn read_messages(stream: &mut Stream, num_messages: usize) -> Vec<GetBlocksResponse> {
