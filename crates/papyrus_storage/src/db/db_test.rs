@@ -1,7 +1,8 @@
+use libmdbx::PageSize;
 use pretty_assertions::assert_eq;
 use tempfile::TempDir;
 
-use crate::db::{open_env, DbReader, DbWriter};
+use crate::db::{get_page_size, open_env, DbReader, DbWriter};
 use crate::test_utils::get_test_config;
 
 fn get_test_env() -> ((DbReader, DbWriter), TempDir) {
@@ -96,4 +97,21 @@ fn table_stats() {
     assert_eq!(empty_stat.entries, 0);
     assert_eq!(empty_stat.overflow_pages, 0);
     assert_eq!(empty_stat.leaf_pages, 0);
+}
+
+use super::{MDBX_MAX_PAGESIZE, MDBX_MIN_PAGESIZE};
+#[test]
+fn get_page_size_test() {
+    // Good values.
+    assert_eq!(get_page_size(MDBX_MIN_PAGESIZE), PageSize::Set(MDBX_MIN_PAGESIZE));
+    assert_eq!(get_page_size(4096), PageSize::Set(4096));
+    assert_eq!(get_page_size(MDBX_MAX_PAGESIZE), PageSize::Set(MDBX_MAX_PAGESIZE));
+
+    // Range fix.
+    assert_eq!(get_page_size(MDBX_MIN_PAGESIZE - 1), PageSize::Set(MDBX_MIN_PAGESIZE));
+    assert_eq!(get_page_size(MDBX_MAX_PAGESIZE + 1), PageSize::Set(MDBX_MAX_PAGESIZE));
+
+    // Power of two fix.
+    assert_eq!(get_page_size(1025), PageSize::Set(1024));
+    assert_eq!(get_page_size(2047), PageSize::Set(1024));
 }

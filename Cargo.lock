@@ -4269,6 +4269,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 
 [[package]]
+name = "page_size"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "30d5b2194ed13191c1999ae0704b7839fb18384fa22e49b57eeaa97d79ce40da"
+dependencies = [
+ "libc",
+ "winapi",
+]
+
+[[package]]
 name = "papyrus_base_layer"
 version = "0.0.5"
 dependencies = [
@@ -4510,6 +4520,7 @@ dependencies = [
  "metrics",
  "num-bigint",
  "num-traits 0.2.16",
+ "page_size",
  "papyrus_config",
  "papyrus_proc_macros",
  "parity-scale-codec",
