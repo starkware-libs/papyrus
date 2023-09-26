@@ -10,7 +10,9 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-use futures::FutureExt;
+use async_stream::stream;
+use futures::stream::BoxStream;
+use futures::{FutureExt, StreamExt};
 use libp2p::swarm::handler::{
     ConnectionEvent,
     DialUpgradeError,
@@ -23,6 +25,7 @@ use tracing::debug;
 use self::session::InboundSession;
 use super::protocol::{InboundProtocol, OutboundProtocol, PROTOCOL_NAME};
 use super::{DataBound, GenericEvent, InboundSessionId, OutboundSessionId, QueryBound, SessionId};
+use crate::messages::read_message;
 
 #[derive(Debug)]
 // TODO(shahak) remove allow(dead_code).
@@ -60,6 +63,7 @@ pub(crate) struct Handler<Query: QueryBound, Data: DataBound> {
     substream_timeout: Duration,
     next_inbound_session_id: Arc<AtomicUsize>,
     id_to_inbound_session: HashMap<InboundSessionId, InboundSession<Data>>,
+    id_to_outbound_session: HashMap<OutboundSessionId, BoxStream<'static, Result<Data, io::Error>>>,
     pending_events: VecDeque<HandlerEvent<Self>>,
     inbound_sessions_marked_to_end: HashSet<InboundSessionId>,
 }
@@ -73,6 +77,7 @@ impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
             substream_timeout,
             next_inbound_session_id,
             id_to_inbound_session: Default::default(),
+            id_to_outbound_session: Default::default(),
             pending_events: Default::default(),
             inbound_sessions_marked_to_end: Default::default(),
         }
@@ -149,6 +154,32 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                 && inbound_session.is_waiting())
         });
 
+        // Handle outbound sessions.
+        self.id_to_outbound_session.retain(|outbound_session_id, outbound_session| {
+            match outbound_session.poll_next_unpin(cx) {
+                Poll::Ready(Some(Ok(data))) => {
+                    self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
+                        ToBehaviourEvent::ReceivedData {
+                            outbound_session_id: *outbound_session_id,
+                            data,
+                        },
+                    ));
+                    true
+                }
+                Poll::Ready(Some(Err(io_error))) => {
+                    self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
+                        ToBehaviourEvent::SessionFailed {
+                            session_id: SessionId::OutboundSessionId(*outbound_session_id),
+                            error: SessionError::IOError(io_error),
+                        },
+                    ));
+                    false
+                }
+                Poll::Ready(None) => false,
+                Poll::Pending => true,
+            }
+        });
+
         // Handling pending_events at the end of the function to avoid starvation.
         if let Some(event) = self.pending_events.pop_front() {
             return Poll::Ready(event);
@@ -158,11 +189,14 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
 
     fn on_behaviour_event(&mut self, event: Self::FromBehaviour) {
         match event {
-            RequestFromBehaviourEvent::CreateOutboundSession {
-                query: _query,
-                outbound_session_id: _outbound_session_id,
-            } => {
-                unimplemented!();
+            RequestFromBehaviourEvent::CreateOutboundSession { query, outbound_session_id } => {
+                self.pending_events.push_back(ConnectionHandlerEvent::OutboundSubstreamRequest {
+                    protocol: SubstreamProtocol::new(
+                        OutboundProtocol { query },
+                        outbound_session_id,
+                    )
+                    .with_timeout(self.substream_timeout),
+                });
             }
             RequestFromBehaviourEvent::SendData { data, inbound_session_id } => {
                 if let Some(inbound_session) =
@@ -211,10 +245,23 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
     ) {
         match event {
             ConnectionEvent::FullyNegotiatedOutbound(FullyNegotiatedOutbound {
-                protocol: _stream,
-                info: _outbound_session_id,
+                protocol: mut stream,
+                info: outbound_session_id,
             }) => {
-                unimplemented!();
+                self.id_to_outbound_session.insert(
+                    outbound_session_id,
+                    stream! {
+                        loop {
+                            let result = read_message::<Data, _>(&mut stream).await;
+                            let is_err = result.is_err();
+                            yield result;
+                            if is_err {
+                                break;
+                            }
+                        }
+                    }
+                    .boxed(),
+                );
             }
             ConnectionEvent::FullyNegotiatedInbound(FullyNegotiatedInbound {
                 protocol: (query, stream),
