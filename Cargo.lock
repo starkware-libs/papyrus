@@ -686,7 +686,7 @@ dependencies = [
  "cairo-lang-starknet",
  "cairo-vm",
  "ctor",
- "derive_more",
+ "derive_more 0.99.17",
  "indexmap 1.9.3",
  "itertools 0.10.5",
  "keccak",
@@ -1916,6 +1916,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "defaultmap"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15f9f7643e6fa6842f55898be3182c1e5b59447779e0dd55b50f9c601b2bf7c3"
+dependencies = [
+ "derive_more 1.0.0-beta.3",
+ "dyn-clone",
+]
+
+[[package]]
 name = "der"
 version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1953,6 +1963,27 @@ dependencies = [
  "quote",
  "rustc_version",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "derive_more"
+version = "1.0.0-beta.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1335e0609db169713d97c340dd769773c6c63cd953c8fcf1063043fd3d6dd11"
+dependencies = [
+ "derive_more-impl",
+]
+
+[[package]]
+name = "derive_more-impl"
+version = "1.0.0-beta.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df541e0e2a8069352be228ce4b85a1da6f59bfd325e56f57e4b241babbc3f832"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.37",
+ "unicode-xid",
 ]
 
 [[package]]
@@ -3795,7 +3826,7 @@ checksum = "3f0bee397dc9a7003e7bd34fffc1dc2d4c4fdc96530a0c439a5f98c9402bc7bf"
 dependencies = [
  "bitflags 2.4.0",
  "byteorder",
- "derive_more",
+ "derive_more 0.99.17",
  "indexmap 1.9.3",
  "libc",
  "lifetimed-bytes",
@@ -4853,7 +4884,8 @@ version = "0.0.5"
 dependencies = [
  "assert_matches",
  "bytes",
- "derive_more",
+ "defaultmap",
+ "derive_more 0.99.17",
  "futures",
  "libp2p",
  "mockall",
@@ -4927,7 +4959,7 @@ dependencies = [
  "cairo-lang-casm",
  "cairo-lang-starknet",
  "camelpaste",
- "derive_more",
+ "derive_more 0.99.17",
  "enum-iterator",
  "flate2",
  "futures",
@@ -6067,7 +6099,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "35c0a159d0c45c12b20c5a844feb1fe4bea86e28f17b92a5f0c42193634d3782"
 dependencies = [
  "cfg-if",
- "derive_more",
+ "derive_more 0.99.17",
  "parity-scale-codec",
  "scale-info-derive",
 ]
@@ -6624,7 +6656,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f70f6673391b3f3624651e8692f4e76aab9194abb3d3feeb3a07a6b0546639ee"
 dependencies = [
  "cairo-lang-starknet",
- "derive_more",
+ "derive_more 0.99.17",
  "hex",
  "indexmap 1.9.3",
  "once_cell",
