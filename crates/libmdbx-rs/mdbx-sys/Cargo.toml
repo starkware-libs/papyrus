@@ -12,6 +12,7 @@ categories = ["database", "external-ffi-bindings"]
 
 [lib]
 name = "mdbx_sys"
+path = "src/lib.rs"
 
 [dependencies]
 libc = "0.2"
