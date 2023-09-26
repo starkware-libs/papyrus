@@ -5,23 +5,26 @@ use starknet_api::core::ChainId;
 use tempfile::{tempdir, TempDir};
 
 use crate::db::DbConfig;
-use crate::{open_storage, StorageReader, StorageWriter};
+use crate::{open_storage, StorageConfig, StorageReader, StorageWriter};
 
 /// Returns a db config and the temporary directory that holds this db.
 /// The TempDir object is returned as a handler for the lifetime of this object (the temp
 /// directory), thus make sure the directory won't be destroyed. The caller should propagate the
 /// TempDir object until it is no longer needed. When the TempDir object is dropped, the directory
 /// is deleted.
-pub fn get_test_config() -> (DbConfig, TempDir) {
+pub fn get_test_config() -> (StorageConfig, TempDir) {
     let dir = tempdir().unwrap();
     println!("{dir:?}");
     (
-        DbConfig {
-            path_prefix: dir.path().to_path_buf(),
-            chain_id: ChainId("".to_owned()),
-            min_size: 1 << 20,    // 1MB
-            max_size: 1 << 35,    // 32GB
-            growth_step: 1 << 26, // 64MB
+        StorageConfig {
+            db_config: DbConfig {
+                path_prefix: dir.path().to_path_buf(),
+                chain_id: ChainId("".to_owned()),
+                min_size: 1 << 20,    // 1MB
+                max_size: 1 << 35,    // 32GB
+                growth_step: 1 << 26, // 64MB
+            },
+            ..Default::default()
         },
         dir,
     )

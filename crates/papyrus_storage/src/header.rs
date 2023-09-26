@@ -6,7 +6,7 @@
 //! # Example
 //! ```
 //! use papyrus_storage::open_storage;
-//! # use papyrus_storage::db::DbConfig;
+//! # use papyrus_storage::{db::DbConfig, StorageConfig};
 //! # use starknet_api::core::ChainId;
 //! use starknet_api::block::{Block, BlockNumber};
 //! use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
@@ -21,7 +21,8 @@
 //! #     growth_step: 1 << 26, // 64MB
 //! # };
 //! let block = Block::default();
-//! let (reader, mut writer) = open_storage(db_config)?;
+//! # let storage_config = StorageConfig{db_config, ..Default::default()};
+//! let (reader, mut writer) = open_storage(storage_config)?;
 //! writer
 //!     .begin_rw_txn()?                                // Start a RW transaction.
 //!     .append_header(BlockNumber(0), &block.header)?  // Appending a block body will fail without matching header.
