@@ -246,6 +246,9 @@ async fn pending_sync() {
         });
     }
 
+    // A different parent block hash than the last block in the database tells that a new block was
+    // created, and pending sync should wait until the new block is written to the storage. so
+    // this pending data should not be written.
     mock_pending_source.expect_get_pending_data().times(1).returning(|| {
         let mut block = PendingData::default();
         block.block.parent_block_hash = BlockHash(stark_felt!("0x1"));
@@ -263,5 +266,7 @@ async fn pending_sync() {
     .await
     .unwrap();
 
+    // The Last query for pending data (with parent block hash 0x1) should not be written so the gas
+    // price should PENDING_QUERIES.
     assert_eq!(pending_data.read().await.block.gas_price, GasPrice(PENDING_QUERIES as u128));
 }
