@@ -44,6 +44,7 @@ camelpaste = "0.1.0"
 chrono = "0.4.26"
 clap = { version = "4.3.10" }
 const_format = "0.2.30"
+defaultmap = "0.6.0"
 derive_more = "0.99.16"
 enum-iterator = "1.4.1"
 ethers = "2.0.3"
