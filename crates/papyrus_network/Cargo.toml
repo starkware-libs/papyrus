@@ -6,6 +6,7 @@ repository.workspace = true
 license-file.workspace = true
 
 [dependencies]
+async-stream.workspace = true
 bytes.workspace = true
 defaultmap.workspace = true
 derive_more.workspace = true
