@@ -22,15 +22,7 @@ use tracing::debug;
 
 use self::session::InboundSession;
 use super::protocol::{InboundProtocol, OutboundProtocol, PROTOCOL_NAME};
-use super::{DataBound, InboundSessionId, OutboundSessionId, QueryBound};
-
-#[derive(Debug)]
-// TODO(shahak) remove allow(dead_code).
-#[allow(dead_code)]
-pub(crate) enum SessionId {
-    OutboundSessionId(OutboundSessionId),
-    InboundSessionId(InboundSessionId),
-}
+use super::{DataBound, GenericEvent, InboundSessionId, OutboundSessionId, QueryBound, SessionId};
 
 #[derive(Debug)]
 // TODO(shahak) remove allow(dead_code).
@@ -51,18 +43,11 @@ pub(crate) enum SessionError {
     IOError(#[from] io::Error),
 }
 
+pub(crate) type ToBehaviourEvent<Query, Data> = GenericEvent<Query, Data, SessionError>;
+
 #[derive(thiserror::Error, Debug)]
 #[error("Remote peer doesn't support the {PROTOCOL_NAME} protocol.")]
 pub(crate) struct RemoteDoesntSupportProtocolError;
-
-#[derive(Debug)]
-// TODO(shahak) remove allow(dead_code).
-#[allow(dead_code)]
-pub(crate) enum ToBehaviourEvent<Query, Data> {
-    NewInboundSession { query: Query, inbound_session_id: InboundSessionId },
-    ReceivedData { outbound_session_id: OutboundSessionId, data: Data },
-    SessionFailed { session_id: SessionId, error: SessionError },
-}
 
 type HandlerEvent<H> = ConnectionHandlerEvent<
     <H as ConnectionHandler>::OutboundProtocol,
