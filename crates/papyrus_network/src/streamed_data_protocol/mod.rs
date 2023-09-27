@@ -1,4 +1,4 @@
-// pub mod behaviour;
+pub mod behaviour;
 pub mod handler;
 pub mod protocol;
 
@@ -17,8 +17,8 @@ pub struct InboundSessionId {
 
 // This is a workaround for the unstable feature trait aliases
 // https://doc.rust-lang.org/beta/unstable-book/language-features/trait-alias.html
-pub(crate) trait QueryBound: Message + 'static + Default {}
-impl<T> QueryBound for T where T: Message + 'static + Default {}
+pub(crate) trait QueryBound: Message + 'static + Default + Clone {}
+impl<T> QueryBound for T where T: Message + 'static + Default + Clone {}
 
 pub(crate) trait DataBound: Message + 'static + Unpin {}
 impl<T> DataBound for T where T: Message + 'static + Unpin {}
