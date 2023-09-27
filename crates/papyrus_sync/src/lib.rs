@@ -634,7 +634,7 @@ impl<
         }
     }
 }
-
+// TODO(dvir): consider gathering in a single pending argument instead.
 #[allow(clippy::too_many_arguments)]
 fn stream_new_blocks<
     TCentralSource: CentralSourceTrait + Sync + Send,
@@ -651,7 +651,6 @@ fn stream_new_blocks<
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
         loop {
-
             let header_marker = reader.begin_ro_txn()?.get_header_marker()?;
             let latest_central_block = central_source.get_latest_block().await?;
             *shared_highest_block.write().await = latest_central_block;
@@ -662,8 +661,8 @@ fn stream_new_blocks<
                 papyrus_metrics::PAPYRUS_CENTRAL_BLOCK_MARKER, central_block_marker.0 as f64
             );
             if header_marker == central_block_marker {
-                // Only if the node is fully synced until the last known block (and the chain isn't empty), sync pending data.
-                if reader.begin_ro_txn()?.get_state_marker()? == header_marker && header_marker!=BlockNumber::default(){
+                // Only if the node have the last block and state (without casms), sync pending data.
+                if reader.begin_ro_txn()?.get_state_marker()? == header_marker{
                     // Here and when reverting a block those are the only places we update the pending data.
                     debug!("Start polling for pending data.");
                     sync_pending_data(reader.clone(), pending_source.clone(), pending_data.clone(), pending_sleep_duration).await?;
@@ -889,14 +888,17 @@ async fn sync_pending_data<TPendingSource: PendingSourceTrait + Sync + Send>(
 ) -> Result<(), StateSyncError> {
     let txn = reader.begin_ro_txn()?;
     let header_marker = txn.get_header_marker()?;
-    let latest_block_hash = txn
-        .get_block_header(
-            header_marker
-                .prev()
-                .expect("We start asking for pending data only if the chain isn't empty"),
-        )?
-        .expect("Block before the header marker must have header in the data base")
-        .block_hash;
+    // TODO: Consider extracting this functionality to different а function.
+    let latest_block_hash = match header_marker {
+        // TODO: make sure this is the correct value for the genesis's parent block in all the
+        // environments.
+        BlockNumber(0) => BlockHash::default(),
+        _ => {
+            txn.get_block_header(header_marker.prev().expect("Header marker isn't zero."))?
+                .expect("Block before the header marker must have header in the database.")
+                .block_hash
+        }
+    };
     loop {
         let new_pending_data = pending_source.get_pending_data().await?;
         if new_pending_data.block.parent_block_hash != latest_block_hash {
