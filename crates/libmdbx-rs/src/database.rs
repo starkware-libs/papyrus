@@ -434,7 +434,7 @@ where
     ) -> Result<Database<E>> {
         let mut env: *mut ffi::MDBX_env = ptr::null_mut();
         unsafe {
-            ffi::mdbx_setup_debug(4, ffi::MDBX_DBG_DONTCHANGE, None);
+            ffi::mdbx_setup_debug(5, ffi::MDBX_DBG_DONTCHANGE, None);
             mdbx_result(ffi::mdbx_env_create(&mut env))?;
             if let Err(e) = (|| {
                 if let Some(geometry) = &self.geometry {
