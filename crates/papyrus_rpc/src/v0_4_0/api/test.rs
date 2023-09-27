@@ -18,6 +18,7 @@ use papyrus_storage::body::{BodyStorageWriter, TransactionIndex};
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
+use papyrus_storage::StorageScope;
 use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -218,6 +219,7 @@ async fn syncing() {
     let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
         None,
         Some(shared_highest_block.clone()),
+        None,
     );
 
     call_api_then_assert_and_validate_schema_for_result::<_, _, bool>(
@@ -1155,6 +1157,21 @@ async fn get_transaction_by_hash() {
 }
 
 #[tokio::test]
+async fn get_transaction_by_hash_state_only() {
+    let method_name = "starknet_V0_4_getTransactionByHash";
+    let params = Some(TransactionHash(StarkHash::from(1_u8)));
+    let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
+        None,
+        None,
+        Some(StorageScope::StateOnly),
+    );
+
+    let (_, err) =
+        raw_call::<_, TransactionHash, TransactionWithHash>(&module, method_name, &params).await;
+    assert_eq!(err.unwrap_err(), internal_server_error(""));
+}
+
+#[tokio::test]
 async fn get_transaction_by_block_id_and_index() {
     let method_name = "starknet_V0_4_getTransactionByBlockIdAndIndex";
     let (module, mut storage_writer) =
@@ -1947,6 +1964,7 @@ where
         let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
             Some(client_mock),
             None,
+            None,
         );
         let resp = module.call::<_, Self::Response>(Self::METHOD_NAME, [tx]).await.unwrap();
         assert_eq!(resp, expected_resp);
@@ -1970,6 +1988,7 @@ where
 
         let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
             Some(client_mock),
+            None,
             None,
         );
         let result = module.call::<_, Self::Response>(Self::METHOD_NAME, [tx]).await;
@@ -2002,6 +2021,7 @@ where
         let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
             Some(client_mock),
             None,
+            None,
         );
         let result = module.call::<_, Self::Response>(Self::METHOD_NAME, [tx]).await;
         let jsonrpsee::core::Error::Call(error) = result.unwrap_err() else {
@@ -2029,6 +2049,7 @@ where
 
         let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
             Some(client_mock),
+            None,
             None,
         );
         let result = module.call::<_, Self::Response>(Self::METHOD_NAME, [tx]).await;

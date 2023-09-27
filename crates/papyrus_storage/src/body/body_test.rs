@@ -194,32 +194,6 @@ async fn append_body_state_only() {
     let txn = reader.begin_ro_txn().unwrap();
     // Check marker.
     assert_eq!(txn.get_body_marker().unwrap(), BlockNumber(1));
-
-    // Check single transactions, outputs and events.
-    let block_number = BlockNumber(0);
-    let transaction_offset = TransactionOffsetInBlock(0);
-
-    assert_eq!(
-        txn.get_transaction(TransactionIndex(block_number, transaction_offset)).unwrap(),
-        None
-    );
-    assert_eq!(
-        txn.get_transaction_output(TransactionIndex(block_number, transaction_offset)).unwrap(),
-        None
-    );
-    assert_eq!(
-        txn.get_transaction_events(TransactionIndex(block_number, transaction_offset)).unwrap(),
-        None
-    );
-
-    // Check transaction index by hash.
-    let transaction_hash = block_body.transaction_hashes[0];
-    assert_eq!(txn.get_transaction_idx_by_hash(&transaction_hash).unwrap(), None);
-
-    // Check block transactions, hashes and outputs.
-    assert_eq!(txn.get_block_transactions(block_number).unwrap(), Some(vec![]));
-    assert_eq!(txn.get_block_transaction_hashes(block_number).unwrap(), Some(vec![]));
-    assert_eq!(txn.get_block_transaction_outputs(block_number).unwrap(), Some(vec![]));
 }
 
 #[test_case(StorageScope::FullArchive; "revert non existing body fails full archive")]

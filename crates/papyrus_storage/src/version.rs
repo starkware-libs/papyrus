@@ -39,14 +39,14 @@ where
 
 impl<'env, Mode: TransactionKind> VersionStorageReader for StorageTxn<'env, Mode> {
     fn get_version(&self) -> StorageResult<Option<Version>> {
-        let version_table = self.txn.open_table(&self.tables.storage_version)?;
+        let version_table = self.open_table(&self.tables.storage_version)?;
         Ok(version_table.get(&self.txn, &VERSION_KEY.to_string())?)
     }
 }
 
 impl<'env> VersionStorageWriter for StorageTxn<'env, RW> {
     fn set_version(self, version: &Version) -> StorageResult<Self> {
-        let version_table = self.txn.open_table(&self.tables.storage_version)?;
+        let version_table = self.open_table(&self.tables.storage_version)?;
         if let Some(current_storage_version) = self.get_version()? {
             if current_storage_version >= *version {
                 return Err(StorageError::StorageVersionInconcistency(

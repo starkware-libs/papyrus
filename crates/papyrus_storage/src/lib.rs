@@ -75,6 +75,7 @@ use std::sync::Arc;
 
 use body::events::EventIndex;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+use db::serialization::StorageSerde;
 use db::DbTableStats;
 use ommer::{OmmerEventKey, OmmerTransactionKey};
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
@@ -263,6 +264,30 @@ impl<'env> StorageTxn<'env, RW> {
     }
 }
 
+impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
+    pub(crate) fn open_table<K: StorageSerde, V: StorageSerde>(
+        &self,
+        table_id: &TableIdentifier<K, V>,
+    ) -> StorageResult<TableHandle<'_, K, V>> {
+        if self.scope == StorageScope::StateOnly {
+            let unused_tables = [
+                self.tables.events.name,
+                self.tables.transaction_hash_to_idx.name,
+                self.tables.transaction_idx_to_hash.name,
+                self.tables.transaction_outputs.name,
+                self.tables.transactions.name,
+            ];
+            if unused_tables.contains(&table_id.name) {
+                return Err(StorageError::ScopeError {
+                    table_name: table_id.name.to_owned(),
+                    storage_scope: self.scope,
+                });
+            }
+        }
+        Ok(self.txn.open_table(table_id)?)
+    }
+}
+
 /// Returns the names of the tables in the storage.
 pub fn table_names() -> &'static [&'static str] {
     Tables::field_names()
@@ -387,6 +412,8 @@ pub enum StorageError {
     StorageVersionInconcistency(#[from] StorageVersionError),
     #[error("Compiled class of {class_hash:?} already exists.")]
     CompiledClassReWrite { class_hash: ClassHash },
+    #[error("The table {table_name} is unused under the {storage_scope:?} storage scope.")]
+    ScopeError { table_name: String, storage_scope: StorageScope },
 }
 
 /// A type alias that maps to std::result::Result<T, StorageError>.
