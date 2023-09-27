@@ -416,13 +416,27 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         )?;
 
         // Write state diff.
-        let (thin_state_diff, declared_classes, deprecated_declared_classes) =
+        let (_thin_state_diff, declared_classes, deprecated_declared_classes) =
             ThinStateDiff::from_state_diff(state_diff);
-        state_diffs_table.insert(&self.txn, &block_number, &thin_state_diff)?;
+        let default_thin_state_diff = ThinStateDiff {
+            deployed_contracts: IndexMap::new(),
+            storage_diffs: IndexMap::new(),
+            nonces: IndexMap::new(),
+            replaced_classes: IndexMap::new(),
+            declared_classes: IndexMap::new(),
+            deprecated_declared_classes: Vec::new(),
+        };
+        state_diffs_table.insert(&self.txn, &block_number, &default_thin_state_diff)?;
+
+        let mut empty_declared_classes = IndexMap::new();
+        for (hash, _class) in declared_classes {
+            empty_declared_classes.insert(hash, ContractClass::default());
+        }
 
         // Write declared classes.
         write_declared_classes(
-            &declared_classes,
+            //&declared_classes,
+            &empty_declared_classes,
             &self.txn,
             &declared_classes_table,
             block_number,
@@ -440,15 +454,25 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
                 //  TODO(anatg): Add a test for this (should fail if not sorted here).
                 deployed_contract_class_definitions.sort_unstable_keys();
             }
+            let mut empty_deployed_contract_class_definitions = IndexMap::new();
+            for (hash, _class) in deployed_contract_class_definitions {
+                empty_deployed_contract_class_definitions
+                    .insert(hash, DeprecatedContractClass::default());
+            }
             write_deprecated_declared_classes(
-                deployed_contract_class_definitions,
+                empty_deployed_contract_class_definitions,
+                // deployed_contract_class_definitions,
                 &self.txn,
                 block_number,
                 &deprecated_declared_classes_table,
             )?;
         } else {
+            let mut empty_deprecated_declared_classes = IndexMap::new();
+            for (hash, _class) in deprecated_declared_classes {
+                empty_deprecated_declared_classes.insert(hash, DeprecatedContractClass::default());
+            }
             write_deprecated_declared_classes(
-                deprecated_declared_classes,
+                empty_deprecated_declared_classes,
                 &self.txn,
                 block_number,
                 &deprecated_declared_classes_table,
