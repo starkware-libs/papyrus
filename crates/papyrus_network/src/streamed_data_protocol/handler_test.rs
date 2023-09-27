@@ -7,13 +7,13 @@ use std::time::Duration;
 use assert_matches::assert_matches;
 use futures::task::{Context, Poll};
 use futures::{select, FutureExt, Stream as StreamTrait, StreamExt};
-use libp2p::swarm::handler::{ConnectionEvent, FullyNegotiatedInbound};
+use libp2p::swarm::handler::{ConnectionEvent, FullyNegotiatedInbound, FullyNegotiatedOutbound};
 use libp2p::swarm::{ConnectionHandler, ConnectionHandlerEvent, Stream};
 
-use super::super::{DataBound, InboundSessionId, QueryBound};
+use super::super::{DataBound, InboundSessionId, OutboundSessionId, QueryBound};
 use super::{Handler, HandlerEvent, RequestFromBehaviourEvent, ToBehaviourEvent};
 use crate::messages::block::{GetBlocks, GetBlocksResponse};
-use crate::messages::read_message;
+use crate::messages::{read_message, write_message};
 use crate::test_utils::{get_connected_streams, hardcoded_data};
 
 impl<Query: QueryBound, Data: DataBound> Unpin for Handler<Query, Data> {}
@@ -31,7 +31,26 @@ impl<Query: QueryBound, Data: DataBound> StreamTrait for Handler<Query, Data> {
 
 const SUBSTREAM_TIMEOUT: Duration = Duration::MAX;
 
-fn simulate_new_inbound_session_from_swarm<Query: QueryBound, Data: DataBound>(
+fn simulate_request_to_send_data_from_swarm<Query: QueryBound, Data: DataBound>(
+    handler: &mut Handler<Query, Data>,
+    data: Data,
+    inbound_session_id: InboundSessionId,
+) {
+    handler.on_behaviour_event(RequestFromBehaviourEvent::SendData { data, inbound_session_id });
+}
+
+fn simulate_request_to_send_query_from_swarm<Query: QueryBound, Data: DataBound>(
+    handler: &mut Handler<Query, Data>,
+    query: Query,
+    outbound_session_id: OutboundSessionId,
+) {
+    handler.on_behaviour_event(RequestFromBehaviourEvent::CreateOutboundSession {
+        query,
+        outbound_session_id,
+    });
+}
+
+fn simulate_negotiated_inbound_session_from_swarm<Query: QueryBound, Data: DataBound>(
     handler: &mut Handler<Query, Data>,
     query: Query,
     inbound_stream: Stream,
@@ -41,6 +60,16 @@ fn simulate_new_inbound_session_from_swarm<Query: QueryBound, Data: DataBound>(
         protocol: (query, inbound_stream),
         info: inbound_session_id,
     }));
+}
+
+fn simulate_negotiated_outbound_session_from_swarm<Query: QueryBound, Data: DataBound>(
+    handler: &mut Handler<Query, Data>,
+    outbound_stream: Stream,
+    outbound_session_id: OutboundSessionId,
+) {
+    handler.on_connection_event(ConnectionEvent::FullyNegotiatedOutbound(
+        FullyNegotiatedOutbound { protocol: outbound_stream, info: outbound_session_id },
+    ));
 }
 
 async fn validate_new_inbound_session_event<Query: QueryBound + PartialEq, Data: DataBound>(
@@ -57,12 +86,34 @@ async fn validate_new_inbound_session_event<Query: QueryBound + PartialEq, Data:
     );
 }
 
-fn simulate_request_to_send_data_from_swarm<Query: QueryBound, Data: DataBound>(
+async fn validate_received_data_event<Query: QueryBound, Data: DataBound + PartialEq>(
     handler: &mut Handler<Query, Data>,
-    data: Data,
-    inbound_session_id: InboundSessionId,
+    data: &Data,
+    outbound_session_id: OutboundSessionId,
 ) {
-    handler.on_behaviour_event(RequestFromBehaviourEvent::SendData { data, inbound_session_id });
+    let event = handler.next().await.unwrap();
+    assert_matches!(
+        event,
+        ConnectionHandlerEvent::NotifyBehaviour(ToBehaviourEvent::ReceivedData {
+            data: event_data, outbound_session_id: event_outbound_session_id
+        }) if event_data == *data &&  event_outbound_session_id == outbound_session_id
+    );
+}
+
+async fn validate_request_to_swarm_new_outbound_session_to_swarm_event<
+    Query: QueryBound + PartialEq,
+    Data: DataBound,
+>(
+    handler: &mut Handler<Query, Data>,
+    query: &Query,
+    outbound_session_id: OutboundSessionId,
+) {
+    let event = handler.next().await.unwrap();
+    assert_matches!(
+        event,
+        ConnectionHandlerEvent::OutboundSubstreamRequest{ protocol }
+        if protocol.upgrade().query == *query && *protocol.info() == outbound_session_id
+    );
 }
 
 async fn read_messages(stream: &mut Stream, num_messages: usize) -> Vec<GetBlocksResponse> {
@@ -84,7 +135,7 @@ async fn process_inbound_session() {
     let query = GetBlocks::default();
     let inbound_session_id = InboundSessionId { value: 1 };
 
-    simulate_new_inbound_session_from_swarm(
+    simulate_negotiated_inbound_session_from_swarm(
         &mut handler,
         query.clone(),
         inbound_stream,
@@ -129,6 +180,40 @@ fn listen_protocol_across_multiple_handlers() {
     );
 }
 
+#[tokio::test]
+async fn process_outbound_session() {
+    let mut handler = Handler::<GetBlocks, GetBlocksResponse>::new(
+        SUBSTREAM_TIMEOUT,
+        Arc::new(Default::default()),
+    );
+
+    let (mut inbound_stream, outbound_stream, _) = get_connected_streams().await;
+    let query = GetBlocks::default();
+    let outbound_session_id = OutboundSessionId { value: 1 };
+
+    simulate_request_to_send_query_from_swarm(&mut handler, query.clone(), outbound_session_id);
+    validate_request_to_swarm_new_outbound_session_to_swarm_event(
+        &mut handler,
+        &query,
+        outbound_session_id,
+    )
+    .await;
+
+    simulate_negotiated_outbound_session_from_swarm(
+        &mut handler,
+        outbound_stream,
+        outbound_session_id,
+    );
+
+    let hardcoded_data_vec = hardcoded_data();
+    for data in hardcoded_data_vec.clone() {
+        write_message(data, &mut inbound_stream).await.unwrap();
+    }
+
+    for data in &hardcoded_data_vec {
+        validate_received_data_event(&mut handler, data, outbound_session_id).await;
+    }
+}
 // async fn start_request_and_validate_event<
 //     Query: Message + PartialEq + Clone,
 //     Data: Message + Default,
