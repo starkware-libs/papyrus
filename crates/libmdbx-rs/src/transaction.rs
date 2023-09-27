@@ -76,14 +76,15 @@ impl CommitLatency {
     }
 
     pub fn print_latency(&self) {
-        println!("whole: {}", self.0.whole as u32);
-        println!("audit: {}", self.0.audit as u32);
-        println!("ending: {}", self.0.ending as u32);
-        println!("gc_wallclock: {}", self.0.gc_wallclock as u32);
-        println!("gc_cputime: {}", self.0.gc_cputime as u32);
-        println!("preparation: {}", self.0.preparation as u32);
-        println!("sync: {}", self.0.sync as u32);
-        println!("write: {}", self.0.write as u32);
+        println!("{:#?}", self.0);
+        // println!("whole: {}", self.0.whole as u32);
+        // println!("audit: {}", self.0.audit as u32);
+        // println!("ending: {}", self.0.ending as u32);
+        // println!("gc_wallclock: {}", self.0.gc_wallclock as u32);
+        // println!("gc_cputime: {}", self.0.gc_cputime as u32);
+        // println!("preparation: {}", self.0.preparation as u32);
+        // println!("sync: {}", self.0.sync as u32);
+        // println!("write: {}", self.0.write as u32);
         // let x=self.0.gc_prof;
         // println!("===========");
         // println!("xxx: {}", x.flushes as u32);

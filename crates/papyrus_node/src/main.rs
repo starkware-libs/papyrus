@@ -32,7 +32,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
         loop {
             interval.tick().await;
-            debug!("info:\n {:?}", reader.info());
+            debug!("info:\n {:#?}", reader.info());
         }
     }
     let h = tokio::spawn(foo(storage_reader.clone()));
