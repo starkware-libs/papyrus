@@ -178,6 +178,11 @@ expression: dumped_default_config
     "value": "./data",
     "privacy": "Public"
   },
+  "storage.scope": {
+    "description": "The categories of data saved in storage.",
+    "value": "FullArchive",
+    "privacy": "Public"
+  },
   "sync.#is_none": {
     "description": "Flag for an optional field",
     "value": false,

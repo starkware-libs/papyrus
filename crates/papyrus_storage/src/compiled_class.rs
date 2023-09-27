@@ -6,7 +6,7 @@
 //! # Example
 //! ```
 //! use papyrus_storage::open_storage;
-//! # use papyrus_storage::db::DbConfig;
+//! # use papyrus_storage::{db::DbConfig, StorageConfig};
 //! # use starknet_api::core::ChainId;
 //! use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 //! use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
@@ -21,7 +21,8 @@
 //! #     max_size: 1 << 35,    // 32GB
 //! #     growth_step: 1 << 26, // 64MB
 //! # };
-//! let (reader, mut writer) = open_storage(db_config)?;
+//! # let storage_config = StorageConfig{db_config, ..Default::default()};
+//! let (reader, mut writer) = open_storage(storage_config)?;
 //! writer
 //!     .begin_rw_txn()?                                                    // Start a RW transaction.
 //!     .append_casm(&ClassHash::default(), &CasmContractClass::default())? // Append a compiled class.

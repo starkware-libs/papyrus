@@ -20,7 +20,7 @@
 //!
 //! ```
 //! use papyrus_storage::open_storage;
-//! use papyrus_storage::db::DbConfig;
+//! # use papyrus_storage::{db::DbConfig, StorageConfig};
 //! use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter, StarknetVersion};    // Import the header API.
 //! use starknet_api::block::{BlockHeader, BlockNumber};
 //! use starknet_api::core::ChainId;
@@ -34,7 +34,8 @@
 //!     max_size: 1 << 35,    // 32GB
 //!     growth_step: 1 << 26, // 64MB
 //! };
-//! let (reader, mut writer) = open_storage(db_config).unwrap();
+//! # let storage_config = StorageConfig{db_config, ..Default::default()};
+//! let (reader, mut writer) = open_storage(storage_config)?;
 //! writer
 //!     .begin_rw_txn()?                                            // Start a RW transaction.
 //!     .append_header(BlockNumber(0), &BlockHeader::default())?    // Append a header.
@@ -76,8 +77,8 @@ use body::events::EventIndex;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use db::DbTableStats;
 use ommer::{OmmerEventKey, OmmerTransactionKey};
-use papyrus_config::dumping::{append_sub_config_name, SerializeConfig};
-use papyrus_config::{ParamPath, SerializedParam};
+use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
+use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
@@ -113,8 +114,10 @@ use crate::version::{VersionStorageReader, VersionStorageWriter};
 pub const STORAGE_VERSION: Version = Version(5);
 
 /// Opens a storage and returns a [`StorageReader`] and a [`StorageWriter`].
-pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, StorageWriter)> {
-    let (db_reader, mut db_writer) = open_env(db_config)?;
+pub fn open_storage(
+    storage_config: StorageConfig,
+) -> StorageResult<(StorageReader, StorageWriter)> {
+    let (db_reader, mut db_writer) = open_env(storage_config.db_config)?;
     let tables = Arc::new(Tables {
         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
         casms: db_writer.create_table("casms")?,
@@ -148,8 +151,8 @@ pub fn open_storage(db_config: DbConfig) -> StorageResult<(StorageReader, Storag
         starknet_version: db_writer.create_table("starknet_version")?,
         storage_version: db_writer.create_table("storage_version")?,
     });
-    let reader = StorageReader { db_reader, tables: tables.clone() };
-    let writer = StorageWriter { db_writer, tables };
+    let reader = StorageReader { db_reader, tables: tables.clone(), scope: storage_config.scope };
+    let writer = StorageWriter { db_writer, tables, scope: storage_config.scope };
 
     let writer = set_initial_version_if_needed(writer)?;
     verify_storage_version(reader.clone())?;
@@ -184,18 +187,34 @@ fn verify_storage_version(reader: StorageReader) -> StorageResult<()> {
     Ok(())
 }
 
+/// The categories of data to save in the storage.
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq)]
+pub enum StorageScope {
+    /// Stores all types of data.
+    #[default]
+    FullArchive,
+    /// Stores the data describing the current state. In this mode the transaction, events and
+    /// state-diffs are not stored.
+    StateOnly,
+}
+
 /// A struct for starting RO transactions ([`StorageTxn`]) to the storage.
 #[derive(Clone)]
 pub struct StorageReader {
     db_reader: DbReader,
     tables: Arc<Tables>,
+    scope: StorageScope,
 }
 
 impl StorageReader {
     /// Takes a snapshot of the current state of the storage and returns a [`StorageTxn`] for
     /// reading data from the storage.
     pub fn begin_ro_txn(&self) -> StorageResult<StorageTxn<'_, RO>> {
-        Ok(StorageTxn { txn: self.db_reader.begin_ro_txn()?, tables: self.tables.clone() })
+        Ok(StorageTxn {
+            txn: self.db_reader.begin_ro_txn()?,
+            tables: self.tables.clone(),
+            scope: self.scope,
+        })
     }
 
     /// Returns metadata about the tables in the storage.
@@ -214,13 +233,18 @@ impl StorageReader {
 pub struct StorageWriter {
     db_writer: DbWriter,
     tables: Arc<Tables>,
+    scope: StorageScope,
 }
 
 impl StorageWriter {
     /// Takes a snapshot of the current state of the storage and returns a [`StorageTxn`] for
     /// reading and modifying data in the storage.
     pub fn begin_rw_txn(&mut self) -> StorageResult<StorageTxn<'_, RW>> {
-        Ok(StorageTxn { txn: self.db_writer.begin_rw_txn()?, tables: self.tables.clone() })
+        Ok(StorageTxn {
+            txn: self.db_writer.begin_rw_txn()?,
+            tables: self.tables.clone(),
+            scope: self.scope,
+        })
     }
 }
 
@@ -229,6 +253,9 @@ impl StorageWriter {
 pub struct StorageTxn<'env, Mode: TransactionKind> {
     txn: DbTransaction<'env, Mode>,
     tables: Arc<Tables>,
+    // TODO(yoav): Remove the dead_code attribute once the scope is in use.
+    #[allow(dead_code)]
+    scope: StorageScope,
 }
 
 impl<'env> StorageTxn<'env, RW> {
@@ -369,15 +396,23 @@ pub type StorageResult<V> = std::result::Result<V, StorageError>;
 
 /// A struct for the configuration of the storage.
 #[allow(missing_docs)]
-#[derive(Serialize, Debug, Deserialize, Clone, Default, PartialEq, Validate)]
+#[derive(Serialize, Debug, Default, Deserialize, Clone, PartialEq, Validate)]
 pub struct StorageConfig {
     #[validate]
     pub db_config: DbConfig,
+    pub scope: StorageScope,
 }
 
 impl SerializeConfig for StorageConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
-        append_sub_config_name(self.db_config.dump(), "db_config")
+        let mut dumped_config = BTreeMap::from_iter([ser_param(
+            "scope",
+            &self.scope,
+            "The categories of data saved in storage.",
+            ParamPrivacyInput::Public,
+        )]);
+        dumped_config.extend(append_sub_config_name(self.db_config.dump(), "db_config"));
+        dumped_config
     }
 }
 

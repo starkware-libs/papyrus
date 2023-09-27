@@ -154,6 +154,11 @@
     "privacy": "Public",
     "value": "./data"
   },
+  "storage.scope": {
+    "description": "The categories of data saved in storage.",
+    "privacy": "Public",
+    "value": "FullArchive"
+  },
   "sync.#is_none": {
     "description": "Flag for an optional field",
     "privacy": "TemporaryValue",

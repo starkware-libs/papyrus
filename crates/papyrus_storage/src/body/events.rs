@@ -8,7 +8,7 @@
 //! use papyrus_storage::open_storage;
 //! use papyrus_storage::body::TransactionIndex;
 //! use papyrus_storage::body::events::{EventIndex, EventsReader};
-//! # use papyrus_storage::db::DbConfig;
+//! # use papyrus_storage::{db::DbConfig, StorageConfig};
 //! # use starknet_api::core::ChainId;
 //! # use starknet_api::block::BlockNumber;
 //! use starknet_api::core::ContractAddress;
@@ -24,8 +24,9 @@
 //! #     max_size: 1 << 35,    // 32GB
 //! #     growth_step: 1 << 26, // 64MB
 //! # };
+//! # let storage_config = StorageConfig{db_config, ..Default::default()};
 //! // The API allows read-only interactions with the events. To write events, use the body writer.
-//! let (reader, _) = open_storage(db_config)?;
+//! let (reader, mut writer) = open_storage(storage_config)?;
 //! // iterate events from all contracts, starting from the first event in the first transaction.
 //! let event_index = EventIndex(
 //!     TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(0)),
