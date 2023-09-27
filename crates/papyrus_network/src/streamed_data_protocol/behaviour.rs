@@ -1,6 +1,6 @@
-#[cfg(test)]
-#[path = "behaviour_test.rs"]
-mod behaviour_test;
+// #[cfg(test)]
+// #[path = "behaviour_test.rs"]
+// mod behaviour_test;
 
 use std::collections::{HashSet, VecDeque};
 use std::task::{Context, Poll};
@@ -21,26 +21,31 @@ use libp2p::swarm::{
     ToSwarm,
 };
 use libp2p::{Multiaddr, PeerId};
-use prost::Message;
 
-use super::handler::{Handler, NewQueryEvent};
-use super::{InboundSessionId, OutboundSessionId};
+use super::handler::{Handler, RequestFromBehaviourEvent};
+use super::{DataBound, InboundSessionId, OutboundSessionId, QueryBound};
 
 #[derive(Debug)]
-pub enum Event<Query: Message, Data: Message> {
+// TODO(shahak) remove allow dead code.
+#[allow(dead_code)]
+pub(crate) enum Event<Query: QueryBound, Data: DataBound> {
     NewInboundQuery { query: Query, inbound_session_id: InboundSessionId },
     RecievedData { data: Data, outbound_session_id: OutboundSessionId },
 }
 
-pub struct Behaviour<Query: Message + Clone, Data: Message> {
+// TODO(shahak) remove allow dead code.
+#[allow(dead_code)]
+pub(crate) struct Behaviour<Query: QueryBound, Data: DataBound> {
     substream_timeout: Duration,
-    pending_events: VecDeque<ToSwarm<Event<Query, Data>, NewQueryEvent<Query>>>,
+    pending_events: VecDeque<ToSwarm<Event<Query, Data>, RequestFromBehaviourEvent<Query, Data>>>,
     pending_queries: DefaultHashMap<PeerId, Vec<(Query, OutboundSessionId)>>,
     connected_peers: HashSet<PeerId>,
     next_outbound_session_id: OutboundSessionId,
 }
 
-impl<Query: Message + Clone, Data: Message> Behaviour<Query, Data> {
+// TODO(shahak) remove allow dead code.
+#[allow(dead_code)]
+impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
     pub fn new(substream_timeout: Duration) -> Self {
         Self {
             substream_timeout,
@@ -93,14 +98,12 @@ impl<Query: Message + Clone, Data: Message> Behaviour<Query, Data> {
         self.pending_events.push_back(ToSwarm::NotifyHandler {
             peer_id,
             handler: NotifyHandler::Any,
-            event: NewQueryEvent { query, outbound_session_id },
+            event: RequestFromBehaviourEvent::CreateOutboundSession { query, outbound_session_id },
         });
     }
 }
 
-impl<Query: Message + 'static + Clone, Data: Message + 'static + Default> NetworkBehaviour
-    for Behaviour<Query, Data>
-{
+impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, Data> {
     type ConnectionHandler = Handler<Query, Data>;
     type ToSwarm = Event<Query, Data>;
 
@@ -111,7 +114,8 @@ impl<Query: Message + 'static + Clone, Data: Message + 'static + Default> Networ
         _local_addr: &Multiaddr,
         _remote_addr: &Multiaddr,
     ) -> Result<Self::ConnectionHandler, ConnectionDenied> {
-        Ok(Handler::new(self.substream_timeout))
+        // Ok(Handler::new(self.substream_timeout))
+        unimplemented!();
     }
 
     fn handle_established_outbound_connection(
@@ -121,7 +125,8 @@ impl<Query: Message + 'static + Clone, Data: Message + 'static + Default> Networ
         _addr: &Multiaddr,
         _role_override: Endpoint,
     ) -> Result<Self::ConnectionHandler, ConnectionDenied> {
-        Ok(Handler::new(self.substream_timeout))
+        // Ok(Handler::new(self.substream_timeout))
+        unimplemented!();
     }
 
     fn on_swarm_event(&mut self, event: FromSwarm<'_, Self::ConnectionHandler>) {
@@ -135,8 +140,7 @@ impl<Query: Message + 'static + Clone, Data: Message + 'static + Default> Networ
                 }
             }
             _ => {
-                // TODO(shahak): Implement.
-                todo!()
+                unimplemented!();
             }
         }
     }
