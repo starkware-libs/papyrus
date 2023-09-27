@@ -24,7 +24,7 @@ use std::path::PathBuf;
 use std::result;
 use std::sync::Arc;
 
-use libmdbx::{Cursor, Geometry, PageSize, TableFlags, WriteFlags, WriteMap};
+use libmdbx::{Cursor, Geometry, Iter, PageSize, TableFlags, WriteFlags, WriteMap};
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::validators::validate_ascii;
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
@@ -332,7 +332,44 @@ pub(crate) struct DbCursor<'txn, Mode: TransactionKind, K: StorageSerde, V: Stor
     _value_type: PhantomData<V>,
 }
 
+pub(crate) struct DbCursorIter<'txn, 'cur, Mode: TransactionKind, K: StorageSerde, V: StorageSerde>
+{
+    iter: Iter<'txn, 'cur, Mode::Internal, DbKeyType<'txn>, DbValueType<'txn>>,
+    _key_type: PhantomData<K>,
+    _value_type: PhantomData<V>,
+}
+
+impl<'txn, 'cur, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> Iterator
+    for DbCursorIter<'txn, 'cur, Mode, K, V>
+{
+    type Item = DbResult<(K, V)>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let prev_cursor_res = self.iter.next()?;
+        Some(match prev_cursor_res {
+            Ok((key_bytes, value_bytes)) => {
+                let key =
+                    K::deserialize(&mut key_bytes.as_ref()).ok_or(DbError::InnerDeserialization);
+                let value =
+                    V::deserialize(&mut value_bytes.as_ref()).ok_or(DbError::InnerDeserialization);
+                match (key, value) {
+                    (Ok(key), Ok(value)) => Ok((key, value)),
+                    (Err(e), _) | (_, Err(e)) => Err(e),
+                }
+            }
+            Err(e) => Err(DbError::Inner(e)),
+        })
+    }
+}
+
 impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'txn, Mode, K, V> {
+    /// Return an iterator from the start of the table.
+    #[allow(dead_code)]
+    pub(crate) fn iter<'cur>(&'cur mut self) -> DbCursorIter<'txn, 'cur, Mode, K, V> {
+        let iter = self.cursor.iter::<DbKeyType<'_>, DbValueType<'_>>();
+        DbCursorIter { iter, _key_type: PhantomData {}, _value_type: PhantomData {} }
+    }
+
     pub(crate) fn prev(&mut self) -> DbResult<Option<(K, V)>> {
         let prev_cursor_res = self.cursor.prev::<DbKeyType<'_>, DbValueType<'_>>()?;
         match prev_cursor_res {
@@ -377,6 +414,33 @@ impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'tx
                 Ok(Some((key, value)))
             }
         }
+    }
+}
+
+/// A wrapper around a cursor that allows iterating over a table.
+pub(crate) struct DbIter<'cursor, 'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> {
+    cursor: &'cursor mut DbCursor<'txn, Mode, K, V>,
+    _key_type: PhantomData<K>,
+    _value_type: PhantomData<V>,
+}
+
+impl<'cursor, 'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde>
+    DbIter<'cursor, 'txn, Mode, K, V>
+{
+    #[allow(dead_code)]
+    pub(crate) fn new(cursor: &'cursor mut DbCursor<'txn, Mode, K, V>) -> Self {
+        Self { cursor, _key_type: PhantomData {}, _value_type: PhantomData {} }
+    }
+}
+
+impl<'cursor, 'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> Iterator
+    for DbIter<'cursor, 'txn, Mode, K, V>
+{
+    type Item = DbResult<(K, V)>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let prev_cursor_res = self.cursor.next().transpose()?;
+        Some(prev_cursor_res)
     }
 }
 
