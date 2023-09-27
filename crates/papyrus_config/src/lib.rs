@@ -65,7 +65,7 @@ mod command;
 pub mod converters;
 pub mod dumping;
 pub mod loading;
-pub mod representation;
+pub mod presentation;
 pub mod validators;
 
 /// The privacy level of a config parameter, that received as input from the configs.
@@ -106,8 +106,8 @@ pub enum SerializedContent {
     DefaultValue(Value),
     /// The target from which to take the JSON value of a configuration parameter.
     PointerTarget(ParamPath),
-    /// Type of a required configuration parameter.
-    RequiredType(SerializationType),
+    /// Type of a configuration parameter.
+    ParamType(SerializationType),
 }
 
 impl SerializedContent {
@@ -120,7 +120,7 @@ impl SerializedContent {
                 _ => None,
             },
             SerializedContent::PointerTarget(_) => None,
-            SerializedContent::RequiredType(ser_type) => Some(ser_type.clone()),
+            SerializedContent::ParamType(ser_type) => Some(ser_type.clone()),
         }
     }
 }

@@ -19,6 +19,7 @@ use crate::converters::deserialize_milliseconds_to_duration;
 use crate::dumping::{
     append_sub_config_name,
     combine_config_map_and_pointers,
+    ser_generated_param,
     ser_optional_param,
     ser_optional_sub_config,
     ser_param,
@@ -34,7 +35,7 @@ use crate::loading::{
     update_config_map_by_pointers,
     update_optional_values,
 };
-use crate::representation::get_config_representation;
+use crate::presentation::get_config_presentation;
 use crate::{
     ConfigError,
     ParamPath,
@@ -157,14 +158,14 @@ fn test_update_dumped_config() {
 }
 
 #[test]
-fn test_config_representation() {
+fn test_config_presentation() {
     let config = TypicalConfig { a: Duration::from_secs(1), b: "bbb".to_owned(), c: false };
-    let representation = get_config_representation(&config, true).unwrap();
-    let keys: Vec<_> = representation.as_object().unwrap().keys().collect();
+    let presentation = get_config_presentation(&config, true).unwrap();
+    let keys: Vec<_> = presentation.as_object().unwrap().keys().collect();
     assert_eq!(keys, vec!["a", "b", "c"]);
 
-    let public_representation = get_config_representation(&config, false).unwrap();
-    let keys: Vec<_> = public_representation.as_object().unwrap().keys().collect();
+    let public_presentation = get_config_presentation(&config, false).unwrap();
+    let keys: Vec<_> = public_presentation.as_object().unwrap().keys().collect();
     assert_eq!(keys, vec!["a", "b"]);
 }
 
@@ -234,47 +235,56 @@ fn test_replace_pointers() {
 #[derive(Clone, Default, Serialize, Deserialize, Debug, PartialEq)]
 struct CustomConfig {
     param_path: String,
+    #[serde(default)]
+    seed: usize,
 }
 
 impl SerializeConfig for CustomConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
-        BTreeMap::from([ser_param(
-            "param_path",
-            &self.param_path,
-            "This is param_path.",
-            ParamPrivacyInput::Public,
-        )])
+        BTreeMap::from([
+            ser_param(
+                "param_path",
+                &self.param_path,
+                "This is param_path.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_generated_param(
+                "seed",
+                SerializationType::Number,
+                "A dummy seed with generated default = 0.",
+                ParamPrivacyInput::Public,
+            ),
+        ])
     }
 }
 
-// Loads param_path of CustomConfig from args.
-fn load_param_path(args: Vec<&str>) -> String {
+// Loads CustomConfig from args.
+fn load_custom_config(args: Vec<&str>) -> CustomConfig {
     let dir = TempDir::new().unwrap();
     let file_path = dir.path().join("config.json");
-    CustomConfig { param_path: "default value".to_owned() }
+    CustomConfig { param_path: "default value".to_owned(), seed: 5 }
         .dump_to_file(&vec![], file_path.to_str().unwrap())
         .unwrap();
 
-    let loaded_config = load_and_process_config::<CustomConfig>(
+    load_and_process_config::<CustomConfig>(
         File::open(file_path).unwrap(),
         Command::new("Program"),
         args.into_iter().map(|s| s.to_owned()).collect(),
     )
-    .unwrap();
-    loaded_config.param_path
+    .unwrap()
 }
 
 #[test]
 fn test_load_default_config() {
     let args = vec!["Testing"];
-    let param_path = load_param_path(args);
+    let param_path = load_custom_config(args).param_path;
     assert_eq!(param_path, "default value");
 }
 
 #[test]
 fn test_load_custom_config_file() {
     let args = vec!["Testing", "-f", CUSTOM_CONFIG_PATH.to_str().unwrap()];
-    let param_path = load_param_path(args);
+    let param_path = load_custom_config(args).param_path;
     assert_eq!(param_path, "custom value");
 }
 
@@ -287,7 +297,7 @@ fn test_load_custom_config_file_and_args() {
         "--param_path",
         "command value",
     ];
-    let param_path = load_param_path(args);
+    let param_path = load_custom_config(args).param_path;
     assert_eq!(param_path, "command value");
 }
 
@@ -296,8 +306,17 @@ fn test_load_many_custom_config_files() {
     let custom_config_path = CUSTOM_CONFIG_PATH.to_str().unwrap();
     let cli_config_param = format!("{custom_config_path},{custom_config_path}");
     let args = vec!["Testing", "-f", cli_config_param.as_str()];
-    let param_path = load_param_path(args);
+    let param_path = load_custom_config(args).param_path;
     assert_eq!(param_path, "custom value");
+}
+
+#[test]
+fn test_generated_type() {
+    let args = vec!["Testing"];
+    assert_eq!(load_custom_config(args).seed, 0);
+
+    let args = vec!["Testing", "--seed", "7"];
+    assert_eq!(load_custom_config(args).seed, 7);
 }
 
 #[test]
@@ -329,7 +348,7 @@ impl SerializeConfig for RequiredConfig {
     }
 }
 
-// Loads param_path of CustomConfig from args.
+// Loads param_path of RequiredConfig from args.
 fn load_required_param_path(args: Vec<&str>) -> String {
     let dir = TempDir::new().unwrap();
     let file_path = dir.path().join("config.json");
