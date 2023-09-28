@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use assert_matches::assert_matches;
 use futures::task::{Context, Poll};
-use futures::{select, FutureExt, Stream as StreamTrait, StreamExt};
+use futures::{select, AsyncWriteExt, FutureExt, Stream as StreamTrait, StreamExt};
 use libp2p::swarm::handler::{ConnectionEvent, FullyNegotiatedInbound, FullyNegotiatedOutbound};
 use libp2p::swarm::{ConnectionHandler, ConnectionHandlerEvent, Stream};
 
@@ -98,6 +98,26 @@ async fn validate_received_data_event<Query: QueryBound, Data: DataBound + Parti
             data: event_data, outbound_session_id: event_outbound_session_id
         }) if event_data == *data &&  event_outbound_session_id == outbound_session_id
     );
+}
+
+async fn validate_outbound_session_closed_by_peer_event<
+    Query: QueryBound,
+    Data: DataBound + PartialEq,
+>(
+    handler: &mut Handler<Query, Data>,
+    outbound_session_id: OutboundSessionId,
+) {
+    let event = handler.next().await.unwrap();
+    assert_matches!(
+        event,
+        ConnectionHandlerEvent::NotifyBehaviour(ToBehaviourEvent::OutboundSessionClosedByPeer {
+            outbound_session_id: event_outbound_session_id
+        }) if event_outbound_session_id == outbound_session_id
+    );
+}
+
+fn validate_no_events<Query: QueryBound, Data: DataBound>(handler: &mut Handler<Query, Data>) {
+    assert!(handler.next().now_or_never().is_none());
 }
 
 async fn validate_request_to_swarm_new_outbound_session_to_swarm_event<
@@ -217,6 +237,11 @@ async fn process_outbound_session() {
     for data in &hardcoded_data_vec {
         validate_received_data_event(&mut handler, data, outbound_session_id).await;
     }
+
+    validate_no_events(&mut handler);
+
+    inbound_stream.close().await.unwrap();
+    validate_outbound_session_closed_by_peer_event(&mut handler, outbound_session_id).await;
 }
 // async fn start_request_and_validate_event<
 //     Query: Message + PartialEq + Clone,
