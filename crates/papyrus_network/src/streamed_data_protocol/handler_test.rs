@@ -10,7 +10,7 @@ use futures::{select, FutureExt, Stream as StreamTrait, StreamExt};
 use libp2p::swarm::handler::{ConnectionEvent, FullyNegotiatedInbound, FullyNegotiatedOutbound};
 use libp2p::swarm::{ConnectionHandler, ConnectionHandlerEvent, Stream};
 
-use super::super::{DataBound, InboundSessionId, OutboundSessionId, QueryBound};
+use super::super::{DataBound, InboundSessionId, OutboundSessionId, QueryBound, SessionId};
 use super::{Handler, HandlerEvent, RequestFromBehaviourEvent, ToBehaviourEvent};
 use crate::messages::block::{GetBlocks, GetBlocksResponse};
 use crate::messages::{read_message, write_message};
@@ -48,6 +48,13 @@ fn simulate_request_to_send_query_from_swarm<Query: QueryBound, Data: DataBound>
         query,
         outbound_session_id,
     });
+}
+
+fn simulate_request_to_finish_session<Query: QueryBound, Data: DataBound>(
+    handler: &mut Handler<Query, Data>,
+    session_id: SessionId,
+) {
+    handler.on_behaviour_event(RequestFromBehaviourEvent::FinishSession { session_id });
 }
 
 fn simulate_negotiated_inbound_session_from_swarm<Query: QueryBound, Data: DataBound>(
@@ -116,12 +123,30 @@ async fn validate_request_to_swarm_new_outbound_session_to_swarm_event<
     );
 }
 
-async fn read_messages(stream: &mut Stream, num_messages: usize) -> Vec<GetBlocksResponse> {
-    let mut result = Vec::new();
-    for _ in 0..num_messages {
-        result.push(read_message::<GetBlocksResponse, _>(&mut *stream).await.unwrap().unwrap());
+async fn read_messages<Query: QueryBound, Data: DataBound>(
+    handler: Handler<Query, Data>,
+    stream: &mut Stream,
+    num_messages: usize,
+) -> Vec<GetBlocksResponse> {
+    async fn read_messages_inner(
+        stream: &mut Stream,
+        num_messages: usize,
+    ) -> Vec<GetBlocksResponse> {
+        let mut result = Vec::new();
+        for _ in 0..num_messages {
+            match read_message::<GetBlocksResponse, _>(&mut *stream).await.unwrap() {
+                Some(message) => result.push(message),
+                None => return result,
+            }
+        }
+        result
     }
-    result
+
+    let mut fused_handler = handler.fuse();
+    select! {
+        data = read_messages_inner(stream, num_messages).fuse() => data,
+        _ = fused_handler.next() => panic!("There shouldn't be another event from the handler"),
+    }
 }
 
 #[tokio::test]
@@ -149,12 +174,45 @@ async fn process_inbound_session() {
         simulate_request_to_send_data_from_swarm(&mut handler, data.clone(), inbound_session_id);
     }
 
-    let mut fused_handler = handler.fuse();
-    let data_received = select! {
-        data = read_messages(&mut outbound_stream, hardcoded_data_vec.len()).fuse() => data,
-        _ = fused_handler.next() => panic!("There shouldn't be another event from the handler"),
-    };
+    let data_received =
+        read_messages(handler, &mut outbound_stream, hardcoded_data_vec.len()).await;
     assert_eq!(hardcoded_data_vec, data_received);
+}
+
+#[tokio::test]
+async fn finished_inbound_session_ignores_behaviour_request_to_send_data() {
+    let mut handler = Handler::<GetBlocks, GetBlocksResponse>::new(
+        SUBSTREAM_TIMEOUT,
+        Arc::new(Default::default()),
+    );
+
+    let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
+    // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
+    // messages is fixed.
+    let query = GetBlocks { limit: 10, ..Default::default() };
+    let inbound_session_id = InboundSessionId { value: 1 };
+
+    simulate_negotiated_inbound_session_from_swarm(
+        &mut handler,
+        query.clone(),
+        inbound_stream,
+        inbound_session_id,
+    );
+
+    // consume the new inbound session event without reading it.
+    handler.next().await;
+
+    simulate_request_to_finish_session(
+        &mut handler,
+        SessionId::InboundSessionId(inbound_session_id),
+    );
+
+    let hardcoded_data_vec = hardcoded_data();
+    for data in &hardcoded_data_vec {
+        simulate_request_to_send_data_from_swarm(&mut handler, data.clone(), inbound_session_id);
+    }
+    let data_received = read_messages(handler, &mut outbound_stream, 1).await;
+    assert!(data_received.is_empty());
 }
 
 #[test]
