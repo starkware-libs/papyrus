@@ -107,6 +107,22 @@ async fn validate_received_data_event<Query: QueryBound, Data: DataBound + Parti
     );
 }
 
+async fn validate_session_closed_by_request_event<
+    Query: QueryBound,
+    Data: DataBound + PartialEq,
+>(
+    handler: &mut Handler<Query, Data>,
+    session_id: SessionId,
+) {
+    let event = handler.next().await.unwrap();
+    assert_matches!(
+        event,
+        ConnectionHandlerEvent::NotifyBehaviour(ToBehaviourEvent::SessionClosedByRequest {
+            session_id: event_session_id
+        }) if event_session_id == session_id
+    );
+}
+
 async fn validate_outbound_session_closed_by_peer_event<
     Query: QueryBound,
     Data: DataBound + PartialEq,
@@ -226,6 +242,11 @@ async fn closed_inbound_session_ignores_behaviour_request_to_send_data() {
         &mut handler,
         SessionId::InboundSessionId(inbound_session_id),
     );
+    validate_session_closed_by_request_event(
+        &mut handler,
+        SessionId::InboundSessionId(inbound_session_id),
+    )
+    .await;
 
     let hardcoded_data_vec = hardcoded_data();
     for data in &hardcoded_data_vec {
@@ -322,6 +343,11 @@ async fn closed_outbound_session_doesnt_emit_events_when_data_is_sent() {
         &mut handler,
         SessionId::OutboundSessionId(outbound_session_id),
     );
+    validate_session_closed_by_request_event(
+        &mut handler,
+        SessionId::OutboundSessionId(outbound_session_id),
+    )
+    .await;
 
     for data in hardcoded_data() {
         write_message(data, &mut inbound_stream).await.unwrap();
