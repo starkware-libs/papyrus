@@ -1,3 +1,6 @@
+use std::io::ErrorKind;
+
+use assert_matches::assert_matches;
 use futures::AsyncWriteExt;
 use libp2p::core::upgrade::{write_varint, InboundUpgrade, OutboundUpgrade};
 use libp2p::core::UpgradeInfo;
@@ -22,7 +25,9 @@ fn both_protocols_have_same_info() {
 async fn positive_flow() {
     let (inbound_stream, outbound_stream, _) = get_connected_streams().await;
 
-    let query = GetBlocks::default();
+    // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
+    // messages is fixed.
+    let query = GetBlocks { limit: 10, ..Default::default() };
     let outbound_protocol = OutboundProtocol { query: query.clone() };
     let inbound_protocol = InboundProtocol::<GetBlocks>::new();
 
@@ -39,7 +44,8 @@ async fn positive_flow() {
             let mut stream =
                 outbound_protocol.upgrade_outbound(outbound_stream, PROTOCOL_NAME).await.unwrap();
             for expected_response in hardcoded_data() {
-                let response = read_message::<GetBlocksResponse, _>(&mut stream).await.unwrap();
+                let response =
+                    read_message::<GetBlocksResponse, _>(&mut stream).await.unwrap().unwrap();
                 assert_eq!(response, expected_response);
             }
         }
@@ -59,6 +65,23 @@ async fn outbound_sends_invalid_request() {
             // The first element is the length of the message, if we don't write that many bytes
             // after then the message will be invalid.
             write_varint(&mut outbound_stream, 10).await.unwrap();
+            outbound_stream.close().await.unwrap();
+        },
+    );
+}
+
+#[tokio::test]
+async fn outbound_sends_no_request() {
+    let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
+    let inbound_protocol = InboundProtocol::<GetBlocks>::new();
+
+    tokio::join!(
+        async move {
+            let error =
+                inbound_protocol.upgrade_inbound(inbound_stream, PROTOCOL_NAME).await.unwrap_err();
+            assert_matches!(error.kind(), ErrorKind::UnexpectedEof);
+        },
+        async move {
             outbound_stream.close().await.unwrap();
         },
     );
