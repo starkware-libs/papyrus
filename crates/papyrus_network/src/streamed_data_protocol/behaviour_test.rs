@@ -9,11 +9,10 @@ use libp2p::core::{ConnectedPoint, Endpoint};
 use libp2p::swarm::behaviour::ConnectionEstablished;
 use libp2p::swarm::{ConnectionId, FromSwarm, NetworkBehaviour, PollParameters, ToSwarm};
 use libp2p::{Multiaddr, PeerId};
-use prost::Message;
 
-use super::super::handler::NewQueryEvent;
+use super::super::handler::RequestFromBehaviourEvent;
 use super::super::protocol::PROTOCOL_NAME;
-use super::super::OutboundSessionId;
+use super::super::{DataBound, OutboundSessionId, QueryBound};
 use super::{Behaviour, Event};
 use crate::messages::block::{GetBlocks, GetBlocksResponse};
 
@@ -26,12 +25,10 @@ impl PollParameters for GetBlocksPollParameters {
     }
 }
 
-impl<Query: Message + Clone, Data: Message> Unpin for Behaviour<Query, Data> {}
+impl<Query: QueryBound, Data: DataBound> Unpin for Behaviour<Query, Data> {}
 
-impl<Query: Message + Clone + 'static, Data: Message + Default + 'static> Stream
-    for Behaviour<Query, Data>
-{
-    type Item = ToSwarm<Event<Query, Data>, NewQueryEvent<Query>>;
+impl<Query: QueryBound, Data: DataBound> Stream for Behaviour<Query, Data> {
+    type Item = ToSwarm<Event<Query, Data>, RequestFromBehaviourEvent<Query, Data>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match Pin::into_inner(self).poll(cx, &mut GetBlocksPollParameters {}) {
@@ -43,16 +40,26 @@ impl<Query: Message + Clone + 'static, Data: Message + Default + 'static> Stream
 
 const SUBSTREAM_TIMEOUT: Duration = Duration::MAX;
 
-fn validate_no_events<Query: Message + Clone + 'static, Data: Message + Default + 'static>(
+fn simulate_dial_finished_from_swarm<Query: QueryBound, Data: DataBound>(
     behaviour: &mut Behaviour<Query, Data>,
+    peer_id: &PeerId,
 ) {
-    assert!(behaviour.next().now_or_never().is_none());
+    let connection_id = ConnectionId::new_unchecked(0);
+    let address = Multiaddr::empty();
+    let role_override = Endpoint::Dialer;
+    let _handler = behaviour
+        .handle_established_outbound_connection(connection_id, *peer_id, &address, role_override)
+        .unwrap();
+    behaviour.on_swarm_event(FromSwarm::ConnectionEstablished(ConnectionEstablished {
+        peer_id: *peer_id,
+        connection_id,
+        endpoint: &ConnectedPoint::Dialer { address, role_override },
+        failed_addresses: &[],
+        other_established: 0,
+    }));
 }
 
-async fn validate_next_event_dial<
-    Query: Message + Clone + 'static,
-    Data: Message + Default + 'static,
->(
+async fn validate_dial_event<Query: QueryBound, Data: DataBound>(
     behaviour: &mut Behaviour<Query, Data>,
     peer_id: &PeerId,
 ) {
@@ -63,10 +70,7 @@ async fn validate_next_event_dial<
     assert_eq!(*peer_id, opts.get_peer_id().unwrap());
 }
 
-async fn validate_next_event_send_query_to_handler<
-    Query: Message + Clone + PartialEq + 'static,
-    Data: Message + Default + 'static,
->(
+async fn validate_create_outbound_session_event<Query: QueryBound + PartialEq, Data: DataBound>(
     behaviour: &mut Behaviour<Query, Data>,
     peer_id: &PeerId,
     query: &Query,
@@ -77,7 +81,7 @@ async fn validate_next_event_send_query_to_handler<
         event,
         ToSwarm::NotifyHandler {
             peer_id: other_peer_id,
-            event: NewQueryEvent::<Query> { query: other_query, outbound_session_id: other_outbound_session_id },
+            event: RequestFromBehaviourEvent::CreateOutboundSession { query: other_query, outbound_session_id: other_outbound_session_id },
             ..
         } if *peer_id == other_peer_id
             && *outbound_session_id == other_outbound_session_id
@@ -85,8 +89,13 @@ async fn validate_next_event_send_query_to_handler<
     );
 }
 
+// TODO(shahak): Fix code duplication with handler test.
+fn validate_no_events<Query: QueryBound, Data: DataBound>(behaviour: &mut Behaviour<Query, Data>) {
+    assert!(behaviour.next().now_or_never().is_none());
+}
+
 #[tokio::test]
-async fn send_and_process_request() {
+async fn create_and_process_outbound_session() {
     let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(SUBSTREAM_TIMEOUT);
 
     // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
@@ -95,29 +104,13 @@ async fn send_and_process_request() {
     let peer_id = PeerId::random();
 
     let outbound_session_id = behaviour.send_query(query.clone(), peer_id);
-    validate_next_event_dial(&mut behaviour, &peer_id).await;
+    validate_dial_event(&mut behaviour, &peer_id).await;
     validate_no_events(&mut behaviour);
 
-    let connection_id = ConnectionId::new_unchecked(0);
-    let address = Multiaddr::empty();
-    let role_override = Endpoint::Dialer;
-    let _handler = behaviour
-        .handle_established_outbound_connection(connection_id, peer_id, &address, role_override)
-        .unwrap();
-    behaviour.on_swarm_event(FromSwarm::ConnectionEstablished(ConnectionEstablished {
-        peer_id,
-        connection_id,
-        endpoint: &ConnectedPoint::Dialer { address, role_override },
-        failed_addresses: &[],
-        other_established: 0,
-    }));
-    validate_next_event_send_query_to_handler(
-        &mut behaviour,
-        &peer_id,
-        &query,
-        &outbound_session_id,
-    )
-    .await;
+    simulate_dial_finished_from_swarm(&mut behaviour, &peer_id);
+
+    validate_create_outbound_session_event(&mut behaviour, &peer_id, &query, &outbound_session_id)
+        .await;
     validate_no_events(&mut behaviour);
 
     // TODO(shahak): Send responses from the handler.
