@@ -98,7 +98,7 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
 
     /// Instruct behaviour to close outbound session. A corresponding SessionClosedByRequest event
     /// will be reported when the session is closed.
-    pub fn closed_outbound_session(_outbound_session_id: OutboundSessionId) {
+    pub fn close_outbound_session(_outbound_session_id: OutboundSessionId) {
         unimplemented!();
     }
 
@@ -123,21 +123,21 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
     fn handle_established_inbound_connection(
         &mut self,
         _connection_id: ConnectionId,
-        _peer: PeerId,
+        peer_id: PeerId,
         _local_addr: &Multiaddr,
         _remote_addr: &Multiaddr,
     ) -> Result<Self::ConnectionHandler, ConnectionDenied> {
-        Ok(Handler::new(self.substream_timeout, self.next_inbound_session_id.clone()))
+        Ok(Handler::new(self.substream_timeout, self.next_inbound_session_id.clone(), peer_id))
     }
 
     fn handle_established_outbound_connection(
         &mut self,
         _connection_id: ConnectionId,
-        _peer: PeerId,
+        peer_id: PeerId,
         _addr: &Multiaddr,
         _role_override: Endpoint,
     ) -> Result<Self::ConnectionHandler, ConnectionDenied> {
-        Ok(Handler::new(self.substream_timeout, self.next_inbound_session_id.clone()))
+        Ok(Handler::new(self.substream_timeout, self.next_inbound_session_id.clone(), peer_id))
     }
 
     fn on_swarm_event(&mut self, event: FromSwarm<'_, Self::ConnectionHandler>) {
