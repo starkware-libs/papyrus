@@ -6,8 +6,7 @@ metadata:
     {{- include "papyrus.labels" . | nindent 4 }}
 data:
   RUST_LOG: {{ .Values.rustLogLevel }}
-  CHAIN_ID: {{ .Values.starknet.chainId }}
-  CENTRAL_URL: {{ .Values.starknet.centralUrl }}
+  PRESET: {{ .Values.starknet.preset }}
   CONCURRENT_REQUESTS: {{ .Values.node.concurrentFgRequests | quote }}
   {{- if .Values.starknet.additionalHeaders }}
   ADDITIONAL_HEADER: {{ .Values.starknet.additionalHeaders }}
