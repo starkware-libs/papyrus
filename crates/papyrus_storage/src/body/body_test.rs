@@ -2,12 +2,13 @@ use assert_matches::assert_matches;
 use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockBody, BlockNumber};
 use starknet_api::transaction::TransactionOffsetInBlock;
+use test_case::test_case;
 use test_utils::{get_test_block, get_test_body};
 
 use crate::body::events::ThinTransactionOutput;
 use crate::body::{BodyStorageReader, BodyStorageWriter, TransactionIndex};
-use crate::test_utils::get_test_storage;
-use crate::{StorageError, StorageWriter};
+use crate::test_utils::{get_test_storage, get_test_storage_by_scope};
+use crate::{StorageError, StorageScope, StorageWriter};
 
 #[tokio::test]
 async fn append_body() {
@@ -178,15 +179,63 @@ async fn append_body() {
 }
 
 #[tokio::test]
-async fn revert_non_existing_body_fails() {
-    let ((_, mut writer), _temp_dir) = get_test_storage();
+async fn append_body_state_only() {
+    let ((reader, mut writer), _temp_dir) = get_test_storage_by_scope(StorageScope::StateOnly);
+    let block_body = get_test_block(1, Some(1), None, None).body;
+
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_body(BlockNumber(0), block_body.clone())
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    let txn = reader.begin_ro_txn().unwrap();
+    // Check marker.
+    assert_eq!(txn.get_body_marker().unwrap(), BlockNumber(1));
+
+    // Check single transactions, outputs and events.
+    let block_number = BlockNumber(0);
+    let transaction_offset = TransactionOffsetInBlock(0);
+
+    assert_eq!(
+        txn.get_transaction(TransactionIndex(block_number, transaction_offset)).unwrap(),
+        None
+    );
+    assert_eq!(
+        txn.get_transaction_output(TransactionIndex(block_number, transaction_offset)).unwrap(),
+        None
+    );
+    assert_eq!(
+        txn.get_transaction_events(TransactionIndex(block_number, transaction_offset)).unwrap(),
+        None
+    );
+
+    // Check transaction index by hash.
+    let transaction_hash = block_body.transaction_hashes[0];
+    assert_eq!(txn.get_transaction_idx_by_hash(&transaction_hash).unwrap(), None);
+
+    // Check block transactions, hashes and outputs.
+    assert_eq!(txn.get_block_transactions(block_number).unwrap(), Some(vec![]));
+    assert_eq!(txn.get_block_transaction_hashes(block_number).unwrap(), Some(vec![]));
+    assert_eq!(txn.get_block_transaction_outputs(block_number).unwrap(), Some(vec![]));
+}
+
+#[test_case(StorageScope::FullArchive; "revert non existing body fails full archive")]
+#[test_case(StorageScope::StateOnly; "revert non existing body fails state only")]
+#[tokio::test]
+async fn revert_non_existing_body_fails(storage_scope: StorageScope) {
+    let ((_, mut writer), _temp_dir) = get_test_storage_by_scope(storage_scope);
     let (_, deleted_data) = writer.begin_rw_txn().unwrap().revert_body(BlockNumber(5)).unwrap();
     assert!(deleted_data.is_none());
 }
 
+#[test_case(StorageScope::FullArchive; "revert last body success full archive")]
+#[test_case(StorageScope::StateOnly; "revert last body success state only")]
 #[tokio::test]
-async fn revert_last_body_success() {
-    let ((_, mut writer), _temp_dir) = get_test_storage();
+async fn revert_body_state_only(storage_scope: StorageScope) {
+    let ((_, mut writer), _temp_dir) = get_test_storage_by_scope(storage_scope);
     writer
         .begin_rw_txn()
         .unwrap()
@@ -205,9 +254,11 @@ async fn revert_old_body_fails() {
     assert!(deleted_data.is_none());
 }
 
+#[test_case(StorageScope::FullArchive; "revert body updates marker full archive")]
+#[test_case(StorageScope::StateOnly; "revert body updates marker state only")]
 #[tokio::test]
-async fn revert_body_updates_marker() {
-    let ((reader, mut writer), _temp_dir) = get_test_storage();
+async fn revert_body_updates_marker(storage_scope: StorageScope) {
+    let ((reader, mut writer), _temp_dir) = get_test_storage_by_scope(storage_scope);
     append_2_bodies(&mut writer);
 
     // Verify that the body marker before revert is 2.

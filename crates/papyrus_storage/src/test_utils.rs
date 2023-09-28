@@ -5,14 +5,15 @@ use starknet_api::core::ChainId;
 use tempfile::{tempdir, TempDir};
 
 use crate::db::DbConfig;
-use crate::{open_storage, StorageConfig, StorageReader, StorageWriter};
+use crate::{open_storage, StorageConfig, StorageReader, StorageScope, StorageWriter};
 
 /// Returns a db config and the temporary directory that holds this db.
 /// The TempDir object is returned as a handler for the lifetime of this object (the temp
 /// directory), thus make sure the directory won't be destroyed. The caller should propagate the
 /// TempDir object until it is no longer needed. When the TempDir object is dropped, the directory
 /// is deleted.
-pub fn get_test_config() -> (StorageConfig, TempDir) {
+pub fn get_test_config(storage_scope: Option<StorageScope>) -> (StorageConfig, TempDir) {
+    let storage_scope = storage_scope.unwrap_or_default();
     let dir = tempdir().unwrap();
     println!("{dir:?}");
     (
@@ -24,7 +25,7 @@ pub fn get_test_config() -> (StorageConfig, TempDir) {
                 max_size: 1 << 35,    // 32GB
                 growth_step: 1 << 26, // 64MB
             },
-            ..Default::default()
+            scope: storage_scope,
         },
         dir,
     )
@@ -33,6 +34,15 @@ pub fn get_test_config() -> (StorageConfig, TempDir) {
 /// Returns [`StorageReader`], [`StorageWriter`] and the temporary directory that holds a db for
 /// testing purposes.
 pub fn get_test_storage() -> ((StorageReader, StorageWriter), TempDir) {
-    let (config, temp_dir) = get_test_config();
+    let (config, temp_dir) = get_test_config(None);
+    ((open_storage(config).unwrap()), temp_dir)
+}
+
+/// Returns [`StorageReader`], [`StorageWriter`] that configured by the given [`StorageScope`] and
+/// the temporary directory that holds a db for testing purposes.
+pub fn get_test_storage_by_scope(
+    storage_scope: StorageScope,
+) -> ((StorageReader, StorageWriter), TempDir) {
+    let (config, temp_dir) = get_test_config(Some(storage_scope));
     ((open_storage(config).unwrap()), temp_dir)
 }
