@@ -33,7 +33,7 @@ use crate::messages::read_message;
 pub(crate) enum RequestFromBehaviourEvent<Query, Data> {
     CreateOutboundSession { query: Query, outbound_session_id: OutboundSessionId },
     SendData { data: Data, inbound_session_id: InboundSessionId },
-    FinishSession { session_id: SessionId },
+    CloseSession { session_id: SessionId },
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -251,7 +251,7 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                         // TODO(shahak): Consider handling this in a different way than just
                         // logging.
                         debug!(
-                            "Got a request to send data on a finished inbound session with id \
+                            "Got a request to send data on a closed inbound session with id \
                              {inbound_session_id}. Ignoring request."
                         );
                     } else {
@@ -260,17 +260,17 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                 } else {
                     // TODO(shahak): Consider handling this in a different way than just logging.
                     debug!(
-                        "Got a request to send data on a non-existing or finished inbound session \
+                        "Got a request to send data on a non-existing or closed inbound session \
                          with id {inbound_session_id}. Ignoring request."
                     );
                 }
             }
-            RequestFromBehaviourEvent::FinishSession {
+            RequestFromBehaviourEvent::CloseSession {
                 session_id: SessionId::InboundSessionId(inbound_session_id),
             } => {
                 self.inbound_sessions_marked_to_end.insert(inbound_session_id);
             }
-            RequestFromBehaviourEvent::FinishSession {
+            RequestFromBehaviourEvent::CloseSession {
                 session_id: SessionId::OutboundSessionId(outbound_session_id),
             } => {
                 self.id_to_outbound_session.remove(&outbound_session_id);
