@@ -1,9 +1,11 @@
-// #[cfg(test)]
-// #[path = "behaviour_test.rs"]
-// mod behaviour_test;
+#[cfg(test)]
+#[path = "behaviour_test.rs"]
+mod behaviour_test;
 
 use std::collections::{HashSet, VecDeque};
 use std::io;
+use std::sync::atomic::AtomicUsize;
+use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
@@ -50,6 +52,7 @@ pub(crate) struct Behaviour<Query: QueryBound, Data: DataBound> {
     pending_queries: DefaultHashMap<PeerId, Vec<(Query, OutboundSessionId)>>,
     connected_peers: HashSet<PeerId>,
     next_outbound_session_id: OutboundSessionId,
+    next_inbound_session_id: Arc<AtomicUsize>,
 }
 
 // TODO(shahak) remove allow dead code.
@@ -62,6 +65,7 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
             pending_queries: Default::default(),
             connected_peers: Default::default(),
             next_outbound_session_id: Default::default(),
+            next_inbound_session_id: Arc::new(Default::default()),
         }
     }
 
@@ -123,8 +127,7 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
         _local_addr: &Multiaddr,
         _remote_addr: &Multiaddr,
     ) -> Result<Self::ConnectionHandler, ConnectionDenied> {
-        // Ok(Handler::new(self.substream_timeout))
-        unimplemented!();
+        Ok(Handler::new(self.substream_timeout, self.next_inbound_session_id.clone()))
     }
 
     fn handle_established_outbound_connection(
@@ -134,8 +137,7 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
         _addr: &Multiaddr,
         _role_override: Endpoint,
     ) -> Result<Self::ConnectionHandler, ConnectionDenied> {
-        // Ok(Handler::new(self.substream_timeout))
-        unimplemented!();
+        Ok(Handler::new(self.substream_timeout, self.next_inbound_session_id.clone()))
     }
 
     fn on_swarm_event(&mut self, event: FromSwarm<'_, Self::ConnectionHandler>) {
@@ -160,7 +162,7 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
         _connection_id: ConnectionId,
         _event: <Self::ConnectionHandler as ConnectionHandler>::ToBehaviour,
     ) {
-        // TODO(shahak): Implement.
+        unimplemented!();
     }
 
     fn poll(
