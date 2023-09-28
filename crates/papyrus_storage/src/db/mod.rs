@@ -260,7 +260,7 @@ impl<'a, Mode: TransactionKind> DbTransaction<'a, Mode> {
 }
 
 pub(crate) struct TableIdentifier<K: StorageSerde, V: StorageSerde> {
-    name: &'static str,
+    pub(crate) name: &'static str,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
 }

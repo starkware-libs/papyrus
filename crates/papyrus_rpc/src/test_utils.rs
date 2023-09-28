@@ -7,8 +7,8 @@ use jsonrpsee::server::RpcModule;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonschema::JSONSchema;
 use papyrus_common::BlockHashAndNumber;
-use papyrus_storage::test_utils::get_test_storage;
-use papyrus_storage::StorageWriter;
+use papyrus_storage::test_utils::get_test_storage_by_scope;
+use papyrus_storage::{StorageScope, StorageWriter};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -43,17 +43,19 @@ pub(crate) fn get_test_highest_block() -> Arc<RwLock<Option<BlockHashAndNumber>>
 
 pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
 -> (RpcModule<T>, StorageWriter) {
-    get_test_rpc_server_and_storage_writer_from_params(None, None)
+    get_test_rpc_server_and_storage_writer_from_params(None, None, None)
 }
 
 pub(crate) fn get_test_rpc_server_and_storage_writer_from_params<T: JsonRpcServerImpl>(
     mock_client: Option<MockStarknetWriter>,
     shared_highest_block: Option<Arc<RwLock<Option<BlockHashAndNumber>>>>,
+    storage_scope: Option<StorageScope>,
 ) -> (RpcModule<T>, StorageWriter) {
     let mock_client = mock_client.unwrap_or(MockStarknetWriter::new());
     let shared_highest_block = shared_highest_block.unwrap_or(get_test_highest_block());
+    let storage_scope = storage_scope.unwrap_or_default();
 
-    let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
+    let ((storage_reader, storage_writer), _temp_dir) = get_test_storage_by_scope(storage_scope);
     let config = get_test_rpc_config();
     let mock_client_arc = Arc::new(mock_client);
     (

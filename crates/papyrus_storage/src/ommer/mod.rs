@@ -70,7 +70,7 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
         block_hash: BlockHash,
         header: &BlockHeader,
     ) -> StorageResult<Self> {
-        let ommer_headers_table = self.txn.open_table(&self.tables.ommer_headers)?;
+        let ommer_headers_table = self.open_table(&self.tables.ommer_headers)?;
         ommer_headers_table.insert(&self.txn, &block_hash, header).map_err(|err| match err {
             DbError::Inner(libmdbx::Error::KeyExist) => {
                 StorageError::OmmerHeaderAlreadyExists { block_hash }
@@ -91,10 +91,10 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
         assert!(transactions.len() == thin_transaction_outputs.len());
         assert!(transactions.len() == transaction_outputs_events.len());
 
-        let ommer_transactions_table = self.txn.open_table(&self.tables.ommer_transactions)?;
+        let ommer_transactions_table = self.open_table(&self.tables.ommer_transactions)?;
         let ommer_transaction_outputs_table =
-            self.txn.open_table(&self.tables.ommer_transaction_outputs)?;
-        let ommer_events_table = self.txn.open_table(&self.tables.ommer_events)?;
+            self.open_table(&self.tables.ommer_transaction_outputs)?;
+        let ommer_events_table = self.open_table(&self.tables.ommer_events)?;
 
         for idx in 0..transactions.len() {
             let tx_index = OmmerTransactionKey(block_hash, TransactionOffsetInBlock(idx));
@@ -146,13 +146,12 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
         thin_state_diff: &ThinStateDiff,
         declared_classes: &IndexMap<ClassHash, ContractClass>,
     ) -> StorageResult<Self> {
-        let ommer_state_diffs_table = self.txn.open_table(&self.tables.ommer_state_diffs)?;
-        let ommer_declared_classes_table =
-            self.txn.open_table(&self.tables.ommer_declared_classes)?;
+        let ommer_state_diffs_table = self.open_table(&self.tables.ommer_state_diffs)?;
+        let ommer_declared_classes_table = self.open_table(&self.tables.ommer_declared_classes)?;
         let ommer_deployed_contracts_table =
-            self.txn.open_table(&self.tables.ommer_deployed_contracts)?;
-        let ommer_storage_table = self.txn.open_table(&self.tables.ommer_contract_storage)?;
-        let ommer_nonces_table = self.txn.open_table(&self.tables.ommer_nonces)?;
+            self.open_table(&self.tables.ommer_deployed_contracts)?;
+        let ommer_storage_table = self.open_table(&self.tables.ommer_contract_storage)?;
+        let ommer_nonces_table = self.open_table(&self.tables.ommer_nonces)?;
 
         ommer_state_diffs_table.insert(&self.txn, &block_hash, thin_state_diff).map_err(|err| {
             match err {

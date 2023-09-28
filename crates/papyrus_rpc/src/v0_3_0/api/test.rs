@@ -187,6 +187,7 @@ async fn syncing() {
     let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_3Impl>(
         None,
         Some(shared_highest_block.clone()),
+        None,
     );
 
     call_api_then_assert_and_validate_schema_for_result::<_, _, bool>(

@@ -146,11 +146,11 @@ where
 impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for StorageTxn<'env, Mode> {
     // The block number marker is the first block number that doesn't exist yet.
     fn get_state_marker(&self) -> StorageResult<BlockNumber> {
-        let markers_table = self.txn.open_table(&self.tables.markers)?;
+        let markers_table = self.open_table(&self.tables.markers)?;
         Ok(markers_table.get(&self.txn, &MarkerKind::State)?.unwrap_or_default())
     }
     fn get_state_diff(&self, block_number: BlockNumber) -> StorageResult<Option<ThinStateDiff>> {
-        let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
+        let state_diffs_table = self.open_table(&self.tables.state_diffs)?;
         let state_diff = state_diffs_table.get(&self.txn, &block_number)?;
         Ok(state_diff)
     }
@@ -386,16 +386,15 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         state_diff: StateDiff,
         mut deployed_contract_class_definitions: IndexMap<ClassHash, DeprecatedContractClass>,
     ) -> StorageResult<Self> {
-        let markers_table = self.txn.open_table(&self.tables.markers)?;
-        let nonces_table = self.txn.open_table(&self.tables.nonces)?;
-        let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
-        let declared_classes_table = self.txn.open_table(&self.tables.declared_classes)?;
-        let declared_classes_block_table =
-            self.txn.open_table(&self.tables.declared_classes_block)?;
+        let markers_table = self.open_table(&self.tables.markers)?;
+        let nonces_table = self.open_table(&self.tables.nonces)?;
+        let deployed_contracts_table = self.open_table(&self.tables.deployed_contracts)?;
+        let declared_classes_table = self.open_table(&self.tables.declared_classes)?;
+        let declared_classes_block_table = self.open_table(&self.tables.declared_classes_block)?;
         let deprecated_declared_classes_table =
-            self.txn.open_table(&self.tables.deprecated_declared_classes)?;
-        let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
-        let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
+            self.open_table(&self.tables.deprecated_declared_classes)?;
+        let storage_table = self.open_table(&self.tables.contract_storage)?;
+        let state_diffs_table = self.open_table(&self.tables.state_diffs)?;
 
         update_marker(&self.txn, &markers_table, block_number)?;
 
@@ -463,18 +462,17 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         self,
         block_number: BlockNumber,
     ) -> StorageResult<(Self, Option<RevertedStateDiff>)> {
-        let markers_table = self.txn.open_table(&self.tables.markers)?;
-        let declared_classes_table = self.txn.open_table(&self.tables.declared_classes)?;
-        let declared_classes_block_table =
-            self.txn.open_table(&self.tables.declared_classes_block)?;
+        let markers_table = self.open_table(&self.tables.markers)?;
+        let declared_classes_table = self.open_table(&self.tables.declared_classes)?;
+        let declared_classes_block_table = self.open_table(&self.tables.declared_classes_block)?;
         let deprecated_declared_classes_table =
-            self.txn.open_table(&self.tables.deprecated_declared_classes)?;
+            self.open_table(&self.tables.deprecated_declared_classes)?;
         // TODO(yair): Consider reverting the compiled classes in their own module.
-        let compiled_classes_table = self.txn.open_table(&self.tables.casms)?;
-        let deployed_contracts_table = self.txn.open_table(&self.tables.deployed_contracts)?;
-        let nonces_table = self.txn.open_table(&self.tables.nonces)?;
-        let storage_table = self.txn.open_table(&self.tables.contract_storage)?;
-        let state_diffs_table = self.txn.open_table(&self.tables.state_diffs)?;
+        let compiled_classes_table = self.open_table(&self.tables.casms)?;
+        let deployed_contracts_table = self.open_table(&self.tables.deployed_contracts)?;
+        let nonces_table = self.open_table(&self.tables.nonces)?;
+        let storage_table = self.open_table(&self.tables.contract_storage)?;
+        let state_diffs_table = self.open_table(&self.tables.state_diffs)?;
 
         let current_state_marker = self.get_state_marker()?;
 

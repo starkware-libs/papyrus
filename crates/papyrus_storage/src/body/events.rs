@@ -221,7 +221,7 @@ impl<'txn, 'env> StorageTxn<'env, RO> {
         &'env self,
         key: EventsTableKey,
     ) -> StorageResult<EventIterByContractAddress<'txn>> {
-        let events_table = self.txn.open_table(&self.tables.events)?;
+        let events_table = self.open_table(&self.tables.events)?;
         let mut cursor = events_table.cursor(&self.txn)?;
         let current = cursor.lower_bound(&key)?;
         Ok(EventIterByContractAddress { current, cursor })
@@ -241,10 +241,10 @@ impl<'txn, 'env> StorageTxn<'env, RO> {
         event_index: EventIndex,
         to_block_number: BlockNumber,
     ) -> StorageResult<EventIterByEventIndex<'txn, 'env>> {
-        let transaction_outputs_table = self.txn.open_table(&self.tables.transaction_outputs)?;
+        let transaction_outputs_table = self.open_table(&self.tables.transaction_outputs)?;
         let mut tx_cursor = transaction_outputs_table.cursor(&self.txn)?;
         let tx_current = tx_cursor.lower_bound(&event_index.0)?;
-        let events_table = self.txn.open_table(&self.tables.events)?;
+        let events_table = self.open_table(&self.tables.events)?;
 
         let mut it = EventIterByEventIndex {
             txn: &self.txn,

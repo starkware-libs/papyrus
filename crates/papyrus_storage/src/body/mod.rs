@@ -150,7 +150,7 @@ where
 
 impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
     fn get_body_marker(&self) -> StorageResult<BlockNumber> {
-        let markers_table = self.txn.open_table(&self.tables.markers)?;
+        let markers_table = self.open_table(&self.tables.markers)?;
         Ok(markers_table.get(&self.txn, &MarkerKind::Body)?.unwrap_or_default())
     }
 
@@ -158,7 +158,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         &self,
         transaction_index: TransactionIndex,
     ) -> StorageResult<Option<Transaction>> {
-        let transactions_table = self.txn.open_table(&self.tables.transactions)?;
+        let transactions_table = self.open_table(&self.tables.transactions)?;
         let transaction = transactions_table.get(&self.txn, &transaction_index)?;
         Ok(transaction)
     }
@@ -167,7 +167,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         &self,
         transaction_index: TransactionIndex,
     ) -> StorageResult<Option<ThinTransactionOutput>> {
-        let transaction_outputs_table = self.txn.open_table(&self.tables.transaction_outputs)?;
+        let transaction_outputs_table = self.open_table(&self.tables.transaction_outputs)?;
         let transaction_output = transaction_outputs_table.get(&self.txn, &transaction_index)?;
         Ok(transaction_output)
     }
@@ -181,7 +181,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
             return Ok(None);
         };
 
-        let events_table = self.txn.open_table(&self.tables.events)?;
+        let events_table = self.open_table(&self.tables.events)?;
 
         let mut res = Vec::new();
         for (index, from_address) in tx_output.events_contract_addresses().into_iter().enumerate() {
@@ -201,7 +201,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         tx_hash: &TransactionHash,
     ) -> StorageResult<Option<TransactionIndex>> {
         let transaction_hash_to_idx_table =
-            self.txn.open_table(&self.tables.transaction_hash_to_idx)?;
+            self.open_table(&self.tables.transaction_hash_to_idx)?;
         let idx = transaction_hash_to_idx_table.get(&self.txn, tx_hash)?;
         Ok(idx)
     }
@@ -211,7 +211,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         tx_index: &TransactionIndex,
     ) -> StorageResult<Option<TransactionHash>> {
         let transaction_idx_to_hash_table =
-            self.txn.open_table(&self.tables.transaction_idx_to_hash)?;
+            self.open_table(&self.tables.transaction_idx_to_hash)?;
         let idx = transaction_idx_to_hash_table.get(&self.txn, tx_index)?;
         Ok(idx)
     }
@@ -220,7 +220,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         &self,
         block_number: BlockNumber,
     ) -> StorageResult<Option<Vec<Transaction>>> {
-        let transactions_table = self.txn.open_table(&self.tables.transactions)?;
+        let transactions_table = self.open_table(&self.tables.transactions)?;
         self.get_transactions_in_block(block_number, transactions_table)
     }
 
@@ -229,7 +229,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         block_number: BlockNumber,
     ) -> StorageResult<Option<Vec<TransactionHash>>> {
         let transaction_idx_to_hash_table =
-            self.txn.open_table(&self.tables.transaction_idx_to_hash)?;
+            self.open_table(&self.tables.transaction_idx_to_hash)?;
         self.get_transactions_in_block(block_number, transaction_idx_to_hash_table)
     }
 
@@ -237,7 +237,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         &self,
         block_number: BlockNumber,
     ) -> StorageResult<Option<Vec<ThinTransactionOutput>>> {
-        let transaction_outputs_table = self.txn.open_table(&self.tables.transaction_outputs)?;
+        let transaction_outputs_table = self.open_table(&self.tables.transaction_outputs)?;
         self.get_transactions_in_block(block_number, transaction_outputs_table)
     }
 }
@@ -272,18 +272,17 @@ impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
 impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
     #[latency_histogram("storage_append_body_latency_seconds")]
     fn append_body(self, block_number: BlockNumber, block_body: BlockBody) -> StorageResult<Self> {
-        let markers_table = self.txn.open_table(&self.tables.markers)?;
+        let markers_table = self.open_table(&self.tables.markers)?;
         update_marker(&self.txn, &markers_table, block_number)?;
 
         if self.scope != StorageScope::StateOnly {
-            let transactions_table = self.txn.open_table(&self.tables.transactions)?;
-            let transaction_outputs_table =
-                self.txn.open_table(&self.tables.transaction_outputs)?;
-            let events_table = self.txn.open_table(&self.tables.events)?;
+            let transactions_table = self.open_table(&self.tables.transactions)?;
+            let transaction_outputs_table = self.open_table(&self.tables.transaction_outputs)?;
+            let events_table = self.open_table(&self.tables.events)?;
             let transaction_hash_to_idx_table =
-                self.txn.open_table(&self.tables.transaction_hash_to_idx)?;
+                self.open_table(&self.tables.transaction_hash_to_idx)?;
             let transaction_idx_to_hash_table =
-                self.txn.open_table(&self.tables.transaction_idx_to_hash)?;
+                self.open_table(&self.tables.transaction_idx_to_hash)?;
 
             write_transactions(
                 &block_body,
@@ -309,7 +308,7 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
         self,
         block_number: BlockNumber,
     ) -> StorageResult<(Self, Option<RevertedBlockBody>)> {
-        let markers_table = self.txn.open_table(&self.tables.markers)?;
+        let markers_table = self.open_table(&self.tables.markers)?;
 
         // Assert that body marker equals the reverted block number + 1
         let current_header_marker = self.get_body_marker()?;
@@ -326,14 +325,13 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
                 break 'reverted_block_body None;
             }
 
-            let transactions_table = self.txn.open_table(&self.tables.transactions)?;
-            let transaction_outputs_table =
-                self.txn.open_table(&self.tables.transaction_outputs)?;
+            let transactions_table = self.open_table(&self.tables.transactions)?;
+            let transaction_outputs_table = self.open_table(&self.tables.transaction_outputs)?;
             let transaction_hash_to_idx_table =
-                self.txn.open_table(&self.tables.transaction_hash_to_idx)?;
+                self.open_table(&self.tables.transaction_hash_to_idx)?;
             let transaction_idx_to_hash_table =
-                self.txn.open_table(&self.tables.transaction_idx_to_hash)?;
-            let events_table = self.txn.open_table(&self.tables.events)?;
+                self.open_table(&self.tables.transaction_idx_to_hash)?;
+            let events_table = self.open_table(&self.tables.events)?;
 
             let transactions = self
                 .get_block_transactions(block_number)?

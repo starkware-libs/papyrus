@@ -68,14 +68,14 @@ where
 
 impl<'env, Mode: TransactionKind> BaseLayerStorageReader for StorageTxn<'env, Mode> {
     fn get_base_layer_block_marker(&self) -> StorageResult<BlockNumber> {
-        let markers_table = self.txn.open_table(&self.tables.markers)?;
+        let markers_table = self.open_table(&self.tables.markers)?;
         Ok(markers_table.get(&self.txn, &MarkerKind::BaseLayerBlock)?.unwrap_or_default())
     }
 }
 
 impl<'env> BaseLayerStorageWriter for StorageTxn<'env, RW> {
     fn update_base_layer_block_marker(self, block_number: &BlockNumber) -> StorageResult<Self> {
-        let markers_table = self.txn.open_table(&self.tables.markers)?;
+        let markers_table = self.open_table(&self.tables.markers)?;
         markers_table.upsert(&self.txn, &MarkerKind::BaseLayerBlock, block_number)?;
         Ok(self)
     }
