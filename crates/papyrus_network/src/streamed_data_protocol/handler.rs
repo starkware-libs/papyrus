@@ -254,7 +254,12 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                     outbound_session_id,
                     stream! {
                         loop {
-                            let result = read_message::<Data, _>(&mut stream).await;
+                            let result_opt = read_message::<Data, _>(&mut stream).await;
+                            let result = match result_opt {
+                                Ok(Some(data)) => Ok(data),
+                                Ok(None) => break,
+                                Err(error) => Err(error),
+                            };
                             let is_err = result.is_err();
                             yield result;
                             if is_err {
