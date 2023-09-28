@@ -11,7 +11,7 @@ use libp2p::swarm::handler::{ConnectionEvent, FullyNegotiatedInbound, FullyNegot
 use libp2p::swarm::{ConnectionHandler, ConnectionHandlerEvent, Stream};
 
 use super::super::{DataBound, InboundSessionId, OutboundSessionId, QueryBound};
-use super::{Handler, HandlerEvent, RequestFromBehaviourEvent, ToBehaviourEvent};
+use super::{Handler, HandlerEvent, RequestFromBehaviourEvent, SessionId, ToBehaviourEvent};
 use crate::messages::block::{GetBlocks, GetBlocksResponse};
 use crate::messages::{read_message, write_message};
 use crate::test_utils::{get_connected_streams, hardcoded_data};
@@ -48,6 +48,13 @@ fn simulate_request_to_send_query_from_swarm<Query: QueryBound, Data: DataBound>
         query,
         outbound_session_id,
     });
+}
+
+fn simulate_request_to_finish_session<Query: QueryBound, Data: DataBound>(
+    handler: &mut Handler<Query, Data>,
+    session_id: SessionId,
+) {
+    handler.on_behaviour_event(RequestFromBehaviourEvent::FinishSession { session_id });
 }
 
 fn simulate_negotiated_inbound_session_from_swarm<Query: QueryBound, Data: DataBound>(
@@ -98,6 +105,10 @@ async fn validate_received_data_event<Query: QueryBound, Data: DataBound + Parti
             data: event_data, outbound_session_id: event_outbound_session_id
         }) if event_data == *data &&  event_outbound_session_id == outbound_session_id
     );
+}
+
+fn validate_no_events<Query: QueryBound, Data: DataBound>(handler: &mut Handler<Query, Data>) {
+    assert!(handler.next().now_or_never().is_none());
 }
 
 async fn validate_request_to_swarm_new_outbound_session_to_swarm_event<
@@ -217,6 +228,34 @@ async fn process_outbound_session() {
     for data in &hardcoded_data_vec {
         validate_received_data_event(&mut handler, data, outbound_session_id).await;
     }
+}
+
+#[tokio::test]
+async fn finished_outbound_session_doesnt_emit_events_when_data_is_sent() {
+    let mut handler = Handler::<GetBlocks, GetBlocksResponse>::new(
+        SUBSTREAM_TIMEOUT,
+        Arc::new(Default::default()),
+    );
+
+    let (mut inbound_stream, outbound_stream, _) = get_connected_streams().await;
+    let outbound_session_id = OutboundSessionId { value: 1 };
+
+    simulate_negotiated_outbound_session_from_swarm(
+        &mut handler,
+        outbound_stream,
+        outbound_session_id,
+    );
+
+    simulate_request_to_finish_session(
+        &mut handler,
+        SessionId::OutboundSessionId(outbound_session_id),
+    );
+
+    for data in hardcoded_data() {
+        write_message(data, &mut inbound_stream).await.unwrap();
+    }
+
+    validate_no_events(&mut handler);
 }
 // async fn start_request_and_validate_event<
 //     Query: Message + PartialEq + Clone,
