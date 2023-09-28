@@ -15,7 +15,7 @@ pub struct InboundSessionId {
     value: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 // TODO(shahak) remove allow(dead_code).
 #[allow(dead_code)]
 pub(crate) enum SessionId {
@@ -38,5 +38,6 @@ pub(crate) enum GenericEvent<Query: QueryBound, Data: DataBound, SessionError> {
     NewInboundSession { query: Query, inbound_session_id: InboundSessionId },
     ReceivedData { outbound_session_id: OutboundSessionId, data: Data },
     SessionFailed { session_id: SessionId, error: SessionError },
+    SessionClosedByRequest { session_id: SessionId },
     OutboundSessionClosedByPeer { outbound_session_id: OutboundSessionId },
 }
