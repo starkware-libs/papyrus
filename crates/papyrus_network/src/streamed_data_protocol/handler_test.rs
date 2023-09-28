@@ -50,11 +50,11 @@ fn simulate_request_to_send_query_from_swarm<Query: QueryBound, Data: DataBound>
     });
 }
 
-fn simulate_request_to_finish_session<Query: QueryBound, Data: DataBound>(
+fn simulate_request_to_close_session<Query: QueryBound, Data: DataBound>(
     handler: &mut Handler<Query, Data>,
     session_id: SessionId,
 ) {
-    handler.on_behaviour_event(RequestFromBehaviourEvent::FinishSession { session_id });
+    handler.on_behaviour_event(RequestFromBehaviourEvent::CloseSession { session_id });
 }
 
 fn simulate_negotiated_inbound_session_from_swarm<Query: QueryBound, Data: DataBound>(
@@ -200,7 +200,7 @@ async fn process_inbound_session() {
 }
 
 #[tokio::test]
-async fn finished_inbound_session_ignores_behaviour_request_to_send_data() {
+async fn closed_inbound_session_ignores_behaviour_request_to_send_data() {
     let mut handler = Handler::<GetBlocks, GetBlocksResponse>::new(
         SUBSTREAM_TIMEOUT,
         Arc::new(Default::default()),
@@ -222,7 +222,7 @@ async fn finished_inbound_session_ignores_behaviour_request_to_send_data() {
     // consume the new inbound session event without reading it.
     handler.next().await;
 
-    simulate_request_to_finish_session(
+    simulate_request_to_close_session(
         &mut handler,
         SessionId::InboundSessionId(inbound_session_id),
     );
@@ -303,7 +303,7 @@ async fn process_outbound_session() {
 }
 
 #[tokio::test]
-async fn finished_outbound_session_doesnt_emit_events_when_data_is_sent() {
+async fn closed_outbound_session_doesnt_emit_events_when_data_is_sent() {
     let mut handler = Handler::<GetBlocks, GetBlocksResponse>::new(
         SUBSTREAM_TIMEOUT,
         Arc::new(Default::default()),
@@ -318,7 +318,7 @@ async fn finished_outbound_session_doesnt_emit_events_when_data_is_sent() {
         outbound_session_id,
     );
 
-    simulate_request_to_finish_session(
+    simulate_request_to_close_session(
         &mut handler,
         SessionId::OutboundSessionId(outbound_session_id),
     );
