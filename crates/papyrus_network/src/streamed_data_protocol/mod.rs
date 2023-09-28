@@ -38,4 +38,5 @@ pub(crate) enum GenericEvent<Query: QueryBound, Data: DataBound, SessionError> {
     NewInboundSession { query: Query, inbound_session_id: InboundSessionId },
     ReceivedData { outbound_session_id: OutboundSessionId, data: Data },
     SessionFailed { session_id: SessionId, error: SessionError },
+    OutboundSessionClosedByPeer { outbound_session_id: OutboundSessionId },
 }
