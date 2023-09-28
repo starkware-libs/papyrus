@@ -22,7 +22,7 @@ use libp2p::swarm::handler::{
 use libp2p::swarm::{ConnectionHandler, ConnectionHandlerEvent, KeepAlive, SubstreamProtocol};
 use tracing::debug;
 
-use self::session::InboundSession;
+use self::session::{FinishReason, InboundSession};
 use super::protocol::{InboundProtocol, OutboundProtocol, PROTOCOL_NAME};
 use super::{DataBound, GenericEvent, InboundSessionId, OutboundSessionId, QueryBound, SessionId};
 use crate::messages::read_message;
@@ -104,6 +104,29 @@ impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
     //         _ => true,
     //     })
     // }
+
+    /// Poll an inbound session, inserting any events needed to pending_events, and return whether
+    /// the inbound session has finished.
+    fn poll_inbound_session(
+        inbound_session: &mut InboundSession<Data>,
+        inbound_session_id: InboundSessionId,
+        pending_events: &mut VecDeque<HandlerEvent<Self>>,
+        cx: &mut Context<'_>,
+    ) -> bool {
+        let Poll::Ready(finish_reason) = inbound_session.poll_unpin(cx) else {
+            let is_session_alive = false;
+            return is_session_alive;
+        };
+        if let FinishReason::Error(io_error) = finish_reason {
+            pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
+                ToBehaviourEvent::SessionFailed {
+                    session_id: SessionId::InboundSessionId(inbound_session_id),
+                    error: SessionError::IOError(io_error),
+                },
+            ));
+        }
+        true
+    }
 }
 
 impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Data> {
@@ -141,17 +164,30 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
     > {
         // Handle inbound sessions.
         self.id_to_inbound_session.retain(|inbound_session_id, inbound_session| {
-            if let Poll::Ready(io_error) = inbound_session.poll_unpin(cx) {
-                self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                    ToBehaviourEvent::SessionFailed {
-                        session_id: SessionId::InboundSessionId(*inbound_session_id),
-                        error: SessionError::IOError(io_error),
-                    },
-                ));
-                return false;
+            if Self::poll_inbound_session(
+                inbound_session,
+                *inbound_session_id,
+                &mut self.pending_events,
+                cx,
+            ) {
+                let is_session_alive = false;
+                return is_session_alive;
             }
-            !(self.inbound_sessions_marked_to_end.contains(inbound_session_id)
-                && inbound_session.is_waiting())
+            if self.inbound_sessions_marked_to_end.contains(inbound_session_id)
+                && inbound_session.is_waiting()
+            {
+                inbound_session.start_closing();
+                if Self::poll_inbound_session(
+                    inbound_session,
+                    *inbound_session_id,
+                    &mut self.pending_events,
+                    cx,
+                ) {
+                    let is_session_alive = false;
+                    return is_session_alive;
+                }
+            }
+            true
         });
 
         // Handle outbound sessions.
