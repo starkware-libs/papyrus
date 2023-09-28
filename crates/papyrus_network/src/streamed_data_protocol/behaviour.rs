@@ -86,15 +86,15 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
         unimplemented!();
     }
 
-    /// Report to the behaviour that we've finished sending all the required data for a given
-    /// inbound session.
-    pub fn finish_inbound_session(_inbound_session_id: InboundSessionId) {
+    /// Instruct behaviour to close inbound session. A corresponding SessionClosedByRequest event
+    /// will be reported when the session is closed.
+    pub fn close_inbound_session(_inbound_session_id: InboundSessionId) {
         unimplemented!();
     }
 
-    /// Report to the behaviour that we've received all the required data from a given outbound
-    /// session.
-    pub fn finish_outbound_session(_outbound_session_id: OutboundSessionId) {
+    /// Instruct behaviour to close outbound session. A corresponding SessionClosedByRequest event
+    /// will be reported when the session is closed.
+    pub fn closed_outbound_session(_outbound_session_id: OutboundSessionId) {
         unimplemented!();
     }
 
