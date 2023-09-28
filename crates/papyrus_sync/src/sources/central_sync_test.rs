@@ -16,9 +16,11 @@ use starknet_api::block::{Block, BlockHash, BlockHeader, BlockNumber};
 use starknet_api::hash::StarkFelt;
 use starknet_api::stark_felt;
 use starknet_api::state::StateDiff;
+use starknet_client::reader::PendingData;
 use tokio::sync::{Mutex, RwLock};
 use tracing::{debug, error};
 
+use super::pending::MockPendingSourceTrait;
 use crate::sources::base_layer::{BaseLayerSourceTrait, MockBaseLayerSourceTrait};
 use crate::sources::central::{
     BlocksStream,
@@ -89,6 +91,10 @@ async fn run_sync(
     central: impl CentralSourceTrait + Send + Sync + 'static,
     base_layer: impl BaseLayerSourceTrait + Send + Sync,
 ) -> StateSyncResult {
+    // Mock to the pending source that always returns the default pending data.
+    let mut pending_source = MockPendingSourceTrait::new();
+    pending_source.expect_get_pending_data().returning(|| Ok(PendingData::default()));
+
     let mut state_sync = GenericStateSync {
         config: SyncConfig {
             block_propagation_sleep_duration: SYNC_SLEEP_DURATION,
@@ -98,7 +104,9 @@ async fn run_sync(
             state_updates_max_stream_size: STREAM_SIZE,
         },
         shared_highest_block: Arc::new(RwLock::new(None)),
+        pending_data: Arc::new(RwLock::new(PendingData::default())),
         central_source: Arc::new(central),
+        pending_source: Arc::new(pending_source),
         base_layer_source: Arc::new(base_layer),
         reader,
         writer,
