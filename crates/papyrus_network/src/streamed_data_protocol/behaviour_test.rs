@@ -89,7 +89,9 @@ async fn validate_next_event_send_query_to_handler<
 async fn send_and_process_request() {
     let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(SUBSTREAM_TIMEOUT);
 
-    let query = GetBlocks::default();
+    // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
+    // messages is fixed.
+    let query = GetBlocks { limit: 10, ..Default::default() };
     let peer_id = PeerId::random();
 
     let outbound_session_id = behaviour.send_query(query.clone(), peer_id);

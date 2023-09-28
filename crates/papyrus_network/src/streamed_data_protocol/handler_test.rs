@@ -119,7 +119,7 @@ async fn validate_request_to_swarm_new_outbound_session_to_swarm_event<
 async fn read_messages(stream: &mut Stream, num_messages: usize) -> Vec<GetBlocksResponse> {
     let mut result = Vec::new();
     for _ in 0..num_messages {
-        result.push(read_message::<GetBlocksResponse, _>(&mut *stream).await.unwrap());
+        result.push(read_message::<GetBlocksResponse, _>(&mut *stream).await.unwrap().unwrap());
     }
     result
 }
@@ -132,7 +132,9 @@ async fn process_inbound_session() {
     );
 
     let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
-    let query = GetBlocks::default();
+    // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
+    // messages is fixed.
+    let query = GetBlocks { limit: 10, ..Default::default() };
     let inbound_session_id = InboundSessionId { value: 1 };
 
     simulate_negotiated_inbound_session_from_swarm(
@@ -188,7 +190,9 @@ async fn process_outbound_session() {
     );
 
     let (mut inbound_stream, outbound_stream, _) = get_connected_streams().await;
-    let query = GetBlocks::default();
+    // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
+    // messages is fixed.
+    let query = GetBlocks { limit: 10, ..Default::default() };
     let outbound_session_id = OutboundSessionId { value: 1 };
 
     simulate_request_to_send_query_from_swarm(&mut handler, query.clone(), outbound_session_id);
@@ -258,7 +262,9 @@ async fn process_outbound_session() {
 // async fn process_session() {
 //     let mut handler = Handler::new(SUBSTREAM_TIMEOUT);
 
-//     let request = GetBlocks::default();
+//    // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
+//    // messages is fixed.
+//     let request = GetBlocks { limit: 10, ..Default::default() };
 //     let request_id = OutboundSessionId::default();
 //     let response = GetBlocksResponse {
 //         response: Some(Response::Header(BlockHeader {
