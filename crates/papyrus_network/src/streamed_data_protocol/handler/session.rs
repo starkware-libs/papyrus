@@ -5,7 +5,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use futures::future::BoxFuture;
-use futures::FutureExt;
+use futures::{AsyncWriteExt, FutureExt};
 use libp2p::swarm::Stream;
 use replace_with::replace_with_or_abort;
 
@@ -17,9 +17,15 @@ pub(super) struct InboundSession<Data: DataBound> {
     current_task: WriteMessageTask,
 }
 
+pub(super) enum FinishReason {
+    Error(io::Error),
+    Closed,
+}
+
 enum WriteMessageTask {
     Waiting(Stream),
     Running(BoxFuture<'static, Result<Stream, io::Error>>),
+    Closing(BoxFuture<'static, Result<(), io::Error>>),
 }
 
 impl<Data: DataBound> InboundSession<Data> {
@@ -45,11 +51,20 @@ impl<Data: DataBound> InboundSession<Data> {
             && self.pending_messages.is_empty()
     }
 
-    fn handle_waiting(&mut self, cx: &mut Context<'_>) -> Option<io::Error> {
+    pub fn start_closing(&mut self) {
+        replace_with_or_abort(&mut self.current_task, |current_task| {
+            let WriteMessageTask::Waiting(mut stream) = current_task else {
+                panic!("Called start_closing while not waiting.");
+            };
+            WriteMessageTask::Closing(async move { stream.close().await }.boxed())
+        })
+    }
+
+    fn handle_waiting(&mut self, cx: &mut Context<'_>) -> Option<FinishReason> {
         if let Some(data) = self.pending_messages.pop_front() {
             replace_with_or_abort(&mut self.current_task, |current_task| {
                 let WriteMessageTask::Waiting(mut stream) = current_task else {
-                    panic!("Called handle_waiting while running.");
+                    panic!("Called handle_waiting while not waiting.");
                 };
                 WriteMessageTask::Running(
                     async move {
@@ -64,9 +79,9 @@ impl<Data: DataBound> InboundSession<Data> {
         None
     }
 
-    fn handle_running(&mut self, cx: &mut Context<'_>) -> Option<io::Error> {
+    fn handle_running(&mut self, cx: &mut Context<'_>) -> Option<FinishReason> {
         let WriteMessageTask::Running(fut) = &mut self.current_task else {
-            panic!("Called handle_running while waiting.");
+            panic!("Called handle_running while not running.");
         };
         match fut.poll_unpin(cx) {
             Poll::Pending => None,
@@ -74,22 +89,34 @@ impl<Data: DataBound> InboundSession<Data> {
                 self.current_task = WriteMessageTask::Waiting(stream);
                 self.handle_waiting(cx)
             }
-            Poll::Ready(Err(io_error)) => Some(io_error),
+            Poll::Ready(Err(io_error)) => Some(FinishReason::Error(io_error)),
+        }
+    }
+
+    fn handle_closing(&mut self, cx: &mut Context<'_>) -> Option<FinishReason> {
+        let WriteMessageTask::Closing(fut) = &mut self.current_task else {
+            panic!("Called handle_closing while not closing.");
+        };
+        match fut.poll_unpin(cx) {
+            Poll::Pending => None,
+            Poll::Ready(Ok(())) => Some(FinishReason::Closed),
+            Poll::Ready(Err(io_error)) => Some(FinishReason::Error(io_error)),
         }
     }
 }
 
 impl<Data: DataBound> Future for InboundSession<Data> {
-    type Output = io::Error;
+    type Output = FinishReason;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let unpinned_self = Pin::into_inner(self);
         let result = match &mut unpinned_self.current_task {
             WriteMessageTask::Running(_) => unpinned_self.handle_running(cx),
             WriteMessageTask::Waiting(_) => unpinned_self.handle_waiting(cx),
+            WriteMessageTask::Closing(_) => unpinned_self.handle_closing(cx),
         };
         match result {
-            Some(error) => Poll::Ready(error),
+            Some(finish_reason) => Poll::Ready(finish_reason),
             None => Poll::Pending,
         }
     }
