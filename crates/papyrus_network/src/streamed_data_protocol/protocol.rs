@@ -49,7 +49,9 @@ where
 
     fn upgrade_inbound(self, mut stream: Stream, _: Self::Info) -> Self::Future {
         async move {
-            let request = read_message::<Query, _>(&mut stream).await?;
+            let request = read_message::<Query, _>(&mut stream)
+                .await?
+                .ok_or::<io::Error>(io::ErrorKind::UnexpectedEof.into())?;
             Ok((request, stream))
         }
         .boxed()
