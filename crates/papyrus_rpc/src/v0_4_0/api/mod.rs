@@ -312,16 +312,7 @@ pub(crate) fn stored_txn_to_executable_txn(
             let class_hash = value.class_hash;
             Ok(ExecutableTransactionInput::DeclareV0(
                 value,
-                storage_txn
-                    .get_state_reader()
-                    .map_err(internal_server_error)?
-                    .get_deprecated_class_definition_at(state_number, &class_hash)
-                    .map_err(internal_server_error)?
-                    .ok_or_else(|| {
-                        internal_server_error(format!(
-                            "Missing deprecated class definition of {class_hash}."
-                        ))
-                    })?,
+                get_deprecated_class_for_re_execution(storage_txn, state_number, class_hash)?,
             ))
         }
         starknet_api::transaction::Transaction::Declare(
@@ -331,16 +322,7 @@ pub(crate) fn stored_txn_to_executable_txn(
             let class_hash = value.class_hash;
             Ok(ExecutableTransactionInput::DeclareV1(
                 value,
-                storage_txn
-                    .get_state_reader()
-                    .map_err(internal_server_error)?
-                    .get_deprecated_class_definition_at(state_number, &class_hash)
-                    .map_err(internal_server_error)?
-                    .ok_or_else(|| {
-                        internal_server_error(format!(
-                            "Missing deprecated class definition of {class_hash}."
-                        ))
-                    })?,
+                get_deprecated_class_for_re_execution(storage_txn, state_number, class_hash)?,
             ))
         }
         starknet_api::transaction::Transaction::Declare(
@@ -389,6 +371,27 @@ pub(crate) fn stored_txn_to_executable_txn(
             Ok(ExecutableTransactionInput::L1Handler(value, paid_fee_on_l1))
         }
     }
+}
+
+// For re-execution (traceTransaction, traceBlockTransactions) we need to get the class definition
+// of declare transactions from the storage before the execution. They are stored in the state after
+// the block, so we need to get it from the state after given block.
+fn get_deprecated_class_for_re_execution(
+    storage_txn: &StorageTxn<'_, RO>,
+    state_number: StateNumber,
+    class_hash: ClassHash,
+) -> Result<starknet_api::deprecated_contract_class::ContractClass, ErrorObjectOwned> {
+    // The class is stored in the state after the block, so we need to get it from the state after
+    // given block.
+    let state_number_after_block = StateNumber::right_after_block(state_number.block_after());
+    storage_txn
+        .get_state_reader()
+        .map_err(internal_server_error)?
+        .get_deprecated_class_definition_at(state_number_after_block, &class_hash)
+        .map_err(internal_server_error)?
+        .ok_or_else(|| {
+            internal_server_error(format!("Missing deprecated class definition of {class_hash}."))
+        })
 }
 
 impl TryFrom<BroadcastedDeclareTransaction> for ExecutableTransactionInput {
