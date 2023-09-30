@@ -57,6 +57,7 @@ pub mod compiled_class;
 pub mod compression_utils;
 pub mod db;
 pub mod header;
+pub mod mmap_file;
 // TODO(yair): Once decided whether to keep the ommer module, write its documentation or delete it.
 #[doc(hidden)]
 pub mod ommer;

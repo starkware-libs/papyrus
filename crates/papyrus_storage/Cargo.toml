@@ -20,6 +20,7 @@ flate2.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
 integer-encoding.workspace = true
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
+memmap2.workspace = true
 metrics.workspace = true
 num-bigint.workspace = true
 page_size.workspace = true
