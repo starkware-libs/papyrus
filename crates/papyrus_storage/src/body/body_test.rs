@@ -186,7 +186,7 @@ async fn append_body_state_only() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_body(BlockNumber(0), block_body.clone())
+        .append_body(BlockNumber(0), block_body)
         .unwrap()
         .commit()
         .unwrap();
