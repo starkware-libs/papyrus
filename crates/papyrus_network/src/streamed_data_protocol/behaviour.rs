@@ -192,9 +192,9 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
         &mut self,
         _peer_id: PeerId,
         _connection_id: ConnectionId,
-        _event: <Self::ConnectionHandler as ConnectionHandler>::ToBehaviour,
+        event: <Self::ConnectionHandler as ConnectionHandler>::ToBehaviour,
     ) {
-        unimplemented!();
+        self.pending_events.push_back(ToSwarm::GenerateEvent(event.into()));
     }
 
     fn poll(
