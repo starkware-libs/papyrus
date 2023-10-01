@@ -50,6 +50,7 @@ mod events_test;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ContractAddress;
+use starknet_api::hash::StarkHash;
 use starknet_api::transaction::{
     EventContent,
     EventIndexInTransactionOutput,
@@ -62,6 +63,20 @@ use starknet_api::transaction::{
 use crate::body::{EventsTable, EventsTableKey, TransactionIndex};
 use crate::db::{DbCursor, DbTransaction, RO};
 use crate::{StorageResult, StorageTxn};
+
+/// An identifier of an event.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct ExecutionResources {
+    steps: i32,
+    memory_holes: i32,
+    range_check_builtin_applications: i32,
+    pedersen_builtin_applications: i32,
+    poseidon_builtin_applications: i32,
+    ec_op_builtin_applications: i32,
+    ecdsa_builtin_applications: i32,
+    bitwise_builtin_applications: i32,
+    keccak_builtin_applications: i32,
+}
 
 /// An identifier of an event.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize)]
@@ -335,6 +350,8 @@ pub struct ThinL1HandlerTransactionOutput {
     pub events_contract_addresses: Vec<ContractAddress>,
     /// The execution status of the transaction.
     pub execution_status: TransactionExecutionStatus,
+    /// The message hash of the L1 handler.
+    pub message_hash: StarkHash,
 }
 
 /// A thin version of
@@ -363,10 +380,10 @@ pub struct ThinDeployTransactionOutput {
     pub messages_sent: Vec<MessageToL1>,
     /// The contract addresses of the events emitted by the transaction.
     pub events_contract_addresses: Vec<ContractAddress>,
-    /// The contract address of the deployed contract.
-    pub contract_address: ContractAddress,
     /// The execution status of the transaction.
     pub execution_status: TransactionExecutionStatus,
+    /// The contract address of the deployed contract.
+    pub contract_address: ContractAddress,
 }
 
 /// A thin version of
@@ -404,8 +421,8 @@ impl From<TransactionOutput> for ThinTransactionOutput {
                     actual_fee: tx_output.actual_fee,
                     messages_sent: tx_output.messages_sent,
                     events_contract_addresses,
-                    contract_address: tx_output.contract_address,
                     execution_status: tx_output.execution_status,
+                    contract_address: tx_output.contract_address,
                 })
             }
             TransactionOutput::DeployAccount(tx_output) => {
@@ -431,6 +448,7 @@ impl From<TransactionOutput> for ThinTransactionOutput {
                     messages_sent: tx_output.messages_sent,
                     events_contract_addresses,
                     execution_status: tx_output.execution_status,
+                    message_hash: tx_output.message_hash,
                 })
             }
         }

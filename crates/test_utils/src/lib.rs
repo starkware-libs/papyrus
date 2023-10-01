@@ -45,6 +45,7 @@ use starknet_api::block::{
     BlockStatus,
     BlockTimestamp,
     GasPrice,
+    ResourcePrice,
 };
 use starknet_api::core::{
     ClassHash,
@@ -386,12 +387,17 @@ auto_impl_get_test_instance! {
         pub block_hash: BlockHash,
         pub parent_hash: BlockHash,
         pub block_number: BlockNumber,
-        pub gas_price: GasPrice,
         pub state_root: GlobalRoot,
-        pub sequencer: ContractAddress,
         pub timestamp: BlockTimestamp,
+        pub sequencer: ContractAddress,
+        pub l1_gas_price: ResourcePrice,
+        pub starknet_version: String,
         pub n_transactions: u64,
         pub n_events: u64,
+    }
+    pub struct ResourcePrice {
+        pub price_in_strk: GasPrice,
+        pub price_in_wei: GasPrice,
     }
     pub struct BlockNumber(pub u64);
     pub enum BlockStatus {

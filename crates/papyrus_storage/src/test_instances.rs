@@ -1,6 +1,7 @@
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::ContractAddress;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
+use starknet_api::hash::StarkHash;
 use starknet_api::transaction::{
     EventIndexInTransactionOutput,
     Fee,
@@ -70,6 +71,7 @@ auto_impl_get_test_instance! {
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
         pub execution_status: TransactionExecutionStatus,
+        pub message_hash: StarkHash,
     }
     pub enum ThinTransactionOutput {
         Declare(ThinDeclareTransactionOutput) = 0,

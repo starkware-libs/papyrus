@@ -194,7 +194,7 @@ pub fn execute_call(
         chain_id.clone(),
         header.block_number,
         header.timestamp,
-        header.gas_price,
+        header.l1_gas_price.price_in_wei, // Omri - FIX!!!
         &header.sequencer,
         execution_config,
     );
@@ -421,7 +421,7 @@ fn execute_transactions(
         chain_id.clone(),
         header.block_number,
         header.timestamp,
-        header.gas_price,
+        header.l1_gas_price.price_in_wei, // Omri - FIX!!!
         &header.sequencer,
         execution_config,
     );

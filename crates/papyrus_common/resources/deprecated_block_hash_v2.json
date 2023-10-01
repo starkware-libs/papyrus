@@ -3,12 +3,16 @@
     "block_hash": "0x1bd1f64828cf2aff0023881344e63f982494b220d5d27057994864680a7f946",
     "parent_hash": "0x4ea8578693532db895a0b2117a8561aa2f062d31898b6bc39cca0f2507f4820",
     "block_number": 2242,
-    "gas_price": "0x38ae2e27b",
     "state_root": "0x67d06ffd8b41a4a4d4bbe0b6f991760e365aa499add0180b7ee52c0d6b67843",
     "sequencer": "0x0",
     "timestamp": 1652680274,
     "n_transactions": 171,
-    "n_events": 36
+    "n_events": 36,
+    "l1_gas_price": {
+      "price_in_strk": "0x0",
+      "price_in_wei": "0x1000000"
+    },
+    "starknet_version": "v0.12.0"
   },
   "body": {
     "transactions": [
@@ -2381,6 +2385,7 @@
               ]
             }
           ],
+          "message_hash": "0x0",
           "execution_status": "SUCCEEDED"
         }
       },
@@ -2609,6 +2614,7 @@
               ]
             }
           ],
+          "message_hash": "0x0",
           "execution_status": "SUCCEEDED"
         }
       },
@@ -2911,6 +2917,7 @@
               ]
             }
           ],
+          "message_hash": "0x0",
           "execution_status": "SUCCEEDED"
         }
       },
@@ -2956,6 +2963,7 @@
               ]
             }
           ],
+          "message_hash": "0x0",
           "execution_status": "SUCCEEDED"
         }
       },
@@ -3500,6 +3508,7 @@
               ]
             }
           ],
+          "message_hash": "0x0",
           "execution_status": "SUCCEEDED"
         }
       },
@@ -3537,6 +3546,7 @@
               ]
             }
           ],
+          "message_hash": "0x0",
           "execution_status": "SUCCEEDED"
         }
       },
@@ -3557,6 +3567,7 @@
               ]
             }
           ],
+          "message_hash": "0x0",
           "execution_status": "SUCCEEDED"
         }
       },
@@ -3611,6 +3622,7 @@
               ]
             }
           ],
+          "message_hash": "0x0",
           "execution_status": "SUCCEEDED"
         }
       },
@@ -3676,6 +3688,7 @@
               ]
             }
           ],
+          "message_hash": "0x0",
           "execution_status": "SUCCEEDED"
         }
       },
@@ -3764,6 +3777,7 @@
               ]
             }
           ],
+          "message_hash": "0x0",
           "execution_status": "SUCCEEDED"
         }
       },
@@ -3801,6 +3815,7 @@
               ]
             }
           ],
+          "message_hash": "0x0",
           "execution_status": "SUCCEEDED"
         }
       },
@@ -3821,6 +3836,7 @@
               ]
             }
           ],
+          "message_hash": "0x0",
           "execution_status": "SUCCEEDED"
         }
       },
@@ -3909,6 +3925,7 @@
               ]
             }
           ],
+          "message_hash": "0x0",
           "execution_status": "SUCCEEDED"
         }
       },
@@ -3929,6 +3946,7 @@
               ]
             }
           ],
+          "message_hash": "0x0",
           "execution_status": "SUCCEEDED"
         }
       },
@@ -3949,6 +3967,7 @@
               ]
             }
           ],
+          "message_hash": "0x0",
           "execution_status": "SUCCEEDED"
         }
       },
@@ -4037,6 +4056,7 @@
               ]
             }
           ],
+          "message_hash": "0x0",
           "execution_status": "SUCCEEDED"
         }
       },
@@ -4057,6 +4077,7 @@
               ]
             }
           ],
+          "message_hash": "0x0",
           "execution_status": "SUCCEEDED"
         }
       },
@@ -4077,6 +4098,7 @@
               ]
             }
           ],
+          "message_hash": "0x0",
           "execution_status": "SUCCEEDED"
         }
       },

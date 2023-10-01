@@ -570,18 +570,18 @@ impl TransactionReceipt {
                 actual_fee: self.actual_fee,
                 messages_sent,
                 events: self.events,
+                execution_status: self.execution_status,
                 contract_address: contract_address
                     .expect("Deploy transaction must have a contract address."),
-                execution_status: self.execution_status,
             }),
             TransactionType::DeployAccount => {
                 TransactionOutput::DeployAccount(DeployAccountTransactionOutput {
                     actual_fee: self.actual_fee,
                     messages_sent,
                     events: self.events,
+                    execution_status: self.execution_status,
                     contract_address: contract_address
                         .expect("Deploy account transaction must have a contract address."),
-                    execution_status: self.execution_status,
                 })
             }
             TransactionType::InvokeFunction => TransactionOutput::Invoke(InvokeTransactionOutput {
@@ -596,6 +596,7 @@ impl TransactionReceipt {
                     messages_sent,
                     events: self.events,
                     execution_status: self.execution_status,
+                    message_hash: StarkHash::default(), // Omri - Temporary!
                 })
             }
         }

@@ -13,6 +13,7 @@ mod syncing_state;
 mod test_utils;
 mod v0_3_0;
 mod v0_4_0;
+mod v0_5_0;
 mod version_config;
 
 use std::collections::BTreeMap;

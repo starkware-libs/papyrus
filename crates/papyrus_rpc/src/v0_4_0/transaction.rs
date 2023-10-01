@@ -463,6 +463,7 @@ impl TransactionOutput {
                     messages_sent: thin_l1handler.messages_sent,
                     events,
                     execution_status: thin_l1handler.execution_status,
+                    message_hash: thin_l1handler.message_hash,
                 })
             }
         }

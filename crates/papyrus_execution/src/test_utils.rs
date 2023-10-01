@@ -17,6 +17,7 @@ use starknet_api::block::{
     BlockNumber,
     BlockTimestamp,
     GasPrice,
+    ResourcePrice,
 };
 use starknet_api::core::{
     ChainId,
@@ -51,6 +52,7 @@ use crate::{simulate_transactions, ExecutableTransactionInput};
 lazy_static! {
     pub static ref CHAIN_ID: ChainId = ChainId(String::from("TEST_CHAIN_ID"));
     pub static ref GAS_PRICE: GasPrice = GasPrice(100 * u128::pow(10, 9)); // Given in units of wei.
+    pub static ref RESOURCE_PRICE: ResourcePrice = ResourcePrice{price_in_strk: *GAS_PRICE, price_in_wei: *GAS_PRICE};
     pub static ref MAX_FEE: Fee = Fee(1000000 * GAS_PRICE.0);
     pub static ref BLOCK_TIMESTAMP: BlockTimestamp = BlockTimestamp(1234);
     pub static ref SEQUENCER_ADDRESS: ContractAddress = contract_address!("0xa");
@@ -103,7 +105,7 @@ pub fn prepare_storage(mut storage_writer: StorageWriter) {
         .append_header(
             BlockNumber(0),
             &BlockHeader {
-                gas_price: *GAS_PRICE,
+                l1_gas_price: *RESOURCE_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
                 ..Default::default()
@@ -156,7 +158,7 @@ pub fn prepare_storage(mut storage_writer: StorageWriter) {
         .append_header(
             BlockNumber(1),
             &BlockHeader {
-                gas_price: *GAS_PRICE,
+                l1_gas_price: *RESOURCE_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
                 block_hash: BlockHash(stark_felt!(1_u128)),

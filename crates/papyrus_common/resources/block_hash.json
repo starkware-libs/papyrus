@@ -8,7 +8,12 @@
     "sequencer": "0x1176a1bd84444c89232ec27754698e5d2e7e1a7f1539f12027f28b23ec9f3d8",
     "timestamp": 1693484880,
     "n_transactions": 332,
-    "n_events": 1561
+    "n_events": 1561,
+    "l1_gas_price": {
+      "price_in_strk": "0x0",
+      "price_in_wei": "0x1000000"
+    },
+    "starknet_version": "v0.12.0"
   },
   "body": {
     "transactions": [
