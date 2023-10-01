@@ -130,6 +130,8 @@ fn simulate_outbound_session_closed_by_peer<Query: QueryBound, Data: DataBound>(
     );
 }
 
+// There's no way to extract addresses from DialOpts, so we can't test if the addresses are
+// correct.
 async fn validate_dial_event<Query: QueryBound, Data: DataBound>(
     behaviour: &mut Behaviour<Query, Data>,
     peer_id: &PeerId,
@@ -317,7 +319,8 @@ async fn create_and_process_outbound_session() {
     // messages is fixed.
     let query = GetBlocks { limit: 10, ..Default::default() };
     let peer_id = PeerId::random();
-    let outbound_session_id = behaviour.send_query(query.clone(), peer_id);
+    behaviour.add_address(peer_id, Multiaddr::empty());
+    let outbound_session_id = behaviour.send_query(query.clone(), peer_id).unwrap();
 
     validate_dial_event(&mut behaviour, &peer_id).await;
     validate_no_events(&mut behaviour);
@@ -361,7 +364,8 @@ async fn outbound_session_closed_by_peer() {
     // messages is fixed.
     let query = GetBlocks { limit: 10, ..Default::default() };
     let peer_id = PeerId::random();
-    let outbound_session_id = behaviour.send_query(query.clone(), peer_id);
+    behaviour.add_address(peer_id, Multiaddr::empty());
+    let outbound_session_id = behaviour.send_query(query.clone(), peer_id).unwrap();
 
     // Consume the dial event.
     behaviour.next().await.unwrap();
