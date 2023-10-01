@@ -17,6 +17,8 @@ use futures::{AsyncRead, AsyncWrite};
 use libp2p::core::upgrade::{read_length_prefixed, write_length_prefixed};
 use prost::Message;
 
+pub use crate::messages::proto::p2p::proto as protobuf;
+
 pub const MAX_MESSAGE_SIZE: usize = 1 << 20;
 
 pub async fn write_message<T: Message, Stream: AsyncWrite + Unpin>(
