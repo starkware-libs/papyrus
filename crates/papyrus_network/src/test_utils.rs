@@ -11,9 +11,8 @@ use rand::random;
 use tokio::task::JoinHandle;
 use tokio_stream::StreamExt as TokioStreamExt;
 
-use crate::messages::block::{BlockHeader, GetBlocksResponse};
-use crate::messages::common::{BlockId, Fin};
-use crate::messages::proto::p2p::proto::get_blocks_response::Response;
+use crate::messages::block::{BlockHeader, BlockHeadersResponse};
+use crate::messages::proto::p2p::proto::block_headers_response::HeaderMessage;
 
 pub(crate) fn create_swarm<BehaviourT: NetworkBehaviour>(
     behaviour: BehaviourT,
@@ -62,26 +61,32 @@ pub(crate) async fn get_connected_streams() -> (Stream, Stream, JoinHandle<()>) 
     )
 }
 
-pub(crate) fn hardcoded_data() -> Vec<GetBlocksResponse> {
+pub(crate) fn hardcoded_data() -> Vec<BlockHeadersResponse> {
     vec![
-        GetBlocksResponse {
-            response: Some(Response::Header(BlockHeader {
-                parent_block: Some(BlockId { hash: None, height: 1 }),
+        BlockHeadersResponse {
+            block_number: 1,
+            header_message: Some(HeaderMessage::Header(BlockHeader {
+                number: 1u64,
                 ..Default::default()
             })),
         },
-        GetBlocksResponse {
-            response: Some(Response::Header(BlockHeader {
-                parent_block: Some(BlockId { hash: None, height: 2 }),
+        BlockHeadersResponse {
+            block_number: 2,
+            header_message: Some(HeaderMessage::Header(BlockHeader {
+                number: 2u64,
                 ..Default::default()
             })),
         },
-        GetBlocksResponse {
-            response: Some(Response::Header(BlockHeader {
-                parent_block: Some(BlockId { hash: None, height: 3 }),
+        BlockHeadersResponse {
+            block_number: 3,
+            header_message: Some(HeaderMessage::Header(BlockHeader {
+                number: 3u64,
                 ..Default::default()
             })),
         },
-        GetBlocksResponse { response: Some(Response::Fin(Fin {})) },
+        BlockHeadersResponse {
+            block_number: 0,
+            header_message: Some(HeaderMessage::Fin(Default::default())),
+        },
     ]
 }

@@ -4,3 +4,4 @@
 /.vscode
 # Git hooks
 /.husky
+/crates/papyrus_network/protoc

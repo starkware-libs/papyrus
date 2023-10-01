@@ -14,7 +14,7 @@ use super::super::handler::RequestFromBehaviourEvent;
 use super::super::protocol::PROTOCOL_NAME;
 use super::super::{DataBound, OutboundSessionId, QueryBound};
 use super::{Behaviour, Event};
-use crate::messages::block::{GetBlocks, GetBlocksResponse};
+use crate::messages::block::{BlockHeadersRequest, BlockHeadersResponse};
 
 pub struct GetBlocksPollParameters {}
 
@@ -96,11 +96,12 @@ fn validate_no_events<Query: QueryBound, Data: DataBound>(behaviour: &mut Behavi
 
 #[tokio::test]
 async fn create_and_process_outbound_session() {
-    let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(SUBSTREAM_TIMEOUT);
+    let mut behaviour =
+        Behaviour::<BlockHeadersRequest, BlockHeadersResponse>::new(SUBSTREAM_TIMEOUT);
 
-    // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
-    // messages is fixed.
-    let query = GetBlocks { limit: 10, ..Default::default() };
+    // TODO(shahak): Change to BlockHeadersRequest::default() when the bug that forbids sending
+    // default messages is fixed.
+    let query = BlockHeadersRequest { ..Default::default() };
     let peer_id = PeerId::random();
 
     let outbound_session_id = behaviour.send_query(query.clone(), peer_id);
