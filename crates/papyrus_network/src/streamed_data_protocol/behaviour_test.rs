@@ -12,7 +12,7 @@ use libp2p::{Multiaddr, PeerId};
 
 use super::super::handler::{RequestFromBehaviourEvent, ToBehaviourEvent};
 use super::super::protocol::PROTOCOL_NAME;
-use super::super::{DataBound, OutboundSessionId, QueryBound};
+use super::super::{DataBound, InboundSessionId, OutboundSessionId, QueryBound, SessionId};
 use super::{Behaviour, Event};
 use crate::messages::block::{GetBlocks, GetBlocksResponse};
 use crate::test_utils::hardcoded_data;
@@ -73,6 +73,18 @@ fn simulate_received_data_from_swarm<Query: QueryBound, Data: DataBound>(
     );
 }
 
+fn simulate_session_closed_by_request_from_swarm<Query: QueryBound, Data: DataBound>(
+    behaviour: &mut Behaviour<Query, Data>,
+    peer_id: PeerId,
+    session_id: SessionId,
+) {
+    behaviour.on_connection_handler_event(
+        peer_id,
+        ConnectionId::new_unchecked(0),
+        ToBehaviourEvent::SessionClosedByRequest { session_id },
+    );
+}
+
 fn simulate_outbound_session_closed_by_peer<Query: QueryBound, Data: DataBound>(
     behaviour: &mut Behaviour<Query, Data>,
     peer_id: PeerId,
@@ -106,12 +118,12 @@ async fn validate_create_outbound_session_event<Query: QueryBound + PartialEq, D
     assert_matches!(
         event,
         ToSwarm::NotifyHandler {
-            peer_id: other_peer_id,
-            event: RequestFromBehaviourEvent::CreateOutboundSession { query: other_query, outbound_session_id: other_outbound_session_id },
+            peer_id: event_peer_id,
+            event: RequestFromBehaviourEvent::CreateOutboundSession { query: event_query, outbound_session_id: event_outbound_session_id },
             ..
-        } if *peer_id == other_peer_id
-            && *outbound_session_id == other_outbound_session_id
-            && *query == other_query
+        } if *peer_id == event_peer_id
+            && *outbound_session_id == event_outbound_session_id
+            && *query == event_query
     );
 }
 
@@ -126,6 +138,39 @@ async fn validate_received_data_event<Query: QueryBound, Data: DataBound + Parti
         ToSwarm::GenerateEvent(Event::ReceivedData {
             data: event_data, outbound_session_id: event_outbound_session_id
         }) if event_data == *data && event_outbound_session_id == outbound_session_id
+    );
+}
+
+async fn validate_request_close_session_event<Query: QueryBound, Data: DataBound + PartialEq>(
+    behaviour: &mut Behaviour<Query, Data>,
+    peer_id: &PeerId,
+    session_id: SessionId,
+) {
+    let event = behaviour.next().await.unwrap();
+    assert_matches!(
+        event,
+        ToSwarm::NotifyHandler {
+            peer_id: event_peer_id,
+            event: RequestFromBehaviourEvent::CloseSession { session_id: event_session_id },
+            ..
+        } if *peer_id == event_peer_id
+            && session_id == event_session_id
+    );
+}
+
+async fn validate_session_closed_by_request_event<
+    Query: QueryBound,
+    Data: DataBound + PartialEq,
+>(
+    behaviour: &mut Behaviour<Query, Data>,
+    session_id: SessionId,
+) {
+    let event = behaviour.next().await.unwrap();
+    assert_matches!(
+        event,
+        ToSwarm::GenerateEvent(Event::SessionClosedByRequest {
+            session_id: event_session_id
+        }) if event_session_id == session_id
     );
 }
 
@@ -184,7 +229,14 @@ async fn create_and_process_outbound_session() {
     }
     validate_no_events(&mut behaviour);
 
-    // TODO(shahak): Close session and validate SessionClosedByRequest event.
+    let session_id = SessionId::OutboundSessionId(outbound_session_id);
+    behaviour.close_session(session_id).unwrap();
+    validate_request_close_session_event(&mut behaviour, &peer_id, session_id).await;
+    validate_no_events(&mut behaviour);
+
+    simulate_session_closed_by_request_from_swarm(&mut behaviour, peer_id, session_id);
+    validate_session_closed_by_request_event(&mut behaviour, session_id).await;
+    validate_no_events(&mut behaviour);
 }
 
 #[tokio::test]
@@ -208,4 +260,13 @@ async fn outbound_session_closed_by_peer() {
 
     validate_outbound_session_closed_by_peer_event(&mut behaviour, outbound_session_id).await;
     validate_no_events(&mut behaviour);
+}
+
+#[tokio::test]
+async fn close_non_existing_session_fails() {
+    let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(SUBSTREAM_TIMEOUT);
+    behaviour.close_session(SessionId::InboundSessionId(InboundSessionId::default())).unwrap_err();
+    behaviour
+        .close_session(SessionId::OutboundSessionId(OutboundSessionId::default()))
+        .unwrap_err();
 }
