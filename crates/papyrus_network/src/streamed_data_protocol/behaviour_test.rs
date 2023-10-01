@@ -130,6 +130,8 @@ fn simulate_outbound_session_closed_by_peer<Query: QueryBound, Data: DataBound>(
     );
 }
 
+// There's no way to extract addresses from DialOpts, so we can't test if the addresses are
+// correct.
 async fn validate_dial_event<Query: QueryBound, Data: DataBound>(
     behaviour: &mut Behaviour<Query, Data>,
     peer_id: &PeerId,
@@ -317,7 +319,8 @@ async fn create_and_process_outbound_session() {
     // messages is fixed.
     let query = GetBlocks { limit: 10, ..Default::default() };
     let peer_id = PeerId::random();
-    let outbound_session_id = behaviour.send_query(query.clone(), peer_id);
+    behaviour.add_address(peer_id, Multiaddr::empty());
+    let outbound_session_id = behaviour.send_query(query.clone(), peer_id).unwrap();
 
     validate_dial_event(&mut behaviour, &peer_id).await;
     validate_no_events(&mut behaviour);
@@ -361,7 +364,8 @@ async fn outbound_session_closed_by_peer() {
     // messages is fixed.
     let query = GetBlocks { limit: 10, ..Default::default() };
     let peer_id = PeerId::random();
-    let outbound_session_id = behaviour.send_query(query.clone(), peer_id);
+    behaviour.add_address(peer_id, Multiaddr::empty());
+    let outbound_session_id = behaviour.send_query(query.clone(), peer_id).unwrap();
 
     // Consume the dial event.
     behaviour.next().await.unwrap();
@@ -376,8 +380,8 @@ async fn outbound_session_closed_by_peer() {
     validate_no_events(&mut behaviour);
 }
 
-#[tokio::test]
-async fn close_non_existing_session_fails() {
+#[test]
+fn close_non_existing_session_fails() {
     let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(SUBSTREAM_TIMEOUT);
     behaviour.close_session(SessionId::InboundSessionId(InboundSessionId::default())).unwrap_err();
     behaviour
@@ -385,10 +389,35 @@ async fn close_non_existing_session_fails() {
         .unwrap_err();
 }
 
-#[tokio::test]
-async fn send_data_non_existing_session_fails() {
+#[test]
+fn send_data_non_existing_session_fails() {
     let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(SUBSTREAM_TIMEOUT);
     for data in hardcoded_data() {
         behaviour.send_data(data, InboundSessionId::default()).unwrap_err();
     }
+}
+
+#[test]
+fn send_query_no_known_address_fails() {
+    let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(SUBSTREAM_TIMEOUT);
+
+    // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
+    // messages is fixed.
+    let query = GetBlocks { limit: 10, ..Default::default() };
+    let peer_id = PeerId::random();
+    behaviour.send_query(query, peer_id).unwrap_err();
+}
+
+#[test]
+fn new_incoming_connection_adds_address() {
+    let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(SUBSTREAM_TIMEOUT);
+
+    let peer_id = PeerId::random();
+
+    simulate_listener_connection_from_swarm(&mut behaviour, peer_id);
+
+    // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
+    // messages is fixed.
+    let query = GetBlocks { limit: 20, ..Default::default() };
+    behaviour.send_query(query, peer_id).unwrap();
 }

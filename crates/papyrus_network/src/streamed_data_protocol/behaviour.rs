@@ -10,7 +10,7 @@ use std::task::{Context, Poll};
 use std::time::Duration;
 
 use defaultmap::DefaultHashMap;
-use libp2p::core::Endpoint;
+use libp2p::core::{ConnectedPoint, Endpoint};
 use libp2p::swarm::behaviour::ConnectionEstablished;
 use libp2p::swarm::dial_opts::{DialOpts, PeerCondition};
 use libp2p::swarm::{
@@ -80,6 +80,10 @@ pub(crate) type Event<Query, Data> = GenericEvent<Query, Data, SessionError>;
 #[error("The given session ID doesn't exist.")]
 pub(crate) struct SessionIdNotFoundError;
 
+#[derive(thiserror::Error, Debug)]
+#[error("There are no known addresses for the given peer. Add one with `add_address`.")]
+pub(crate) struct NoKnownAddressesError;
+
 // TODO(shahak) remove allow dead code.
 #[allow(dead_code)]
 pub(crate) struct Behaviour<Query: QueryBound, Data: DataBound> {
@@ -88,6 +92,7 @@ pub(crate) struct Behaviour<Query: QueryBound, Data: DataBound> {
     pending_queries: DefaultHashMap<PeerId, Vec<(Query, OutboundSessionId)>>,
     connected_peers: HashSet<PeerId>,
     session_id_to_peer_id: HashMap<SessionId, PeerId>,
+    peer_id_to_addresses: DefaultHashMap<PeerId, HashSet<Multiaddr>>,
     next_outbound_session_id: OutboundSessionId,
     next_inbound_session_id: Arc<AtomicUsize>,
 }
@@ -102,6 +107,7 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
             pending_queries: Default::default(),
             connected_peers: Default::default(),
             session_id_to_peer_id: Default::default(),
+            peer_id_to_addresses: Default::default(),
             next_outbound_session_id: Default::default(),
             next_inbound_session_id: Arc::new(Default::default()),
         }
@@ -109,7 +115,11 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
 
     /// Send query to the given peer and start a new outbound session with it. Return the id of the
     /// new session.
-    pub fn send_query(&mut self, query: Query, peer_id: PeerId) -> OutboundSessionId {
+    pub fn send_query(
+        &mut self,
+        query: Query,
+        peer_id: PeerId,
+    ) -> Result<OutboundSessionId, NoKnownAddressesError> {
         let outbound_session_id = self.next_outbound_session_id;
         self.next_outbound_session_id.value += 1;
         self.session_id_to_peer_id
@@ -117,13 +127,22 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
 
         if self.connected_peers.contains(&peer_id) {
             self.send_query_to_handler(peer_id, query, outbound_session_id);
-            return outbound_session_id;
+            return Ok(outbound_session_id);
         }
+
+        let addresses_set = self.peer_id_to_addresses.get(peer_id);
+        if addresses_set.is_empty() {
+            return Err(NoKnownAddressesError);
+        }
+        let addresses = addresses_set.clone().into_iter().collect();
         self.pending_events.push_back(ToSwarm::Dial {
-            opts: DialOpts::peer_id(peer_id).condition(PeerCondition::Disconnected).build(),
+            opts: DialOpts::peer_id(peer_id)
+                .addresses(addresses)
+                .condition(PeerCondition::Disconnected)
+                .build(),
         });
         self.pending_queries.get_mut(peer_id).push((query, outbound_session_id));
-        outbound_session_id
+        Ok(outbound_session_id)
     }
 
     /// Send a data message to an open inbound session.
@@ -152,6 +171,20 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
             event: RequestFromBehaviourEvent::CloseSession { session_id },
         });
         Ok(())
+    }
+
+    /// Add an address as a known address that the given peer listens on for incoming connections.
+    /// This function must be called on a peer before calling send_query to that peer, unless the
+    /// given peer created an inbound session with us.
+    pub fn add_address(&mut self, peer_id: PeerId, address: Multiaddr) {
+        self.peer_id_to_addresses.get_mut(peer_id).insert(address);
+    }
+
+    /// Remove an address that was previously added with `add_address` or from an incoming inbound
+    /// session.
+    /// If the given address wasn't added, this function doesn't do anything.
+    pub fn remove_address(&mut self, peer_id: PeerId, address: Multiaddr) {
+        self.peer_id_to_addresses.get_mut(peer_id).remove(&address);
     }
 
     fn send_query_to_handler(
@@ -195,11 +228,14 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
     fn on_swarm_event(&mut self, event: FromSwarm<'_, Self::ConnectionHandler>) {
         match event {
             FromSwarm::ConnectionEstablished(connection_established) => {
-                let ConnectionEstablished { peer_id, .. } = connection_established;
+                let ConnectionEstablished { peer_id, endpoint, .. } = connection_established;
                 if let Some(queries) = self.pending_queries.remove(&peer_id) {
                     for (query, outbound_session_id) in queries.into_iter() {
                         self.send_query_to_handler(peer_id, query, outbound_session_id);
                     }
+                }
+                if let ConnectedPoint::Listener { send_back_addr, .. } = endpoint {
+                    self.add_address(peer_id, send_back_addr.clone());
                 }
             }
             _ => {
