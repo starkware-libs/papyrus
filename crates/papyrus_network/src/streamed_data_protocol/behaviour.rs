@@ -25,7 +25,7 @@ use libp2p::swarm::{
 };
 use libp2p::{Multiaddr, PeerId};
 
-use super::handler::{Handler, RequestFromBehaviourEvent};
+use super::handler::{Handler, RequestFromBehaviourEvent, SessionError as HandlerSessionError};
 use super::protocol::PROTOCOL_NAME;
 use super::{DataBound, GenericEvent, InboundSessionId, OutboundSessionId, QueryBound};
 
@@ -40,6 +40,38 @@ pub(crate) enum SessionError {
     // TODO(shahak) make PROTOCOL_NAME configurable.
     #[error("Remote peer doesn't support the {PROTOCOL_NAME} protocol.")]
     RemoteDoesntSupportProtocol,
+}
+
+impl<Query: QueryBound, Data: DataBound> From<GenericEvent<Query, Data, HandlerSessionError>>
+    for GenericEvent<Query, Data, SessionError>
+{
+    fn from(event: GenericEvent<Query, Data, HandlerSessionError>) -> Self {
+        match event {
+            GenericEvent::NewInboundSession { query, inbound_session_id, peer_id } => {
+                Self::NewInboundSession { query, inbound_session_id, peer_id }
+            }
+            GenericEvent::ReceivedData { outbound_session_id, data } => {
+                Self::ReceivedData { outbound_session_id, data }
+            }
+            GenericEvent::SessionFailed {
+                session_id,
+                error: HandlerSessionError::Timeout { substream_timeout },
+            } => Self::SessionFailed {
+                session_id,
+                error: SessionError::Timeout { substream_timeout },
+            },
+            GenericEvent::SessionFailed {
+                session_id,
+                error: HandlerSessionError::IOError(error),
+            } => Self::SessionFailed { session_id, error: SessionError::IOError(error) },
+            GenericEvent::SessionClosedByRequest { session_id } => {
+                Self::SessionClosedByRequest { session_id }
+            }
+            GenericEvent::OutboundSessionClosedByPeer { outbound_session_id } => {
+                Self::OutboundSessionClosedByPeer { outbound_session_id }
+            }
+        }
+    }
 }
 
 pub(crate) type Event<Query, Data> = GenericEvent<Query, Data, SessionError>;
