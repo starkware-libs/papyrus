@@ -2,7 +2,7 @@
 #[path = "behaviour_test.rs"]
 mod behaviour_test;
 
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::io;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
@@ -27,7 +27,7 @@ use libp2p::{Multiaddr, PeerId};
 
 use super::handler::{Handler, RequestFromBehaviourEvent, SessionError as HandlerSessionError};
 use super::protocol::PROTOCOL_NAME;
-use super::{DataBound, GenericEvent, InboundSessionId, OutboundSessionId, QueryBound};
+use super::{DataBound, GenericEvent, InboundSessionId, OutboundSessionId, QueryBound, SessionId};
 
 #[derive(thiserror::Error, Debug)]
 // TODO(shahak) remove allow(dead_code).
@@ -76,6 +76,10 @@ impl<Query: QueryBound, Data: DataBound> From<GenericEvent<Query, Data, HandlerS
 
 pub(crate) type Event<Query, Data> = GenericEvent<Query, Data, SessionError>;
 
+#[derive(thiserror::Error, Debug)]
+#[error("The given session ID doesn't exist.")]
+pub(crate) struct SessionIdNotFoundError;
+
 // TODO(shahak) remove allow dead code.
 #[allow(dead_code)]
 pub(crate) struct Behaviour<Query: QueryBound, Data: DataBound> {
@@ -83,6 +87,7 @@ pub(crate) struct Behaviour<Query: QueryBound, Data: DataBound> {
     pending_events: VecDeque<ToSwarm<Event<Query, Data>, RequestFromBehaviourEvent<Query, Data>>>,
     pending_queries: DefaultHashMap<PeerId, Vec<(Query, OutboundSessionId)>>,
     connected_peers: HashSet<PeerId>,
+    session_id_to_peer_id: HashMap<SessionId, PeerId>,
     next_outbound_session_id: OutboundSessionId,
     next_inbound_session_id: Arc<AtomicUsize>,
 }
@@ -96,6 +101,7 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
             pending_events: Default::default(),
             pending_queries: Default::default(),
             connected_peers: Default::default(),
+            session_id_to_peer_id: Default::default(),
             next_outbound_session_id: Default::default(),
             next_inbound_session_id: Arc::new(Default::default()),
         }
@@ -106,6 +112,9 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
     pub fn send_query(&mut self, query: Query, peer_id: PeerId) -> OutboundSessionId {
         let outbound_session_id = self.next_outbound_session_id;
         self.next_outbound_session_id.value += 1;
+        self.session_id_to_peer_id
+            .insert(SessionId::OutboundSessionId(outbound_session_id), peer_id);
+
         if self.connected_peers.contains(&peer_id) {
             self.send_query_to_handler(peer_id, query, outbound_session_id);
             return outbound_session_id;
@@ -118,20 +127,29 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
     }
 
     /// Send a data message to an open inbound session.
-    pub fn send_data(&mut self, _data: Data, _inbound_session_id: InboundSessionId) {
-        unimplemented!();
+    pub fn send_data(
+        &mut self,
+        data: Data,
+        inbound_session_id: InboundSessionId,
+    ) -> Result<(), SessionIdNotFoundError> {
+        self.pending_events.push_back(ToSwarm::NotifyHandler {
+            peer_id: self
+                .get_peer_id_from_session_id(SessionId::InboundSessionId(inbound_session_id))?,
+            handler: NotifyHandler::Any,
+            event: RequestFromBehaviourEvent::SendData { data, inbound_session_id },
+        });
+        Ok(())
     }
 
-    /// Instruct behaviour to close inbound session. A corresponding SessionClosedByRequest event
-    /// will be reported when the session is closed.
-    pub fn close_inbound_session(_inbound_session_id: InboundSessionId) {
-        unimplemented!();
-    }
-
-    /// Instruct behaviour to close outbound session. A corresponding SessionClosedByRequest event
-    /// will be reported when the session is closed.
-    pub fn close_outbound_session(_outbound_session_id: OutboundSessionId) {
-        unimplemented!();
+    /// Instruct behaviour to close session. A corresponding SessionClosedByRequest event will be
+    /// reported when the session is closed.
+    pub fn close_session(&mut self, session_id: SessionId) -> Result<(), SessionIdNotFoundError> {
+        self.pending_events.push_back(ToSwarm::NotifyHandler {
+            peer_id: self.get_peer_id_from_session_id(session_id)?,
+            handler: NotifyHandler::Any,
+            event: RequestFromBehaviourEvent::CloseSession { session_id },
+        });
+        Ok(())
     }
 
     fn send_query_to_handler(
@@ -145,6 +163,13 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
             handler: NotifyHandler::Any,
             event: RequestFromBehaviourEvent::CreateOutboundSession { query, outbound_session_id },
         });
+    }
+
+    fn get_peer_id_from_session_id(
+        &self,
+        session_id: SessionId,
+    ) -> Result<PeerId, SessionIdNotFoundError> {
+        self.session_id_to_peer_id.get(&session_id).copied().ok_or(SessionIdNotFoundError)
     }
 }
 
@@ -190,11 +215,16 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
 
     fn on_connection_handler_event(
         &mut self,
-        _peer_id: PeerId,
+        peer_id: PeerId,
         _connection_id: ConnectionId,
         event: <Self::ConnectionHandler as ConnectionHandler>::ToBehaviour,
     ) {
-        self.pending_events.push_back(ToSwarm::GenerateEvent(event.into()));
+        let converted_event = event.into();
+        if let Event::NewInboundSession { inbound_session_id, .. } = converted_event {
+            self.session_id_to_peer_id
+                .insert(SessionId::InboundSessionId(inbound_session_id), peer_id);
+        }
+        self.pending_events.push_back(ToSwarm::GenerateEvent(converted_event));
     }
 
     fn poll(
