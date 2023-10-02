@@ -193,9 +193,7 @@ async fn process_inbound_session() {
     );
 
     let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
-    // TODO(shahak): Change to BlockHeadersRequest::default() when the bug that forbids sending
-    // default messages is fixed.
-    let query = BlockHeadersRequest { ..Default::default() };
+    let query = BlockHeadersRequest::default();
     let inbound_session_id = InboundSessionId { value: 1 };
 
     simulate_negotiated_inbound_session_from_swarm(
@@ -313,7 +311,7 @@ async fn process_outbound_session() {
         write_message(data, &mut inbound_stream).await.unwrap();
     }
 
-    for data in hardcoded_data_vec.clone() {
+    for data in hardcoded_data_vec {
         validate_received_data_event(&mut handler, &data, outbound_session_id).await;
     }
 
