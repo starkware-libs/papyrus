@@ -41,7 +41,7 @@ impl<Query: QueryBound, Data: DataBound> Stream for Behaviour<Query, Data> {
 
 const SUBSTREAM_TIMEOUT: Duration = Duration::MAX;
 
-fn simulate_dial_finished_from_swarm<Query: QueryBound, Data: DataBound>(
+fn simulate_connection_established_from_swarm<Query: QueryBound, Data: DataBound>(
     behaviour: &mut Behaviour<Query, Data>,
     peer_id: PeerId,
 ) {
@@ -128,17 +128,6 @@ fn simulate_outbound_session_closed_by_peer<Query: QueryBound, Data: DataBound>(
         ConnectionId::new_unchecked(0),
         ToBehaviourEvent::OutboundSessionClosedByPeer { outbound_session_id },
     );
-}
-
-async fn validate_dial_event<Query: QueryBound, Data: DataBound>(
-    behaviour: &mut Behaviour<Query, Data>,
-    peer_id: &PeerId,
-) {
-    let event = behaviour.next().await.unwrap();
-    let ToSwarm::Dial { opts } = event else {
-        panic!("Got unexpected event");
-    };
-    assert_eq!(*peer_id, opts.get_peer_id().unwrap());
 }
 
 async fn validate_create_outbound_session_event<Query: QueryBound + PartialEq, Data: DataBound>(
@@ -317,12 +306,9 @@ async fn create_and_process_outbound_session() {
     // messages is fixed.
     let query = GetBlocks { limit: 10, ..Default::default() };
     let peer_id = PeerId::random();
-    let outbound_session_id = behaviour.send_query(query.clone(), peer_id);
 
-    validate_dial_event(&mut behaviour, &peer_id).await;
-    validate_no_events(&mut behaviour);
-
-    simulate_dial_finished_from_swarm(&mut behaviour, peer_id);
+    simulate_connection_established_from_swarm(&mut behaviour, peer_id);
+    let outbound_session_id = behaviour.send_query(query.clone(), peer_id).unwrap();
 
     validate_create_outbound_session_event(&mut behaviour, &peer_id, &query, &outbound_session_id)
         .await;
@@ -361,11 +347,9 @@ async fn outbound_session_closed_by_peer() {
     // messages is fixed.
     let query = GetBlocks { limit: 10, ..Default::default() };
     let peer_id = PeerId::random();
-    let outbound_session_id = behaviour.send_query(query.clone(), peer_id);
 
-    // Consume the dial event.
-    behaviour.next().await.unwrap();
-    simulate_dial_finished_from_swarm(&mut behaviour, peer_id);
+    simulate_connection_established_from_swarm(&mut behaviour, peer_id);
+    let outbound_session_id = behaviour.send_query(query.clone(), peer_id).unwrap();
 
     // Consume the event to create an outbound session.
     behaviour.next().await.unwrap();
@@ -376,8 +360,8 @@ async fn outbound_session_closed_by_peer() {
     validate_no_events(&mut behaviour);
 }
 
-#[tokio::test]
-async fn close_non_existing_session_fails() {
+#[test]
+fn close_non_existing_session_fails() {
     let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(SUBSTREAM_TIMEOUT);
     behaviour.close_session(SessionId::InboundSessionId(InboundSessionId::default())).unwrap_err();
     behaviour
@@ -385,10 +369,22 @@ async fn close_non_existing_session_fails() {
         .unwrap_err();
 }
 
-#[tokio::test]
-async fn send_data_non_existing_session_fails() {
+#[test]
+fn send_data_non_existing_session_fails() {
     let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(SUBSTREAM_TIMEOUT);
     for data in hardcoded_data() {
         behaviour.send_data(data, InboundSessionId::default()).unwrap_err();
     }
+}
+
+#[test]
+fn send_query_peer_not_connected_fails() {
+    let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(SUBSTREAM_TIMEOUT);
+
+    // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
+    // messages is fixed.
+    let query = GetBlocks { limit: 10, ..Default::default() };
+    let peer_id = PeerId::random();
+
+    behaviour.send_query(query.clone(), peer_id).unwrap_err();
 }
