@@ -3,6 +3,7 @@ pub mod handler;
 pub mod protocol;
 
 use derive_more::Display;
+use libp2p::PeerId;
 use prost::Message;
 
 #[derive(Clone, Copy, Debug, Default, Display, Eq, Hash, PartialEq)]
@@ -35,7 +36,7 @@ impl<T> DataBound for T where T: Message + 'static + Unpin + Default {}
 // TODO(shahak) remove allow dead code.
 #[allow(dead_code)]
 pub(crate) enum GenericEvent<Query: QueryBound, Data: DataBound, SessionError> {
-    NewInboundSession { query: Query, inbound_session_id: InboundSessionId },
+    NewInboundSession { query: Query, inbound_session_id: InboundSessionId, peer_id: PeerId },
     ReceivedData { outbound_session_id: OutboundSessionId, data: Data },
     SessionFailed { session_id: SessionId, error: SessionError },
     SessionClosedByRequest { session_id: SessionId },
