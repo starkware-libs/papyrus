@@ -20,6 +20,7 @@ use libp2p::swarm::handler::{
     FullyNegotiatedOutbound,
 };
 use libp2p::swarm::{ConnectionHandler, ConnectionHandlerEvent, KeepAlive, SubstreamProtocol};
+use libp2p::PeerId;
 use tracing::debug;
 
 use self::session::{FinishReason, InboundSession};
@@ -62,6 +63,7 @@ type HandlerEvent<H> = ConnectionHandlerEvent<
 pub(crate) struct Handler<Query: QueryBound, Data: DataBound> {
     substream_timeout: Duration,
     next_inbound_session_id: Arc<AtomicUsize>,
+    peer_id: PeerId,
     id_to_inbound_session: HashMap<InboundSessionId, InboundSession<Data>>,
     id_to_outbound_session: HashMap<OutboundSessionId, BoxStream<'static, Result<Data, io::Error>>>,
     pending_events: VecDeque<HandlerEvent<Self>>,
@@ -72,10 +74,15 @@ impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
     // TODO(shahak) If we'll add more parameters, consider creating a HandlerConfig struct.
     // TODO(shahak) remove allow(dead_code).
     #[allow(dead_code)]
-    pub fn new(substream_timeout: Duration, next_inbound_session_id: Arc<AtomicUsize>) -> Self {
+    pub fn new(
+        substream_timeout: Duration,
+        next_inbound_session_id: Arc<AtomicUsize>,
+        peer_id: PeerId,
+    ) -> Self {
         Self {
             substream_timeout,
             next_inbound_session_id,
+            peer_id,
             id_to_inbound_session: Default::default(),
             id_to_outbound_session: Default::default(),
             pending_events: Default::default(),
@@ -328,7 +335,11 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                 info: inbound_session_id,
             }) => {
                 self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                    ToBehaviourEvent::NewInboundSession { query, inbound_session_id },
+                    ToBehaviourEvent::NewInboundSession {
+                        query,
+                        inbound_session_id,
+                        peer_id: self.peer_id,
+                    },
                 ));
                 self.id_to_inbound_session.insert(inbound_session_id, InboundSession::new(stream));
             }
