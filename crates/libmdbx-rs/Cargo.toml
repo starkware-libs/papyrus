@@ -15,6 +15,7 @@ categories = ["database"]
 name = "libmdbx"
 
 [dependencies]
+tracing = "0.1.37"
 anyhow = { version = "1", optional = true }
 arrayref = { version = "0.3", optional = true }
 arrayvec = { version = "0.7", optional = true }

@@ -99,7 +99,8 @@ fn main() {
 
     cc_builder
         .define("MDBX_BUILD_FLAGS", flags.as_str())
-        .define("MDBX_TXN_CHECKOWNER", "0");
+        .define("MDBX_TXN_CHECKOWNER", "0")
+        .define("MDBX_ENABLE_PROFGC", "1");
 
     // __cpu_model is not available in musl
     if env::var("TARGET").unwrap().ends_with("-musl") {
