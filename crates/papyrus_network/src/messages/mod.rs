@@ -1,5 +1,4 @@
 pub mod block;
-pub mod common;
 #[cfg(test)]
 mod messages_test;
 
@@ -16,6 +15,8 @@ use std::io;
 use futures::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use prost::Message;
 use unsigned_varint::encode::usize_buffer;
+
+pub use crate::messages::proto::p2p::proto as protobuf;
 
 pub const MAX_MESSAGE_SIZE: usize = 1 << 20;
 

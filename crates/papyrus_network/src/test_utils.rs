@@ -11,9 +11,7 @@ use rand::random;
 use tokio::task::JoinHandle;
 use tokio_stream::StreamExt as TokioStreamExt;
 
-use crate::messages::block::{BlockHeader, BlockHeadersResponse};
-use crate::messages::common::Fin;
-use crate::messages::proto::p2p::proto::{block_headers_response_part, BlockHeadersResponsePart};
+use crate::messages::protobuf;
 
 pub(crate) fn create_swarm<BehaviourT: NetworkBehaviour + Send>(
     behaviour: BehaviourT,
@@ -57,33 +55,33 @@ pub(crate) async fn get_connected_streams() -> (Stream, Stream, JoinHandle<()>) 
     )
 }
 
-pub(crate) fn hardcoded_data() -> Vec<BlockHeadersResponse> {
+pub(crate) fn hardcoded_data() -> Vec<protobuf::BlockHeadersResponse> {
     vec![
-        BlockHeadersResponse {
-            part: vec![BlockHeadersResponsePart {
-                header_message: Some(block_headers_response_part::HeaderMessage::Header(
-                    BlockHeader { number: 1, ..Default::default() },
+        protobuf::BlockHeadersResponse {
+            part: vec![protobuf::BlockHeadersResponsePart {
+                header_message: Some(protobuf::block_headers_response_part::HeaderMessage::Header(
+                    protobuf::BlockHeader { number: 1, ..Default::default() },
                 )),
             }],
         },
-        BlockHeadersResponse {
-            part: vec![BlockHeadersResponsePart {
-                header_message: Some(block_headers_response_part::HeaderMessage::Header(
-                    BlockHeader { number: 2, ..Default::default() },
+        protobuf::BlockHeadersResponse {
+            part: vec![protobuf::BlockHeadersResponsePart {
+                header_message: Some(protobuf::block_headers_response_part::HeaderMessage::Header(
+                    protobuf::BlockHeader { number: 2, ..Default::default() },
                 )),
             }],
         },
-        BlockHeadersResponse {
-            part: vec![BlockHeadersResponsePart {
-                header_message: Some(block_headers_response_part::HeaderMessage::Header(
-                    BlockHeader { number: 3, ..Default::default() },
+        protobuf::BlockHeadersResponse {
+            part: vec![protobuf::BlockHeadersResponsePart {
+                header_message: Some(protobuf::block_headers_response_part::HeaderMessage::Header(
+                    protobuf::BlockHeader { number: 3, ..Default::default() },
                 )),
             }],
         },
-        BlockHeadersResponse {
-            part: vec![BlockHeadersResponsePart {
-                header_message: Some(block_headers_response_part::HeaderMessage::Fin(
-                    Fin::default(),
+        protobuf::BlockHeadersResponse {
+            part: vec![protobuf::BlockHeadersResponsePart {
+                header_message: Some(protobuf::block_headers_response_part::HeaderMessage::Fin(
+                    protobuf::Fin::default(),
                 )),
             }],
         },
