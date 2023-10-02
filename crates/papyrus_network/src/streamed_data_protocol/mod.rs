@@ -16,7 +16,7 @@ pub struct InboundSessionId {
     value: usize,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 // TODO(shahak) remove allow(dead_code).
 #[allow(dead_code)]
 pub(crate) enum SessionId {
