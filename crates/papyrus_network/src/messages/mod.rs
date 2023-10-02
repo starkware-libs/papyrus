@@ -96,3 +96,23 @@ pub async fn write_usize<Stream: AsyncWrite + Unpin>(
 
     Ok(())
 }
+
+impl From<starknet_api::block::BlockHeader> for protobuf::BlockHeader {
+    fn from(value: starknet_api::block::BlockHeader) -> Self {
+        Self {
+            parent_header: Some(protobuf::Hash { elements: value.parent_hash.0.bytes().to_vec() }),
+            number: value.block_number.0,
+            sequencer_address: Some(protobuf::Address {
+                elements: value.sequencer.0.key().bytes().to_vec(),
+            }),
+            // TODO: fix timestamp conversion and add missing fields.
+            time: Some(Timestamp { seconds: value.timestamp.0.try_into().unwrap_or(0), nanos: 0 }),
+            state_diffs: None,
+            state: None,
+            proof_fact: None,
+            transactions: None,
+            events: None,
+            receipts: None,
+        }
+    }
+}

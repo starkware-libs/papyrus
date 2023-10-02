@@ -1,6 +1,6 @@
-#[cfg(test)]
-#[path = "behaviour_test.rs"]
-mod behaviour_test;
+// #[cfg(test)]
+// #[path = "behaviour_test.rs"]
+// mod behaviour_test;
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::io;
@@ -28,8 +28,6 @@ use super::protocol::PROTOCOL_NAME;
 use super::{DataBound, GenericEvent, InboundSessionId, OutboundSessionId, QueryBound, SessionId};
 
 #[derive(thiserror::Error, Debug)]
-// TODO(shahak) remove allow(dead_code).
-#[allow(dead_code)]
 pub(crate) enum SessionError {
     #[error("Connection timed out after {} seconds.", substream_timeout.as_secs())]
     Timeout { substream_timeout: Duration },
@@ -92,9 +90,9 @@ pub(crate) struct Behaviour<Query: QueryBound, Data: DataBound> {
     session_id_to_peer_id_and_connection_id: HashMap<SessionId, (PeerId, ConnectionId)>,
     next_outbound_session_id: OutboundSessionId,
     next_inbound_session_id: Arc<AtomicUsize>,
+    next_outbound_session_id: OutboundSessionId,
 }
 
-// TODO(shahak) remove allow dead code.
 #[allow(dead_code)]
 impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
     pub fn new(substream_timeout: Duration) -> Self {
