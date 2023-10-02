@@ -1,5 +1,4 @@
 pub mod block;
-pub mod common;
 #[cfg(test)]
 mod messages_test;
 

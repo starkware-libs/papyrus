@@ -11,8 +11,7 @@ use rand::random;
 use tokio::task::JoinHandle;
 use tokio_stream::StreamExt as TokioStreamExt;
 
-use crate::messages::block::{BlockHeader, BlockHeadersResponse};
-use crate::messages::proto::p2p::proto::block_headers_response::HeaderMessage;
+use crate::messages::protobuf;
 
 pub(crate) fn create_swarm<BehaviourT: NetworkBehaviour>(
     behaviour: BehaviourT,
@@ -61,32 +60,31 @@ pub(crate) async fn get_connected_streams() -> (Stream, Stream, JoinHandle<()>) 
     )
 }
 
-pub(crate) fn hardcoded_data() -> Vec<BlockHeadersResponse> {
+pub(crate) fn hardcoded_data() -> Vec<protobuf::BlockHeadersResponse> {
     vec![
-        BlockHeadersResponse {
+        protobuf::BlockHeadersResponse {
             block_number: 1,
-            header_message: Some(HeaderMessage::Header(BlockHeader {
-                number: 1u64,
-                ..Default::default()
-            })),
+            header_message: Some(protobuf::block_headers_response::HeaderMessage::Header(
+                protobuf::BlockHeader { number: 1u64, ..Default::default() },
+            )),
         },
-        BlockHeadersResponse {
+        protobuf::BlockHeadersResponse {
             block_number: 2,
-            header_message: Some(HeaderMessage::Header(BlockHeader {
-                number: 2u64,
-                ..Default::default()
-            })),
+            header_message: Some(protobuf::block_headers_response::HeaderMessage::Header(
+                protobuf::BlockHeader { number: 2u64, ..Default::default() },
+            )),
         },
-        BlockHeadersResponse {
+        protobuf::BlockHeadersResponse {
             block_number: 3,
-            header_message: Some(HeaderMessage::Header(BlockHeader {
-                number: 3u64,
-                ..Default::default()
-            })),
+            header_message: Some(protobuf::block_headers_response::HeaderMessage::Header(
+                protobuf::BlockHeader { number: 3u64, ..Default::default() },
+            )),
         },
-        BlockHeadersResponse {
+        protobuf::BlockHeadersResponse {
             block_number: 0,
-            header_message: Some(HeaderMessage::Fin(Default::default())),
+            header_message: Some(protobuf::block_headers_response::HeaderMessage::Fin(
+                Default::default(),
+            )),
         },
     ]
 }

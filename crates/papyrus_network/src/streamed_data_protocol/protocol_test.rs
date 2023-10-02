@@ -7,14 +7,14 @@ use libp2p::core::UpgradeInfo;
 use pretty_assertions::assert_eq;
 
 use super::{InboundProtocol, OutboundProtocol, PROTOCOL_NAME};
-use crate::messages::block::{BlockHeadersRequest, BlockHeadersResponse};
 use crate::messages::{protobuf, read_message, write_message};
 use crate::test_utils::{get_connected_streams, hardcoded_data};
 
 #[test]
 fn both_protocols_have_same_info() {
-    let outbound_protocol = OutboundProtocol::<BlockHeadersRequest> { query: Default::default() };
-    let inbound_protocol = InboundProtocol::<BlockHeadersRequest>::new();
+    let outbound_protocol =
+        OutboundProtocol::<protobuf::BlockHeadersRequest> { query: Default::default() };
+    let inbound_protocol = InboundProtocol::<protobuf::BlockHeadersRequest>::new();
     assert_eq!(
         outbound_protocol.protocol_info().collect::<Vec<_>>(),
         inbound_protocol.protocol_info().collect::<Vec<_>>()
@@ -27,11 +27,11 @@ async fn positive_flow() {
 
     // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
     // messages is fixed.
-    let query = BlockHeadersRequest {
+    let query = protobuf::BlockHeadersRequest {
         iteration: Some(protobuf::Iteration { limit: 10, ..Default::default() }),
     };
     let outbound_protocol = OutboundProtocol { query: query.clone() };
-    let inbound_protocol = InboundProtocol::<BlockHeadersRequest>::new();
+    let inbound_protocol = InboundProtocol::<protobuf::BlockHeadersRequest>::new();
 
     tokio::join!(
         async move {
@@ -46,8 +46,10 @@ async fn positive_flow() {
             let mut stream =
                 outbound_protocol.upgrade_outbound(outbound_stream, PROTOCOL_NAME).await.unwrap();
             for expected_response in hardcoded_data() {
-                let response =
-                    read_message::<BlockHeadersResponse, _>(&mut stream).await.unwrap().unwrap();
+                let response = read_message::<protobuf::BlockHeadersResponse, _>(&mut stream)
+                    .await
+                    .unwrap()
+                    .unwrap();
                 assert_eq!(response, expected_response);
             }
         }
@@ -57,7 +59,7 @@ async fn positive_flow() {
 #[tokio::test]
 async fn outbound_sends_invalid_request() {
     let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
-    let inbound_protocol = InboundProtocol::<BlockHeadersRequest>::new();
+    let inbound_protocol = InboundProtocol::<protobuf::BlockHeadersRequest>::new();
 
     tokio::join!(
         async move {
@@ -75,7 +77,7 @@ async fn outbound_sends_invalid_request() {
 #[tokio::test]
 async fn outbound_sends_no_request() {
     let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
-    let inbound_protocol = InboundProtocol::<BlockHeadersRequest>::new();
+    let inbound_protocol = InboundProtocol::<protobuf::BlockHeadersRequest>::new();
 
     tokio::join!(
         async move {
