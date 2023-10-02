@@ -12,7 +12,6 @@ use std::time::Duration;
 use defaultmap::DefaultHashMap;
 use libp2p::core::Endpoint;
 use libp2p::swarm::behaviour::ConnectionEstablished;
-use libp2p::swarm::dial_opts::{DialOpts, PeerCondition};
 use libp2p::swarm::{
     ConnectionDenied,
     ConnectionHandler,
@@ -80,6 +79,10 @@ pub(crate) type Event<Query, Data> = GenericEvent<Query, Data, SessionError>;
 #[error("The given session ID doesn't exist.")]
 pub(crate) struct SessionIdNotFoundError;
 
+#[derive(thiserror::Error, Debug)]
+#[error("We are not connected to the given peer. Dial to the given peer and try again.")]
+pub(crate) struct PeerNotConnected;
+
 // TODO(shahak) remove allow dead code.
 #[allow(dead_code)]
 pub(crate) struct Behaviour<Query: QueryBound, Data: DataBound> {
@@ -109,21 +112,28 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
 
     /// Send query to the given peer and start a new outbound session with it. Return the id of the
     /// new session.
-    pub fn send_query(&mut self, query: Query, peer_id: PeerId) -> OutboundSessionId {
+    pub fn send_query(
+        &mut self,
+        query: Query,
+        peer_id: PeerId,
+    ) -> Result<OutboundSessionId, PeerNotConnected> {
+        if !self.connected_peers.contains(&peer_id) {
+            return Err(PeerNotConnected);
+        }
+
         let outbound_session_id = self.next_outbound_session_id;
         self.next_outbound_session_id.value += 1;
+
         self.session_id_to_peer_id
             .insert(SessionId::OutboundSessionId(outbound_session_id), peer_id);
 
-        if self.connected_peers.contains(&peer_id) {
-            self.send_query_to_handler(peer_id, query, outbound_session_id);
-            return outbound_session_id;
-        }
-        self.pending_events.push_back(ToSwarm::Dial {
-            opts: DialOpts::peer_id(peer_id).condition(PeerCondition::Disconnected).build(),
+        self.pending_events.push_back(ToSwarm::NotifyHandler {
+            peer_id,
+            handler: NotifyHandler::Any,
+            event: RequestFromBehaviourEvent::CreateOutboundSession { query, outbound_session_id },
         });
-        self.pending_queries.get_mut(peer_id).push((query, outbound_session_id));
-        outbound_session_id
+
+        Ok(outbound_session_id)
     }
 
     /// Send a data message to an open inbound session.
@@ -150,19 +160,6 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
             event: RequestFromBehaviourEvent::CloseSession { session_id },
         });
         Ok(())
-    }
-
-    fn send_query_to_handler(
-        &mut self,
-        peer_id: PeerId,
-        query: Query,
-        outbound_session_id: OutboundSessionId,
-    ) {
-        self.pending_events.push_back(ToSwarm::NotifyHandler {
-            peer_id,
-            handler: NotifyHandler::Any,
-            event: RequestFromBehaviourEvent::CreateOutboundSession { query, outbound_session_id },
-        });
     }
 
     fn get_peer_id_from_session_id(
@@ -199,13 +196,8 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
 
     fn on_swarm_event(&mut self, event: FromSwarm<'_, Self::ConnectionHandler>) {
         match event {
-            FromSwarm::ConnectionEstablished(connection_established) => {
-                let ConnectionEstablished { peer_id, .. } = connection_established;
-                if let Some(queries) = self.pending_queries.remove(&peer_id) {
-                    for (query, outbound_session_id) in queries.into_iter() {
-                        self.send_query_to_handler(peer_id, query, outbound_session_id);
-                    }
-                }
+            FromSwarm::ConnectionEstablished(ConnectionEstablished { peer_id, .. }) => {
+                self.connected_peers.insert(peer_id);
             }
             _ => {
                 unimplemented!();
