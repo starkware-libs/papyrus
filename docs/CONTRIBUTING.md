@@ -49,7 +49,7 @@ Then, you will need to install
   - You'll need Ganache only for the tests of the [papyrus_base_layer](../crates/papyrus_base_layer/) crate.
 - [Protoc](https://github.com/protocolbuffers/protobuf/releases/tag/v24.3)
   - You'll need Protoc only for compiling the [papyrus_network](../crates/papyrus_network/) crate.
-  - required version is: 24.3. 
+  - required version is: 24.3.
   - the `protoc` execution file should be placed in the `papyrus_network` folder (git is set to automatically ignore it).
 
 ### CI

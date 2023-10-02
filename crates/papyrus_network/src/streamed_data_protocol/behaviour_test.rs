@@ -99,9 +99,7 @@ async fn create_and_process_outbound_session() {
     let mut behaviour =
         Behaviour::<BlockHeadersRequest, BlockHeadersResponse>::new(SUBSTREAM_TIMEOUT);
 
-    // TODO(shahak): Change to BlockHeadersRequest::default() when the bug that forbids sending
-    // default messages is fixed.
-    let query = BlockHeadersRequest { ..Default::default() };
+    let query = BlockHeadersRequest::default();
     let peer_id = PeerId::random();
 
     let outbound_session_id = behaviour.send_query(query.clone(), peer_id);
