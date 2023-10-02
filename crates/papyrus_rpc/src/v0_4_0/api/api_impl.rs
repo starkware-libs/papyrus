@@ -745,6 +745,10 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             })?;
 
         let state_number = StateNumber::right_before_block(block_number);
+        debug!(
+            "Re-executing transactions up to the requested transaction, \
+             state_number={state_number:?}"
+        );
         let executable_txns = block_transactions
             .into_iter()
             .take(tx_offset.0 + 1)

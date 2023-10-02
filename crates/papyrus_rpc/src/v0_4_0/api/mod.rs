@@ -26,6 +26,7 @@ use starknet_api::transaction::{
     TransactionHash,
     TransactionOffsetInBlock,
 };
+use tracing::debug;
 
 use super::block::Block;
 use super::broadcasted_transaction::{
@@ -384,6 +385,7 @@ fn get_deprecated_class_for_re_execution(
     // The class is stored in the state after the block, so we need to get it from the state after
     // given block.
     let state_number_after_block = StateNumber::right_after_block(state_number.block_after());
+    debug!("Taking class definition from state {state_number_after_block:?} (new code)");
     storage_txn
         .get_state_reader()
         .map_err(internal_server_error)?
