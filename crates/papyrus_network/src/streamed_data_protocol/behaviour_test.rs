@@ -12,7 +12,7 @@ use libp2p::{Multiaddr, PeerId};
 use super::super::handler::{RequestFromBehaviourEvent, ToBehaviourEvent};
 use super::super::{DataBound, InboundSessionId, OutboundSessionId, QueryBound, SessionId};
 use super::{Behaviour, Event};
-use crate::messages::block::{BlockHeadersRequest, BlockHeadersResponse};
+use crate::messages::protobuf;
 use crate::test_utils::hardcoded_data;
 
 impl<Query: QueryBound, Data: DataBound> Unpin for Behaviour<Query, Data> {}
@@ -246,11 +246,13 @@ fn validate_no_events<Query: QueryBound, Data: DataBound>(behaviour: &mut Behavi
 #[tokio::test]
 async fn process_inbound_session() {
     let mut behaviour =
-        Behaviour::<BlockHeadersRequest, BlockHeadersResponse>::new(SUBSTREAM_TIMEOUT);
+        Behaviour::<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>::new(
+            SUBSTREAM_TIMEOUT,
+        );
 
     // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
     // messages is fixed.
-    let query = BlockHeadersRequest { ..Default::default() };
+    let query = protobuf::BlockHeadersRequest { ..Default::default() };
     let peer_id = PeerId::random();
     let inbound_session_id = InboundSessionId::default();
 
@@ -288,11 +290,13 @@ async fn process_inbound_session() {
 #[tokio::test]
 async fn create_and_process_outbound_session() {
     let mut behaviour =
-        Behaviour::<BlockHeadersRequest, BlockHeadersResponse>::new(SUBSTREAM_TIMEOUT);
+        Behaviour::<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>::new(
+            SUBSTREAM_TIMEOUT,
+        );
 
     // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
     // messages is fixed.
-    let query = BlockHeadersRequest { ..Default::default() };
+    let query = protobuf::BlockHeadersRequest { ..Default::default() };
     let peer_id = PeerId::random();
 
     simulate_connection_established_from_swarm(&mut behaviour, peer_id);
@@ -330,11 +334,13 @@ async fn create_and_process_outbound_session() {
 #[tokio::test]
 async fn outbound_session_closed_by_peer() {
     let mut behaviour =
-        Behaviour::<BlockHeadersRequest, BlockHeadersResponse>::new(SUBSTREAM_TIMEOUT);
+        Behaviour::<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>::new(
+            SUBSTREAM_TIMEOUT,
+        );
 
     // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
     // messages is fixed.
-    let query = BlockHeadersRequest { ..Default::default() };
+    let query = protobuf::BlockHeadersRequest { ..Default::default() };
     let peer_id = PeerId::random();
 
     simulate_connection_established_from_swarm(&mut behaviour, peer_id);
@@ -360,7 +366,9 @@ async fn outbound_session_closed_by_peer() {
 #[test]
 fn close_non_existing_session_fails() {
     let mut behaviour =
-        Behaviour::<BlockHeadersRequest, BlockHeadersResponse>::new(SUBSTREAM_TIMEOUT);
+        Behaviour::<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>::new(
+            SUBSTREAM_TIMEOUT,
+        );
     behaviour.close_session(SessionId::InboundSessionId(InboundSessionId::default())).unwrap_err();
     behaviour
         .close_session(SessionId::OutboundSessionId(OutboundSessionId::default()))
@@ -370,7 +378,9 @@ fn close_non_existing_session_fails() {
 #[test]
 fn send_data_non_existing_session_fails() {
     let mut behaviour =
-        Behaviour::<BlockHeadersRequest, BlockHeadersResponse>::new(SUBSTREAM_TIMEOUT);
+        Behaviour::<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>::new(
+            SUBSTREAM_TIMEOUT,
+        );
     for data in hardcoded_data() {
         behaviour.send_data(data, InboundSessionId::default()).unwrap_err();
     }
@@ -379,11 +389,13 @@ fn send_data_non_existing_session_fails() {
 #[test]
 fn send_query_peer_not_connected_fails() {
     let mut behaviour =
-        Behaviour::<BlockHeadersRequest, BlockHeadersResponse>::new(SUBSTREAM_TIMEOUT);
+        Behaviour::<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>::new(
+            SUBSTREAM_TIMEOUT,
+        );
 
     // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
     // messages is fixed.
-    let query = BlockHeadersRequest { ..Default::default() };
+    let query = protobuf::BlockHeadersRequest { ..Default::default() };
     let peer_id = PeerId::random();
 
     behaviour.send_query(query.clone(), peer_id).unwrap_err();
