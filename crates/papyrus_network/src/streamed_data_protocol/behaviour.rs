@@ -25,7 +25,7 @@ use libp2p::swarm::{
 };
 use libp2p::{Multiaddr, PeerId};
 
-use super::handler::{Handler, RequestFromBehaviourEvent};
+use super::handler::{Handler, RequestFromBehaviourEvent, SessionError as HandlerSessionError};
 use super::protocol::PROTOCOL_NAME;
 use super::{DataBound, GenericEvent, InboundSessionId, OutboundSessionId, QueryBound};
 
@@ -40,6 +40,38 @@ pub(crate) enum SessionError {
     // TODO(shahak) make PROTOCOL_NAME configurable.
     #[error("Remote peer doesn't support the {PROTOCOL_NAME} protocol.")]
     RemoteDoesntSupportProtocol,
+}
+
+impl<Query: QueryBound, Data: DataBound> From<GenericEvent<Query, Data, HandlerSessionError>>
+    for GenericEvent<Query, Data, SessionError>
+{
+    fn from(event: GenericEvent<Query, Data, HandlerSessionError>) -> Self {
+        match event {
+            GenericEvent::NewInboundSession { query, inbound_session_id, peer_id } => {
+                Self::NewInboundSession { query, inbound_session_id, peer_id }
+            }
+            GenericEvent::ReceivedData { outbound_session_id, data } => {
+                Self::ReceivedData { outbound_session_id, data }
+            }
+            GenericEvent::SessionFailed {
+                session_id,
+                error: HandlerSessionError::Timeout { substream_timeout },
+            } => Self::SessionFailed {
+                session_id,
+                error: SessionError::Timeout { substream_timeout },
+            },
+            GenericEvent::SessionFailed {
+                session_id,
+                error: HandlerSessionError::IOError(error),
+            } => Self::SessionFailed { session_id, error: SessionError::IOError(error) },
+            GenericEvent::SessionClosedByRequest { session_id } => {
+                Self::SessionClosedByRequest { session_id }
+            }
+            GenericEvent::OutboundSessionClosedByPeer { outbound_session_id } => {
+                Self::OutboundSessionClosedByPeer { outbound_session_id }
+            }
+        }
+    }
 }
 
 pub(crate) type Event<Query, Data> = GenericEvent<Query, Data, SessionError>;
@@ -98,7 +130,7 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
 
     /// Instruct behaviour to close outbound session. A corresponding SessionClosedByRequest event
     /// will be reported when the session is closed.
-    pub fn closed_outbound_session(_outbound_session_id: OutboundSessionId) {
+    pub fn close_outbound_session(_outbound_session_id: OutboundSessionId) {
         unimplemented!();
     }
 
@@ -123,21 +155,21 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
     fn handle_established_inbound_connection(
         &mut self,
         _connection_id: ConnectionId,
-        _peer: PeerId,
+        peer_id: PeerId,
         _local_addr: &Multiaddr,
         _remote_addr: &Multiaddr,
     ) -> Result<Self::ConnectionHandler, ConnectionDenied> {
-        Ok(Handler::new(self.substream_timeout, self.next_inbound_session_id.clone()))
+        Ok(Handler::new(self.substream_timeout, self.next_inbound_session_id.clone(), peer_id))
     }
 
     fn handle_established_outbound_connection(
         &mut self,
         _connection_id: ConnectionId,
-        _peer: PeerId,
+        peer_id: PeerId,
         _addr: &Multiaddr,
         _role_override: Endpoint,
     ) -> Result<Self::ConnectionHandler, ConnectionDenied> {
-        Ok(Handler::new(self.substream_timeout, self.next_inbound_session_id.clone()))
+        Ok(Handler::new(self.substream_timeout, self.next_inbound_session_id.clone(), peer_id))
     }
 
     fn on_swarm_event(&mut self, event: FromSwarm<'_, Self::ConnectionHandler>) {
@@ -160,9 +192,9 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
         &mut self,
         _peer_id: PeerId,
         _connection_id: ConnectionId,
-        _event: <Self::ConnectionHandler as ConnectionHandler>::ToBehaviour,
+        event: <Self::ConnectionHandler as ConnectionHandler>::ToBehaviour,
     ) {
-        unimplemented!();
+        self.pending_events.push_back(ToSwarm::GenerateEvent(event.into()));
     }
 
     fn poll(
