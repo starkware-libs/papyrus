@@ -9,6 +9,7 @@ use futures::task::{Context, Poll};
 use futures::{select, AsyncWriteExt, FutureExt, Stream as StreamTrait, StreamExt};
 use libp2p::swarm::handler::{ConnectionEvent, FullyNegotiatedInbound, FullyNegotiatedOutbound};
 use libp2p::swarm::{ConnectionHandler, ConnectionHandlerEvent, Stream};
+use libp2p::PeerId;
 
 use super::super::{DataBound, InboundSessionId, OutboundSessionId, QueryBound, SessionId};
 use super::{Handler, HandlerEvent, RequestFromBehaviourEvent, ToBehaviourEvent};
@@ -88,8 +89,12 @@ async fn validate_new_inbound_session_event<Query: QueryBound + PartialEq, Data:
     assert_matches!(
         event,
         ConnectionHandlerEvent::NotifyBehaviour(ToBehaviourEvent::NewInboundSession {
-            query: event_query, inbound_session_id: event_inbound_session_id
-        }) if event_query == *query &&  event_inbound_session_id == inbound_session_id
+            query: event_query,
+            inbound_session_id: event_inbound_session_id,
+            peer_id: event_peer_id,
+        }) if event_query == *query
+            && event_inbound_session_id == inbound_session_id
+            && event_peer_id == handler.peer_id => {}
     );
 }
 
@@ -190,6 +195,7 @@ async fn process_inbound_session() {
     let mut handler = Handler::<GetBlocks, GetBlocksResponse>::new(
         SUBSTREAM_TIMEOUT,
         Arc::new(Default::default()),
+        PeerId::random(),
     );
 
     let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
@@ -220,6 +226,7 @@ async fn closed_inbound_session_ignores_behaviour_request_to_send_data() {
     let mut handler = Handler::<GetBlocks, GetBlocksResponse>::new(
         SUBSTREAM_TIMEOUT,
         Arc::new(Default::default()),
+        PeerId::random(),
     );
 
     let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
@@ -267,6 +274,7 @@ fn listen_protocol_across_multiple_handlers() {
             let handler = Handler::<GetBlocks, GetBlocksResponse>::new(
                 SUBSTREAM_TIMEOUT,
                 next_inbound_session_id,
+                PeerId::random(),
             );
             (0..NUM_PROTOCOLS_PER_HANDLER)
                 .map(|_| handler.listen_protocol().info().value)
@@ -286,6 +294,7 @@ async fn process_outbound_session() {
     let mut handler = Handler::<GetBlocks, GetBlocksResponse>::new(
         SUBSTREAM_TIMEOUT,
         Arc::new(Default::default()),
+        PeerId::random(),
     );
 
     let (mut inbound_stream, outbound_stream, _) = get_connected_streams().await;
@@ -328,6 +337,7 @@ async fn closed_outbound_session_doesnt_emit_events_when_data_is_sent() {
     let mut handler = Handler::<GetBlocks, GetBlocksResponse>::new(
         SUBSTREAM_TIMEOUT,
         Arc::new(Default::default()),
+        PeerId::random(),
     );
 
     let (mut inbound_stream, outbound_stream, _) = get_connected_streams().await;
