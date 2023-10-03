@@ -2,6 +2,9 @@ pub mod behaviour;
 pub mod handler;
 pub mod protocol;
 
+#[cfg(test)]
+mod flow_test;
+
 use derive_more::Display;
 use libp2p::PeerId;
 use prost::Message;
@@ -40,5 +43,5 @@ pub(crate) enum GenericEvent<Query: QueryBound, Data: DataBound, SessionError> {
     ReceivedData { outbound_session_id: OutboundSessionId, data: Data },
     SessionFailed { session_id: SessionId, error: SessionError },
     SessionClosedByRequest { session_id: SessionId },
-    OutboundSessionClosedByPeer { outbound_session_id: OutboundSessionId },
+    SessionClosedByPeer { session_id: SessionId },
 }

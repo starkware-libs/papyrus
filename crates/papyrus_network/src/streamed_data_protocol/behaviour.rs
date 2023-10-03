@@ -66,8 +66,8 @@ impl<Query: QueryBound, Data: DataBound> From<GenericEvent<Query, Data, HandlerS
             GenericEvent::SessionClosedByRequest { session_id } => {
                 Self::SessionClosedByRequest { session_id }
             }
-            GenericEvent::OutboundSessionClosedByPeer { outbound_session_id } => {
-                Self::OutboundSessionClosedByPeer { outbound_session_id }
+            GenericEvent::SessionClosedByPeer { session_id } => {
+                Self::SessionClosedByPeer { session_id }
             }
         }
     }
@@ -240,9 +240,8 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
             | Event::SessionClosedByRequest { session_id, .. } => {
                 self.session_id_to_peer_id_and_connection_id.remove(&session_id);
             }
-            Event::OutboundSessionClosedByPeer { outbound_session_id } => {
-                self.session_id_to_peer_id_and_connection_id
-                    .remove(&SessionId::OutboundSessionId(outbound_session_id));
+            Event::SessionClosedByPeer { session_id } => {
+                self.session_id_to_peer_id_and_connection_id.remove(&session_id);
             }
             _ => {}
         }
