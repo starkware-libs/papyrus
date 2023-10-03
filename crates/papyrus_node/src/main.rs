@@ -50,30 +50,43 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
             .await?;
     let server_handle_future = tokio::spawn(server_handle.stopped());
 
-    // Sync task.
-    let sync_future = run_sync(
-        config,
-        shared_highest_block,
-        pending_data,
-        storage_reader.clone(),
-        storage_writer,
-    );
-    let sync_handle = tokio::spawn(sync_future);
-
-    tokio::select! {
-        res = server_handle_future => {
-            error!("RPC server stopped.");
-            res?
-        }
-        res = monitoring_server_handle => {
-            error!("Monitoring server stopped.");
-            res??
-        }
-        res = sync_handle => {
-            error!("Sync stopped.");
-            res??
-        }
-    };
+    if config.sync.is_none() {
+        // todo(yair): consider dropping storage writer if sync is disabled.
+        tokio::select! {
+            res = server_handle_future => {
+                error!("RPC server stopped.");
+                res?
+            }
+            res = monitoring_server_handle => {
+                error!("Monitoring server stopped.");
+                res??
+            }
+        };
+    } else {
+        // Sync task.
+        let sync_future = run_sync(
+            config,
+            shared_highest_block,
+            pending_data,
+            storage_reader.clone(),
+            storage_writer,
+        );
+        let sync_handle = tokio::spawn(sync_future);
+        tokio::select! {
+            res = server_handle_future => {
+                error!("RPC server stopped.");
+                res?
+            }
+            res = monitoring_server_handle => {
+                error!("Monitoring server stopped.");
+                res??
+            }
+            res = sync_handle => {
+                error!("Sync stopped.");
+                res??
+            }
+        };
+    }
     error!("Task ended with unexpected Ok.");
     return Ok(());
 
