@@ -31,10 +31,12 @@ pub enum TransactionTrace {
 /// The execution trace of an Invoke transaction.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct InvokeTransactionTrace {
+    #[serde(skip_serializing_if = "Option::is_none")]
     /// The trace of the __validate__ call.
     pub validate_invocation: Option<FunctionInvocation>,
     /// The trace of the __execute__ call or the reason in case of reverted transaction.
     pub execute_invocation: FunctionInvocationResult,
+    #[serde(skip_serializing_if = "Option::is_none")]
     /// The trace of the __fee_transfer__ call.
     pub fee_transfer_invocation: Option<FunctionInvocation>,
 }
@@ -80,8 +82,10 @@ impl TryFrom<TransactionExecutionInfo> for InvokeTransactionTrace {
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct DeclareTransactionTrace {
     /// The trace of the __validate__ call.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub validate_invocation: Option<FunctionInvocation>,
     /// The trace of the __fee_transfer__ call.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub fee_transfer_invocation: Option<FunctionInvocation>,
 }
 
@@ -105,10 +109,12 @@ impl TryFrom<TransactionExecutionInfo> for DeclareTransactionTrace {
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct DeployAccountTransactionTrace {
     /// The trace of the __validate__ call.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub validate_invocation: Option<FunctionInvocation>,
     /// The trace of the __constructor__ call.
     pub constructor_invocation: FunctionInvocation,
     /// The trace of the __fee_transfer__ call.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub fee_transfer_invocation: Option<FunctionInvocation>,
 }
 
