@@ -52,6 +52,7 @@
 pub mod base_layer;
 pub mod body;
 pub mod compiled_class;
+pub mod utils;
 // TODO(yair): Make the compression_utils module pub(crate) or extract it from the crate.
 #[doc(hidden)]
 pub mod compression_utils;
@@ -415,6 +416,10 @@ pub enum StorageError {
     CompiledClassReWrite { class_hash: ClassHash },
     #[error("The table {table_name} is unused under the {storage_scope:?} storage scope.")]
     ScopeError { table_name: String, storage_scope: StorageScope },
+    #[error(transparent)]
+    IOError(#[from] std::io::Error),
+    #[error(transparent)]
+    SerdeError(#[from] serde_json::Error),
 }
 
 /// A type alias that maps to std::result::Result<T, StorageError>.
