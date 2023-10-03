@@ -50,30 +50,43 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
             .await?;
     let server_handle_future = tokio::spawn(server_handle.stopped());
 
-    // Sync task.
-    let sync_future = run_sync(
-        config,
-        shared_highest_block,
-        pending_data,
-        storage_reader.clone(),
-        storage_writer,
-    );
-    let sync_handle = tokio::spawn(sync_future);
-
-    tokio::select! {
-        res = server_handle_future => {
-            error!("RPC server stopped.");
-            res?
-        }
-        res = monitoring_server_handle => {
-            error!("Monitoring server stopped.");
-            res??
-        }
-        res = sync_handle => {
-            error!("Sync stopped.");
-            res??
-        }
-    };
+    if config.sync.is_none() {
+        // todo(yair): consider dropping storage writer if sync is disabled.
+        tokio::select! {
+            res = server_handle_future => {
+                error!("RPC server stopped.");
+                res?
+            }
+            res = monitoring_server_handle => {
+                error!("Monitoring server stopped.");
+                res??
+            }
+        };
+    } else {
+        // Sync task.
+        let sync_future = run_sync(
+            config,
+            shared_highest_block,
+            pending_data,
+            storage_reader.clone(),
+            storage_writer,
+        );
+        let sync_handle = tokio::spawn(sync_future);
+        tokio::select! {
+            res = server_handle_future => {
+                error!("RPC server stopped.");
+                res?
+            }
+            res = monitoring_server_handle => {
+                error!("Monitoring server stopped.");
+                res??
+            }
+            res = sync_handle => {
+                error!("Sync stopped.");
+                res??
+            }
+        };
+    }
     error!("Task ended with unexpected Ok.");
     return Ok(());
 
@@ -84,7 +97,6 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
     ) -> Result<(), StateSyncError> {
-        let Some(sync_config) = config.sync else { return Ok(()) };
         let central_source =
             CentralSource::new(config.central.clone(), VERSION_FULL, storage_reader.clone())
                 .map_err(CentralError::ClientCreation)?;
@@ -93,7 +105,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         let base_layer_source = EthereumBaseLayerSource::new(config.base_layer)
             .map_err(|e| BaseLayerSourceError::BaseLayerSourceCreationError(e.to_string()))?;
         let mut sync = StateSync::new(
-            sync_config,
+            config.sync.expect("Expecting to have sync config"),
             shared_highest_block,
             pending_data,
             central_source,

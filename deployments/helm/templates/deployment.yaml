@@ -62,6 +62,8 @@ spec:
         - /app/config/presets/{{ .Values.starknet.preset }}
         - --base_layer.node_url
         - {{ .Values.base_layer_node_url }}
+        - --sync.#is_none
+        - {{ .Values.node.sync_disabled | quote }}
         {{- if .Values.services }}
         ports:
         - containerPort: {{ .Values.services.rpc.port }}
