@@ -380,6 +380,33 @@ impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'tx
     }
 }
 
+/// Iterator for iterating over a DB table
+pub(crate) struct DbIter<'cursor, 'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> {
+    cursor: &'cursor mut DbCursor<'txn, Mode, K, V>,
+    _key_type: PhantomData<K>,
+    _value_type: PhantomData<V>,
+}
+
+impl<'cursor, 'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde>
+    DbIter<'cursor, 'txn, Mode, K, V>
+{
+    #[allow(dead_code)]
+    pub(crate) fn new(cursor: &'cursor mut DbCursor<'txn, Mode, K, V>) -> Self {
+        Self { cursor, _key_type: PhantomData {}, _value_type: PhantomData {} }
+    }
+}
+
+impl<'cursor, 'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> Iterator
+    for DbIter<'cursor, 'txn, Mode, K, V>
+{
+    type Item = DbResult<(K, V)>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let prev_cursor_res = self.cursor.next().transpose()?;
+        Some(prev_cursor_res)
+    }
+}
+
 #[doc(hidden)]
 pub struct RO {}
 
