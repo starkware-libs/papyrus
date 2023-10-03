@@ -17,9 +17,10 @@ use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageTxn};
 use starknet_api::core::ClassHash;
 use starknet_api::state::StateNumber;
+use starknet_api::transaction::InvokeTransaction;
 use thiserror::Error;
 
-use crate::objects::TransactionTrace;
+use crate::objects::{InvokeTransactionTrace, TransactionTrace};
 use crate::{ExecutableTransactionInput, ExecutionConfigByBlock, ExecutionError, ExecutionResult};
 
 // An error that can occur during the use of the execution utils.
@@ -77,6 +78,12 @@ pub fn get_trace_constructor(
     tx: &ExecutableTransactionInput,
 ) -> fn(TransactionExecutionInfo) -> ExecutionResult<TransactionTrace> {
     match tx {
+        // Invoke V0 trace shouldn't contain the validate trace.
+        ExecutableTransactionInput::Invoke(InvokeTransaction::V0(_)) => |execution_info| {
+            let mut trace: InvokeTransactionTrace = execution_info.try_into()?;
+            trace.validate_invocation = None;
+            Ok(TransactionTrace::Invoke(trace))
+        },
         ExecutableTransactionInput::Invoke(_) => {
             |execution_info| Ok(TransactionTrace::Invoke(execution_info.try_into()?))
         }
