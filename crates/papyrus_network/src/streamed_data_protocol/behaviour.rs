@@ -209,6 +209,13 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
             }) => {
                 self.connection_ids_map.get_mut(peer_id).insert(connection_id);
             }
+            FromSwarm::NewListener(_)
+            | FromSwarm::NewListenAddr(_)
+            | FromSwarm::ExpiredListenAddr(_)
+            | FromSwarm::ListenerClosed(_)
+            | FromSwarm::NewExternalAddrCandidate(_)
+            | FromSwarm::ExternalAddrConfirmed(_)
+            | FromSwarm::ExternalAddrExpired(_) => {}
             _ => {
                 unimplemented!();
             }
