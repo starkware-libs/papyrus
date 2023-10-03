@@ -21,8 +21,10 @@ pub fn get_config_presentation<T: Serialize + SerializeConfig>(
     // Iterates over flatten param paths for removing non-public parameters from the nested config.
     // For example, for the param path 'a.b.c.d', perform config_presentation[a][b][c].remove(d).
     for (param_path, serialized_param) in config.dump() {
-        if let ParamPrivacy::Public = serialized_param.privacy {
-            continue;
+        match serialized_param.privacy {
+            ParamPrivacy::Public => continue,
+            ParamPrivacy::Private => (),
+            ParamPrivacy::TemporaryValue => continue,
         }
 
         // Remove a non-public parameter.
