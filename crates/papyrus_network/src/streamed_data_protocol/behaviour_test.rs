@@ -7,7 +7,14 @@ use assert_matches::assert_matches;
 use futures::{FutureExt, Stream, StreamExt};
 use libp2p::core::{ConnectedPoint, Endpoint};
 use libp2p::swarm::behaviour::ConnectionEstablished;
-use libp2p::swarm::{ConnectionId, FromSwarm, NetworkBehaviour, PollParameters, ToSwarm};
+use libp2p::swarm::{
+    ConnectionId,
+    FromSwarm,
+    NetworkBehaviour,
+    NotifyHandler,
+    PollParameters,
+    ToSwarm,
+};
 use libp2p::{Multiaddr, PeerId};
 
 use super::super::handler::{RequestFromBehaviourEvent, ToBehaviourEvent};
@@ -44,8 +51,8 @@ const SUBSTREAM_TIMEOUT: Duration = Duration::MAX;
 fn simulate_connection_established_from_swarm<Query: QueryBound, Data: DataBound>(
     behaviour: &mut Behaviour<Query, Data>,
     peer_id: PeerId,
+    connection_id: ConnectionId,
 ) {
-    let connection_id = ConnectionId::new_unchecked(0);
     let address = Multiaddr::empty();
     let role_override = Endpoint::Dialer;
     let _handler = behaviour
@@ -83,12 +90,13 @@ fn simulate_listener_connection_from_swarm<Query: QueryBound, Data: DataBound>(
 fn simulate_new_inbound_session_from_swarm<Query: QueryBound, Data: DataBound>(
     behaviour: &mut Behaviour<Query, Data>,
     peer_id: PeerId,
+    connection_id: ConnectionId,
     inbound_session_id: InboundSessionId,
     query: Query,
 ) {
     behaviour.on_connection_handler_event(
         peer_id,
-        ConnectionId::new_unchecked(0),
+        connection_id,
         ToBehaviourEvent::NewInboundSession { query, inbound_session_id, peer_id },
     );
 }
@@ -133,6 +141,7 @@ fn simulate_outbound_session_closed_by_peer<Query: QueryBound, Data: DataBound>(
 async fn validate_create_outbound_session_event<Query: QueryBound + PartialEq, Data: DataBound>(
     behaviour: &mut Behaviour<Query, Data>,
     peer_id: &PeerId,
+    connection_id: &ConnectionId,
     query: &Query,
     outbound_session_id: &OutboundSessionId,
 ) {
@@ -142,10 +151,11 @@ async fn validate_create_outbound_session_event<Query: QueryBound + PartialEq, D
         ToSwarm::NotifyHandler {
             peer_id: event_peer_id,
             event: RequestFromBehaviourEvent::CreateOutboundSession { query: event_query, outbound_session_id: event_outbound_session_id },
-            ..
+            handler: NotifyHandler::One(event_connection_id),
         } if *peer_id == event_peer_id
             && *outbound_session_id == event_outbound_session_id
             && *query == event_query
+            && *connection_id == event_connection_id
     );
 }
 
@@ -185,6 +195,7 @@ async fn validate_received_data_event<Query: QueryBound, Data: DataBound + Parti
 async fn validate_request_send_data_event<Query: QueryBound, Data: DataBound + PartialEq>(
     behaviour: &mut Behaviour<Query, Data>,
     peer_id: &PeerId,
+    connection_id: &ConnectionId,
     data: &Data,
     inbound_session_id: InboundSessionId,
 ) {
@@ -196,16 +207,18 @@ async fn validate_request_send_data_event<Query: QueryBound, Data: DataBound + P
             event: RequestFromBehaviourEvent::SendData {
                 inbound_session_id: event_inbound_session_id, data: event_data
             },
-            ..
+            handler: NotifyHandler::One(event_connection_id),
         } if *peer_id == event_peer_id
             && inbound_session_id == event_inbound_session_id
             && *data == event_data
+            && *connection_id == event_connection_id
     );
 }
 
 async fn validate_request_close_session_event<Query: QueryBound, Data: DataBound + PartialEq>(
     behaviour: &mut Behaviour<Query, Data>,
     peer_id: &PeerId,
+    connection_id: &ConnectionId,
     session_id: SessionId,
 ) {
     let event = behaviour.next().await.unwrap();
@@ -214,9 +227,10 @@ async fn validate_request_close_session_event<Query: QueryBound, Data: DataBound
         ToSwarm::NotifyHandler {
             peer_id: event_peer_id,
             event: RequestFromBehaviourEvent::CloseSession { session_id: event_session_id },
-            ..
+            handler: NotifyHandler::One(event_connection_id),
         } if *peer_id == event_peer_id
             && session_id == event_session_id
+            && *connection_id == event_connection_id
     );
 }
 
@@ -265,6 +279,7 @@ async fn process_inbound_session() {
     // messages is fixed.
     let query = GetBlocks { limit: 10, ..Default::default() };
     let peer_id = PeerId::random();
+    let connection_id = ConnectionId::new_unchecked(0);
     let inbound_session_id = InboundSessionId::default();
 
     simulate_listener_connection_from_swarm(&mut behaviour, peer_id);
@@ -272,6 +287,7 @@ async fn process_inbound_session() {
     simulate_new_inbound_session_from_swarm(
         &mut behaviour,
         peer_id,
+        connection_id,
         inbound_session_id,
         query.clone(),
     );
@@ -284,13 +300,21 @@ async fn process_inbound_session() {
     }
 
     for data in &hardcoded_data_vec {
-        validate_request_send_data_event(&mut behaviour, &peer_id, data, inbound_session_id).await;
+        validate_request_send_data_event(
+            &mut behaviour,
+            &peer_id,
+            &connection_id,
+            data,
+            inbound_session_id,
+        )
+        .await;
     }
     validate_no_events(&mut behaviour);
 
     let session_id = SessionId::InboundSessionId(inbound_session_id);
     behaviour.close_session(session_id).unwrap();
-    validate_request_close_session_event(&mut behaviour, &peer_id, session_id).await;
+    validate_request_close_session_event(&mut behaviour, &peer_id, &connection_id, session_id)
+        .await;
     validate_no_events(&mut behaviour);
 
     simulate_session_closed_by_request_from_swarm(&mut behaviour, peer_id, session_id);
@@ -306,12 +330,19 @@ async fn create_and_process_outbound_session() {
     // messages is fixed.
     let query = GetBlocks { limit: 10, ..Default::default() };
     let peer_id = PeerId::random();
+    let connection_id = ConnectionId::new_unchecked(0);
 
-    simulate_connection_established_from_swarm(&mut behaviour, peer_id);
+    simulate_connection_established_from_swarm(&mut behaviour, peer_id, connection_id);
     let outbound_session_id = behaviour.send_query(query.clone(), peer_id).unwrap();
 
-    validate_create_outbound_session_event(&mut behaviour, &peer_id, &query, &outbound_session_id)
-        .await;
+    validate_create_outbound_session_event(
+        &mut behaviour,
+        &peer_id,
+        &connection_id,
+        &query,
+        &outbound_session_id,
+    )
+    .await;
     validate_no_events(&mut behaviour);
 
     let hardcoded_data_vec = hardcoded_data();
@@ -331,7 +362,8 @@ async fn create_and_process_outbound_session() {
 
     let session_id = SessionId::OutboundSessionId(outbound_session_id);
     behaviour.close_session(session_id).unwrap();
-    validate_request_close_session_event(&mut behaviour, &peer_id, session_id).await;
+    validate_request_close_session_event(&mut behaviour, &peer_id, &connection_id, session_id)
+        .await;
     validate_no_events(&mut behaviour);
 
     simulate_session_closed_by_request_from_swarm(&mut behaviour, peer_id, session_id);
@@ -348,7 +380,11 @@ async fn outbound_session_closed_by_peer() {
     let query = GetBlocks { limit: 10, ..Default::default() };
     let peer_id = PeerId::random();
 
-    simulate_connection_established_from_swarm(&mut behaviour, peer_id);
+    simulate_connection_established_from_swarm(
+        &mut behaviour,
+        peer_id,
+        ConnectionId::new_unchecked(0),
+    );
     let outbound_session_id = behaviour.send_query(query.clone(), peer_id).unwrap();
 
     // Consume the event to create an outbound session.
