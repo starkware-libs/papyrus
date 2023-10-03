@@ -229,9 +229,22 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
         event: <Self::ConnectionHandler as ConnectionHandler>::ToBehaviour,
     ) {
         let converted_event = event.into();
-        if let Event::NewInboundSession { inbound_session_id, .. } = converted_event {
-            self.session_id_to_peer_id_and_connection_id
-                .insert(SessionId::InboundSessionId(inbound_session_id), (peer_id, connection_id));
+        match converted_event {
+            Event::NewInboundSession { inbound_session_id, .. } => {
+                self.session_id_to_peer_id_and_connection_id.insert(
+                    SessionId::InboundSessionId(inbound_session_id),
+                    (peer_id, connection_id),
+                );
+            }
+            Event::SessionFailed { session_id, .. }
+            | Event::SessionClosedByRequest { session_id, .. } => {
+                self.session_id_to_peer_id_and_connection_id.remove(&session_id);
+            }
+            Event::OutboundSessionClosedByPeer { outbound_session_id } => {
+                self.session_id_to_peer_id_and_connection_id
+                    .remove(&SessionId::OutboundSessionId(outbound_session_id));
+            }
+            _ => {}
         }
         self.pending_events.push_back(ToSwarm::GenerateEvent(converted_event));
     }
