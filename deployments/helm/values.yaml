@@ -6,6 +6,7 @@ rustLogLevel: "info"
 node:
   # Number of concurrent requests to the SN feeder gateway
   concurrentFgRequests: 50
+  sync_disabled: false
 
 # Ethereum node URL. A value for this variable is mandatory.
 base_layer_node_url:
