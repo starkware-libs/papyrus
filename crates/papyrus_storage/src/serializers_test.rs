@@ -9,6 +9,7 @@ use starknet_api::state::StorageKey;
 use test_utils::{get_rng, GetTestInstance};
 
 use crate::db::serialization::StorageSerde;
+use crate::mmap_file::LocationInFile;
 
 pub trait StorageSerdeTest: StorageSerde {
     fn storage_serde_test();
@@ -53,6 +54,7 @@ create_storage_serde_test!(StarkHash);
 create_storage_serde_test!(StorageKey);
 create_storage_serde_test!(u8);
 create_storage_serde_test!(usize);
+create_storage_serde_test!(LocationInFile);
 
 #[test]
 fn block_number_endianness() {

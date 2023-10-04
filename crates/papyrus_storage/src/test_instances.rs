@@ -22,7 +22,7 @@ use crate::body::TransactionIndex;
 use crate::header::StarknetVersion;
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::Version;
-use crate::{EventIndex, MarkerKind, OmmerEventKey, OmmerTransactionKey};
+use crate::{EventIndex, MarkerKind, OffsetKind, OmmerEventKey, OmmerTransactionKey};
 
 auto_impl_get_test_instance! {
     struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
@@ -35,6 +35,9 @@ auto_impl_get_test_instance! {
         Body = 1,
         State = 2,
         CompiledClass = 3,
+    }
+    pub enum OffsetKind {
+        ThinStateDiff = 0,
     }
     struct OmmerTransactionKey(pub BlockHash, pub TransactionOffsetInBlock);
     struct OmmerEventKey(pub OmmerTransactionKey, pub EventIndexInTransactionOutput);

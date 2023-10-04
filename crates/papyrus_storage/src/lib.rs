@@ -79,7 +79,7 @@ use body::events::EventIndex;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use db::serialization::StorageSerde;
 use db::DbTableStats;
-use mmap_file::{open_file, FileReader, FileWriter, MMapFileError, MmapFileConfig};
+use mmap_file::{open_file, FileReader, FileWriter, LocationInFile, MMapFileError, MmapFileConfig};
 use ommer::{OmmerEventKey, OmmerTransactionKey};
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
@@ -136,6 +136,7 @@ pub fn open_storage(
         headers: db_writer.create_table("headers")?,
         markers: db_writer.create_table("markers")?,
         nonces: db_writer.create_table("nonces")?,
+        file_offsets: db_writer.create_table("file_offsets")?,
         state_diffs: db_writer.create_table("state_diffs")?,
         transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
         transaction_idx_to_hash: db_writer.create_table("transaction_idx_to_hash")?,
@@ -290,6 +291,13 @@ pub struct StorageTxn<'env, Mode: TransactionKind> {
 impl<'env> StorageTxn<'env, RW> {
     /// Commits the changes made in the transaction to the storage.
     pub fn commit(self) -> StorageResult<()> {
+        // TODO(dan): consider flushing only the relevant files to the tx.
+        self.file_writers
+            .expect("RW transaction must have file writers")
+            .lock()
+            .expect("File writers mutex poisoned")
+            .thin_state_diff_writer
+            .flush();
         Ok(self.txn.commit()?)
     }
 }
@@ -316,6 +324,12 @@ impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
         }
         Ok(self.txn.open_table(table_id)?)
     }
+
+    /// Gets a memory mapped file offset.
+    pub fn get_file_offset(&self, offset_kind: OffsetKind) -> StorageResult<usize> {
+        let table = self.open_table(&self.tables.file_offsets)?;
+        Ok(table.get(&self.txn, &offset_kind)?.unwrap_or_default())
+    }
 }
 
 /// Returns the names of the tables in the storage.
@@ -336,7 +350,8 @@ struct_field_names! {
         headers: TableIdentifier<BlockNumber, BlockHeader>,
         markers: TableIdentifier<MarkerKind, BlockNumber>,
         nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
-        state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
+        file_offsets: TableIdentifier<OffsetKind, usize>,
+        state_diffs: TableIdentifier<BlockNumber, LocationInFile>,
         transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
         transaction_idx_to_hash: TableIdentifier<TransactionIndex, TransactionHash>,
         transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
@@ -523,4 +538,11 @@ fn open_storage_files(
     let (thin_state_diff_writer, thin_state_diff_reader) =
         open_file(mmap_file_config, db_config.path().join("thin_state_diff"))?;
     Ok((FileWriters { thin_state_diff_writer }, FileReaders { thin_state_diff_reader }))
+}
+
+/// Represents a kind of mmap file.
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub enum OffsetKind {
+    /// A thin state diff file.
+    ThinStateDiff,
 }

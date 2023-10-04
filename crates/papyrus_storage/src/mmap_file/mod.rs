@@ -17,14 +17,17 @@ use std::result;
 use memmap2::{MmapMut, MmapOptions};
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
+#[cfg(test)]
+use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Serialize};
+#[cfg(test)]
+use test_utils::GetTestInstance;
 use thiserror::Error;
 use tracing::{debug, instrument, trace};
 use validator::{Validate, ValidationError};
 
 use crate::db::serialization::{StorageSerde, StorageSerdeEx};
 
-#[allow(dead_code)]
 type MmapFileResult<V> = result::Result<V, MMapFileError>;
 
 /// Configuration for a memory mapped file.
@@ -115,10 +118,39 @@ pub struct LocationInFile {
 }
 
 impl LocationInFile {
+    /// Creates a new location in the file.
+    pub fn new(offset: usize, len: usize) -> Self {
+        Self { offset, len }
+    }
+
     /// returns the next offset in the file.
-    #[allow(dead_code)]
-    fn next_offset(&self) -> usize {
+    pub fn next_offset(&self) -> usize {
         self.offset + self.len
+    }
+}
+
+// TODO(dan): use varint serialization.
+impl StorageSerde for LocationInFile {
+    fn serialize_into(
+        &self,
+        res: &mut impl std::io::Write,
+    ) -> Result<(), crate::db::serialization::StorageSerdeError> {
+        self.offset.serialize_into(res)?;
+        self.len.serialize_into(res)?;
+        Ok(())
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        let offset = usize::deserialize_from(bytes)?;
+        let len = usize::deserialize_from(bytes)?;
+        Some(Self { offset, len })
+    }
+}
+
+#[cfg(test)]
+impl GetTestInstance for LocationInFile {
+    fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+        Self { offset: usize::get_test_instance(rng), len: usize::get_test_instance(rng) }
     }
 }
 
@@ -128,7 +160,6 @@ pub struct FileWriter<V: StorageSerde> {
 }
 impl<V: StorageSerde> FileWriter<V> {
     /// Flushes the mmap to the file.
-    #[allow(dead_code)]
     pub(crate) fn flush(&self) {
         self.mmap_file.flush();
     }
