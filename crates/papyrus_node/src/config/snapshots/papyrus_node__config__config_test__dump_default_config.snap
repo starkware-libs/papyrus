@@ -178,6 +178,27 @@ expression: dumped_default_config
     "value": "./data",
     "privacy": "Public"
   },
+  "storage.mmap_file_config.growth_step": {
+    "description": "The growth step in bytes, must be greater than max_object_size.",
+    "value": {
+      "$serde_json::private::Number": "1073741824"
+    },
+    "privacy": "Public"
+  },
+  "storage.mmap_file_config.max_object_size": {
+    "description": "The maximum size of a single object in the file in bytes",
+    "value": {
+      "$serde_json::private::Number": "67108864"
+    },
+    "privacy": "Public"
+  },
+  "storage.mmap_file_config.max_size": {
+    "description": "The maximum size of a memory mapped file in bytes. Must be greater than growth_step.",
+    "value": {
+      "$serde_json::private::Number": "137438953472"
+    },
+    "privacy": "Public"
+  },
   "storage.scope": {
     "description": "The categories of data saved in storage.",
     "value": "FullArchive",

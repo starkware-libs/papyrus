@@ -5,18 +5,11 @@ use tempfile::tempdir;
 use tokio::sync::{Barrier, RwLock};
 
 use super::*;
-
-fn get_test_config() -> MmapFileConfig {
-    MmapFileConfig {
-        max_size: 1 << 24,       // 16MB
-        growth_step: 1 << 20,    // 1MB
-        max_object_size: 1 << 8, // 256B
-    }
-}
+use crate::test_utils::get_mmap_file_test_config;
 
 #[test]
 fn config_validation() {
-    let mut config = get_test_config();
+    let mut config = get_mmap_file_test_config();
     config.max_size = config.growth_step - 1;
     assert!(config.validate().is_err());
     config.max_size = 1 << 27;
@@ -32,7 +25,8 @@ fn config_validation() {
 fn write_read() {
     let dir = tempdir().unwrap();
     let (mut writer, reader) =
-        open_file(get_test_config(), dir.path().to_path_buf().join("test_write_read")).unwrap();
+        open_file(get_mmap_file_test_config(), dir.path().to_path_buf().join("test_write_read"))
+            .unwrap();
     let data: Vec<u8> = vec![1, 2, 3];
     let offset = 0;
 
@@ -53,9 +47,11 @@ fn write_read() {
 #[test]
 fn concurrent_reads() {
     let dir = tempdir().unwrap();
-    let (mut writer, reader) =
-        open_file(get_test_config(), dir.path().to_path_buf().join("test_concurrent_reads"))
-            .unwrap();
+    let (mut writer, reader) = open_file(
+        get_mmap_file_test_config(),
+        dir.path().to_path_buf().join("test_concurrent_reads"),
+    )
+    .unwrap();
     let data: Vec<u8> = vec![1, 2, 3];
     let offset = 0;
 
@@ -82,7 +78,7 @@ fn concurrent_reads() {
 fn concurrent_reads_single_write() {
     let dir = tempdir().unwrap();
     let (mut writer, reader) = open_file(
-        get_test_config(),
+        get_mmap_file_test_config(),
         dir.path().to_path_buf().join("test_concurrent_reads_single_write"),
     )
     .unwrap();
@@ -183,7 +179,7 @@ fn grow_file() {
 async fn write_read_different_locations() {
     let dir = tempdir().unwrap();
     let (mut writer, reader) = open_file(
-        get_test_config(),
+        get_mmap_file_test_config(),
         dir.path().to_path_buf().join("test_write_read_different_locations"),
     )
     .unwrap();

@@ -7,6 +7,7 @@
 #[cfg(test)]
 mod mmap_file_test;
 
+use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::marker::PhantomData;
@@ -14,6 +15,8 @@ use std::path::PathBuf;
 use std::result;
 
 use memmap2::{MmapMut, MmapOptions};
+use papyrus_config::dumping::{ser_param, SerializeConfig};
+use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tracing::{debug, instrument, trace};
@@ -25,7 +28,7 @@ use crate::db::serialization::{StorageSerde, StorageSerdeEx};
 type MmapFileResult<V> = result::Result<V, MMapFileError>;
 
 /// Configuration for a memory mapped file.
-#[derive(Clone, Debug, Serialize, Deserialize, Validate)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Validate)]
 #[validate(schema(function = "validate_config"))]
 pub struct MmapFileConfig {
     /// The maximum size of the memory map in bytes.
@@ -39,10 +42,36 @@ pub struct MmapFileConfig {
 impl Default for MmapFileConfig {
     fn default() -> Self {
         Self {
-            max_size: 1 << 40,        // 1TB
+            max_size: 1 << 37,        // 128GB
             growth_step: 1 << 30,     // 1GB
-            max_object_size: 1 << 20, // 1MB
+            max_object_size: 1 << 26, // 64MB
         }
+    }
+}
+
+impl SerializeConfig for MmapFileConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from_iter([
+            ser_param(
+                "max_size",
+                &self.max_size,
+                "The maximum size of a memory mapped file in bytes. Must be greater than \
+                 growth_step.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "growth_step",
+                &self.growth_step,
+                "The growth step in bytes, must be greater than max_object_size.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "max_object_size",
+                &self.max_object_size,
+                "The maximum size of a single object in the file in bytes",
+                ParamPrivacyInput::Public,
+            ),
+        ])
     }
 }
 
@@ -209,8 +238,6 @@ pub(crate) fn open_file<V: StorageSerde>(
     path: PathBuf,
 ) -> MmapFileResult<(FileWriter<V>, FileReader)> {
     debug!("Opening file");
-    // TODO: move validation to caller.
-    config.validate().expect("Invalid config");
     let file = OpenOptions::new().read(true).write(true).create(true).open(path)?;
     let size = file.metadata()?.len();
     let mmap = unsafe { MmapOptions::new().len(config.max_size).map_mut(&file)? };

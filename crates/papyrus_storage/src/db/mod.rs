@@ -151,7 +151,7 @@ type DbResult<V> = result::Result<V, DbError>;
 /// Tries to open an MDBX environment and returns a reader and a writer to it.
 /// There is a single non clonable writer instance, to make sure there is only one write transaction
 ///  at any given moment.
-pub(crate) fn open_env(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
+pub(crate) fn open_env(config: &DbConfig) -> DbResult<(DbReader, DbWriter)> {
     let env = Arc::new(
         Environment::new()
             .set_geometry(Geometry {

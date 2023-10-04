@@ -73,12 +73,13 @@ mod test_instances;
 pub mod test_utils;
 
 use std::collections::{BTreeMap, HashMap};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use body::events::EventIndex;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use db::serialization::StorageSerde;
 use db::DbTableStats;
+use mmap_file::{open_file, FileReader, FileWriter, MMapFileError, MmapFileConfig};
 use ommer::{OmmerEventKey, OmmerTransactionKey};
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
@@ -120,7 +121,9 @@ pub const STORAGE_VERSION: Version = Version(5);
 pub fn open_storage(
     storage_config: StorageConfig,
 ) -> StorageResult<(StorageReader, StorageWriter)> {
-    let (db_reader, mut db_writer) = open_env(storage_config.db_config)?;
+    let (db_reader, mut db_writer) = open_env(&storage_config.db_config)?;
+    let (file_writers, file_readers) =
+        open_storage_files(&storage_config.db_config, storage_config.mmap_file_config)?;
     let tables = Arc::new(Tables {
         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
         casms: db_writer.create_table("casms")?,
@@ -154,8 +157,19 @@ pub fn open_storage(
         starknet_version: db_writer.create_table("starknet_version")?,
         storage_version: db_writer.create_table("storage_version")?,
     });
-    let reader = StorageReader { db_reader, tables: tables.clone(), scope: storage_config.scope };
-    let writer = StorageWriter { db_writer, tables, scope: storage_config.scope };
+    let reader = StorageReader {
+        db_reader,
+        tables: tables.clone(),
+        scope: storage_config.scope,
+        file_readers: file_readers.clone(),
+    };
+    let writer = StorageWriter {
+        db_writer,
+        tables,
+        scope: storage_config.scope,
+        file_readers,
+        file_writers: Arc::new(Mutex::new(file_writers)),
+    };
 
     let writer = set_initial_version_if_needed(writer)?;
     verify_storage_version(reader.clone())?;
@@ -207,6 +221,8 @@ pub struct StorageReader {
     db_reader: DbReader,
     tables: Arc<Tables>,
     scope: StorageScope,
+    #[allow(dead_code)]
+    file_readers: FileReaders,
 }
 
 impl StorageReader {
@@ -217,6 +233,8 @@ impl StorageReader {
             txn: self.db_reader.begin_ro_txn()?,
             tables: self.tables.clone(),
             scope: self.scope,
+            file_readers: self.file_readers.clone(),
+            file_writers: None,
         })
     }
 
@@ -237,6 +255,10 @@ pub struct StorageWriter {
     db_writer: DbWriter,
     tables: Arc<Tables>,
     scope: StorageScope,
+    #[allow(dead_code)]
+    file_readers: FileReaders,
+    #[allow(dead_code)]
+    file_writers: Arc<Mutex<FileWriters>>,
 }
 
 impl StorageWriter {
@@ -247,6 +269,8 @@ impl StorageWriter {
             txn: self.db_writer.begin_rw_txn()?,
             tables: self.tables.clone(),
             scope: self.scope,
+            file_readers: self.file_readers.clone(),
+            file_writers: Some(self.file_writers.clone()),
         })
     }
 }
@@ -257,6 +281,10 @@ pub struct StorageTxn<'env, Mode: TransactionKind> {
     txn: DbTransaction<'env, Mode>,
     tables: Arc<Tables>,
     scope: StorageScope,
+    #[allow(dead_code)]
+    file_readers: FileReaders,
+    #[allow(dead_code)]
+    file_writers: Option<Arc<Mutex<FileWriters>>>,
 }
 
 impl<'env> StorageTxn<'env, RW> {
@@ -352,6 +380,9 @@ use struct_field_names;
 #[allow(missing_docs)]
 #[derive(thiserror::Error, Debug)]
 pub enum StorageError {
+    /// Errors related to the underlying files.
+    #[error(transparent)]
+    MMapFileError(#[from] MMapFileError),
     /// Errors related to the underlying database.
     #[error(transparent)]
     InnerError(#[from] DbError),
@@ -431,6 +462,8 @@ pub type StorageResult<V> = std::result::Result<V, StorageError>;
 pub struct StorageConfig {
     #[validate]
     pub db_config: DbConfig,
+    #[validate]
+    pub mmap_file_config: MmapFileConfig,
     pub scope: StorageScope,
 }
 
@@ -443,6 +476,8 @@ impl SerializeConfig for StorageConfig {
             ParamPrivacyInput::Public,
         )]);
         dumped_config.extend(append_sub_config_name(self.db_config.dump(), "db_config"));
+        dumped_config
+            .extend(append_sub_config_name(self.mmap_file_config.dump(), "mmap_file_config"));
         dumped_config
     }
 }
@@ -469,3 +504,23 @@ pub(crate) enum MarkerKind {
 }
 
 pub(crate) type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
+
+struct FileWriters {
+    #[allow(dead_code)]
+    thin_state_diff_writer: FileWriter<ThinStateDiff>,
+}
+
+#[derive(Clone, Debug)]
+struct FileReaders {
+    #[allow(dead_code)]
+    thin_state_diff_reader: FileReader,
+}
+
+fn open_storage_files(
+    db_config: &DbConfig,
+    mmap_file_config: MmapFileConfig,
+) -> StorageResult<(FileWriters, FileReaders)> {
+    let (thin_state_diff_writer, thin_state_diff_reader) =
+        open_file(mmap_file_config, db_config.path().join("thin_state_diff"))?;
+    Ok((FileWriters { thin_state_diff_writer }, FileReaders { thin_state_diff_reader }))
+}
