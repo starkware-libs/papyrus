@@ -50,6 +50,8 @@
 use clap::parser::MatchesError;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use validator::ValidationError;
+use validators::ParsedValidationErrors;
 
 pub(crate) const IS_NONE_MARK: &str = "#is_none";
 
@@ -156,7 +158,7 @@ pub enum ConfigError {
     #[error(transparent)]
     CommandMatches(#[from] MatchesError),
     #[error(transparent)]
-    WriteDumpedConfig(#[from] std::io::Error),
+    IOError(#[from] std::io::Error),
     #[error("Insert a new param is not allowed.")]
     ParamNotFound { param_path: String },
     #[error("{target_param} is not found.")]
@@ -165,4 +167,8 @@ pub enum ConfigError {
     PointerSourceNotFound { pointing_param: String },
     #[error("Changing {param_path} from required type {required} to {given} is not allowed.")]
     ChangeRequiredParamType { param_path: String, required: SerializationType, given: Value },
+    #[error(transparent)]
+    ValidationError(#[from] ValidationError),
+    #[error(transparent)]
+    ConfigValidationError(#[from] ParsedValidationErrors),
 }
