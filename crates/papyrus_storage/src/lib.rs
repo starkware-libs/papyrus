@@ -72,7 +72,7 @@ mod test_instances;
 #[cfg(any(feature = "testing", test))]
 pub mod test_utils;
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use body::events::EventIndex;
@@ -209,8 +209,6 @@ pub struct StorageReader {
     scope: StorageScope,
 }
 
-// use crate::db::db_stats::DbTableStats;
-
 impl StorageReader {
     /// Takes a snapshot of the current state of the storage and returns a [`StorageTxn`] for
     /// reading data from the storage.
@@ -224,7 +222,7 @@ impl StorageReader {
 
     /// Returns metadata about the tables in the storage.
     pub fn db_tables_stats(&self) -> StorageResult<DbStats> {
-        let mut tables_stats = HashMap::new();
+        let mut tables_stats = BTreeMap::new();
         for name in Tables::field_names() {
             tables_stats.insert(name.to_string(), self.db_reader.get_table_stats(name)?);
         }
@@ -455,7 +453,7 @@ pub struct DbStats {
     /// Stats about the whole database.
     pub db_stats: DbWholeStats,
     /// A mapping from a table name in the database to its statistics.
-    pub tables_stats: HashMap<String, DbTableStats>,
+    pub tables_stats: BTreeMap<String, DbTableStats>,
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]

@@ -3,26 +3,6 @@ use serde::{Deserialize, Serialize};
 
 use super::{DbReader, DbResult};
 
-// Serialize bytes as a human readable string.
-// For example 1024*1024 bytes will be serialized as "1 MiB".
-fn readable_bytes<S>(bytes_num: &u64, s: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    s.serialize_str(&human_bytes(*bytes_num as f64))
-}
-
-// Serialize float with 4 decimal points.
-// For example 0.123456 will be serialized to 0.1234.
-fn float_precision<S>(float: &f64, s: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    const PRECISION: u32 = 4;
-    let power = u32::pow(10, PRECISION) as f64;
-    s.serialize_f64((*float * power).round() / power)
-}
-
 /// A single table statistics.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbTableStats {
@@ -67,8 +47,8 @@ impl DbReader {
     // Returns statistics about a specific table in the database.
     pub(crate) fn get_table_stats(&self, name: &str) -> DbResult<DbTableStats> {
         let db_txn = self.begin_ro_txn()?;
-        let database = db_txn.txn.open_table(Some(name))?;
-        let stat = db_txn.txn.table_stat(&database)?;
+        let table = db_txn.txn.open_table(Some(name))?;
+        let stat = db_txn.txn.table_stat(&table)?;
         Ok(DbTableStats {
             branch_pages: stat.branch_pages(),
             depth: stat.depth(),
@@ -92,4 +72,24 @@ impl DbReader {
             page_size: stat.page_size().into(),
         })
     }
+}
+
+// Serialize bytes as a human readable string.
+// For example 1024*1024 bytes will be serialized as "1 MiB".
+fn readable_bytes<S>(bytes_num: &u64, s: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    s.serialize_str(&human_bytes(*bytes_num as f64))
+}
+
+// Serialize float with 4 decimal points.
+// For example 0.123456 will be serialized to 0.1234.
+fn float_precision<S>(float: &f64, s: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    const PRECISION: u32 = 4;
+    let power = u32::pow(10, PRECISION) as f64;
+    s.serialize_f64((*float * power).round() / power)
 }
