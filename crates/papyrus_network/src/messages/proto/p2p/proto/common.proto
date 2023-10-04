@@ -65,7 +65,7 @@ message Fin {
         unknown  = 2;
         pruned   = 3;
     }
-    optional Error error = 1;
+    Error error = 1;
 }
 
 

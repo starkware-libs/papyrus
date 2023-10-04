@@ -19,10 +19,9 @@ use libp2p::swarm::{
     FromSwarm,
     NetworkBehaviour,
     NotifyHandler,
-    StreamProtocol,
     ToSwarm,
 };
-use libp2p::{Multiaddr, PeerId};
+use libp2p::{Multiaddr, PeerId, StreamProtocol};
 
 use super::handler::{Handler, RequestFromBehaviourEvent, SessionError as HandlerSessionError};
 use super::{
@@ -36,14 +35,13 @@ use super::{
 };
 
 #[derive(thiserror::Error, Debug)]
-// TODO(shahak) remove allow(dead_code).
-#[allow(dead_code)]
 pub(crate) enum SessionError {
     #[error("Connection timed out after {} seconds.", substream_timeout.as_secs())]
     Timeout { substream_timeout: Duration },
     #[error(transparent)]
     IOError(#[from] io::Error),
     #[error("Remote peer doesn't support the {protocol_name} protocol.")]
+    #[allow(dead_code)]
     RemoteDoesntSupportProtocol { protocol_name: StreamProtocol },
 }
 
@@ -101,7 +99,6 @@ pub(crate) struct Behaviour<Query: QueryBound, Data: DataBound> {
     next_inbound_session_id: Arc<AtomicUsize>,
 }
 
-// TODO(shahak) remove allow dead code.
 #[allow(dead_code)]
 impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
     pub fn new(config: Config) -> Self {
