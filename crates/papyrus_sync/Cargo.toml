@@ -40,4 +40,5 @@ papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 pretty_assertions.workspace = true
 starknet_client = { path = "../starknet_client", features = ["testing"] }
 starknet_api = { workspace = true, features = ["testing"] }
+test_utils = { path = "../test_utils" }
 tokio-stream.workspace = true

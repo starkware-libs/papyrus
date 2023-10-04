@@ -5,6 +5,7 @@ use std::env::args;
 use std::process::exit;
 use std::sync::Arc;
 
+use papyrus_common::pending_classes::PendingClasses;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_config::presentation::get_config_presentation;
 use papyrus_config::validators::config_validate;
@@ -44,6 +45,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     // The sync is the only writer of the syncing state.
     let shared_highest_block = Arc::new(RwLock::new(None));
     let pending_data = Arc::new(RwLock::new(PendingData::default()));
+    let pending_classes = Arc::new(RwLock::new(PendingClasses::new()));
 
     // JSON-RPC server.
     let (_, server_handle) =
@@ -56,6 +58,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         config,
         shared_highest_block,
         pending_data,
+        pending_classes,
         storage_reader.clone(),
         storage_writer,
     );
@@ -82,6 +85,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         config: NodeConfig,
         shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
         pending_data: Arc<RwLock<PendingData>>,
+        pending_classes: Arc<RwLock<PendingClasses>>,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
     ) -> Result<(), StateSyncError> {
@@ -97,6 +101,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
             sync_config,
             shared_highest_block,
             pending_data,
+            pending_classes,
             central_source,
             pending_source,
             base_layer_source,

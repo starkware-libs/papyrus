@@ -1,9 +1,14 @@
+use std::collections::HashMap;
+use std::ops::Deref;
 use std::sync::Arc;
 use std::time::Duration;
 
 use assert_matches::assert_matches;
+use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use futures_util::StreamExt;
 use indexmap::IndexMap;
+use mockall::predicate;
+use papyrus_common::pending_classes::{PendingClass, PendingClasses};
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
@@ -15,12 +20,17 @@ use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContract
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass, StateDiff, StorageKey};
 use starknet_api::{patricia_key, stark_felt};
-use starknet_client::reader::PendingData;
+use starknet_client::reader::{
+    DeclaredClassHashEntry,
+    GenericContractClass,
+    MockStarknetReader,
+    PendingData,
+};
 use tokio::sync::RwLock;
 
 use crate::sources::base_layer::MockBaseLayerSourceTrait;
 use crate::sources::central::MockCentralSourceTrait;
-use crate::sources::pending::MockPendingSourceTrait;
+use crate::sources::pending::{GenericPendingSource, MockPendingSourceTrait};
 use crate::{
     sort_state_diff,
     stream_new_base_layer_block,
@@ -183,6 +193,7 @@ fn store_base_layer_block_test() {
         pending_data: Arc::new(RwLock::new(PendingData::default())),
         central_source: Arc::new(MockCentralSourceTrait::new()),
         pending_source: Arc::new(MockPendingSourceTrait::new()),
+        pending_classes: Arc::new(RwLock::new(PendingClasses::new())),
         base_layer_source: Arc::new(MockBaseLayerSourceTrait::new()),
         reader,
         writer,
@@ -223,6 +234,8 @@ fn add_headers(headers_num: u64, writer: &mut StorageWriter) {
     }
 }
 
+// TODO(dvir): move pending tests to new file.
+// TODO(dvir): add test for full pending sync.
 #[tokio::test]
 async fn pending_sync() {
     // Storage with one default block header.
@@ -241,7 +254,6 @@ async fn pending_sync() {
     for call_count in 0..=PENDING_QUERIES {
         mock_pending_source.expect_get_pending_data().times(1).returning(move || {
             let mut block = PendingData::default();
-            block.block.parent_block_hash = BlockHash::default();
             block.block.gas_price = GasPrice(call_count as u128);
             Ok(block)
         });
@@ -257,11 +269,13 @@ async fn pending_sync() {
     });
 
     let pending_data = Arc::new(RwLock::new(PendingData::default()));
+    let pending_classes = Arc::new(RwLock::new(PendingClasses::new()));
 
     sync_pending_data(
         reader,
         Arc::new(mock_pending_source),
         pending_data.clone(),
+        pending_classes.clone(),
         Duration::from_millis(1),
     )
     .await
@@ -269,6 +283,94 @@ async fn pending_sync() {
 
     // The Last query for pending data (with parent block hash 0x1) should not be written so the gas
     // price should PENDING_QUERIES.
-    assert_eq!(pending_data.read().await.block.parent_block_hash, BlockHash::default());
     assert_eq!(pending_data.read().await.block.gas_price, GasPrice(PENDING_QUERIES as u128));
+}
+
+#[tokio::test]
+async fn pending_sync_add_class() {
+    // Storage with one default block header.
+    let (reader, mut writer) = get_test_storage().0;
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(BlockNumber(0), &BlockHeader::default())
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    let mut mock_client = MockStarknetReader::new();
+
+    mock_client.expect_pending_data().times(1).returning(move || Ok(Some(PendingData::default())));
+
+    let deprecated_class_hash = ClassHash(stark_felt!("0x1"));
+    let contract_class_hash = ClassHash(stark_felt!("0x2"));
+
+    // Pending data with a class hashes.
+    let mut block_with_classes = PendingData::default();
+    block_with_classes.state_update.state_diff.old_declared_contracts = vec![deprecated_class_hash];
+    block_with_classes.state_update.state_diff.declared_classes = vec![DeclaredClassHashEntry {
+        class_hash: contract_class_hash,
+        compiled_class_hash: CompiledClassHash(contract_class_hash.0),
+    }];
+
+    let cloned_block = block_with_classes.clone();
+    mock_client.expect_pending_data().times(1).returning(move || Ok(Some(cloned_block.clone())));
+
+    // To make the pending sync stop.
+    let mut new_pending_block = block_with_classes.clone();
+    new_pending_block.block.parent_block_hash = BlockHash(stark_felt!("0x666"));
+    mock_client
+        .expect_pending_data()
+        .times(1)
+        .returning(move || Ok(Some(new_pending_block.clone())));
+
+    mock_client
+        .expect_class_by_hash()
+        .times(1)
+        .with(predicate::eq(deprecated_class_hash))
+        .returning(move |_| {
+            Ok(Some(GenericContractClass::Cairo0ContractClass(DeprecatedContractClass::default())))
+        });
+    mock_client.expect_class_by_hash().times(1).with(predicate::eq(contract_class_hash)).returning(
+        move |_| {
+            Ok(Some(GenericContractClass::Cairo1ContractClass(
+                starknet_client::reader::ContractClass::default(),
+            )))
+        },
+    );
+    mock_client
+        .expect_compiled_class_by_hash()
+        .times(1)
+        .with(predicate::eq(contract_class_hash))
+        .returning(move |_| Ok(Some(CasmContractClass::default())));
+
+    let pending_source = Arc::new(GenericPendingSource { starknet_client: Arc::new(mock_client) });
+    let pending_data = Arc::new(RwLock::new(PendingData::default()));
+    let pending_classes = Arc::new(RwLock::new(PendingClasses::new()));
+
+    // Pending classes is empty.
+    assert_eq!(pending_classes.read().await.deref(), &PendingClasses::new());
+
+    sync_pending_data(
+        reader,
+        pending_source,
+        pending_data.clone(),
+        pending_classes.clone(),
+        Duration::from_millis(1),
+    )
+    .await
+    .unwrap();
+
+    let expected_classes = HashMap::from([
+        (deprecated_class_hash, PendingClass::Cairo0(DeprecatedContractClass::default())),
+        (
+            contract_class_hash,
+            PendingClass::Cairo1(starknet_client::reader::ContractClass::default().into()),
+        ),
+    ]);
+
+    let expected_casm = HashMap::from([(contract_class_hash, CasmContractClass::default())]);
+    let expected = PendingClasses { classes: expected_classes, casm: expected_casm };
+
+    assert_eq!(pending_classes.read().await.deref(), &expected);
 }

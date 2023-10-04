@@ -17,6 +17,7 @@ use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use chrono::{TimeZone, Utc};
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use indexmap::IndexMap;
+use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
 use papyrus_common::{metrics as papyrus_metrics, BlockHashAndNumber};
 use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_param, SerializeConfig};
@@ -42,6 +43,9 @@ use tracing::{debug, error, info, instrument, trace, warn};
 use crate::sources::base_layer::{BaseLayerSourceTrait, EthereumBaseLayerSource};
 use crate::sources::central::{CentralError, CentralSource, CentralSourceTrait};
 use crate::sources::pending::{PendingError, PendingSource, PendingSourceTrait};
+
+// TODO(dvir): consider add pending classes to the central to prevent asking classes that we
+// have.
 
 // TODO(dvir): add to config.
 // Sleep duration between polling for pending data.
@@ -124,6 +128,7 @@ pub struct GenericStateSync<
     pending_data: Arc<RwLock<PendingData>>,
     central_source: Arc<TCentralSource>,
     pending_source: Arc<TPendingSource>,
+    pending_classes: Arc<RwLock<PendingClasses>>,
     base_layer_source: Arc<TBaseLayerSource>,
     reader: StorageReader,
     writer: StorageWriter,
@@ -274,6 +279,7 @@ impl<
             self.pending_source.clone(),
             self.shared_highest_block.clone(),
             self.pending_data.clone(),
+            self.pending_classes.clone(),
             self.config.block_propagation_sleep_duration,
             PENDING_SLEEP_DURATION,
             self.config.blocks_max_stream_size,
@@ -533,7 +539,7 @@ impl<
         let mut last_block_in_storage = header_marker.prev();
         while let Some(block_number) = last_block_in_storage {
             if self.should_revert_block(block_number).await? {
-                self.revert_block(block_number).await?;
+                self.revert_block(block_number)?;
                 last_block_in_storage = block_number.prev();
             } else {
                 break;
@@ -546,9 +552,8 @@ impl<
     // Deletes the block data from the storage, moving it to the ommer tables.
     #[allow(clippy::expect_fun_call)]
     #[instrument(skip(self), level = "debug", err)]
-    async fn revert_block(&mut self, block_number: BlockNumber) -> StateSyncResult {
+    fn revert_block(&mut self, block_number: BlockNumber) -> StateSyncResult {
         debug!("Reverting block.");
-        *self.pending_data.write().await = PendingData::default();
 
         let mut txn = self.writer.begin_rw_txn()?;
         txn = txn.try_revert_base_layer_marker(block_number)?;
@@ -638,13 +643,14 @@ impl<
 #[allow(clippy::too_many_arguments)]
 fn stream_new_blocks<
     TCentralSource: CentralSourceTrait + Sync + Send,
-    TPendingSource: PendingSourceTrait + Sync + Send,
+    TPendingSource: PendingSourceTrait + Sync + Send + 'static,
 >(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
     pending_source: Arc<TPendingSource>,
     shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
     pending_data: Arc<RwLock<PendingData>>,
+    pending_classes: Arc<RwLock<PendingClasses>>,
     block_propagation_sleep_duration: Duration,
     pending_sleep_duration: Duration,
     max_stream_size: u32,
@@ -663,9 +669,9 @@ fn stream_new_blocks<
             if header_marker == central_block_marker {
                 // Only if the node have the last block and state (without casms), sync pending data.
                 if reader.begin_ro_txn()?.get_state_marker()? == header_marker{
-                    // Here and when reverting a block those are the only places we update the pending data.
+                    // Here is the only places we update the pending data.
                     debug!("Start polling for pending data.");
-                    sync_pending_data(reader.clone(), pending_source.clone(), pending_data.clone(), pending_sleep_duration).await?;
+                    sync_pending_data(reader.clone(), pending_source.clone(), pending_data.clone(), pending_classes.clone(),pending_sleep_duration).await?;
                 }
                 else{
                     debug!("Blocks syncing reached the last known block, waiting for blockchain to advance.");
@@ -748,6 +754,7 @@ impl StateSync {
         config: SyncConfig,
         shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
         pending_data: Arc<RwLock<PendingData>>,
+        pending_classes: Arc<RwLock<PendingClasses>>,
         central_source: CentralSource,
         pending_source: PendingSource,
         base_layer_source: EthereumBaseLayerSource,
@@ -758,6 +765,7 @@ impl StateSync {
             config,
             shared_highest_block,
             pending_data,
+            pending_classes,
             central_source: Arc::new(central_source),
             pending_source: Arc::new(pending_source),
             base_layer_source: Arc::new(base_layer_source),
@@ -880,10 +888,11 @@ fn check_sync_progress(
 }
 
 // Update the pending data and return when a new block is discovered.
-async fn sync_pending_data<TPendingSource: PendingSourceTrait + Sync + Send>(
+async fn sync_pending_data<TPendingSource: PendingSourceTrait + Sync + Send + 'static>(
     reader: StorageReader,
     pending_source: Arc<TPendingSource>,
     pending_data: Arc<RwLock<PendingData>>,
+    pending_classes: Arc<RwLock<PendingClasses>>,
     sleep_duration: Duration,
 ) -> Result<(), StateSyncError> {
     let txn = reader.begin_ro_txn()?;
@@ -899,12 +908,55 @@ async fn sync_pending_data<TPendingSource: PendingSourceTrait + Sync + Send>(
                 .block_hash
         }
     };
+    // Clear the pending classes, classes now in struct are already in storage.
+    pending_classes.write().await.clear();
+
+    let mut cairo0_count = 0;
+    let mut cairo1_count = 0;
     loop {
         let new_pending_data = pending_source.get_pending_data().await?;
         if new_pending_data.block.parent_block_hash != latest_block_hash {
             return Ok(());
         };
+
+        let cairo0_classes =
+            new_pending_data.state_update.state_diff.old_declared_contracts.clone();
+        let cairo1_classes = new_pending_data.state_update.state_diff.declared_classes.clone();
+
+        debug!("Updated pending data.");
         *pending_data.write().await = new_pending_data;
+
+        // TODO(dvir): refactor this code.
+        while cairo0_count < cairo0_classes.len() {
+            let pending_source_cloned = pending_source.clone();
+            let class_hash = cairo0_classes[cairo0_count];
+            let pending_classes_cloned = pending_classes.clone();
+            tokio::spawn(async move {
+                let ret = pending_source_cloned
+                    .add_pending_deprecated_class(class_hash, pending_classes_cloned)
+                    .await;
+                if let Err(err) = ret {
+                    warn!("Error adding pending class: {err}");
+                };
+            });
+            cairo0_count += 1;
+        }
+
+        while cairo1_count < cairo1_classes.len() {
+            let pending_source_cloned = pending_source.clone();
+            let declared_entry = cairo1_classes[cairo1_count].clone();
+            let pending_classes_cloned = pending_classes.clone();
+            tokio::spawn(async move {
+                let ret = pending_source_cloned
+                    .add_pending_class(declared_entry, pending_classes_cloned)
+                    .await;
+                if let Err(err) = ret {
+                    warn!("Error adding pending class: {err}");
+                };
+            });
+            cairo1_count += 1;
+        }
+
         tokio::time::sleep(sleep_duration).await;
     }
 }

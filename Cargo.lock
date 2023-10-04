@@ -4303,6 +4303,7 @@ name = "papyrus_common"
 version = "0.0.5"
 dependencies = [
  "bitvec",
+ "cairo-lang-starknet",
  "hex",
  "lazy_static",
  "pretty_assertions",
@@ -4572,6 +4573,7 @@ dependencies = [
  "simple_logger",
  "starknet_api",
  "starknet_client",
+ "test_utils",
  "thiserror",
  "tokio",
  "tokio-stream",
