@@ -14,7 +14,7 @@ use prost::Message;
 
 #[derive(Clone, Copy, Debug, Default, Display, Eq, Hash, PartialEq)]
 pub struct OutboundSessionId {
-    value: usize,
+    pub value: usize,
 }
 
 #[derive(Clone, Copy, Debug, Default, Display, Eq, Hash, PartialEq)]
