@@ -49,7 +49,7 @@ pub(crate) fn dummy_data() -> Vec<protobuf::BasicMessage> {
     ]
 }
 
-impl crate::streamed_data_protocol::Config {
+impl crate::streamed_data::Config {
     pub fn get_test_config() -> Self {
         Self { substream_timeout: Duration::MAX, protocol_name: StreamProtocol::new("/") }
     }

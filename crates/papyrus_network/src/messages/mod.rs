@@ -9,6 +9,7 @@ use std::io;
 
 use futures::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use prost::Message;
+use prost_types::Timestamp;
 use unsigned_varint::encode::usize_buffer;
 
 pub const MAX_MESSAGE_SIZE: usize = 1 << 20;
@@ -88,4 +89,83 @@ pub async fn write_usize<Stream: AsyncWrite + Unpin>(
     io.write_all(&buffer[..encoded_len]).await?;
 
     Ok(())
+}
+
+impl From<starknet_api::block::BlockHeader> for protobuf::BlockHeader {
+    fn from(value: starknet_api::block::BlockHeader) -> Self {
+        Self {
+            parent_header: Some(protobuf::Hash { elements: value.parent_hash.0.bytes().to_vec() }),
+            number: value.block_number.0,
+            sequencer_address: Some(protobuf::Address {
+                elements: value.sequencer.0.key().bytes().to_vec(),
+            }),
+            // TODO: fix timestamp conversion and add missing fields.
+            time: Some(Timestamp { seconds: value.timestamp.0.try_into().unwrap_or(0), nanos: 0 }),
+            state_diffs: None,
+            state: None,
+            proof_fact: None,
+            transactions: None,
+            events: None,
+            receipts: None,
+        }
+    }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum ProtobufConversionError {
+    #[error("Out of range value")]
+    OutOfRangeValue,
+    #[error("Missing field")]
+    MissingField,
+    #[error("Bytes data length mismatch")]
+    BytesDataLengthMismatch,
+}
+
+impl TryFrom<protobuf::Felt252> for starknet_api::hash::StarkFelt {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::Felt252) -> Result<Self, Self::Error> {
+        let mut felt = [0; 32];
+        felt.copy_from_slice(&value.elements);
+        if let Ok(stark_felt) = Self::new(felt) {
+            Ok(stark_felt)
+        } else {
+            Err(ProtobufConversionError::OutOfRangeValue)
+        }
+    }
+}
+
+impl TryFrom<protobuf::Hash> for starknet_api::hash::StarkFelt {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::Hash) -> Result<Self, Self::Error> {
+        let mut felt = [0; 32];
+        if value.elements.len() != 32 {
+            return Err(ProtobufConversionError::BytesDataLengthMismatch);
+        }
+        felt.copy_from_slice(&value.elements);
+        if let Ok(stark_felt) = Self::new(felt) {
+            Ok(stark_felt)
+        } else {
+            Err(ProtobufConversionError::OutOfRangeValue)
+        }
+    }
+}
+
+impl TryFrom<protobuf::Address> for starknet_api::core::ContractAddress {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::Address) -> Result<Self, Self::Error> {
+        let mut felt = [0; 32];
+        if value.elements.len() != 32 {
+            return Err(ProtobufConversionError::BytesDataLengthMismatch);
+        }
+        felt.copy_from_slice(&value.elements);
+        if let Ok(hash) = starknet_api::hash::StarkHash::new(felt) {
+            if let Ok(stark_felt) = starknet_api::core::PatriciaKey::try_from(hash) {
+                Ok(starknet_api::core::ContractAddress(stark_felt))
+            } else {
+                Err(ProtobufConversionError::OutOfRangeValue)
+            }
+        } else {
+            Err(ProtobufConversionError::OutOfRangeValue)
+        }
+    }
 }
