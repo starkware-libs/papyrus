@@ -19,7 +19,7 @@ use metrics_exporter_prometheus::{BuildError, PrometheusBuilder, PrometheusHandl
 use metrics_process::Collector;
 use papyrus_config::dumping::{ser_generated_param, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializationType, SerializedParam};
-use papyrus_storage::{DbTablesStats, StorageError, StorageReader};
+use papyrus_storage::{DbStats, StorageError, StorageReader};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
@@ -198,9 +198,7 @@ fn app(
 
 /// Returns DB statistics.
 #[instrument(skip(storage_reader), level = "debug", ret)]
-async fn db_tables_stats(
-    storage_reader: StorageReader,
-) -> Result<Json<DbTablesStats>, ServerError> {
+async fn db_tables_stats(storage_reader: StorageReader) -> Result<Json<DbStats>, ServerError> {
     Ok(storage_reader.db_tables_stats()?.into())
 }
 
