@@ -334,7 +334,10 @@ async fn process_outbound_session() {
     }
 
     for data in &dummy_data_vec {
-        validate_received_data_event(&mut handler, data, outbound_session_id).await;
+        #[allow(clippy::needless_borrow)]
+        // needless borrow needed here because the compiler doesn't understand that data is a ref
+        // to vec.
+        validate_received_data_event(&mut handler, &data, outbound_session_id).await;
     }
 
     validate_no_events(&mut handler);
