@@ -97,6 +97,7 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> PendingSourceTrait
             Ok(None) => return Err(PendingError::CompiledClassNotFound { class_hash }),
             Err(err) => return Err(PendingError::ClientError(Arc::new(err))),
         };
+        debug!("Adding pending deprecated class with hash {class_hash} to pending classes.");
         pending_classes.write().await.add_class(class_hash, PendingClass::Cairo0(deprecated_class));
         Ok(())
     }
@@ -118,6 +119,7 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> PendingSourceTrait
                 let sierra = into_cairo1(sierra)?;
                 debug!("Received new pending sierra.");
                 trace!("Pending sierra: {sierra:#?}.");
+                debug!("Adding pending sierra with hash {class_hash} to pending classes.");
                 pending_classes.write().await.add_class(class_hash, PendingClass::Cairo1(sierra));
             }
             None => return Err(PendingError::CompiledClassNotFound { class_hash }),
@@ -127,6 +129,7 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> PendingSourceTrait
             Some(casm) => {
                 debug!("Received new pending casm.");
                 trace!("Pending casm: {casm:#?}.");
+                debug!("Adding pending casm with hash {class_hash} to pending classes.");
                 pending_classes.write().await.add_casm(class_hash, casm);
             }
             None => return Err(PendingError::ClassNotFound { class_hash }),

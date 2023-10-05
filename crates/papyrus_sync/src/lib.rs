@@ -924,6 +924,7 @@ async fn sync_pending_data<TPendingSource: PendingSourceTrait + Sync + Send + 's
         let cairo1_classes = new_pending_data.state_update.state_diff.declared_classes.clone();
 
         debug!("Updated pending data.");
+        trace!("pending data: {:#?}", new_pending_data);
         *pending_data.write().await = new_pending_data;
 
         // TODO(dvir): refactor this code.
