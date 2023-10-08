@@ -54,7 +54,7 @@ impl TryFrom<starknet_api::deprecated_contract_class::ContractClass> for Contrac
                 .remove("compiler_version");
         }
 
-        let abi = class.abi.unwrap_or(vec![]);
+        let abi = class.abi.unwrap_or_default();
 
         Ok(Self {
             abi,
