@@ -6026,7 +6026,6 @@ dependencies = [
  "mockall",
  "mockito",
  "os_info",
- "papyrus_common",
  "papyrus_config",
  "pretty_assertions",
  "rand",
