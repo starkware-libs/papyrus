@@ -47,6 +47,8 @@ use validator::Validate;
 use crate::api::get_methods_from_supported_apis;
 use crate::middleware::{deny_requests_with_unsupported_path, proxy_rpc_request};
 use crate::syncing_state::get_last_synced_block;
+pub use crate::v0_4_0::transaction::{InvokeTransaction, InvokeTransactionV1};
+pub use crate::v0_4_0::write_api_result::AddInvokeOkResult;
 
 /// Maximum size of a supported transaction body - 10MB.
 pub const SERVER_MAX_BODY_SIZE: u32 = 10 * 1024 * 1024;

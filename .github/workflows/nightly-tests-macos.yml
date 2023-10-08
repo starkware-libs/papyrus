@@ -1,0 +1,26 @@
+name: nightly-tests-macos
+
+on:
+  schedule:
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  GW-integration-test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+      - run: >
+          INTEGRATION_TESTNET_NODE_URL=${{ secrets.INTEGRATION_TESTNET_NODE_URL }}
+          SENDER_PRIVATE_KEY=${{ secrets.INTEGRATION_TESTNET_SENDER_PRIVATE_KEY }}
+          cargo test --test gateway_integration_test -p starknet_client test_gw_integration_testnet
+          -- --ignored;
+          retVal=$?;
+          if [ $retVal -ne 0 ]; then
+              echo "Integration test failed with exit code $retVal"
+          fi;
+          exit $retVal
