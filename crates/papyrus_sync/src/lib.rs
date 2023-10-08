@@ -233,11 +233,7 @@ impl<
                 StateSyncError::NoProgress => true,
                 StateSyncError::CentralSourceError(_) => true,
                 StateSyncError::BaseLayerSourceError(_) => true,
-                StateSyncError::StorageError(storage_err)
-                    if matches!(storage_err, StorageError::InnerError(_)) =>
-                {
-                    true
-                }
+                StateSyncError::StorageError(StorageError::InnerError(_)) => true,
                 StateSyncError::StateDiffWithoutMatchingHeader {
                     block_number: _,
                     block_hash: _,

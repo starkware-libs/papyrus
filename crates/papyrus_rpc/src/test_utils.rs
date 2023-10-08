@@ -51,7 +51,7 @@ pub(crate) fn get_test_rpc_server_and_storage_writer_from_params<T: JsonRpcServe
     shared_highest_block: Option<Arc<RwLock<Option<BlockHashAndNumber>>>>,
     storage_scope: Option<StorageScope>,
 ) -> (RpcModule<T>, StorageWriter) {
-    let mock_client = mock_client.unwrap_or(MockStarknetWriter::new());
+    let mock_client = mock_client.unwrap_or_default();
     let shared_highest_block = shared_highest_block.unwrap_or(get_test_highest_block());
     let storage_scope = storage_scope.unwrap_or_default();
 
