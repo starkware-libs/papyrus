@@ -29,7 +29,7 @@ use libp2p::swarm::{
 use libp2p::PeerId;
 use tracing::debug;
 
-use self::session::{FinishReason, InboundSession};
+use self::session::{FinishReason, InboundSession, InboundSessionError};
 use super::protocol::{InboundProtocol, OutboundProtocol};
 use super::{
     Config,
@@ -61,6 +61,8 @@ pub(crate) enum SessionError {
     IOError(#[from] io::Error),
     #[error("Remote peer doesn't support the {protocol_name} protocol.")]
     RemoteDoesntSupportProtocol { protocol_name: StreamProtocol },
+    #[error("In an inbound session, remote peer sent data after sending the query.")]
+    OutboundPeerSentData,
 }
 
 pub(crate) type ToBehaviourEvent<Query, Data> = GenericEvent<Query, Data, SessionError>;
@@ -107,16 +109,32 @@ impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
         cx: &mut Context<'_>,
     ) -> bool {
         let Poll::Ready(finish_reason) = inbound_session.poll_unpin(cx) else {
-            let is_session_alive = false;
-            return is_session_alive;
+            let is_session_finished = false;
+            return is_session_finished;
         };
-        if let FinishReason::Error(io_error) = finish_reason {
-            pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                ToBehaviourEvent::SessionFailed {
-                    session_id: inbound_session_id.into(),
-                    error: SessionError::IOError(io_error),
-                },
-            ));
+        match finish_reason {
+            FinishReason::Error(InboundSessionError::IO(io_error)) => {
+                pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
+                    ToBehaviourEvent::SessionFailed {
+                        session_id: inbound_session_id.into(),
+                        error: SessionError::IOError(io_error),
+                    },
+                ));
+            }
+            FinishReason::Error(InboundSessionError::OtherPeerSentData) => {
+                pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
+                    ToBehaviourEvent::SessionFailed {
+                        session_id: inbound_session_id.into(),
+                        error: SessionError::OutboundPeerSentData,
+                    },
+                ));
+            }
+            FinishReason::OtherPeerClosed => {
+                pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
+                    ToBehaviourEvent::SessionClosedByPeer { session_id: inbound_session_id.into() },
+                ));
+            }
+            FinishReason::Closed => {}
         }
         true
     }

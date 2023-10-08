@@ -46,6 +46,8 @@ pub(crate) enum SessionError {
     IOError(#[from] io::Error),
     #[error("Remote peer doesn't support the {protocol_name} protocol.")]
     RemoteDoesntSupportProtocol { protocol_name: StreamProtocol },
+    #[error("In an inbound session, remote peer sent data after sending the query.")]
+    OutboundPeerSentData,
     // If there's a connection with a single session and it was closed because of another reason,
     // we might get ConnectionClosed instead of that reason because the swarm automatically closes
     // a connection that has no sessions. If this is a problem, set the swarm's
@@ -83,6 +85,10 @@ impl<Query: QueryBound, Data: DataBound> From<GenericEvent<Query, Data, HandlerS
                 session_id,
                 error: SessionError::RemoteDoesntSupportProtocol { protocol_name },
             },
+            GenericEvent::SessionFailed {
+                session_id,
+                error: HandlerSessionError::OutboundPeerSentData,
+            } => Self::SessionFailed { session_id, error: SessionError::OutboundPeerSentData },
             GenericEvent::SessionClosedByRequest { session_id } => {
                 Self::SessionClosedByRequest { session_id }
             }
