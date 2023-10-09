@@ -7,3 +7,9 @@ license-file.workspace = true
 
 [dependencies]
 starknet_client = { path = "../starknet_client" }
+
+[dev-dependencies]
+pretty_assertions.workspace = true
+starknet_client = { path = "../starknet_client", features = ["testing"] }
+test_utils = { path = "../test_utils" }
+tokio = { workspace = true, features = ["full", "sync"] }

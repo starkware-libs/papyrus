@@ -4446,8 +4446,10 @@ dependencies = [
 name = "papyrus_pending"
 version = "0.0.5"
 dependencies = [
- "mockall",
+ "pretty_assertions",
  "starknet_client",
+ "test_utils",
+ "tokio",
 ]
 
 [[package]]
