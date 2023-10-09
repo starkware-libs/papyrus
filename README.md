@@ -98,7 +98,7 @@ docker run --rm --name papyrus\
   ghcr.io/starkware-libs/papyrus:dev
 ```
 
-> **NOTE**  
+> **NOTE**
 > - The container must have write access to `<local-host-data-path>`.
 > A possible way to assure this is to create the `<local-host-data-path>` directory (only the first
 > time you run `Papyrus`) and add `--user "$(id -u):$(id -g)"` to the docker run command.
@@ -133,21 +133,21 @@ For more information, see [Docker's documentation](https://docs.docker.com/confi
 API requests are sent to the path `/rpc/<starknet-rpc-version-id>`.
 Current supported versions are:
 * V0_3_0
-* V0_4_0  
+* V0_4_0
 
 
-See specification at: [starknet-specs repo](https://github.com/starkware-libs/starknet-specs/)  
+See specification at: [starknet-specs repo](https://github.com/starkware-libs/starknet-specs/) 
 Assuming the node is exposed at `localhost:8080` one might send requests via curl with:
 ```bash
-curl --location 'localhost:8080/rpc/v0_3' --header 'Content-Type: application/json'\  
+curl --location 'localhost:8080/rpc/v0_3' --header 'Content-Type: application/json'\ 
  --data '{"jsonrpc":"2.0","id":0,"method":"starknet_blockHashAndNumber"}'
 ```
 
-> **NOTE**  
-> The default expected version id is in the format: `v<Major>_<Minor>`.  
-> Also supported: `V<Major>_<Minor>` and `v<Major>_<Minor>_<Patch>` (or any combination of the above).  
-> The Node always supports one patched version per minor version (the latest for that minor version).  
-> When specifying a patch the semantic is grater or equal to the specified patch.  
+> **NOTE** 
+> The default expected version id is in the format: `v<Major>_<Minor>`. 
+> Also supported: `V<Major>_<Minor>` and `v<Major>_<Minor>_<Patch>` (or any combination of the above). 
+> The Node always supports one patched version per minor version (the latest for that minor version). 
+> When specifying a patch the semantic is grater or equal to the specified patch. 
 
 ## Endpoints
 
@@ -191,7 +191,7 @@ Assuming the node monitoring gateway is exposed at `localhost:8081` one might se
 &emsp; get node version.  
 * `nodeConfig`  
 &emsp; get the current node configuration.
-<!--- TODO(dvir):  change the more details part to the documentation of the storage after its publish --->
+<!--- TODO(dvir):  change the more details part to the documentation of the storage after its publishing --->
 * `dbTablesStats`  
 &emsp; get statistics for each table in the database ([libmdbx](https://docs.rs/libmdbx/latest/libmdbx/index.html)), for more details see [libmdbx::Stat](https://docs.rs/libmdbx/latest/libmdbx/struct.Stat.html).  
 * `metrics`  
