@@ -49,7 +49,7 @@ Then, you will need to install
   - You'll need Ganache only for the tests of the [papyrus_base_layer](../crates/papyrus_base_layer/) crate.
 
 ### CI
-Your code will need to pass [CI](../.github/workflows/ci.yml) before it can be merged. This means your code will need to:
+Your code will need to pass [CI](../.github/workflows/ci_blocking.yml) before it can be merged. This means your code will need to:
 - Pass all local tests and all integration tests.
 - Be formatted according to [rustfmt](https://github.com/rust-lang/rustfmt).
 - Be linted according to [clippy](https://github.com/rust-lang/rust-clippy)

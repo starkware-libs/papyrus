@@ -1,0 +1,62 @@
+name: CI_non_blocking
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - auto_merge_enabled
+      - edited # for when the PR title is edited
+  merge_group:
+    types: [checks_requested]
+
+jobs:
+  free-disk-space:
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Free Disk Space (Ubuntu)
+      uses: jlumbroso/free-disk-space@main
+      with:
+        # this might remove tools that are actually needed,
+        # if set to "true" but frees about 6 GB
+        tool-cache: false
+        
+        # all of these default to true, but feel free to set to
+        # "false" if necessary for your workflow
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: true
+
+  codecov:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Set-Up
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang llvm libudev-dev protobuf-compiler
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+      - uses: Swatinem/rust-cache@v2
+      - run: npm install -g ganache@7.4.3
+      - name: Coverage
+        run: cargo llvm-cov --codecov --output-path codecov.json
+        env:
+          SEED: 0
+      - name: Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          verbose: true
+          fail_ci_if_error: true
+          version: "v0.1.15"

@@ -1,4 +1,4 @@
-name: CI
+name: CI_blocking
 
 on:
   push:
@@ -162,33 +162,6 @@ jobs:
           toolchain: stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --all-features
-
-  codecov:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      - name: Set-Up
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang llvm libudev-dev protobuf-compiler
-      - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
-      - uses: Swatinem/rust-cache@v2
-      - run: npm install -g ganache@7.4.3
-      - name: Coverage
-        run: cargo llvm-cov --codecov --output-path codecov.json
-        env:
-          SEED: 0
-      - name: Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          verbose: true
-          fail_ci_if_error: true
-          version: "v0.1.15"
 
   check-starknet_api-dependency:
     runs-on: ubuntu-latest
