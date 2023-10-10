@@ -9,6 +9,7 @@ members = [
     "crates/papyrus_load_test",
     "crates/papyrus_monitoring_gateway",
     "crates/papyrus_node",
+    "crates/papyrus_pending",
     "crates/papyrus_proc_macros",
     "crates/papyrus_rpc",
     "crates/papyrus_storage",

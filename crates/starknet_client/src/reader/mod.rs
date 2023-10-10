@@ -22,7 +22,7 @@ use tracing::{debug, instrument};
 use url::Url;
 
 pub use crate::reader::objects::block::{Block, TransactionReceiptsError};
-pub use crate::reader::objects::pending_data::PendingData;
+pub use crate::reader::objects::pending_data::{PendingBlock, PendingData};
 pub use crate::reader::objects::state::{
     ContractClass,
     DeclaredClassHashEntry,

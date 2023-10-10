@@ -4443,6 +4443,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "papyrus_pending"
+version = "0.0.5"
+dependencies = [
+ "mockall",
+ "starknet_client",
+]
+
+[[package]]
 name = "papyrus_proc_macros"
 version = "0.0.5"
 dependencies = [

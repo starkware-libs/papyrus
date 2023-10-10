@@ -1,0 +1,9 @@
+[package]
+name = "papyrus_pending"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license-file.workspace = true
+
+[dependencies]
+starknet_client = { path = "../starknet_client" }
