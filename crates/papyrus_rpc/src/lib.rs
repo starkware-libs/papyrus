@@ -176,6 +176,8 @@ struct ContinuationTokenAsStruct(EventIndex);
 pub async fn run_server(
     config: &RpcConfig,
     shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
+    pending_data: Arc<RwLock<PendingData>>,
+    pending_classes: Arc<RwLock<PendingClasses>>,
     storage_reader: StorageReader,
     node_version: &'static str,
 ) -> anyhow::Result<(SocketAddr, ServerHandle)> {
@@ -189,6 +191,8 @@ pub async fn run_server(
         config.max_events_keys,
         starting_block,
         shared_highest_block,
+        pending_data,
+        pending_classes,
         Arc::new(StarknetGatewayClient::new(
             &config.starknet_url,
             node_version,

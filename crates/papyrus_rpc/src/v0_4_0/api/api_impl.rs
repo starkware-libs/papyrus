@@ -121,6 +121,8 @@ pub struct JsonRpcServerV0_4Impl {
     pub max_events_keys: usize,
     pub starting_block: BlockHashAndNumber,
     pub shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
+    pub pending_data: Arc<RwLock<PendingData>>,
+    pub pending_classes: Arc<RwLock<PendingClasses>>,
     pub writer_client: Arc<dyn StarknetWriter>,
 }
 
@@ -852,6 +854,8 @@ impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
         max_events_keys: usize,
         starting_block: BlockHashAndNumber,
         shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
+        pending_data: Arc<RwLock<PendingData>>,
+        pending_classes: Arc<RwLock<PendingClasses>>,
         writer_client: Arc<dyn StarknetWriter>,
     ) -> Self {
         Self {
@@ -862,6 +866,8 @@ impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
             max_events_keys,
             starting_block,
             shared_highest_block,
+            pending_data,
+            pending_classes,
             writer_client,
         }
     }

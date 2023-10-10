@@ -501,6 +501,9 @@ impl JsonRpcServerImpl for JsonRpcServerV0_3Impl {
         max_events_keys: usize,
         starting_block: BlockHashAndNumber,
         shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
+        // TODO(shahak): Put these parameters inside Self once pending block is supported in v0.3.0
+        pending_data: Arc<RwLock<PendingData>>,
+        pending_classes: Arc<RwLock<PendingClasses>>,
         // TODO(shahak): Put this parameter inside Self once write_api is supported in v0.3.0
         _: Arc<dyn StarknetWriter>,
     ) -> Self {
