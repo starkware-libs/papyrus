@@ -3,6 +3,7 @@
 mod block_test;
 
 use std::ops::Index;
+use std::time::Instant;
 
 use papyrus_common::block_hash::calculate_block_commitments;
 use serde::{Deserialize, Serialize};
@@ -17,6 +18,7 @@ use starknet_api::core::{ContractAddress, GlobalRoot};
 #[cfg(doc)]
 use starknet_api::transaction::TransactionOutput as starknet_api_transaction_output;
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
+use tracing::info;
 
 use crate::reader::objects::transaction::{
     L1ToL2Message,
@@ -207,7 +209,9 @@ impl Block {
             transaction_hashes,
         };
 
+        let now = Instant::now();
         let commitments = calculate_block_commitments(&header, &body)?;
+        info!("Block {:?}: {:?}", header.block_number, now.elapsed());
 
         Ok((starknet_api_block { header, body, commitments }, self.starknet_version))
     }

@@ -98,14 +98,28 @@ fn get_edge_hash(sub_tree: SubTree<'_>, n_zeros: u8) -> StarkFelt {
 // Hash on both sides: starts with '0' bit and starts with '1' bit.
 // Assumes: 0 < partition point < sub_tree.len().
 fn get_binary_hash(sub_tree: SubTree<'_>, partition_point: usize) -> StarkFelt {
-    let zero_hash = get_hash(SubTree {
-        leaves: &sub_tree.leaves[..partition_point],
-        height: sub_tree.height + 1,
-    });
-    let one_hash = get_hash(SubTree {
-        leaves: &sub_tree.leaves[partition_point..],
-        height: sub_tree.height + 1,
-    });
+    let (zero_hash, one_hash) = rayon::join(
+        || {
+            get_hash(SubTree {
+                leaves: &sub_tree.leaves[..partition_point],
+                height: sub_tree.height + 1,
+            })
+        },
+        || {
+            get_hash(SubTree {
+                leaves: &sub_tree.leaves[partition_point..],
+                height: sub_tree.height + 1,
+            })
+        },
+    );
+    // let zero_hash = get_hash(SubTree {
+    //     leaves: &sub_tree.leaves[..partition_point],
+    //     height: sub_tree.height + 1,
+    // });
+    // let one_hash = get_hash(SubTree {
+    //     leaves: &sub_tree.leaves[partition_point..],
+    //     height: sub_tree.height + 1,
+    // });
     pedersen_hash(&zero_hash, &one_hash)
 }
 

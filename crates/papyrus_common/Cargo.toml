@@ -13,6 +13,7 @@ lazy_static.workspace = true
 serde.workspace = true
 starknet_api.workspace = true
 starknet-crypto.workspace = true
+rayon.workspace = true
 
 [dev-dependencies]
 pretty_assertions.workspace = true

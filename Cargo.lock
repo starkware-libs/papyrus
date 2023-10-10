@@ -4312,6 +4312,7 @@ dependencies = [
  "hex",
  "lazy_static",
  "pretty_assertions",
+ "rayon",
  "serde",
  "serde_json",
  "sha3",
