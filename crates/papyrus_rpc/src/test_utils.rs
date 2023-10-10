@@ -6,6 +6,7 @@ use jsonrpsee::core::RpcResult;
 use jsonrpsee::server::RpcModule;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonschema::JSONSchema;
+use papyrus_common::pending_classes::PendingClasses;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::test_utils::get_test_storage_by_scope;
 use papyrus_storage::{StorageScope, StorageWriter};
@@ -13,6 +14,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use starknet_api::core::ChainId;
+use starknet_client::reader::PendingData;
 use starknet_client::writer::MockStarknetWriter;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
@@ -41,18 +43,30 @@ pub(crate) fn get_test_highest_block() -> Arc<RwLock<Option<BlockHashAndNumber>>
     Arc::new(RwLock::new(None))
 }
 
+pub(crate) fn get_test_pending_data() -> Arc<RwLock<PendingData>> {
+    Arc::new(RwLock::new(PendingData::default()))
+}
+
+pub(crate) fn get_test_pending_classes() -> Arc<RwLock<PendingClasses>> {
+    Arc::new(RwLock::new(PendingClasses::default()))
+}
+
 pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
 -> (RpcModule<T>, StorageWriter) {
-    get_test_rpc_server_and_storage_writer_from_params(None, None, None)
+    get_test_rpc_server_and_storage_writer_from_params(None, None, None, None, None)
 }
 
 pub(crate) fn get_test_rpc_server_and_storage_writer_from_params<T: JsonRpcServerImpl>(
     mock_client: Option<MockStarknetWriter>,
     shared_highest_block: Option<Arc<RwLock<Option<BlockHashAndNumber>>>>,
+    pending_data: Option<Arc<RwLock<PendingData>>>,
+    pending_classes: Option<Arc<RwLock<PendingClasses>>>,
     storage_scope: Option<StorageScope>,
 ) -> (RpcModule<T>, StorageWriter) {
     let mock_client = mock_client.unwrap_or_default();
     let shared_highest_block = shared_highest_block.unwrap_or(get_test_highest_block());
+    let pending_data = pending_data.unwrap_or(get_test_pending_data());
+    let pending_classes = pending_classes.unwrap_or(get_test_pending_classes());
     let storage_scope = storage_scope.unwrap_or_default();
 
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage_by_scope(storage_scope);
@@ -67,6 +81,8 @@ pub(crate) fn get_test_rpc_server_and_storage_writer_from_params<T: JsonRpcServe
             config.max_events_keys,
             BlockHashAndNumber::default(),
             shared_highest_block,
+            pending_data,
+            pending_classes,
             mock_client_arc,
         )
         .into_rpc_module(),

@@ -92,6 +92,8 @@ use crate::test_utils::{
     get_starknet_spec_api_schema_for_components,
     get_starknet_spec_api_schema_for_method_results,
     get_test_highest_block,
+    get_test_pending_classes,
+    get_test_pending_data,
     get_test_rpc_config,
     get_test_rpc_server_and_storage_writer,
     get_test_rpc_server_and_storage_writer_from_params,
@@ -219,6 +221,8 @@ async fn syncing() {
     let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
         None,
         Some(shared_highest_block.clone()),
+        None,
+        None,
         None,
     );
 
@@ -1163,6 +1167,8 @@ async fn get_transaction_by_hash_state_only() {
     let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
         None,
         None,
+        None,
+        None,
         Some(StorageScope::StateOnly),
     );
 
@@ -1722,10 +1728,16 @@ async fn serialize_returns_valid_json() {
         .unwrap();
 
     let gateway_config = get_test_rpc_config();
-    let (server_address, _handle) =
-        run_server(&gateway_config, get_test_highest_block(), storage_reader, NODE_VERSION)
-            .await
-            .unwrap();
+    let (server_address, _handle) = run_server(
+        &gateway_config,
+        get_test_highest_block(),
+        get_test_pending_data(),
+        get_test_pending_classes(),
+        storage_reader,
+        NODE_VERSION,
+    )
+    .await
+    .unwrap();
 
     let schema = get_starknet_spec_api_schema_for_components(
         &[(
@@ -1967,6 +1979,8 @@ where
             Some(client_mock),
             None,
             None,
+            None,
+            None,
         );
         let resp = module.call::<_, Self::Response>(Self::METHOD_NAME, [tx]).await.unwrap();
         assert_eq!(resp, expected_resp);
@@ -1990,6 +2004,8 @@ where
 
         let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
             Some(client_mock),
+            None,
+            None,
             None,
             None,
         );
@@ -2024,6 +2040,8 @@ where
             Some(client_mock),
             None,
             None,
+            None,
+            None,
         );
         let result = module.call::<_, Self::Response>(Self::METHOD_NAME, [tx]).await;
         let jsonrpsee::core::Error::Call(error) = result.unwrap_err() else {
@@ -2051,6 +2069,8 @@ where
 
         let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
             Some(client_mock),
+            None,
+            None,
             None,
             None,
         );

@@ -1,12 +1,14 @@
 use std::sync::Arc;
 
 use jsonrpsee::{Methods, RpcModule};
+use papyrus_common::pending_classes::PendingClasses;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_execution::ExecutionConfigByBlock;
 use papyrus_storage::StorageReader;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::ChainId;
+use starknet_client::reader::PendingData;
 use starknet_client::writer::StarknetWriter;
 use tokio::sync::RwLock;
 
@@ -50,6 +52,8 @@ pub fn get_methods_from_supported_apis(
     max_events_keys: usize,
     starting_block: BlockHashAndNumber,
     shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
+    pending_data: Arc<RwLock<PendingData>>,
+    pending_classes: Arc<RwLock<PendingClasses>>,
     starknet_writer: Arc<dyn StarknetWriter>,
 ) -> Methods {
     let mut methods: Methods = Methods::new();
@@ -61,6 +65,8 @@ pub fn get_methods_from_supported_apis(
         max_events_keys,
         starting_block,
         shared_highest_block,
+        pending_data,
+        pending_classes,
         starknet_writer,
     };
     version_config::VERSION_CONFIG
@@ -100,6 +106,8 @@ pub trait JsonRpcServerImpl: Sized {
         max_events_keys: usize,
         starting_block: BlockHashAndNumber,
         shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
+        pending_data: Arc<RwLock<PendingData>>,
+        pending_classes: Arc<RwLock<PendingClasses>>,
         starknet_writer: Arc<dyn StarknetWriter>,
     ) -> Self;
 
@@ -115,6 +123,8 @@ struct JsonRpcServerImplGenerator {
     max_events_keys: usize,
     starting_block: BlockHashAndNumber,
     shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
+    pending_data: Arc<RwLock<PendingData>>,
+    pending_classes: Arc<RwLock<PendingClasses>>,
     // TODO(shahak): Change this struct to be with a generic type of StarknetWriter.
     starknet_writer: Arc<dyn StarknetWriter>,
 }
@@ -127,6 +137,8 @@ type JsonRpcServerImplParams = (
     usize,
     BlockHashAndNumber,
     Arc<RwLock<Option<BlockHashAndNumber>>>,
+    Arc<RwLock<PendingData>>,
+    Arc<RwLock<PendingClasses>>,
     Arc<dyn StarknetWriter>,
 );
 
@@ -140,6 +152,8 @@ impl JsonRpcServerImplGenerator {
             self.max_events_keys,
             self.starting_block,
             self.shared_highest_block,
+            self.pending_data,
+            self.pending_classes,
             self.starknet_writer,
         )
     }
@@ -156,6 +170,8 @@ impl JsonRpcServerImplGenerator {
             max_events_keys,
             starting_block,
             shared_highest_block,
+            pending_data,
+            pending_classes,
             starknet_writer,
         ) = self.get_params();
         Into::<Methods>::into(
@@ -167,6 +183,8 @@ impl JsonRpcServerImplGenerator {
                 max_events_keys,
                 starting_block,
                 shared_highest_block,
+                pending_data,
+                pending_classes,
                 starknet_writer,
             )
             .into_rpc_module(),
