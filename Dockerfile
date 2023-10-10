@@ -46,7 +46,8 @@ COPY crates/papyrus_proc_macros /app/crates/papyrus_proc_macros
 RUN rustup target add x86_64-unknown-linux-musl && \
     CARGO_INCREMENTAL=0 cargo build  --target x86_64-unknown-linux-musl --release --package papyrus_node && \
     # TODO: Consider seperating the load test for CI to a different image.
-    CARGO_INCREMENTAL=0 cargo build   --target x86_64-unknown-linux-musl --release --package papyrus_load_test
+    CARGO_INCREMENTAL=0 cargo build   --target x86_64-unknown-linux-musl --release --package papyrus_load_test && \
+    CARGO_INCREMENTAL=0 cargo build   --target x86_64-unknown-linux-musl --release --package dump_declared_classes
 
 # Copy the rest of the files.
 COPY crates/ /app/crates
@@ -55,7 +56,8 @@ COPY crates/ /app/crates
 # code is available
 RUN touch crates/*/src/lib.rs; \
     CARGO_INCREMENTAL=0 cargo build --release --package papyrus_node --bin papyrus_node; \
-    CARGO_INCREMENTAL=0 cargo build --release --package papyrus_load_test --bin papyrus_load_test
+    CARGO_INCREMENTAL=0 cargo build --release --package papyrus_load_test --bin papyrus_load_test; \
+    CARGO_INCREMENTAL=0 cargo build --release --package dump_declared_classes --bin dump_declared_classes
 
 # Starting a new stage so that the final image will contain only the executable.
 FROM alpine:3.17.0
@@ -69,6 +71,10 @@ COPY config/ /app/config
 # Copy the load test executable and its resources.
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/papyrus_load_test /app/target/release/papyrus_load_test
 COPY crates/papyrus_load_test/resources/ /app/crates/papyrus_load_test/resources
+
+# Copy the dump_declared_classes executable and its resources.
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/dump_declared_classes /app/target/release/dump_declared_classes
+# COPY crates/dump_declared_classes/resources/ /app/crates/dump_declared_classes/resources
 
 RUN set -ex; \
     apk update; \
