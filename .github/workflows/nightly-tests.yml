@@ -11,12 +11,18 @@ jobs:
     uses: ./.github/workflows/nightly-tests-call.yml
     with:
       os: ubuntu-latest
+    secrets:
+      INTEGRATION_TESTNET_NODE_URL: ${{ secrets.INTEGRATION_TESTNET_NODE_URL }}
+      INTEGRATION_TESTNET_SENDER_PRIVATE_KEY: ${{ secrets.INTEGRATION_TESTNET_SENDER_PRIVATE_KEY }}
     if: github.event.schedule != '30 3 * * *'
 
   GW-integration-test-macos:
     uses: ./.github/workflows/nightly-tests-call.yml
     with:
       os: macos-latest
+    secrets:
+      INTEGRATION_TESTNET_NODE_URL: ${{ secrets.INTEGRATION_TESTNET_NODE_URL }}
+      INTEGRATION_TESTNET_SENDER_PRIVATE_KEY: ${{ secrets.INTEGRATION_TESTNET_SENDER_PRIVATE_KEY }}
     if: github.event.schedule == '30 3 * * *'
 
 

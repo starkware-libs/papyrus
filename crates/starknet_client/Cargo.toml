@@ -42,14 +42,10 @@ url.workspace = true
 assert.workspace = true
 assert_matches.workspace = true
 enum-iterator.workspace = true
-jsonrpsee = { workspace = true, features = ["full"] }
 mockall.workspace = true
 mockito.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true
-papyrus_common = { path = "../papyrus_common"}
-papyrus_rpc = { path = "../papyrus_rpc"}
 pretty_assertions.workspace = true
 starknet_api = { workspace = true, features = ["testing"] }
-starknet-core.workspace = true
 test_utils = { path = "../test_utils" }
