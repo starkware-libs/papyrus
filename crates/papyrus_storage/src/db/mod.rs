@@ -142,6 +142,7 @@ type DbResult<V> = result::Result<V, DbError>;
 /// There is a single non clonable writer instance, to make sure there is only one write transaction
 ///  at any given moment.
 pub(crate) fn open_env(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
+    const MAX_READERS: u32 = 1 << 12; // 4096 readers
     let env = Arc::new(
         Environment::new()
             .set_geometry(Geometry {
@@ -151,6 +152,7 @@ pub(crate) fn open_env(config: DbConfig) -> DbResult<(DbReader, DbWriter)> {
                 ..Default::default()
             })
             .set_max_tables(MAX_DBS)
+            .set_max_readers(MAX_READERS)
             .open(&config.path())?,
     );
     Ok((DbReader { env: env.clone() }, DbWriter { env }))
