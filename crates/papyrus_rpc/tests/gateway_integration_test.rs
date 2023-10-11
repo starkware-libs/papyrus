@@ -4,11 +4,7 @@ use jsonrpsee::core::client::ClientT;
 use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
 use jsonrpsee::rpc_params;
 use papyrus_common::transaction_hash::get_transaction_hash;
-use papyrus_rpc::{
-    AddInvokeOkResult,
-    InvokeTransaction as SNRpcInvokeTransaction,
-    InvokeTransactionV1 as SNRpcInvokeTransactionV1,
-};
+use papyrus_rpc::{AddInvokeOkResult, InvokeTransaction, InvokeTransactionV1};
 use starknet_api::core::{ChainId, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::{
@@ -19,7 +15,7 @@ use starknet_api::transaction::{
     TransactionVersion,
 };
 use starknet_api::{calldata, contract_address, patricia_key, stark_felt};
-use starknet_client::writer::objects::transaction::InvokeTransaction;
+use starknet_client::writer::objects::transaction::InvokeTransaction as SNClientInvokeTransaction;
 use starknet_core::crypto::ecdsa_sign;
 use starknet_core::types::FieldElement;
 
@@ -79,7 +75,7 @@ async fn test_gw_integration_testnet() {
     let receiver_address = contract_address!(USER_B_ADDRESS);
 
     // Create an invoke transaction for Eth transfer with a signature placeholder.
-    let mut invoke_tx = SNRpcInvokeTransactionV1 {
+    let mut invoke_tx = InvokeTransactionV1 {
         max_fee: Fee(MAX_FEE),
         signature: TransactionSignature::default(),
         nonce,
@@ -104,7 +100,7 @@ async fn test_gw_integration_testnet() {
 
     // Update the signature.
     let hash = get_transaction_hash(
-        &Transaction::Invoke(SNRpcInvokeTransaction::Version1(invoke_tx.clone()).into()),
+        &Transaction::Invoke(InvokeTransaction::Version1(invoke_tx.clone()).into()),
         &ChainId("SN_GOERLI".to_string()),
     )
     .unwrap();
@@ -121,7 +117,7 @@ async fn test_gw_integration_testnet() {
     let invoke_res = client
         .request::<AddInvokeOkResult, _>(
             "starknet_addInvokeTransaction",
-            rpc_params!(InvokeTransaction::from(invoke_tx)),
+            rpc_params!(SNClientInvokeTransaction::from(invoke_tx)),
         )
         .await
         .unwrap();

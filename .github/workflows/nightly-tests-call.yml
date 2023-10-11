@@ -6,6 +6,11 @@ on:
       os:
         required: true
         type: string
+    secrets:
+      INTEGRATION_TESTNET_NODE_URL:
+        required: true
+      INTEGRATION_TESTNET_SENDER_PRIVATE_KEY:
+        required: true
 
 jobs:
   GW-integration-test-call:
@@ -24,7 +29,7 @@ jobs:
           sudo apt update; sudo apt -y install libclang-dev;
           INTEGRATION_TESTNET_NODE_URL=${{ secrets.INTEGRATION_TESTNET_NODE_URL }}
           SENDER_PRIVATE_KEY=${{ secrets.INTEGRATION_TESTNET_SENDER_PRIVATE_KEY }}
-          cargo test --test gateway_integration_test -p starknet_client test_gw_integration_testnet
+          cargo test --test gateway_integration_test -p papyrus_rpc test_gw_integration_testnet
           -- --ignored || retVal=$?;
           if [ $retVal -ne 0 ]; then
               echo "Integration test failed with exit code $retVal";
