@@ -57,6 +57,7 @@ reqwest.workspace = true
 test_utils = { path = "../test_utils" }
 starknet_api = { workspace = true, features = ["testing"] }
 starknet_client = { path = "../starknet_client", features = ["testing"] }
+starknet-core.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
