@@ -4316,6 +4316,7 @@ name = "papyrus_common"
 version = "0.0.5"
 dependencies = [
  "bitvec",
+ "cairo-lang-starknet",
  "hex",
  "lazy_static",
  "pretty_assertions",
