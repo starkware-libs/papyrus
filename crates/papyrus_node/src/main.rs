@@ -5,6 +5,7 @@ use std::env::args;
 use std::process::exit;
 use std::sync::Arc;
 
+use papyrus_common::pending_classes::PendingClasses;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_config::presentation::get_config_presentation;
 use papyrus_config::validators::config_validate;
@@ -44,11 +45,18 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     // The sync is the only writer of the syncing state.
     let shared_highest_block = Arc::new(RwLock::new(None));
     let pending_data = Arc::new(RwLock::new(PendingData::default()));
+    let pending_classes = Arc::new(RwLock::new(PendingClasses::default()));
 
     // JSON-RPC server.
-    let (_, server_handle) =
-        run_server(&config.rpc, shared_highest_block.clone(), storage_reader.clone(), VERSION_FULL)
-            .await?;
+    let (_, server_handle) = run_server(
+        &config.rpc,
+        shared_highest_block.clone(),
+        pending_data.clone(),
+        pending_classes.clone(),
+        storage_reader.clone(),
+        VERSION_FULL,
+    )
+    .await?;
     let server_handle_future = tokio::spawn(server_handle.stopped());
 
     // Sync task.

@@ -5,6 +5,7 @@ use jsonrpsee::core::RpcResult;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
+use papyrus_common::pending_classes::PendingClasses;
 use papyrus_execution::objects::TransactionTrace;
 use papyrus_execution::{
     estimate_fee as exec_estimate_fee,
@@ -35,6 +36,7 @@ use starknet_api::transaction::{
     TransactionHash,
     TransactionOffsetInBlock,
 };
+use starknet_client::reader::PendingData;
 use starknet_client::writer::{StarknetWriter, WriterClientError};
 use starknet_client::ClientError;
 use tokio::sync::RwLock;
@@ -121,6 +123,8 @@ pub struct JsonRpcServerV0_4Impl {
     pub max_events_keys: usize,
     pub starting_block: BlockHashAndNumber,
     pub shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
+    pub pending_data: Arc<RwLock<PendingData>>,
+    pub pending_classes: Arc<RwLock<PendingClasses>>,
     pub writer_client: Arc<dyn StarknetWriter>,
 }
 
@@ -852,6 +856,8 @@ impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
         max_events_keys: usize,
         starting_block: BlockHashAndNumber,
         shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
+        pending_data: Arc<RwLock<PendingData>>,
+        pending_classes: Arc<RwLock<PendingClasses>>,
         writer_client: Arc<dyn StarknetWriter>,
     ) -> Self {
         Self {
@@ -862,6 +868,8 @@ impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
             max_events_keys,
             starting_block,
             shared_highest_block,
+            pending_data,
+            pending_classes,
             writer_client,
         }
     }

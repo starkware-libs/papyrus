@@ -19,7 +19,12 @@ use test_utils::get_rng;
 use tower::BoxError;
 
 use crate::middleware::proxy_rpc_request;
-use crate::test_utils::{get_test_highest_block, get_test_rpc_config};
+use crate::test_utils::{
+    get_test_highest_block,
+    get_test_pending_classes,
+    get_test_pending_data,
+    get_test_rpc_config,
+};
 use crate::v0_4_0::error::NO_BLOCKS;
 use crate::version_config::VERSION_CONFIG;
 use crate::{get_block_status, run_server, SERVER_MAX_BODY_SIZE};
@@ -29,10 +34,18 @@ async fn run_server_no_blocks() {
     let ((storage_reader, _), _temp_dir) = get_test_storage();
     let gateway_config = get_test_rpc_config();
     let shared_highest_block = get_test_highest_block();
-    let (addr, _handle) =
-        run_server(&gateway_config, shared_highest_block, storage_reader, "NODE VERSION")
-            .await
-            .unwrap();
+    let pending_data = get_test_pending_data();
+    let pending_classes = get_test_pending_classes();
+    let (addr, _handle) = run_server(
+        &gateway_config,
+        shared_highest_block,
+        pending_data,
+        pending_classes,
+        storage_reader,
+        "NODE VERSION",
+    )
+    .await
+    .unwrap();
     let client = HttpClientBuilder::default().build(format!("http://{addr:?}")).unwrap();
     let res: Result<RpcResult<BlockNumber>, Error> =
         client.request("starknet_blockNumber", [""]).await;
