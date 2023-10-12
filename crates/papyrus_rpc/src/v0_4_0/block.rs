@@ -79,6 +79,7 @@ pub(crate) fn get_block_number<Mode: TransactionKind>(
             get_latest_block_number(txn)?.ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?
         }
         BlockId::Tag(Tag::Pending) => {
+            // TODO(shahak): Panic here instead when all pending blocks are handled separately.
             return Err(ErrorObjectOwned::owned(
                 jsonrpsee::types::error::ErrorCode::InternalError.code(),
                 "Currently, Papyrus doesn't support pending blocks.",
