@@ -62,7 +62,7 @@ You can build and run a `Papyrus` node with the default configuration by running
 
 ```bash
 mkdir data
-cargo run --release --package papyrus_node --bin papyrus_node
+cargo run --release --package papyrus_node --bin papyrus_node -- --base_layer.node_url <ethereum_node_url>
 ```
 
 ### Configuration
@@ -95,7 +95,8 @@ You can run a `Papyrus` node with the default configuration by running:
 docker run --rm --name papyrus\
   -p 8080-8081:8080-8081 \
   -v <local-host-data-path>:/app/data \
-  ghcr.io/starkware-libs/papyrus:dev
+  ghcr.io/starkware-libs/papyrus:dev \
+  --base_layer.node_url <ethereum_node_url>
 ```
 
 > **NOTE**  
