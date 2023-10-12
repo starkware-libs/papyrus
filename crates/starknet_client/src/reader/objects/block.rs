@@ -4,10 +4,10 @@ mod block_test;
 
 use std::ops::Index;
 
-use papyrus_common::block_hash::calculate_block_commitments;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{
     Block as starknet_api_block,
+    BlockBodyCommitments,
     BlockHash,
     BlockNumber,
     BlockTimestamp,
@@ -207,7 +207,9 @@ impl Block {
             transaction_hashes,
         };
 
-        let commitments = calculate_block_commitments(&header, &body)?;
+        // TODO(Yoav): Temporarily disabled due to impact on sync performance.
+        // let commitments = calculate_block_commitments(&header, &body)?;
+        let commitments = BlockBodyCommitments::default();
 
         Ok((starknet_api_block { header, body, commitments }, self.starknet_version))
     }

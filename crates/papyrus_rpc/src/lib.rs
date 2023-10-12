@@ -25,6 +25,7 @@ use jsonrpsee::server::{ServerBuilder, ServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
 use jsonrpsee::types::ErrorObjectOwned;
+use papyrus_common::pending_classes::PendingClasses;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::validators::{validate_ascii, validate_path_exists};
@@ -38,6 +39,7 @@ use rpc_metrics::MetricLogger;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockStatus};
 use starknet_api::core::ChainId;
+use starknet_client::reader::PendingData;
 use starknet_client::writer::StarknetGatewayClient;
 use starknet_client::RetryConfig;
 use tokio::sync::RwLock;
@@ -176,6 +178,8 @@ struct ContinuationTokenAsStruct(EventIndex);
 pub async fn run_server(
     config: &RpcConfig,
     shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
+    pending_data: Arc<RwLock<PendingData>>,
+    pending_classes: Arc<RwLock<PendingClasses>>,
     storage_reader: StorageReader,
     node_version: &'static str,
 ) -> anyhow::Result<(SocketAddr, ServerHandle)> {
@@ -189,6 +193,8 @@ pub async fn run_server(
         config.max_events_keys,
         starting_block,
         shared_highest_block,
+        pending_data,
+        pending_classes,
         Arc::new(StarknetGatewayClient::new(
             &config.starknet_url,
             node_version,
