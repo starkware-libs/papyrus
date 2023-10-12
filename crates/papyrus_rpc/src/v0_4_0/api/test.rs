@@ -34,11 +34,13 @@ use starknet_api::state::{StateDiff, StorageKey};
 use starknet_api::transaction::{
     EventIndexInTransactionOutput,
     EventKey,
+    Transaction as StarknetApiTransaction,
     TransactionExecutionStatus,
     TransactionHash,
     TransactionOffsetInBlock,
 };
 use starknet_api::{patricia_key, stark_felt};
+use starknet_client::reader::objects::transaction::Transaction as PendingTransaction;
 use starknet_client::starknet_error::{KnownStarknetErrorCode, StarknetError, StarknetErrorCode};
 use starknet_client::writer::objects::response::{
     DeclareResponse,
@@ -1180,8 +1182,10 @@ async fn get_transaction_by_hash_state_only() {
 #[tokio::test]
 async fn get_transaction_by_block_id_and_index() {
     let method_name = "starknet_V0_4_getTransactionByBlockIdAndIndex";
-    let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let pending_data = get_test_pending_data();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerV0_4Impl,
+    >(None, None, Some(pending_data.clone()), None, None);
     let block = get_test_block(1, None, None, None);
     storage_writer
         .begin_rw_txn()
@@ -1224,6 +1228,47 @@ async fn get_transaction_by_block_id_and_index() {
         .await
         .unwrap();
     assert_eq!(res, expected_transaction);
+
+    // Get transaction of pending block.
+    let mut rng = get_rng();
+    // TODO(shahak): Remove retry once v3 transactions are supported and the impl of TryInto will
+    // become impl of Into.
+    let (pending_transaction, expected_pending_transaction) = loop {
+        let pending_transaction = PendingTransaction::get_test_instance(&mut rng);
+        let Ok(expected_transaction): Result<StarknetApiTransaction, _> =
+            pending_transaction.clone().try_into()
+        else {
+            continue;
+        };
+        let Ok(expected_transaction) = expected_transaction.try_into() else {
+            continue;
+        };
+        let transaction_hash = pending_transaction.transaction_hash();
+        break (
+            pending_transaction,
+            TransactionWithHash { transaction: expected_transaction, transaction_hash },
+        );
+    };
+    pending_data.write().await.block.transactions.push(pending_transaction);
+    let res = module
+        .call::<_, TransactionWithHash>(method_name, (BlockId::Tag(Tag::Pending), 0))
+        .await
+        .unwrap();
+    assert_eq!(res, expected_pending_transaction);
+
+    // Ask for an invalid transaction index in pending block.
+    call_api_then_assert_and_validate_schema_for_err::<
+        _,
+        (BlockId, TransactionOffsetInBlock),
+        TransactionWithHash,
+    >(
+        &module,
+        method_name,
+        &Some((BlockId::Tag(Tag::Pending), TransactionOffsetInBlock(1))),
+        &VERSION_0_4,
+        &INVALID_TRANSACTION_INDEX.into(),
+    )
+    .await;
 
     // Ask for an invalid block hash.
     call_api_then_assert_and_validate_schema_for_err::<

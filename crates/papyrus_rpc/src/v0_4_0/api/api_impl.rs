@@ -70,7 +70,7 @@ use super::{
     SimulationFlag,
     TransactionTraceWithHash,
 };
-use crate::api::{BlockHashOrNumber, JsonRpcServerImpl};
+use crate::api::{BlockHashOrNumber, JsonRpcServerImpl, Tag};
 use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
 use crate::v0_4_0::block::{get_block_header_by_number, get_block_number};
 use crate::v0_4_0::error::{
@@ -229,25 +229,44 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_transaction_by_block_id_and_index(
+    async fn get_transaction_by_block_id_and_index(
         &self,
         block_id: BlockId,
         index: TransactionOffsetInBlock,
     ) -> RpcResult<TransactionWithHash> {
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        let block_number = get_block_number(&txn, block_id)?;
+        let (starknet_api_transaction, transaction_hash) =
+            if let BlockId::Tag(Tag::Pending) = block_id {
+                let client_transaction = self
+                    .pending_data
+                    .read()
+                    .await
+                    .block
+                    .transactions
+                    .get(index.0)
+                    .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?
+                    .clone();
+                let transaction_hash = client_transaction.transaction_hash();
+                (client_transaction.try_into().map_err(internal_server_error)?, transaction_hash)
+            } else {
+                let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+                let block_number = get_block_number(&txn, block_id)?;
 
-        let tx_index = TransactionIndex(block_number, index);
-        let transaction = txn
-            .get_transaction(tx_index)
-            .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?;
-        let transaction_hash = txn
-            .get_transaction_hash_by_idx(&tx_index)
-            .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?;
+                let tx_index = TransactionIndex(block_number, index);
+                let transaction = txn
+                    .get_transaction(tx_index)
+                    .map_err(internal_server_error)?
+                    .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?;
+                let transaction_hash = txn
+                    .get_transaction_hash_by_idx(&tx_index)
+                    .map_err(internal_server_error)?
+                    .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?;
+                (transaction, transaction_hash)
+            };
 
-        Ok(TransactionWithHash { transaction: transaction.try_into()?, transaction_hash })
+        Ok(TransactionWithHash {
+            transaction: starknet_api_transaction.try_into()?,
+            transaction_hash,
+        })
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]

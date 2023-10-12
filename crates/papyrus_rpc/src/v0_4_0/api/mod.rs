@@ -93,7 +93,7 @@ pub trait JsonRpc {
 
     /// Gets the details of a transaction by a given block id and index.
     #[method(name = "getTransactionByBlockIdAndIndex")]
-    fn get_transaction_by_block_id_and_index(
+    async fn get_transaction_by_block_id_and_index(
         &self,
         block_id: BlockId,
         index: TransactionOffsetInBlock,
