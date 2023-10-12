@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::fmt::Debug;
+use std::iter;
 use std::net::SocketAddr;
 use std::ops::Index;
 
@@ -39,6 +40,7 @@ use starknet_api::transaction::{
     TransactionOffsetInBlock,
 };
 use starknet_api::{patricia_key, stark_felt};
+use starknet_client::reader::objects::transaction::Transaction as PendingTransaction;
 use starknet_client::starknet_error::{KnownStarknetErrorCode, StarknetError, StarknetErrorCode};
 use starknet_client::writer::objects::response::{
     DeclareResponse,
@@ -250,8 +252,10 @@ async fn syncing() {
 #[tokio::test]
 async fn get_block_transaction_count() {
     let method_name = "starknet_V0_4_getBlockTransactionCount";
-    let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let pending_data = get_test_pending_data();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerV0_4Impl,
+    >(None, None, Some(pending_data.clone()), None, None);
     let transaction_count = 5;
     let block = get_test_block(transaction_count, None, None, None);
     storage_writer
@@ -287,6 +291,16 @@ async fn get_block_transaction_count() {
     // Ask for the latest block.
     let res = module.call::<_, usize>(method_name, [BlockId::Tag(Tag::Latest)]).await.unwrap();
     assert_eq!(res, transaction_count);
+
+    // Ask for pending block
+    let pending_transaction_count = 3;
+    let mut rng = get_rng();
+    pending_data.write().await.block.transactions.extend(
+        iter::repeat(PendingTransaction::get_test_instance(&mut rng))
+            .take(pending_transaction_count),
+    );
+    let res = module.call::<_, usize>(method_name, [BlockId::Tag(Tag::Pending)]).await.unwrap();
+    assert_eq!(res, pending_transaction_count);
 
     // Ask for an invalid block hash.
     call_api_then_assert_and_validate_schema_for_err::<_, BlockId, usize>(
