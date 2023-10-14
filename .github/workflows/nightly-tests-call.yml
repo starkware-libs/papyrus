@@ -11,6 +11,10 @@ on:
         required: true
       INTEGRATION_TESTNET_SENDER_PRIVATE_KEY:
         required: true
+      SLACK_BOT_TOKEN:
+        required: true
+      SLACK_ALERT_CHANNEL:
+        required: true
 
 jobs:
   GW-integration-test-call:
@@ -25,13 +29,24 @@ jobs:
         # run. As we want to keep running this step after a test failure we can either start with
         # `set +e` to suppress all errors, or, as done below, append `|| retVal=$?` to the command
         # which makes it successful while storing the potential erroneous code.
-      - run: >
+      - id: run_test
+        run: >
           sudo apt update; sudo apt -y install libclang-dev;
           INTEGRATION_TESTNET_NODE_URL=${{ secrets.INTEGRATION_TESTNET_NODE_URL }}
           SENDER_PRIVATE_KEY=${{ secrets.INTEGRATION_TESTNET_SENDER_PRIVATE_KEY }}
           cargo test --test gateway_integration_test -p papyrus_rpc test_gw_integration_testnet
           -- --ignored || retVal=$?;
+          echo "retVal=$retVal" >> $GITHUB_OUTPUT;
           if [ $retVal -ne 0 ]; then
               echo "Integration test failed with exit code $retVal";
           fi;
-          exit $retVal
+      - name: In case of a failure - post to a Slack channel.
+        id: slack
+        if: ${{ steps.run_test.outputs.retVal }} != 0
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          channel-id: ${{ secrets.SLACK_ALERT_CHANNEL }}
+          slack-message:
+            "gateway_integration_test failed with exit code: ${{ steps.run_test.outputs.retVal }}"
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
