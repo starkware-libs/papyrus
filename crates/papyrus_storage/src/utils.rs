@@ -41,7 +41,7 @@ where
 /// Dumps the declared_classes table from the storage to a file.
 pub fn dump_declared_classes_table_to_file(file_path: &str) -> StorageResult<()> {
     let storage_config = StorageConfig::default();
-    let (storage_reader, _) = open_storage(storage_config.clone())?;
+    let (storage_reader, _) = open_storage(storage_config)?;
     let txn = storage_reader.begin_ro_txn()?;
     dump_table_to_file(&txn, &txn.tables.declared_classes, file_path)?;
     Ok(())

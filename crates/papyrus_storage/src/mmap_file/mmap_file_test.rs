@@ -40,11 +40,7 @@ fn write_read() {
     let res_writer = writer.get(LocationInFile { offset, len }).unwrap();
     assert_eq!(res_writer, data);
 
-    let another_reader = reader;
     let res: Vec<u8> = reader.get(LocationInFile { offset, len }).unwrap();
-    assert_eq!(res, data);
-
-    let res: Vec<u8> = another_reader.get(LocationInFile { offset, len }).unwrap();
     assert_eq!(res, data);
 
     dir.close().unwrap();
@@ -66,6 +62,7 @@ fn concurrent_reads() {
     let mut handles = vec![];
 
     for _ in 0..num_threads {
+        let reader = reader.clone();
         let handle = std::thread::spawn(move || reader.get(location_in_file).unwrap());
         handles.push(handle);
     }
@@ -99,13 +96,11 @@ fn concurrent_reads_single_write() {
     let mut handles = Vec::with_capacity(n);
 
     for _ in 0..n {
+        let reader = reader.clone();
         let reader_barrier = barrier.clone();
         let first_data = first_data.clone();
         handles.push(std::thread::spawn(move || {
-            assert_eq!(
-                <FileReader as Reader<Vec<u8>>>::get(&reader, first_location).unwrap(),
-                first_data
-            );
+            assert_eq!(reader.get(first_location).unwrap(), first_data);
             reader_barrier.wait();
             // readers wait for the writer to write the value.
             reader_barrier.wait();
@@ -196,7 +191,11 @@ async fn write_read_different_locations() {
     let barrier = Arc::new(Barrier::new(n_readers_per_phase + 1));
     let lock = Arc::new(RwLock::new(0));
 
-    async fn reader_task(reader: FileReader, lock: Arc<RwLock<usize>>, barrier: Arc<Barrier>) {
+    async fn reader_task(
+        reader: FileReader<Vec<u8>>,
+        lock: Arc<RwLock<usize>>,
+        barrier: Arc<Barrier>,
+    ) {
         barrier.wait().await;
         let round: usize;
         {
@@ -213,6 +212,7 @@ async fn write_read_different_locations() {
     let mut handles = Vec::new();
     for round in 0..ROUNDS {
         for _ in 0..n_readers_per_phase {
+            let reader = reader.clone();
             handles.push(tokio::spawn(reader_task(reader, lock.clone(), barrier.clone())));
         }
 
@@ -229,4 +229,26 @@ async fn write_read_different_locations() {
     for handle in handles {
         handle.await.unwrap();
     }
+}
+
+#[test]
+fn reader_when_writer_is_out_of_scope() {
+    let dir = tempdir().unwrap();
+    let (mut writer, reader) = open_file(
+        get_test_config(),
+        dir.path().to_path_buf().join("test_reader_when_writer_is_out_of_scope"),
+    )
+    .unwrap();
+    let data: Vec<u8> = vec![1, 2, 3];
+    let offset = 0;
+
+    let len = writer.insert(offset, &data);
+    let res: Vec<u8> = reader.get(LocationInFile { offset, len }).unwrap();
+    assert_eq!(res, data);
+
+    drop(writer);
+    let res: Vec<u8> = reader.get(LocationInFile { offset, len }).unwrap();
+    assert_eq!(res, data);
+
+    dir.close().unwrap();
 }
