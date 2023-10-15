@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use pretty_assertions::assert_eq;
 use rand::Rng;
 use tempfile::tempdir;
 use tokio::sync::{Barrier, RwLock};
@@ -31,16 +32,17 @@ fn config_validation() {
 #[test]
 fn write_read() {
     let dir = tempdir().unwrap();
-    let (mut writer, reader) =
-        open_file(get_test_config(), dir.path().to_path_buf().join("test_write_read")).unwrap();
-    let data: Vec<u8> = vec![1, 2, 3];
     let offset = 0;
+    let (mut writer, reader) =
+        open_file(get_test_config(), dir.path().to_path_buf().join("test_write_read"), offset)
+            .unwrap();
+    let data: Vec<u8> = vec![1, 2, 3];
 
-    let len = writer.insert(offset, &data);
-    let res_writer = writer.get(LocationInFile { offset, len }).unwrap();
+    let location_in_file = writer.append(&data);
+    let res_writer = writer.get(location_in_file).unwrap();
     assert_eq!(res_writer, data);
 
-    let res: Vec<u8> = reader.get(LocationInFile { offset, len }).unwrap();
+    let res: Vec<u8> = reader.get(location_in_file).unwrap();
     assert_eq!(res, data);
 
     dir.close().unwrap();
@@ -49,14 +51,16 @@ fn write_read() {
 #[test]
 fn concurrent_reads() {
     let dir = tempdir().unwrap();
-    let (mut writer, reader) =
-        open_file(get_test_config(), dir.path().to_path_buf().join("test_concurrent_reads"))
-            .unwrap();
-    let data: Vec<u8> = vec![1, 2, 3];
     let offset = 0;
+    let (mut writer, reader) = open_file(
+        get_test_config(),
+        dir.path().to_path_buf().join("test_concurrent_reads"),
+        offset,
+    )
+    .unwrap();
+    let data: Vec<u8> = vec![1, 2, 3];
 
-    let len = writer.insert(offset, &data);
-    let location_in_file = LocationInFile { offset, len };
+    let location_in_file = writer.append(&data);
 
     let num_threads = 50;
     let mut handles = vec![];
@@ -78,18 +82,19 @@ fn concurrent_reads() {
 #[test]
 fn concurrent_reads_single_write() {
     let dir = tempdir().unwrap();
+    let offset = 0;
     let (mut writer, reader) = open_file(
         get_test_config(),
         dir.path().to_path_buf().join("test_concurrent_reads_single_write"),
+        offset,
     )
     .unwrap();
     let first_data: Vec<u8> = vec![1, 2, 3];
     let second_data: Vec<u8> = vec![3, 2, 1];
-    let offset = 0;
-    let len = writer.insert(offset, &first_data);
+    let first_location = writer.append(&first_data);
     writer.flush();
-    let first_location = LocationInFile { offset, len };
-    let second_location = LocationInFile { offset: offset + len, len };
+    let second_location =
+        LocationInFile { offset: first_location.next_offset(), len: first_location.len };
 
     let n = 10;
     let barrier = Arc::new(std::sync::Barrier::new(n + 1));
@@ -109,7 +114,7 @@ fn concurrent_reads_single_write() {
     }
     // Writer waits for all readers to read the first value.
     barrier.wait();
-    writer.insert(offset + len, &second_data);
+    writer.append(&second_data);
     writer.flush();
     // Allow readers to proceed reading the second value.
     barrier.wait();
@@ -132,43 +137,48 @@ fn grow_file() {
     };
 
     let file_path = dir.path().to_path_buf().join("test_grow_file");
+    let mut offset = 0;
     {
         let file =
             OpenOptions::new().read(true).write(true).create(true).open(file_path.clone()).unwrap();
         // file_size = 0, offset = 0
         assert_eq!(file.metadata().unwrap().len(), 0);
 
-        let (mut writer, _) = open_file(config.clone(), file_path.clone()).unwrap();
+        let (mut writer, _) = open_file(config.clone(), file_path.clone(), offset).unwrap();
         // file_size = 4 (growth_step), offset = 0
         let mut file_size = file.metadata().unwrap().len();
         assert_eq!(file_size, config.growth_step as u64);
+        assert_eq!(offset, 0);
 
-        let mut offset = 0;
-        offset += writer.insert(offset, &data);
+        offset += writer.append(&data).len;
         // file_size = 8 (2 * growth_step), offset = 3 (serialization_size)
         file_size = file.metadata().unwrap().len();
         assert_eq!(file_size, 2 * config.growth_step as u64);
+        assert_eq!(offset, serialization_size);
 
-        offset += writer.insert(offset, &data);
+        offset += writer.append(&data).len;
         // file_size = 12 (3 * growth_step), offset = 6 (2 * serialization_size)
         file_size = file.metadata().unwrap().len();
         assert_eq!(file_size, 3 * config.growth_step as u64);
+        assert_eq!(offset, 2 * serialization_size);
 
-        offset += writer.insert(offset, &data);
+        offset += writer.append(&data).len;
         // file_size = 12 (3 * growth_step), offset = 9 (3 * serialization_size)
         file_size = file.metadata().unwrap().len();
         assert_eq!(file_size, 3 * config.growth_step as u64);
+        assert_eq!(offset, 3 * serialization_size);
 
-        writer.insert(offset, &data);
+        offset += writer.append(&data).len;
         // file_size = 16 (4 * growth_step), offset = 12 (4 * serialization_size)
         file_size = file.metadata().unwrap().len();
         assert_eq!(file_size, 4 * config.growth_step as u64);
+        assert_eq!(offset, 4 * serialization_size);
     }
 
     let file =
         OpenOptions::new().read(true).write(true).create(true).open(file_path.clone()).unwrap();
     assert_eq!(file.metadata().unwrap().len(), 4 * config.growth_step as u64);
-    let _ = open_file::<Vec<u8>>(config.clone(), file_path).unwrap();
+    let _ = open_file::<Vec<u8>>(config.clone(), file_path, offset).unwrap();
     assert_eq!(file.metadata().unwrap().len(), 4 * config.growth_step as u64);
 
     dir.close().unwrap();
@@ -177,13 +187,14 @@ fn grow_file() {
 #[tokio::test]
 async fn write_read_different_locations() {
     let dir = tempdir().unwrap();
+    let offset = 0;
     let (mut writer, reader) = open_file(
         get_test_config(),
         dir.path().to_path_buf().join("test_write_read_different_locations"),
+        offset,
     )
     .unwrap();
     let mut data: Vec<u8> = vec![0, 1];
-    let mut offset = 0;
 
     const ROUNDS: u8 = 10;
     const LEN: usize = 3;
@@ -216,8 +227,7 @@ async fn write_read_different_locations() {
             handles.push(tokio::spawn(reader_task(reader, lock.clone(), barrier.clone())));
         }
 
-        let len = writer.insert(offset, &data);
-        offset += len;
+        writer.append(&data);
         writer.flush();
         {
             *lock.write().await = round as usize;
@@ -234,20 +244,21 @@ async fn write_read_different_locations() {
 #[test]
 fn reader_when_writer_is_out_of_scope() {
     let dir = tempdir().unwrap();
+    let offset = 0;
     let (mut writer, reader) = open_file(
         get_test_config(),
         dir.path().to_path_buf().join("test_reader_when_writer_is_out_of_scope"),
+        offset,
     )
     .unwrap();
     let data: Vec<u8> = vec![1, 2, 3];
-    let offset = 0;
 
-    let len = writer.insert(offset, &data);
-    let res: Vec<u8> = reader.get(LocationInFile { offset, len }).unwrap();
+    let location_in_file = writer.append(&data);
+    let res: Vec<u8> = reader.get(location_in_file).unwrap();
     assert_eq!(res, data);
 
     drop(writer);
-    let res: Vec<u8> = reader.get(LocationInFile { offset, len }).unwrap();
+    let res: Vec<u8> = reader.get(location_in_file).unwrap();
     assert_eq!(res, data);
 
     dir.close().unwrap();

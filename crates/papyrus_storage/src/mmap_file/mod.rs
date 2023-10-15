@@ -67,8 +67,8 @@ pub enum MMapFileError {
 
 /// A trait for writing to a memory mapped file.
 pub trait Writer<V: StorageSerde> {
-    /// Inserts an object to the file, returns the number of bytes written.
-    fn insert(&mut self, offset: usize, val: &V) -> usize;
+    /// Inserts an object to the file, returns the [`LocationInFile`] of the object.
+    fn append(&mut self, val: &V) -> LocationInFile;
 
     /// Flushes the mmap to the file.
     fn flush(&self);
@@ -118,22 +118,26 @@ impl<V: StorageSerde> FileHandler<V> {
 }
 
 impl<V: StorageSerde + Debug> Writer<V> for FileHandler<V> {
-    fn insert(&mut self, offset: usize, val: &V) -> usize {
-        debug!("Inserting object at offset: {}", offset);
+    fn append(&mut self, val: &V) -> LocationInFile {
         trace!("Inserting object: {:?}", val);
         // TODO(dan): change serialize_into to return serialization size.
         let len = val.serialize().expect("Should be able to serialize").len();
+        let offset;
         {
             let mut mmap_file = self.mmap_file.lock().expect("Lock should not be poisoned");
+            offset = mmap_file.offset;
+            debug!("Inserting object at offset: {}", offset);
             let mut mmap_slice = &mut mmap_file.mmap[offset..];
             let _ = val.serialize_into(&mut mmap_slice);
             mmap_file
                 .mmap
                 .flush_async_range(offset, len)
                 .expect("Failed to asynchronously flush the mmap after inserting");
+            mmap_file.offset += len;
         }
-        self.grow_file_if_needed(offset + len);
-        len
+        let location = LocationInFile { offset, len };
+        self.grow_file_if_needed(location.next_offset());
+        location
     }
 
     fn flush(&self) {
@@ -165,8 +169,8 @@ pub struct FileWriter<V: StorageSerde> {
 }
 
 impl<V: StorageSerde + Debug> Writer<V> for FileWriter<V> {
-    fn insert(&mut self, offset: usize, val: &V) -> usize {
-        self.file_handler.insert(offset, val)
+    fn append(&mut self, val: &V) -> LocationInFile {
+        self.file_handler.append(val)
     }
 
     fn flush(&self) {
@@ -201,6 +205,7 @@ pub struct MMapFile<V: StorageSerde> {
     file: File,
     size: usize,
     mmap: MmapMut,
+    offset: usize,
     _value_type: PhantomData<V>,
 }
 
@@ -226,6 +231,7 @@ impl<V: StorageSerde> MMapFile<V> {
 pub(crate) fn open_file<V: StorageSerde>(
     config: MmapFileConfig,
     path: PathBuf,
+    offset: usize,
 ) -> MmapFileResult<(FileWriter<V>, FileReader<V>)> {
     debug!("Opening file");
     // TODO: move validation to caller.
@@ -239,6 +245,7 @@ pub(crate) fn open_file<V: StorageSerde>(
         file,
         mmap,
         size: size.try_into().expect("size should fit in usize"),
+        offset,
         _value_type: PhantomData {},
     };
     let shared_mmap_file = Arc::new(Mutex::new(mmap_file));
