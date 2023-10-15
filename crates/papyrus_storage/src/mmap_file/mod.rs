@@ -115,6 +115,11 @@ impl<V: StorageSerde + Debug> Writer<V> for FileWriter<V> {
     fn flush(&self) {
         self.file_handler.flush();
     }
+
+    fn flush(&self) {
+        let mmap_file = self.mmap_file.lock().expect("Lock should not be poisoned");
+        mmap_file.flush();
+    }
 }
 
 impl<V: StorageSerde> Reader<V> for FileWriter<V> {
