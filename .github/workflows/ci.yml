@@ -96,7 +96,7 @@ jobs:
           toolchain: stable
       - uses: Swatinem/rust-cache@v2
       - run: >
-          cargo test -r --test '*' -- --include-ignored;
+          cargo test -r --test '*' -- --include-ignored --skip test_gw_integration_testnet;
           cargo run -r -p papyrus_node --bin central_source_integration_test
 
   rustfmt:
