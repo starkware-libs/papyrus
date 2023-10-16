@@ -4,6 +4,7 @@ mod central_test;
 mod state_update_stream;
 
 use std::collections::{BTreeMap, HashMap};
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use async_stream::stream;
@@ -13,6 +14,7 @@ use futures::stream::BoxStream;
 use futures_util::StreamExt;
 use indexmap::IndexMap;
 use itertools::chain;
+use lru::LruCache;
 #[cfg(test)]
 use mockall::automock;
 use papyrus_common::BlockHashAndNumber;
@@ -35,6 +37,7 @@ use starknet_client::reader::{
     StarknetReader,
 };
 use starknet_client::{ClientCreationError, RetryConfig};
+use tokio::sync::Mutex;
 use tracing::{debug, trace};
 
 use self::state_update_stream::{StateUpdateStream, StateUpdateStreamConfig};
@@ -49,6 +52,8 @@ pub struct CentralSourceConfig {
     pub max_state_updates_to_download: usize,
     pub max_state_updates_to_store_in_memory: usize,
     pub max_classes_to_download: usize,
+    // TODO(dan): validate that class_cache_size is a positive integer.
+    pub class_cache_size: usize,
     pub retry_config: RetryConfig,
 }
 
@@ -61,6 +66,7 @@ impl Default for CentralSourceConfig {
             max_state_updates_to_download: 20,
             max_state_updates_to_store_in_memory: 20,
             max_classes_to_download: 20,
+            class_cache_size: 30,
             retry_config: RetryConfig {
                 retry_base_millis: 30,
                 retry_max_delay_millis: 30000,
@@ -110,6 +116,12 @@ impl SerializeConfig for CentralSourceConfig {
                 "Maximum number of classes to download at a given time.",
                 ParamPrivacyInput::Public,
             ),
+            ser_param(
+                "class_cache_size",
+                &self.class_cache_size,
+                "Size of class cache, must be a positive integer.",
+                ParamPrivacyInput::Public,
+            ),
         ]);
         chain!(self_params_dump, append_sub_config_name(self.retry_config.dump(), "retry_config"))
             .collect()
@@ -121,10 +133,11 @@ pub struct GenericCentralSource<TStarknetClient: StarknetReader + Send + Sync> {
     pub starknet_client: Arc<TStarknetClient>,
     pub storage_reader: StorageReader,
     pub state_update_stream_config: StateUpdateStreamConfig,
+    pub(crate) class_cache: Arc<Mutex<LruCache<ClassHash, ApiContractClass>>>,
 }
 
 #[derive(Clone)]
-enum ApiContractClass {
+pub(crate) enum ApiContractClass {
     DeprecatedContractClass(starknet_api::deprecated_contract_class::ContractClass),
     ContractClass(starknet_api::state::ContractClass),
 }
@@ -251,6 +264,7 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> CentralSourceTrait
             self.starknet_client.clone(),
             self.storage_reader.clone(),
             self.state_update_stream_config.clone(),
+            self.class_cache.clone(),
         )
         .boxed()
     }
@@ -395,6 +409,10 @@ impl CentralSource {
                 max_state_updates_to_store_in_memory: config.max_state_updates_to_store_in_memory,
                 max_classes_to_download: config.max_classes_to_download,
             },
+            class_cache: Arc::from(Mutex::new(LruCache::new(
+                NonZeroUsize::new(config.class_cache_size)
+                    .expect("class_cache_size should be a positive integer."),
+            ))),
         })
     }
 }

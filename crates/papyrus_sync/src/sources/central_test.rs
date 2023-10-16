@@ -1,9 +1,11 @@
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use assert_matches::assert_matches;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use futures_util::pin_mut;
 use indexmap::{indexmap, IndexMap};
+use lru::LruCache;
 use mockall::predicate;
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
@@ -35,9 +37,11 @@ use starknet_client::reader::{
     StorageEntry,
 };
 use starknet_client::ClientError;
+use tokio::sync::Mutex;
 use tokio_stream::StreamExt;
 
 use super::state_update_stream::StateUpdateStreamConfig;
+use super::ApiContractClass;
 use crate::sources::central::{CentralError, CentralSourceTrait, GenericCentralSource};
 
 const TEST_CONCURRENT_REQUESTS: usize = 300;
@@ -58,6 +62,7 @@ async fn last_block_number() {
         concurrent_requests: TEST_CONCURRENT_REQUESTS,
         storage_reader: reader,
         state_update_stream_config: state_update_stream_config_for_test(),
+        class_cache: get_test_class_cache(),
     };
 
     let last_block_number = central_source.get_latest_block().await.unwrap().unwrap().block_number;
@@ -83,6 +88,7 @@ async fn stream_block_headers() {
         starknet_client: Arc::new(mock),
         storage_reader: reader,
         state_update_stream_config: state_update_stream_config_for_test(),
+        class_cache: get_test_class_cache(),
     };
 
     let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
@@ -120,6 +126,7 @@ async fn stream_block_headers_some_are_missing() {
         starknet_client: Arc::new(mock),
         storage_reader: reader,
         state_update_stream_config: state_update_stream_config_for_test(),
+        class_cache: get_test_class_cache(),
     };
 
     let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
@@ -172,6 +179,7 @@ async fn stream_block_headers_error() {
         starknet_client: Arc::new(mock),
         storage_reader: reader,
         state_update_stream_config: state_update_stream_config_for_test(),
+        class_cache: get_test_class_cache(),
     };
 
     let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
@@ -308,6 +316,7 @@ async fn stream_state_updates() {
         starknet_client: Arc::new(mock),
         storage_reader: reader,
         state_update_stream_config: state_update_stream_config_for_test(),
+        class_cache: get_test_class_cache(),
     };
     let initial_block_num = BlockNumber(START_BLOCK_NUMBER);
 
@@ -418,6 +427,7 @@ async fn stream_compiled_classes() {
         starknet_client: Arc::new(mock),
         storage_reader: reader,
         state_update_stream_config: state_update_stream_config_for_test(),
+        class_cache: get_test_class_cache(),
     };
 
     let stream = central_source.stream_compiled_classes(BlockNumber(0), BlockNumber(2));
@@ -441,4 +451,8 @@ fn state_update_stream_config_for_test() -> StateUpdateStreamConfig {
         max_state_updates_to_store_in_memory: 10,
         max_classes_to_download: 10,
     }
+}
+
+fn get_test_class_cache() -> Arc<Mutex<LruCache<ClassHash, ApiContractClass>>> {
+    Arc::from(Mutex::new(LruCache::new(NonZeroUsize::new(2).unwrap())))
 }
