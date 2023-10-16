@@ -9,6 +9,11 @@
     "privacy": "Public",
     "value": "0xc662c410C0ECf747543f5bA90660f6ABeBD9C8c4"
   },
+  "central.class_cache_size": {
+    "description": "Size of class cache, must be a natural number.",
+    "privacy": "Public",
+    "value": 30
+  },
   "central.concurrent_requests": {
     "description": "Maximum number of concurrent requests to Starknet feeder-gateway for getting a type of data (for example, blocks).",
     "privacy": "Public",
