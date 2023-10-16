@@ -91,7 +91,7 @@ pub trait JsonRpc {
 
     /// Gets the details of a submitted transaction.
     #[method(name = "getTransactionByHash")]
-    fn get_transaction_by_hash(
+    async fn get_transaction_by_hash(
         &self,
         transaction_hash: TransactionHash,
     ) -> RpcResult<TransactionWithHash>;
