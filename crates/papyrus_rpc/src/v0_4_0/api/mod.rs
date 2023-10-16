@@ -110,7 +110,7 @@ pub trait JsonRpc {
 
     /// Gets the information about the result of executing the requested block.
     #[method(name = "getStateUpdate")]
-    fn get_state_update(&self, block_id: BlockId) -> RpcResult<StateUpdate>;
+    async fn get_state_update(&self, block_id: BlockId) -> RpcResult<StateUpdate>;
 
     /// Gets the transaction receipt by the transaction hash.
     #[method(name = "getTransactionReceipt")]
