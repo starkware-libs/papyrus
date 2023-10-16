@@ -37,7 +37,7 @@ use starknet_api::transaction::{
     TransactionHash,
     TransactionOffsetInBlock,
 };
-use starknet_client::reader::PendingData;
+use starknet_client::reader::{PendingData, StorageEntry};
 use starknet_client::writer::{StarknetWriter, WriterClientError};
 use starknet_client::ClientError;
 use tokio::sync::RwLock;
@@ -178,12 +178,28 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_storage_at(
+    async fn get_storage_at(
         &self,
         contract_address: ContractAddress,
         key: StorageKey,
         block_id: BlockId,
     ) -> RpcResult<StarkFelt> {
+        let block_id = if let BlockId::Tag(Tag::Pending) = block_id {
+            let pending_storage_diffs =
+                &self.pending_data.read().await.state_update.state_diff.storage_diffs;
+            if let Some(storage_entries) = pending_storage_diffs.get(&contract_address) {
+                // iterating in reverse to get the latest value.
+                for StorageEntry { key: other_key, value } in storage_entries.iter().rev() {
+                    if key == *other_key {
+                        return Ok(*value);
+                    }
+                }
+            }
+            BlockId::Tag(Tag::Latest)
+        } else {
+            block_id
+        };
+
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         // Check that the block is valid and get the state number.

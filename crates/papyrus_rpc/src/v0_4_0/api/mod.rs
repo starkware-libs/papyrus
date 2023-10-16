@@ -82,7 +82,7 @@ pub trait JsonRpc {
 
     /// Gets the value of the storage at the given address, key, and block.
     #[method(name = "getStorageAt")]
-    fn get_storage_at(
+    async fn get_storage_at(
         &self,
         contract_address: ContractAddress,
         key: StorageKey,
