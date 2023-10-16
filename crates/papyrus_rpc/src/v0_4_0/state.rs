@@ -10,13 +10,24 @@ use starknet_api::state::{
     StorageKey,
     ThinStateDiff as starknet_api_ThinStateDiff,
 };
+use starknet_client::reader::objects::state::{
+    DeclaredClassHashEntry as ClientDeclaredClassHashEntry,
+    DeployedContract as ClientDeployedContract,
+    ReplacedClass as ClientReplacedClass,
+    StateDiff as ClientStateDiff,
+    StorageEntry as ClientStorageEntry,
+};
 
 const CONTRACT_CLASS_VERSION: &str = "0.1.0";
 
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct StateUpdate {
-    pub block_hash: BlockHash,
-    pub new_root: GlobalRoot,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub block_hash: Option<BlockHash>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub new_root: Option<GlobalRoot>,
     pub old_root: GlobalRoot,
     pub state_diff: ThinStateDiff,
 }
@@ -68,6 +79,48 @@ impl From<starknet_api_ThinStateDiff> for ThinStateDiff {
     }
 }
 
+impl From<ClientStateDiff> for ThinStateDiff {
+    fn from(diff: ClientStateDiff) -> Self {
+        Self {
+            deployed_contracts: Vec::from_iter(diff.deployed_contracts.into_iter().map(
+                |ClientDeployedContract { address, class_hash }| DeployedContract {
+                    address,
+                    class_hash,
+                },
+            )),
+            storage_diffs: Vec::from_iter(diff.storage_diffs.into_iter().map(
+                |(address, entries)| {
+                    let storage_entries = Vec::from_iter(
+                        entries
+                            .into_iter()
+                            .map(|ClientStorageEntry { key, value }| StorageEntry { key, value }),
+                    );
+                    StorageDiff { address, storage_entries }
+                },
+            )),
+            declared_classes: diff
+                .declared_classes
+                .into_iter()
+                .map(|ClientDeclaredClassHashEntry { class_hash, compiled_class_hash }| {
+                    ClassHashes { class_hash, compiled_class_hash }
+                })
+                .collect(),
+            deprecated_declared_classes: diff.old_declared_contracts,
+            nonces: Vec::from_iter(
+                diff.nonces
+                    .into_iter()
+                    .map(|(contract_address, nonce)| ContractNonce { contract_address, nonce }),
+            ),
+            replaced_classes: Vec::from_iter(diff.replaced_classes.into_iter().map(
+                |ClientReplacedClass { address: contract_address, class_hash }| ReplacedClasses {
+                    contract_address,
+                    class_hash,
+                },
+            )),
+        }
+    }
+}
+
 /// The nonce of a StarkNet contract.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ContractNonce {
@@ -87,7 +140,7 @@ pub struct DeployedContract {
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StorageDiff {
     pub address: ContractAddress,
-    storage_entries: Vec<StorageEntry>,
+    pub(super) storage_entries: Vec<StorageEntry>,
 }
 
 /// A storage entry in a contract.
