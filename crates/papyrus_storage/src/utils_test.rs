@@ -34,9 +34,9 @@ fn test_dump_table_to_file() {
     let declared_classes = vec![declared_class1.clone(), declared_class2.clone()];
     let declared_classes_for_append_state = indexmap!(
         declared_class1.0 =>
-        (compiled_class_hash, declared_class1.1.clone()),
+        (compiled_class_hash, declared_class1.1),
         declared_class2.0 =>
-        (compiled_class_hash, declared_class2.1.clone()),
+        (compiled_class_hash, declared_class2.1),
     );
 
     let ((reader, mut writer), _temp_dir) = get_test_storage();
