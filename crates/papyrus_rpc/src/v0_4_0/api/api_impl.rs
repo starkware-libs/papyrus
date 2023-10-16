@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -5,6 +7,7 @@ use jsonrpsee::core::RpcResult;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
+use papyrus_common::profiler::Profiler;
 use papyrus_execution::objects::TransactionTrace;
 use papyrus_execution::{
     estimate_fee as exec_estimate_fee,
@@ -646,6 +649,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             &txn,
             state_number,
             block_execution_config,
+            None,
         ) {
             Ok(fees) => Ok(fees
                 .into_iter()
@@ -687,6 +691,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             block_execution_config,
             charge_fee,
             validate,
+            None,
         );
 
         match res {
@@ -705,14 +710,18 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     #[instrument(skip(self), level = "debug", err)]
     fn trace_transaction(&self, transaction_hash: TransactionHash) -> RpcResult<TransactionTrace> {
         let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let mut profiler =
+            Profiler::start(format!("trace_transaction {transaction_hash}").as_str());
         let TransactionIndex(block_number, tx_offset) = storage_txn
             .get_transaction_idx_by_hash(&transaction_hash)
             .map_err(internal_server_error)?
             .ok_or(INVALID_TRANSACTION_HASH)?;
+        profiler.log("get_transaction_index");
         let block_execution_config =
             self.execution_config.get_execution_config_for_block(block_number).map_err(|err| {
                 internal_server_error(format!("Failed to get execution config: {}", err))
             })?;
+        profiler.log("get_execution_config_for_block");
 
         let casm_marker = storage_txn.get_compiled_class_marker().map_err(internal_server_error)?;
         if casm_marker <= block_number {
@@ -725,6 +734,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             );
             return Err(INVALID_TRANSACTION_HASH.into());
         }
+        profiler.log("check_casm_marker");
 
         let block_transactions = storage_txn
             .get_block_transactions(block_number)
@@ -743,6 +753,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                     msg: format!("Missing block {block_number} transactions"),
                 })
             })?;
+        profiler.log("get_block_transactions");
 
         let state_number = StateNumber::right_before_block(block_number);
         let executable_txns = block_transactions
@@ -750,6 +761,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             .take(tx_offset.0 + 1)
             .map(|tx| stored_txn_to_executable_txn(tx, &storage_txn, state_number))
             .collect::<Result<_, _>>()?;
+        profiler.log("stored_txn_to_executable_txn");
 
         let res = exec_simulate_transactions(
             executable_txns,
@@ -760,7 +772,9 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             block_execution_config,
             true,
             true,
+            None,
         );
+        profiler.log("exec_simulate_transactions");
 
         match res {
             Ok(mut simulation_results) => {
@@ -778,10 +792,14 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     ) -> RpcResult<Vec<TransactionTraceWithHash>> {
         let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&storage_txn, block_id)?;
+        let profiler = Rc::new(RefCell::new(Profiler::start(
+            format!("trace_block_transactions {block_number}").as_str(),
+        )));
         let block_execution_config =
             self.execution_config.get_execution_config_for_block(block_number).map_err(|err| {
                 internal_server_error(format!("Failed to get execution config: {}", err))
             })?;
+        profiler.borrow_mut().log("get_execution_config_for_block");
 
         let casm_marker = storage_txn.get_compiled_class_marker().map_err(internal_server_error)?;
         if casm_marker <= block_number {
@@ -792,6 +810,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             );
             return Err(INVALID_BLOCK_HASH.into());
         }
+        profiler.borrow_mut().log("check_casm_marker");
 
         let block_transactions = storage_txn
             .get_block_transactions(block_number)
@@ -810,12 +829,14 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                     msg: format!("Missing block {block_number} transactions"),
                 })
             })?;
+        profiler.borrow_mut().log("get_block_transactions");
 
         let state_number = StateNumber::right_before_block(block_number);
         let executable_txns = block_transactions
             .into_iter()
             .map(|tx| stored_txn_to_executable_txn(tx, &storage_txn, state_number))
             .collect::<Result<_, _>>()?;
+        profiler.borrow_mut().log("stored_txn_to_executable_txn");
 
         let res = exec_simulate_transactions(
             executable_txns,
@@ -826,7 +847,9 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             block_execution_config,
             true,
             true,
+            Some(profiler.clone()),
         );
+        profiler.borrow_mut().log("exec_simulate_transactions");
 
         match res {
             Ok(simulation_results) => Ok(simulation_results

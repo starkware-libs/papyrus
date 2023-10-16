@@ -4329,6 +4329,7 @@ dependencies = [
  "starknet-crypto",
  "starknet_api",
  "test_utils",
+ "tracing",
 ]
 
 [[package]]

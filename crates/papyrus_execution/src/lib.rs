@@ -11,7 +11,9 @@ mod test_utils;
 pub mod testing_instances;
 
 pub mod objects;
+use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
+use std::rc::Rc;
 use std::sync::Arc;
 
 use blockifier::block_context::{BlockContext, FeeTokenAddresses, GasPrices};
@@ -34,6 +36,7 @@ use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use cairo_vm::types::errors::program_errors::ProgramError;
 use execution_utils::get_trace_constructor;
 use objects::TransactionTrace;
+use papyrus_common::profiler::Profiler;
 use papyrus_common::transaction_hash::get_transaction_hash;
 use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::RO;
@@ -373,6 +376,7 @@ pub fn estimate_fee(
     storage_txn: &StorageTxn<'_, RO>,
     state_number: StateNumber,
     execution_config: &BlockExecutionConfig,
+    maybe_profiler: Option<Rc<RefCell<Profiler>>>,
 ) -> ExecutionResult<Vec<(GasPrice, Fee)>> {
     let (txs_execution_info, block_context) = execute_transactions(
         txs,
@@ -383,6 +387,7 @@ pub fn estimate_fee(
         execution_config,
         false,
         false,
+        maybe_profiler,
     )?;
     Ok(txs_execution_info
         .into_iter()
@@ -403,8 +408,12 @@ fn execute_transactions(
     execution_config: &BlockExecutionConfig,
     charge_fee: bool,
     validate: bool,
+    maybe_profiler: Option<Rc<RefCell<Profiler>>>,
 ) -> ExecutionResult<(Vec<TransactionExecutionInfo>, BlockContext)> {
     verify_node_synced(storage_txn, state_number)?;
+    if let Some(profiler) = maybe_profiler.clone() {
+        profiler.borrow_mut().log("Verify node synced");
+    };
 
     // TODO(yair): When we support pending blocks, use the latest block header instead of the
     // pending block header.
@@ -425,6 +434,9 @@ fn execute_transactions(
         &header.sequencer,
         execution_config,
     );
+    if let Some(profiler) = maybe_profiler.clone() {
+        profiler.borrow_mut().log("Create block context");
+    }
 
     let (txs, tx_hashes) = match tx_hashes {
         Some(tx_hashes) => (txs, tx_hashes),
@@ -434,6 +446,9 @@ fn execute_transactions(
             tx_hashes
         }
     };
+    if let Some(profiler) = maybe_profiler.clone() {
+        profiler.borrow_mut().log("Calculate tx hashes");
+    }
 
     let mut res = vec![];
     for (tx, tx_hash) in txs.into_iter().zip(tx_hashes.into_iter()) {
@@ -441,6 +456,9 @@ fn execute_transactions(
         let tx_execution_info =
             blockifier_tx.execute(&mut cached_state, &block_context, charge_fee, validate)?;
         res.push(tx_execution_info);
+    }
+    if let Some(profiler) = maybe_profiler.clone() {
+        profiler.borrow_mut().log("Execute transactions");
     }
 
     Ok((res, block_context))
@@ -532,8 +550,12 @@ pub fn simulate_transactions(
     execution_config: &BlockExecutionConfig,
     charge_fee: bool,
     validate: bool,
+    maybe_profiler: Option<Rc<RefCell<Profiler>>>,
 ) -> ExecutionResult<Vec<(TransactionTrace, GasPrice, Fee)>> {
     let trace_constructors = txs.iter().map(get_trace_constructor).collect::<Vec<_>>();
+    if let Some(profiler) = maybe_profiler.clone() {
+        profiler.borrow_mut().log("Get trace constructors");
+    }
     let (txs_execution_info, block_context) = execute_transactions(
         txs,
         tx_hashes,
@@ -543,9 +565,13 @@ pub fn simulate_transactions(
         execution_config,
         charge_fee,
         validate,
+        maybe_profiler.clone(),
     )?;
+    if let Some(profiler) = maybe_profiler.clone() {
+        profiler.borrow_mut().log("Execute transactions");
+    }
     let gas_price = GasPrice(block_context.gas_prices.eth_l1_gas_price);
-    txs_execution_info
+    let traces = txs_execution_info
         .into_iter()
         .zip(trace_constructors)
         .map(|(execution_info, trace_constructor)| {
@@ -555,5 +581,9 @@ pub fn simulate_transactions(
                 Err(e) => Err(e),
             }
         })
-        .collect()
+        .collect();
+    if let Some(profiler) = maybe_profiler {
+        profiler.borrow_mut().log("Convert execution_info into traces");
+    }
+    traces
 }
