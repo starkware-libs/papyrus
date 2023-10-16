@@ -283,7 +283,16 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_state_update(&self, block_id: BlockId) -> RpcResult<StateUpdate> {
+    async fn get_state_update(&self, block_id: BlockId) -> RpcResult<StateUpdate> {
+        if let BlockId::Tag(Tag::Pending) = block_id {
+            let state_update = &self.pending_data.read().await.state_update;
+            return Ok(StateUpdate {
+                block_hash: None,
+                new_root: None,
+                old_root: state_update.old_root,
+                state_diff: state_update.state_diff.clone().into(),
+            });
+        }
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         // Get the block header for the block hash and state root.
@@ -308,8 +317,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
 
         Ok(StateUpdate {
-            block_hash: header.block_hash,
-            new_root: header.new_root,
+            block_hash: Some(header.block_hash),
+            new_root: Some(header.new_root),
             old_root,
             state_diff: thin_state_diff.into(),
         })
