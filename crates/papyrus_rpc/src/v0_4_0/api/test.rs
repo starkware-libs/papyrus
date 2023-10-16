@@ -42,8 +42,15 @@ use starknet_api::transaction::{
     TransactionOffsetInBlock,
 };
 use starknet_api::{patricia_key, stark_felt};
+use starknet_client::reader::objects::pending_data::PendingStateUpdate as ClientPendingStateUpdate;
+use starknet_client::reader::objects::state::{
+    DeclaredClassHashEntry as ClientDeclaredClassHashEntry,
+    DeployedContract as ClientDeployedContract,
+    ReplacedClass as ClientReplacedClass,
+    StateDiff as ClientStateDiff,
+    StorageEntry as ClientStorageEntry,
+};
 use starknet_client::reader::objects::transaction::Transaction as ClientTransaction;
-use starknet_client::reader::StorageEntry;
 use starknet_client::starknet_error::{KnownStarknetErrorCode, StarknetError, StarknetErrorCode};
 use starknet_client::writer::objects::response::{
     DeclareResponse,
@@ -85,7 +92,19 @@ use super::super::error::{
     TOO_MANY_KEYS_IN_FILTER,
     TRANSACTION_HASH_NOT_FOUND,
 };
-use super::super::state::{ContractClass, StateUpdate, ThinStateDiff};
+use super::super::state::{
+    AcceptedStateUpdate,
+    ClassHashes,
+    ContractClass,
+    ContractNonce,
+    DeployedContract,
+    PendingStateUpdate,
+    ReplacedClasses,
+    StateUpdate,
+    StorageDiff,
+    StorageEntry,
+    ThinStateDiff,
+};
 use super::super::transaction::{
     DeployAccountTransaction,
     Event,
@@ -1093,7 +1112,7 @@ async fn get_storage_at() {
         .state_update
         .state_diff
         .storage_diffs
-        .insert(*address, vec![StorageEntry { key: other_key, value: other_value }]);
+        .insert(*address, vec![ClientStorageEntry { key: other_key, value: other_value }]);
     let res = module
         .call::<_, StarkFelt>(method_name, (*address, key, BlockId::Tag(Tag::Pending)))
         .await
@@ -1391,8 +1410,10 @@ async fn get_transaction_by_block_id_and_index() {
 #[tokio::test]
 async fn get_state_update() {
     let method_name = "starknet_V0_4_getStateUpdate";
-    let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let pending_data = get_test_pending_data();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerV0_4Impl,
+    >(None, None, Some(pending_data.clone()), None, None);
     let parent_header = BlockHeader::default();
     let header = BlockHeader {
         block_hash: BlockHash(stark_felt!("0x1")),
@@ -1419,12 +1440,14 @@ async fn get_state_update() {
         .commit()
         .unwrap();
 
-    let expected_update = StateUpdate {
+    let expected_old_root = parent_header.state_root;
+    let expected_state_diff = ThinStateDiff::from(starknet_api::state::ThinStateDiff::from(diff));
+    let expected_update = StateUpdate::AcceptedStateUpdate(AcceptedStateUpdate {
         block_hash: header.block_hash,
         new_root: header.state_root,
-        old_root: parent_header.state_root,
-        state_diff: ThinStateDiff::from(starknet_api::state::ThinStateDiff::from(diff)),
-    };
+        old_root: expected_old_root,
+        state_diff: expected_state_diff.clone(),
+    });
 
     // Get state update by block hash.
     call_api_then_assert_and_validate_schema_for_result::<_, BlockId, StateUpdate>(
@@ -1445,6 +1468,64 @@ async fn get_state_update() {
         .await
         .unwrap();
     assert_eq!(res, expected_update);
+
+    // Get state update of pending block.
+    let expected_pending_update = StateUpdate::PendingStateUpdate(PendingStateUpdate {
+        old_root: expected_old_root,
+        state_diff: expected_state_diff.clone(),
+    });
+    pending_data.write().await.state_update = ClientPendingStateUpdate {
+        old_root: expected_old_root,
+        state_diff: ClientStateDiff {
+            storage_diffs: IndexMap::from_iter(expected_state_diff.storage_diffs.into_iter().map(
+                |StorageDiff { address, storage_entries }| {
+                    let storage_entries = Vec::from_iter(
+                        storage_entries
+                            .into_iter()
+                            .map(|StorageEntry { key, value }| ClientStorageEntry { key, value }),
+                    );
+                    (address, storage_entries)
+                },
+            )),
+            deployed_contracts: Vec::from_iter(
+                expected_state_diff.deployed_contracts.into_iter().map(
+                    |DeployedContract { address, class_hash }| ClientDeployedContract {
+                        address,
+                        class_hash,
+                    },
+                ),
+            ),
+            declared_classes: expected_state_diff
+                .declared_classes
+                .into_iter()
+                .map(|ClassHashes { class_hash, compiled_class_hash }| {
+                    ClientDeclaredClassHashEntry { class_hash, compiled_class_hash }
+                })
+                .collect(),
+            old_declared_contracts: expected_state_diff.deprecated_declared_classes,
+            nonces: IndexMap::from_iter(
+                expected_state_diff
+                    .nonces
+                    .into_iter()
+                    .map(|ContractNonce { contract_address, nonce }| (contract_address, nonce)),
+            ),
+            replaced_classes: Vec::from_iter(expected_state_diff.replaced_classes.into_iter().map(
+                |ReplacedClasses { contract_address, class_hash }| ClientReplacedClass {
+                    address: contract_address,
+                    class_hash,
+                },
+            )),
+        },
+    };
+    // Validating schema because the state diff of pending block contains less fields.
+    call_api_then_assert_and_validate_schema_for_result::<_, BlockId, StateUpdate>(
+        &module,
+        method_name,
+        &Some(BlockId::Tag(Tag::Pending)),
+        &VERSION_0_4,
+        &expected_pending_update,
+    )
+    .await;
 
     // Ask for an invalid block hash.
     call_api_then_assert_and_validate_schema_for_err::<_, BlockId, StateUpdate>(
