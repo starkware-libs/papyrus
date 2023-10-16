@@ -43,6 +43,7 @@ use starknet_api::transaction::{
 };
 use starknet_api::{patricia_key, stark_felt};
 use starknet_client::reader::objects::transaction::Transaction as ClientTransaction;
+use starknet_client::reader::StorageEntry;
 use starknet_client::starknet_error::{KnownStarknetErrorCode, StarknetError, StarknetErrorCode};
 use starknet_client::writer::objects::response::{
     DeclareResponse,
@@ -1033,8 +1034,10 @@ async fn get_nonce() {
 #[tokio::test]
 async fn get_storage_at() {
     let method_name = "starknet_V0_4_getStorageAt";
-    let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let pending_data = get_test_pending_data();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerV0_4Impl,
+    >(None, None, Some(pending_data.clone()), None, None);
     let header = BlockHeader::default();
     let diff = get_test_state_diff();
     storage_writer
@@ -1073,6 +1076,36 @@ async fn get_storage_at() {
         .await
         .unwrap();
     assert_eq!(res, *expected_value);
+
+    // Ask for storage in pending block when contract's storage wasn't changed in pending block.
+    let res = module
+        .call::<_, StarkFelt>(method_name, (*address, key, BlockId::Tag(Tag::Pending)))
+        .await
+        .unwrap();
+    assert_eq!(res, *expected_value);
+
+    // Ask for storage in pending block when it wasn't changed in pending block.
+    let other_key = random::<u64>().into();
+    let other_value = random::<u64>().into();
+    pending_data
+        .write()
+        .await
+        .state_update
+        .state_diff
+        .storage_diffs
+        .insert(*address, vec![StorageEntry { key: other_key, value: other_value }]);
+    let res = module
+        .call::<_, StarkFelt>(method_name, (*address, key, BlockId::Tag(Tag::Pending)))
+        .await
+        .unwrap();
+    assert_eq!(res, *expected_value);
+
+    // Ask for storage in pending block when it was changed in pending block.
+    let res = module
+        .call::<_, StarkFelt>(method_name, (*address, other_key, BlockId::Tag(Tag::Pending)))
+        .await
+        .unwrap();
+    assert_eq!(res, other_value);
 
     // Ask for storage at address 0x1 - the block hash table contract address
     let key = StorageKey(patricia_key!("0x1001"));
