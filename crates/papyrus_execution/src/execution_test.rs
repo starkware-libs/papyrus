@@ -251,6 +251,8 @@ fn simulate_invoke() {
                 validate_invocation: None,
                 execute_invocation: FunctionInvocationResult::Ok(_),
                 fee_transfer_invocation: None,
+                state_diff: None,
+                tx_type: _,
             }
         );
 
@@ -263,6 +265,8 @@ fn simulate_invoke() {
                 validate_invocation: Some(_),
                 execute_invocation: FunctionInvocationResult::Ok(_),
                 fee_transfer_invocation: None,
+                state_diff: None,
+                tx_type: _,
             }
         );
 
@@ -275,6 +279,8 @@ fn simulate_invoke() {
                 validate_invocation: None,
                 execute_invocation: FunctionInvocationResult::Ok(_),
                 fee_transfer_invocation: Some(_),
+                state_diff: None,
+                tx_type: _,
             }
         );
         assert_eq!(charge_fee.1, *GAS_PRICE);
@@ -290,6 +296,8 @@ fn simulate_invoke() {
                 validate_invocation: Some(_),
                 execute_invocation: FunctionInvocationResult::Ok(_),
                 fee_transfer_invocation: Some(_),
+                state_diff: None,
+                tx_type: _,
             }
         );
 

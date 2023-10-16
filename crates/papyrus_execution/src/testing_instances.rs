@@ -8,7 +8,8 @@ use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, PatriciaKey};
 use starknet_api::deprecated_contract_class::EntryPointType;
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::transaction::{Calldata, EventContent, MessageToL1};
+use starknet_api::state::ThinStateDiff;
+use starknet_api::transaction::{Calldata, OrderedEvent, OrderedL2ToL1Message};
 use starknet_api::{contract_address, patricia_key};
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
 
@@ -21,7 +22,6 @@ use crate::objects::{
     FunctionInvocationResult,
     InvokeTransactionTrace,
     L1HandlerTransactionTrace,
-    OrderedL2ToL1Message,
     Retdata,
     RevertReason,
     TransactionTrace,
@@ -49,11 +49,12 @@ auto_impl_get_test_instance! {
         Declare(DeclareTransactionTrace) = 1,
         DeployAccount(DeployAccountTransactionTrace) = 2,
     }
-
     pub struct InvokeTransactionTrace {
         pub validate_invocation: Option<FunctionInvocation>,
         pub execute_invocation: FunctionInvocationResult,
         pub fee_transfer_invocation: Option<FunctionInvocation>,
+        pub state_diff: Option<ThinStateDiff>,
+        pub tx_type: String,
     }
     pub struct DeclareTransactionTrace {
         pub validate_invocation: Option<FunctionInvocation>,
@@ -77,10 +78,6 @@ auto_impl_get_test_instance! {
         LibraryCall = 1,
     }
     pub struct Retdata(pub Vec<StarkFelt>);
-    pub struct OrderedL2ToL1Message {
-        pub order: usize,
-        pub message: MessageToL1,
-    }
     pub struct FunctionCall {
         pub contract_address: ContractAddress,
         pub entry_point_selector: EntryPointSelector,
@@ -102,8 +99,8 @@ impl GetTestInstance for FunctionInvocation {
             call_type: CallType::get_test_instance(rng),
             result: Retdata::get_test_instance(rng),
             calls: Vec::new(),
-            events: Vec::<EventContent>::get_test_instance(rng),
-            messages: Vec::<MessageToL1>::get_test_instance(rng),
+            events: Vec::<OrderedEvent>::get_test_instance(rng),
+            messages: Vec::<OrderedL2ToL1Message>::get_test_instance(rng),
         }
     }
 }

@@ -113,6 +113,7 @@ pub(crate) async fn raw_call<R: JsonRpcServerImpl, S: Serialize, T: for<'a> Dese
 // TODO(nevo): Schmea validates null as valid for an unknown reason.
 // Investigate in the future and remove this function (use is_valid directly)
 pub fn validate_schema(schema: &JSONSchema, result: &Value) -> bool {
+    println!("@@@@@@@@@@@@@@@@@@ result: {}", result);
     result != &Value::Null && schema.is_valid(result)
 }
 

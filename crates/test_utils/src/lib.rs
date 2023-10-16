@@ -114,6 +114,8 @@ use starknet_api::transaction::{
     L2ToL1Payload,
     MessageToL1,
     MessageToL2,
+    OrderedEvent,
+    OrderedL2ToL1Message,
     PaymasterData,
     Resource,
     ResourceBounds,
@@ -591,6 +593,14 @@ auto_impl_get_test_instance! {
         pub payload: L1ToL2Payload,
     }
     pub struct Nonce(pub StarkFelt);
+    pub struct OrderedEvent {
+        pub order: usize,
+        pub event: EventContent,
+    }
+    pub struct OrderedL2ToL1Message {
+        pub order: usize,
+        pub message: MessageToL1,
+    }
     pub struct PaymasterData(pub Vec<StarkFelt>);
     pub struct Program {
         pub attributes: serde_json::Value,

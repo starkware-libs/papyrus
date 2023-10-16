@@ -13,7 +13,14 @@ use serde::{Deserialize, Serialize};
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector};
 use starknet_api::deprecated_contract_class::EntryPointType;
 use starknet_api::hash::StarkFelt;
-use starknet_api::transaction::{Calldata, EventContent, MessageToL1};
+use starknet_api::state::ThinStateDiff;
+use starknet_api::transaction::{
+    Calldata,
+    EventContent,
+    MessageToL1,
+    OrderedEvent,
+    OrderedL2ToL1Message,
+};
 
 use crate::{ExecutionError, ExecutionResult};
 
@@ -37,6 +44,8 @@ pub struct InvokeTransactionTrace {
     pub execute_invocation: FunctionInvocationResult,
     /// The trace of the __fee_transfer__ call.
     pub fee_transfer_invocation: Option<FunctionInvocation>,
+    pub state_diff: Option<ThinStateDiff>,
+    pub tx_type: String,
 }
 
 /// The reason for a reverted transaction.
@@ -72,6 +81,8 @@ impl TryFrom<TransactionExecutionInfo> for InvokeTransactionTrace {
                 None => None,
                 Some(call_info) => Some(call_info.try_into()?),
             },
+            state_diff: None,
+            tx_type: "".to_string(),
         })
     }
 }
@@ -183,9 +194,9 @@ pub struct FunctionInvocation {
     /// The calls made by this invocation.
     pub calls: Vec<Self>,
     /// The events emitted in this invocation.
-    pub events: Vec<EventContent>,
+    pub events: Vec<OrderedEvent>,
     /// The messages sent by this invocation to L1.
-    pub messages: Vec<MessageToL1>,
+    pub messages: Vec<OrderedL2ToL1Message>,
 }
 
 impl TryFrom<CallInfo> for FunctionInvocation {
@@ -212,17 +223,23 @@ impl TryFrom<CallInfo> for FunctionInvocation {
                 .events
                 .into_iter()
                 .sorted_by_key(|ordered_event| ordered_event.order)
-                .map(|ordered_event| ordered_event.event)
+                .map(|ordered_event| OrderedEvent {
+                    order: ordered_event.order,
+                    event: ordered_event.event,
+                })
                 .collect(),
             messages: call_info
                 .execution
                 .l2_to_l1_messages
                 .into_iter()
                 .sorted_by_key(|ordered_message| ordered_message.order)
-                .map(|ordered_message| MessageToL1 {
-                    from_address: call_info.call.caller_address,
-                    to_address: ordered_message.message.to_address,
-                    payload: ordered_message.message.payload,
+                .map(|ordered_message| OrderedL2ToL1Message {
+                    order: ordered_message.order,
+                    message: MessageToL1 {
+                        from_address: call_info.call.caller_address,
+                        to_address: ordered_message.message.to_address,
+                        payload: ordered_message.message.payload,
+                    },
                 })
                 .collect(),
         })
@@ -257,47 +274,47 @@ impl From<BlockifierRetdata> for Retdata {
     }
 }
 
-/// An event emitted by a contract.
-#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
-pub struct OrderedEvent {
-    /// The order of the event in the transaction.
-    #[serde(skip)]
-    pub order: usize,
-    /// The event.
-    pub event: EventContent,
-}
+// /// An event emitted by a contract.
+// #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+// pub struct OrderedEvent {
+//     /// The order of the event in the transaction.
+//     #[serde(skip)]
+//     pub order: usize,
+//     /// The event.
+//     pub event: EventContent,
+// }
 
-impl From<BlockifierOrderedEvent> for OrderedEvent {
-    fn from(ordered_event: BlockifierOrderedEvent) -> Self {
-        Self { order: ordered_event.order, event: ordered_event.event }
-    }
-}
+// impl From<BlockifierOrderedEvent> for OrderedEvent {
+//     fn from(ordered_event: BlockifierOrderedEvent) -> Self {
+//         Self { order: ordered_event.order, event: ordered_event.event }
+//     }
+// }
 
-/// A message sent from L2 to L1.
-#[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
-pub struct OrderedL2ToL1Message {
-    /// The order of the message in the transaction.
-    pub order: usize,
-    /// The message.
-    pub message: MessageToL1,
-}
+// /// A message sent from L2 to L1.
+// #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+// pub struct OrderedL2ToL1Message {
+//     /// The order of the message in the transaction.
+//     pub order: usize,
+//     /// The message.
+//     pub message: MessageToL1,
+// }
 
-impl OrderedL2ToL1Message {
-    /// Constructs a new `OrderedL2ToL1Message`.
-    pub fn from(
-        blockifier_message: BlockifierOrderedL2ToL1Message,
-        from_address: ContractAddress,
-    ) -> Self {
-        Self {
-            order: blockifier_message.order,
-            message: MessageToL1 {
-                from_address,
-                to_address: blockifier_message.message.to_address,
-                payload: blockifier_message.message.payload,
-            },
-        }
-    }
-}
+// impl OrderedL2ToL1Message {
+//     /// Constructs a new `OrderedL2ToL1Message`.
+//     pub fn from(
+//         blockifier_message: BlockifierOrderedL2ToL1Message,
+//         from_address: ContractAddress,
+//     ) -> Self {
+//         Self {
+//             order: blockifier_message.order,
+//             message: MessageToL1 {
+//                 from_address,
+//                 to_address: blockifier_message.message.to_address,
+//                 payload: blockifier_message.message.payload,
+//             },
+//         }
+//     }
+// }
 
 /// The details of a function call.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
