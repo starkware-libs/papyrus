@@ -7,3 +7,4 @@ license-file.workspace = true
 
 [dependencies]
 papyrus_storage = { path = "../papyrus_storage", version = "0.0.5" }
+clap.workspace = true
