@@ -51,6 +51,10 @@ use super::super::broadcasted_transaction::{
 use super::super::state::{AcceptedStateUpdate, PendingStateUpdate, StateUpdate};
 use super::super::transaction::{
     Event,
+    GeneralTransactionReceipt,
+    PendingTransactionFinalityStatus,
+    PendingTransactionOutput,
+    PendingTransactionReceipt,
     Transaction,
     TransactionOutput,
     TransactionReceipt,
@@ -361,16 +365,46 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_transaction_receipt(
+    async fn get_transaction_receipt(
         &self,
         transaction_hash: TransactionHash,
-    ) -> RpcResult<TransactionReceipt> {
+    ) -> RpcResult<GeneralTransactionReceipt> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
-        let transaction_index = txn
-            .get_transaction_idx_by_hash(&transaction_hash)
-            .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
+        let Some(transaction_index) =
+            txn.get_transaction_idx_by_hash(&transaction_hash).map_err(internal_server_error)?
+        else {
+            // The transaction is not in any non-pending block. Search for it in the pending block
+            // and if it's not found, return error.
+
+            // TODO(shahak): Consider cloning the transactions and the receipts in order to free
+            // the lock sooner (Check which is better).
+            let pending_block = &self.pending_data.read().await.block;
+
+            let client_transaction_receipt = pending_block
+                .transaction_receipts
+                .iter()
+                .find(|receipt| receipt.transaction_hash == transaction_hash)
+                .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?
+                .clone();
+            let client_transaction = &pending_block
+                .transactions
+                .iter()
+                .find(|transaction| transaction.transaction_hash() == transaction_hash)
+                .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
+            let starknet_api_output =
+                client_transaction_receipt.into_starknet_api_transaction_output(client_transaction);
+            let output =
+                PendingTransactionOutput::try_from(TransactionOutput::from(starknet_api_output))?;
+            return Ok(GeneralTransactionReceipt::PendingTransactionReceipt(
+                PendingTransactionReceipt {
+                    // ACCEPTED_ON_L2 is the only finality status of a pending transaction.
+                    finality_status: PendingTransactionFinalityStatus::AcceptedOnL2,
+                    transaction_hash,
+                    output,
+                },
+            ));
+        };
 
         let block_number = transaction_index.0;
         let status = get_block_status(&txn, block_number)?;
@@ -398,13 +432,13 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 
         let output = TransactionOutput::from_thin_transaction_output(thin_tx_output, events);
 
-        Ok(TransactionReceipt {
+        Ok(GeneralTransactionReceipt::TransactionReceipt(TransactionReceipt {
             finality_status: status.into(),
             transaction_hash,
             block_hash,
             block_number,
             output,
-        })
+        }))
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
