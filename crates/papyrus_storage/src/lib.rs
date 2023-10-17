@@ -420,6 +420,11 @@ pub enum StorageError {
     IOError(#[from] std::io::Error),
     #[error(transparent)]
     SerdeError(#[from] serde_json::Error),
+    #[error(
+        "The block number {block} should be smaller than the compiled_class_marker \
+         {compiled_class_marker}."
+    )]
+    InvalidBlockNumber { block: BlockNumber, compiled_class_marker: BlockNumber },
 }
 
 /// A type alias that maps to std::result::Result<T, StorageError>.
