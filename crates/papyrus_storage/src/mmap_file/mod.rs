@@ -57,7 +57,7 @@ fn validate_config(config: &MmapFileConfig) -> result::Result<(), ValidationErro
     Ok(())
 }
 
-/// Errors associated with [`MMapFile`].
+/// Errors associated with memory mapped files.
 #[derive(Debug, Error)]
 pub enum MMapFileError {
     /// IO error.
@@ -140,7 +140,7 @@ impl<V: StorageSerde> Reader<V> for FileReader<V> {
 
 /// Represents a memory mapped append only file.
 #[derive(Debug)]
-pub struct MMapFile<V: StorageSerde> {
+struct MMapFile<V: StorageSerde> {
     config: MmapFileConfig,
     file: File,
     size: usize,
