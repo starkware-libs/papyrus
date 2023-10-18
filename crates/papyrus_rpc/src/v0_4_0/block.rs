@@ -51,7 +51,8 @@ impl From<starknet_api::block::BlockHeader> for BlockHeader {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct Block {
-    pub status: BlockStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<BlockStatus>,
     #[serde(flatten)]
     pub header: GeneralBlockHeader,
     pub transactions: Transactions,
