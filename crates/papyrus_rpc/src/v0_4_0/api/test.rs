@@ -127,6 +127,7 @@ use crate::test_utils::{
     validate_schema,
     SpecFile,
 };
+use crate::v0_4_0::block::GeneralBlockHeader;
 use crate::v0_4_0::error::{
     unexpected_error,
     JsonRpcError,
@@ -371,15 +372,21 @@ async fn get_block_w_full_transactions() {
     };
     let expected_block = Block {
         status: BlockStatus::AcceptedOnL2,
-        header: block.header.into(),
+        header: GeneralBlockHeader::BlockHeader(block.header.into()),
         transactions: Transactions::Full(vec![expected_transaction]),
     };
+    let expected_block_header =
+        if let GeneralBlockHeader::BlockHeader(block_header) = expected_block.clone().header {
+            block_header
+        } else {
+            panic!("Expected block header");
+        };
 
     // Get block by hash.
     call_api_then_assert_and_validate_schema_for_result::<_, BlockId, Block>(
         &module,
         method_name,
-        &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header.block_hash))),
+        &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block_header.block_hash))),
         &VERSION_0_4,
         &expected_block,
     )
@@ -389,7 +396,7 @@ async fn get_block_w_full_transactions() {
     let block = module
         .call::<_, Block>(
             method_name,
-            [BlockId::HashOrNumber(BlockHashOrNumber::Number(expected_block.header.block_number))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(expected_block_header.block_number))],
         )
         .await
         .unwrap();
@@ -403,14 +410,14 @@ async fn get_block_w_full_transactions() {
     storage_writer
         .begin_rw_txn()
         .unwrap()
-        .update_base_layer_block_marker(&expected_block.header.block_number.next())
+        .update_base_layer_block_marker(&expected_block_header.block_number.next())
         .unwrap()
         .commit()
         .unwrap();
     let block = module
         .call::<_, Block>(
             method_name,
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header.block_hash))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block_header.block_hash))],
         )
         .await
         .unwrap();
@@ -458,15 +465,21 @@ async fn get_block_w_transaction_hashes() {
 
     let expected_block = Block {
         status: BlockStatus::AcceptedOnL2,
-        header: block.header.into(),
+        header: GeneralBlockHeader::BlockHeader(block.header.into()),
         transactions: Transactions::Hashes(vec![block.body.transaction_hashes[0]]),
     };
+    let expected_block_header =
+        if let GeneralBlockHeader::BlockHeader(block_header) = expected_block.clone().header {
+            block_header
+        } else {
+            panic!("Expected block header");
+        };
 
     // Get block by hash.
     call_api_then_assert_and_validate_schema_for_result::<_, BlockId, Block>(
         &module,
         method_name,
-        &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header.block_hash))),
+        &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block_header.block_hash))),
         &VERSION_0_4,
         &expected_block,
     )
@@ -476,7 +489,7 @@ async fn get_block_w_transaction_hashes() {
     let block = module
         .call::<_, Block>(
             method_name,
-            [BlockId::HashOrNumber(BlockHashOrNumber::Number(expected_block.header.block_number))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(expected_block_header.block_number))],
         )
         .await
         .unwrap();
@@ -490,14 +503,14 @@ async fn get_block_w_transaction_hashes() {
     storage_writer
         .begin_rw_txn()
         .unwrap()
-        .update_base_layer_block_marker(&expected_block.header.block_number.next())
+        .update_base_layer_block_marker(&expected_block_header.block_number.next())
         .unwrap()
         .commit()
         .unwrap();
     let block = module
         .call::<_, Block>(
             method_name,
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block.header.block_hash))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block_header.block_hash))],
         )
         .await
         .unwrap();
