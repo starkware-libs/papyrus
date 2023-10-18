@@ -101,66 +101,6 @@ impl LocationInFile {
     }
 }
 
-/// A wrapper around `MMapFile` that provides both write and read interfaces.
-#[derive(Clone, Debug)]
-pub struct FileHandler<V: StorageSerde> {
-    memory_ptr: *const u8,
-    mmap_file: Arc<Mutex<MMapFile<V>>>,
-}
-
-impl<V: StorageSerde> FileHandler<V> {
-    fn grow_file_if_needed(&mut self, offset: usize) {
-        let mut mmap_file = self.mmap_file.lock().expect("Lock should not be poisoned");
-        if mmap_file.size < offset + mmap_file.config.max_object_size {
-            debug!(
-                "Attempting to grow file. File size: {}, offset: {}, max_object_size: {}",
-                mmap_file.size, offset, mmap_file.config.max_object_size
-            );
-            mmap_file.grow();
-        }
-    }
-}
-
-impl<V: StorageSerde + Debug> Writer<V> for FileHandler<V> {
-    fn insert(&mut self, offset: usize, val: &V) -> usize {
-        debug!("Inserting object at offset: {}", offset);
-        trace!("Inserting object: {:?}", val);
-        // TODO(dan): change serialize_into to return serialization size.
-        let len = val.serialize().expect("Should be able to serialize").len();
-        {
-            let mut mmap_file = self.mmap_file.lock().expect("Lock should not be poisoned");
-            let mut mmap_slice = &mut mmap_file.mmap[offset..];
-            let _ = val.serialize_into(&mut mmap_slice);
-            mmap_file
-                .mmap
-                .flush_async_range(offset, len)
-                .expect("Failed to asynchronously flush the mmap after inserting");
-        }
-        self.grow_file_if_needed(offset + len);
-        len
-    }
-
-    fn flush(&self) {
-        let mmap_file = self.mmap_file.lock().expect("Lock should not be poisoned");
-        mmap_file.flush();
-    }
-}
-
-impl<V: StorageSerde> Reader<V> for FileHandler<V> {
-    /// Returns an object from the file.
-    fn get(&self, location: LocationInFile) -> MmapFileResult<Option<V>> {
-        debug!("Reading object at location: {:?}", location);
-        let mut bytes = unsafe {
-            std::slice::from_raw_parts(
-                self.memory_ptr.offset(location.offset.try_into()?),
-                location.len,
-            )
-        };
-        trace!("Deserializing object: {:?}", bytes);
-        Ok(V::deserialize(&mut bytes))
-    }
-}
-
 /// A wrapper around `FileHandler` that provides a write interface.
 #[derive(Debug)]
 pub struct FileWriter<V: StorageSerde> {
@@ -256,4 +196,64 @@ pub(crate) fn open_file<V: StorageSerde>(
     let reader = FileReader { file_handler };
 
     Ok((writer, reader))
+}
+
+/// A wrapper around `MMapFile` that provides both write and read interfaces.
+#[derive(Clone, Debug)]
+struct FileHandler<V: StorageSerde> {
+    memory_ptr: *const u8,
+    mmap_file: Arc<Mutex<MMapFile<V>>>,
+}
+
+impl<V: StorageSerde> FileHandler<V> {
+    fn grow_file_if_needed(&mut self, offset: usize) {
+        let mut mmap_file = self.mmap_file.lock().expect("Lock should not be poisoned");
+        if mmap_file.size < offset + mmap_file.config.max_object_size {
+            debug!(
+                "Attempting to grow file. File size: {}, offset: {}, max_object_size: {}",
+                mmap_file.size, offset, mmap_file.config.max_object_size
+            );
+            mmap_file.grow();
+        }
+    }
+}
+
+impl<V: StorageSerde + Debug> Writer<V> for FileHandler<V> {
+    fn insert(&mut self, offset: usize, val: &V) -> usize {
+        debug!("Inserting object at offset: {}", offset);
+        trace!("Inserting object: {:?}", val);
+        // TODO(dan): change serialize_into to return serialization size.
+        let len = val.serialize().expect("Should be able to serialize").len();
+        {
+            let mut mmap_file = self.mmap_file.lock().expect("Lock should not be poisoned");
+            let mut mmap_slice = &mut mmap_file.mmap[offset..];
+            let _ = val.serialize_into(&mut mmap_slice);
+            mmap_file
+                .mmap
+                .flush_async_range(offset, len)
+                .expect("Failed to asynchronously flush the mmap after inserting");
+        }
+        self.grow_file_if_needed(offset + len);
+        len
+    }
+
+    fn flush(&self) {
+        let mmap_file = self.mmap_file.lock().expect("Lock should not be poisoned");
+        mmap_file.flush();
+    }
+}
+
+impl<V: StorageSerde> Reader<V> for FileHandler<V> {
+    /// Returns an object from the file.
+    fn get(&self, location: LocationInFile) -> MmapFileResult<Option<V>> {
+        debug!("Reading object at location: {:?}", location);
+        let mut bytes = unsafe {
+            std::slice::from_raw_parts(
+                self.memory_ptr.offset(location.offset.try_into()?),
+                location.len,
+            )
+        };
+        trace!("Deserializing object: {:?}", bytes);
+        Ok(V::deserialize(&mut bytes))
+    }
 }
