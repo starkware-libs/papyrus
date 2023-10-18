@@ -21,6 +21,20 @@ pub struct BlockHeader {
     pub timestamp: BlockTimestamp,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct PendingBlockHeader {
+    pub parent_hash: BlockHash,
+    pub sequencer_address: ContractAddress,
+    pub timestamp: BlockTimestamp,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(untagged)]
+pub enum BlockHeaderOrPending {
+    BlockHeader(BlockHeader),
+    PendingBlockHeader(PendingBlockHeader),
+}
+
 impl From<starknet_api::block::BlockHeader> for BlockHeader {
     fn from(header: starknet_api::block::BlockHeader) -> Self {
         BlockHeader {
@@ -34,11 +48,25 @@ impl From<starknet_api::block::BlockHeader> for BlockHeader {
     }
 }
 
+impl From<starknet_api::block::BlockHeader> for BlockHeaderOrPending {
+    fn from(header: starknet_api::block::BlockHeader) -> Self {
+        let block_header = BlockHeader {
+            block_hash: header.block_hash,
+            parent_hash: header.parent_hash,
+            block_number: header.block_number,
+            sequencer_address: header.sequencer,
+            new_root: header.state_root,
+            timestamp: header.timestamp,
+        };
+        BlockHeaderOrPending::BlockHeader(block_header)
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct Block {
     pub status: BlockStatus,
     #[serde(flatten)]
-    pub header: BlockHeader,
+    pub header: BlockHeaderOrPending,
     pub transactions: Transactions,
 }
 
