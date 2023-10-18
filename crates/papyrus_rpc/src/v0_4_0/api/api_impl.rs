@@ -5,7 +5,7 @@ use jsonrpsee::core::RpcResult;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
-use papyrus_common::pending_classes::PendingClasses;
+use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
 use papyrus_execution::objects::TransactionTrace;
 use papyrus_execution::{
     estimate_fee as exec_estimate_fee,
@@ -403,11 +403,22 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_class(
+    async fn get_class(
         &self,
         block_id: BlockId,
         class_hash: ClassHash,
     ) -> RpcResult<GatewayContractClass> {
+        let block_id = if let BlockId::Tag(Tag::Pending) = block_id {
+            let maybe_class = &self.pending_classes.read().await.get_class(class_hash);
+            if let Some(class) = maybe_class {
+                return class.clone().try_into().map_err(internal_server_error);
+            } else {
+                BlockId::Tag(Tag::Latest)
+            }
+        } else {
+            block_id
+        };
+
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let block_number = get_block_number(&txn, block_id)?;
