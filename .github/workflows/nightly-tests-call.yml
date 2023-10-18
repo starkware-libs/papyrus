@@ -25,13 +25,16 @@ jobs:
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@v2
+      - run: sudo apt update; sudo apt -y install libclang-dev
+        # Install libclang-dev that is not a part of the ubuntu vm in github actions.
+        if: runner.os == 'Linux'
+      - id: run_test
         # Workflow steps exit upon failure of a subcommand (running `set -e` implicitly before the
-        # run. As we want to keep running this step after a test failure we can either start with
+        # run). As we want to keep running this step after a test failure we can either start with
         # `set +e` to suppress all errors, or, as done below, append `|| retVal=$?` to the command
         # which makes it successful while storing the potential erroneous code.
-      - id: run_test
         run: >
-          sudo apt update; sudo apt -y install libclang-dev;
+          retVal=0;
           INTEGRATION_TESTNET_NODE_URL=${{ secrets.INTEGRATION_TESTNET_NODE_URL }}
           SENDER_PRIVATE_KEY=${{ secrets.INTEGRATION_TESTNET_SENDER_PRIVATE_KEY }}
           cargo test --test gateway_integration_test -p papyrus_rpc test_gw_integration_testnet
@@ -42,7 +45,7 @@ jobs:
           fi;
       - name: In case of a failure - post to a Slack channel.
         id: slack
-        if: ${{ steps.run_test.outputs.retVal }} != 0
+        if: ${{ steps.run_test.outputs.retVal != 0 }}
         uses: slackapi/slack-github-action@v1.24.0
         with:
           channel-id: ${{ secrets.SLACK_ALERT_CHANNEL }}
