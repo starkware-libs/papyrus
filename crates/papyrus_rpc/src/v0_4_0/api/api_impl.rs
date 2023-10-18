@@ -43,7 +43,13 @@ use starknet_client::ClientError;
 use tokio::sync::RwLock;
 use tracing::{debug, instrument, trace};
 
-use super::super::block::{get_block_header_by_number, get_block_number, Block, BlockHeader};
+use super::super::block::{
+    get_block_header_by_number,
+    get_block_number,
+    Block,
+    BlockHeader,
+    GeneralBlockHeader,
+};
 use super::super::broadcasted_transaction::{
     BroadcastedDeclareTransaction,
     BroadcastedTransaction,
@@ -149,7 +155,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
         let status = get_block_status(&txn, block_number)?;
-        let header = get_block_header_by_number(&txn, block_number)?;
+        let header =
+            GeneralBlockHeader::BlockHeader(get_block_header_by_number(&txn, block_number)?);
         let transaction_hashes = get_block_tx_hashes_by_number(&txn, block_number)?;
 
         Ok(Block { status, header, transactions: Transactions::Hashes(transaction_hashes) })
@@ -160,7 +167,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
         let status = get_block_status(&txn, block_number)?;
-        let header = get_block_header_by_number(&txn, block_number)?;
+        let header =
+            GeneralBlockHeader::BlockHeader(get_block_header_by_number(&txn, block_number)?);
         // TODO(dvir): consider create a vector of (transaction, transaction_index) first and get
         // the transaction hashes by the index.
         let transactions = get_block_txs_by_number(&txn, block_number)?;
