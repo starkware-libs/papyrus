@@ -188,7 +188,7 @@ pub trait JsonRpc {
     ) -> RpcResult<AddDeclareOkResult>;
 
     /// Estimates the fee of a series of transactions.
-    #[method(name = "estimateFee")]
+    #[method(name = "estimateFee", blocking)]
     fn estimate_fee(
         &self,
         transactions: Vec<BroadcastedTransaction>,
@@ -196,7 +196,7 @@ pub trait JsonRpc {
     ) -> RpcResult<Vec<FeeEstimate>>;
 
     /// Simulates execution of a series of transactions.
-    #[method(name = "simulateTransactions")]
+    #[method(name = "simulateTransactions", blocking)]
     fn simulate_transactions(
         &self,
         block_id: BlockId,
@@ -205,11 +205,11 @@ pub trait JsonRpc {
     ) -> RpcResult<Vec<SimulatedTransaction>>;
 
     /// Calculates the transaction trace of a transaction that is already included in a block.
-    #[method(name = "traceTransaction")]
+    #[method(name = "traceTransaction", blocking)]
     fn trace_transaction(&self, transaction_hash: TransactionHash) -> RpcResult<TransactionTrace>;
 
     /// Calculates the transaction trace of all of the transactions in a block.
-    #[method(name = "traceBlockTransactions")]
+    #[method(name = "traceBlockTransactions", blocking)]
     fn trace_block_transactions(
         &self,
         block_id: BlockId,
