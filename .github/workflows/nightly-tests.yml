@@ -1,0 +1,32 @@
+name: nightly-tests
+# We run gateway_integration_test at different times, to avoid a nonce race between parallel runs.
+on:
+  schedule:
+    - cron: '30 0 * * *'  # Uses ubuntu runner.
+    - cron: '30 3 * * *'  # Uses macos runner.
+  workflow_dispatch:  # Uses ubuntu runner.
+
+jobs:
+  GW-integration-test-ubuntu:
+    uses: ./.github/workflows/nightly-tests-call.yml
+    with:
+      os: ubuntu-latest
+    secrets:
+      INTEGRATION_TESTNET_NODE_URL: ${{ secrets.INTEGRATION_TESTNET_NODE_URL }}
+      INTEGRATION_TESTNET_SENDER_PRIVATE_KEY: ${{ secrets.INTEGRATION_TESTNET_SENDER_PRIVATE_KEY }}
+      SLACK_ALERT_CHANNEL: ${{ secrets.SLACK_ALERT_CHANNEL }}
+      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+    if: github.event.schedule != '30 3 * * *'
+
+  GW-integration-test-macos:
+    uses: ./.github/workflows/nightly-tests-call.yml
+    with:
+      os: macos-latest
+    secrets:
+      INTEGRATION_TESTNET_NODE_URL: ${{ secrets.INTEGRATION_TESTNET_NODE_URL }}
+      INTEGRATION_TESTNET_SENDER_PRIVATE_KEY: ${{ secrets.INTEGRATION_TESTNET_SENDER_PRIVATE_KEY }}
+      SLACK_ALERT_CHANNEL: ${{ secrets.SLACK_ALERT_CHANNEL }}
+      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+    if: github.event.schedule == '30 3 * * *'
+
+
