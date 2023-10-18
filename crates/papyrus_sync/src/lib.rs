@@ -357,9 +357,16 @@ impl<
         block: Block,
         starknet_version: &StarknetVersion,
     ) -> StateSyncResult {
-        // Assuming the central source is trusted, detect reverts by comparing the incoming block's
-        // parent hash to the current hash.
-        self.verify_parent_block_hash(block_number, &block)?;
+        if block_number.0
+            > std::env::var("PAPYRUS_START_BLOCK")
+                .expect("Set the variable PAPYRUS_START_BLOCK to a number")
+                .parse::<u64>()
+                .expect("Set the variable PAPYRUS_START_BLOCK to a number")
+        {
+            // Assuming the central source is trusted, detect reverts by comparing the incoming
+            // block's parent hash to the current hash.
+            self.verify_parent_block_hash(block_number, &block)?;
+        }
 
         debug!("Storing block.");
         trace!("Block data: {block:#?}");
@@ -510,19 +517,19 @@ impl<
 
     // Reverts data if needed.
     async fn handle_block_reverts(&mut self) -> Result<(), StateSyncError> {
-        debug!("Handling block reverts.");
-        let header_marker = self.reader.begin_ro_txn()?.get_header_marker()?;
+        // debug!("Handling block reverts.");
+        // let header_marker = self.reader.begin_ro_txn()?.get_header_marker()?;
 
         // Revert last blocks if needed.
-        let mut last_block_in_storage = header_marker.prev();
-        while let Some(block_number) = last_block_in_storage {
-            if self.should_revert_block(block_number).await? {
-                self.revert_block(block_number)?;
-                last_block_in_storage = block_number.prev();
-            } else {
-                break;
-            }
-        }
+        // let mut last_block_in_storage = header_marker.prev();
+        // while let Some(block_number) = last_block_in_storage {
+        //     if self.should_revert_block(block_number).await? {
+        //         self.revert_block(block_number)?;
+        //         last_block_in_storage = block_number.prev();
+        //     } else {
+        //         break;
+        //     }
+        // }
         Ok(())
     }
 
@@ -590,7 +597,10 @@ fn stream_new_blocks<
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
         loop {
-            let header_marker = reader.begin_ro_txn()?.get_header_marker()?;
+            let mut header_marker = reader.begin_ro_txn()?.get_header_marker()?;
+            if header_marker.0 < std::env::var("PAPYRUS_START_BLOCK").expect("Set the variable PAPYRUS_START_BLOCK to a number").parse::<u64>().expect("Set the variable PAPYRUS_START_BLOCK to a number") {
+                header_marker.0 = std::env::var("PAPYRUS_START_BLOCK").expect("Set the variable PAPYRUS_START_BLOCK to a number").parse::<u64>().expect("Set the variable PAPYRUS_START_BLOCK to a number");
+            }
             let latest_central_block = central_source.get_latest_block().await?;
             *shared_highest_block.write().await = latest_central_block;
             let central_block_marker = latest_central_block.map_or(
@@ -641,7 +651,10 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
     try_stream! {
         loop {
             let txn = reader.begin_ro_txn()?;
-            let state_marker = txn.get_state_marker()?;
+            let mut state_marker = txn.get_state_marker()?;
+            if state_marker.0 < std::env::var("PAPYRUS_START_BLOCK").expect("Set the variable PAPYRUS_START_BLOCK to a number").parse::<u64>().expect("Set the variable PAPYRUS_START_BLOCK to a number") {
+                state_marker.0 = std::env::var("PAPYRUS_START_BLOCK").expect("Set the variable PAPYRUS_START_BLOCK to a number").parse::<u64>().expect("Set the variable PAPYRUS_START_BLOCK to a number");
+            }
             let last_block_number = txn.get_header_marker()?;
             drop(txn);
             if state_marker == last_block_number {
@@ -649,7 +662,11 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
                 tokio::time::sleep(block_propagation_sleep_duration).await;
                 continue;
             }
-            let up_to = min(last_block_number, BlockNumber(state_marker.0 + max_stream_size as u64));
+            let mut up_to = min(last_block_number, BlockNumber(state_marker.0 + max_stream_size as u64));
+            if up_to.0 < std::env::var("PAPYRUS_START_BLOCK").expect("Set the variable PAPYRUS_START_BLOCK to a number").parse::<u64>().expect("Set the variable PAPYRUS_START_BLOCK to a number") {
+                up_to.0 = std::env::var("PAPYRUS_START_BLOCK").expect("Set the variable PAPYRUS_START_BLOCK to a number").parse::<u64>().expect("Set the variable PAPYRUS_START_BLOCK to a number");
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            }
             debug!("Downloading state diffs [{} - {}).", state_marker, up_to);
             let state_diff_stream =
                 central_source.stream_state_updates(state_marker, up_to).fuse();
@@ -728,13 +745,16 @@ fn stream_new_compiled_classes<TCentralSource: CentralSourceTrait + Sync + Send>
             let state_marker = txn.get_state_marker()?;
             // Avoid starting streams from blocks without declared classes.
             while from < state_marker {
-                let state_diff = txn.get_state_diff(from)?.expect("Expecting to have state diff up to the marker.");
-                if state_diff.declared_classes.is_empty() {
-                    from = from.next();
-                }
-                else {
+                if let Some(state_diff) = txn.get_state_diff(from)? {
+                    if state_diff.declared_classes.is_empty() {
+                        from = from.next();
+                    } else {
+                        break;
+                    }
+                } else {
+                    from = state_marker;
                     break;
-                }
+                };
             }
 
             if from == state_marker {

@@ -455,7 +455,13 @@ fn update_marker<'env>(
 ) -> StorageResult<()> {
     // Make sure marker is consistent.
     let body_marker = markers_table.get(txn, &MarkerKind::Body)?.unwrap_or_default();
-    if body_marker != block_number {
+    if body_marker != block_number
+        && block_number.0
+            > std::env::var("PAPYRUS_START_BLOCK")
+                .expect("Set the variable PAPYRUS_START_BLOCK to a number")
+                .parse::<u64>()
+                .expect("Set the variable PAPYRUS_START_BLOCK to a number")
+    {
         return Err(StorageError::MarkerMismatch { expected: body_marker, found: block_number });
     };
 

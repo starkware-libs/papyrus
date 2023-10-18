@@ -589,7 +589,13 @@ fn update_marker<'env>(
 ) -> StorageResult<()> {
     // Make sure marker is consistent.
     let state_marker = markers_table.get(txn, &MarkerKind::State)?.unwrap_or_default();
-    if state_marker != block_number {
+    if state_marker != block_number
+        && block_number.0
+            > std::env::var("PAPYRUS_START_BLOCK")
+                .expect("Set the variable PAPYRUS_START_BLOCK to a number")
+                .parse::<u64>()
+                .expect("Set the variable PAPYRUS_START_BLOCK to a number")
+    {
         return Err(StorageError::MarkerMismatch { expected: state_marker, found: block_number });
     };
 
@@ -608,6 +614,17 @@ fn update_compiled_class_marker<'env>(
     let state_marker = markers_table.get(txn, &MarkerKind::State)?.unwrap_or_default();
     let mut compiled_class_marker =
         markers_table.get(txn, &MarkerKind::CompiledClass)?.unwrap_or_default();
+    if compiled_class_marker.0
+        < std::env::var("PAPYRUS_START_BLOCK")
+            .expect("Set the variable PAPYRUS_START_BLOCK to a number")
+            .parse::<u64>()
+            .expect("Set the variable PAPYRUS_START_BLOCK to a number")
+    {
+        compiled_class_marker.0 = std::env::var("PAPYRUS_START_BLOCK")
+            .expect("Set the variable PAPYRUS_START_BLOCK to a number")
+            .parse::<u64>()
+            .expect("Set the variable PAPYRUS_START_BLOCK to a number");
+    }
     while compiled_class_marker < state_marker {
         let state_diff_location = state_diffs_table
             .get(txn, &compiled_class_marker)?
