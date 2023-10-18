@@ -350,6 +350,7 @@ async fn get_block_transaction_count() {
 
 #[tokio::test]
 async fn get_block_w_full_transactions() {
+    // TODO(omri): Add test for pending block.
     let method_name = "starknet_V0_4_getBlockWithTxs";
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
@@ -370,7 +371,7 @@ async fn get_block_w_full_transactions() {
         transaction_hash: block.body.transaction_hashes[0],
     };
     let expected_block = Block {
-        status: BlockStatus::AcceptedOnL2,
+        status: Some(BlockStatus::AcceptedOnL2),
         header: GeneralBlockHeader::BlockHeader(block.header.into()),
         transactions: Transactions::Full(vec![expected_transaction]),
     };
@@ -418,7 +419,7 @@ async fn get_block_w_full_transactions() {
         )
         .await
         .unwrap();
-    assert_eq!(block.status, BlockStatus::AcceptedOnL1);
+    assert_eq!(block.status, Some(BlockStatus::AcceptedOnL1));
 
     // Ask for an invalid block hash.
     let err = module
@@ -461,7 +462,7 @@ async fn get_block_w_transaction_hashes() {
         .unwrap();
 
     let expected_block = Block {
-        status: BlockStatus::AcceptedOnL2,
+        status: Some(BlockStatus::AcceptedOnL2),
         header: GeneralBlockHeader::BlockHeader(block.header.into()),
         transactions: Transactions::Hashes(vec![block.body.transaction_hashes[0]]),
     };
@@ -509,7 +510,7 @@ async fn get_block_w_transaction_hashes() {
         )
         .await
         .unwrap();
-    assert_eq!(block.status, BlockStatus::AcceptedOnL1);
+    assert_eq!(block.status, Some(BlockStatus::AcceptedOnL1));
 
     // Ask for an invalid block hash.
     call_api_then_assert_and_validate_schema_for_err::<_, BlockId, Block>(

@@ -76,7 +76,7 @@ pub trait JsonRpc {
 
     /// Gets block information with transaction hashes given a block identifier.
     #[method(name = "getBlockWithTxHashes")]
-    fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> RpcResult<Block>;
+    async fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> RpcResult<Block>;
 
     /// Gets block information with full transactions given a block identifier.
     #[method(name = "getBlockWithTxs")]

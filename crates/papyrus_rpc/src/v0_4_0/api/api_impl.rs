@@ -49,6 +49,7 @@ use super::super::block::{
     Block,
     BlockHeader,
     GeneralBlockHeader,
+    PendingBlockHeader,
 };
 use super::super::broadcasted_transaction::{
     BroadcastedDeclareTransaction,
@@ -151,15 +152,40 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> RpcResult<Block> {
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        let block_number = get_block_number(&txn, block_id)?;
-        let status = get_block_status(&txn, block_number)?;
-        let header =
-            GeneralBlockHeader::BlockHeader(get_block_header_by_number(&txn, block_number)?);
-        let transaction_hashes = get_block_tx_hashes_by_number(&txn, block_number)?;
+    async fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> RpcResult<Block> {
+        if block_id == BlockId::Tag(Tag::Pending) {
+            let block = self.pending_data.read().await.block.clone();
+            let pending_block_header = PendingBlockHeader {
+                parent_hash: block.parent_block_hash,
+                sequencer_address: block.sequencer_address,
+                timestamp: block.timestamp,
+            };
+            let header = GeneralBlockHeader::PendingBlockHeader(pending_block_header);
+            let client_transactions = block.transactions.clone();
+            // Iterate over the transactions and get the transaction hashes.
+            let transaction_hashes = client_transactions
+                .into_iter()
+                .map(|transaction| transaction.transaction_hash())
+                .collect();
+            Ok(Block {
+                status: None,
+                header,
+                transactions: Transactions::Hashes(transaction_hashes),
+            })
+        } else {
+            let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+            let block_number = get_block_number(&txn, block_id)?;
+            let status = get_block_status(&txn, block_number)?;
+            let header =
+                GeneralBlockHeader::BlockHeader(get_block_header_by_number(&txn, block_number)?);
+            let transaction_hashes = get_block_tx_hashes_by_number(&txn, block_number)?;
 
-        Ok(Block { status, header, transactions: Transactions::Hashes(transaction_hashes) })
+            Ok(Block {
+                status: Some(status),
+                header,
+                transactions: Transactions::Hashes(transaction_hashes),
+            })
+        }
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
@@ -182,7 +208,11 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             })
             .collect();
 
-        Ok(Block { status, header, transactions: Transactions::Full(transactions_with_hash) })
+        Ok(Block {
+            status: Some(status),
+            header,
+            transactions: Transactions::Full(transactions_with_hash),
+        })
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
