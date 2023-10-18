@@ -12,6 +12,7 @@ use jsonrpsee::core::Error;
 use jsonrpsee::Methods;
 use jsonschema::JSONSchema;
 use mockall::predicate::eq;
+use papyrus_common::pending_classes::{ApiContractClass, PendingClassesTrait};
 use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::events::EventIndex;
@@ -33,7 +34,7 @@ use starknet_api::deprecated_contract_class::{
     FunctionStateMutability,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::{StateDiff, StorageKey};
+use starknet_api::state::{ContractClass as StarknetApiContractClass, StateDiff, StorageKey};
 use starknet_api::transaction::{
     EventIndexInTransactionOutput,
     EventKey,
@@ -130,7 +131,7 @@ use super::super::write_api_result::{
     AddInvokeOkResult,
 };
 use super::api_impl::{JsonRpcServerV0_4Impl, BLOCK_HASH_TABLE_ADDRESS};
-use super::{ContinuationToken, EventFilter};
+use super::{ContinuationToken, EventFilter, GatewayContractClass};
 use crate::api::{BlockHashOrNumber, BlockId, Tag};
 use crate::syncing_state::SyncStatus;
 use crate::test_utils::{
@@ -610,8 +611,10 @@ async fn get_block_w_transaction_hashes() {
 #[tokio::test]
 async fn get_class() {
     let method_name = "starknet_V0_4_getClass";
-    let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let pending_classes = get_test_pending_classes();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerV0_4Impl,
+    >(None, None, None, Some(pending_classes.clone()), None);
     let parent_header = BlockHeader::default();
     let header = BlockHeader {
         block_hash: BlockHash(stark_felt!("0x1")),
@@ -665,6 +668,21 @@ async fn get_class() {
         .await
         .unwrap();
     assert_eq!(res, expected_contract_class);
+
+    // Get class of pending block
+    let pending_class_hash = ClassHash(random::<u64>().into());
+    let pending_class = ApiContractClass::ContractClass(
+        StarknetApiContractClass::get_test_instance(&mut get_rng()),
+    );
+    pending_classes.write().await.add_class(pending_class_hash, pending_class.clone());
+    let res = module
+        .call::<_, GatewayContractClass>(
+            method_name,
+            (BlockId::Tag(Tag::Pending), pending_class_hash),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res, pending_class.try_into().unwrap());
 
     // Ask for an invalid class hash.
     call_api_then_assert_and_validate_schema_for_err::<
