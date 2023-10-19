@@ -1906,6 +1906,7 @@ checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
 name = "dump_declared_classes"
 version = "0.0.5"
 dependencies = [
+ "clap",
  "papyrus_storage",
 ]
 
