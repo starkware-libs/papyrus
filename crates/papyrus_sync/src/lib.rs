@@ -34,6 +34,9 @@ use sources::base_layer::BaseLayerSourceError;
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
+// TODO(shahak): Consider adding genesis hash to the config.
+use starknet_api::hash::{StarkFelt, GENESIS_HASH};
+use starknet_api::stark_felt;
 use starknet_api::state::StateDiff;
 use starknet_client::reader::PendingData;
 use tokio::sync::RwLock;
@@ -882,18 +885,17 @@ async fn sync_pending_data<TPendingSource: PendingSourceTrait + Sync + Send>(
     pending_data: Arc<RwLock<PendingData>>,
     sleep_duration: Duration,
 ) -> Result<(), StateSyncError> {
-    *pending_data.write().await = PendingData::default();
     let txn = reader.begin_ro_txn()?;
     let header_marker = txn.get_header_marker()?;
     // TODO: Consider extracting this functionality to different а function.
     let latest_block_hash = match header_marker {
-        // TODO: make sure this is the correct value for the genesis's parent block in all the
-        // environments.
-        BlockNumber(0) => BlockHash::default(),
+        BlockNumber(0) => BlockHash(stark_felt!(GENESIS_HASH)),
         _ => {
-            txn.get_block_header(header_marker.prev().expect("Header marker isn't zero."))?
-                .expect("Block before the header marker must have header in the database.")
-                .block_hash
+            txn.get_block_header(
+                header_marker.prev().expect("Calling prev() on non-zero header marker failed."),
+            )?
+            .expect("Block before the header marker must have header in the database.")
+            .block_hash
         }
     };
     loop {
@@ -902,10 +904,14 @@ async fn sync_pending_data<TPendingSource: PendingSourceTrait + Sync + Send>(
             debug!("A new block was found. Stopping pending sync.");
             return Ok(());
         };
-        let current_pending_num_transactions = pending_data.read().await.block.transactions.len();
-        if current_pending_num_transactions == 0
-            || new_pending_data.block.transactions.len() > current_pending_num_transactions
-        {
+        let (current_pending_num_transactions, current_pending_parent_hash) = {
+            let pending_block = &pending_data.read().await.block;
+            (pending_block.transactions.len(), pending_block.parent_block_hash)
+        };
+        let is_new_pending_data_more_advanced = current_pending_parent_hash
+            != new_pending_data.block.parent_block_hash
+            || new_pending_data.block.transactions.len() > current_pending_num_transactions;
+        if is_new_pending_data_more_advanced {
             debug!("Received new pending data.");
             trace!("Pending data: {new_pending_data:#?}.");
             *pending_data.write().await = new_pending_data;
