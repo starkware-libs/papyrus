@@ -7,6 +7,7 @@
 #[cfg(test)]
 mod mmap_file_test;
 
+use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::fs::{File, OpenOptions};
 use std::marker::PhantomData;
@@ -15,18 +16,23 @@ use std::result;
 use std::sync::{Arc, Mutex};
 
 use memmap2::{MmapMut, MmapOptions};
+use papyrus_config::dumping::{ser_param, SerializeConfig};
+use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
+#[cfg(test)]
+use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Serialize};
+#[cfg(test)]
+use test_utils::GetTestInstance;
 use thiserror::Error;
 use tracing::{debug, instrument, trace};
 use validator::{Validate, ValidationError};
 
 use crate::db::serialization::{StorageSerde, StorageSerdeEx};
 
-#[allow(dead_code)]
 type MmapFileResult<V> = result::Result<V, MMapFileError>;
 
 /// Configuration for a memory mapped file.
-#[derive(Clone, Debug, Serialize, Deserialize, Validate)]
+#[derive(Clone, Debug, Serialize, Deserialize, Validate, PartialEq)]
 #[validate(schema(function = "validate_config"))]
 pub struct MmapFileConfig {
     /// The maximum size of the memory map in bytes.
@@ -35,6 +41,32 @@ pub struct MmapFileConfig {
     pub growth_step: usize,
     /// The maximum size of an object in bytes.
     pub max_object_size: usize,
+}
+
+impl SerializeConfig for MmapFileConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from_iter([
+            ser_param(
+                "max_size",
+                &self.max_size,
+                "The maximum size of a memory mapped file in bytes. Must be greater than \
+                 growth_step.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "growth_step",
+                &self.growth_step,
+                "The growth step in bytes, must be greater than max_object_size.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "max_object_size",
+                &self.max_object_size,
+                "The maximum size of a single object in the file in bytes",
+                ParamPrivacyInput::Public,
+            ),
+        ])
+    }
 }
 
 impl Default for MmapFileConfig {
@@ -102,7 +134,7 @@ impl LocationInFile {
 }
 
 /// A wrapper around `FileHandler` that provides a write interface.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct FileWriter<V: StorageSerde> {
     file_handler: FileHandler<V>,
 }
@@ -128,8 +160,6 @@ impl<V: StorageSerde> Reader<V> for FileWriter<V> {
 pub struct FileReader<V: StorageSerde> {
     file_handler: FileHandler<V>,
 }
-unsafe impl<V: StorageSerde> Send for FileReader<V> {}
-unsafe impl<V: StorageSerde> Sync for FileReader<V> {}
 
 impl<V: StorageSerde> Reader<V> for FileReader<V> {
     /// Returns an object from the file.
@@ -174,8 +204,6 @@ pub(crate) fn open_file<V: StorageSerde>(
     offset: usize,
 ) -> MmapFileResult<(FileWriter<V>, FileReader<V>)> {
     debug!("Opening file");
-    // TODO: move validation to caller.
-    config.validate().expect("Invalid config");
     let file = OpenOptions::new().read(true).write(true).create(true).open(path)?;
     let size = file.metadata()?.len();
     let mmap = unsafe { MmapOptions::new().len(config.max_size).map_mut(&file)? };
@@ -207,6 +235,9 @@ struct FileHandler<V: StorageSerde> {
     memory_ptr: *const u8,
     mmap_file: Arc<Mutex<MMapFile<V>>>,
 }
+
+unsafe impl<V: StorageSerde> Send for FileHandler<V> {}
+unsafe impl<V: StorageSerde> Sync for FileHandler<V> {}
 
 impl<V: StorageSerde> FileHandler<V> {
     fn grow_file_if_needed(&mut self, offset: usize) {
@@ -262,5 +293,30 @@ impl<V: StorageSerde> Reader<V> for FileHandler<V> {
         };
         trace!("Deserializing object: {:?}", bytes);
         Ok(V::deserialize(&mut bytes))
+    }
+}
+
+// TODO(dan): use varint serialization.
+impl StorageSerde for LocationInFile {
+    fn serialize_into(
+        &self,
+        res: &mut impl std::io::Write,
+    ) -> Result<(), crate::db::serialization::StorageSerdeError> {
+        self.offset.serialize_into(res)?;
+        self.len.serialize_into(res)?;
+        Ok(())
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        let offset = usize::deserialize_from(bytes)?;
+        let len = usize::deserialize_from(bytes)?;
+        Some(Self { offset, len })
+    }
+}
+
+#[cfg(test)]
+impl GetTestInstance for LocationInFile {
+    fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+        Self { offset: usize::get_test_instance(rng), len: usize::get_test_instance(rng) }
     }
 }
