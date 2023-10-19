@@ -127,8 +127,7 @@ pub struct LocationInFile {
 
 impl LocationInFile {
     /// returns the next offset in the file.
-    #[allow(dead_code)]
-    fn next_offset(&self) -> usize {
+    pub fn next_offset(&self) -> usize {
         self.offset + self.len
     }
 }
