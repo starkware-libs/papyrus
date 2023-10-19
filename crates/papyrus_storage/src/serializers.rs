@@ -125,7 +125,7 @@ use crate::ommer::{OmmerEventKey, OmmerTransactionKey};
 use crate::serializers::serializers_test::{create_storage_serde_test, StorageSerdeTest};
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::Version;
-use crate::MarkerKind;
+use crate::{MarkerKind, OffsetKind};
 
 auto_storage_serde! {
     pub struct AccountDeploymentData(pub Vec<StarkFelt>);
@@ -331,6 +331,9 @@ auto_storage_serde! {
         pub payload: L1ToL2Payload,
     }
     pub struct Nonce(pub StarkFelt);
+    pub enum OffsetKind {
+        ThinStateDiff = 0,
+    }
     struct OmmerTransactionKey(pub BlockHash, pub TransactionOffsetInBlock);
     struct OmmerEventKey(pub OmmerTransactionKey, pub EventIndexInTransactionOutput);
     pub struct PaymasterData(pub Vec<StarkFelt>);
