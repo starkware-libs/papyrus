@@ -776,6 +776,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         &self,
         block_id: BlockId,
     ) -> RpcResult<Vec<TransactionTraceWithHash>> {
+        debug!(?block_id, "Tracing block transactions.");
         let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&storage_txn, block_id)?;
         let block_execution_config =
@@ -828,7 +829,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             true,
         );
 
-        match res {
+        let res = match res {
             Ok(simulation_results) => Ok(simulation_results
                 .into_iter()
                 .zip(tx_hashes)
@@ -839,7 +840,9 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 .collect()),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
-        }
+        };
+        debug!(?block_id, "Tracing block transactions finished.");
+        res
     }
 }
 
