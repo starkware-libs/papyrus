@@ -882,6 +882,7 @@ async fn sync_pending_data<TPendingSource: PendingSourceTrait + Sync + Send>(
     pending_data: Arc<RwLock<PendingData>>,
     sleep_duration: Duration,
 ) -> Result<(), StateSyncError> {
+    *pending_data.write().await = PendingData::default();
     let txn = reader.begin_ro_txn()?;
     let header_marker = txn.get_header_marker()?;
     // TODO: Consider extracting this functionality to different а function.
@@ -900,7 +901,12 @@ async fn sync_pending_data<TPendingSource: PendingSourceTrait + Sync + Send>(
         if new_pending_data.block.parent_block_hash != latest_block_hash {
             return Ok(());
         };
-        *pending_data.write().await = new_pending_data;
+        let current_pending_num_transactions = pending_data.read().await.block.transactions.len();
+        if new_pending_data.block.transactions.len() > current_pending_num_transactions {
+            debug!("Received new pending data.");
+            trace!("Pending data: {new_pending_data:#?}.");
+            *pending_data.write().await = new_pending_data;
+        }
         tokio::time::sleep(sleep_duration).await;
     }
 }
