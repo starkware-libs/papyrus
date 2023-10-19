@@ -157,10 +157,9 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 timestamp: block.timestamp,
             };
             let header = GeneralBlockHeader::PendingBlockHeader(pending_block_header);
-            let client_transactions = block.transactions.clone();
-            // Iterate over the transactions and get the transaction hashes.
+            let client_transactions = block.transactions;
             let transaction_hashes = client_transactions
-                .into_iter()
+                .iter()
                 .map(|transaction| transaction.transaction_hash())
                 .collect();
             Ok(Block {
