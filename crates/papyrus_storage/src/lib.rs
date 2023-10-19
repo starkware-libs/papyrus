@@ -79,7 +79,15 @@ use body::events::EventIndex;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use db::db_stats::{DbTableStats, DbWholeStats};
 use db::serialization::StorageSerde;
-use mmap_file::{open_file, FileReader, FileWriter, MMapFileError, MmapFileConfig};
+use mmap_file::{
+    open_file,
+    FileReader,
+    FileWriter,
+    LocationInFile,
+    MMapFileError,
+    MmapFileConfig,
+    Reader,
+};
 use ommer::{OmmerEventKey, OmmerTransactionKey};
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
@@ -334,7 +342,7 @@ struct_field_names! {
         markers: TableIdentifier<MarkerKind, BlockNumber>,
         nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
         file_offsets: TableIdentifier<OffsetKind, usize>,
-        state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
+        state_diffs: TableIdentifier<BlockNumber, LocationInFile>,
         transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
         transaction_idx_to_hash: TableIdentifier<TransactionIndex, TransactionHash>,
         transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
