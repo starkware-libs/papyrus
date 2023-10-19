@@ -44,11 +44,7 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> PendingSourceTrait
 {
     async fn get_pending_data(&self) -> Result<PendingData, PendingError> {
         match self.starknet_client.pending_data().await {
-            Ok(Some(pending_data)) => {
-                debug!("Received new pending data.");
-                trace!("Pending data: {pending_data:#?}.");
-                Ok(pending_data)
-            }
+            Ok(Some(pending_data)) => Ok(pending_data),
             Ok(None) => Err(PendingError::PendingBlockNotFound),
             Err(err) => Err(PendingError::ClientError(Arc::new(err))),
         }
