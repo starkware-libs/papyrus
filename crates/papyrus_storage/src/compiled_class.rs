@@ -40,10 +40,9 @@ use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use papyrus_proc_macros::latency_histogram;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
-use starknet_api::state::ThinStateDiff;
 
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
-use crate::mmap_file::{FileWriter, LocationInFile, Reader};
+use crate::mmap_file::LocationInFile;
 use crate::{FileAccess, MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
 /// Interface for reading data related to the compiled classes.
@@ -92,14 +91,11 @@ impl<'env> CasmStorageWriter for StorageTxn<'env, RW> {
                 StorageError::from(err)
             }
         })?;
-        let FileAccess::Writers(file_writers) = self.file_access.clone() else {
-            panic!("File access is not available in a read-only transaction.");
-        };
         update_marker(
             &self.txn,
             &markers_table,
             &state_diff_table,
-            file_writers.thin_state_diff,
+            self.file_access.clone(),
             class_hash,
         )?;
         Ok(self)
@@ -110,7 +106,7 @@ fn update_marker<'env>(
     txn: &DbTransaction<'env, RW>,
     markers_table: &'env MarkersTable<'env>,
     state_diffs_table: &'env TableHandle<'_, BlockNumber, LocationInFile>,
-    state_diff_file_writer: FileWriter<ThinStateDiff>,
+    file_access: FileAccess,
     class_hash: &ClassHash,
 ) -> StorageResult<()> {
     // The marker needs to update if we reached the last class from the state diff. We can continue
@@ -120,11 +116,8 @@ fn update_marker<'env>(
         let Some(state_diff_location) = state_diffs_table.get(txn, &block_number)? else {
             break;
         };
-        if let Some((last_class_hash, _)) = state_diff_file_writer
-            .get(state_diff_location)?
-            .expect("State diff should exist in the file")
-            .declared_classes
-            .last()
+        if let Some((last_class_hash, _)) =
+            file_access.get(state_diff_location)?.declared_classes.last()
         {
             // Not the last class in the state diff, keep the current marker.
             if last_class_hash != class_hash {

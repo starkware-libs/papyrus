@@ -436,7 +436,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         let (thin_state_diff, declared_classes, deprecated_declared_classes) =
             ThinStateDiff::from_state_diff(state_diff);
         let FileAccess::Writers(mut file_writers) = self.file_access.clone() else {
-            panic!("File access is not available in a read-only transaction.");
+            panic!("RW storage transaction must have file writers.");
         };
         let location = file_writers.thin_state_diff.append(&thin_state_diff);
         state_diffs_table.insert(&self.txn, &block_number, &location)?;

@@ -87,6 +87,7 @@ use mmap_file::{
     MMapFileError,
     MmapFileConfig,
     Reader,
+    Writer,
 };
 use ommer::{OmmerEventKey, OmmerTransactionKey};
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
@@ -239,8 +240,6 @@ impl StorageReader {
         Ok(StorageTxn {
             txn: self.db_reader.begin_ro_txn()?,
             file_access: FileAccess::Readers(self.file_readers.clone()),
-            // file_readers: self.file_readers.clone(),
-            // file_writers: None,
             tables: self.tables.clone(),
             scope: self.scope,
         })
@@ -273,8 +272,6 @@ impl StorageWriter {
         Ok(StorageTxn {
             txn: self.db_writer.begin_rw_txn()?,
             file_access: FileAccess::Writers(self.file_writers.clone()),
-            // file_readers: self.file_readers.clone(),
-            // file_writers: Some(self.file_writers.clone()),
             tables: self.tables.clone(),
             scope: self.scope,
         })
@@ -286,8 +283,6 @@ impl StorageWriter {
 pub struct StorageTxn<'env, Mode: TransactionKind> {
     txn: DbTransaction<'env, Mode>,
     file_access: FileAccess,
-    // file_readers: FileReaders,
-    // file_writers: Option<FileWriters>,
     tables: Arc<Tables>,
     scope: StorageScope,
 }
@@ -295,6 +290,7 @@ pub struct StorageTxn<'env, Mode: TransactionKind> {
 impl<'env> StorageTxn<'env, RW> {
     /// Commits the changes made in the transaction to the storage.
     pub fn commit(self) -> StorageResult<()> {
+        self.file_access.flush();
         Ok(self.txn.commit()?)
     }
 }
@@ -539,6 +535,13 @@ impl FileAccess {
                 .ok_or(StorageError::DBInconsistency {
                     msg: format!("ThinStateDiff at location {:?} not found.", location),
                 })?),
+        }
+    }
+
+    fn flush(&self) {
+        match self {
+            FileAccess::Readers(_) => (),
+            FileAccess::Writers(file_writers) => file_writers.thin_state_diff.flush(),
         }
     }
 }
