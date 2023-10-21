@@ -164,7 +164,8 @@ impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for StorageTxn<'env, 
         match state_diff_location {
             None => Ok(None),
             Some(state_diff_location) => {
-                let state_diff = self.file_access.get(state_diff_location)?;
+                let state_diff =
+                    self.file_access.get_thin_state_diff_unchecked(state_diff_location)?;
                 Ok(Some(state_diff))
             }
         }
@@ -436,7 +437,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         let (thin_state_diff, declared_classes, deprecated_declared_classes) =
             ThinStateDiff::from_state_diff(state_diff);
         let FileAccess::Writers(mut file_writers) = self.file_access.clone() else {
-            panic!("File access is not available in a read-only transaction.");
+            panic!("RW storage transaction must have file writers.");
         };
         let location = file_writers.thin_state_diff.append(&thin_state_diff);
         state_diffs_table.insert(&self.txn, &block_number, &location)?;
@@ -598,7 +599,11 @@ fn update_compiled_class_marker<'env>(
         let state_diff_location = state_diffs_table
             .get(txn, &compiled_class_marker)?
             .unwrap_or_else(|| panic!("Missing state diff for block {compiled_class_marker}"));
-        if !file_access.get(state_diff_location)?.declared_classes.is_empty() {
+        if !file_access
+            .get_thin_state_diff_unchecked(state_diff_location)?
+            .declared_classes
+            .is_empty()
+        {
             break;
         }
         compiled_class_marker = compiled_class_marker.next();
