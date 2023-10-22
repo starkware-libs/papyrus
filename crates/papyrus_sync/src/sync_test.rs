@@ -7,15 +7,18 @@ use indexmap::IndexMap;
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
-use papyrus_storage::StorageWriter;
+use papyrus_storage::{StorageReader, StorageWriter};
 use pretty_assertions::assert_eq;
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, GasPrice};
+use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 use starknet_api::state::{ContractClass, StateDiff, StorageKey};
 use starknet_api::{patricia_key, stark_felt};
+use starknet_client::reader::objects::pending_data::PendingBlock;
+use starknet_client::reader::objects::transaction::Transaction as ClientTransaction;
 use starknet_client::reader::PendingData;
+use test_utils::{get_rng, GetTestInstance};
 use tokio::sync::RwLock;
 
 use crate::sources::base_layer::MockBaseLayerSourceTrait;
@@ -223,52 +226,142 @@ fn add_headers(headers_num: u64, writer: &mut StorageWriter) {
     }
 }
 
-#[tokio::test]
-async fn pending_sync() {
-    // Storage with one default block header.
-    let (reader, mut writer) = get_test_storage().0;
-    writer
-        .begin_rw_txn()
-        .unwrap()
-        .append_header(BlockNumber(0), &BlockHeader::default())
-        .unwrap()
-        .commit()
-        .unwrap();
-
+async fn test_pending_sync(
+    reader: StorageReader,
+    old_pending_data: PendingData,
+    new_pending_datas: Vec<PendingData>,
+    expected_pending_data: PendingData,
+    non_existing_hash: BlockHash,
+) {
     let mut mock_pending_source = MockPendingSourceTrait::new();
+    let pending_data_lock = Arc::new(RwLock::new(old_pending_data));
 
-    const PENDING_QUERIES: usize = 2;
-    for call_count in 0..=PENDING_QUERIES {
-        mock_pending_source.expect_get_pending_data().times(1).returning(move || {
-            let mut block = PendingData::default();
-            block.block.parent_block_hash = BlockHash::default();
-            block.block.gas_price = GasPrice(call_count as u128);
-            Ok(block)
-        });
+    for new_pending_data in new_pending_datas {
+        mock_pending_source
+            .expect_get_pending_data()
+            .times(1)
+            .return_once(move || Ok(new_pending_data));
     }
 
-    // A different parent block hash than the last block in the database tells that a new block was
-    // created, and pending sync should wait until the new block is written to the storage. so
-    // this pending data should not be written.
-    mock_pending_source.expect_get_pending_data().times(1).returning(|| {
-        let mut block = PendingData::default();
-        block.block.parent_block_hash = BlockHash(stark_felt!("0x1"));
-        Ok(block)
+    // The syncing will stop once we see a new parent_block_hash in the pending data. It won't
+    // store the pending data with the new hash in that case.
+    mock_pending_source.expect_get_pending_data().times(1).return_once(move || {
+        Ok(PendingData {
+            block: PendingBlock { parent_block_hash: non_existing_hash, ..Default::default() },
+            ..Default::default()
+        })
     });
-
-    let pending_data = Arc::new(RwLock::new(PendingData::default()));
 
     sync_pending_data(
         reader,
         Arc::new(mock_pending_source),
-        pending_data.clone(),
-        Duration::from_millis(1),
+        pending_data_lock.clone(),
+        Duration::ZERO,
     )
     .await
     .unwrap();
 
-    // The Last query for pending data (with parent block hash 0x1) should not be written so the gas
-    // price should PENDING_QUERIES.
-    assert_eq!(pending_data.read().await.block.parent_block_hash, BlockHash::default());
-    assert_eq!(pending_data.read().await.block.gas_price, GasPrice(PENDING_QUERIES as u128));
+    assert_eq!(pending_data_lock.read().await.clone(), expected_pending_data);
+}
+
+#[tokio::test]
+async fn pending_sync_advances_only_when_new_data_has_more_transactions() {
+    let genesis_hash = BlockHash(stark_felt!(GENESIS_HASH));
+    // Storage with no block headers.
+    let (reader, _) = get_test_storage().0;
+    let mut rng = get_rng();
+
+    let old_pending_data = PendingData {
+        block: PendingBlock {
+            parent_block_hash: genesis_hash,
+            transactions: vec![ClientTransaction::get_test_instance(&mut rng)],
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let advanced_pending_data = PendingData {
+        block: PendingBlock {
+            parent_block_hash: genesis_hash,
+            transactions: vec![
+                ClientTransaction::get_test_instance(&mut rng),
+                ClientTransaction::get_test_instance(&mut rng),
+                ClientTransaction::get_test_instance(&mut rng),
+            ],
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let less_advanced_pending_data = PendingData {
+        block: PendingBlock {
+            parent_block_hash: genesis_hash,
+            transactions: vec![
+                ClientTransaction::get_test_instance(&mut rng),
+                ClientTransaction::get_test_instance(&mut rng),
+            ],
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let expected_pending_data = advanced_pending_data.clone();
+    test_pending_sync(
+        reader,
+        old_pending_data,
+        vec![advanced_pending_data, less_advanced_pending_data],
+        expected_pending_data,
+        BlockHash(StarkHash::ONE),
+    )
+    .await
+}
+
+#[tokio::test]
+async fn pending_sync_new_data_has_more_advanced_hash_and_less_transactions() {
+    const FIRST_BLOCK_HASH: BlockHash = BlockHash(StarkHash::ONE);
+    let genesis_hash = BlockHash(stark_felt!(GENESIS_HASH));
+    // Storage with one block header.
+    let (reader, mut writer) = get_test_storage().0;
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(
+            BlockNumber(0),
+            &BlockHeader {
+                block_hash: FIRST_BLOCK_HASH,
+                parent_hash: genesis_hash,
+                block_number: BlockNumber(0),
+                ..Default::default()
+            },
+        )
+        .unwrap()
+        .commit()
+        .unwrap();
+    let mut rng = get_rng();
+
+    let old_pending_data = PendingData {
+        block: PendingBlock {
+            parent_block_hash: genesis_hash,
+            transactions: vec![
+                ClientTransaction::get_test_instance(&mut rng),
+                ClientTransaction::get_test_instance(&mut rng),
+            ],
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let new_pending_data = PendingData {
+        block: PendingBlock {
+            parent_block_hash: FIRST_BLOCK_HASH,
+            transactions: vec![ClientTransaction::get_test_instance(&mut rng)],
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let expected_pending_data = new_pending_data.clone();
+    test_pending_sync(
+        reader,
+        old_pending_data,
+        vec![new_pending_data],
+        expected_pending_data,
+        BlockHash(StarkHash::TWO),
+    )
+    .await
 }

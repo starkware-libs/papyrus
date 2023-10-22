@@ -4647,6 +4647,7 @@ dependencies = [
  "simple_logger",
  "starknet_api",
  "starknet_client",
+ "test_utils",
  "thiserror",
  "tokio",
  "tokio-stream",
