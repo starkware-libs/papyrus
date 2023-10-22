@@ -27,7 +27,6 @@ use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter, StarknetVersion};
-use papyrus_storage::ommer::{OmmerStorageReader, OmmerStorageWriter};
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
@@ -156,11 +155,6 @@ pub enum StateSyncError {
         expected_parent_block_hash: BlockHash,
         stored_parent_block_hash: BlockHash,
     },
-    #[error(
-        "Received state diff of block {block_number} and block hash {block_hash}, didn't find a \
-         matching header (neither in the ommer headers)."
-    )]
-    StateDiffWithoutMatchingHeader { block_number: BlockNumber, block_hash: BlockHash },
     #[error("Header for block {block_number} wasn't found when trying to store base layer block.")]
     BaseLayerBlockWithoutMatchingHeader { block_number: BlockNumber },
     #[error(transparent)]
@@ -240,10 +234,6 @@ impl<
                 StateSyncError::CentralSourceError(_) => true,
                 StateSyncError::BaseLayerSourceError(_) => true,
                 StateSyncError::StorageError(StorageError::InnerError(_)) => true,
-                StateSyncError::StateDiffWithoutMatchingHeader {
-                    block_number: _,
-                    block_hash: _,
-                } => true,
                 StateSyncError::ParentBlockHashMismatch {
                     block_number,
                     expected_parent_block_hash,
@@ -404,25 +394,23 @@ impl<
         state_diff: StateDiff,
         deployed_contract_class_definitions: IndexMap<ClassHash, DeprecatedContractClass>,
     ) -> StateSyncResult {
-        if !self.is_reverted_state_diff(block_number, block_hash)? {
-            debug!("Storing state diff.");
-            trace!("StateDiff data: {state_diff:#?}");
-            self.writer
-                .begin_rw_txn()?
-                .append_state_diff(block_number, state_diff, deployed_contract_class_definitions)?
-                .commit()?;
-            metrics::gauge!(papyrus_metrics::PAPYRUS_STATE_MARKER, block_number.next().0 as f64);
-            let compiled_class_marker = self.reader.begin_ro_txn()?.get_compiled_class_marker()?;
-            metrics::gauge!(
-                papyrus_metrics::PAPYRUS_COMPILED_CLASS_MARKER,
-                compiled_class_marker.0 as f64
-            );
+        // TODO(dan): verifications - verify state diff against stored header.
+        debug!("Storing state diff.");
+        trace!("StateDiff data: {state_diff:#?}");
+        self.writer
+            .begin_rw_txn()?
+            .append_state_diff(block_number, state_diff, deployed_contract_class_definitions)?
+            .commit()?;
+        metrics::gauge!(papyrus_metrics::PAPYRUS_STATE_MARKER, block_number.next().0 as f64);
+        let compiled_class_marker = self.reader.begin_ro_txn()?.get_compiled_class_marker()?;
+        metrics::gauge!(
+            papyrus_metrics::PAPYRUS_COMPILED_CLASS_MARKER,
+            compiled_class_marker.0 as f64
+        );
 
-            // Info the user on syncing the block once all the data is stored.
-            info!("Added block {} with hash {}.", block_number, block_hash);
-        } else {
-            debug!("TODO: Insert reverted state diff to ommer table.");
-        }
+        // Info the user on syncing the block once all the data is stored.
+        info!("Added block {} with hash {}.", block_number, block_hash);
+
         Ok(())
     }
 
@@ -435,11 +423,7 @@ impl<
         compiled_class: CasmContractClass,
     ) -> StateSyncResult {
         let txn = self.writer.begin_rw_txn()?;
-        let is_reverted_class =
-            txn.get_state_reader()?.get_class_definition_block_number(&class_hash)?.is_none();
-        if is_reverted_class {
-            debug!("TODO: Insert reverted compiled class to ommer table.");
-        }
+        // TODO: verifications - verify casm corresponds to a class on storage.
         match txn.append_casm(&class_hash, &compiled_class) {
             Ok(txn) => {
                 txn.commit()?;
@@ -546,7 +530,7 @@ impl<
     }
 
     // TODO(dan): update necessary metrics.
-    // Deletes the block data from the storage, moving it to the ommer tables.
+    // Deletes the block data from the storage.
     #[allow(clippy::expect_fun_call)]
     #[instrument(skip(self), level = "debug", err)]
     async fn revert_block(&mut self, block_number: BlockNumber) -> StateSyncResult {
@@ -560,35 +544,12 @@ impl<
         let mut reverted_block_hash: Option<BlockHash> = None;
         if let Some(header) = res.1 {
             reverted_block_hash = Some(header.block_hash);
-            txn = txn.insert_ommer_header(header.block_hash, &header)?;
 
             let res = txn.revert_body(block_number)?;
             txn = res.0;
-            if let Some((transactions, transaction_outputs, _transaction_hashes, events)) = res.1 {
-                txn = txn.insert_ommer_body(
-                    header.block_hash,
-                    &transactions,
-                    &transaction_outputs,
-                    events.as_slice(),
-                )?;
-            }
 
             let res = txn.revert_state_diff(block_number)?;
             txn = res.0;
-            // TODO(yair): consider inserting to ommer the deprecated_declared_classes.
-            if let Some((
-                thin_state_diff,
-                declared_classes,
-                _deprecated_declared_classes,
-                _compiled_classes,
-            )) = res.1
-            {
-                txn = txn.insert_ommer_state_diff(
-                    header.block_hash,
-                    &thin_state_diff,
-                    &declared_classes,
-                )?;
-            }
         }
 
         txn.commit()?;
@@ -612,28 +573,6 @@ impl<
         } else {
             // Block number doesn't exist in central, revert.
             Ok(true)
-        }
-    }
-
-    fn is_reverted_state_diff(
-        &self,
-        block_number: BlockNumber,
-        block_hash: BlockHash,
-    ) -> Result<bool, StateSyncError> {
-        let txn = self.reader.begin_ro_txn()?;
-        let storage_header = txn.get_block_header(block_number)?;
-        match storage_header {
-            Some(storage_header) if storage_header.block_hash == block_hash => Ok(false),
-            _ => {
-                // No matching header, check in the ommer headers.
-                match txn.get_ommer_header(block_hash)? {
-                    Some(_) => Ok(true),
-                    None => Err(StateSyncError::StateDiffWithoutMatchingHeader {
-                        block_number,
-                        block_hash,
-                    }),
-                }
-            }
         }
     }
 }
@@ -809,8 +748,6 @@ fn stream_new_compiled_classes<TCentralSource: CentralSourceTrait + Sync + Send>
                 central_source.stream_compiled_classes(from, up_to).fuse();
             pin_mut!(compiled_classes_stream);
 
-            // TODO(yair): Consider adding the block number and hash in order to make sure
-            // that we do not write classes of ommer blocks.
             while let Some(maybe_compiled_class) = compiled_classes_stream.next().await {
                 let (class_hash, compiled_class_hash, compiled_class) = maybe_compiled_class?;
                 yield SyncEvent::CompiledClassAvailable {
