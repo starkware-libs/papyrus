@@ -4,6 +4,7 @@ use std::time::Duration;
 use assert_matches::assert_matches;
 use futures_util::StreamExt;
 use indexmap::IndexMap;
+use papyrus_common::pending_classes::PendingClasses;
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
@@ -186,6 +187,7 @@ fn store_base_layer_block_test() {
         pending_data: Arc::new(RwLock::new(PendingData::default())),
         central_source: Arc::new(MockCentralSourceTrait::new()),
         pending_source: Arc::new(MockPendingSourceTrait::new()),
+        pending_classes: Arc::new(RwLock::new(PendingClasses::default())),
         base_layer_source: Arc::new(MockBaseLayerSourceTrait::new()),
         reader,
         writer,
@@ -235,6 +237,7 @@ async fn test_pending_sync(
 ) {
     let mut mock_pending_source = MockPendingSourceTrait::new();
     let pending_data_lock = Arc::new(RwLock::new(old_pending_data));
+    let pending_classes_lock = Arc::new(RwLock::new(PendingClasses::default()));
 
     for new_pending_data in new_pending_datas {
         mock_pending_source
@@ -256,6 +259,7 @@ async fn test_pending_sync(
         reader,
         Arc::new(mock_pending_source),
         pending_data_lock.clone(),
+        pending_classes_lock.clone(),
         Duration::ZERO,
     )
     .await

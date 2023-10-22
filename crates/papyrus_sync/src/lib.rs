@@ -17,6 +17,7 @@ use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use chrono::{TimeZone, Utc};
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use indexmap::IndexMap;
+use papyrus_common::pending_classes::PendingClasses;
 use papyrus_common::{metrics as papyrus_metrics, BlockHashAndNumber};
 use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_param, SerializeConfig};
@@ -128,6 +129,7 @@ pub struct GenericStateSync<
     pending_data: Arc<RwLock<PendingData>>,
     central_source: Arc<TCentralSource>,
     pending_source: Arc<TPendingSource>,
+    pending_classes: Arc<RwLock<PendingClasses>>,
     base_layer_source: Arc<TBaseLayerSource>,
     reader: StorageReader,
     writer: StorageWriter,
@@ -274,6 +276,7 @@ impl<
             self.pending_source.clone(),
             self.shared_highest_block.clone(),
             self.pending_data.clone(),
+            self.pending_classes.clone(),
             self.config.block_propagation_sleep_duration,
             PENDING_SLEEP_DURATION,
             self.config.blocks_max_stream_size,
@@ -638,13 +641,14 @@ impl<
 #[allow(clippy::too_many_arguments)]
 fn stream_new_blocks<
     TCentralSource: CentralSourceTrait + Sync + Send,
-    TPendingSource: PendingSourceTrait + Sync + Send,
+    TPendingSource: PendingSourceTrait + Sync + Send + 'static,
 >(
     reader: StorageReader,
     central_source: Arc<TCentralSource>,
     pending_source: Arc<TPendingSource>,
     shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
     pending_data: Arc<RwLock<PendingData>>,
+    pending_classes: Arc<RwLock<PendingClasses>>,
     block_propagation_sleep_duration: Duration,
     pending_sleep_duration: Duration,
     max_stream_size: u32,
@@ -665,7 +669,7 @@ fn stream_new_blocks<
                 if reader.begin_ro_txn()?.get_state_marker()? == header_marker{
                     // Here and when reverting a block those are the only places we update the pending data.
                     debug!("Start polling for pending data.");
-                    sync_pending_data(reader.clone(), pending_source.clone(), pending_data.clone(), pending_sleep_duration).await?;
+                    sync_pending_data(reader.clone(), pending_source.clone(), pending_data.clone(), pending_classes.clone(),pending_sleep_duration).await?;
                 }
                 else{
                     debug!("Blocks syncing reached the last known block, waiting for blockchain to advance.");
@@ -748,6 +752,7 @@ impl StateSync {
         config: SyncConfig,
         shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
         pending_data: Arc<RwLock<PendingData>>,
+        pending_classes: Arc<RwLock<PendingClasses>>,
         central_source: CentralSource,
         pending_source: PendingSource,
         base_layer_source: EthereumBaseLayerSource,
@@ -758,6 +763,7 @@ impl StateSync {
             config,
             shared_highest_block,
             pending_data,
+            pending_classes,
             central_source: Arc::new(central_source),
             pending_source: Arc::new(pending_source),
             base_layer_source: Arc::new(base_layer_source),
@@ -880,10 +886,11 @@ fn check_sync_progress(
 }
 
 // Update the pending data and return when a new block is discovered.
-async fn sync_pending_data<TPendingSource: PendingSourceTrait + Sync + Send>(
+async fn sync_pending_data<TPendingSource: PendingSourceTrait + Sync + Send + 'static>(
     reader: StorageReader,
     pending_source: Arc<TPendingSource>,
     pending_data: Arc<RwLock<PendingData>>,
+    _pending_classes: Arc<RwLock<PendingClasses>>,
     sleep_duration: Duration,
 ) -> Result<(), StateSyncError> {
     let txn = reader.begin_ro_txn()?;
