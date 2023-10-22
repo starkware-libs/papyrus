@@ -2199,6 +2199,31 @@
                     }
                 ]
             },
+            "PENDING_INVOKE_TXN_RECEIPT": {
+                "title": "Invoke Transaction Receipt",
+                "allOf": [
+                    {
+                        "title": "Type",
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "title": "Type",
+                                "type": "string",
+                                "enum": [
+                                    "INVOKE"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "type"
+                        ]
+                    },
+                    {
+                        "title": "Common receipt properties",
+                        "$ref": "#/components/schemas/PENDING_COMMON_RECEIPT_PROPERTIES"
+                    }
+                ]
+            },
             "DECLARE_TXN_RECEIPT": {
                 "title": "Declare Transaction Receipt",
                 "allOf": [
@@ -2224,12 +2249,68 @@
                     }
                 ]
             },
+            "PENDING_DECLARE_TXN_RECEIPT": {
+                "title": "Declare Transaction Receipt",
+                "allOf": [
+                    {
+                        "title": "Declare txn receipt",
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "title": "Declare",
+                                "type": "string",
+                                "enum": [
+                                    "DECLARE"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "type"
+                        ]
+                    },
+                    {
+                        "title": "Common receipt properties",
+                        "$ref": "#/components/schemas/PENDING_COMMON_RECEIPT_PROPERTIES"
+                    }
+                ]
+            },
             "DEPLOY_ACCOUNT_TXN_RECEIPT": {
                 "title": "Deploy Account Transaction Receipt",
                 "allOf": [
                     {
                         "title": "Common receipt properties",
                         "$ref": "#/components/schemas/COMMON_RECEIPT_PROPERTIES"
+                    },
+                    {
+                        "title": "DeployAccount txn receipt",
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "title": "Deploy account",
+                                "type": "string",
+                                "enum": [
+                                    "DEPLOY_ACCOUNT"
+                                ]
+                            },
+                            "contract_address": {
+                                "title": "Contract address",
+                                "description": "The address of the deployed contract",
+                                "$ref": "#/components/schemas/FELT"
+                            }
+                        },
+                        "required": [
+                            "type",
+                            "contract_address"
+                        ]
+                    }
+                ]
+            },
+            "PENDING_DEPLOY_ACCOUNT_TXN_RECEIPT": {
+                "title": "Deploy Account Transaction Receipt",
+                "allOf": [
+                    {
+                        "title": "Common receipt properties",
+                        "$ref": "#/components/schemas/PENDING_COMMON_RECEIPT_PROPERTIES"
                     },
                     {
                         "title": "DeployAccount txn receipt",
@@ -2312,6 +2393,32 @@
                     }
                 ]
             },
+            "PENDING_L1_HANDLER_TXN_RECEIPT": {
+                "title": "L1 Handler Transaction Receipt",
+                "description": "receipt for l1 handler transaction",
+                "allOf": [
+                    {
+                        "title": "Transaction type",
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "title": "type",
+                                "type": "string",
+                                "enum": [
+                                    "L1_HANDLER"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "type"
+                        ]
+                    },
+                    {
+                        "title": "Common receipt properties",
+                        "$ref": "#/components/schemas/PENDING_COMMON_RECEIPT_PROPERTIES"
+                    }
+                ]
+            },
             "TXN_RECEIPT": {
                 "title": "Transaction Receipt",
                 "oneOf": [
@@ -2338,6 +2445,27 @@
                     {
                         "title": "Pending transaction receipt",
                         "$ref": "#/components/schemas/PENDING_TXN_RECEIPT"
+                    }
+                ]
+            },
+            "PENDING_TXN_RECEIPT": {
+                "title": "Transaction Receipt",
+                "oneOf": [
+                    {
+                        "title": "Pending Invoke transaction receipt",
+                        "$ref": "#/components/schemas/PENDING_INVOKE_TXN_RECEIPT"
+                    },
+                    {
+                        "title": "Pending L1 handler transaction receipt",
+                        "$ref": "#/components/schemas/PENDING_L1_HANDLER_TXN_RECEIPT"
+                    },
+                    {
+                        "title": "Pending Declare transaction receipt",
+                        "$ref": "#/components/schemas/PENDING_DECLARE_TXN_RECEIPT"
+                    },
+                    {
+                        "title": "Pending Deploy account transaction receipt",
+                        "$ref": "#/components/schemas/PENDING_DEPLOY_ACCOUNT_TXN_RECEIPT"
                     }
                 ]
             },
@@ -2402,41 +2530,8 @@
                     "events",
                     "finality_status",
                     "execution_status"
-                ]
-            },
-            "PENDING_DEPLOY_TXN_RECEIPT": {
-                "title": "Pending deploy Transaction Receipt",
-                "allOf": [
-                    {
-                        "title": "Common receipt properties",
-                        "$ref": "#/components/schemas/PENDING_COMMON_RECEIPT_PROPERTIES"
-                    },
-                    {
-                        "type": "object",
-                        "title": "Contract address",
-                        "properties": {
-                            "contract_address": {
-                                "title": "Contract address",
-                                "description": "The address of the deployed contract",
-                                "$ref": "#/components/schemas/FELT"
-                            }
-                        }
-                    }
-                ]
-            },
-            "PENDING_TXN_RECEIPT": {
-                "title": "Pending Transaction Receipt",
-                "oneOf": [
-                    {
-                        "title": "Pending deploy transaction receipt",
-                        "$ref": "#/components/schemas/PENDING_DEPLOY_TXN_RECEIPT"
-                    },
-                    {
-                        "title": "Pending common receipt properties",
-                        "$comment": "Used for pending invoke and declare transaction receipts",
-                        "$ref": "#/components/schemas/PENDING_COMMON_RECEIPT_PROPERTIES"
-                    }
-                ]
+                ],
+                "additionalProperties": false
             },
             "MSG_TO_L1": {
                 "title": "Message to L1",

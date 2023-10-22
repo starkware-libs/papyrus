@@ -92,6 +92,16 @@ impl Transaction {
         }
     }
 
+    pub fn transaction_hash_mut(&mut self) -> &mut TransactionHash {
+        match self {
+            Transaction::Declare(tx) => &mut tx.transaction_hash,
+            Transaction::Deploy(tx) => &mut tx.transaction_hash,
+            Transaction::DeployAccount(tx) => &mut tx.transaction_hash,
+            Transaction::Invoke(tx) => &mut tx.transaction_hash,
+            Transaction::L1Handler(tx) => &mut tx.transaction_hash,
+        }
+    }
+
     pub fn transaction_type(&self) -> TransactionType {
         match self {
             Transaction::Declare(_) => TransactionType::Declare,
