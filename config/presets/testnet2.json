@@ -1,5 +1,6 @@
 {
     "central.url": "https://alpha4-2.starknet.io/",
     "chain_id": "SN_GOERLI2",
-    "rpc.starknet_url": "https://alpha4-2.starknet.io/"
+    "rpc.starknet_url": "https://alpha4-2.starknet.io/",
+    "base_layer.starknet_contract_address": "0xa4eD3aD27c294565cB0DCc993BDdCC75432D498c"
 }
