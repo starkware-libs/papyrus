@@ -5,20 +5,26 @@ use starknet_api::core::{
     CompiledClassHash,
     ContractAddress,
     EntryPointSelector,
+    EthAddress,
     Nonce,
 };
 use starknet_api::data_availability::DataAvailabilityMode;
-use starknet_api::hash::StarkFelt;
+use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{EntryPoint, EntryPointType};
 use starknet_api::transaction::{
     AccountDeploymentData,
     Calldata,
     ContractAddressSalt,
+    Event,
     Fee,
+    L1ToL2Payload,
+    L2ToL1Payload,
     PaymasterData,
     ResourceBoundsMapping,
     Tip,
+    TransactionExecutionStatus,
     TransactionHash,
+    TransactionOffsetInBlock,
     TransactionSignature,
     TransactionVersion,
 };
@@ -26,12 +32,19 @@ use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestIns
 
 use crate::reader::objects::state::ContractClass;
 use crate::reader::objects::transaction::{
+    BuiltinInstanceCounter,
     DeployTransaction,
+    EmptyBuiltinInstanceCounter,
+    ExecutionResources,
     IntermediateDeclareTransaction,
     IntermediateDeployAccountTransaction,
     IntermediateInvokeTransaction,
     L1HandlerTransaction,
+    L1ToL2Message,
+    L1ToL2Nonce,
+    L2ToL1Message,
     Transaction,
+    TransactionReceipt,
 };
 
 auto_impl_get_test_instance! {
@@ -111,5 +124,38 @@ auto_impl_get_test_instance! {
         pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
         pub contract_class_version: String,
         pub abi: String,
+    }
+    pub struct TransactionReceipt {
+        pub transaction_index: TransactionOffsetInBlock,
+        pub transaction_hash: TransactionHash,
+        pub l1_to_l2_consumed_message: L1ToL2Message,
+        pub l2_to_l1_messages: Vec<L2ToL1Message>,
+        pub events: Vec<Event>,
+        pub execution_resources: ExecutionResources,
+        pub actual_fee: Fee,
+        pub execution_status: TransactionExecutionStatus,
+    }
+    pub struct L1ToL2Message {
+        pub from_address: EthAddress,
+        pub to_address: ContractAddress,
+        pub selector: EntryPointSelector,
+        pub payload: L1ToL2Payload,
+        pub nonce: L1ToL2Nonce,
+    }
+    pub struct L1ToL2Nonce(pub StarkHash);
+    pub struct ExecutionResources {
+        pub n_steps: u64,
+        pub builtin_instance_counter: BuiltinInstanceCounter,
+        pub n_memory_holes: u64,
+    }
+    pub enum BuiltinInstanceCounter {
+        NonEmpty(HashMap<String, u64>) = 0,
+        Empty(EmptyBuiltinInstanceCounter) = 1,
+    }
+    pub struct EmptyBuiltinInstanceCounter {}
+    pub struct L2ToL1Message {
+        pub from_address: ContractAddress,
+        pub to_address: EthAddress,
+        pub payload: L2ToL1Payload,
     }
 }
