@@ -48,10 +48,10 @@ use super::transaction::{
     DeployAccountTransaction,
     DeployAccountTransactionV1,
     Event,
+    GeneralTransactionReceipt,
     InvokeTransaction,
     InvokeTransactionV0,
     InvokeTransactionV1,
-    TransactionReceipt,
     TransactionWithHash,
 };
 use super::write_api_result::{AddDeclareOkResult, AddDeployAccountOkResult, AddInvokeOkResult};
@@ -116,10 +116,10 @@ pub trait JsonRpc {
 
     /// Gets the transaction receipt by the transaction hash.
     #[method(name = "getTransactionReceipt")]
-    fn get_transaction_receipt(
+    async fn get_transaction_receipt(
         &self,
         transaction_hash: TransactionHash,
-    ) -> RpcResult<TransactionReceipt>;
+    ) -> RpcResult<GeneralTransactionReceipt>;
 
     /// Gets the contract class definition associated with the given hash.
     #[method(name = "getClass")]

@@ -503,6 +503,10 @@ auto_impl_get_test_instance! {
         pub function_idx: FunctionIndex,
         pub selector: EntryPointSelector,
     }
+    pub struct Event {
+        pub from_address: ContractAddress,
+        pub content: EventContent,
+    }
     pub struct FunctionIndex(pub usize);
     pub struct EntryPointOffset(pub usize);
     pub struct EntryPointSelector(pub StarkHash);

@@ -22,7 +22,8 @@ use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageScope;
 use pretty_assertions::assert_eq;
-use rand::random;
+use rand::{random, RngCore};
+use rand_chacha::ChaCha8Rng;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
@@ -51,7 +52,10 @@ use starknet_client::reader::objects::state::{
     StateDiff as ClientStateDiff,
     StorageEntry as ClientStorageEntry,
 };
-use starknet_client::reader::objects::transaction::Transaction as ClientTransaction;
+use starknet_client::reader::objects::transaction::{
+    Transaction as ClientTransaction,
+    TransactionReceipt as ClientTransactionReceipt,
+};
 use starknet_client::starknet_error::{KnownStarknetErrorCode, StarknetError, StarknetErrorCode};
 use starknet_client::writer::objects::response::{
     DeclareResponse,
@@ -109,7 +113,11 @@ use super::super::state::{
 use super::super::transaction::{
     DeployAccountTransaction,
     Event,
+    GeneralTransactionReceipt,
     InvokeTransactionV1,
+    PendingTransactionFinalityStatus,
+    PendingTransactionOutput,
+    PendingTransactionReceipt,
     TransactionFinalityStatus,
     TransactionOutput,
     TransactionReceipt,
@@ -699,8 +707,10 @@ async fn get_class() {
 #[tokio::test]
 async fn get_transaction_receipt() {
     let method_name = "starknet_V0_4_getTransactionReceipt";
-    let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let pending_data = get_test_pending_data();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerV0_4Impl,
+    >(None, None, Some(pending_data.clone()), None, None);
     let block = get_test_block(1, None, None, None);
     storage_writer
         .begin_rw_txn()
@@ -731,7 +741,7 @@ async fn get_transaction_receipt() {
     // struct in the TransactionOutput enum that matches the json is chosen. To not depend here
     // on the order of structs we compare the serialized data.
     assert_eq!(
-        serde_json::to_string(&res.clone().unwrap()).unwrap(),
+        serde_json::to_string(&res.unwrap()).unwrap(),
         serde_json::to_string(&expected_receipt).unwrap(),
     );
     assert!(validate_schema(
@@ -756,6 +766,41 @@ async fn get_transaction_receipt() {
     let res = module.call::<_, TransactionReceipt>(method_name, [transaction_hash]).await.unwrap();
     assert_eq!(res.finality_status, TransactionFinalityStatus::AcceptedOnL1);
     assert_eq!(res.output.execution_status(), &TransactionExecutionStatus::Succeeded);
+
+    // Add a pneding transaction and ask for its receipt.
+    let mut rng = get_rng();
+    let (client_transaction, client_transaction_receipt, expected_receipt) =
+        generate_client_transaction_client_receipt_and_rpc_receipt(&mut rng);
+
+    {
+        let pending_block = &mut pending_data.write().await.block;
+        pending_block.transactions.push(client_transaction.clone());
+        pending_block.transaction_receipts.push(client_transaction_receipt.clone());
+    }
+
+    let expected_result = GeneralTransactionReceipt::PendingTransactionReceipt(expected_receipt);
+    let (json_response, result) = raw_call::<_, TransactionHash, PendingTransactionReceipt>(
+        &module,
+        method_name,
+        &Some(client_transaction_receipt.transaction_hash),
+    )
+    .await;
+    // See above for explanation why we compare the json strings.
+    assert_eq!(
+        serde_json::to_string(&result.unwrap()).unwrap(),
+        serde_json::to_string(&expected_result).unwrap(),
+    );
+    // Validating schema again since pending has a different schema
+    assert!(validate_schema(
+        &get_starknet_spec_api_schema_for_method_results(
+            &[(
+                SpecFile::StarknetApiOpenrpc,
+                &[method_name_to_spec_method_name(method_name).as_str()]
+            )],
+            &VERSION_0_4,
+        ),
+        &json_response["result"],
+    ));
 
     // Ask for an invalid transaction.
     call_api_then_assert_and_validate_schema_for_err::<_, TransactionHash, TransactionReceipt>(
@@ -1216,12 +1261,45 @@ async fn get_storage_at() {
     assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
 }
 
-fn generate_client_transaction_and_rpc_transaction() -> (ClientTransaction, TransactionWithHash) {
-    let mut rng = get_rng();
+fn generate_client_transaction_client_receipt_and_rpc_receipt(
+    rng: &mut ChaCha8Rng,
+) -> (ClientTransaction, ClientTransactionReceipt, PendingTransactionReceipt) {
+    let pending_transaction_hash = TransactionHash(StarkHash::from(rng.next_u64()));
+    let mut client_transaction_receipt = ClientTransactionReceipt::get_test_instance(rng);
+    client_transaction_receipt.transaction_hash = pending_transaction_hash;
+    // Generating a transaction until we receive a transaction that can have pending output (i.e a
+    // non-deploy transaction).
+    let (mut client_transaction, output) = loop {
+        let (client_transaction, _) = generate_client_transaction_and_rpc_transaction(rng);
+        let starknet_api_output = client_transaction_receipt
+            .clone()
+            .into_starknet_api_transaction_output(&client_transaction);
+        let maybe_output =
+            PendingTransactionOutput::try_from(TransactionOutput::from(starknet_api_output));
+        let Ok(output) = maybe_output else {
+            continue;
+        };
+        break (client_transaction, output);
+    };
+    *client_transaction.transaction_hash_mut() = pending_transaction_hash;
+    (
+        client_transaction,
+        client_transaction_receipt,
+        PendingTransactionReceipt {
+            finality_status: PendingTransactionFinalityStatus::AcceptedOnL2,
+            transaction_hash: pending_transaction_hash,
+            output,
+        },
+    )
+}
+
+fn generate_client_transaction_and_rpc_transaction(
+    rng: &mut ChaCha8Rng,
+) -> (ClientTransaction, TransactionWithHash) {
     // TODO(shahak): Remove retry once v3 transactions are supported and the impl of TryInto will
     // become impl of Into.
     loop {
-        let client_transaction = ClientTransaction::get_test_instance(&mut rng);
+        let client_transaction = ClientTransaction::get_test_instance(rng);
         let Ok(starknet_api_transaction): Result<StarknetApiTransaction, _> =
             client_transaction.clone().try_into()
         else {
@@ -1272,16 +1350,12 @@ async fn get_transaction_by_hash() {
 
     // Ask for a transaction in the pending block.
     let (client_transaction, expected_transaction_with_hash) =
-        generate_client_transaction_and_rpc_transaction();
+        generate_client_transaction_and_rpc_transaction(&mut get_rng());
     pending_data.write().await.block.transactions.push(client_transaction.clone());
     let res = module
         .call::<_, TransactionWithHash>(method_name, (client_transaction.transaction_hash(), 0))
         .await
         .unwrap();
-    println!(
-        "{:?}, {:?}",
-        expected_transaction_with_hash.transaction_hash, expected_transaction.transaction_hash
-    );
     assert_eq!(res, expected_transaction_with_hash);
 
     // Ask for an invalid transaction.
@@ -1364,7 +1438,7 @@ async fn get_transaction_by_block_id_and_index() {
 
     // Get transaction of pending block.
     let (client_transaction, expected_transaction_with_hash) =
-        generate_client_transaction_and_rpc_transaction();
+        generate_client_transaction_and_rpc_transaction(&mut get_rng());
     pending_data.write().await.block.transactions.push(client_transaction);
     let res = module
         .call::<_, TransactionWithHash>(method_name, (BlockId::Tag(Tag::Pending), 0))

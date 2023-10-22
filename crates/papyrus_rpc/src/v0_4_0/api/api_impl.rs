@@ -74,7 +74,11 @@ use super::super::transaction::{
     get_block_txs_by_number,
     DeployAccountTransaction,
     Event,
+    GeneralTransactionReceipt,
     InvokeTransactionV1,
+    PendingTransactionFinalityStatus,
+    PendingTransactionOutput,
+    PendingTransactionReceipt,
     Transaction,
     TransactionOutput,
     TransactionReceipt,
@@ -266,9 +270,16 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     ) -> RpcResult<TransactionWithHash> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
-        let Some(transaction_index) =
+        if let Some(transaction_index) =
             txn.get_transaction_idx_by_hash(&transaction_hash).map_err(internal_server_error)?
-        else {
+        {
+            let transaction = txn
+                .get_transaction(transaction_index)
+                .map_err(internal_server_error)?
+                .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
+
+            Ok(TransactionWithHash { transaction: transaction.try_into()?, transaction_hash })
+        } else {
             // The transaction is not in any non-pending block. Search for it in the pending block
             // and if it's not found, return error.
             let client_transaction = self
@@ -288,14 +299,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 transaction: starknet_api_transaction.try_into()?,
                 transaction_hash,
             });
-        };
-
-        let transaction = txn
-            .get_transaction(transaction_index)
-            .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
-
-        Ok(TransactionWithHash { transaction: transaction.try_into()?, transaction_hash })
+        }
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
@@ -393,50 +397,78 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_transaction_receipt(
+    async fn get_transaction_receipt(
         &self,
         transaction_hash: TransactionHash,
-    ) -> RpcResult<TransactionReceipt> {
+    ) -> RpcResult<GeneralTransactionReceipt> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
-        let transaction_index = txn
-            .get_transaction_idx_by_hash(&transaction_hash)
-            .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
+        if let Some(transaction_index) =
+            txn.get_transaction_idx_by_hash(&transaction_hash).map_err(internal_server_error)?
+        {
+            let block_number = transaction_index.0;
+            let status = get_block_status(&txn, block_number)?;
 
-        let block_number = transaction_index.0;
-        let status = get_block_status(&txn, block_number)?;
+            // rejected blocks should not be a part of the API so we early return here.
+            // this assumption also holds for the conversion from block status to transaction
+            // finality status where we set rejected blocks to unreachable.
+            if status == BlockStatus::Rejected {
+                return Err(ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
+            }
 
-        // rejected blocks should not be a part of the API so we early return here.
-        // this assumption also holds for the conversion from block status to transaction finality
-        // status where we set rejected blocks to unreachable.
-        if status == BlockStatus::Rejected {
-            return Err(ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
+            let block_hash = get_block_header_by_number::<_, BlockHeader>(&txn, block_number)
+                .map_err(internal_server_error)?
+                .block_hash;
+
+            let thin_tx_output = txn
+                .get_transaction_output(transaction_index)
+                .map_err(internal_server_error)?
+                .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
+
+            let events = txn
+                .get_transaction_events(transaction_index)
+                .map_err(internal_server_error)?
+                .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
+
+            let output = TransactionOutput::from_thin_transaction_output(thin_tx_output, events);
+
+            Ok(GeneralTransactionReceipt::TransactionReceipt(TransactionReceipt {
+                finality_status: status.into(),
+                transaction_hash,
+                block_hash,
+                block_number,
+                output,
+            }))
+        } else {
+            // The transaction is not in any non-pending block. Search for it in the pending block
+            // and if it's not found, return error.
+
+            // TODO(shahak): Consider cloning the transactions and the receipts in order to free
+            // the lock sooner (Check which is better).
+            let pending_block = &self.pending_data.read().await.block;
+
+            let client_transaction_receipt = pending_block
+                .transaction_receipts
+                .iter()
+                .find(|receipt| receipt.transaction_hash == transaction_hash)
+                .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?
+                .clone();
+            let client_transaction = &pending_block
+                .transactions
+                .iter()
+                .find(|transaction| transaction.transaction_hash() == transaction_hash)
+                .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
+            let starknet_api_output =
+                client_transaction_receipt.into_starknet_api_transaction_output(client_transaction);
+            let output =
+                PendingTransactionOutput::try_from(TransactionOutput::from(starknet_api_output))?;
+            Ok(GeneralTransactionReceipt::PendingTransactionReceipt(PendingTransactionReceipt {
+                // ACCEPTED_ON_L2 is the only finality status of a pending transaction.
+                finality_status: PendingTransactionFinalityStatus::AcceptedOnL2,
+                transaction_hash,
+                output,
+            }))
         }
-
-        let block_hash = get_block_header_by_number::<_, BlockHeader>(&txn, block_number)
-            .map_err(internal_server_error)?
-            .block_hash;
-
-        let thin_tx_output = txn
-            .get_transaction_output(transaction_index)
-            .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
-
-        let events = txn
-            .get_transaction_events(transaction_index)
-            .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
-
-        let output = TransactionOutput::from_thin_transaction_output(thin_tx_output, events);
-
-        Ok(TransactionReceipt {
-            finality_status: status.into(),
-            transaction_hash,
-            block_hash,
-            block_number,
-            output,
-        })
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]

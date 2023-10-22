@@ -367,6 +367,16 @@ pub enum TransactionFinalityStatus {
     AcceptedOnL1,
 }
 
+/// Transaction Finality status on starknet for transactions in the pending block.
+#[derive(
+    Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord, Default,
+)]
+pub enum PendingTransactionFinalityStatus {
+    #[serde(rename = "ACCEPTED_ON_L2")]
+    #[default]
+    AcceptedOnL2,
+}
+
 impl From<BlockStatus> for TransactionFinalityStatus {
     fn from(status: BlockStatus) -> Self {
         match status {
@@ -382,6 +392,13 @@ impl From<BlockStatus> for TransactionFinalityStatus {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(untagged)]
+pub enum GeneralTransactionReceipt {
+    TransactionReceipt(TransactionReceipt),
+    PendingTransactionReceipt(PendingTransactionReceipt),
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct TransactionReceipt {
     pub finality_status: TransactionFinalityStatus,
     pub transaction_hash: TransactionHash,
@@ -392,12 +409,37 @@ pub struct TransactionReceipt {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct PendingTransactionReceipt {
+    pub finality_status: PendingTransactionFinalityStatus,
+    pub transaction_hash: TransactionHash,
+    #[serde(flatten)]
+    pub output: PendingTransactionOutput,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(tag = "type")]
 pub enum TransactionOutput {
     #[serde(rename = "DECLARE")]
     Declare(DeclareTransactionOutput),
     #[serde(rename = "DEPLOY")]
     Deploy(DeployTransactionOutput),
+    #[serde(rename = "DEPLOY_ACCOUNT")]
+    DeployAccount(DeployAccountTransactionOutput),
+    #[serde(rename = "INVOKE")]
+    Invoke(InvokeTransactionOutput),
+    #[serde(rename = "L1_HANDLER")]
+    L1Handler(L1HandlerTransactionOutput),
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(tag = "type")]
+// Applying deny_unknown_fields on the inner type instead of on PendingTransactionReceipt because
+// of a bug that makes deny_unknown_fields not work well with flatten:
+// https://github.com/serde-rs/serde/issues/1358
+#[serde(deny_unknown_fields)]
+pub enum PendingTransactionOutput {
+    #[serde(rename = "DECLARE")]
+    Declare(DeclareTransactionOutput),
     #[serde(rename = "DEPLOY_ACCOUNT")]
     DeployAccount(DeployAccountTransactionOutput),
     #[serde(rename = "INVOKE")]
@@ -487,6 +529,30 @@ impl From<starknet_api::transaction::TransactionOutput> for TransactionOutput {
             }
             starknet_api::transaction::TransactionOutput::L1Handler(l1_handler_tx_output) => {
                 TransactionOutput::L1Handler(l1_handler_tx_output)
+            }
+        }
+    }
+}
+
+impl TryFrom<TransactionOutput> for PendingTransactionOutput {
+    type Error = ErrorObjectOwned;
+
+    fn try_from(tx_output: TransactionOutput) -> Result<Self, Self::Error> {
+        match tx_output {
+            TransactionOutput::Declare(declare_tx_output) => {
+                Ok(PendingTransactionOutput::Declare(declare_tx_output))
+            }
+            TransactionOutput::Deploy(_) => {
+                Err(internal_server_error("Got a pending deploy transaction."))
+            }
+            TransactionOutput::DeployAccount(deploy_tx_output) => {
+                Ok(PendingTransactionOutput::DeployAccount(deploy_tx_output))
+            }
+            TransactionOutput::Invoke(invoke_tx_output) => {
+                Ok(PendingTransactionOutput::Invoke(invoke_tx_output))
+            }
+            TransactionOutput::L1Handler(l1_handler_tx_output) => {
+                Ok(PendingTransactionOutput::L1Handler(l1_handler_tx_output))
             }
         }
     }
