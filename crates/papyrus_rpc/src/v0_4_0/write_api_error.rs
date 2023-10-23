@@ -1,6 +1,6 @@
 use starknet_client::starknet_error::{KnownStarknetErrorCode, StarknetError, StarknetErrorCode};
 
-use crate::v0_4_0::error::{
+use super::error::{
     unexpected_error,
     JsonRpcError,
     CLASS_ALREADY_DECLARED,

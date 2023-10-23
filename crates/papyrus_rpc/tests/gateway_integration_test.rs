@@ -4,7 +4,7 @@ use jsonrpsee::core::client::ClientT;
 use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
 use jsonrpsee::rpc_params;
 use papyrus_common::transaction_hash::get_transaction_hash;
-use papyrus_rpc::{AddInvokeOkResult, InvokeTransaction, InvokeTransactionV1};
+use papyrus_rpc::{AddInvokeOkResultRPC0_4, InvokeTransactionRPC0_4, InvokeTransactionV1RPC0_4};
 use starknet_api::core::{ChainId, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::{
@@ -75,7 +75,7 @@ async fn test_gw_integration_testnet() {
     let receiver_address = contract_address!(USER_B_ADDRESS);
 
     // Create an invoke transaction for Eth transfer with a signature placeholder.
-    let mut invoke_tx = InvokeTransactionV1 {
+    let mut invoke_tx = InvokeTransactionV1RPC0_4 {
         max_fee: Fee(MAX_FEE),
         signature: TransactionSignature::default(),
         nonce,
@@ -100,7 +100,7 @@ async fn test_gw_integration_testnet() {
 
     // Update the signature.
     let hash = get_transaction_hash(
-        &Transaction::Invoke(InvokeTransaction::Version1(invoke_tx.clone()).into()),
+        &Transaction::Invoke(InvokeTransactionRPC0_4::Version1(invoke_tx.clone()).into()),
         &ChainId("SN_GOERLI".to_string()),
     )
     .unwrap();
@@ -115,7 +115,7 @@ async fn test_gw_integration_testnet() {
     invoke_tx.signature = TransactionSignature(vec![signature.r.into(), signature.s.into()]);
 
     let invoke_res = client
-        .request::<AddInvokeOkResult, _>(
+        .request::<AddInvokeOkResultRPC0_4, _>(
             "starknet_addInvokeTransaction",
             rpc_params!(SNClientInvokeTransaction::from(invoke_tx)),
         )

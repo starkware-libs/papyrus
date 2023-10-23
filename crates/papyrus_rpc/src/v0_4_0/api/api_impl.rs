@@ -42,19 +42,46 @@ use starknet_client::ClientError;
 use tokio::sync::RwLock;
 use tracing::{debug, instrument, trace};
 
-use super::super::block::{Block, BlockHeader};
+use super::super::block::{get_block_header_by_number, get_block_number, Block, BlockHeader};
 use super::super::broadcasted_transaction::{
     BroadcastedDeclareTransaction,
     BroadcastedTransaction,
 };
+use super::super::error::{
+    JsonRpcError,
+    BLOCK_NOT_FOUND,
+    CLASS_HASH_NOT_FOUND,
+    CONTRACT_NOT_FOUND,
+    INVALID_BLOCK_HASH,
+    INVALID_TRANSACTION_HASH,
+    INVALID_TRANSACTION_INDEX,
+    NO_BLOCKS,
+    PAGE_SIZE_TOO_BIG,
+    TOO_MANY_KEYS_IN_FILTER,
+    TRANSACTION_HASH_NOT_FOUND,
+};
 use super::super::state::StateUpdate;
 use super::super::transaction::{
+    get_block_tx_hashes_by_number,
+    get_block_txs_by_number,
+    DeployAccountTransaction,
     Event,
+    InvokeTransactionV1,
     Transaction,
     TransactionOutput,
     TransactionReceipt,
     TransactionWithHash,
     Transactions,
+};
+use super::super::write_api_error::{
+    starknet_error_to_declare_error,
+    starknet_error_to_deploy_account_error,
+    starknet_error_to_invoke_error,
+};
+use super::super::write_api_result::{
+    AddDeclareOkResult,
+    AddDeployAccountOkResult,
+    AddInvokeOkResult,
 };
 use super::{
     stored_txn_to_executable_txn,
@@ -72,36 +99,6 @@ use super::{
 };
 use crate::api::{BlockHashOrNumber, JsonRpcServerImpl};
 use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
-use crate::v0_4_0::block::{get_block_header_by_number, get_block_number};
-use crate::v0_4_0::error::{
-    JsonRpcError,
-    BLOCK_NOT_FOUND,
-    CLASS_HASH_NOT_FOUND,
-    CONTRACT_NOT_FOUND,
-    INVALID_BLOCK_HASH,
-    INVALID_TRANSACTION_HASH,
-    INVALID_TRANSACTION_INDEX,
-    NO_BLOCKS,
-    PAGE_SIZE_TOO_BIG,
-    TOO_MANY_KEYS_IN_FILTER,
-    TRANSACTION_HASH_NOT_FOUND,
-};
-use crate::v0_4_0::transaction::{
-    get_block_tx_hashes_by_number,
-    get_block_txs_by_number,
-    DeployAccountTransaction,
-    InvokeTransactionV1,
-};
-use crate::v0_4_0::write_api_error::{
-    starknet_error_to_declare_error,
-    starknet_error_to_deploy_account_error,
-    starknet_error_to_invoke_error,
-};
-use crate::v0_4_0::write_api_result::{
-    AddDeclareOkResult,
-    AddDeployAccountOkResult,
-    AddInvokeOkResult,
-};
 use crate::{
     get_block_status,
     get_latest_block_number,

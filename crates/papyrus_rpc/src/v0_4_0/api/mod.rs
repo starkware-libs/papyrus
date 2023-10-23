@@ -49,7 +49,7 @@ use super::transaction::{
 use super::write_api_result::{AddDeclareOkResult, AddDeployAccountOkResult, AddInvokeOkResult};
 use crate::api::BlockId;
 use crate::syncing_state::SyncingState;
-use crate::v0_4_0::error::INVALID_CONTINUATION_TOKEN;
+use super::error::INVALID_CONTINUATION_TOKEN;
 use crate::{internal_server_error, ContinuationTokenAsStruct};
 
 pub mod api_impl;

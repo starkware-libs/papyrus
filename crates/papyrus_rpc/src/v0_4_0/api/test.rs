@@ -102,7 +102,7 @@ use crate::test_utils::{
     validate_schema,
     SpecFile,
 };
-use crate::v0_4_0::error::{
+use super::super::error::{
     unexpected_error,
     JsonRpcError,
     BLOCK_NOT_FOUND,
