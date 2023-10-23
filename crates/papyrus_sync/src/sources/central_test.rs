@@ -315,6 +315,7 @@ async fn stream_state_updates() {
         starknet_client: Arc::new(mock),
         storage_reader: reader,
         state_update_stream_config: state_update_stream_config_for_test(),
+        // TODO(shahak): Check that downloaded classes appear in the cache.
         class_cache: get_test_class_cache(),
     };
     let initial_block_num = BlockNumber(START_BLOCK_NUMBER);
@@ -442,6 +443,77 @@ async fn stream_compiled_classes() {
         assert_eq!(compiled_class_hash, expected_compiled_class_hash);
         assert_eq!(compiled_class, expected_compiled_class);
     }
+}
+
+#[tokio::test]
+async fn get_class() {
+    let mut mock = MockStarknetReader::new();
+
+    let deprecated_class_hash = ClassHash(StarkHash::ONE);
+    let deprecated_contract_class =
+        GenericContractClass::Cairo0ContractClass(DeprecatedContractClass::default());
+    let deprecated_contract_class_clone = deprecated_contract_class.clone();
+    mock.expect_class_by_hash()
+        .with(predicate::eq(deprecated_class_hash))
+        .times(1)
+        .return_once(move |_x| Ok(Some(deprecated_contract_class_clone)));
+
+    let class_hash = ClassHash(StarkHash::TWO);
+    let contract_class = GenericContractClass::Cairo1ContractClass(ContractClass::default());
+    let contract_class_clone = contract_class.clone();
+    mock.expect_class_by_hash()
+        .with(predicate::eq(class_hash))
+        .times(1)
+        .return_once(move |_x| Ok(Some(contract_class_clone)));
+
+    let ((reader, _), _temp_dir) = get_test_storage();
+    let central_source = GenericCentralSource {
+        concurrent_requests: TEST_CONCURRENT_REQUESTS,
+        starknet_client: Arc::new(mock),
+        storage_reader: reader,
+        state_update_stream_config: state_update_stream_config_for_test(),
+        class_cache: get_test_class_cache(),
+    };
+
+    assert_eq!(
+        central_source.get_class(deprecated_class_hash).await.unwrap(),
+        deprecated_contract_class.clone().into()
+    );
+    assert_eq!(central_source.get_class(class_hash).await.unwrap(), contract_class.clone().into());
+
+    // Repeating the calls to see that source doesn't call the client and gets the result from
+    // cache.
+    assert_eq!(
+        central_source.get_class(deprecated_class_hash).await.unwrap(),
+        deprecated_contract_class.into()
+    );
+    assert_eq!(central_source.get_class(class_hash).await.unwrap(), contract_class.into());
+}
+
+#[tokio::test]
+async fn get_compiled_class() {
+    let mut mock = MockStarknetReader::new();
+
+    let class_hash = ClassHash(StarkHash::ONE);
+    let compiled_class = CasmContractClass::default();
+    let compiled_class_clone = compiled_class.clone();
+    mock.expect_compiled_class_by_hash()
+        .with(predicate::eq(class_hash))
+        .times(1)
+        .return_once(move |_x| Ok(Some(compiled_class_clone)));
+
+    let ((reader, _), _temp_dir) = get_test_storage();
+    let central_source = GenericCentralSource {
+        concurrent_requests: TEST_CONCURRENT_REQUESTS,
+        starknet_client: Arc::new(mock),
+        storage_reader: reader,
+        state_update_stream_config: state_update_stream_config_for_test(),
+        class_cache: get_test_class_cache(),
+    };
+
+    assert_eq!(central_source.get_compiled_class(class_hash).await.unwrap(), compiled_class);
+
+    // TODO(shahak): Repeat the call to test the cache once the cache is implemented.
 }
 
 fn state_update_stream_config_for_test() -> StateUpdateStreamConfig {
