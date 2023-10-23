@@ -26,7 +26,7 @@ use rand::{random, RngCore};
 use rand_chacha::ChaCha8Rng;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
+use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
     ContractClassAbiEntry,
@@ -70,6 +70,7 @@ use starknet_client::writer::objects::transaction::{
 use starknet_client::writer::{MockStarknetWriter, WriterClientError, WriterClientResult};
 use starknet_client::ClientError;
 use test_utils::{
+    auto_impl_get_test_instance,
     get_rng,
     get_test_block,
     get_test_body,
@@ -135,7 +136,7 @@ use crate::test_utils::{
     validate_schema,
     SpecFile,
 };
-use crate::v0_4_0::block::GeneralBlockHeader;
+use crate::v0_4_0::block::{GeneralBlockHeader, PendingBlockHeader};
 use crate::v0_4_0::error::{
     unexpected_error,
     JsonRpcError,
@@ -359,7 +360,6 @@ async fn get_block_transaction_count() {
 
 #[tokio::test]
 async fn get_block_w_full_transactions() {
-    // TODO(omri): Add test for pending block.
     let method_name = "starknet_V0_4_getBlockWithTxs";
     let (module, mut storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
@@ -456,8 +456,10 @@ async fn get_block_w_full_transactions() {
 #[tokio::test]
 async fn get_block_w_transaction_hashes() {
     let method_name = "starknet_V0_4_getBlockWithTxHashes";
-    let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let pending_data = get_test_pending_data();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerV0_4Impl,
+    >(None, None, Some(pending_data.clone()), None, None);
 
     let block = get_test_block(1, None, None, None);
     storage_writer
@@ -542,6 +544,15 @@ async fn get_block_w_transaction_hashes() {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
+
+    // Get pending block.
+    let transaction_count = 3;
+    let expected_pending_block = get_test_pending_block_with_transaction_hashes(transaction_count);
+    pending_data.write().await.block.transactions.extend(
+        iter::repeat(ClientTransaction::get_test_instance(&mut get_rng())).take(transaction_count),
+    );
+    let res = module.call::<_, Block>(method_name, [BlockId::Tag(Tag::Pending)]).await.unwrap();
+    assert_eq!(res, expected_pending_block);
 }
 
 #[tokio::test]
@@ -768,7 +779,7 @@ async fn get_transaction_receipt() {
     assert_eq!(res.finality_status, TransactionFinalityStatus::AcceptedOnL1);
     assert_eq!(res.output.execution_status(), &TransactionExecutionStatus::Succeeded);
 
-    // Add a pneding transaction and ask for its receipt.
+    // Add a pending transaction and ask for its receipt.
     let mut rng = get_rng();
     let (client_transaction, client_transaction_receipt, expected_receipt) =
         generate_client_transaction_client_receipt_and_rpc_receipt(&mut rng);
@@ -2555,4 +2566,26 @@ fn spec_api_methods_coverage() {
         .sorted()
         .collect::<Vec<_>>();
     assert!(method_names_in_spec.eq(&implemented_method_names));
+}
+
+auto_impl_get_test_instance! {
+    pub struct PendingBlockHeader {
+        pub parent_hash: BlockHash,
+        pub sequencer_address: ContractAddress,
+        pub timestamp: BlockTimestamp,
+    }
+}
+
+fn get_test_pending_block_with_transaction_hashes(transaction_count: usize) -> Block {
+    let mut rng = get_rng();
+    Block {
+        header: GeneralBlockHeader::PendingBlockHeader(PendingBlockHeader::get_test_instance(
+            &mut rng,
+        )),
+        status: None,
+        transactions: Transactions::Hashes(vec![
+            TransactionHash::get_test_instance(&mut rng);
+            transaction_count
+        ]),
+    }
 }
