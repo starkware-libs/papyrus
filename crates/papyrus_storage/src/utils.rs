@@ -9,7 +9,7 @@ use std::io::{BufWriter, Write};
 
 use serde::Serialize;
 use starknet_api::block::BlockNumber;
-use starknet_api::core::{ClassHash, CompiledClassHash};
+use starknet_api::core::{ChainId, ClassHash, CompiledClassHash};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{EntryPoint, EntryPointType};
 
@@ -61,8 +61,10 @@ pub fn dump_declared_classes_table_by_block_range(
     start_block: u64,
     end_block: u64,
     file_path: &str,
+    chain_id: &str,
 ) -> StorageResult<()> {
-    let storage_config = StorageConfig::default();
+    let mut storage_config = StorageConfig::default();
+    storage_config.db_config.chain_id = ChainId(chain_id.to_string());
     let (storage_reader, _) = open_storage(storage_config)?;
     let txn = storage_reader.begin_ro_txn()?;
     let compiled_class_marker = txn.get_compiled_class_marker()?;

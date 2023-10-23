@@ -2,16 +2,16 @@ use clap::{Arg, Command};
 use papyrus_storage::utils::dump_declared_classes_table_by_block_range;
 
 /// This executable dumps the declared_classes table from the storage to a file.
-
 fn main() {
     let cli_params = get_cli_params();
     match dump_declared_classes_table_by_block_range(
         cli_params.start_block,
         cli_params.end_block,
         &cli_params.file_path,
+        &cli_params.chain_id,
     ) {
         Ok(_) => println!("Dumped declared_classes table to file: {} .", cli_params.file_path),
-        Err(e) => println!("Failed dumping declared_classes table with error: {} .", e),
+        Err(e) => println!("Failed dumping declared_classes table with error: {}", e),
     }
 }
 
@@ -19,6 +19,7 @@ struct CliParams {
     start_block: u64,
     end_block: u64,
     file_path: String,
+    chain_id: String,
 }
 
 /// The start_block and end_block arguments are mandatory and define the block range to dump,
@@ -47,10 +48,17 @@ fn get_cli_params() -> CliParams {
                 .required(true)
                 .help("The block number to end dumping at."),
         )
+        .arg(
+            Arg::new("chain_id")
+                .short('c')
+                .long("chain_id")
+                .required(true)
+                .help("The chain id SN_MAIN/SN_GOERLI, default value is SN_MAIN."),
+        )
         .get_matches();
 
     let file_path =
-        matches.get_one::<String>("file_path").expect("Failed parsing file_path").as_str();
+        matches.get_one::<String>("file_path").expect("Failed parsing file_path").to_string();
     let start_block = matches
         .get_one::<String>("start_block")
         .expect("Failed parsing start_block")
@@ -64,5 +72,7 @@ fn get_cli_params() -> CliParams {
     if start_block >= end_block {
         panic!("start_block must be smaller than end_block");
     }
-    CliParams { start_block, end_block, file_path: file_path.to_string() }
+    let chain_id =
+        matches.get_one::<String>("chain_id").expect("Failed parsing chain_id").to_string();
+    CliParams { start_block, end_block, file_path, chain_id }
 }
