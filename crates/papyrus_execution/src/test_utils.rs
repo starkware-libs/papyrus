@@ -28,7 +28,7 @@ use starknet_api::core::{
 };
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::{ContractClass, StateDiff, StateNumber};
+use starknet_api::state::{ContractClass, StateDiff, StateNumber, ThinStateDiff};
 use starknet_api::transaction::{
     Calldata,
     DeclareTransactionV0V1,
@@ -179,7 +179,7 @@ pub fn execute_simulate_transactions(
     tx_hashes: Option<Vec<TransactionHash>>,
     charge_fee: bool,
     validate: bool,
-) -> Vec<(TransactionTrace, GasPrice, Fee)> {
+) -> Vec<(TransactionTrace, ThinStateDiff, GasPrice, Fee)> {
     let chain_id = ChainId(CHAIN_ID.to_string());
     let storage_txn = storage_reader.begin_ro_txn().unwrap();
 
