@@ -6,6 +6,7 @@ use async_stream::stream;
 use async_trait::async_trait;
 use futures::StreamExt;
 use indexmap::IndexMap;
+use papyrus_common::pending_classes::PendingClasses;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::header::{HeaderStorageReader, StarknetVersion};
@@ -107,6 +108,7 @@ async fn run_sync(
         pending_data: Arc::new(RwLock::new(PendingData::default())),
         central_source: Arc::new(central),
         pending_source: Arc::new(pending_source),
+        pending_classes: Arc::new(RwLock::new(PendingClasses::default())),
         base_layer_source: Arc::new(base_layer),
         reader,
         writer,

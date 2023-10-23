@@ -74,6 +74,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         config,
         shared_highest_block,
         pending_data,
+        pending_classes,
         storage_reader.clone(),
         storage_writer,
     );
@@ -100,6 +101,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         config: NodeConfig,
         shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
         pending_data: Arc<RwLock<PendingData>>,
+        pending_classes: Arc<RwLock<PendingClasses>>,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
     ) -> Result<(), StateSyncError> {
@@ -115,6 +117,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
             sync_config,
             shared_highest_block,
             pending_data,
+            pending_classes,
             central_source,
             pending_source,
             base_layer_source,
