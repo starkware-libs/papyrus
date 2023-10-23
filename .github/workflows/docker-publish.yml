@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # Not required but recommended - enables build multi-platform images, export cache, etc
       # Also workaround for: https://github.com/docker/build-push-action/issues/461
