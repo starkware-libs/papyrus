@@ -21,7 +21,7 @@ pub struct BlockHeader {
     pub timestamp: BlockTimestamp,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(deny_unknown_fields)]
 pub struct PendingBlockHeader {
     pub parent_hash: BlockHash,
