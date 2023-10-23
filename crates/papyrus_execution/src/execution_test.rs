@@ -691,8 +691,7 @@ fn induced_state_diff() {
         .declare_deprecated_class(*ACCOUNT_ADDRESS)
         .deploy_account()
         .collect();
-    let simulation_results =
-        execute_simulate_transactions(&storage_reader, tx.clone(), None, true, true);
+    let simulation_results = execute_simulate_transactions(&storage_reader, tx, None, true, true);
     // This is the value TxsScenarioBuilder uses for the first declared class hash.
     let mut next_declared_class_hash = 100_u128;
     let mut account_balance = u64::try_from(*ACCOUNT_INITIAL_BALANCE).unwrap() as u128;
