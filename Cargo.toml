@@ -17,7 +17,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.0-alpha"
+version = "0.1.1-alpha"
 edition = "2021"
 repository = "https://github.com/starkware-libs/papyrus/"
 license = "Apache-2.0"
@@ -71,7 +71,7 @@ serde = { version = "1.0.130" }
 serde_json = { version = "1.0.81" }
 serde_yaml = { version = "0.9.16" }
 simple_logger = { version = "4.0.0" }
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "8f620bc" }
+starknet_api = { version = "0.1.3" }
 tempfile = { version = "3.3.0" }
 thiserror = { version = "1.0.31" }
 tokio = { version = "1.18.2" }

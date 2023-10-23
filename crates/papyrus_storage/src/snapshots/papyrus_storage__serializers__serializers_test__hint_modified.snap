@@ -286,7 +286,7 @@ definitions:
               key:
                 $ref: "#/definitions/ResOperand"
         additionalProperties: false
-      - description: "Similar to Felt252DictWrite, but updates an existing entry and does not wirte the previous value to the stack."
+      - description: "Similar to Felt252DictWrite, but updates an existing entry and does not write the previous value to the stack."
         type: object
         required:
           - Felt252DictEntryUpdate
