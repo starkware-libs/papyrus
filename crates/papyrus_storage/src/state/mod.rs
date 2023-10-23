@@ -64,8 +64,17 @@ use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey, Thi
 use tracing::debug;
 
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
+use crate::mmap_file::{LocationInFile, Writer};
 use crate::state::data::IndexedDeprecatedContractClass;
-use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
+use crate::{
+    FileAccess,
+    MarkerKind,
+    MarkersTable,
+    OffsetKind,
+    StorageError,
+    StorageResult,
+    StorageTxn,
+};
 
 type DeclaredClassesTable<'env> = TableHandle<'env, ClassHash, ContractClass>;
 type DeclaredClassesBlockTable<'env> = TableHandle<'env, ClassHash, BlockNumber>;
@@ -151,9 +160,17 @@ impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for StorageTxn<'env, 
     }
     fn get_state_diff(&self, block_number: BlockNumber) -> StorageResult<Option<ThinStateDiff>> {
         let state_diffs_table = self.open_table(&self.tables.state_diffs)?;
-        let state_diff = state_diffs_table.get(&self.txn, &block_number)?;
-        Ok(state_diff)
+        let state_diff_location = state_diffs_table.get(&self.txn, &block_number)?;
+        match state_diff_location {
+            None => Ok(None),
+            Some(state_diff_location) => {
+                let state_diff =
+                    self.file_access.get_thin_state_diff_unchecked(state_diff_location)?;
+                Ok(Some(state_diff))
+            }
+        }
     }
+
     fn get_state_reader(&self) -> StorageResult<StateReader<'_, Mode>> {
         StateReader::new(self)
     }
@@ -395,6 +412,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             self.open_table(&self.tables.deprecated_declared_classes)?;
         let storage_table = self.open_table(&self.tables.contract_storage)?;
         let state_diffs_table = self.open_table(&self.tables.state_diffs)?;
+        let file_offset_table = self.txn.open_table(&self.tables.file_offsets)?;
 
         update_marker(&self.txn, &markers_table, block_number)?;
 
@@ -418,7 +436,12 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         // Write state diff.
         let (thin_state_diff, declared_classes, deprecated_declared_classes) =
             ThinStateDiff::from_state_diff(state_diff);
-        state_diffs_table.insert(&self.txn, &block_number, &thin_state_diff)?;
+        let FileAccess::Writers(mut file_writers) = self.file_access.clone() else {
+            panic!("RW storage transaction must have file writers.");
+        };
+        let location = file_writers.thin_state_diff.append(&thin_state_diff);
+        state_diffs_table.insert(&self.txn, &block_number, &location)?;
+        file_offset_table.upsert(&self.txn, &OffsetKind::ThinStateDiff, &location.next_offset())?;
 
         // Write declared classes.
         write_declared_classes(
@@ -430,7 +453,12 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         )?;
 
         // Advance compiled class marker.
-        update_compiled_class_marker(&self.txn, &markers_table, &state_diffs_table)?;
+        update_compiled_class_marker(
+            &self.txn,
+            &markers_table,
+            &state_diffs_table,
+            self.file_access.clone(),
+        )?;
 
         // Write deprecated declared classes.
         if !deployed_contract_class_definitions.is_empty() {
@@ -561,16 +589,21 @@ fn update_marker<'env>(
 fn update_compiled_class_marker<'env>(
     txn: &DbTransaction<'env, RW>,
     markers_table: &'env MarkersTable<'env>,
-    state_diffs_table: &'env TableHandle<'_, BlockNumber, ThinStateDiff>,
+    state_diffs_table: &'env TableHandle<'_, BlockNumber, LocationInFile>,
+    file_access: FileAccess,
 ) -> StorageResult<()> {
     let state_marker = markers_table.get(txn, &MarkerKind::State)?.unwrap_or_default();
     let mut compiled_class_marker =
         markers_table.get(txn, &MarkerKind::CompiledClass)?.unwrap_or_default();
     while compiled_class_marker < state_marker {
-        let state_diff = state_diffs_table
+        let state_diff_location = state_diffs_table
             .get(txn, &compiled_class_marker)?
             .unwrap_or_else(|| panic!("Missing state diff for block {compiled_class_marker}"));
-        if !state_diff.declared_classes.is_empty() {
+        if !file_access
+            .get_thin_state_diff_unchecked(state_diff_location)?
+            .declared_classes
+            .is_empty()
+        {
             break;
         }
         compiled_class_marker = compiled_class_marker.next();

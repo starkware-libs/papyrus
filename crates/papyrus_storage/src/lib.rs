@@ -79,6 +79,16 @@ use body::events::EventIndex;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use db::db_stats::{DbTableStats, DbWholeStats};
 use db::serialization::StorageSerde;
+use mmap_file::{
+    open_file,
+    FileReader,
+    FileWriter,
+    LocationInFile,
+    MMapFileError,
+    MmapFileConfig,
+    Reader,
+    Writer,
+};
 use ommer::{OmmerEventKey, OmmerTransactionKey};
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
@@ -114,13 +124,13 @@ use crate::version::{VersionStorageReader, VersionStorageWriter};
 /// The current version of the storage code.
 /// Whenever a breaking change is introduced, the version is incremented and a storage
 /// migration is required for existing storages.
-pub const STORAGE_VERSION: Version = Version(5);
+pub const STORAGE_VERSION: Version = Version(6);
 
 /// Opens a storage and returns a [`StorageReader`] and a [`StorageWriter`].
 pub fn open_storage(
     storage_config: StorageConfig,
 ) -> StorageResult<(StorageReader, StorageWriter)> {
-    let (db_reader, mut db_writer) = open_env(storage_config.db_config)?;
+    let (db_reader, mut db_writer) = open_env(&storage_config.db_config)?;
     let tables = Arc::new(Tables {
         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
         casms: db_writer.create_table("casms")?,
@@ -133,6 +143,7 @@ pub fn open_storage(
         headers: db_writer.create_table("headers")?,
         markers: db_writer.create_table("markers")?,
         nonces: db_writer.create_table("nonces")?,
+        file_offsets: db_writer.create_table("file_offsets")?,
         state_diffs: db_writer.create_table("state_diffs")?,
         transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
         transaction_idx_to_hash: db_writer.create_table("transaction_idx_to_hash")?,
@@ -154,8 +165,20 @@ pub fn open_storage(
         starknet_version: db_writer.create_table("starknet_version")?,
         storage_version: db_writer.create_table("storage_version")?,
     });
-    let reader = StorageReader { db_reader, tables: tables.clone(), scope: storage_config.scope };
-    let writer = StorageWriter { db_writer, tables, scope: storage_config.scope };
+    let (file_writers, file_readers) = open_storage_files(
+        &storage_config.db_config,
+        storage_config.mmap_file_config,
+        db_reader.clone(),
+        &tables.file_offsets,
+    )?;
+
+    let reader = StorageReader {
+        db_reader,
+        tables: tables.clone(),
+        scope: storage_config.scope,
+        file_readers,
+    };
+    let writer = StorageWriter { db_writer, tables, scope: storage_config.scope, file_writers };
 
     let writer = set_initial_version_if_needed(writer)?;
     verify_storage_version(reader.clone())?;
@@ -205,6 +228,7 @@ pub enum StorageScope {
 #[derive(Clone)]
 pub struct StorageReader {
     db_reader: DbReader,
+    file_readers: FileReaders,
     tables: Arc<Tables>,
     scope: StorageScope,
 }
@@ -215,6 +239,7 @@ impl StorageReader {
     pub fn begin_ro_txn(&self) -> StorageResult<StorageTxn<'_, RO>> {
         Ok(StorageTxn {
             txn: self.db_reader.begin_ro_txn()?,
+            file_access: FileAccess::Readers(self.file_readers.clone()),
             tables: self.tables.clone(),
             scope: self.scope,
         })
@@ -235,6 +260,7 @@ impl StorageReader {
 /// at any given moment.
 pub struct StorageWriter {
     db_writer: DbWriter,
+    file_writers: FileWriters,
     tables: Arc<Tables>,
     scope: StorageScope,
 }
@@ -245,6 +271,7 @@ impl StorageWriter {
     pub fn begin_rw_txn(&mut self) -> StorageResult<StorageTxn<'_, RW>> {
         Ok(StorageTxn {
             txn: self.db_writer.begin_rw_txn()?,
+            file_access: FileAccess::Writers(self.file_writers.clone()),
             tables: self.tables.clone(),
             scope: self.scope,
         })
@@ -255,6 +282,7 @@ impl StorageWriter {
 /// The actually functionality is implemented on the transaction in multiple traits.
 pub struct StorageTxn<'env, Mode: TransactionKind> {
     txn: DbTransaction<'env, Mode>,
+    file_access: FileAccess,
     tables: Arc<Tables>,
     scope: StorageScope,
 }
@@ -262,6 +290,7 @@ pub struct StorageTxn<'env, Mode: TransactionKind> {
 impl<'env> StorageTxn<'env, RW> {
     /// Commits the changes made in the transaction to the storage.
     pub fn commit(self) -> StorageResult<()> {
+        self.file_access.flush();
         Ok(self.txn.commit()?)
     }
 }
@@ -308,7 +337,8 @@ struct_field_names! {
         headers: TableIdentifier<BlockNumber, BlockHeader>,
         markers: TableIdentifier<MarkerKind, BlockNumber>,
         nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
-        state_diffs: TableIdentifier<BlockNumber, ThinStateDiff>,
+        file_offsets: TableIdentifier<OffsetKind, usize>,
+        state_diffs: TableIdentifier<BlockNumber, LocationInFile>,
         transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
         transaction_idx_to_hash: TableIdentifier<TransactionIndex, TransactionHash>,
         transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
@@ -382,6 +412,9 @@ pub enum StorageError {
     EventNotFound { event_index: EventIndex, from_address: ContractAddress },
     #[error("DB in inconsistent state: {msg:?}.")]
     DBInconsistency { msg: String },
+    /// Errors related to the underlying files.
+    #[error(transparent)]
+    MMapFileError(#[from] MMapFileError),
     #[error("Header of block with hash {block_hash} already exists in ommer table.")]
     OmmerHeaderAlreadyExists { block_hash: BlockHash },
     #[error("Ommer transaction key {tx_key:?} already exists.")]
@@ -436,6 +469,8 @@ pub type StorageResult<V> = std::result::Result<V, StorageError>;
 pub struct StorageConfig {
     #[validate]
     pub db_config: DbConfig,
+    #[validate]
+    pub mmap_file_config: MmapFileConfig,
     pub scope: StorageScope,
 }
 
@@ -447,6 +482,8 @@ impl SerializeConfig for StorageConfig {
             "The categories of data saved in storage.",
             ParamPrivacyInput::Public,
         )]);
+        dumped_config
+            .extend(append_sub_config_name(self.mmap_file_config.dump(), "mmap_file_config"));
         dumped_config.extend(append_sub_config_name(self.db_config.dump(), "db_config"));
         dumped_config
     }
@@ -476,3 +513,80 @@ pub(crate) enum MarkerKind {
 }
 
 pub(crate) type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
+
+#[derive(Clone, Debug)]
+pub(crate) enum FileAccess {
+    Readers(FileReaders),
+    Writers(FileWriters),
+}
+
+impl FileAccess {
+    // Returns the thin state diff at the given location or an error in case it doesn't exist.
+    fn get_thin_state_diff_unchecked(
+        &self,
+        location: LocationInFile,
+    ) -> StorageResult<ThinStateDiff> {
+        match self {
+            FileAccess::Readers(file_readers) => Ok(file_readers
+                .thin_state_diff
+                .get(location)?
+                .ok_or(StorageError::DBInconsistency {
+                    msg: format!("ThinStateDiff at location {:?} not found.", location),
+                })?),
+            FileAccess::Writers(file_writers) => Ok(file_writers
+                .thin_state_diff
+                .get(location)?
+                .ok_or(StorageError::DBInconsistency {
+                    msg: format!("ThinStateDiff at location {:?} not found.", location),
+                })?),
+        }
+    }
+
+    fn flush(&self) {
+        // TODO(dan): Consider 1. flushing only the relevant files, 2. flushing concurrently.
+        match self {
+            FileAccess::Readers(_) => (),
+            FileAccess::Writers(file_writers) => file_writers.thin_state_diff.flush(),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct FileWriters {
+    thin_state_diff: FileWriter<ThinStateDiff>,
+}
+
+#[derive(Clone, Debug)]
+struct FileReaders {
+    thin_state_diff: FileReader<ThinStateDiff>,
+}
+
+fn open_storage_files(
+    db_config: &DbConfig,
+    mmap_file_config: MmapFileConfig,
+    db_reader: DbReader,
+    file_offsets_table: &TableIdentifier<OffsetKind, usize>,
+) -> StorageResult<(FileWriters, FileReaders)> {
+    let db_transaction = db_reader.begin_ro_txn()?;
+    let table = db_transaction.open_table(file_offsets_table)?;
+
+    let thin_state_diff_offset =
+        table.get(&db_transaction, &OffsetKind::ThinStateDiff)?.unwrap_or_default();
+    let (thin_state_diff_writer, thin_state_diff_reader) = open_file(
+        mmap_file_config,
+        db_config.path().join("thin_state_diff"),
+        thin_state_diff_offset,
+    )?;
+
+    Ok((
+        FileWriters { thin_state_diff: thin_state_diff_writer },
+        FileReaders { thin_state_diff: thin_state_diff_reader },
+    ))
+}
+
+/// Represents a kind of mmap file.
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub enum OffsetKind {
+    /// A thin state diff file.
+    ThinStateDiff,
+}
