@@ -117,7 +117,7 @@ pub trait Reader<V: StorageSerde> {
 }
 
 /// Represents a location in the file.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct LocationInFile {
     /// Offset in the file.
     offset: usize,
