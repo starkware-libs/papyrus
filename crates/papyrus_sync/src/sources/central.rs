@@ -215,6 +215,15 @@ pub trait CentralSourceTrait {
         initial_block_number: BlockNumber,
         up_to_block_number: BlockNumber,
     ) -> CompiledClassesStream<'_>;
+
+    // TODO(shahak): Remove once pending block is removed.
+    async fn get_class(&self, class_hash: ClassHash) -> Result<ApiContractClass, CentralError>;
+
+    // TODO(shahak): Remove once pending block is removed.
+    async fn get_compiled_class(
+        &self,
+        class_hash: ClassHash,
+    ) -> Result<CasmContractClass, CentralError>;
 }
 
 pub(crate) type BlocksStream<'a> =
@@ -333,11 +342,8 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> CentralSourceTrait
                     match maybe_class_hashes {
                         Ok((class_hash, compiled_class_hash)) => {
                             trace!("Downloading compiled class {:?}.", class_hash);
-                            match self.starknet_client.compiled_class_by_hash(class_hash).await {
-                                Ok(Some(compiled_class)) => Ok((class_hash, compiled_class_hash, compiled_class)),
-                                Ok(None) => Err(CentralError::CompiledClassNotFound{class_hash}),
-                                Err(err) => Err(CentralError::ClientError(Arc::new(err))),
-                            }
+                            let compiled_class = self.get_compiled_class(class_hash).await?;
+                            Ok((class_hash, compiled_class_hash, compiled_class))
                         },
                         Err(err) => Err(err),
                     }
@@ -357,6 +363,40 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> CentralSourceTrait
             }
         }
         .boxed()
+    }
+
+    async fn get_class(&self, class_hash: ClassHash) -> Result<ApiContractClass, CentralError> {
+        // TODO(shahak): Fix code duplication with StateUpdatesStream.
+        {
+            let mut class_cache = self.class_cache.lock().expect("Failed to lock class cache.");
+            if let Some(class) = class_cache.get(&class_hash) {
+                return Ok(class.clone());
+            }
+        }
+        let client_class =
+            self.starknet_client.class_by_hash(class_hash).await.map_err(Arc::new)?;
+        match client_class {
+            None => Err(CentralError::ClassNotFound),
+            Some(class) => {
+                {
+                    let mut class_cache =
+                        self.class_cache.lock().expect("Failed to lock class cache.");
+                    class_cache.put(class_hash, class.clone().into());
+                }
+                Ok(class.into())
+            }
+        }
+    }
+
+    async fn get_compiled_class(
+        &self,
+        class_hash: ClassHash,
+    ) -> Result<CasmContractClass, CentralError> {
+        match self.starknet_client.compiled_class_by_hash(class_hash).await {
+            Ok(Some(compiled_class)) => Ok(compiled_class),
+            Ok(None) => Err(CentralError::CompiledClassNotFound { class_hash }),
+            Err(err) => Err(CentralError::ClientError(Arc::new(err))),
+        }
     }
 }
 

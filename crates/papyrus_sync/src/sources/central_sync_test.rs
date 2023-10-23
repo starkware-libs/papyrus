@@ -4,9 +4,10 @@ use std::time::Duration;
 use assert_matches::assert_matches;
 use async_stream::stream;
 use async_trait::async_trait;
+use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use futures::StreamExt;
 use indexmap::IndexMap;
-use papyrus_common::pending_classes::PendingClasses;
+use papyrus_common::pending_classes::{ApiContractClass, PendingClasses};
 use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::header::{HeaderStorageReader, StarknetVersion};
@@ -14,6 +15,7 @@ use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::{Block, BlockHash, BlockHeader, BlockNumber};
+use starknet_api::core::ClassHash;
 use starknet_api::hash::StarkFelt;
 use starknet_api::stark_felt;
 use starknet_api::state::StateDiff;
@@ -524,6 +526,20 @@ async fn sync_with_revert() {
             }
             .boxed();
             res
+        }
+
+        async fn get_class(
+            &self,
+            _class_hash: ClassHash,
+        ) -> Result<ApiContractClass, CentralError> {
+            unimplemented!();
+        }
+
+        async fn get_compiled_class(
+            &self,
+            _class_hash: ClassHash,
+        ) -> Result<CasmContractClass, CentralError> {
+            unimplemented!();
         }
     }
 }
