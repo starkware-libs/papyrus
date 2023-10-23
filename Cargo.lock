@@ -4419,6 +4419,7 @@ dependencies = [
  "papyrus_common",
  "papyrus_config",
  "papyrus_storage",
+ "pretty_assertions",
  "rand",
  "rand_chacha",
  "serde",

@@ -7,16 +7,13 @@ license-file.workspace = true
 description = "Transaction and entry point execution functionality for a Papyrus node."
 
 [features]
-testing = [
-    "rand",
-    "rand_chacha",
-    "test_utils",
-]
+testing = ["rand", "rand_chacha", "test_utils"]
 
 [dependencies]
 blockifier.workspace = true
 cairo-lang-starknet.workspace = true
 cairo-vm.workspace = true
+indexmap.workspace = true
 itertools.workspace = true
 lazy_static.workspace = true
 papyrus_common = { path = "../papyrus_common", version = "0.0.5" }
@@ -25,7 +22,7 @@ papyrus_storage = { path = "../papyrus_storage", version = "0.0.5" }
 rand = { workspace = true, optional = true }
 rand_chacha = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true, features = ["arbitrary_precision"]}
+serde_json = { workspace = true, features = ["arbitrary_precision"] }
 starknet_api.workspace = true
 test_utils = { path = "../test_utils", optional = true }
 thiserror.workspace = true
@@ -37,6 +34,7 @@ cairo-lang-casm.workspace = true
 cairo-lang-utils.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
+pretty_assertions.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true
 test_utils = { path = "../test_utils" }
