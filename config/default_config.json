@@ -89,6 +89,11 @@
     "privacy": "Public",
     "value": "0.0.0.0:8081"
   },
+  "monitoring_gateway.starknet_url": {
+    "description": "URL for the Starknet gateway and the Starknet feeder gateway.",
+    "pointer_target": "starknet_url",
+    "privacy": "Public"
+  },
   "rpc.chain_id": {
     "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
     "pointer_target": "chain_id",
