@@ -153,7 +153,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> RpcResult<Block> {
-        if block_id == BlockId::Tag(Tag::Pending) {
+        if let BlockId::Tag(Tag::Pending) = block_id {
             let block = self.pending_data.read().await.block.clone();
             let pending_block_header = PendingBlockHeader {
                 parent_hash: block.parent_block_hash,
@@ -166,36 +166,65 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 .iter()
                 .map(|transaction| transaction.transaction_hash())
                 .collect();
-            Ok(Block {
+            return Ok(Block {
                 status: None,
                 header,
                 transactions: Transactions::Hashes(transaction_hashes),
-            })
-        } else {
-            let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-            let block_number = get_block_number(&txn, block_id)?;
-            let status = get_block_status(&txn, block_number)?;
-            let header =
-                GeneralBlockHeader::BlockHeader(get_block_header_by_number(&txn, block_number)?);
-            let transaction_hashes = get_block_tx_hashes_by_number(&txn, block_number)?;
-
-            Ok(Block {
-                status: Some(status),
-                header,
-                transactions: Transactions::Hashes(transaction_hashes),
-            })
+            });
         }
-    }
 
-    #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_block_w_full_transactions(&self, block_id: BlockId) -> RpcResult<Block> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&txn, block_id)?;
         let status = get_block_status(&txn, block_number)?;
         let header =
             GeneralBlockHeader::BlockHeader(get_block_header_by_number(&txn, block_number)?);
-        // TODO(dvir): consider create a vector of (transaction, transaction_index) first and get
-        // the transaction hashes by the index.
+        let transaction_hashes = get_block_tx_hashes_by_number(&txn, block_number)?;
+
+        Ok(Block {
+            status: Some(status),
+            header,
+            transactions: Transactions::Hashes(transaction_hashes),
+        })
+    }
+
+    #[instrument(skip(self), level = "debug", err, ret)]
+    async fn get_block_w_full_transactions(&self, block_id: BlockId) -> RpcResult<Block> {
+        if let BlockId::Tag(Tag::Pending) = block_id {
+            let block = self.pending_data.read().await.block.clone();
+            let pending_block_header = PendingBlockHeader {
+                parent_hash: block.parent_block_hash,
+                sequencer_address: block.sequencer_address,
+                timestamp: block.timestamp,
+            };
+            let header = GeneralBlockHeader::PendingBlockHeader(pending_block_header);
+            let client_transactions = block.transactions;
+            let transactions = client_transactions
+                .iter()
+                .map(|client_transaction| {
+                    let starknet_api_transaction: StarknetApiTransaction =
+                        client_transaction.clone().try_into().map_err(internal_server_error)?;
+                    Ok(TransactionWithHash {
+                        transaction: starknet_api_transaction
+                            .try_into()
+                            .map_err(internal_server_error)?,
+                        transaction_hash: client_transaction.transaction_hash(),
+                    })
+                })
+                .collect::<Result<Vec<_>, ErrorObjectOwned>>()?;
+            return Ok(Block {
+                status: None,
+                header,
+                transactions: Transactions::Full(transactions),
+            });
+        }
+
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let block_number = get_block_number(&txn, block_id)?;
+        let status = get_block_status(&txn, block_number)?;
+        let header =
+            GeneralBlockHeader::BlockHeader(get_block_header_by_number(&txn, block_number)?);
+        // TODO(dvir): consider create a vector of (transaction, transaction_index) first and
+        // get the transaction hashes by the index.
         let transactions = get_block_txs_by_number(&txn, block_number)?;
         let transaction_hashes = get_block_tx_hashes_by_number(&txn, block_number)?;
         let transactions_with_hash = transactions

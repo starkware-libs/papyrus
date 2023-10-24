@@ -75,7 +75,7 @@ pub trait JsonRpc {
 
     /// Gets block information with full transactions given a block identifier.
     #[method(name = "getBlockWithTxs")]
-    fn get_block_w_full_transactions(&self, block_id: BlockId) -> RpcResult<Block>;
+    async fn get_block_w_full_transactions(&self, block_id: BlockId) -> RpcResult<Block>;
 
     /// Gets the value of the storage at the given address, key, and block.
     #[method(name = "getStorageAt")]
