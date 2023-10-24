@@ -8,6 +8,7 @@ use http_body::combinators::UnsyncBoxBody;
 use metrics::{absolute_counter, describe_counter, register_counter};
 use metrics_exporter_prometheus::PrometheusBuilder;
 use papyrus_storage::{table_names, test_utils};
+use papyrus_sync::sources::central::CentralSourceConfig;
 use pretty_assertions::assert_eq;
 use serde_json::{json, Value};
 use tower::ServiceExt;
@@ -25,6 +26,7 @@ fn setup_app() -> Router {
     app(
         storage_reader,
         TEST_VERSION,
+        CentralSourceConfig { url: String::from("http://0.0.0.0/"), ..Default::default() },
         serde_json::to_value(TEST_CONFIG_PRESENTATION).unwrap(),
         serde_json::to_value(PUBLIC_TEST_CONFIG_PRESENTATION).unwrap(),
         SECRET.to_string(),
@@ -113,14 +115,6 @@ async fn alive() {
 }
 
 #[tokio::test]
-async fn ready() {
-    let app = setup_app();
-    let response = request_app(app, "ready").await;
-
-    assert_eq!(response.status(), StatusCode::OK);
-}
-
-#[tokio::test]
 async fn without_metrics() {
     let app = setup_app();
     let response = request_app(app, "metrics").await;
@@ -138,6 +132,7 @@ async fn with_metrics() {
     let app = app(
         storage_reader,
         TEST_VERSION,
+        CentralSourceConfig { url: String::from("http://0.0.0.0/"), ..Default::default() },
         serde_json::Value::default(),
         serde_json::Value::default(),
         String::new(),

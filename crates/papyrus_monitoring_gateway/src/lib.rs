@@ -20,9 +20,12 @@ use metrics_process::Collector;
 use papyrus_config::dumping::{ser_generated_param, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializationType, SerializedParam};
 use papyrus_storage::{DbStats, StorageError, StorageReader};
+use papyrus_sync::sources::central::CentralSourceConfig;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
+use starknet_client::reader::StarknetFeederGatewayClient;
+use starknet_client::writer::StarknetGatewayClient;
 use tracing::{debug, info, instrument};
 use validator::Validate;
 
@@ -88,6 +91,7 @@ impl Display for MonitoringGatewayConfig {
 
 pub struct MonitoringServer {
     config: MonitoringGatewayConfig,
+    central_config: CentralSourceConfig,
     // Nested Json presentation of all the parameters in the node config.
     full_general_config_presentation: serde_json::Value,
     // Nested Json presentation of the public parameters in the node config.
@@ -100,6 +104,7 @@ pub struct MonitoringServer {
 impl MonitoringServer {
     pub fn new(
         config: MonitoringGatewayConfig,
+        central_config: CentralSourceConfig,
         full_general_config_presentation: serde_json::Value,
         public_general_config_presentation: serde_json::Value,
         storage_reader: StorageReader,
@@ -112,6 +117,7 @@ impl MonitoringServer {
         };
         Ok(MonitoringServer {
             config,
+            central_config,
             storage_reader,
             full_general_config_presentation,
             public_general_config_presentation,
@@ -140,6 +146,7 @@ impl MonitoringServer {
         let app = app(
             self.storage_reader.clone(),
             self.version,
+            self.central_config.clone(),
             self.full_general_config_presentation.clone(),
             self.public_general_config_presentation.clone(),
             self.config.present_full_config_secret.clone(),
@@ -153,6 +160,7 @@ impl MonitoringServer {
 fn app(
     storage_reader: StorageReader,
     version: &'static str,
+    central_config: CentralSourceConfig,
     full_general_config_presentation: serde_json::Value,
     public_general_config_presentation: serde_json::Value,
     present_full_config_secret: String,
@@ -192,8 +200,30 @@ fn app(
         )
         .route(
             format!("/{MONITORING_PREFIX}/ready").as_str(),
-            get(move || async { StatusCode::OK.to_string() }),
+            get(move || is_ready(version, central_config)),
         )
+}
+
+#[instrument(level = "debug", ret)]
+async fn is_ready(version: &'static str, central_config: CentralSourceConfig) -> String {
+    let starknet_url = central_config.url.clone();
+    let starknet_feeder_client = StarknetFeederGatewayClient::new(
+        &starknet_url,
+        central_config.http_headers,
+        version,
+        central_config.retry_config,
+    )
+    .expect("Failed creating Starknet feeder client.");
+    let response = starknet_feeder_client.is_alive().await;
+    assert!(response);
+
+    let starknet_client =
+        StarknetGatewayClient::new(&starknet_url, version, central_config.retry_config)
+            .expect("Failed creating Starknet client.");
+    let response = starknet_client.is_alive().await;
+    assert!(response);
+
+    StatusCode::OK.to_string()
 }
 
 /// Returns DB statistics.
