@@ -70,12 +70,15 @@ pub trait StarknetWriter: Sync + Send + 'static {
 }
 
 const ADD_TRANSACTION_URL_SUFFIX: &str = "gateway/add_transaction";
+const GATEWAY_IS_ALIVE: &str = "gateway/is_alive";
+const GATEWAY_ALIVE_RESPONSE: &str = "Gateway is alive!";
 
 /// A client for the [`Starknet`] gateway.
 ///
 /// [`Starknet`]: https://starknet.io/
 pub struct StarknetGatewayClient {
     add_transaction_url: Url,
+    is_alive_url: Url,
     client: StarknetClient,
 }
 
@@ -114,6 +117,7 @@ impl StarknetGatewayClient {
     ) -> Result<Self, ClientCreationError> {
         Ok(StarknetGatewayClient {
             add_transaction_url: Url::parse(starknet_url)?.join(ADD_TRANSACTION_URL_SUFFIX)?,
+            is_alive_url: Url::parse(starknet_url)?.join(GATEWAY_IS_ALIVE)?,
             client: StarknetClient::new(None, node_version, retry_config)?,
         })
     }
@@ -132,5 +136,12 @@ impl StarknetGatewayClient {
             )
             .await?;
         Ok(serde_json::from_str::<Response>(&response)?)
+    }
+
+    pub async fn is_alive(&self) -> bool {
+        let url = self.is_alive_url.clone();
+        let response = self.client.request_with_retry(self.client.internal_client.get(url)).await;
+        let expected_response = GATEWAY_ALIVE_RESPONSE.to_string();
+        response.is_ok_and(|response| response == expected_response)
     }
 }
