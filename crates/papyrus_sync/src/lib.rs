@@ -909,23 +909,30 @@ async fn sync_pending_data<TPendingSource: PendingSourceTrait + Sync + Send + 's
         }
     };
     loop {
-        let new_pending_data = pending_source.get_pending_data().await?;
-        if new_pending_data.block.parent_block_hash != latest_block_hash {
-            debug!("A new block was found. Stopping pending sync.");
-            return Ok(());
-        };
-        let (current_pending_num_transactions, current_pending_parent_hash) = {
-            let pending_block = &pending_data.read().await.block;
-            (pending_block.transactions.len(), pending_block.parent_block_hash)
-        };
-        let is_new_pending_data_more_advanced = current_pending_parent_hash
-            != new_pending_data.block.parent_block_hash
-            || new_pending_data.block.transactions.len() > current_pending_num_transactions;
-        if is_new_pending_data_more_advanced {
-            debug!("Received new pending data.");
-            trace!("Pending data: {new_pending_data:#?}.");
-            *pending_data.write().await = new_pending_data;
-        }
         tokio::time::sleep(sleep_duration).await;
+    }
+}
+
+async fn get_pending_data<TPendingSource: PendingSourceTrait + Sync + Send + 'static>(
+    reader: StorageReader,
+    pending_source: Arc<TPendingSource>,
+    pending_data: Arc<RwLock<PendingData>>,
+) -> Result<PendingSyncTaskResult, StateSyncError> {
+    let new_pending_data = pending_source.get_pending_data().await?;
+    if new_pending_data.block.parent_block_hash != latest_block_hash {
+        debug!("A new block was found. Stopping pending sync.");
+        return Ok(());
+    };
+    let (current_pending_num_transactions, current_pending_parent_hash) = {
+        let pending_block = &pending_data.read().await.block;
+        (pending_block.transactions.len(), pending_block.parent_block_hash)
+    };
+    let is_new_pending_data_more_advanced = current_pending_parent_hash
+        != new_pending_data.block.parent_block_hash
+        || new_pending_data.block.transactions.len() > current_pending_num_transactions;
+    if is_new_pending_data_more_advanced {
+        debug!("Received new pending data.");
+        trace!("Pending data: {new_pending_data:#?}.");
+        *pending_data.write().await = new_pending_data;
     }
 }
