@@ -111,6 +111,7 @@ struct StarknetUrls {
     get_compiled_class_by_class_hash: Url,
     get_state_update: Url,
     get_pending_data: Url,
+    feeder_gateway_is_alive: Url,
 }
 
 const GET_BLOCK_URL: &str = "feeder_gateway/get_block";
@@ -123,6 +124,8 @@ const LATEST_BLOCK_NUMBER: &str = "latest";
 const CLASS_HASH_QUERY: &str = "classHash";
 const PENDING_BLOCK_ID: &str = "pending";
 const INCLUDE_BLOCK: &str = "includeBlock";
+const FEEDER_GATEWAY_IS_ALIVE: &str = "feeder_gateway/is_alive";
+const FEEDER_GATEWAY_ALIVE_RESPONSE: &str = "FeederGateway is alive!";
 
 impl StarknetUrls {
     fn new(url_str: &str) -> Result<Self, ClientCreationError> {
@@ -140,6 +143,7 @@ impl StarknetUrls {
                 .append_pair(INCLUDE_BLOCK, "true")
                 .finish()
                 .clone(),
+            feeder_gateway_is_alive: base_url.join(FEEDER_GATEWAY_IS_ALIVE)?,
         })
     }
 }
@@ -179,6 +183,13 @@ impl StarknetFeederGatewayClient {
             KnownStarknetErrorCode::BlockNotFound,
             format!("Failed to get block number {block_number:?} from starknet server."),
         )
+    }
+
+    pub async fn is_alive(&self) -> bool {
+        let url = self.urls.feeder_gateway_is_alive.clone();
+        let response = self.request_with_retry_url(url).await;
+        let _expected = FEEDER_GATEWAY_ALIVE_RESPONSE.to_string();
+        matches!(response, Ok(_expected))
     }
 }
 
