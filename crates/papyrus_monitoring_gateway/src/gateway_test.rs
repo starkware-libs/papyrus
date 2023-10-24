@@ -23,6 +23,7 @@ const TEST_VERSION: &str = "1.2.3-dev";
 fn setup_app() -> Router {
     let ((storage_reader, _), _temp_dir) = test_utils::get_test_storage();
     app(
+        String::from("default_url"),
         storage_reader,
         TEST_VERSION,
         serde_json::to_value(TEST_CONFIG_PRESENTATION).unwrap(),
@@ -113,14 +114,6 @@ async fn alive() {
 }
 
 #[tokio::test]
-async fn ready() {
-    let app = setup_app();
-    let response = request_app(app, "ready").await;
-
-    assert_eq!(response.status(), StatusCode::OK);
-}
-
-#[tokio::test]
 async fn without_metrics() {
     let app = setup_app();
     let response = request_app(app, "metrics").await;
@@ -136,6 +129,7 @@ async fn with_metrics() {
     let ((storage_reader, _), _temp_dir) = test_utils::get_test_storage();
     let prometheus_handle = PrometheusBuilder::new().install_recorder().unwrap();
     let app = app(
+        String::from("default_url"),
         storage_reader,
         TEST_VERSION,
         serde_json::Value::default(),
