@@ -361,8 +361,10 @@ async fn get_block_transaction_count() {
 #[tokio::test]
 async fn get_block_w_full_transactions() {
     let method_name = "starknet_V0_4_getBlockWithTxs";
-    let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let pending_data = get_test_pending_data();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerV0_4Impl,
+    >(None, None, Some(pending_data.clone()), None, None);
 
     let block = get_test_block(1, None, None, None);
     storage_writer
@@ -451,6 +453,20 @@ async fn get_block_w_full_transactions() {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
+
+    // Get pending block.
+    let transaction_count = 3;
+    let client_transaction = ClientTransaction::get_test_instance(&mut get_rng());
+    let expected_pending_block =
+        get_test_pending_block_with_full_transactions(transaction_count, &client_transaction);
+    pending_data
+        .write()
+        .await
+        .block
+        .transactions
+        .extend(iter::repeat(client_transaction).take(transaction_count));
+    let res = module.call::<_, Block>(method_name, [BlockId::Tag(Tag::Pending)]).await.unwrap();
+    assert_eq!(res, expected_pending_block);
 }
 
 #[tokio::test]
@@ -2587,5 +2603,27 @@ fn get_test_pending_block_with_transaction_hashes(transaction_count: usize) -> B
             TransactionHash::get_test_instance(&mut rng);
             transaction_count
         ]),
+    }
+}
+
+fn get_test_pending_block_with_full_transactions(
+    transaction_count: usize,
+    client_transaction: &ClientTransaction,
+) -> Block {
+    let mut rng = get_rng();
+
+    let starknet_api_trasnaction: StarknetApiTransaction =
+        client_transaction.clone().try_into().unwrap();
+    let expected_transaction = TransactionWithHash {
+        transaction: starknet_api_trasnaction.clone().try_into().unwrap(),
+        transaction_hash: TransactionHash::get_test_instance(&mut rng),
+    };
+
+    Block {
+        header: GeneralBlockHeader::PendingBlockHeader(PendingBlockHeader::get_test_instance(
+            &mut rng,
+        )),
+        status: None,
+        transactions: Transactions::Full(vec![expected_transaction; transaction_count]),
     }
 }

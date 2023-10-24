@@ -188,30 +188,55 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_block_w_full_transactions(&self, block_id: BlockId) -> RpcResult<Block> {
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        let block_number = get_block_number(&txn, block_id)?;
-        let status = get_block_status(&txn, block_number)?;
-        let header =
-            GeneralBlockHeader::BlockHeader(get_block_header_by_number(&txn, block_number)?);
-        // TODO(dvir): consider create a vector of (transaction, transaction_index) first and get
-        // the transaction hashes by the index.
-        let transactions = get_block_txs_by_number(&txn, block_number)?;
-        let transaction_hashes = get_block_tx_hashes_by_number(&txn, block_number)?;
-        let transactions_with_hash = transactions
-            .into_iter()
-            .zip(transaction_hashes)
-            .map(|(transaction, transaction_hash)| TransactionWithHash {
-                transaction,
-                transaction_hash,
-            })
-            .collect();
+    async fn get_block_w_full_transactions(&self, block_id: BlockId) -> RpcResult<Block> {
+        if block_id == BlockId::Tag(Tag::Pending) {
+            let block = self.pending_data.read().await.block.clone();
+            let pending_block_header = PendingBlockHeader {
+                parent_hash: block.parent_block_hash,
+                sequencer_address: block.sequencer_address,
+                timestamp: block.timestamp,
+            };
+            let header = GeneralBlockHeader::PendingBlockHeader(pending_block_header);
+            let client_transactions = block.transactions;
+            let transactions = client_transactions
+                .iter()
+                .map(|client_transaction| {
+                    let starknet_api_transaction: StarknetApiTransaction =
+                        client_transaction.clone().try_into().map_err(internal_server_error)?;
+                    Ok(TransactionWithHash {
+                        transaction: starknet_api_transaction
+                            .try_into()
+                            .map_err(internal_server_error)?,
+                        transaction_hash: client_transaction.transaction_hash(),
+                    })
+                })
+                .collect::<Result<Vec<_>, ErrorObjectOwned>>()?;
+            Ok(Block { status: None, header, transactions: Transactions::Full(transactions) })
+        } else {
+            let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+            let block_number = get_block_number(&txn, block_id)?;
+            let status = get_block_status(&txn, block_number)?;
+            let header =
+                GeneralBlockHeader::BlockHeader(get_block_header_by_number(&txn, block_number)?);
+            // TODO(dvir): consider create a vector of (transaction, transaction_index) first and
+            // get the transaction hashes by the index.
+            let transactions = get_block_txs_by_number(&txn, block_number)?;
+            let transaction_hashes = get_block_tx_hashes_by_number(&txn, block_number)?;
+            let transactions_with_hash = transactions
+                .into_iter()
+                .zip(transaction_hashes)
+                .map(|(transaction, transaction_hash)| TransactionWithHash {
+                    transaction,
+                    transaction_hash,
+                })
+                .collect();
 
-        Ok(Block {
-            status: Some(status),
-            header,
-            transactions: Transactions::Full(transactions_with_hash),
-        })
+            Ok(Block {
+                status: Some(status),
+                header,
+                transactions: Transactions::Full(transactions_with_hash),
+            })
+        }
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
