@@ -44,7 +44,10 @@ use starknet_api::transaction::{
     TransactionOffsetInBlock,
 };
 use starknet_api::{patricia_key, stark_felt};
-use starknet_client::reader::objects::pending_data::PendingStateUpdate as ClientPendingStateUpdate;
+use starknet_client::reader::objects::pending_data::{
+    PendingBlock,
+    PendingStateUpdate as ClientPendingStateUpdate,
+};
 use starknet_client::reader::objects::state::{
     DeclaredClassHashEntry as ClientDeclaredClassHashEntry,
     DeployedContract as ClientDeployedContract,
@@ -1699,8 +1702,8 @@ async fn get_events_chunk_size_2_with_address() {
             if let Some(key) = event.content.keys.get(0) {
                 if filter_keys.get(key).is_some() && event.from_address == address {
                     emitted_events.push(Event {
-                        block_hash,
-                        block_number,
+                        block_hash: Some(block_hash),
+                        block_number: Some(block_number),
                         transaction_hash,
                         event: event.clone(),
                     });
@@ -1737,32 +1740,42 @@ async fn get_events_chunk_size_2_with_address() {
 
 #[tokio::test]
 async fn get_events_chunk_size_2_without_address() {
-    let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let pending_data = get_test_pending_data();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerV0_4Impl,
+    >(None, None, Some(pending_data.clone()), None, None);
     let key0 = EventKey(stark_felt!("0x6"));
     let key1 = EventKey(stark_felt!("0x7"));
-    let block = get_test_block(
+
+    // Writing an empty block because we don't support get_events on pending block when it's the
+    // only block.
+    let empty_block = get_test_block(0, None, None, None);
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(empty_block.header.block_number, &empty_block.header)
+        .unwrap()
+        .append_body(empty_block.header.block_number, empty_block.body)
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    let mut block = get_test_block(
         2,
         Some(5),
         None,
         Some(vec![vec![key0.clone(), key1.clone(), EventKey(stark_felt!("0x8"))]]),
     );
-    let block_number = block.header.block_number;
-    storage_writer
-        .begin_rw_txn()
-        .unwrap()
-        .append_header(block_number, &block.header)
-        .unwrap()
-        .append_body(block_number, block.body.clone())
-        .unwrap()
-        .commit()
-        .unwrap();
+    let block_number = BlockNumber(1);
+    block.header.block_number = block_number;
+    block.header.parent_hash = empty_block.header.block_hash;
+    block.header.block_hash = BlockHash(StarkHash::ONE);
 
     // Create the filter: the allowed keys at index 0 are 0x6 or 0x7.
     let filter_keys = HashSet::from([key0, key1]);
     let chunk_size = 2;
     let mut filter = EventFilter {
-        from_block: None,
+        from_block: Some(BlockId::Tag(Tag::Pending)),
         to_block: None,
         continuation_token: None,
         chunk_size,
@@ -1780,8 +1793,8 @@ async fn get_events_chunk_size_2_without_address() {
             if let Some(key) = event.content.keys.get(0) {
                 if filter_keys.get(key).is_some() {
                     emitted_events.push(Event {
-                        block_hash,
-                        block_number,
+                        block_hash: Some(block_hash),
+                        block_number: Some(block_number),
                         transaction_hash,
                         event: event.clone(),
                     });
@@ -1794,6 +1807,78 @@ async fn get_events_chunk_size_2_without_address() {
         }
     }
 
+    // Test on pending block. Convert the block into pending block and call the methods
+    // TODO(shahak): Add test where there's a block in storage and pending block.
+    // TODO(shahak): Add test where there are two blocks in the storage.
+    let mut rng = get_rng();
+    pending_data.write().await.block = PendingBlock {
+        parent_block_hash: block.header.parent_hash,
+        // It doesn't matter what are the transactions, just their hashes.
+        transactions: block
+            .body
+            .transaction_hashes
+            .iter()
+            .map(|transaction_hash| {
+                let mut transaction = ClientTransaction::get_test_instance(&mut rng);
+                *transaction.transaction_hash_mut() = *transaction_hash;
+                transaction
+            })
+            .collect(),
+        transaction_receipts: block
+            .body
+            .transaction_outputs
+            .iter()
+            .zip(block.body.transaction_hashes.iter())
+            .enumerate()
+            .map(|(i, (output, transaction_hash))| ClientTransactionReceipt {
+                transaction_index: TransactionOffsetInBlock(i),
+                transaction_hash: *transaction_hash,
+                events: output.events().to_vec(),
+                ..Default::default()
+            })
+            .collect(),
+        ..Default::default()
+    };
+    for (i, chunk) in emitted_events.chunks(chunk_size).enumerate() {
+        let res = module
+            .call::<_, EventsChunk>("starknet_V0_4_getEvents", [filter.clone()])
+            .await
+            .unwrap();
+        let mut chunk = chunk.to_vec();
+        for event in chunk.iter_mut() {
+            event.block_hash = None;
+            event.block_number = None;
+        }
+        assert_eq!(res.events, chunk);
+        let index = (i + 1) * chunk_size;
+        let expected_continuation_token = if index < emitted_event_indices.len() {
+            Some(
+                ContinuationToken::new(ContinuationTokenAsStruct(
+                    *emitted_event_indices.index(index),
+                ))
+                .unwrap(),
+            )
+        } else {
+            None
+        };
+        assert_eq!(res.continuation_token, expected_continuation_token);
+        filter.continuation_token = res.continuation_token;
+    }
+
+    // Test on regular block. Write the block into the storage and call the methods
+    filter.continuation_token = None;
+    filter.from_block = Some(BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number)));
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(block_number, &block.header)
+        .unwrap()
+        .append_body(block_number, block.body.clone())
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    // TODO(shahak): Remove code duplication.
     for (i, chunk) in emitted_events.chunks(chunk_size).enumerate() {
         let res = module
             .call::<_, EventsChunk>("starknet_V0_4_getEvents", [filter.clone()])
