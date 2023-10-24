@@ -560,8 +560,15 @@ impl TryFrom<TransactionOutput> for PendingTransactionOutput {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Event {
-    pub block_hash: BlockHash,
-    pub block_number: BlockNumber,
+    // Can't have a different struct for pending events because then that struct will need to have
+    // deny_unknown_fields. And there's a bug in serde that forbids having deny_unknown_fields with
+    // flatten: https://github.com/serde-rs/serde/issues/1701
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub block_hash: Option<BlockHash>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub block_number: Option<BlockNumber>,
     pub transaction_hash: TransactionHash,
     #[serde(flatten)]
     pub event: starknet_api::transaction::Event,

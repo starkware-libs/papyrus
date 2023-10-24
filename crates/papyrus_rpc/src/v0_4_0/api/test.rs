@@ -11,6 +11,7 @@ use itertools::Itertools;
 use jsonrpsee::core::Error;
 use jsonrpsee::Methods;
 use jsonschema::JSONSchema;
+use lazy_static::lazy_static;
 use mockall::predicate::eq;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
@@ -54,7 +55,10 @@ use starknet_api::transaction::{
     TransactionOutput as StarknetApiTransactionOutput,
 };
 use starknet_api::{patricia_key, stark_felt};
-use starknet_client::reader::objects::pending_data::PendingStateUpdate as ClientPendingStateUpdate;
+use starknet_client::reader::objects::pending_data::{
+    PendingBlock,
+    PendingStateUpdate as ClientPendingStateUpdate,
+};
 use starknet_client::reader::objects::state::{
     DeclaredClassHashEntry as ClientDeclaredClassHashEntry,
     DeployedContract as ClientDeployedContract,
@@ -1807,12 +1811,48 @@ impl BlockMetadata {
         }
         block
     }
+
+    pub fn generate_pending_block(
+        &self,
+        rng: &mut ChaCha8Rng,
+        parent_hash: BlockHash,
+    ) -> PendingBlock {
+        let transaction_hashes = iter::repeat_with(|| TransactionHash(rng.next_u64().into()))
+            .take(self.0.len())
+            .collect::<Vec<_>>();
+        PendingBlock {
+            parent_block_hash: parent_hash,
+            transactions: transaction_hashes
+                .iter()
+                .map(|transaction_hash| {
+                    let mut transaction = ClientTransaction::get_test_instance(rng);
+                    *transaction.transaction_hash_mut() = *transaction_hash;
+                    transaction
+                })
+                .collect(),
+            transaction_receipts: transaction_hashes
+                .iter()
+                .zip(self.0.iter())
+                .enumerate()
+                .map(|(i, (transaction_hash, event_metadatas_of_tx))| ClientTransactionReceipt {
+                    transaction_index: TransactionOffsetInBlock(i),
+                    transaction_hash: *transaction_hash,
+                    events: event_metadatas_of_tx
+                        .iter()
+                        .map(|event_metadata| event_metadata.generate_event(rng))
+                        .collect(),
+                    ..Default::default()
+                })
+                .collect(),
+            ..Default::default()
+        }
+    }
 }
 
 async fn test_get_events(
     block_metadatas: Vec<BlockMetadata>,
-    // TODO(shahak): Add support for pending block.
-    _pending_block_metadata: Option<BlockMetadata>,
+    pending_block_metadata: Option<BlockMetadata>,
+    is_pending_up_to_date: bool,
     mut filter: EventFilter,
     expected_result_by_index: Vec<(Vec<EventIndex>, Option<ContinuationTokenAsStruct>)>,
 ) {
@@ -1846,8 +1886,8 @@ async fn test_get_events(
                         EventIndexInTransactionOutput(i_event),
                     ),
                     Event {
-                        block_hash: block.header.block_hash,
-                        block_number,
+                        block_hash: Some(block.header.block_hash),
+                        block_number: Some(block_number),
                         transaction_hash,
                         event,
                     },
@@ -1862,6 +1902,35 @@ async fn test_get_events(
             .unwrap();
     }
     rw_txn.commit().unwrap();
+
+    if let Some(pending_block_metadata) = pending_block_metadata {
+        if !is_pending_up_to_date {
+            parent_hash = BlockHash(rng.next_u64().into());
+        }
+        let pending_block = pending_block_metadata.generate_pending_block(&mut rng, parent_hash);
+
+        for (i_transaction, receipt) in pending_block.transaction_receipts.iter().enumerate() {
+            for (i_event, event) in receipt.events.iter().cloned().enumerate() {
+                event_index_to_event.insert(
+                    EventIndex(
+                        TransactionIndex(
+                            BlockNumber(block_metadatas.len() as u64),
+                            TransactionOffsetInBlock(i_transaction),
+                        ),
+                        EventIndexInTransactionOutput(i_event),
+                    ),
+                    Event {
+                        block_hash: None,
+                        block_number: None,
+                        transaction_hash: receipt.transaction_hash,
+                        event,
+                    },
+                );
+            }
+        }
+
+        pending_data.write().await.block = pending_block;
+    }
 
     for (expected_event_indices, expected_continuation_token) in expected_result_by_index {
         let expected_result = EventsChunk {
@@ -1885,33 +1954,24 @@ async fn test_get_events(
     }
 }
 
-#[tokio::test]
-async fn get_events_chunk_across_2_blocks() {
-    let blocks_metadata = vec![
-        BlockMetadata(vec![[DEFAULT_EVENT_METADATA; 4].to_vec(), vec![DEFAULT_EVENT_METADATA]]),
-        BlockMetadata(vec![[DEFAULT_EVENT_METADATA; 3].to_vec()]),
+lazy_static! {
+    static ref BLOCKS_METADATA_FOR_CHUNK_ACROSS_2_BLOCKS_TEST: Vec<BlockMetadata> = vec![
+        BlockMetadata(vec![vec![DEFAULT_EVENT_METADATA], vec![DEFAULT_EVENT_METADATA]]),
+        // There should be a chunk that starts at the non-first transaction of the second block, in
+        // order to test the continuation token for pending.
+        BlockMetadata(vec![
+            [DEFAULT_EVENT_METADATA; 3].to_vec(),
+            [DEFAULT_EVENT_METADATA; 2].to_vec(),
+        ]),
     ];
-    let pending_block_metadata = None;
-    let expected_result_by_index = vec![
-        (
-            (0..3)
-                .map(|event_offset| {
-                    EventIndex(
-                        TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(0)),
-                        EventIndexInTransactionOutput(event_offset),
-                    )
-                })
-                .collect(),
-            Some(ContinuationTokenAsStruct(EventIndex(
-                TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(0)),
-                EventIndexInTransactionOutput(3),
-            ))),
-        ),
+    static ref EVENT_FILTER_FOR_CHUNK_ACROSS_2_BLOCKS_TEST: EventFilter =
+        EventFilter { chunk_size: 3, ..Default::default() };
+    static ref EXPECTED_RESULT_BY_INDEX_FOR_CHUNK_ACROSS_2_BLOCKS_TEST: Vec<(Vec<EventIndex>, Option<ContinuationTokenAsStruct>,)> = vec![
         (
             vec![
                 EventIndex(
                     TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(0)),
-                    EventIndexInTransactionOutput(3),
+                    EventIndexInTransactionOutput(0),
                 ),
                 EventIndex(
                     TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(1)),
@@ -1928,22 +1988,60 @@ async fn get_events_chunk_across_2_blocks() {
             ))),
         ),
         (
-            (1..3)
-                .map(|event_offset| {
-                    EventIndex(
-                        TransactionIndex(BlockNumber(1), TransactionOffsetInBlock(0)),
-                        EventIndexInTransactionOutput(event_offset),
-                    )
-                })
-                .collect(),
+            vec![
+                EventIndex(
+                    TransactionIndex(BlockNumber(1), TransactionOffsetInBlock(0)),
+                    EventIndexInTransactionOutput(1),
+                ),
+                EventIndex(
+                    TransactionIndex(BlockNumber(1), TransactionOffsetInBlock(0)),
+                    EventIndexInTransactionOutput(2),
+                ),
+                EventIndex(
+                    TransactionIndex(BlockNumber(1), TransactionOffsetInBlock(1)),
+                    EventIndexInTransactionOutput(0),
+                ),
+            ],
+            Some(ContinuationTokenAsStruct(EventIndex(
+                TransactionIndex(BlockNumber(1), TransactionOffsetInBlock(1)),
+                EventIndexInTransactionOutput(1),
+            ))),
+        ),
+        (
+            vec![EventIndex(
+                TransactionIndex(BlockNumber(1), TransactionOffsetInBlock(1)),
+                EventIndexInTransactionOutput(1),
+            )],
             None,
         ),
     ];
+}
+
+#[tokio::test]
+async fn get_events_chunk_across_2_blocks() {
+    let pending_block_metadata = None;
+    let is_pending_up_to_date = true;
+    test_get_events(
+        BLOCKS_METADATA_FOR_CHUNK_ACROSS_2_BLOCKS_TEST.clone(),
+        pending_block_metadata,
+        is_pending_up_to_date,
+        EVENT_FILTER_FOR_CHUNK_ACROSS_2_BLOCKS_TEST.clone(),
+        EXPECTED_RESULT_BY_INDEX_FOR_CHUNK_ACROSS_2_BLOCKS_TEST.clone(),
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn get_events_chunk_across_block_and_pending_block() {
+    let mut blocks_metadata = BLOCKS_METADATA_FOR_CHUNK_ACROSS_2_BLOCKS_TEST.clone();
+    let pending_block_metadata = Some(blocks_metadata.pop().unwrap());
+    let is_pending_up_to_date = true;
     test_get_events(
         blocks_metadata,
         pending_block_metadata,
-        EventFilter { chunk_size: 3, ..Default::default() },
-        expected_result_by_index,
+        is_pending_up_to_date,
+        EVENT_FILTER_FOR_CHUNK_ACROSS_2_BLOCKS_TEST.clone(),
+        EXPECTED_RESULT_BY_INDEX_FOR_CHUNK_ACROSS_2_BLOCKS_TEST.clone(),
     )
     .await;
 }
@@ -1954,8 +2052,10 @@ async fn get_events_address_filter() {
     let blocks_metadata = vec![BlockMetadata(vec![vec![
         DEFAULT_EVENT_METADATA,
         EventMetadata { address: Some(address), keys: None },
+        DEFAULT_EVENT_METADATA,
     ]])];
     let pending_block_metadata = None;
+    let is_pending_up_to_date = true;
     let expected_result_by_index = vec![(
         vec![EventIndex(
             TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(0)),
@@ -1966,6 +2066,7 @@ async fn get_events_address_filter() {
     test_get_events(
         blocks_metadata,
         pending_block_metadata,
+        is_pending_up_to_date,
         EventFilter { chunk_size: 2, address: Some(address), ..Default::default() },
         expected_result_by_index,
     )
@@ -1973,64 +2074,123 @@ async fn get_events_address_filter() {
 }
 
 #[tokio::test]
-async fn get_events_keys_filter() {
-    let key0_0 = EventKey(stark_felt!("0x00"));
-    let key0_1 = EventKey(stark_felt!("0x01"));
-    let key2_0 = EventKey(stark_felt!("0x20"));
-    let key2_1 = EventKey(stark_felt!("0x21"));
-    let unrelated_key = EventKey(stark_felt!("0xff"));
-
-    let keys_filter = vec![
-        HashSet::from([key0_0.clone(), key0_1.clone()]),
-        HashSet::from([]),
-        HashSet::from([key2_0.clone(), key2_1.clone()]),
-    ];
-
-    let blocks_metadata = vec![BlockMetadata(vec![vec![
+async fn get_events_pending_address_filter() {
+    let address = ContractAddress(patricia_key!("0x22"));
+    // As a special edge case, the function get_events doesn't return events if there are no
+    // accepted blocks, even if there is a pending block. Therefore, we need to have a block in the
+    // storage.
+    let blocks_metadata = vec![BlockMetadata(vec![])];
+    let pending_block_metadata = Some(BlockMetadata(vec![vec![
         DEFAULT_EVENT_METADATA,
-        EventMetadata {
-            address: None,
-            keys: Some(vec![key0_0.clone(), unrelated_key.clone(), key2_1.clone()]),
-        },
-        EventMetadata {
-            address: None,
-            keys: Some(vec![key2_0.clone(), unrelated_key.clone(), key2_1.clone()]),
-        },
-        EventMetadata {
-            address: None,
-            keys: Some(vec![key0_1.clone(), unrelated_key.clone(), key0_0.clone()]),
-        },
-        EventMetadata {
-            address: None,
-            keys: Some(vec![
-                key0_1.clone(),
-                unrelated_key.clone(),
-                key2_0.clone(),
-                unrelated_key.clone(),
-            ]),
-        },
-        EventMetadata { address: None, keys: Some(vec![key0_1.clone()]) },
-        EventMetadata { address: None, keys: Some(vec![]) },
-    ]])];
-    let pending_block_metadata = None;
+        EventMetadata { address: Some(address), keys: None },
+        DEFAULT_EVENT_METADATA,
+    ]]));
+    let is_pending_up_to_date = true;
     let expected_result_by_index = vec![(
-        vec![
-            EventIndex(
-                TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(0)),
-                EventIndexInTransactionOutput(1),
-            ),
-            EventIndex(
-                TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(0)),
-                EventIndexInTransactionOutput(4),
-            ),
-        ],
+        vec![EventIndex(
+            TransactionIndex(BlockNumber(1), TransactionOffsetInBlock(0)),
+            EventIndexInTransactionOutput(1),
+        )],
         None,
     )];
     test_get_events(
         blocks_metadata,
         pending_block_metadata,
-        EventFilter { chunk_size: 5, keys: keys_filter, ..Default::default() },
+        is_pending_up_to_date,
+        EventFilter { chunk_size: 2, address: Some(address), ..Default::default() },
         expected_result_by_index,
+    )
+    .await;
+}
+
+lazy_static! {
+    static ref KEY0_0: EventKey = EventKey(stark_felt!("0x00"));
+    static ref KEY0_1: EventKey = EventKey(stark_felt!("0x01"));
+    static ref KEY2_0: EventKey = EventKey(stark_felt!("0x20"));
+    static ref KEY2_1: EventKey = EventKey(stark_felt!("0x21"));
+    static ref UNRELATED_KEY: EventKey = EventKey(stark_felt!("0xff"));
+    static ref BLOCKS_METADATA_FOR_KEYS_FILTER_TEST: Vec<BlockMetadata> =
+        // Adding an empty block at the start so that in the pending test there will be an accepted
+        // block. See above for explanation on the special edge case of no accepted blocks.
+        vec![
+            BlockMetadata(vec![]),
+            BlockMetadata(vec![vec![
+                DEFAULT_EVENT_METADATA,
+                EventMetadata {
+                    address: None,
+                    keys: Some(vec![KEY0_0.clone(), UNRELATED_KEY.clone(), KEY2_1.clone()]),
+                },
+                EventMetadata {
+                    address: None,
+                    keys: Some(vec![KEY2_0.clone(), UNRELATED_KEY.clone(), KEY2_1.clone()]),
+                },
+                EventMetadata {
+                    address: None,
+                    keys: Some(vec![KEY0_1.clone(), UNRELATED_KEY.clone(), KEY0_0.clone()]),
+                },
+                EventMetadata {
+                    address: None,
+                    keys: Some(vec![
+                        KEY0_1.clone(),
+                        UNRELATED_KEY.clone(),
+                        KEY2_0.clone(),
+                        UNRELATED_KEY.clone(),
+                    ]),
+                },
+                EventMetadata { address: None, keys: Some(vec![KEY0_1.clone()]) },
+                EventMetadata { address: None, keys: Some(vec![]) },
+            ]]
+        )];
+    static ref EVENT_FILTER_FOR_KEYS_FILTER_TEST: EventFilter = EventFilter {
+        chunk_size: 6,
+        keys: vec![
+            HashSet::from([KEY0_0.clone(), KEY0_1.clone()]),
+            HashSet::from([]),
+            HashSet::from([KEY2_0.clone(), KEY2_1.clone()]),
+        ],
+        ..Default::default()
+    };
+    static ref EXPECTED_RESULT_BY_INDEX_FOR_KEYS_FILTER_TEST: Vec<(Vec<EventIndex>, Option<ContinuationTokenAsStruct>,)> =
+        vec![(
+            vec![
+                EventIndex(
+                    TransactionIndex(BlockNumber(1), TransactionOffsetInBlock(0)),
+                    EventIndexInTransactionOutput(1),
+                ),
+                EventIndex(
+                    TransactionIndex(BlockNumber(1), TransactionOffsetInBlock(0)),
+                    EventIndexInTransactionOutput(4),
+                ),
+            ],
+            None,
+        )];
+}
+
+#[tokio::test]
+async fn get_events_keys_filter() {
+    let pending_block_metadata = None;
+    let is_pending_up_to_date = true;
+    test_get_events(
+        BLOCKS_METADATA_FOR_KEYS_FILTER_TEST.clone(),
+        pending_block_metadata,
+        is_pending_up_to_date,
+        EVENT_FILTER_FOR_KEYS_FILTER_TEST.clone(),
+        EXPECTED_RESULT_BY_INDEX_FOR_KEYS_FILTER_TEST.clone(),
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn get_events_pending_keys_filter() {
+    let mut blocks_metadata = BLOCKS_METADATA_FOR_KEYS_FILTER_TEST.clone();
+    let pending_block_metadata = Some(blocks_metadata.pop().unwrap());
+    let is_pending_up_to_date = true;
+    test_get_events(
+        blocks_metadata,
+        pending_block_metadata,
+        is_pending_up_to_date,
+        EVENT_FILTER_FOR_KEYS_FILTER_TEST.clone(),
+        EXPECTED_RESULT_BY_INDEX_FOR_KEYS_FILTER_TEST.clone(),
     )
     .await;
 }
@@ -2042,6 +2202,7 @@ async fn get_events_from_block() {
         BlockMetadata(vec![vec![DEFAULT_EVENT_METADATA]]),
     ];
     let pending_block_metadata = None;
+    let is_pending_up_to_date = true;
     let expected_result_by_index = vec![(
         vec![EventIndex(
             TransactionIndex(BlockNumber(1), TransactionOffsetInBlock(0)),
@@ -2052,6 +2213,7 @@ async fn get_events_from_block() {
     test_get_events(
         blocks_metadata.clone(),
         pending_block_metadata.clone(),
+        is_pending_up_to_date,
         EventFilter {
             chunk_size: 2,
             from_block: Some(BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))),
@@ -2063,9 +2225,36 @@ async fn get_events_from_block() {
     test_get_events(
         blocks_metadata,
         pending_block_metadata,
+        is_pending_up_to_date,
         EventFilter {
             chunk_size: 2,
             from_block: Some(BlockId::Tag(Tag::Latest)),
+            ..Default::default()
+        },
+        expected_result_by_index,
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn get_events_from_pending() {
+    let blocks_metadata = vec![BlockMetadata(vec![vec![DEFAULT_EVENT_METADATA]])];
+    let pending_block_metadata = Some(BlockMetadata(vec![vec![DEFAULT_EVENT_METADATA]]));
+    let is_pending_up_to_date = true;
+    let expected_result_by_index = vec![(
+        vec![EventIndex(
+            TransactionIndex(BlockNumber(1), TransactionOffsetInBlock(0)),
+            EventIndexInTransactionOutput(0),
+        )],
+        None,
+    )];
+    test_get_events(
+        blocks_metadata,
+        pending_block_metadata,
+        is_pending_up_to_date,
+        EventFilter {
+            chunk_size: 2,
+            from_block: Some(BlockId::Tag(Tag::Pending)),
             ..Default::default()
         },
         expected_result_by_index,
@@ -2080,6 +2269,7 @@ async fn get_events_to_block() {
         BlockMetadata(vec![vec![DEFAULT_EVENT_METADATA]]),
     ];
     let pending_block_metadata = None;
+    let is_pending_up_to_date = true;
     let expected_result_by_index = vec![(
         vec![EventIndex(
             TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(0)),
@@ -2090,6 +2280,7 @@ async fn get_events_to_block() {
     test_get_events(
         blocks_metadata,
         pending_block_metadata,
+        is_pending_up_to_date,
         EventFilter {
             chunk_size: 2,
             to_block: Some(BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0)))),
@@ -2105,10 +2296,12 @@ async fn get_events_to_block() {
 async fn get_events_no_blocks() {
     let blocks_metadata = vec![BlockMetadata::default()];
     let pending_block_metadata = None;
+    let is_pending_up_to_date = true;
     let expected_result_by_index = vec![(vec![], None)];
     test_get_events(
         blocks_metadata,
         pending_block_metadata,
+        is_pending_up_to_date,
         EventFilter { chunk_size: 2, ..Default::default() },
         expected_result_by_index,
     )
@@ -2122,16 +2315,43 @@ async fn get_events_no_blocks_in_filter() {
         BlockMetadata(vec![vec![DEFAULT_EVENT_METADATA]]),
     ];
     let pending_block_metadata = None;
+    let is_pending_up_to_date = true;
     let expected_result_by_index = vec![(vec![], None)];
     test_get_events(
         blocks_metadata,
         pending_block_metadata,
+        is_pending_up_to_date,
         EventFilter {
             chunk_size: 2,
             from_block: Some(BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))),
             to_block: Some(BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0)))),
             ..Default::default()
         },
+        expected_result_by_index,
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn get_events_pending_not_up_to_date() {
+    // As a special edge case, the function get_events doesn't return events if there are no
+    // accepted blocks, even if there is a pending block. Therefore, we need to have a block in the
+    // storage.
+    let blocks_metadata = vec![BlockMetadata(vec![vec![DEFAULT_EVENT_METADATA]])];
+    let pending_block_metadata = Some(BlockMetadata(vec![vec![DEFAULT_EVENT_METADATA]]));
+    let is_pending_up_to_date = false;
+    let expected_result_by_index = vec![(
+        vec![EventIndex(
+            TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(0)),
+            EventIndexInTransactionOutput(0),
+        )],
+        None,
+    )];
+    test_get_events(
+        blocks_metadata,
+        pending_block_metadata,
+        is_pending_up_to_date,
+        EventFilter { chunk_size: 2, ..Default::default() },
         expected_result_by_index,
     )
     .await;
