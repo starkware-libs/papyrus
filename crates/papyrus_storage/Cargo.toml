@@ -11,7 +11,6 @@ testing = [
     "tempfile",
     "starknet_api/testing",
     "rand",
-    "test_utils",
     "rand_chacha",
 ]
 
@@ -35,7 +34,6 @@ serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 starknet_api = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }
-test_utils = { path = "../test_utils", optional = true, version = "0.1.1-alpha" }
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
 tracing = { workspace = true, features = ["log"] }
@@ -46,4 +44,4 @@ assert_matches.workspace = true
 insta = { workspace = true, features = ["yaml"] }
 paste.workspace = true
 num-traits.workspace = true
-schemars = {workspace = true, features = ["preserve_order"] }
+schemars = { workspace = true, features = ["preserve_order"] }
