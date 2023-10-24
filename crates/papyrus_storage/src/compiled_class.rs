@@ -42,8 +42,16 @@ use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
-use crate::mmap_file::LocationInFile;
-use crate::{FileAccess, MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
+use crate::mmap_file::{LocationInFile, Writer};
+use crate::{
+    FileAccess,
+    MarkerKind,
+    MarkersTable,
+    OffsetKind,
+    StorageError,
+    StorageResult,
+    StorageTxn,
+};
 
 /// Interface for reading data related to the compiled classes.
 pub trait CasmStorageReader {
@@ -69,7 +77,8 @@ where
 impl<'env, Mode: TransactionKind> CasmStorageReader for StorageTxn<'env, Mode> {
     fn get_casm(&self, class_hash: &ClassHash) -> StorageResult<Option<CasmContractClass>> {
         let casm_table = self.open_table(&self.tables.casms)?;
-        Ok(casm_table.get(&self.txn, class_hash)?)
+        let casm_location = casm_table.get(&self.txn, class_hash)?;
+        casm_location.map(|location| self.file_access.get_casm_unchecked(location)).transpose()
     }
 
     fn get_compiled_class_marker(&self) -> StorageResult<BlockNumber> {
@@ -84,13 +93,20 @@ impl<'env> CasmStorageWriter for StorageTxn<'env, RW> {
         let casm_table = self.open_table(&self.tables.casms)?;
         let markers_table = self.open_table(&self.tables.markers)?;
         let state_diff_table = self.open_table(&self.tables.state_diffs)?;
-        casm_table.insert(&self.txn, class_hash, casm).map_err(|err| {
+        let file_offset_table = self.txn.open_table(&self.tables.file_offsets)?;
+
+        let FileAccess::Writers(mut file_writers) = self.file_access.clone() else {
+            panic!("RW storage transaction must have file writers.");
+        };
+        let location = file_writers.casm.append(casm);
+        casm_table.insert(&self.txn, class_hash, &location).map_err(|err| {
             if matches!(err, DbError::Inner(libmdbx::Error::KeyExist)) {
                 StorageError::CompiledClassReWrite { class_hash: *class_hash }
             } else {
                 StorageError::from(err)
             }
         })?;
+        file_offset_table.upsert(&self.txn, &OffsetKind::Casm, &location.next_offset())?;
         update_marker(
             &self.txn,
             &markers_table,

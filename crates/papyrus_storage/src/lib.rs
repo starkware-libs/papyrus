@@ -327,7 +327,7 @@ pub fn table_names() -> &'static [&'static str] {
 struct_field_names! {
     struct Tables {
         block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
-        casms: TableIdentifier<ClassHash, CasmContractClass>,
+        casms: TableIdentifier<ClassHash, LocationInFile>,
         contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
         declared_classes: TableIdentifier<ClassHash, LocationInFile>,
         declared_classes_block: TableIdentifier<ClassHash, BlockNumber>,
@@ -563,6 +563,22 @@ impl FileAccess {
         }
     }
 
+    // Returns the CASM at the given location or an error in case it doesn't exist.
+    fn get_casm_unchecked(&self, location: LocationInFile) -> StorageResult<CasmContractClass> {
+        match self {
+            FileAccess::Readers(file_readers) => {
+                Ok(file_readers.casm.get(location)?.ok_or(StorageError::DBInconsistency {
+                    msg: format!("CasmContractClass at location {:?} not found.", location),
+                })?)
+            }
+            FileAccess::Writers(file_writers) => {
+                Ok(file_writers.casm.get(location)?.ok_or(StorageError::DBInconsistency {
+                    msg: format!("CasmContractClass at location {:?} not found.", location),
+                })?)
+            }
+        }
+    }
+
     fn flush(&self) {
         // TODO(dan): Consider 1. flushing only the relevant files, 2. flushing concurrently.
         match self {
@@ -570,6 +586,7 @@ impl FileAccess {
             FileAccess::Writers(file_writers) => {
                 file_writers.thin_state_diff.flush();
                 file_writers.contract_class.flush();
+                file_writers.casm.flush();
             }
         }
     }
@@ -579,12 +596,14 @@ impl FileAccess {
 struct FileWriters {
     thin_state_diff: FileWriter<ThinStateDiff>,
     contract_class: FileWriter<ContractClass>,
+    casm: FileWriter<CasmContractClass>,
 }
 
 #[derive(Clone, Debug)]
 struct FileReaders {
     thin_state_diff: FileReader<ThinStateDiff>,
     contract_class: FileReader<ContractClass>,
+    casm: FileReader<CasmContractClass>,
 }
 
 fn open_storage_files(
@@ -607,19 +626,25 @@ fn open_storage_files(
     let contract_class_offset =
         table.get(&db_transaction, &OffsetKind::ContractClass)?.unwrap_or_default();
     let (contract_class_writer, contract_class_reader) = open_file(
-        mmap_file_config,
+        mmap_file_config.clone(),
         db_config.path().join("contract_class.dat"),
         contract_class_offset,
     )?;
+
+    let casm_offset = table.get(&db_transaction, &OffsetKind::Casm)?.unwrap_or_default();
+    let (casm_writer, casm_reader) =
+        open_file(mmap_file_config, db_config.path().join("casm"), casm_offset)?;
 
     Ok((
         FileWriters {
             thin_state_diff: thin_state_diff_writer,
             contract_class: contract_class_writer,
+            casm: casm_writer,
         },
         FileReaders {
             thin_state_diff: thin_state_diff_reader,
             contract_class: contract_class_reader,
+            casm: casm_reader,
         },
     ))
 }
@@ -631,4 +656,6 @@ pub enum OffsetKind {
     ThinStateDiff,
     /// A contract class file.
     ContractClass,
+    /// A CASM file.
+    Casm,
 }
