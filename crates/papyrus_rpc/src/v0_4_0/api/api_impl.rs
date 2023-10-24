@@ -41,7 +41,7 @@ use starknet_client::reader::{PendingData, StorageEntry};
 use starknet_client::writer::{StarknetWriter, WriterClientError};
 use starknet_client::ClientError;
 use tokio::sync::RwLock;
-use tracing::{debug, instrument, trace};
+use tracing::{debug, instrument, trace, warn};
 
 use super::super::block::{Block, BlockHeader, GeneralBlockHeader, PendingBlockHeader};
 use super::super::broadcasted_transaction::{
@@ -575,7 +575,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_events(&self, filter: EventFilter) -> RpcResult<EventsChunk> {
+    async fn get_events(&self, filter: EventFilter) -> RpcResult<EventsChunk> {
         // Check the chunk size.
         if filter.chunk_size > self.max_events_chunk_size {
             return Err(ErrorObjectOwned::from(PAGE_SIZE_TOO_BIG));
@@ -587,17 +587,26 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 
         // Get the requested block numbers.
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        let from_block_number = filter
-            .from_block
-            .map_or(Ok(BlockNumber(0)), |block_id| get_block_number(&txn, block_id))?;
-        let maybe_to_block_number =
-            filter.to_block.map_or(get_latest_block_number(&txn), |block_id| {
-                get_block_number(&txn, block_id).map(Some)
-            })?;
-        let Some(to_block_number) = maybe_to_block_number else {
+        let Some(latest_block_number) = get_latest_block_number(&txn)? else {
+            if matches!(filter.to_block, Some(BlockId::Tag(Tag::Pending)) | None) {
+                warn!(
+                    "Handling pending events when there are no accepted blocks is currently \
+                     unsupported. Returning no events."
+                );
+            }
             // There are no blocks.
             return Ok(EventsChunk { events: vec![], continuation_token: None });
         };
+        let from_block_number = filter
+            .from_block
+            .map_or(Ok(BlockNumber(0)), |block_id| get_block_number(&txn, block_id))?;
+        let mut to_block_number = filter.to_block.map_or(Ok(latest_block_number), |block_id| {
+            if let BlockId::Tag(Tag::Pending) = block_id {
+                Ok(latest_block_number.next())
+            } else {
+                get_block_number(&txn, block_id)
+            }
+        })?;
         if from_block_number > to_block_number {
             return Ok(EventsChunk { events: vec![], continuation_token: None });
         }
@@ -612,49 +621,94 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             ),
         };
 
+        let include_pending_block = to_block_number > latest_block_number;
+        if include_pending_block {
+            to_block_number = to_block_number.prev().expect("TODO FIND MESSAGE");
+        }
+
         // Collect the requested events.
         // Once we collected enough events, we continue to check if there are any more events
         // corresponding to the requested filter. If there are, we return a continuation token
         // pointing to the next relevant event. Otherwise, we return a continuation token None.
         let mut filtered_events = vec![];
-        for ((from_address, event_index), content) in txn
-            .iter_events(filter.address, event_index, to_block_number)
-            .map_err(internal_server_error)?
-        {
-            let block_number = (event_index.0).0;
-            if block_number > to_block_number {
-                break;
-            }
-            if let Some(filter_address) = filter.address {
-                if from_address != filter_address {
+        if event_index.0.0 <= latest_block_number {
+            for ((from_address, event_index), content) in txn
+                .iter_events(filter.address, event_index, to_block_number)
+                .map_err(internal_server_error)?
+            {
+                let block_number = (event_index.0).0;
+                if block_number > to_block_number {
                     break;
                 }
-            }
-            // TODO: Consider changing empty sets in the filer keys to None.
-            if filter.keys.iter().enumerate().all(|(i, keys)| {
-                content.keys.len() > i && (keys.is_empty() || keys.contains(&content.keys[i]))
-            }) {
-                if filtered_events.len() == filter.chunk_size {
-                    return Ok(EventsChunk {
-                        events: filtered_events,
-                        continuation_token: Some(ContinuationToken::new(
-                            ContinuationTokenAsStruct(event_index),
-                        )?),
-                    });
+                if let Some(filter_address) = filter.address {
+                    if from_address != filter_address {
+                        break;
+                    }
                 }
-                let header: BlockHeader = get_block_header_by_number(&txn, block_number)
-                    .map_err(internal_server_error)?;
-                let transaction_hash = txn
-                    .get_transaction_hash_by_idx(&event_index.0)
-                    .map_err(internal_server_error)?
-                    .ok_or_else(|| internal_server_error("Unknown internal error."))?;
-                let emitted_event = Event {
-                    block_hash: header.block_hash,
-                    block_number,
-                    transaction_hash,
-                    event: starknet_api::transaction::Event { from_address, content },
-                };
-                filtered_events.push(emitted_event);
+                // TODO: Consider changing empty sets in the filer keys to None.
+                if filter.keys.iter().enumerate().all(|(i, keys)| {
+                    content.keys.len() > i && (keys.is_empty() || keys.contains(&content.keys[i]))
+                }) {
+                    if filtered_events.len() == filter.chunk_size {
+                        return Ok(EventsChunk {
+                            events: filtered_events,
+                            continuation_token: Some(ContinuationToken::new(
+                                ContinuationTokenAsStruct(event_index),
+                            )?),
+                        });
+                    }
+                    let header: BlockHeader = get_block_header_by_number(&txn, block_number)
+                        .map_err(internal_server_error)?;
+                    let transaction_hash = txn
+                        .get_transaction_hash_by_idx(&event_index.0)
+                        .map_err(internal_server_error)?
+                        .ok_or_else(|| internal_server_error("Unknown internal error."))?;
+                    let emitted_event = Event {
+                        block_hash: Some(header.block_hash),
+                        block_number: Some(block_number),
+                        transaction_hash,
+                        event: starknet_api::transaction::Event { from_address, content },
+                    };
+                    filtered_events.push(emitted_event);
+                }
+            }
+        }
+
+        if include_pending_block {
+            let pending_transaction_receipts = {
+                let pending_block = &self.pending_data.read().await.block;
+                let latest_block_hash =
+                    get_block_header_by_number::<_, BlockHeader>(&txn, latest_block_number)?
+                        .block_hash;
+                if latest_block_hash == pending_block.parent_block_hash {
+                    pending_block.transaction_receipts.clone()
+                } else {
+                    Vec::new()
+                }
+            };
+            for (transaction_offset, receipt) in pending_transaction_receipts.iter().enumerate() {
+                for (event_offset, event) in receipt.events.iter().cloned().enumerate() {
+                    if filtered_events.len() == filter.chunk_size {
+                        return Ok(EventsChunk {
+                            events: filtered_events,
+                            continuation_token: Some(ContinuationToken::new(
+                                ContinuationTokenAsStruct(EventIndex(
+                                    TransactionIndex(
+                                        latest_block_number.next(),
+                                        TransactionOffsetInBlock(transaction_offset),
+                                    ),
+                                    EventIndexInTransactionOutput(event_offset),
+                                )),
+                            )?),
+                        });
+                    }
+                    filtered_events.push(Event {
+                        block_hash: None,
+                        block_number: None,
+                        transaction_hash: receipt.transaction_hash,
+                        event,
+                    })
+                }
             }
         }
 

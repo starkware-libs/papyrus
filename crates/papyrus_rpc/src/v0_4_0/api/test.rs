@@ -26,7 +26,13 @@ use rand::{random, RngCore};
 use rand_chacha::ChaCha8Rng;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
+use starknet_api::block::{
+    Block as StarknetApiBlock,
+    BlockHash,
+    BlockHeader,
+    BlockNumber,
+    BlockStatus,
+};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
     ContractClassAbiEntry,
@@ -768,7 +774,7 @@ async fn get_transaction_receipt() {
     assert_eq!(res.finality_status, TransactionFinalityStatus::AcceptedOnL1);
     assert_eq!(res.output.execution_status(), &TransactionExecutionStatus::Succeeded);
 
-    // Add a pneding transaction and ask for its receipt.
+    // Add a pending transaction and ask for its receipt.
     let mut rng = get_rng();
     let (client_transaction, client_transaction_receipt, expected_receipt) =
         generate_client_transaction_client_receipt_and_rpc_receipt(&mut rng);
@@ -1651,10 +1657,115 @@ async fn get_state_update() {
     assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
 }
 
+struct EventMetadata {
+    address: Option<ContractAddress>,
+    keys: Option<Vec<EventKey>>,
+}
+
+impl EventMetadata {
+    fn generate_event(&self, rng: &mut ChaCha8Rng) -> StarknetApiEvent {
+        StarknetApiEvent {
+            from_address: self.address.unwrap_or_else(|| GetTestInstance::get_test_instance(rng)),
+            content: EventContent {
+                keys: self.keys.unwrap_or_else(|| GetTestInstance::get_test_instance(rng)),
+                data: EventData::get_test_instance(rng),
+            }
+        }
+    }
+}
+
+struct BlockMetadata {
+    event_metadatas: Vec<Vec<EventMetadata>>,
+}
+
+async fn test_get_events_on_pending_and_no_pending(
+    num_blocks: usize,
+    num_transactions_in_block: usize,
+    num_events_per_transaction: Option<usize>,
+    from_addresses: Option<Vec<ContractAddress>>,
+    keys: Option<Vec<Vec<EventKey>>>,
+    mut filter: EventFilter,
+) {
+    let method_name = "starknet_V0_4_getEvents";
+    let pending_data = get_test_pending_data();
+    let (module, mut writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerV0_4Impl,
+    >(None, None, Some(pending_data.clone()), None, None);
+
+    let mut blocks = Vec::<StarknetApiBlock>::new();
+    for i in 0..num_blocks {
+        let block = get_test_block(
+            num_transactions_in_block,
+            num_events_per_transaction,
+            None,
+            None,
+        );
+        block.header.block_number = BlockNumber(i);
+        block.header.parent_hash = blocks
+            .last()
+            .map_or(BlockHash(stark_felt!(GENESIS_HASH)), |block| block.header.parent_hash);
+        block.header.block_hash = random::<u64>().into();
+        blocks.push(block)
+    }
+    let events = blocks.map(|block| block.body.events().to_vec()).flatten().filter(|event| ;
+
+    // Convert the last block into a pending block.
+    let last_block = blocks.pop().except("num_blocks should be non zero.");
+    pending_data.write().await.block = PendingBlock {
+        parent_block_hash: last_block.header.parent_hash,
+        status: BlockStatus::AcceptedOnL2,
+        // The get_events method doesn't look at the transactions, so we can put random transactions
+        // here.
+        transactions: (0..num_transactions_in_block).map(|i| {
+            let transaction = ClientTransaction::get_test_instance(&mut rng);
+            transaction.transaction_hash_mut() = last_block.body.transaction_hashes[i];
+            transaction
+        }),
+        transaction_receipts: block
+            .body
+            .transaction_outputs
+            .iter()
+            .zip(block.body.transaction_hashes)
+            .enumerate()
+            .map(|(i, (transaction_output, transaction_hash))| {
+                ClientTransactionReceipt {
+                    transaction_index: TransactionOffsetInBlock(i),
+                    transaction_hash,
+                    events: transaction_output.events.to_vec(),
+                    // The get_events method doesn't look at the rest of the fields of the receipt.
+                    ..default::Default()
+                }
+            }),
+        ..default::Default()
+    };
+    let call_method_and_validate_results = || {
+        for 
+        {
+            // TODO !!!!!validate schema here.
+            let result =
+                module.call::<_, EventsChunk>(method_name, [filter.clone()]).await.unwrap();
+            assert_eq!(result.events, events_chunk);
+            assert_eq!(result.continuation_token, expected_continuation_token);
+            filter.continuation_token = expected_continuation_token;
+        }
+    };
+    call_method_and_validate_results();
+
+    // Run the test when last_block is in the storage.
+    let mut txn = writer.begin_rw_txn().unwrap();
+    txn = txn
+        .append_header(last_block.header.block_number, &block.header)
+        .unwrap()
+        .append_body(last_block.header.block_number, block.body)
+        .unwrap();
+    txn.commit().unwrap();
+    // In order to check that we disregard old pending data, erase pending data's events.
+    pending_data.write().await.block.transaction_receipts = Vec::new();
+    call_method_and_validate_results();
+}
+
 #[tokio::test]
 async fn get_events_chunk_size_2_with_address() {
-    let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
     let address = ContractAddress(patricia_key!("0x22"));
     let key0 = EventKey(stark_felt!("0x6"));
     let key1 = EventKey(stark_felt!("0x7"));
@@ -1664,18 +1775,9 @@ async fn get_events_chunk_size_2_with_address() {
         Some(vec![address, ContractAddress(patricia_key!("0x23"))]),
         Some(vec![vec![key0.clone(), key1.clone(), EventKey(stark_felt!("0x8"))]]),
     );
-    let block_number = block.header.block_number;
-    storage_writer
-        .begin_rw_txn()
-        .unwrap()
-        .append_header(block_number, &block.header)
-        .unwrap()
-        .append_body(block_number, block.body.clone())
-        .unwrap()
-        .commit()
-        .unwrap();
 
     // Create the filter: the allowed keys at index 0 are 0x6 or 0x7.
+    let block_number = block.header.block_number;
     let filter_keys = HashSet::from([key0, key1]);
     let block_id = BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number));
     let chunk_size = 2;
@@ -1699,8 +1801,8 @@ async fn get_events_chunk_size_2_with_address() {
             if let Some(key) = event.content.keys.get(0) {
                 if filter_keys.get(key).is_some() && event.from_address == address {
                     emitted_events.push(Event {
-                        block_hash,
-                        block_number,
+                        block_hash: Some(block_hash),
+                        block_number: Some(block_number),
                         transaction_hash,
                         event: event.clone(),
                     });
@@ -1713,26 +1815,25 @@ async fn get_events_chunk_size_2_with_address() {
         }
     }
 
-    for (i, chunk) in emitted_events.chunks(chunk_size).enumerate() {
-        let res = module
-            .call::<_, EventsChunk>("starknet_V0_4_getEvents", [filter.clone()])
-            .await
-            .unwrap();
-        assert_eq!(res.events, chunk);
-        let index = (i + 1) * chunk_size;
-        let expected_continuation_token = if index < emitted_event_indices.len() {
-            Some(
-                ContinuationToken::new(ContinuationTokenAsStruct(
-                    *emitted_event_indices.index(index),
-                ))
-                .unwrap(),
-            )
-        } else {
-            None
-        };
-        assert_eq!(res.continuation_token, expected_continuation_token);
-        filter.continuation_token = res.continuation_token;
-    }
+    let expected_results = emitted_events
+        .chunks(chunk_size)
+        .enumerate()
+        .map(|(i, chunk)| {
+            let index = (i + 1) * chunk_size;
+            let expected_continuation_token = if index < emitted_event_indices.len() {
+                Some(
+                    ContinuationToken::new(ContinuationTokenAsStruct(
+                        *emitted_event_indices.index(index),
+                    ))
+                    .unwrap(),
+                )
+            } else {
+                None
+            };
+            EventsChunk { events: chunk.to_vec(), continuation_token: expected_continuation_token }
+        })
+        .collect();
+    test_get_events_on_pending_and_no_pending(vec![block], filter, expected_results).await;
 }
 
 #[tokio::test]
@@ -1780,8 +1881,8 @@ async fn get_events_chunk_size_2_without_address() {
             if let Some(key) = event.content.keys.get(0) {
                 if filter_keys.get(key).is_some() {
                     emitted_events.push(Event {
-                        block_hash,
-                        block_number,
+                        block_hash: Some(block_hash),
+                        block_number: Some(block_number),
                         transaction_hash,
                         event: event.clone(),
                     });

@@ -151,7 +151,7 @@ pub trait JsonRpc {
 
     /// Returns all events matching the given filter.
     #[method(name = "getEvents")]
-    fn get_events(&self, filter: EventFilter) -> RpcResult<EventsChunk>;
+    async fn get_events(&self, filter: EventFilter) -> RpcResult<EventsChunk>;
 
     /// Returns the synching status of the node, or false if the node is not synching.
     #[method(name = "syncing")]
