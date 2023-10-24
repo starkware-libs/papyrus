@@ -23,6 +23,9 @@ use papyrus_storage::{DbStats, StorageError, StorageReader};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
+use starknet_client::reader::StarknetFeederGatewayClient;
+use starknet_client::writer::StarknetGatewayClient;
+use starknet_client::RetryConfig;
 use tracing::{debug, info, instrument};
 use validator::Validate;
 
@@ -35,6 +38,7 @@ pub struct MonitoringGatewayConfig {
     #[validate(length(min = 1))]
     #[serde(default = "random_secret")]
     pub present_full_config_secret: String,
+    pub starknet_url: String,
 }
 
 fn random_secret() -> String {
@@ -50,6 +54,7 @@ impl Default for MonitoringGatewayConfig {
             collect_metrics: false,
             // A constant value for testing purposes.
             present_full_config_secret: String::from("qwerty"),
+            starknet_url: String::from("https://alpha-mainnet.starknet.io/"),
         }
     }
 }
@@ -138,6 +143,7 @@ impl MonitoringServer {
         let server_address = SocketAddr::from_str(&self.config.server_address)
             .expect("Configuration value for monitor server address should be valid");
         let app = app(
+            self.config.starknet_url.clone(),
             self.storage_reader.clone(),
             self.version,
             self.full_general_config_presentation.clone(),
@@ -151,6 +157,7 @@ impl MonitoringServer {
 }
 
 fn app(
+    starknet_url: String,
     storage_reader: StorageReader,
     version: &'static str,
     full_general_config_presentation: serde_json::Value,
@@ -192,8 +199,32 @@ fn app(
         )
         .route(
             format!("/{MONITORING_PREFIX}/ready").as_str(),
-            get(move || async { StatusCode::OK.to_string() }),
+            get(move || is_ready(version, starknet_url.clone())),
         )
+}
+
+#[instrument(level = "debug", ret)]
+async fn is_ready(version: &'static str, starknet_url: String) -> String {
+    let is_ready_retry_config =
+        RetryConfig { retry_base_millis: 50, retry_max_delay_millis: 1000, max_retries: 0 };
+
+    let starknet_feeder_client = StarknetFeederGatewayClient::new(
+        starknet_url.as_str(),
+        None,
+        version,
+        is_ready_retry_config,
+    )
+    .expect("Failed creating Starknet feeder client.");
+    let response = starknet_feeder_client.is_alive().await;
+    assert!(response);
+
+    let starknet_client =
+        StarknetGatewayClient::new(starknet_url.as_str(), version, is_ready_retry_config)
+            .expect("Failed creating Starknet client.");
+    let response = starknet_client.is_alive().await;
+    assert!(response);
+
+    StatusCode::OK.to_string()
 }
 
 /// Returns DB statistics.
