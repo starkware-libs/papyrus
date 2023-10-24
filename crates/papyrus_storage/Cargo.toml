@@ -8,7 +8,7 @@ description = "A storage implementation for a Starknet node."
 
 [features]
 default = ["starknet_api"]
-testing = ["tempfile", "starknet_api/testing", "rand", "rand_chacha"]
+testing = ["tempfile"]
 
 [dependencies]
 byteorder.workspace = true
@@ -23,11 +23,9 @@ libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
 num-bigint.workspace = true
 primitive-types.workspace = true
 parity-scale-codec.workspace = true
-rand = { workspace = true, optional = true }
-rand_chacha = { workspace = true, optional = true }
 reqwest = { workspace = true, features = ["json", "blocking"] }
 serde = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
+serde_json = { workspace = true, features = ["arbitrary_precision"] }
 starknet_api = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }
 thiserror.workspace = true
@@ -40,4 +38,8 @@ assert_matches.workspace = true
 insta = { workspace = true, features = ["yaml"] }
 paste.workspace = true
 num-traits.workspace = true
+rand.workspace = true
+rand_chacha.workspace = true
 schemars = { workspace = true, features = ["preserve_order"] }
+tempfile = { workspace = true }
+test_utils = { path = "../test_utils" }
