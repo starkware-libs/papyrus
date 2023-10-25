@@ -95,6 +95,7 @@ use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
+use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StorageKey, ThinStateDiff};
 use starknet_api::transaction::{EventContent, Transaction, TransactionHash};
@@ -607,6 +608,41 @@ impl FileAccess {
         }
     }
 
+    // Appends a deprecated contract class to the corresponding file and returns its location.
+    fn append_deprecated_contract_class(
+        &self,
+        deprecated_contract_class: &DeprecatedContractClass,
+    ) -> LocationInFile {
+        match self.clone() {
+            FileAccess::Readers(_) => panic!("Cannot write to storage in read only mode."),
+            FileAccess::Writers(mut file_writers) => {
+                file_writers.deprecated_contract_class.append(deprecated_contract_class)
+            }
+        }
+    }
+
+    // Returns the deprecated contract class at the given location or an error in case it doesn't
+    // exist.
+    fn get_deprecated_contract_class_unchecked(
+        &self,
+        location: LocationInFile,
+    ) -> StorageResult<DeprecatedContractClass> {
+        match self {
+            FileAccess::Readers(file_readers) => Ok(file_readers
+                .deprecated_contract_class
+                .get(location)?
+                .ok_or(StorageError::DBInconsistency {
+                    msg: format!("DeprecatedContractClass at location {:?} not found.", location),
+                })?),
+            FileAccess::Writers(file_writers) => Ok(file_writers
+                .deprecated_contract_class
+                .get(location)?
+                .ok_or(StorageError::DBInconsistency {
+                    msg: format!("DeprecatedContractClass at location {:?} not found.", location),
+                })?),
+        }
+    }
+
     fn flush(&self) {
         // TODO(dan): Consider 1. flushing only the relevant files, 2. flushing concurrently.
         match self {
@@ -615,6 +651,7 @@ impl FileAccess {
                 file_writers.thin_state_diff.flush();
                 file_writers.contract_class.flush();
                 file_writers.casm.flush();
+                file_writers.deprecated_contract_class.flush();
             }
         }
     }
@@ -625,6 +662,7 @@ struct FileWriters {
     thin_state_diff: FileWriter<ThinStateDiff>,
     contract_class: FileWriter<ContractClass>,
     casm: FileWriter<CasmContractClass>,
+    deprecated_contract_class: FileWriter<DeprecatedContractClass>,
 }
 
 #[derive(Clone, Debug)]
@@ -632,6 +670,7 @@ struct FileReaders {
     thin_state_diff: FileReader<ThinStateDiff>,
     contract_class: FileReader<ContractClass>,
     casm: FileReader<CasmContractClass>,
+    deprecated_contract_class: FileReader<DeprecatedContractClass>,
 }
 
 fn open_storage_files(
@@ -661,18 +700,28 @@ fn open_storage_files(
 
     let casm_offset = table.get(&db_transaction, &OffsetKind::Casm)?.unwrap_or_default();
     let (casm_writer, casm_reader) =
-        open_file(mmap_file_config, db_config.path().join("casm"), casm_offset)?;
+        open_file(mmap_file_config.clone(), db_config.path().join("casm.dat"), casm_offset)?;
+
+    let deprecated_contract_class_offset =
+        table.get(&db_transaction, &OffsetKind::DeprecatedContractClass)?.unwrap_or_default();
+    let (deprecated_contract_class_writer, deprecated_contract_class_reader) = open_file(
+        mmap_file_config,
+        db_config.path().join("deprecated_contract_class.dat"),
+        deprecated_contract_class_offset,
+    )?;
 
     Ok((
         FileWriters {
             thin_state_diff: thin_state_diff_writer,
             contract_class: contract_class_writer,
             casm: casm_writer,
+            deprecated_contract_class: deprecated_contract_class_writer,
         },
         FileReaders {
             thin_state_diff: thin_state_diff_reader,
             contract_class: contract_class_reader,
             casm: casm_reader,
+            deprecated_contract_class: deprecated_contract_class_reader,
         },
     ))
 }
@@ -686,4 +735,6 @@ pub enum OffsetKind {
     ContractClass,
     /// A CASM file.
     Casm,
+    /// A deprecated contract class file.
+    DeprecatedContractClass,
 }

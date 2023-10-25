@@ -120,6 +120,7 @@ use crate::compression_utils::{
 };
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
 use crate::header::StarknetVersion;
+use crate::mmap_file::LocationInFile;
 use crate::ommer::{OmmerEventKey, OmmerTransactionKey};
 #[cfg(test)]
 use crate::serializers::serializers_test::{create_storage_serde_test, StorageSerdeTest};
@@ -279,7 +280,7 @@ auto_storage_serde! {
     pub struct H160(pub [u8; 20]);
     pub struct IndexedDeprecatedContractClass {
         pub block_number: BlockNumber,
-        pub contract_class: DeprecatedContractClass,
+        pub location_in_file: LocationInFile,
     }
     pub enum InvokeTransaction {
         V0(InvokeTransactionV0) = 0,
@@ -335,6 +336,7 @@ auto_storage_serde! {
         ThinStateDiff = 0,
         ContractClass = 1,
         Casm = 2,
+        DeprecatedContractClass = 3,
     }
     struct OmmerTransactionKey(pub BlockHash, pub TransactionOffsetInBlock);
     struct OmmerEventKey(pub OmmerTransactionKey, pub EventIndexInTransactionOutput);
