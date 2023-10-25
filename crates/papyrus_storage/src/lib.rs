@@ -521,6 +521,16 @@ pub(crate) enum FileAccess {
 }
 
 impl FileAccess {
+    // Appends a thin state diff to the corresponding file and returns its location.
+    fn append_thin_state_diff(&self, thin_state_diff: &ThinStateDiff) -> LocationInFile {
+        match self.clone() {
+            FileAccess::Readers(_) => panic!("Cannot write to storage in read only mode."),
+            FileAccess::Writers(mut file_writers) => {
+                file_writers.thin_state_diff.append(thin_state_diff)
+            }
+        }
+    }
+
     // Returns the thin state diff at the given location or an error in case it doesn't exist.
     fn get_thin_state_diff_unchecked(
         &self,
@@ -542,6 +552,16 @@ impl FileAccess {
         }
     }
 
+    // Appends a contract class to the corresponding file and returns its location.
+    fn append_contract_class(&self, contract_class: &ContractClass) -> LocationInFile {
+        match self.clone() {
+            FileAccess::Readers(_) => panic!("Cannot write to storage in read only mode."),
+            FileAccess::Writers(mut file_writers) => {
+                file_writers.contract_class.append(contract_class)
+            }
+        }
+    }
+
     // Returns the contract class at the given location or an error in case it doesn't exist.
     fn get_contract_class_unchecked(
         &self,
@@ -560,6 +580,14 @@ impl FileAccess {
                 .ok_or(StorageError::DBInconsistency {
                     msg: format!("ContractClass at location {:?} not found.", location),
                 })?),
+        }
+    }
+
+    // Appends a CASM to the corresponding file and returns its location.
+    fn append_casm(&self, casm: &CasmContractClass) -> LocationInFile {
+        match self.clone() {
+            FileAccess::Readers(_) => panic!("Cannot write to storage in read only mode."),
+            FileAccess::Writers(mut file_writers) => file_writers.casm.append(casm),
         }
     }
 
