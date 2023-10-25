@@ -17,6 +17,8 @@ use starknet_api::transaction::{Calldata, EventContent, MessageToL1};
 
 use crate::{ExecutionError, ExecutionResult};
 
+// TODO(yair): Move types to starknet_api.
+
 /// The execution trace of a transaction.
 #[allow(missing_docs)]
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
@@ -189,9 +191,9 @@ pub struct FunctionInvocation {
     /// The calls made by this invocation.
     pub calls: Vec<Self>,
     /// The events emitted in this invocation.
-    pub events: Vec<EventContent>,
+    pub events: Vec<OrderedEvent>,
     /// The messages sent by this invocation to L1.
-    pub messages: Vec<MessageToL1>,
+    pub messages: Vec<OrderedL2ToL1Message>,
 }
 
 impl TryFrom<CallInfo> for FunctionInvocation {
@@ -218,17 +220,15 @@ impl TryFrom<CallInfo> for FunctionInvocation {
                 .events
                 .into_iter()
                 .sorted_by_key(|ordered_event| ordered_event.order)
-                .map(|ordered_event| ordered_event.event)
+                .map(OrderedEvent::from)
                 .collect(),
             messages: call_info
                 .execution
                 .l2_to_l1_messages
                 .into_iter()
                 .sorted_by_key(|ordered_message| ordered_message.order)
-                .map(|ordered_message| MessageToL1 {
-                    from_address: call_info.call.caller_address,
-                    to_address: ordered_message.message.to_address,
-                    payload: ordered_message.message.payload,
+                .map(|ordered_message| {
+                    OrderedL2ToL1Message::from(ordered_message, call_info.call.caller_address)
                 })
                 .collect(),
         })
@@ -267,8 +267,8 @@ impl From<BlockifierRetdata> for Retdata {
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct OrderedEvent {
     /// The order of the event in the transaction.
-    #[serde(skip)]
     pub order: usize,
+    #[serde(flatten)]
     /// The event.
     pub event: EventContent,
 }
@@ -284,6 +284,7 @@ impl From<BlockifierOrderedEvent> for OrderedEvent {
 pub struct OrderedL2ToL1Message {
     /// The order of the message in the transaction.
     pub order: usize,
+    #[serde(flatten)]
     /// The message.
     pub message: MessageToL1,
 }
