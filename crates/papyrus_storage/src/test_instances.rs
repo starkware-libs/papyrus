@@ -39,6 +39,7 @@ auto_impl_get_test_instance! {
     pub enum OffsetKind {
         ThinStateDiff = 0,
         ContractClass = 1,
+        Casm = 2,
     }
     struct OmmerTransactionKey(pub BlockHash, pub TransactionOffsetInBlock);
     struct OmmerEventKey(pub OmmerTransactionKey, pub EventIndexInTransactionOutput);
