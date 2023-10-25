@@ -21,6 +21,7 @@ use crate::objects::{
     FunctionInvocationResult,
     InvokeTransactionTrace,
     L1HandlerTransactionTrace,
+    OrderedEvent,
     OrderedL2ToL1Message,
     Retdata,
     RevertReason,
@@ -77,6 +78,10 @@ auto_impl_get_test_instance! {
         LibraryCall = 1,
     }
     pub struct Retdata(pub Vec<StarkFelt>);
+    pub struct OrderedEvent {
+        pub order: usize,
+        pub event: EventContent,
+    }
     pub struct OrderedL2ToL1Message {
         pub order: usize,
         pub message: MessageToL1,
@@ -102,8 +107,8 @@ impl GetTestInstance for FunctionInvocation {
             call_type: CallType::get_test_instance(rng),
             result: Retdata::get_test_instance(rng),
             calls: Vec::new(),
-            events: Vec::<EventContent>::get_test_instance(rng),
-            messages: Vec::<MessageToL1>::get_test_instance(rng),
+            events: Vec::<OrderedEvent>::get_test_instance(rng),
+            messages: Vec::<OrderedL2ToL1Message>::get_test_instance(rng),
         }
     }
 }
