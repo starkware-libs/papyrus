@@ -2,9 +2,10 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use assert_matches::assert_matches;
+use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use futures_util::StreamExt;
 use indexmap::IndexMap;
-use papyrus_common::pending_classes::PendingClasses;
+use papyrus_common::pending_classes::{ApiContractClass, PendingClasses, PendingClassesTrait};
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
@@ -16,9 +17,10 @@ use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContract
 use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 use starknet_api::state::{ContractClass, StateDiff, StorageKey};
 use starknet_api::{patricia_key, stark_felt};
-use starknet_client::reader::objects::pending_data::PendingBlock;
+use starknet_client::reader::objects::pending_data::{PendingBlock, PendingStateUpdate};
+use starknet_client::reader::objects::state::StateDiff as ClientStateDiff;
 use starknet_client::reader::objects::transaction::Transaction as ClientTransaction;
-use starknet_client::reader::PendingData;
+use starknet_client::reader::{DeclaredClassHashEntry, PendingData};
 use test_utils::{get_rng, GetTestInstance};
 use tokio::sync::RwLock;
 
@@ -228,22 +230,42 @@ fn add_headers(headers_num: u64, writer: &mut StorageWriter) {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn test_pending_sync(
     reader: StorageReader,
     old_pending_data: PendingData,
     new_pending_datas: Vec<PendingData>,
     expected_pending_data: PendingData,
+    old_pending_classes_data: Option<PendingClasses>,
+    // Verifies that the classes will be requested in the given order.
+    new_pending_classes: Vec<(ClassHash, ApiContractClass)>,
+    new_pending_compiled_classes: Vec<(ClassHash, CasmContractClass)>,
+    expected_pending_classes: Option<PendingClasses>,
     non_existing_hash: BlockHash,
 ) {
     let mut mock_pending_source = MockPendingSourceTrait::new();
+    let mut mock_central_source = MockCentralSourceTrait::new();
     let pending_data_lock = Arc::new(RwLock::new(old_pending_data));
-    let pending_classes_lock = Arc::new(RwLock::new(PendingClasses::default()));
+    let pending_classes_lock = Arc::new(RwLock::new(old_pending_classes_data.unwrap_or_default()));
 
     for new_pending_data in new_pending_datas {
         mock_pending_source
             .expect_get_pending_data()
             .times(1)
             .return_once(move || Ok(new_pending_data));
+    }
+
+    for (expected_class_hash, new_pending_class) in new_pending_classes {
+        mock_central_source.expect_get_class().times(1).return_once(move |class_hash| {
+            assert_eq!(class_hash, expected_class_hash);
+            Ok(new_pending_class)
+        });
+    }
+    for (expected_class_hash, new_pending_compiled_class) in new_pending_compiled_classes {
+        mock_central_source.expect_get_compiled_class().times(1).return_once(move |class_hash| {
+            assert_eq!(class_hash, expected_class_hash);
+            Ok(new_pending_compiled_class)
+        });
     }
 
     // The syncing will stop once we see a new parent_block_hash in the pending data. It won't
@@ -257,6 +279,7 @@ async fn test_pending_sync(
 
     sync_pending_data(
         reader,
+        Arc::new(mock_central_source),
         Arc::new(mock_pending_source),
         pending_data_lock.clone(),
         pending_classes_lock.clone(),
@@ -266,6 +289,9 @@ async fn test_pending_sync(
     .unwrap();
 
     assert_eq!(pending_data_lock.read().await.clone(), expected_pending_data);
+    if let Some(expected_pending_classes) = expected_pending_classes {
+        assert_eq!(pending_classes_lock.read().await.clone(), expected_pending_classes);
+    }
 }
 
 #[tokio::test]
@@ -306,13 +332,24 @@ async fn pending_sync_advances_only_when_new_data_has_more_transactions() {
         },
         ..Default::default()
     };
-    let expected_pending_data = advanced_pending_data.clone();
+
+    let new_pending_datas = vec![advanced_pending_data.clone(), less_advanced_pending_data];
+    let expected_pending_data = advanced_pending_data;
+    let old_pending_classes_data = None;
+    let new_pending_classes = vec![];
+    let new_pending_compiled_classes = vec![];
+    let expected_pending_classes = None;
+    let non_existing_hash = BlockHash(StarkHash::ONE);
     test_pending_sync(
         reader,
         old_pending_data,
-        vec![advanced_pending_data, less_advanced_pending_data],
+        new_pending_datas,
         expected_pending_data,
-        BlockHash(StarkHash::ONE),
+        old_pending_classes_data,
+        new_pending_classes,
+        new_pending_compiled_classes,
+        expected_pending_classes,
+        non_existing_hash,
     )
     .await
 }
@@ -359,13 +396,155 @@ async fn pending_sync_new_data_has_more_advanced_hash_and_less_transactions() {
         },
         ..Default::default()
     };
-    let expected_pending_data = new_pending_data.clone();
+
+    let new_pending_datas = vec![new_pending_data.clone()];
+    let expected_pending_data = new_pending_data;
+    let old_pending_classes_data = None;
+    let new_pending_classes = vec![];
+    let new_pending_compiled_classes = vec![];
+    let expected_pending_classes = None;
+    let non_existing_hash = BlockHash(StarkHash::TWO);
     test_pending_sync(
         reader,
         old_pending_data,
-        vec![new_pending_data],
+        new_pending_datas,
         expected_pending_data,
-        BlockHash(StarkHash::TWO),
+        old_pending_classes_data,
+        new_pending_classes,
+        new_pending_compiled_classes,
+        expected_pending_classes,
+        non_existing_hash,
+    )
+    .await
+}
+
+#[tokio::test]
+async fn pending_sync_classes_request_only_new_classes() {
+    let genesis_hash = BlockHash(stark_felt!(GENESIS_HASH));
+    // Storage with no blocks.
+    let (reader, _writer) = get_test_storage().0;
+    let mut rng = get_rng();
+
+    let first_class_hash = ClassHash(StarkHash::ONE);
+    let second_class_hash = ClassHash(StarkHash::TWO);
+
+    let first_new_pending_data = PendingData {
+        block: PendingBlock {
+            parent_block_hash: genesis_hash,
+            transactions: vec![ClientTransaction::get_test_instance(&mut rng)],
+            ..Default::default()
+        },
+        state_update: PendingStateUpdate {
+            state_diff: ClientStateDiff {
+                declared_classes: vec![DeclaredClassHashEntry {
+                    class_hash: first_class_hash,
+                    compiled_class_hash: CompiledClassHash(StarkHash::ONE),
+                }],
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+    };
+    let mut second_new_pending_data = first_new_pending_data.clone();
+    second_new_pending_data.block.transactions.push(ClientTransaction::get_test_instance(&mut rng));
+    second_new_pending_data.state_update.state_diff.old_declared_contracts.push(second_class_hash);
+
+    let first_class = ApiContractClass::DeprecatedContractClass(
+        DeprecatedContractClass::get_test_instance(&mut rng),
+    );
+    let second_class = ApiContractClass::ContractClass(ContractClass::get_test_instance(&mut rng));
+    let compiled_class = CasmContractClass::get_test_instance(&mut rng);
+
+    let mut expected_pending_classes = PendingClasses::default();
+    expected_pending_classes.add_class(first_class_hash, first_class.clone());
+    expected_pending_classes.add_class(second_class_hash, second_class.clone());
+    expected_pending_classes.add_compiled_class(first_class_hash, compiled_class.clone());
+
+    let old_pending_data = PendingData {
+        block: PendingBlock { parent_block_hash: genesis_hash, ..Default::default() },
+        ..Default::default()
+    };
+    let new_pending_datas = vec![first_new_pending_data, second_new_pending_data.clone()];
+    let expected_pending_data = second_new_pending_data;
+    let old_pending_classes_data = PendingClasses::default();
+    let new_pending_classes =
+        vec![(first_class_hash, first_class.clone()), (second_class_hash, second_class.clone())];
+    let new_pending_compiled_classes = vec![(first_class_hash, compiled_class.clone())];
+    let non_existing_hash = BlockHash(StarkHash::ONE);
+    test_pending_sync(
+        reader,
+        old_pending_data,
+        new_pending_datas,
+        expected_pending_data,
+        Some(old_pending_classes_data),
+        new_pending_classes,
+        new_pending_compiled_classes,
+        Some(expected_pending_classes),
+        non_existing_hash,
+    )
+    .await
+}
+
+#[tokio::test]
+async fn pending_sync_classes_are_cleaned_on_first_pending_data_from_latest_block() {
+    const FIRST_BLOCK_HASH: BlockHash = BlockHash(StarkHash::ONE);
+    let genesis_hash = BlockHash(stark_felt!(GENESIS_HASH));
+    // Storage with one block header.
+    let (reader, mut writer) = get_test_storage().0;
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(
+            BlockNumber(0),
+            &BlockHeader {
+                block_hash: FIRST_BLOCK_HASH,
+                parent_hash: genesis_hash,
+                block_number: BlockNumber(0),
+                ..Default::default()
+            },
+        )
+        .unwrap()
+        .commit()
+        .unwrap();
+    let mut rng = get_rng();
+
+    let old_pending_data = PendingData {
+        block: PendingBlock { parent_block_hash: genesis_hash, ..Default::default() },
+        ..Default::default()
+    };
+    let new_pending_data = PendingData {
+        block: PendingBlock { parent_block_hash: FIRST_BLOCK_HASH, ..Default::default() },
+        ..Default::default()
+    };
+
+    let mut old_pending_classes_data = PendingClasses::default();
+    old_pending_classes_data.add_class(
+        ClassHash(StarkHash::ONE),
+        ApiContractClass::DeprecatedContractClass(DeprecatedContractClass::get_test_instance(
+            &mut rng,
+        )),
+    );
+    old_pending_classes_data.add_compiled_class(
+        ClassHash(StarkHash::TWO),
+        CasmContractClass::get_test_instance(&mut rng),
+    );
+
+    let new_pending_datas = vec![new_pending_data.clone()];
+    let expected_pending_data = new_pending_data;
+    let new_pending_classes = vec![];
+    let new_pending_compiled_classes = vec![];
+    let expected_pending_classes = PendingClasses::default();
+    let non_existing_hash = BlockHash(StarkHash::TWO);
+    test_pending_sync(
+        reader,
+        old_pending_data,
+        new_pending_datas,
+        expected_pending_data,
+        Some(old_pending_classes_data),
+        new_pending_classes,
+        new_pending_compiled_classes,
+        Some(expected_pending_classes),
+        non_existing_hash,
     )
     .await
 }
