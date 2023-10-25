@@ -396,7 +396,7 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         if state_number.is_before(value.block_number) {
             return Ok(None);
         }
-        Ok(Some(value.contract_class))
+        Ok(Some(self.file_access.get_deprecated_contract_class_unchecked(value.location_in_file)?))
     }
 }
 
@@ -477,6 +477,8 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
                 &self.txn,
                 block_number,
                 &deprecated_declared_classes_table,
+                &self.file_access,
+                &file_offset_table,
             )?;
         } else {
             write_deprecated_declared_classes(
@@ -484,6 +486,8 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
                 &self.txn,
                 block_number,
                 &deprecated_declared_classes_table,
+                &self.file_access,
+                &file_offset_table,
             )?;
         }
 
@@ -539,6 +543,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             block_number,
             &thin_state_diff,
             &deprecated_declared_classes_table,
+            &self.file_access,
         )?;
         let deleted_compiled_classes = delete_compiled_classes(
             &self.txn,
@@ -650,19 +655,26 @@ fn write_deprecated_declared_classes<'env>(
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     deprecated_declared_classes_table: &'env DeprecatedDeclaredClassesTable<'env>,
+    file_access: &FileAccess,
+    file_offset_table: &'env FileOffsetTable<'env>,
 ) -> StorageResult<()> {
     for (class_hash, deprecated_contract_class) in deprecated_declared_classes {
         // TODO(dan): remove this check after regenesis, in favor of insert().
         if let Some(value) = deprecated_declared_classes_table.get(txn, &class_hash)? {
-            if value.contract_class != deprecated_contract_class {
+            if file_access.get_deprecated_contract_class_unchecked(value.location_in_file)?
+                != deprecated_contract_class
+            {
                 return Err(StorageError::ClassAlreadyExists { class_hash });
             }
             continue;
         }
-        let value = IndexedDeprecatedContractClass {
-            block_number,
-            contract_class: deprecated_contract_class,
-        };
+        let location = file_access.append_deprecated_contract_class(&deprecated_contract_class);
+        let value = IndexedDeprecatedContractClass { block_number, location_in_file: location };
+        file_offset_table.upsert(
+            txn,
+            &OffsetKind::DeprecatedContractClass,
+            &location.next_offset(),
+        )?;
         let res = deprecated_declared_classes_table.insert(txn, &class_hash, &value);
         match res {
             Ok(()) => continue,
@@ -771,6 +783,7 @@ fn delete_deprecated_declared_classes<'env>(
     block_number: BlockNumber,
     thin_state_diff: &ThinStateDiff,
     deprecated_declared_classes_table: &'env DeprecatedDeclaredClassesTable<'env>,
+    file_access: &FileAccess,
 ) -> StorageResult<IndexMap<ClassHash, DeprecatedContractClass>> {
     // Class hashes of the contracts that were deployed in this block.
     let deployed_contracts_class_hashes = thin_state_diff.deployed_contracts.values();
@@ -791,12 +804,15 @@ fn delete_deprecated_declared_classes<'env>(
         // don't find in the deprecated classes table.
         if let Some(IndexedDeprecatedContractClass {
             block_number: declared_block_number,
-            contract_class,
+            location_in_file,
         }) = deprecated_declared_classes_table.get(txn, class_hash)?
         {
             // If the class was declared in a different block then we should'nt delete it.
             if block_number == declared_block_number {
-                deleted_data.insert(*class_hash, contract_class);
+                deleted_data.insert(
+                    *class_hash,
+                    file_access.get_deprecated_contract_class_unchecked(location_in_file)?,
+                );
                 deprecated_declared_classes_table.delete(txn, class_hash)?;
             }
         }
