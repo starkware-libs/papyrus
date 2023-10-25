@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use starknet_api::core::{
     ClassHash,
     CompiledClassHash,
@@ -6,6 +8,8 @@ use starknet_api::core::{
     Nonce,
 };
 use starknet_api::data_availability::DataAvailabilityMode;
+use starknet_api::hash::StarkFelt;
+use starknet_api::state::{EntryPoint, EntryPointType};
 use starknet_api::transaction::{
     AccountDeploymentData,
     Calldata,
@@ -20,6 +24,7 @@ use starknet_api::transaction::{
 };
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
 
+use crate::reader::objects::state::ContractClass;
 use crate::reader::objects::transaction::{
     DeployTransaction,
     IntermediateDeclareTransaction,
@@ -100,5 +105,11 @@ auto_impl_get_test_instance! {
         pub contract_address: ContractAddress,
         pub entry_point_selector: EntryPointSelector,
         pub calldata: Calldata,
+    }
+    pub struct ContractClass {
+        pub sierra_program: Vec<StarkFelt>,
+        pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
+        pub contract_class_version: String,
+        pub abi: String,
     }
 }
