@@ -83,7 +83,7 @@ pub fn get_methods_from_supported_apis(
                         version_config::VERSION_0_4 => {
                             server_gen.clone().generator::<JsonRpcServerV0_4Impl>()
                         }
-                        _ => Methods::new(),
+                        _ => unreachable!("Unrecognized RPC spec version: {}", version),
                     };
                     Some(methods)
                 }

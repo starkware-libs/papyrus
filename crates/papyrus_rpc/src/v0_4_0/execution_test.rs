@@ -40,13 +40,21 @@ use starknet_api::transaction::{Calldata, Fee, TransactionHash, TransactionVersi
 use starknet_api::{calldata, class_hash, contract_address, patricia_key, stark_felt};
 use test_utils::{auto_impl_get_test_instance, get_rng, read_json_file, GetTestInstance};
 
-use super::api::{decompress_program, FeeEstimate};
+use super::api::api_impl::JsonRpcServerV0_4Impl;
+use super::api::{
+    decompress_program,
+    FeeEstimate,
+    SimulatedTransaction,
+    SimulationFlag,
+    TransactionTraceWithHash,
+};
 use super::broadcasted_transaction::{
     BroadcastedDeclareTransaction,
     BroadcastedDeclareV1Transaction,
     BroadcastedTransaction,
 };
-use super::transaction::{DeployAccountTransaction, InvokeTransactionV1};
+use super::error::{BLOCK_NOT_FOUND, CONTRACT_ERROR, CONTRACT_NOT_FOUND};
+use super::transaction::{DeployAccountTransaction, InvokeTransaction, InvokeTransactionV1};
 use crate::api::{BlockHashOrNumber, BlockId};
 use crate::test_utils::{
     get_starknet_spec_api_schema_for_components,
@@ -55,10 +63,6 @@ use crate::test_utils::{
     validate_schema,
     SpecFile,
 };
-use crate::v0_4_0::api::api_impl::JsonRpcServerV0_4Impl;
-use crate::v0_4_0::api::{SimulatedTransaction, SimulationFlag, TransactionTraceWithHash};
-use crate::v0_4_0::error::{BLOCK_NOT_FOUND, CONTRACT_ERROR, CONTRACT_NOT_FOUND};
-use crate::v0_4_0::transaction::InvokeTransaction;
 use crate::version_config::VERSION_0_4;
 
 lazy_static! {

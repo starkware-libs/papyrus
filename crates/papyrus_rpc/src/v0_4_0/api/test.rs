@@ -65,6 +65,21 @@ use super::super::api::EventsChunk;
 use super::super::block::Block;
 use super::super::broadcasted_transaction::BroadcastedDeclareTransaction;
 use super::super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
+use super::super::error::{
+    unexpected_error,
+    JsonRpcError,
+    BLOCK_NOT_FOUND,
+    CLASS_HASH_NOT_FOUND,
+    COMPILATION_FAILED,
+    CONTRACT_NOT_FOUND,
+    DUPLICATE_TX,
+    INVALID_CONTINUATION_TOKEN,
+    INVALID_TRANSACTION_INDEX,
+    NO_BLOCKS,
+    PAGE_SIZE_TOO_BIG,
+    TOO_MANY_KEYS_IN_FILTER,
+    TRANSACTION_HASH_NOT_FOUND,
+};
 use super::super::state::{ContractClass, StateUpdate, ThinStateDiff};
 use super::super::transaction::{
     DeployAccountTransaction,
@@ -101,21 +116,6 @@ use crate::test_utils::{
     raw_call,
     validate_schema,
     SpecFile,
-};
-use crate::v0_4_0::error::{
-    unexpected_error,
-    JsonRpcError,
-    BLOCK_NOT_FOUND,
-    CLASS_HASH_NOT_FOUND,
-    COMPILATION_FAILED,
-    CONTRACT_NOT_FOUND,
-    DUPLICATE_TX,
-    INVALID_CONTINUATION_TOKEN,
-    INVALID_TRANSACTION_INDEX,
-    NO_BLOCKS,
-    PAGE_SIZE_TOO_BIG,
-    TOO_MANY_KEYS_IN_FILTER,
-    TRANSACTION_HASH_NOT_FOUND,
 };
 use crate::version_config::VERSION_0_4;
 use crate::{internal_server_error, run_server, ContinuationTokenAsStruct};

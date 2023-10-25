@@ -34,7 +34,13 @@ use super::broadcasted_transaction::{
     BroadcastedTransaction,
 };
 use super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use super::error::{JsonRpcError, BLOCK_NOT_FOUND, CONTRACT_ERROR, CONTRACT_NOT_FOUND};
+use super::error::{
+    JsonRpcError,
+    BLOCK_NOT_FOUND,
+    CONTRACT_ERROR,
+    CONTRACT_NOT_FOUND,
+    INVALID_CONTINUATION_TOKEN,
+};
 use super::state::{ContractClass, StateUpdate};
 use super::transaction::{
     DeployAccountTransaction,
@@ -49,7 +55,6 @@ use super::transaction::{
 use super::write_api_result::{AddDeclareOkResult, AddDeployAccountOkResult, AddInvokeOkResult};
 use crate::api::BlockId;
 use crate::syncing_state::SyncingState;
-use crate::v0_4_0::error::INVALID_CONTINUATION_TOKEN;
 use crate::{internal_server_error, ContinuationTokenAsStruct};
 
 pub mod api_impl;
