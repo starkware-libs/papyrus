@@ -6,7 +6,6 @@ use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
 use papyrus_common::pending_classes::PendingClasses;
-use papyrus_execution::objects::TransactionTrace;
 use papyrus_execution::{
     estimate_fee as exec_estimate_fee,
     execute_call,
@@ -47,6 +46,7 @@ use super::super::broadcasted_transaction::{
     BroadcastedDeclareTransaction,
     BroadcastedTransaction,
 };
+use super::super::execution::TransactionTrace;
 use super::super::state::StateUpdate;
 use super::super::transaction::{
     Event,
@@ -697,7 +697,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             Ok(simulation_results) => Ok(simulation_results
                 .into_iter()
                 .map(|(transaction_trace, _, gas_price, fee)| SimulatedTransaction {
-                    transaction_trace,
+                    transaction_trace: transaction_trace.into(),
                     fee_estimation: FeeEstimate::from(gas_price, fee),
                 })
                 .collect()),
@@ -767,9 +767,11 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         );
 
         match res {
-            Ok(mut simulation_results) => {
-                Ok(simulation_results.pop().expect("Should have transaction exeuction result").0)
-            }
+            Ok(mut simulation_results) => Ok(simulation_results
+                .pop()
+                .expect("Should have transaction exeuction result")
+                .0
+                .into()),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
         }
@@ -838,7 +840,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 .zip(tx_hashes)
                 .map(|((trace_root, _, _, _), transaction_hash)| TransactionTraceWithHash {
                     transaction_hash,
-                    trace_root,
+                    trace_root: trace_root.into(),
                 })
                 .collect()),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),

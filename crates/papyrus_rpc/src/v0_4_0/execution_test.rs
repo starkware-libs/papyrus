@@ -8,14 +8,7 @@ use indexmap::{indexmap, IndexMap};
 use jsonrpsee::core::Error;
 use lazy_static::lazy_static;
 use papyrus_execution::execution_utils::selector_from_name;
-use papyrus_execution::objects::{
-    DeclareTransactionTrace,
-    DeployAccountTransactionTrace,
-    FunctionInvocationResult,
-    InvokeTransactionTrace,
-    L1HandlerTransactionTrace,
-    TransactionTrace,
-};
+use papyrus_execution::objects::{CallType, FunctionCall, Retdata, RevertReason};
 use papyrus_execution::testing_instances::get_storage_var_address;
 use papyrus_execution::ExecutableTransactionInput;
 use papyrus_storage::body::BodyStorageWriter;
@@ -33,18 +26,43 @@ use starknet_api::block::{
     GasPrice,
 };
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
-use starknet_api::deprecated_contract_class::ContractClass as SN_API_DeprecatedContractClass;
+use starknet_api::deprecated_contract_class::{
+    ContractClass as SN_API_DeprecatedContractClass,
+    EntryPointType,
+};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::StateDiff;
-use starknet_api::transaction::{Calldata, Fee, TransactionHash, TransactionVersion};
+use starknet_api::transaction::{
+    Calldata,
+    EventContent,
+    Fee,
+    MessageToL1,
+    TransactionHash,
+    TransactionVersion,
+};
 use starknet_api::{calldata, class_hash, contract_address, patricia_key, stark_felt};
-use test_utils::{auto_impl_get_test_instance, get_rng, read_json_file, GetTestInstance};
+use test_utils::{
+    auto_impl_get_test_instance,
+    get_number_of_variants,
+    get_rng,
+    read_json_file,
+    GetTestInstance,
+};
 
 use super::api::{decompress_program, FeeEstimate};
 use super::broadcasted_transaction::{
     BroadcastedDeclareTransaction,
     BroadcastedDeclareV1Transaction,
     BroadcastedTransaction,
+};
+use super::execution::{
+    DeclareTransactionTrace,
+    DeployAccountTransactionTrace,
+    FunctionInvocation,
+    FunctionInvocationResult,
+    InvokeTransactionTrace,
+    L1HandlerTransactionTrace,
+    TransactionTrace,
 };
 use super::transaction::{DeployAccountTransaction, InvokeTransactionV1};
 use crate::api::{BlockHashOrNumber, BlockId};
@@ -678,4 +696,49 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
         .unwrap();
 
     storage_writer
+}
+
+auto_impl_get_test_instance! {
+    pub enum TransactionTrace {
+        Invoke(InvokeTransactionTrace) = 0,
+        Declare(DeclareTransactionTrace) = 1,
+        DeployAccount(DeployAccountTransactionTrace) = 2,
+    }
+    pub struct InvokeTransactionTrace {
+        pub validate_invocation: Option<FunctionInvocation>,
+        pub execute_invocation: FunctionInvocationResult,
+        pub fee_transfer_invocation: Option<FunctionInvocation>,
+    }
+    pub struct DeclareTransactionTrace {
+        pub validate_invocation: Option<FunctionInvocation>,
+        pub fee_transfer_invocation: Option<FunctionInvocation>,
+    }
+    pub struct DeployAccountTransactionTrace {
+        pub validate_invocation: Option<FunctionInvocation>,
+        pub constructor_invocation: FunctionInvocation,
+        pub fee_transfer_invocation: Option<FunctionInvocation>,
+    }
+    pub struct L1HandlerTransactionTrace {
+        pub function_invocation: FunctionInvocation,
+    }
+    pub enum FunctionInvocationResult {
+        Ok(FunctionInvocation) = 0,
+        Err(RevertReason) = 1,
+    }
+}
+
+impl GetTestInstance for FunctionInvocation {
+    fn get_test_instance(rng: &mut rand_chacha::ChaCha8Rng) -> Self {
+        Self {
+            function_call: FunctionCall::get_test_instance(rng),
+            caller_address: ContractAddress::get_test_instance(rng),
+            class_hash: ClassHash::get_test_instance(rng),
+            entry_point_type: EntryPointType::get_test_instance(rng),
+            call_type: CallType::get_test_instance(rng),
+            result: Retdata::get_test_instance(rng),
+            calls: Vec::new(),
+            events: Vec::<EventContent>::get_test_instance(rng),
+            messages: Vec::<MessageToL1>::get_test_instance(rng),
+        }
+    }
 }

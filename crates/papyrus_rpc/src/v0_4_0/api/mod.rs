@@ -6,7 +6,6 @@ use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_common::BlockHashAndNumber;
-use papyrus_execution::objects::TransactionTrace;
 use papyrus_execution::{ExecutableTransactionInput, ExecutionError};
 use papyrus_proc_macros::versioned_rpc;
 use papyrus_storage::compiled_class::CasmStorageReader;
@@ -35,6 +34,7 @@ use super::broadcasted_transaction::{
 };
 use super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::error::{JsonRpcError, BLOCK_NOT_FOUND, CONTRACT_ERROR, CONTRACT_NOT_FOUND};
+use super::execution::TransactionTrace;
 use super::state::{ContractClass, StateUpdate};
 use super::transaction::{
     DeployAccountTransaction,
