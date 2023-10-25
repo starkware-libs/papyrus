@@ -64,11 +64,10 @@ use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey, Thi
 use tracing::debug;
 
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
-use crate::mmap_file::{LocationInFile, Writer};
+use crate::mmap_file::LocationInFile;
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::{
     FileAccess,
-    FileWriters,
     MarkerKind,
     MarkersTable,
     OffsetKind,
@@ -442,10 +441,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         // Write state diff.
         let (thin_state_diff, declared_classes, deprecated_declared_classes) =
             ThinStateDiff::from_state_diff(state_diff);
-        let FileAccess::Writers(mut file_writers) = self.file_access.clone() else {
-            panic!("RW storage transaction must have file writers.");
-        };
-        let location = file_writers.thin_state_diff.append(&thin_state_diff);
+        let location = self.file_access.append_thin_state_diff(&thin_state_diff);
         state_diffs_table.insert(&self.txn, &block_number, &location)?;
         file_offset_table.upsert(&self.txn, &OffsetKind::ThinStateDiff, &location.next_offset())?;
 
@@ -456,7 +452,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             &declared_classes_table,
             block_number,
             &declared_classes_block_table,
-            &mut file_writers,
+            &self.file_access,
             &file_offset_table,
         )?;
 
@@ -628,11 +624,11 @@ fn write_declared_classes<'env>(
     declared_classes_table: &'env DeclaredClassesTable<'env>,
     block_number: BlockNumber,
     declared_classes_block_table: &'env DeclaredClassesBlockTable<'env>,
-    file_writers: &mut FileWriters,
+    file_access: &FileAccess,
     file_offset_table: &'env FileOffsetTable<'env>,
 ) -> StorageResult<()> {
     for (class_hash, contract_class) in declared_classes {
-        let location = file_writers.contract_class.append(contract_class);
+        let location = file_access.append_contract_class(contract_class);
         let res_class = declared_classes_table.insert(txn, class_hash, &location);
         let res_block = declared_classes_block_table.insert(txn, class_hash, &block_number);
         match [res_class, res_block].iter().any(|res| res.is_err()) {

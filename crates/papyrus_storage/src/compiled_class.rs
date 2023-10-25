@@ -42,7 +42,7 @@ use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
-use crate::mmap_file::{LocationInFile, Writer};
+use crate::mmap_file::LocationInFile;
 use crate::{
     FileAccess,
     MarkerKind,
@@ -95,10 +95,7 @@ impl<'env> CasmStorageWriter for StorageTxn<'env, RW> {
         let state_diff_table = self.open_table(&self.tables.state_diffs)?;
         let file_offset_table = self.txn.open_table(&self.tables.file_offsets)?;
 
-        let FileAccess::Writers(mut file_writers) = self.file_access.clone() else {
-            panic!("RW storage transaction must have file writers.");
-        };
-        let location = file_writers.casm.append(casm);
+        let location = self.file_access.append_casm(casm);
         casm_table.insert(&self.txn, class_hash, &location).map_err(|err| {
             if matches!(err, DbError::Inner(libmdbx::Error::KeyExist)) {
                 StorageError::CompiledClassReWrite { class_hash: *class_hash }
