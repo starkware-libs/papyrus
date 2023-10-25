@@ -12,6 +12,7 @@ use async_trait::async_trait;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 #[cfg(any(feature = "testing", test))]
 use mockall::automock;
+use papyrus_common::pending_classes::PendingClass;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
@@ -336,4 +337,17 @@ fn load_object_from_response<Object: for<'a> Deserialize<'a>>(
 pub enum GenericContractClass {
     Cairo0ContractClass(DeprecatedContractClass),
     Cairo1ContractClass(ContractClass),
+}
+
+impl From<GenericContractClass> for PendingClass {
+    fn from(class: GenericContractClass) -> Self {
+        match class {
+            GenericContractClass::Cairo0ContractClass(deprecated_contract_class) => {
+                Self::Cairo0(deprecated_contract_class)
+            }
+            GenericContractClass::Cairo1ContractClass(client_contract_class) => {
+                Self::Cairo1(client_contract_class.into())
+            }
+        }
+    }
 }
