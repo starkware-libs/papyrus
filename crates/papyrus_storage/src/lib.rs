@@ -329,7 +329,7 @@ struct_field_names! {
         block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
         casms: TableIdentifier<ClassHash, CasmContractClass>,
         contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
-        declared_classes: TableIdentifier<ClassHash, ContractClass>,
+        declared_classes: TableIdentifier<ClassHash, LocationInFile>,
         declared_classes_block: TableIdentifier<ClassHash, BlockNumber>,
         deprecated_declared_classes: TableIdentifier<ClassHash, IndexedDeprecatedContractClass>,
         deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), ClassHash>,
@@ -542,11 +542,35 @@ impl FileAccess {
         }
     }
 
+    // Returns the contract class at the given location or an error in case it doesn't exist.
+    fn get_contract_class_unchecked(
+        &self,
+        location: LocationInFile,
+    ) -> StorageResult<ContractClass> {
+        match self {
+            FileAccess::Readers(file_readers) => Ok(file_readers
+                .contract_class
+                .get(location)?
+                .ok_or(StorageError::DBInconsistency {
+                    msg: format!("ContractClass at location {:?} not found.", location),
+                })?),
+            FileAccess::Writers(file_writers) => Ok(file_writers
+                .contract_class
+                .get(location)?
+                .ok_or(StorageError::DBInconsistency {
+                    msg: format!("ContractClass at location {:?} not found.", location),
+                })?),
+        }
+    }
+
     fn flush(&self) {
         // TODO(dan): Consider 1. flushing only the relevant files, 2. flushing concurrently.
         match self {
             FileAccess::Readers(_) => (),
-            FileAccess::Writers(file_writers) => file_writers.thin_state_diff.flush(),
+            FileAccess::Writers(file_writers) => {
+                file_writers.thin_state_diff.flush();
+                file_writers.contract_class.flush();
+            }
         }
     }
 }
@@ -554,11 +578,13 @@ impl FileAccess {
 #[derive(Clone, Debug)]
 struct FileWriters {
     thin_state_diff: FileWriter<ThinStateDiff>,
+    contract_class: FileWriter<ContractClass>,
 }
 
 #[derive(Clone, Debug)]
 struct FileReaders {
     thin_state_diff: FileReader<ThinStateDiff>,
+    contract_class: FileReader<ContractClass>,
 }
 
 fn open_storage_files(
@@ -573,14 +599,28 @@ fn open_storage_files(
     let thin_state_diff_offset =
         table.get(&db_transaction, &OffsetKind::ThinStateDiff)?.unwrap_or_default();
     let (thin_state_diff_writer, thin_state_diff_reader) = open_file(
-        mmap_file_config,
-        db_config.path().join("thin_state_diff"),
+        mmap_file_config.clone(),
+        db_config.path().join("thin_state_diff.dat"),
         thin_state_diff_offset,
     )?;
 
+    let contract_class_offset =
+        table.get(&db_transaction, &OffsetKind::ContractClass)?.unwrap_or_default();
+    let (contract_class_writer, contract_class_reader) = open_file(
+        mmap_file_config,
+        db_config.path().join("contract_class.dat"),
+        contract_class_offset,
+    )?;
+
     Ok((
-        FileWriters { thin_state_diff: thin_state_diff_writer },
-        FileReaders { thin_state_diff: thin_state_diff_reader },
+        FileWriters {
+            thin_state_diff: thin_state_diff_writer,
+            contract_class: contract_class_writer,
+        },
+        FileReaders {
+            thin_state_diff: thin_state_diff_reader,
+            contract_class: contract_class_reader,
+        },
     ))
 }
 
@@ -589,4 +629,6 @@ fn open_storage_files(
 pub enum OffsetKind {
     /// A thin state diff file.
     ThinStateDiff,
+    /// A contract class file.
+    ContractClass,
 }

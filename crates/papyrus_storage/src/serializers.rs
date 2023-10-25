@@ -333,6 +333,7 @@ auto_storage_serde! {
     pub struct Nonce(pub StarkFelt);
     pub enum OffsetKind {
         ThinStateDiff = 0,
+        ContractClass = 1,
     }
     struct OmmerTransactionKey(pub BlockHash, pub TransactionOffsetInBlock);
     struct OmmerEventKey(pub OmmerTransactionKey, pub EventIndexInTransactionOutput);
