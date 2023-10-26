@@ -5,10 +5,12 @@ use flate2::bufread::GzDecoder;
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::types::ErrorObjectOwned;
+use papyrus_common::pending_classes::PendingClass;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_execution::{ExecutableTransactionInput, ExecutionError};
 use papyrus_proc_macros::versioned_rpc;
 use papyrus_storage::compiled_class::CasmStorageReader;
+use papyrus_storage::db::serialization::StorageSerdeError;
 use papyrus_storage::db::RO;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::StorageTxn;
@@ -78,7 +80,7 @@ pub trait JsonRpc {
 
     /// Gets block information with full transactions given a block identifier.
     #[method(name = "getBlockWithTxs")]
-    fn get_block_w_full_transactions(&self, block_id: BlockId) -> RpcResult<Block>;
+    async fn get_block_w_full_transactions(&self, block_id: BlockId) -> RpcResult<Block>;
 
     /// Gets the value of the storage at the given address, key, and block.
     #[method(name = "getStorageAt")]
@@ -121,7 +123,7 @@ pub trait JsonRpc {
 
     /// Gets the contract class definition associated with the given hash.
     #[method(name = "getClass")]
-    fn get_class(
+    async fn get_class(
         &self,
         block_id: BlockId,
         class_hash: ClassHash,
@@ -222,6 +224,7 @@ pub trait JsonRpc {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+#[cfg_attr(test, derive(PartialEq))]
 #[serde(untagged)]
 pub enum GatewayContractClass {
     Cairo0(DeprecatedContractClass),
@@ -492,6 +495,18 @@ impl From<InvokeTransaction> for starknet_api::transaction::InvokeTransaction {
                 sender_address,
                 calldata,
             }),
+        }
+    }
+}
+
+impl TryFrom<PendingClass> for GatewayContractClass {
+    type Error = StorageSerdeError;
+    fn try_from(class: PendingClass) -> Result<Self, Self::Error> {
+        match class {
+            PendingClass::Cairo0(deprecated_class) => {
+                Ok(Self::Cairo0(deprecated_class.try_into()?))
+            }
+            PendingClass::Cairo1(sierra_class) => Ok(Self::Sierra(sierra_class.into())),
         }
     }
 }

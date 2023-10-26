@@ -44,7 +44,7 @@ enum-iterator.workspace = true
 hex.workspace = true
 insta = { workspace = true, features = ["json"] }
 itertools.workspace = true
-jsonschema.workspace = true
+jsonschema = {workspace = true, features = ["draft201909"] }
 lazy_static.workspace = true
 metrics-exporter-prometheus = { version = "0.12.1" }
 mockall.workspace = true

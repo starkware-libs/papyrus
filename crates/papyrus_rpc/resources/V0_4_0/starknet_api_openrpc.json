@@ -1437,7 +1437,7 @@
                         }
                     }
                 ],
-                "additionalProperties": false
+                "unevaluatedProperties": false
             },
             "PENDING_BLOCK_WITH_TXS": {
                 "title": "Pending block with transactions",
@@ -1470,7 +1470,7 @@
                         }
                     }
                 ],
-                "additionalProperties": false
+                "unevaluatedProperties": false
             },
             "DEPLOYED_CONTRACT_ITEM": {
                 "title": "Deployed contract item",
