@@ -97,7 +97,7 @@ use super::{
     SimulationFlag,
     TransactionTraceWithHash,
 };
-use crate::api::{BlockHashOrNumber, JsonRpcServerImpl};
+use crate::api::{BlockHashOrNumber, JsonRpcServerImpl, Tag};
 use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
 use crate::{
     get_block_status,
@@ -248,12 +248,16 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_block_transaction_count(&self, block_id: BlockId) -> RpcResult<usize> {
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        let block_number = get_block_number(&txn, block_id)?;
-        let transactions: Vec<Transaction> = get_block_txs_by_number(&txn, block_number)?;
-
-        Ok(transactions.len())
+    async fn get_block_transaction_count(&self, block_id: BlockId) -> RpcResult<usize> {
+        if let BlockId::Tag(Tag::Pending) = block_id {
+            let transactions_len = self.pending_data.read().await.block.transactions.len();
+            Ok(transactions_len)
+        } else {
+            let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+            let block_number = get_block_number(&txn, block_id)?;
+            let transactions: Vec<Transaction> = get_block_txs_by_number(&txn, block_number)?;
+            Ok(transactions.len())
+        }
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
