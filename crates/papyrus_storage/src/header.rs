@@ -175,9 +175,16 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
         match res {
             Some((_block_number, last_starknet_version))
                 if last_starknet_version == *starknet_version => {}
-            _ => {
-                starknet_version_table.insert(&self.txn, block_number, starknet_version)?;
-            }
+            _ => match starknet_version_table.insert(&self.txn, block_number, starknet_version) {
+                Ok(()) => {}
+                Err(DbError::Inner(libmdbx::Error::KeyExist)) => {
+                    return Err(StorageError::StarknetVersionAlreadyExists {
+                        block_number: *block_number,
+                        starknet_version: starknet_version.clone(),
+                    });
+                }
+                Err(err) => return Err(err.into()),
+            },
         }
         Ok(self)
     }
@@ -189,6 +196,7 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
         let markers_table = self.open_table(&self.tables.markers)?;
         let headers_table = self.open_table(&self.tables.headers)?;
         let block_hash_to_number_table = self.open_table(&self.tables.block_hash_to_number)?;
+        let starknet_version_table = self.open_table(&self.tables.starknet_version)?;
 
         // Assert that header marker equals the reverted block number + 1
         let current_header_marker = self.get_header_marker()?;
@@ -209,6 +217,10 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
         markers_table.upsert(&self.txn, &MarkerKind::Header, &block_number)?;
         headers_table.delete(&self.txn, &block_number)?;
         block_hash_to_number_table.delete(&self.txn, &reverted_header.block_hash)?;
+
+        // Revert starknet version.
+        starknet_version_table.delete(&self.txn, &block_number)?;
+
         Ok((self, Some(reverted_header)))
     }
 }

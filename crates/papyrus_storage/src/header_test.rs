@@ -225,4 +225,24 @@ async fn starknet_version() {
     let block_6_starknet_version =
         reader.begin_ro_txn().unwrap().get_starknet_version(BlockNumber(6)).unwrap();
     assert!(block_6_starknet_version.is_none());
+
+    // Revert block 5.
+    writer.begin_rw_txn().unwrap().revert_header(BlockNumber(5)).unwrap().0.commit().unwrap();
+    let block_5_starknet_version =
+        reader.begin_ro_txn().unwrap().get_starknet_version(BlockNumber(5)).unwrap();
+    assert!(block_5_starknet_version.is_none());
+
+    let block_4_starknet_version =
+        reader.begin_ro_txn().unwrap().get_starknet_version(BlockNumber(4)).unwrap();
+    assert_eq!(block_4_starknet_version.unwrap(), yet_another_version);
+
+    // Revert block 4.
+    writer.begin_rw_txn().unwrap().revert_header(BlockNumber(4)).unwrap().0.commit().unwrap();
+    let block_4_starknet_version =
+        reader.begin_ro_txn().unwrap().get_starknet_version(BlockNumber(4)).unwrap();
+    assert!(block_4_starknet_version.is_none());
+
+    let block_3_starknet_version =
+        reader.begin_ro_txn().unwrap().get_starknet_version(BlockNumber(3)).unwrap();
+    assert_eq!(block_3_starknet_version.unwrap(), second_version);
 }

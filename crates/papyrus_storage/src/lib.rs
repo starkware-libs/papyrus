@@ -459,6 +459,8 @@ pub enum StorageError {
          {compiled_class_marker}."
     )]
     InvalidBlockNumber { block: BlockNumber, compiled_class_marker: BlockNumber },
+    #[error("Starknet version {starknet_version:?} already exists since block {block_number}.")]
+    StarknetVersionAlreadyExists { block_number: BlockNumber, starknet_version: StarknetVersion },
 }
 
 /// A type alias that maps to std::result::Result<T, StorageError>.
