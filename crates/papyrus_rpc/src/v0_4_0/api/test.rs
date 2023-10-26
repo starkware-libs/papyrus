@@ -21,6 +21,7 @@ use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageScope;
 use pretty_assertions::assert_eq;
+use rand::random;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
@@ -41,7 +42,7 @@ use starknet_api::transaction::{
     TransactionOffsetInBlock,
 };
 use starknet_api::{patricia_key, stark_felt};
-use starknet_client::reader::objects::transaction::Transaction as PendingTransaction;
+use starknet_client::reader::objects::transaction::Transaction as ClientTransaction;
 use starknet_client::starknet_error::{KnownStarknetErrorCode, StarknetError, StarknetErrorCode};
 use starknet_client::writer::objects::response::{
     DeclareResponse,
@@ -297,7 +298,7 @@ async fn get_block_transaction_count() {
     let pending_transaction_count = 3;
     let mut rng = get_rng();
     pending_data.write().await.block.transactions.extend(
-        iter::repeat(PendingTransaction::get_test_instance(&mut rng))
+        iter::repeat(ClientTransaction::get_test_instance(&mut rng))
             .take(pending_transaction_count),
     );
     let res = module.call::<_, usize>(method_name, [BlockId::Tag(Tag::Pending)]).await.unwrap();
@@ -1137,12 +1138,39 @@ async fn get_storage_at() {
     assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
 }
 
+fn generate_client_transaction_and_rpc_transaction() -> (ClientTransaction, TransactionWithHash) {
+    let mut rng = get_rng();
+    // TODO(shahak): Remove retry once v3 transactions are supported and the impl of TryInto will
+    // become impl of Into.
+    loop {
+        let client_transaction = ClientTransaction::get_test_instance(&mut rng);
+        let Ok(starknet_api_transaction): Result<StarknetApiTransaction, _> =
+            client_transaction.clone().try_into()
+        else {
+            continue;
+        };
+        let Ok(rpc_transaction) = starknet_api_transaction.try_into() else {
+            continue;
+        };
+        let transaction_hash = client_transaction.transaction_hash();
+        break (
+            client_transaction,
+            TransactionWithHash { transaction: rpc_transaction, transaction_hash },
+        );
+    }
+}
+
 #[tokio::test]
 async fn get_transaction_by_hash() {
     let method_name = "starknet_V0_4_getTransactionByHash";
-    let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
-    let block = get_test_block(1, None, None, None);
+    let pending_data = get_test_pending_data();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerV0_4Impl,
+    >(None, None, Some(pending_data.clone()), None, None);
+    let mut block = get_test_block(1, None, None, None);
+    // Change the transaction hash from 0 to a random value, so that later on we can add a
+    // transaction with 0 hash to the pending block.
+    block.body.transaction_hashes[0] = TransactionHash(StarkHash::from(random::<u64>()));
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -1163,6 +1191,20 @@ async fn get_transaction_by_hash() {
         &expected_transaction,
     )
     .await;
+
+    // Ask for a transaction in the pending block.
+    let (client_transaction, expected_transaction_with_hash) =
+        generate_client_transaction_and_rpc_transaction();
+    pending_data.write().await.block.transactions.push(client_transaction.clone());
+    let res = module
+        .call::<_, TransactionWithHash>(method_name, (client_transaction.transaction_hash(), 0))
+        .await
+        .unwrap();
+    println!(
+        "{:?}, {:?}",
+        expected_transaction_with_hash.transaction_hash, expected_transaction.transaction_hash
+    );
+    assert_eq!(res, expected_transaction_with_hash);
 
     // Ask for an invalid transaction.
     call_api_then_assert_and_validate_schema_for_err::<_, TransactionHash, TransactionWithHash>(
@@ -1243,31 +1285,14 @@ async fn get_transaction_by_block_id_and_index() {
     assert_eq!(res, expected_transaction);
 
     // Get transaction of pending block.
-    let mut rng = get_rng();
-    // TODO(shahak): Remove retry once v3 transactions are supported and the impl of TryInto will
-    // become impl of Into.
-    let (pending_transaction, expected_pending_transaction) = loop {
-        let pending_transaction = PendingTransaction::get_test_instance(&mut rng);
-        let Ok(expected_transaction): Result<StarknetApiTransaction, _> =
-            pending_transaction.clone().try_into()
-        else {
-            continue;
-        };
-        let Ok(expected_transaction) = expected_transaction.try_into() else {
-            continue;
-        };
-        let transaction_hash = pending_transaction.transaction_hash();
-        break (
-            pending_transaction,
-            TransactionWithHash { transaction: expected_transaction, transaction_hash },
-        );
-    };
-    pending_data.write().await.block.transactions.push(pending_transaction);
+    let (client_transaction, expected_transaction_with_hash) =
+        generate_client_transaction_and_rpc_transaction();
+    pending_data.write().await.block.transactions.push(client_transaction);
     let res = module
         .call::<_, TransactionWithHash>(method_name, (BlockId::Tag(Tag::Pending), 0))
         .await
         .unwrap();
-    assert_eq!(res, expected_pending_transaction);
+    assert_eq!(res, expected_transaction_with_hash);
 
     // Ask for an invalid transaction index in pending block.
     call_api_then_assert_and_validate_schema_for_err::<
