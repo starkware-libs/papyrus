@@ -524,7 +524,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
 
         let thin_state_diff = self
             .get_state_diff(block_number)?
-            .expect("Missing state diff for block {block_number}.");
+            .unwrap_or_else(|| panic!("Missing state diff for block {block_number}."));
         markers_table.upsert(&self.txn, &MarkerKind::State, &block_number)?;
         let compiled_classes_marker =
             markers_table.get(&self.txn, &MarkerKind::CompiledClass)?.unwrap_or_default();
@@ -766,7 +766,7 @@ fn delete_declared_classes<'env>(
     for class_hash in thin_state_diff.declared_classes.keys() {
         let contract_class_location = declared_classes_table
             .get(txn, class_hash)?
-            .expect("Missing declared class {class_hash:#?}.");
+            .unwrap_or_else(|| panic!("Missing declared class {class_hash:#?}."));
         deleted_data.insert(
             *class_hash,
             file_access.get_contract_class_unchecked(contract_class_location)?,
