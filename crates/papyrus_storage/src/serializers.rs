@@ -977,3 +977,6 @@ impl StorageSerde for CasmContractClass {
         })
     }
 }
+
+#[cfg(test)]
+create_storage_serde_test!(CasmContractClass);
