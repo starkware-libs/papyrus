@@ -14,23 +14,23 @@ on:
     types: [checks_requested]
 
 jobs:
-  # commitlint:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         fetch-depth: 0
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-  #     - name: Install commitlint
-  #       run: npm install --global @commitlint/cli @commitlint/config-conventional
+      - name: Install commitlint
+        run: npm install --global @commitlint/cli @commitlint/config-conventional
 
-  #     - name: Validate PR commits with commitlint
-  #       if: github.event_name == 'pull_request'
-  #       run: commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+      - name: Validate PR commits with commitlint
+        if: github.event_name == 'pull_request'
+        run: commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
 
-  #     - name: Validate PR title with commitlint
-  #       if: github.event_name != 'merge_group' && github.event_name != 'push'
-  #       run: echo "${{ github.event.pull_request.title }}" | commitlint --verbose
+      - name: Validate PR title with commitlint
+        if: github.event_name != 'merge_group' && github.event_name != 'push'
+        run: echo "${{ github.event.pull_request.title }}" | commitlint --verbose
 
   executable-run:
     runs-on: ${{ matrix.os }}
