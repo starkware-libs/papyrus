@@ -416,14 +416,6 @@ auto_storage_serde! {
         pub events_contract_addresses: Vec<ContractAddress>,
         pub execution_status: TransactionExecutionStatus,
     }
-    pub struct ThinStateDiff {
-        pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
-        pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
-        pub declared_classes: IndexMap<ClassHash, CompiledClassHash>,
-        pub deprecated_declared_classes: Vec<ClassHash>,
-        pub nonces: IndexMap<ContractAddress, Nonce>,
-        pub replaced_classes: IndexMap<ContractAddress, ClassHash>,
-    }
     pub enum ThinTransactionOutput {
         Declare(ThinDeclareTransactionOutput) = 0,
         Deploy(ThinDeployTransactionOutput) = 1,
@@ -980,3 +972,35 @@ impl StorageSerde for CasmContractClass {
 
 #[cfg(test)]
 create_storage_serde_test!(CasmContractClass);
+
+impl StorageSerde for ThinStateDiff {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        let mut to_compress: Vec<u8> = Vec::new();
+        self.deployed_contracts.serialize_into(&mut to_compress)?;
+        self.storage_diffs.serialize_into(&mut to_compress)?;
+        self.declared_classes.serialize_into(&mut to_compress)?;
+        self.deprecated_declared_classes.serialize_into(&mut to_compress)?;
+        self.nonces.serialize_into(&mut to_compress)?;
+        self.replaced_classes.serialize_into(&mut to_compress)?;
+        let compressed = compress(to_compress.as_slice())?;
+        compressed.serialize_into(res)?;
+        Ok(())
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        let compressed_data = Vec::<u8>::deserialize_from(bytes)?;
+        let data = decompress(compressed_data.as_slice()).ok()?;
+        let data = &mut data.as_slice();
+        Some(Self {
+            deployed_contracts: IndexMap::deserialize_from(data)?,
+            storage_diffs: IndexMap::deserialize_from(data)?,
+            declared_classes: IndexMap::deserialize_from(data)?,
+            deprecated_declared_classes: Vec::deserialize_from(data)?,
+            nonces: IndexMap::deserialize_from(data)?,
+            replaced_classes: IndexMap::deserialize_from(data)?,
+        })
+    }
+}
+
+#[cfg(test)]
+create_storage_serde_test!(ThinStateDiff);

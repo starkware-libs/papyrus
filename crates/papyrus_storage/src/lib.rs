@@ -125,7 +125,7 @@ use crate::version::{VersionStorageReader, VersionStorageWriter};
 /// The current version of the storage code.
 /// Whenever a breaking change is introduced, the version is incremented and a storage
 /// migration is required for existing storages.
-pub const STORAGE_VERSION: Version = Version(6);
+pub const STORAGE_VERSION: Version = Version(7);
 
 /// Opens a storage and returns a [`StorageReader`] and a [`StorageWriter`].
 pub fn open_storage(
