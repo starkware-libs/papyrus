@@ -33,13 +33,18 @@ use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestIns
 use crate::reader::objects::state::ContractClass;
 use crate::reader::objects::transaction::{
     BuiltinInstanceCounter,
+    DeclareType,
+    DeployAccountType,
     DeployTransaction,
+    DeployType,
     EmptyBuiltinInstanceCounter,
     ExecutionResources,
     IntermediateDeclareTransaction,
     IntermediateDeployAccountTransaction,
     IntermediateInvokeTransaction,
+    InvokeType,
     L1HandlerTransaction,
+    L1HandlerType,
     L1ToL2Message,
     L1ToL2Nonce,
     L2ToL1Message,
@@ -54,6 +59,21 @@ auto_impl_get_test_instance! {
         Deploy(DeployTransaction) = 2,
         Invoke(IntermediateInvokeTransaction) = 3,
         L1Handler(L1HandlerTransaction) = 4,
+    }
+    pub enum DeclareType {
+        Declare = 0,
+    }
+    pub enum DeployAccountType {
+        DeployAccount = 0,
+    }
+    pub enum InvokeType {
+        Invoke = 0,
+    }
+    pub enum L1HandlerType {
+        L1Handler = 0,
+    }
+    pub enum DeployType {
+        Deploy = 0,
     }
     pub struct IntermediateDeclareTransaction {
         pub resource_bounds: Option<ResourceBoundsMapping>,
@@ -70,6 +90,7 @@ auto_impl_get_test_instance! {
         pub max_fee: Option<Fee>,
         pub version: TransactionVersion,
         pub transaction_hash: TransactionHash,
+        pub r#type: DeclareType,
     }
     pub struct IntermediateDeployAccountTransaction {
         pub resource_bounds: Option<ResourceBoundsMapping>,
@@ -86,6 +107,7 @@ auto_impl_get_test_instance! {
         pub max_fee: Option<Fee>,
         pub transaction_hash: TransactionHash,
         pub version: TransactionVersion,
+        pub r#type: DeployAccountType,
     }
     pub struct DeployTransaction {
         pub contract_address: ContractAddress,
@@ -94,6 +116,7 @@ auto_impl_get_test_instance! {
         pub constructor_calldata: Calldata,
         pub transaction_hash: TransactionHash,
         pub version: TransactionVersion,
+        pub r#type: DeployType,
     }
     pub struct IntermediateInvokeTransaction {
         pub resource_bounds: Option<ResourceBoundsMapping>,
@@ -110,6 +133,7 @@ auto_impl_get_test_instance! {
         pub account_deployment_data: Option<AccountDeploymentData>,
         pub transaction_hash: TransactionHash,
         pub version: TransactionVersion,
+        pub r#type: InvokeType,
     }
     pub struct L1HandlerTransaction {
         pub transaction_hash: TransactionHash,
@@ -118,6 +142,7 @@ auto_impl_get_test_instance! {
         pub contract_address: ContractAddress,
         pub entry_point_selector: EntryPointSelector,
         pub calldata: Calldata,
+        pub r#type: L1HandlerType,
     }
     pub struct ContractClass {
         pub sierra_program: Vec<StarkFelt>,

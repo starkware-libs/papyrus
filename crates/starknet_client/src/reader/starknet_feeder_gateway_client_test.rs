@@ -40,6 +40,7 @@ use super::{
     GET_BLOCK_URL,
     GET_STATE_UPDATE_URL,
 };
+use crate::reader::objects::transaction::DeclareType;
 use crate::test_utils::read_resource::read_resource_file;
 use crate::test_utils::retry::get_test_config;
 
@@ -111,6 +112,7 @@ async fn declare_tx_serde() {
             "0x2f2ef64daffdc72bf33b34ad024891691b8eb1d0ab70cc7f8fb71f6fd5e1f22"
         )),
         signature: TransactionSignature(vec![]),
+        r#type: DeclareType::Declare,
     };
     let raw_declare_tx = serde_json::to_string(&declare_tx).unwrap();
     assert_eq!(declare_tx, serde_json::from_str(&raw_declare_tx).unwrap());

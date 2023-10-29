@@ -4,7 +4,8 @@ mod transaction_test;
 
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value;
 use starknet_api::core::{
     ClassHash,
     CompiledClassHash,
@@ -43,8 +44,7 @@ use starknet_api::transaction::{
 use crate::reader::ReaderClientError;
 
 // TODO(dan): consider extracting common fields out (version, hash, type).
-#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
-#[serde(tag = "type")]
+#[derive(Debug, Serialize, Clone, Eq, PartialEq)]
 pub enum Transaction {
     #[serde(rename = "DECLARE")]
     Declare(IntermediateDeclareTransaction),
@@ -56,6 +56,43 @@ pub enum Transaction {
     Invoke(IntermediateInvokeTransaction),
     #[serde(rename = "L1_HANDLER")]
     L1Handler(L1HandlerTransaction),
+}
+
+impl<'de> Deserialize<'de> for Transaction {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = Value::deserialize(deserializer)?;
+
+        if let Some(transaction_type) = value.get("type") {
+            match transaction_type.as_str() {
+                Some("DECLARE") => Ok(Transaction::Declare(
+                    serde_json::from_value::<IntermediateDeclareTransaction>(value)
+                        .map_err(serde::de::Error::custom)?,
+                )),
+                Some("DEPLOY_ACCOUT") => Ok(Transaction::DeployAccount(
+                    serde_json::from_value::<IntermediateDeployAccountTransaction>(value)
+                        .map_err(serde::de::Error::custom)?,
+                )),
+                Some("DEPLOY") => Ok(Transaction::Deploy(
+                    serde_json::from_value::<DeployTransaction>(value)
+                        .map_err(serde::de::Error::custom)?,
+                )),
+                Some("INVOKE_FUNCTION") => Ok(Transaction::Invoke(
+                    serde_json::from_value::<IntermediateInvokeTransaction>(value)
+                        .map_err(serde::de::Error::custom)?,
+                )),
+                Some("L1_HANDLER") => Ok(Transaction::L1Handler(
+                    serde_json::from_value::<L1HandlerTransaction>(value)
+                        .map_err(serde::de::Error::custom)?,
+                )),
+                _ => Err(serde::de::Error::custom("Transaction type is not supported.")),
+            }
+        } else {
+            Err(serde::de::Error::custom("Transaction type is missing."))
+        }
+    }
 }
 
 impl TryFrom<Transaction> for starknet_api::transaction::Transaction {
@@ -121,6 +158,13 @@ impl Transaction {
     }
 }
 
+#[derive(Debug, Serialize, Hash, Default, Deserialize, Clone, Eq, PartialEq, PartialOrd, Ord)]
+pub enum L1HandlerType {
+    #[serde(rename = "L1_HANDLER")]
+    #[default]
+    L1Handler,
+}
+
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(deny_unknown_fields)]
 pub struct L1HandlerTransaction {
@@ -131,6 +175,7 @@ pub struct L1HandlerTransaction {
     pub contract_address: ContractAddress,
     pub entry_point_selector: EntryPointSelector,
     pub calldata: Calldata,
+    pub r#type: L1HandlerType,
 }
 
 impl From<L1HandlerTransaction> for starknet_api::transaction::L1HandlerTransaction {
@@ -143,6 +188,12 @@ impl From<L1HandlerTransaction> for starknet_api::transaction::L1HandlerTransact
             calldata: l1_handler_tx.calldata,
         }
     }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+pub enum DeclareType {
+    #[serde(rename = "DECLARE")]
+    Declare,
 }
 
 // TODO(shahak, 01/11/2023): Add serde tests for v3 transactions.
@@ -163,6 +214,7 @@ pub struct IntermediateDeclareTransaction {
     pub max_fee: Option<Fee>,
     pub version: TransactionVersion,
     pub transaction_hash: TransactionHash,
+    pub r#type: DeclareType,
 }
 
 // TODO(shahak, 01/11/2023): Add conversion tests.
@@ -274,6 +326,13 @@ impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::Decl
     }
 }
 
+#[derive(Debug, Deserialize, Default, Serialize, Clone, Eq, PartialEq)]
+pub enum DeployType {
+    #[serde(rename = "DEPLOY")]
+    #[default]
+    Deploy,
+}
+
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct DeployTransaction {
@@ -284,6 +343,7 @@ pub struct DeployTransaction {
     pub transaction_hash: TransactionHash,
     #[serde(default)]
     pub version: TransactionVersion,
+    pub r#type: DeployType,
 }
 
 impl From<DeployTransaction> for starknet_api::transaction::DeployTransaction {
@@ -295,6 +355,12 @@ impl From<DeployTransaction> for starknet_api::transaction::DeployTransaction {
             contract_address_salt: deploy_tx.contract_address_salt,
         }
     }
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+pub enum DeployAccountType {
+    #[serde(rename = "DEPLOY_ACCOUNT")]
+    DeployAccount,
 }
 
 // TODO(shahak, 01/11/2023): Add serde tests for v3 transactions.
@@ -315,6 +381,7 @@ pub struct IntermediateDeployAccountTransaction {
     pub max_fee: Option<Fee>,
     pub transaction_hash: TransactionHash,
     pub version: TransactionVersion,
+    pub r#type: DeployAccountType,
 }
 
 // TODO(shahak, 01/11/2023): Add conversion tests.
@@ -412,6 +479,12 @@ impl TryFrom<IntermediateDeployAccountTransaction>
     }
 }
 
+#[derive(Debug, Deserialize, Default, Serialize, Clone, Eq, PartialEq)]
+pub enum InvokeType {
+    #[serde(rename = "INVOKE_FUNCTION")]
+    #[default]
+    Invoke,
+}
 // TODO(shahak, 01/11/2023): Add serde tests for v3 transactions.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -434,6 +507,7 @@ pub struct IntermediateInvokeTransaction {
     pub account_deployment_data: Option<AccountDeploymentData>,
     pub transaction_hash: TransactionHash,
     pub version: TransactionVersion,
+    pub r#type: InvokeType,
 }
 
 // TODO(shahak, 01/11/2023): Add conversion tests.
