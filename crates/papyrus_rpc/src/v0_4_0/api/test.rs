@@ -12,6 +12,7 @@ use jsonrpsee::core::Error;
 use jsonrpsee::Methods;
 use jsonschema::JSONSchema;
 use mockall::predicate::eq;
+use papyrus_common::pending_classes::{PendingClass, PendingClassesTrait};
 use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::events::EventIndex;
@@ -25,7 +26,7 @@ use rand::{random, RngCore};
 use rand_chacha::ChaCha8Rng;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus};
+use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
     ContractClassAbiEntry,
@@ -33,7 +34,7 @@ use starknet_api::deprecated_contract_class::{
     FunctionStateMutability,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::{StateDiff, StorageKey};
+use starknet_api::state::{ContractClass as StarknetApiContractClass, StateDiff, StorageKey};
 use starknet_api::transaction::{
     EventIndexInTransactionOutput,
     EventKey,
@@ -69,6 +70,7 @@ use starknet_client::writer::objects::transaction::{
 use starknet_client::writer::{MockStarknetWriter, WriterClientError, WriterClientResult};
 use starknet_client::ClientError;
 use test_utils::{
+    auto_impl_get_test_instance,
     get_rng,
     get_test_block,
     get_test_body,
@@ -78,7 +80,7 @@ use test_utils::{
 };
 
 use super::super::api::EventsChunk;
-use super::super::block::{Block, GeneralBlockHeader};
+use super::super::block::{Block, GeneralBlockHeader, PendingBlockHeader};
 use super::super::broadcasted_transaction::BroadcastedDeclareTransaction;
 use super::super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::super::error::{
@@ -129,7 +131,7 @@ use super::super::write_api_result::{
     AddInvokeOkResult,
 };
 use super::api_impl::{JsonRpcServerV0_4Impl, BLOCK_HASH_TABLE_ADDRESS};
-use super::{ContinuationToken, EventFilter};
+use super::{ContinuationToken, EventFilter, GatewayContractClass};
 use crate::api::{BlockHashOrNumber, BlockId, Tag};
 use crate::syncing_state::SyncStatus;
 use crate::test_utils::{
@@ -359,8 +361,10 @@ async fn get_block_transaction_count() {
 async fn get_block_w_full_transactions() {
     // TODO(omri): Add test for pending block.
     let method_name = "starknet_V0_4_getBlockWithTxs";
-    let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let pending_data = get_test_pending_data();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerV0_4Impl,
+    >(None, None, Some(pending_data.clone()), None, None);
 
     let block = get_test_block(1, None, None, None);
     storage_writer
@@ -449,13 +453,44 @@ async fn get_block_w_full_transactions() {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
+
+    // Get pending block.
+    let transaction_count = 3;
+    let mut rng = get_rng();
+    let (client_transaction, rpc_transaction) =
+        generate_client_transaction_and_rpc_transaction(&mut rng);
+    let expected_pending_block = Block {
+        header: GeneralBlockHeader::PendingBlockHeader(PendingBlockHeader::get_test_instance(
+            &mut rng,
+        )),
+        status: None,
+        transactions: Transactions::Full(vec![rpc_transaction; transaction_count]),
+    };
+    pending_data
+        .write()
+        .await
+        .block
+        .transactions
+        .extend(iter::repeat(client_transaction).take(transaction_count));
+    // Using call_api_then_assert_and_validate_schema_for_result in order to validate the schema for
+    // pending block.
+    call_api_then_assert_and_validate_schema_for_result::<_, BlockId, Block>(
+        &module,
+        method_name,
+        &Some(BlockId::Tag(Tag::Pending)),
+        &VERSION_0_4,
+        &expected_pending_block,
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn get_block_w_transaction_hashes() {
     let method_name = "starknet_V0_4_getBlockWithTxHashes";
-    let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let pending_data = get_test_pending_data();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerV0_4Impl,
+    >(None, None, Some(pending_data.clone()), None, None);
 
     let block = get_test_block(1, None, None, None);
     storage_writer
@@ -540,13 +575,46 @@ async fn get_block_w_transaction_hashes() {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
+
+    // Get pending block.
+    let transaction_count = 3;
+    let mut rng = get_rng();
+    let (client_transaction, _) = generate_client_transaction_and_rpc_transaction(&mut rng);
+    let expected_pending_block = Block {
+        header: GeneralBlockHeader::PendingBlockHeader(PendingBlockHeader::get_test_instance(
+            &mut rng,
+        )),
+        status: None,
+        transactions: Transactions::Hashes(vec![
+            client_transaction.transaction_hash();
+            transaction_count
+        ]),
+    };
+    pending_data
+        .write()
+        .await
+        .block
+        .transactions
+        .extend(iter::repeat(client_transaction).take(transaction_count));
+    // Using call_api_then_assert_and_validate_schema_for_result in order to validate the schema for
+    // pending block.
+    call_api_then_assert_and_validate_schema_for_result::<_, BlockId, Block>(
+        &module,
+        method_name,
+        &Some(BlockId::Tag(Tag::Pending)),
+        &VERSION_0_4,
+        &expected_pending_block,
+    )
+    .await;
 }
 
 #[tokio::test]
 async fn get_class() {
     let method_name = "starknet_V0_4_getClass";
-    let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let pending_classes = get_test_pending_classes();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerV0_4Impl,
+    >(None, None, None, Some(pending_classes.clone()), None);
     let parent_header = BlockHeader::default();
     let header = BlockHeader {
         block_hash: BlockHash(stark_felt!("0x1")),
@@ -600,6 +668,20 @@ async fn get_class() {
         .await
         .unwrap();
     assert_eq!(res, expected_contract_class);
+
+    // Get class of pending block
+    let pending_class_hash = ClassHash(random::<u64>().into());
+    let pending_class =
+        PendingClass::Cairo1(StarknetApiContractClass::get_test_instance(&mut get_rng()));
+    pending_classes.write().await.add_class(pending_class_hash, pending_class.clone());
+    let res = module
+        .call::<_, GatewayContractClass>(
+            method_name,
+            (BlockId::Tag(Tag::Pending), pending_class_hash),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res, pending_class.try_into().unwrap());
 
     // Ask for an invalid class hash.
     call_api_then_assert_and_validate_schema_for_err::<
@@ -750,7 +832,7 @@ async fn get_transaction_receipt() {
     assert_eq!(res.finality_status, TransactionFinalityStatus::AcceptedOnL1);
     assert_eq!(res.output.execution_status(), &TransactionExecutionStatus::Succeeded);
 
-    // Add a pneding transaction and ask for its receipt.
+    // Add a pending transaction and ask for its receipt.
     let mut rng = get_rng();
     let (client_transaction, client_transaction_receipt, expected_receipt) =
         generate_client_transaction_client_receipt_and_rpc_receipt(&mut rng);
@@ -2537,4 +2619,12 @@ fn spec_api_methods_coverage() {
         .sorted()
         .collect::<Vec<_>>();
     assert!(method_names_in_spec.eq(&implemented_method_names));
+}
+
+auto_impl_get_test_instance! {
+    pub struct PendingBlockHeader {
+        pub parent_hash: BlockHash,
+        pub sequencer_address: ContractAddress,
+        pub timestamp: BlockTimestamp,
+    }
 }
