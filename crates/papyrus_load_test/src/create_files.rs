@@ -191,8 +191,8 @@ where
     }
     // Remove the last '\n'.
     to_write.pop();
-    let mut file =
-        File::create(path_in_resources(file_name)).expect("Create file \"{file_name}\" failed.");
+    let mut file = File::create(path_in_resources(file_name))
+        .unwrap_or_else(|err| panic!("Create file \"{file_name}\" failed.: {err}"));
     file.write_all(to_write.as_bytes()).unwrap();
 }
 

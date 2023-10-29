@@ -120,7 +120,7 @@ async fn test_gw_integration_testnet() {
             rpc_params!(SNClientInvokeTransaction::from(invoke_tx)),
         )
         .await
-        .unwrap();
+        .unwrap_or_else(|err| panic!("Failed to add tx '{hash}' with nonce '{nonce:?}'.: {err}"));
 
     println!("Invoke Tx result: {:?}", invoke_res);
 }

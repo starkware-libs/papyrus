@@ -335,32 +335,30 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
 
             let transactions = self
                 .get_block_transactions(block_number)?
-                .expect("Missing transactions for block {block_number}.");
+                .unwrap_or_else(|| panic!("Missing transactions for block {block_number}."));
             let transaction_outputs = self
                 .get_block_transaction_outputs(block_number)?
-                .expect("Missing transaction outputs for block {block_number}.");
+                .unwrap_or_else(|| panic!("Missing transaction outputs for block {block_number}."));
             let transaction_hashes = self
                 .get_block_transaction_hashes(block_number)?
-                .expect("Missing transaction hashes for block {block_number}.");
+                .unwrap_or_else(|| panic!("Missing transaction hashes for block {block_number}."));
 
             // Delete the transactions data.
             let mut events = vec![];
             for (offset, tx_output) in transaction_outputs.iter().enumerate() {
                 let tx_index = TransactionIndex(block_number, TransactionOffsetInBlock(offset));
-                let tx_hash = self
-                    .get_transaction_hash_by_idx(&tx_index)?
-                    .expect("Missing transaction hash for transaction index {tx_index}.");
+                let tx_hash = self.get_transaction_hash_by_idx(&tx_index)?.unwrap_or_else(|| {
+                    panic!("Missing transaction hash for transaction index {tx_index:?}.")
+                });
                 let mut tx_events = vec![];
                 for (index, from_address) in
                     tx_output.events_contract_addresses_as_ref().iter().enumerate()
                 {
                     let key =
                         (*from_address, EventIndex(tx_index, EventIndexInTransactionOutput(index)));
-                    tx_events.push(
-                        events_table
-                            .get(&self.txn, &key)?
-                            .expect("Missing events for transaction output {tx_index}."),
-                    );
+                    tx_events.push(events_table.get(&self.txn, &key)?.unwrap_or_else(|| {
+                        panic!("Missing events for transaction output {tx_index:?}.")
+                    }));
                     events_table.delete(&self.txn, &key)?;
                 }
                 events.push(tx_events);
