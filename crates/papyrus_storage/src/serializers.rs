@@ -139,8 +139,6 @@ auto_storage_serde! {
         pub state_root: GlobalRoot,
         pub sequencer: ContractAddress,
         pub timestamp: BlockTimestamp,
-        pub n_transactions: u64,
-        pub n_events: u64,
     }
     pub struct BlockNumber(pub u64);
     pub enum BlockStatus {

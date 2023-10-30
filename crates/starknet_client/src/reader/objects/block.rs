@@ -7,7 +7,6 @@ use std::ops::Index;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{
     Block as starknet_api_block,
-    BlockBodyCommitments,
     BlockHash,
     BlockNumber,
     BlockTimestamp,
@@ -185,8 +184,6 @@ impl Block {
             .map(starknet_api::transaction::Transaction::try_from)
             .collect::<Result<_, ReaderClientError>>()?;
 
-        let n_events = transaction_outputs.iter().flat_map(|output| output.events()).count();
-
         // Get the header.
         let header = starknet_api::block::BlockHeader {
             block_hash: self.block_hash,
@@ -196,9 +193,6 @@ impl Block {
             state_root: self.state_root,
             sequencer: self.sequencer_address,
             timestamp: self.timestamp,
-            n_transactions: u64::try_from(transactions.len())
-                .expect("usize to u64 conversion shouldn't fail"),
-            n_events: u64::try_from(n_events).expect("usize to u64 conversion shouldn't fail"),
         };
 
         let body = starknet_api::block::BlockBody {
@@ -207,11 +201,7 @@ impl Block {
             transaction_hashes,
         };
 
-        // TODO(Yoav): Temporarily disabled due to impact on sync performance.
-        // let commitments = calculate_block_commitments(&header, &body)?;
-        let commitments = BlockBodyCommitments::default();
-
-        Ok((starknet_api_block { header, body, commitments }, self.starknet_version))
+        Ok((starknet_api_block { header, body }, self.starknet_version))
     }
 }
 
