@@ -12,7 +12,7 @@ use async_trait::async_trait;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 #[cfg(any(feature = "testing", test))]
 use mockall::automock;
-use papyrus_common::pending_classes::PendingClass;
+use papyrus_common::pending_classes::ApiContractClass;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
@@ -339,15 +339,13 @@ pub enum GenericContractClass {
     Cairo1ContractClass(ContractClass),
 }
 
-impl From<GenericContractClass> for PendingClass {
-    fn from(class: GenericContractClass) -> Self {
-        match class {
-            GenericContractClass::Cairo0ContractClass(deprecated_contract_class) => {
-                Self::Cairo0(deprecated_contract_class)
+impl From<GenericContractClass> for ApiContractClass {
+    fn from(value: GenericContractClass) -> Self {
+        match value {
+            GenericContractClass::Cairo0ContractClass(class) => {
+                Self::DeprecatedContractClass(class)
             }
-            GenericContractClass::Cairo1ContractClass(client_contract_class) => {
-                Self::Cairo1(client_contract_class.into())
-            }
+            GenericContractClass::Cairo1ContractClass(class) => Self::ContractClass(class.into()),
         }
     }
 }

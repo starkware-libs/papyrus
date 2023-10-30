@@ -17,6 +17,7 @@ use itertools::chain;
 use lru::LruCache;
 #[cfg(test)]
 use mockall::automock;
+use papyrus_common::pending_classes::ApiContractClass;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_config::converters::{deserialize_optional_map, serialize_optional_map};
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
@@ -28,14 +29,9 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockHash, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::state::{ContractClass, StateDiff};
+use starknet_api::state::StateDiff;
 use starknet_api::StarknetApiError;
-use starknet_client::reader::{
-    GenericContractClass,
-    ReaderClientError,
-    StarknetFeederGatewayClient,
-    StarknetReader,
-};
+use starknet_client::reader::{ReaderClientError, StarknetFeederGatewayClient, StarknetReader};
 use starknet_client::{ClientCreationError, RetryConfig};
 use tracing::{debug, trace};
 
@@ -133,39 +129,6 @@ pub struct GenericCentralSource<TStarknetClient: StarknetReader + Send + Sync> {
     pub storage_reader: StorageReader,
     pub state_update_stream_config: StateUpdateStreamConfig,
     pub(crate) class_cache: Arc<Mutex<LruCache<ClassHash, ApiContractClass>>>,
-}
-
-#[derive(Clone)]
-pub(crate) enum ApiContractClass {
-    DeprecatedContractClass(starknet_api::deprecated_contract_class::ContractClass),
-    ContractClass(starknet_api::state::ContractClass),
-}
-
-impl From<GenericContractClass> for ApiContractClass {
-    fn from(value: GenericContractClass) -> Self {
-        match value {
-            GenericContractClass::Cairo0ContractClass(class) => {
-                Self::DeprecatedContractClass(class)
-            }
-            GenericContractClass::Cairo1ContractClass(class) => Self::ContractClass(class.into()),
-        }
-    }
-}
-
-impl ApiContractClass {
-    fn into_cairo0(self) -> CentralResult<DeprecatedContractClass> {
-        match self {
-            Self::DeprecatedContractClass(class) => Ok(class),
-            _ => Err(CentralError::BadContractClassType),
-        }
-    }
-
-    fn into_cairo1(self) -> CentralResult<ContractClass> {
-        match self {
-            Self::ContractClass(class) => Ok(class),
-            _ => Err(CentralError::BadContractClassType),
-        }
-    }
 }
 
 #[derive(thiserror::Error, Debug)]
