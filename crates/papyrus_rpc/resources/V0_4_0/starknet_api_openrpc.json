@@ -1409,84 +1409,90 @@
             "PENDING_BLOCK_WITH_TX_HASHES": {
                 "title": "Pending block with transaction hashes",
                 "description": "The dynamic block being constructed by the sequencer. Note that this object will be deprecated upon decentralization.",
-                "properties": {
-                    "timestamp": {
-                        "title": "Timestamp",
-                        "description": "The time in which the block was created, encoded in Unix time",
-                        "type": "integer",
-                        "minimum": 0
+                "allOf": [
+                    {
+                        "title": "Block body with transactions hashes",
+                        "$ref": "#/components/schemas/BLOCK_BODY_WITH_TX_HASHES"
                     },
-                    "sequencer_address": {
-                        "title": "Sequencer address",
-                        "description": "The StarkNet identity of the sequencer submitting this block",
-                        "$ref": "#/components/schemas/FELT"
-                    },
-                    "parent_hash": {
-                        "title": "Parent hash",
-                        "description": "The hash of this block's parent",
-                        "$ref": "#/components/schemas/BLOCK_HASH"
-                    },
-                    "transactions": {
-                        "title": "Transaction",
-                        "description": "The hashes of the transactions included in this block",
-                        "type": "array",
-                        "items": {
-                            "description": "The hash of a single transaction",
-                            "$ref": "#/components/schemas/TXN_HASH"
+                    {
+                        "title": "Pending block header",
+                        "type": "object",
+                        "properties": {
+                            "timestamp": {
+                                "title": "Timestamp",
+                                "description": "The time in which the block was created, encoded in Unix time",
+                                "type": "integer",
+                                "minimum": 0
+                            },
+                            "sequencer_address": {
+                                "title": "Sequencer address",
+                                "description": "The StarkNet identity of the sequencer submitting this block",
+                                "$ref": "#/components/schemas/FELT"
+                            },
+                            "parent_hash": {
+                                "title": "Parent hash",
+                                "description": "The hash of this block's parent",
+                                "$ref": "#/components/schemas/BLOCK_HASH"
+                            }
+                        },
+                        "required": [
+                            "parent_hash",
+                            "timestamp",
+                            "sequencer_address"
+                        ],
+                        "not": {
+                            "required": [
+                                "block_hash",
+                                "block_number",
+                                "new_root"
+                            ]
                         }
                     }
-                },
-                "additionalProperties": false
+                ]
             },
             "PENDING_BLOCK_WITH_TXS": {
                 "title": "Pending block with transactions",
                 "description": "The dynamic block being constructed by the sequencer. Note that this object will be deprecated upon decentralization.",
-                "properties": {
-                    "timestamp": {
-                        "title": "Timestamp",
-                        "description": "The time in which the block was created, encoded in Unix time",
-                        "type": "integer",
-                        "minimum": 0
+                "allOf": [
+                    {
+                        "title": "Block body with transactions",
+                        "$ref": "#/components/schemas/BLOCK_BODY_WITH_TXS"
                     },
-                    "sequencer_address": {
-                        "title": "Sequencer address",
-                        "description": "The StarkNet identity of the sequencer submitting this block",
-                        "$ref": "#/components/schemas/FELT"
-                    },
-                    "parent_hash": {
-                        "title": "Parent hash",
-                        "description": "The hash of this block's parent",
-                        "$ref": "#/components/schemas/BLOCK_HASH"
-                    },
-                    "transactions": {
-                        "title": "Transactions",
-                        "description": "The transactions in this block",
-                        "type": "array",
-                        "items": {
-                            "title": "transactions in block",
-                            "type": "object",
-                            "allOf": [
-                                {
-                                    "title": "transaction",
-                                    "$ref": "#/components/schemas/TXN"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "transaction_hash": {
-                                            "title": "transaction hash",
-                                            "$ref": "#/components/schemas/TXN_HASH"
-                                        }
-                                    },
-                                    "required": [
-                                        "transaction_hash"
-                                    ]
-                                }
+                    {
+                        "type": "object",
+                        "title": "Block Info",
+                        "properties": {
+                            "timestamp": {
+                                "title": "Timestamp",
+                                "description": "The time in which the block was created, encoded in Unix time",
+                                "type": "integer",
+                                "minimum": 0
+                            },
+                            "sequencer_address": {
+                                "title": "Sequencer address",
+                                "description": "The StarkNet identity of the sequencer submitting this block",
+                                "$ref": "#/components/schemas/FELT"
+                            },
+                            "parent_hash": {
+                                "title": "Parent hash",
+                                "description": "The hash of this block's parent",
+                                "$ref": "#/components/schemas/BLOCK_HASH"
+                            }
+                        },
+                        "required": [
+                            "parent_hash",
+                            "timestamp",
+                            "sequencer_address"
+                        ],
+                        "not": {
+                            "required": [
+                                "block_hash",
+                                "block_number",
+                                "new_root"
                             ]
                         }
                     }
-                },
-                "additionalProperties": false
+                ]
             },
             "DEPLOYED_CONTRACT_ITEM": {
                 "title": "Deployed contract item",
