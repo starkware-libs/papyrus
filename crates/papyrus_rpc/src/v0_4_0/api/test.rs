@@ -1508,6 +1508,22 @@ async fn get_transaction_by_block_id_and_index() {
     )
     .await;
 
+    // Get transaction of pending block when it's not updated.
+    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+
+    call_api_then_assert_and_validate_schema_for_err::<
+        _,
+        (BlockId, TransactionOffsetInBlock),
+        TransactionWithHash,
+    >(
+        &module,
+        method_name,
+        &Some((BlockId::Tag(Tag::Pending), TransactionOffsetInBlock(0))),
+        &VERSION_0_4,
+        &INVALID_TRANSACTION_INDEX.into(),
+    )
+    .await;
+
     // Ask for an invalid block hash.
     call_api_then_assert_and_validate_schema_for_err::<
         _,
