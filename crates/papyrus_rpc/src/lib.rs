@@ -177,6 +177,8 @@ fn get_block_status<Mode: TransactionKind>(
 
     Ok(status)
 }
+
+#[derive(Clone, Debug, PartialEq)]
 struct ContinuationTokenAsStruct(EventIndex);
 
 #[instrument(skip(storage_reader), level = "debug", err)]

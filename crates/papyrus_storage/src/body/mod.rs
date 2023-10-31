@@ -70,6 +70,7 @@ type EventsTable<'env> = TableHandle<'env, EventsTableKey, EventContent>;
 
 /// The index of a transaction in a block.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[cfg_attr(any(test, feature = "testing"), derive(Hash))]
 pub struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
 
 /// Interface for reading data related to the block body.

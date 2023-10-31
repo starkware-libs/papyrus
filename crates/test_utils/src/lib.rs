@@ -330,6 +330,7 @@ fn set_events(tx: &mut TransactionOutput, events: Vec<Event>) {
 // Returns a test block with a variable number of transactions and events.
 pub fn get_test_block(
     transaction_count: usize,
+    // TODO(shahak): remove unused event-related arguments.
     events_per_tx: Option<usize>,
     from_addresses: Option<Vec<ContractAddress>>,
     keys: Option<Vec<Vec<EventKey>>>,
