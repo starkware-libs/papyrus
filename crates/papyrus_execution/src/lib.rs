@@ -39,7 +39,7 @@ use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::RO;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::StateStorageReader;
-use papyrus_storage::{StorageError, StorageTxn};
+use papyrus_storage::{StorageError, StorageReader, StorageTxn};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockTimestamp, GasPrice};
 use starknet_api::core::{ChainId, ContractAddress, EntryPointSelector};
@@ -164,7 +164,7 @@ pub enum ExecutionError {
 
 /// Executes a StarkNet call and returns the execution result.
 pub fn execute_call(
-    txn: &StorageTxn<'_, RO>,
+    storage_reader: StorageReader,
     chain_id: &ChainId,
     state_number: StateNumber,
     contract_address: &ContractAddress,
@@ -172,8 +172,9 @@ pub fn execute_call(
     calldata: Calldata,
     execution_config: &BlockExecutionConfig,
 ) -> ExecutionResult<CallExecution> {
-    verify_node_synced(txn, state_number)?;
-    verify_contract_exists(contract_address, txn, state_number)?;
+    let txn = storage_reader.begin_ro_txn()?;
+    verify_node_synced(&txn, state_number)?;
+    verify_contract_exists(contract_address, &txn, state_number)?;
 
     let call_entry_point = CallEntryPoint {
         class_hash: None,
@@ -187,7 +188,10 @@ pub fn execute_call(
         // TODO(yair): check if this is the correct value.
         initial_gas: execution_config.initial_gas_cost,
     };
-    let mut cached_state = CachedState::from(ExecutionStateReader { txn, state_number });
+    let mut cached_state = CachedState::from(ExecutionStateReader {
+        storage_reader: storage_reader.clone(),
+        state_number,
+    });
     let header =
         txn.get_block_header(state_number.block_after())?.expect("Should have block header.");
     let block_context = create_block_context(
@@ -370,7 +374,7 @@ fn calc_tx_hashes(
 pub fn estimate_fee(
     txs: Vec<ExecutableTransactionInput>,
     chain_id: &ChainId,
-    storage_txn: &StorageTxn<'_, RO>,
+    storage_reader: StorageReader,
     state_number: StateNumber,
     execution_config: &BlockExecutionConfig,
 ) -> ExecutionResult<Vec<(GasPrice, Fee)>> {
@@ -378,7 +382,7 @@ pub fn estimate_fee(
         txs,
         None,
         chain_id,
-        storage_txn,
+        storage_reader,
         state_number,
         execution_config,
         false,
@@ -399,13 +403,14 @@ fn execute_transactions(
     txs: Vec<ExecutableTransactionInput>,
     tx_hashes: Option<Vec<TransactionHash>>,
     chain_id: &ChainId,
-    storage_txn: &StorageTxn<'_, RO>,
+    storage_reader: StorageReader,
     state_number: StateNumber,
     execution_config: &BlockExecutionConfig,
     charge_fee: bool,
     validate: bool,
 ) -> ExecutionResult<(Vec<(TransactionExecutionInfo, ThinStateDiff)>, BlockContext)> {
-    verify_node_synced(storage_txn, state_number)?;
+    let storage_txn = storage_reader.begin_ro_txn()?;
+    verify_node_synced(&storage_txn, state_number)?;
 
     // TODO(yair): When we support pending blocks, use the latest block header instead of the
     // pending block header.
@@ -416,8 +421,10 @@ fn execute_transactions(
         .expect("Should have block header.");
 
     // The starknet state will be from right before the block in which the transactions should run.
-    let mut cached_state =
-        CachedState::from(ExecutionStateReader { txn: storage_txn, state_number });
+    let mut cached_state = CachedState::from(ExecutionStateReader {
+        storage_reader: storage_reader.clone(),
+        state_number,
+    });
     let block_context = create_block_context(
         chain_id.clone(),
         header.block_number,
@@ -546,7 +553,7 @@ pub fn simulate_transactions(
     txs: Vec<ExecutableTransactionInput>,
     tx_hashes: Option<Vec<TransactionHash>>,
     chain_id: &ChainId,
-    storage_txn: &StorageTxn<'_, RO>,
+    storage_reader: StorageReader,
     state_number: StateNumber,
     execution_config: &BlockExecutionConfig,
     charge_fee: bool,
@@ -557,7 +564,7 @@ pub fn simulate_transactions(
         txs,
         tx_hashes,
         chain_id,
-        storage_txn,
+        storage_reader,
         state_number,
         execution_config,
         charge_fee,
