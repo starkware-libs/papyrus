@@ -711,8 +711,10 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         calldata: Calldata,
         block_id: BlockId,
     ) -> RpcResult<Vec<StarkFelt>> {
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        let block_number = get_block_number(&txn, block_id)?;
+        let block_number = get_block_number(
+            &self.storage_reader.begin_ro_txn().map_err(internal_server_error)?,
+            block_id,
+        )?;
         let state_number = StateNumber::right_before_block(block_number);
         let block_execution_config =
             self.execution_config.get_execution_config_for_block(block_number).map_err(|err| {
@@ -720,7 +722,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             })?;
 
         match execute_call(
-            &txn,
+            self.storage_reader.clone(),
             &self.chain_id,
             state_number,
             &contract_address,
@@ -797,8 +799,10 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let executable_txns =
             transactions.into_iter().map(|tx| tx.try_into()).collect::<Result<_, _>>()?;
 
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        let block_number = get_block_number(&txn, block_id)?;
+        let block_number = get_block_number(
+            &self.storage_reader.begin_ro_txn().map_err(internal_server_error)?,
+            block_id,
+        )?;
         let state_number = StateNumber::right_before_block(block_number);
         let block_execution_config =
             self.execution_config.get_execution_config_for_block(block_number).map_err(|err| {
@@ -808,7 +812,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         match exec_estimate_fee(
             executable_txns,
             &self.chain_id,
-            &txn,
+            self.storage_reader.clone(),
             state_number,
             block_execution_config,
         ) {
@@ -832,8 +836,10 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let executable_txns =
             transactions.into_iter().map(|tx| tx.try_into()).collect::<Result<_, _>>()?;
 
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        let block_number = get_block_number(&txn, block_id)?;
+        let block_number = get_block_number(
+            &self.storage_reader.begin_ro_txn().map_err(internal_server_error)?,
+            block_id,
+        )?;
         let state_number = StateNumber::right_before_block(block_number);
         let block_execution_config =
             self.execution_config.get_execution_config_for_block(block_number).map_err(|err| {
@@ -847,7 +853,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             executable_txns,
             None,
             &self.chain_id,
-            &txn,
+            self.storage_reader.clone(),
             state_number,
             block_execution_config,
             charge_fee,
@@ -920,7 +926,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             executable_txns,
             Some(tx_hashes),
             &self.chain_id,
-            &storage_txn,
+            self.storage_reader.clone(),
             state_number,
             block_execution_config,
             true,
@@ -988,7 +994,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             executable_txns,
             Some(tx_hashes.clone()),
             &self.chain_id,
-            &storage_txn,
+            self.storage_reader.clone(),
             state_number,
             block_execution_config,
             true,
