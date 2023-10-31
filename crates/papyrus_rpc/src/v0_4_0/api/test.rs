@@ -481,6 +481,19 @@ async fn get_block_w_full_transactions() {
         &expected_pending_block,
     )
     .await;
+
+    // Get pending block when it's not updated.
+    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    call_api_then_assert_and_validate_schema_for_err::<_, BlockId, Block>(
+        &module,
+        method_name,
+        &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
+            "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
+        ))))),
+        &VERSION_0_4,
+        &BLOCK_NOT_FOUND.into(),
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -603,6 +616,19 @@ async fn get_block_w_transaction_hashes() {
         &Some(BlockId::Tag(Tag::Pending)),
         &VERSION_0_4,
         &expected_pending_block,
+    )
+    .await;
+
+    // Get pending block when it's not updated.
+    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    call_api_then_assert_and_validate_schema_for_err::<_, BlockId, Block>(
+        &module,
+        method_name,
+        &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
+            "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
+        ))))),
+        &VERSION_0_4,
+        &BLOCK_NOT_FOUND.into(),
     )
     .await;
 }
