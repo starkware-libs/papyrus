@@ -537,7 +537,7 @@ impl<
         let mut last_block_in_storage = header_marker.prev();
         while let Some(block_number) = last_block_in_storage {
             if self.should_revert_block(block_number).await? {
-                self.revert_block(block_number).await?;
+                self.revert_block(block_number)?;
                 last_block_in_storage = block_number.prev();
             } else {
                 break;
@@ -550,9 +550,8 @@ impl<
     // Deletes the block data from the storage, moving it to the ommer tables.
     #[allow(clippy::expect_fun_call)]
     #[instrument(skip(self), level = "debug", err)]
-    async fn revert_block(&mut self, block_number: BlockNumber) -> StateSyncResult {
+    fn revert_block(&mut self, block_number: BlockNumber) -> StateSyncResult {
         debug!("Reverting block.");
-        *self.pending_data.write().await = PendingData::default();
 
         let mut txn = self.writer.begin_rw_txn()?;
         txn = txn.try_revert_base_layer_marker(block_number)?;
@@ -668,7 +667,7 @@ fn stream_new_blocks<
             if header_marker == central_block_marker {
                 // Only if the node have the last block and state (without casms), sync pending data.
                 if reader.begin_ro_txn()?.get_state_marker()? == header_marker{
-                    // Here and when reverting a block those are the only places we update the pending data.
+                    // Here is the only place we update the pending data.
                     debug!("Start polling for pending data.");
                     sync_pending_data(
                         reader.clone(),
