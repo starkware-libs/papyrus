@@ -481,6 +481,22 @@ async fn get_block_w_full_transactions() {
         &expected_pending_block,
     )
     .await;
+
+    // Get pending block when it's not updated.
+    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    let res_block =
+        module.call::<_, Block>(method_name, [BlockId::Tag(Tag::Pending)]).await.unwrap();
+    let GeneralBlockHeader::PendingBlockHeader(pending_block_header) = res_block.header else {
+        panic!("Unexpected block_header type. Expected PendingBlockHeader.")
+    };
+    assert_eq!(pending_block_header.parent_hash, BlockHash::default());
+    if let Transactions::Hashes(transactions) = res_block.transactions.clone() {
+        assert_eq!(transactions.len(), 0);
+    } else if let Transactions::Full(transactions) = res_block.transactions.clone() {
+        assert_eq!(transactions.len(), 0);
+    } else {
+        panic!("Unexpected transactions type. Expected Hashes or Full.")
+    };
 }
 
 #[tokio::test]
@@ -605,6 +621,22 @@ async fn get_block_w_transaction_hashes() {
         &expected_pending_block,
     )
     .await;
+
+    // Get pending block when it's not updated.
+    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    let res_block =
+        module.call::<_, Block>(method_name, [BlockId::Tag(Tag::Pending)]).await.unwrap();
+    let GeneralBlockHeader::PendingBlockHeader(pending_block_header) = res_block.header else {
+        panic!("Unexpected block_header type. Expected PendingBlockHeader.")
+    };
+    assert_eq!(pending_block_header.parent_hash, BlockHash::default());
+    if let Transactions::Hashes(transactions) = res_block.transactions.clone() {
+        assert_eq!(transactions.len(), 0);
+    } else if let Transactions::Full(transactions) = res_block.transactions.clone() {
+        assert_eq!(transactions.len(), 0);
+    } else {
+        panic!("Unexpected transactions type. Expected Hashes or Full.")
+    };
 }
 
 #[tokio::test]
