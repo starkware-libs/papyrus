@@ -36,6 +36,10 @@ use starknet_api::transaction::{
     TransactionHash,
     TransactionOffsetInBlock,
 };
+use starknet_client::reader::objects::pending_data::{
+    PendingBlock,
+    PendingStateUpdate as ClientPendingStateUpdate,
+};
 use starknet_client::reader::{PendingData, StorageEntry};
 use starknet_client::writer::{StarknetWriter, WriterClientError};
 use starknet_client::ClientError;
@@ -337,34 +341,33 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         block_id: BlockId,
         index: TransactionOffsetInBlock,
     ) -> RpcResult<TransactionWithHash> {
-        let (starknet_api_transaction, transaction_hash) =
-            if let BlockId::Tag(Tag::Pending) = block_id {
-                let client_transaction = self
-                    .pending_data
-                    .read()
-                    .await
-                    .block
-                    .transactions
-                    .get(index.0)
-                    .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?
-                    .clone();
-                let transaction_hash = client_transaction.transaction_hash();
-                (client_transaction.try_into().map_err(internal_server_error)?, transaction_hash)
-            } else {
-                let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-                let block_number = get_block_number(&txn, block_id)?;
+        let (starknet_api_transaction, transaction_hash) = if let BlockId::Tag(Tag::Pending) =
+            block_id
+        {
+            let client_transaction = read_pending_data(&self.pending_data, &self.storage_reader)
+                .await?
+                .block
+                .transactions
+                .get(index.0)
+                .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?
+                .clone();
+            let transaction_hash = client_transaction.transaction_hash();
+            (client_transaction.try_into().map_err(internal_server_error)?, transaction_hash)
+        } else {
+            let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+            let block_number = get_block_number(&txn, block_id)?;
 
-                let tx_index = TransactionIndex(block_number, index);
-                let transaction = txn
-                    .get_transaction(tx_index)
-                    .map_err(internal_server_error)?
-                    .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?;
-                let transaction_hash = txn
-                    .get_transaction_hash_by_idx(&tx_index)
-                    .map_err(internal_server_error)?
-                    .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?;
-                (transaction, transaction_hash)
-            };
+            let tx_index = TransactionIndex(block_number, index);
+            let transaction = txn
+                .get_transaction(tx_index)
+                .map_err(internal_server_error)?
+                .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?;
+            let transaction_hash = txn
+                .get_transaction_hash_by_idx(&tx_index)
+                .map_err(internal_server_error)?
+                .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?;
+            (transaction, transaction_hash)
+        };
 
         Ok(TransactionWithHash {
             transaction: starknet_api_transaction.try_into()?,
@@ -1013,6 +1016,35 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
         }
+    }
+}
+
+async fn read_pending_data(
+    pending_data: &Arc<RwLock<PendingData>>,
+    storage_reader: &StorageReader,
+) -> RpcResult<PendingData> {
+    let txn = storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+    let latest_block_number =
+        get_latest_block_number(&txn)?.ok_or_else(|| ErrorObjectOwned::from(NO_BLOCKS))?;
+    let latest_header: starknet_api::block::BlockHeader =
+        get_block_header_by_number(&txn, latest_block_number)?;
+    let pending_data = &pending_data.read().await;
+    if pending_data.block.parent_block_hash == latest_header.block_hash {
+        Ok((*pending_data).clone())
+    } else {
+        Ok(PendingData {
+            block: PendingBlock {
+                parent_block_hash: latest_header.block_hash,
+                gas_price: latest_header.gas_price,
+                timestamp: latest_header.timestamp,
+                sequencer_address: latest_header.sequencer,
+                ..Default::default()
+            },
+            state_update: ClientPendingStateUpdate {
+                old_root: latest_header.state_root,
+                state_diff: Default::default(),
+            },
+        })
     }
 }
 
