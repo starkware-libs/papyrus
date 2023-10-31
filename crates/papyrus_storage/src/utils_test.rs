@@ -22,7 +22,7 @@ fn test_dump_declared_classes() {
     let mut state_diffs = vec![];
     let ((reader, mut writer), _temp_dir) = get_test_storage();
     for i in 0..5 {
-        let i_felt = StarkFelt::from_u128(i as u128);
+        let i_felt = StarkFelt::from(i as u128);
         declared_classes.push((
             ClassHash(i_felt),
             ContractClass {
