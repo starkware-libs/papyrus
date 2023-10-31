@@ -174,20 +174,19 @@ pub fn prepare_storage(mut storage_writer: StorageWriter) {
 }
 
 pub fn execute_simulate_transactions(
-    storage_reader: &StorageReader,
+    storage_reader: StorageReader,
     txs: Vec<ExecutableTransactionInput>,
     tx_hashes: Option<Vec<TransactionHash>>,
     charge_fee: bool,
     validate: bool,
 ) -> Vec<(TransactionTrace, ThinStateDiff, GasPrice, Fee)> {
     let chain_id = ChainId(CHAIN_ID.to_string());
-    let storage_txn = storage_reader.begin_ro_txn().unwrap();
 
     simulate_transactions(
         txs,
         tx_hashes,
         &chain_id,
-        &storage_txn,
+        storage_reader,
         StateNumber::right_after_block(BlockNumber(0)),
         &test_block_execution_config(),
         charge_fee,
