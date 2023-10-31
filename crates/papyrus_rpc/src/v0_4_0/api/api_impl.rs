@@ -704,7 +704,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn call(
+    async fn call(
         &self,
         contract_address: ContractAddress,
         entry_point_selector: EntryPointSelector,
@@ -716,20 +716,32 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             block_id,
         )?;
         let state_number = StateNumber::right_before_block(block_number);
-        let block_execution_config =
-            self.execution_config.get_execution_config_for_block(block_number).map_err(|err| {
+        let block_execution_config = self
+            .execution_config
+            .get_execution_config_for_block(block_number)
+            .map_err(|err| {
                 internal_server_error(format!("Failed to get execution config: {}", err))
-            })?;
+            })?
+            .clone();
+        let chain_id = self.chain_id.clone();
+        let reader = self.storage_reader.clone();
+        let contract_address_copy = contract_address;
 
-        match execute_call(
-            self.storage_reader.clone(),
-            &self.chain_id,
-            state_number,
-            &contract_address,
-            entry_point_selector,
-            calldata,
-            block_execution_config,
-        ) {
+        let call_result = tokio::task::spawn_blocking(move || {
+            execute_call(
+                reader,
+                &chain_id,
+                state_number,
+                &contract_address_copy,
+                entry_point_selector,
+                calldata,
+                &block_execution_config,
+            )
+        })
+        .await
+        .map_err(internal_server_error)?;
+
+        match call_result {
             Ok(res) => Ok(res.retdata.0),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
@@ -790,7 +802,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     }
 
     #[instrument(skip(self, transactions), level = "debug", err, ret)]
-    fn estimate_fee(
+    async fn estimate_fee(
         &self,
         transactions: Vec<BroadcastedTransaction>,
         block_id: BlockId,
@@ -804,18 +816,29 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             block_id,
         )?;
         let state_number = StateNumber::right_before_block(block_number);
-        let block_execution_config =
-            self.execution_config.get_execution_config_for_block(block_number).map_err(|err| {
+        let block_execution_config = self
+            .execution_config
+            .get_execution_config_for_block(block_number)
+            .map_err(|err| {
                 internal_server_error(format!("Failed to get execution config: {}", err))
-            })?;
+            })?
+            .clone();
+        let chain_id = self.chain_id.clone();
+        let reader = self.storage_reader.clone();
 
-        match exec_estimate_fee(
-            executable_txns,
-            &self.chain_id,
-            self.storage_reader.clone(),
-            state_number,
-            block_execution_config,
-        ) {
+        let estimate_fee_result = tokio::task::spawn_blocking(move || {
+            exec_estimate_fee(
+                executable_txns,
+                &chain_id,
+                reader,
+                state_number,
+                &block_execution_config,
+            )
+        })
+        .await
+        .map_err(internal_server_error)?;
+
+        match estimate_fee_result {
             Ok(fees) => Ok(fees
                 .into_iter()
                 .map(|(gas_price, fee)| FeeEstimate::from(gas_price, fee))
@@ -826,7 +849,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     }
 
     #[instrument(skip(self, transactions), level = "debug", err, ret)]
-    fn simulate_transactions(
+    async fn simulate_transactions(
         &self,
         block_id: BlockId,
         transactions: Vec<BroadcastedTransaction>,
@@ -841,26 +864,35 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             block_id,
         )?;
         let state_number = StateNumber::right_before_block(block_number);
-        let block_execution_config =
-            self.execution_config.get_execution_config_for_block(block_number).map_err(|err| {
+        let block_execution_config = self
+            .execution_config
+            .get_execution_config_for_block(block_number)
+            .map_err(|err| {
                 internal_server_error(format!("Failed to get execution config: {}", err))
-            })?;
+            })?
+            .clone();
+        let chain_id = self.chain_id.clone();
+        let reader = self.storage_reader.clone();
 
         let charge_fee = !simulation_flags.contains(&SimulationFlag::SkipFeeCharge);
         let validate = !simulation_flags.contains(&SimulationFlag::SkipValidate);
 
-        let res = exec_simulate_transactions(
-            executable_txns,
-            None,
-            &self.chain_id,
-            self.storage_reader.clone(),
-            state_number,
-            block_execution_config,
-            charge_fee,
-            validate,
-        );
+        let simulate_transactions_result = tokio::task::spawn_blocking(move || {
+            exec_simulate_transactions(
+                executable_txns,
+                None,
+                &chain_id,
+                reader,
+                state_number,
+                &block_execution_config,
+                charge_fee,
+                validate,
+            )
+        })
+        .await
+        .map_err(internal_server_error)?;
 
-        match res {
+        match simulate_transactions_result {
             Ok(simulation_results) => Ok(simulation_results
                 .into_iter()
                 .map(|(transaction_trace, _, gas_price, fee)| SimulatedTransaction {
@@ -874,16 +906,22 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     }
 
     #[instrument(skip(self), level = "debug", err)]
-    fn trace_transaction(&self, transaction_hash: TransactionHash) -> RpcResult<TransactionTrace> {
+    async fn trace_transaction(
+        &self,
+        transaction_hash: TransactionHash,
+    ) -> RpcResult<TransactionTrace> {
         let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let TransactionIndex(block_number, tx_offset) = storage_txn
             .get_transaction_idx_by_hash(&transaction_hash)
             .map_err(internal_server_error)?
             .ok_or(INVALID_TRANSACTION_HASH)?;
-        let block_execution_config =
-            self.execution_config.get_execution_config_for_block(block_number).map_err(|err| {
+        let block_execution_config = self
+            .execution_config
+            .get_execution_config_for_block(block_number)
+            .map_err(|err| {
                 internal_server_error(format!("Failed to get execution config: {}", err))
-            })?;
+            })?
+            .clone();
 
         let casm_marker = storage_txn.get_compiled_class_marker().map_err(internal_server_error)?;
         if casm_marker <= block_number {
@@ -922,18 +960,25 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             .map(|tx| stored_txn_to_executable_txn(tx, &storage_txn, state_number))
             .collect::<Result<_, _>>()?;
 
-        let res = exec_simulate_transactions(
-            executable_txns,
-            Some(tx_hashes),
-            &self.chain_id,
-            self.storage_reader.clone(),
-            state_number,
-            block_execution_config,
-            true,
-            true,
-        );
+        let chain_id = self.chain_id.clone();
+        let reader = self.storage_reader.clone();
 
-        match res {
+        let simulate_transactions_result = tokio::task::spawn_blocking(move || {
+            exec_simulate_transactions(
+                executable_txns,
+                Some(tx_hashes),
+                &chain_id,
+                reader,
+                state_number,
+                &block_execution_config,
+                true,
+                true,
+            )
+        })
+        .await
+        .map_err(internal_server_error)?;
+
+        match simulate_transactions_result {
             Ok(mut simulation_results) => Ok(simulation_results
                 .pop()
                 .expect("Should have transaction exeuction result")
@@ -945,16 +990,19 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     }
 
     #[instrument(skip(self), level = "debug", err)]
-    fn trace_block_transactions(
+    async fn trace_block_transactions(
         &self,
         block_id: BlockId,
     ) -> RpcResult<Vec<TransactionTraceWithHash>> {
         let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&storage_txn, block_id)?;
-        let block_execution_config =
-            self.execution_config.get_execution_config_for_block(block_number).map_err(|err| {
+        let block_execution_config = self
+            .execution_config
+            .get_execution_config_for_block(block_number)
+            .map_err(|err| {
                 internal_server_error(format!("Failed to get execution config: {}", err))
-            })?;
+            })?
+            .clone();
 
         let casm_marker = storage_txn.get_compiled_class_marker().map_err(internal_server_error)?;
         if casm_marker <= block_number {
@@ -989,19 +1037,26 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             .into_iter()
             .map(|tx| stored_txn_to_executable_txn(tx, &storage_txn, state_number))
             .collect::<Result<_, _>>()?;
+        let chain_id = self.chain_id.clone();
+        let reader = self.storage_reader.clone();
+        let tx_hashes_clone = tx_hashes.clone();
 
-        let res = exec_simulate_transactions(
-            executable_txns,
-            Some(tx_hashes.clone()),
-            &self.chain_id,
-            self.storage_reader.clone(),
-            state_number,
-            block_execution_config,
-            true,
-            true,
-        );
+        let simulate_transactions_result = tokio::task::spawn_blocking(move || {
+            exec_simulate_transactions(
+                executable_txns,
+                Some(tx_hashes_clone),
+                &chain_id,
+                reader,
+                state_number,
+                &block_execution_config,
+                true,
+                true,
+            )
+        })
+        .await
+        .map_err(internal_server_error)?;
 
-        match res {
+        match simulate_transactions_result {
             Ok(simulation_results) => Ok(simulation_results
                 .into_iter()
                 .zip(tx_hashes)
