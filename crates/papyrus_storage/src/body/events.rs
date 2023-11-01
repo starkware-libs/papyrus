@@ -65,6 +65,7 @@ use crate::{StorageResult, StorageTxn};
 
 /// An identifier of an event.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize)]
+#[cfg_attr(any(test, feature = "testing"), derive(Hash))]
 pub struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
 
 /// An interface for reading events.
