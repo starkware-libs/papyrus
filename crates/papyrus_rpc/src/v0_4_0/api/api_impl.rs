@@ -40,7 +40,7 @@ use starknet_client::reader::objects::pending_data::{
     PendingBlock,
     PendingStateUpdate as ClientPendingStateUpdate,
 };
-use starknet_client::reader::{PendingData, StorageEntry};
+use starknet_client::reader::{DeployedContract, PendingData, StorageEntry};
 use starknet_client::writer::{StarknetWriter, WriterClientError};
 use starknet_client::ClientError;
 use tokio::sync::RwLock;
@@ -563,11 +563,28 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_class_hash_at(
+    async fn get_class_hash_at(
         &self,
         block_id: BlockId,
         contract_address: ContractAddress,
     ) -> RpcResult<ClassHash> {
+        let block_id = if let BlockId::Tag(Tag::Pending) = block_id {
+            let pending_deployed_contracts =
+                read_pending_data(&self.pending_data, &self.storage_reader)
+                    .await?
+                    .state_update
+                    .state_diff
+                    .deployed_contracts;
+            for DeployedContract { address, class_hash } in pending_deployed_contracts {
+                if address == contract_address {
+                    return Ok(class_hash);
+                }
+            }
+            BlockId::Tag(Tag::Latest)
+        } else {
+            block_id
+        };
+
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let block_number = get_block_number(&txn, block_id)?;
