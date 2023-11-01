@@ -163,7 +163,7 @@ pub trait JsonRpc {
     /// Executes the entry point of the contract at the given address with the given calldata,
     /// returns the result (Retdata).
     #[method(name = "call")]
-    fn call(
+    async fn call(
         &self,
         contract_address: ContractAddress,
         entry_point_selector: EntryPointSelector,
@@ -194,7 +194,7 @@ pub trait JsonRpc {
 
     /// Estimates the fee of a series of transactions.
     #[method(name = "estimateFee")]
-    fn estimate_fee(
+    async fn estimate_fee(
         &self,
         transactions: Vec<BroadcastedTransaction>,
         block_id: BlockId,
@@ -202,7 +202,7 @@ pub trait JsonRpc {
 
     /// Simulates execution of a series of transactions.
     #[method(name = "simulateTransactions")]
-    fn simulate_transactions(
+    async fn simulate_transactions(
         &self,
         block_id: BlockId,
         transactions: Vec<BroadcastedTransaction>,
@@ -211,11 +211,14 @@ pub trait JsonRpc {
 
     /// Calculates the transaction trace of a transaction that is already included in a block.
     #[method(name = "traceTransaction")]
-    fn trace_transaction(&self, transaction_hash: TransactionHash) -> RpcResult<TransactionTrace>;
+    async fn trace_transaction(
+        &self,
+        transaction_hash: TransactionHash,
+    ) -> RpcResult<TransactionTrace>;
 
     /// Calculates the transaction trace of all of the transactions in a block.
     #[method(name = "traceBlockTransactions")]
-    fn trace_block_transactions(
+    async fn trace_block_transactions(
         &self,
         block_id: BlockId,
     ) -> RpcResult<Vec<TransactionTraceWithHash>>;
