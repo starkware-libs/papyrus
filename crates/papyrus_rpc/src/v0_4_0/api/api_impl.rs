@@ -162,7 +162,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> RpcResult<Block> {
         if let BlockId::Tag(Tag::Pending) = block_id {
-            let block = self.pending_data.read().await.block.clone();
+            let block = read_pending_data(&self.pending_data, &self.storage_reader).await?.block;
             let pending_block_header = PendingBlockHeader {
                 parent_hash: block.parent_block_hash,
                 sequencer_address: block.sequencer_address,
@@ -198,7 +198,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn get_block_w_full_transactions(&self, block_id: BlockId) -> RpcResult<Block> {
         if let BlockId::Tag(Tag::Pending) = block_id {
-            let block = self.pending_data.read().await.block.clone();
+            let block = read_pending_data(&self.pending_data, &self.storage_reader).await?.block;
             let pending_block_header = PendingBlockHeader {
                 parent_hash: block.parent_block_hash,
                 sequencer_address: block.sequencer_address,
