@@ -16,7 +16,7 @@ expression: dumped_default_config
   "central.class_cache_size": {
     "description": "Size of class cache, must be a positive integer.",
     "value": {
-      "$serde_json::private::Number": "30"
+      "$serde_json::private::Number": "100"
     },
     "privacy": "Public"
   },

@@ -61,7 +61,7 @@ impl Default for CentralSourceConfig {
             max_state_updates_to_download: 20,
             max_state_updates_to_store_in_memory: 20,
             max_classes_to_download: 20,
-            class_cache_size: 30,
+            class_cache_size: 100,
             retry_config: RetryConfig {
                 retry_base_millis: 30,
                 retry_max_delay_millis: 30000,
