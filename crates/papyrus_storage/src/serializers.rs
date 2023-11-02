@@ -121,7 +121,6 @@ use crate::compression_utils::{
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
 use crate::header::StarknetVersion;
 use crate::mmap_file::LocationInFile;
-use crate::ommer::{OmmerEventKey, OmmerTransactionKey};
 #[cfg(test)]
 use crate::serializers::serializers_test::{create_storage_serde_test, StorageSerdeTest};
 use crate::state::data::IndexedDeprecatedContractClass;
@@ -336,8 +335,6 @@ auto_storage_serde! {
         Casm = 2,
         DeprecatedContractClass = 3,
     }
-    struct OmmerTransactionKey(pub BlockHash, pub TransactionOffsetInBlock);
-    struct OmmerEventKey(pub OmmerTransactionKey, pub EventIndexInTransactionOutput);
     pub struct PaymasterData(pub Vec<StarkFelt>);
     pub struct Program {
         pub attributes: serde_json::Value,
@@ -466,7 +463,6 @@ auto_storage_serde! {
     (ContractAddress, BlockNumber);
     (ContractAddress, Nonce);
     (ContractAddress, EventIndex);
-    (ContractAddress, OmmerEventKey);
     (ContractAddress, StorageKey, BlockHash);
     (ContractAddress, StorageKey, BlockNumber);
     (usize, Vec<Hint>);
