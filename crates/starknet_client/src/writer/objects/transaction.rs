@@ -14,7 +14,6 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
-use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::deprecated_contract_class::{
     ContractClassAbiEntry as DeprecatedContractClassAbiEntry,
     EntryPoint as DeprecatedEntryPoint,
@@ -22,13 +21,10 @@ use starknet_api::deprecated_contract_class::{
 };
 use starknet_api::state::{EntryPoint, EntryPointType};
 use starknet_api::transaction::{
-    AccountDeploymentData,
     Calldata,
     ContractAddressSalt,
     Fee,
-    PaymasterData,
     ResourceBoundsMapping,
-    Tip,
     TransactionSignature,
     TransactionVersion,
 };
@@ -91,15 +87,11 @@ pub struct DeployAccountV1Transaction {
 #[serde(deny_unknown_fields)]
 pub struct DeployAccountV3Transaction {
     pub resource_bounds: ResourceBoundsMapping,
-    pub tip: Tip,
     pub contract_address_salt: ContractAddressSalt,
     pub class_hash: ClassHash,
     pub constructor_calldata: Calldata,
     pub nonce: Nonce,
     pub signature: TransactionSignature,
-    pub nonce_data_availability_mode: DataAvailabilityMode,
-    pub fee_data_availability_mode: DataAvailabilityMode,
-    pub paymaster_data: PaymasterData,
     pub version: TransactionVersion,
     pub r#type: DeployAccountType,
 }
@@ -138,15 +130,10 @@ pub struct InvokeV1Transaction {
 #[serde(deny_unknown_fields)]
 pub struct InvokeV3Transaction {
     pub resource_bounds: ResourceBoundsMapping,
-    pub tip: Tip,
     pub calldata: Calldata,
     pub sender_address: ContractAddress,
     pub nonce: Nonce,
     pub signature: TransactionSignature,
-    pub nonce_data_availability_mode: DataAvailabilityMode,
-    pub fee_data_availability_mode: DataAvailabilityMode,
-    pub paymaster_data: PaymasterData,
-    pub account_deployment_data: AccountDeploymentData,
     pub version: TransactionVersion,
     pub r#type: InvokeType,
 }
@@ -203,16 +190,10 @@ pub struct DeclareV2Transaction {
 pub struct DeclareV3Transaction {
     pub contract_class: ContractClass,
     pub resource_bounds: ResourceBoundsMapping,
-    pub tip: Tip,
     pub signature: TransactionSignature,
     pub nonce: Nonce,
-    pub class_hash: ClassHash,
     pub compiled_class_hash: CompiledClassHash,
     pub sender_address: ContractAddress,
-    pub nonce_data_availability_mode: DataAvailabilityMode,
-    pub fee_data_availability_mode: DataAvailabilityMode,
-    pub paymaster_data: PaymasterData,
-    pub account_deployment_data: AccountDeploymentData,
     pub version: TransactionVersion,
     pub r#type: DeclareType,
 }

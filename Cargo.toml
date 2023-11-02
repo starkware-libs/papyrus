@@ -87,6 +87,7 @@ rustc-hex = "2.1.0"
 schemars = "0.8.12"
 serde = "1.0.130"
 serde_json = "1.0.81"
+serde_repr = "0.1"
 serde_yaml = "0.9.16"
 sha3 = "0.10.8"
 simple_logger = "4.0.0"
@@ -108,4 +109,4 @@ url = "2.2.2"
 validator = "0.12"
 
 [patch.crates-io]
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "1526a40921762641a39872643c53305c3e959ab2" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "5717dc1077d57d5de158c463256f3c9e526486cc" }

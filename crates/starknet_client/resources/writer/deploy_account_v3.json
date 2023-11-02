@@ -1,0 +1,33 @@
+{
+    "class_hash": "0x1fcd2dcd811e049eaa730b87038a68f39220a04986b43fe287d690da0df01b8",
+    "constructor_calldata": [
+        "0x0",
+        "0x1",
+        "0x2",
+        "0x3",
+        "0x4",
+        "0x5",
+        "0x6",
+        "0x7",
+        "0x8",
+        "0x9"
+    ],
+    "contract_address_salt": "0x2",
+    "nonce": "0x0",
+    "resource_bounds": {
+        "L1_GAS": {
+            "max_amount": "0x5",
+            "max_price_per_unit": "0x6"
+        },
+        "L2_GAS": {
+            "max_amount": "0x0",
+            "max_price_per_unit": "0x0"
+        }
+    },
+    "signature": [
+        "0x1132577",
+        "0x17df53c"
+    ],
+    "type": "DEPLOY_ACCOUNT",
+    "version": "0x3"
+}

@@ -5753,6 +5753,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_repr"
+version = "0.1.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3081f5ffbb02284dda55132aa26daecedd7372a42417bbbab6f14ab7d6bb9145"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.37",
+]
+
+[[package]]
 name = "serde_spanned"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6145,8 +6156,8 @@ dependencies = [
 
 [[package]]
 name = "starknet_api"
-version = "0.5.0-rc1"
-source = "git+https://github.com/starkware-libs/starknet-api?rev=1526a40921762641a39872643c53305c3e959ab2#1526a40921762641a39872643c53305c3e959ab2"
+version = "0.5.0-rc3"
+source = "git+https://github.com/starkware-libs/starknet-api?rev=5717dc1077d57d5de158c463256f3c9e526486cc#5717dc1077d57d5de158c463256f3c9e526486cc"
 dependencies = [
  "cairo-lang-starknet",
  "derive_more",
@@ -6157,6 +6168,8 @@ dependencies = [
  "serde",
  "serde_json",
  "starknet-crypto 0.5.1",
+ "strum 0.24.1",
+ "strum_macros 0.24.3",
  "thiserror",
 ]
 
@@ -6182,6 +6195,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "serde_repr",
  "starknet_api",
  "test_utils",
  "thiserror",
