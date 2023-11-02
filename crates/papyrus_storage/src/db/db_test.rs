@@ -55,6 +55,32 @@ fn txns_scenarios() {
     assert_eq!(table.get(&txn2, b"key").unwrap(), Some(*b"data1"));
     assert_eq!(table.get(&txn3, b"key").unwrap(), None);
 }
+
+#[test]
+fn insert_duplicate_key() {
+    // Create an environment and a table.
+    let ((_reader, mut writer), _temp_dir) = get_test_env();
+    let table_id = writer.create_table::<String, [u8; 5]>("table").unwrap();
+
+    // Insert a value.
+    let wtxn = writer.begin_rw_txn().unwrap();
+    let table = wtxn.open_table(&table_id).unwrap();
+    let key = "bla".to_string();
+    table.insert(&wtxn, &key, b"data0").unwrap();
+
+    // Insert a value with the same key.
+    assert_eq!(
+        table
+            .insert(&wtxn, &key, b"data0")
+            .expect_err("Expected KeyAlreadyExistsError")
+            .to_string(),
+        format!(
+            "Key '{key:?}' already exists in table 'table'. Error when tried to insert value \
+             '[100, 97, 116, 97, 48]'"
+        ),
+    );
+    wtxn.commit().unwrap();
+}
 #[test]
 
 fn table_stats() {
