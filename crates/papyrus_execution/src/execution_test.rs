@@ -440,7 +440,7 @@ fn simulate_deploy_account() {
     let charge_fee_results =
         execute_simulate_transactions(storage_reader.clone(), tx.clone(), None, true, false);
     let charge_fee_validate_results =
-        execute_simulate_transactions(storage_reader.clone(), tx, None, true, true);
+        execute_simulate_transactions(storage_reader, tx, None, true, true);
 
     for (exec_only, (validate, (charge_fee, charge_fee_validate))) in exec_only_results.iter().zip(
         validate_results
