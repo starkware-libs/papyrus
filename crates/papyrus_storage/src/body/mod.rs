@@ -443,7 +443,7 @@ fn update_tx_hash_mapping<'env>(
 ) -> Result<(), StorageError> {
     let res = transaction_hash_to_idx_table.insert(txn, tx_hash, &transaction_index);
     res.map_err(|err| match err {
-        DbError::Inner(libmdbx::Error::KeyExist) => {
+        DbError::KeyAlreadyExists(..) => {
             StorageError::TransactionHashAlreadyExists { tx_hash: *tx_hash, transaction_index }
         }
         err => err.into(),

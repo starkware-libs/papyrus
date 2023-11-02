@@ -72,9 +72,7 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
     ) -> StorageResult<Self> {
         let ommer_headers_table = self.open_table(&self.tables.ommer_headers)?;
         ommer_headers_table.insert(&self.txn, &block_hash, header).map_err(|err| match err {
-            DbError::Inner(libmdbx::Error::KeyExist) => {
-                StorageError::OmmerHeaderAlreadyExists { block_hash }
-            }
+            DbError::KeyAlreadyExists(..) => StorageError::OmmerHeaderAlreadyExists { block_hash },
             err => err.into(),
         })?;
 
@@ -100,7 +98,7 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
             let tx_index = OmmerTransactionKey(block_hash, TransactionOffsetInBlock(idx));
             ommer_transactions_table.insert(&self.txn, &tx_index, &transactions[idx]).map_err(
                 |err| match err {
-                    DbError::Inner(libmdbx::Error::KeyExist) => {
+                    DbError::KeyAlreadyExists(..) => {
                         StorageError::OmmerTransactionKeyAlreadyExists { tx_key: tx_index }
                     }
                     err => err.into(),
@@ -109,7 +107,7 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
             ommer_transaction_outputs_table
                 .insert(&self.txn, &tx_index, &thin_transaction_outputs[idx])
                 .map_err(|err| match err {
-                    DbError::Inner(libmdbx::Error::KeyExist) => {
+                    DbError::KeyAlreadyExists(..) => {
                         StorageError::OmmerTransactionOutputKeyAlreadyExists { tx_key: tx_index }
                     }
                     err => err.into(),
@@ -124,12 +122,10 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
                     OmmerEventKey(tx_index, EventIndexInTransactionOutput(event_offset));
                 ommer_events_table.insert(&self.txn, &(*address, event_key), event).map_err(
                     |err| match err {
-                        DbError::Inner(libmdbx::Error::KeyExist) => {
-                            StorageError::OmmerEventAlreadyExists {
-                                contract_address: *address,
-                                event_key,
-                            }
-                        }
+                        DbError::KeyAlreadyExists(..) => StorageError::OmmerEventAlreadyExists {
+                            contract_address: *address,
+                            event_key,
+                        },
                         err => err.into(),
                     },
                 )?;
@@ -155,7 +151,7 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
 
         ommer_state_diffs_table.insert(&self.txn, &block_hash, thin_state_diff).map_err(|err| {
             match err {
-                DbError::Inner(libmdbx::Error::KeyExist) => {
+                DbError::KeyAlreadyExists(..) => {
                     StorageError::OmmerStateDiffAlreadyExists { block_hash }
                 }
                 err => err.into(),
@@ -167,12 +163,10 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
             let value = contract_class;
             ommer_declared_classes_table.insert(&self.txn, &key, value).map_err(
                 |err| match err {
-                    DbError::Inner(libmdbx::Error::KeyExist) => {
-                        StorageError::OmmerClassAlreadyExists {
-                            block_hash,
-                            class_hash: *class_hash,
-                        }
-                    }
+                    DbError::KeyAlreadyExists(..) => StorageError::OmmerClassAlreadyExists {
+                        block_hash,
+                        class_hash: *class_hash,
+                    },
                     err => err.into(),
                 },
             )?;
@@ -183,7 +177,7 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
             let value = class_hash;
             ommer_deployed_contracts_table.insert(&self.txn, &key, value).map_err(
                 |err| match err {
-                    DbError::Inner(libmdbx::Error::KeyExist) => {
+                    DbError::KeyAlreadyExists(..) => {
                         StorageError::OmmerDeployedContractAlreadyExists {
                             block_hash,
                             contract_address: *address,
@@ -198,13 +192,11 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
             for (storage_key, value) in storage_entries {
                 let key = (*address, *storage_key, block_hash);
                 ommer_storage_table.insert(&self.txn, &key, value).map_err(|err| match err {
-                    DbError::Inner(libmdbx::Error::KeyExist) => {
-                        StorageError::OmmerStorageKeyAlreadyExists {
-                            block_hash,
-                            contract_address: *address,
-                            key: *storage_key,
-                        }
-                    }
+                    DbError::KeyAlreadyExists(..) => StorageError::OmmerStorageKeyAlreadyExists {
+                        block_hash,
+                        contract_address: *address,
+                        key: *storage_key,
+                    },
                     err => err.into(),
                 })?;
             }
@@ -214,7 +206,7 @@ impl<'env> OmmerStorageWriter for StorageTxn<'env, RW> {
             let key = (*contract_address, block_hash);
             let value = nonce;
             ommer_nonces_table.insert(&self.txn, &key, value).map_err(|err| match err {
-                DbError::Inner(libmdbx::Error::KeyExist) => StorageError::OmmerNonceAlreadyExists {
+                DbError::KeyAlreadyExists(..) => StorageError::OmmerNonceAlreadyExists {
                     block_hash,
                     contract_address: *contract_address,
                 },
