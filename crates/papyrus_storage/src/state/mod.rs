@@ -694,7 +694,7 @@ fn write_deployed_contracts<'env>(
     for (address, class_hash) in deployed_contracts {
         deployed_contracts_table.insert(txn, &(*address, block_number), class_hash).map_err(
             |err| {
-                if matches!(err, DbError::Inner(libmdbx::Error::KeyExist)) {
+                if matches!(err, DbError::KeyAlreadyExists(..)) {
                     StorageError::ContractAlreadyExists { address: *address }
                 } else {
                     StorageError::from(err)
@@ -703,7 +703,7 @@ fn write_deployed_contracts<'env>(
         )?;
 
         nonces_table.insert(txn, &(*address, block_number), &Nonce::default()).map_err(|err| {
-            if matches!(err, DbError::Inner(libmdbx::Error::KeyExist)) {
+            if matches!(err, DbError::KeyAlreadyExists(..)) {
                 StorageError::NonceReWrite {
                     contract_address: *address,
                     nonce: Nonce::default(),

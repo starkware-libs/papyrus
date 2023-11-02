@@ -19,9 +19,9 @@ pub mod db_stats;
 // TODO(yair): Make the serialization module pub(crate).
 #[doc(hidden)]
 pub mod serialization;
-
 use std::borrow::Cow;
 use std::collections::BTreeMap;
+use std::fmt::{self, Display};
 use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::result;
@@ -122,6 +122,13 @@ impl DbConfig {
         self.path_prefix.join(self.chain_id.0.as_str())
     }
 }
+/// A helper struct for DbError::KeyAlreadyExists.
+#[derive(Debug)]
+pub struct KeyAlreadyExistsError {
+    pub table_name: &'static str,
+    pub key: String,
+    pub value: String,
+}
 
 /// An error that can occur when interacting with the database.
 #[derive(thiserror::Error, Debug)]
@@ -129,6 +136,9 @@ pub enum DbError {
     /// An error that occurred in the database library.
     #[error(transparent)]
     Inner(#[from] libmdbx::Error),
+    /// An error that occurred when tried to insert a key that already exists in a table.
+    #[error(transparent)]
+    KeyAlreadyExists(#[from] KeyAlreadyExistsError),
     #[error("Deserialization failed.")]
     /// An error that occurred during deserialization.
     InnerDeserialization,
@@ -136,6 +146,25 @@ pub enum DbError {
     #[error("Serialization failed.")]
     Serialization,
 }
+
+impl KeyAlreadyExistsError {
+    /// Creates a new KeyAlreadyExistsError.
+    pub fn new(table_name: &'static str, key: &impl fmt::Debug, value: &impl fmt::Debug) -> Self {
+        Self { table_name, key: format!("{:?}", key), value: format!("{:?}", value) }
+    }
+}
+
+impl Display for KeyAlreadyExistsError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "Key '{}' already exists in table '{}'. Error when tried to insert value '{}'",
+            self.key, self.table_name, self.value
+        )
+    }
+}
+impl std::error::Error for KeyAlreadyExistsError {}
+
 type DbResult<V> = result::Result<V, DbError>;
 
 /// Tries to open an MDBX environment and returns a reader and a writer to it.
@@ -231,7 +260,12 @@ impl<'a, Mode: TransactionKind> DbTransaction<'a, Mode> {
         table_id: &TableIdentifier<K, V>,
     ) -> DbResult<TableHandle<'env, K, V>> {
         let database = self.txn.open_table(Some(table_id.name))?;
-        Ok(TableHandle { database, _key_type: PhantomData {}, _value_type: PhantomData {} })
+        Ok(TableHandle {
+            database,
+            name: table_id.name,
+            _key_type: PhantomData {},
+            _value_type: PhantomData {},
+        })
     }
 }
 
@@ -243,6 +277,7 @@ pub(crate) struct TableIdentifier<K: StorageSerde, V: StorageSerde> {
 
 pub(crate) struct TableHandle<'env, K: StorageSerde, V: StorageSerde> {
     database: libmdbx::Table<'env>,
+    name: &'static str,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
 }
@@ -287,10 +322,22 @@ impl<'env, 'txn, K: StorageSerde, V: StorageSerde> TableHandle<'env, K, V> {
         txn: &DbTransaction<'env, RW>,
         key: &K,
         value: &V,
-    ) -> DbResult<()> {
+    ) -> DbResult<()>
+    where
+        K: fmt::Debug,
+        V: fmt::Debug,
+    {
         let data = value.serialize()?;
         let bin_key = key.serialize()?;
-        txn.txn.put(&self.database, bin_key, data, WriteFlags::NO_OVERWRITE)?;
+        match txn.txn.put(&self.database, bin_key, data, WriteFlags::NO_OVERWRITE) {
+            Ok(()) => {}
+            Err(libmdbx::Error::KeyExist) => {
+                return Err(DbError::KeyAlreadyExists(KeyAlreadyExistsError::new(
+                    self.name, key, value,
+                )));
+            }
+            Err(err) => return Err(err.into()),
+        };
         Ok(())
     }
 
