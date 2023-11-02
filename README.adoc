@@ -1,10 +1,12 @@
-:toc: right
-
 [pass]
 ++++
 <div align="center">
-  <h1>Papyrus: A Starknet full node</h1>
-  <img src="./resources/img/papyrus-logo-square.png" height="200" width="200">
+++++
+= Papyrus
+A Starknet full node
+[pass]
+++++
+<img src="./resources/img/papyrus-logo-square.png" height="200" width="200">
   <br />
   <a href="https://github.com/starkware-libs/papyrus/issues/new?assignees=&labels=bug&template=01_BUG_REPORT.md&title=bug%3A+">Report a Bug</a>
   ·
@@ -12,17 +14,15 @@
   ·
   <a href="https://github.com/starkware-libs/papyrus/discussions">Ask a Question</a>
 ++++
-
 image:https://img.shields.io/github/actions/workflow/status/starkware-libs/papyrus/ci.yml?branch=main[Github workflow status]
 image:https://img.shields.io/github/license/starkware-libs/papyrus.svg?style=flat-square[#LICENSE,title=Project license]
 image:https://img.shields.io/badge/PRs-welcome-ff69b4.svg?style=flat-square[PRs welcome,link=https://github.com/starkware-libs/papyrus/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22]
 image:https://codecov.io/gh/starkware-libs/papyrus/branch/main/graph/badge.svg?token=YZA9IPDHRM[codecov,link=https://codecov.io/gh/starkware-libs/papyrus]
-
 [pass]
 ++++
 </div>
 ++++
-
+:toc:
 
 
 [#about]
