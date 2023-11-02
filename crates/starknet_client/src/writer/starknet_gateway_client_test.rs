@@ -82,9 +82,19 @@ async fn test_add_transaction_fails_serde<
 }
 
 #[tokio::test]
-async fn add_invoke_transaction() {
+async fn add_invoke_v1_transaction() {
     test_add_transaction_succeeds(
-        "writer/invoke.json",
+        "writer/invoke_v1.json",
+        "writer/invoke_response.json",
+        |client, tx| async move { client.add_invoke_transaction(&tx).await },
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn add_invoke_v3_transaction() {
+    test_add_transaction_succeeds(
+        "writer/invoke_v3.json",
         "writer/invoke_response.json",
         |client, tx| async move { client.add_invoke_transaction(&tx).await },
     )
@@ -112,9 +122,19 @@ async fn add_declare_v2_transaction() {
 }
 
 #[tokio::test]
-async fn add_deploy_account_transaction() {
+async fn add_declare_v3_transaction() {
     test_add_transaction_succeeds(
-        "writer/deploy_account.json",
+        "writer/declare_v3.json",
+        "writer/declare_response.json",
+        |client, tx| async move { client.add_declare_transaction(&tx).await },
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn add_deploy_account_v1_transaction() {
+    test_add_transaction_succeeds(
+        "writer/deploy_account_v1.json",
         "writer/deploy_account_response.json",
         |client, tx| async move { client.add_deploy_account_transaction(&tx).await },
     )
@@ -122,11 +142,21 @@ async fn add_deploy_account_transaction() {
 }
 
 #[tokio::test]
-async fn add_invoke_transaction_wrong_type_response() {
+async fn add_deploy_account_v3_transaction() {
+    test_add_transaction_succeeds(
+        "writer/deploy_account_v3.json",
+        "writer/deploy_account_response.json",
+        |client, tx| async move { client.add_deploy_account_transaction(&tx).await },
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn add_invoke_v1_transaction_wrong_type_response() {
     for bad_response_path in ["writer/declare_response.json", "writer/deploy_account_response.json"]
     {
         test_add_transaction_fails_serde(
-            "writer/invoke.json",
+            "writer/invoke_v1.json",
             bad_response_path,
             |client, tx| async move { client.add_invoke_transaction(&tx).await },
         )
@@ -164,7 +194,7 @@ async fn add_declare_v2_transaction_wrong_type_response() {
 async fn add_deploy_account_transaction_wrong_type_response() {
     for bad_response_path in ["writer/invoke_response.json", "writer/declare_response.json"] {
         test_add_transaction_fails_serde(
-            "writer/deploy_account.json",
+            "writer/deploy_account_v1.json",
             bad_response_path,
             |client, tx| async move { client.add_deploy_account_transaction(&tx).await },
         )

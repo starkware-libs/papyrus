@@ -8,7 +8,6 @@ use starknet_api::core::{
     EthAddress,
     Nonce,
 };
-use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{EntryPoint, EntryPointType};
 use starknet_api::transaction::{
@@ -43,6 +42,7 @@ use crate::reader::objects::transaction::{
     L1ToL2Message,
     L1ToL2Nonce,
     L2ToL1Message,
+    ReservedDataAvailabilityMode,
     Transaction,
     TransactionReceipt,
 };
@@ -55,6 +55,9 @@ auto_impl_get_test_instance! {
         Invoke(IntermediateInvokeTransaction) = 3,
         L1Handler(L1HandlerTransaction) = 4,
     }
+    pub enum ReservedDataAvailabilityMode {
+        Reserved = 0,
+    }
     pub struct IntermediateDeclareTransaction {
         pub resource_bounds: Option<ResourceBoundsMapping>,
         pub tip: Option<Tip>,
@@ -63,8 +66,8 @@ auto_impl_get_test_instance! {
         pub class_hash: ClassHash,
         pub compiled_class_hash: Option<CompiledClassHash>,
         pub sender_address: ContractAddress,
-        pub nonce_data_availability_mode: Option<DataAvailabilityMode>,
-        pub fee_data_availability_mode: Option<DataAvailabilityMode>,
+        pub nonce_data_availability_mode: Option<ReservedDataAvailabilityMode>,
+        pub fee_data_availability_mode: Option<ReservedDataAvailabilityMode>,
         pub paymaster_data: Option<PaymasterData>,
         pub account_deployment_data: Option<AccountDeploymentData>,
         pub max_fee: Option<Fee>,
@@ -79,8 +82,8 @@ auto_impl_get_test_instance! {
         pub class_hash: ClassHash,
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
-        pub nonce_data_availability_mode: Option<DataAvailabilityMode>,
-        pub fee_data_availability_mode: Option<DataAvailabilityMode>,
+        pub nonce_data_availability_mode: Option<ReservedDataAvailabilityMode>,
+        pub fee_data_availability_mode: Option<ReservedDataAvailabilityMode>,
         pub paymaster_data: Option<PaymasterData>,
         pub contract_address: ContractAddress,
         pub max_fee: Option<Fee>,
@@ -104,8 +107,8 @@ auto_impl_get_test_instance! {
         pub nonce: Option<Nonce>,
         pub max_fee: Option<Fee>,
         pub signature: TransactionSignature,
-        pub nonce_data_availability_mode: Option<DataAvailabilityMode>,
-        pub fee_data_availability_mode: Option<DataAvailabilityMode>,
+        pub nonce_data_availability_mode: Option<ReservedDataAvailabilityMode>,
+        pub fee_data_availability_mode: Option<ReservedDataAvailabilityMode>,
         pub paymaster_data: Option<PaymasterData>,
         pub account_deployment_data: Option<AccountDeploymentData>,
         pub transaction_hash: TransactionHash,
