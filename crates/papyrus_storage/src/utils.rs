@@ -4,6 +4,7 @@
 mod utils_test;
 
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 
@@ -27,8 +28,8 @@ fn dump_table_to_file<K, V>(
     file_path: &str,
 ) -> StorageResult<()>
 where
-    K: StorageSerde + serde::Serialize,
-    V: StorageSerde + serde::Serialize,
+    K: StorageSerde + serde::Serialize + Debug,
+    V: StorageSerde + serde::Serialize + Debug,
 {
     let table_handle = txn.txn.open_table(table_id)?;
     let mut cursor = table_handle.cursor(&txn.txn)?;
