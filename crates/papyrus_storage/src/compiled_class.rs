@@ -97,7 +97,7 @@ impl<'env> CasmStorageWriter for StorageTxn<'env, RW> {
 
         let location = self.file_access.append_casm(casm);
         casm_table.insert(&self.txn, class_hash, &location).map_err(|err| {
-            if matches!(err, DbError::Inner(libmdbx::Error::KeyExist)) {
+            if matches!(err, DbError::KeyAlreadyExists(..)) {
                 StorageError::CompiledClassReWrite { class_hash: *class_hash }
             } else {
                 StorageError::from(err)
