@@ -1,0 +1,35 @@
+{
+    "account_deployment_data": [],
+    "calldata": [
+        "0x0",
+        "0x1",
+        "0x2",
+        "0x3",
+        "0x4",
+        "0x5",
+        "0x6",
+        "0x7",
+        "0x8",
+        "0x9"
+    ],
+    "fee_data_availability_mode": 0,
+    "nonce": "0x0",
+    "nonce_data_availability_mode": 0,
+    "paymaster_data": [],
+    "resource_bounds": {
+        "L1_GAS": {
+            "max_amount": "0xffffffffffffffff",
+            "max_price_per_unit": "0xffffffffffffffffffffffffffffffff"
+        },
+        "L2_GAS": {
+            "max_amount": "0x0",
+            "max_price_per_unit": "0x0"
+        }
+    },
+    "sender_address": "0x2da4d93784af6b4427c32533dd7e5780c9d642c3a3348f6adacebc97edab4c",
+    "signature": [],
+    "tip": "0x0",
+    "transaction_hash": "0x14df307294262b17b20c8949fd3dbd8f25a9bd47548d00d89ca93977e5836b",
+    "version": "0x3",
+    "type": "INVOKE_FUNCTION"
+}
