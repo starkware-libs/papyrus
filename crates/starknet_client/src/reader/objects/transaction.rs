@@ -5,6 +5,7 @@ mod transaction_test;
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 use starknet_api::core::{
     ClassHash,
     CompiledClassHash,
@@ -13,7 +14,6 @@ use starknet_api::core::{
     EthAddress,
     Nonce,
 };
-use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::hash::StarkHash;
 use starknet_api::transaction::{
     AccountDeploymentData,
@@ -145,6 +145,20 @@ impl From<L1HandlerTransaction> for starknet_api::transaction::L1HandlerTransact
     }
 }
 
+// This enum is required since the FGW sends this field with value 0 as a reserved value. Once the
+// feature will be activated this enum should be removed from here and taken from starknet-api.
+#[derive(Debug, Deserialize_repr, Serialize_repr, Clone, Eq, PartialEq)]
+#[repr(u8)]
+pub enum ReservedDataAvailabilityMode {
+    Reserved = 0,
+}
+
+impl From<ReservedDataAvailabilityMode> for starknet_api::data_availability::DataAvailabilityMode {
+    fn from(_: ReservedDataAvailabilityMode) -> Self {
+        starknet_api::data_availability::DataAvailabilityMode::L1
+    }
+}
+
 // TODO(shahak, 01/11/2023): Add serde tests for v3 transactions.
 #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -156,8 +170,8 @@ pub struct IntermediateDeclareTransaction {
     pub class_hash: ClassHash,
     pub compiled_class_hash: Option<CompiledClassHash>,
     pub sender_address: ContractAddress,
-    pub nonce_data_availability_mode: Option<DataAvailabilityMode>,
-    pub fee_data_availability_mode: Option<DataAvailabilityMode>,
+    pub nonce_data_availability_mode: Option<ReservedDataAvailabilityMode>,
+    pub fee_data_availability_mode: Option<ReservedDataAvailabilityMode>,
     pub paymaster_data: Option<PaymasterData>,
     pub account_deployment_data: Option<AccountDeploymentData>,
     pub max_fee: Option<Fee>,
@@ -248,18 +262,20 @@ impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::Decl
                 },
             )?,
             sender_address: declare_tx.sender_address,
-            nonce_data_availability_mode: declare_tx.nonce_data_availability_mode.ok_or(
-                ReaderClientError::BadTransaction {
+            nonce_data_availability_mode: declare_tx
+                .nonce_data_availability_mode
+                .ok_or(ReaderClientError::BadTransaction {
                     tx_hash: declare_tx.transaction_hash,
                     msg: "Declare V3 must contain nonce_data_availability_mode field.".to_string(),
-                },
-            )?,
-            fee_data_availability_mode: declare_tx.fee_data_availability_mode.ok_or(
-                ReaderClientError::BadTransaction {
+                })?
+                .into(),
+            fee_data_availability_mode: declare_tx
+                .fee_data_availability_mode
+                .ok_or(ReaderClientError::BadTransaction {
                     tx_hash: declare_tx.transaction_hash,
                     msg: "Declare V3 must contain fee_data_availability_mode field.".to_string(),
-                },
-            )?,
+                })?
+                .into(),
             paymaster_data: declare_tx.paymaster_data.ok_or(ReaderClientError::BadTransaction {
                 tx_hash: declare_tx.transaction_hash,
                 msg: "Declare V3 must contain paymaster_data field.".to_string(),
@@ -308,9 +324,10 @@ pub struct IntermediateDeployAccountTransaction {
     pub class_hash: ClassHash,
     pub contract_address_salt: ContractAddressSalt,
     pub constructor_calldata: Calldata,
-    pub nonce_data_availability_mode: Option<DataAvailabilityMode>,
-    pub fee_data_availability_mode: Option<DataAvailabilityMode>,
+    pub nonce_data_availability_mode: Option<ReservedDataAvailabilityMode>,
+    pub fee_data_availability_mode: Option<ReservedDataAvailabilityMode>,
     pub paymaster_data: Option<PaymasterData>,
+    #[serde(alias = "sender_address")]
     pub contract_address: ContractAddress,
     pub max_fee: Option<Fee>,
     pub transaction_hash: TransactionHash,
@@ -388,20 +405,22 @@ impl TryFrom<IntermediateDeployAccountTransaction>
             class_hash: deploy_account_tx.class_hash,
             contract_address_salt: deploy_account_tx.contract_address_salt,
             constructor_calldata: deploy_account_tx.constructor_calldata,
-            nonce_data_availability_mode: deploy_account_tx.nonce_data_availability_mode.ok_or(
-                ReaderClientError::BadTransaction {
+            nonce_data_availability_mode: deploy_account_tx
+                .nonce_data_availability_mode
+                .ok_or(ReaderClientError::BadTransaction {
                     tx_hash: deploy_account_tx.transaction_hash,
                     msg: "DeployAccount V3 must contain nonce_data_availability_mode field."
                         .to_string(),
-                },
-            )?,
-            fee_data_availability_mode: deploy_account_tx.fee_data_availability_mode.ok_or(
-                ReaderClientError::BadTransaction {
+                })?
+                .into(),
+            fee_data_availability_mode: deploy_account_tx
+                .fee_data_availability_mode
+                .ok_or(ReaderClientError::BadTransaction {
                     tx_hash: deploy_account_tx.transaction_hash,
                     msg: "DeployAccount V3 must contain fee_data_availability_mode field."
                         .to_string(),
-                },
-            )?,
+                })?
+                .into(),
             paymaster_data: deploy_account_tx.paymaster_data.ok_or(
                 ReaderClientError::BadTransaction {
                     tx_hash: deploy_account_tx.transaction_hash,
@@ -428,8 +447,8 @@ pub struct IntermediateInvokeTransaction {
     pub nonce: Option<Nonce>,
     pub max_fee: Option<Fee>,
     pub signature: TransactionSignature,
-    pub nonce_data_availability_mode: Option<DataAvailabilityMode>,
-    pub fee_data_availability_mode: Option<DataAvailabilityMode>,
+    pub nonce_data_availability_mode: Option<ReservedDataAvailabilityMode>,
+    pub fee_data_availability_mode: Option<ReservedDataAvailabilityMode>,
     pub paymaster_data: Option<PaymasterData>,
     pub account_deployment_data: Option<AccountDeploymentData>,
     pub transaction_hash: TransactionHash,
@@ -521,18 +540,20 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
             })?,
             sender_address: invoke_tx.sender_address,
             calldata: invoke_tx.calldata,
-            nonce_data_availability_mode: invoke_tx.nonce_data_availability_mode.ok_or(
-                ReaderClientError::BadTransaction {
+            nonce_data_availability_mode: invoke_tx
+                .nonce_data_availability_mode
+                .ok_or(ReaderClientError::BadTransaction {
                     tx_hash: invoke_tx.transaction_hash,
                     msg: "Invoke V3 must contain nonce_data_availability_mode field.".to_string(),
-                },
-            )?,
-            fee_data_availability_mode: invoke_tx.fee_data_availability_mode.ok_or(
-                ReaderClientError::BadTransaction {
+                })?
+                .into(),
+            fee_data_availability_mode: invoke_tx
+                .fee_data_availability_mode
+                .ok_or(ReaderClientError::BadTransaction {
                     tx_hash: invoke_tx.transaction_hash,
                     msg: "Invoke V3 must contain fee_data_availability_mode field.".to_string(),
-                },
-            )?,
+                })?
+                .into(),
             paymaster_data: invoke_tx.paymaster_data.ok_or(ReaderClientError::BadTransaction {
                 tx_hash: invoke_tx.transaction_hash,
                 msg: "Invoke V3 must contain paymaster_data field.".to_string(),

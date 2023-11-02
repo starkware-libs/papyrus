@@ -67,6 +67,32 @@
             "calldata": ["0x2db8c2615db39a5ed8750b87ac8f217485be11ec", "0xbc614e", "0x258"],
             "transaction_hash": "0xfb118dc1d4a4141b7718da4b7fa98980b11caf5aa5d6e1e35e9b050aae788b",
             "type": "L1_HANDLER"
+        },
+        {
+            "account_deployment_data": [],
+            "class_hash": "0x6f6742127e27687640c7aaf566b9dc892c4493973076cb96fdeb418ae77c192",
+            "compiled_class_hash": "0xcbbcfda1dea5cc48d3c7ebefd50ecc4aaefabe7e5596fdef4f60cded0ea0b24",
+            "fee_data_availability_mode": 0,
+            "nonce": "0x0",
+            "nonce_data_availability_mode": 0,
+            "paymaster_data": [],
+            "resource_bounds": {
+                "L1_GAS": {
+                    "max_amount": "0xffffffffffffffff",
+                    "max_price_per_unit": "0xffffffffffffffffffffffffffffffff"
+                },
+                "L2_GAS": {
+                    "max_amount": "0x0",
+                    "max_price_per_unit": "0x0"
+                }
+            },
+            "sender_address": "0x12fd537",
+            "signature": [],
+            "tip": "0x0",
+            "transaction_hash": "0x308104e126e1d6659ef499da73eeb88ba9f066a57ad75d8d27fa3ff420cded2",
+            "version": "0x3",
+            "max_fee": "0x0",
+            "type": "DECLARE"
         }
     ],
     "timestamp": 1658396103,
@@ -146,6 +172,25 @@
                 "selector": "0xc73f681176fc7b3f9693986fd7b14581e8d540519e27400e88b8713932be01",
                 "payload": ["0xbc614e", "0x258"]
             },
+            "l2_to_l1_messages": [],
+            "events": [],
+            "execution_resources": {
+                "n_steps": 137,
+                "builtin_instance_counter": {
+                    "pedersen_builtin": 2,
+                    "range_check_builtin": 6,
+                    "bitwise_builtin": 0,
+                    "output_builtin": 0,
+                    "ecdsa_builtin": 0,
+                    "ec_op_builtin": 0
+                },
+                "n_memory_holes": 22
+            },
+            "actual_fee": "0x0"
+        },
+        {
+            "transaction_index": 5,
+            "transaction_hash": "0x0308104e126e1d6659ef499da73eeb88ba9f066a57ad75d8d27fa3ff420cded2",
             "l2_to_l1_messages": [],
             "events": [],
             "execution_resources": {
