@@ -1,3 +1,27 @@
+[pass]
+++++
+<div align="center">
+  <h1>Papyrus</h1>
+  <img src="./resources/img/papyrus-logo-square.png" height="200" width="200">
+  <br />
+  <a href="https://github.com/starkware-libs/papyrus/issues/new?assignees=&labels=bug&template=01_BUG_REPORT.md&title=bug%3A+">Report a Bug</a>
+  ·
+  <a href="https://github.com/starkware-libs/papyrus/issues/new?assignees=&labels=enhancement&template=02_FEATURE_REQUEST.md&title=feat%3A+">Request a Feature</a>
+  ·
+  <a href="https://github.com/starkware-libs/papyrus/discussions">Ask a Question</a>
+</div>
+
+<div align="center">
+<br />
+
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/starkware-libs/papyrus/ci.yml?branch=main)
+[![Project license](https://img.shields.io/github/license/starkware-libs/papyrus.svg?style=flat-square)](LICENSE)
+[![Pull Requests welcome](https://img.shields.io/badge/PRs-welcome-ff69b4.svg?style=flat-square)](https://github.com/starkware-libs/papyrus/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)
+[![codecov](https://codecov.io/gh/starkware-libs/papyrus/branch/main/graph/badge.svg?token=YZA9IPDHRM)](https://codecov.io/gh/starkware-libs/papyrus)
+
+</div>
+++++
+
 [id="Papyrus_readme"]
 = Papyrus: a Starknet full node
 :toc:
