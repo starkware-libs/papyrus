@@ -1282,6 +1282,15 @@ async fn get_storage_at() {
         .unwrap();
     assert_eq!(res, other_value);
 
+    // Ask for storage in pending block when it's not updated.
+    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+
+    let res = module
+        .call::<_, StarkFelt>(method_name, (*address, other_key, BlockId::Tag(Tag::Pending)))
+        .await
+        .unwrap();
+    assert_eq!(res, StarkFelt::default());
+
     // Ask for storage at address 0x1 - the block hash table contract address
     let key = StorageKey(patricia_key!("0x1001"));
     let res = module

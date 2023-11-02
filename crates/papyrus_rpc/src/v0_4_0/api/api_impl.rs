@@ -259,8 +259,11 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         block_id: BlockId,
     ) -> RpcResult<StarkFelt> {
         let block_id = if let BlockId::Tag(Tag::Pending) = block_id {
-            let pending_storage_diffs =
-                &self.pending_data.read().await.state_update.state_diff.storage_diffs;
+            let pending_storage_diffs = read_pending_data(&self.pending_data, &self.storage_reader)
+                .await?
+                .state_update
+                .state_diff
+                .storage_diffs;
             if let Some(storage_entries) = pending_storage_diffs.get(&contract_address) {
                 // iterating in reverse to get the latest value.
                 for StorageEntry { key: other_key, value } in storage_entries.iter().rev() {
