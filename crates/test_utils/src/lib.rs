@@ -166,9 +166,9 @@ pub fn read_json_file(path_in_resource_dir: &str) -> serde_json::Value {
 pub fn validate_load_and_dump<T: Serialize + for<'a> Deserialize<'a>>(path_in_resource_dir: &str) {
     let json_value = read_json_file(path_in_resource_dir);
     let load_result = serde_json::from_value::<T>(json_value.clone());
-    assert!(load_result.is_ok());
+    assert!(load_result.is_ok(), "error: {:?}", load_result.err());
     let dump_result = serde_json::to_value(&(load_result.unwrap()));
-    assert!(dump_result.is_ok());
+    assert!(dump_result.is_ok(), "error: {:?}", dump_result.err());
     assert_eq!(json_value, dump_result.unwrap());
 }
 

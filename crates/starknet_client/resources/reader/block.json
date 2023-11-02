@@ -67,7 +67,105 @@
             "calldata": ["0x2db8c2615db39a5ed8750b87ac8f217485be11ec", "0xbc614e", "0x258"],
             "transaction_hash": "0xfb118dc1d4a4141b7718da4b7fa98980b11caf5aa5d6e1e35e9b050aae788b",
             "type": "L1_HANDLER"
+        },
+        {
+            "account_deployment_data": [],
+            "class_hash": "0x6f6742127e27687640c7aaf566b9dc892c4493973076cb96fdeb418ae77c192",
+            "compiled_class_hash": "0xcbbcfda1dea5cc48d3c7ebefd50ecc4aaefabe7e5596fdef4f60cded0ea0b24",
+            "fee_data_availability_mode": 0,
+            "nonce": "0x0",
+            "nonce_data_availability_mode": 0,
+            "paymaster_data": [],
+            "resource_bounds": {
+                "L1_GAS": {
+                    "max_amount": "0xffffffffffffffff",
+                    "max_price_per_unit": "0xffffffffffffffffffffffffffffffff"
+                },
+                "L2_GAS": {
+                    "max_amount": "0x0",
+                    "max_price_per_unit": "0x0"
+                }
+            },
+            "sender_address": "0x12fd537",
+            "signature": [],
+            "tip": "0x0",
+            "transaction_hash": "0x308104e126e1d6659ef499da73eeb88ba9f066a57ad75d8d27fa3ff420cded2",
+            "version": "0x3",
+            "max_fee": "0x0",
+            "type": "DECLARE"
+        },
+        {
+            "account_deployment_data": [],
+            "calldata": [
+                "0x0",
+                "0x1",
+                "0x2",
+                "0x3",
+                "0x4",
+                "0x5",
+                "0x6",
+                "0x7",
+                "0x8",
+                "0x9"
+            ],
+            "fee_data_availability_mode": 0,
+            "nonce": "0x0",
+            "nonce_data_availability_mode": 0,
+            "paymaster_data": [],
+            "resource_bounds": {
+                "L1_GAS": {
+                    "max_amount": "0xffffffffffffffff",
+                    "max_price_per_unit": "0xffffffffffffffffffffffffffffffff"
+                },
+                "L2_GAS": {
+                    "max_amount": "0x0",
+                    "max_price_per_unit": "0x0"
+                }
+            },
+            "sender_address": "0x2da4d93784af6b4427c32533dd7e5780c9d642c3a3348f6adacebc97edab4c",
+            "signature": [],
+            "tip": "0x0",
+            "transaction_hash": "0x14df307294262b17b20c8949fd3dbd8f25a9bd47548d00d89ca93977e5836b",
+            "version": "0x3",
+            "type": "INVOKE_FUNCTION"
+        },
+        {
+            "class_hash": "0x1fcd2dcd811e049eaa730b87038a68f39220a04986b43fe287d690da0df01b8",
+            "constructor_calldata": [
+                "0x0",
+                "0x1",
+                "0x2",
+                "0x3",
+                "0x4",
+                "0x5",
+                "0x6",
+                "0x7",
+                "0x8",
+                "0x9"
+            ],
+            "contract_address_salt": "0x2",
+            "fee_data_availability_mode": 0,
+            "nonce": "0x0",
+            "nonce_data_availability_mode": 0,
+            "paymaster_data": [],
+            "resource_bounds": {
+                "L1_GAS": {
+                    "max_amount": "0xffffffffffffffff",
+                    "max_price_per_unit": "0xffffffffffffffffffffffffffffffff"
+                },
+                "L2_GAS": {
+                    "max_amount": "0x0",
+                    "max_price_per_unit": "0x0"
+                }
+            },
+            "sender_address": "0x1b34d819720bd84c89bdfb476bc2c4d0de9a41b766efabd20fa292280e4c6d9",
+            "signature": [],
+            "tip": "0x0",
+            "transaction_hash": "0x60bc493f32b6a2ebc2f6fd67324e72c5104ca26afa9a1f61726caa1094f340b",
+            "version": "0x3",
+            "type": "DEPLOY_ACCOUNT"
         }
+
     ],
     "timestamp": 1658396103,
     "sequencer_address": "0x46a89ae102987331d369645031b49c27738ed096f2789c24449966da4c6de6b",
@@ -159,6 +257,66 @@
                     "ec_op_builtin": 0
                 },
                 "n_memory_holes": 22
+            },
+            "actual_fee": "0x0"
+        },
+        {
+            "transaction_index": 5,
+            "transaction_hash": "0x0308104e126e1d6659ef499da73eeb88ba9f066a57ad75d8d27fa3ff420cded2",
+            "l2_to_l1_messages": [],
+            "events": [],
+            "execution_resources": {
+                "n_steps": 137,
+                "builtin_instance_counter": {
+                    "pedersen_builtin": 2,
+                    "range_check_builtin": 6,
+                    "bitwise_builtin": 0,
+                    "output_builtin": 0,
+                    "ecdsa_builtin": 0,
+                    "ec_op_builtin": 0
+                },
+                "n_memory_holes": 22
+            },
+            "actual_fee": "0x0"
+        },
+        {
+            "transaction_index": 6,
+            "transaction_hash": "0x0014df307294262b17b20c8949fd3dbd8f25a9bd47548d00d89ca93977e5836b",
+            "l2_to_l1_messages": [],
+            "events": [
+                {
+                    "from_address": "0x6d0a7c29de4ea81d1b9982c04f691320a6b65eef9d6ea847b4b077a0305a24e",
+                    "keys": [
+                        "0x5ad857f66a5b55f1301ff1ed7e098ac6d4433148f0b72ebc4a2945ab85ad53"
+                    ],
+                    "data": [
+                        "0x6e81d0030bfae36fc55bf682f96dc2d103ee02f439b10c8e9af6742e7d7e2ea",
+                        "0x0"
+                    ]
+                }
+            ],
+            "execution_resources": {
+                "n_steps": 754,
+                "builtin_instance_counter": {
+                    "pedersen_builtin": 2,
+                    "range_check_builtin": 16,
+                    "ecdsa_builtin": 1,
+                    "output_builtin": 0,
+                    "bitwise_builtin": 0
+                },
+                "n_memory_holes": 25
+            },
+            "actual_fee": "0xdb2148b8ea5"
+        },
+        {
+            "transaction_index": 7,
+            "transaction_hash": "0x060bc493f32b6a2ebc2f6fd67324e72c5104ca26afa9a1f61726caa1094f340b",
+            "l2_to_l1_messages": [],
+            "events": [],
+            "execution_resources": {
+                "n_steps": 0,
+                "builtin_instance_counter": {},
+                "n_memory_holes": 0
             },
             "actual_fee": "0x0"
         }
