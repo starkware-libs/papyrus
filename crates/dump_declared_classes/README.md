@@ -9,7 +9,7 @@ This tool allows you to dump the entire `declared_classes` table from Papyrus st
    Run a docker with the image 
    <!-- TODO(yael): image name -->
 
-   Please refer to the main [README.md](../../README.md#running-papyrus-with-docker) for instructions.
+   Please refer to the main [README](../../README.adoc#running-papyrus-with-docker) for instructions.
 
 3. **View Running Docker Containers**
 
