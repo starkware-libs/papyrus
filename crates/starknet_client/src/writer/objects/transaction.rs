@@ -13,8 +13,8 @@ mod transaction_test;
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
-use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::deprecated_contract_class::{
     ContractClassAbiEntry as DeprecatedContractClassAbiEntry,
     EntryPoint as DeprecatedEntryPoint,
@@ -67,6 +67,14 @@ pub enum DeclareType {
     Declare,
 }
 
+// This enum is required since the GW receives this field with value 0 as a reserved value. Once the
+// feature will be activated this enum should be removed from here and taken from starknet-api.
+#[derive(Debug, Deserialize_repr, Serialize_repr, Clone, Eq, PartialEq)]
+#[repr(u8)]
+pub enum ReservedDataAvailabilityMode {
+    Reserved = 0,
+}
+
 /// A deploy account transaction that can be added to Starknet through the Starknet gateway.
 /// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
 /// HTTP method.
@@ -97,8 +105,8 @@ pub struct DeployAccountV3Transaction {
     pub constructor_calldata: Calldata,
     pub nonce: Nonce,
     pub signature: TransactionSignature,
-    pub nonce_data_availability_mode: DataAvailabilityMode,
-    pub fee_data_availability_mode: DataAvailabilityMode,
+    pub nonce_data_availability_mode: ReservedDataAvailabilityMode,
+    pub fee_data_availability_mode: ReservedDataAvailabilityMode,
     pub paymaster_data: PaymasterData,
     pub version: TransactionVersion,
     pub r#type: DeployAccountType,
@@ -143,8 +151,8 @@ pub struct InvokeV3Transaction {
     pub sender_address: ContractAddress,
     pub nonce: Nonce,
     pub signature: TransactionSignature,
-    pub nonce_data_availability_mode: DataAvailabilityMode,
-    pub fee_data_availability_mode: DataAvailabilityMode,
+    pub nonce_data_availability_mode: ReservedDataAvailabilityMode,
+    pub fee_data_availability_mode: ReservedDataAvailabilityMode,
     pub paymaster_data: PaymasterData,
     pub account_deployment_data: AccountDeploymentData,
     pub version: TransactionVersion,
@@ -206,11 +214,10 @@ pub struct DeclareV3Transaction {
     pub tip: Tip,
     pub signature: TransactionSignature,
     pub nonce: Nonce,
-    pub class_hash: ClassHash,
     pub compiled_class_hash: CompiledClassHash,
     pub sender_address: ContractAddress,
-    pub nonce_data_availability_mode: DataAvailabilityMode,
-    pub fee_data_availability_mode: DataAvailabilityMode,
+    pub nonce_data_availability_mode: ReservedDataAvailabilityMode,
+    pub fee_data_availability_mode: ReservedDataAvailabilityMode,
     pub paymaster_data: PaymasterData,
     pub account_deployment_data: AccountDeploymentData,
     pub version: TransactionVersion,
