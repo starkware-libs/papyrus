@@ -1,4 +1,4 @@
-use starknet_api::block::{BlockHash, BlockNumber};
+use starknet_api::block::BlockNumber;
 use starknet_api::core::ContractAddress;
 use starknet_api::transaction::{
     EventIndexInTransactionOutput,
@@ -22,7 +22,7 @@ use crate::header::StarknetVersion;
 use crate::mmap_file::LocationInFile;
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::Version;
-use crate::{EventIndex, MarkerKind, OffsetKind, OmmerEventKey, OmmerTransactionKey};
+use crate::{EventIndex, MarkerKind, OffsetKind};
 
 auto_impl_get_test_instance! {
     struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
@@ -42,8 +42,6 @@ auto_impl_get_test_instance! {
         Casm = 2,
         DeprecatedContractClass = 3,
     }
-    struct OmmerTransactionKey(pub BlockHash, pub TransactionOffsetInBlock);
-    struct OmmerEventKey(pub OmmerTransactionKey, pub EventIndexInTransactionOutput);
     pub struct StarknetVersion(pub String);
     pub struct ThinDeclareTransactionOutput {
         pub actual_fee: Fee,

@@ -59,9 +59,6 @@ pub mod compression_utils;
 pub mod db;
 pub mod header;
 pub mod mmap_file;
-// TODO(yair): Once decided whether to keep the ommer module, write its documentation or delete it.
-#[doc(hidden)]
-pub mod ommer;
 mod serializers;
 pub mod state;
 mod version;
@@ -89,7 +86,6 @@ use mmap_file::{
     Reader,
     Writer,
 };
-use ommer::{OmmerEventKey, OmmerTransactionKey};
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use serde::{Deserialize, Serialize};
@@ -150,17 +146,6 @@ pub fn open_storage(
         transaction_idx_to_hash: db_writer.create_table("transaction_idx_to_hash")?,
         transaction_outputs: db_writer.create_table("transaction_outputs")?,
         transactions: db_writer.create_table("transactions")?,
-
-        // Ommer tables
-        ommer_contract_storage: db_writer.create_table("ommer_contract_storage")?,
-        ommer_declared_classes: db_writer.create_table("ommer_declared_classes")?,
-        ommer_deployed_contracts: db_writer.create_table("ommer_deployed_contracts")?,
-        ommer_events: db_writer.create_table("ommer_events")?,
-        ommer_headers: db_writer.create_table("ommer_headers")?,
-        ommer_nonces: db_writer.create_table("ommer_nonces")?,
-        ommer_state_diffs: db_writer.create_table("ommer_state_diffs")?,
-        ommer_transaction_outputs: db_writer.create_table("ommer_transaction_outputs")?,
-        ommer_transactions: db_writer.create_table("ommer_transactions")?,
 
         // Version tables
         starknet_version: db_writer.create_table("starknet_version")?,
@@ -345,18 +330,6 @@ struct_field_names! {
         transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
         transactions: TableIdentifier<TransactionIndex, Transaction>,
 
-        // Ommer tables
-        ommer_contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockHash), StarkFelt>,
-        //TODO(yair): Consider whether an ommer_deprecated_declared_classes is needed.
-        ommer_declared_classes: TableIdentifier<(BlockHash, ClassHash), ContractClass>,
-        ommer_deployed_contracts: TableIdentifier<(ContractAddress, BlockHash), ClassHash>,
-        ommer_events: TableIdentifier<(ContractAddress, OmmerEventKey), EventContent>,
-        ommer_headers: TableIdentifier<BlockHash, BlockHeader>,
-        ommer_nonces: TableIdentifier<(ContractAddress, BlockHash), Nonce>,
-        ommer_state_diffs: TableIdentifier<BlockHash, ThinStateDiff>,
-        ommer_transaction_outputs: TableIdentifier<OmmerTransactionKey, ThinTransactionOutput>,
-        ommer_transactions: TableIdentifier<OmmerTransactionKey, Transaction>,
-
         // Version tables
         starknet_version: TableIdentifier<BlockNumber, StarknetVersion>,
         storage_version: TableIdentifier<String, Version>
@@ -416,34 +389,6 @@ pub enum StorageError {
     /// Errors related to the underlying files.
     #[error(transparent)]
     MMapFileError(#[from] MMapFileError),
-    #[error("Header of block with hash {block_hash} already exists in ommer table.")]
-    OmmerHeaderAlreadyExists { block_hash: BlockHash },
-    #[error("Ommer transaction key {tx_key:?} already exists.")]
-    OmmerTransactionKeyAlreadyExists { tx_key: OmmerTransactionKey },
-    #[error("Ommer transaction output key {tx_key:?} already exists.")]
-    OmmerTransactionOutputKeyAlreadyExists { tx_key: OmmerTransactionKey },
-    #[error(
-        "Ommer event {event_key:?} emitted from contract address {contract_address:?} already \
-         exists."
-    )]
-    OmmerEventAlreadyExists { contract_address: ContractAddress, event_key: OmmerEventKey },
-    #[error("Ommer state diff of block {block_hash} already exists.")]
-    OmmerStateDiffAlreadyExists { block_hash: BlockHash },
-    #[error("Ommer class {class_hash:?} of block {block_hash} already exists.")]
-    OmmerClassAlreadyExists { block_hash: BlockHash, class_hash: ClassHash },
-    #[error("Ommer deployed contract {contract_address:?} of block {block_hash} already exists.")]
-    OmmerDeployedContractAlreadyExists { block_hash: BlockHash, contract_address: ContractAddress },
-    #[error(
-        "Ommer storage key {key:?} of contract {contract_address:?} of block {block_hash} already \
-         exists."
-    )]
-    OmmerStorageKeyAlreadyExists {
-        block_hash: BlockHash,
-        contract_address: ContractAddress,
-        key: StorageKey,
-    },
-    #[error("Ommer nonce of contract {contract_address:?} of block {block_hash} already exists.")]
-    OmmerNonceAlreadyExists { block_hash: BlockHash, contract_address: ContractAddress },
     #[error(transparent)]
     StorageVersionInconcistency(#[from] StorageVersionError),
     #[error("Compiled class of {class_hash:?} already exists.")]
