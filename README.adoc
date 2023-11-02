@@ -1,3 +1,5 @@
+:toc: right
+
 [pass]
 ++++
 <div align="center">
@@ -22,12 +24,11 @@ image:https://codecov.io/gh/starkware-libs/papyrus/branch/main/graph/badge.svg?t
 ++++
 
 
-[id="Papyrus_readme"]
-:toc:
 
 [#about]
-
 == About
+
+
 
 Papyrus is a Starknet full node implemented in Rust. Papyrus tracks Starknet’s state as it evolves over time, and enables you to query this state via Starknet’s JSON-RPC.
 
