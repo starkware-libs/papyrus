@@ -41,6 +41,8 @@
 mod body_test;
 pub mod events;
 
+use std::fmt::Debug;
+
 use papyrus_proc_macros::latency_histogram;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockBody, BlockNumber};
@@ -247,7 +249,7 @@ impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
     // Helper function to get from 'table' all the values of entries with transaction index in
     // 'block_number'. The returned values are ordered by the transaction offset in block in
     // ascending order.
-    fn get_transactions_in_block<V: StorageSerde>(
+    fn get_transactions_in_block<V: StorageSerde + Debug>(
         &self,
         block_number: BlockNumber,
         table: TableHandle<'env, TransactionIndex, V>,
@@ -443,7 +445,7 @@ fn update_tx_hash_mapping<'env>(
 ) -> Result<(), StorageError> {
     let res = transaction_hash_to_idx_table.insert(txn, tx_hash, &transaction_index);
     res.map_err(|err| match err {
-        DbError::Inner(libmdbx::Error::KeyExist) => {
+        DbError::KeyAlreadyExists(..) => {
             StorageError::TransactionHashAlreadyExists { tx_hash: *tx_hash, transaction_index }
         }
         err => err.into(),
