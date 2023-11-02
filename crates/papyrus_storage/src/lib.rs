@@ -70,6 +70,7 @@ mod test_instances;
 pub mod test_utils;
 
 use std::collections::BTreeMap;
+use std::fmt::Debug;
 use std::sync::Arc;
 
 use body::events::EventIndex;
@@ -282,7 +283,7 @@ impl<'env> StorageTxn<'env, RW> {
 }
 
 impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
-    pub(crate) fn open_table<K: StorageSerde, V: StorageSerde>(
+    pub(crate) fn open_table<K: StorageSerde + Debug, V: StorageSerde + Debug>(
         &self,
         table_id: &TableIdentifier<K, V>,
     ) -> StorageResult<TableHandle<'_, K, V>> {

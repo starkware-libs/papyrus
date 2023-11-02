@@ -177,7 +177,7 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
                 if last_starknet_version == *starknet_version => {}
             _ => match starknet_version_table.insert(&self.txn, block_number, starknet_version) {
                 Ok(()) => {}
-                Err(DbError::Inner(libmdbx::Error::KeyExist)) => {
+                Err(DbError::KeyAlreadyExists(..)) => {
                     return Err(StorageError::StarknetVersionAlreadyExists {
                         block_number: *block_number,
                         starknet_version: starknet_version.clone(),
@@ -233,7 +233,7 @@ fn update_hash_mapping<'env>(
 ) -> Result<(), StorageError> {
     let res = block_hash_to_number_table.insert(txn, &block_header.block_hash, &block_number);
     res.map_err(|err| match err {
-        DbError::Inner(libmdbx::Error::KeyExist) => StorageError::BlockHashAlreadyExists {
+        DbError::KeyAlreadyExists(..) => StorageError::BlockHashAlreadyExists {
             block_hash: block_header.block_hash,
             block_number,
         },
