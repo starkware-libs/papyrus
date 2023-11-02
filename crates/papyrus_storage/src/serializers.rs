@@ -127,6 +127,10 @@ use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::Version;
 use crate::{MarkerKind, OffsetKind};
 
+const COMPRESSION_THRESHOLD: usize = 384;
+const COMPRESSED: u8 = 1;
+const UNCOMPRESSED: u8 = 0;
+
 auto_storage_serde! {
     pub struct AccountDeploymentData(pub Vec<StarkFelt>);
     pub struct BlockHash(pub StarkHash);
@@ -200,32 +204,6 @@ auto_storage_serde! {
         V1(DeployAccountTransactionV1) = 0,
         V3(DeployAccountTransactionV3) = 1,
     }
-    pub struct DeployAccountTransactionV1 {
-        pub max_fee: Fee,
-        pub signature: TransactionSignature,
-        pub nonce: Nonce,
-        pub class_hash: ClassHash,
-        pub contract_address_salt: ContractAddressSalt,
-        pub constructor_calldata: Calldata,
-    }
-    pub struct DeployAccountTransactionV3 {
-        pub resource_bounds: ResourceBoundsMapping,
-        pub tip: Tip,
-        pub signature: TransactionSignature,
-        pub nonce: Nonce,
-        pub class_hash: ClassHash,
-        pub contract_address_salt: ContractAddressSalt,
-        pub constructor_calldata: Calldata,
-        pub nonce_data_availability_mode: DataAvailabilityMode,
-        pub fee_data_availability_mode: DataAvailabilityMode,
-        pub paymaster_data: PaymasterData,
-    }
-    pub struct DeployTransaction {
-        pub version: TransactionVersion,
-        pub class_hash: ClassHash,
-        pub contract_address_salt: ContractAddressSalt,
-        pub constructor_calldata: Calldata,
-    }
     pub struct DeprecatedEntryPoint {
         pub selector: EntryPointSelector,
         pub offset: EntryPointOffset,
@@ -283,32 +261,6 @@ auto_storage_serde! {
         V0(InvokeTransactionV0) = 0,
         V1(InvokeTransactionV1) = 1,
         V3(InvokeTransactionV3) = 2,
-    }
-    pub struct InvokeTransactionV0 {
-        pub max_fee: Fee,
-        pub signature: TransactionSignature,
-        pub contract_address: ContractAddress,
-        pub entry_point_selector: EntryPointSelector,
-        pub calldata: Calldata,
-    }
-    pub struct InvokeTransactionV1 {
-        pub max_fee: Fee,
-        pub signature: TransactionSignature,
-        pub nonce: Nonce,
-        pub sender_address: ContractAddress,
-        pub calldata: Calldata,
-    }
-    pub struct InvokeTransactionV3 {
-        pub resource_bounds: ResourceBoundsMapping,
-        pub tip: Tip,
-        pub signature: TransactionSignature,
-        pub nonce: Nonce,
-        pub sender_address: ContractAddress,
-        pub calldata: Calldata,
-        pub nonce_data_availability_mode: DataAvailabilityMode,
-        pub fee_data_availability_mode: DataAvailabilityMode,
-        pub paymaster_data: PaymasterData,
-        pub account_deployment_data: AccountDeploymentData,
     }
     pub struct L1ToL2Payload(pub Vec<StarkFelt>);
     pub struct L2ToL1Payload(pub Vec<StarkFelt>);
@@ -397,13 +349,6 @@ auto_storage_serde! {
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
         pub execution_status: TransactionExecutionStatus,
-    }
-    pub struct L1HandlerTransaction {
-        pub version: TransactionVersion,
-        pub nonce: Nonce,
-        pub contract_address: ContractAddress,
-        pub entry_point_selector: EntryPointSelector,
-        pub calldata: Calldata,
     }
     pub struct ThinL1HandlerTransactionOutput {
         pub actual_fee: Fee,
@@ -998,3 +943,113 @@ impl StorageSerde for ThinStateDiff {
 
 #[cfg(test)]
 create_storage_serde_test!(ThinStateDiff);
+
+macro_rules! auto_storage_serde_compressed {
+    () => {};
+    ($(pub)? struct $name:ident { $(pub $field:ident : $ty:ty ,)* } $($rest:tt)*) => {
+        impl StorageSerde for $name {
+            fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+                let mut to_compress: Vec<u8> = Vec::new();
+                $(
+                    self.$field.serialize_into(&mut to_compress)?;
+                )*
+                if to_compress.len() > COMPRESSION_THRESHOLD {
+                    res.write_all(&[COMPRESSED])?;
+                    let compressed = compress(to_compress.as_slice())?;
+                    compressed.serialize_into(res)?;
+                } else {
+                    res.write_all(&[UNCOMPRESSED])?;
+                    to_compress.serialize_into(res)?;
+                }
+                Ok(())
+            }
+            fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+                let mut compressed = [0u8; 1];
+                bytes.read_exact(&mut compressed).ok()?;
+                let maybe_compressed_data = Vec::<u8>::deserialize_from(bytes)?;
+                let data = match compressed[0] {
+                    UNCOMPRESSED => maybe_compressed_data,
+                    COMPRESSED => decompress(maybe_compressed_data.as_slice()).ok()?,
+                    _ => return None,
+                };
+                let data = &mut data.as_slice();
+                Some(Self {
+                    $(
+                        $field: <$ty>::deserialize_from(data)?,
+                    )*
+                })
+            }
+        }
+        #[cfg(test)]
+        create_storage_serde_test!($name);
+        auto_storage_serde_compressed!($($rest)*);
+    };
+}
+
+auto_storage_serde_compressed! {
+    pub struct DeployAccountTransactionV1 {
+        pub max_fee: Fee,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub class_hash: ClassHash,
+        pub contract_address_salt: ContractAddressSalt,
+        pub constructor_calldata: Calldata,
+    }
+
+    pub struct DeployAccountTransactionV3 {
+        pub resource_bounds: ResourceBoundsMapping,
+        pub tip: Tip,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub class_hash: ClassHash,
+        pub contract_address_salt: ContractAddressSalt,
+        pub constructor_calldata: Calldata,
+        pub nonce_data_availability_mode: DataAvailabilityMode,
+        pub fee_data_availability_mode: DataAvailabilityMode,
+        pub paymaster_data: PaymasterData,
+    }
+
+    pub struct DeployTransaction {
+        pub version: TransactionVersion,
+        pub class_hash: ClassHash,
+        pub contract_address_salt: ContractAddressSalt,
+        pub constructor_calldata: Calldata,
+    }
+
+    pub struct InvokeTransactionV0 {
+        pub max_fee: Fee,
+        pub signature: TransactionSignature,
+        pub contract_address: ContractAddress,
+        pub entry_point_selector: EntryPointSelector,
+        pub calldata: Calldata,
+    }
+
+    pub struct InvokeTransactionV1 {
+        pub max_fee: Fee,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub sender_address: ContractAddress,
+        pub calldata: Calldata,
+    }
+
+    pub struct InvokeTransactionV3 {
+        pub resource_bounds: ResourceBoundsMapping,
+        pub tip: Tip,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub sender_address: ContractAddress,
+        pub calldata: Calldata,
+        pub nonce_data_availability_mode: DataAvailabilityMode,
+        pub fee_data_availability_mode: DataAvailabilityMode,
+        pub paymaster_data: PaymasterData,
+        pub account_deployment_data: AccountDeploymentData,
+    }
+
+    pub struct L1HandlerTransaction {
+        pub version: TransactionVersion,
+        pub nonce: Nonce,
+        pub contract_address: ContractAddress,
+        pub entry_point_selector: EntryPointSelector,
+        pub calldata: Calldata,
+    }
+}
