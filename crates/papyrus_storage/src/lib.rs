@@ -493,12 +493,27 @@ impl FileHandlers<RW> {
         self.clone().deprecated_contract_class.append(deprecated_contract_class)
     }
 
-    // TODO(dan): Consider 1. flushing only the relevant files, 2. flushing concurrently.
+    // TODO(dan): Consider flushing only the relevant files.
     fn flush(&self) {
-        self.thin_state_diff.flush();
-        self.contract_class.flush();
-        self.casm.flush();
-        self.deprecated_contract_class.flush();
+        let mut handles = Vec::with_capacity(4);
+        let file_handlers = self.clone();
+
+        handles.push(std::thread::spawn(move || {
+            file_handlers.thin_state_diff.flush();
+        }));
+        handles.push(std::thread::spawn(move || {
+            file_handlers.contract_class.flush();
+        }));
+        handles.push(std::thread::spawn(move || {
+            file_handlers.casm.flush();
+        }));
+        handles.push(std::thread::spawn(move || {
+            file_handlers.deprecated_contract_class.flush();
+        }));
+
+        for handle in handles {
+            handle.join().unwrap();
+        }
     }
 }
 
