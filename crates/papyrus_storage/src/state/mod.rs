@@ -67,7 +67,7 @@ use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::mmap_file::LocationInFile;
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::{
-    FileAccess,
+    FileHandlers,
     MarkerKind,
     MarkersTable,
     OffsetKind,
@@ -166,7 +166,7 @@ impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for StorageTxn<'env, 
             None => Ok(None),
             Some(state_diff_location) => {
                 let state_diff =
-                    self.file_access.get_thin_state_diff_unchecked(state_diff_location)?;
+                    self.file_handlers.get_thin_state_diff_unchecked(state_diff_location)?;
                 Ok(Some(state_diff))
             }
         }
@@ -186,7 +186,7 @@ pub struct StateReader<'env, Mode: TransactionKind> {
     deployed_contracts_table: DeployedContractsTable<'env>,
     nonces_table: NoncesTable<'env>,
     storage_table: ContractStorageTable<'env>,
-    file_access: FileAccess,
+    file_handlers: &'env FileHandlers<Mode>,
 }
 
 #[allow(dead_code)]
@@ -217,7 +217,7 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
             deployed_contracts_table,
             nonces_table,
             storage_table,
-            file_access: txn.file_access.clone(),
+            file_handlers: &txn.file_handlers,
         })
     }
 
@@ -357,7 +357,7 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
                     .to_string(),
             });
         };
-        Ok(Some(self.file_access.get_contract_class_unchecked(contract_class_location)?))
+        Ok(Some(self.file_handlers.get_contract_class_unchecked(contract_class_location)?))
     }
 
     /// Returns the block number for a given class hash (the block in which it was defined).
@@ -396,7 +396,9 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         if state_number.is_before(value.block_number) {
             return Ok(None);
         }
-        Ok(Some(self.file_access.get_deprecated_contract_class_unchecked(value.location_in_file)?))
+        Ok(Some(
+            self.file_handlers.get_deprecated_contract_class_unchecked(value.location_in_file)?,
+        ))
     }
 }
 
@@ -441,7 +443,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         // Write state diff.
         let (thin_state_diff, declared_classes, deprecated_declared_classes) =
             ThinStateDiff::from_state_diff(state_diff);
-        let location = self.file_access.append_thin_state_diff(&thin_state_diff);
+        let location = self.file_handlers.append_thin_state_diff(&thin_state_diff);
         state_diffs_table.insert(&self.txn, &block_number, &location)?;
         file_offset_table.upsert(&self.txn, &OffsetKind::ThinStateDiff, &location.next_offset())?;
 
@@ -452,7 +454,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             &declared_classes_table,
             block_number,
             &declared_classes_block_table,
-            &self.file_access,
+            &self.file_handlers,
             &file_offset_table,
         )?;
 
@@ -461,7 +463,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             &self.txn,
             &markers_table,
             &state_diffs_table,
-            self.file_access.clone(),
+            &self.file_handlers,
         )?;
 
         // Write deprecated declared classes.
@@ -477,7 +479,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
                 &self.txn,
                 block_number,
                 &deprecated_declared_classes_table,
-                &self.file_access,
+                &self.file_handlers,
                 &file_offset_table,
             )?;
         } else {
@@ -486,7 +488,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
                 &self.txn,
                 block_number,
                 &deprecated_declared_classes_table,
-                &self.file_access,
+                &self.file_handlers,
                 &file_offset_table,
             )?;
         }
@@ -536,20 +538,20 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             &thin_state_diff,
             &declared_classes_table,
             &declared_classes_block_table,
-            self.file_access.clone(),
+            &self.file_handlers,
         )?;
         let deleted_deprecated_classes = delete_deprecated_declared_classes(
             &self.txn,
             block_number,
             &thin_state_diff,
             &deprecated_declared_classes_table,
-            &self.file_access,
+            &self.file_handlers,
         )?;
         let deleted_compiled_classes = delete_compiled_classes(
             &self.txn,
             thin_state_diff.declared_classes.keys(),
             &compiled_classes_table,
-            &self.file_access,
+            &self.file_handlers,
         )?;
         delete_deployed_contracts(
             &self.txn,
@@ -601,7 +603,7 @@ fn update_compiled_class_marker<'env>(
     txn: &DbTransaction<'env, RW>,
     markers_table: &'env MarkersTable<'env>,
     state_diffs_table: &'env TableHandle<'_, BlockNumber, LocationInFile>,
-    file_access: FileAccess,
+    file_handlers: &FileHandlers<RW>,
 ) -> StorageResult<()> {
     let state_marker = markers_table.get(txn, &MarkerKind::State)?.unwrap_or_default();
     let mut compiled_class_marker =
@@ -610,7 +612,7 @@ fn update_compiled_class_marker<'env>(
         let state_diff_location = state_diffs_table
             .get(txn, &compiled_class_marker)?
             .unwrap_or_else(|| panic!("Missing state diff for block {compiled_class_marker}"));
-        if !file_access
+        if !file_handlers
             .get_thin_state_diff_unchecked(state_diff_location)?
             .declared_classes
             .is_empty()
@@ -629,11 +631,11 @@ fn write_declared_classes<'env>(
     declared_classes_table: &'env DeclaredClassesTable<'env>,
     block_number: BlockNumber,
     declared_classes_block_table: &'env DeclaredClassesBlockTable<'env>,
-    file_access: &FileAccess,
+    file_handlers: &FileHandlers<RW>,
     file_offset_table: &'env FileOffsetTable<'env>,
 ) -> StorageResult<()> {
     for (class_hash, contract_class) in declared_classes {
-        let location = file_access.append_contract_class(contract_class);
+        let location = file_handlers.append_contract_class(contract_class);
         let res_class = declared_classes_table.insert(txn, class_hash, &location);
         let res_block = declared_classes_block_table.insert(txn, class_hash, &block_number);
         match [res_class, res_block].iter().any(|res| res.is_err()) {
@@ -655,20 +657,20 @@ fn write_deprecated_declared_classes<'env>(
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     deprecated_declared_classes_table: &'env DeprecatedDeclaredClassesTable<'env>,
-    file_access: &FileAccess,
+    file_handlers: &FileHandlers<RW>,
     file_offset_table: &'env FileOffsetTable<'env>,
 ) -> StorageResult<()> {
     for (class_hash, deprecated_contract_class) in deprecated_declared_classes {
         // TODO(dan): remove this check after regenesis, in favor of insert().
         if let Some(value) = deprecated_declared_classes_table.get(txn, &class_hash)? {
-            if file_access.get_deprecated_contract_class_unchecked(value.location_in_file)?
+            if file_handlers.get_deprecated_contract_class_unchecked(value.location_in_file)?
                 != deprecated_contract_class
             {
                 return Err(StorageError::ClassAlreadyExists { class_hash });
             }
             continue;
         }
-        let location = file_access.append_deprecated_contract_class(&deprecated_contract_class);
+        let location = file_handlers.append_deprecated_contract_class(&deprecated_contract_class);
         let value = IndexedDeprecatedContractClass { block_number, location_in_file: location };
         file_offset_table.upsert(
             txn,
@@ -760,7 +762,7 @@ fn delete_declared_classes<'env>(
     thin_state_diff: &ThinStateDiff,
     declared_classes_table: &'env DeclaredClassesTable<'env>,
     declared_classes_block_table: &'env DeclaredClassesBlockTable<'env>,
-    file_access: FileAccess,
+    file_handlers: &FileHandlers<RW>,
 ) -> StorageResult<IndexMap<ClassHash, ContractClass>> {
     let mut deleted_data = IndexMap::new();
     for class_hash in thin_state_diff.declared_classes.keys() {
@@ -769,7 +771,7 @@ fn delete_declared_classes<'env>(
             .unwrap_or_else(|| panic!("Missing declared class {class_hash:#?}."));
         deleted_data.insert(
             *class_hash,
-            file_access.get_contract_class_unchecked(contract_class_location)?,
+            file_handlers.get_contract_class_unchecked(contract_class_location)?,
         );
         declared_classes_table.delete(txn, class_hash)?;
         declared_classes_block_table.delete(txn, class_hash)?;
@@ -783,7 +785,7 @@ fn delete_deprecated_declared_classes<'env>(
     block_number: BlockNumber,
     thin_state_diff: &ThinStateDiff,
     deprecated_declared_classes_table: &'env DeprecatedDeclaredClassesTable<'env>,
-    file_access: &FileAccess,
+    file_handlers: &FileHandlers<RW>,
 ) -> StorageResult<IndexMap<ClassHash, DeprecatedContractClass>> {
     // Class hashes of the contracts that were deployed in this block.
     let deployed_contracts_class_hashes = thin_state_diff.deployed_contracts.values();
@@ -811,7 +813,7 @@ fn delete_deprecated_declared_classes<'env>(
             if block_number == declared_block_number {
                 deleted_data.insert(
                     *class_hash,
-                    file_access.get_deprecated_contract_class_unchecked(location_in_file)?,
+                    file_handlers.get_deprecated_contract_class_unchecked(location_in_file)?,
                 );
                 deprecated_declared_classes_table.delete(txn, class_hash)?;
             }
@@ -825,7 +827,7 @@ fn delete_compiled_classes<'a, 'env>(
     txn: &'env DbTransaction<'env, RW>,
     class_hashes: impl Iterator<Item = &'a ClassHash>,
     compiled_classes_table: &'env CompiledClassesTable<'env>,
-    file_access: &FileAccess,
+    file_handlers: &FileHandlers<RW>,
 ) -> StorageResult<IndexMap<ClassHash, CasmContractClass>> {
     let mut deleted_data = IndexMap::new();
     for class_hash in class_hashes {
@@ -835,7 +837,8 @@ fn delete_compiled_classes<'a, 'env>(
             break;
         };
         compiled_classes_table.delete(txn, class_hash)?;
-        deleted_data.insert(*class_hash, file_access.get_casm_unchecked(compiled_class_location)?);
+        deleted_data
+            .insert(*class_hash, file_handlers.get_casm_unchecked(compiled_class_location)?);
     }
 
     Ok(deleted_data)

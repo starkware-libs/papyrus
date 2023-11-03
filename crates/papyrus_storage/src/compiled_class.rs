@@ -44,7 +44,7 @@ use starknet_api::core::ClassHash;
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::mmap_file::LocationInFile;
 use crate::{
-    FileAccess,
+    FileHandlers,
     MarkerKind,
     MarkersTable,
     OffsetKind,
@@ -78,7 +78,7 @@ impl<'env, Mode: TransactionKind> CasmStorageReader for StorageTxn<'env, Mode> {
     fn get_casm(&self, class_hash: &ClassHash) -> StorageResult<Option<CasmContractClass>> {
         let casm_table = self.open_table(&self.tables.casms)?;
         let casm_location = casm_table.get(&self.txn, class_hash)?;
-        casm_location.map(|location| self.file_access.get_casm_unchecked(location)).transpose()
+        casm_location.map(|location| self.file_handlers.get_casm_unchecked(location)).transpose()
     }
 
     fn get_compiled_class_marker(&self) -> StorageResult<BlockNumber> {
@@ -95,7 +95,7 @@ impl<'env> CasmStorageWriter for StorageTxn<'env, RW> {
         let state_diff_table = self.open_table(&self.tables.state_diffs)?;
         let file_offset_table = self.txn.open_table(&self.tables.file_offsets)?;
 
-        let location = self.file_access.append_casm(casm);
+        let location = self.file_handlers.append_casm(casm);
         casm_table.insert(&self.txn, class_hash, &location).map_err(|err| {
             if matches!(err, DbError::Inner(libmdbx::Error::KeyExist)) {
                 StorageError::CompiledClassReWrite { class_hash: *class_hash }
@@ -108,7 +108,7 @@ impl<'env> CasmStorageWriter for StorageTxn<'env, RW> {
             &self.txn,
             &markers_table,
             &state_diff_table,
-            self.file_access.clone(),
+            self.file_handlers.clone(),
             class_hash,
         )?;
         Ok(self)
@@ -119,7 +119,7 @@ fn update_marker<'env>(
     txn: &DbTransaction<'env, RW>,
     markers_table: &'env MarkersTable<'env>,
     state_diffs_table: &'env TableHandle<'_, BlockNumber, LocationInFile>,
-    file_access: FileAccess,
+    file_handlers: FileHandlers<RW>,
     class_hash: &ClassHash,
 ) -> StorageResult<()> {
     // The marker needs to update if we reached the last class from the state diff. We can continue
@@ -129,8 +129,10 @@ fn update_marker<'env>(
         let Some(state_diff_location) = state_diffs_table.get(txn, &block_number)? else {
             break;
         };
-        if let Some((last_class_hash, _)) =
-            file_access.get_thin_state_diff_unchecked(state_diff_location)?.declared_classes.last()
+        if let Some((last_class_hash, _)) = file_handlers
+            .get_thin_state_diff_unchecked(state_diff_location)?
+            .declared_classes
+            .last()
         {
             // Not the last class in the state diff, keep the current marker.
             if last_class_hash != class_hash {
