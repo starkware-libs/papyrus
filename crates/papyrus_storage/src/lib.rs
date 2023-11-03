@@ -78,8 +78,7 @@ use db::db_stats::{DbTableStats, DbWholeStats};
 use db::serialization::StorageSerde;
 use mmap_file::{
     open_file,
-    FileReader,
-    FileWriter,
+    FileHandler,
     LocationInFile,
     MMapFileError,
     MmapFileConfig,
@@ -606,18 +605,18 @@ impl FileAccess {
 
 #[derive(Clone, Debug)]
 struct FileWriters {
-    thin_state_diff: FileWriter<ThinStateDiff>,
-    contract_class: FileWriter<ContractClass>,
-    casm: FileWriter<CasmContractClass>,
-    deprecated_contract_class: FileWriter<DeprecatedContractClass>,
+    thin_state_diff: FileHandler<ThinStateDiff, RW>,
+    contract_class: FileHandler<ContractClass, RW>,
+    casm: FileHandler<CasmContractClass, RW>,
+    deprecated_contract_class: FileHandler<DeprecatedContractClass, RW>,
 }
 
 #[derive(Clone, Debug)]
 struct FileReaders {
-    thin_state_diff: FileReader<ThinStateDiff>,
-    contract_class: FileReader<ContractClass>,
-    casm: FileReader<CasmContractClass>,
-    deprecated_contract_class: FileReader<DeprecatedContractClass>,
+    thin_state_diff: FileHandler<ThinStateDiff, RO>,
+    contract_class: FileHandler<ContractClass, RO>,
+    casm: FileHandler<CasmContractClass, RO>,
+    deprecated_contract_class: FileHandler<DeprecatedContractClass, RO>,
 }
 
 fn open_storage_files(

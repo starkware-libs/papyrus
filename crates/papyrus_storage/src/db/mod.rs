@@ -384,6 +384,7 @@ impl<'cursor, 'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> Ite
 }
 
 #[doc(hidden)]
+#[derive(Clone, Copy, Debug)]
 pub struct RO {}
 
 impl TransactionKind for RO {
@@ -391,6 +392,7 @@ impl TransactionKind for RO {
 }
 
 #[doc(hidden)]
+#[derive(Clone, Copy, Debug)]
 pub struct RW {}
 
 impl TransactionKind for RW {
