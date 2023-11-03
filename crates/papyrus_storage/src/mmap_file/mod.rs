@@ -28,6 +28,7 @@ use tracing::{debug, instrument, trace};
 use validator::{Validate, ValidationError};
 
 use crate::db::serialization::{StorageSerde, StorageSerdeEx};
+use crate::db::{TransactionKind, RO, RW};
 
 type MmapFileResult<V> = result::Result<V, MMapFileError>;
 
@@ -132,41 +133,6 @@ impl LocationInFile {
     }
 }
 
-/// A wrapper around `FileHandler` that provides a write interface.
-#[derive(Clone, Debug)]
-pub struct FileWriter<V: StorageSerde> {
-    file_handler: FileHandler<V>,
-}
-
-impl<V: StorageSerde + Debug> Writer<V> for FileWriter<V> {
-    fn append(&mut self, val: &V) -> LocationInFile {
-        self.file_handler.append(val)
-    }
-
-    fn flush(&self) {
-        self.file_handler.flush();
-    }
-}
-
-impl<V: StorageSerde> Reader<V> for FileWriter<V> {
-    fn get(&self, location: LocationInFile) -> MmapFileResult<Option<V>> {
-        self.file_handler.get(location)
-    }
-}
-
-/// A wrapper around `FileHandler` that provides a read interface.
-#[derive(Clone, Debug)]
-pub struct FileReader<V: StorageSerde> {
-    file_handler: FileHandler<V>,
-}
-
-impl<V: StorageSerde> Reader<V> for FileReader<V> {
-    /// Returns an object from the file.
-    fn get(&self, location: LocationInFile) -> MmapFileResult<Option<V>> {
-        self.file_handler.get(location)
-    }
-}
-
 /// Represents a memory mapped append only file.
 #[derive(Debug)]
 struct MMapFile<V: StorageSerde> {
@@ -201,8 +167,7 @@ pub(crate) fn open_file<V: StorageSerde>(
     config: MmapFileConfig,
     path: PathBuf,
     offset: usize,
-) -> MmapFileResult<(FileWriter<V>, FileReader<V>)> {
-    debug!("Opening file");
+) -> MmapFileResult<(FileHandler<V, RW>, FileHandler<V, RO>)> {
     let file = OpenOptions::new().read(true).write(true).create(true).open(path)?;
     let size = file.metadata()?.len();
     let mmap = unsafe { MmapOptions::new().len(config.max_size).map_mut(&file)? };
@@ -217,28 +182,31 @@ pub(crate) fn open_file<V: StorageSerde>(
     };
     let shared_mmap_file = Arc::new(Mutex::new(mmap_file));
 
-    let mut file_handler =
-        FileHandler { memory_ptr: mmap_ptr, mmap_file: shared_mmap_file.clone() };
-    file_handler.grow_file_if_needed(0);
-    let writer = FileWriter { file_handler };
+    let mut write_file_handler: FileHandler<V, RW> = FileHandler {
+        memory_ptr: mmap_ptr,
+        mmap_file: shared_mmap_file.clone(),
+        _mode: PhantomData,
+    };
+    write_file_handler.grow_file_if_needed(0);
 
-    let file_handler = FileHandler { memory_ptr: mmap_ptr, mmap_file: shared_mmap_file };
-    let reader = FileReader { file_handler };
+    let read_file_handler: FileHandler<V, RO> =
+        FileHandler { memory_ptr: mmap_ptr, mmap_file: shared_mmap_file, _mode: PhantomData };
 
-    Ok((writer, reader))
+    Ok((write_file_handler, read_file_handler))
 }
 
 /// A wrapper around `MMapFile` that provides both write and read interfaces.
 #[derive(Clone, Debug)]
-struct FileHandler<V: StorageSerde> {
+pub(crate) struct FileHandler<V: StorageSerde, Mode: TransactionKind> {
     memory_ptr: *const u8,
     mmap_file: Arc<Mutex<MMapFile<V>>>,
+    _mode: PhantomData<Mode>,
 }
 
-unsafe impl<V: StorageSerde> Send for FileHandler<V> {}
-unsafe impl<V: StorageSerde> Sync for FileHandler<V> {}
+unsafe impl<V: StorageSerde, Mode: TransactionKind> Send for FileHandler<V, Mode> {}
+unsafe impl<V: StorageSerde, Mode: TransactionKind> Sync for FileHandler<V, Mode> {}
 
-impl<V: StorageSerde> FileHandler<V> {
+impl<V: StorageSerde> FileHandler<V, RW> {
     fn grow_file_if_needed(&mut self, offset: usize) {
         let mut mmap_file = self.mmap_file.lock().expect("Lock should not be poisoned");
         if mmap_file.size < offset + mmap_file.config.max_object_size {
@@ -251,7 +219,7 @@ impl<V: StorageSerde> FileHandler<V> {
     }
 }
 
-impl<V: StorageSerde + Debug> Writer<V> for FileHandler<V> {
+impl<V: StorageSerde + Debug> Writer<V> for FileHandler<V, RW> {
     fn append(&mut self, val: &V) -> LocationInFile {
         trace!("Inserting object: {:?}", val);
         // TODO(dan): change serialize_into to return serialization size.
@@ -280,7 +248,7 @@ impl<V: StorageSerde + Debug> Writer<V> for FileHandler<V> {
     }
 }
 
-impl<V: StorageSerde> Reader<V> for FileHandler<V> {
+impl<V: StorageSerde, Mode: TransactionKind> Reader<V> for FileHandler<V, Mode> {
     /// Returns an object from the file.
     fn get(&self, location: LocationInFile) -> MmapFileResult<Option<V>> {
         debug!("Reading object at location: {:?}", location);
