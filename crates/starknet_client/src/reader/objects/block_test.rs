@@ -1,4 +1,3 @@
-use assert::assert_ok;
 use assert_matches::assert_matches;
 use indexmap::IndexMap;
 use pretty_assertions::assert_eq;
@@ -25,7 +24,7 @@ use crate::test_utils::read_resource::read_resource_file;
 
 #[test]
 fn load_block_succeeds() {
-    assert_ok!(serde_json::from_str::<Block>(&read_resource_file("reader/block.json")));
+    assert!(serde_json::from_str::<Block>(&read_resource_file("reader/block.json")).is_ok());
 }
 
 #[test]

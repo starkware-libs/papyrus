@@ -290,12 +290,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "assert"
-version = "0.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6ad2cfc66932f8ceee708631eaaf7131d189a2a68610269a6f65b433dd8c844"
-
-[[package]]
 name = "assert-json-diff"
 version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6177,7 +6171,6 @@ dependencies = [
 name = "starknet_client"
 version = "0.0.5"
 dependencies = [
- "assert",
  "assert_matches",
  "async-trait",
  "cairo-lang-starknet",
@@ -6433,7 +6426,6 @@ dependencies = [
 name = "test_utils"
 version = "0.0.5"
 dependencies = [
- "assert",
  "cairo-lang-casm",
  "cairo-lang-starknet",
  "cairo-lang-utils",

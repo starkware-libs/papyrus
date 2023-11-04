@@ -27,7 +27,6 @@ license-file = "LICENSE"
 
 [workspace.dependencies]
 anyhow = "1.0.44"
-assert = "0.0.4"
 assert_matches = "1.5.0"
 async-stream = "0.3.3"
 async-trait = "0.1.56"

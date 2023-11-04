@@ -1,4 +1,3 @@
-use assert::{assert_err, assert_ok};
 use assert_matches::assert_matches;
 
 use super::{Transaction, TransactionReceipt};
@@ -55,7 +54,7 @@ fn load_transaction_succeeds() {
         "reader/invoke_transaction.json",
         "reader/declare_transaction.json",
     ] {
-        assert_ok!(serde_json::from_str::<Transaction>(&read_resource_file(file_name)));
+        assert!(serde_json::from_str::<Transaction>(&read_resource_file(file_name)).is_ok());
     }
 }
 
@@ -73,7 +72,7 @@ fn load_transaction_unknown_field_fails() {
             .unwrap()
             .insert("unknown_field".to_string(), serde_json::Value::Null);
         let json_str = serde_json::to_string(&json_value).unwrap();
-        assert_err!(serde_json::from_str::<Transaction>(&json_str));
+        assert!(serde_json::from_str::<Transaction>(&json_str).is_err());
     }
 }
 
@@ -92,7 +91,7 @@ fn load_transaction_wrong_type_fails() {
             .unwrap()
             .insert("type".to_string(), serde_json::Value::String(new_wrong_type.to_string()));
         let json_str = serde_json::to_string(&json_value).unwrap();
-        assert_err!(serde_json::from_str::<Transaction>(&json_str));
+        assert!(serde_json::from_str::<Transaction>(&json_str).is_err());
     }
 }
 
@@ -103,6 +102,6 @@ fn load_transaction_receipt_succeeds() {
         "reader/transaction_receipt_without_l1_to_l2.json",
         "reader/transaction_receipt_without_l1_to_l2_nonce.json",
     ] {
-        assert_ok!(serde_json::from_str::<TransactionReceipt>(&read_resource_file(file_name)));
+        assert!(serde_json::from_str::<TransactionReceipt>(&read_resource_file(file_name)).is_ok());
     }
 }

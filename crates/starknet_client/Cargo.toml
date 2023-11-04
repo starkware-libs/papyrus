@@ -39,7 +39,6 @@ tracing.workspace = true
 url.workspace = true
 
 [dev-dependencies]
-assert.workspace = true
 assert_matches.workspace = true
 enum-iterator.workspace = true
 mockall.workspace = true

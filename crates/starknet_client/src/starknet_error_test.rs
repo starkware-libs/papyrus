@@ -1,4 +1,3 @@
-use assert::assert_err;
 use serde_json::{Map, Value as JsonValue};
 
 use super::{KnownStarknetErrorCode, StarknetError, StarknetErrorCode};
@@ -85,5 +84,7 @@ fn unknown_error_code_deserialization() {
 // This test is needed because bugs can happen in the custom deserialization of UnknownErrorCode
 #[test]
 fn starknet_error_code_invalid_json_format_fails() {
-    assert_err!(serde_json::from_str::<StarknetErrorCode>("A string not surrounded with quotes"));
+    assert!(
+        serde_json::from_str::<StarknetErrorCode>("A string not surrounded with quotes").is_err()
+    );
 }

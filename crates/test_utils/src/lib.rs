@@ -11,7 +11,6 @@ use std::ops::{Deref, Index};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use assert::assert_ok;
 use cairo_lang_casm::hints::{CoreHint, CoreHintBase, Hint};
 use cairo_lang_casm::operand::{
     BinOpOperand,
@@ -167,9 +166,9 @@ pub fn read_json_file(path_in_resource_dir: &str) -> serde_json::Value {
 pub fn validate_load_and_dump<T: Serialize + for<'a> Deserialize<'a>>(path_in_resource_dir: &str) {
     let json_value = read_json_file(path_in_resource_dir);
     let load_result = serde_json::from_value::<T>(json_value.clone());
-    assert_ok!(load_result);
+    assert!(load_result.is_ok());
     let dump_result = serde_json::to_value(&(load_result.unwrap()));
-    assert_ok!(dump_result);
+    assert!(dump_result.is_ok());
     assert_eq!(json_value, dump_result.unwrap());
 }
 
