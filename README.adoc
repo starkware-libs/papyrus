@@ -146,7 +146,7 @@ For example, to limit memory usage to 1GB, run the container with the following 
 docker run --rm --name papyrus\
   -p 8080-8081:8080-8081 \
   -v /<local-host-data-path>:/app/data \
-  --memory --memory 1g
+  --memory 1g
   ghcr.io/starkware-libs/papyrus:dev \
   --base_layer.node_url <ethereum_node_url> \
   --user "$(id -u):$(id -g)"
