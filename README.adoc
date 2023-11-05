@@ -54,8 +54,8 @@ Papyrus is a work in progress.
 +
 [source,bash]
 -----
-$ mkdir data
-$ cargo run --release --package papyrus_node --bin papyrus_node -- --base_layer.node_url <ethereum_node_url>
+mkdir data
+cargo run --release --package papyrus_node --bin papyrus_node -- --base_layer.node_url <ethereum_node_url>
 -----
 +
 [NOTE]
@@ -106,7 +106,7 @@ For more information, see the papyrus-config https://github.com/starkware-libs/p
 +
 [source,bash]
 ----
-$ mkdir <local-host-data-path>
+mkdir <local-host-data-path>
 ----
 . Run a Papyrus node with the default configuration. You must explicitly give the container write access to the `<local-host-data-path>` directory by adding `--user "$(id -u):$(id -g)"` to the `docker run` command.
 +
@@ -114,7 +114,7 @@ Enter the following command:
 +
 [source,bash]
 ----
-$ docker run --rm --name papyrus\
+docker run --rm --name papyrus\
   -p 8080-8081:8080-8081 \
   -v /<local-host-data-path>:/app/data \
   ghcr.io/starkware-libs/papyrus:dev \
@@ -143,7 +143,7 @@ For example, to limit memory usage to 1GB, run the container with the following 
 
 [source,bash]
 ----
-$ docker run --rm --name papyrus\
+docker run --rm --name papyrus\
   -p 8080-8081:8080-8081 \
   -v /<local-host-data-path>:/app/data \
   --memory --memory 1g
@@ -258,7 +258,7 @@ By default, the node does not collect metrics and the metric path returns the fo
 405 - Method Not Allowed.
 ----
 
-*To collect metrics*, set the configuration value `collect_metrics` to `true`.
+*To collect metrics*, set the configuration value `collect_metrics` in the default configuration file to `true`.
 
 ==== JSON-RPC metrics
 
@@ -272,7 +272,7 @@ You can see information for each metric by entering the following command:
 
 [source,bash]
 ----
-$ <metric>\{method="<method_endpoint_suffix>", version="<ver>"}
+<metric>\{method="<method_endpoint_suffix>", version="<ver>"}
 ----
 
 Where:
@@ -286,7 +286,7 @@ For example, to get all the incoming requests to the method `starknet_chainId` i
 
 [source,bash]
 ----
-$ rpc_incoming_requests\{method="chainId", version="V0_4"}
+rpc_incoming_requests\{method="chainId", version="V0_4"}
 ----
 
 [TIP]
