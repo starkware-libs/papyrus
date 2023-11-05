@@ -430,10 +430,7 @@ fn execute_transactions(
         .expect("Should have block header.");
 
     // The starknet state will be from right before the block in which the transactions should run.
-    let mut cached_state = CachedState::from(ExecutionStateReader {
-        storage_reader: storage_reader.clone(),
-        state_number,
-    });
+    let mut cached_state = CachedState::from(ExecutionStateReader { storage_reader, state_number });
     let block_context = create_block_context(
         chain_id.clone(),
         header.block_number,
