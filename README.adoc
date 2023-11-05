@@ -22,7 +22,7 @@ image:https://codecov.io/gh/starkware-libs/papyrus/branch/main/graph/badge.svg?t
 
 == About
 
-Papyrus is a Starknet full node implemented in Rust. Papyrus tracks Starknet’s state as it evolves over time, and enables you to query this state via Starknet’s JSON-RPC.
+Papyrus is a Starknet full node implemented in Rust. Papyrus tracks Starknet’s state as it evolves over time, and enables you to query and update this state via Starknet’s JSON-RPC.
 
 Papyrus provides the Starknet sequencer with an efficient storage layer, which helps to improve throughput in the following ways:
 
@@ -81,12 +81,29 @@ The default Papyrus configuration file, link:https://github.com/starkware-libs/p
 
 // , including pointers to common values and #is_none flags for optional parameters.
 
-You can override the default configuration by referring to your own configuration files with the +
-`--config_file` command-line option.
+=== Customizing your configuration
 
-You can create separate configuration files for specific configuration parameters.
+You can override the default configuration by referring to one or more custom configuration files. The following rules apply:
 
-Preset `.json` files for several Starknet networks are located in this repository at  https://github.com/starkware-libs/papyrus/blob/main/config/presets[`/config/presets`].
+* You do not need to specify the default configuration file.
+* There is no limit on the number of custom configuration files you use.
+* If the same configuration parameter appears in multiple configuration files, the last file in the list determines the value.
+
+You can create separate configuration files to override specific configuration parameters.
+
+To specify custom configuration files, include the `--config_file` command-line option when you run the full node, as follows:
+
+[source,bash,subs="verbatim,quotes"]
+----
+cargo run --release --package papyrus_node --bin papyrus_node -- --base_layer.node_url <ethereum_node_url> --config-file <path_to_custom_configuration_file_1> <path_to_custom_configuration_file___n__>
+----
+
+For example, preset `.json` files for several Starknet networks are located in this repository at  https://github.com/starkware-libs/papyrus/blob/main/config/presets[`/config/presets`]. To use Goerli testnet, you need to override the default values by using the file `/config/presets/testnet1.json`, as follows:
+
+[source,bash,subs="verbatim,quotes"]
+----
+cargo run --release --package papyrus_node --bin papyrus_node -- --base_layer.node_url <ethereum_node_url> --config-file /config/presets/testnet1.json
+----
 
 Alternatively, You can specify environment variables and command-line arguments.
 
@@ -212,7 +229,7 @@ curl --location 'localhost:8080/rpc/v0_4_0' --header 'Content-Type: application/
 
 == Papyrus monitoring API
 
-Endpoints for retrieving monitoring information for the running node are available at the path monitoring.
+Endpoints for retrieving monitoring information for the running node are available at the path `monitoring`.
 
 You can send API requests using the following `curl` command:
 
@@ -237,7 +254,6 @@ Liveliness endpoint. Returns status code `200` if the node is alive.
 Gets the node version.
 `nodeConfig`::
 Gets the current node’s configuration.
-
 `dbTablesStats`::
 Gets statistics for each table in the libmdbx database. For more information, see https://docs.rs/libmdbx/latest/libmdbx/struct.Stat.html[libmdbx::Stat] in the libmdbx documentation.
 `metrics`::
@@ -260,13 +276,15 @@ By default, the node does not collect metrics and the metric path returns the fo
 
 *To collect metrics*, set the configuration value `collect_metrics` in the default configuration file to `true`.
 
-==== JSON-RPC metrics
+== Viewing metrics
 
-Papyrus collects three JSON-RPC metrics:
+Papyrus collects the following types of metrics:
 
 * `rpc_incoming_requests` counter
 * `rpc_failed_requests` counter
 * `rpc_request_latency_seconds` histogram
+* `process` #Are these process metrics?#
+* `papyrus` #Are these sync metrics?#
 
 You can see information for each metric by entering the following command:
 
@@ -286,7 +304,7 @@ For example, to get all the incoming requests to the method `starknet_chainId` i
 
 [source,bash]
 ----
-rpc_incoming_requests\{method="chainId", version="V0_4"}
+curl -X GET https://localhost:8081/monitoring/metrics/rpc_incoming_requests\{method="chainId", version="V0_4"}
 ----
 
 [TIP]
