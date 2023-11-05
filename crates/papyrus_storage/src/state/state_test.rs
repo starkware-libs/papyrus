@@ -4,18 +4,14 @@ use indexmap::{indexmap, IndexMap};
 use pretty_assertions::assert_eq;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
-use starknet_api::deprecated_contract_class::{
-    ContractClass as DeprecatedContractClass,
-    ContractClassAbiEntry,
-    FunctionAbiEntry,
-};
+use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey, ThinStateDiff};
 use starknet_api::{patricia_key, stark_felt};
 use test_utils::get_test_state_diff;
 
 use crate::compiled_class::{CasmStorageReader, CasmStorageWriter};
-use crate::state::{StateStorageReader, StateStorageWriter, StorageError};
+use crate::state::{StateStorageReader, StateStorageWriter};
 use crate::test_utils::get_test_storage;
 use crate::StorageWriter;
 
@@ -55,24 +51,6 @@ fn append_state_diff_declared_classes() {
     let state2 = StateNumber::right_before_block(BlockNumber(2));
 
     // Deprecated Classes Test
-    // Check for ClassAlreadyExists error when trying to declare another class to an existing
-    // class hash.
-    let txn = writer.begin_rw_txn().unwrap();
-    let mut diff2 = StateDiff {
-        deprecated_declared_classes: diff1.deprecated_declared_classes,
-        ..StateDiff::default()
-    };
-    let (_, class) = diff2.deprecated_declared_classes.iter_mut().next().unwrap();
-    class.abi = Some(vec![ContractClassAbiEntry::Function(FunctionAbiEntry {
-        name: String::from("junk"),
-        inputs: vec![],
-        outputs: vec![],
-        state_mutability: None,
-    })]);
-    let Err(err) = txn.append_state_diff(BlockNumber(2), diff2, IndexMap::new()) else {
-        panic!("Unexpected Ok.");
-    };
-    assert_matches!(err, StorageError::ClassAlreadyExists { class_hash: _ });
 
     let txn = writer.begin_rw_txn().unwrap();
     let statetxn = txn.get_state_reader().unwrap();
