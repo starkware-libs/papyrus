@@ -96,13 +96,7 @@ impl<'env> CasmStorageWriter for StorageTxn<'env, RW> {
         let file_offset_table = self.txn.open_table(&self.tables.file_offsets)?;
 
         let location = self.file_access.append_casm(casm);
-        casm_table.insert(&self.txn, class_hash, &location).map_err(|err| {
-            if matches!(err, DbError::KeyAlreadyExists(..)) {
-                StorageError::CompiledClassReWrite { class_hash: *class_hash }
-            } else {
-                StorageError::from(err)
-            }
-        })?;
+        casm_table.insert(&self.txn, class_hash, &location)?;
         file_offset_table.upsert(&self.txn, &OffsetKind::Casm, &location.next_offset())?;
         update_marker(
             &self.txn,

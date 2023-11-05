@@ -362,15 +362,6 @@ pub enum StorageError {
     InnerError(#[from] DbError),
     #[error("Marker mismatch (expected {expected}, found {found}).")]
     MarkerMismatch { expected: BlockNumber, found: BlockNumber },
-    #[error("Block hash {block_hash} already exists, when adding block number {block_number}.")]
-    BlockHashAlreadyExists { block_hash: BlockHash, block_number: BlockNumber },
-    #[error(
-        "Transaction hash {tx_hash:?} already exists, when adding transaction \
-         {transaction_index:?}."
-    )]
-    TransactionHashAlreadyExists { tx_hash: TransactionHash, transaction_index: TransactionIndex },
-    #[error("State diff redployed to an existing contract address {address:?}.")]
-    ContractAlreadyExists { address: ContractAddress },
     #[error(
         "State diff redeclared a different class to an existing contract hash {class_hash:?}."
     )]
@@ -392,8 +383,6 @@ pub enum StorageError {
     MMapFileError(#[from] MMapFileError),
     #[error(transparent)]
     StorageVersionInconcistency(#[from] StorageVersionError),
-    #[error("Compiled class of {class_hash:?} already exists.")]
-    CompiledClassReWrite { class_hash: ClassHash },
     #[error("The table {table_name} is unused under the {storage_scope:?} storage scope.")]
     ScopeError { table_name: String, storage_scope: StorageScope },
     #[error(transparent)]
@@ -405,8 +394,6 @@ pub enum StorageError {
          {compiled_class_marker}."
     )]
     InvalidBlockNumber { block: BlockNumber, compiled_class_marker: BlockNumber },
-    #[error("Starknet version {starknet_version:?} already exists since block {block_number}.")]
-    StarknetVersionAlreadyExists { block_number: BlockNumber, starknet_version: StarknetVersion },
 }
 
 /// A type alias that maps to std::result::Result<T, StorageError>.

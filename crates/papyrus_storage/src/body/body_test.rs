@@ -7,6 +7,7 @@ use test_utils::{get_test_block, get_test_body};
 
 use crate::body::events::ThinTransactionOutput;
 use crate::body::{BodyStorageReader, BodyStorageWriter, TransactionIndex};
+use crate::db::{DbError, KeyAlreadyExistsError};
 use crate::test_utils::{get_test_storage, get_test_storage_by_scope};
 use crate::{StorageError, StorageScope, StorageWriter};
 
@@ -63,10 +64,11 @@ async fn append_body() {
     let expected_tx_index = TransactionIndex(BlockNumber(3), TransactionOffsetInBlock(1));
     assert_matches!(
         err,
-        StorageError::TransactionHashAlreadyExists {
-            tx_hash,
-            transaction_index
-        } if tx_hash == tx_hashes[0] && transaction_index == expected_tx_index
+        StorageError::InnerError(DbError::KeyAlreadyExists(KeyAlreadyExistsError {
+            table_name: _,
+            key,
+            value
+        })) if key == format!("{:?}", tx_hashes[0]) && value == format!("{:?}", expected_tx_index)
     );
 
     let txn = reader.begin_ro_txn().unwrap();

@@ -19,7 +19,6 @@ pub mod db_stats;
 // TODO(yair): Make the serialization module pub(crate).
 #[doc(hidden)]
 pub mod serialization;
-
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
