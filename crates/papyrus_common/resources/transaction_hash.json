@@ -183,11 +183,11 @@
           "nonce_data_availability_mode": "L1",
           "fee_data_availability_mode": "L1",
           "resource_bounds": {
-            "L2Gas": {
+            "L2_GAS": {
               "max_amount": 0,
               "max_price_per_unit": 0
             },
-            "L1Gas": {
+            "L1_GAS": {
               "max_amount": 1993,
               "max_price_per_unit": 1
             }
@@ -220,11 +220,11 @@
           "nonce_data_availability_mode": "L1",
           "fee_data_availability_mode": "L1",
           "resource_bounds": {
-            "L2Gas": {
+            "L2_GAS": {
               "max_amount": 0,
               "max_price_per_unit": 0
             },
-            "L1Gas": {
+            "L1_GAS": {
               "max_amount": 1993,
               "max_price_per_unit": 1
             }
@@ -250,11 +250,11 @@
           "nonce_data_availability_mode": "L1",
           "fee_data_availability_mode": "L1",
           "resource_bounds": {
-            "L2Gas": {
+            "L2_GAS": {
               "max_amount": 0,
               "max_price_per_unit": 0
             },
-            "L1Gas": {
+            "L1_GAS": {
               "max_amount": 1993,
               "max_price_per_unit": 1
             }
