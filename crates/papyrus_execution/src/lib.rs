@@ -27,7 +27,11 @@ use blockifier::execution::errors::{EntryPointExecutionError, PreExecutionError}
 use blockifier::state::cached_state::CachedState;
 use blockifier::state::errors::StateError;
 use blockifier::transaction::errors::TransactionExecutionError;
-use blockifier::transaction::objects::{AccountTransactionContext, TransactionExecutionInfo};
+use blockifier::transaction::objects::{
+    AccountTransactionContext,
+    DeprecatedAccountTransactionContext,
+    TransactionExecutionInfo,
+};
 use blockifier::transaction::transaction_execution::Transaction as BlockifierTransaction;
 use blockifier::transaction::transactions::ExecutableTransaction;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
@@ -208,10 +212,10 @@ pub fn execute_call(
         &header.sequencer,
         execution_config,
     );
-    let mut context = EntryPointExecutionContext::new(
-        block_context,
-        AccountTransactionContext::default(),
-        execution_config.invoke_tx_max_n_steps as usize,
+    let mut context = EntryPointExecutionContext::new_invoke(
+        &block_context,
+        &AccountTransactionContext::Deprecated(DeprecatedAccountTransactionContext::default()),
+        true, // limit_steps_by_resources
     );
 
     let res = call_entry_point.execute(
@@ -488,6 +492,7 @@ fn to_blockifier_tx(
             None,
             None,
             None,
+            false,
         )?),
 
         ExecutableTransactionInput::DeployAccount(deploy_acc_tx) => {
@@ -497,6 +502,7 @@ fn to_blockifier_tx(
                 None,
                 None,
                 None,
+                false,
             )?)
         }
 
@@ -508,6 +514,7 @@ fn to_blockifier_tx(
                 Some(class_v0),
                 None,
                 None,
+                false,
             )?)
         }
         ExecutableTransactionInput::DeclareV1(declare_tx, deprecated_class) => {
@@ -518,6 +525,7 @@ fn to_blockifier_tx(
                 Some(class_v0),
                 None,
                 None,
+                false,
             )?)
         }
         ExecutableTransactionInput::DeclareV2(declare_tx, compiled_class) => {
@@ -528,6 +536,7 @@ fn to_blockifier_tx(
                 Some(class_v1),
                 None,
                 None,
+                false,
             )?)
         }
         ExecutableTransactionInput::DeclareV3(declare_tx, compiled_class) => {
@@ -538,6 +547,7 @@ fn to_blockifier_tx(
                 Some(class_v1),
                 None,
                 None,
+                false,
             )?)
         }
         ExecutableTransactionInput::L1Handler(l1_handler_tx, paid_fee) => {
@@ -547,6 +557,7 @@ fn to_blockifier_tx(
                 None,
                 Some(paid_fee),
                 None,
+                false,
             )?)
         }
     }
