@@ -193,6 +193,8 @@ impl Block {
             state_root: self.state_root,
             sequencer: self.sequencer_address,
             timestamp: self.timestamp,
+            n_transactions: num_of_txs as u64,
+            n_events: transaction_outputs.iter().map(|tx| tx.events().len()).sum::<usize>() as u64,
         };
 
         let body = starknet_api::block::BlockBody {
