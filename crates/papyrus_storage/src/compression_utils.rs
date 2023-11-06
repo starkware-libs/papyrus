@@ -61,3 +61,9 @@ pub fn decompress_from_reader(bytes: &mut impl std::io::Read) -> Option<Vec<u8>>
     let compressed_data = Vec::<u8>::deserialize_from(bytes)?;
     decompress(compressed_data.as_slice()).ok()
 }
+
+#[derive(Debug, Eq, PartialEq)]
+pub(crate) enum IsCompressed {
+    No = 0,
+    Yes = 1,
+}

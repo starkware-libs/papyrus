@@ -18,6 +18,7 @@ use crate::body::events::{
     ThinTransactionOutput,
 };
 use crate::body::TransactionIndex;
+use crate::compression_utils::IsCompressed;
 use crate::header::StarknetVersion;
 use crate::mmap_file::LocationInFile;
 use crate::state::data::IndexedDeprecatedContractClass;
@@ -29,6 +30,10 @@ auto_impl_get_test_instance! {
     pub struct IndexedDeprecatedContractClass {
         pub block_number: BlockNumber,
         pub location_in_file: LocationInFile,
+    }
+    pub enum IsCompressed {
+        No = 0,
+        Yes = 1,
     }
     enum MarkerKind {
         Header = 0,

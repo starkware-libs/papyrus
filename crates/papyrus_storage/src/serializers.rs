@@ -117,6 +117,7 @@ use crate::compression_utils::{
     decompress,
     decompress_from_reader,
     serialize_and_compress,
+    IsCompressed,
 };
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
 use crate::header::StarknetVersion;
@@ -127,9 +128,8 @@ use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::Version;
 use crate::{MarkerKind, OffsetKind};
 
-const COMPRESSION_THRESHOLD: usize = 384;
-const COMPRESSED: u8 = 1;
-const UNCOMPRESSED: u8 = 0;
+// The threshold for compressing transactions.
+const COMPRESSION_THRESHOLD_BYTES: usize = 384;
 
 auto_storage_serde! {
     pub struct AccountDeploymentData(pub Vec<StarkFelt>);
@@ -261,6 +261,10 @@ auto_storage_serde! {
         V0(InvokeTransactionV0) = 0,
         V1(InvokeTransactionV1) = 1,
         V3(InvokeTransactionV3) = 2,
+    }
+    pub enum IsCompressed {
+        No = 0,
+        Yes = 1,
     }
     pub struct L1ToL2Payload(pub Vec<StarkFelt>);
     pub struct L2ToL1Payload(pub Vec<StarkFelt>);
@@ -944,7 +948,8 @@ impl StorageSerde for ThinStateDiff {
 #[cfg(test)]
 create_storage_serde_test!(ThinStateDiff);
 
-macro_rules! auto_storage_serde_compressed {
+// The following structs are conditionally compressed based on their serialized size.
+macro_rules! auto_storage_serde_conditionally_compressed {
     () => {};
     ($(pub)? struct $name:ident { $(pub $field:ident : $ty:ty ,)* } $($rest:tt)*) => {
         impl StorageSerde for $name {
@@ -953,24 +958,22 @@ macro_rules! auto_storage_serde_compressed {
                 $(
                     self.$field.serialize_into(&mut to_compress)?;
                 )*
-                if to_compress.len() > COMPRESSION_THRESHOLD {
-                    res.write_all(&[COMPRESSED])?;
+                if to_compress.len() > COMPRESSION_THRESHOLD_BYTES {
+                    IsCompressed::Yes.serialize_into(res)?;
                     let compressed = compress(to_compress.as_slice())?;
                     compressed.serialize_into(res)?;
                 } else {
-                    res.write_all(&[UNCOMPRESSED])?;
+                    IsCompressed::No.serialize_into(res)?;
                     to_compress.serialize_into(res)?;
                 }
                 Ok(())
             }
             fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-                let mut compressed = [0u8; 1];
-                bytes.read_exact(&mut compressed).ok()?;
+                let is_compressed = IsCompressed::deserialize_from(bytes)?;
                 let maybe_compressed_data = Vec::<u8>::deserialize_from(bytes)?;
-                let data = match compressed[0] {
-                    UNCOMPRESSED => maybe_compressed_data,
-                    COMPRESSED => decompress(maybe_compressed_data.as_slice()).ok()?,
-                    _ => return None,
+                let data = match is_compressed {
+                    IsCompressed::No => maybe_compressed_data,
+                    IsCompressed::Yes => decompress(maybe_compressed_data.as_slice()).ok()?,
                 };
                 let data = &mut data.as_slice();
                 Some(Self {
@@ -982,11 +985,12 @@ macro_rules! auto_storage_serde_compressed {
         }
         #[cfg(test)]
         create_storage_serde_test!($name);
-        auto_storage_serde_compressed!($($rest)*);
+        auto_storage_serde_conditionally_compressed!($($rest)*);
     };
 }
 
-auto_storage_serde_compressed! {
+// The following transactions have variable length Calldata and are conditionally compressed.
+auto_storage_serde_conditionally_compressed! {
     pub struct DeployAccountTransactionV1 {
         pub max_fee: Fee,
         pub signature: TransactionSignature,
