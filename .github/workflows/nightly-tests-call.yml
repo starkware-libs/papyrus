@@ -26,7 +26,8 @@ jobs:
       - run: sudo apt update; sudo apt -y install libclang-dev
         # Install libclang-dev that is not a part of the ubuntu vm in github actions.
         if: runner.os == 'Linux'
-      - id: run_test
+      - name: Run gateway_integration_test.
+        id: run_test
         # Workflow steps exit upon failure of a subcommand (running `set -e` implicitly before the
         # run). As we want to keep running this step after a test failure we can either start with
         # `set +e` to suppress all errors, or, as done below, append `|| retVal=$?` to the command
@@ -54,3 +55,6 @@ jobs:
             logs>.
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      - name: Fail job in case of test failure.
+        if: ${{ steps.run_test.outputs.retVal != 0 }}
+        run: exit 1
