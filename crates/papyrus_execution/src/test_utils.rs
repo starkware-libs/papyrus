@@ -89,13 +89,12 @@ pub fn prepare_storage(mut storage_writer: StorageWriter) {
     let class_hash0 = class_hash!("0x2");
     let class_hash1 = class_hash!("0x1");
 
-    let minter_var_address = get_storage_var_address("permitted_minter", &[])
-        .expect("Failed to get permitted_minter storage address.");
+    let minter_var_address = get_storage_var_address("permitted_minter", &[]);
 
     let account_balance_key =
-        get_storage_var_address("ERC20_balances", &[*ACCOUNT_ADDRESS.0.key()]).unwrap();
+        get_storage_var_address("ERC20_balances", &[*ACCOUNT_ADDRESS.0.key()]);
     let new_account_balance_key =
-        get_storage_var_address("ERC20_balances", &[*NEW_ACCOUNT_ADDRESS.0.key()]).unwrap();
+        get_storage_var_address("ERC20_balances", &[*NEW_ACCOUNT_ADDRESS.0.key()]);
 
     storage_writer
         .begin_rw_txn()
