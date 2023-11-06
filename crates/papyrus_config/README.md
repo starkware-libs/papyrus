@@ -23,3 +23,12 @@ Supports multiple configuration sources in ascending order of overriding priorit
 
 - **Automatically-Generated Reference Configuration File:** Makes it easier for users by generating a reference configuration file. This file serves as a template that highlights all available configuration options and their default values, enabling users to customize their configurations efficiently.
 
+## Documentation
+
+Developer reference documentation is available at https://docs.rs/papyrus_config/. The documentation on this site is updated periodically.
+
+To view the most up-to-date documentation, enter the following command at the root directory of the `papyrus` project:
+
+```shell
+cargo doc --open -p papyrus_config
+```
