@@ -137,6 +137,7 @@ docker run --rm --name papyrus\
   ghcr.io/starkware-libs/papyrus:dev \
   --base_layer.node_url <ethereum_node_url> \
   --user "$(id -u):$(id -g)"
+   --config-file config/presets/testnet1.json
 ----
 +
 [NOTE]
