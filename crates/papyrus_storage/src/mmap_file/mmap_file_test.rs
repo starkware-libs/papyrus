@@ -199,7 +199,7 @@ async fn write_read_different_locations() {
     let lock = Arc::new(RwLock::new(0));
 
     async fn reader_task(
-        reader: FileReader<Vec<u8>>,
+        reader: FileHandler<Vec<u8>, RO>,
         lock: Arc<RwLock<usize>>,
         barrier: Arc<Barrier>,
     ) {
