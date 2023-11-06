@@ -93,7 +93,7 @@ fn dump_declared_classes_table_by_block_range_internal(
             for (class_hash, compiled_class_hash) in thin_state_diff.declared_classes.iter() {
                 if let Some(contract_class_location) = table_handle.get(&txn.txn, class_hash)? {
                     let contract_class =
-                        txn.file_access.get_contract_class_unchecked(contract_class_location)?;
+                        txn.file_handlers.get_contract_class_unchecked(contract_class_location)?;
                     if !first {
                         writer.write_all(b",")?;
                     }

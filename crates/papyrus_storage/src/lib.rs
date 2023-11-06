@@ -213,7 +213,7 @@ pub enum StorageScope {
 #[derive(Clone)]
 pub struct StorageReader {
     db_reader: DbReader,
-    file_readers: FileReaders,
+    file_readers: FileHandlers<RO>,
     tables: Arc<Tables>,
     scope: StorageScope,
 }
@@ -224,7 +224,7 @@ impl StorageReader {
     pub fn begin_ro_txn(&self) -> StorageResult<StorageTxn<'_, RO>> {
         Ok(StorageTxn {
             txn: self.db_reader.begin_ro_txn()?,
-            file_access: FileAccess::Readers(self.file_readers.clone()),
+            file_handlers: self.file_readers.clone(),
             tables: self.tables.clone(),
             scope: self.scope,
         })
@@ -245,7 +245,7 @@ impl StorageReader {
 /// at any given moment.
 pub struct StorageWriter {
     db_writer: DbWriter,
-    file_writers: FileWriters,
+    file_writers: FileHandlers<RW>,
     tables: Arc<Tables>,
     scope: StorageScope,
 }
@@ -256,7 +256,7 @@ impl StorageWriter {
     pub fn begin_rw_txn(&mut self) -> StorageResult<StorageTxn<'_, RW>> {
         Ok(StorageTxn {
             txn: self.db_writer.begin_rw_txn()?,
-            file_access: FileAccess::Writers(self.file_writers.clone()),
+            file_handlers: self.file_writers.clone(),
             tables: self.tables.clone(),
             scope: self.scope,
         })
@@ -267,7 +267,7 @@ impl StorageWriter {
 /// The actually functionality is implemented on the transaction in multiple traits.
 pub struct StorageTxn<'env, Mode: TransactionKind> {
     txn: DbTransaction<'env, Mode>,
-    file_access: FileAccess,
+    file_handlers: FileHandlers<Mode>,
     tables: Arc<Tables>,
     scope: StorageScope,
 }
@@ -275,7 +275,7 @@ pub struct StorageTxn<'env, Mode: TransactionKind> {
 impl<'env> StorageTxn<'env, RW> {
     /// Commits the changes made in the transaction to the storage.
     pub fn commit(self) -> StorageResult<()> {
-        self.file_access.flush();
+        self.file_handlers.flush();
         Ok(self.txn.commit()?)
     }
 }
@@ -462,96 +462,27 @@ pub(crate) enum MarkerKind {
 pub(crate) type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
 
 #[derive(Clone, Debug)]
-pub(crate) enum FileAccess {
-    Readers(FileReaders),
-    Writers(FileWriters),
+struct FileHandlers<Mode: TransactionKind> {
+    thin_state_diff: FileHandler<ThinStateDiff, Mode>,
+    contract_class: FileHandler<ContractClass, Mode>,
+    casm: FileHandler<CasmContractClass, Mode>,
+    deprecated_contract_class: FileHandler<DeprecatedContractClass, Mode>,
 }
 
-impl FileAccess {
+impl FileHandlers<RW> {
     // Appends a thin state diff to the corresponding file and returns its location.
     fn append_thin_state_diff(&self, thin_state_diff: &ThinStateDiff) -> LocationInFile {
-        match self.clone() {
-            FileAccess::Readers(_) => panic!("Cannot write to storage in read only mode."),
-            FileAccess::Writers(mut file_writers) => {
-                file_writers.thin_state_diff.append(thin_state_diff)
-            }
-        }
-    }
-
-    // Returns the thin state diff at the given location or an error in case it doesn't exist.
-    fn get_thin_state_diff_unchecked(
-        &self,
-        location: LocationInFile,
-    ) -> StorageResult<ThinStateDiff> {
-        match self {
-            FileAccess::Readers(file_readers) => Ok(file_readers
-                .thin_state_diff
-                .get(location)?
-                .ok_or(StorageError::DBInconsistency {
-                    msg: format!("ThinStateDiff at location {:?} not found.", location),
-                })?),
-            FileAccess::Writers(file_writers) => Ok(file_writers
-                .thin_state_diff
-                .get(location)?
-                .ok_or(StorageError::DBInconsistency {
-                    msg: format!("ThinStateDiff at location {:?} not found.", location),
-                })?),
-        }
+        self.clone().thin_state_diff.append(thin_state_diff)
     }
 
     // Appends a contract class to the corresponding file and returns its location.
     fn append_contract_class(&self, contract_class: &ContractClass) -> LocationInFile {
-        match self.clone() {
-            FileAccess::Readers(_) => panic!("Cannot write to storage in read only mode."),
-            FileAccess::Writers(mut file_writers) => {
-                file_writers.contract_class.append(contract_class)
-            }
-        }
-    }
-
-    // Returns the contract class at the given location or an error in case it doesn't exist.
-    fn get_contract_class_unchecked(
-        &self,
-        location: LocationInFile,
-    ) -> StorageResult<ContractClass> {
-        match self {
-            FileAccess::Readers(file_readers) => Ok(file_readers
-                .contract_class
-                .get(location)?
-                .ok_or(StorageError::DBInconsistency {
-                    msg: format!("ContractClass at location {:?} not found.", location),
-                })?),
-            FileAccess::Writers(file_writers) => Ok(file_writers
-                .contract_class
-                .get(location)?
-                .ok_or(StorageError::DBInconsistency {
-                    msg: format!("ContractClass at location {:?} not found.", location),
-                })?),
-        }
+        self.clone().contract_class.append(contract_class)
     }
 
     // Appends a CASM to the corresponding file and returns its location.
     fn append_casm(&self, casm: &CasmContractClass) -> LocationInFile {
-        match self.clone() {
-            FileAccess::Readers(_) => panic!("Cannot write to storage in read only mode."),
-            FileAccess::Writers(mut file_writers) => file_writers.casm.append(casm),
-        }
-    }
-
-    // Returns the CASM at the given location or an error in case it doesn't exist.
-    fn get_casm_unchecked(&self, location: LocationInFile) -> StorageResult<CasmContractClass> {
-        match self {
-            FileAccess::Readers(file_readers) => {
-                Ok(file_readers.casm.get(location)?.ok_or(StorageError::DBInconsistency {
-                    msg: format!("CasmContractClass at location {:?} not found.", location),
-                })?)
-            }
-            FileAccess::Writers(file_writers) => {
-                Ok(file_writers.casm.get(location)?.ok_or(StorageError::DBInconsistency {
-                    msg: format!("CasmContractClass at location {:?} not found.", location),
-                })?)
-            }
-        }
+        self.clone().casm.append(casm)
     }
 
     // Appends a deprecated contract class to the corresponding file and returns its location.
@@ -559,12 +490,44 @@ impl FileAccess {
         &self,
         deprecated_contract_class: &DeprecatedContractClass,
     ) -> LocationInFile {
-        match self.clone() {
-            FileAccess::Readers(_) => panic!("Cannot write to storage in read only mode."),
-            FileAccess::Writers(mut file_writers) => {
-                file_writers.deprecated_contract_class.append(deprecated_contract_class)
-            }
-        }
+        self.clone().deprecated_contract_class.append(deprecated_contract_class)
+    }
+
+    // TODO(dan): Consider 1. flushing only the relevant files, 2. flushing concurrently.
+    fn flush(&self) {
+        self.thin_state_diff.flush();
+        self.contract_class.flush();
+        self.casm.flush();
+        self.deprecated_contract_class.flush();
+    }
+}
+
+impl<Mode: TransactionKind> FileHandlers<Mode> {
+    // Returns the thin state diff at the given location or an error in case it doesn't exist.
+    fn get_thin_state_diff_unchecked(
+        &self,
+        location: LocationInFile,
+    ) -> StorageResult<ThinStateDiff> {
+        self.thin_state_diff.get(location)?.ok_or(StorageError::DBInconsistency {
+            msg: format!("ThinStateDiff at location {:?} not found.", location),
+        })
+    }
+
+    // Returns the contract class at the given location or an error in case it doesn't exist.
+    fn get_contract_class_unchecked(
+        &self,
+        location: LocationInFile,
+    ) -> StorageResult<ContractClass> {
+        self.contract_class.get(location)?.ok_or(StorageError::DBInconsistency {
+            msg: format!("ContractClass at location {:?} not found.", location),
+        })
+    }
+
+    // Returns the CASM at the given location or an error in case it doesn't exist.
+    fn get_casm_unchecked(&self, location: LocationInFile) -> StorageResult<CasmContractClass> {
+        self.casm.get(location)?.ok_or(StorageError::DBInconsistency {
+            msg: format!("CasmContractClass at location {:?} not found.", location),
+        })
     }
 
     // Returns the deprecated contract class at the given location or an error in case it doesn't
@@ -573,50 +536,10 @@ impl FileAccess {
         &self,
         location: LocationInFile,
     ) -> StorageResult<DeprecatedContractClass> {
-        match self {
-            FileAccess::Readers(file_readers) => Ok(file_readers
-                .deprecated_contract_class
-                .get(location)?
-                .ok_or(StorageError::DBInconsistency {
-                    msg: format!("DeprecatedContractClass at location {:?} not found.", location),
-                })?),
-            FileAccess::Writers(file_writers) => Ok(file_writers
-                .deprecated_contract_class
-                .get(location)?
-                .ok_or(StorageError::DBInconsistency {
-                    msg: format!("DeprecatedContractClass at location {:?} not found.", location),
-                })?),
-        }
+        self.deprecated_contract_class.get(location)?.ok_or(StorageError::DBInconsistency {
+            msg: format!("DeprecatedContractClass at location {:?} not found.", location),
+        })
     }
-
-    fn flush(&self) {
-        // TODO(dan): Consider 1. flushing only the relevant files, 2. flushing concurrently.
-        match self {
-            FileAccess::Readers(_) => (),
-            FileAccess::Writers(file_writers) => {
-                file_writers.thin_state_diff.flush();
-                file_writers.contract_class.flush();
-                file_writers.casm.flush();
-                file_writers.deprecated_contract_class.flush();
-            }
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-struct FileWriters {
-    thin_state_diff: FileHandler<ThinStateDiff, RW>,
-    contract_class: FileHandler<ContractClass, RW>,
-    casm: FileHandler<CasmContractClass, RW>,
-    deprecated_contract_class: FileHandler<DeprecatedContractClass, RW>,
-}
-
-#[derive(Clone, Debug)]
-struct FileReaders {
-    thin_state_diff: FileHandler<ThinStateDiff, RO>,
-    contract_class: FileHandler<ContractClass, RO>,
-    casm: FileHandler<CasmContractClass, RO>,
-    deprecated_contract_class: FileHandler<DeprecatedContractClass, RO>,
 }
 
 fn open_storage_files(
@@ -624,7 +547,7 @@ fn open_storage_files(
     mmap_file_config: MmapFileConfig,
     db_reader: DbReader,
     file_offsets_table: &TableIdentifier<OffsetKind, usize>,
-) -> StorageResult<(FileWriters, FileReaders)> {
+) -> StorageResult<(FileHandlers<RW>, FileHandlers<RO>)> {
     let db_transaction = db_reader.begin_ro_txn()?;
     let table = db_transaction.open_table(file_offsets_table)?;
 
@@ -657,13 +580,13 @@ fn open_storage_files(
     )?;
 
     Ok((
-        FileWriters {
+        FileHandlers {
             thin_state_diff: thin_state_diff_writer,
             contract_class: contract_class_writer,
             casm: casm_writer,
             deprecated_contract_class: deprecated_contract_class_writer,
         },
-        FileReaders {
+        FileHandlers {
             thin_state_diff: thin_state_diff_reader,
             contract_class: contract_class_reader,
             casm: casm_reader,
