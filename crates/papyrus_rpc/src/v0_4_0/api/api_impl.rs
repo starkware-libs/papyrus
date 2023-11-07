@@ -740,7 +740,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             &self.storage_reader.begin_ro_txn().map_err(internal_server_error)?,
             block_id,
         )?;
-        let state_number = StateNumber::right_before_block(block_number);
+        let state_number = StateNumber::right_after_block(block_number);
         let block_execution_config = self
             .execution_config
             .get_execution_config_for_block(block_number)
@@ -757,6 +757,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 reader,
                 &chain_id,
                 state_number,
+                block_number,
                 &contract_address_copy,
                 entry_point_selector,
                 calldata,
@@ -840,7 +841,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             &self.storage_reader.begin_ro_txn().map_err(internal_server_error)?,
             block_id,
         )?;
-        let state_number = StateNumber::right_before_block(block_number);
+        let state_number = StateNumber::right_after_block(block_number);
         let block_execution_config = self
             .execution_config
             .get_execution_config_for_block(block_number)
@@ -857,6 +858,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 &chain_id,
                 reader,
                 state_number,
+                block_number,
                 &block_execution_config,
             )
         })
@@ -888,7 +890,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             &self.storage_reader.begin_ro_txn().map_err(internal_server_error)?,
             block_id,
         )?;
-        let state_number = StateNumber::right_before_block(block_number);
+        let state_number = StateNumber::right_after_block(block_number);
         let block_execution_config = self
             .execution_config
             .get_execution_config_for_block(block_number)
@@ -909,6 +911,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 &chain_id,
                 reader,
                 state_number,
+                block_number,
                 &block_execution_config,
                 charge_fee,
                 validate,
@@ -997,6 +1000,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 &chain_id,
                 reader,
                 state_number,
+                block_number,
                 &block_execution_config,
                 true,
                 true,
@@ -1078,6 +1082,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 &chain_id,
                 reader,
                 state_number,
+                block_number,
                 &block_execution_config,
                 true,
                 true,
