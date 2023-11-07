@@ -1086,8 +1086,10 @@ async fn get_class_at() {
 #[tokio::test]
 async fn get_class_hash_at() {
     let method_name = "starknet_V0_4_getClassHashAt";
-    let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let pending_data = get_test_pending_data();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerV0_4Impl,
+    >(None, None, Some(pending_data.clone()), None, None);
     let header = BlockHeader::default();
     let diff = get_test_state_diff();
     storage_writer
@@ -1101,6 +1103,17 @@ async fn get_class_hash_at() {
         .unwrap();
 
     let (address, expected_class_hash) = diff.deployed_contracts.get_index(0).unwrap();
+
+    let pending_address: ContractAddress = random::<u64>().into();
+    let pending_class_hash = ClassHash(random::<u64>().into());
+    pending_data
+        .write()
+        .await
+        .state_update
+        .state_diff
+        .deployed_contracts
+        .push(ClientDeployedContract { address: pending_address, class_hash: pending_class_hash });
+    pending_data.write().await.block.parent_block_hash = header.block_hash;
 
     // Get class hash by block hash.
     call_api_then_assert_and_validate_schema_for_result::<_, (BlockId, ContractAddress), ClassHash>(
@@ -1118,6 +1131,43 @@ async fn get_class_hash_at() {
             method_name,
             (BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)), *address),
         )
+        .await
+        .unwrap();
+    assert_eq!(res, *expected_class_hash);
+
+    // Get class hash by latest tag.
+    let res = module
+        .call::<_, ClassHash>(method_name, (BlockId::Tag(Tag::Latest), *address))
+        .await
+        .unwrap();
+    assert_eq!(res, *expected_class_hash);
+
+    // Get class hash of pending block.
+    let res = module
+        .call::<_, ClassHash>(method_name, (BlockId::Tag(Tag::Pending), *address))
+        .await
+        .unwrap();
+    assert_eq!(res, *expected_class_hash);
+
+    let res = module
+        .call::<_, ClassHash>(method_name, (BlockId::Tag(Tag::Pending), pending_address))
+        .await
+        .unwrap();
+    assert_eq!(res, pending_class_hash);
+
+    // Get class hash of pending block when it's not up to date.
+    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    call_api_then_assert_and_validate_schema_for_err::<_, (BlockId, ContractAddress), ClassHash>(
+        &module,
+        method_name,
+        &Some((BlockId::Tag(Tag::Pending), pending_address)),
+        &VERSION_0_4,
+        &CONTRACT_NOT_FOUND.into(),
+    )
+    .await;
+
+    let res = module
+        .call::<_, ClassHash>(method_name, (BlockId::Tag(Tag::Pending), *address))
         .await
         .unwrap();
     assert_eq!(res, *expected_class_hash);
