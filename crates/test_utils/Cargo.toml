@@ -8,7 +8,6 @@ license-file.workspace = true
 [features]
 
 [dependencies]
-assert.workspace = true
 cairo-lang-starknet.workspace = true
 cairo-lang-casm.workspace = true
 cairo-lang-utils.workspace = true
