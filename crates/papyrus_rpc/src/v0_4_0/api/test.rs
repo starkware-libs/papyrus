@@ -1219,8 +1219,10 @@ async fn get_class_hash_at() {
 #[tokio::test]
 async fn get_nonce() {
     let method_name = "starknet_V0_4_getNonce";
-    let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let pending_data = get_test_pending_data();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerV0_4Impl,
+    >(None, None, Some(pending_data.clone()), None, None);
     let header = BlockHeader::default();
     let diff = get_test_state_diff();
     storage_writer
@@ -1235,7 +1237,7 @@ async fn get_nonce() {
 
     let (address, expected_nonce) = diff.nonces.get_index(0).unwrap();
 
-    // Get class hash by block hash.
+    // Get nonce by block hash.
     call_api_then_assert_and_validate_schema_for_result::<_, (BlockId, ContractAddress), Nonce>(
         &module,
         method_name,
@@ -1245,7 +1247,7 @@ async fn get_nonce() {
     )
     .await;
 
-    // Get class hash by block number.
+    // Get nonce by block number.
     let res = module
         .call::<_, Nonce>(
             method_name,
@@ -1254,6 +1256,38 @@ async fn get_nonce() {
         .await
         .unwrap();
     assert_eq!(res, *expected_nonce);
+
+    // Ask for nonce in pending block when it wasn't changed in pending block.
+    let res =
+        module.call::<_, Nonce>(method_name, (BlockId::Tag(Tag::Pending), *address)).await.unwrap();
+    assert_eq!(res, *expected_nonce);
+
+    // Ask for nonce in pending block when it was changed in pending block.
+    let new_nonce = Nonce(StarkFelt::from(1234_u128));
+    pending_data.write().await.state_update.state_diff.nonces.insert(*address, new_nonce);
+    let res =
+        module.call::<_, Nonce>(method_name, (BlockId::Tag(Tag::Pending), *address)).await.unwrap();
+    assert_eq!(res, new_nonce);
+
+    // Ask for nonce in pending block when the pending block is not up to date.
+    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    let res =
+        module.call::<_, Nonce>(method_name, (BlockId::Tag(Tag::Pending), *address)).await.unwrap();
+    assert_eq!(res, *expected_nonce);
+
+    // Ask for storage in pending block where the contract is deployed in the pending block, and the
+    // pending block is not up to date.
+    // Expected outcome: Failure due to contract not found.
+    let contract_address = ContractAddress(patricia_key!("0x1234"));
+    pending_data.write().await.state_update.state_diff.nonces.insert(contract_address, new_nonce);
+    call_api_then_assert_and_validate_schema_for_err::<_, (BlockId, ContractAddress), StarkFelt>(
+        &module,
+        method_name,
+        &Some((BlockId::Tag(Tag::Pending), contract_address)),
+        &VERSION_0_4,
+        &CONTRACT_NOT_FOUND.into(),
+    )
+    .await;
 
     // Ask for an invalid contract.
     call_api_then_assert_and_validate_schema_for_err::<_, (BlockId, ContractAddress), Nonce>(

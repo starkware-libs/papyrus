@@ -603,7 +603,25 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_nonce(&self, block_id: BlockId, contract_address: ContractAddress) -> RpcResult<Nonce> {
+    async fn get_nonce(
+        &self,
+        block_id: BlockId,
+        contract_address: ContractAddress,
+    ) -> RpcResult<Nonce> {
+        let block_id = if let BlockId::Tag(Tag::Pending) = block_id {
+            let pending_nonces = read_pending_data(&self.pending_data, &self.storage_reader)
+                .await?
+                .state_update
+                .state_diff
+                .nonces;
+            if let Some(nonce) = pending_nonces.get(&contract_address) {
+                return Ok(*nonce);
+            }
+            BlockId::Tag(Tag::Latest)
+        } else {
+            block_id
+        };
+
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let block_number = get_block_number(&txn, block_id)?;
