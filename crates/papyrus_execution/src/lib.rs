@@ -214,6 +214,7 @@ pub fn execute_call(
     );
     let mut context = EntryPointExecutionContext::new_invoke(
         &block_context,
+        // TODO(yair): fix when supporting v3 transactions
         &AccountTransactionContext::Deprecated(DeprecatedAccountTransactionContext::default()),
         true, // limit_steps_by_resources
     );
@@ -485,6 +486,9 @@ fn to_blockifier_tx(
     tx: ExecutableTransactionInput,
     tx_hash: TransactionHash,
 ) -> ExecutionResult<BlockifierTransaction> {
+    // TODO(yair): support only_query version bit (enable in the RPC v0.6 and use the correct
+    // value).
+    const ONLY_QUERY: bool = false;
     match tx {
         ExecutableTransactionInput::Invoke(invoke_tx) => Ok(BlockifierTransaction::from_api(
             Transaction::Invoke(invoke_tx),
@@ -492,7 +496,7 @@ fn to_blockifier_tx(
             None,
             None,
             None,
-            false,
+            ONLY_QUERY,
         )?),
 
         ExecutableTransactionInput::DeployAccount(deploy_acc_tx) => {
@@ -502,7 +506,7 @@ fn to_blockifier_tx(
                 None,
                 None,
                 None,
-                false,
+                ONLY_QUERY,
             )?)
         }
 
@@ -514,7 +518,7 @@ fn to_blockifier_tx(
                 Some(class_v0),
                 None,
                 None,
-                false,
+                ONLY_QUERY,
             )?)
         }
         ExecutableTransactionInput::DeclareV1(declare_tx, deprecated_class) => {
@@ -525,7 +529,7 @@ fn to_blockifier_tx(
                 Some(class_v0),
                 None,
                 None,
-                false,
+                ONLY_QUERY,
             )?)
         }
         ExecutableTransactionInput::DeclareV2(declare_tx, compiled_class) => {
@@ -536,7 +540,7 @@ fn to_blockifier_tx(
                 Some(class_v1),
                 None,
                 None,
-                false,
+                ONLY_QUERY,
             )?)
         }
         ExecutableTransactionInput::DeclareV3(declare_tx, compiled_class) => {
@@ -547,7 +551,7 @@ fn to_blockifier_tx(
                 Some(class_v1),
                 None,
                 None,
-                false,
+                ONLY_QUERY,
             )?)
         }
         ExecutableTransactionInput::L1Handler(l1_handler_tx, paid_fee) => {
@@ -557,7 +561,7 @@ fn to_blockifier_tx(
                 None,
                 Some(paid_fee),
                 None,
-                false,
+                ONLY_QUERY,
             )?)
         }
     }
