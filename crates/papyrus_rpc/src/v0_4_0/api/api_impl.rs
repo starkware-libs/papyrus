@@ -18,7 +18,7 @@ use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
 use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
-use starknet_api::block::{BlockNumber, BlockStatus};
+use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
 use starknet_api::core::{
     ChainId,
     ClassHash,
@@ -259,8 +259,11 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         block_id: BlockId,
     ) -> RpcResult<StarkFelt> {
         let block_id = if let BlockId::Tag(Tag::Pending) = block_id {
-            let pending_storage_diffs =
-                &self.pending_data.read().await.state_update.state_diff.storage_diffs;
+            let pending_storage_diffs = read_pending_data(&self.pending_data, &self.storage_reader)
+                .await?
+                .state_update
+                .state_diff
+                .storage_diffs;
             if let Some(storage_entries) = pending_storage_diffs.get(&contract_address) {
                 // iterating in reverse to get the latest value.
                 for StorageEntry { key: other_key, value } in storage_entries.iter().rev() {
@@ -1084,10 +1087,15 @@ async fn read_pending_data(
     storage_reader: &StorageReader,
 ) -> RpcResult<PendingData> {
     let txn = storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-    let latest_block_number =
-        get_latest_block_number(&txn)?.ok_or_else(|| ErrorObjectOwned::from(NO_BLOCKS))?;
-    let latest_header: starknet_api::block::BlockHeader =
-        get_block_header_by_number(&txn, latest_block_number)?;
+    let latest_header: starknet_api::block::BlockHeader = match get_latest_block_number(&txn)? {
+        Some(latest_block_number) => get_block_header_by_number(&txn, latest_block_number)?,
+        None => starknet_api::block::BlockHeader {
+            parent_hash: BlockHash(
+                StarkHash::try_from(GENESIS_HASH).map_err(internal_server_error)?,
+            ),
+            ..Default::default()
+        },
+    };
     let pending_data = &pending_data.read().await;
     if pending_data.block.parent_block_hash == latest_header.block_hash {
         Ok((*pending_data).clone())
