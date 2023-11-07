@@ -678,9 +678,9 @@ fn induced_state_diff() {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
     prepare_storage(storage_writer);
     let account_balance_key =
-        get_storage_var_address("ERC20_balances", &[*ACCOUNT_ADDRESS.0.key()]).unwrap();
+        get_storage_var_address("ERC20_balances", &[*ACCOUNT_ADDRESS.0.key()]);
     let sequencer_balance_key =
-        get_storage_var_address("ERC20_balances", &[*SEQUENCER_ADDRESS.0.key()]).unwrap();
+        get_storage_var_address("ERC20_balances", &[*SEQUENCER_ADDRESS.0.key()]);
 
     // TODO(yair): Add a reverted transaction.
     let tx = TxsScenarioBuilder::default()
@@ -748,7 +748,7 @@ fn induced_state_diff() {
     assert_eq!(simulation_results[2].1, expected_declare_deprecated_class);
 
     let new_account_balance_key =
-        get_storage_var_address("ERC20_balances", &[*NEW_ACCOUNT_ADDRESS.0.key()]).unwrap();
+        get_storage_var_address("ERC20_balances", &[*NEW_ACCOUNT_ADDRESS.0.key()]);
     let new_account_balance =
         u64::try_from(*ACCOUNT_INITIAL_BALANCE).unwrap() as u128 - simulation_results[3].3.0;
 

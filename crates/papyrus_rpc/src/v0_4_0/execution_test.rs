@@ -618,14 +618,13 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
 
     let account_class = serde_json::from_value(read_json_file("account_class.json")).unwrap();
     let account_balance_key =
-        get_storage_var_address("ERC20_balances", &[*ACCOUNT_ADDRESS.0.key()]).unwrap();
+        get_storage_var_address("ERC20_balances", &[*ACCOUNT_ADDRESS.0.key()]);
 
     let fee_contract_class = serde_json::from_value::<SN_API_DeprecatedContractClass>(
         read_json_file("erc20_fee_contract_class.json"),
     )
     .unwrap();
-    let minter_var_address = get_storage_var_address("permitted_minter", &[])
-        .expect("Failed to get permitted_minter storage address.");
+    let minter_var_address = get_storage_var_address("permitted_minter", &[]);
 
     storage_writer
         .begin_rw_txn()
