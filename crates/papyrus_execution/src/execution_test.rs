@@ -218,6 +218,7 @@ fn estimate_fees(txs: Vec<ExecutableTransactionInput>) -> Vec<(GasPrice, Fee)> {
         &CHAIN_ID,
         storage_reader,
         StateNumber::right_after_block(BlockNumber(0)),
+        BlockNumber(1),
         &test_block_execution_config(),
     )
     .unwrap()
