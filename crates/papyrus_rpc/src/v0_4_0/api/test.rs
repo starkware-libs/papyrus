@@ -1282,8 +1282,40 @@ async fn get_storage_at() {
         .unwrap();
     assert_eq!(res, other_value);
 
-    // Ask for storage at address 0x1 - the block hash table contract address
+    // Ask for storage in pending block when it's not updated.
+    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    let res = module
+        .call::<_, StarkFelt>(method_name, (*address, other_key, BlockId::Tag(Tag::Pending)))
+        .await
+        .unwrap();
+    assert_eq!(res, StarkFelt::default());
+
+    // Ask for storage in pending block where the contract is deployed in the pending block, and the
+    // pending block is not updated.
+    // Expected outcome: Failure due to contract not found.
     let key = StorageKey(patricia_key!("0x1001"));
+    let contract_address = ContractAddress(patricia_key!("0x1234"));
+    pending_data
+        .write()
+        .await
+        .state_update
+        .state_diff
+        .storage_diffs
+        .insert(contract_address, vec![ClientStorageEntry { key, value: StarkFelt::default() }]);
+    call_api_then_assert_and_validate_schema_for_err::<
+        _,
+        (ContractAddress, StorageKey, BlockId),
+        StarkFelt,
+    >(
+        &module,
+        method_name,
+        &Some((contract_address, key, BlockId::Tag(Tag::Pending))),
+        &VERSION_0_4,
+        &CONTRACT_NOT_FOUND.into(),
+    )
+    .await;
+
+    // Ask for storage at address 0x1 - the block hash table contract address
     let res = module
         .call::<_, StarkFelt>(
             "starknet_V0_4_getStorageAt",
