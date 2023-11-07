@@ -19,10 +19,10 @@ itertools.workspace = true
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
 lru.workspace = true
 metrics.workspace = true
-papyrus_storage = { path = "../papyrus_storage", version = "0.0.5" }
+papyrus_storage = { path = "../papyrus_storage", version = "0.2.0-rc1" }
 papyrus_base_layer = { path = "../papyrus_base_layer" }
 papyrus_common = { path = "../papyrus_common" }
-papyrus_config = { path = "../papyrus_config", version = "0.0.5" }
+papyrus_config = { path = "../papyrus_config", version = "0.2.0-rc1" }
 papyrus_proc_macros = { path = "../papyrus_proc_macros"}
 reqwest = { workspace = true, features = ["json", "blocking"] }
 serde = { workspace = true, features = ["derive"] }

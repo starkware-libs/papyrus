@@ -19,7 +19,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.0.5"
+version = "0.2.0-rc1"
 edition = "2021"
 repository = "https://github.com/starkware-libs/papyrus/"
 license = "Apache-2.0"
@@ -33,7 +33,7 @@ async-trait = "0.1.56"
 axum = "0.6.12"
 base64 = "0.13.0"
 bitvec = "1.0.1"
-blockifier = { version = "0.4.0-rc4" }
+blockifier = "0.4.0-rc4"
 byteorder = "1.4.3"
 cairo-lang-starknet = "2.3.1"
 cairo-lang-casm = "2.3.1"
