@@ -3,25 +3,28 @@ use pretty_assertions::assert_eq;
 
 use crate::test_utils::get_test_storage;
 use crate::version::{StorageVersionError, Version, VersionStorageReader, VersionStorageWriter};
-use crate::{StorageError, STORAGE_VERSION};
+use crate::{StorageError, STORAGE_VERSION_STATE, STORAGE_VERSION_TRANSACTIONS};
 
 #[tokio::test]
 async fn version() {
     let ((reader, mut writer), _temp_dir) = get_test_storage();
 
     // No version initially - use crate version.
-    let version = reader.begin_ro_txn().unwrap().get_version().unwrap();
-    assert!(version.is_some());
-    assert_eq!(version.unwrap(), STORAGE_VERSION);
+    let version_state = reader.begin_ro_txn().unwrap().get_version_state().unwrap();
+    let version_transactions = reader.begin_ro_txn().unwrap().get_version_transactions().unwrap();
+    assert!(version_state.is_some());
+    assert!(version_transactions.is_some());
+    assert_eq!(version_state.unwrap(), STORAGE_VERSION_STATE);
+    assert_eq!(version_transactions.unwrap(), STORAGE_VERSION_TRANSACTIONS);
 
     // Write and read version.
-    let higher_version = Version(STORAGE_VERSION.0 + 1);
-    writer.begin_rw_txn().unwrap().set_version(&higher_version).unwrap().commit().unwrap();
-    let version = reader.begin_ro_txn().unwrap().get_version().unwrap();
-    assert_eq!(version.unwrap(), higher_version);
+    let higher_version = Version(STORAGE_VERSION_STATE.0 + 1);
+    writer.begin_rw_txn().unwrap().set_version_state(&higher_version).unwrap().commit().unwrap();
+    let version_state = reader.begin_ro_txn().unwrap().get_version_state().unwrap();
+    assert_eq!(version_state.unwrap(), higher_version);
 
     // Fail to set a version which is not higher than the existing one.
-    let Err(err) = writer.begin_rw_txn().unwrap().set_version(&higher_version) else {
+    let Err(err) = writer.begin_rw_txn().unwrap().set_version_state(&higher_version) else {
         panic!("Unexpected Ok.");
     };
 

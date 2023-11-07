@@ -7,7 +7,9 @@ use std::fmt::Display;
 use crate::db::{TransactionKind, RW};
 use crate::{StorageError, StorageResult, StorageTxn};
 
-const VERSION_KEY: &str = "storage_version";
+// const VERSION_KEY: &str = "storage_version";
+const VERSION_STATE_KEY: &str = "storage_version_state";
+const VERSION_TRANSACTIONS_KEY: &str = "storage_version_transactions";
 
 #[derive(Clone, Debug, Default, Eq, PartialEq, PartialOrd)]
 pub struct Version(pub u32);
@@ -26,7 +28,8 @@ pub enum StorageVersionError {
 }
 
 pub trait VersionStorageReader {
-    fn get_version(&self) -> StorageResult<Option<Version>>;
+    fn get_version_state(&self) -> StorageResult<Option<Version>>;
+    fn get_version_transactions(&self) -> StorageResult<Option<Version>>;
 }
 
 pub trait VersionStorageWriter
@@ -34,20 +37,26 @@ where
     Self: Sized,
 {
     // To enforce that no commit happen after a failure, we consume and return Self on success.
-    fn set_version(self, version: &Version) -> StorageResult<Self>;
+    fn set_version_state(self, version: &Version) -> StorageResult<Self>;
+    fn set_version_transactions(self, version: &Version) -> StorageResult<Self>;
 }
 
 impl<'env, Mode: TransactionKind> VersionStorageReader for StorageTxn<'env, Mode> {
-    fn get_version(&self) -> StorageResult<Option<Version>> {
+    fn get_version_state(&self) -> StorageResult<Option<Version>> {
         let version_table = self.open_table(&self.tables.storage_version)?;
-        Ok(version_table.get(&self.txn, &VERSION_KEY.to_string())?)
+        Ok(version_table.get(&self.txn, &VERSION_STATE_KEY.to_string())?)
+    }
+
+    fn get_version_transactions(&self) -> StorageResult<Option<Version>> {
+        let version_table = self.open_table(&self.tables.storage_version)?;
+        Ok(version_table.get(&self.txn, &VERSION_TRANSACTIONS_KEY.to_string())?)
     }
 }
 
 impl<'env> VersionStorageWriter for StorageTxn<'env, RW> {
-    fn set_version(self, version: &Version) -> StorageResult<Self> {
+    fn set_version_state(self, version: &Version) -> StorageResult<Self> {
         let version_table = self.open_table(&self.tables.storage_version)?;
-        if let Some(current_storage_version) = self.get_version()? {
+        if let Some(current_storage_version) = self.get_version_state()? {
             if current_storage_version >= *version {
                 return Err(StorageError::StorageVersionInconcistency(
                     StorageVersionError::SetLowerVersion {
@@ -57,7 +66,23 @@ impl<'env> VersionStorageWriter for StorageTxn<'env, RW> {
                 ));
             };
         }
-        version_table.upsert(&self.txn, &VERSION_KEY.to_string(), version)?;
+        version_table.upsert(&self.txn, &VERSION_STATE_KEY.to_string(), version)?;
+        Ok(self)
+    }
+
+    fn set_version_transactions(self, version: &Version) -> StorageResult<Self> {
+        let version_table = self.open_table(&self.tables.storage_version)?;
+        if let Some(current_storage_version) = self.get_version_transactions()? {
+            if current_storage_version >= *version {
+                return Err(StorageError::StorageVersionInconcistency(
+                    StorageVersionError::SetLowerVersion {
+                        crate_version: version.clone(),
+                        storage_version: current_storage_version,
+                    },
+                ));
+            };
+        }
+        version_table.upsert(&self.txn, &VERSION_TRANSACTIONS_KEY.to_string(), version)?;
         Ok(self)
     }
 }
