@@ -167,10 +167,12 @@ pub enum ExecutionError {
 }
 
 /// Executes a StarkNet call and returns the execution result.
+#[allow(clippy::too_many_arguments)]
 pub fn execute_call(
     storage_reader: StorageReader,
     chain_id: &ChainId,
     state_number: StateNumber,
+    block_context_number: BlockNumber,
     contract_address: &ContractAddress,
     entry_point_selector: EntryPointSelector,
     calldata: Calldata,
@@ -180,7 +182,7 @@ pub fn execute_call(
     // transactions.
     {
         let txn = storage_reader.begin_ro_txn()?;
-        verify_node_synced(&txn, state_number)?;
+        verify_node_synced(&txn, state_number.0)?;
         verify_contract_exists(contract_address, &txn, state_number)?;
     }
 
@@ -202,7 +204,7 @@ pub fn execute_call(
     });
     let header = storage_reader
         .begin_ro_txn()?
-        .get_block_header(state_number.block_after())?
+        .get_block_header(block_context_number)?
         .expect("Should have block header.");
     let block_context = create_block_context(
         chain_id.clone(),
@@ -228,13 +230,17 @@ pub fn execute_call(
     Ok(res.execution)
 }
 
-fn verify_node_synced(txn: &StorageTxn<'_, RO>, state_number: StateNumber) -> ExecutionResult<()> {
+fn verify_node_synced(
+    txn: &StorageTxn<'_, RO>,
+    block_context_number: BlockNumber,
+) -> ExecutionResult<()> {
     let compiled_class_marker = txn.get_compiled_class_marker()?;
-    let synced_up_to = StateNumber::right_before_block(compiled_class_marker);
-    if state_number >= synced_up_to {
-        return Err(ExecutionError::NotSynced { state_number, compiled_class_marker });
+    if block_context_number >= compiled_class_marker {
+        return Err(ExecutionError::NotSynced {
+            state_number: StateNumber::right_after_block(block_context_number),
+            compiled_class_marker,
+        });
     }
-
     Ok(())
 }
 
@@ -387,6 +393,7 @@ pub fn estimate_fee(
     chain_id: &ChainId,
     storage_reader: StorageReader,
     state_number: StateNumber,
+    block_context_block_number: BlockNumber,
     execution_config: &BlockExecutionConfig,
 ) -> ExecutionResult<Vec<(GasPrice, Fee)>> {
     let (txs_execution_info, block_context) = execute_transactions(
@@ -395,6 +402,7 @@ pub fn estimate_fee(
         chain_id,
         storage_reader,
         state_number,
+        block_context_block_number,
         execution_config,
         false,
         false,
@@ -416,13 +424,14 @@ fn execute_transactions(
     chain_id: &ChainId,
     storage_reader: StorageReader,
     state_number: StateNumber,
+    block_context_block_number: BlockNumber,
     execution_config: &BlockExecutionConfig,
     charge_fee: bool,
     validate: bool,
 ) -> ExecutionResult<(Vec<(TransactionExecutionInfo, ThinStateDiff)>, BlockContext)> {
     {
         let storage_txn = storage_reader.begin_ro_txn()?;
-        verify_node_synced(&storage_txn, state_number)?;
+        verify_node_synced(&storage_txn, block_context_block_number)?;
     }
 
     // TODO(yair): When we support pending blocks, use the latest block header instead of the
@@ -431,7 +440,7 @@ fn execute_transactions(
     // Create the block context from the block in which the transactions should run.
     let header = storage_reader
         .begin_ro_txn()?
-        .get_block_header(state_number.block_after())?
+        .get_block_header(block_context_block_number)?
         .expect("Should have block header.");
 
     // The starknet state will be from right before the block in which the transactions should run.
@@ -576,6 +585,7 @@ pub fn simulate_transactions(
     chain_id: &ChainId,
     storage_reader: StorageReader,
     state_number: StateNumber,
+    block_context_block_number: BlockNumber,
     execution_config: &BlockExecutionConfig,
     charge_fee: bool,
     validate: bool,
@@ -587,6 +597,7 @@ pub fn simulate_transactions(
         chain_id,
         storage_reader,
         state_number,
+        block_context_block_number,
         execution_config,
         charge_fee,
         validate,

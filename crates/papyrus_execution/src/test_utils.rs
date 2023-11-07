@@ -187,6 +187,7 @@ pub fn execute_simulate_transactions(
         &chain_id,
         storage_reader,
         StateNumber::right_after_block(BlockNumber(0)),
+        BlockNumber(1),
         &test_block_execution_config(),
         charge_fee,
         validate,
