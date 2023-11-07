@@ -22,18 +22,13 @@ image:https://codecov.io/gh/starkware-libs/papyrus/branch/main/graph/badge.svg?t
 
 == About
 
-Papyrus is a Starknet full node implemented in Rust. Papyrus tracks Starknet’s state as it evolves over time, and enables you to query and update this state via Starknet’s JSON-RPC.
-
-Papyrus provides the Starknet sequencer with an efficient storage layer, which helps to improve throughput in the following ways:
-
-* The sequencer maintains a local database rather than a cloud-based database.
-* Papyrus uses flat key/value storage, so it interacts directly with Starknet’s state, rather than reaching it through Merkle-Patricia paths.
+Papyrus is a Starknet full node implemented in Rust. Papyrus tracks Starknet’s state as it evolves over time, and enables you to query this state and to execute transactions via Starknet’s JSON-RPC.
 
 == Disclaimer
 
 Papyrus is a work in progress.
 
-*Use it at your own risk.*
+Use it at your own risk.
 
 == Getting started
 
@@ -66,11 +61,11 @@ Papyrus uses the `data` directory for the node's storage, as follows:
 
 You can configure the directory name using the `storage.db_config.path_prefix` configuration parameter.
 ====
-. See the available command-line arguments by running the following command:
+. See the version of Papyrus by running the following command:
 +
 [source,bash]
 ----
-cargo run --release --package papyrus_node --bin papyrus_node -- --help
+cargo run --release --package papyrus_node --bin papyrus_node -- --version
 ----
 
 === Local node configuration
@@ -83,7 +78,15 @@ The default Papyrus configuration file, link:https://github.com/starkware-libs/p
 
 === Customizing your configuration
 
-You can override the default configuration by referring to one or more custom configuration files. The following rules apply:
+You can override the default configuration in the following ways:
+
+* Refer to one or more custom configuration files, using the same format as the default configuration file, `default_config.json`. For example, see any of the preset configuration files in this repository at `/config/presets/`. You can use configuration files when running a local node only, not a Docker image.
+* Include configuration options in the command line when you run Papyrus.
+* Set environment variables in the command line when you run Papyrus.
+
+==== Configuration files (local node only)
+
+The following rules apply:
 
 * You do not need to specify the default configuration file.
 * There is no limit on the number of custom configuration files you use.
@@ -91,7 +94,9 @@ You can override the default configuration by referring to one or more custom co
 
 You can create separate configuration files to override specific configuration parameters.
 
-To specify custom configuration files, include the `--config_file` command-line option when you run the full node, as follows:
+To create a custom configuration file, create a `.json` file using the same format as the default configuration file.
+
+To specify custom configuration files, include the `--config_file` command-line option when you run the full node locally, as follows:
 
 [source,bash,subs="verbatim,quotes"]
 ----
@@ -105,7 +110,25 @@ For example, preset `.json` files for several Starknet networks are located in t
 cargo run --release --package papyrus_node --bin papyrus_node -- --base_layer.node_url <ethereum_node_url> --config-file /config/presets/testnet1.json
 ----
 
-Alternatively, You can specify environment variables and command-line arguments.
+==== Configuration via the command-line (local node and Docker image)
+
+You can specify configuration parameters as command-line options. To see all available configuration parameters, enter the following command:
+
+[source,bash]
+----
+cargo run --release --package papyrus_node --bin papyrus_node -- --help
+----
+
+For example, to use Goerli testnet, run the following command:
+
+[source,base,subs="verbatim,quotes"]
+----
+cargo run --release --package papyrus_node --bin papyrus_node -- --base_layer.node_url <ethereum_node_url> \
+--central.url https://alpha4.starknet.io/ \
+--chain_id SN_GOERLI \
+--rpc.starknet_url https://alpha4.starknet.io/ \
+--base_layer.starknet_contract_address 0xde29d060D45901Fb19ED6C6e959EB22d8626708e
+----
 
 For more information, see the papyrus-config https://github.com/starkware-libs/papyrus/blob/main/crates/papyrus_config/README.md[README].
 
@@ -137,7 +160,6 @@ docker run --rm --name papyrus\
   ghcr.io/starkware-libs/papyrus:dev \
   --base_layer.node_url <ethereum_node_url> \
   --user "$(id -u):$(id -g)"
-   --config-file config/presets/testnet1.json
 ----
 +
 [NOTE]
