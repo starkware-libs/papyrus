@@ -376,7 +376,13 @@ async fn get_block_w_full_transactions() {
         JsonRpcServerV0_4Impl,
     >(None, None, Some(pending_data.clone()), None, None);
 
-    let block = get_test_block(1, None, None, None);
+    let mut block = get_test_block(1, None, None, None);
+    let block_hash = BlockHash(random::<u64>().into());
+    let sequencer_address: ContractAddress = random::<u64>().into();
+    let timestamp = BlockTimestamp(random::<u64>());
+    block.header.block_hash = block_hash;
+    block.header.sequencer = sequencer_address;
+    block.header.timestamp = timestamp;
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -465,23 +471,30 @@ async fn get_block_w_full_transactions() {
     assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
 
     // Get pending block.
-    let transaction_count = 3;
     let mut rng = get_rng();
-    let (client_transaction, rpc_transaction) =
-        generate_client_transaction_and_rpc_transaction(&mut rng);
+    let (client_transactions, rpc_transactions): (Vec<_>, Vec<_>) =
+        iter::repeat_with(|| generate_client_transaction_and_rpc_transaction(&mut rng))
+            .take(3)
+            .unzip();
+    let pending_sequencer_address: ContractAddress = random::<u64>().into();
+    let pending_timestamp = BlockTimestamp(random::<u64>());
     let expected_pending_block = Block {
-        header: GeneralBlockHeader::PendingBlockHeader(PendingBlockHeader::get_test_instance(
-            &mut rng,
-        )),
+        header: GeneralBlockHeader::PendingBlockHeader(PendingBlockHeader {
+            parent_hash: block_hash,
+            sequencer_address: pending_sequencer_address,
+            timestamp: pending_timestamp,
+        }),
         status: None,
-        transactions: Transactions::Full(vec![rpc_transaction; transaction_count]),
+        transactions: Transactions::Full(rpc_transactions),
     };
-    pending_data
-        .write()
-        .await
-        .block
-        .transactions
-        .extend(iter::repeat(client_transaction).take(transaction_count));
+    {
+        let pending_block = &mut pending_data.write().await.block;
+
+        pending_block.transactions.extend(client_transactions);
+        pending_block.parent_block_hash = block_hash;
+        pending_block.timestamp = pending_timestamp;
+        pending_block.sequencer_address = pending_sequencer_address;
+    }
     // Using call_api_then_assert_and_validate_schema_for_result in order to validate the schema for
     // pending block.
     call_api_then_assert_and_validate_schema_for_result::<_, BlockId, Block>(
@@ -500,7 +513,9 @@ async fn get_block_w_full_transactions() {
     let GeneralBlockHeader::PendingBlockHeader(pending_block_header) = res_block.header else {
         panic!("Unexpected block_header type. Expected PendingBlockHeader.")
     };
-    assert_eq!(pending_block_header.parent_hash, BlockHash::default());
+    assert_eq!(pending_block_header.parent_hash, block_hash);
+    assert_eq!(pending_block_header.sequencer_address, sequencer_address);
+    assert_eq!(pending_block_header.timestamp, timestamp);
     match res_block.transactions {
         Transactions::Hashes(transactions) => assert_eq!(transactions.len(), 0),
         Transactions::Full(transactions) => assert_eq!(transactions.len(), 0),
@@ -515,7 +530,13 @@ async fn get_block_w_transaction_hashes() {
         JsonRpcServerV0_4Impl,
     >(None, None, Some(pending_data.clone()), None, None);
 
-    let block = get_test_block(1, None, None, None);
+    let mut block = get_test_block(1, None, None, None);
+    let block_hash = BlockHash(random::<u64>().into());
+    let sequencer_address: ContractAddress = random::<u64>().into();
+    let timestamp = BlockTimestamp(random::<u64>());
+    block.header.block_hash = block_hash;
+    block.header.sequencer = sequencer_address;
+    block.header.timestamp = timestamp;
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -600,25 +621,35 @@ async fn get_block_w_transaction_hashes() {
     assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
 
     // Get pending block.
-    let transaction_count = 3;
     let mut rng = get_rng();
-    let (client_transaction, _) = generate_client_transaction_and_rpc_transaction(&mut rng);
+    let (client_transactions, _): (Vec<_>, Vec<_>) =
+        iter::repeat_with(|| generate_client_transaction_and_rpc_transaction(&mut rng))
+            .take(3)
+            .unzip();
+    let pending_sequencer_address: ContractAddress = random::<u64>().into();
+    let pending_timestamp = BlockTimestamp(random::<u64>());
     let expected_pending_block = Block {
-        header: GeneralBlockHeader::PendingBlockHeader(PendingBlockHeader::get_test_instance(
-            &mut rng,
-        )),
+        header: GeneralBlockHeader::PendingBlockHeader(PendingBlockHeader {
+            parent_hash: block_hash,
+            sequencer_address: pending_sequencer_address,
+            timestamp: pending_timestamp,
+        }),
         status: None,
-        transactions: Transactions::Hashes(vec![
-            client_transaction.transaction_hash();
-            transaction_count
-        ]),
+        transactions: Transactions::Hashes(
+            client_transactions
+                .iter()
+                .map(|client_transaction| client_transaction.transaction_hash())
+                .collect(),
+        ),
     };
-    pending_data
-        .write()
-        .await
-        .block
-        .transactions
-        .extend(iter::repeat(client_transaction).take(transaction_count));
+    {
+        let pending_block = &mut pending_data.write().await.block;
+
+        pending_block.transactions.extend(client_transactions);
+        pending_block.parent_block_hash = block_hash;
+        pending_block.timestamp = pending_timestamp;
+        pending_block.sequencer_address = pending_sequencer_address;
+    }
     // Using call_api_then_assert_and_validate_schema_for_result in order to validate the schema for
     // pending block.
     call_api_then_assert_and_validate_schema_for_result::<_, BlockId, Block>(
@@ -637,7 +668,9 @@ async fn get_block_w_transaction_hashes() {
     let GeneralBlockHeader::PendingBlockHeader(pending_block_header) = res_block.header else {
         panic!("Unexpected block_header type. Expected PendingBlockHeader.")
     };
-    assert_eq!(pending_block_header.parent_hash, BlockHash::default());
+    assert_eq!(pending_block_header.parent_hash, block_hash);
+    assert_eq!(pending_block_header.sequencer_address, sequencer_address);
+    assert_eq!(pending_block_header.timestamp, timestamp);
     match res_block.transactions {
         Transactions::Hashes(transactions) => assert_eq!(transactions.len(), 0),
         Transactions::Full(transactions) => assert_eq!(transactions.len(), 0),
