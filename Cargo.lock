@@ -612,9 +612,9 @@ dependencies = [
 
 [[package]]
 name = "blockifier"
-version = "0.4.0-rc3"
+version = "0.4.0-rc4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee38249ccf5526dc292f331527f0b66e1a4c0da9128ded6a85d5318aff4326b1"
+checksum = "59955a52e0f1a33ac71767444a7662a0b1cd9062d51b7a57e86781263823518b"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -628,7 +628,6 @@ dependencies = [
  "cairo-vm",
  "ctor",
  "derive_more",
- "genco",
  "indexmap 1.9.3",
  "itertools 0.10.5",
  "keccak",
@@ -6121,13 +6120,12 @@ dependencies = [
 
 [[package]]
 name = "starknet_api"
-version = "0.6.0-rc0"
+version = "0.6.0-rc1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed59a4103c50f0172847080598cc23a35dac0e484ad8dec1cb1f45819736f79b"
+checksum = "c76f789c9ce45685a897cc4955b87495411163737c1b3de3d7eef54982bdc614"
 dependencies = [
  "cairo-lang-starknet",
  "derive_more",
- "genco",
  "hex",
  "indexmap 1.9.3",
  "once_cell",
