@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 repository.workspace = true
 license-file.workspace = true
+description = "Procedural macros for the Papyrus node"
 
 [dependencies]
 syn = { version = "2.0.39", features = ["full"] }
