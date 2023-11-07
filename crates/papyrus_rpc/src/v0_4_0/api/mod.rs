@@ -5,10 +5,12 @@ use flate2::bufread::GzDecoder;
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::types::ErrorObjectOwned;
+use papyrus_common::pending_classes::ApiContractClass;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_execution::{ExecutableTransactionInput, ExecutionError};
 use papyrus_proc_macros::versioned_rpc;
 use papyrus_storage::compiled_class::CasmStorageReader;
+use papyrus_storage::db::serialization::StorageSerdeError;
 use papyrus_storage::db::RO;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::StorageTxn;
@@ -121,7 +123,7 @@ pub trait JsonRpc {
 
     /// Gets the contract class definition associated with the given hash.
     #[method(name = "getClass")]
-    fn get_class(
+    async fn get_class(
         &self,
         block_id: BlockId,
         class_hash: ClassHash,
@@ -225,6 +227,7 @@ pub trait JsonRpc {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+#[cfg_attr(test, derive(PartialEq))]
 #[serde(untagged)]
 pub enum GatewayContractClass {
     Cairo0(DeprecatedContractClass),
@@ -495,6 +498,18 @@ impl From<InvokeTransaction> for starknet_api::transaction::InvokeTransaction {
                 sender_address,
                 calldata,
             }),
+        }
+    }
+}
+
+impl TryFrom<ApiContractClass> for GatewayContractClass {
+    type Error = StorageSerdeError;
+    fn try_from(class: ApiContractClass) -> Result<Self, Self::Error> {
+        match class {
+            ApiContractClass::DeprecatedContractClass(deprecated_class) => {
+                Ok(Self::Cairo0(deprecated_class.try_into()?))
+            }
+            ApiContractClass::ContractClass(sierra_class) => Ok(Self::Sierra(sierra_class.into())),
         }
     }
 }
