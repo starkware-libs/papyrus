@@ -379,7 +379,11 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn get_block_transaction_count(&self, block_id: BlockId) -> RpcResult<usize> {
         if let BlockId::Tag(Tag::Pending) = block_id {
-            let transactions_len = self.pending_data.read().await.block.transactions.len();
+            let transactions_len = read_pending_data(&self.pending_data, &self.storage_reader)
+                .await?
+                .block
+                .transactions
+                .len();
             Ok(transactions_len)
         } else {
             let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;

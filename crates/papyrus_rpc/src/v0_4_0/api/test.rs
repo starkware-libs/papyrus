@@ -344,6 +344,11 @@ async fn get_block_transaction_count() {
     let res = module.call::<_, usize>(method_name, [BlockId::Tag(Tag::Pending)]).await.unwrap();
     assert_eq!(res, pending_transaction_count);
 
+    // Ask for pending block when it's not up to date.
+    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    let res = module.call::<_, usize>(method_name, [BlockId::Tag(Tag::Pending)]).await.unwrap();
+    assert_eq!(res, 0);
+
     // Ask for an invalid block hash.
     call_api_then_assert_and_validate_schema_for_err::<_, BlockId, usize>(
         &module,
