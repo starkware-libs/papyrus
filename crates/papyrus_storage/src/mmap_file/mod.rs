@@ -141,6 +141,7 @@ struct MMapFile<V: StorageSerde> {
     size: usize,
     mmap: MmapMut,
     offset: usize,
+    should_flush: bool,
     _value_type: PhantomData<V>,
 }
 
@@ -155,9 +156,10 @@ impl<V: StorageSerde> MMapFile<V> {
     }
 
     /// Flushes the mmap to the file.
-    fn flush(&self) {
+    fn flush(&mut self) {
         debug!("Flushing mmap to file");
         self.mmap.flush().expect("Failed to flush the mmap");
+        self.should_flush = false;
     }
 }
 
@@ -178,6 +180,7 @@ pub(crate) fn open_file<V: StorageSerde>(
         mmap,
         size: size.try_into().expect("size should fit in usize"),
         offset,
+        should_flush: false,
         _value_type: PhantomData {},
     };
     let shared_mmap_file = Arc::new(Mutex::new(mmap_file));
@@ -236,6 +239,7 @@ impl<V: StorageSerde + Debug> Writer<V> for FileHandler<V, RW> {
                 .flush_async_range(offset, len)
                 .expect("Failed to asynchronously flush the mmap after inserting");
             mmap_file.offset += len;
+            mmap_file.should_flush = true;
         }
         let location = LocationInFile { offset, len };
         self.grow_file_if_needed(location.next_offset());
@@ -243,8 +247,10 @@ impl<V: StorageSerde + Debug> Writer<V> for FileHandler<V, RW> {
     }
 
     fn flush(&self) {
-        let mmap_file = self.mmap_file.lock().expect("Lock should not be poisoned");
-        mmap_file.flush();
+        let mut mmap_file = self.mmap_file.lock().expect("Lock should not be poisoned");
+        if mmap_file.should_flush {
+            mmap_file.flush();
+        }
     }
 }
 
