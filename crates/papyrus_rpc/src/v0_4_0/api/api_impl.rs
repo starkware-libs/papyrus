@@ -318,10 +318,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         } else {
             // The transaction is not in any non-pending block. Search for it in the pending block
             // and if it's not found, return error.
-            let client_transaction = self
-                .pending_data
-                .read()
-                .await
+            let client_transaction = read_pending_data(&self.pending_data, &self.storage_reader)
+                .await?
                 .block
                 .transactions
                 .iter()

@@ -1524,11 +1524,25 @@ async fn get_transaction_by_hash() {
     let (client_transaction, expected_transaction_with_hash) =
         generate_client_transaction_and_rpc_transaction(&mut get_rng());
     pending_data.write().await.block.transactions.push(client_transaction.clone());
-    let res = module
-        .call::<_, TransactionWithHash>(method_name, (client_transaction.transaction_hash(), 0))
-        .await
-        .unwrap();
-    assert_eq!(res, expected_transaction_with_hash);
+    call_api_then_assert_and_validate_schema_for_result::<_, TransactionHash, TransactionWithHash>(
+        &module,
+        method_name,
+        &Some(client_transaction.transaction_hash()),
+        &VERSION_0_4,
+        &expected_transaction_with_hash,
+    )
+    .await;
+
+    // Get pending block when it's not updated.
+    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    call_api_then_assert_and_validate_schema_for_err::<_, TransactionHash, TransactionWithHash>(
+        &module,
+        method_name,
+        &Some(client_transaction.transaction_hash()),
+        &VERSION_0_4,
+        &TRANSACTION_HASH_NOT_FOUND.into(),
+    )
+    .await;
 
     // Ask for an invalid transaction.
     call_api_then_assert_and_validate_schema_for_err::<_, TransactionHash, TransactionWithHash>(
