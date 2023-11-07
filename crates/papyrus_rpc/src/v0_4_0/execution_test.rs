@@ -114,7 +114,7 @@ async fn execution_call() {
                 *DEPRECATED_CONTRACT_ADDRESS.0.key(),
                 selector_from_name("test_storage_read_write"),
                 calldata![key, value],
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))),
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
             ),
         )
         .await
@@ -130,7 +130,7 @@ async fn execution_call() {
                 ContractAddress(patricia_key!("0x1234")),
                 selector_from_name("aaa"),
                 calldata![key, value],
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))),
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
             ),
         )
         .await
@@ -162,7 +162,7 @@ async fn execution_call() {
                 *DEPRECATED_CONTRACT_ADDRESS,
                 selector_from_name("aaa"),
                 calldata![key, value],
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))),
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
             ),
         )
         .await
@@ -196,7 +196,7 @@ async fn call_estimate_fee() {
     let res = module
         .call::<_, Vec<FeeEstimate>>(
             "starknet_V0_4_estimateFee",
-            (vec![invoke], BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))),
+            (vec![invoke], BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0)))),
         )
         .await
         .unwrap();
@@ -236,7 +236,7 @@ async fn call_simulate() {
         .call::<_, Vec<SimulatedTransaction>>(
             "starknet_V0_4_simulateTransactions",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))),
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
                 vec![invoke],
                 Vec::<SimulationFlag>::new(),
             ),
@@ -294,7 +294,7 @@ async fn call_simulate_skip_validate() {
         .call::<_, Vec<SimulatedTransaction>>(
             "starknet_V0_4_simulateTransactions",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))),
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
                 vec![invoke],
                 vec![SimulationFlag::SkipValidate],
             ),
@@ -352,7 +352,7 @@ async fn call_simulate_skip_fee_charge() {
         .call::<_, Vec<SimulatedTransaction>>(
             "starknet_V0_4_simulateTransactions",
             (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))),
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
                 vec![invoke],
                 vec![SimulationFlag::SkipFeeCharge],
             ),
