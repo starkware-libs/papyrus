@@ -196,7 +196,10 @@ async fn call_estimate_fee() {
     let res = module
         .call::<_, Vec<FeeEstimate>>(
             "starknet_V0_4_estimateFee",
-            (vec![invoke], BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0)))),
+            (
+                vec![invoke.clone()],
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
+            ),
         )
         .await
         .unwrap();
@@ -210,6 +213,17 @@ async fn call_estimate_fee() {
     }];
 
     assert_eq!(res, expected_fee_estimate);
+
+    // Test that calling the same transaction with a different block context with a different gas
+    // price produces a different fee.
+    let res = module
+        .call::<_, Vec<FeeEstimate>>(
+            "starknet_V0_4_estimateFee",
+            (vec![invoke], BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))),
+        )
+        .await
+        .unwrap();
+    assert_ne!(res, expected_fee_estimate);
 }
 
 #[tokio::test]
@@ -627,6 +641,8 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
     let minter_var_address = get_storage_var_address("permitted_minter", &[])
         .expect("Failed to get permitted_minter storage address.");
 
+    let different_gas_price = GasPrice(GAS_PRICE.0 + 100);
+
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -684,10 +700,11 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
         .append_header(
             BlockNumber(1),
             &BlockHeader {
-                gas_price: *GAS_PRICE,
+                gas_price: different_gas_price,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
                 block_hash: BlockHash(stark_felt!("0x1")),
+                block_number: BlockNumber(1),
                 ..Default::default()
             },
         )
