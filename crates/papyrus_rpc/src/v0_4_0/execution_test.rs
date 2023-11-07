@@ -210,6 +210,32 @@ async fn call_estimate_fee() {
     }];
 
     assert_eq!(res, expected_fee_estimate);
+
+    // Test that calling the same transaction with a different block context with a different gas
+    // price produces a different fee.
+
+    // No clone for BroadcastedTransaction unfortunately.
+    let same_invoke =
+        BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
+            max_fee: Fee(1000000 * GAS_PRICE.0),
+            version: TransactionVersion::ONE,
+            sender_address: account_address,
+            calldata: calldata![
+                *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
+                selector_from_name("return_result").0, // EP selector.
+                stark_felt!(1_u8),                     // Calldata length.
+                stark_felt!(2_u8)                      // Calldata: num.
+            ],
+            ..Default::default()
+        }));
+    let res = module
+        .call::<_, Vec<FeeEstimate>>(
+            "starknet_V0_4_estimateFee",
+            (vec![same_invoke], BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))),
+        )
+        .await
+        .unwrap();
+    assert_ne!(res, expected_fee_estimate);
 }
 
 #[tokio::test]
@@ -627,6 +653,8 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
     let minter_var_address = get_storage_var_address("permitted_minter", &[])
         .expect("Failed to get permitted_minter storage address.");
 
+    let different_gas_price = GasPrice(GAS_PRICE.0 + 100);
+
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -684,10 +712,11 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
         .append_header(
             BlockNumber(1),
             &BlockHeader {
-                gas_price: *GAS_PRICE,
+                gas_price: different_gas_price,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
                 block_hash: BlockHash(stark_felt!("0x1")),
+                block_number: BlockNumber(1),
                 ..Default::default()
             },
         )
