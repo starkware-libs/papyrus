@@ -161,6 +161,8 @@ enum PendingSyncTaskResult {
     DownloadedOldPendingData,
     PendingSyncFinished,
     DownloadedClassOrCompiledClass,
+    CompiledClassesSynced,
+    CompiledClassesNotSynced(StorageReader),
 }
 
 async fn get_pending_data<TPendingSource: PendingSourceTrait + Sync + Send + 'static>(
@@ -218,3 +220,7 @@ async fn get_pending_compiled_class<TCentralSource: CentralSourceTrait + Sync + 
     pending_classes.write().await.add_compiled_class(class_hash, compiled_class);
     Ok(PendingSyncTaskResult::DownloadedClassOrCompiledClass)
 }
+
+async fn check_if_compiled_classes_are_synced(
+    storage_reader
+
