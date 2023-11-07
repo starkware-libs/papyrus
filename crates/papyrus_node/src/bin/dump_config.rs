@@ -23,6 +23,14 @@ lazy_static! {
     ),
     (
         ser_pointer_target_param(
+            "gateways_url",
+            &"https://alpha-mainnet.starknet.io/".to_string(),
+            "The url for the gateway and the feeder gateway.",
+        ),
+        vec!["rpc.starknet_url".to_owned(), "central.url".to_owned()],
+    ),
+    (
+        ser_pointer_target_param(
             "collect_metrics",
             &false,
             "If true, collect metrics for the node.",
