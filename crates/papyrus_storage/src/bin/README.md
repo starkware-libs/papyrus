@@ -6,10 +6,7 @@ This tool allows you to dump the entire `declared_classes` table from Papyrus st
 
 1. **Run a Docker**
 
-   Run a docker with the image 
-   <!-- TODO(yael): image name -->
-
-   Please refer to the main [README](../../README.adoc#running-papyrus-with-docker) for instructions.
+   Please refer to the main [README](../../README.md#running-papyrus-with-docker) for instructions.
 
 3. **View Running Docker Containers**
 
@@ -24,7 +21,7 @@ This tool allows you to dump the entire `declared_classes` table from Papyrus st
 
 4. **Sync the Full Node**
 
-   The full node sync could take a few hours. Once it's partially or fully synced, you can run the tool to dump the declared classes into a file.
+   The full node sync could take a few hours/days. Once it's partially or fully synced, you can run the tool to dump the declared classes into a file.
 
 5. **Access the Docker Container**
 
@@ -35,9 +32,9 @@ This tool allows you to dump the entire `declared_classes` table from Papyrus st
 6. **Run the Tool**
 
    ```bash
-   target/release/dump_declared_classes [file_path]
+   target/release/dump_declared_classes --start_block <block_number> --end_block <block_number> --chain_id <SN_MAIN/SN_GOERLI> [--file_path file_path]
    ```
 
-   The `file_path` is optional. The default path is `dump_declared_classes.json`.
+   The default value for file_path is `dump_declared_classes.json`.
 
 
