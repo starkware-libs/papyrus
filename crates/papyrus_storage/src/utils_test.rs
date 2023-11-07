@@ -50,13 +50,6 @@ fn test_dump_declared_classes() {
     }
     let txn = reader.begin_ro_txn().unwrap();
 
-    // Test dump_table_to_file for declared_clases table.
-    // TODO(yael): uncomment this test once dump_table_to_file is fixed.
-    // dump_table_to_file(&txn, &txn.tables.declared_classes, file_path).unwrap();
-    // let file_content = fs::read_to_string(file_path).unwrap();
-    // let _ = fs::remove_file(file_path);
-    // assert_eq!(file_content, serde_json::to_string(&declared_classes).unwrap());
-
     // Test dump_declared_classes_table_by_block_range
     dump_declared_classes_table_by_block_range_internal(&txn, file_path, 2, 4).unwrap();
     let file_content = fs::read_to_string(file_path).unwrap();

@@ -16,6 +16,7 @@ byteorder.workspace = true
 cairo-lang-starknet.workspace = true
 cairo-lang-casm.workspace = true
 cairo-lang-utils.workspace = true
+clap.workspace = true
 flate2.workspace = true
 human_bytes.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
