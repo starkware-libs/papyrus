@@ -1,11 +1,17 @@
 use std::collections::HashMap;
 
 use indexmap::IndexMap;
+pub use papyrus_common::state::{
+    DeclaredClassHashEntry,
+    DeployedContract,
+    ReplacedClass,
+    StorageEntry,
+};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockHash;
-use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, GlobalRoot, Nonce};
+use starknet_api::core::{ClassHash, ContractAddress, GlobalRoot, Nonce};
 use starknet_api::hash::StarkFelt;
-use starknet_api::state::{EntryPoint, EntryPointType, StorageKey};
+use starknet_api::state::{EntryPoint, EntryPointType};
 
 /// A state update derived from a single block as returned by the starknet gateway.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
@@ -48,20 +54,6 @@ impl StateDiff {
     }
 }
 
-/// A deployed contract in StarkNet.
-#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct DeployedContract {
-    pub address: ContractAddress,
-    pub class_hash: ClassHash,
-}
-
-/// A storage entry in a contract.
-#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct StorageEntry {
-    pub key: StorageKey,
-    pub value: StarkFelt,
-}
-
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ContractClass {
     pub sierra_program: Vec<StarkFelt>,
@@ -78,17 +70,4 @@ impl From<ContractClass> for starknet_api::state::ContractClass {
             abi: class.abi,
         }
     }
-}
-
-/// A mapping from class hash to the compiled class hash.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct DeclaredClassHashEntry {
-    pub class_hash: ClassHash,
-    pub compiled_class_hash: CompiledClassHash,
-}
-
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct ReplacedClass {
-    pub address: ContractAddress,
-    pub class_hash: ClassHash,
 }
