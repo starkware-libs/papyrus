@@ -14,39 +14,9 @@ use starknet_api::hash::StarkFelt;
 use starknet_api::state::{EntryPoint, EntryPointType};
 
 use crate::compiled_class::CasmStorageReader;
-use crate::db::serialization::StorageSerde;
-use crate::db::{DbIter, TableIdentifier, RO};
+use crate::db::RO;
 use crate::state::StateStorageReader;
 use crate::{open_storage, StorageConfig, StorageError, StorageResult, StorageTxn};
-
-/// Dumps a table from the storage to a file in JSON format.
-#[allow(dead_code)]
-fn dump_table_to_file<K, V>(
-    txn: &StorageTxn<'_, RO>,
-    table_id: &TableIdentifier<K, V>,
-    file_path: &str,
-) -> StorageResult<()>
-where
-    K: StorageSerde + serde::Serialize,
-    V: StorageSerde + serde::Serialize,
-{
-    let table_handle = txn.txn.open_table(table_id)?;
-    let mut cursor = table_handle.cursor(&txn.txn)?;
-    let iter = DbIter::new(&mut cursor);
-    let file = File::create(file_path)?;
-    let mut writer = BufWriter::new(file);
-    writer.write_all(b"[")?;
-    let mut first = true;
-    for data in iter {
-        if !first {
-            writer.write_all(b",")?;
-        }
-        serde_json::to_writer(&mut writer, &data?)?;
-        first = false;
-    }
-    writer.write_all(b"]")?;
-    Ok(())
-}
 
 #[derive(Serialize)]
 struct DumpDeclaredClass {

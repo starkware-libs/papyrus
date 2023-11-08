@@ -15,7 +15,6 @@ members = [
     "crates/papyrus_sync",
     "crates/starknet_client",
     "crates/test_utils",
-    "crates/dump_declared_classes"
 ]
 
 [workspace.package]
