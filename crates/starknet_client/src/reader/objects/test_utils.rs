@@ -16,6 +16,7 @@ use starknet_api::transaction::{
     Calldata,
     ContractAddressSalt,
     Event,
+    ExecutionResources,
     Fee,
     L1ToL2Payload,
     L2ToL1Payload,
@@ -32,10 +33,7 @@ use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestIns
 
 use crate::reader::objects::state::ContractClass;
 use crate::reader::objects::transaction::{
-    BuiltinInstanceCounter,
     DeployTransaction,
-    EmptyBuiltinInstanceCounter,
-    ExecutionResources,
     IntermediateDeclareTransaction,
     IntermediateDeployAccountTransaction,
     IntermediateInvokeTransaction,
@@ -143,16 +141,6 @@ auto_impl_get_test_instance! {
         pub nonce: L1ToL2Nonce,
     }
     pub struct L1ToL2Nonce(pub StarkHash);
-    pub struct ExecutionResources {
-        pub n_steps: u64,
-        pub builtin_instance_counter: BuiltinInstanceCounter,
-        pub n_memory_holes: u64,
-    }
-    pub enum BuiltinInstanceCounter {
-        NonEmpty(HashMap<String, u64>) = 0,
-        Empty(EmptyBuiltinInstanceCounter) = 1,
-    }
-    pub struct EmptyBuiltinInstanceCounter {}
     pub struct L2ToL1Message {
         pub from_address: ContractAddress,
         pub to_address: EthAddress,

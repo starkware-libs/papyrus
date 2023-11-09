@@ -2136,7 +2136,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 441,
+            "builtin_instance_counter": {
+              "range_check_builtin": 13,
+              "output_builtin": 0,
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 11,
+              "ec_op_builtin": 0,
+              "ecdsa_builtin": 1
+            },
+            "n_memory_holes": 44
+          }
         }
       },
       {
@@ -2144,7 +2156,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 445,
+            "builtin_instance_counter": {
+              "pedersen_builtin": 11,
+              "bitwise_builtin": 0,
+              "range_check_builtin": 13,
+              "ec_op_builtin": 0,
+              "ecdsa_builtin": 1,
+              "output_builtin": 0
+            },
+            "n_memory_holes": 42
+          }
         }
       },
       {
@@ -2152,7 +2176,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 445,
+            "builtin_instance_counter": {
+              "ec_op_builtin": 0,
+              "range_check_builtin": 13,
+              "ecdsa_builtin": 1,
+              "pedersen_builtin": 11,
+              "output_builtin": 0,
+              "bitwise_builtin": 0
+            },
+            "n_memory_holes": 42
+          }
         }
       },
       {
@@ -2160,7 +2196,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 445,
+            "builtin_instance_counter": {
+              "bitwise_builtin": 0,
+              "range_check_builtin": 13,
+              "pedersen_builtin": 11,
+              "ecdsa_builtin": 1,
+              "output_builtin": 0,
+              "ec_op_builtin": 0
+            },
+            "n_memory_holes": 42
+          }
         }
       },
       {
@@ -2168,7 +2216,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 443,
+            "builtin_instance_counter": {
+              "output_builtin": 0,
+              "range_check_builtin": 13,
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 11,
+              "ec_op_builtin": 0,
+              "ecdsa_builtin": 1
+            },
+            "n_memory_holes": 43
+          }
         }
       },
       {
@@ -2176,7 +2236,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 445,
+            "builtin_instance_counter": {
+              "range_check_builtin": 13,
+              "ecdsa_builtin": 1,
+              "output_builtin": 0,
+              "ec_op_builtin": 0,
+              "pedersen_builtin": 11,
+              "bitwise_builtin": 0
+            },
+            "n_memory_holes": 42
+          }
         }
       },
       {
@@ -2184,7 +2256,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 441,
+            "builtin_instance_counter": {
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "range_check_builtin": 13,
+              "ecdsa_builtin": 1,
+              "pedersen_builtin": 11,
+              "output_builtin": 0
+            },
+            "n_memory_holes": 44
+          }
         }
       },
       {
@@ -2192,7 +2276,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 441,
+            "builtin_instance_counter": {
+              "ec_op_builtin": 0,
+              "range_check_builtin": 13,
+              "output_builtin": 0,
+              "ecdsa_builtin": 1,
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 11
+            },
+            "n_memory_holes": 44
+          }
         }
       },
       {
@@ -2200,7 +2296,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 541,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "output_builtin": 0,
+              "range_check_builtin": 18,
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 13,
+              "ec_op_builtin": 0
+            },
+            "n_memory_holes": 50
+          }
         }
       },
       {
@@ -2208,7 +2316,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 245,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "output_builtin": 0,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "pedersen_builtin": 4,
+              "range_check_builtin": 6
+            },
+            "n_memory_holes": 22
+          }
         }
       },
       {
@@ -2216,7 +2336,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 447,
+            "builtin_instance_counter": {
+              "range_check_builtin": 13,
+              "ecdsa_builtin": 1,
+              "ec_op_builtin": 0,
+              "pedersen_builtin": 11,
+              "output_builtin": 0,
+              "bitwise_builtin": 0
+            },
+            "n_memory_holes": 41
+          }
         }
       },
       {
@@ -2224,7 +2356,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 447,
+            "builtin_instance_counter": {
+              "ec_op_builtin": 0,
+              "output_builtin": 0,
+              "pedersen_builtin": 11,
+              "ecdsa_builtin": 1,
+              "range_check_builtin": 13,
+              "bitwise_builtin": 0
+            },
+            "n_memory_holes": 41
+          }
         }
       },
       {
@@ -2232,7 +2376,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 445,
+            "builtin_instance_counter": {
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 11,
+              "output_builtin": 0,
+              "range_check_builtin": 13,
+              "ecdsa_builtin": 1,
+              "ec_op_builtin": 0
+            },
+            "n_memory_holes": 42
+          }
         }
       },
       {
@@ -2249,7 +2405,19 @@
             }
           ],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 31,
+            "builtin_instance_counter": {
+              "bitwise_builtin": 0,
+              "ecdsa_builtin": 0,
+              "pedersen_builtin": 0,
+              "range_check_builtin": 0,
+              "output_builtin": 0,
+              "ec_op_builtin": 0
+            },
+            "n_memory_holes": 0
+          }
         }
       },
       {
@@ -2257,7 +2425,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 445,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "range_check_builtin": 13,
+              "ec_op_builtin": 0,
+              "output_builtin": 0,
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 11
+            },
+            "n_memory_holes": 42
+          }
         }
       },
       {
@@ -2265,7 +2445,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 447,
+            "builtin_instance_counter": {
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "ecdsa_builtin": 1,
+              "output_builtin": 0,
+              "range_check_builtin": 13,
+              "pedersen_builtin": 11
+            },
+            "n_memory_holes": 41
+          }
         }
       },
       {
@@ -2273,7 +2465,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 441,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "pedersen_builtin": 11,
+              "range_check_builtin": 13,
+              "output_builtin": 0,
+              "ec_op_builtin": 0,
+              "bitwise_builtin": 0
+            },
+            "n_memory_holes": 44
+          }
         }
       },
       {
@@ -2281,7 +2485,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 445,
+            "builtin_instance_counter": {
+              "pedersen_builtin": 11,
+              "output_builtin": 0,
+              "range_check_builtin": 13,
+              "ec_op_builtin": 0,
+              "ecdsa_builtin": 1,
+              "bitwise_builtin": 0
+            },
+            "n_memory_holes": 42
+          }
         }
       },
       {
@@ -2289,7 +2505,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 443,
+            "builtin_instance_counter": {
+              "bitwise_builtin": 0,
+              "output_builtin": 0,
+              "range_check_builtin": 13,
+              "pedersen_builtin": 11,
+              "ecdsa_builtin": 1,
+              "ec_op_builtin": 0
+            },
+            "n_memory_holes": 43
+          }
         }
       },
       {
@@ -2297,7 +2525,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 539,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 13,
+              "ec_op_builtin": 0,
+              "range_check_builtin": 18,
+              "output_builtin": 0
+            },
+            "n_memory_holes": 51
+          }
         }
       },
       {
@@ -2305,7 +2545,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 539,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "output_builtin": 0,
+              "pedersen_builtin": 13,
+              "range_check_builtin": 18,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0
+            },
+            "n_memory_holes": 51
+          }
         }
       },
       {
@@ -2313,7 +2565,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 535,
+            "builtin_instance_counter": {
+              "range_check_builtin": 18,
+              "ecdsa_builtin": 1,
+              "output_builtin": 0,
+              "ec_op_builtin": 0,
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 13
+            },
+            "n_memory_holes": 53
+          }
         }
       },
       {
@@ -2321,7 +2585,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 447,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "ec_op_builtin": 0,
+              "pedersen_builtin": 11,
+              "range_check_builtin": 13,
+              "output_builtin": 0,
+              "bitwise_builtin": 0
+            },
+            "n_memory_holes": 41
+          }
         }
       },
       {
@@ -2329,7 +2605,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 445,
+            "builtin_instance_counter": {
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "output_builtin": 0,
+              "pedersen_builtin": 11,
+              "range_check_builtin": 13,
+              "ecdsa_builtin": 1
+            },
+            "n_memory_holes": 42
+          }
         }
       },
       {
@@ -2337,7 +2625,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 539,
+            "builtin_instance_counter": {
+              "range_check_builtin": 18,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "ecdsa_builtin": 1,
+              "pedersen_builtin": 13,
+              "output_builtin": 0
+            },
+            "n_memory_holes": 51
+          }
         }
       },
       {
@@ -2345,7 +2645,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 539,
+            "builtin_instance_counter": {
+              "output_builtin": 0,
+              "range_check_builtin": 18,
+              "ecdsa_builtin": 1,
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 13,
+              "ec_op_builtin": 0
+            },
+            "n_memory_holes": 51
+          }
         }
       },
       {
@@ -2353,7 +2665,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 535,
+            "builtin_instance_counter": {
+              "bitwise_builtin": 0,
+              "output_builtin": 0,
+              "ec_op_builtin": 0,
+              "range_check_builtin": 18,
+              "pedersen_builtin": 13,
+              "ecdsa_builtin": 1
+            },
+            "n_memory_holes": 53
+          }
         }
       },
       {
@@ -2361,7 +2685,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 441,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "output_builtin": 0,
+              "ec_op_builtin": 0,
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 11,
+              "range_check_builtin": 13
+            },
+            "n_memory_holes": 44
+          }
         }
       },
       {
@@ -2369,7 +2705,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 539,
+            "builtin_instance_counter": {
+              "output_builtin": 0,
+              "ec_op_builtin": 0,
+              "bitwise_builtin": 0,
+              "range_check_builtin": 18,
+              "pedersen_builtin": 13,
+              "ecdsa_builtin": 1
+            },
+            "n_memory_holes": 51
+          }
         }
       },
       {
@@ -2377,7 +2725,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 539,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "output_builtin": 0,
+              "ec_op_builtin": 0,
+              "range_check_builtin": 18,
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 13
+            },
+            "n_memory_holes": 51
+          }
         }
       },
       {
@@ -2385,7 +2745,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 535,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "pedersen_builtin": 13,
+              "bitwise_builtin": 0,
+              "range_check_builtin": 18,
+              "output_builtin": 0,
+              "ec_op_builtin": 0
+            },
+            "n_memory_holes": 53
+          }
         }
       },
       {
@@ -2393,7 +2765,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 443,
+            "builtin_instance_counter": {
+              "pedersen_builtin": 11,
+              "output_builtin": 0,
+              "ec_op_builtin": 0,
+              "range_check_builtin": 13,
+              "bitwise_builtin": 0,
+              "ecdsa_builtin": 1
+            },
+            "n_memory_holes": 43
+          }
         }
       },
       {
@@ -2401,7 +2785,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 539,
+            "builtin_instance_counter": {
+              "pedersen_builtin": 13,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "ecdsa_builtin": 1,
+              "output_builtin": 0,
+              "range_check_builtin": 18
+            },
+            "n_memory_holes": 51
+          }
         }
       },
       {
@@ -2409,7 +2805,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 539,
+            "builtin_instance_counter": {
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 13,
+              "ec_op_builtin": 0,
+              "range_check_builtin": 18,
+              "ecdsa_builtin": 1,
+              "output_builtin": 0
+            },
+            "n_memory_holes": 51
+          }
         }
       },
       {
@@ -2417,7 +2825,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 535,
+            "builtin_instance_counter": {
+              "pedersen_builtin": 13,
+              "output_builtin": 0,
+              "ecdsa_builtin": 1,
+              "range_check_builtin": 18,
+              "ec_op_builtin": 0,
+              "bitwise_builtin": 0
+            },
+            "n_memory_holes": 53
+          }
         }
       },
       {
@@ -2425,7 +2845,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 249,
+            "builtin_instance_counter": {
+              "output_builtin": 0,
+              "range_check_builtin": 6,
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 4,
+              "ec_op_builtin": 0,
+              "ecdsa_builtin": 1
+            },
+            "n_memory_holes": 20
+          }
         }
       },
       {
@@ -2433,7 +2865,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 445,
+            "builtin_instance_counter": {
+              "ec_op_builtin": 0,
+              "pedersen_builtin": 11,
+              "bitwise_builtin": 0,
+              "output_builtin": 0,
+              "ecdsa_builtin": 1,
+              "range_check_builtin": 13
+            },
+            "n_memory_holes": 42
+          }
         }
       },
       {
@@ -2441,7 +2885,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 539,
+            "builtin_instance_counter": {
+              "output_builtin": 0,
+              "pedersen_builtin": 13,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "range_check_builtin": 18,
+              "ecdsa_builtin": 1
+            },
+            "n_memory_holes": 51
+          }
         }
       },
       {
@@ -2449,7 +2905,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 178,
+            "builtin_instance_counter": {
+              "ec_op_builtin": 0,
+              "pedersen_builtin": 0,
+              "bitwise_builtin": 0,
+              "ecdsa_builtin": 0,
+              "range_check_builtin": 0,
+              "output_builtin": 0
+            },
+            "n_memory_holes": 0
+          }
         }
       },
       {
@@ -2457,7 +2925,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 539,
+            "builtin_instance_counter": {
+              "ec_op_builtin": 0,
+              "ecdsa_builtin": 1,
+              "output_builtin": 0,
+              "range_check_builtin": 18,
+              "pedersen_builtin": 13,
+              "bitwise_builtin": 0
+            },
+            "n_memory_holes": 51
+          }
         }
       },
       {
@@ -2465,7 +2945,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 441,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "pedersen_builtin": 11,
+              "output_builtin": 0,
+              "bitwise_builtin": 0,
+              "range_check_builtin": 13,
+              "ec_op_builtin": 0
+            },
+            "n_memory_holes": 44
+          }
         }
       },
       {
@@ -2473,7 +2965,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 535,
+            "builtin_instance_counter": {
+              "ec_op_builtin": 0,
+              "output_builtin": 0,
+              "range_check_builtin": 18,
+              "ecdsa_builtin": 1,
+              "pedersen_builtin": 13,
+              "bitwise_builtin": 0
+            },
+            "n_memory_holes": 53
+          }
         }
       },
       {
@@ -2481,7 +2985,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 447,
+            "builtin_instance_counter": {
+              "output_builtin": 0,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "pedersen_builtin": 11,
+              "ecdsa_builtin": 1,
+              "range_check_builtin": 13
+            },
+            "n_memory_holes": 41
+          }
         }
       },
       {
@@ -2489,7 +3005,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 539,
+            "builtin_instance_counter": {
+              "range_check_builtin": 18,
+              "ec_op_builtin": 0,
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 13,
+              "output_builtin": 0,
+              "ecdsa_builtin": 1
+            },
+            "n_memory_holes": 51
+          }
         }
       },
       {
@@ -2497,7 +3025,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 447,
+            "builtin_instance_counter": {
+              "bitwise_builtin": 0,
+              "range_check_builtin": 13,
+              "pedersen_builtin": 11,
+              "ecdsa_builtin": 1,
+              "output_builtin": 0,
+              "ec_op_builtin": 0
+            },
+            "n_memory_holes": 41
+          }
         }
       },
       {
@@ -2505,7 +3045,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 441,
+            "builtin_instance_counter": {
+              "output_builtin": 0,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "ecdsa_builtin": 1,
+              "pedersen_builtin": 11,
+              "range_check_builtin": 13
+            },
+            "n_memory_holes": 44
+          }
         }
       },
       {
@@ -2513,7 +3065,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 441,
+            "builtin_instance_counter": {
+              "output_builtin": 0,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "range_check_builtin": 13,
+              "pedersen_builtin": 11,
+              "ecdsa_builtin": 1
+            },
+            "n_memory_holes": 44
+          }
         }
       },
       {
@@ -2521,7 +3085,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 441,
+            "builtin_instance_counter": {
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 11,
+              "range_check_builtin": 13,
+              "output_builtin": 0,
+              "ec_op_builtin": 0,
+              "ecdsa_builtin": 1
+            },
+            "n_memory_holes": 44
+          }
         }
       },
       {
@@ -2529,7 +3105,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 441,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "pedersen_builtin": 11,
+              "bitwise_builtin": 0,
+              "output_builtin": 0,
+              "ec_op_builtin": 0,
+              "range_check_builtin": 13
+            },
+            "n_memory_holes": 44
+          }
         }
       },
       {
@@ -2537,7 +3125,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 443,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "output_builtin": 0,
+              "bitwise_builtin": 0,
+              "range_check_builtin": 13,
+              "ec_op_builtin": 0,
+              "pedersen_builtin": 11
+            },
+            "n_memory_holes": 43
+          }
         }
       },
       {
@@ -2546,7 +3146,19 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x734c83d8c2fa72e781f0030b4906720485e6a1291bf5258e3065f8e03f97a19",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 29,
+            "builtin_instance_counter": {
+              "range_check_builtin": 0,
+              "ecdsa_builtin": 0,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "pedersen_builtin": 0,
+              "output_builtin": 0
+            },
+            "n_memory_holes": 0
+          }
         }
       },
       {
@@ -2554,7 +3166,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 535,
+            "builtin_instance_counter": {
+              "pedersen_builtin": 13,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "output_builtin": 0,
+              "ecdsa_builtin": 1,
+              "range_check_builtin": 18
+            },
+            "n_memory_holes": 53
+          }
         }
       },
       {
@@ -2562,7 +3186,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 180,
+            "builtin_instance_counter": {
+              "pedersen_builtin": 2,
+              "ecdsa_builtin": 0,
+              "output_builtin": 0,
+              "bitwise_builtin": 2,
+              "ec_op_builtin": 0,
+              "range_check_builtin": 6
+            },
+            "n_memory_holes": 20
+          }
         }
       },
       {
@@ -2570,7 +3206,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 537,
+            "builtin_instance_counter": {
+              "output_builtin": 0,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "pedersen_builtin": 13,
+              "range_check_builtin": 18,
+              "ecdsa_builtin": 1
+            },
+            "n_memory_holes": 52
+          }
         }
       },
       {
@@ -2578,7 +3226,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 537,
+            "builtin_instance_counter": {
+              "output_builtin": 0,
+              "pedersen_builtin": 13,
+              "bitwise_builtin": 0,
+              "ecdsa_builtin": 1,
+              "ec_op_builtin": 0,
+              "range_check_builtin": 18
+            },
+            "n_memory_holes": 52
+          }
         }
       },
       {
@@ -2586,7 +3246,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 541,
+            "builtin_instance_counter": {
+              "output_builtin": 0,
+              "pedersen_builtin": 13,
+              "ecdsa_builtin": 1,
+              "range_check_builtin": 18,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0
+            },
+            "n_memory_holes": 50
+          }
         }
       },
       {
@@ -2594,7 +3266,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 169,
+            "builtin_instance_counter": {
+              "ec_op_builtin": 0,
+              "ecdsa_builtin": 0,
+              "range_check_builtin": 7,
+              "pedersen_builtin": 2,
+              "output_builtin": 0,
+              "bitwise_builtin": 0
+            },
+            "n_memory_holes": 20
+          }
         }
       },
       {
@@ -2602,7 +3286,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 541,
+            "builtin_instance_counter": {
+              "range_check_builtin": 18,
+              "ec_op_builtin": 0,
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 13,
+              "ecdsa_builtin": 1,
+              "output_builtin": 0
+            },
+            "n_memory_holes": 50
+          }
         }
       },
       {
@@ -2619,7 +3315,19 @@
             }
           ],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 332,
+            "builtin_instance_counter": {
+              "range_check_builtin": 0,
+              "ec_op_builtin": 0,
+              "output_builtin": 0,
+              "ecdsa_builtin": 0,
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 0
+            },
+            "n_memory_holes": 0
+          }
         }
       },
       {
@@ -2627,7 +3335,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 441,
+            "builtin_instance_counter": {
+              "range_check_builtin": 13,
+              "output_builtin": 0,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "ecdsa_builtin": 1,
+              "pedersen_builtin": 11
+            },
+            "n_memory_holes": 44
+          }
         }
       },
       {
@@ -2635,7 +3355,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 541,
+            "builtin_instance_counter": {
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "range_check_builtin": 18,
+              "pedersen_builtin": 13,
+              "ecdsa_builtin": 1,
+              "output_builtin": 0
+            },
+            "n_memory_holes": 50
+          }
         }
       },
       {
@@ -2643,7 +3375,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 541,
+            "builtin_instance_counter": {
+              "range_check_builtin": 18,
+              "ecdsa_builtin": 1,
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 13,
+              "ec_op_builtin": 0,
+              "output_builtin": 0
+            },
+            "n_memory_holes": 50
+          }
         }
       },
       {
@@ -2651,7 +3395,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 541,
+            "builtin_instance_counter": {
+              "range_check_builtin": 18,
+              "bitwise_builtin": 0,
+              "output_builtin": 0,
+              "ec_op_builtin": 0,
+              "ecdsa_builtin": 1,
+              "pedersen_builtin": 13
+            },
+            "n_memory_holes": 50
+          }
         }
       },
       {
@@ -2659,7 +3415,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 541,
+            "builtin_instance_counter": {
+              "range_check_builtin": 18,
+              "ecdsa_builtin": 1,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "pedersen_builtin": 13,
+              "output_builtin": 0
+            },
+            "n_memory_holes": 50
+          }
         }
       },
       {
@@ -2667,7 +3435,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 441,
+            "builtin_instance_counter": {
+              "output_builtin": 0,
+              "pedersen_builtin": 11,
+              "range_check_builtin": 13,
+              "ecdsa_builtin": 1,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0
+            },
+            "n_memory_holes": 44
+          }
         }
       },
       {
@@ -2675,7 +3455,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 537,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "output_builtin": 0,
+              "ec_op_builtin": 0,
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 13,
+              "range_check_builtin": 18
+            },
+            "n_memory_holes": 52
+          }
         }
       },
       {
@@ -2683,7 +3475,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 441,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "output_builtin": 0,
+              "range_check_builtin": 13,
+              "pedersen_builtin": 11
+            },
+            "n_memory_holes": 44
+          }
         }
       },
       {
@@ -2691,7 +3495,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 169,
+            "builtin_instance_counter": {
+              "pedersen_builtin": 2,
+              "range_check_builtin": 7,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "ecdsa_builtin": 0,
+              "output_builtin": 0
+            },
+            "n_memory_holes": 20
+          }
         }
       },
       {
@@ -2699,7 +3515,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 535,
+            "builtin_instance_counter": {
+              "ec_op_builtin": 0,
+              "ecdsa_builtin": 1,
+              "bitwise_builtin": 0,
+              "output_builtin": 0,
+              "pedersen_builtin": 13,
+              "range_check_builtin": 18
+            },
+            "n_memory_holes": 53
+          }
         }
       },
       {
@@ -2707,7 +3535,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 535,
+            "builtin_instance_counter": {
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "range_check_builtin": 18,
+              "ecdsa_builtin": 1,
+              "pedersen_builtin": 13,
+              "output_builtin": 0
+            },
+            "n_memory_holes": 53
+          }
         }
       },
       {
@@ -2715,7 +3555,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 541,
+            "builtin_instance_counter": {
+              "output_builtin": 0,
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 13,
+              "range_check_builtin": 18,
+              "ec_op_builtin": 0,
+              "ecdsa_builtin": 1
+            },
+            "n_memory_holes": 50
+          }
         }
       },
       {
@@ -2723,7 +3575,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 531,
+            "builtin_instance_counter": {
+              "range_check_builtin": 18,
+              "ec_op_builtin": 0,
+              "pedersen_builtin": 13,
+              "output_builtin": 0,
+              "ecdsa_builtin": 1,
+              "bitwise_builtin": 0
+            },
+            "n_memory_holes": 55
+          }
         }
       },
       {
@@ -2731,7 +3595,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 541,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "ec_op_builtin": 0,
+              "range_check_builtin": 18,
+              "output_builtin": 0,
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 13
+            },
+            "n_memory_holes": 50
+          }
         }
       },
       {
@@ -2739,7 +3615,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 537,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "pedersen_builtin": 13,
+              "output_builtin": 0,
+              "range_check_builtin": 18
+            },
+            "n_memory_holes": 52
+          }
         }
       },
       {
@@ -2747,7 +3635,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 537,
+            "builtin_instance_counter": {
+              "bitwise_builtin": 0,
+              "output_builtin": 0,
+              "pedersen_builtin": 13,
+              "ec_op_builtin": 0,
+              "range_check_builtin": 18,
+              "ecdsa_builtin": 1
+            },
+            "n_memory_holes": 52
+          }
         }
       },
       {
@@ -2755,7 +3655,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 537,
+            "builtin_instance_counter": {
+              "output_builtin": 0,
+              "ecdsa_builtin": 1,
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 13,
+              "range_check_builtin": 18,
+              "ec_op_builtin": 0
+            },
+            "n_memory_holes": 52
+          }
         }
       },
       {
@@ -2763,7 +3675,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 531,
+            "builtin_instance_counter": {
+              "range_check_builtin": 18,
+              "ecdsa_builtin": 1,
+              "bitwise_builtin": 0,
+              "output_builtin": 0,
+              "ec_op_builtin": 0,
+              "pedersen_builtin": 13
+            },
+            "n_memory_holes": 55
+          }
         }
       },
       {
@@ -2771,7 +3695,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 535,
+            "builtin_instance_counter": {
+              "range_check_builtin": 18,
+              "ec_op_builtin": 0,
+              "pedersen_builtin": 13,
+              "output_builtin": 0,
+              "ecdsa_builtin": 1,
+              "bitwise_builtin": 0
+            },
+            "n_memory_holes": 53
+          }
         }
       },
       {
@@ -2779,7 +3715,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 535,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "output_builtin": 0,
+              "bitwise_builtin": 0,
+              "range_check_builtin": 18,
+              "ec_op_builtin": 0,
+              "pedersen_builtin": 13
+            },
+            "n_memory_holes": 53
+          }
         }
       },
       {
@@ -2787,7 +3735,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 531,
+            "builtin_instance_counter": {
+              "range_check_builtin": 18,
+              "pedersen_builtin": 13,
+              "ecdsa_builtin": 1,
+              "output_builtin": 0,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0
+            },
+            "n_memory_holes": 55
+          }
         }
       },
       {
@@ -2795,7 +3755,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 539,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "range_check_builtin": 18,
+              "pedersen_builtin": 13,
+              "ec_op_builtin": 0,
+              "output_builtin": 0,
+              "bitwise_builtin": 0
+            },
+            "n_memory_holes": 51
+          }
         }
       },
       {
@@ -2803,7 +3775,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 539,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "output_builtin": 0,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "pedersen_builtin": 13,
+              "range_check_builtin": 18
+            },
+            "n_memory_holes": 51
+          }
         }
       },
       {
@@ -2811,7 +3795,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 535,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "ec_op_builtin": 0,
+              "range_check_builtin": 18,
+              "pedersen_builtin": 13,
+              "output_builtin": 0,
+              "bitwise_builtin": 0
+            },
+            "n_memory_holes": 53
+          }
         }
       },
       {
@@ -2819,7 +3815,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 537,
+            "builtin_instance_counter": {
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "range_check_builtin": 18,
+              "ecdsa_builtin": 1,
+              "pedersen_builtin": 13,
+              "output_builtin": 0
+            },
+            "n_memory_holes": 52
+          }
         }
       },
       {
@@ -2827,7 +3835,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 535,
+            "builtin_instance_counter": {
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "pedersen_builtin": 13,
+              "range_check_builtin": 18,
+              "output_builtin": 0,
+              "ecdsa_builtin": 1
+            },
+            "n_memory_holes": 53
+          }
         }
       },
       {
@@ -2835,7 +3855,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 537,
+            "builtin_instance_counter": {
+              "pedersen_builtin": 13,
+              "ec_op_builtin": 0,
+              "range_check_builtin": 18,
+              "output_builtin": 0,
+              "ecdsa_builtin": 1,
+              "bitwise_builtin": 0
+            },
+            "n_memory_holes": 52
+          }
         }
       },
       {
@@ -2843,7 +3875,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 535,
+            "builtin_instance_counter": {
+              "pedersen_builtin": 13,
+              "ecdsa_builtin": 1,
+              "output_builtin": 0,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "range_check_builtin": 18
+            },
+            "n_memory_holes": 53
+          }
         }
       },
       {
@@ -2851,7 +3895,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 531,
+            "builtin_instance_counter": {
+              "pedersen_builtin": 13,
+              "range_check_builtin": 18,
+              "ecdsa_builtin": 1,
+              "output_builtin": 0,
+              "ec_op_builtin": 0,
+              "bitwise_builtin": 0
+            },
+            "n_memory_holes": 55
+          }
         }
       },
       {
@@ -2859,7 +3915,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 216,
+            "builtin_instance_counter": {
+              "ec_op_builtin": 0,
+              "range_check_builtin": 7,
+              "bitwise_builtin": 2,
+              "output_builtin": 0,
+              "pedersen_builtin": 2,
+              "ecdsa_builtin": 0
+            },
+            "n_memory_holes": 25
+          }
         }
       },
       {
@@ -2867,7 +3935,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 533,
+            "builtin_instance_counter": {
+              "range_check_builtin": 18,
+              "pedersen_builtin": 13,
+              "output_builtin": 0,
+              "ecdsa_builtin": 1,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0
+            },
+            "n_memory_holes": 54
+          }
         }
       },
       {
@@ -2875,7 +3955,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 541,
+            "builtin_instance_counter": {
+              "pedersen_builtin": 13,
+              "output_builtin": 0,
+              "bitwise_builtin": 0,
+              "range_check_builtin": 18,
+              "ecdsa_builtin": 1,
+              "ec_op_builtin": 0
+            },
+            "n_memory_holes": 50
+          }
         }
       },
       {
@@ -2883,7 +3975,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 180,
+            "builtin_instance_counter": {
+              "output_builtin": 0,
+              "ec_op_builtin": 0,
+              "range_check_builtin": 6,
+              "ecdsa_builtin": 0,
+              "pedersen_builtin": 2,
+              "bitwise_builtin": 2
+            },
+            "n_memory_holes": 20
+          }
         }
       },
       {
@@ -2891,7 +3995,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 535,
+            "builtin_instance_counter": {
+              "pedersen_builtin": 13,
+              "ecdsa_builtin": 1,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "output_builtin": 0,
+              "range_check_builtin": 18
+            },
+            "n_memory_holes": 53
+          }
         }
       },
       {
@@ -2899,7 +4015,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 535,
+            "builtin_instance_counter": {
+              "range_check_builtin": 18,
+              "bitwise_builtin": 0,
+              "ecdsa_builtin": 1,
+              "ec_op_builtin": 0,
+              "output_builtin": 0,
+              "pedersen_builtin": 13
+            },
+            "n_memory_holes": 53
+          }
         }
       },
       {
@@ -2907,7 +4035,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 169,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 0,
+              "range_check_builtin": 7,
+              "bitwise_builtin": 0,
+              "output_builtin": 0,
+              "pedersen_builtin": 2,
+              "ec_op_builtin": 0
+            },
+            "n_memory_holes": 20
+          }
         }
       },
       {
@@ -2915,7 +4055,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 441,
+            "builtin_instance_counter": {
+              "ec_op_builtin": 0,
+              "pedersen_builtin": 11,
+              "ecdsa_builtin": 1,
+              "range_check_builtin": 13,
+              "bitwise_builtin": 0,
+              "output_builtin": 0
+            },
+            "n_memory_holes": 44
+          }
         }
       },
       {
@@ -2923,7 +4075,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 447,
+            "builtin_instance_counter": {
+              "bitwise_builtin": 0,
+              "range_check_builtin": 13,
+              "output_builtin": 0,
+              "ecdsa_builtin": 1,
+              "pedersen_builtin": 11,
+              "ec_op_builtin": 0
+            },
+            "n_memory_holes": 41
+          }
         }
       },
       {
@@ -2931,7 +4095,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 531,
+            "builtin_instance_counter": {
+              "pedersen_builtin": 13,
+              "ecdsa_builtin": 1,
+              "ec_op_builtin": 0,
+              "output_builtin": 0,
+              "range_check_builtin": 18,
+              "bitwise_builtin": 0
+            },
+            "n_memory_holes": 55
+          }
         }
       },
       {
@@ -2939,7 +4115,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 445,
+            "builtin_instance_counter": {
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "pedersen_builtin": 11,
+              "range_check_builtin": 13,
+              "ecdsa_builtin": 1,
+              "output_builtin": 0
+            },
+            "n_memory_holes": 42
+          }
         }
       },
       {
@@ -2964,7 +4152,19 @@
             }
           ],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 426,
+            "builtin_instance_counter": {
+              "pedersen_builtin": 0,
+              "ecdsa_builtin": 0,
+              "bitwise_builtin": 0,
+              "range_check_builtin": 0,
+              "ec_op_builtin": 0,
+              "output_builtin": 0
+            },
+            "n_memory_holes": 0
+          }
         }
       },
       {
@@ -2972,7 +4172,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 535,
+            "builtin_instance_counter": {
+              "pedersen_builtin": 13,
+              "ecdsa_builtin": 1,
+              "ec_op_builtin": 0,
+              "range_check_builtin": 18,
+              "output_builtin": 0,
+              "bitwise_builtin": 0
+            },
+            "n_memory_holes": 53
+          }
         }
       },
       {
@@ -2980,7 +4192,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 535,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "bitwise_builtin": 0,
+              "ec_op_builtin": 0,
+              "output_builtin": 0,
+              "range_check_builtin": 18,
+              "pedersen_builtin": 13
+            },
+            "n_memory_holes": 53
+          }
         }
       },
       {
@@ -2988,7 +4212,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 531,
+            "builtin_instance_counter": {
+              "range_check_builtin": 18,
+              "output_builtin": 0,
+              "bitwise_builtin": 0,
+              "ecdsa_builtin": 1,
+              "ec_op_builtin": 0,
+              "pedersen_builtin": 13
+            },
+            "n_memory_holes": 55
+          }
         }
       },
       {
@@ -2996,7 +4232,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 539,
+            "builtin_instance_counter": {
+              "pedersen_builtin": 13,
+              "range_check_builtin": 18,
+              "output_builtin": 0,
+              "bitwise_builtin": 0,
+              "ecdsa_builtin": 1,
+              "ec_op_builtin": 0
+            },
+            "n_memory_holes": 51
+          }
         }
       },
       {
@@ -3004,7 +4252,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 535,
+            "builtin_instance_counter": {
+              "range_check_builtin": 18,
+              "output_builtin": 0,
+              "pedersen_builtin": 13,
+              "bitwise_builtin": 0,
+              "ecdsa_builtin": 1,
+              "ec_op_builtin": 0
+            },
+            "n_memory_holes": 53
+          }
         }
       },
       {
@@ -3012,7 +4272,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 165,
+            "builtin_instance_counter": {
+              "ec_op_builtin": 0,
+              "bitwise_builtin": 0,
+              "range_check_builtin": 7,
+              "ecdsa_builtin": 0,
+              "pedersen_builtin": 2,
+              "output_builtin": 0
+            },
+            "n_memory_holes": 22
+          }
         }
       },
       {
@@ -3020,7 +4292,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 539,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "pedersen_builtin": 13,
+              "range_check_builtin": 18,
+              "bitwise_builtin": 0,
+              "output_builtin": 0,
+              "ec_op_builtin": 0
+            },
+            "n_memory_holes": 51
+          }
         }
       },
       {
@@ -3028,7 +4312,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 539,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "output_builtin": 0,
+              "ec_op_builtin": 0,
+              "range_check_builtin": 18,
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 13
+            },
+            "n_memory_holes": 51
+          }
         }
       },
       {
@@ -3036,7 +4332,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 535,
+            "builtin_instance_counter": {
+              "ec_op_builtin": 0,
+              "ecdsa_builtin": 1,
+              "output_builtin": 0,
+              "range_check_builtin": 18,
+              "pedersen_builtin": 13,
+              "bitwise_builtin": 0
+            },
+            "n_memory_holes": 53
+          }
         }
       },
       {
@@ -3044,7 +4352,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 535,
+            "builtin_instance_counter": {
+              "ecdsa_builtin": 1,
+              "ec_op_builtin": 0,
+              "pedersen_builtin": 13,
+              "bitwise_builtin": 0,
+              "range_check_builtin": 18,
+              "output_builtin": 0
+            },
+            "n_memory_holes": 53
+          }
         }
       },
       {
@@ -3052,7 +4372,19 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "n_steps": 535,
+            "builtin_instance_counter": {
+              "range_check_builtin": 18,
+              "bitwise_builtin": 0,
+              "pedersen_builtin": 13,
+              "ecdsa_builtin": 1,
+              "output_builtin": 0,
+              "ec_op_builtin": 0
+            },
+            "n_memory_holes": 53
+          }
         }
       }
     ],

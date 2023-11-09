@@ -2,6 +2,7 @@ use starknet_api::block::BlockNumber;
 use starknet_api::core::ContractAddress;
 use starknet_api::transaction::{
     EventIndexInTransactionOutput,
+    ExecutionResources,
     Fee,
     MessageToL1,
     TransactionExecutionStatus,
@@ -48,6 +49,7 @@ auto_impl_get_test_instance! {
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
         pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
     }
     pub struct ThinDeployTransactionOutput {
         pub actual_fee: Fee,
@@ -55,6 +57,7 @@ auto_impl_get_test_instance! {
         pub events_contract_addresses: Vec<ContractAddress>,
         pub contract_address: ContractAddress,
         pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
     }
     pub struct ThinDeployAccountTransactionOutput {
         pub actual_fee: Fee,
@@ -62,18 +65,21 @@ auto_impl_get_test_instance! {
         pub events_contract_addresses: Vec<ContractAddress>,
         pub contract_address: ContractAddress,
         pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
     }
     pub struct ThinInvokeTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
         pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
     }
     pub struct ThinL1HandlerTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
         pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
     }
     pub enum ThinTransactionOutput {
         Declare(ThinDeclareTransactionOutput) = 0,

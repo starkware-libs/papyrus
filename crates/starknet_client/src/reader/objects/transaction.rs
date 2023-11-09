@@ -2,8 +2,6 @@
 #[path = "transaction_test.rs"]
 mod transaction_test;
 
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{
     ClassHash,
@@ -23,6 +21,7 @@ use starknet_api::transaction::{
     DeployAccountTransactionOutput,
     DeployTransactionOutput,
     Event,
+    ExecutionResources,
     Fee,
     InvokeTransactionOutput,
     L1HandlerTransactionOutput,
@@ -575,6 +574,7 @@ impl TransactionReceipt {
                 messages_sent,
                 events: self.events,
                 execution_status: self.execution_status,
+                execution_resources: self.execution_resources,
             }),
             TransactionType::Deploy => TransactionOutput::Deploy(DeployTransactionOutput {
                 actual_fee: self.actual_fee,
@@ -583,6 +583,7 @@ impl TransactionReceipt {
                 contract_address: contract_address
                     .expect("Deploy transaction must have a contract address."),
                 execution_status: self.execution_status,
+                execution_resources: self.execution_resources,
             }),
             TransactionType::DeployAccount => {
                 TransactionOutput::DeployAccount(DeployAccountTransactionOutput {
@@ -592,6 +593,7 @@ impl TransactionReceipt {
                     contract_address: contract_address
                         .expect("Deploy account transaction must have a contract address."),
                     execution_status: self.execution_status,
+                    execution_resources: self.execution_resources,
                 })
             }
             TransactionType::InvokeFunction => TransactionOutput::Invoke(InvokeTransactionOutput {
@@ -599,6 +601,7 @@ impl TransactionReceipt {
                 messages_sent,
                 events: self.events,
                 execution_status: self.execution_status,
+                execution_resources: self.execution_resources,
             }),
             TransactionType::L1Handler => {
                 TransactionOutput::L1Handler(L1HandlerTransactionOutput {
@@ -606,34 +609,12 @@ impl TransactionReceipt {
                     messages_sent,
                     events: self.events,
                     execution_status: self.execution_status,
+                    execution_resources: self.execution_resources,
                 })
             }
         }
     }
 }
-
-#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
-pub struct ExecutionResources {
-    pub n_steps: u64,
-    pub builtin_instance_counter: BuiltinInstanceCounter,
-    pub n_memory_holes: u64,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
-#[serde(untagged)]
-pub enum BuiltinInstanceCounter {
-    NonEmpty(HashMap<String, u64>),
-    Empty(EmptyBuiltinInstanceCounter),
-}
-
-impl Default for BuiltinInstanceCounter {
-    fn default() -> Self {
-        BuiltinInstanceCounter::Empty(EmptyBuiltinInstanceCounter {})
-    }
-}
-
-#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
-pub struct EmptyBuiltinInstanceCounter {}
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct L1ToL2Nonce(pub StarkHash);

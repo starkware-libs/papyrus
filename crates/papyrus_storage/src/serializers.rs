@@ -65,6 +65,7 @@ use starknet_api::state::{
 };
 use starknet_api::transaction::{
     AccountDeploymentData,
+    BuiltinInstanceCounter,
     Calldata,
     ContractAddressSalt,
     DeclareTransaction,
@@ -75,10 +76,12 @@ use starknet_api::transaction::{
     DeployAccountTransactionV1,
     DeployAccountTransactionV3,
     DeployTransaction,
+    EmptyBuiltinInstanceCounter,
     EventContent,
     EventData,
     EventIndexInTransactionOutput,
     EventKey,
+    ExecutionResources,
     Fee,
     InvokeTransaction,
     InvokeTransactionV0,
@@ -325,6 +328,7 @@ auto_storage_serde! {
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
         pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
     }
     pub struct ThinDeployTransactionOutput {
         pub actual_fee: Fee,
@@ -332,6 +336,7 @@ auto_storage_serde! {
         pub events_contract_addresses: Vec<ContractAddress>,
         pub contract_address: ContractAddress,
         pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
     }
     pub struct ThinDeployAccountTransactionOutput {
         pub actual_fee: Fee,
@@ -339,6 +344,7 @@ auto_storage_serde! {
         pub events_contract_addresses: Vec<ContractAddress>,
         pub contract_address: ContractAddress,
         pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
     }
     pub struct TypedParameter {
         pub name: String,
@@ -349,12 +355,14 @@ auto_storage_serde! {
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
         pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
     }
     pub struct ThinL1HandlerTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
         pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
     }
     pub enum ThinTransactionOutput {
         Declare(ThinDeclareTransactionOutput) = 0,
@@ -396,6 +404,17 @@ auto_storage_serde! {
     pub struct BigUintAsHex {
         pub value: BigUint,
     }
+
+    pub struct ExecutionResources {
+        pub n_steps: u64,
+        pub builtin_instance_counter: BuiltinInstanceCounter,
+        pub n_memory_holes: u64,
+    }
+    pub enum BuiltinInstanceCounter {
+        NonEmpty(HashMap<String, u64>) = 0,
+        Empty(EmptyBuiltinInstanceCounter) = 1,
+    }
+    pub struct EmptyBuiltinInstanceCounter {}
 
     binary(u32, read_u32, write_u32);
     binary(u64, read_u64, write_u64);

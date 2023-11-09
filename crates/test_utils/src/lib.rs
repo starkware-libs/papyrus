@@ -81,6 +81,7 @@ use starknet_api::state::{
 };
 use starknet_api::transaction::{
     AccountDeploymentData,
+    BuiltinInstanceCounter,
     Calldata,
     ContractAddressSalt,
     DeclareTransaction,
@@ -94,11 +95,13 @@ use starknet_api::transaction::{
     DeployAccountTransactionV3,
     DeployTransaction,
     DeployTransactionOutput,
+    EmptyBuiltinInstanceCounter,
     Event,
     EventContent,
     EventData,
     EventIndexInTransactionOutput,
     EventKey,
+    ExecutionResources,
     Fee,
     InvokeTransaction,
     InvokeTransactionOutput,
@@ -397,6 +400,10 @@ auto_impl_get_test_instance! {
         Rejected = 3,
     }
     pub struct BlockTimestamp(pub u64);
+    pub enum BuiltinInstanceCounter {
+        NonEmpty(HashMap<String, u64>) = 0,
+        Empty(EmptyBuiltinInstanceCounter) = 1,
+    }
     pub struct Calldata(pub Arc<Vec<StarkFelt>>);
     pub struct ClassHash(pub StarkHash);
     pub struct CompiledClassHash(pub StarkHash);
@@ -495,6 +502,7 @@ auto_impl_get_test_instance! {
         External = 1,
         L1Handler = 2,
     }
+    pub struct EmptyBuiltinInstanceCounter {}
     pub struct EntryPoint {
         pub function_idx: FunctionIndex,
         pub selector: EntryPointSelector,
@@ -523,6 +531,11 @@ auto_impl_get_test_instance! {
     pub struct EventData(pub Vec<StarkFelt>);
     pub struct EventIndexInTransactionOutput(pub usize);
     pub struct EventKey(pub StarkFelt);
+    pub struct ExecutionResources {
+        pub n_steps: u64,
+        pub builtin_instance_counter: BuiltinInstanceCounter,
+        pub n_memory_holes: u64,
+    }
     pub struct Fee(pub u128);
     pub struct FunctionAbiEntry {
         pub name: String,
@@ -717,6 +730,7 @@ macro_rules! auto_impl_get_test_instance {
     // Structs with public fields.
     ($(pub)? struct $name:ident { $(pub $field:ident : $ty:ty ,)* } $($rest:tt)*) => {
         impl GetTestInstance for $name {
+            #[allow(unused_variables)]
             fn get_test_instance(rng: &mut rand_chacha::ChaCha8Rng) -> Self {
                 Self {
                     $(
