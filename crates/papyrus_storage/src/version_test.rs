@@ -60,6 +60,6 @@ async fn test_verify_storage_version() {
     writer.begin_rw_txn().unwrap().set_state_version(&higher_version).unwrap().commit().unwrap();
     verify_storage_version(reader.clone(), StorageScope::FullArchive)
         .expect_err("Should fail, because both versions do not match.");
-    verify_storage_version(reader.clone(), StorageScope::StateOnly)
+    verify_storage_version(reader, StorageScope::StateOnly)
         .expect_err("Should fail, because state blocks version does not match.");
 }
