@@ -377,6 +377,7 @@ impl<
                 .single()
                 .expect("block timestamp should be valid");
         let header_latency = dt.num_seconds();
+        info!("Block {} was added.", block_number);
         debug!("Header latency: {}.", header_latency);
         if header_latency >= 0 {
             metrics::gauge!(papyrus_metrics::PAPYRUS_HEADER_LATENCY_SEC, header_latency as f64);
@@ -408,7 +409,7 @@ impl<
         );
 
         // Info the user on syncing the block once all the data is stored.
-        info!("Added block {} with hash {}.", block_number, block_hash);
+        debug!("Added block {} with hash {}.", block_number, block_hash);
 
         Ok(())
     }
