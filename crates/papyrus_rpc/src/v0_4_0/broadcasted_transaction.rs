@@ -22,7 +22,7 @@ use super::transaction::{DeployAccountTransaction, InvokeTransaction};
 use crate::compression_utils::compress_and_encode;
 
 /// Transactions that are ready to be broadcasted to the network and are not included in a block.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum BroadcastedTransaction {
     #[serde(rename = "DECLARE")]
