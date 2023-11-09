@@ -182,7 +182,7 @@ pub fn execute_call(
     // transactions.
     {
         let txn = storage_reader.begin_ro_txn()?;
-        verify_node_synced(&txn, state_number.0)?;
+        verify_node_synced(&txn, state_number.0, state_number)?;
         verify_contract_exists(contract_address, &txn, state_number)?;
     }
 
@@ -233,9 +233,11 @@ pub fn execute_call(
 fn verify_node_synced(
     txn: &StorageTxn<'_, RO>,
     block_context_number: BlockNumber,
+    state_number: StateNumber,
 ) -> ExecutionResult<()> {
     let compiled_class_marker = txn.get_compiled_class_marker()?;
-    if block_context_number >= compiled_class_marker {
+    if block_context_number >= compiled_class_marker || state_number.is_after(compiled_class_marker)
+    {
         return Err(ExecutionError::NotSynced {
             state_number: StateNumber::right_after_block(block_context_number),
             compiled_class_marker,
@@ -431,7 +433,7 @@ fn execute_transactions(
 ) -> ExecutionResult<(Vec<(TransactionExecutionInfo, ThinStateDiff)>, BlockContext)> {
     {
         let storage_txn = storage_reader.begin_ro_txn()?;
-        verify_node_synced(&storage_txn, block_context_block_number)?;
+        verify_node_synced(&storage_txn, block_context_block_number, state_number)?;
     }
 
     // TODO(yair): When we support pending blocks, use the latest block header instead of the
