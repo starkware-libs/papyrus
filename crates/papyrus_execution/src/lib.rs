@@ -38,6 +38,7 @@ use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use cairo_vm::types::errors::program_errors::ProgramError;
 use execution_utils::{get_trace_constructor, induced_state_diff};
 use objects::TransactionTrace;
+use papyrus_common::pending_classes::PendingClasses;
 use papyrus_common::transaction_hash::get_transaction_hash;
 use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::RO;
@@ -69,6 +70,8 @@ use starknet_api::transaction::{
 use starknet_api::StarknetApiError;
 use state_reader::ExecutionStateReader;
 use tracing::trace;
+
+use crate::objects::PendingStateDiff;
 
 /// Result type for execution functions.
 pub type ExecutionResult<T> = Result<T, ExecutionError>;
@@ -170,6 +173,8 @@ pub enum ExecutionError {
 #[allow(clippy::too_many_arguments)]
 pub fn execute_call(
     storage_reader: StorageReader,
+    maybe_pending_state_diff: Option<PendingStateDiff>,
+    maybe_pending_classes: Option<PendingClasses>,
     chain_id: &ChainId,
     state_number: StateNumber,
     block_context_number: BlockNumber,
@@ -201,6 +206,8 @@ pub fn execute_call(
     let mut cached_state = CachedState::from(ExecutionStateReader {
         storage_reader: storage_reader.clone(),
         state_number,
+        maybe_pending_state_diff,
+        maybe_pending_classes,
     });
     let header = storage_reader
         .begin_ro_txn()?
@@ -392,6 +399,8 @@ pub fn estimate_fee(
     txs: Vec<ExecutableTransactionInput>,
     chain_id: &ChainId,
     storage_reader: StorageReader,
+    maybe_pending_state_diff: Option<PendingStateDiff>,
+    maybe_pending_classes: Option<PendingClasses>,
     state_number: StateNumber,
     block_context_block_number: BlockNumber,
     execution_config: &BlockExecutionConfig,
@@ -401,6 +410,8 @@ pub fn estimate_fee(
         None,
         chain_id,
         storage_reader,
+        maybe_pending_state_diff,
+        maybe_pending_classes,
         state_number,
         block_context_block_number,
         execution_config,
@@ -423,6 +434,8 @@ fn execute_transactions(
     tx_hashes: Option<Vec<TransactionHash>>,
     chain_id: &ChainId,
     storage_reader: StorageReader,
+    maybe_pending_state_diff: Option<PendingStateDiff>,
+    maybe_pending_classes: Option<PendingClasses>,
     state_number: StateNumber,
     block_context_block_number: BlockNumber,
     execution_config: &BlockExecutionConfig,
@@ -444,7 +457,12 @@ fn execute_transactions(
         .expect("Should have block header.");
 
     // The starknet state will be from right before the block in which the transactions should run.
-    let mut cached_state = CachedState::from(ExecutionStateReader { storage_reader, state_number });
+    let mut cached_state = CachedState::from(ExecutionStateReader {
+        storage_reader,
+        state_number,
+        maybe_pending_state_diff,
+        maybe_pending_classes,
+    });
     let block_context = create_block_context(
         chain_id.clone(),
         header.block_number,
@@ -584,6 +602,8 @@ pub fn simulate_transactions(
     tx_hashes: Option<Vec<TransactionHash>>,
     chain_id: &ChainId,
     storage_reader: StorageReader,
+    maybe_pending_state_diff: Option<PendingStateDiff>,
+    maybe_pending_classes: Option<PendingClasses>,
     state_number: StateNumber,
     block_context_block_number: BlockNumber,
     execution_config: &BlockExecutionConfig,
@@ -596,6 +616,8 @@ pub fn simulate_transactions(
         tx_hashes,
         chain_id,
         storage_reader,
+        maybe_pending_state_diff,
+        maybe_pending_classes,
         state_number,
         block_context_block_number,
         execution_config,

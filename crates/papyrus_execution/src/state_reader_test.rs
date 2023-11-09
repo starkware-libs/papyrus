@@ -108,6 +108,8 @@ fn read_state() {
     let mut state_reader0 = ExecutionStateReader {
         storage_reader: storage_reader.clone(),
         state_number: state_number0,
+        maybe_pending_state_diff: None,
+        maybe_pending_classes: None,
     };
     let storage_after_block_0 =
         state_reader0.get_storage_at(address0, StorageKey(patricia_key!("0x0"))).unwrap();
@@ -127,6 +129,8 @@ fn read_state() {
     let mut state_reader1 = ExecutionStateReader {
         storage_reader: storage_reader.clone(),
         state_number: state_number1,
+        maybe_pending_state_diff: None,
+        maybe_pending_classes: None,
     };
     let storage_after_block_1 =
         state_reader1.get_storage_at(address0, StorageKey(patricia_key!("0x0"))).unwrap();
@@ -141,7 +145,12 @@ fn read_state() {
     assert_eq!(compiled_contract_class_after_block_1, expected_class);
 
     let state_number2 = StateNumber::right_after_block(BlockNumber(2));
-    let mut state_reader2 = ExecutionStateReader { storage_reader, state_number: state_number2 };
+    let mut state_reader2 = ExecutionStateReader {
+        storage_reader,
+        state_number: state_number2,
+        maybe_pending_state_diff: None,
+        maybe_pending_classes: None,
+    };
     let nonce_after_block_2 = state_reader2.get_nonce_at(address0).unwrap();
     assert_eq!(nonce_after_block_2, Nonce(stark_felt!(1_u128)));
 }
