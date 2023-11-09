@@ -117,10 +117,15 @@ use crate::header::StarknetVersion;
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::{VersionStorageReader, VersionStorageWriter};
 
-/// The current version of the storage code.
+/// The current version of the storage state code.
 /// Whenever a breaking change is introduced, the version is incremented and a storage
 /// migration is required for existing storages.
-pub const STORAGE_VERSION: Version = Version(8);
+pub const STORAGE_VERSION_STATE: Version = Version(8);
+/// The current version of the storage blocks code.
+/// Whenever a breaking change is introduced, the version is incremented and a storage
+/// migration is required for existing storages.
+/// This version is only checked for storages that store transactions (StorageScope::FullArchive).
+pub const STORAGE_VERSION_BLOCKS: Version = Version(8);
 
 /// Opens a storage and returns a [`StorageReader`] and a [`StorageWriter`].
 pub fn open_storage(
@@ -166,32 +171,60 @@ pub fn open_storage(
     let writer = StorageWriter { db_writer, tables, scope: storage_config.scope, file_writers };
 
     let writer = set_initial_version_if_needed(writer)?;
-    verify_storage_version(reader.clone())?;
+    verify_storage_version(reader.clone(), storage_config.scope)?;
     Ok((reader, writer))
 }
 
 // In case storage version does not exist, set it to the crate version.
 // Expected to happen once - when the node is launched for the first time.
 fn set_initial_version_if_needed(mut writer: StorageWriter) -> StorageResult<StorageWriter> {
-    let current_storage_version = writer.begin_rw_txn()?.get_version()?;
-    if current_storage_version.is_none() {
-        writer.begin_rw_txn()?.set_version(&STORAGE_VERSION)?.commit()?;
+    let current_storage_version_state = writer.begin_rw_txn()?.get_state_version()?;
+    if current_storage_version_state.is_none() {
+        writer.begin_rw_txn()?.set_state_version(&STORAGE_VERSION_STATE)?.commit()?;
     };
+
+    let current_storage_version_blocks = writer.begin_rw_txn()?.get_blocks_version()?;
+    if current_storage_version_blocks.is_none() {
+        writer.begin_rw_txn()?.set_blocks_version(&STORAGE_VERSION_BLOCKS)?.commit()?;
+    };
+
     Ok(writer)
 }
 
 // Assumes the storage has a version.
-fn verify_storage_version(reader: StorageReader) -> StorageResult<()> {
-    debug!("Storage crate version = {STORAGE_VERSION:}.");
-    let current_storage_version =
-        reader.begin_ro_txn()?.get_version()?.expect("Storage should have a version");
-    debug!("Current storage version = {current_storage_version:}.");
+fn verify_storage_version(reader: StorageReader, storage_scope: StorageScope) -> StorageResult<()> {
+    debug!(
+        "Storage crate version: State = {STORAGE_VERSION_STATE:} Blocks = \
+         {STORAGE_VERSION_BLOCKS:}. Storage scope = {storage_scope:?}."
+    );
 
-    if STORAGE_VERSION != current_storage_version {
+    let current_storage_version_state =
+        reader.begin_ro_txn()?.get_state_version()?.expect("Storage should have a version");
+    let current_storage_version_blocks =
+        reader.begin_ro_txn()?.get_blocks_version()?.expect("Storage should have a version");
+    debug!(
+        "Current storage version: State = {current_storage_version_state:}. Blocks = \
+         {current_storage_version_blocks:}."
+    );
+
+    if STORAGE_VERSION_STATE != current_storage_version_state {
         return Err(StorageError::StorageVersionInconcistency(
             StorageVersionError::InconsistentStorageVersion {
-                crate_version: STORAGE_VERSION,
-                storage_version: current_storage_version,
+                crate_version: STORAGE_VERSION_STATE,
+                storage_version: current_storage_version_state,
+            },
+        ));
+    }
+
+    if storage_scope == StorageScope::StateOnly {
+        return Ok(());
+    }
+
+    if STORAGE_VERSION_BLOCKS != current_storage_version_blocks {
+        return Err(StorageError::StorageVersionInconcistency(
+            StorageVersionError::InconsistentStorageVersion {
+                crate_version: STORAGE_VERSION_BLOCKS,
+                storage_version: current_storage_version_blocks,
             },
         ));
     }
