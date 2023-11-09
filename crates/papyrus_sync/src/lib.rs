@@ -27,6 +27,7 @@ use papyrus_proc_macros::latency_histogram;
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
+use papyrus_storage::db::DbError;
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter, StarknetVersion};
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
@@ -440,9 +441,7 @@ impl<
             // TODO(yair): Modify the stream so it skips already stored classes.
             // Compiled classes rewrite is valid because the stream downloads from the beginning of
             // the block instead of the last downloaded class.
-            Err(StorageError::CompiledClassReWrite { class_hash: existing_class_hash })
-                if existing_class_hash == class_hash =>
-            {
+            Err(StorageError::InnerError(DbError::KeyAlreadyExists(..))) => {
                 debug!("Compiled class of {class_hash} already stored.");
                 Ok(())
             }
