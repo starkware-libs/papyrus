@@ -13,7 +13,7 @@ base_layer_node_url:
 starknet:
   # possible values: "mainnet.json", "testnet1.json", "testnet2.json".
   preset: mainnet.json
-  additionalHeaders: # optional addtional headers for SN communication
+  additionalHeaders: # optional additional headers for SN communication
 
 deployment:
   # The container image
