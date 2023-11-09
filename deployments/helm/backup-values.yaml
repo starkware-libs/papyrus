@@ -7,7 +7,7 @@ rustLogLevel: "papyrus=DEBUG"
 deployment:
   image:
     repository: us.gcr.io/starkware-dev/papyrus-backup
-    tag: 0.1.2-alpha
+    tag: 0.2.0-rc1
 services: []
 # Persistent volume claim variables for a papyrus pod.
 pvc:
