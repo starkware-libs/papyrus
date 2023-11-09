@@ -636,18 +636,9 @@ fn write_declared_classes<'env>(
 ) -> StorageResult<()> {
     for (class_hash, contract_class) in declared_classes {
         let location = file_handlers.append_contract_class(contract_class);
-        let res_class = declared_classes_table.insert(txn, class_hash, &location);
-        let res_block = declared_classes_block_table.insert(txn, class_hash, &block_number);
-        match [res_class, res_block].iter().any(|res| res.is_err()) {
-            false => file_offset_table.upsert(
-                txn,
-                &OffsetKind::ContractClass,
-                &location.next_offset(),
-            )?,
-            true => {
-                return Err(StorageError::ClassAlreadyExists { class_hash: (*class_hash) });
-            }
-        }
+        declared_classes_table.insert(txn, class_hash, &location)?;
+        declared_classes_block_table.insert(txn, class_hash, &block_number)?;
+        file_offset_table.upsert(txn, &OffsetKind::ContractClass, &location.next_offset())?;
     }
     Ok(())
 }
@@ -661,13 +652,7 @@ fn write_deprecated_declared_classes<'env>(
     file_offset_table: &'env FileOffsetTable<'env>,
 ) -> StorageResult<()> {
     for (class_hash, deprecated_contract_class) in deprecated_declared_classes {
-        // TODO(dan): remove this check after regenesis, in favor of insert().
-        if let Some(value) = deprecated_declared_classes_table.get(txn, &class_hash)? {
-            if file_handlers.get_deprecated_contract_class_unchecked(value.location_in_file)?
-                != deprecated_contract_class
-            {
-                return Err(StorageError::ClassAlreadyExists { class_hash });
-            }
+        if deprecated_declared_classes_table.get(txn, &class_hash)?.is_some() {
             continue;
         }
         let location = file_handlers.append_deprecated_contract_class(&deprecated_contract_class);
@@ -677,11 +662,7 @@ fn write_deprecated_declared_classes<'env>(
             &OffsetKind::DeprecatedContractClass,
             &location.next_offset(),
         )?;
-        let res = deprecated_declared_classes_table.insert(txn, &class_hash, &value);
-        match res {
-            Ok(()) => continue,
-            Err(err) => return Err(err.into()),
-        }
+        deprecated_declared_classes_table.insert(txn, &class_hash, &value)?;
     }
     Ok(())
 }
@@ -694,15 +675,7 @@ fn write_deployed_contracts<'env>(
     nonces_table: &'env NoncesTable<'env>,
 ) -> StorageResult<()> {
     for (address, class_hash) in deployed_contracts {
-        deployed_contracts_table.insert(txn, &(*address, block_number), class_hash).map_err(
-            |err| {
-                if matches!(err, DbError::KeyAlreadyExists(..)) {
-                    StorageError::ContractAlreadyExists { address: *address }
-                } else {
-                    StorageError::from(err)
-                }
-            },
-        )?;
+        deployed_contracts_table.insert(txn, &(*address, block_number), class_hash)?;
 
         nonces_table.insert(txn, &(*address, block_number), &Nonce::default()).map_err(|err| {
             if matches!(err, DbError::KeyAlreadyExists(..)) {

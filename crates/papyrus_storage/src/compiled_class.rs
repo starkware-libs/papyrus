@@ -41,17 +41,9 @@ use papyrus_proc_macros::latency_histogram;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 
-use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
+use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
 use crate::mmap_file::LocationInFile;
-use crate::{
-    FileHandlers,
-    MarkerKind,
-    MarkersTable,
-    OffsetKind,
-    StorageError,
-    StorageResult,
-    StorageTxn,
-};
+use crate::{FileAccess, MarkerKind, MarkersTable, OffsetKind, StorageResult, StorageTxn};
 
 /// Interface for reading data related to the compiled classes.
 pub trait CasmStorageReader {
@@ -95,14 +87,8 @@ impl<'env> CasmStorageWriter for StorageTxn<'env, RW> {
         let state_diff_table = self.open_table(&self.tables.state_diffs)?;
         let file_offset_table = self.txn.open_table(&self.tables.file_offsets)?;
 
-        let location = self.file_handlers.append_casm(casm);
-        casm_table.insert(&self.txn, class_hash, &location).map_err(|err| {
-            if matches!(err, DbError::KeyAlreadyExists(..)) {
-                StorageError::CompiledClassReWrite { class_hash: *class_hash }
-            } else {
-                StorageError::from(err)
-            }
-        })?;
+        let location = self.file_access.append_casm(casm);
+        casm_table.insert(&self.txn, class_hash, &location)?;
         file_offset_table.upsert(&self.txn, &OffsetKind::Casm, &location.next_offset())?;
         update_marker(
             &self.txn,

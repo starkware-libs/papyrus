@@ -5,6 +5,7 @@ use starknet_api::core::ClassHash;
 use test_utils::read_json_file;
 
 use crate::compiled_class::{CasmStorageReader, CasmStorageWriter};
+use crate::db::{DbError, KeyAlreadyExistsError};
 use crate::test_utils::get_test_storage;
 use crate::StorageError;
 
@@ -46,5 +47,9 @@ fn casm_rewrite() {
         panic!("Unexpected Ok.");
     };
 
-    assert_matches!(err, StorageError::CompiledClassReWrite{class_hash} if class_hash == ClassHash::default());
+    assert_matches!(err, StorageError::InnerError(DbError::KeyAlreadyExists(KeyAlreadyExistsError {
+        table_name: _,
+        key,
+        value: _
+    })) if key == format!("{:?}", ClassHash::default()));
 }

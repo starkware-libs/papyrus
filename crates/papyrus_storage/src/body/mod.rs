@@ -60,7 +60,7 @@ use tracing::debug;
 
 use crate::body::events::{EventIndex, ThinTransactionOutput};
 use crate::db::serialization::StorageSerde;
-use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
+use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageScope, StorageTxn};
 
 type TransactionsTable<'env> = TableHandle<'env, TransactionIndex, Transaction>;
@@ -443,13 +443,7 @@ fn update_tx_hash_mapping<'env>(
     tx_hash: &TransactionHash,
     transaction_index: TransactionIndex,
 ) -> Result<(), StorageError> {
-    let res = transaction_hash_to_idx_table.insert(txn, tx_hash, &transaction_index);
-    res.map_err(|err| match err {
-        DbError::KeyAlreadyExists(..) => {
-            StorageError::TransactionHashAlreadyExists { tx_hash: *tx_hash, transaction_index }
-        }
-        err => err.into(),
-    })?;
+    transaction_hash_to_idx_table.insert(txn, tx_hash, &transaction_index)?;
     transaction_idx_to_hash_table.insert(txn, &transaction_index, tx_hash)?;
     Ok(())
 }
