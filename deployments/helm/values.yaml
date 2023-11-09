@@ -16,6 +16,10 @@ starknet:
   additionalHeaders: # optional addtional headers for SN communication
 
 deployment:
+  args:
+    - --config_file
+    - /app/config/presets/mainnet.json
+    - --base_layer.node_url
   # The container image
   image:
     repository: ghcr.io/starkware-libs/papyrus
