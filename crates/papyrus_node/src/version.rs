@@ -6,10 +6,10 @@ mod version_test;
 const VERSION_MAJOR: u32 = 0;
 
 /// Minor version component of the current release.
-const VERSION_MINOR: u32 = 0;
+const VERSION_MINOR: u32 = 2;
 
 /// Patch version component of the current release.
-const VERSION_PATCH: u32 = 6;
+const VERSION_PATCH: u32 = 0;
 
 /// Version metadata to append to the version string.
 /// Expected values are `dev` and `stable`.
