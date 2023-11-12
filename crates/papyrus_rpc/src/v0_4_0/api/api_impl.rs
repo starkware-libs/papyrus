@@ -482,7 +482,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 
             // TODO(shahak): Consider cloning the transactions and the receipts in order to free
             // the lock sooner (Check which is better).
-            let pending_block = &self.pending_data.read().await.block;
+            let pending_block =
+                read_pending_data(&self.pending_data, &self.storage_reader).await?.block;
 
             let client_transaction_receipt = pending_block
                 .transaction_receipts

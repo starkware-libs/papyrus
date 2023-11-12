@@ -943,6 +943,16 @@ async fn get_transaction_receipt() {
         &json_response["result"],
     ));
 
+    // Ask for transaction receipt when the pending block is not up to date.
+    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    let (_, res) = raw_call::<_, TransactionHash, TransactionReceipt>(
+        &module,
+        method_name,
+        &Some(client_transaction_receipt.transaction_hash),
+    )
+    .await;
+    assert_eq!(res.unwrap_err(), TRANSACTION_HASH_NOT_FOUND.into());
+
     // Ask for an invalid transaction.
     call_api_then_assert_and_validate_schema_for_err::<_, TransactionHash, TransactionReceipt>(
         &module,
