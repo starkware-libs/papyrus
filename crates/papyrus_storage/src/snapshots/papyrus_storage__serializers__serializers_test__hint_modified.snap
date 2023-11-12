@@ -513,6 +513,46 @@ definitions:
               dst:
                 $ref: "#/definitions/CellRef"
         additionalProperties: false
+      - description: "Provides the inverse of b (represented by 2 128-bit limbs) modulo n (represented by 2 128-bit limbs), or a proof that b has no inverse.\n\nIn case b has an inverse: Returns `r` and `k` such that: * `r = 1 / b (mod n)` * `k = (r * b - 1) / n` * `g0_or_no_inv = 0`\n\nIn case b has no inverse: Returns `g`, `s`, and `t`, such that: `g > 1` `g == 2 || g % 2 == 1` (in particular, `g0_or_no_inv = g0 != 0`) `g * s = b` `g * t = n`\n\nIn all cases - `name`0 is the least significant limb."
+        type: object
+        required:
+          - U256InvModN
+        properties:
+          U256InvModN:
+            type: object
+            required:
+              - b0
+              - b1
+              - g0_or_no_inv
+              - g1_option
+              - n0
+              - n1
+              - s_or_r0
+              - s_or_r1
+              - t_or_k0
+              - t_or_k1
+            properties:
+              b0:
+                $ref: "#/definitions/ResOperand"
+              b1:
+                $ref: "#/definitions/ResOperand"
+              n0:
+                $ref: "#/definitions/ResOperand"
+              n1:
+                $ref: "#/definitions/ResOperand"
+              g0_or_no_inv:
+                $ref: "#/definitions/CellRef"
+              g1_option:
+                $ref: "#/definitions/CellRef"
+              s_or_r0:
+                $ref: "#/definitions/CellRef"
+              s_or_r1:
+                $ref: "#/definitions/CellRef"
+              t_or_k0:
+                $ref: "#/definitions/CellRef"
+              t_or_k1:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
   CellRef:
     description: "Represents an operand of the form [reg + offset]."
     type: object

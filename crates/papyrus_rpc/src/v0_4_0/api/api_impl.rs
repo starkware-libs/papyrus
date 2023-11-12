@@ -400,7 +400,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 read_pending_data(&self.pending_data, &self.storage_reader).await?.state_update;
             return Ok(StateUpdate::PendingStateUpdate(PendingStateUpdate {
                 old_root: state_update.old_root,
-                state_diff: state_update.state_diff.clone().into(),
+                state_diff: state_update.state_diff.into(),
             }));
         }
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;

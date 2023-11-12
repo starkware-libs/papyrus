@@ -219,7 +219,7 @@ pub fn execute_call(
         // TODO(yair): fix when supporting v3 transactions
         &AccountTransactionContext::Deprecated(DeprecatedAccountTransactionContext::default()),
         true, // limit_steps_by_resources
-    );
+    )?;
 
     let res = call_entry_point.execute(
         &mut cached_state,
