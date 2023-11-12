@@ -838,6 +838,9 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let call_result = tokio::task::spawn_blocking(move || {
             execute_call(
                 reader,
+                // TODO(shahak): Add pending data here.
+                None,
+                None,
                 &chain_id,
                 state_number,
                 block_number,
@@ -940,6 +943,9 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 executable_txns,
                 &chain_id,
                 reader,
+                // TODO(shahak): Add pending data here.
+                None,
+                None,
                 state_number,
                 block_number,
                 &block_execution_config,
@@ -993,6 +999,9 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 None,
                 &chain_id,
                 reader,
+                // TODO(shahak): Add pending data here.
+                None,
+                None,
                 state_number,
                 block_number,
                 &block_execution_config,
@@ -1082,6 +1091,9 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 Some(tx_hashes),
                 &chain_id,
                 reader,
+                // TODO(shahak): Add pending data here.
+                None,
+                None,
                 state_number,
                 block_number,
                 &block_execution_config,
@@ -1164,6 +1176,9 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 Some(tx_hashes_clone),
                 &chain_id,
                 reader,
+                // TODO(shahak): Add pending data here.
+                None,
+                None,
                 state_number,
                 block_number,
                 &block_execution_config,
