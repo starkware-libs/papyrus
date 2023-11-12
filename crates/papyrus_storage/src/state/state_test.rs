@@ -42,7 +42,7 @@ fn append_state_diff_declared_classes() {
     let ((_, mut writer), _temp_dir) = get_test_storage();
     let mut txn = writer.begin_rw_txn().unwrap();
     txn = txn.append_state_diff(BlockNumber(0), diff0, IndexMap::new()).unwrap();
-    txn = txn.append_state_diff(BlockNumber(1), diff1.clone(), IndexMap::new()).unwrap();
+    txn = txn.append_state_diff(BlockNumber(1), diff1, IndexMap::new()).unwrap();
     txn.commit().unwrap();
 
     // State numbers.
