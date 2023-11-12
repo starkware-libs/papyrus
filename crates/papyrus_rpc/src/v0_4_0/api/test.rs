@@ -1899,6 +1899,7 @@ async fn get_state_update() {
         old_root: expected_old_root,
         state_diff: expected_state_diff.clone(),
     });
+    pending_data.write().await.block.parent_block_hash = header.block_hash;
     pending_data.write().await.state_update = ClientPendingStateUpdate {
         old_root: expected_old_root,
         state_diff: ClientStateDiff {
@@ -1951,6 +1952,13 @@ async fn get_state_update() {
         &expected_pending_update,
     )
     .await;
+
+    // Get state update of pending block when the pending block is not up to date.
+    let expected_pending_update = StateUpdate::PendingStateUpdate(PendingStateUpdate::default());
+    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    let res =
+        module.call::<_, StateUpdate>(method_name, [BlockId::Tag(Tag::Pending)]).await.unwrap();
+    assert_eq!(res, expected_pending_update);
 
     // Ask for an invalid block hash.
     call_api_then_assert_and_validate_schema_for_err::<_, BlockId, StateUpdate>(
