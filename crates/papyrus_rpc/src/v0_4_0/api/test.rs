@@ -34,7 +34,7 @@ use starknet_api::block::{
     BlockStatus,
     BlockTimestamp,
 };
-use starknet_api::core::{ClassHash, ContractAddress, Nonce, PatriciaKey};
+use starknet_api::core::{ClassHash, ContractAddress, GlobalRoot, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
     ContractClassAbiEntry,
     FunctionAbiEntry,
@@ -1840,10 +1840,12 @@ async fn get_state_update() {
         JsonRpcServerV0_4Impl,
     >(None, None, Some(pending_data.clone()), None, None);
     let parent_header = BlockHeader::default();
+    let expected_old_root = GlobalRoot(stark_felt!("0x1234"));
     let header = BlockHeader {
         block_hash: BlockHash(stark_felt!("0x1")),
         block_number: BlockNumber(1),
         parent_hash: parent_header.block_hash,
+        state_root: expected_old_root,
         ..BlockHeader::default()
     };
     let diff = get_test_state_diff();
@@ -1899,6 +1901,7 @@ async fn get_state_update() {
         old_root: expected_old_root,
         state_diff: expected_state_diff.clone(),
     });
+    pending_data.write().await.block.parent_block_hash = header.block_hash;
     pending_data.write().await.state_update = ClientPendingStateUpdate {
         old_root: expected_old_root,
         state_diff: ClientStateDiff {
@@ -1951,6 +1954,16 @@ async fn get_state_update() {
         &expected_pending_update,
     )
     .await;
+
+    // Get state update of pending block when the pending block is not up to date.
+    let expected_pending_update = StateUpdate::PendingStateUpdate(PendingStateUpdate {
+        old_root: expected_old_root,
+        ..PendingStateUpdate::default()
+    });
+    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    let res =
+        module.call::<_, StateUpdate>(method_name, [BlockId::Tag(Tag::Pending)]).await.unwrap();
+    assert_eq!(res, expected_pending_update);
 
     // Ask for an invalid block hash.
     call_api_then_assert_and_validate_schema_for_err::<_, BlockId, StateUpdate>(
