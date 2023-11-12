@@ -8,9 +8,16 @@ use blockifier::execution::call_info::{
 };
 use blockifier::execution::entry_point::CallType as BlockifierCallType;
 use blockifier::transaction::objects::TransactionExecutionInfo;
+use indexmap::IndexMap;
 use itertools::Itertools;
+use papyrus_common::state::{
+    DeclaredClassHashEntry,
+    DeployedContract,
+    ReplacedClass,
+    StorageEntry,
+};
 use serde::{Deserialize, Serialize};
-use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector};
+use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
 use starknet_api::deprecated_contract_class::EntryPointType;
 use starknet_api::hash::StarkFelt;
 use starknet_api::transaction::{Calldata, EventContent, MessageToL1};
@@ -315,4 +322,22 @@ pub struct FunctionCall {
     pub entry_point_selector: EntryPointSelector,
     /// The calldata of the function call.
     pub calldata: Calldata,
+}
+
+/// A state diff for the pending block.
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+pub struct PendingStateDiff {
+    // TODO(shahak): Consider indexing by address and key.
+    /// All the contract storages that were changed in the pending block.
+    pub storage_diffs: IndexMap<ContractAddress, Vec<StorageEntry>>,
+    /// All the contracts that were deployed in the pending block.
+    pub deployed_contracts: Vec<DeployedContract>,
+    /// All the classes that were declared in the pending block.
+    pub declared_classes: Vec<DeclaredClassHashEntry>,
+    /// All the deprecated classes that were declared in the pending block.
+    pub old_declared_contracts: Vec<ClassHash>,
+    /// All the nonces that were changed in the pending block.
+    pub nonces: IndexMap<ContractAddress, Nonce>,
+    /// All the classes that were declared in the pending block.
+    pub replaced_classes: Vec<ReplacedClass>,
 }
