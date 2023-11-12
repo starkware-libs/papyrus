@@ -4,6 +4,7 @@ use blockifier::abi::abi_utils::get_storage_var_address;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use indexmap::indexmap;
 use lazy_static::lazy_static;
+use papyrus_common::pending_classes::PendingClasses;
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::CasmStorageWriter;
 use papyrus_storage::header::HeaderStorageWriter;
@@ -44,7 +45,7 @@ use starknet_api::{calldata, class_hash, contract_address, patricia_key, stark_f
 use test_utils::read_json_file;
 
 use crate::execution_utils::selector_from_name;
-use crate::objects::TransactionTrace;
+use crate::objects::{PendingStateDiff, TransactionTrace};
 use crate::testing_instances::test_block_execution_config;
 use crate::{simulate_transactions, ExecutableTransactionInput};
 
@@ -174,6 +175,8 @@ pub fn prepare_storage(mut storage_writer: StorageWriter) {
 
 pub fn execute_simulate_transactions(
     storage_reader: StorageReader,
+    maybe_pending_state_diff: Option<PendingStateDiff>,
+    maybe_pending_classes: Option<PendingClasses>,
     txs: Vec<ExecutableTransactionInput>,
     tx_hashes: Option<Vec<TransactionHash>>,
     charge_fee: bool,
@@ -186,6 +189,8 @@ pub fn execute_simulate_transactions(
         tx_hashes,
         &chain_id,
         storage_reader,
+        maybe_pending_state_diff,
+        maybe_pending_classes,
         StateNumber::right_after_block(BlockNumber(0)),
         BlockNumber(1),
         &test_block_execution_config(),
