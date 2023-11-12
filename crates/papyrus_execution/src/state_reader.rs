@@ -5,6 +5,7 @@ mod state_reader_test;
 use blockifier::execution::contract_class::ContractClass as BlockifierContractClass;
 use blockifier::state::errors::StateError;
 use blockifier::state::state_api::{StateReader as BlockifierStateReader, StateResult};
+use papyrus_common::pending_classes::PendingClasses;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
@@ -12,11 +13,14 @@ use starknet_api::hash::StarkFelt;
 use starknet_api::state::{StateNumber, StorageKey};
 
 use crate::execution_utils::{get_contract_class, ExecutionUtilsError};
+use crate::objects::PendingStateDiff;
 
 /// A view into the state at a specific state number.
 pub struct ExecutionStateReader {
     pub storage_reader: StorageReader,
     pub state_number: StateNumber,
+    pub maybe_pending_state_diff: Option<PendingStateDiff>,
+    pub maybe_pending_classes: Option<PendingClasses>,
 }
 
 impl BlockifierStateReader for ExecutionStateReader {
