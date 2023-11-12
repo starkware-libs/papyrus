@@ -1,12 +1,13 @@
 use std::fmt::Debug;
 
 use cairo_lang_casm::hints::CoreHintBase;
+use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use pretty_assertions::assert_eq;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ContractAddress;
 use starknet_api::hash::StarkHash;
 use starknet_api::state::StorageKey;
-use test_utils::{get_rng, GetTestInstance};
+use test_utils::{get_rng, read_json_file, GetTestInstance};
 
 use crate::db::serialization::StorageSerde;
 
@@ -80,6 +81,16 @@ fn hint_modified() {
     // Only CoreHintBase is being used in programs (StarknetHint is for tests).
     let hint_schema = schemars::schema_for!(CoreHintBase);
     insta::assert_yaml_snapshot!(hint_schema);
+}
+
+// Tests the persistent encoding of the hints of an ERC20 contract.
+#[test]
+fn hints_regression() {
+    let casm = serde_json::from_value::<CasmContractClass>(read_json_file(
+        "erc20_compiled_contract_class.json",
+    ))
+    .unwrap();
+    insta::assert_yaml_snapshot!(casm.hints);
 }
 
 #[test]

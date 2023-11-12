@@ -1,0 +1,1030 @@
+---
+source: crates/papyrus_storage/src/serializers_test.rs
+expression: casm.hints
+---
+- - 0
+  - - TestLessThanOrEqual:
+        lhs:
+          Immediate: "0x1d10"
+        rhs:
+          Deref:
+            register: FP
+            offset: -6
+        dst:
+          register: AP
+          offset: 0
+- - 19
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 38
+  - - TestLessThanOrEqual:
+        lhs:
+          Immediate: "0x0"
+        rhs:
+          Deref:
+            register: AP
+            offset: -8
+        dst:
+          register: AP
+          offset: 0
+- - 58
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 81
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 96
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 111
+  - - TestLessThanOrEqual:
+        lhs:
+          Immediate: "0x1d10"
+        rhs:
+          Deref:
+            register: FP
+            offset: -6
+        dst:
+          register: AP
+          offset: 0
+- - 130
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 149
+  - - TestLessThanOrEqual:
+        lhs:
+          Immediate: "0x0"
+        rhs:
+          Deref:
+            register: AP
+            offset: -8
+        dst:
+          register: AP
+          offset: 0
+- - 169
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 192
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 207
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 222
+  - - TestLessThanOrEqual:
+        lhs:
+          Immediate: "0x2486"
+        rhs:
+          Deref:
+            register: FP
+            offset: -6
+        dst:
+          register: AP
+          offset: 0
+- - 241
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 260
+  - - TestLessThanOrEqual:
+        lhs:
+          Immediate: "0x0"
+        rhs:
+          Deref:
+            register: AP
+            offset: -8
+        dst:
+          register: AP
+          offset: 0
+- - 280
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 300
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 315
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 330
+  - - TestLessThanOrEqual:
+        lhs:
+          Immediate: "0x6054"
+        rhs:
+          Deref:
+            register: FP
+            offset: -6
+        dst:
+          register: AP
+          offset: 0
+- - 349
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 368
+  - - TestLessThanOrEqual:
+        lhs:
+          Immediate: "0x0"
+        rhs:
+          Deref:
+            register: AP
+            offset: -8
+        dst:
+          register: AP
+          offset: 0
+- - 388
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 412
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 427
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 442
+  - - TestLessThanOrEqual:
+        lhs:
+          Immediate: "0x7cec"
+        rhs:
+          Deref:
+            register: FP
+            offset: -6
+        dst:
+          register: AP
+          offset: 0
+- - 467
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 490
+  - - TestLessThanOrEqual:
+        lhs:
+          Deref:
+            register: AP
+            offset: -1
+        rhs:
+          Deref:
+            register: AP
+            offset: -40
+        dst:
+          register: AP
+          offset: 0
+- - 510
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 536
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 552
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 567
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 583
+  - - TestLessThanOrEqual:
+        lhs:
+          Immediate: "0x8fb6"
+        rhs:
+          Deref:
+            register: FP
+            offset: -6
+        dst:
+          register: AP
+          offset: 0
+- - 615
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 640
+  - - TestLessThanOrEqual:
+        lhs:
+          Deref:
+            register: AP
+            offset: -1
+        rhs:
+          Deref:
+            register: AP
+            offset: -72
+        dst:
+          register: AP
+          offset: 0
+- - 661
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 687
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 703
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 718
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 733
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 749
+  - - TestLessThanOrEqual:
+        lhs:
+          Immediate: "0x2bf2a"
+        rhs:
+          Deref:
+            register: FP
+            offset: -6
+        dst:
+          register: AP
+          offset: 0
+- - 781
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 806
+  - - TestLessThanOrEqual:
+        lhs:
+          Deref:
+            register: AP
+            offset: -1
+        rhs:
+          Deref:
+            register: AP
+            offset: -93
+        dst:
+          register: AP
+          offset: 0
+- - 828
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 848
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 864
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 879
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 894
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 910
+  - - TestLessThanOrEqual:
+        lhs:
+          Immediate: "0x448d6"
+        rhs:
+          Deref:
+            register: FP
+            offset: -6
+        dst:
+          register: AP
+          offset: 0
+- - 949
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 974
+  - - TestLessThanOrEqual:
+        lhs:
+          Deref:
+            register: AP
+            offset: -1
+        rhs:
+          Deref:
+            register: AP
+            offset: -124
+        dst:
+          register: AP
+          offset: 0
+- - 997
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1017
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1033
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1048
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1063
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1078
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1094
+  - - TestLessThanOrEqual:
+        lhs:
+          Immediate: "0x11ea4"
+        rhs:
+          Deref:
+            register: FP
+            offset: -6
+        dst:
+          register: AP
+          offset: 0
+- - 1126
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1151
+  - - TestLessThanOrEqual:
+        lhs:
+          Deref:
+            register: AP
+            offset: -1
+        rhs:
+          Deref:
+            register: AP
+            offset: -93
+        dst:
+          register: AP
+          offset: 0
+- - 1173
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1193
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1209
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1224
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1239
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1255
+  - - TestLessThanOrEqual:
+        lhs:
+          Immediate: "0x1b9f4"
+        rhs:
+          Deref:
+            register: FP
+            offset: -6
+        dst:
+          register: AP
+          offset: 0
+- - 1287
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1312
+  - - TestLessThanOrEqual:
+        lhs:
+          Deref:
+            register: AP
+            offset: -1
+        rhs:
+          Deref:
+            register: AP
+            offset: -93
+        dst:
+          register: AP
+          offset: 0
+- - 1334
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1354
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1370
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1385
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1400
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1416
+  - - TestLessThanOrEqual:
+        lhs:
+          Immediate: "0x1b9f4"
+        rhs:
+          Deref:
+            register: FP
+            offset: -6
+        dst:
+          register: AP
+          offset: 0
+- - 1448
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1473
+  - - TestLessThanOrEqual:
+        lhs:
+          Deref:
+            register: AP
+            offset: -1
+        rhs:
+          Deref:
+            register: AP
+            offset: -93
+        dst:
+          register: AP
+          offset: 0
+- - 1495
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1515
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1531
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1546
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1561
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1577
+  - - TestLessThanOrEqual:
+        lhs:
+          Immediate: "0x1fa36"
+        rhs:
+          Deref:
+            register: FP
+            offset: -6
+        dst:
+          register: AP
+          offset: 0
+- - 1649
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1672
+  - - TestLessThanOrEqual:
+        lhs:
+          Deref:
+            register: AP
+            offset: -1
+        rhs:
+          Deref:
+            register: AP
+            offset: -142
+        dst:
+          register: AP
+          offset: 0
+- - 1697
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1717
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1733
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1748
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1769
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1784
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1799
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1814
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 1936
+  - - TestLessThan:
+        lhs:
+          Deref:
+            register: AP
+            offset: -1
+        rhs:
+          Immediate: "0x800000000000000000000000000000000000000000000000000000000000000"
+        dst:
+          register: AP
+          offset: 4
+- - 1940
+  - - LinearSplit:
+        value:
+          Deref:
+            register: AP
+            offset: 3
+        scalar:
+          Immediate: "0x110000000000000000"
+        max_x:
+          Immediate: "0xffffffffffffffffffffffffffffffff"
+        x:
+          register: AP
+          offset: -2
+        y:
+          register: AP
+          offset: -1
+- - 1950
+  - - LinearSplit:
+        value:
+          Deref:
+            register: AP
+            offset: -2
+        scalar:
+          Immediate: "0x8000000000000000000000000000000"
+        max_x:
+          Immediate: "0xffffffffffffffffffffffffffffffff"
+        x:
+          register: AP
+          offset: -1
+        y:
+          register: AP
+          offset: 0
+- - 2530
+  - - TestLessThan:
+        lhs:
+          Deref:
+            register: FP
+            offset: -3
+        rhs:
+          Immediate: "0x100"
+        dst:
+          register: AP
+          offset: 0
+- - 2534
+  - - LinearSplit:
+        value:
+          Deref:
+            register: AP
+            offset: -1
+        scalar:
+          Immediate: "0x8000000000000110000000000000000"
+        max_x:
+          Immediate: "0xfffffffffffffffffffffffffffffffe"
+        x:
+          register: AP
+          offset: 0
+        y:
+          register: AP
+          offset: 1
+- - 2606
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 2738
+  - - SystemCall:
+        system:
+          Deref:
+            register: FP
+            offset: -3
+- - 2787
+  - - SystemCall:
+        system:
+          Deref:
+            register: FP
+            offset: -3
+- - 2836
+  - - SystemCall:
+        system:
+          Deref:
+            register: FP
+            offset: -3
+- - 2860
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 3052
+  - - TestLessThan:
+        lhs:
+          Deref:
+            register: FP
+            offset: -3
+        rhs:
+          Immediate: "0x100000000000000000000000000000000"
+        dst:
+          register: AP
+          offset: 0
+- - 3054
+  - - DivMod:
+        lhs:
+          Deref:
+            register: FP
+            offset: -3
+        rhs:
+          Immediate: "0x100000000000000000000000000000000"
+        quotient:
+          register: AP
+          offset: 3
+        remainder:
+          register: AP
+          offset: 4
+- - 3129
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 3161
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 3463
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 3548
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 3577
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 3600
+  - - SystemCall:
+        system:
+          Deref:
+            register: FP
+            offset: -4
+- - 3652
+  - - SystemCall:
+        system:
+          Deref:
+            register: FP
+            offset: -4
+- - 3704
+  - - SystemCall:
+        system:
+          Deref:
+            register: FP
+            offset: -4
+- - 3820
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 3822
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 3847
+  - - SystemCall:
+        system:
+          Deref:
+            register: FP
+            offset: -8
+- - 3920
+  - - SystemCall:
+        system:
+          Deref:
+            register: FP
+            offset: -5
+- - 3940
+  - - SystemCall:
+        system:
+          Deref:
+            register: AP
+            offset: -3
+- - 3964
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 3995
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 4041
+  - - TestLessThan:
+        lhs:
+          Deref:
+            register: AP
+            offset: -1
+        rhs:
+          Immediate: "0x7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00"
+        dst:
+          register: AP
+          offset: 5
+- - 4045
+  - - LinearSplit:
+        value:
+          Deref:
+            register: AP
+            offset: 4
+        scalar:
+          Immediate: "0x110000000000000000"
+        max_x:
+          Immediate: "0xffffffffffffffffffffffffffffffff"
+        x:
+          register: AP
+          offset: -2
+        y:
+          register: AP
+          offset: -1
+- - 4056
+  - - LinearSplit:
+        value:
+          Deref:
+            register: AP
+            offset: 4
+        scalar:
+          Immediate: "0x8000000000000000000000000000000"
+        max_x:
+          Immediate: "0xfffffffffffffffffffffffffffffffe"
+        x:
+          register: AP
+          offset: -2
+        y:
+          register: AP
+          offset: -1
+- - 4084
+  - - TestLessThan:
+        lhs:
+          Deref:
+            register: AP
+            offset: -1
+        rhs:
+          Immediate: "0x7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00"
+        dst:
+          register: AP
+          offset: 5
+- - 4088
+  - - LinearSplit:
+        value:
+          Deref:
+            register: AP
+            offset: 4
+        scalar:
+          Immediate: "0x110000000000000000"
+        max_x:
+          Immediate: "0xffffffffffffffffffffffffffffffff"
+        x:
+          register: AP
+          offset: -2
+        y:
+          register: AP
+          offset: -1
+- - 4099
+  - - LinearSplit:
+        value:
+          Deref:
+            register: AP
+            offset: 4
+        scalar:
+          Immediate: "0x8000000000000000000000000000000"
+        max_x:
+          Immediate: "0xfffffffffffffffffffffffffffffffe"
+        x:
+          register: AP
+          offset: -2
+        y:
+          register: AP
+          offset: -1
+- - 4123
+  - - SystemCall:
+        system:
+          Deref:
+            register: FP
+            offset: -3
+- - 4168
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 4170
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 4195
+  - - SystemCall:
+        system:
+          Deref:
+            register: FP
+            offset: -7
+- - 4281
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 4283
+  - - AllocSegment:
+        dst:
+          register: AP
+          offset: 0
+- - 4308
+  - - SystemCall:
+        system:
+          Deref:
+            register: FP
+            offset: -7
+- - 4422
+  - - SystemCall:
+        system:
+          Deref:
+            register: FP
+            offset: -7
+- - 4435
+  - - SystemCall:
+        system:
+          BinOp:
+            op: Add
+            a:
+              register: FP
+              offset: -7
+            b:
+              Immediate: "0x7"
+- - 4541
+  - - TestLessThan:
+        lhs:
+          Deref:
+            register: AP
+            offset: 0
+        rhs:
+          Immediate: "0x100000000000000000000000000000000"
+        dst:
+          register: AP
+          offset: -1
+- - 4564
+  - - TestLessThan:
+        lhs:
+          Deref:
+            register: AP
+            offset: 0
+        rhs:
+          Immediate: "0x100000000000000000000000000000000"
+        dst:
+          register: AP
+          offset: -1
+- - 4584
+  - - TestLessThan:
+        lhs:
+          Deref:
+            register: AP
+            offset: 0
+        rhs:
+          Immediate: "0x100000000000000000000000000000000"
+        dst:
+          register: AP
+          offset: -1
+- - 4609
+  - - TestLessThan:
+        lhs:
+          Deref:
+            register: AP
+            offset: 0
+        rhs:
+          Immediate: "0x100000000000000000000000000000000"
+        dst:
+          register: AP
+          offset: -1
+- - 4632
+  - - TestLessThan:
+        lhs:
+          Deref:
+            register: AP
+            offset: 0
+        rhs:
+          Immediate: "0x100000000000000000000000000000000"
+        dst:
+          register: AP
+          offset: -1
+- - 4652
+  - - TestLessThan:
+        lhs:
+          Deref:
+            register: AP
+            offset: 0
+        rhs:
+          Immediate: "0x100000000000000000000000000000000"
+        dst:
+          register: AP
+          offset: -1
+
