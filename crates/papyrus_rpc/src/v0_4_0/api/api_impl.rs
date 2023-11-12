@@ -396,7 +396,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn get_state_update(&self, block_id: BlockId) -> RpcResult<StateUpdate> {
         if let BlockId::Tag(Tag::Pending) = block_id {
-            let state_update = &self.pending_data.read().await.state_update;
+            let state_update =
+                read_pending_data(&self.pending_data, &self.storage_reader).await?.state_update;
             return Ok(StateUpdate::PendingStateUpdate(PendingStateUpdate {
                 old_root: state_update.old_root,
                 state_diff: state_update.state_diff.clone().into(),
