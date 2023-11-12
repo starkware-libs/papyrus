@@ -9,6 +9,7 @@ use async_trait::async_trait;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use jsonrpsee::core::Error;
+use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::Methods;
 use jsonschema::JSONSchema;
 use mockall::predicate::eq;
@@ -162,6 +163,7 @@ use crate::test_utils::{
     validate_schema,
     SpecFile,
 };
+use crate::v0_4_0::error::SCOPE_ERROR;
 use crate::version_config::VERSION_0_4;
 use crate::{internal_server_error, run_server, ContinuationTokenAsStruct};
 
@@ -1692,7 +1694,7 @@ async fn get_transaction_by_hash_state_only() {
 
     let (_, err) =
         raw_call::<_, TransactionHash, TransactionWithHash>(&module, method_name, &params).await;
-    assert_eq!(err.unwrap_err(), internal_server_error(""));
+    assert_eq!(err.unwrap_err(), ErrorObjectOwned::from(SCOPE_ERROR));
 }
 
 #[tokio::test]

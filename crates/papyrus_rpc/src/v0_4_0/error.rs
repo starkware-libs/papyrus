@@ -103,6 +103,12 @@ pub fn unexpected_error(data: String) -> JsonRpcError {
     JsonRpcError { code: 63, message: "An unexpected error occurred", data: Some(data) }
 }
 
+pub const SCOPE_ERROR: JsonRpcError = JsonRpcError {
+    code: 64,
+    message: "Block is unavailable when operating in state_only mode",
+    data: None,
+};
+
 impl From<JsonRpcError> for ErrorObjectOwned {
     fn from(err: JsonRpcError) -> Self {
         ErrorObjectOwned::owned(err.code, err.message, err.data)

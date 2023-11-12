@@ -119,6 +119,7 @@ use crate::{
     get_block_status,
     get_latest_block_number,
     internal_server_error,
+    storage_error,
     ContinuationTokenAsStruct,
 };
 
@@ -145,13 +146,13 @@ pub struct JsonRpcServerV0_4Impl {
 impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     fn block_number(&self) -> RpcResult<BlockNumber> {
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let txn = self.storage_reader.begin_ro_txn().map_err(storage_error)?;
         get_latest_block_number(&txn)?.ok_or_else(|| ErrorObjectOwned::from(NO_BLOCKS))
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
     fn block_hash_and_number(&self) -> RpcResult<BlockHashAndNumber> {
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let txn = self.storage_reader.begin_ro_txn().map_err(storage_error)?;
         let block_number =
             get_latest_block_number(&txn)?.ok_or_else(|| ErrorObjectOwned::from(NO_BLOCKS))?;
         let header: BlockHeader = get_block_header_by_number(&txn, block_number)?;
@@ -181,7 +182,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             });
         }
 
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let txn = self.storage_reader.begin_ro_txn().map_err(storage_error)?;
         let block_number = get_block_number(&txn, block_id)?;
         let status = get_block_status(&txn, block_number)?;
         let header =
@@ -226,7 +227,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             });
         }
 
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let txn = self.storage_reader.begin_ro_txn().map_err(storage_error)?;
         let block_number = get_block_number(&txn, block_id)?;
         let status = get_block_status(&txn, block_number)?;
         let header =
@@ -277,23 +278,22 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             block_id
         };
 
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let txn = self.storage_reader.begin_ro_txn().map_err(storage_error)?;
 
         // Check that the block is valid and get the state number.
         let block_number = get_block_number(&txn, block_id)?;
         let state = StateNumber::right_after_block(block_number);
-        let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
+        let state_reader = txn.get_state_reader().map_err(storage_error)?;
 
-        let res = state_reader
-            .get_storage_at(state, &contract_address, &key)
-            .map_err(internal_server_error)?;
+        let res =
+            state_reader.get_storage_at(state, &contract_address, &key).map_err(storage_error)?;
         // Contract address 0x1 is a special address, it stores the block
         // hashes. Contracts are not deployed to this address.
         if res == StarkFelt::default() && contract_address != *BLOCK_HASH_TABLE_ADDRESS {
             // check if the contract exists
             state_reader
                 .get_class_hash_at(state, &contract_address)
-                .map_err(internal_server_error)?
+                .map_err(storage_error)?
                 .ok_or_else(|| ErrorObjectOwned::from(CONTRACT_NOT_FOUND))?;
         }
         Ok(res)
@@ -304,14 +304,14 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         &self,
         transaction_hash: TransactionHash,
     ) -> RpcResult<TransactionWithHash> {
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let txn = self.storage_reader.begin_ro_txn().map_err(storage_error)?;
 
         if let Some(transaction_index) =
-            txn.get_transaction_idx_by_hash(&transaction_hash).map_err(internal_server_error)?
+            txn.get_transaction_idx_by_hash(&transaction_hash).map_err(storage_error)?
         {
             let transaction = txn
                 .get_transaction(transaction_index)
-                .map_err(internal_server_error)?
+                .map_err(storage_error)?
                 .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
 
             Ok(TransactionWithHash { transaction: transaction.try_into()?, transaction_hash })
@@ -355,17 +355,17 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             let transaction_hash = client_transaction.transaction_hash();
             (client_transaction.try_into().map_err(internal_server_error)?, transaction_hash)
         } else {
-            let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+            let txn = self.storage_reader.begin_ro_txn().map_err(storage_error)?;
             let block_number = get_block_number(&txn, block_id)?;
 
             let tx_index = TransactionIndex(block_number, index);
             let transaction = txn
                 .get_transaction(tx_index)
-                .map_err(internal_server_error)?
+                .map_err(storage_error)?
                 .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?;
             let transaction_hash = txn
                 .get_transaction_hash_by_idx(&tx_index)
-                .map_err(internal_server_error)?
+                .map_err(storage_error)?
                 .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?;
             (transaction, transaction_hash)
         };
@@ -386,7 +386,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 .len();
             Ok(transactions_len)
         } else {
-            let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+            let txn = self.storage_reader.begin_ro_txn().map_err(storage_error)?;
             let block_number = get_block_number(&txn, block_id)?;
             let transactions: Vec<Transaction> = get_block_txs_by_number(&txn, block_number)?;
             Ok(transactions.len())
@@ -402,7 +402,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 state_diff: state_update.state_diff.clone().into(),
             }));
         }
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let txn = self.storage_reader.begin_ro_txn().map_err(storage_error)?;
 
         // Get the block header for the block hash and state root.
         let block_number = get_block_number(&txn, block_id)?;
@@ -422,7 +422,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         // Get the block state diff.
         let thin_state_diff = txn
             .get_state_diff(block_number)
-            .map_err(internal_server_error)?
+            .map_err(storage_error)?
             .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
 
         Ok(StateUpdate::AcceptedStateUpdate(AcceptedStateUpdate {
@@ -438,10 +438,10 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         &self,
         transaction_hash: TransactionHash,
     ) -> RpcResult<GeneralTransactionReceipt> {
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let txn = self.storage_reader.begin_ro_txn().map_err(storage_error)?;
 
         if let Some(transaction_index) =
-            txn.get_transaction_idx_by_hash(&transaction_hash).map_err(internal_server_error)?
+            txn.get_transaction_idx_by_hash(&transaction_hash).map_err(storage_error)?
         {
             let block_number = transaction_index.0;
             let status = get_block_status(&txn, block_number)?;
@@ -459,12 +459,12 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 
             let thin_tx_output = txn
                 .get_transaction_output(transaction_index)
-                .map_err(internal_server_error)?
+                .map_err(storage_error)?
                 .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
 
             let events = txn
                 .get_transaction_events(transaction_index)
-                .map_err(internal_server_error)?
+                .map_err(storage_error)?
                 .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
 
             let output = TransactionOutput::from_thin_transaction_output(thin_tx_output, events);
@@ -525,23 +525,23 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             block_id
         };
 
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let txn = self.storage_reader.begin_ro_txn().map_err(storage_error)?;
 
         let block_number = get_block_number(&txn, block_id)?;
         let state_number = StateNumber::right_after_block(block_number);
-        let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
+        let state_reader = txn.get_state_reader().map_err(storage_error)?;
 
         // The class might be a deprecated class. Search it first in the declared classes and if not
         // found, search in the deprecated classes.
         if let Some(class) = state_reader
             .get_class_definition_at(state_number, &class_hash)
-            .map_err(internal_server_error)?
+            .map_err(storage_error)?
         {
             Ok(GatewayContractClass::Sierra(class.try_into().map_err(internal_server_error)?))
         } else {
             let class = state_reader
                 .get_deprecated_class_definition_at(state_number, &class_hash)
-                .map_err(internal_server_error)?
+                .map_err(storage_error)?
                 .ok_or_else(|| ErrorObjectOwned::from(CLASS_HASH_NOT_FOUND))?;
             Ok(GatewayContractClass::Cairo0(class.try_into().map_err(internal_server_error)?))
         }
@@ -553,26 +553,26 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         block_id: BlockId,
         contract_address: ContractAddress,
     ) -> RpcResult<GatewayContractClass> {
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let txn = self.storage_reader.begin_ro_txn().map_err(storage_error)?;
 
         let block_number = get_block_number(&txn, block_id)?;
         let state_number = StateNumber::right_after_block(block_number);
-        let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
+        let state_reader = txn.get_state_reader().map_err(storage_error)?;
 
         let class_hash = state_reader
             .get_class_hash_at(state_number, &contract_address)
-            .map_err(internal_server_error)?
+            .map_err(storage_error)?
             .ok_or_else(|| ErrorObjectOwned::from(CONTRACT_NOT_FOUND))?;
 
         if let Some(class) = state_reader
             .get_class_definition_at(state_number, &class_hash)
-            .map_err(internal_server_error)?
+            .map_err(storage_error)?
         {
             Ok(GatewayContractClass::Sierra(class.try_into().map_err(internal_server_error)?))
         } else {
             let class = state_reader
                 .get_deprecated_class_definition_at(state_number, &class_hash)
-                .map_err(internal_server_error)?
+                .map_err(storage_error)?
                 .ok_or_else(|| ErrorObjectOwned::from(CONTRACT_NOT_FOUND))?;
             Ok(GatewayContractClass::Cairo0(class.try_into().map_err(internal_server_error)?))
         }
@@ -601,15 +601,15 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             block_id
         };
 
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let txn = self.storage_reader.begin_ro_txn().map_err(storage_error)?;
 
         let block_number = get_block_number(&txn, block_id)?;
         let state = StateNumber::right_after_block(block_number);
-        let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
+        let state_reader = txn.get_state_reader().map_err(storage_error)?;
 
         state_reader
             .get_class_hash_at(state, &contract_address)
-            .map_err(internal_server_error)?
+            .map_err(storage_error)?
             .ok_or_else(|| ErrorObjectOwned::from(CONTRACT_NOT_FOUND))
     }
 
@@ -633,15 +633,15 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             block_id
         };
 
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let txn = self.storage_reader.begin_ro_txn().map_err(storage_error)?;
 
         let block_number = get_block_number(&txn, block_id)?;
         let state = StateNumber::right_after_block(block_number);
-        let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
+        let state_reader = txn.get_state_reader().map_err(storage_error)?;
 
         state_reader
             .get_nonce_at(state, &contract_address)
-            .map_err(internal_server_error)?
+            .map_err(storage_error)?
             .ok_or_else(|| ErrorObjectOwned::from(CONTRACT_NOT_FOUND))
     }
 
@@ -662,7 +662,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         }
 
         // Get the requested block numbers.
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let txn = self.storage_reader.begin_ro_txn().map_err(storage_error)?;
         let from_block_number = filter
             .from_block
             .map_or(Ok(BlockNumber(0)), |block_id| get_block_number(&txn, block_id))?;
@@ -693,9 +693,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         // corresponding to the requested filter. If there are, we return a continuation token
         // pointing to the next relevant event. Otherwise, we return a continuation token None.
         let mut filtered_events = vec![];
-        for ((from_address, event_index), content) in txn
-            .iter_events(filter.address, event_index, to_block_number)
-            .map_err(internal_server_error)?
+        for ((from_address, event_index), content) in
+            txn.iter_events(filter.address, event_index, to_block_number).map_err(storage_error)?
         {
             let block_number = (event_index.0).0;
             if block_number > to_block_number {
@@ -722,7 +721,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                     .map_err(internal_server_error)?;
                 let transaction_hash = txn
                     .get_transaction_hash_by_idx(&event_index.0)
-                    .map_err(internal_server_error)?
+                    .map_err(storage_error)?
                     .ok_or_else(|| internal_server_error("Unknown internal error."))?;
                 let emitted_event = Event {
                     block_hash: header.block_hash,
@@ -743,7 +742,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             return Ok(SyncingState::Synced);
         };
         let current_block =
-            get_last_synced_block(self.storage_reader.clone()).map_err(internal_server_error)?;
+            get_last_synced_block(self.storage_reader.clone()).map_err(storage_error)?;
         if highest_block.block_number <= current_block.block_number {
             return Ok(SyncingState::Synced);
         }
@@ -766,7 +765,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         block_id: BlockId,
     ) -> RpcResult<Vec<StarkFelt>> {
         let block_number = get_block_number(
-            &self.storage_reader.begin_ro_txn().map_err(internal_server_error)?,
+            &self.storage_reader.begin_ro_txn().map_err(storage_error)?,
             block_id,
         )?;
         let state_number = StateNumber::right_after_block(block_number);
@@ -798,7 +797,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 
         match call_result {
             Ok(res) => Ok(res.retdata.0),
-            Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
+            Err(ExecutionError::StorageError(err)) => Err(storage_error(err)),
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
         }
     }
@@ -867,7 +866,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             transactions.into_iter().map(|tx| tx.try_into()).collect::<Result<_, _>>()?;
 
         let block_number = get_block_number(
-            &self.storage_reader.begin_ro_txn().map_err(internal_server_error)?,
+            &self.storage_reader.begin_ro_txn().map_err(storage_error)?,
             block_id,
         )?;
         let state_number = StateNumber::right_after_block(block_number);
@@ -899,7 +898,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 .into_iter()
                 .map(|(gas_price, fee)| FeeEstimate::from(gas_price, fee))
                 .collect()),
-            Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
+            Err(ExecutionError::StorageError(err)) => Err(storage_error(err)),
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
         }
     }
@@ -916,7 +915,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             transactions.into_iter().map(|tx| tx.try_into()).collect::<Result<_, _>>()?;
 
         let block_number = get_block_number(
-            &self.storage_reader.begin_ro_txn().map_err(internal_server_error)?,
+            &self.storage_reader.begin_ro_txn().map_err(storage_error)?,
             block_id,
         )?;
         let state_number = StateNumber::right_after_block(block_number);
@@ -957,7 +956,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                     fee_estimation: FeeEstimate::from(gas_price, fee),
                 })
                 .collect()),
-            Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
+            Err(ExecutionError::StorageError(err)) => Err(storage_error(err)),
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
         }
     }
@@ -967,13 +966,13 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         &self,
         transaction_hash: TransactionHash,
     ) -> RpcResult<TransactionTrace> {
-        let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let storage_txn = self.storage_reader.begin_ro_txn().map_err(storage_error)?;
         let TransactionIndex(block_number, tx_offset) = storage_txn
             .get_transaction_idx_by_hash(&transaction_hash)
-            .map_err(internal_server_error)?
+            .map_err(storage_error)?
             .ok_or(INVALID_TRANSACTION_HASH)?;
 
-        let casm_marker = storage_txn.get_compiled_class_marker().map_err(internal_server_error)?;
+        let casm_marker = storage_txn.get_compiled_class_marker().map_err(storage_error)?;
         if casm_marker <= block_number {
             debug!(
                 ?transaction_hash,
@@ -987,18 +986,18 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 
         let block_transactions = storage_txn
             .get_block_transactions(block_number)
-            .map_err(internal_server_error)?
+            .map_err(storage_error)?
             .ok_or_else(|| {
-                internal_server_error(StorageError::DBInconsistency {
+                storage_error(StorageError::DBInconsistency {
                     msg: format!("Missing block {block_number} transactions"),
                 })
             })?;
 
         let tx_hashes = storage_txn
             .get_block_transaction_hashes(block_number)
-            .map_err(internal_server_error)?
+            .map_err(storage_error)?
             .ok_or_else(|| {
-                internal_server_error(StorageError::DBInconsistency {
+                storage_error(StorageError::DBInconsistency {
                     msg: format!("Missing block {block_number} transactions"),
                 })
             })?;
@@ -1044,7 +1043,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 .expect("Should have transaction exeuction result")
                 .0
                 .into()),
-            Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
+            Err(ExecutionError::StorageError(err)) => Err(storage_error(err)),
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
         }
     }
@@ -1054,10 +1053,10 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         &self,
         block_id: BlockId,
     ) -> RpcResult<Vec<TransactionTraceWithHash>> {
-        let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let storage_txn = self.storage_reader.begin_ro_txn().map_err(storage_error)?;
         let block_number = get_block_number(&storage_txn, block_id)?;
 
-        let casm_marker = storage_txn.get_compiled_class_marker().map_err(internal_server_error)?;
+        let casm_marker = storage_txn.get_compiled_class_marker().map_err(storage_error)?;
         if casm_marker <= block_number {
             debug!(
                 ?block_id,
@@ -1069,18 +1068,18 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 
         let block_transactions = storage_txn
             .get_block_transactions(block_number)
-            .map_err(internal_server_error)?
+            .map_err(storage_error)?
             .ok_or_else(|| {
-                internal_server_error(StorageError::DBInconsistency {
+                storage_error(StorageError::DBInconsistency {
                     msg: format!("Missing block {block_number} transactions"),
                 })
             })?;
 
         let tx_hashes = storage_txn
             .get_block_transaction_hashes(block_number)
-            .map_err(internal_server_error)?
+            .map_err(storage_error)?
             .ok_or_else(|| {
-                internal_server_error(StorageError::DBInconsistency {
+                storage_error(StorageError::DBInconsistency {
                     msg: format!("Missing block {block_number} transactions"),
                 })
             })?;
@@ -1129,7 +1128,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                     trace_root: trace_root.into(),
                 })
                 .collect()),
-            Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
+            Err(ExecutionError::StorageError(err)) => Err(storage_error(err)),
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
         }
     }
@@ -1139,7 +1138,7 @@ async fn read_pending_data(
     pending_data: &Arc<RwLock<PendingData>>,
     storage_reader: &StorageReader,
 ) -> RpcResult<PendingData> {
-    let txn = storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+    let txn = storage_reader.begin_ro_txn().map_err(storage_error)?;
     let latest_header: starknet_api::block::BlockHeader = match get_latest_block_number(&txn)? {
         Some(latest_block_number) => get_block_header_by_number(&txn, latest_block_number)?,
         None => starknet_api::block::BlockHeader {

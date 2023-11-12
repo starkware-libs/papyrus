@@ -7,7 +7,7 @@ use lazy_static::lazy_static;
 use papyrus_storage::body::events::ThinTransactionOutput;
 use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::db::TransactionKind;
-use papyrus_storage::StorageTxn;
+use papyrus_storage::{StorageTxn};
 use serde::{Deserialize, Deserializer, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
 use starknet_api::core::{
@@ -36,8 +36,10 @@ use starknet_api::transaction::{
 };
 use starknet_client::writer::objects::transaction as client_transaction;
 
+
 use super::error::BLOCK_NOT_FOUND;
-use crate::internal_server_error;
+
+use crate::{internal_server_error, storage_error};
 
 lazy_static! {
     static ref TX_V0: TransactionVersion = TransactionVersion::ZERO;
@@ -576,7 +578,7 @@ pub fn get_block_txs_by_number<
 ) -> Result<Vec<Transaction>, ErrorObjectOwned> {
     let transactions = txn
         .get_block_transactions(block_number)
-        .map_err(internal_server_error)?
+        .map_err(storage_error)?
         .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
 
     transactions.into_iter().map(Transaction::try_from).collect()
@@ -588,7 +590,7 @@ pub fn get_block_tx_hashes_by_number<Mode: TransactionKind>(
 ) -> Result<Vec<TransactionHash>, ErrorObjectOwned> {
     let transaction_hashes = txn
         .get_block_transaction_hashes(block_number)
-        .map_err(internal_server_error)?
+        .map_err(storage_error)?
         .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
 
     Ok(transaction_hashes)

@@ -32,8 +32,8 @@ use starknet_api::transaction::{
     TransactionVersion,
 };
 
-use crate::internal_server_error;
 use crate::v0_3_0::error::JsonRpcError;
+use crate::{internal_server_error, storage_error};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(untagged)]
@@ -468,7 +468,7 @@ pub fn get_block_txs_by_number<
 ) -> Result<Vec<Transaction>, ErrorObjectOwned> {
     let transactions = txn
         .get_block_transactions(block_number)
-        .map_err(internal_server_error)?
+        .map_err(storage_error)?
         .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
 
     transactions.into_iter().map(Transaction::try_from).collect()
@@ -480,7 +480,7 @@ pub fn get_block_tx_hashes_by_number<Mode: TransactionKind>(
 ) -> Result<Vec<TransactionHash>, ErrorObjectOwned> {
     let transaction_hashes = txn
         .get_block_transaction_hashes(block_number)
-        .map_err(internal_server_error)?
+        .map_err(storage_error)?
         .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
 
     Ok(transaction_hashes)
