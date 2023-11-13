@@ -115,7 +115,7 @@ impl Transaction {
     pub fn contract_address(&self) -> Option<ContractAddress> {
         match self {
             Transaction::Deploy(tx) => Some(tx.contract_address),
-            Transaction::DeployAccount(tx) => Some(tx.contract_address),
+            Transaction::DeployAccount(tx) => Some(tx.sender_address),
             _ => None,
         }
     }
@@ -342,9 +342,8 @@ pub struct IntermediateDeployAccountTransaction {
     pub paymaster_data: Option<PaymasterData>,
     // In early versions of starknet, the `sender_address` field was originally named
     // `contract_address`.
-    // TODO(Yael): switch between sender_address and contract_address.
-    #[serde(alias = "sender_address")]
-    pub contract_address: ContractAddress,
+    #[serde(alias = "contract_address")]
+    pub sender_address: ContractAddress,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_fee: Option<Fee>,
     pub transaction_hash: TransactionHash,
