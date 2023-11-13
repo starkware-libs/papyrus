@@ -10,6 +10,7 @@ use papyrus_common::pending_classes::PendingClasses;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::test_utils::get_test_storage_by_scope;
 use papyrus_storage::{StorageScope, StorageWriter};
+use pretty_assertions::assert_eq;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

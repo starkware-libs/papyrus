@@ -899,8 +899,6 @@
                             }
                         },
                         "required": [
-                            "block_hash",
-                            "block_number",
                             "transaction_hash"
                         ]
                     }
