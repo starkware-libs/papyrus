@@ -29,11 +29,10 @@ use starknet_api::transaction::{
 };
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
 
+use super::transaction::Builtin;
 use crate::reader::objects::state::ContractClass;
 use crate::reader::objects::transaction::{
-    BuiltinInstanceCounter,
     DeployTransaction,
-    EmptyBuiltinInstanceCounter,
     ExecutionResources,
     IntermediateDeclareTransaction,
     IntermediateDeployAccountTransaction,
@@ -146,19 +145,25 @@ auto_impl_get_test_instance! {
         pub nonce: L1ToL2Nonce,
     }
     pub struct L1ToL2Nonce(pub StarkHash);
-    pub struct ExecutionResources {
-        pub n_steps: u64,
-        pub builtin_instance_counter: BuiltinInstanceCounter,
-        pub n_memory_holes: u64,
-    }
-    pub enum BuiltinInstanceCounter {
-        NonEmpty(HashMap<String, u64>) = 0,
-        Empty(EmptyBuiltinInstanceCounter) = 1,
-    }
-    pub struct EmptyBuiltinInstanceCounter {}
     pub struct L2ToL1Message {
         pub from_address: ContractAddress,
         pub to_address: EthAddress,
         pub payload: L2ToL1Payload,
+    }
+    pub struct ExecutionResources {
+        pub n_steps: u64,
+        pub builtin_instance_counter: HashMap<Builtin, u64>,
+        pub n_memory_holes: u64,
+    }
+    pub enum Builtin {
+        RangeCheck = 0,
+        Pedersen = 1,
+        Poseidon = 2,
+        EcOp = 3,
+        Ecdsa = 4,
+        Bitwise = 5,
+        Keccak = 6,
+        Output = 7,
+        SegmentArena = 8,
     }
 }
