@@ -33,6 +33,7 @@ starknet_client = { path = "../starknet_client" }
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
 tokio-stream.workspace = true
+tracing-stackdriver = "0.8.0"
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 tracing.workspace = true
 url.workspace = true

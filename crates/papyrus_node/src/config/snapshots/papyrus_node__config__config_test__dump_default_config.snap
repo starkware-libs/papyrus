@@ -211,6 +211,11 @@ expression: dumped_default_config
     "value": "FullArchive",
     "privacy": "Public"
   },
+  "structured_logging": {
+    "description": "Whether or not to emit structured logs.",
+    "value": false,
+    "privacy": "Public"
+  },
   "sync.#is_none": {
     "description": "Flag for an optional field",
     "value": false,

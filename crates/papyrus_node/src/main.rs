@@ -131,14 +131,17 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
 // TODO(yair): add dynamic level filtering.
 // TODO(dan): filter out logs from dependencies (happens when RUST_LOG=DEBUG)
 // TODO(yair): define and implement configurable filtering.
-fn configure_tracing() {
-    let fmt_layer = fmt::layer().compact().with_target(false);
+fn configure_tracing(config: &NodeConfig) {
     let level_filter_layer =
         EnvFilter::builder().with_default_directive(DEFAULT_LEVEL.into()).from_env_lossy();
+    let subscriber = tracing_subscriber::registry().with(level_filter_layer);
+    let stackdriver_layer = tracing_stackdriver::layer().with_writer(std::io::stderr);
+    let fmt_layer = fmt::layer().with_target(false).compact();
 
-    // This sets a single subscriber to all of the threads. We may want to implement different
-    // subscriber for some threads and use set_global_default instead of init.
-    tracing_subscriber::registry().with(fmt_layer).with(level_filter_layer).init();
+    match config.structured_logging {
+        true => subscriber.with(stackdriver_layer).init(),
+        false => subscriber.with(fmt_layer).init(),
+    };
 }
 
 #[tokio::main]
@@ -147,10 +150,10 @@ async fn main() -> anyhow::Result<()> {
     if let Err(ConfigError::CommandInput(clap_err)) = config {
         clap_err.exit();
     }
-
-    configure_tracing();
-
     let config = config?;
+
+    configure_tracing(&config);
+
     if let Err(errors) = config_validate(&config) {
         error!("{}", errors);
         exit(1);
